@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Message } from '@ag-ui/core';
 import { Chat } from '../models';
 import { apiActions, internalActions } from '../actions';
 import { Prettify } from '../utils/types';
@@ -13,7 +14,10 @@ import * as fromStreamingMessage from './streaming-message.reducer';
 import * as fromToolCalls from './tool-calls.reducer';
 import * as fromTools from './tools.reducer';
 import * as fromThread from './thread.reducer';
-import { ɵreconcileAgUiMessageProjection } from './ag-ui-message-history';
+import {
+  ɵownValidatedAgUiMessages,
+  ɵreconcileAgUiMessageProjection,
+} from './ag-ui-message-history';
 
 const toolTurnSettledType = internalActions.toolTurnSettled.type;
 
@@ -122,22 +126,131 @@ export function ɵprepareRootAction(
     const settlement = action as ReturnType<
       typeof internalActions.toolTurnSettled
     >;
-    const { generationId, toolTurnId, toolCalls } = settlement.payload;
-    if (generationId !== undefined || toolTurnId !== undefined) {
-      const ownership = state.generationOwnership;
-      const reserved = ownership.toolTurn;
-      const matches =
-        generationId !== undefined &&
-        toolTurnId !== undefined &&
-        ownership.generationId === generationId &&
-        reserved?.toolTurnId === toolTurnId &&
-        reserved.toolCalls.length === toolCalls.length &&
-        reserved.toolCalls.every(
-          (toolCall, index) => toolCall === toolCalls[index],
-        );
-      if (!matches) return { type: '@hashbrown/noop' };
+    const {
+      generationId,
+      toolTurnId,
+      toolCalls,
+      toolMessages,
+      canonicalMessages,
+    } = settlement.payload;
+    const ownership = state.generationOwnership;
+    const reserved = ownership.toolTurn;
+    if (
+      ownership.generationId !== generationId ||
+      reserved?.toolTurnId !== toolTurnId
+    ) {
+      return { type: '@hashbrown/noop' };
     }
-    return action;
+
+    const accepted = toolCalls.flatMap((toolCall, index) => {
+      const toolMessage = toolMessages[index];
+      const canonicalMessage = canonicalMessages[index];
+      const current = Object.hasOwn(state.toolCalls.entities, toolCall.id)
+        ? state.toolCalls.entities[toolCall.id]
+        : undefined;
+      return reserved.toolCalls[index] === toolCall &&
+        current === toolCall &&
+        toolMessage?.toolCallId === toolCall.id &&
+        canonicalMessage?.toolCallId === toolCall.id
+        ? [{ toolCall, toolMessage, canonicalMessage }]
+        : [];
+    });
+    if (accepted.length === 0) {
+      return { type: '@hashbrown/noop' };
+    }
+
+    const acceptedToolCalls = accepted.map(({ toolCall }) => toolCall);
+    const acceptedToolMessages = accepted.map(({ toolMessage }) => toolMessage);
+    const acceptedCanonicalMessages = accepted.map(
+      ({ canonicalMessage }) => canonicalMessage,
+    );
+    try {
+      const resultsByToolCallId = new Map(
+        acceptedCanonicalMessages.map((message) => [
+          message.toolCallId,
+          message,
+        ]),
+      );
+      const insertedResultIds = new Set<string>();
+      const withInsertedResults: Readonly<Message>[] = [];
+      for (
+        let index = 0;
+        index < state.agUiMessages.committed.length;
+        index += 1
+      ) {
+        const message = state.agUiMessages.committed[index];
+        if (!message) continue;
+        withInsertedResults.push(message);
+        if (message.role === 'assistant') {
+          const associatedToolCallIds = new Set(
+            (message.toolCalls ?? []).map((toolCall) => toolCall.id),
+          );
+          while (index + 1 < state.agUiMessages.committed.length) {
+            const next = state.agUiMessages.committed[index + 1];
+            if (
+              next?.role !== 'tool' ||
+              !associatedToolCallIds.has(next.toolCallId)
+            ) {
+              break;
+            }
+            withInsertedResults.push(next);
+            index += 1;
+          }
+          const results = (message.toolCalls ?? []).flatMap((toolCall) => {
+            const result = resultsByToolCallId.get(toolCall.id);
+            if (!result || insertedResultIds.has(result.id)) {
+              return [];
+            }
+            insertedResultIds.add(result.id);
+            return [result];
+          });
+          withInsertedResults.push(...results);
+        }
+      }
+      if (insertedResultIds.size !== acceptedCanonicalMessages.length) {
+        return { type: '@hashbrown/noop' };
+      }
+      const validatedHistory = ɵownValidatedAgUiMessages(withInsertedResults);
+      const canonicalHistory = Object.freeze(
+        withInsertedResults.map((message, index) => {
+          const validated = validatedHistory[index];
+          return insertedResultIds.has(message.id) && validated
+            ? validated
+            : message;
+        }),
+      );
+      const previousProjection =
+        state.messages.preparedProjection?.canonicalMessages ===
+        state.agUiMessages.committed
+          ? state.messages.preparedProjection
+          : undefined;
+      const projection = ɵreconcileAgUiMessageProjection(
+        previousProjection,
+        canonicalHistory,
+        state.tools.entities,
+        state.config.responseSchema,
+      );
+      const ownedAcceptedCanonicalMessages = acceptedCanonicalMessages.map(
+        (message) =>
+          canonicalHistory.find(
+            (candidate) =>
+              candidate.role === 'tool' && candidate.id === message.id,
+          ) as Readonly<typeof message>,
+      );
+      return {
+        ...action,
+        payload: {
+          ...settlement.payload,
+          toolCalls: acceptedToolCalls,
+          toolMessages: acceptedToolMessages,
+          canonicalMessages: ownedAcceptedCanonicalMessages,
+        },
+        ɵcanonicalMessages: canonicalHistory,
+        ɵagUiMessageProjection: projection,
+      };
+    } catch {
+      return { type: '@hashbrown/noop' };
+    }
   }
   if (action.type !== apiActions.generateMessageEvent.type) {
     return action;

@@ -5,7 +5,6 @@ import { Chat } from '../models';
 import { lowerViewMessagesToAgUi } from '../reducers/ag-ui-message-history';
 import {
   reducers,
-  selectApiMessages,
   selectDebounce,
   selectGeneratingError,
   selectIsLoading,
@@ -18,8 +17,8 @@ import {
   selectSendingError,
   selectShouldGenerateMessage,
   selectStreamingMessageError,
-  selectSystem,
   selectThreadId,
+  selectToolCalls,
   selectToolEntities,
   selectTools,
   selectTransport,
@@ -31,6 +30,7 @@ import {
   ɵselectAttemptOwnedPendingToolCalls,
   ɵselectCommittedAgentState,
   ɵselectCommittedAgUiMessages,
+  ɵselectEffectiveCommittedAgUiMessages,
   ɵselectGenerationAttemptId,
   ɵselectGenerationId,
   ɵselectStateWriteLocked,
@@ -88,15 +88,22 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
   const defaults: SelectorMap = new Map<SelectorKey, unknown>([
     [selectResponseSchema, undefined],
     [
-      selectApiMessages,
-      [{ role: 'user', content: 'Hi!' }] as Chat.Api.Message[],
+      ɵselectEffectiveCommittedAgUiMessages,
+      [
+        {
+          id: 'system-default',
+          role: 'system',
+          content: 'You are a test bot',
+        },
+        { id: 'user-default', role: 'user', content: 'Hi!' },
+      ],
     ],
+    [ɵselectCommittedAgentState, undefined],
     [selectShouldGenerateMessage, true],
     [selectDebounce, 0],
     [selectRetries, 0],
     [selectToolEntities, {}],
     [selectTools, []],
-    [selectSystem, 'You are a test bot'],
     [selectThreadId, undefined],
     [selectTransport, configuredTransport],
     [selectUiRequested, false],
@@ -765,7 +772,7 @@ test('configured thread with no messages sends no request', async () => {
   }));
   const store = createTestStore(
     new Map<SelectorKey, unknown>([
-      [selectApiMessages, []],
+      [ɵselectEffectiveCommittedAgUiMessages, []],
       [selectShouldGenerateMessage, false],
       [selectThreadId, 'configured-thread'],
     ]),
@@ -2416,7 +2423,6 @@ test.each([
     await iterationBlocked.promise;
     const effectiveThreadId = request?.input?.threadId;
     store.setSelector(selectThreadId, effectiveThreadId);
-    store.setSelector(selectSystem, 'Updated system prompt');
     await store.trigger(
       devActions.updateOptions({
         threadId: effectiveThreadId,
@@ -2530,6 +2536,8 @@ test('unconfigured run reuses one generated thread ID across retries', async () 
   expect(requests).toHaveLength(2);
   expect(requests[0]?.input?.threadId).toBe(requests[1]?.input?.threadId);
   expect(requests[0]?.input?.runId).not.toBe(requests[1]?.input?.runId);
+  expect(requests[0]?.input.messages).toBe(requests[1]?.input.messages);
+  expect(requests[0]?.input.state).toBe(requests[1]?.input.state);
   expect(firstDispose).toHaveBeenCalledTimes(1);
   expect(secondDispose).toHaveBeenCalledTimes(1);
 
@@ -2747,7 +2755,7 @@ test('continues client tools with isolated reasoning details in transcript order
       ],
     },
     {
-      id: 'call-weather',
+      id: expect.any(String),
       role: 'tool',
       toolCallId: 'call-weather',
       content: '{"city":"Paris","condition":"sunny"}',
@@ -2832,12 +2840,12 @@ test('continues client tools with isolated reasoning details in transcript order
     originalAssistantEncryptedValue,
   );
   expect(committedToolCall.encryptedValue).toBe(originalToolEncryptedValue);
-  capturedAssistant.encryptedValue = 'mutated-captured-assistant';
-  capturedToolCall.encryptedValue = 'mutated-captured-tool-call';
-  capturedReasoning.encryptedValue = 'mutated-captured-value';
-  capturedMetadata.provider.trace[0] = 'mutated-captured-metadata';
-  capturedAssistantStep.index = 99;
-  capturedToolStep.index = 100;
+  expect(Object.isFrozen(capturedAssistant)).toBe(true);
+  expect(Object.isFrozen(capturedToolCall)).toBe(true);
+  expect(Object.isFrozen(capturedReasoning)).toBe(true);
+  expect(Object.isFrozen(capturedMetadata.provider.trace)).toBe(true);
+  expect(Object.isFrozen(capturedAssistantStep)).toBe(true);
+  expect(Object.isFrozen(capturedToolStep)).toBe(true);
 
   expect(committedAssistant.encryptedValue).toBe(
     originalAssistantEncryptedValue,
@@ -2872,9 +2880,12 @@ test('continues three sequential tool rounds before the terminal response', asyn
   ];
   const capturedRequests: TransportRequest[] = [];
   const terminalRequestStarted = createDeferred<void>();
-  const toolHandler = jest.fn(async ({ value }: { value: number }) => ({
+  const localResults = scriptedToolRounds.map(({ value }) => ({
     recorded: value,
   }));
+  const toolHandler = jest.fn(
+    async ({ value }: { value: number }) => localResults[value - 1],
+  );
   const { send } = makeSelection(async (request) => {
     capturedRequests.push(request);
     const toolRound = scriptedToolRounds[capturedRequests.length - 1];
@@ -2941,6 +2952,20 @@ test('continues three sequential tool rounds before the terminal response', asyn
       { value: 2 },
       { value: 3 },
     ]);
+    const settledValues = runtime
+      .messages()
+      .flatMap((message) =>
+        message.role === 'assistant' ? message.toolCalls : [],
+      )
+      .flatMap((toolCall) =>
+        toolCall.status === 'done' && toolCall.result.status === 'fulfilled'
+          ? [toolCall.result.value]
+          : [],
+      );
+    expect(settledValues).toHaveLength(3);
+    settledValues.forEach((value, index) => {
+      expect(value).toBe(localResults[index]);
+    });
     expect(send).toHaveBeenCalledTimes(4);
   } finally {
     skippedToolCalls.restore();
@@ -3794,6 +3819,136 @@ test('concurrent tool results settle once in call order', async () => {
   }
 });
 
+test('local tool results remain lossless while continuation receives total canonical normalization and fresh state', async () => {
+  jest.clearAllMocks();
+  const cyclic: Record<string, unknown> = {};
+  cyclic['self'] = cyclic;
+  const hostile = new Proxy(
+    {},
+    {
+      get() {
+        throw new Error('cannot read');
+      },
+    },
+  );
+  const rejection = new Error('tool rejected');
+  const secondRequestCaptured = createDeferred<TransportRequest>();
+  let requestCount = 0;
+  makeSelection(async (request) => {
+    requestCount++;
+    if (requestCount === 1) {
+      return {
+        events: createToolBatchEvents(request, [
+          { id: 'call-undefined', name: 'undefinedValue', arguments: '{}' },
+          { id: 'call-bigint', name: 'bigintValue', arguments: '{}' },
+          { id: 'call-cycle', name: 'cyclicValue', arguments: '{}' },
+          { id: 'call-hostile', name: 'hostileValue', arguments: '{}' },
+          { id: 'call-rejected', name: 'rejectedValue', arguments: '{}' },
+        ]),
+      };
+    }
+
+    secondRequestCaptured.resolve(request);
+    return { events: successfulEvents(request) };
+  });
+  const store = createRealEffectStore();
+  const tools: Chat.Internal.Tool[] = [
+    {
+      name: 'undefinedValue',
+      description: 'Return undefined.',
+      schema: s.object('Empty input', {}),
+      handler: async () => {
+        store.dispatch(devActions.setState({ state: { count: 7 } }));
+        return undefined;
+      },
+    },
+    {
+      name: 'bigintValue',
+      description: 'Return bigint.',
+      schema: s.object('Empty input', {}),
+      handler: async () => BigInt(42),
+    },
+    {
+      name: 'cyclicValue',
+      description: 'Return a cycle.',
+      schema: s.object('Empty input', {}),
+      handler: async () => cyclic,
+    },
+    {
+      name: 'hostileValue',
+      description: 'Return a hostile proxy.',
+      schema: s.object('Empty input', {}),
+      handler: async () => hostile,
+    },
+    {
+      name: 'rejectedValue',
+      description: 'Reject.',
+      schema: s.object('Empty input', {}),
+      handler: async () => {
+        throw rejection;
+      },
+    },
+  ];
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      messages: [{ role: 'user', content: 'Run every tool.' }],
+      canonicalMessages: canonicalUser('Run every tool.'),
+      state: { count: 0 },
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+      tools,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  const secondRequest = await secondRequestCaptured.promise;
+  await waitForStoreGenerationToSettle(store);
+  const canonicalResults = secondRequest.input.messages.filter(
+    (message) => message.role === 'tool',
+  );
+  const localResults = new Map(
+    store
+      .read(selectToolCalls)
+      .map((toolCall) => [toolCall.id, toolCall.result]),
+  );
+
+  expect(canonicalResults.map((message) => message.content)).toEqual([
+    '',
+    '42',
+    '[object Object]',
+    'cannot read',
+    'tool rejected',
+  ]);
+  expect(canonicalResults.map((message) => message.id)).toEqual(
+    canonicalResults.map(() => expect.any(String)),
+  );
+  expect(
+    canonicalResults.every((message) => message.id !== message.toolCallId),
+  ).toBe(true);
+  expect(secondRequest.input.state).toEqual({ count: 7 });
+  expect(
+    (localResults.get('call-undefined') as PromiseFulfilledResult<unknown>)
+      .value,
+  ).toBeUndefined();
+  expect(
+    (localResults.get('call-bigint') as PromiseFulfilledResult<unknown>).value,
+  ).toBe(BigInt(42));
+  expect(
+    (localResults.get('call-cycle') as PromiseFulfilledResult<unknown>).value,
+  ).toBe(cyclic);
+  expect(
+    (localResults.get('call-hostile') as PromiseRejectedResult).reason,
+  ).toEqual(expect.objectContaining({ message: 'cannot read' }));
+  expect(
+    (localResults.get('call-rejected') as PromiseRejectedResult).reason,
+  ).toBe(rejection);
+
+  teardown();
+});
+
 test('a compatible checkpoint tool-call replay is not executed again', async () => {
   jest.clearAllMocks();
   let requestCount = 0;
@@ -4367,14 +4522,15 @@ test('sends one RunAgentInput with tools, structured output, and UI metadata', a
     events: successfulEvents(request),
     dispose,
   }));
-  const messages: Chat.Api.Message[] = [
-    { role: 'user', content: 'First question' },
-    { role: 'assistant', content: 'First answer' },
-    { role: 'user', content: 'Follow-up question' },
+  const messages: import('@ag-ui/core').Message[] = [
+    { id: 'system-1', role: 'system', content: 'You are a test bot' },
+    { id: 'user-1', role: 'user', content: 'First question' },
+    { id: 'assistant-1', role: 'assistant', content: 'First answer' },
+    { id: 'user-2', role: 'user', content: 'Follow-up question' },
   ];
   const store = createTestStore(
     new Map<SelectorKey, unknown>([
-      [selectApiMessages, messages],
+      [ɵselectEffectiveCommittedAgUiMessages, messages],
       [selectTools, [tool]],
       [selectToolEntities, { search: tool }],
       [selectResponseSchema, responseSchema],
@@ -4544,6 +4700,73 @@ test('real store rolls back retry drafts, preserves the logical lock, and commit
   expect(store.read(ɵselectStateWriteLocked)).toBe(false);
   expect(store.read(ɵselectGenerationId)).toBeUndefined();
   expect(store.read(ɵselectGenerationAttemptId)).toBeUndefined();
+
+  teardown();
+});
+
+test('real store protects one empty-system message checkpoint across retries', async () => {
+  jest.clearAllMocks();
+  const requests: TransportRequest[] = [];
+  const mutationErrors: unknown[] = [];
+  const { send } = makeSelection(async (request) => {
+    requests.push(request);
+    const messages = request.input?.messages;
+    if (!messages) throw new Error('Expected canonical input messages.');
+    try {
+      messages.splice(0, 1);
+    } catch (error) {
+      mutationErrors.push(error);
+    }
+    if (requests.length === 1) {
+      throw new Error('retry after attempted mutation');
+    }
+
+    return { events: successfulEvents(request) };
+  });
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: '',
+      systemMessage: Object.freeze({
+        id: 'system-empty',
+        role: 'system',
+        content: '',
+      }),
+      canonicalMessages: [],
+      messages: [],
+      retries: 1,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+  store.dispatch(
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Keep this checkpoint'),
+      message: { role: 'user', content: 'Keep this checkpoint' },
+    }),
+  );
+  const checkpoint = store.read(ɵselectCommittedAgUiMessages);
+  const checkpointMessage = checkpoint[0];
+
+  await waitForMockCalls(send, 2);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(Object.isFrozen(checkpoint)).toBe(true);
+  expect(requests[0]?.input?.messages).toBe(checkpoint);
+  expect(requests[1]?.input?.messages).toBe(checkpoint);
+  expect(requests[0]?.input?.messages).toEqual([
+    expect.objectContaining({
+      id: 'user-Keep this checkpoint',
+      content: 'Keep this checkpoint',
+    }),
+  ]);
+  expect(mutationErrors).toHaveLength(2);
+  expect(mutationErrors.every((error) => error instanceof TypeError)).toBe(
+    true,
+  );
+  expect(store.read(ɵselectCommittedAgUiMessages)).toBe(checkpoint);
+  expect(store.read(ɵselectCommittedAgUiMessages)[0]).toBe(checkpointMessage);
 
   teardown();
 });
@@ -6704,8 +6927,11 @@ test('does not generate after a non-continuing tool settlement', async () => {
 
   await store.trigger(
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
       continuation: 'stop',
     }),
   );

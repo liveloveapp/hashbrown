@@ -1,7 +1,7 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import type { Transport, TransportRequest } from '../transport';
 import { TransportError } from '../transport';
-import { createHashbrownRunAgentInput } from '../transport/hashbrown-run-agent-input';
+import { createCanonicalRunAgentInput } from '../transport/hashbrown-run-agent-input';
 import {
   executeLogicalRun,
   type LogicalRunAttemptContext,
@@ -22,10 +22,11 @@ function createRequest({
   const runId = `run-${attempt}`;
 
   return {
-    input: createHashbrownRunAgentInput({
+    input: createCanonicalRunAgentInput({
       threadId: 'thread-id',
       runId,
       messages: [],
+      state: undefined,
       tools: [],
     }),
     signal,

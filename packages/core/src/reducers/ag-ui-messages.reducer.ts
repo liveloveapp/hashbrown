@@ -128,7 +128,7 @@ export const reducer = createReducer(
     try {
       const appended = own(action.payload.canonicalMessages);
       ɵassertAgUiMessageAppendCompatibility(state.committed, appended);
-      const committed = [...state.committed, ...appended];
+      const committed = Object.freeze([...state.committed, ...appended]);
       return {
         ...state,
         committed,
@@ -161,6 +161,22 @@ export const reducer = createReducer(
     };
   }),
   on(devActions.resendMessages, (state): AgUiMessagesState => rollback(state)),
+  on(internalActions.toolTurnSettled, (state, action): AgUiMessagesState => {
+    const canonicalMessages = readPreparedCanonicalMessages(action);
+    if (!canonicalMessages) {
+      return state;
+    }
+
+    return {
+      ...state,
+      committed: canonicalMessages,
+      draft: Object.freeze([]),
+      attemptActive: false,
+      protocolError: undefined,
+      attemptStartToolCallIds: Object.freeze([]),
+      ...inactiveLifecycle(),
+    };
+  }),
 );
 
 /** Selects the committed synchronized AG-UI history. @internal */
@@ -190,6 +206,14 @@ export const ɵselectAttemptStartToolCallIds = (state: AgUiMessagesState) =>
 /** Selects the most recent canonical message protocol error. @internal */
 export const ɵselectAgUiMessagesProtocolError = (state: AgUiMessagesState) =>
   state.protocolError;
+
+function readPreparedCanonicalMessages(
+  action: unknown,
+): readonly Readonly<Message>[] | undefined {
+  return (
+    action as { readonly ɵcanonicalMessages?: readonly Readonly<Message>[] }
+  ).ɵcanonicalMessages;
+}
 
 /**
  * Validates and normalizes one AG-UI event before it is applied to derived

@@ -52,6 +52,8 @@ test('records tool results for a stopped tool turn', () => {
   const settledState = reducer(
     pendingState,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       continuation: 'stop',
       toolCalls: [toolCall],
       toolMessages: [
@@ -62,6 +64,7 @@ test('records tool results for a stopped tool turn', () => {
           content: { status: 'rejected', reason: cancellation },
         },
       ],
+      canonicalMessages: [],
     }),
   );
 
@@ -98,6 +101,8 @@ test('does not settle a replacement tool call with the same id', () => {
   const settledState = reducer(
     replacementState,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       continuation: 'stop',
       toolCalls: [original],
       toolMessages: [
@@ -111,6 +116,7 @@ test('does not settle a replacement tool call with the same id', () => {
           },
         },
       ],
+      canonicalMessages: [],
     }),
   );
 
@@ -279,6 +285,8 @@ test('active transaction commits the exact successful tool snapshot for guarded 
   const settled = reducer(
     committed,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       continuation: 'stop',
       toolCalls: [successfulToolCall],
       toolMessages: [
@@ -289,6 +297,7 @@ test('active transaction commits the exact successful tool snapshot for guarded 
           content: { status: 'fulfilled', value: 'sunny' },
         },
       ],
+      canonicalMessages: [],
     }),
   );
 
@@ -546,6 +555,8 @@ test('preserves fulfilled and rejected local tool settlement values outside an a
   const settled = reducer(
     initial,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       continuation: 'stop',
       toolCalls: [fulfilled, rejected],
       toolMessages: [
@@ -562,6 +573,7 @@ test('preserves fulfilled and rejected local tool settlement values outside an a
           content: { status: 'rejected', reason },
         },
       ],
+      canonicalMessages: [],
     }),
   );
 

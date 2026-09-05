@@ -262,8 +262,11 @@ test('marks a continuing tool settlement as sending', () => {
   const next = reducer(
     initialStatusState,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
       continuation: 'continue',
     }),
   );
@@ -275,8 +278,11 @@ test('keeps a stopped tool settlement idle', () => {
   const next = reducer(
     initialStatusState,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
       continuation: 'stop',
     }),
   );
@@ -288,8 +294,11 @@ test('preserves a superseding user turn sending state', () => {
   const next = reducer(
     { ...initialStatusState, isSending: true },
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
       continuation: 'stop',
     }),
   );

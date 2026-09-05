@@ -335,6 +335,26 @@ export const reducer = createReducer(
     (state): MessagesState => rollback(state),
   ),
   on(devActions.resendMessages, (state): MessagesState => rollback(state)),
+  on(internalActions.toolTurnSettled, (state, action): MessagesState => {
+    const preparedProjection = readPreparedProjection(action);
+    if (!preparedProjection) {
+      return state;
+    }
+
+    const messages = preparedProjection.projection.messages;
+    return {
+      ...state,
+      messages,
+      committed: messages,
+      draft: [],
+      attemptActive: false,
+      activeAssistantMessageId: undefined,
+      activeIgnoredTextMessageId: undefined,
+      canonicalIds: preparedProjection.canonicalIds,
+      committedCanonicalIds: preparedProjection.canonicalIds,
+      preparedProjection,
+    };
+  }),
   on(apiActions.generateMessageError, (state, action) => {
     const errorMessage: ErrorMessage = {
       role: 'error',

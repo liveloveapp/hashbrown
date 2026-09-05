@@ -3,14 +3,12 @@ import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { ɵprepareAgUiMessageEvent } from '../reducers/ag-ui-message-history';
 import {
-  selectApiMessages,
   selectDebounce,
   selectRawStreamingMessage,
   selectResponseSchema,
   selectRetries,
   selectShouldGenerateMessage,
   selectStreamingMessageError,
-  selectSystem,
   selectThreadId,
   selectToolEntities,
   selectTools,
@@ -19,12 +17,18 @@ import {
   ɵselectAgentStateProtocolError,
   ɵselectAgUiMessagesProtocolError,
   ɵselectAttemptOwnedPendingToolCalls,
+  ɵselectCommittedAgentState,
+  ɵselectEffectiveCommittedAgUiMessages,
   ɵselectGenerationAttemptId,
   ɵselectGenerationId,
 } from '../reducers';
 import { s } from '../schema';
 import { resolveTransport, TransportError } from '../transport';
-import { createHashbrownRunAgentInput } from '../transport/hashbrown-run-agent-input';
+import { createCanonicalRunAgentInput } from '../transport/hashbrown-run-agent-input';
+import {
+  normalizeToolRejection,
+  normalizeToolResult,
+} from '../transport/normalize-tool-result';
 import { sleep } from '../utils/async';
 import { updateAssistantMessage } from '../utils/assistant-message';
 import { createEffect } from '../utils/micro-ngrx';
@@ -209,18 +213,20 @@ export const generateMessage = createEffect((store) => {
   ) => {
     const snapshot = generation.unclaimedToolSnapshot;
     generation.unclaimedToolSnapshot = undefined;
-    if (!snapshot || snapshot.toolCalls.length === 0) {
+    const toolTurnId = snapshot?.toolTurnId;
+    if (!snapshot || !toolTurnId || snapshot.toolCalls.length === 0) {
       return;
     }
 
     const outcome = createStoppedToolTurnOutcome(snapshot.toolCalls);
+    const messages = createToolSettlementMessages(snapshot.toolCalls, outcome);
     const settle = () =>
       store.dispatch(
         internalActions.toolTurnSettled({
           generationId: generation.generationId,
-          toolTurnId: snapshot.toolTurnId,
+          toolTurnId,
           toolCalls: [...snapshot.toolCalls],
-          toolMessages: toToolMessages(snapshot.toolCalls, outcome),
+          ...messages,
           continuation: outcome.continuation,
         }),
       );
@@ -320,13 +326,13 @@ export const generateMessage = createEffect((store) => {
           }
 
           const responseSchema = store.read(selectResponseSchema);
-          const messages = store.read(selectApiMessages);
+          const messages = store.read(ɵselectEffectiveCommittedAgUiMessages);
+          const state = store.read(ɵselectCommittedAgentState);
           const debounce = store.read(selectDebounce);
           const retries = store.read(selectRetries);
           const internalTools = store.read(selectTools);
           const tools = Chat.helpers.toApiToolsFromInternal(internalTools);
           const toolsByName = store.read(selectToolEntities);
-          const system = store.read(selectSystem);
           const responseJsonSchema = responseSchema
             ? s.toJsonSchema(responseSchema)
             : undefined;
@@ -379,11 +385,11 @@ export const generateMessage = createEffect((store) => {
               const requestId = _createRequestId();
 
               return {
-                input: createHashbrownRunAgentInput({
+                input: createCanonicalRunAgentInput({
                   threadId,
                   runId: requestId,
-                  system,
                   messages,
+                  state,
                   tools,
                   responseSchema: responseJsonSchema,
                   ui: uiRequested,
@@ -537,13 +543,16 @@ export const generateMessage = createEffect((store) => {
         },
         settleToolTurn: (toolCalls, outcome, toolTurnId) => {
           const generation = generationRef.current;
+          if (!generation || !toolTurnId) {
+            return;
+          }
+          const messages = createToolSettlementMessages(toolCalls, outcome);
           store.dispatch(
             internalActions.toolTurnSettled({
-              ...(generation && toolTurnId
-                ? { generationId: generation.generationId, toolTurnId }
-                : {}),
+              generationId: generation.generationId,
+              toolTurnId,
               toolCalls: [...toolCalls],
-              toolMessages: toToolMessages(toolCalls, outcome),
+              ...messages,
               continuation: outcome.continuation,
             }),
           );
@@ -633,16 +642,42 @@ export const generateMessage = createEffect((store) => {
   };
 });
 
-function toToolMessages(
+function createToolSettlementMessages(
   toolCalls: readonly Chat.Internal.ToolCall[],
   outcome: ToolTurnOutcome,
-): Chat.Api.ToolMessage[] {
-  return toolCalls.map((toolCall, index) => ({
-    role: 'tool',
-    content: outcome.results[index],
-    toolCallId: toolCall.id,
-    toolName: toolCall.name,
-  }));
+): {
+  readonly toolMessages: Chat.Api.ToolMessage[];
+  readonly canonicalMessages: import('@ag-ui/core').ToolMessage[];
+} {
+  const entries = toolCalls.map((toolCall, index) => {
+    const result = outcome.results[index];
+    if (!result) {
+      throw new Error('Tool outcome is missing a result');
+    }
+    const content =
+      result.status === 'fulfilled'
+        ? normalizeToolResult(result.value)
+        : normalizeToolRejection(result.reason);
+    return {
+      toolMessage: {
+        role: 'tool' as const,
+        content: result,
+        toolCallId: toolCall.id,
+        toolName: toolCall.name,
+      },
+      canonicalMessage: {
+        id: _createRequestId(),
+        role: 'tool' as const,
+        toolCallId: toolCall.id,
+        content,
+        ...(result.status === 'rejected' ? { error: content } : {}),
+      },
+    };
+  });
+  return {
+    toolMessages: entries.map((entry) => entry.toolMessage),
+    canonicalMessages: entries.map((entry) => entry.canonicalMessage),
+  };
 }
 
 function createStoppedToolTurnOutcome(

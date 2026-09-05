@@ -5,7 +5,7 @@ import type {
   TransportResponse,
 } from './transport';
 import { TransportError } from './transport-error';
-import { createHashbrownRunAgentInput } from './hashbrown-run-agent-input';
+import { createCanonicalRunAgentInput } from './hashbrown-run-agent-input';
 import { runAgUiAttempt } from './ag-ui-run-driver';
 
 function createDeferred<T>() {
@@ -24,10 +24,11 @@ function createRequest(): TransportRequest {
   const runId = 'run-id';
 
   return {
-    input: createHashbrownRunAgentInput({
+    input: createCanonicalRunAgentInput({
       threadId,
       runId,
       messages: [],
+      state: undefined,
       tools: [],
     }),
     signal: new AbortController().signal,

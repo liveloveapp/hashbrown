@@ -1,3 +1,4 @@
+import type { ToolMessage } from '@ag-ui/core';
 import { createActionGroup, emptyProps, props } from '../utils/micro-ngrx';
 import { Chat } from '../models';
 
@@ -26,10 +27,11 @@ export default createActionGroup('internal', {
   logicalGenerationSettled: props<{ generationId: string }>(),
   generationSilentlyRetired: emptyProps(),
   toolTurnSettled: props<{
-    generationId?: string;
-    toolTurnId?: string;
-    toolCalls: Chat.Internal.ToolCall[];
-    toolMessages: Chat.Api.ToolMessage[];
+    generationId: string;
+    toolTurnId: string;
+    toolCalls: readonly Chat.Internal.ToolCall[];
+    toolMessages: readonly Chat.Api.ToolMessage[];
+    canonicalMessages: readonly Readonly<ToolMessage>[];
     continuation: 'continue' | 'stop';
   }>(),
   runToolCallsError: props<Error>(),

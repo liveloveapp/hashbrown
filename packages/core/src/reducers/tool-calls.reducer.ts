@@ -453,6 +453,7 @@ export const reducer = createReducer(
     };
   }),
   on(internalActions.toolTurnSettled, (state, action): ToolCallsState => {
+    const preparedProjection = readPreparedProjection(action);
     const expected = new Map(
       action.payload.toolCalls.map((toolCall) => [toolCall.id, toolCall]),
     );
@@ -470,7 +471,17 @@ export const reducer = createReducer(
               }),
               localProvenance: {
                 ...current.localProvenance,
-                ...Object.fromEntries([[toolMessage.toolCallId, {}]]),
+                ...Object.fromEntries([
+                  [
+                    toolMessage.toolCallId,
+                    {
+                      source: readOwn(
+                        preparedProjection?.toolCallSources ?? {},
+                        toolMessage.toolCallId,
+                      ),
+                    },
+                  ],
+                ]),
               },
             }
           : current;
@@ -482,6 +493,7 @@ export const reducer = createReducer(
           : (state.committedLocalProvenance ?? {}),
       },
     );
+    const canonicalIds = preparedProjection?.canonicalIds ?? state.canonicalIds;
     return state.attemptActive
       ? {
           ...settled.entities,
@@ -490,7 +502,7 @@ export const reducer = createReducer(
           attemptActive: true,
           activeToolCallId: state.activeToolCallId,
           activeToolCallName: state.activeToolCallName,
-          canonicalIds: state.canonicalIds,
+          canonicalIds,
           committedCanonicalIds: state.committedCanonicalIds,
           localProvenance: settled.localProvenance,
           committedLocalProvenance: state.committedLocalProvenance,
@@ -502,8 +514,10 @@ export const reducer = createReducer(
           attemptActive: false,
           activeToolCallId: undefined,
           activeToolCallName: undefined,
-          canonicalIds: state.canonicalIds,
-          committedCanonicalIds: state.committedCanonicalIds,
+          canonicalIds,
+          committedCanonicalIds: canonicalIds,
+          preparedProjection:
+            preparedProjection === undefined ? state.preparedProjection : true,
           localProvenance: settled.localProvenance,
           committedLocalProvenance: settled.localProvenance,
         };

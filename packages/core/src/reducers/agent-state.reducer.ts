@@ -53,6 +53,10 @@ export const reducer = createReducer(
       committed: action.payload.state,
     };
   }),
+  on(internalActions.toolTurnStarted, (state): AgentStateState => ({
+    ...state,
+    stateWriteLocked: false,
+  })),
   on(internalActions.generationAttemptStarted, (state): AgentStateState => {
     return {
       ...state,

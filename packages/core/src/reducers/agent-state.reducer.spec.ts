@@ -338,17 +338,23 @@ test('tool continuation locks state writes while a normal stopped tool turn leav
   const continued = reducer(
     initialAgentState,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       continuation: 'continue',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
     }),
   );
   const stopped = reducer(
     initialAgentState,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       continuation: 'stop',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
     }),
   );
 
@@ -368,9 +374,12 @@ test('a stale stopped tool settlement preserves a superseding generation lock', 
   const result = reducer(
     supersedingGeneration,
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       continuation: 'stop',
       toolCalls: [],
       toolMessages: [],
+      canonicalMessages: [],
     }),
   );
 

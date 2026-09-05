@@ -1,4 +1,4 @@
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { createChatRuntime } from '../chat-runtime';
 import { Chat } from '../models';
@@ -10,6 +10,7 @@ import {
   selectIsLoading,
   selectIsRunningToolCalls,
   selectThreadId,
+  selectToolCalls,
   selectUnifiedError,
   selectViewMessages,
   ɵprepareRootAction,
@@ -20,6 +21,7 @@ import {
   ɵselectCommittedAgUiMessages,
   ɵselectEffectiveCommittedAgUiMessages,
   ɵselectEffectiveVisibleAgUiMessages,
+  ɵselectStateWriteLocked,
   ɵselectVisibleAgentState,
   ɵselectVisibleAgUiMessages,
 } from './index';
@@ -931,10 +933,22 @@ test('preserves locally settled tool values until remote associations supersede 
       },
     }),
   );
+  store.dispatch(
+    internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
+  );
+  store.dispatch(
+    internalActions.toolTurnReserved({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [fulfilled, rejected],
+    }),
+  );
 
   // Act
   store.dispatch(
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       continuation: 'stop',
       toolCalls: [fulfilled, rejected],
       toolMessages: [
@@ -949,6 +963,21 @@ test('preserves locally settled tool values until remote associations supersede 
           toolCallId: rejected.id,
           toolName: rejected.name,
           content: rejectedResult,
+        },
+      ],
+      canonicalMessages: [
+        {
+          id: 'fulfilled-local-result',
+          role: 'tool',
+          toolCallId: fulfilled.id,
+          content: '{"temperature":20}',
+        },
+        {
+          id: 'rejected-local-result',
+          role: 'tool',
+          toolCallId: rejected.id,
+          content: 'lookup unavailable',
+          error: 'lookup unavailable',
         },
       ],
     }),
@@ -1349,10 +1378,22 @@ test('keeps newly settled local tool results through unrelated prepared events',
       },
     }),
   );
+  store.dispatch(
+    internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
+  );
+  store.dispatch(
+    internalActions.toolTurnReserved({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [fulfilled, rejected],
+    }),
+  );
 
   // Act
   store.dispatch(
     internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
       continuation: 'stop',
       toolCalls: [fulfilled, rejected],
       toolMessages: [
@@ -1367,6 +1408,21 @@ test('keeps newly settled local tool results through unrelated prepared events',
           toolCallId: rejected.id,
           toolName: rejected.name,
           content: rejectedResult,
+        },
+      ],
+      canonicalMessages: [
+        {
+          id: 'fulfilled-local-result',
+          role: 'tool',
+          toolCallId: fulfilled.id,
+          content: '{"temperature":20}',
+        },
+        {
+          id: 'rejected-local-result',
+          role: 'tool',
+          toolCallId: rejected.id,
+          content: 'unknown tool',
+          error: 'unknown tool',
         },
       ],
     }),
@@ -4443,6 +4499,7 @@ test('the running tool calls selector tracks only a claimed tool turn', () => {
       toolTurnId: 'tool-turn-1',
       toolCalls: [toolCall],
       toolMessages: [],
+      canonicalMessages: [],
       continuation: 'stop',
     }),
   );
@@ -4530,6 +4587,506 @@ test('prepared success commits the exact attempt-owned decorated tool objects', 
   expect(execution.argumentsResolved).toEqual({ value: 1 });
   expect(state.toolCalls.entities['call-1']).toBe(execution);
   expect(state.generationOwnership.toolTurn?.toolCalls[0]).toBe(execution);
+});
+
+test('prepared tool settlement atomically appends canonical results and preserves exact local values', () => {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  const fulfilledValue = { answer: 42 };
+  const rejection = new Error('lookup failed');
+  const fulfilled: Chat.Internal.ToolCall = {
+    id: 'call-fulfilled',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  };
+  const rejected: Chat.Internal.ToolCall = {
+    id: 'call-rejected',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  };
+  const canonical: Message[] = [
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: fulfilled.id,
+          type: 'function',
+          function: { name: fulfilled.name, arguments: fulfilled.arguments },
+        },
+        {
+          id: rejected.id,
+          type: 'function',
+          function: { name: rejected.name, arguments: rejected.arguments },
+        },
+      ],
+    },
+  ];
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: canonical,
+      messages: [
+        {
+          role: 'assistant',
+          toolCalls: [
+            {
+              role: 'tool',
+              status: 'pending',
+              name: fulfilled.name,
+              args: {},
+              toolCallId: fulfilled.id,
+            },
+            {
+              role: 'tool',
+              status: 'pending',
+              name: rejected.name,
+              args: {},
+              toolCallId: rejected.id,
+            },
+          ],
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            toolCallIds: [fulfilled.id, rejected.id],
+          },
+        ],
+        toolCalls: [fulfilled, rejected],
+      },
+      state: { count: 0 },
+    }),
+  );
+  store.dispatch(
+    internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
+  );
+  store.dispatch(
+    internalActions.toolTurnReserved({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [fulfilled, rejected],
+    }),
+  );
+  store.dispatch(
+    internalActions.toolTurnStarted({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+    }),
+  );
+  store.dispatch(devActions.setState({ state: { count: 2 } }));
+  const fulfilledResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: fulfilledValue,
+  };
+  const rejectedResult: PromiseSettledResult<unknown> = {
+    status: 'rejected',
+    reason: rejection,
+  };
+
+  store.dispatch(
+    internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [fulfilled, rejected],
+      toolMessages: [
+        {
+          role: 'tool',
+          toolCallId: fulfilled.id,
+          toolName: fulfilled.name,
+          content: fulfilledResult,
+        },
+        {
+          role: 'tool',
+          toolCallId: rejected.id,
+          toolName: rejected.name,
+          content: rejectedResult,
+        },
+      ],
+      canonicalMessages: [
+        {
+          id: 'result-fulfilled',
+          role: 'tool',
+          toolCallId: fulfilled.id,
+          content: '{"answer":42}',
+        },
+        {
+          id: 'result-rejected',
+          role: 'tool',
+          toolCallId: rejected.id,
+          content: 'lookup failed',
+          error: 'lookup failed',
+        },
+      ],
+      continuation: 'continue',
+    }),
+  );
+
+  const settledCalls = store.read(selectToolCalls);
+  expect(store.read(ɵselectCommittedAgUiMessages)).toEqual([
+    ...canonical,
+    {
+      id: 'result-fulfilled',
+      role: 'tool',
+      toolCallId: fulfilled.id,
+      content: '{"answer":42}',
+    },
+    {
+      id: 'result-rejected',
+      role: 'tool',
+      toolCallId: rejected.id,
+      content: 'lookup failed',
+      error: 'lookup failed',
+    },
+  ]);
+  expect(settledCalls[0]?.result).toBe(fulfilledResult);
+  expect(
+    (settledCalls[0]?.result as PromiseFulfilledResult<unknown>).value,
+  ).toBe(fulfilledValue);
+  expect(settledCalls[1]?.result).toBe(rejectedResult);
+  expect((settledCalls[1]?.result as PromiseRejectedResult).reason).toBe(
+    rejection,
+  );
+  expect(store.read(ɵselectCommittedAgentState)).toEqual({ count: 2 });
+  expect(store.read(ɵselectStateWriteLocked)).toBe(true);
+  expect(
+    store.read((state) => state.generationOwnership.toolTurn),
+  ).toBeUndefined();
+});
+
+test('prepared tool settlement follows the existing associated result block', () => {
+  const remoteFirst: Chat.Internal.ToolCall = {
+    id: 'call-remote-first',
+    name: 'lookup',
+    arguments: '{"value":1}',
+    status: 'done',
+    result: { status: 'fulfilled', value: 'remote first' },
+  };
+  const localFirst: Chat.Internal.ToolCall = {
+    id: 'call-local-first',
+    name: 'lookup',
+    arguments: '{"value":2}',
+    status: 'pending',
+  };
+  const remoteSecond: Chat.Internal.ToolCall = {
+    id: 'call-remote-second',
+    name: 'lookup',
+    arguments: '{"value":3}',
+    status: 'done',
+    result: { status: 'fulfilled', value: 'remote second' },
+  };
+  const localSecond: Chat.Internal.ToolCall = {
+    id: 'call-local-second',
+    name: 'lookup',
+    arguments: '{"value":4}',
+    status: 'pending',
+  };
+  const toolCalls = [remoteFirst, localFirst, remoteSecond, localSecond];
+  const canonical: Message[] = [
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      toolCalls: toolCalls.map((toolCall) => ({
+        id: toolCall.id,
+        type: 'function' as const,
+        function: { name: toolCall.name, arguments: toolCall.arguments },
+      })),
+    },
+    {
+      id: 'result-remote-first',
+      role: 'tool',
+      toolCallId: remoteFirst.id,
+      content: 'remote first',
+    },
+    {
+      id: 'result-remote-second',
+      role: 'tool',
+      toolCallId: remoteSecond.id,
+      content: 'remote second',
+    },
+    { id: 'user-2', role: 'user', content: 'keep this in place' },
+  ];
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: canonical,
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            toolCallIds: toolCalls.map((toolCall) => toolCall.id),
+          },
+          { id: 'user-2', role: 'user', content: 'keep this in place' },
+        ],
+        toolCalls,
+      },
+    }),
+  );
+  const before = store.read(ɵselectCommittedAgUiMessages);
+  store.dispatch(
+    internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
+  );
+  store.dispatch(
+    internalActions.toolTurnReserved({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [localFirst, localSecond],
+    }),
+  );
+  const firstResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: 'local first',
+  };
+  const secondResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: 'local second',
+  };
+
+  store.dispatch(
+    internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [localFirst, localSecond],
+      toolMessages: [
+        {
+          role: 'tool',
+          toolCallId: localFirst.id,
+          toolName: localFirst.name,
+          content: firstResult,
+        },
+        {
+          role: 'tool',
+          toolCallId: localSecond.id,
+          toolName: localSecond.name,
+          content: secondResult,
+        },
+      ],
+      canonicalMessages: [
+        {
+          id: 'result-local-first',
+          role: 'tool',
+          toolCallId: localFirst.id,
+          content: 'local first',
+        },
+        {
+          id: 'result-local-second',
+          role: 'tool',
+          toolCallId: localSecond.id,
+          content: 'local second',
+        },
+      ],
+      continuation: 'continue',
+    }),
+  );
+
+  const committed = store.read(ɵselectCommittedAgUiMessages);
+  expect(committed.map((message) => message.id)).toEqual([
+    'assistant-1',
+    'result-remote-first',
+    'result-remote-second',
+    'result-local-first',
+    'result-local-second',
+    'user-2',
+  ]);
+  expect(committed[0]).toBe(before[0]);
+  expect(committed[1]).toBe(before[1]);
+  expect(committed[2]).toBe(before[2]);
+  expect(committed[5]).toBe(before[3]);
+  expect(store.read(selectToolCalls)[1]?.result).toBe(firstResult);
+  expect(store.read(selectToolCalls)[3]?.result).toBe(secondResult);
+});
+
+test('prepared tool settlement filters same-ID replacements through one accepted subset', () => {
+  const first: Chat.Internal.ToolCall = {
+    id: 'call-first',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  };
+  const second: Chat.Internal.ToolCall = {
+    id: 'call-second',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  };
+  const replacement: Chat.Internal.ToolCall = { ...second };
+  let state = createState();
+  state = reduceAll(
+    state,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          toolCalls: [first, second].map((toolCall) => ({
+            id: toolCall.id,
+            type: 'function' as const,
+            function: { name: toolCall.name, arguments: toolCall.arguments },
+          })),
+        },
+      ],
+      localProjection: {
+        messages: [
+          {
+            id: 'assistant-1',
+            role: 'assistant',
+            toolCallIds: [first.id, second.id],
+          },
+        ],
+        toolCalls: [first, second],
+      },
+    }),
+  );
+  state = reduceAll(
+    state,
+    internalActions.logicalGenerationStarted({ generationId: 'generation-1' }),
+  );
+  state = reduceAll(
+    state,
+    internalActions.toolTurnReserved({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [first, second],
+    }),
+  );
+  state = {
+    ...state,
+    toolCalls: {
+      ...state.toolCalls,
+      entities: { ...state.toolCalls.entities, [second.id]: replacement },
+      committed: {
+        ...state.toolCalls.committed,
+        entities: {
+          ...state.toolCalls.committed.entities,
+          [second.id]: replacement,
+        },
+      },
+    },
+  };
+  const firstResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: 'first',
+  };
+  const secondResult: PromiseSettledResult<unknown> = {
+    status: 'fulfilled',
+    value: 'second',
+  };
+
+  const prepared = ɵprepareRootAction(
+    state,
+    internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [first, second],
+      toolMessages: [
+        {
+          role: 'tool',
+          toolCallId: first.id,
+          toolName: first.name,
+          content: firstResult,
+        },
+        {
+          role: 'tool',
+          toolCallId: second.id,
+          toolName: second.name,
+          content: secondResult,
+        },
+      ],
+      canonicalMessages: [
+        {
+          id: 'result-first',
+          role: 'tool',
+          toolCallId: first.id,
+          content: 'first',
+        },
+        {
+          id: 'result-second',
+          role: 'tool',
+          toolCallId: second.id,
+          content: 'second',
+        },
+      ],
+      continuation: 'continue',
+    }),
+  ) as ReturnType<typeof internalActions.toolTurnSettled>;
+
+  expect(prepared.payload.toolCalls).toEqual([first]);
+  expect(prepared.payload.toolMessages).toEqual([
+    expect.objectContaining({ toolCallId: first.id, content: firstResult }),
+  ]);
+  expect(prepared.payload.canonicalMessages).toEqual([
+    expect.objectContaining({ id: 'result-first', toolCallId: first.id }),
+  ]);
+});
+
+test('an entirely stale tool settlement prepares as an exact no-op', () => {
+  const captured: Chat.Internal.ToolCall = {
+    id: 'call-1',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'pending',
+  };
+  const replacement: Chat.Internal.ToolCall = { ...captured };
+  let state = createState();
+  state = {
+    ...state,
+    generationOwnership: {
+      generationId: 'generation-2',
+      attemptId: undefined,
+      toolTurn: undefined,
+    },
+    toolCalls: {
+      ...state.toolCalls,
+      ids: [replacement.id],
+      entities: { [replacement.id]: replacement },
+      committed: {
+        ids: [replacement.id],
+        entities: { [replacement.id]: replacement },
+      },
+    },
+  };
+
+  const prepared = ɵprepareRootAction(
+    state,
+    internalActions.toolTurnSettled({
+      generationId: 'generation-1',
+      toolTurnId: 'tool-turn-1',
+      toolCalls: [captured],
+      toolMessages: [
+        {
+          role: 'tool',
+          toolCallId: captured.id,
+          toolName: captured.name,
+          content: { status: 'fulfilled', value: 'late' },
+        },
+      ],
+      canonicalMessages: [
+        {
+          id: 'late-result',
+          role: 'tool',
+          toolCallId: captured.id,
+          content: 'late',
+        },
+      ],
+      continuation: 'continue',
+    }),
+  );
+
+  expect(prepared).toEqual({ type: '@hashbrown/noop' });
 });
 
 test('the loading selector ignores thread persistence flags', () => {
