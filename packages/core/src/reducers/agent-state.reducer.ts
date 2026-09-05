@@ -32,14 +32,20 @@ export const initialAgentState: AgentStateState = {
 export const reducer = createReducer(
   initialAgentState,
   on(devActions.init, (_, action): AgentStateState => {
-    const messages = action.payload.messages ?? [];
-    const lastMessage = messages[messages.length - 1];
+    const lastCanonicalMessage = action.payload.canonicalMessages.findLast(
+      (message) =>
+        message.role === 'assistant' ||
+        message.role === 'tool' ||
+        message.role === 'user',
+    );
 
     return {
       committed: action.payload.state,
       draft: undefined,
       attemptActive: false,
-      stateWriteLocked: lastMessage?.role === 'user',
+      stateWriteLocked:
+        lastCanonicalMessage?.role === 'user' ||
+        lastCanonicalMessage?.role === 'tool',
       protocolError: undefined,
     };
   }),

@@ -52,9 +52,25 @@ test('locks initial state writes when initialization ends with a user message', 
   const result = reducer(
     initialAgentState,
     devActions.init({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Start'),
       system: 'test',
       messages: [{ role: 'user', content: 'Start' }],
+    }),
+  );
+
+  expect(result.stateWriteLocked).toBe(true);
+});
+
+test('locks initial state writes when a local error follows the canonical user message', () => {
+  const result = reducer(
+    initialAgentState,
+    devActions.init({
+      canonicalMessages: canonicalUser('Start'),
+      system: 'test',
+      messages: [
+        { role: 'user', content: 'Start' },
+        { role: 'error', content: 'local error' },
+      ],
     }),
   );
 
@@ -82,7 +98,7 @@ test('ignores a local write that reaches the reducer while writes are locked', (
   const state = reducer(
     initialAgentState,
     devActions.init({
-      canonicalMessages: [],
+      canonicalMessages: canonicalUser('Start'),
       system: 'test',
       state: committed,
       messages: [{ role: 'user', content: 'Start' }],
