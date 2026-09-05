@@ -27,6 +27,8 @@ export type EndpointInput = RunAgentInput & {
 export async function startIndependentEndpoint(options: {
   extended?: boolean;
   events: (input: EndpointInput) => readonly AGUIEvent[];
+  /** Optional abortable gate invoked before each event is written. */
+  beforeEvent?: (index: number, signal: AbortSignal) => Promise<void>;
 }): Promise<{
   url: string;
   inputs: readonly EndpointInput[];
@@ -37,6 +39,7 @@ export async function startIndependentEndpoint(options: {
   const inputs: EndpointInput[] = [];
   const terminalRuns = new Set<string>();
   const encoder = new EventEncoder();
+  const deliveries = new Set<AbortController>();
   const server = createServer(async (request, response) => {
     response.setHeader('Access-Control-Allow-Origin', '*');
     response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
@@ -68,18 +71,18 @@ export async function startIndependentEndpoint(options: {
       return;
     }
 
+    const delivery = new AbortController();
+    const abortDelivery = () => delivery.abort();
+    deliveries.add(delivery);
+    response.once('close', abortDelivery);
     try {
       inputs.push(input);
       const events = options
         .events(input)
         .map((event) => EventSchemas.parse(event));
-      const body = events.map((event) => encoder.encode(event)).join('');
-      response.writeHead(200, {
-        'Content-Type': encoder.getContentType(),
-        'Cache-Control': 'no-cache',
-      });
-      response.end(body);
-      for (const event of events) {
+      const encoded = events.map((event) => encoder.encode(event));
+      const recordTerminal = (index: number) => {
+        const event = events[index];
         if (
           event.type === EventType.RUN_FINISHED &&
           event.runId === input.runId &&
@@ -87,10 +90,34 @@ export async function startIndependentEndpoint(options: {
         ) {
           terminalRuns.add(input.runId);
         }
+      };
+      response.writeHead(200, {
+        'Content-Type': encoder.getContentType(),
+        'Cache-Control': 'no-cache',
+      });
+      if (options.beforeEvent) {
+        response.flushHeaders();
+        for (const [index, event] of encoded.entries()) {
+          await options.beforeEvent(index, delivery.signal);
+          if (delivery.signal.aborted) return;
+          response.write(event);
+          recordTerminal(index);
+        }
+        response.end();
+      } else {
+        response.end(encoded.join(''));
+        events.forEach((_, index) => recordTerminal(index));
       }
     } catch {
+      if (response.headersSent) {
+        response.destroy();
+        return;
+      }
       response.writeHead(500, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({ error: 'Invalid fixture events' }));
+    } finally {
+      deliveries.delete(delivery);
+      response.removeListener('close', abortDelivery);
     }
   });
   server.listen(0, '127.0.0.1');
@@ -104,6 +131,7 @@ export async function startIndependentEndpoint(options: {
     consumeTerminalRun: (runId) => terminalRuns.delete(runId),
     stop: () =>
       (stopping ??= new Promise<void>((resolve, reject) => {
+        for (const delivery of deliveries) delivery.abort();
         server.close((error) => (error ? reject(error) : resolve()));
         server.closeAllConnections();
       })),

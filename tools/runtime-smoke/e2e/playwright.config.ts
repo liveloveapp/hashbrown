@@ -2,6 +2,8 @@ import { defineConfig } from '@playwright/test';
 import { resolve } from 'node:path';
 
 const repoRoot = resolve(__dirname, '../../..');
+const angularPort = Number(process.env['RUNTIME_SMOKE_ANGULAR_PORT'] ?? 4311);
+const reactPort = Number(process.env['RUNTIME_SMOKE_REACT_PORT'] ?? 4312);
 
 export default defineConfig({
   testDir: resolve(__dirname, 'specs'),
@@ -33,25 +35,25 @@ export default defineConfig({
   projects: [
     {
       name: 'angular',
-      use: { baseURL: 'http://127.0.0.1:4311' },
+      use: { baseURL: `http://127.0.0.1:${angularPort}` },
     },
     {
       name: 'react',
-      use: { baseURL: 'http://127.0.0.1:4312' },
+      use: { baseURL: `http://127.0.0.1:${reactPort}` },
     },
   ],
   webServer: [
     {
-      command: 'npx nx run runtime-smoke-angular:serve-built --skip-nx-cache',
+      command: `npx nx serve-built runtime-smoke-angular --skip-nx-cache --port=${angularPort}`,
       cwd: repoRoot,
-      url: 'http://127.0.0.1:4311',
+      url: `http://127.0.0.1:${angularPort}`,
       timeout: 30_000,
       reuseExistingServer: false,
     },
     {
-      command: 'npx nx run runtime-smoke-react:serve-built --skip-nx-cache',
+      command: `npx nx serve-built runtime-smoke-react --skip-nx-cache --port=${reactPort}`,
       cwd: repoRoot,
-      url: 'http://127.0.0.1:4312',
+      url: `http://127.0.0.1:${reactPort}`,
       timeout: 30_000,
       reuseExistingServer: false,
     },

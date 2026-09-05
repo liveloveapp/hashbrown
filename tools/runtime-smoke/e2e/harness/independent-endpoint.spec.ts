@@ -1,5 +1,6 @@
 import { EventSchemas, EventType } from '@ag-ui/core';
 import { startIndependentEndpoint } from './independent-endpoint';
+import { createEventGate } from './event-gate';
 
 const input = {
   threadId: 'independent-thread',
@@ -35,6 +36,131 @@ for (const terminal of [
     }
   });
 }
+
+test('gated HTTP delivery exposes a partial body before the terminal is released', async () => {
+  const gate = createEventGate();
+  const endpoint = await startIndependentEndpoint({
+    beforeEvent: gate.wait,
+    events: () => [
+      {
+        type: EventType.RUN_STARTED,
+        threadId: input.threadId,
+        runId: input.runId,
+      },
+      {
+        type: EventType.RUN_FINISHED,
+        threadId: input.threadId,
+        runId: input.runId,
+      },
+    ],
+  });
+
+  try {
+    gate.releaseThrough(0);
+    const response = await fetch(endpoint.url, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    if (!response.body) throw new Error('Expected an SSE response body');
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let partial = '';
+    while (!partial.includes('\n\n')) {
+      const chunk = await reader.read();
+      if (chunk.done)
+        throw new Error('Stream ended before the first SSE frame');
+      partial += decoder.decode(chunk.value, { stream: true });
+    }
+
+    expect(partial).toContain('RUN_STARTED');
+    expect(partial).not.toContain('RUN_FINISHED');
+    expect(endpoint.consumeTerminalRun(input.runId)).toBe(false);
+    gate.releaseThrough(1);
+    let rest = '';
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      rest += decoder.decode(chunk.value, { stream: true });
+    }
+    rest += decoder.decode();
+    expect(rest).toContain('RUN_FINISHED');
+    expect(endpoint.consumeTerminalRun(input.runId)).toBe(true);
+    expect(endpoint.consumeTerminalRun(input.runId)).toBe(false);
+  } finally {
+    await endpoint.stop();
+  }
+});
+
+test('stopping the endpoint aborts a blocked delivery gate', async () => {
+  const gate = createEventGate();
+  let signal: AbortSignal | undefined;
+  const endpoint = await startIndependentEndpoint({
+    beforeEvent: (index, currentSignal) => {
+      signal = currentSignal;
+      return gate.wait(index, currentSignal);
+    },
+    events: () => [
+      {
+        type: EventType.RUN_STARTED,
+        threadId: input.threadId,
+        runId: input.runId,
+      },
+    ],
+  });
+
+  try {
+    const response = await fetch(endpoint.url, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    const body = response.text();
+    const settled = body.catch(() => 'closed');
+    await endpoint.stop();
+
+    expect(signal?.aborted).toBe(true);
+    await settled;
+  } finally {
+    await endpoint.stop();
+  }
+});
+
+test('client disconnect aborts a blocked gate without recording a terminal', async () => {
+  const gate = createEventGate();
+  const client = new AbortController();
+  let observedAbort: Promise<void> | undefined;
+  const endpoint = await startIndependentEndpoint({
+    beforeEvent: (index, signal) => {
+      observedAbort = new Promise<void>((resolve) =>
+        signal.addEventListener('abort', () => resolve(), { once: true }),
+      );
+      return gate.wait(index, signal);
+    },
+    events: () => [
+      {
+        type: EventType.RUN_FINISHED,
+        threadId: input.threadId,
+        runId: input.runId,
+      },
+    ],
+  });
+
+  try {
+    const response = await fetch(endpoint.url, {
+      method: 'POST',
+      body: JSON.stringify(input),
+      signal: client.signal,
+    });
+    const body = response.text().catch(() => 'closed');
+    client.abort();
+
+    expect(observedAbort).toBeDefined();
+    await observedAbort;
+    await body;
+    expect(endpoint.consumeTerminalRun(input.runId)).toBe(false);
+  } finally {
+    await endpoint.stop();
+  }
+});
 
 test('standard endpoint parses canonical input without depending on vendor fields', async () => {
   const endpoint = await startIndependentEndpoint({
