@@ -33,11 +33,17 @@ import {
  * @public
  * @typeParam Output - The type of the output from the chat.
  * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
 export interface StructuredChatResourceRef<
   Output,
   Tools extends Chat.AnyTool,
+  State = unknown,
 > extends Resource<Chat.Message<Output, Tools>[]> {
+  /** The currently visible shared agent state. */
+  readonly state: Signal<State | undefined>;
+  /** Replace shared agent state without starting a generation. */
+  setState(state: State): void;
   /**
    * Indicates whether the underlying chat call is currently sending a message.
    */
@@ -103,11 +109,16 @@ export interface StructuredChatResourceRef<
  * Options for the structured chat resource.
  *
  * @public
+ * @typeParam Schema - The schema that defines assistant output.
+ * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam Output - The assistant output inferred from the schema.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
 export interface StructuredChatResourceOptions<
   Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
   Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
+  State = unknown,
 > {
   /**
    * The system prompt to use for the structured chat resource.
@@ -128,6 +139,9 @@ export interface StructuredChatResourceOptions<
    * The initial messages for the structured chat resource.
    */
   messages?: Chat.Message<Output, Tools>[];
+
+  /** The initial shared agent state. */
+  state?: State;
 
   /**
    * The debug name for the structured chat resource.
@@ -170,14 +184,19 @@ export interface StructuredChatResourceOptions<
  * @public
  * @param options - The options for the structured chat resource.
  * @returns The structured chat resource.
+ * @typeParam Schema - The schema that defines assistant output.
+ * @typeParam Tools - The set of tool definitions available to the chat.
+ * @typeParam Output - The assistant output inferred from the schema.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
 export function structuredChatResource<
   Schema extends s.SchemaOutput,
   Tools extends Chat.AnyTool,
   Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
+  State = unknown,
 >(
-  options: StructuredChatResourceOptions<Schema, Tools, Output>,
-): StructuredChatResourceRef<Output, Tools> {
+  options: StructuredChatResourceOptions<Schema, Tools, Output, State>,
+): StructuredChatResourceRef<Output, Tools, State> {
   const config = ɵinjectHashbrownConfig();
   const injector = inject(Injector);
   const destroyRef = inject(DestroyRef);
@@ -194,8 +213,9 @@ export function structuredChatResource<
             runInInjectionContext(injector, () => middleware(requestInit));
         }),
     });
-  const runtime = createChatRuntime<Schema, Tools, Output>({
+  const runtime = createChatRuntime<Schema, Tools, Output, State>({
     system: readReactiveOption(options.system),
+    state: options.state,
     messages: [...(options.messages ?? [])],
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
     responseSchema: options.schema,
@@ -231,6 +251,10 @@ export function structuredChatResource<
   const rawValueSignal = toNgSignal(
     runtime.messages,
     options.debugName && `${options.debugName}.rawValue`,
+  );
+  const state = toNgSignal(
+    runtime.state,
+    options.debugName && `${options.debugName}.state`,
   );
   const rawValue = toDeepSignal(rawValueSignal);
   const isReceiving = toNgSignal(
@@ -336,6 +360,10 @@ export function structuredChatResource<
     runtime.setMessages(messages);
   }
 
+  function setState(nextState: State) {
+    runtime.setState(nextState);
+  }
+
   function stop(clearStreamingMessage = false) {
     runtime.stop(clearStreamingMessage);
   }
@@ -344,6 +372,7 @@ export function structuredChatResource<
     hasValue: hasValue as any,
     snapshot,
     status,
+    state,
     isLoading,
     isGenerating,
     isSending,
@@ -358,6 +387,7 @@ export function structuredChatResource<
     sendingError,
     generatingError,
     setMessages,
+    setState,
     lastAssistantMessage,
   };
 }

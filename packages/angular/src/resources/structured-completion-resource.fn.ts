@@ -10,10 +10,17 @@ import { createResourceSnapshot } from './create-resource-snapshot.fn';
  * A reference to the structured completion resource.
  *
  * @public
+ * @typeParam Output - The structured completion output.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
 export interface StructuredCompletionResourceRef<
   Output,
+  State = unknown,
 > extends Resource<Output | null> {
+  /** The currently visible shared agent state. */
+  readonly state: Signal<State | undefined>;
+  /** Replace shared agent state without starting a generation. */
+  setState(state: State): void;
   /**
    * Indicates whether the underlying completion call is currently sending a message.
    */
@@ -52,10 +59,14 @@ export interface StructuredCompletionResourceRef<
  * Options for the structured completion resource.
  *
  * @public
+ * @typeParam Input - The type of completion input.
+ * @typeParam Schema - The schema that defines completion output.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
 export interface StructuredCompletionResourceOptions<
   Input,
   Schema extends s.SchemaOutput,
+  State = unknown,
 > {
   /**
    * The input to the structured completion resource.
@@ -69,6 +80,8 @@ export interface StructuredCompletionResourceOptions<
    * The system prompt to use for the structured completion resource.
    */
   system: ReactiveOption<string>;
+  /** The initial shared agent state. */
+  state?: State;
   /**
    * The tools to use for the structured completion resource.
    */
@@ -111,19 +124,25 @@ export interface StructuredCompletionResourceOptions<
  * @public
  * @param options - The options for the structured completion resource.
  * @returns The structured completion resource.
+ * @typeParam Input - The type of completion input.
+ * @typeParam Schema - The schema that defines completion output.
+ * @typeParam Output - The completion output inferred from the schema.
+ * @typeParam State - The JSON-compatible state synchronized with the agent.
  */
 export function structuredCompletionResource<
   Input,
   Schema extends s.SchemaOutput,
   Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
+  State = unknown,
 >(
-  options: StructuredCompletionResourceOptions<Input, Schema>,
-): StructuredCompletionResourceRef<Output> {
+  options: StructuredCompletionResourceOptions<Input, Schema, State>,
+): StructuredCompletionResourceRef<Output, State> {
   const { input, schema, system, tools, debugName, apiUrl, retries, debounce } =
     options;
 
-  const resource = structuredChatResource<Schema, Chat.AnyTool, Output>({
+  const resource = structuredChatResource<Schema, Chat.AnyTool, Output, State>({
     system,
+    state: options.state,
     schema,
     tools,
     debugName,
@@ -180,11 +199,13 @@ export function structuredCompletionResource<
     debugName && `${debugName}.snapshot`,
   );
 
-  function hasValue(this: StructuredCompletionResourceRef<Output>) {
+  function hasValue(this: StructuredCompletionResourceRef<Output, State>) {
     return status() !== 'error' && valueSignal() !== null;
   }
 
   return {
+    state: resource.state,
+    setState: resource.setState,
     value,
     snapshot,
     status,

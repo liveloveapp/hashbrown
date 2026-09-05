@@ -409,18 +409,57 @@ test('completionResource reload does not resend an already-answered history', ()
   expect(runtime.resendMessages).not.toHaveBeenCalled();
 });
 
+test('completionResource forwards initial state and delegates runtime state', () => {
+  createChatRuntimeMock.mockReset();
+  const stateSignal = createSignal<{ documentId: string } | undefined>({
+    documentId: 'document-1',
+  });
+  const runtime = createRuntimeStub({ messages: [], state: stateSignal });
+  createChatRuntimeMock.mockReturnValue(runtime);
+  const initialState = { documentId: 'document-1' };
+  const system = signal('System A');
+
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    completionResource({
+      system,
+      input: signal('Summarize this'),
+      state: initialState,
+    }),
+  );
+  stateSignal.set({ documentId: 'document-2' });
+  resource.setState({ documentId: 'document-3' });
+  system.set('System B');
+  TestBed.flushEffects();
+
+  expect(createChatRuntimeMock.mock.calls[0]?.[0].state).toBe(initialState);
+  expect(resource.state()).toEqual({ documentId: 'document-2' });
+  expect(runtime.setState).toHaveBeenCalledWith({ documentId: 'document-3' });
+  expect(
+    runtime.updateOptions.mock.calls.every(
+      ([updatedOptions]) => !Object.hasOwn(updatedOptions, 'state'),
+    ),
+  ).toBe(true);
+});
+
 function createRuntimeStub({
   messages,
   error,
   exhaustedRetries = false,
+  state = createSignal<unknown>(undefined),
 }: {
   messages: unknown[];
   error?: Error;
   exhaustedRetries?: boolean;
+  state?: ReturnType<typeof createSignal<unknown>>;
 }) {
   const messagesSignal = createSignal(messages);
 
   return {
+    state,
     messages: messagesSignal,
     isReceiving: createSignal(false),
     isSending: createSignal(false),
@@ -442,6 +481,7 @@ function createRuntimeStub({
     resendMessages: vi.fn(),
     stop: vi.fn(),
     setMessages: vi.fn((nextMessages) => messagesSignal.set(nextMessages)),
+    setState: vi.fn(),
   } as never;
 }
 
