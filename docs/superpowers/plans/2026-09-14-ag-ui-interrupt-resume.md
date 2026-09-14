@@ -145,7 +145,7 @@ different thread -> idle; old callbacks rejected
 - [x] Inspect generated API reports: additive public types/methods, no internal names in public signatures, no unrelated report churn. Commit intentional reports and relevant documentation only.
 - [x] Independent final spec-compliance review, then code-quality review of `origin/main...HEAD`. Address findings with regression-first fixes and appropriate reruns. Record verified results and warnings.
 - [x] Refresh origin/main and integrate upstream if it changed; rerun relevant checks after conflict resolution. Verify clean status and focused diff.
-- [ ] Create focused draft PR using `gh pr create --draft --body-file <file>` with problem/result, protocol limitations, and actual validation. No assistant product names. Existing user instruction authorizes PR and eventual merge; do not ask again for already authorized actions.
+- [x] Create focused draft PR using `gh pr create --draft --body-file <file>` with problem/result, protocol limitations, and actual validation. No assistant product names. Existing user instruction authorizes PR and eventual merge; do not ask again for already authorized actions.
 - [ ] Mark ready, monitor required CI/preview/aggregate checks, diagnose and fix failures; do not equate local success with CI success. Merge only after required checks are green. Verify merge commit on main and report PR URL and any remaining limitations.
 
 
@@ -300,3 +300,8 @@ fast-food data and TSDoc line-ending changes were removed from the worktree.
 Logs: /tmp/hashbrown-pr2-affected-green.log,
 /tmp/hashbrown-pr2-example-e2e-final.log,
 /tmp/hashbrown-pr2-example-tooling-final.log.
+
+PR #541 opened and marked ready for review:
+https://github.com/liveloveapp/hashbrown/pull/541
+Local verification and both final reviews are complete. Required GitHub CI,
+Cloudflare preview, and aggregate PR gate must pass before the authorized merge.
