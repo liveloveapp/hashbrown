@@ -3,7 +3,7 @@ Created: 2026-09-08
 Updated: 2026-09-14
 Author: Hashbrown team
 Affects: packages/core, packages/react, packages/angular
-Status: Independently reviewed; pending final user approval
+Status: Approved for implementation planning on 2026-09-14
 ---
 
 # AG-UI Interrupt and Resume
@@ -595,5 +595,5 @@ and after RUN_STARTED. The driver validates run/thread identity before invoking
 onStarted. Interrupt outcomes must survive the driver and coordinator rather
 than being collapsed into ordinary completion.
 
-This specification has passed independent review and awaits final user approval
-before implementation planning.
+This specification passed independent review and received final user approval
+on 2026-09-14. Proceed with the implementation plan and TDD execution.
