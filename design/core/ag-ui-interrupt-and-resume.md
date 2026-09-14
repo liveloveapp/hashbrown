@@ -530,10 +530,16 @@ clear to `undefined` follows the existing behavior of generating a fresh opaque
 ID for the next request; omitting the option does not change the identity.
 
 Retirement rolls back only the active draft. Preserve committed messages and
-state, including existing canonical IDs and configured-system overlay, matching
-the runtime's current behavior. Applications can explicitly replace them after
+state, including existing canonical IDs and configured-system overlay.
+Applications can explicitly replace them after
 switching. This is a new workflow with retained context, not restoration of the
 old server workflow.
+
+Implementation review found that the previous runtime synthesized tool
+cancellation results during a thread change. To preserve the approved checkpoint
+contract, thread retirement invalidates tool settlement ownership before
+cancelling execution. Explicit stop and message supersession retain their
+existing cancellation behavior.
 
 Late events, errors, claim releases, tool settlements, and terminal callbacks
 from retired generations must be no-ops against the replacement thread. Validate

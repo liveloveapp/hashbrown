@@ -195,3 +195,23 @@ Smoke harness unit tests (42), typecheck, and lint pass. Full browser green
 verification awaits runtime/facade integration. Factory inspection corrected
 the plan: transport factories are synchronous; no Promise-returning public
 factory API will be introduced. Expiry still runs after setup before each send.
+
+Core Tasks 3–4 initially committed together as 3654b03. Full core 1,021 tests,
+17 snapshots, build/lint/API/e2e (3 tests) passed; parent independently reran
+16 runtime tests. Spec review reproduced two untested boundary defects:
+structured parser errors were not propagated as failed resumed interactions,
+and thread retirement synthesized a cancellation result into retained history.
+Regression-first fixes are in progress. The latter corrects an inaccurate
+pre-existing-behavior assumption in the design; the approved requirement to
+preserve committed checkpoints takes precedence over older tests expecting
+thread-change cancellation results. Explicit stop/supersession remain distinct.
+
+Adapter integration notes from core review:
+- Forward the exact runtime.resume function; the private scheduling accessor
+  uses its stable identity, avoiding internal types on public facade results.
+- Avoid forwarding an unchanged explicit undefined thread option whenever an
+  unrelated option changes: observe thread option changes independently so
+  generated thread identities and pending batches survive ordinary rerenders.
+- Test reload while pending even when history has no assistant value. Existing
+  facade eligibility checks can return false before reaching runtime guards;
+  pending/recovery rejection must not depend on having an output value.
