@@ -1,6 +1,7 @@
 import { s } from '@hashbrownai/core';
 import { useChat, useTool } from '@hashbrownai/react';
 import { useState } from 'react';
+import { InterruptControls } from './interrupt-controls';
 
 interface PlainSmokeProps {
   readonly scenario: 'plain' | 'tool';
@@ -17,6 +18,8 @@ function errorText(error: unknown): string {
 /** Plain React chat fixture used by the shared runtime smoke scenarios. */
 export function PlainSmoke({ scenario }: PlainSmokeProps) {
   const [prompt, setPrompt] = useState('');
+  const [threadId, setThreadId] = useState(() => crypto.randomUUID());
+  const [commandError, setCommandError] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [toolCount, setToolCount] = useState(0);
   const getWeather = useTool({
@@ -34,6 +37,10 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
   });
   const {
     error,
+    state,
+    pendingInterrupts,
+    isResuming,
+    resume,
     generatingError,
     isLoading,
     lastAssistantMessage,
@@ -43,6 +50,7 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
     stop,
   } = useChat({
     system: 'Runtime smoke system prompt.',
+    threadId,
     tools: scenario === 'tool' ? [getWeather] : [],
   });
   const reasoningMessage = [...messages]
@@ -65,7 +73,12 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
 
   function send() {
     setSubmitted(prompt);
-    sendMessage({ role: 'user', content: prompt });
+    setCommandError('');
+    try {
+      sendMessage({ role: 'user', content: prompt });
+    } catch (cause) {
+      setCommandError(errorText(cause));
+    }
   }
 
   return (
@@ -81,6 +94,20 @@ export function PlainSmoke({ scenario }: PlainSmokeProps) {
       <button data-testid="stop" type="button" onClick={() => stop()}>
         Stop
       </button>
+      <InterruptControls
+        batch={pendingInterrupts}
+        isResuming={isResuming}
+        resume={resume}
+      />
+      <button
+        data-testid="new-thread"
+        type="button"
+        onClick={() => setThreadId(crypto.randomUUID())}
+      >
+        New thread
+      </button>
+      <div data-testid="shared-state">{JSON.stringify(state)}</div>
+      <div data-testid="command-error">{commandError}</div>
       <div data-testid="status">{isLoading ? 'loading' : 'idle'}</div>
       <div data-testid="user-message">{submitted}</div>
       <div data-testid="assistant">{lastAssistantMessage?.content ?? ''}</div>

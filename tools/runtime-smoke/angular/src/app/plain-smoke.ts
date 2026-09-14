@@ -6,6 +6,7 @@ import {
 } from '@angular/core';
 import { chatResource, createTool } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
+import { InterruptControls } from './interrupt-controls';
 
 function isToolScenario(): boolean {
   return (
@@ -25,6 +26,7 @@ function errorText(error: unknown): string {
 @Component({
   selector: 'runtime-plain-smoke',
   standalone: true,
+  imports: [InterruptControls],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section>
@@ -37,6 +39,16 @@ function errorText(error: unknown): string {
       <button data-testid="stop" type="button" (click)="chat.stop()">
         Stop
       </button>
+      <runtime-interrupt-controls
+        [batch]="chat.pendingInterrupts()"
+        [isResuming]="chat.isResuming()"
+        [resume]="chat.resume"
+      />
+      <button data-testid="new-thread" type="button" (click)="newThread()">
+        New thread
+      </button>
+      <div data-testid="shared-state">{{ sharedState() }}</div>
+      <div data-testid="command-error">{{ commandError() }}</div>
       <div
         data-testid="status"
         [textContent]="chat.isLoading() ? 'loading' : 'idle'"
@@ -70,6 +82,8 @@ function errorText(error: unknown): string {
 })
 export class PlainSmoke {
   protected readonly prompt = signal('');
+  private readonly threadId = signal(crypto.randomUUID());
+  protected readonly commandError = signal('');
   protected readonly submitted = signal('');
   protected readonly toolCount = signal(0);
   protected readonly toErrorText = errorText;
@@ -89,8 +103,12 @@ export class PlainSmoke {
 
   protected readonly chat = chatResource({
     system: 'Runtime smoke system prompt.',
+    threadId: this.threadId,
     tools: isToolScenario() ? [this.getWeather] : [],
   });
+  protected readonly sharedState = computed(() =>
+    JSON.stringify(this.chat.state()),
+  );
   protected readonly reasoningDetails = computed(() => {
     const snapshot = this.chat.snapshot();
     if (snapshot.status === 'error') {
@@ -119,6 +137,10 @@ export class PlainSmoke {
     this.reasoningDetails().some((detail) => Boolean(detail.encryptedValue)),
   );
 
+  protected newThread(): void {
+    this.threadId.set(crypto.randomUUID());
+  }
+
   protected onPromptInput(event: Event): void {
     this.prompt.set((event.currentTarget as HTMLInputElement).value);
   }
@@ -126,6 +148,11 @@ export class PlainSmoke {
   protected send(): void {
     const content = this.prompt();
     this.submitted.set(content);
-    this.chat.sendMessage({ role: 'user', content });
+    this.commandError.set('');
+    try {
+      this.chat.sendMessage({ role: 'user', content });
+    } catch (cause) {
+      this.commandError.set(errorText(cause));
+    }
   }
 }

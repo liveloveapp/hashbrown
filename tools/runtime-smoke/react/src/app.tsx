@@ -1,15 +1,19 @@
+import { CompletionSmoke } from './completion-smoke';
 import { PlainSmoke } from './plain-smoke';
 import { StructuredSmoke } from './structured-smoke';
 import { UiSmoke } from './ui-smoke';
 
-type Scenario = 'plain' | 'tool' | 'structured' | 'ui';
+type Scenario = 'plain' | 'tool' | 'structured' | 'ui' | 'completion';
 
 function readScenario(): Scenario {
   const scenario = new URL(globalThis.location.href).searchParams.get(
     'scenario',
   );
 
-  return scenario === 'tool' || scenario === 'structured' || scenario === 'ui'
+  return scenario === 'tool' ||
+    scenario === 'structured' ||
+    scenario === 'ui' ||
+    scenario === 'completion'
     ? scenario
     : 'plain';
 }
@@ -24,6 +28,8 @@ export function App() {
         <PlainSmoke scenario={scenario} />
       ) : scenario === 'structured' ? (
         <StructuredSmoke />
+      ) : scenario === 'completion' ? (
+        <CompletionSmoke />
       ) : (
         <UiSmoke />
       )}

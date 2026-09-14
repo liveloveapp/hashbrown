@@ -1,6 +1,7 @@
 import { s } from '@hashbrownai/core';
 import { useStructuredChat } from '@hashbrownai/react';
 import { useState } from 'react';
+import { InterruptControls } from './interrupt-controls';
 
 const answerSchema = s.object('Runtime smoke answer', {
   answer: s.streaming.string('Answer text'),
@@ -30,6 +31,9 @@ export function StructuredSmoke() {
   const [submitted, setSubmitted] = useState('');
   const {
     error,
+    pendingInterrupts,
+    isResuming,
+    resume,
     generatingError,
     isLoading,
     lastAssistantMessage,
@@ -62,6 +66,11 @@ export function StructuredSmoke() {
       <button data-testid="stop" type="button" onClick={() => stop()}>
         Stop
       </button>
+      <InterruptControls
+        batch={pendingInterrupts}
+        isResuming={isResuming}
+        resume={resume}
+      />
       <div data-testid="status">{isLoading ? 'loading' : 'idle'}</div>
       <div data-testid="user-message">{submitted}</div>
       <div data-testid="assistant"></div>

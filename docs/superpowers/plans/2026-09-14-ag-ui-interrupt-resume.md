@@ -30,7 +30,7 @@
 | Execution | `effects/logical-run-coordinator.ts`, `effects/logical-run-retry-policy.ts`, `effects/assistant-turn-coordinator.ts`, `effects/generate-message.effects.ts` | Retry boundary, no paused tools, resumed interaction lifecycle |
 | Projection | `reducers/ag-ui-message-accumulator.ts`, `reducers/streaming-message.reducer.ts`, `reducers/status.reducer.ts` | Partial output at pause; atomic idle and batch publication |
 | Runtime API | `packages/core/src/chat-runtime.ts`, `public_api.ts` | Public commands/signals and synchronous guards |
-| Completion scheduling | New `packages/core/src/utils/completion-input.ts` if shared logic is useful; otherwise focused local helpers | Latest-input deferral, successful interaction release, new-thread reset |
+| Completion scheduling | New `packages/core/src/completion-input.ts` if shared logic is useful; otherwise focused local helpers | Latest-input deferral, successful interaction release, new-thread reset |
 | React | Six `packages/react/src/hooks/use-{chat,structured-chat,ui-chat,completion,structured-completion,ui-completion}.tsx` | Values/commands and completion deferral |
 | Angular | Six matching `packages/angular/src/resources/*-resource.fn.ts` | Signals/commands and completion deferral |
 | Conformance | `tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts`, existing independent endpoint harness and plain/structured/UI smoke screens | Real gated request/event assertions |
@@ -111,14 +111,14 @@ different thread -> idle; old callbacks rejected
 
 **Files:** React `use-chat.tsx`, `use-structured-chat.tsx`, `use-ui-chat.tsx` and matching specs; Angular `chat-resource.fn.ts`, `structured-chat-resource.fn.ts`, `ui-chat-resource.fn.ts` and specs; package public API/type exports as needed.
 
-- [ ] Add real runtime-backed tests with controllable transport for each chat family: batch exposed, claimed visible, matching start clears batch, isResuming through terminal, exact resume entries, duplicate rejection, fresh thread recovery. Observe behavioral red in `npx nx test react --skipNxCache` and `npx nx test angular --skipNxCache`.
-- [ ] Add readonly public members using the approved core types. Reuse existing signal adapters; stabilize React commands consistent with existing runtime methods. Avoid new effects for derived batch/status values.
-- [ ] Wire Angular values/status independently of Resource output so an interrupt with no assistant value remains observable. Keep existing Resource API behavior and avoid public internal-prefixed types.
-- [ ] Verify all text/structured/UI variations and no-interrupt regressions. Build both packages and inspect API output/type inference. Review spec compliance then quality; commit `feat: expose interrupt and resume through chat APIs`.
+- [x] Add real runtime-backed tests with controllable transport for each chat family: batch exposed, claimed visible, matching start clears batch, isResuming through terminal, exact resume entries, duplicate rejection, fresh thread recovery. Observe behavioral red in `npx nx test react --skipNxCache` and `npx nx test angular --skipNxCache`.
+- [x] Add readonly public members using the approved core types. Reuse existing signal adapters; stabilize React commands consistent with existing runtime methods. Avoid new effects for derived batch/status values.
+- [x] Wire Angular values/status independently of Resource output so an interrupt with no assistant value remains observable. Keep existing Resource API behavior and avoid public internal-prefixed types.
+- [x] Verify all text/structured/UI variations and no-interrupt regressions. Build both packages and inspect API output/type inference. Review spec compliance then quality; commit `feat: expose interrupt and resume through chat APIs`.
 
 ## Task 6: Completion parity and latest-input deferral
 
-**Files:** Six React/Angular completion modules and their specs. If shared state machine is extracted: `packages/core/src/utils/completion-input.ts`/`.spec.ts`, exported internally from `public_api.ts` with `ɵ` only.
+**Files:** Six React/Angular completion modules and their specs. If shared state machine is extracted: `packages/core/src/completion-input.ts`/`.spec.ts`, exported internally from `public_api.ts` with `ɵ` only.
 
 - [ ] Write table-driven scheduler tests for A interrupted, B then C selected, A resumed, C submitted exactly once after full success; B never sent. Also A->B->A must not regenerate unchanged original input. Use framework's existing input identity/eligibility conventions.
 - [ ] Test multiple interrupt cycles, before-start stop then successful retry, expiry, post-start failure/stop, local tool/follow-up phases, and new-thread handoff of unchanged latest input. Pending-batch disappearance alone must never release deferred input.
@@ -131,11 +131,11 @@ different thread -> idle; old callbacks rejected
 
 **Files:** new `tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts`; existing `harness/independent-endpoint.ts`, `harness/app-driver.ts`, smoke React/Angular screens; new React/Angular concept docs and existing navigation registration.
 
-- [ ] Use existing independent endpoint and event gate. Write browser tests for both frameworks before extending smoke controls. Verify full-batch two-interrupt display, form draft batch ID, disabled controls while claimed, committed state/messages, no execution at pause, exact posted resume, historical TOOL_CALL_RESULT, and successful idle.
-- [ ] Add gated failure cases: before-start transport failure preserves batch, post-start failure requires new thread, repeated interrupt ID has fresh batch ID, expiration prevents request. Test one structured/UI interrupted transcript and completion latest-input handoff through a follow-up/tool phase.
-- [ ] Run `npx nx test runtime-smoke --skipNxCache`, `npx nx typecheck runtime-smoke`, `npx nx lint runtime-smoke`, `npx nx e2e runtime-smoke --skipNxCache`; build affected smoke applications. Use configured local ports and stop only task-owned servers.
-- [ ] Document `pendingInterrupts`, responseSchema, batch-associated draft answers, full responses, cancellation versus denial, state edits, expiry, retry/stop recovery, completion deferral, no reload persistence, thread switching, and server-side idempotency responsibilities. Use protocol reason `input_required`, immutable examples, and no legacy CUSTOM/Activity/A2UI/MCP scope.
-- [ ] Build/test/lint docs via available www targets; inspect effective targets rather than inventing missing ones. Review and commit `docs: demonstrate AG-UI interrupt and resume workflows`.
+- [x] Use existing independent endpoint and event gate. Write browser tests for both frameworks before extending smoke controls. Verify full-batch two-interrupt display, form draft batch ID, disabled controls while claimed, committed state/messages, no execution at pause, exact posted resume, historical TOOL_CALL_RESULT, and successful idle.
+- [x] Add gated failure cases: before-start transport failure preserves batch, post-start failure requires new thread, repeated interrupt ID has fresh batch ID, expiration prevents request. Test one structured/UI interrupted transcript and completion latest-input handoff through a follow-up/tool phase.
+- [x] Run `npx nx test runtime-smoke --skipNxCache`, `npx nx typecheck runtime-smoke`, `npx nx lint runtime-smoke`, `npx nx e2e runtime-smoke --skipNxCache`; build affected smoke applications. Use configured local ports and stop only task-owned servers.
+- [x] Document `pendingInterrupts`, responseSchema, batch-associated draft answers, full responses, cancellation versus denial, state edits, expiry, retry/stop recovery, completion deferral, no reload persistence, thread switching, and server-side idempotency responsibilities. Use protocol reason `input_required`, immutable examples, and no legacy CUSTOM/Activity/A2UI/MCP scope.
+- [x] Build/test/lint docs via available www targets; inspect effective targets rather than inventing missing ones. Review and commit `docs: demonstrate AG-UI interrupt and resume workflows`.
 
 ## Task 8: Final verification, reviews, PR, and merge
 
@@ -259,3 +259,13 @@ Docs tests (5) passed and lint retained the same 27 existing warnings.
 Docs build passed after adding the concrete preserved responseSchema example
 to both framework pages. Existing API extraction/configuration warnings remain;
 generated TSDoc line-ending churn was removed. Smoke typecheck and lint passed.
+
+Task 7 full browser GREEN: all 56 scenarios passed (18 new interrupt/resume
+cases across React and Angular), including latest completion input after new
+local tools and ordinary follow-up success. Existing endpoint interoperability,
+progressive rendering, cancellation, reasoning, and tool continuation remain
+green. Harness tests (42), typecheck, lint, both fixture builds/lints passed.
+Log: /tmp/hashbrown-pr2-browser-full.log.
+
+Final package E2E passed: core 3 tests, React 2 tests, Angular 2 package
+compatibility tests. origin/main refreshed and remains cd58105.
