@@ -576,11 +576,10 @@ requires recovery after terminal failure anywhere in an interaction whose
 initial resume was acknowledged, preserving previous commits. The second pass
 approved the specification with no remaining serious findings.
 
-The approved decisions above form the behavioral basis for a single focused
-PR2. The concrete architecture and public type declarations in this consolidated
-specification are subject to independent review and final user approval. Review
-findings that change an approved behavior must be surfaced rather than silently
-replacing it. No production code has been changed.
+The approved decisions, architecture, and public type declarations form the
+behavioral basis for a single focused PR2. Final user approval was received on
+2026-09-14 before production implementation began. Review findings that change
+an approved behavior must be surfaced rather than silently replacing it.
 
 After spec approval, write a TDD implementation plan with explicit core,
 framework, documentation, API report, and conformance coverage. Review the

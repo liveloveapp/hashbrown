@@ -15,7 +15,7 @@
 - Work in `/Users/blove/.codex/worktrees/519e/hashbrown`, branch `blove/ag-ui-interrupt-resume`, based on current origin/main `cd58105`.
 - Follow AGENTS.md. Top-level `test(...)` only; arrange/act/assert blank lines. Public/reusable APIs require TSDoc. Internal cross-package exports use `ɵ`; public signatures do not.
 - For every behavior: write the test, observe its expected assertion failure, implement the smallest change, rerun, then refactor. Missing-import/type failures must not be the only red evidence; add minimal declarations if necessary so the behavior assertion fails.
-- Use `npx nx <target> <project>` for targets. Set `NX_DAEMON=false` for reproducible local runs. Focused core tests use `--runInBand --runTestsByPath <file> --skipNxCache`.
+- Use `npx nx <target> <project>` for targets. Set `NX_DAEMON=false` for reproducible local runs. Focused core tests use `--runInBand --testFile=<file> --skipNxCache`.
 - Store progress/evidence in this plan. Commit exact task files after focused tests and diff checks; no product-name references in commit/PR text. Do not stage unrelated changes.
 - Implementation review has separate spec-compliance and code-quality passes. Fix important findings before proceeding; final verification is not replaced by focused tests.
 
@@ -61,7 +61,7 @@ const entries = [
 
 **Files:** `transport/ag-ui-run-driver.ts` and `.spec.ts`; `transport/hashbrown-run-agent-input.ts` and `.spec.ts`; `effects/logical-run-coordinator.ts` and `.spec.ts`; `effects/assistant-turn-coordinator.ts` and `.spec.ts`.
 
-- [ ] Add a driver transcript with matching RUN_STARTED then interrupt RUN_FINISHED; assert a distinct interrupted outcome retaining the owned batch. Red command: `npx nx test core --runInBand --runTestsByPath packages/core/src/transport/ag-ui-run-driver.spec.ts --skipNxCache`.
+- [ ] Add a driver transcript with matching RUN_STARTED then interrupt RUN_FINISHED; assert a distinct interrupted outcome retaining the owned batch. Red command: `npx nx test core --runInBand --testFile=packages/core/src/transport/ag-ui-run-driver.spec.ts --skipNxCache`.
 - [ ] Add invalid-interrupt tests asserting no terminal acceptance callback and nonretryable protocol error; retain identity checking and response disposal.
 - [ ] Implement outcome propagation (`{ kind: 'interrupted', interrupts }`) through driver and both coordinators. Assistant-turn coordinator returns immediately without reading/reserving/executing local tools. Compile all exhaustive outcome branches.
 - [ ] Add request tests for optional readonly resume entries lowered to wire input, no batchId field, no resume on ordinary runs, absent state omitted, canonical IDs retained. Red, implement optional `resume`, green.
@@ -153,11 +153,11 @@ different thread -> idle; old callbacks rejected
 - [x] Spec independently reviewed and approved by user.
 - [x] Refreshed origin/main; still cd58105 on 2026-09-14.
 - [x] Plan independently reviewed; approved without blocking findings.
-- [ ] Baseline verified.
+- [x] Baseline verified: core 933, React 92, Angular 161 tests passed.
 - [ ] Tasks 1–8 complete.
 
 Locked dependency installation completed without lockfile changes. npm reported
 58 existing audit findings (22 moderate, 36 high), plus deprecation warnings.
 Baseline React: 92 tests passed. Baseline Angular: 161 tests passed. Both reported
-existing Nx/Vite/Angular configuration/deprecation warnings. Core baseline is
-still running; do not report it as passed until the process exits successfully.
+existing Nx/Vite/Angular configuration/deprecation warnings. Core baseline
+completed successfully: 46 suites, 933 tests, 17 snapshots.
