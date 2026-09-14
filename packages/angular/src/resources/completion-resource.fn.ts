@@ -13,10 +13,14 @@ import {
 import {
   Chat,
   createChatRuntime,
+  type PendingInterruptBatch,
+  type ResumeOptions,
   type TransportOrFactory,
+  ɵassertRuntimeMessageSchedulingAllowed,
 } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { createTransport } from '../utils/create-transport.fn';
+import { connectCompletionInput } from './completion-input.fn';
 import { ReactiveOption } from '../utils/types';
 import { readReactiveOption, toNgSignal } from '../utils/signals';
 import {
@@ -33,6 +37,12 @@ import {
 export interface CompletionResourceRef<State = unknown> extends Resource<
   string | null
 > {
+  /** The current interrupt batch, retained until resume is acknowledged. */
+  readonly pendingInterrupts: Signal<PendingInterruptBatch | undefined>;
+  /** Whether the whole resumed interaction is executing. */
+  readonly isResuming: Signal<boolean>;
+  /** Submits a complete response batch for the current interruption. */
+  resume(options: ResumeOptions): void;
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;
   /** Replace shared agent state without starting a generation. */
@@ -150,15 +160,26 @@ export function completionResource<Input, State = unknown>(
         : undefined,
   });
 
+  let previousThreadId =
+    options.threadId !== undefined
+      ? readReactiveOption(options.threadId)
+      : undefined;
   const optionsEffect = effect(() => {
+    const threadId =
+      options.threadId !== undefined
+        ? readReactiveOption(options.threadId)
+        : undefined;
+    const threadChanged = threadId !== previousThreadId;
+    previousThreadId = threadId;
     runtime.updateOptions({
       debugName: options.debugName,
       system: readReactiveOption(system),
       tools: [],
       retries: 3,
       transport: resolveTransport(),
-      ...(options.threadId !== undefined
-        ? { threadId: readReactiveOption(options.threadId) }
+      ...(Object.hasOwn(options, 'threadId') &&
+      (threadChanged || threadId !== undefined)
+        ? { threadId }
         : {}),
     });
   });
@@ -179,31 +200,13 @@ export function completionResource<Input, State = unknown>(
   const isLoading = toNgSignal(runtime.isLoading);
   const sendingError = toNgSignal(runtime.sendingError);
   const generatingError = toNgSignal(runtime.generatingError);
-  const internalMessages = computed(() => {
-    const _input = input();
-
-    if (!_input) {
-      return [];
-    }
-
-    return [
-      {
-        role: 'user' as const,
-        content: _input,
-      },
-    ];
-  });
 
   const error = toNgSignal(
     runtime.error,
     options.debugName && `${options.debugName}.error`,
   );
 
-  effect(() => {
-    const _messages = internalMessages();
-
-    runtime.setMessages(_messages);
-  });
+  connectCompletionInput(input, runtime, true);
 
   const rawValue = computed(
     () => {
@@ -249,6 +252,7 @@ export function completionResource<Input, State = unknown>(
     options.debugName && `${options.debugName}.snapshot`,
   );
   const reload = () => {
+    ɵassertRuntimeMessageSchedulingAllowed(runtime);
     const currentMessages = messages();
     const lastMessage = currentMessages[currentMessages.length - 1];
 
@@ -288,6 +292,9 @@ export function completionResource<Input, State = unknown>(
   }
 
   return {
+    pendingInterrupts: toNgSignal(runtime.pendingInterrupts),
+    isResuming: toNgSignal(runtime.isResuming),
+    resume: runtime.resume,
     state,
     setState: (nextState: State) => runtime.setState(nextState),
     value,

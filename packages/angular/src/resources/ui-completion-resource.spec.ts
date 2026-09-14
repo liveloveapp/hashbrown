@@ -21,6 +21,9 @@ const createCompletionStub = (
   error = signal<Error | undefined>(undefined),
 ) => {
   return {
+    pendingInterrupts: signal(undefined),
+    isResuming: signal(false),
+    resume: vi.fn(),
     state: signal<unknown>(undefined),
     setState: vi.fn(),
     value: valueSignal,
@@ -54,6 +57,9 @@ test('uiCompletionResource preserves shared state signal and setter identity', (
   expect(structuredCompletionResourceMock).toHaveBeenCalledWith(
     expect.objectContaining({ state: initialState }),
   );
+  expect(resource.pendingInterrupts).toBe(completion.pendingInterrupts);
+  expect(resource.isResuming).toBe(completion.isResuming);
+  expect(resource.resume).toBe(completion.resume);
   expect(resource.state).toBe(state);
   expect(resource.setState).toBe(setState);
 });

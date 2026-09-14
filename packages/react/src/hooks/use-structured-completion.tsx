@@ -1,5 +1,12 @@
-import { Chat, s, type TransportOrFactory } from '@hashbrownai/core';
-import { useEffect, useMemo } from 'react';
+import {
+  Chat,
+  type PendingInterruptBatch,
+  type ResumeOptions,
+  s,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
+import { useMemo } from 'react';
+import { useCompletionInput } from './use-completion-input';
 import { useStructuredChat } from './use-structured-chat';
 
 /**
@@ -82,6 +89,15 @@ export interface UseStructuredCompletionOptions<
  * @typeParam State - The shared agent state owned by the runtime.
  */
 export interface UseStructuredCompletionResult<Output, State = unknown> {
+  /** The current interrupt batch, retained until resume is acknowledged. */
+  readonly pendingInterrupts: PendingInterruptBatch | undefined;
+  /** Whether the whole resumed interaction is executing. */
+  readonly isResuming: boolean;
+  /** Submits a complete response batch for the current interruption. */
+  resume(options: ResumeOptions): void;
+  /** Stops active execution without submitting cancellation answers. */
+  stop(clearStreamingMessage?: boolean): void;
+
   /**
    * The currently visible shared agent state.
    */
@@ -199,11 +215,7 @@ export function useStructuredCompletion<
     ui: options.ui ?? false,
   });
 
-  useEffect(() => {
-    if (!options.input) return;
-
-    setMessages([{ role: 'user', content: options.input }]);
-  }, [setMessages, options.input]);
+  useCompletionInput(options.input, chat.resume, setMessages);
 
   const output: s.InferSchemaOutput<Schema> | null = useMemo(() => {
     const message = chat.messages.find(
@@ -220,6 +232,10 @@ export function useStructuredCompletion<
   }, [chat.messages]);
 
   return {
+    pendingInterrupts: chat.pendingInterrupts,
+    isResuming: chat.isResuming,
+    resume: chat.resume,
+    stop: chat.stop,
     state: chat.state,
     setState: chat.setState,
     output,

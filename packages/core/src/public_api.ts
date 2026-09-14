@@ -1,4 +1,8 @@
 export {
+  ɵreconcileCompletionInput,
+  type ɵCompletionInputState,
+} from './completion-input';
+export {
   createChatRuntime,
   type ChatRuntime,
   ɵgetRuntimeSchedulingState,

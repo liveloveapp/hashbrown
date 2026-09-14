@@ -11,6 +11,18 @@ vi.mock('@hashbrownai/core', async (importOriginal) => {
   return {
     ...actual,
     createChatRuntime: createChatRuntimeMock,
+    ɵgetRuntimeSchedulingState: () =>
+      Object.assign(
+        () => ({
+          threadEpoch: 0,
+          successfulResumes: 0,
+          recoveryRequired: false,
+          isResuming: false,
+          pending: false,
+        }),
+        { subscribe: () => () => undefined },
+      ),
+
     ɵassertRuntimeMessageSchedulingAllowed: vi.fn(),
   };
 });
