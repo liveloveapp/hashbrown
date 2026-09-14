@@ -1238,3 +1238,32 @@ test('thread epoch subscribers observe the new identity and schedule latest inpu
   off();
   cleanup();
 });
+
+test('facade message preflight enforces runtime ownership using the unchanged resume command', async () => {
+  const api = await import('./chat-runtime');
+  const assertAllowed = (
+    api as unknown as {
+      ɵassertRuntimeMessageSchedulingAllowed?: (runtime: {
+        resume: (options: ResumeOptions) => void;
+      }) => void;
+    }
+  ).ɵassertRuntimeMessageSchedulingAllowed;
+  const runtime = createChatRuntime({
+    system: 'test',
+    debounce: 0,
+    messages: [{ role: 'user', content: 'go' }],
+    transport: {
+      name: 'test',
+      send: async (request) => ({ events: interrupted(request) }),
+    },
+  });
+  const cleanup = runtime.start();
+  await idle(runtime);
+
+  expect(typeof assertAllowed).toBe('function');
+  if (!assertAllowed) throw new Error('Expected runtime preflight');
+  expect(() => assertAllowed({ resume: runtime.resume })).toThrow(/interrupt/i);
+  runtime.updateOptions({ threadId: 'fresh' });
+  expect(() => assertAllowed({ resume: runtime.resume })).not.toThrow();
+  cleanup();
+});

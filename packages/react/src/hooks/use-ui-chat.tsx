@@ -7,9 +7,19 @@ import {
   type TransportOrFactory,
   type UiWrapper,
 } from '@hashbrownai/core';
-import { ReactElement, useCallback, useMemo, useState } from 'react';
+import {
+  type Dispatch,
+  ReactElement,
+  type SetStateAction,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { ExposedComponent } from '../expose-component.fn';
-import { useStructuredChat } from './use-structured-chat';
+import {
+  useStructuredChat,
+  type UseStructuredChatResult,
+} from './use-structured-chat';
 import { type UiKitInput, useUiKit } from './use-ui-kit';
 
 /**
@@ -64,6 +74,27 @@ export type UiErrorMessage = Chat.ErrorMessage;
  */
 export type UiChatMessage<Tools extends Chat.AnyTool> =
   UiAssistantMessage<Tools> | UiErrorMessage | UiUserMessage;
+
+/**
+ * Chat state and commands with rendered UI messages.
+ * @public
+ * @typeParam Tools - The tools available to the chat.
+ * @typeParam State - The shared agent state owned by the runtime.
+ */
+export interface UiChatResult<
+  Tools extends Chat.AnyTool,
+  State = unknown,
+> extends Omit<
+  UseStructuredChatResult<UiChatSchema, Tools, State>,
+  'messages' | 'lastAssistantMessage'
+> {
+  /** The messages with rendered UI attached to assistant responses. */
+  messages: UiChatMessage<Tools>[];
+  /** Replace the available UI components. */
+  setComponents: Dispatch<SetStateAction<UiKitInput<ExposedComponent<any>>[]>>;
+  /** The most recent assistant response, including its rendered UI. */
+  lastAssistantMessage: UiAssistantMessage<Tools> | undefined;
+}
 
 /**
  * Options for the `useUiChat` hook.
@@ -162,7 +193,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool, State = unknown> {
  */
 export const useUiChat = <Tools extends Chat.AnyTool, State = unknown>(
   options: UiChatOptions<Tools, State>,
-) => {
+): UiChatResult<Tools, State> => {
   const { components: initialComponents, examples, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
   const uiKit = useUiKit<ExposedComponent<any>>({ components, examples });

@@ -2,6 +2,7 @@ export {
   createChatRuntime,
   type ChatRuntime,
   ɵgetRuntimeSchedulingState,
+  ɵassertRuntimeMessageSchedulingAllowed,
   type ɵRuntimeSchedulingState,
 } from './chat-runtime';
 export * from './models';

@@ -13,7 +13,10 @@ import {
 import {
   Chat,
   createChatRuntime,
+  type PendingInterruptBatch,
+  type ResumeOptions,
   type TransportOrFactory,
+  ɵassertRuntimeMessageSchedulingAllowed,
 } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import {
@@ -44,6 +47,13 @@ export interface ChatResourceRef<
 > extends Resource<Chat.Message<string, Tools>[]> {
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;
+  /** The complete pending interrupt batch, including while claimed. */
+  readonly pendingInterrupts: Signal<PendingInterruptBatch | undefined>;
+  /** Whether the resumed interaction is still running. */
+  readonly isResuming: Signal<boolean>;
+  /** Submit a complete response batch to resume the interrupted interaction. */
+  resume(options: ResumeOptions): void;
+
   /** Replace shared agent state without starting a generation. */
   setState(state: State): void;
   /** Indicates whether the chat is currently receiving tokens. */
@@ -220,15 +230,26 @@ export function chatResource<Tools extends Chat.AnyTool, State = unknown>(
         : undefined,
   });
 
+  let previousThreadId =
+    options.threadId !== undefined
+      ? readReactiveOption(options.threadId)
+      : undefined;
   const optionsEffect = effect(() => {
+    const threadId =
+      options.threadId !== undefined
+        ? readReactiveOption(options.threadId)
+        : undefined;
+    const threadChanged = threadId !== previousThreadId;
+    previousThreadId = threadId;
     runtime.updateOptions({
       system: readReactiveOption(options.system),
       tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
       debugName: options.debugName,
       transport: resolveTransport(),
       ui: false,
-      ...(options.threadId !== undefined
-        ? { threadId: readReactiveOption(options.threadId) }
+      ...(Object.hasOwn(options, 'threadId') &&
+      (threadChanged || threadId !== undefined)
+        ? { threadId }
         : {}),
     });
   });
@@ -244,6 +265,8 @@ export function chatResource<Tools extends Chat.AnyTool, State = unknown>(
     runtime.messages,
     options.debugName && `${options.debugName}.rawValue`,
   );
+  const pendingInterrupts = toNgSignal(runtime.pendingInterrupts);
+  const isResuming = toNgSignal(runtime.isResuming);
   const state = toNgSignal(
     runtime.state,
     options.debugName && `${options.debugName}.state`,
@@ -320,6 +343,7 @@ export function chatResource<Tools extends Chat.AnyTool, State = unknown>(
   );
 
   function reload() {
+    ɵassertRuntimeMessageSchedulingAllowed(runtime);
     const messages = rawValue();
     const lastMessage = messages[messages.length - 1];
 
@@ -356,6 +380,9 @@ export function chatResource<Tools extends Chat.AnyTool, State = unknown>(
   }
 
   return {
+    pendingInterrupts,
+    isResuming,
+    resume: runtime.resume,
     hasValue: hasValue as any,
     snapshot,
     status,

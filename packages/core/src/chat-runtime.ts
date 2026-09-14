@@ -79,6 +79,22 @@ export function ɵgetRuntimeSchedulingState(runtime: {
   return signal;
 }
 
+const runtimeMessagePreflights = new WeakMap<object, () => void>();
+
+/**
+ * Rejects message scheduling when runtime interrupt ownership requires a pause
+ * or recovery, including synchronous claims and thread retirement.
+ * @param runtime - The runtime or facade forwarding its unchanged resume command.
+ * @internal
+ */
+export function ɵassertRuntimeMessageSchedulingAllowed(runtime: {
+  readonly resume: (options: ResumeOptions) => void;
+}): void {
+  const assertAllowed = runtimeMessagePreflights.get(runtime.resume);
+  if (!assertAllowed) throw new Error('Unknown chat runtime.');
+  assertAllowed();
+}
+
 /**
  * A stateful client runtime for sending messages, processing AG-UI events,
  * executing tools, and exposing reactive chat state.
@@ -599,6 +615,7 @@ export function createChatRuntime(init: {
       { subscribe: threadSignal.subscribe },
     ),
   };
+  runtimeMessagePreflights.set(runtime.resume, assertMessageSchedulingAllowed);
   runtimeSchedulingSignals.set(
     runtime.resume,
     state.createSignal(

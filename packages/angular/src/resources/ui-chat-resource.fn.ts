@@ -3,6 +3,8 @@ import { computed, Resource, Signal } from '@angular/core';
 import {
   Chat,
   type ComponentTreeSchema,
+  type PendingInterruptBatch,
+  type ResumeOptions,
   s,
   SystemPrompt,
   type TransportOrFactory,
@@ -107,6 +109,13 @@ export interface UiChatResourceRef<
 > extends Resource<UiChatMessage<Tools>[]> {
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;
+  /** The complete pending interrupt batch, including while claimed. */
+  readonly pendingInterrupts: Signal<PendingInterruptBatch | undefined>;
+  /** Whether the resumed interaction is still running. */
+  readonly isResuming: Signal<boolean>;
+  /** Submit a complete response batch to resume the interrupted interaction. */
+  resume(options: ResumeOptions): void;
+
   /** Replace shared agent state without starting a generation. */
   setState(state: State): void;
   /**
@@ -115,6 +124,14 @@ export interface UiChatResourceRef<
    * @param message - The user message to send.
    */
   sendMessage: (message: Chat.UserMessage) => void;
+
+  /** Replace the current chat history. */
+  setMessages: (
+    messages: Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[],
+  ) => void;
+
+  /** Remove the last assistant response and resend the preceding history. */
+  reload: () => boolean;
 
   /**
    * Cause current messages to be resent.  Can be used after an error in chat.
@@ -176,7 +193,7 @@ export function uiChatResource<Tools extends Chat.AnyTool, State = unknown>(
     apiUrl: args.apiUrl,
     transport: args.transport,
     ui: true,
-    threadId: args.threadId,
+    ...(Object.hasOwn(args, 'threadId') ? { threadId: args.threadId } : {}),
   });
 
   const value = computed(
