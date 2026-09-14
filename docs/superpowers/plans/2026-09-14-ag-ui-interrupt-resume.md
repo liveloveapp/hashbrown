@@ -120,12 +120,12 @@ different thread -> idle; old callbacks rejected
 
 **Files:** Six React/Angular completion modules and their specs. If shared state machine is extracted: `packages/core/src/completion-input.ts`/`.spec.ts`, exported internally from `public_api.ts` with `ɵ` only.
 
-- [ ] Write table-driven scheduler tests for A interrupted, B then C selected, A resumed, C submitted exactly once after full success; B never sent. Also A->B->A must not regenerate unchanged original input. Use framework's existing input identity/eligibility conventions.
-- [ ] Test multiple interrupt cycles, before-start stop then successful retry, expiry, post-start failure/stop, local tool/follow-up phases, and new-thread handoff of unchanged latest input. Pending-batch disappearance alone must never release deferred input.
-- [ ] Implement minimal latest-input bookkeeping. On a blocked input change, retain only newest input without mutating history. Gate release on successful resumed interaction settlement, not aggregate idle alone. Expose an internal runtime selector/helper if success/recovery cannot be derived reliably from public flags; do not parse error messages.
-- [ ] Preserve scheduling when no interruption has occurred; do not make all ordinary completions wait for previous completion. A changed thread clears old ownership/deferral and permits latest eligible input once without resume entries.
-- [ ] Add public pendingInterrupts/isResuming/resume to all completion result/ref types. Surface API errors predictably, never as unhandled framework effect errors. Preserve current output until existing projection updates it.
-- [ ] Run scheduler/core and React/Angular suites green, then package builds/lints. Review spec compliance then quality; commit `feat: resume interrupted completions and defer latest input`.
+- [x] Write table-driven scheduler tests for A interrupted, B then C selected, A resumed, C submitted exactly once after full success; B never sent. Also A->B->A must not regenerate unchanged original input. Use framework's existing input identity/eligibility conventions.
+- [x] Test multiple interrupt cycles, before-start stop then successful retry, expiry, post-start failure/stop, local tool/follow-up phases, and new-thread handoff of unchanged latest input. Pending-batch disappearance alone must never release deferred input.
+- [x] Implement minimal latest-input bookkeeping. On a blocked input change, retain only newest input without mutating history. Gate release on successful resumed interaction settlement, not aggregate idle alone. Expose an internal runtime selector/helper if success/recovery cannot be derived reliably from public flags; do not parse error messages.
+- [x] Preserve scheduling when no interruption has occurred; do not make all ordinary completions wait for previous completion. A changed thread clears old ownership/deferral and permits latest eligible input once without resume entries.
+- [x] Add public pendingInterrupts/isResuming/resume to all completion result/ref types. Surface API errors predictably, never as unhandled framework effect errors. Preserve current output until existing projection updates it.
+- [x] Run scheduler/core and React/Angular suites green, then package builds/lints. Review spec compliance then quality; commit `feat: resume interrupted completions and defer latest input`.
 
 ## Task 7: HTTP/SSE conformance and user documentation
 
@@ -139,14 +139,15 @@ different thread -> idle; old callbacks rejected
 
 ## Task 8: Final verification, reviews, PR, and merge
 
-- [ ] Run `npx nx build core`, `npx nx test core --runInBand`, `npx nx lint core`, `npx nx build-api-report core`, `npx nx e2e core`.
-- [ ] Run corresponding build/test/lint/build-api-report/e2e targets for react and angular. If a required target is absent, report that accurately and run the existing equivalent; do not invent targets merely to satisfy a checklist.
-- [ ] Run runtime-smoke test/typecheck/lint/e2e and affected app builds; run existing endpoint/progressive tests to protect PRs #537/#539. Run broader affected checks when new failures or CI impact justify them.
-- [ ] Inspect generated API reports: additive public types/methods, no internal names in public signatures, no unrelated report churn. Commit intentional reports and relevant documentation only.
-- [ ] Independent final spec-compliance review, then code-quality review of `origin/main...HEAD`. Address findings with regression-first fixes and appropriate reruns. Record verified results and warnings.
-- [ ] Refresh origin/main and integrate upstream if it changed; rerun relevant checks after conflict resolution. Verify clean status and focused diff.
+- [x] Run `npx nx build core`, `npx nx test core --runInBand`, `npx nx lint core`, `npx nx build-api-report core`, `npx nx e2e core`.
+- [x] Run corresponding build/test/lint/build-api-report/e2e targets for react and angular. If a required target is absent, report that accurately and run the existing equivalent; do not invent targets merely to satisfy a checklist.
+- [x] Run runtime-smoke test/typecheck/lint/e2e and affected app builds; run existing endpoint/progressive tests to protect PRs #537/#539. Run broader affected checks when new failures or CI impact justify them.
+- [x] Inspect generated API reports: additive public types/methods, no internal names in public signatures, no unrelated report churn. Commit intentional reports and relevant documentation only.
+- [x] Independent final spec-compliance review, then code-quality review of `origin/main...HEAD`. Address findings with regression-first fixes and appropriate reruns. Record verified results and warnings.
+- [x] Refresh origin/main and integrate upstream if it changed; rerun relevant checks after conflict resolution. Verify clean status and focused diff.
 - [ ] Create focused draft PR using `gh pr create --draft --body-file <file>` with problem/result, protocol limitations, and actual validation. No assistant product names. Existing user instruction authorizes PR and eventual merge; do not ask again for already authorized actions.
 - [ ] Mark ready, monitor required CI/preview/aggregate checks, diagnose and fix failures; do not equate local success with CI success. Merge only after required checks are green. Verify merge commit on main and report PR URL and any remaining limitations.
+
 
 ## Progress and evidence
 
@@ -269,3 +270,33 @@ Log: /tmp/hashbrown-pr2-browser-full.log.
 
 Final package E2E passed: core 3 tests, React 2 tests, Angular 2 package
 compatibility tests. origin/main refreshed and remains cd58105.
+
+Task 6 completed as 60037a7 and passed independent spec and quality reviews.
+Final verification: core 1,031 tests / 17 snapshots, React 142, Angular 205;
+builds/API reports passed, core/Angular lint clean, React five existing warnings.
+Spec reviewer independently reran React 142, Angular 205, and four pure scheduler
+tests. Public completion APIs expose no internal scheduling types.
+
+Final full spec review approved and independently passed 139 focused core tests.
+Final code-quality review is in progress. Broader CI-equivalent affected checks
+covered 28 projects; failures were the occupied local default browser port and
+Spotify Angular exceeding its 1 MB initial budget by 4.22 kB. Dedicated-port
+browser coverage is green; clean-main bundle comparison is in progress.
+
+Final full code-quality review approved cd58105..60037a7 without important
+findings. Clean-main Spotify comparison measured 991.94 kB initial (239.55 kB
+compressed), versus 1,004.22 kB (242.21 kB compressed) with this feature. The
+12.28 kB / 1.24% increase crosses the old 1 MB limit; raise the sample's hard
+limit narrowly to 1.02 MB, retaining 15.78 kB headroom. No new dependency or
+application behavior change is involved. Broader affected checks are rerunning
+with dedicated browser ports and this measured budget adjustment.
+
+Final affected verification GREEN: 79 tasks across 28 projects passed, including
+all 56 browser cases on dedicated ports. Real-example E2E passed four cases;
+smart-home React lint/Storybook passed. Existing toolchain, CommonJS/chunk-size,
+API extraction, and sample test-environment diagnostics remain warnings.
+Spotify budget adjustment independently reviewed and approved. Generated
+fast-food data and TSDoc line-ending changes were removed from the worktree.
+Logs: /tmp/hashbrown-pr2-affected-green.log,
+/tmp/hashbrown-pr2-example-e2e-final.log,
+/tmp/hashbrown-pr2-example-tooling-final.log.
