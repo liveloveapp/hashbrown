@@ -233,3 +233,52 @@ test('does not emit legacy or provider-specific wire keys', () => {
   expect(wire).not.toContain('providerOptions');
   expect(wire).not.toContain('emulateStructuredOutput');
 });
+
+test('serializes only protocol resume fields and preserves null and metadata', () => {
+  const resume = [
+    {
+      interruptId: 'server-id',
+      status: 'resolved' as const,
+      payload: null,
+      metadata: { source: 'app' },
+      batchId: 'local-only',
+    },
+  ];
+
+  const input = createInput({ state: undefined, resume });
+  const wire = JSON.parse(JSON.stringify(input));
+
+  expect(wire.resume).toEqual([
+    {
+      interruptId: 'server-id',
+      status: 'resolved',
+      payload: null,
+      metadata: { source: 'app' },
+    },
+  ]);
+  expect(wire.threadId).toBe(threadId);
+  expect(wire.runId).toBe(runId);
+  expect(wire).not.toHaveProperty('state');
+  expect(JSON.stringify(wire)).not.toContain('local-only');
+  expect(createInput()).not.toHaveProperty('resume');
+});
+
+test('preserves omitted resume payloads and explicit empty resume arrays', () => {
+  const resume = Object.freeze([
+    Object.freeze({
+      interruptId: 'cancelled-id',
+      status: 'cancelled' as const,
+    }),
+    Object.freeze({ interruptId: 'resolved-id', status: 'resolved' as const }),
+  ]);
+
+  const input = createInput({ resume, state: null });
+  const wire = JSON.parse(JSON.stringify(input));
+
+  expect(wire.resume).toEqual(resume);
+  expect(wire.state).toBeNull();
+  expect(input.resume?.every((entry) => !Object.hasOwn(entry, 'payload'))).toBe(
+    true,
+  );
+  expect(createInput({ resume: [] }).resume).toEqual([]);
+});

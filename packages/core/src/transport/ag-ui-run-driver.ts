@@ -4,6 +4,8 @@ import type {
   TransportRequest,
   TransportResponse,
 } from './transport';
+import type { Interrupt } from '../models/interrupt';
+import { validateInterruptOutcome } from './interrupt-validation';
 import { TransportError } from './transport-error';
 
 /**
@@ -13,6 +15,7 @@ import { TransportError } from './transport-error';
  */
 export type AgUiRunAttemptOutcome =
   | { kind: 'finished' }
+  | { kind: 'interrupted'; interrupts: readonly Interrupt[] }
   | { kind: 'server-error'; error: Error }
   | { kind: 'cancelled' }
   | { kind: 'retired' };
@@ -23,6 +26,8 @@ export type AgUiRunAttemptOutcome =
  * @internal
  */
 export interface RunAgUiAttemptOptions {
+  /** Synchronously rechecks eligibility immediately before transport send. */
+  beforeSend?: () => void;
   transport: Transport;
   request: TransportRequest;
   cancelSignal: AbortSignal;
@@ -66,6 +71,7 @@ export async function runAgUiAttempt({
   retiredSignal,
   onStarted,
   onEvent,
+  beforeSend,
 }: RunAgUiAttemptOptions): Promise<AgUiRunAttemptOutcome> {
   const interruptionBeforeSend = getInterruption(retiredSignal, cancelSignal);
   if (interruptionBeforeSend) {
@@ -76,6 +82,18 @@ export async function runAgUiAttempt({
     threadId: request.input.threadId,
     runId: request.input.runId,
   };
+  if (beforeSend) {
+    try {
+      beforeSend();
+    } catch (error) {
+      throw new TransportError(
+        error instanceof Error
+          ? error.message
+          : 'Send eligibility check failed',
+        { retryable: false, code: 'PROTOCOL_ERROR' },
+      );
+    }
+  }
   const sendPromise = transport.send(request);
   const settledSend = settleSend(sendPromise);
   const sendInterruption = waitForInterruption(retiredSignal, cancelSignal);
@@ -243,6 +261,25 @@ async function consumeResponse({
           );
         }
 
+        let interrupts: readonly Interrupt[] | undefined;
+        try {
+          interrupts = validateInterruptOutcome(event.outcome);
+        } catch (error) {
+          throw new TransportError(
+            error instanceof Error
+              ? error.message
+              : 'Invalid interrupt outcome',
+            { retryable: false, code: 'PROTOCOL_ERROR' },
+          );
+        }
+        if (interrupts) {
+          const ownedEvent = {
+            ...event,
+            outcome: Object.freeze({ type: 'interrupt' as const, interrupts }),
+          } as AGUIEvent;
+          await invokeCallback(() => onEvent(ownedEvent));
+          return { kind: 'interrupted', interrupts };
+        }
         await invokeCallback(() => onEvent(event));
         return { kind: 'finished' };
       }

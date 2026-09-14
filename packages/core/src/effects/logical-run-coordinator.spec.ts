@@ -577,3 +577,184 @@ test.each(['throws', 'rejects'] as const)(
     ]);
   },
 );
+
+test.each([false, true])(
+  'resume=%s retries before acknowledgement but stops after acknowledgement',
+  async (isResume) => {
+    const transport = createTransport(async (request) => {
+      if (request.attempt === 1)
+        throw new TransportError('offline', { retryable: true });
+      return {
+        events: (async function* () {
+          yield createStarted(request);
+          throw new TransportError('disconnected', { retryable: true });
+        })(),
+      };
+    });
+
+    const outcome = await executeLogicalRun({
+      transport,
+      retries: 3,
+      cancelSignal: new AbortController().signal,
+      retiredSignal: new AbortController().signal,
+      createRequest,
+      onStarted: jest.fn(),
+      onEvent: jest.fn(),
+      isResume,
+    });
+
+    expect(outcome).toMatchObject({
+      kind: 'failed',
+      exhaustedRetries: !isResume,
+    });
+    expect(transport.send).toHaveBeenCalledTimes(isResume ? 2 : 4);
+  },
+);
+
+test('propagates interrupted runs without rollback or retry', async () => {
+  const interrupts = [{ id: 'a', reason: 'approval' }];
+  const onAttemptRolledBack = jest.fn();
+  const transport = createTransport(async (request) => ({
+    events: createEvents([
+      createStarted(request),
+      {
+        ...createFinished(request),
+        outcome: { type: 'interrupt', interrupts },
+      } as AGUIEvent,
+    ]),
+  }));
+
+  const outcome = await execute({ transport, retries: 2, onAttemptRolledBack });
+
+  expect(outcome).toEqual({ kind: 'interrupted', interrupts });
+  expect(onAttemptRolledBack).not.toHaveBeenCalled();
+  expect(transport.send).toHaveBeenCalledTimes(1);
+});
+
+test.each([false, true])(
+  'rechecks expiry immediately before send after preparation (retry=%s)',
+  async (retry) => {
+    let now = 0;
+    const beforeSend = jest.fn(() => {
+      if (now >= 10) throw new Error('expired');
+    });
+    const transport = createTransport(async () => {
+      now = 10;
+      throw new TransportError('offline', { retryable: true });
+    });
+
+    const outcome = await executeLogicalRun({
+      transport,
+      retries: 3,
+      cancelSignal: new AbortController().signal,
+      retiredSignal: new AbortController().signal,
+      createRequest: (context) => {
+        const request = createRequest(context);
+        if (!retry) now = 10;
+        return request;
+      },
+      onStarted: jest.fn(),
+      onEvent: jest.fn(),
+      isResume: true,
+      beforeSend,
+    });
+
+    expect(outcome).toMatchObject({
+      kind: 'failed',
+      exhaustedRetries: false,
+      error: { message: 'expired', retryable: false },
+    });
+    expect(transport.send).toHaveBeenCalledTimes(retry ? 1 : 0);
+    expect(beforeSend).toHaveBeenCalledTimes(retry ? 2 : 1);
+  },
+);
+
+test('does not retry resume when the acknowledged start callback throws', async () => {
+  const transport = createTransport(async (request) => ({
+    events: createEvents([createStarted(request), createFinished(request)]),
+  }));
+
+  const outcome = await executeLogicalRun({
+    transport,
+    retries: 3,
+    cancelSignal: new AbortController().signal,
+    retiredSignal: new AbortController().signal,
+    createRequest,
+    onStarted: () => {
+      throw new TransportError('callback failed', { retryable: true });
+    },
+    onEvent: jest.fn(),
+    isResume: true,
+  });
+
+  expect(outcome).toMatchObject({ kind: 'failed', exhaustedRetries: false });
+  expect(transport.send).toHaveBeenCalledTimes(1);
+});
+
+test('retries an unacknowledged resume with a mismatched start then accepts a matching run', async () => {
+  const onStarted = jest.fn();
+  const transport = createTransport(async (request) => ({
+    events: createEvents(
+      request.attempt === 1
+        ? [{ ...createStarted(request), runId: 'other-run' } as AGUIEvent]
+        : [createStarted(request), createFinished(request)],
+    ),
+  }));
+
+  const outcome = await executeLogicalRun({
+    transport,
+    retries: 2,
+    isResume: true,
+    cancelSignal: new AbortController().signal,
+    retiredSignal: new AbortController().signal,
+    createRequest,
+    onStarted,
+    onEvent: jest.fn(),
+  });
+
+  expect(outcome).toEqual({ kind: 'finished' });
+  expect(transport.send).toHaveBeenCalledTimes(2);
+  expect(onStarted).toHaveBeenCalledTimes(1);
+  expect(onStarted).toHaveBeenCalledWith(
+    expect.objectContaining({ attempt: 2 }),
+  );
+});
+
+test('rechecks expiry after delayed transport preparation before any send', async () => {
+  let release!: () => void;
+  const preparation = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let now = 0;
+  const transport = createTransport(async (request) => ({
+    events: createEvents([createStarted(request), createFinished(request)]),
+  }));
+  const preparedRun = async () => {
+    await preparation;
+    return executeLogicalRun({
+      transport,
+      retries: 2,
+      isResume: true,
+      beforeSend: () => {
+        if (now >= 10) throw new Error('expired');
+      },
+      cancelSignal: new AbortController().signal,
+      retiredSignal: new AbortController().signal,
+      createRequest,
+      onStarted: jest.fn(),
+      onEvent: jest.fn(),
+    });
+  };
+
+  const completion = preparedRun();
+  now = 10;
+  release();
+  const outcome = await completion;
+
+  expect(outcome).toMatchObject({
+    kind: 'failed',
+    error: { message: 'expired', retryable: false },
+    exhaustedRetries: false,
+  });
+  expect(transport.send).not.toHaveBeenCalled();
+});
