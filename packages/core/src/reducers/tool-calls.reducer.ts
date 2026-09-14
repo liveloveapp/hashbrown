@@ -389,6 +389,7 @@ export const reducer = createReducer(
   ),
   on(
     apiActions.generateMessageError,
+    internalActions.interruptThreadRetired,
     internalActions.generationSilentlyRetired,
     internalActions.logicalGenerationSettled,
     devActions.resendMessages,

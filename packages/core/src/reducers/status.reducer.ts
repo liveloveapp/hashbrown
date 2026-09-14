@@ -53,13 +53,18 @@ export const reducer = createReducer(
       sendingError: undefined,
     };
   }),
-  on(devActions.setMessages, devActions.resendMessages, (state) => {
-    return {
-      ...state,
-      isSending: true,
-      sendingError: undefined,
-    };
-  }),
+  on(
+    devActions.resume,
+    devActions.setMessages,
+    devActions.resendMessages,
+    (state) => {
+      return {
+        ...state,
+        isSending: true,
+        sendingError: undefined,
+      };
+    },
+  ),
   on(internalActions.logicalGenerationStarted, (state, action) => ({
     ...state,
     activeGenerationId: action.payload.generationId,
@@ -128,6 +133,7 @@ export const reducer = createReducer(
       ...state,
       acceptedTerminalEvent: false,
       isReceiving: false,
+      isSending: false,
       isGenerating: false,
       sendingError: undefined,
       error: undefined,
@@ -151,16 +157,20 @@ export const reducer = createReducer(
         : state.generatingError,
     };
   }),
-  on(internalActions.generationSilentlyRetired, (state) => {
-    return {
-      ...state,
-      activeGenerationId: undefined,
-      acceptedTerminalEvent: false,
-      isReceiving: false,
-      isSending: false,
-      isGenerating: false,
-    };
-  }),
+  on(
+    internalActions.interruptThreadRetired,
+    internalActions.generationSilentlyRetired,
+    (state) => {
+      return {
+        ...state,
+        activeGenerationId: undefined,
+        acceptedTerminalEvent: false,
+        isReceiving: false,
+        isSending: false,
+        isGenerating: false,
+      };
+    },
+  ),
   on(internalActions.toolTurnSettled, (state, action) => {
     return {
       ...state,

@@ -1,3 +1,5 @@
+import type { PendingInterruptBatch, ResumeOptions } from '../models/interrupt';
+import type { ResumeCheckpoint } from '../reducers/resume-checkpoint';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { TransportOrFactory } from '../transport';
@@ -26,6 +28,12 @@ export default createActionGroup('dev', {
     ui?: boolean;
     threadId?: string | undefined;
     state?: JsonValue;
+  }>(),
+  resume: props<{
+    claimId: string;
+    batch: PendingInterruptBatch;
+    options: ResumeOptions;
+    checkpoint: ResumeCheckpoint;
   }>(),
   setState: props<{
     state: JsonValue | undefined;

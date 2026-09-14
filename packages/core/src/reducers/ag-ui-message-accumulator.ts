@@ -1086,7 +1086,7 @@ export function accumulateAgUiMessageEvent(
         new Set([event.toolCallId]),
       );
     case EventType.RUN_FINISHED:
-      return finishRun(state);
+      return event.outcome?.type === 'interrupt' ? state : finishRun(state);
     case EventType.RUN_ERROR:
       return {
         ...state,

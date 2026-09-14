@@ -400,6 +400,7 @@ export const reducer = createReducer(
   ),
   on(
     apiActions.generateMessageError,
+    internalActions.interruptThreadRetired,
     internalActions.generationSilentlyRetired,
     internalActions.logicalGenerationSettled,
     (state): MessagesState => rollback(state),

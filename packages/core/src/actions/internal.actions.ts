@@ -1,9 +1,22 @@
+import type { PendingInterruptBatch } from '../models/interrupt';
 import type { ToolMessage } from '@ag-ui/core';
 import { createActionGroup, emptyProps, props } from '../utils/micro-ngrx';
 import { Chat } from '../models';
 
 export default createActionGroup('internal', {
   start: emptyProps(),
+  interruptsPublished: props<{
+    generationId: string;
+    attemptId: string;
+    batch: PendingInterruptBatch;
+  }>(),
+  resumeSettlementStarted: emptyProps(),
+  resumeAcknowledged: props<{ generationId: string; claimId: string }>(),
+  resumeSettled: props<{
+    generationId: string;
+    outcome: 'success' | 'failed' | 'cancelled' | 'retired';
+  }>(),
+  interruptThreadRetired: emptyProps(),
   logicalGenerationStarted: props<{ generationId: string }>(),
   generationAttemptClaimed: props<{
     generationId: string;

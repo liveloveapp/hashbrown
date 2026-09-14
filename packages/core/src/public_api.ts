@@ -1,4 +1,9 @@
-export { createChatRuntime, type ChatRuntime } from './chat-runtime';
+export {
+  createChatRuntime,
+  type ChatRuntime,
+  ɵgetRuntimeSchedulingState,
+  type ɵRuntimeSchedulingState,
+} from './chat-runtime';
 export * from './models';
 export * from './transport';
 export { prompt } from './prompt/prompt';

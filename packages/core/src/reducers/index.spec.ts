@@ -30,6 +30,7 @@ const initAction = { type: '@@init' } as const;
 
 function createState() {
   return {
+    interrupts: reducers.interrupts(undefined, initAction),
     config: reducers.config(undefined, initAction),
     generationOwnership: reducers.generationOwnership(undefined, initAction),
     agentState: reducers.agentState(undefined, initAction),
@@ -48,6 +49,7 @@ function reduceAll(
   action: { type: string },
 ) {
   return {
+    interrupts: reducers.interrupts(state.interrupts, action),
     config: reducers.config(state.config, action),
     generationOwnership: reducers.generationOwnership(
       state.generationOwnership,

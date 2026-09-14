@@ -13,6 +13,7 @@ import * as fromStatus from './status.reducer';
 import * as fromStreamingMessage from './streaming-message.reducer';
 import * as fromToolCalls from './tool-calls.reducer';
 import * as fromTools from './tools.reducer';
+import * as fromInterrupts from './interrupts.reducer';
 import * as fromThread from './thread.reducer';
 import {
   ɵownValidatedAgUiMessages,
@@ -22,6 +23,7 @@ import {
 const toolTurnSettledType = internalActions.toolTurnSettled.type;
 
 export const reducers = {
+  interrupts: fromInterrupts.reducer,
   agentState: fromAgentState.reducer,
   agUiMessages: fromAgUiMessages.reducer,
   config: fromConfig.reducer,
@@ -122,6 +124,17 @@ export function ɵprepareRootAction(
   state: State,
   action: { readonly type: string; readonly payload?: unknown },
 ) {
+  if (action.type === internalActions.interruptsPublished.type) {
+    const terminal = action as ReturnType<
+      typeof internalActions.interruptsPublished
+    >;
+    if (
+      state.generationOwnership.generationId !==
+        terminal.payload.generationId ||
+      state.generationOwnership.attemptId !== terminal.payload.attemptId
+    )
+      return { type: '@hashbrown/noop' };
+  }
   if (action.type === toolTurnSettledType) {
     const settlement = action as ReturnType<
       typeof internalActions.toolTurnSettled
@@ -645,3 +658,12 @@ export const selectIsLoading = select(
   (isSending, isGenerating, isReceiving, isRunningToolCalls) =>
     isSending || isGenerating || isReceiving || isRunningToolCalls,
 );
+
+/** Selects actionable interrupt ownership. @internal */
+export const ɵselectInterrupts = (state: State) => state.interrupts;
+/** Selects the visible interrupt batch. */
+export const selectPendingInterrupts = (state: State) =>
+  state.interrupts.pending;
+/** Selects the whole resumed interaction phase. */
+export const selectIsResuming = (state: State) =>
+  state.interrupts.generationId !== undefined;

@@ -1,3 +1,5 @@
+import { initialInterruptsState } from '../reducers/interrupts.reducer';
+import { ɵselectInterrupts } from '../reducers';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { createChatRuntime } from '../chat-runtime';
@@ -86,6 +88,7 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
   const actions: ActionLike[] = [];
   const handlers: TestHandler[] = [];
   const defaults: SelectorMap = new Map<SelectorKey, unknown>([
+    [ɵselectInterrupts, initialInterruptsState],
     [selectResponseSchema, undefined],
     [
       ɵselectEffectiveCommittedAgUiMessages,

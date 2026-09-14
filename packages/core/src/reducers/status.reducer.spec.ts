@@ -26,6 +26,7 @@ const canonicalUser = (content: string) =>
 
 function createRootState() {
   return {
+    interrupts: rootReducers.interrupts(undefined, initAction),
     agentState: rootReducers.agentState(undefined, initAction),
     agUiMessages: rootReducers.agUiMessages(undefined, initAction),
     config: rootReducers.config(undefined, initAction),
@@ -51,6 +52,7 @@ function reduceRoot(
   action: { type: string },
 ) {
   return {
+    interrupts: rootReducers.interrupts(state.interrupts, action),
     agentState: rootReducers.agentState(state.agentState, action),
     agUiMessages: rootReducers.agUiMessages(state.agUiMessages, action),
     config: rootReducers.config(state.config, action),
