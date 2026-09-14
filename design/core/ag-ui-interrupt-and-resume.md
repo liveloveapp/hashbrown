@@ -3,7 +3,7 @@ Created: 2026-09-08
 Updated: 2026-09-14
 Author: Hashbrown team
 Affects: packages/core, packages/react, packages/angular
-Status: Consolidated specification pending independent and final user review
+Status: Independently reviewed; pending final user approval
 ---
 
 # AG-UI Interrupt and Resume
@@ -281,8 +281,11 @@ follow-up runs.
 
 Each ordinary successful run in the interaction commits its own checkpoint.
 Follow-up runs omit the consumed resume entries and use ordinary run retry
-rules. They capture the checkpoint after local tool settlement; they do not
-reuse the original resume request. A fresh interrupt ends the interaction and
+rules. Once the initial resume has been acknowledged, terminal failure anywhere
+in the interaction requires recovery, including a follow-up that exhausts its
+retries before receiving its own RUN_STARTED. Follow-ups capture the checkpoint
+after local tool settlement; they do not reuse the original resume request.
+A fresh interrupt ends the interaction and
 publishes a newly identified batch without local execution at that boundary.
 
 Deferred completion input is released only after the whole resumed interaction
@@ -423,10 +426,14 @@ after batch expiration; it does not resume the expired server workflow.
 
 ### Approved recovery boundary after resumed-run failure
 
-If a resumed run fails after a matching RUN_STARTED, retain consumed ownership
-of the old batch, roll back draft state/messages to the resumed run's checkpoint,
-and surface the error. Block further requests on that thread until the
-application switches to a new thread. This recovery-required guard takes
+Once the initial resumed run has received its matching RUN_STARTED, terminal
+failure anywhere in the resumed interaction retains consumed ownership of the
+old batch and requires recovery. This includes subsequent model runs that
+exhaust ordinary retries before their own RUN_STARTED. Roll back only the
+currently failed attempt's draft state/messages to its checkpoint, preserve
+earlier committed checkpoints and tool results, and surface the error.
+Block further requests on that thread until the application switches to a new
+thread. This recovery-required guard takes
 precedence over ordinary message-action eligibility after batch consumption.
 It must cover message sends, replacement-triggered requests, resends/reloads,
 resume calls, and automatic generation paths across all facades.
@@ -563,6 +570,12 @@ message values as data and choose their own response-schema validation library.
 
 ## Delivery and review
 
+Independent review completed on 2026-09-14. The first pass identified ambiguity
+about failure in a follow-up run before its own RUN_STARTED. The clarified rule
+requires recovery after terminal failure anywhere in an interaction whose
+initial resume was acknowledged, preserving previous commits. The second pass
+approved the specification with no remaining serious findings.
+
 The approved decisions above form the behavioral basis for a single focused
 PR2. The concrete architecture and public type declarations in this consolidated
 specification are subject to independent review and final user approval. Review
@@ -582,5 +595,5 @@ and after RUN_STARTED. The driver validates run/thread identity before invoking
 onStarted. Interrupt outcomes must survive the driver and coordinator rather
 than being collapsed into ordinary completion.
 
-This specification is pending independent review and final user approval before
-implementation planning.
+This specification has passed independent review and awaits final user approval
+before implementation planning.
