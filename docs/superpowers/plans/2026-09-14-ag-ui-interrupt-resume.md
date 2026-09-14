@@ -38,14 +38,14 @@
 
 ## Task 1: Baseline and owned protocol contracts
 
-- [ ] Install locked dependencies (`npm ci --ignore-scripts`); inspect install warnings and verify no lock changes. Run required package postinstall only if a specific runtime requires it.
-- [ ] Discover effective targets using `npx nx show project core --json`, similarly react/angular/runtime-smoke; inferred React test/lint targets may not be in project.json.
-- [ ] Run `npx nx test core --runInBand --skipNxCache`, `npx nx test react --skipNxCache`, and `npx nx test angular --skipNxCache` before changes. Record pre-existing failures; diagnose without changing unrelated code.
-- [ ] Create `packages/core/src/transport/interrupt-validation.spec.ts`. Test owned clones preserve all optional interrupt fields including subagentRunId; no outcome/success stay ordinary; nonempty batch required; unknown reasons valid; required fields, duplicates, malformed expiry, nested non-JSON values rejected.
-- [ ] Run focused validation tests red. Implement `models/interrupt.ts` using approved public declarations and `transport/interrupt-validation.ts` using existing JSON clone/freeze helpers and pinned protocol schemas where appropriate. Export public types via models/index.ts. Do not require JSON Schema validation.
-- [ ] Add outgoing tests: exactly one response per pending ID independent of ordering; reject stale batch ID, duplicates/missing/unknown entries, invalid statuses, non-JSON payload/metadata; omit absent values. Preserve null/false/zero and metadata. Cancelled entries omit payload on the wire; reject a supplied meaningful payload rather than silently deleting it.
-- [ ] Inject `now` into pure expiry validation. Test exact deadline (`now >= deadline`), expired and invalid timestamps, earliest expiry blocks entire batch, and input mutation leaves owned copy intact.
-- [ ] Run focused tests green and `git diff --check`; commit `feat(core): define owned interrupt and resume contracts`.
+- [x] Install locked dependencies (`npm ci --ignore-scripts`); inspect install warnings and verify no lock changes. Run required package postinstall only if a specific runtime requires it.
+- [x] Discover effective targets using `npx nx show project core --json`, similarly react/angular/runtime-smoke; inferred React test/lint targets may not be in project.json.
+- [x] Run `npx nx test core --runInBand --skipNxCache`, `npx nx test react --skipNxCache`, and `npx nx test angular --skipNxCache` before changes. Record pre-existing failures; diagnose without changing unrelated code.
+- [x] Create `packages/core/src/transport/interrupt-validation.spec.ts`. Test owned clones preserve all optional interrupt fields including subagentRunId; no outcome/success stay ordinary; nonempty batch required; unknown reasons valid; required fields, duplicates, malformed expiry, nested non-JSON values rejected.
+- [x] Run focused validation tests red. Implement `models/interrupt.ts` using approved public declarations and `transport/interrupt-validation.ts` using existing JSON clone/freeze helpers and pinned protocol schemas where appropriate. Export public types via models/index.ts. Do not require JSON Schema validation.
+- [x] Add outgoing tests: exactly one response per pending ID independent of ordering; reject stale batch ID, duplicates/missing/unknown entries, invalid statuses, non-JSON payload/metadata; omit absent values. Preserve null/false/zero and metadata. Cancelled entries omit payload on the wire; reject a supplied meaningful payload rather than silently deleting it.
+- [x] Inject `now` into pure expiry validation. Test exact deadline (`now >= deadline`), expired and invalid timestamps, earliest expiry blocks entire batch, and input mutation leaves owned copy intact.
+- [x] Run focused tests green and `git diff --check`; commit `feat(core): define owned interrupt and resume contracts`.
 
 Contract example used by all tests:
 
@@ -61,13 +61,13 @@ const entries = [
 
 **Files:** `transport/ag-ui-run-driver.ts` and `.spec.ts`; `transport/hashbrown-run-agent-input.ts` and `.spec.ts`; `effects/logical-run-coordinator.ts` and `.spec.ts`; `effects/assistant-turn-coordinator.ts` and `.spec.ts`.
 
-- [ ] Add a driver transcript with matching RUN_STARTED then interrupt RUN_FINISHED; assert a distinct interrupted outcome retaining the owned batch. Red command: `npx nx test core --runInBand --testFile=packages/core/src/transport/ag-ui-run-driver.spec.ts --skipNxCache`.
-- [ ] Add invalid-interrupt tests asserting no terminal acceptance callback and nonretryable protocol error; retain identity checking and response disposal.
-- [ ] Implement outcome propagation (`{ kind: 'interrupted', interrupts }`) through driver and both coordinators. Assistant-turn coordinator returns immediately without reading/reserving/executing local tools. Compile all exhaustive outcome branches.
-- [ ] Add request tests for optional readonly resume entries lowered to wire input, no batchId field, no resume on ordinary runs, absent state omitted, canonical IDs retained. Red, implement optional `resume`, green.
-- [ ] Add logical-run tests that count sends: initial resumed request may retry before onStarted, cannot retry after onStarted; ordinary runs retain existing retry behavior. Use an explicit per-model-run resume marker, not the interaction-wide UI flag, to select policy.
-- [ ] Recheck expiry immediately before each actual send, including after asynchronous transport setup; if expired, do not invoke transport.send. Preserve exact captured input across retries except opaque per-attempt run/request identity.
-- [ ] Run all four focused suites green; commit `feat(core): preserve interrupted run outcomes and resume requests`.
+- [x] Add a driver transcript with matching RUN_STARTED then interrupt RUN_FINISHED; assert a distinct interrupted outcome retaining the owned batch. Red command: `npx nx test core --runInBand --testFile=packages/core/src/transport/ag-ui-run-driver.spec.ts --skipNxCache`.
+- [x] Add invalid-interrupt tests asserting no terminal acceptance callback and nonretryable protocol error; retain identity checking and response disposal.
+- [x] Implement outcome propagation (`{ kind: 'interrupted', interrupts }`) through driver and both coordinators. Assistant-turn coordinator returns immediately without reading/reserving/executing local tools. Compile all exhaustive outcome branches.
+- [x] Add request tests for optional readonly resume entries lowered to wire input, no batchId field, no resume on ordinary runs, absent state omitted, canonical IDs retained. Red, implement optional `resume`, green.
+- [x] Add logical-run tests that count sends: initial resumed request may retry before onStarted, cannot retry after onStarted; ordinary runs retain existing retry behavior. Use an explicit per-model-run resume marker, not the interaction-wide UI flag, to select policy.
+- [x] Recheck expiry immediately before each actual send, including after transport factory setup; if expired, do not invoke transport.send. Preserve exact captured input across retries except opaque per-attempt run/request identity.
+- [x] Run all four focused suites green; commit `feat(core): preserve interrupted run outcomes and resume requests`.
 
 ## Task 3: Synchronous interrupt ownership and runtime commands
 
@@ -89,7 +89,7 @@ different thread -> idle; old callbacks rejected
 
 - [ ] Reserve ownership synchronously before asynchronous scheduling. Extend the runtime's reentrant reservation pattern and root action preparation so two calls in the same stack cannot both claim; a listener calling resume/setState during dispatch cannot race validation. Invalid API calls mutate nothing.
 - [ ] Expose `pendingInterrupts`, `isResuming`, and `resume(options): void`. Keep batch ID out of shared state/wire payload. Register resume as an explicit scheduling action even if the canonical tail normally would not trigger generation.
-- [ ] Test `setState()` allowed while pending; same-stack state write after valid claim rejected; invalid resume leaves state writable. Capture state/messages/options required for resume before debounce/factory resolution.
+- [ ] Test `setState()` allowed while pending; same-stack state write after valid claim rejected; invalid resume leaves state writable. Capture state/messages/options required for resume before debounce/factory resolution (the existing factory is synchronous).
 - [ ] Test pending/claimed send/setMessages/resend/reload rejection; recovery guard blocks every scheduling route. Retain existing explicit-message supersession after consumption unless recovery is required, as approved; deferred completion input remains blocked until success.
 - [ ] Test same effective thread ID no-op, changed ID/explicit undefined retirement, stable local checkpoint, no stale callback mutation, new identity when generated from undefined. Updating unrelated options must not retire a batch.
 - [ ] Run reducer/root/runtime tests green; commit `feat(core): own interrupt batches and synchronous resume claims`.
@@ -156,8 +156,42 @@ different thread -> idle; old callbacks rejected
 - [x] Baseline verified: core 933, React 92, Angular 161 tests passed.
 - [ ] Tasks 1–8 complete.
 
+Task 1 completed as 2ed525a and passed independent spec and quality reviews.
+Behavioral red/green evidence covers ownership, malformed outcomes, membership,
+JSON values, expiry, sparse input arrays, and early-year leap dates. Core 984
+tests/17 snapshots, focused validation 51, build and lint passed. Parent reran
+focused51 successfully. API report generation passed; existing missing-release
+tag warnings remain outside this change. Reports are generated/ignored under
+the repository's current convention; inspect them without force-adding them.
+
+Task 2 implemented as 634cd73: driver/coordinator terminal distinction, request
+serialization, pre-start retry cutoff and pre-send validation hook. Independent
+spec review approved and reran focused 99 tests; quality review approved.
+Full core 1,001 tests, build and lint passed.
+
+Tasks 3–4 are being implemented together because claim ownership and atomic
+terminal integration are tightly coupled; separate commits remain planned.
+
+Task 7 browser RED established before fixture changes: both Angular and React
+fail the interrupted-batch transcript at the missing interrupt-count UI assertion.
+Log: /tmp/hashbrown-pr2-browser-red.log. Additional fresh-batch and expiry
+transcripts are prepared for the same real HTTP/SSE suite.
+
 Locked dependency installation completed without lockfile changes. npm reported
 58 existing audit findings (22 moderate, 36 high), plus deprecation warnings.
 Baseline React: 92 tests passed. Baseline Angular: 161 tests passed. Both reported
 existing Nx/Vite/Angular configuration/deprecation warnings. Core baseline
 completed successfully: 46 suites, 933 tests, 17 snapshots.
+
+Additional browser RED: eight lifecycle cases fail at the expected missing batch
+UI, two structured cases likewise, and two completion cases at the missing
+completion input. Failure ownership cases also fail at the expected batch UI.
+Fixture controls are now prepared against the approved API pending facades.
+Docs build/test/lint passed; lint reports 27 existing warnings. Docs build reports
+existing API extraction/configuration warnings. Generated TSDoc line-ending
+churn was removed.
+
+Smoke harness unit tests (42), typecheck, and lint pass. Full browser green
+verification awaits runtime/facade integration. Factory inspection corrected
+the plan: transport factories are synchronous; no Promise-returning public
+factory API will be introduced. Expiry still runs after setup before each send.
