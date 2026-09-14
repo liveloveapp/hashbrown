@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { computed, effect, Resource, Signal } from '@angular/core';
-import { Chat, s, type TransportOrFactory } from '@hashbrownai/core';
+import { computed, Resource, Signal } from '@angular/core';
+import {
+  Chat,
+  type PendingInterruptBatch,
+  type ResumeOptions,
+  s,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
+import { connectCompletionInput } from './completion-input.fn';
 import { ReactiveOption } from '../utils/types';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import { toDeepSignal } from '../utils/deep-signal';
@@ -17,6 +24,12 @@ export interface StructuredCompletionResourceRef<
   Output,
   State = unknown,
 > extends Resource<Output | null> {
+  /** The current interrupt batch, retained until resume is acknowledged. */
+  readonly pendingInterrupts: Signal<PendingInterruptBatch | undefined>;
+  /** Whether the whole resumed interaction is executing. */
+  readonly isResuming: Signal<boolean>;
+  /** Submits a complete response batch for the current interruption. */
+  resume(options: ResumeOptions): void;
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;
   /** Replace shared agent state without starting a generation. */
@@ -151,23 +164,12 @@ export function structuredCompletionResource<
     debounce,
     transport: options.transport,
     ui: options.ui ?? false,
-    threadId: options.threadId,
+    ...(Object.hasOwn(options, 'threadId')
+      ? { threadId: options.threadId }
+      : {}),
   });
 
-  effect(() => {
-    const _input = input();
-
-    if (!_input) {
-      return;
-    }
-
-    resource.setMessages([
-      {
-        role: 'user',
-        content: _input,
-      },
-    ]);
-  });
+  connectCompletionInput(input, resource);
 
   const valueSignal = computed(
     () => {
@@ -204,6 +206,9 @@ export function structuredCompletionResource<
   }
 
   return {
+    pendingInterrupts: resource.pendingInterrupts,
+    isResuming: resource.isResuming,
+    resume: resource.resume,
     state: resource.state,
     setState: resource.setState,
     value,

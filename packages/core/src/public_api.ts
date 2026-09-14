@@ -1,4 +1,14 @@
-export { createChatRuntime, type ChatRuntime } from './chat-runtime';
+export {
+  ɵreconcileCompletionInput,
+  type ɵCompletionInputState,
+} from './completion-input';
+export {
+  createChatRuntime,
+  type ChatRuntime,
+  ɵgetRuntimeSchedulingState,
+  ɵassertRuntimeMessageSchedulingAllowed,
+  type ɵRuntimeSchedulingState,
+} from './chat-runtime';
 export * from './models';
 export * from './transport';
 export { prompt } from './prompt/prompt';

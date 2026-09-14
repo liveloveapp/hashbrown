@@ -1,4 +1,5 @@
 import type { Message, RunAgentInput, Tool } from '@ag-ui/core';
+import type { ResumeEntry } from '../models/interrupt';
 import { Chat } from '../models';
 import type { JsonValue } from '../utils';
 
@@ -27,6 +28,8 @@ export interface CreateCanonicalRunAgentInputOptions {
   readonly tools: readonly Chat.Api.Tool[];
   readonly responseSchema?: object;
   readonly ui?: boolean;
+  /** Owned protocol responses for the initial resumed model run. */
+  readonly resume?: readonly ResumeEntry[];
 }
 
 function mapTool(tool: Chat.Api.Tool): Tool {
@@ -62,6 +65,7 @@ export function createCanonicalRunAgentInput({
   tools,
   responseSchema,
   ui,
+  resume,
 }: CreateCanonicalRunAgentInputOptions): HashbrownRunAgentInput {
   const hashbrown = createHashbrownExtension(responseSchema, ui);
 
@@ -73,6 +77,16 @@ export function createCanonicalRunAgentInput({
     context: [],
     state,
     forwardedProps: {},
+    ...(resume !== undefined
+      ? {
+          resume: resume.map(({ interruptId, status, payload, metadata }) => ({
+            interruptId,
+            status,
+            ...(payload !== undefined ? { payload } : {}),
+            ...(metadata !== undefined ? { metadata } : {}),
+          })),
+        }
+      : {}),
     ...(hashbrown ? { hashbrown } : {}),
   };
 }

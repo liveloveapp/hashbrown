@@ -767,3 +767,33 @@ test('cancellation during snapshot claim settles without starting handlers', asy
     'tool-turn-1',
   );
 });
+
+test('interrupts the assistant turn without observing or executing pending tools', async () => {
+  const outcome: LogicalRunOutcome = {
+    kind: 'interrupted',
+    interrupts: [{ id: 'a', reason: 'approval' }],
+  };
+  const handler = jest.fn();
+  const readToolSnapshot = jest.fn(() => ({
+    toolCalls: [createToolCall()],
+    toolsByName: { lookup: createTool('lookup', handler) },
+  }));
+  const reportNoTools = jest.fn();
+  const settleToolTurn = jest.fn();
+  const executeModelRun = jest.fn(async () => outcome);
+
+  const coordinator = createAssistantTurnCoordinator({
+    executeModelRun,
+    readToolSnapshot,
+    reportNoTools,
+    settleToolTurn,
+  });
+  const result = await coordinator.completion;
+
+  expect(result).toBe(outcome);
+  expect(executeModelRun).toHaveBeenCalledTimes(1);
+  expect(readToolSnapshot).not.toHaveBeenCalled();
+  expect(handler).not.toHaveBeenCalled();
+  expect(settleToolTurn).not.toHaveBeenCalled();
+  expect(reportNoTools).not.toHaveBeenCalled();
+});

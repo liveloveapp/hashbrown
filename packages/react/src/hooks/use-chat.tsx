@@ -2,7 +2,10 @@ import {
   type Chat,
   type ChatRuntime,
   createChatRuntime,
+  type PendingInterruptBatch,
+  type ResumeOptions,
   type TransportOrFactory,
+  ɵassertRuntimeMessageSchedulingAllowed,
 } from '@hashbrownai/core';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { HashbrownContext } from '../hashbrown-provider';
@@ -77,6 +80,15 @@ export interface UseChatResult<Tools extends Chat.AnyTool, State = unknown> {
    * The currently visible shared agent state.
    */
   readonly state: State | undefined;
+
+  /** The complete pending interrupt batch, including while claimed. */
+  readonly pendingInterrupts: PendingInterruptBatch | undefined;
+
+  /** Whether the resumed interaction is still running. */
+  readonly isResuming: boolean;
+
+  /** Submit a complete response batch to resume the interrupted interaction. */
+  resume(options: ResumeOptions): void;
 
   /**
    * Replaces the shared agent state without starting a generation.
@@ -218,6 +230,10 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
   }
 
   const hasThreadId = Object.hasOwn(options, 'threadId');
+  const previousThreadOption = useRef({
+    present: hasThreadId,
+    value: options.threadId,
+  });
   const runtimeRef = useRef<ChatRuntime<string, Tools, State> | null>(null);
 
   if (!runtimeRef.current) {
@@ -250,6 +266,13 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
   }, []);
 
   useEffect(() => {
+    const threadChanged =
+      previousThreadOption.current.present !== hasThreadId ||
+      previousThreadOption.current.value !== options.threadId;
+    previousThreadOption.current = {
+      present: hasThreadId,
+      value: options.threadId,
+    };
     getRuntime().updateOptions({
       debugName: options.debugName,
       system: options.system,
@@ -258,7 +281,7 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
       retries: options.retries,
       transport: options.transport ?? config.transport,
       ui: false,
-      ...(hasThreadId ? { threadId: options.threadId } : {}),
+      ...(hasThreadId && threadChanged ? { threadId: options.threadId } : {}),
     });
   }, [
     config.transport,
@@ -275,6 +298,8 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
   const internalMessages = useHashbrownSignal<Chat.Message<string, Tools>[]>(
     getRuntime().messages,
   );
+  const pendingInterrupts = useHashbrownSignal(getRuntime().pendingInterrupts);
+  const isResuming = useHashbrownSignal(getRuntime().isResuming);
   const state = useHashbrownSignal<State | undefined>(getRuntime().state);
   const isReceiving = useHashbrownSignal<boolean>(getRuntime().isReceiving);
   const isSending = useHashbrownSignal<boolean>(getRuntime().isSending);
@@ -309,9 +334,10 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
   }, []);
 
   const reload = useCallback(() => {
+    ɵassertRuntimeMessageSchedulingAllowed(getRuntime());
     const lastMessage = internalMessages[internalMessages.length - 1];
 
-    if (lastMessage.role === 'assistant') {
+    if (lastMessage?.role === 'assistant') {
       getRuntime().setMessages(internalMessages.slice(0, -1));
 
       return true;
@@ -325,6 +351,9 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
   }, []);
 
   return {
+    pendingInterrupts,
+    isResuming,
+    resume: getRuntime().resume,
     state,
     setState,
     messages: internalMessages,

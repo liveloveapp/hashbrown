@@ -1,3 +1,8 @@
+import {
+  assertInterruptsNotExpired,
+  validateInterruptOutcome,
+} from '../transport/interrupt-validation';
+import { ɵselectInterrupts } from '../reducers';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
@@ -163,15 +168,31 @@ export const generateMessage = createEffect((store) => {
       return false;
     }
 
+    const attemptId = generation.activeAttempt?.attemptId;
+    if (!attemptId) return false;
     const streamingError = store.read(selectStreamingMessageError);
     if (streamingError) {
-      dispatch(apiActions.generateMessageError(streamingError));
+      throw synchronizationProtocolError(streamingError);
     } else {
       const streamingMessage =
         store.read(selectRawStreamingMessage) ?? undefined;
-      const finalizedToolCalls = store.read(
-        ɵselectAttemptOwnedPendingToolCalls,
-      );
+      const terminalEvent = generation.activeAttempt?.terminalEvent;
+      const interrupts =
+        terminalEvent?.type === EventType.RUN_FINISHED
+          ? validateInterruptOutcome(terminalEvent.outcome)
+          : undefined;
+      const finalizedToolCalls = interrupts
+        ? []
+        : store.read(ɵselectAttemptOwnedPendingToolCalls);
+      if (interrupts) {
+        dispatch(
+          internalActions.interruptsPublished({
+            generationId: generation.generationId,
+            attemptId,
+            batch: Object.freeze({ id: _createRequestId(), interrupts }),
+          }),
+        );
+      }
       const toolsByName = generation.activeAttempt?.toolsByName ?? {};
       const toolTurnId =
         finalizedToolCalls.length === 0 ? undefined : _createRequestId();
@@ -204,7 +225,31 @@ export const generateMessage = createEffect((store) => {
       );
     }
 
-    return releaseAttempt(generation, context, false, dispatch, onCommit);
+    const interrupted =
+      generation.activeAttempt?.terminalEvent?.type ===
+        EventType.RUN_FINISHED &&
+      generation.activeAttempt.terminalEvent.outcome?.type === 'interrupt';
+    const released = releaseAttempt(
+      generation,
+      context,
+      false,
+      dispatch,
+      onCommit,
+    );
+    if (interrupted) {
+      dispatch(
+        internalActions.logicalGenerationSettled({
+          generationId: generation.generationId,
+        }),
+      );
+      const settle = () => {
+        generation.settled = true;
+        if (activeGeneration === generation) activeGeneration = undefined;
+      };
+      if (onCommit) onCommit(settle);
+      else settle();
+    }
+    return released;
   };
 
   const settleUnclaimedToolSnapshot = (
@@ -256,6 +301,44 @@ export const generateMessage = createEffect((store) => {
         return;
       }
 
+      if (
+        store.read(ɵselectInterrupts).generationId === generation.generationId
+      ) {
+        settleUnclaimedToolSnapshot(generation);
+        void store.dispatchAndWait(
+          internalActions.resumeSettlementStarted(),
+          (followUps) => {
+            if (!ownsGeneration(generation)) return;
+            followUps.dispatch(
+              internalActions.resumeSettled({
+                generationId: generation.generationId,
+                outcome: interruption === 'retire' ? 'retired' : 'cancelled',
+              }),
+            );
+            const attempt = generation.activeAttempt;
+            if (attempt)
+              releaseAttempt(
+                generation,
+                attempt.context,
+                true,
+                followUps.dispatch,
+                followUps.onCommit,
+              );
+            if (interruption === 'retire')
+              followUps.dispatch(internalActions.generationSilentlyRetired());
+            followUps.dispatch(
+              internalActions.logicalGenerationSettled({
+                generationId: generation.generationId,
+              }),
+            );
+            followUps.onCommit(() => {
+              generation.settled = true;
+              if (activeGeneration === generation) activeGeneration = undefined;
+            });
+          },
+        );
+        return;
+      }
       settleUnclaimedToolSnapshot(generation);
       if (!ownsGeneration(generation)) {
         return;
@@ -284,14 +367,26 @@ export const generateMessage = createEffect((store) => {
     devActions.setMessages,
     devActions.sendMessage,
     devActions.resendMessages,
-    () => {
+    devActions.resume,
+    (action) => {
       if (disposed) {
         return;
       }
 
+      const resumeAction =
+        action.type === devActions.resume.type ? action.payload : undefined;
+      const interruptState = store.read(ɵselectInterrupts);
+      if (
+        interruptState.recoveryRequired ||
+        (interruptState.pending && !resumeAction)
+      )
+        return;
+      if (resumeAction && interruptState.claimId !== resumeAction.claimId)
+        return;
+      let initialResume = resumeAction;
       const configuredThreadId = store.read(selectThreadId);
       const threadId = configuredThreadId ?? _createRequestId();
-      const generationId = _createRequestId();
+      const generationId = resumeAction?.claimId ?? _createRequestId();
       const supersededGeneration = activeGeneration;
       if (supersededGeneration) {
         // Claimed tools settle synchronously while their exact ownership is
@@ -321,22 +416,40 @@ export const generateMessage = createEffect((store) => {
           if (cancelSignal.aborted) {
             return { kind: 'cancelled' };
           }
-          if (!store.read(selectShouldGenerateMessage)) {
+          const resumedRun = initialResume;
+          initialResume = undefined;
+          if (!resumedRun && !store.read(selectShouldGenerateMessage)) {
             return { kind: 'cancelled' };
           }
 
-          const responseSchema = store.read(selectResponseSchema);
-          const messages = store.read(ɵselectEffectiveCommittedAgUiMessages);
-          const state = store.read(ɵselectCommittedAgentState);
-          const debounce = store.read(selectDebounce);
-          const retries = store.read(selectRetries);
-          const internalTools = store.read(selectTools);
+          const responseSchema = resumedRun
+            ? resumedRun.checkpoint.responseSchema
+            : store.read(selectResponseSchema);
+          const messages = resumedRun
+            ? resumedRun.checkpoint.messages
+            : store.read(ɵselectEffectiveCommittedAgUiMessages);
+          const state = resumedRun
+            ? resumedRun.checkpoint.state
+            : store.read(ɵselectCommittedAgentState);
+          const debounce = resumedRun
+            ? resumedRun.checkpoint.debounce
+            : store.read(selectDebounce);
+          const retries = resumedRun
+            ? resumedRun.checkpoint.retries
+            : store.read(selectRetries);
+          const internalTools = resumedRun
+            ? resumedRun.checkpoint.internalTools
+            : store.read(selectTools);
           const tools = Chat.helpers.toApiToolsFromInternal(internalTools);
-          const toolsByName = store.read(selectToolEntities);
+          const toolsByName = resumedRun
+            ? resumedRun.checkpoint.toolsByName
+            : store.read(selectToolEntities);
           const responseJsonSchema = responseSchema
             ? s.toJsonSchema(responseSchema)
             : undefined;
-          const uiRequested = store.read(selectUiRequested);
+          const uiRequested = resumedRun
+            ? resumedRun.checkpoint.uiRequested
+            : store.read(selectUiRequested);
           if (activeGeneration?.coordinator === coordinator) {
             activeGeneration.threadId = threadId;
           }
@@ -349,7 +462,9 @@ export const generateMessage = createEffect((store) => {
             return { kind: 'cancelled' };
           }
 
-          const transportProvider = store.read(selectTransport);
+          const transportProvider = resumedRun
+            ? resumedRun.checkpoint.transportProvider
+            : store.read(selectTransport);
           let transport;
           try {
             transport = resolveTransport(transportProvider);
@@ -379,6 +494,22 @@ export const generateMessage = createEffect((store) => {
           const outcome = await executeLogicalRun({
             transport,
             retries,
+            isResume: resumedRun !== undefined,
+            beforeSend: resumedRun
+              ? () => {
+                  try {
+                    assertInterruptsNotExpired(
+                      resumedRun.batch.interrupts,
+                      Date.now(),
+                    );
+                  } catch (error) {
+                    throw new TransportError((error as Error).message, {
+                      retryable: false,
+                      code: 'INTERRUPT_EXPIRED',
+                    });
+                  }
+                }
+              : undefined,
             cancelSignal,
             retiredSignal,
             createRequest: ({ attempt, maxAttempts, signal }) => {
@@ -393,6 +524,7 @@ export const generateMessage = createEffect((store) => {
                   tools,
                   responseSchema: responseJsonSchema,
                   ui: uiRequested,
+                  resume: resumedRun?.options.entries,
                 }),
                 signal,
                 attempt,
@@ -437,6 +569,15 @@ export const generateMessage = createEffect((store) => {
                 return;
               }
 
+              if (resumedRun) {
+                store.dispatch(
+                  internalActions.resumeAcknowledged({
+                    generationId,
+                    claimId: resumedRun.claimId,
+                  }),
+                );
+                if (!ownsAttempt(generation, context)) return;
+              }
               await store.dispatchAndWait(
                 apiActions.generateMessageStart({
                   responseSchema,
@@ -579,6 +720,54 @@ export const generateMessage = createEffect((store) => {
           return;
         }
 
+        if (resumeAction) {
+          return store.dispatchAndWait(
+            internalActions.resumeSettlementStarted(),
+            (followUps) => {
+              if (!ownsGeneration(generation)) return;
+              followUps.dispatch(
+                internalActions.resumeSettled({
+                  generationId,
+                  outcome:
+                    outcome.kind === 'finished'
+                      ? 'success'
+                      : outcome.kind === 'cancelled'
+                        ? 'cancelled'
+                        : 'failed',
+                }),
+              );
+              if (
+                outcome.kind === 'server-error' ||
+                outcome.kind === 'failed'
+              ) {
+                followUps.dispatch(
+                  apiActions.generateMessageError(outcome.error),
+                );
+                if (outcome.kind === 'failed' && outcome.exhaustedRetries)
+                  followUps.dispatch(
+                    apiActions.generateMessageExhaustedRetries(),
+                  );
+              }
+              const attempt = generation.activeAttempt;
+              if (attempt)
+                releaseAttempt(
+                  generation,
+                  attempt.context,
+                  true,
+                  followUps.dispatch,
+                  followUps.onCommit,
+                );
+              followUps.dispatch(
+                internalActions.logicalGenerationSettled({ generationId }),
+              );
+              followUps.onCommit(() => {
+                generation.settled = true;
+                if (activeGeneration === generation)
+                  activeGeneration = undefined;
+              });
+            },
+          );
+        }
         if (outcome.kind === 'server-error') {
           store.dispatch(apiActions.generateMessageError(outcome.error));
         } else if (outcome.kind === 'failed') {
@@ -589,6 +778,7 @@ export const generateMessage = createEffect((store) => {
         }
 
         settleLogicalGeneration(generation);
+        return undefined;
       });
     },
   );

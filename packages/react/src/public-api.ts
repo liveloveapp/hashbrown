@@ -76,6 +76,7 @@ export {
   type UiAssistantMessage,
   type UiChatMessage,
   type UiChatOptions,
+  type UiChatResult,
   type UiChatSchema,
   type UiChatSchemaComponent,
   type UiErrorMessage,

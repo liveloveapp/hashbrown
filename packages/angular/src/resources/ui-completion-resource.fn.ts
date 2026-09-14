@@ -2,6 +2,8 @@
 import { computed, Resource, Signal } from '@angular/core';
 import {
   Chat,
+  type PendingInterruptBatch,
+  type ResumeOptions,
   s,
   SystemPrompt,
   type TransportOrFactory,
@@ -100,6 +102,12 @@ export interface UiCompletionResourceRef<
   Tools extends Chat.AnyTool,
   State = unknown,
 > extends Resource<UiAssistantMessage<Tools> | null> {
+  /** The current interrupt batch, retained until resume is acknowledged. */
+  readonly pendingInterrupts: Signal<PendingInterruptBatch | undefined>;
+  /** Whether the whole resumed interaction is executing. */
+  readonly isResuming: Signal<boolean>;
+  /** Submits a complete response batch for the current interruption. */
+  resume(options: ResumeOptions): void;
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;
   /** Replace shared agent state without starting a generation. */
@@ -183,7 +191,9 @@ export function uiCompletionResource<
     debounce: options.debounce,
     transport: options.transport,
     ui: true,
-    threadId: options.threadId,
+    ...(Object.hasOwn(options, 'threadId')
+      ? { threadId: options.threadId }
+      : {}),
   });
 
   const value = computed(
@@ -217,6 +227,9 @@ export function uiCompletionResource<
   }
 
   return {
+    pendingInterrupts: completion.pendingInterrupts,
+    isResuming: completion.isResuming,
+    resume: completion.resume,
     state: completion.state,
     setState: completion.setState,
     value,

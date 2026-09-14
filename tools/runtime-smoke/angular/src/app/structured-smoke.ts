@@ -6,6 +6,7 @@ import {
 } from '@angular/core';
 import { structuredChatResource } from '@hashbrownai/angular';
 import { s } from '@hashbrownai/core';
+import { InterruptControls } from './interrupt-controls';
 
 const answerSchema = s.object('Runtime smoke answer', {
   answer: s.streaming.string('Answer text'),
@@ -33,6 +34,7 @@ function errorText(error: unknown): string {
 @Component({
   selector: 'runtime-structured-smoke',
   standalone: true,
+  imports: [InterruptControls],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section>
@@ -43,6 +45,11 @@ function errorText(error: unknown): string {
       />
       <button data-testid="send" type="button" (click)="send()">Send</button>
       <button data-testid="stop" type="button" (click)="stop()">Stop</button>
+      <runtime-interrupt-controls
+        [batch]="chat.pendingInterrupts()"
+        [isResuming]="chat.isResuming()"
+        [resume]="chat.resume"
+      />
       <div
         data-testid="status"
         [textContent]="chat.isLoading() ? 'loading' : 'idle'"

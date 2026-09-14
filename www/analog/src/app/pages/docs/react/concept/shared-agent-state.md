@@ -79,6 +79,8 @@ To prevent a local write from racing with agent-authored deltas, `setState` thro
 
 ## State and Model Prompts
 
+An [interrupt](/docs/react/concept/interrupt-and-resume) also commits the current state and message checkpoint. While awaiting answers, you can edit state with `setState()`. Resume captures that latest committed state and locks writes before scheduling its request.
+
 Shared state travels in the AG-UI run input. Hashbrown's direct provider adapters continue to build model requests from supported message and tool content; they do not serialize shared state into a system instruction or other prompt message.
 
 If the model itself needs a fact from shared state, explicitly include that fact in message or tool content, or use an agent implementation that reads the AG-UI state field.

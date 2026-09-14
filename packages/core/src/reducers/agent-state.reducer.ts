@@ -118,6 +118,7 @@ export const reducer = createReducer(
     };
   }),
   on(
+    devActions.resume,
     devActions.sendMessage,
     devActions.setMessages,
     devActions.resendMessages,
@@ -138,9 +139,13 @@ export const reducer = createReducer(
 
     return state;
   }),
-  on(internalActions.logicalGenerationSettled, (state): AgentStateState => {
-    return settleLogicalGeneration(state);
-  }),
+  on(
+    internalActions.interruptThreadRetired,
+    internalActions.logicalGenerationSettled,
+    (state): AgentStateState => {
+      return settleLogicalGeneration(state);
+    },
+  ),
 );
 
 /** @internal */

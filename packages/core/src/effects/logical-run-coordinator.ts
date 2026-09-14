@@ -1,4 +1,5 @@
 import type { AGUIEvent } from '@ag-ui/core';
+import type { Interrupt } from '../models/interrupt';
 import type { Transport, TransportRequest } from '../transport';
 import { TransportError } from '../transport';
 import { runAgUiAttempt } from '../transport/ag-ui-run-driver';
@@ -32,6 +33,10 @@ export type LogicalRunRequestContext = LogicalRunAttemptContext;
  * @internal
  */
 export interface ExecuteLogicalRunOptions {
+  /** Disables replay after an identity-validated start for this resumed model run. */
+  readonly isResume?: boolean;
+  /** Rechecks eligibility immediately before every transport send. */
+  readonly beforeSend?: () => void;
   readonly transport: Transport;
   readonly retries: number;
   readonly cancelSignal: AbortSignal;
@@ -60,6 +65,7 @@ export interface ExecuteLogicalRunOptions {
  */
 export type LogicalRunOutcome =
   | { readonly kind: 'finished' }
+  | { readonly kind: 'interrupted'; readonly interrupts: readonly Interrupt[] }
   | { readonly kind: 'server-error'; readonly error: Error }
   | { readonly kind: 'cancelled' }
   | { readonly kind: 'retired' }
@@ -76,6 +82,8 @@ export type LogicalRunOutcome =
  */
 export async function executeLogicalRun({
   transport,
+  isResume = false,
+  beforeSend,
   retries,
   cancelSignal,
   retiredSignal,
@@ -101,6 +109,7 @@ export async function executeLogicalRun({
     };
     const request = createRequest(context);
     let primaryError: Error | undefined;
+    let acknowledged = false;
     try {
       onAttemptStarted?.(context);
       const outcome = await runAgUiAttempt({
@@ -108,7 +117,11 @@ export async function executeLogicalRun({
         request,
         cancelSignal,
         retiredSignal,
-        onStarted: () => onStarted(context),
+        beforeSend,
+        onStarted: () => {
+          acknowledged = true;
+          return onStarted(context);
+        },
         onEvent: (event) => onEvent(event, context),
       });
 
@@ -116,7 +129,7 @@ export async function executeLogicalRun({
         onAttemptRolledBack?.(context, undefined);
         return { kind: 'retired' };
       }
-      if (outcome.kind === 'finished') {
+      if (outcome.kind === 'finished' || outcome.kind === 'interrupted') {
         return outcome;
       }
       if (outcome.kind === 'server-error') {
@@ -152,6 +165,9 @@ export async function executeLogicalRun({
         code: 'PROTOCOL_ERROR',
       });
     onAttemptRolledBack?.(context, error);
+    if (isResume && acknowledged) {
+      return { kind: 'failed', error, exhaustedRetries: false };
+    }
     const failureDecision = decideLogicalRunFailure(retryState, error);
     if (failureDecision.kind === 'stop') {
       return {

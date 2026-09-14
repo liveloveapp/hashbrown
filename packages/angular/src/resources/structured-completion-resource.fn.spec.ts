@@ -6,6 +6,25 @@ import { vi } from 'vitest';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import { structuredCompletionResource } from './structured-completion-resource.fn';
 
+vi.mock('@hashbrownai/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@hashbrownai/core')>();
+  return {
+    ...actual,
+    ɵassertRuntimeMessageSchedulingAllowed: vi.fn(),
+    ɵgetRuntimeSchedulingState: () =>
+      Object.assign(
+        () => ({
+          threadEpoch: 0,
+          successfulResumes: 0,
+          recoveryRequired: false,
+          isResuming: false,
+          pending: false,
+        }),
+        { subscribe: () => () => undefined },
+      ),
+  };
+});
+
 vi.mock('./structured-chat-resource.fn', () => ({
   structuredChatResource: vi.fn(),
 }));
@@ -18,6 +37,9 @@ const createChatStub = (
   error = signal<Error | undefined>(undefined),
 ) => {
   return {
+    pendingInterrupts: signal(undefined),
+    isResuming: signal(false),
+    resume: vi.fn(),
     state: signal<unknown>(undefined),
     setState: vi.fn(),
     value: valueSignal,

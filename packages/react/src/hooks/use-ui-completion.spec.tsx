@@ -28,6 +28,10 @@ test('useUiCompletion converts structured output into rendered React elements', 
     ],
   };
   useStructuredCompletionMock.mockReturnValue({
+    pendingInterrupts: undefined,
+    isResuming: false,
+    resume: vi.fn(),
+    stop: vi.fn(),
     output: structuredOutput,
     reload: vi.fn(),
     error: undefined,
@@ -84,6 +88,10 @@ test('useUiCompletion renders fallbacks when props are still streaming', () => {
   };
 
   useStructuredCompletionMock.mockReturnValue({
+    pendingInterrupts: undefined,
+    isResuming: false,
+    resume: vi.fn(),
+    stop: vi.fn(),
     output: structuredOutput,
     reload: vi.fn(),
     error: undefined,
@@ -137,6 +145,10 @@ test('useUiCompletion returns null output when the structured completion is empt
   useStructuredCompletionMock.mockReset();
 
   useStructuredCompletionMock.mockReturnValue({
+    pendingInterrupts: undefined,
+    isResuming: false,
+    resume: vi.fn(),
+    stop: vi.fn(),
     output: null,
     reload: vi.fn(),
     error: undefined,
@@ -188,6 +200,10 @@ test('useUiCompletion accepts UiKit inputs and renders their components', () => 
     ],
   };
   useStructuredCompletionMock.mockReturnValue({
+    pendingInterrupts: undefined,
+    isResuming: false,
+    resume: vi.fn(),
+    stop: vi.fn(),
     output: structuredOutput,
     reload: vi.fn(),
     error: undefined,
@@ -259,6 +275,10 @@ test('useUiCompletion compiles system prompts with normalized components', () =>
   };
 
   useStructuredCompletionMock.mockReturnValue({
+    pendingInterrupts: undefined,
+    isResuming: false,
+    resume: vi.fn(),
+    stop: vi.fn(),
     output: null,
     reload: vi.fn(),
     error: undefined,
@@ -294,6 +314,10 @@ test('useUiCompletion compiles system prompts with normalized components', () =>
 test('useUiCompletion propagates thread identity without exposing persistence state', () => {
   useStructuredCompletionMock.mockReset();
   useStructuredCompletionMock.mockReturnValue({
+    pendingInterrupts: undefined,
+    isResuming: false,
+    resume: vi.fn(),
+    stop: vi.fn(),
     output: null,
     reload: vi.fn(),
     error: undefined,
@@ -339,6 +363,10 @@ test('useUiCompletion forwards and returns shared agent state unchanged', () => 
   const setState = vi.fn();
   useStructuredCompletionMock.mockReset();
   useStructuredCompletionMock.mockReturnValue({
+    pendingInterrupts: undefined,
+    isResuming: false,
+    resume: vi.fn(),
+    stop: vi.fn(),
     output: null,
     reload: vi.fn(),
     error: undefined,

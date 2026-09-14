@@ -1,3 +1,5 @@
+import { initialInterruptsState } from '../reducers/interrupts.reducer';
+import { ɵselectInterrupts } from '../reducers';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { createChatRuntime } from '../chat-runtime';
@@ -86,6 +88,7 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
   const actions: ActionLike[] = [];
   const handlers: TestHandler[] = [];
   const defaults: SelectorMap = new Map<SelectorKey, unknown>([
+    [ɵselectInterrupts, initialInterruptsState],
     [selectResponseSchema, undefined],
     [
       ɵselectEffectiveCommittedAgUiMessages,
@@ -3531,7 +3534,7 @@ test('a synchronous messages subscriber settles tools before superseding', async
 });
 
 test.each(['thread replacement', 'teardown'] as const)(
-  'a synchronous messages subscriber settles tools during %s retirement',
+  'a synchronous messages subscriber respects checkpoint ownership during %s retirement',
   async (retirement) => {
     jest.clearAllMocks();
     const handler = jest.fn(async () => 'unused');
@@ -3587,10 +3590,13 @@ test.each(['thread replacement', 'teardown'] as const)(
         .find((message) => message.role === 'assistant')?.toolCalls[0];
 
       expect(retired).toBe(true);
-      expect(toolCall).toMatchObject({
-        status: 'done',
-        result: { status: 'rejected' },
-      });
+      // A different thread retires ownership before cancellation callbacks;
+      // teardown retains the existing local cancellation settlement behavior.
+      expect(toolCall).toMatchObject(
+        retirement === 'thread replacement'
+          ? { status: 'pending' }
+          : { status: 'done', result: { status: 'rejected' } },
+      );
       expect(handler).not.toHaveBeenCalled();
       expect(send).toHaveBeenCalledTimes(1);
     } finally {
@@ -4196,7 +4202,7 @@ test.each([
   { label: 'empty replacement', nextThreadId: '' },
   { label: 'explicit clearing', nextThreadId: undefined },
 ] as const)(
-  'a $label thread ID settles one active tool turn without continuation',
+  'a $label thread ID retires active tools without changing the committed checkpoint',
   async ({ nextThreadId }) => {
     jest.clearAllMocks();
     const handlerStarted = createDeferred<void>();
@@ -4232,16 +4238,16 @@ test.each([
     try {
       runtime.sendMessage({ role: 'user', content: 'Record a value.' });
       await handlerStarted.promise;
+      const checkpoint = runtime.messages();
       runtime.updateOptions({ threadId: nextThreadId });
       const toolCall = runtime
         .messages()
         .find((message) => message.role === 'assistant')?.toolCalls[0];
 
       expect(toolSignal?.aborted).toBe(true);
-      expect(toolCall).toMatchObject({
-        status: 'done',
-        result: { status: 'rejected' },
-      });
+      expect(toolCall).toMatchObject({ status: 'pending' });
+      expect(runtime.messages()).toEqual(checkpoint);
+      // The attempted cancellation settlement is stale and changes no history.
       expect(settlements).toHaveBeenCalledTimes(1);
       expect(send).toHaveBeenCalledTimes(1);
     } finally {

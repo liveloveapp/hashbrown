@@ -13,8 +13,11 @@ import {
 import {
   Chat,
   createChatRuntime,
+  type PendingInterruptBatch,
+  type ResumeOptions,
   s,
   type TransportOrFactory,
+  ɵassertRuntimeMessageSchedulingAllowed,
 } from '@hashbrownai/core';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readReactiveOption, toNgSignal } from '../utils/signals';
@@ -42,6 +45,13 @@ export interface StructuredChatResourceRef<
 > extends Resource<Chat.Message<Output, Tools>[]> {
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;
+  /** The complete pending interrupt batch, including while claimed. */
+  readonly pendingInterrupts: Signal<PendingInterruptBatch | undefined>;
+  /** Whether the resumed interaction is still running. */
+  readonly isResuming: Signal<boolean>;
+  /** Submit a complete response batch to resume the interrupted interaction. */
+  resume(options: ResumeOptions): void;
+
   /** Replace shared agent state without starting a generation. */
   setState(state: State): void;
   /**
@@ -230,13 +240,24 @@ export function structuredChatResource<
         : undefined,
   });
 
+  let previousThreadId =
+    options.threadId !== undefined
+      ? readReactiveOption(options.threadId)
+      : undefined;
   const optionsEffect = effect(() => {
+    const threadId =
+      options.threadId !== undefined
+        ? readReactiveOption(options.threadId)
+        : undefined;
+    const threadChanged = threadId !== previousThreadId;
+    previousThreadId = threadId;
     runtime.updateOptions({
       system: readReactiveOption(options.system),
       transport: resolveTransport(),
       ui: options.ui ?? false,
-      ...(options.threadId !== undefined
-        ? { threadId: readReactiveOption(options.threadId) }
+      ...(Object.hasOwn(options, 'threadId') &&
+      (threadChanged || threadId !== undefined)
+        ? { threadId }
         : {}),
     });
   });
@@ -252,6 +273,8 @@ export function structuredChatResource<
     runtime.messages,
     options.debugName && `${options.debugName}.rawValue`,
   );
+  const pendingInterrupts = toNgSignal(runtime.pendingInterrupts);
+  const isResuming = toNgSignal(runtime.isResuming);
   const state = toNgSignal(
     runtime.state,
     options.debugName && `${options.debugName}.state`,
@@ -329,6 +352,7 @@ export function structuredChatResource<
   );
 
   function reload() {
+    ɵassertRuntimeMessageSchedulingAllowed(runtime);
     const messages = rawValue();
     const lastMessage = messages[messages.length - 1];
 
@@ -369,6 +393,9 @@ export function structuredChatResource<
   }
 
   return {
+    pendingInterrupts,
+    isResuming,
+    resume: runtime.resume,
     hasValue: hasValue as any,
     snapshot,
     status,

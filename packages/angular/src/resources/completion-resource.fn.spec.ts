@@ -11,6 +11,19 @@ vi.mock('@hashbrownai/core', async (importOriginal) => {
   return {
     ...actual,
     createChatRuntime: createChatRuntimeMock,
+    ɵgetRuntimeSchedulingState: () =>
+      Object.assign(
+        () => ({
+          threadEpoch: 0,
+          successfulResumes: 0,
+          recoveryRequired: false,
+          isResuming: false,
+          pending: false,
+        }),
+        { subscribe: () => () => undefined },
+      ),
+
+    ɵassertRuntimeMessageSchedulingAllowed: vi.fn(),
   };
 });
 
@@ -461,6 +474,9 @@ function createRuntimeStub({
   return {
     state,
     messages: messagesSignal,
+    pendingInterrupts: createSignal(undefined),
+    isResuming: createSignal(false),
+    resume: vi.fn(),
     isReceiving: createSignal(false),
     isSending: createSignal(false),
     isGenerating: createSignal(false),

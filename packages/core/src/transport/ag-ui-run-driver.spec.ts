@@ -773,3 +773,87 @@ test.each([
     expect(request.signal.aborted).toBe(false);
   },
 );
+
+test('owns an interrupted outcome before terminal acceptance', async () => {
+  const request = createRequest();
+  const interrupts = [
+    { id: 'approve', reason: 'approval', metadata: { count: 1 } },
+  ];
+  const finished = {
+    ...createFinished(request),
+    outcome: { type: 'interrupt', interrupts },
+  } as AGUIEvent;
+  const onEvent = jest.fn((event: AGUIEvent) => {
+    if (event.type === EventType.RUN_FINISHED) interrupts[0].metadata.count = 9;
+  });
+  const transport = createTransport(async () => ({
+    events: createEvents([createStarted(request), finished]),
+  }));
+
+  const outcome = await runAttempt({ transport, request, onEvent });
+
+  expect(outcome).toEqual({
+    kind: 'interrupted',
+    interrupts: [{ id: 'approve', reason: 'approval', metadata: { count: 1 } }],
+  });
+  const accepted = onEvent.mock.calls[1][0];
+  expect(accepted).not.toBe(finished);
+  expect(accepted).toMatchObject({
+    outcome: { interrupts: [{ metadata: { count: 1 } }] },
+  });
+  expect(
+    Object.isFrozen(
+      (accepted as typeof finished & { outcome: { interrupts: unknown[] } })
+        .outcome.interrupts,
+    ),
+  ).toBe(true);
+});
+
+test.each([
+  null,
+  { type: 'unknown' },
+  { type: 'interrupt', interrupts: [] },
+  {
+    type: 'interrupt',
+    interrupts: [
+      { id: 'a', reason: 'x' },
+      { id: 'a', reason: 'x' },
+    ],
+  },
+])(
+  'rejects invalid interrupt outcome %j before acceptance and disposes',
+  async (outcome) => {
+    const request = createRequest();
+    const finished = { ...createFinished(request), outcome } as AGUIEvent;
+    const dispose = jest.fn();
+    const onEvent = jest.fn();
+    const transport = createTransport(async () => ({
+      events: createEvents([createStarted(request), finished]),
+      dispose,
+    }));
+
+    const attempt = runAttempt({ transport, request, onEvent });
+
+    await expect(attempt).rejects.toMatchObject({
+      code: 'PROTOCOL_ERROR',
+      retryable: false,
+    });
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(dispose).toHaveBeenCalledTimes(1);
+  },
+);
+
+test('treats an explicit success outcome as finished', async () => {
+  const request = createRequest();
+  const finished = {
+    ...createFinished(request),
+    outcome: { type: 'success' },
+  } as AGUIEvent;
+  const transport = createTransport(async () => ({
+    events: createEvents([createStarted(request), finished]),
+  }));
+
+  const outcome = await runAttempt({ transport, request });
+
+  expect(outcome).toEqual({ kind: 'finished' });
+});

@@ -13,6 +13,7 @@ vi.mock('@hashbrownai/core', async (importOriginal) => {
     ...actual,
     createHttpTransport: createHttpTransportMock,
     createChatRuntime: createChatRuntimeMock,
+    ɵassertRuntimeMessageSchedulingAllowed: vi.fn(),
   };
 });
 
@@ -193,6 +194,9 @@ function createRuntimeStub({
   return {
     state,
     messages: createSignal(messages),
+    pendingInterrupts: createSignal(undefined),
+    isResuming: createSignal(false),
+    resume: vi.fn(),
     isReceiving: createSignal(false),
     isSending: createSignal(false),
     isGenerating: createSignal(false),

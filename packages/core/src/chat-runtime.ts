@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { PendingInterruptBatch, ResumeOptions } from './models/interrupt';
+import { validateResumeOptions } from './transport/interrupt-validation';
 /**
  * Core entry point for the Hashbrown framework.
  * Provides state management and messaging utilities for integrating LLM-based chat interactions into frontend applications.
@@ -8,28 +10,38 @@ import effects from './effects';
 import { Chat } from './models';
 import {
   reducers,
+  selectDebounce,
   selectExhaustedRetries,
   selectGeneratingError,
   selectIsGenerating,
   selectIsLoading,
   selectIsReceiving,
+  selectIsResuming,
   selectIsRunningToolCalls,
   selectIsSending,
   selectLastAssistantMessage,
+  selectPendingInterrupts,
   selectResponseSchema,
+  selectRetries,
   selectSendingError,
   selectThreadId,
   selectToolEntities,
+  selectTools,
+  selectTransport,
+  selectUiRequested,
   selectUnifiedError,
   selectViewMessages,
   ɵprepareRootAction,
+  ɵselectCommittedAgentState,
   ɵselectCommittedAgUiMessages,
+  ɵselectEffectiveCommittedAgUiMessages,
+  ɵselectInterrupts,
   ɵselectStateWriteLocked,
   ɵselectToolTurnOwnership,
   ɵselectVisibleAgentState,
 } from './reducers';
 import { s } from './schema';
-import { createStore, StateSignal } from './utils/micro-ngrx';
+import { createStore, select, StateSignal } from './utils/micro-ngrx';
 import { createHttpTransport, TransportOrFactory } from './transport';
 import {
   createSystemMessage,
@@ -38,6 +50,50 @@ import {
   ɵpairViewMessagesWithAgUi,
 } from './reducers/ag-ui-message-history';
 import { cloneAndFreezeOptionalJsonValue } from './utils';
+
+/** Settlement and thread ownership used by completion adapters. @internal */
+export interface ɵRuntimeSchedulingState {
+  readonly threadEpoch: number;
+  readonly successfulResumes: number;
+  readonly recoveryRequired: boolean;
+  readonly isResuming: boolean;
+  readonly pending: boolean;
+}
+
+const runtimeSchedulingSignals = new WeakMap<
+  object,
+  StateSignal<ɵRuntimeSchedulingState>
+>();
+
+/**
+ * Reads runtime-owned scheduling without extending facade APIs.
+ * Facades must forward the runtime's `resume` function unchanged: its identity
+ * is the private lookup key shared by chat and completion adapters.
+ * @internal
+ */
+export function ɵgetRuntimeSchedulingState(runtime: {
+  readonly resume: (options: ResumeOptions) => void;
+}): StateSignal<ɵRuntimeSchedulingState> {
+  const signal = runtimeSchedulingSignals.get(runtime.resume);
+  if (!signal) throw new Error('Unknown chat runtime.');
+  return signal;
+}
+
+const runtimeMessagePreflights = new WeakMap<object, () => void>();
+
+/**
+ * Rejects message scheduling when runtime interrupt ownership requires a pause
+ * or recovery, including synchronous claims and thread retirement.
+ * @param runtime - The runtime or facade forwarding its unchanged resume command.
+ * @internal
+ */
+export function ɵassertRuntimeMessageSchedulingAllowed(runtime: {
+  readonly resume: (options: ResumeOptions) => void;
+}): void {
+  const assertAllowed = runtimeMessagePreflights.get(runtime.resume);
+  if (!assertAllowed) throw new Error('Unknown chat runtime.');
+  assertAllowed();
+}
 
 /**
  * A stateful client runtime for sending messages, processing AG-UI events,
@@ -53,6 +109,13 @@ export interface ChatRuntime<
   Tools extends Chat.AnyTool,
   State = unknown,
 > {
+  /** The current batch, retained until the server acknowledges resume. */
+  readonly pendingInterrupts: StateSignal<PendingInterruptBatch | undefined>;
+  /** Whether the whole resumed interaction is still executing. */
+  readonly isResuming: StateSignal<boolean>;
+  /** Validate and synchronously claim a complete interrupt response batch. */
+  resume(options: ResumeOptions): void;
+
   /** The currently visible shared agent state. */
   readonly state: StateSignal<State | undefined>;
 
@@ -253,6 +316,7 @@ export function createChatRuntime(init: {
     let stopObservingAction: () => void = () => undefined;
     pendingStateWriteLockReservations.add(reservationId);
     stopObservingAction = state.when(
+      devActions.resume,
       devActions.sendMessage,
       devActions.setMessages,
       devActions.resendMessages,
@@ -280,10 +344,19 @@ export function createChatRuntime(init: {
     });
   }
 
+  let synchronousThreadChange:
+    { readonly threadId: string | undefined } | undefined;
+  let synchronousStateWrite:
+    | { readonly value: ReturnType<typeof cloneAndFreezeOptionalJsonValue> }
+    | undefined;
+
   function setState(nextState: unknown) {
     if (
+      synchronousResumeClaim !== undefined ||
+      (!synchronousThreadChange &&
+        state.read(ɵselectInterrupts).claimId !== undefined) ||
       pendingStateWriteLockReservations.size > 0 ||
-      state.read(ɵselectStateWriteLocked)
+      (!synchronousThreadChange && state.read(ɵselectStateWriteLocked))
     ) {
       throw new Error(
         'Cannot set shared state while generation is in progress.',
@@ -291,10 +364,74 @@ export function createChatRuntime(init: {
     }
 
     const ownedState = cloneAndFreezeOptionalJsonValue(nextState);
+    const write = { value: ownedState };
+    synchronousStateWrite = write;
     state.dispatch(devActions.setState({ state: ownedState }));
+    void Promise.resolve().then(() => {
+      if (synchronousStateWrite === write) synchronousStateWrite = undefined;
+    });
+  }
+
+  let synchronousResumeClaim: string | undefined;
+
+  function assertMessageSchedulingAllowed() {
+    if (synchronousThreadChange) return;
+    const interrupts = state.read(ɵselectInterrupts);
+    if (interrupts.recoveryRequired)
+      throw new Error('Recovery requires a new thread.');
+    if (interrupts.pending || synchronousResumeClaim)
+      throw new Error(
+        'Cannot change messages while an interrupt batch is pending or claimed.',
+      );
+  }
+
+  function resume(options: ResumeOptions) {
+    if (synchronousThreadChange) throw new Error('Stale interrupt batch.');
+    const interrupts = state.read(ɵselectInterrupts);
+    if (interrupts.recoveryRequired)
+      throw new Error('Recovery requires a new thread.');
+    if (interrupts.claimId || synchronousResumeClaim)
+      throw new Error('Interrupt batch already claimed.');
+    if (!interrupts.pending) throw new Error('Stale interrupt batch.');
+    const ownedOptions = validateResumeOptions(
+      interrupts.pending,
+      options,
+      Date.now(),
+    );
+    const claimId = createCanonicalId();
+    const checkpoint = {
+      messages: state.read(ɵselectEffectiveCommittedAgUiMessages),
+      state: synchronousStateWrite
+        ? synchronousStateWrite.value
+        : state.read(ɵselectCommittedAgentState),
+      responseSchema: state.read(selectResponseSchema),
+      debounce: state.read(selectDebounce),
+      retries: state.read(selectRetries),
+      internalTools: state.read(selectTools),
+      toolsByName: state.read(selectToolEntities),
+      uiRequested: state.read(selectUiRequested),
+      transportProvider: state.read(selectTransport),
+    };
+    synchronousResumeClaim = claimId;
+    try {
+      dispatchGenerationSchedulingAction(
+        devActions.resume({
+          claimId,
+          batch: interrupts.pending,
+          options: ownedOptions,
+          checkpoint,
+        }),
+      );
+    } finally {
+      void Promise.resolve().then(() => {
+        if (synchronousResumeClaim === claimId)
+          synchronousResumeClaim = undefined;
+      });
+    }
   }
 
   function setMessages(messages: Chat.Message<any, Chat.AnyTool>[]) {
+    assertMessageSchedulingAllowed();
     const responseSchema = state.read(selectResponseSchema);
     const toolsByName = state.read(selectToolEntities);
     const lowered = lowerWithProjection(messages as Chat.AnyMessage[]);
@@ -310,6 +447,7 @@ export function createChatRuntime(init: {
   }
 
   function sendMessage(message: Chat.Message<any, Chat.AnyTool>) {
+    assertMessageSchedulingAllowed();
     const lowered = lowerWithProjection([message as Chat.AnyMessage]);
     const canonicalAppendCompatible = (() => {
       try {
@@ -336,6 +474,7 @@ export function createChatRuntime(init: {
   }
 
   function resendMessages() {
+    assertMessageSchedulingAllowed();
     dispatchGenerationSchedulingAction(devActions.resendMessages());
   }
 
@@ -352,19 +491,44 @@ export function createChatRuntime(init: {
       threadId?: string | undefined;
     }>,
   ) {
-    state.dispatch(
-      devActions.updateOptions({
-        ...options,
-        ...(Object.hasOwn(options, 'system')
-          ? {
-              systemMessage: createSystemMessage(
-                systemMessageId,
-                options.system ?? '',
-              ),
-            }
-          : {}),
-      }),
-    );
+    const threadChanged =
+      Object.hasOwn(options, 'threadId') &&
+      options.threadId !==
+        (synchronousThreadChange
+          ? synchronousThreadChange.threadId
+          : state.read(selectThreadId));
+    if (threadChanged) {
+      const change = { threadId: options.threadId };
+      synchronousThreadChange = change;
+      void Promise.resolve().then(() => {
+        if (synchronousThreadChange === change)
+          synchronousThreadChange = undefined;
+      });
+      synchronousResumeClaim = undefined;
+      pendingStateWriteLockReservations.clear();
+    }
+    const update = devActions.updateOptions({
+      ...options,
+      ...(Object.hasOwn(options, 'system')
+        ? {
+            systemMessage: createSystemMessage(
+              systemMessageId,
+              options.system ?? '',
+            ),
+          }
+        : {}),
+    });
+    if (threadChanged) {
+      void state.dispatchAndWait(
+        internalActions.threadUpdateStarted(),
+        (followUps) => {
+          followUps.dispatch(internalActions.interruptThreadRetired());
+          followUps.dispatch(update);
+        },
+      );
+    } else {
+      state.dispatch(update);
+    }
   }
 
   function start() {
@@ -388,7 +552,10 @@ export function createChatRuntime(init: {
   }
 
   function stop(clearStreamingMessage = false) {
-    const isLoading = state.read(selectIsLoading);
+    const isLoading =
+      state.read(selectIsLoading) ||
+      state.read(selectIsResuming) ||
+      synchronousResumeClaim !== undefined;
     const hasReservedToolTurn =
       state.read(ɵselectToolTurnOwnership) !== undefined;
 
@@ -396,10 +563,28 @@ export function createChatRuntime(init: {
       throw new Error('Cannot stop streaming messages when not streaming.');
     }
 
+    synchronousResumeClaim = undefined;
     state.dispatch(devActions.stopMessageGeneration(clearStreamingMessage));
   }
 
-  return {
+  const pendingSignal = state.createSignal(selectPendingInterrupts);
+  const threadSignal = state.createSignal(selectThreadId);
+  const resumingSignal = state.createSignal(selectIsResuming);
+  const loadingSignal = state.createSignal(
+    (root) => selectIsLoading(root) || selectIsResuming(root),
+  );
+  const runtime = {
+    resume,
+    pendingInterrupts: Object.assign(
+      () => (synchronousThreadChange ? undefined : pendingSignal()),
+      { subscribe: pendingSignal.subscribe },
+    ),
+    isResuming: Object.assign(
+      () =>
+        synchronousResumeClaim !== undefined ||
+        (!synchronousThreadChange && resumingSignal()),
+      { subscribe: resumingSignal.subscribe },
+    ),
     setState,
     setMessages,
     sendMessage,
@@ -414,11 +599,34 @@ export function createChatRuntime(init: {
     isSending: state.createSignal(selectIsSending),
     isGenerating: state.createSignal(selectIsGenerating),
     isRunningToolCalls: state.createSignal(selectIsRunningToolCalls),
-    isLoading: state.createSignal(selectIsLoading),
+    isLoading: Object.assign(
+      () => synchronousResumeClaim !== undefined || loadingSignal(),
+      { subscribe: loadingSignal.subscribe },
+    ),
     sendingError: state.createSignal(selectSendingError),
     generatingError: state.createSignal(selectGeneratingError),
     exhaustedRetries: state.createSignal(selectExhaustedRetries),
     lastAssistantMessage: state.createSignal(selectLastAssistantMessage),
-    threadId: state.createSignal(selectThreadId),
+    threadId: Object.assign(
+      () =>
+        synchronousThreadChange
+          ? synchronousThreadChange.threadId
+          : threadSignal(),
+      { subscribe: threadSignal.subscribe },
+    ),
   };
+  runtimeMessagePreflights.set(runtime.resume, assertMessageSchedulingAllowed);
+  runtimeSchedulingSignals.set(
+    runtime.resume,
+    state.createSignal(
+      select(ɵselectInterrupts, (interrupts) => ({
+        threadEpoch: interrupts.epoch,
+        successfulResumes: interrupts.successfulResumes,
+        recoveryRequired: interrupts.recoveryRequired,
+        isResuming: interrupts.generationId !== undefined,
+        pending: interrupts.pending !== undefined,
+      })),
+    ),
+  );
+  return runtime;
 }
