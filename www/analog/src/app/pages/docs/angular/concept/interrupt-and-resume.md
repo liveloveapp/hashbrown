@@ -19,6 +19,25 @@ Read `chat.pendingInterrupts()` to obtain the batch or `undefined`. A batch cont
 
 `responseSchema` is the server's JSON Schema object, preserved as immutable data. Your application can use it to build a form and validate answers. Hashbrown checks JSON compatibility and batch ownership but does not compile a JSON Schema validator.
 
+For example, a server can ask for a boolean approval object:
+
+```json
+{
+  "id": "purchase",
+  "reason": "input_required",
+  "message": "Approve this purchase?",
+  "responseSchema": {
+    "type": "object",
+    "properties": { "approved": { "type": "boolean" } },
+    "required": ["approved"],
+    "additionalProperties": false
+  }
+}
+```
+
+Hashbrown preserves that schema object. Your form validates an answer such as
+`{ "approved": true }`, and the server remains authoritative about accepting it.
+
 Keep form drafts associated with the batch ID originally displayed. Do not substitute the newest batch ID when submitting an old form.
 
 ## Submit Every Response Together

@@ -15,7 +15,7 @@
 - Work in `/Users/blove/.codex/worktrees/519e/hashbrown`, branch `blove/ag-ui-interrupt-resume`, based on current origin/main `cd58105`.
 - Follow AGENTS.md. Top-level `test(...)` only; arrange/act/assert blank lines. Public/reusable APIs require TSDoc. Internal cross-package exports use `ɵ`; public signatures do not.
 - For every behavior: write the test, observe its expected assertion failure, implement the smallest change, rerun, then refactor. Missing-import/type failures must not be the only red evidence; add minimal declarations if necessary so the behavior assertion fails.
-- Use `npx nx <target> <project>` for targets. Set `NX_DAEMON=false` for reproducible local runs. Focused core tests use `--runInBand --testFile=<file> --skipNxCache`.
+- Use `npx nx <target> <project>` for targets. React lint is the inferred `npx nx eslint:lint react` target (there is no `react:lint` alias). Set `NX_DAEMON=false` for reproducible local runs. Focused core tests use `--runInBand --testFile=<file> --skipNxCache`.
 - Store progress/evidence in this plan. Commit exact task files after focused tests and diff checks; no product-name references in commit/PR text. Do not stage unrelated changes.
 - Implementation review has separate spec-compliance and code-quality passes. Fix important findings before proceeding; final verification is not replaced by focused tests.
 
@@ -227,3 +227,35 @@ Core Tasks 3–4 passed independent quality review at 58554aa. Reviewer reran al
 21 runtime tests and found no important issues. Task 5 chat facade parity is
 in progress across React/Angular text, structured, and UI families. Preserve
 raw resume command identity and keep completion scheduling scoped to Task 6.
+
+Task 5 GREEN checkpoint: React 101 tests, Angular 170 tests, core 1,027 tests
+and 17 snapshots passed. Core now provides a private reload preflight using the
+same synchronous runtime guard as message commands. Current React Nx metadata
+confirms its lint target is eslint:lint. Angular UI declarations will include
+its already-returned reload/setMessages methods for typed parity tests.
+
+Completion inspection found that React text/structured completion results do
+not currently forward chat.stop (UI completion inherits that omission). To make
+the approved before/after-acknowledgment stop behavior usable, Task 6 must expose
+the existing stop command through those completion results with public TSDoc
+and tests; Angular completion already provides it. This is command forwarding,
+not a new cancellation implementation.
+
+Task 5 completed as 672a3f7 and passed independent spec and quality reviews.
+Final verification: React 102, Angular 170, core 1,027 tests / 17 snapshots;
+all three builds and API reports passed. Core/Angular lint clean; React
+eslint:lint reports five existing warnings. Reviewers confirmed all six chat
+facades preserve resume identity, readonly projections, synchronous guards,
+and thread-option semantics. Task 6 completion deferral is in progress.
+
+Task 7 chat browser GREEN: 16 cases passed across Angular and React against the
+independent HTTP/SSE endpoint, covering complete batches, historical tool
+results without local execution, fresh IDs, expiry, pre/post-start stop and
+failure ownership, and partial structured output. Completion fixtures were
+temporarily excluded from this run and restored afterward; their two cases
+remain pending Task 6. Log: /tmp/hashbrown-pr2-chat-browser-green.log.
+Docs tests (5) passed and lint retained the same 27 existing warnings.
+
+Docs build passed after adding the concrete preserved responseSchema example
+to both framework pages. Existing API extraction/configuration warnings remain;
+generated TSDoc line-ending churn was removed. Smoke typecheck and lint passed.
