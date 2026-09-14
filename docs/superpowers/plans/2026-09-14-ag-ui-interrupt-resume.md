@@ -73,7 +73,7 @@ const entries = [
 
 **Files:** new `reducers/interrupts.reducer.ts`/`.spec.ts`; `actions/dev.actions.ts`, `actions/internal.actions.ts`, `reducers/index.ts`/`.spec.ts`, `chat-runtime.ts`/`.spec.ts`, `reducers/agent-state.reducer.ts` and relevant tests.
 
-- [ ] Write pure reducer transitions and runtime preflight tests before implementing. Add minimal declarations to reach behavioral red if necessary. Cover lifecycle below, stale generation/attempt tokens, and all no-op releases from replaced ownership.
+- [x] Write pure reducer transitions and runtime preflight tests before implementing. Add minimal declarations to reach behavioral red if necessary. Cover lifecycle below, stale generation/attempt tokens, and all no-op releases from replaced ownership.
 
 ```text
 valid interrupt terminal -> pending(batch)
@@ -87,25 +87,25 @@ another interrupt -> pending(new batch ID)
 different thread -> idle; old callbacks rejected
 ```
 
-- [ ] Reserve ownership synchronously before asynchronous scheduling. Extend the runtime's reentrant reservation pattern and root action preparation so two calls in the same stack cannot both claim; a listener calling resume/setState during dispatch cannot race validation. Invalid API calls mutate nothing.
-- [ ] Expose `pendingInterrupts`, `isResuming`, and `resume(options): void`. Keep batch ID out of shared state/wire payload. Register resume as an explicit scheduling action even if the canonical tail normally would not trigger generation.
-- [ ] Test `setState()` allowed while pending; same-stack state write after valid claim rejected; invalid resume leaves state writable. Capture state/messages/options required for resume before debounce/factory resolution (the existing factory is synchronous).
-- [ ] Test pending/claimed send/setMessages/resend/reload rejection; recovery guard blocks every scheduling route. Retain existing explicit-message supersession after consumption unless recovery is required, as approved; deferred completion input remains blocked until success.
-- [ ] Test same effective thread ID no-op, changed ID/explicit undefined retirement, stable local checkpoint, no stale callback mutation, new identity when generated from undefined. Updating unrelated options must not retire a batch.
-- [ ] Run reducer/root/runtime tests green; commit `feat(core): own interrupt batches and synchronous resume claims`.
+- [x] Reserve ownership synchronously before asynchronous scheduling. Extend the runtime's reentrant reservation pattern and root action preparation so two calls in the same stack cannot both claim; a listener calling resume/setState during dispatch cannot race validation. Invalid API calls mutate nothing.
+- [x] Expose `pendingInterrupts`, `isResuming`, and `resume(options): void`. Keep batch ID out of shared state/wire payload. Register resume as an explicit scheduling action even if the canonical tail normally would not trigger generation.
+- [x] Test `setState()` allowed while pending; same-stack state write after valid claim rejected; invalid resume leaves state writable. Capture state/messages/options required for resume before debounce/factory resolution (the existing factory is synchronous).
+- [x] Test pending/claimed send/setMessages/resend/reload rejection; recovery guard blocks every scheduling route. Retain existing explicit-message supersession after consumption unless recovery is required, as approved; deferred completion input remains blocked until success.
+- [x] Test same effective thread ID no-op, changed ID/explicit undefined retirement, stable local checkpoint, no stale callback mutation, new identity when generated from undefined. Updating unrelated options must not retire a batch.
+- [x] Run reducer/root/runtime tests green; commit `feat(core): own interrupt batches and synchronous resume claims`.
 
 ## Task 4: Atomic checkpoint finish, hard pause, and recovery integration
 
 **Files:** `effects/generate-message.effects.ts`/`.spec.ts`; `reducers/streaming-message.reducer.ts`/`.spec.ts`; `reducers/ag-ui-message-accumulator.ts`/`.spec.ts`; `reducers/status.reducer.ts`/`.spec.ts`; `reducers/index.spec.ts`; `chat-runtime.spec.ts`.
 
-- [ ] Write gated transcripts that publish STATE_SNAPSHOT/DELTA, MESSAGES_SNAPSHOT, proposed calls, then interrupt. Assert a subscriber observes committed messages/state/batch with idle flags atomically and a registered matching handler has zero invocations. Observe red.
-- [ ] Split interrupt finish from ordinary finish in the coordinator effect. Validate before acceptance, commit all slices in the existing store transaction, never reserve tools, clear attempt ownership only on commit, settle interrupted interaction without manufacturing assistant output/error.
-- [ ] Add structured/UI tests where content is absent or schema-incomplete at interrupt; keep available streaming projection and canonical checkpoint without calling success-only finalization that invents Invalid structured output. Malformed events/JSON that already produced actual parser/protocol errors remain errors; do not suppress unrelated validation failures.
-- [ ] Add resume transcripts checking exact committed state/history (including paused application state edits), response entries, baseline tool IDs, and server TOOL_CALL_RESULT for old calls without a repeated start. Add a new call and prove only it executes locally.
-- [ ] Test retries roll back partial drafts; batch remains visible while claimed; matching start consumes it; stop/failure/expiry behavior matches spec; duplicate/stale resumed commands fail without affecting active execution.
-- [ ] Track interaction-wide `isResuming` through genuine new tools and ordinary follow-up runs. Initial request/retries alone carry resume. Whole-interaction terminal failure/cancel after initial acknowledgment sets recovery even if a later retry failed before its own start. Keep earlier successful checkpoints/tool results.
-- [ ] Verify thread retirement and reentrant terminal subscribers cannot leak late events, stale claims, old tool settlement, or old draft commits. Test independent new batch IDs when server reuses interrupt IDs.
-- [ ] Run focused suites and full core test/build/lint/API report/e2e. Review spec compliance, then code quality. Commit `feat(core): commit interrupted checkpoints and enforce resume lifecycle`.
+- [x] Write gated transcripts that publish STATE_SNAPSHOT/DELTA, MESSAGES_SNAPSHOT, proposed calls, then interrupt. Assert a subscriber observes committed messages/state/batch with idle flags atomically and a registered matching handler has zero invocations. Observe red.
+- [x] Split interrupt finish from ordinary finish in the coordinator effect. Validate before acceptance, commit all slices in the existing store transaction, never reserve tools, clear attempt ownership only on commit, settle interrupted interaction without manufacturing assistant output/error.
+- [x] Add structured/UI tests where content is absent or schema-incomplete at interrupt; keep available streaming projection and canonical checkpoint without calling success-only finalization that invents Invalid structured output. Malformed events/JSON that already produced actual parser/protocol errors remain errors; do not suppress unrelated validation failures.
+- [x] Add resume transcripts checking exact committed state/history (including paused application state edits), response entries, baseline tool IDs, and server TOOL_CALL_RESULT for old calls without a repeated start. Add a new call and prove only it executes locally.
+- [x] Test retries roll back partial drafts; batch remains visible while claimed; matching start consumes it; stop/failure/expiry behavior matches spec; duplicate/stale resumed commands fail without affecting active execution.
+- [x] Track interaction-wide `isResuming` through genuine new tools and ordinary follow-up runs. Initial request/retries alone carry resume. Whole-interaction terminal failure/cancel after initial acknowledgment sets recovery even if a later retry failed before its own start. Keep earlier successful checkpoints/tool results.
+- [x] Verify thread retirement and reentrant terminal subscribers cannot leak late events, stale claims, old tool settlement, or old draft commits. Test independent new batch IDs when server reuses interrupt IDs.
+- [x] Run focused suites and full core test/build/lint/API report/e2e. Review spec compliance, then code quality. Commit `feat(core): commit interrupted checkpoints and enforce resume lifecycle`.
 
 ## Task 5: Framework chat parity
 
@@ -215,3 +215,15 @@ Adapter integration notes from core review:
 - Test reload while pending even when history has no assistant value. Existing
   facade eligibility checks can return false before reaching runtime guards;
   pending/recovery rejection must not depend on having an output value.
+
+Core review fixes committed as 9952608 and 58554aa. Final core verification:
+49 suites / 1,026 tests / 17 snapshots; build, clean lint, API report, and
+2 e2e suites / 3 tests passed. Parent reran the 21 runtime tests. Spec reviewer
+approved after independently running 21 runtime and 125 effects tests; quality
+review is in progress. The additional atomic thread update regression proves
+an epoch subscriber can submit latest input once using the replacement identity.
+
+Core Tasks 3–4 passed independent quality review at 58554aa. Reviewer reran all
+21 runtime tests and found no important issues. Task 5 chat facade parity is
+in progress across React/Angular text, structured, and UI families. Preserve
+raw resume command identity and keep completion scheduling scoped to Task 6.
