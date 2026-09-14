@@ -475,13 +475,13 @@ export function createChatRuntime(init: {
       threadId?: string | undefined;
     }>,
   ) {
-    if (
+    const threadChanged =
       Object.hasOwn(options, 'threadId') &&
       options.threadId !==
         (synchronousThreadChange
           ? synchronousThreadChange.threadId
-          : state.read(selectThreadId))
-    ) {
+          : state.read(selectThreadId));
+    if (threadChanged) {
       const change = { threadId: options.threadId };
       synchronousThreadChange = change;
       void Promise.resolve().then(() => {
@@ -490,21 +490,29 @@ export function createChatRuntime(init: {
       });
       synchronousResumeClaim = undefined;
       pendingStateWriteLockReservations.clear();
-      state.dispatch(internalActions.interruptThreadRetired());
     }
-    state.dispatch(
-      devActions.updateOptions({
-        ...options,
-        ...(Object.hasOwn(options, 'system')
-          ? {
-              systemMessage: createSystemMessage(
-                systemMessageId,
-                options.system ?? '',
-              ),
-            }
-          : {}),
-      }),
-    );
+    const update = devActions.updateOptions({
+      ...options,
+      ...(Object.hasOwn(options, 'system')
+        ? {
+            systemMessage: createSystemMessage(
+              systemMessageId,
+              options.system ?? '',
+            ),
+          }
+        : {}),
+    });
+    if (threadChanged) {
+      void state.dispatchAndWait(
+        internalActions.threadUpdateStarted(),
+        (followUps) => {
+          followUps.dispatch(internalActions.interruptThreadRetired());
+          followUps.dispatch(update);
+        },
+      );
+    } else {
+      state.dispatch(update);
+    }
   }
 
   function start() {

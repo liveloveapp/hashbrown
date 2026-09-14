@@ -1172,3 +1172,69 @@ test('thread retirement preserves committed history and rejects cancellation and
   expect(requests).toHaveLength(4);
   cleanup();
 });
+
+test('thread epoch subscribers observe the new identity and schedule latest input exactly once', async () => {
+  const { ɵgetRuntimeSchedulingState } = await import('./chat-runtime');
+  const requests: TransportRequest[] = [];
+  const runtime = createChatRuntime({
+    system: 'test',
+    debounce: 0,
+    threadId: 'old',
+    state: { count: 1 },
+    messages: [{ role: 'user', content: 'initial input' }],
+    transport: {
+      name: 'test',
+      send: async (request) => {
+        requests.push(request);
+        if (requests.length === 1) return { events: interrupted(request) };
+        return {
+          events: (async function* () {
+            const identity = {
+              threadId: request.input.threadId,
+              runId: request.input.runId,
+            };
+            yield { type: EventType.RUN_STARTED, ...identity };
+            yield { type: EventType.RUN_FINISHED, ...identity };
+          })(),
+        };
+      },
+    },
+  });
+  const cleanup = runtime.start();
+  await idle(runtime);
+  const checkpoint = runtime.messages();
+  const scheduling = ɵgetRuntimeSchedulingState(runtime);
+  let previousEpoch = scheduling().threadEpoch;
+  const observations: Array<{
+    threadId: string | undefined;
+    messages: unknown;
+    state: unknown;
+  }> = [];
+  const off = scheduling.subscribe((current) => {
+    if (current.threadEpoch === previousEpoch) return;
+    previousEpoch = current.threadEpoch;
+    observations.push({
+      threadId: runtime.threadId(),
+      messages: runtime.messages(),
+      state: runtime.state(),
+    });
+    runtime.setMessages([{ role: 'user', content: 'latest input' }]);
+  });
+
+  runtime.updateOptions({ threadId: 'replacement' });
+  await idle(runtime);
+
+  expect(observations).toEqual([
+    { threadId: 'replacement', messages: checkpoint, state: { count: 2 } },
+  ]);
+  expect(requests).toHaveLength(2);
+  expect(requests[1].input.threadId).toBe('replacement');
+  expect(requests[1].input.messages).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ role: 'user', content: 'latest input' }),
+    ]),
+  );
+  expect(runtime.threadId()).toBe('replacement');
+  off();
+  cleanup();
+});

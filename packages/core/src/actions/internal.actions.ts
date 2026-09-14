@@ -17,6 +17,7 @@ export default createActionGroup('internal', {
     outcome: 'success' | 'failed' | 'cancelled' | 'retired';
   }>(),
   interruptThreadRetired: emptyProps(),
+  threadUpdateStarted: emptyProps(),
   logicalGenerationStarted: props<{ generationId: string }>(),
   generationAttemptClaimed: props<{
     generationId: string;
