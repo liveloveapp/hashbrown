@@ -172,7 +172,7 @@ export const generateMessage = createEffect((store) => {
     if (!attemptId) return false;
     const streamingError = store.read(selectStreamingMessageError);
     if (streamingError) {
-      dispatch(apiActions.generateMessageError(streamingError));
+      throw synchronizationProtocolError(streamingError);
     } else {
       const streamingMessage =
         store.read(selectRawStreamingMessage) ?? undefined;

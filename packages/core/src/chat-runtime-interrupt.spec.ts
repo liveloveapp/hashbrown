@@ -964,3 +964,211 @@ test('stop at an acknowledged model boundary requires recovery until whole inter
   off();
   cleanup();
 });
+
+test.each([
+  {
+    label: 'malformed interrupted output',
+    content: '{!invalid',
+    interrupt: true,
+  },
+  {
+    label: 'malformed ordinary output',
+    content: '{!invalid',
+    interrupt: false,
+  },
+  {
+    label: 'incomplete ordinary output',
+    content: '{"answer":"ok',
+    interrupt: false,
+  },
+])(
+  'resumed $label fails the interaction without publishing success or another batch',
+  async ({ content, interrupt }) => {
+    const { ɵgetRuntimeSchedulingState } = await import('./chat-runtime');
+    let calls = 0;
+    const runtime = createChatRuntime({
+      system: 'test',
+      debounce: 0,
+      retries: 2,
+      state: { count: 1 },
+      responseSchema: s.object('result', {
+        answer: s.string('answer'),
+        count: s.number('count'),
+      }),
+      messages: [{ role: 'user', content: 'go' }],
+      transport: {
+        name: 'test',
+        send: async (request) => {
+          calls++;
+          if (calls === 1) return { events: interrupted(request) };
+          return {
+            events: (async function* () {
+              const identity = {
+                threadId: request.input.threadId,
+                runId: request.input.runId,
+              };
+              yield { type: EventType.RUN_STARTED, ...identity };
+              yield { type: EventType.STATE_SNAPSHOT, snapshot: { count: 99 } };
+              yield {
+                type: EventType.TEXT_MESSAGE_START,
+                messageId: 'invalid',
+                role: 'assistant',
+              };
+              yield {
+                type: EventType.TEXT_MESSAGE_CONTENT,
+                messageId: 'invalid',
+                delta: content,
+              };
+              yield {
+                type: EventType.RUN_FINISHED,
+                ...identity,
+                ...(interrupt
+                  ? {
+                      outcome: {
+                        type: 'interrupt' as const,
+                        interrupts: [{ id: 'again', reason: 'approval' }],
+                      },
+                    }
+                  : {}),
+              };
+            })(),
+          };
+        },
+      },
+    });
+    const cleanup = runtime.start();
+    await idle(runtime);
+    const checkpoint = runtime.messages();
+    const scheduling = ɵgetRuntimeSchedulingState(runtime);
+
+    runtime.resume({
+      batchId: requireBatch(runtime).id,
+      entries: [{ interruptId: 'approval', status: 'resolved' }],
+    });
+    for (let i = 0; i < 10; i++)
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(runtime.isLoading()).toBe(false);
+    expect(runtime.isResuming()).toBe(false);
+    expect(runtime.pendingInterrupts()).toBeUndefined();
+    expect(runtime.state()).toEqual({ count: 2 });
+    expect(
+      runtime.messages().filter((message) => message.role !== 'error'),
+    ).toEqual(checkpoint);
+    expect(runtime.error()).toBeInstanceOf(Error);
+    expect(scheduling()).toMatchObject({
+      recoveryRequired: true,
+      successfulResumes: 0,
+    });
+    expect(calls).toBe(2);
+    expect(() =>
+      runtime.sendMessage({ role: 'user', content: 'again' }),
+    ).toThrow(/new thread/i);
+    cleanup();
+  },
+);
+
+test('thread retirement preserves committed history and rejects cancellation and late tool results', async () => {
+  const requests: TransportRequest[] = [];
+  let toolInvocations = 0;
+  let resolvePending!: (value: string) => void;
+  let pendingSignal: AbortSignal | undefined;
+  const runtime = createChatRuntime({
+    system: 'test',
+    debounce: 0,
+    threadId: 'old',
+    state: { count: 1 },
+    messages: [{ role: 'user', content: 'go' }],
+    tools: [
+      {
+        name: 'work',
+        description: 'work',
+        schema: s.object('args', {}),
+        handler: async (_input, signal) => {
+          toolInvocations++;
+          if (toolInvocations === 1) return 'completed before pause';
+          pendingSignal = signal;
+          return new Promise<string>((resolve) => {
+            resolvePending = resolve;
+          });
+        },
+      },
+    ],
+    transport: {
+      name: 'test',
+      send: async (request) => {
+        requests.push(request);
+        const round = requests.length;
+        if (round === 2) return { events: interrupted(request) };
+        return {
+          events: (async function* () {
+            const identity = {
+              threadId: request.input.threadId,
+              runId: request.input.runId,
+            };
+            yield { type: EventType.RUN_STARTED, ...identity };
+            if (round === 1 || round === 3) {
+              const id = round === 1 ? 'completed' : 'pending';
+              yield {
+                type: EventType.TOOL_CALL_START,
+                toolCallId: id,
+                toolCallName: 'work',
+                parentMessageId: `assistant-${round}`,
+              };
+              yield {
+                type: EventType.TOOL_CALL_ARGS,
+                toolCallId: id,
+                delta: '{}',
+              };
+              yield { type: EventType.TOOL_CALL_END, toolCallId: id };
+            }
+            yield { type: EventType.RUN_FINISHED, ...identity };
+          })(),
+        };
+      },
+    },
+  });
+  const cleanup = runtime.start();
+  await idle(runtime);
+  runtime.resume({
+    batchId: requireBatch(runtime).id,
+    entries: [{ interruptId: 'approval', status: 'resolved' }],
+  });
+  for (let i = 0; i < 100 && !resolvePending; i++)
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(resolvePending).toBeDefined();
+  const checkpoint = runtime.messages();
+  const checkpointState = runtime.state();
+
+  runtime.updateOptions({ threadId: 'replacement' });
+
+  expect(pendingSignal?.aborted).toBe(true);
+  expect(runtime.messages()).toEqual(checkpoint);
+  expect(runtime.state()).toBe(checkpointState);
+  expect(runtime.isResuming()).toBe(false);
+  runtime.sendMessage({ role: 'user', content: 'new workflow' });
+  await idle(runtime);
+  expect(requests).toHaveLength(4);
+  const nextHistory = requests[3].input.messages;
+  expect(nextHistory).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        role: 'tool',
+        toolCallId: 'completed',
+        content: 'completed before pause',
+      }),
+    ]),
+  );
+  expect(
+    nextHistory.some(
+      (message) => message.role === 'tool' && message.toolCallId === 'pending',
+    ),
+  ).toBe(false);
+  const replacementMessages = runtime.messages();
+  resolvePending('late result');
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(runtime.messages()).toEqual(replacementMessages);
+  expect(runtime.state()).toBe(checkpointState);
+  expect(requests).toHaveLength(4);
+  cleanup();
+});

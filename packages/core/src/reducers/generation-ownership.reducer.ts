@@ -28,6 +28,10 @@ export const initialGenerationOwnershipState: GenerationOwnershipState =
 export const reducer = createReducer(
   initialGenerationOwnershipState,
   on(
+    internalActions.interruptThreadRetired,
+    () => initialGenerationOwnershipState,
+  ),
+  on(
     internalActions.logicalGenerationStarted,
     (_state, action): GenerationOwnershipState => ({
       generationId: action.payload.generationId,
