@@ -23,6 +23,21 @@ that cache when middleware context is supplied. Evidence is in
 `work/probes/invoicing-runtime-guard.mts` and its event/log files. B4 0.8.33 has
 reached npm publication but does not include this newly identified correction.
 
+The correction is now [B4 PR #663](https://github.com/cacheplane/b4run/pull/663),
+commit `45084977` on `blove/middleware-context-cache`. Five new regressions failed
+before the fix and pass afterward, including a real LangGraph/MemorySaver resume
+with fresh JSON context and retained conversation history. All 231 langchain
+tests, full workspace build, package typecheck, and changed-file lint pass.
+Independent review approved the fix; package lint retains ten existing warnings.
+
+The HTTP ledger probe also passes against that built worktree: valid approval
+applies exactly one allocation and clears the $2,400 payment/invoice balances;
+cancellation leaves both balances unchanged; forged and `always` requests stay
+rejected. Fixed-probe evidence is in `work/probes/invoicing-runtime-guard-fixed.mts`
+and the corresponding approval/cancellation logs. This is built-source evidence,
+not published-package or live-model browser verification. The canonical app's
+chat remains disconnected until the required fixes are published and integrated.
+
 ## Review guard — September 15, 2026
 
 The application now has a dependency-free server review coordinator. It binds

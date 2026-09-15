@@ -231,6 +231,13 @@ decision readiness. It remains unmounted until the real interrupt integration.
 Both pieces passed independent specification and quality reviews. Current
 build/test/lint checks pass: 70 server tests and 16 React tests.
 
+The next checkpoint added thread-scoped HTTP proposal reads (71 server tests)
+and a deterministic real-B4 ledger probe. It exposed stale middleware context
+in B4's compiled-agent cache; generalized upstream PR #663 fixes that without
+adding public API. Against the fixed built worktree, genuine approval creates
+one allocation, cancellation creates none, forged interrupt IDs receive 409,
+and `always` receives 422. Published-package and live-browser checks remain open.
+
 **Files:** `matching-agent.ts`, `matching-agent.spec.ts`, `ag-ui.ts`,
 `ag-ui.spec.ts`, and server `main.ts` from the file map.
 
