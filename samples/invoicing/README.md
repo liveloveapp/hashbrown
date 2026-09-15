@@ -74,7 +74,8 @@ findings (22 moderate, 36 high); none name the added Pretable packages.
 
 ## Remaining application work
 
-Verify published B4 packages containing PRs #657 and #660, then connect the
+Verify published B4 packages containing PRs #657, #660, and the middleware
+context fix from PR #663 (scheduled for 0.8.34). Then connect the
 server-owned proposal to the approved Dashboard / Payments shell, Pretable
 selection, and the open Hashbrown chat sidebar. Approval remains one click
 with no second confirmation. Add deterministic and live-model browser tests
@@ -94,5 +95,11 @@ tested independently, but the live route integration is still pending.
 `AllocationProposal` is also implemented and tested independently. The model
 supplies only a proposal ID. Application context supplies verified proposal
 values, pending-review readiness, and decision callbacks. It is not mounted in
-the live chat yet. Server and React coverage currently totals 87 passing tests;
+the live chat yet. Server and React coverage currently totals 92 passing tests;
 both projects pass build and lint.
+
+The shared package also exports the component configuration and canonical UI
+response schema, with three tests including identity-only contracts. React
+checks the actual UI kit against the server schema. `createReviewMiddleware`
+binds tools to the validated cookie session and derives proposed amounts from
+server balances; the running bootstrap does not mount that middleware yet.

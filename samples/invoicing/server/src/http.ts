@@ -13,7 +13,8 @@ function respond(response: ServerResponse, status: number, body: unknown) {
   response.end(JSON.stringify(body));
 }
 
-function findSession(cookie: string | undefined): string | undefined {
+/** Read one unambiguous opaque session identity from the local cookie. */
+export function readSessionCookie(cookie: string | undefined): string | undefined {
   const matches = (cookie ?? '')
     .split(';')
     .map((value) => value.trim())
@@ -54,7 +55,7 @@ export function createInvoicingListener(
       return;
     }
 
-    let sessionId = findSession(request.headers.cookie);
+    let sessionId = readSessionCookie(request.headers.cookie);
     if (sessionId) {
       try {
         store.snapshot(sessionId);

@@ -1,5 +1,40 @@
 # Invoicing compatibility checkpoint
 
+## Published integration preparation — September 15, 2026
+
+B4 PR #663 merged as `58436723ac0857cb6a8985a33c1b8cc322ef972a`.
+[Version PR #664](https://github.com/cacheplane/b4run/pull/664), head
+`ba8c0d19fefe307d2ffeb8d14bf598296b05c426`, contains the expected 0.8.34 release
+metadata and this fix. Its bot-created workflows required GitHub approval;
+those runs are now approved and auto-merge is enabled, pending required CI.
+The 0.8.33 recovery publisher is still active, and npm does not yet expose
+`@b4run/cli@0.8.34`. No unpublished dependency has been installed into this app.
+
+The application now shares `allocationProposalConfig` and
+`invoicingUiResponseSchema`. A regression compares the real React
+`exposeComponent` / `useUiKit` output with the server schema. The model can
+supply only `proposalId`; amounts and decision controls are not model props.
+
+`createReviewMiddleware` supplies request-bound server tools after validating
+the session cookie and coordinator input. It reads the selected payment and
+related invoices from the ledger, prepares by invoice ID using the smaller of
+the current unapplied and outstanding balances, and applies by stored proposal
+identity. Browser/model-supplied amount fields never determine the allocation.
+Missing/ambiguous sessions are rejected, and reset invalidates tool reads.
+
+All affected projects pass build/test/lint: 75 server, 17 React, and 3 shared
+tests. Independent review approved this integration preparation. The new tool
+bridge also passes the real HTTP approval probe against the fixed built B4
+worktree (`work/probes/invoicing-middleware.mts`): one approved allocation,
+forged interrupt 409, and `always` 422. This remains source-build evidence.
+
+Next gates are installing and inspecting published 0.8.34 artifacts; composing
+the B4 listener with the session HTTP listener; mounting the shared component
+and owned interrupt batch in chat; refreshing from the recorded operation
+result; and running deterministic plus live-model browser approval/cancellation,
+stale-state, retry, and session-isolation checks. The local preview still has
+chat disabled until this wiring and verification are complete.
+
 ## Middleware context checkpoint — September 15, 2026
 
 The HTTP listener now supports coordinator-backed `GET /api/reviews/:threadId`

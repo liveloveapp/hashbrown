@@ -67,3 +67,8 @@ export interface DecisionResult {
   readonly status: 'approved' | 'declined';
   readonly snapshot: LedgerSnapshot;
 }
+
+export {
+  allocationProposalConfig,
+  invoicingUiResponseSchema,
+} from './ui-contract';
