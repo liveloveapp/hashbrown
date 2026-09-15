@@ -1,5 +1,6 @@
 import type { RequestListener, ServerResponse } from 'node:http';
 import type { SessionStore } from './session-store';
+import type { ReviewCoordinator } from './review-coordinator';
 
 const cookieName = 'invoicing_session';
 
@@ -26,7 +27,10 @@ function findSession(cookie: string | undefined): string | undefined {
  * Serve session-owned read models for the local demo.
  * Financial mutations must go through the separately integrated approval path.
  */
-export function createInvoicingListener(store: SessionStore): RequestListener {
+export function createInvoicingListener(
+  store: SessionStore,
+  reviews?: Pick<ReviewCoordinator, 'getProposal'>,
+): RequestListener {
   return (request, response) => {
     let path: string;
     try {
@@ -39,7 +43,8 @@ export function createInvoicingListener(store: SessionStore): RequestListener {
     }
     const operationId = /^\/api\/operations\/([^/]+)$/.exec(path)?.[1];
     const proposalId = /^\/api\/proposals\/([^/]+)$/.exec(path)?.[1];
-    if (path !== '/api/snapshot' && !operationId && !proposalId) {
+    const threadId = /^\/api\/reviews\/([^/]+)$/.exec(path)?.[1];
+    if (path !== '/api/snapshot' && !operationId && !proposalId && !threadId) {
       respond(response, 404, { error: 'not_found' });
       return;
     }
@@ -63,6 +68,15 @@ export function createInvoicingListener(store: SessionStore): RequestListener {
         'set-cookie',
         `${cookieName}=${sessionId}; Path=/; HttpOnly; SameSite=Lax`,
       );
+    }
+    if (threadId) {
+      try {
+        if (!reviews) throw new Error('review_not_found');
+        respond(response, 200, reviews.getProposal(sessionId, threadId));
+      } catch {
+        respond(response, 404, { error: 'review_not_found' });
+      }
+      return;
     }
     if (proposalId) {
       try {

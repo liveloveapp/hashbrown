@@ -56,6 +56,9 @@ sidebar is open on both pages, with messaging explicitly unavailable.
 
 Read endpoints are `GET /api/snapshot`, `GET /api/operations/:operationId`,
 and `GET /api/proposals/:proposalId`, all session-scoped.
+When the review coordinator is supplied to the HTTP listener,
+`GET /api/reviews/:threadId` resolves the proposal for that session's current
+conversation. Foreign, missing, and reset conversations return 404.
 There is deliberately no general-purpose financial mutation endpoint. The
 current app needs no model key. Future live B4 execution will load credentials
 on the server only.
@@ -91,5 +94,5 @@ tested independently, but the live route integration is still pending.
 `AllocationProposal` is also implemented and tested independently. The model
 supplies only a proposal ID. Application context supplies verified proposal
 values, pending-review readiness, and decision callbacks. It is not mounted in
-the live chat yet. Server and React coverage currently totals 86 passing tests;
+the live chat yet. Server and React coverage currently totals 87 passing tests;
 both projects pass build and lint.

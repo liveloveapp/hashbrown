@@ -1,5 +1,28 @@
 # Invoicing compatibility checkpoint
 
+## Middleware context checkpoint — September 15, 2026
+
+The HTTP listener now supports coordinator-backed `GET /api/reviews/:threadId`
+reads. This ties the displayed proposal to the owned conversation as well as
+the cookie session. A real HTTP regression covers successful reads, foreign or
+missing threads, reset generations, and rejected writes. Server build/test/lint
+pass with 71 tests; independent review found no issues. The running snapshot-only
+bootstrap does not supply a coordinator yet.
+
+A deterministic probe using the previously built B4 worktree reached a real
+approval interrupt with no ledger write. A forged interrupt was rejected with
+409, and `always` was rejected with 422. Valid resume exposed another upstream
+issue: the compiled graph reused the initial middleware context and the
+application guard rejected execution with `approval_required`. The agent then
+finished successfully, which reinforces why completion must be verified from
+the operation result and ledger rather than the stream outcome alone.
+
+The B4 cache is keyed by agent descriptor and checkpointer while tool callbacks
+capture middleware context. A generalized upstream fix is in progress to skip
+that cache when middleware context is supplied. Evidence is in
+`work/probes/invoicing-runtime-guard.mts` and its event/log files. B4 0.8.33 has
+reached npm publication but does not include this newly identified correction.
+
 ## Review guard — September 15, 2026
 
 The application now has a dependency-free server review coordinator. It binds

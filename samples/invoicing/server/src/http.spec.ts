@@ -3,13 +3,16 @@ import { AddressInfo } from 'node:net';
 import { expect, test } from 'vitest';
 import { createInvoicingListener } from './http';
 import { createSessionStore } from './session-store';
+import { createReviewCoordinator } from './review-coordinator';
 
 async function fixture() {
   const store = createSessionStore();
-  const server = createServer(createInvoicingListener(store));
+  const reviews = createReviewCoordinator(store, {});
+  const server = createServer(createInvoicingListener(store, reviews));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   return {
     store,
+    reviews,
     url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
     close: () =>
       new Promise<void>((resolve, reject) => {
@@ -146,6 +149,49 @@ test('proposal reads return stored values only to their owning session', async (
     expect(foreign.status).toBe(404);
     expect(missing.status).toBe(404);
     expect(app.store.snapshot(owner).allocations).toHaveLength(0);
+  } finally {
+    await app.close();
+  }
+});
+
+
+test('review lookup binds the proposal to its session and conversation', async () => {
+  const app = await fixture();
+  const owner = app.store.createSession();
+  const other = app.store.createSession();
+  const context = app.reviews.authorize(owner, {
+    threadId: 'review-1',
+    runId: 'run-1',
+    state: { selectedPaymentId: 'payment-001' },
+    hashbrown: { ui: true, responseSchema: {} },
+  });
+  const proposal = app.reviews.prepare(context, {
+    paymentId: 'payment-001',
+    invoiceId: 'invoice-001',
+    amountCents: 240000,
+  });
+
+  try {
+    const read = (thread: string, session = owner, method = 'GET') =>
+      fetch(`${app.url}/api/reviews/${thread}`, {
+        method,
+        headers: { cookie: `invoicing_session=${session}` },
+      });
+    const own = await read('review-1');
+    const foreign = await read('review-1', other);
+    const missing = await read('review-2');
+    const write = await read('review-1', owner, 'POST');
+    app.store.reset(owner);
+    const stale = await read('review-1');
+
+    expect(own.status).toBe(200);
+    expect(await own.json()).toEqual(proposal);
+    expect(own.headers.get('cache-control')).toBe('no-store');
+    expect(foreign.status).toBe(404);
+    expect(missing.status).toBe(404);
+    expect(write.status).toBe(405);
+    expect(stale.status).toBe(404);
+    expect(app.store.snapshot(other).allocations).toHaveLength(0);
   } finally {
     await app.close();
   }
