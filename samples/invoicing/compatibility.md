@@ -1,5 +1,43 @@
 # Invoicing compatibility checkpoint
 
+## Review guard — September 15, 2026
+
+The application now has a dependency-free server review coordinator. It binds
+an opaque B4 thread to one session, payment, and session generation; validates
+the exact nested `hashbrown.responseSchema`; and stores one immutable proposal
+per thread. Tools will receive server-only capability tokens, never authority
+from browser-supplied financial values. Reset invalidates existing capabilities.
+The HTTP API now exposes session-owned `GET /api/proposals/:proposalId` reads.
+
+Resume validation accepts one `once` resolution or cancellation and requires
+the stored proposal ID/version, operation ID, and generation. It rejects
+`always`, foreign sessions, changed selections, client tools, and forwarded
+configuration. The coordinator is not yet wired to B4: B4 must validate the
+actual pending interrupt before invoking its `apply` method. A requested `once`
+payload alone is not proof of approval. Cancellation prevents application but
+does not currently record a domain decline through this coordinator.
+
+B4 0.8.32 has completed publication and release verification. The 0.8.33
+release was resumed for commit `dd1c4c7c9e1aacaf079c18aef71bcdc81f5d5ebe` in
+[run 35011826236](https://github.com/cacheplane/b4run/actions/runs/35011826236),
+which completed tagging and dispatched
+[the tagged publication run](https://github.com/cacheplane/b4run/actions/runs/35012545387).
+Registry installation of 0.8.33 remains pending.
+
+The React allocation proposal card is implemented independently of chat. Its
+only model-facing prop is `proposalId`; displayed financial values come from
+application-owned, server-verified context. Missing or mismatched proposals
+expose no actions. Decisions are disabled unless the parent identifies the
+matching pending review, and callbacks carry no model-controlled arguments.
+The card is not yet mounted in the application or connected to an interrupt.
+
+Build, test, and lint pass for both affected projects: 70 server tests and
+16 React tests. Independent specification and code-quality reviews approved
+both pieces without findings. Existing Vite chunk-size and terminal-color
+warnings remain. The tagged B4 release has passed detection and tagging and
+is preparing its package payload; publication is not yet verified.
+
+
 ## React and HTTP scaffold — September 15, 2026
 
 The real Pretable 0.19.0 React and UI packages are declared directly; the

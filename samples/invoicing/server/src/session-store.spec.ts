@@ -165,3 +165,15 @@ test('operation results are isolated copies', () => {
       .allocations[0].amountCents,
   ).toBe(240000);
 });
+
+test('generation is server owned and advances on reset', () => {
+  const store = createSessionStore();
+  const session = store.createSession();
+  const first = store.generation(session);
+
+  store.reset(session);
+
+  expect(first).toBe(1);
+  expect(store.generation(session)).toBe(2);
+  expect(() => store.generation('unknown')).toThrow('session_not_found');
+});

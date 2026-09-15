@@ -116,3 +116,37 @@ test('unknown and duplicate cookie identities cannot reuse an existing session',
     await app.close();
   }
 });
+
+test('proposal reads return stored values only to their owning session', async () => {
+  const app = await fixture();
+  const owner = app.store.createSession();
+  const other = app.store.createSession();
+  const proposal = app.store.propose(owner, {
+    paymentId: 'payment-001',
+    invoiceId: 'invoice-001',
+    amountCents: 240000,
+  });
+
+  try {
+    const own = await fetch(`${app.url}/api/proposals/${proposal.proposalId}`, {
+      headers: { cookie: `invoicing_session=${owner}` },
+    });
+    const foreign = await fetch(
+      `${app.url}/api/proposals/${proposal.proposalId}`,
+      {
+        headers: { cookie: `invoicing_session=${other}` },
+      },
+    );
+    const missing = await fetch(`${app.url}/api/proposals/missing`, {
+      headers: { cookie: `invoicing_session=${owner}` },
+    });
+
+    expect(own.status).toBe(200);
+    expect(await own.json()).toEqual(proposal);
+    expect(foreign.status).toBe(404);
+    expect(missing.status).toBe(404);
+    expect(app.store.snapshot(owner).allocations).toHaveLength(0);
+  } finally {
+    await app.close();
+  }
+});

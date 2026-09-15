@@ -216,6 +216,21 @@ tests establish domain behavior, not a completed browser approval boundary.
 
 ## Task 4: Run the real B4 proposal and interrupt path
 
+**September 15:** The independent server review guard is implemented in
+`server/src/review-coordinator.ts`, with session generation tracking and a
+session-owned proposal read endpoint. Tests cover canonical nested schema
+preservation, opaque capabilities, thread binding, immutable proposals, and
+strict once/cancel resume identity. No B4 dependency is installed yet, and no
+HTTP financial write or live agent route is enabled. These guard tests do not
+satisfy the actual-B4 integration checks below.
+
+The standalone React `AllocationProposal` card is also implemented, with an
+identity-only model prop and trusted application context for displayed values
+and decision callbacks. Its eight tests cover missing/mismatched proposals and
+decision readiness. It remains unmounted until the real interrupt integration.
+Both pieces passed independent specification and quality reviews. Current
+build/test/lint checks pass: 70 server tests and 16 React tests.
+
 **Files:** `matching-agent.ts`, `matching-agent.spec.ts`, `ag-ui.ts`,
 `ag-ui.spec.ts`, and server `main.ts` from the file map.
 

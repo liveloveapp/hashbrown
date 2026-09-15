@@ -38,7 +38,8 @@ export function createInvoicingListener(store: SessionStore): RequestListener {
       return;
     }
     const operationId = /^\/api\/operations\/([^/]+)$/.exec(path)?.[1];
-    if (path !== '/api/snapshot' && !operationId) {
+    const proposalId = /^\/api\/proposals\/([^/]+)$/.exec(path)?.[1];
+    if (path !== '/api/snapshot' && !operationId && !proposalId) {
       respond(response, 404, { error: 'not_found' });
       return;
     }
@@ -62,6 +63,14 @@ export function createInvoicingListener(store: SessionStore): RequestListener {
         'set-cookie',
         `${cookieName}=${sessionId}; Path=/; HttpOnly; SameSite=Lax`,
       );
+    }
+    if (proposalId) {
+      try {
+        respond(response, 200, store.proposal(sessionId, proposalId));
+      } catch {
+        respond(response, 404, { error: 'proposal_not_found' });
+      }
+      return;
     }
     if (operationId) {
       const result = store.operationResult(sessionId, operationId);

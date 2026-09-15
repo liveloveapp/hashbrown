@@ -18,6 +18,8 @@ import {
 export interface SessionStore {
   /** Allocate a new opaque session identity. */
   createSession(): string;
+  /** Read the current server-owned reset generation. */
+  generation(sessionId: string): number;
   /** Read the current financial snapshot. */
   snapshot(sessionId: string): LedgerSnapshot;
   /** Prepare and store the authoritative allocation proposal. */
@@ -63,6 +65,9 @@ export function createSessionStore(): SessionStore {
         operations: new Map(),
       });
       return id;
+    },
+    generation(id) {
+      return get(id).generation;
     },
     snapshot(id) {
       return structuredClone(getSnapshot(get(id).ledger));
