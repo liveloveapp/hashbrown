@@ -1,7 +1,7 @@
 ---
 Created: 2026-09-14
 Affects: React example application, Hashbrown, Pretable, B4, example documentation and CI
-Status: Reviewed draft — ready for user review of the initial compatibility-proof scope
+Status: Visual direction approved — compatibility-proof planning
 ---
 
 # Canonical invoicing and incoming-payments example
@@ -22,6 +22,11 @@ update the ledger**.
 - The first version is React and uses Hashbrown, Pretable, and B4.
 - The central workspace is a stateful financial data grid with a chat sidebar
   and supporting components around the grid.
+- Use a basic shadcn sidebar for primary navigation, with Dashboard and Payments
+  as the two entries. These entries replace the earlier proposed
+  payments/invoices top-level view arrangement.
+- Dashboard is the initial landing page. The Hashbrown chat sidebar is open by
+  default on both Dashboard and Payments.
 - Focus on invoicing and incoming payments. Collections, overdue chasing, and
   payment reminders are excluded.
 - Seed two full years of synthetic financial data for a software consulting
@@ -45,9 +50,31 @@ this invoicing direction.
 
 ## Proposed workspace
 
-Make incoming payments the default grid because that is where the primary task
-begins. Offer an invoices view using the same workspace conventions. Keep the
-active payment, relevant invoices, and allocation proposal visible together.
+Use a basic shadcn sidebar on the left with Dashboard and Payments navigation.
+Dashboard contains the business overview; Payments contains the central
+Pretable payment-matching workspace. Keep the Hashbrown chat sidebar on the
+right, open by default on both pages. Dashboard is the initial landing page.
+The user approved the interactive visual concept on September 14, 2026.
+Use its layout as the baseline; precise responsive dimensions can be refined
+during implementation.
+
+The approved visual concept places the approval card inside the right chat
+sidebar and related invoice context below the payment grid. Selecting a
+payment reveals the proposed allocation and an **Approve and apply** action;
+approval updates the payment status and invoice balance together. The
+interactive concept uses local sample interactions, with adjustable chat width
+and row spacing; it does not exercise Hashbrown, Pretable, B4, or a live model.
+
+Approved Dashboard composition: three summary cards for Invoiced, Received,
+and Unapplied cash; a monthly invoiced-versus-received chart; and a short list
+of payments needing matching. Clicking a payment in that list opens Payments,
+selects the corresponding record, and starts matching automatically. This
+shortcut preserves the select-then-approve path without a second selection.
+
+Invoice records remain available as related context and matching candidates
+inside the workspace; Invoices is not a third top-level navigation entry in
+the agreed sidebar. Keep the active payment, relevant invoices, and allocation
+proposal visible together without requiring extra navigation to approve.
 
 The payment grid shows customer, received date, amount, reference, applied
 amount, unapplied amount, and matching status. The invoice view shows customer,
@@ -167,8 +194,8 @@ All amounts below are synthetic USD examples. The fixture stores integer cents.
 | Stale proposal | An invoice receives another allocation after the proposal is shown | Reject the stale proposal without partial writes and refresh the review |
 | Duplicate approval | Repeat an already-applied operation | Return its recorded result; balances and financial activity do not change twice |
 
-The normal landing view should make the exact-match example immediately
-accessible. A compact scenario selector can navigate to other known records;
+The Payments view should make the exact-match example immediately accessible.
+A compact scenario selector can navigate to other known records;
 it should not be a prerequisite for using the workspace.
 
 ## Demo session behavior
@@ -270,6 +297,17 @@ make a payment or allocation authoritative. Demo session isolation and reset
 behavior must be chosen before deployment.
 
 ### Compatibility milestone before application implementation
+
+**September 15 progress:** B4's generalized request-envelope and concurrent
+message fixes merged in PRs #657 and #660. A connected React/Hashbrown browser
+proof passed with live B4 root and nested models and one-operation approval.
+Published Pretable 0.19.0 passed real checkbox select/clear checks. Release
+PR #661 merged to prepare B4 0.8.33; registry publication is pending. The
+independent ledger/session implementation passes 29 tests plus build and lint; the complete application
+flow and two-year dataset remain outstanding. Current evidence and exact public
+imports are in `samples/invoicing/compatibility.md`.
+
+The following local-source observations are historical discovery notes:
 
 Local references inspected:
 
@@ -397,6 +435,8 @@ completeness, consistency, clarity, or scope gaps for that bounded milestone.
 It did not approve all later product proposals or turn this document into an
 implementation plan.
 
-This draft records the agreed direction and proposed boundaries. User review
-of the written draft precedes the first implementation plan. The full
-application and showcase retirement remain separate later design/plan stages.
+The user approved the visual concept on September 14, 2026. This confirms the
+workspace layout and Dashboard composition described above; it does not resolve
+the remaining technical or lifecycle proposals. The first implementation plan
+covers the bounded compatibility proof. The full application and showcase
+retirement remain separate later design/plan stages.
