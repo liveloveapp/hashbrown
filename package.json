@@ -56,6 +56,8 @@
     "@ngrx/entity": "22.0.0-rc.0",
     "@ngrx/signals": "22.0.0-rc.0",
     "@ngrx/store": "22.0.0-rc.0",
+    "@pretable/react": "0.19.0",
+    "@pretable/ui": "0.19.0",
     "@spotify/web-api-ts-sdk": "^1.2.0",
     "@stackblitz/sdk": "^1.11.1",
     "arktype": "^2.2.2",

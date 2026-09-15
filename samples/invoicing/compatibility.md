@@ -1,5 +1,37 @@
 # Invoicing compatibility checkpoint
 
+## React and HTTP scaffold — September 15, 2026
+
+The real Pretable 0.19.0 React and UI packages are declared directly; the
+matching core package is installed transitively. UI supplies public CSS imports. Dashboard and Payments now read the live local
+snapshot endpoint, preserve payment selection across navigation, and show
+related invoices beneath the grid. The open Assistant sidebar explicitly keeps
+messaging disabled until B4 is connected. Browser checks verify select,
+navigation, preserved selection, clear, unchanged ledger balances, and exactly
+one bootstrap snapshot request under React StrictMode. Eight React tests include
+multi-row checkbox selection and per-bootstrap request sharing. The shared
+contracts project has a type-checked identity-only approval contract test.
+
+HTTP reads assign/reuse an opaque HTTP-only SameSite session cookie and scope
+operation results to that session. Four HTTP tests cover cookie reuse, session
+isolation, malformed paths, and rejected writes, bringing server coverage to
+33 tests. Shared DTOs moved to an actual `invoicing-contracts` Nx library so
+client imports respect module boundaries. No Hashbrown library APIs changed. Final build/test/lint passed for all three
+projects: 33 server tests, 8 React tests, and 1 shared-contract test. The final
+browser check independently observed one snapshot request and preserved
+selection. Evidence is in `work/probes/invoicing-shell/final-browser.log` and
+`payments.png`. The browser's only console error was a missing favicon; request
+listener instrumentation closed two CLI sessions, so the final successful check
+used the browser's Resource Timing entries instead. Local UI/API servers remain
+running for review at http://127.0.0.1:4326.
+
+B4 0.8.32 publication twice exceeded the publisher's overall verification
+deadline while npm gradually exposed accepted packages. The queued 0.8.33 run
+reported `ATTEMPT_COVERAGE_INCOMPLETE` / `PUBLISHER_JOB_HISTORY_INVALID` while
+observing the preceding release. A separate recovery run is active; this task
+has not bypassed release checks or started a competing publisher. Registry
+latest CLI is now 0.8.32; 0.8.33 remains unverified and is still required.
+
 ## Registry release checkpoint — September 15, 2026
 
 The published `@b4run/cli`, `@b4run/ag-ui`, and `@b4run/langchain` 0.8.31
@@ -24,7 +56,6 @@ is in `work/probes/pretable-selection/browser-assertions.log`, `selected.png`,
 and `cleared.png`. The temporary browser and Vite server were stopped; the only
 console error was a missing favicon. This verifies the grid contract separately
 from the connected B4 proof, not a completed invoice application.
-
 
 ## Ledger foundation — September 15, 2026
 
@@ -238,10 +269,10 @@ Executed against B4 PR #657 head `fbfbe188`, using built public
 `MemorySaver`, and a deterministic `FakeStreamingChatModel`. This is a Node
 adapter probe, not a live provider call or an HTTP application proof.
 
-| Arrangement | Before approval | After resume |
-| --- | --- | --- |
+| Arrangement                                    | Before approval                         | After resume                                                                |
+| ---------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------- |
 | Model invocation and interrupt inside one tool | Two JSON text deltas, then an interrupt | Model invoked again; same JSON emitted under a new message ID; run succeeds |
-| Model invocation in a preceding graph node | Same text deltas, then an interrupt | Run succeeds without another model invocation or text message |
+| Model invocation in a preceding graph node     | Same text deltas, then an interrupt     | Run succeeds without another model invocation or text message               |
 
 Assertions pass for both arrangements: initial interruption, successful resume,
 complete initial JSON text, model invocation count (two versus one), and resumed
@@ -311,17 +342,17 @@ started, or live model calls made by this checkpoint.
 
 ## Versions and evidence
 
-| Component | Observed version / revision |
-| --- | --- |
-| Hashbrown checkout | `42c79c0fada36eb68f62c4a9e5c0fae6a8f1c294` |
-| Hashbrown AG-UI packages | `0.0.59` |
-| React | `19.2.8` |
-| Node / npm | `24.20.0` / `11.19.0` |
-| Local B4 checkout | `260920ca2b6bf13ddd15839f6e9ec32ba4c90b3a`; manifests `0.8.21` |
-| Published B4 SDK, CLI, AG-UI | `@dawn-ai/sdk`, `@dawn-ai/cli`, `@dawn-ai/ag-ui`, all `0.8.26` |
-| Published B4 CLI AG-UI dependency | `0.0.59` |
-| Local Pretable checkout | `b569902000172389584091d9f0c369ad10bcec3b`; React manifest `0.4.0` |
-| Published Pretable React | `@pretable/react@0.19.0` |
+| Component                         | Observed version / revision                                        |
+| --------------------------------- | ------------------------------------------------------------------ |
+| Hashbrown checkout                | `42c79c0fada36eb68f62c4a9e5c0fae6a8f1c294`                         |
+| Hashbrown AG-UI packages          | `0.0.59`                                                           |
+| React                             | `19.2.8`                                                           |
+| Node / npm                        | `24.20.0` / `11.19.0`                                              |
+| Local B4 checkout                 | `260920ca2b6bf13ddd15839f6e9ec32ba4c90b3a`; manifests `0.8.21`     |
+| Published B4 SDK, CLI, AG-UI      | `@dawn-ai/sdk`, `@dawn-ai/cli`, `@dawn-ai/ag-ui`, all `0.8.26`     |
+| Published B4 CLI AG-UI dependency | `0.0.59`                                                           |
+| Local Pretable checkout           | `b569902000172389584091d9f0c369ad10bcec3b`; React manifest `0.4.0` |
+| Published Pretable React          | `@pretable/react@0.19.0`                                           |
 
 Registry metadata was read with `npm view`. Published package tarballs were
 downloaded with `npm pack --ignore-scripts` into
@@ -378,11 +409,13 @@ It supplied a valid request with:
     },
     "ui": true
   },
-  "resume": [{
-    "interruptId": "approval-1",
-    "status": "resolved",
-    "payload": "once"
-  }]
+  "resume": [
+    {
+      "interruptId": "approval-1",
+      "status": "resolved",
+      "payload": "once"
+    }
+  ]
 }
 ```
 

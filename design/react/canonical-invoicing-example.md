@@ -303,8 +303,8 @@ message fixes merged in PRs #657 and #660. A connected React/Hashbrown browser
 proof passed with live B4 root and nested models and one-operation approval.
 Published Pretable 0.19.0 passed real checkbox select/clear checks. Release
 PR #661 merged to prepare B4 0.8.33; registry publication is pending. The
-independent ledger/session implementation passes 29 tests plus build and lint; the complete application
-flow and two-year dataset remain outstanding. Current evidence and exact public
+independent ledger/session implementation passes 29 tests plus build and lint; the React/Pretable shell and session-scoped HTTP reads now run locally. The
+complete approval flow and two-year dataset remain outstanding. Current evidence and exact public
 imports are in `samples/invoicing/compatibility.md`.
 
 The following local-source observations are historical discovery notes:

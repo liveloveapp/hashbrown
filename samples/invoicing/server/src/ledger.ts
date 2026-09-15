@@ -3,7 +3,7 @@ import type {
   LedgerSnapshot,
   Proposal,
   ProposalRequest,
-} from './contracts';
+} from '@invoicing/contracts';
 
 /** Create the deterministic sample ledger with no allocations. */
 export function createLedger(): Ledger {

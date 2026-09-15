@@ -20,6 +20,13 @@
       "options": {
         "command": "eslint samples/invoicing/server"
       }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "tsx samples/invoicing/server/src/main.ts"
+      }
     }
   }
 }

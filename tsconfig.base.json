@@ -16,6 +16,7 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
+      "@invoicing/contracts": ["samples/invoicing/shared/src/index.ts"],
       "@hashbrownai/angular": ["packages/angular/src/index.ts"],
       "@hashbrownai/anthropic": ["packages/anthropic/src/index.ts"],
       "@hashbrownai/azure": ["packages/azure/src/index.ts"],

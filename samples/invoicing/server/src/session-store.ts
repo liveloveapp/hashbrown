@@ -6,7 +6,7 @@ import type {
   LedgerSnapshot,
   Proposal,
   ProposalRequest,
-} from './contracts';
+} from '@invoicing/contracts';
 import {
   applyProposal,
   createLedger,
