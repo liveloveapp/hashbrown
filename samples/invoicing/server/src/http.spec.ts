@@ -1,14 +1,16 @@
-import { createServer } from 'node:http';
+import { createServer, type RequestListener } from 'node:http';
 import { AddressInfo } from 'node:net';
 import { expect, test } from 'vitest';
 import { createInvoicingListener } from './http';
 import { createSessionStore } from './session-store';
 import { createReviewCoordinator } from './review-coordinator';
 
-async function fixture() {
+async function fixture(runReview?: RequestListener) {
   const store = createSessionStore();
   const reviews = createReviewCoordinator(store, {});
-  const server = createServer(createInvoicingListener(store, reviews));
+  const server = createServer(
+    createInvoicingListener(store, reviews, runReview),
+  );
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   return {
     store,
@@ -154,7 +156,6 @@ test('proposal reads return stored values only to their owning session', async (
   }
 });
 
-
 test('review lookup binds the proposal to its session and conversation', async () => {
   const app = await fixture();
   const owner = app.store.createSession();
@@ -192,6 +193,39 @@ test('review lookup binds the proposal to its session and conversation', async (
     expect(write.status).toBe(405);
     expect(stale.status).toBe(404);
     expect(app.store.snapshot(other).allocations).toHaveLength(0);
+  } finally {
+    await app.close();
+  }
+});
+
+test('only the canonical POST review route reaches the agent runtime', async () => {
+  const requests: string[] = [];
+  const app = await fixture((request, response) => {
+    requests.push(request.url ?? '');
+    response.writeHead(202);
+    response.end();
+  });
+
+  try {
+    const review = await fetch(`${app.url}/agui/%2Freview%23agent`, {
+      method: 'POST',
+    });
+    const read = await fetch(`${app.url}/agui/%2Freview%23agent`);
+    const alternate = await fetch(`${app.url}/agui/%2Fother%23agent`, {
+      method: 'POST',
+    });
+    const threads = await fetch(`${app.url}/threads`);
+    const resume = await fetch(`${app.url}/threads/other/resume`, {
+      method: 'POST',
+    });
+
+    expect(review.status).toBe(202);
+    expect(requests).toEqual(['/agui/%2Freview%23agent']);
+    expect(read.status).toBe(405);
+    expect(read.headers.get('allow')).toBe('POST');
+    expect(alternate.status).toBe(404);
+    expect(threads.status).toBe(404);
+    expect(resume.status).toBe(404);
   } finally {
     await app.close();
   }

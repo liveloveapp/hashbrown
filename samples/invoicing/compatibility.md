@@ -1,5 +1,38 @@
 # Invoicing compatibility checkpoint
 
+## Chat and route composition — September 15, 2026
+
+Version PR #664 merged as `82fc1fa69ec4a568a5f1734cc83750a3090654c6`.
+The registry now exposes 0.8.33, but its release recovery is still running and
+0.8.34 has not been installed. The queued controller must finish the preceding
+release before advancing the new version.
+
+The HTTP listener accepts an optional guarded B4 listener and forwards only
+POST `/agui/%2Freview%23agent`. Alternate agent routes and general thread APIs
+return 404; GET on the canonical route returns 405. All 76 server tests pass,
+with build/lint passing and independent review approving the boundary. A probe
+using the composed listener and fixed built runtime still creates exactly one
+approved allocation (`work/probes/invoicing-composed-listener.mts`).
+
+`ReviewChat` uses real Hashbrown hooks and the shared proposal component. Its
+imperative `startReview(paymentId)` method is intended for the grid selection
+event, preserving select-then-approve without a third click or a render-triggered
+request. This proof runtime binds one payment to one thread and refuses another
+payment; switching threads for a larger seeded dataset remains future work.
+The component is not yet mounted in `App`.
+
+The chat verifies proposals by session-owned thread lookup, holds new messages
+while approval is pending, captures the original interrupt batch, and submits
+identity-only state before once/cancel resume. It updates balances only after
+reading the matching approved operation result. Failed cancellation remains
+unconfirmed; an approval whose stream errors still checks the recorded result.
+Client tests use a controlled transport through actual Hashbrown parsing and
+rendering. They are not a substitute for the pending live B4 browser check.
+
+React build/test/lint pass with 29 tests (12 new chat cases). Combined with
+76 server tests and 3 unchanged shared-contract tests, coverage totals 108.
+The existing Vite chunk-size and terminal-color warnings remain.
+
 ## Published integration preparation — September 15, 2026
 
 B4 PR #663 merged as `58436723ac0857cb6a8985a33c1b8cc322ef972a`.

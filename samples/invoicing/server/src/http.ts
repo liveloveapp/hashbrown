@@ -25,12 +25,14 @@ export function readSessionCookie(cookie: string | undefined): string | undefine
 }
 
 /**
- * Serve session-owned read models for the local demo.
- * Financial mutations must go through the separately integrated approval path.
+ * Serve session-owned reads and optionally the canonical B4 review POST route.
+ * The injected review listener must enforce session middleware and B4 approval;
+ * other runtime routes, including thread management, are never forwarded.
  */
 export function createInvoicingListener(
   store: SessionStore,
   reviews?: Pick<ReviewCoordinator, 'getProposal'>,
+  runReview?: RequestListener,
 ): RequestListener {
   return (request, response) => {
     let path: string;
@@ -40,6 +42,15 @@ export function createInvoicingListener(
       );
     } catch {
       respond(response, 400, { error: 'invalid_path' });
+      return;
+    }
+    if (path === '/agui//review#agent' && runReview) {
+      if (request.method !== 'POST') {
+        response.setHeader('allow', 'POST');
+        respond(response, 405, { error: 'method_not_allowed' });
+        return;
+      }
+      runReview(request, response);
       return;
     }
     const operationId = /^\/api\/operations\/([^/]+)$/.exec(path)?.[1];

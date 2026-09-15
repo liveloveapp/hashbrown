@@ -95,7 +95,7 @@ tested independently, but the live route integration is still pending.
 `AllocationProposal` is also implemented and tested independently. The model
 supplies only a proposal ID. Application context supplies verified proposal
 values, pending-review readiness, and decision callbacks. It is not mounted in
-the live chat yet. Server and React coverage currently totals 92 passing tests;
+the live chat yet. Server and React coverage currently totals 105 passing tests;
 both projects pass build and lint.
 
 The shared package also exports the component configuration and canonical UI
@@ -103,3 +103,10 @@ response schema, with three tests including identity-only contracts. React
 checks the actual UI kit against the server schema. `createReviewMiddleware`
 binds tools to the validated cookie session and derives proposed amounts from
 server balances; the running bootstrap does not mount that middleware yet.
+
+`ReviewChat` is implemented independently with an event-driven `startReview`
+handle for the payment grid. It verifies the proposal and original approval
+batch, then reads the recorded operation before updating balances. Its tests
+exercise real Hashbrown rendering through a controlled transport. App mounting
+and published B4 startup remain pending. The HTTP listener can compose the
+guarded B4 runtime while exposing only its canonical review POST route.
