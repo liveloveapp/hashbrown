@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { HashbrownProvider } from '@hashbrownai/react';
+import type { TransportOrFactory } from '@hashbrownai/core';
+import { ReviewChat, type ReviewChatHandle } from './review-chat';
 import { type PretableColumn, PretableSurface } from '@pretable/react';
 import type { LedgerSnapshot } from '@invoicing/contracts';
 
@@ -7,6 +10,8 @@ type Payment = LedgerSnapshot['payments'][number];
 /** Initial data and optional snapshot transport for the invoicing workspace. */
 export interface AppProps {
   readonly initialSnapshot?: LedgerSnapshot;
+  readonly enableAssistant?: boolean;
+  readonly transport?: TransportOrFactory;
   readonly loadSnapshot?: () => Promise<LedgerSnapshot>;
 }
 
@@ -45,11 +50,23 @@ function totals(
 export function App({
   initialSnapshot,
   loadSnapshot = fetchSnapshot,
+  enableAssistant = false,
+  transport,
 }: AppProps) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [error, setError] = useState(false);
   const [page, setPage] = useState<'Dashboard' | 'Payments'>('Dashboard');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const reviewRef = useRef<ReviewChatHandle>(null);
+
+  function selectPayment(ids: string[]) {
+    const addedId = ids.find((id) => !selectedIds.includes(id));
+    const nextId = addedId ?? ids[0];
+    if (enableAssistant) {
+      if (!nextId || !reviewRef.current?.startReview(nextId)) return;
+    }
+    setSelectedIds(nextId ? [nextId] : []);
+  }
 
   useEffect(() => {
     if (initialSnapshot) return;
@@ -80,6 +97,26 @@ export function App({
       ) ?? [])
     : [];
   const columns: PretableColumn<Payment>[] = [
+    ...(enableAssistant
+      ? [
+          {
+            id: 'reviewSelection',
+            header: 'Review',
+            type: 'text' as const,
+            value: (row: Payment) => row.id,
+            render: ({ row }: { row: Payment }) => (
+              <input
+                type="checkbox"
+                aria-label="Select row"
+                checked={selectedIds.includes(row.id)}
+                onChange={() =>
+                  selectPayment(selectedIds.includes(row.id) ? [] : [row.id])
+                }
+              />
+            ),
+          },
+        ]
+      : []),
     {
       id: 'id',
       header: 'Payment',
@@ -89,7 +126,7 @@ export function App({
         <button
           className="payment-link"
           aria-label={`Review ${row.id}`}
-          onClick={() => setSelectedIds([row.id])}
+          onClick={() => selectPayment([row.id])}
         >
           {row.id}
         </button>
@@ -203,15 +240,16 @@ export function App({
                   ariaLabel="Incoming payments"
                   viewportHeight={240}
                   toolPanel={false}
-                  rowSelectionColumn={{ enabled: true, headerCheckbox: false }}
+                  rowSelectionColumn={
+                    enableAssistant
+                      ? undefined
+                      : { enabled: true, headerCheckbox: false }
+                  }
                   state={{
                     rowSelection: { kind: 'explicit', rowIds: selectedIds },
                   }}
-                  onRowSelectionChange={(ids) =>
-                    setSelectedIds((previous) => {
-                      const addedId = ids.find((id) => !previous.includes(id));
-                      return addedId ? [addedId] : ids.slice(0, 1);
-                    })
+                  onRowSelectionChange={
+                    enableAssistant ? undefined : selectPayment
                   }
                 />
               </div>
@@ -256,8 +294,7 @@ export function App({
                       ))
                     )}
                     <p className="context-note">
-                      Related by customer and currency. An allocation has not
-                      been proposed.
+                      Related by customer and currency.
                     </p>
                   </>
                 )}
@@ -290,24 +327,37 @@ export function App({
               conversation.
             </p>
           )}
-          <p className="connection-notice">
-            Assistant connection is not ready yet. Payment context is available
-            here; no allocation actions are enabled.
-          </p>
+          {enableAssistant ? (
+            <HashbrownProvider url="/agui/%2Freview%23agent">
+              <ReviewChat
+                ref={reviewRef}
+                selectedPaymentId={selected?.id}
+                transport={transport}
+                onApplied={setSnapshot}
+              />
+            </HashbrownProvider>
+          ) : (
+            <p className="connection-notice">
+              Assistant connection is not ready yet. Payment context is
+              available here; no allocation actions are enabled.
+            </p>
+          )}
         </div>
-        <div className="composer">
-          <textarea
-            aria-label="Message assistant"
-            placeholder="Ask about your business…"
-            disabled
-          />
-          <div>
-            <small>Connection pending</small>
-            <button disabled aria-label="Send message">
-              ↑
-            </button>
+        {!enableAssistant && (
+          <div className="composer">
+            <textarea
+              aria-label="Message assistant"
+              placeholder="Ask about your business…"
+              disabled
+            />
+            <div>
+              <small>Connection pending</small>
+              <button disabled aria-label="Send message">
+                ↑
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </aside>
     </div>
   );

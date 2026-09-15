@@ -1,5 +1,35 @@
 # Invoicing compatibility checkpoint
 
+## Working local application — September 15, 2026
+
+The user approved proceeding with the fixed local B4 build while published
+artifact integration remains pending. The React app now mounts real Hashbrown
+chat and the trusted proposal component. Explicit Pretable selection starts the
+review; approval applies the server-owned proposal and refreshes the snapshot.
+The runtime uses public B4 APIs and a fresh temporary workspace per server
+process, keeping thread history and ledger lifetimes aligned.
+
+`link-local-b4.mjs` reproducibly prepares built SDK, LangChain, and CLI packages
+without changing manifests or lockfiles. Tested source includes the #663 fix
+at `45084977`; its package metadata remains 0.8.33. This does not verify the
+published 0.8.34 distribution. See README for startup and credential setup.
+
+Live gpt-5-mini browser approval produced exactly one allocation, reduced both
+remaining balances from $2,400 to $0, and preserved selection across navigation.
+The flow made two agent HTTP requests: initial review and approval resume.
+A separate fresh browser declined successfully, leaving zero allocations and
+both balances at $2,400. That session could not read the approved session’s
+operation (404), and its ledger stayed unchanged. These checks use actual
+models, not recorded responses.
+
+Build/test/lint pass: server 81 tests, React 30, shared contracts 3 (114 total).
+Independent code review found no blockers; the shutdown sequencing follow-up
+was addressed. Vite reports an approximately 936 kB minified chunk; terminal
+color warnings remain. Automated Nx browser targets and broader live failure
+scenarios remain outstanding, as do published-package verification, the full
+seed dataset, and retirement of old examples. Earlier sections below are dated
+historical checkpoints and do not describe the current mounted application.
+
 ## Chat and route composition — September 15, 2026
 
 Version PR #664 merged as `82fc1fa69ec4a568a5f1734cc83750a3090654c6`.

@@ -25,7 +25,7 @@
       "executor": "nx:run-commands",
       "continuous": true,
       "options": {
-        "command": "tsx samples/invoicing/server/src/main.ts"
+        "command": "tsx --tsconfig samples/invoicing/server/tsconfig.json samples/invoicing/server/src/main.ts"
       }
     }
   }

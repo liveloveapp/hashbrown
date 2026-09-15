@@ -10,6 +10,22 @@
 
 ---
 
+## Execution update — September 15, 2026
+
+The user approved fixed local B4 artifacts to unblock application integration.
+The one-fixture flow is mounted and verified with real model calls: select →
+proposal → approve applies once and refreshes balances; decline leaves balances
+unchanged. Session guards, trusted UI props, captured approval batches, and
+operation-result recovery are covered by server/client tests. Build/test/lint
+pass (81 server, 30 React, 3 shared tests). README documents reproducible local
+B4 setup and temporary state. Independent review approved the implementation.
+
+The original checklists below retain the planned acceptance scope: published
+artifact inspection, dedicated deterministic/live browser Nx targets, and the
+full browser failure matrix are not yet complete. Manual live browser evidence
+does not substitute for those remaining automation steps. Full seed data and
+old-example retirement remain outside this proof.
+
 ## Scope and execution boundary
 
 Design: `design/react/canonical-invoicing-example.md`.
@@ -342,4 +358,4 @@ intact until their separately planned replacement and retirement.
 Independent review on September 14, 2026: **Approved**, with no blocking
 issues. The review confirmed the bounded scope, compatibility checkpoint,
 approval ownership, session isolation, duplicate protection, and separate
-deterministic/live-model evidence. Implementation has not started.
+deterministic/live-model evidence. Implementation progress is recorded in the execution update above.

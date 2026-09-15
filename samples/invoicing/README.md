@@ -1,112 +1,101 @@
-# Invoicing example — implementation in progress
+# Invoicing example — local compatibility proof
 
-This is the foundation for the canonical React / Hashbrown / Pretable / B4
-example. The React Dashboard and Payments pages use a real Pretable grid and
-session-owned HTTP snapshots. Live assistant messaging and approval are not
-connected yet; those controls remain disabled.
-The approved design is in `design/react/canonical-invoicing-example.md`; current
-integration evidence is in `samples/invoicing/compatibility.md`.
+The canonical React / Hashbrown / Pretable / B4 example now supports a real
+model-driven payment review: select a payment, then **Approve and apply** in
+the open assistant sidebar. The server records one simulated allocation and
+refreshes the payment and invoice balances. **Decline** leaves the ledger unchanged.
 
-## Ledger proof
+This proof contains one USD $2,400 payment and matching invoice for a software
+consulting customer. The planned two-year dataset, richer dashboard, and
+retirement of older examples remain separate follow-ups. There are no real
+payment transfers or collections workflows.
 
-The domain fixture contains one USD 2,400.00 payment and one invoice belonging
-to the same customer. This is a compatibility fixture, not the planned two-year
-software-consulting dataset. Amounts are integer cents; remaining balances are
-derived from committed allocations.
+## Run locally
 
-`createSessionStore()` creates isolated in-memory visitor sessions. A proposal
-captures exact allocations, record versions, proposal version, operation ID,
-and session generation. Decisions reference that stored identity. Approval
-revalidates the records and replaces the ledger and recorded operation result
-in one synchronous critical section. Repeated identical decisions return the
-recorded result; conflicting decisions, stale versions, and foreign-session
-proposals fail without financial changes. Reset invalidates old proposals.
+The current proof uses a built B4 checkout containing fixes from upstream PRs
+#657, #660, and #663. The tested middleware-context-cache checkout contains the
+last fix at commit `45084977` (merged upstream as `58436723`). Its package
+metadata says 0.8.33; this is **fixed source-build evidence**, not verification
+of the published 0.8.34 artifacts.
 
-The store returns copies, so callers cannot mutate its authoritative records.
-This provides single-process behavior only. The local server assigns HTTP-only, SameSite cookies and scopes snapshot and
-operation-result reads by session. B4 thread ownership, durable recovery, and
-browser approval controls still need integration.
-The domain `decide` method must remain behind that server approval boundary.
-
-Run from the repository root:
+Install dependencies and run `pnpm build` in that B4 checkout first. Then run
+from this Hashbrown repository root:
 
 ```sh
-npx nx test invoicing-server
-npx nx build invoicing-server
-npx nx lint invoicing-server
+node samples/invoicing/server/link-local-b4.mjs /path/to/fixed-b4-worktree
+INVOICING_ENV_FILE=/path/to/.env npx nx serve invoicing-server
 ```
 
-The server build target type-checks the domain and HTTP server; `serve` runs
-TypeScript directly. The direct additions are `@pretable/react@0.19.0` and
-`@pretable/ui@0.19.0` (public CSS imports), with matching core in the lockfile.
-
-## Run the current UI
-
-In two terminals at the repository root:
+In another terminal:
 
 ```sh
-npx nx serve invoicing-server
 npx nx serve invoicing-react
 ```
 
-Open http://127.0.0.1:4326. Vite proxies requests to the loopback server on
-port 4325. Select a payment by checkbox or its identifier to show related
-invoices beneath the grid; selection remains across navigation. The Assistant
-sidebar is open on both pages, with messaging explicitly unavailable.
+The environment file must provide `OPENAI_API_KEY`; alternatively export the
+key in the server environment. Credentials are loaded only by the server.
+Both the root agent and nested structured UI generation use `gpt-5-mini`.
+Open <http://127.0.0.1:4326/>. Vite proxies API and agent requests to port 4325.
+Select the payment checkbox or identifier to start review; no extra Review
+button is required. Selection and chat survive Dashboard/Payments navigation.
 
-Read endpoints are `GET /api/snapshot`, `GET /api/operations/:operationId`,
-and `GET /api/proposals/:proposalId`, all session-scoped.
-When the review coordinator is supplied to the HTTP listener,
-`GET /api/reviews/:threadId` resolves the proposal for that session's current
-conversation. Foreign, missing, and reset conversations return 404.
-There is deliberately no general-purpose financial mutation endpoint. The
-current app needs no model key. Future live B4 execution will load credentials
-on the server only.
+The setup script copies built SDK, LangChain, and CLI entry packages into
+`node_modules`, linking their installed dependencies from the B4 checkout.
+Keep that checkout and its dependencies available. Rerun the script after
+rebuilding B4 or reinstalling this workspace. It does not change manifests or
+lockfiles, and refuses to overwrite ordinary package-manager installations or
+unrelated symlinks. Published-package installation remains a later integration
+step; this local setup is intentionally not a registry dependency declaration.
 
-Shared readonly DTOs live in the `invoicing-contracts` Nx library, imported as
-`@invoicing/contracts`. The client does not import server implementation code.
-Run build, test, and lint targets for `invoicing-react` and
-`invoicing-contracts` as well as `invoicing-server`.
+## Authority and state
 
-Current warnings include Vite's large Pretable-containing JS chunk and the
-environment's `NO_COLOR` / `FORCE_COLOR` conflict. npm audit reports 58 workspace
-findings (22 moderate, 36 high); none name the added Pretable packages.
+The server owns amounts, record versions, immutable proposals, operation IDs,
+and session generations. Model UI props contain only a proposal ID. The
+client fetches the session-owned proposal and verifies its pending interrupt
+batch before enabling approval. It reads the recorded operation result before
+refreshing balances, including when the approval stream fails after submission.
+One unanswered interrupt holds the entire batch.
 
-## Remaining application work
+The review middleware binds B4 tools to the validated cookie session and exact
+conversation. Proposed amounts come from server balances. Approval revalidates
+records and applies the allocation synchronously with its recorded result.
+Repeated identical decisions return that result; stale or conflicting decisions
+and foreign-session proposals fail without changing balances.
 
-Verify published B4 packages containing PRs #657, #660, and the middleware
-context fix from PR #663 (scheduled for 0.8.34). Then connect the
-server-owned proposal to the approved Dashboard / Payments shell, Pretable
-selection, and the open Hashbrown chat sidebar. Approval remains one click
-with no second confirmation. Add deterministic and live-model browser tests
-before calling the invoice allocation flow complete. Full data seeding and
-retirement of the older examples follow later.
+HTTP-only SameSite cookies isolate browser sessions. Ledger and B4 history
+start fresh together on server restart; this is single-process, temporary state,
+not durable recovery. Each proof chat owns one payment review. Cancellation
+confirms no allocation was requested; it does not record a domain decline.
 
-## Server review guard
+Session-scoped reads:
 
-`createReviewCoordinator` validates the request's preserved Hashbrown schema,
-thread/session ownership, selected payment, and exact proposal identity on
-resume. Its server-only capability context allows preparation or approved
-application of the stored proposal. Never serialize that context to a browser.
-B4 must validate the actual pending interrupt before calling `apply`; the
-coordinator is not a standalone HTTP approval endpoint. It is implemented and
-tested independently, but the live route integration is still pending.
+- `GET /api/snapshot`
+- `GET /api/proposals/:proposalId`
+- `GET /api/reviews/:threadId`
+- `GET /api/operations/:operationId`
 
-`AllocationProposal` is also implemented and tested independently. The model
-supplies only a proposal ID. Application context supplies verified proposal
-values, pending-review readiness, and decision callbacks. It is not mounted in
-the live chat yet. Server and React coverage currently totals 105 passing tests;
-both projects pass build and lint.
+Only `POST /agui/%2Freview%23agent` forwards to the guarded B4 listener. General
+thread APIs and alternate agent routes are unavailable. There is no standalone
+financial mutation endpoint. Shared DTOs and the identity-only component schema
+live in `invoicing-contracts`; clients do not import server implementation code.
 
-The shared package also exports the component configuration and canonical UI
-response schema, with three tests including identity-only contracts. React
-checks the actual UI kit against the server schema. `createReviewMiddleware`
-binds tools to the validated cookie session and derives proposed amounts from
-server balances; the running bootstrap does not mount that middleware yet.
+## Verification and next steps
 
-`ReviewChat` is implemented independently with an event-driven `startReview`
-handle for the payment grid. It verifies the proposal and original approval
-batch, then reads the recorded operation before updating balances. Its tests
-exercise real Hashbrown rendering through a controlled transport. App mounting
-and published B4 startup remain pending. The HTTP listener can compose the
-guarded B4 runtime while exposing only its canonical review POST route.
+Build, test, and lint pass for the application projects: 81 server tests,
+30 React tests, and 3 shared-contract tests. The React suite exercises real
+Hashbrown rendering with controlled transport. Live browser checks separately
+exercise actual B4/model calls for approval and cancellation. Approval records
+one allocation, changes both remaining balances to $0, and preserves selection;
+cancellation leaves both balances at $2,400. The separate browser session
+cannot read the approved session’s operation (404) and retains its own ledger.
+
+Use `npx nx build`, `npx nx test`, and `npx nx lint` with each of
+`invoicing-server`, `invoicing-react`, and `invoicing-contracts`. The server
+build type-checks; serve runs TypeScript directly. Existing warnings include
+the approximately 936 kB minified Vite chunk and terminal color settings.
+
+Remaining work includes published B4 artifact verification, a repeatable Nx
+browser/live-model test target, broader browser failure scenarios, two-year
+seed data and scenario fixtures, and replacement of the older examples.
+See `compatibility.md` and `design/react/canonical-invoicing-example.md` for
+integration evidence and the approved application design.

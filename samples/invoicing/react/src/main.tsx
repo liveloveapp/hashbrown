@@ -10,6 +10,6 @@ const root = document.getElementById('root');
 if (!root) throw new Error('Missing application root');
 createRoot(root).render(
   <StrictMode>
-    <App loadSnapshot={loadSnapshot} />
+    <App loadSnapshot={loadSnapshot} enableAssistant />
   </StrictMode>,
 );

@@ -329,3 +329,32 @@ h2 {
     font-size: 16px;
   }
 }
+
+.assistant-body section[aria-label='Payment review chat'] {
+  margin-top: 20px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.assistant-body form {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+}
+.assistant-body input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #e4e6e5;
+  border-radius: 6px;
+  font: inherit;
+}
+.assistant-body button {
+  padding: 8px 12px;
+  border: 1px solid #d4ddd7;
+  border-radius: 6px;
+  background: #edf3ef;
+  color: #253d32;
+}
+.assistant-body button:disabled {
+  opacity: 0.5;
+}
