@@ -4,25 +4,13 @@ import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import {
   defineEventHandler,
-  type H3Event,
   readBody,
   sendStream,
   setResponseHeader,
 } from 'h3';
 
-type Env = Record<string, string | undefined>;
-
-type CloudflareContext = {
-  _platform?: {
-    cloudflare?: {
-      env?: Env;
-    };
-  };
-};
-
-const getEnv = (event: H3Event, key: string): string | undefined => {
-  const context = event.context as CloudflareContext;
-  const value = context._platform?.cloudflare?.env?.[key] ?? process.env[key];
+const getEnv = (key: string): string | undefined => {
+  const value = process.env[key];
 
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 };
@@ -30,7 +18,7 @@ const getEnv = (event: H3Event, key: string): string | undefined => {
 export default defineEventHandler(async (event) => {
   const input = await readBody<RunAgentInput>(event);
 
-  const apiKey = getEnv(event, 'OPENAI_API_KEY');
+  const apiKey = getEnv('OPENAI_API_KEY');
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY environment variable is required');
   }
@@ -45,8 +33,8 @@ export default defineEventHandler(async (event) => {
   const cleanup = () => event.req.signal.removeEventListener('abort', abort);
   const stream = HashbrownOpenAI.stream.text({
     apiKey,
-    baseURL: getEnv(event, 'OPENAI_BASE_URL'),
-    model: getEnv(event, 'OPENAI_MODEL') ?? 'gpt-5-nano',
+    baseURL: getEnv('OPENAI_BASE_URL'),
+    model: getEnv('OPENAI_MODEL') ?? 'gpt-5-nano',
     input,
     signal: abortController.signal,
     transformRequestOptions: (options) => {
@@ -60,12 +48,15 @@ export default defineEventHandler(async (event) => {
   const textEncoder = new TextEncoder();
   const iterator = stream[Symbol.asyncIterator]();
 
+  // Streaming on Vercel's Node runtime is chunk-by-chunk as long as nothing
+  // between the function and the client is allowed to buffer or transform.
   setResponseHeader(event, 'Content-Type', eventEncoder.getContentType());
   setResponseHeader(
     event,
     'Cache-Control',
-    'no-cache, no-store, must-revalidate',
+    'no-cache, no-store, must-revalidate, no-transform',
   );
+  setResponseHeader(event, 'X-Accel-Buffering', 'no');
 
   const readableStream = new ReadableStream<Uint8Array>({
     async pull(controller) {
