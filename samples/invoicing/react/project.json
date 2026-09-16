@@ -1,0 +1,34 @@
+{
+  "name": "invoicing-react",
+  "projectType": "application",
+  "sourceRoot": "samples/invoicing/react/src",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "tsc --noEmit -p samples/invoicing/react/tsconfig.json",
+          "vite build --config samples/invoicing/react/vite.config.mts"
+        ],
+        "parallel": false
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config samples/invoicing/react/vite.config.mts"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "eslint samples/invoicing/react" }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "vite --config samples/invoicing/react/vite.config.mts"
+      }
+    }
+  }
+}

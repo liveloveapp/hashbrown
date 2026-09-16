@@ -1,0 +1,152 @@
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import type { Proposal } from '@invoicing/contracts';
+import { expect, test, vi } from 'vitest';
+import {
+  AllocationProposal,
+  AllocationProposalContext,
+  type AllocationProposalReview,
+} from './allocation-proposal';
+
+const proposal: Proposal = Object.freeze({
+  proposalId: 'proposal-001',
+  operationId: 'operation-001',
+  generation: 1,
+  proposalVersion: 1,
+  expectedPaymentVersion: 1,
+  expectedInvoiceVersion: 1,
+  customerId: 'customer-001',
+  paymentId: 'payment-001',
+  invoiceId: 'invoice-001',
+  amountCents: 240000,
+  currency: 'USD',
+});
+
+function review(overrides: Partial<AllocationProposalReview> = {}) {
+  return {
+    verifiedProposal: proposal,
+    selectedPaymentId: proposal.paymentId,
+    pendingForProposal: true,
+    isApplying: false,
+    onApprove: vi.fn(),
+    onDecline: vi.fn(),
+    ...overrides,
+  };
+}
+
+function renderProposal(
+  value: AllocationProposalReview,
+  proposalId = proposal.proposalId,
+) {
+  return render(
+    <AllocationProposalContext.Provider value={value}>
+      <AllocationProposal proposalId={proposalId} />
+    </AllocationProposalContext.Provider>,
+  );
+}
+
+test('shows waiting state without a trusted review provider', () => {
+  cleanup();
+
+  render(<AllocationProposal proposalId={proposal.proposalId} />);
+
+  expect(screen.getByRole('status')).toHaveTextContent('Waiting for proposal');
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+});
+
+test('waits for a verified server proposal before showing actions', () => {
+  cleanup();
+  const value = review({ verifiedProposal: undefined });
+
+  renderProposal(value);
+
+  expect(screen.getByRole('status')).toHaveTextContent('Waiting for proposal');
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+});
+
+test('does not expose server values or approval for an unknown model proposal ID', () => {
+  cleanup();
+  const value = review();
+
+  renderProposal(value, 'model-invented-proposal');
+
+  expect(screen.getByRole('status')).toHaveTextContent('Proposal unavailable');
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  expect(screen.queryByText('$2,400.00')).not.toBeInTheDocument();
+});
+
+test('keeps incomplete streaming proposal IDs unavailable', () => {
+  cleanup();
+  const value = review();
+
+  const { rerender } = renderProposal(value, '');
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  rerender(
+    <AllocationProposalContext.Provider value={value}>
+      <AllocationProposal proposalId="proposal-" />
+    </AllocationProposalContext.Provider>,
+  );
+
+  expect(screen.getByRole('status')).toHaveTextContent('Proposal unavailable');
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+});
+
+test('does not show approval when the selected payment changes', () => {
+  cleanup();
+  const value = review({ selectedPaymentId: 'payment-002' });
+
+  renderProposal(value);
+
+  expect(screen.getByRole('status')).toHaveTextContent('Proposal unavailable');
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+});
+
+test('disables both actions without a pending review for this proposal', () => {
+  cleanup();
+  const value = review({ pendingForProposal: false });
+  renderProposal(value);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Approve and apply' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
+
+  expect(
+    screen.getByRole('button', { name: 'Approve and apply' }),
+  ).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Decline' })).toBeDisabled();
+  expect(value.onApprove).not.toHaveBeenCalled();
+  expect(value.onDecline).not.toHaveBeenCalled();
+});
+
+test('disables both actions while the decision is applying', () => {
+  cleanup();
+  const value = review({ isApplying: true });
+  renderProposal(value);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Approve and apply' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
+
+  expect(
+    screen.getByRole('button', { name: 'Approve and apply' }),
+  ).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Decline' })).toBeDisabled();
+  expect(value.onApprove).not.toHaveBeenCalled();
+  expect(value.onDecline).not.toHaveBeenCalled();
+});
+
+test('renders immutable server amounts and invokes each owned decision callback once without arguments', () => {
+  cleanup();
+  const value = review();
+  renderProposal(value);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Approve and apply' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
+
+  expect(screen.getByText('$2,400.00')).toBeVisible();
+  expect(screen.getByText('USD')).toBeVisible();
+  expect(screen.getByText('payment-001')).toBeVisible();
+  expect(screen.getByText('invoice-001')).toBeVisible();
+  expect(value.onApprove).toHaveBeenCalledTimes(1);
+  expect(value.onApprove).toHaveBeenCalledWith();
+  expect(value.onDecline).toHaveBeenCalledTimes(1);
+  expect(value.onDecline).toHaveBeenCalledWith();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});

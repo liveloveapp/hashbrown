@@ -56,6 +56,8 @@
     "@ngrx/entity": "22.0.0-rc.0",
     "@ngrx/signals": "22.0.0-rc.0",
     "@ngrx/store": "22.0.0-rc.0",
+    "@pretable/react": "0.19.0",
+    "@pretable/ui": "0.19.0",
     "@spotify/web-api-ts-sdk": "^1.2.0",
     "@stackblitz/sdk": "^1.11.1",
     "arktype": "^2.2.2",
@@ -78,8 +80,7 @@
     "rxjs": "~7.8.2",
     "sanitize-html": "^2.17.5",
     "tslib": "^2.8.1",
-    "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.25.2",
+    "zod": "^4.6.5",
     "zone.js": "0.16.2"
   },
   "devDependencies": {
@@ -221,7 +222,6 @@
     "vite-plugin-dts": "~4.5.4",
     "vitest": "4.1.10",
     "wrangler": "4.114.0",
-    "zod-v4": "npm:zod@^4.4.3",
     "zustand": "^5.0.14"
   },
   "overrides": {
@@ -236,5 +236,8 @@
   },
   "nx": {
     "includedScripts": []
-  }
+  },
+  "workspaces": [
+    "samples/invoicing/server"
+  ]
 }

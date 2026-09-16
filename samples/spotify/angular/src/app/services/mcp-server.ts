@@ -5,8 +5,7 @@ import {
   runInInjectionContext,
   signal,
 } from '@angular/core';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SpotifyService } from './spotify';
 import { Chat } from '@hashbrownai/core';
 import { createTool } from '@hashbrownai/angular';
@@ -22,6 +21,10 @@ export class McpServerService {
   injector = inject(Injector);
 
   async connect() {
+    const [{ Client }, { StreamableHTTPClientTransport }] = await Promise.all([
+      import('@modelcontextprotocol/sdk/client/index.js'),
+      import('@modelcontextprotocol/sdk/client/streamableHttp.js'),
+    ]);
     this.client = new Client({
       name: 'spotify',
       version: '1.0.0',

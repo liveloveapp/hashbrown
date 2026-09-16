@@ -11,7 +11,8 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { z } from 'zod';
 
-const extendedInputSchema = RunAgentInputSchema.extend({
+// Validate extensions separately from AG-UI's Zod 3 schema.
+const inputExtensionSchema = z.object({
   hashbrown: z.object({
     responseSchema: z.record(z.string(), z.unknown()),
     ui: z.boolean().optional(),
@@ -61,10 +62,13 @@ export async function startIndependentEndpoint(options: {
     try {
       const chunks: Buffer[] = [];
       for await (const chunk of request) chunks.push(Buffer.from(chunk));
-      const schema = options.extended
-        ? extendedInputSchema
-        : RunAgentInputSchema;
-      input = schema.parse(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      const payload: unknown = JSON.parse(
+        Buffer.concat(chunks).toString('utf8'),
+      );
+      const canonicalInput = RunAgentInputSchema.parse(payload);
+      input = options.extended
+        ? { ...canonicalInput, ...inputExtensionSchema.parse(payload) }
+        : canonicalInput;
     } catch {
       response.writeHead(400, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({ error: 'Invalid run input' }));
