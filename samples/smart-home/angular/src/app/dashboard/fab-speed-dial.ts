@@ -8,8 +8,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ConnectedPosition, OverlayModule } from '@angular/cdk/overlay';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { AddLightForm } from '../lights/add-light-form';
-import { AddSceneForm } from '../scenes/add-scene-form';
 
 @Component({
   selector: 'app-fab-speed-dial',
@@ -78,13 +76,15 @@ export class FabSpeedDial {
     this.isOpen.set(false);
   }
 
-  protected addLight() {
-    this.dialog.open(AddLightForm);
+  protected async addLight() {
     this.closeSpeedDial();
+    const { AddLightForm } = await import('../lights/add-light-form');
+    this.dialog.open(AddLightForm);
   }
 
-  protected addScene() {
-    this.dialog.open(AddSceneForm);
+  protected async addScene() {
     this.closeSpeedDial();
+    const { AddSceneForm } = await import('../scenes/add-scene-form');
+    this.dialog.open(AddSceneForm);
   }
 }

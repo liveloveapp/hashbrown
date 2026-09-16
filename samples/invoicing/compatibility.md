@@ -1,5 +1,46 @@
 # Invoicing compatibility checkpoint
 
+## Published B4 and Zod 4 integration — September 15, 2026
+
+The server now pins npm-published `@b4run/sdk`, `@b4run/langchain`, and
+`@b4run/cli` at 0.8.34 in a private workspace. The lockfile records registry
+artifacts and integrity hashes. Temporary agent workspaces resolve the installed
+packages individually, supporting npm's nested or hoisted layout. The obsolete
+local B4 linker was removed. Historical source-build checkpoints below remain
+as records of earlier verification.
+
+The root dependency is now Zod `^4.6.5` (locked to 4.6.5), satisfying B4's Zod 4
+peer. The redundant `zod-v4` alias and unused direct `zod-to-json-schema`
+dependency were removed. AG-UI retains its own transitive Zod 3 dependencies;
+its canonical input and Hashbrown's Zod 4 extension are validated separately.
+Explicit internal action payload types keep declaration generation portable;
+the core API report has no public changes.
+
+Verification passes: core build/lint/API report and 1,031 tests; runtime smoke
+42 tests/typecheck/lint; invoicing server, React, and contracts build/test/lint
+(133 tests); e2e build/lint; Spotify server build; smart-home production build
+and lint. The smart-home dialogs load on demand, reducing its initial bundle
+from 1,207.33 to 1,073.51 kB and preserving its existing error budget. Both
+dialogs were opened successfully in the production browser.
+
+The published-package live-model test passes in 1 minute 38 seconds with real
+gpt-5-mini interactions: initial ledger question, approval, cancellation,
+subsequent approval, updated ledger question, and session isolation. Both
+preview processes were restarted after installing the published packages.
+Earlier attempts failed: one overlapped hot reloads during the migration; a
+second received an assistant error before allocation, whose cause was not
+captured. An isolated diagnostic then completed successfully, followed by the
+full passing run with failure tracing enabled. These results verify the flow,
+but do not establish absence of intermittent model/runtime failures.
+
+Remaining warnings include the invoicing Vite chunk-size warning (approximately
+1,001 kB), smart-home's 500 kB warning and existing recurrence utility lint
+warning, existing API release-tag and terminal color warnings. Dependency
+installation reports 58 audit findings (22 moderate, 36 high); this migration
+does not remediate the full repository audit. Dependency resolution and a
+lockfile-only `npm ci --dry-run --ignore-scripts` check pass; this is not a full
+clean-install verification.
+
 ## Seeded application and usable conversation — September 15, 2026
 
 The application now uses a deterministic October 2024–September 2026 ledger
@@ -220,7 +261,6 @@ Build, test, and lint pass for both affected projects: 70 server tests and
 both pieces without findings. Existing Vite chunk-size and terminal-color
 warnings remain. The tagged B4 release has passed detection and tagging and
 is preparing its package payload; publication is not yet verified.
-
 
 ## React and HTTP scaffold — September 15, 2026
 

@@ -30,17 +30,14 @@ are no real transfers, collections workflows, or payment reminders.
 
 ## Run locally
 
-The current application uses a built B4 checkout containing fixes from upstream PRs
-#657, #660, and #663. The tested middleware-context-cache checkout contains the
-last fix at commit `45084977` (merged upstream as `58436723`). Its package
-metadata says 0.8.33; this is **fixed source-build evidence**, not verification
-of the published 0.8.34 artifacts.
+The server pins published `@b4run/cli`, `@b4run/langchain`, and `@b4run/sdk`
+packages at **0.8.34** in its private npm workspace. A separate B4 checkout or
+local package-linking step is no longer required.
 
-Install dependencies and run `pnpm build` in that B4 checkout first. Then run
-from this Hashbrown repository root:
+From the repository root:
 
 ```sh
-node samples/invoicing/server/link-local-b4.mjs /path/to/fixed-b4-worktree
+npm ci
 INVOICING_ENV_FILE=/path/to/.env npx nx serve invoicing-server
 ```
 
@@ -57,13 +54,9 @@ Open <http://127.0.0.1:4326/>. Vite proxies API and agent requests to port 4325.
 Selection and chat survive Dashboard/Payments navigation. Matching is an
 explicit action; selecting a record never initiates a financial proposal.
 
-The setup script copies built SDK, LangChain, and CLI entry packages into
-`node_modules`, linking their installed dependencies from the B4 checkout.
-Keep that checkout and its dependencies available. Rerun the script after
-rebuilding B4 or reinstalling this workspace. It does not change manifests or
-lockfiles, and refuses to overwrite ordinary package-manager installations or
-unrelated symlinks. Published-package installation remains a later integration
-step; this local setup is intentionally not a registry dependency declaration.
+The root lockfile includes the server workspace and registry integrity hashes.
+The temporary agent workspace resolves the same installed B4 packages as the
+server, regardless of npm hoisting. No dependency points to a local B4 checkout.
 
 ## Authority and state
 
@@ -129,7 +122,6 @@ validate the test code. Browser artifacts go to `work/invoicing-e2e`.
 The server build type-checks; serve runs TypeScript directly. Existing warnings
 include the large minified Vite chunk and terminal color settings.
 
-Remaining work includes published B4 artifact verification, broader browser
-failure scenarios, durable state/refresh recovery, one-approval multi-invoice
+Remaining work includes broader browser failure scenarios, durable state/refresh recovery, one-approval multi-invoice
 allocation, and deliberate retirement of the older examples after reviewing
 this replacement. See `compatibility.md` for dated verification evidence.

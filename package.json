@@ -80,8 +80,7 @@
     "rxjs": "~7.8.2",
     "sanitize-html": "^2.17.5",
     "tslib": "^2.8.1",
-    "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.25.2",
+    "zod": "^4.6.5",
     "zone.js": "0.16.2"
   },
   "devDependencies": {
@@ -223,7 +222,6 @@
     "vite-plugin-dts": "~4.5.4",
     "vitest": "4.1.10",
     "wrangler": "4.114.0",
-    "zod-v4": "npm:zod@^4.4.3",
     "zustand": "^5.0.14"
   },
   "overrides": {
@@ -238,5 +236,8 @@
   },
   "nx": {
     "includedScripts": []
-  }
+  },
+  "workspaces": [
+    "samples/invoicing/server"
+  ]
 }
