@@ -992,8 +992,8 @@ Expected: `YAML_OK ci,targets,preview,production,pr-gate`.
 
 - [ ] **Step 3: Confirm no Cloudflare references remain outside docs and marketing copy**
 
-Run: `grep -rn "wrangler\|cloudflare" --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git --exclude=CHANGELOG.md --exclude=package-lock.json --exclude-dir=docs . `
-Expected: exactly one hit, `www/analog/src/app/components/home/Features.ts`.
+Run: `git grep -n -i "wrangler\|cloudflare" -- ':!package-lock.json' ':!CHANGELOG.md' ':!docs/superpowers' ':!docs/security'`
+Expected: exactly two hits — `www/analog/DEPLOY.md` (describes the optional Cloudflare teardown) and `www/analog/src/app/components/home/Features.ts` (library runtime copy).
 
 - [ ] **Step 4: Commit**
 
@@ -1562,6 +1562,7 @@ If yes, they write them to `/private/tmp/claude-501/-Users-blove-repos-hashbrown
 - [ ] **Step 3: Run the bootstrap without dispatching the workflow**
 
 Run: `node tools/vercel/bootstrap.mjs --env-file /Users/blove/repos/hashbrown/.env --skip-workflow`
+(Cloudflare teardown is opt-in via `--teardown-cloudflare` and must NOT be passed here; the Pages projects stay live until Vercel serves the domain in Task 13.)
 Expected output shape:
 
 ```
@@ -1573,13 +1574,14 @@ domain apex            created
 domain www             created
 secret VERCEL_PROJECT_ID_WWW set
 secrets VERCEL_*       set
-cloudflare teardown    skipped  ...      (or per-project deleted/skipped)
+cloudflare teardown    skipped  pass --teardown-cloudflare after the domain is verified
 domain hashbrown.dev   pending nameservers
 
 Set these nameservers at the registrar (Squarespace), then re-run this script:
-  ns1.vercel-dns.com
-  ns2.vercel-dns.com
+  <nameservers reported by Vercel for this domain>
 ```
+
+If Vercel has not yet reported intended nameservers, the script says so and points to the dashboard; take the values from the domain's page there.
 
 - [ ] **Step 4: Confirm the secrets exist**
 
@@ -1633,13 +1635,24 @@ The user merges (squash). `production` runs with `--prod`; `gh run watch` on the
 Run: `gh api "repos/liveloveapp/hashbrown/deployments?environment=production" --jq '.[0].id' | xargs -I{} gh api repos/liveloveapp/hashbrown/deployments/{}/statuses --jq '.[0].environment_url'`
 Then `curl -sS "<url>/docs/angular/start/quick" | grep -c 'Angular Quick Start'` → `1`.
 
-- [ ] **Step 3: User switches nameservers at Squarespace** to `ns1.vercel-dns.com` / `ns2.vercel-dns.com`.
+- [ ] **Step 3: User switches nameservers at Squarespace** to the nameservers the bootstrap printed for `hashbrown.dev` (also shown on the domain page in the Vercel dashboard).
 
 - [ ] **Step 4: Confirm the domain and teardown**
 
 Re-run: `node tools/vercel/bootstrap.mjs --env-file /Users/blove/repos/hashbrown/.env --skip-workflow`
-Expected: every step reports `exists`/`skipped`, and `domain hashbrown.dev   verified`. If `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` are present in the env file this run also deletes the four Pages projects and the two `CLOUDFLARE_*` GitHub secrets.
+Expected: every step reports `exists`/`skipped`, and `domain hashbrown.dev   verified`.
+
+Only once the domain is verified and `https://hashbrown.dev` serves from Vercel, tear down Cloudflare: `node tools/vercel/bootstrap.mjs --env-file /Users/blove/repos/hashbrown/.env --skip-workflow --teardown-cloudflare` (requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the env file). This deletes the four Pages projects and the two `CLOUDFLARE_*` GitHub secrets.
 
 - [ ] **Step 5: Final production check on the real domain**
 
 Run: `curl -sSI https://hashbrown.dev | grep -i '^server:'` → `server: Vercel`, and repeat the `/_/chat` curl from Task 12 Step 3 against `https://hashbrown.dev`.
+
+---
+
+## Amendments applied during execution
+
+- The Vercel Build Output API tree lands at `<repo-root>/.vercel/output` (Analog pins Nitro output to its `workspaceRoot`); the deploy target `dir` is `.` and the function directory is `functions/__server.func`.
+- `deploy.yml` fails closed when `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` are empty or `environment` is invalid, drops `--token` in favour of the `VERCEL_TOKEN` env var, adds `githubRepo`/`githubCommitOrg` meta, asserts the captured URL, and skips the status post on cancellation.
+- `pr-main.yml` keys concurrency on the ref only (push and dispatch on `main` share one group), sets `timeout-minutes` on `ci` and `pr-gate`, launders `nx show projects` output, and guards `production` against an empty matrix.
+- `tools/vercel/bootstrap.mjs`: Cloudflare teardown is opt-in (`--teardown-cloudflare`); the DNS list uses `/v5`; env upserts surface `failed[]`; nameservers are never guessed; the `www` redirect is reconciled on re-run; the token reaches `gh secret set` via stdin.
