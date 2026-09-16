@@ -314,9 +314,19 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
     screen.getAllByRole('checkbox', { name: 'Select row' })[1],
   ).not.toBeChecked();
 
+  fireEvent.click(screen.getByRole('button', { name: 'Match payment' }));
+  expect(
+    screen.getByText(/Finish the current assistant request/),
+  ).toBeVisible();
+
   fireEvent.click(approve);
   await screen.findByText('Allocation applied.');
 
+  await waitFor(() =>
+    expect(
+      screen.queryByText(/Finish the current assistant request/),
+    ).not.toBeInTheDocument(),
+  );
   expect(requests).toHaveLength(2);
   expect(requests[1].input.resume).toEqual([
     { interruptId: 'permission-1', status: 'resolved', payload: 'once' },
@@ -368,6 +378,10 @@ test('shows client metadata and defaults to unmatched payments', async () => {
 
   expect(screen.getByText('Northstar Labs')).toBeVisible();
   expect(screen.getByText('PAY-2026-01')).toBeVisible();
+  expect(screen.getByText('PAY-2026-01')).toHaveAttribute(
+    'title',
+    'PAY-2026-01',
+  );
   expect(screen.getByText('2026-01-15')).toBeVisible();
   expect(screen.queryByText('PAY-PAID')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'All payments' }));

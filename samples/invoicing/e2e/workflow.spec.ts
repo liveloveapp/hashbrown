@@ -196,6 +196,7 @@ test('lost approval response holds further work until the committed operation is
     .getByRole('button', { name: 'Check allocation result', exact: true })
     .click();
 
+  await page.locator('summary').filter({ hasText: 'Review applied' }).click();
   await expect(
     page.getByText('Allocation applied.', { exact: true }),
   ).toBeVisible();
