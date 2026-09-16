@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  CLOUDFLARE_PAGES_PROJECTS,
   createVercelClient,
+  deleteCloudflarePagesProjects,
   ensureDomain,
   ensureProject,
   missingDnsRecords,
@@ -111,6 +113,35 @@ test('upsertEnv skips empty values and targets production and preview', async ()
   ]);
 });
 
+test('upsertEnv throws when the API reports failed variables', async () => {
+  const { fetchImpl } = stubFetch({
+    'POST /v10/projects/prj_1/env?upsert=true': {
+      body: {
+        created: [],
+        failed: [
+          {
+            error: {
+              code: 'invalid_value',
+              key: 'OPENAI_API_KEY',
+              value: 'sk-test',
+            },
+          },
+        ],
+      },
+    },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  await assert.rejects(
+    () => upsertEnv(vercel, 'prj_1', { OPENAI_API_KEY: 'sk-test' }),
+    (error) => {
+      assert.match(error.message, /OPENAI_API_KEY: invalid_value/);
+      assert.doesNotMatch(error.message, /sk-test/);
+      return true;
+    },
+  );
+});
+
 test('ensureDomain treats an existing project domain as exists', async () => {
   const { fetchImpl, calls } = stubFetch({
     'GET /v9/projects/prj_1/domains/www.hashbrown.dev': {
@@ -124,6 +155,98 @@ test('ensureDomain treats an existing project domain as exists', async () => {
     'exists',
   );
   assert.equal(calls.length, 1);
+});
+
+test('ensureDomain creates a missing domain with its redirect', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'POST /v10/projects/prj_1/domains': { body: {} },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  assert.equal(
+    await ensureDomain(vercel, 'prj_1', {
+      name: 'www.hashbrown.dev',
+      redirect: 'hashbrown.dev',
+      redirectStatusCode: 308,
+    }),
+    'created',
+  );
+  assert.deepEqual(calls.at(-1).body, {
+    name: 'www.hashbrown.dev',
+    redirect: 'hashbrown.dev',
+    redirectStatusCode: 308,
+  });
+});
+
+test('ensureDomain patches an existing domain whose redirect differs', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'GET /v9/projects/prj_1/domains/www.hashbrown.dev': {
+      body: {
+        name: 'www.hashbrown.dev',
+        redirect: null,
+        redirectStatusCode: null,
+      },
+    },
+    'PATCH /v9/projects/prj_1/domains/www.hashbrown.dev': { body: {} },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  assert.equal(
+    await ensureDomain(vercel, 'prj_1', {
+      name: 'www.hashbrown.dev',
+      redirect: 'hashbrown.dev',
+      redirectStatusCode: 308,
+    }),
+    'updated',
+  );
+  assert.deepEqual(calls.at(-1).body, {
+    redirect: 'hashbrown.dev',
+    redirectStatusCode: 308,
+  });
+});
+
+test('deleteCloudflarePagesProjects reports skipped for 404 and deleted for success', async () => {
+  let index = 0;
+  const fetchImpl = async () => {
+    const first = index === 0;
+    index += 1;
+    return first
+      ? new Response(JSON.stringify({ success: false }), { status: 404 })
+      : new Response(JSON.stringify({ success: true }), { status: 200 });
+  };
+
+  const results = await deleteCloudflarePagesProjects({
+    token: 'cf',
+    accountId: 'acct',
+    fetchImpl,
+  });
+
+  assert.deepEqual(results, {
+    [CLOUDFLARE_PAGES_PROJECTS[0]]: 'skipped',
+    ...Object.fromEntries(
+      CLOUDFLARE_PAGES_PROJECTS.slice(1).map((name) => [name, 'deleted']),
+    ),
+  });
+});
+
+test('deleteCloudflarePagesProjects throws when success is false', async () => {
+  const fetchImpl = async () =>
+    new Response(
+      JSON.stringify({ success: false, errors: [{ code: 10000 }] }),
+      {
+        status: 200,
+      },
+    );
+
+  await assert.rejects(
+    () =>
+      deleteCloudflarePagesProjects({
+        token: 'cf',
+        accountId: 'acct',
+        fetchImpl,
+      }),
+    /Cloudflare delete hashbrown-www -> 200: 10000/,
+  );
 });
 
 test('missingDnsRecords compares name, type and value', () => {

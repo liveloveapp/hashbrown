@@ -2,24 +2,23 @@
 /**
  * One-time, re-runnable provisioning for Hashbrown's Vercel deployment.
  *
- *   node tools/vercel/bootstrap.mjs --env-file /path/to/.env [--dns-records records.json] [--skip-workflow]
+ *   node tools/vercel/bootstrap.mjs --env-file /path/to/.env [--dns-records records.json] [--skip-workflow] [--teardown-cloudflare]
  *
  * Environment (from --env-file or the process):
  *   VERCEL_TOKEN or VERCEL_API_TOKEN   required
  *   OPENAI_API_KEY                     required; set on the project, never printed
  *   OPENAI_MODEL, OPENAI_BASE_URL      optional overrides
- *   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  optional; enables Pages teardown
+ *   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  required only with --teardown-cloudflare,
+ *     which deletes the Cloudflare Pages projects and their GitHub secrets
  *
  * --dns-records points at a JSON array of Vercel DNS records
  *   [{ "name": "", "type": "MX", "value": "mail.example.com.", "mxPriority": 10, "ttl": 3600 }]
  * Apex and www routing records are managed by Vercel and must not be listed.
  */
-import { execFile } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { parseArgs, promisify } from 'node:util';
+import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
-
-const exec = promisify(execFile);
 
 export const VERCEL_API = 'https://api.vercel.com';
 export const CLOUDFLARE_API = 'https://api.cloudflare.com/client/v4';
@@ -56,7 +55,7 @@ export function createVercelClient(token, fetchImpl = fetch) {
 
     if (!response.ok) {
       const error = new Error(
-        `${method} ${path} -> ${response.status}: ${data?.error?.message ?? text}`,
+        `${method} ${path} -> ${response.status}: ${data?.error?.message ?? data?.error?.code ?? 'response body omitted'}`,
       );
       error.status = response.status;
       error.code = data?.error?.code;
@@ -105,13 +104,42 @@ export async function upsertEnv(vercel, projectId, variables) {
     }));
 
   if (entries.length === 0) return 'skipped';
-  await vercel('POST', `/v10/projects/${projectId}/env?upsert=true`, entries);
+  const result = await vercel(
+    'POST',
+    `/v10/projects/${projectId}/env?upsert=true`,
+    entries,
+  );
+  if (result?.failed?.length) {
+    throw new Error(
+      `Environment variable upsert failed: ${result.failed
+        .map((f) => `${f.error?.key ?? '?'}: ${f.error?.code ?? 'unknown'}`)
+        .join(', ')}`,
+    );
+  }
   return 'updated';
 }
 
 export async function ensureDomain(vercel, projectId, domain) {
   try {
-    await vercel('GET', `/v9/projects/${projectId}/domains/${domain.name}`);
+    const current = await vercel(
+      'GET',
+      `/v9/projects/${projectId}/domains/${domain.name}`,
+    );
+    if (
+      domain.redirect !== undefined &&
+      (current.redirect !== domain.redirect ||
+        current.redirectStatusCode !== domain.redirectStatusCode)
+    ) {
+      await vercel(
+        'PATCH',
+        `/v9/projects/${projectId}/domains/${domain.name}`,
+        {
+          redirect: domain.redirect,
+          redirectStatusCode: domain.redirectStatusCode,
+        },
+      );
+      return 'updated';
+    }
     return 'exists';
   } catch (error) {
     if (!isNotFound(error)) throw error;
@@ -134,9 +162,9 @@ export function missingDnsRecords(existing, wanted) {
 }
 
 export async function ensureDnsRecords(vercel, domain, wanted) {
-  const { records } = await vercel(
+  const { records = [] } = await vercel(
     'GET',
-    `/v4/domains/${domain}/records?limit=100`,
+    `/v5/domains/${domain}/records?limit=100`,
   );
   const missing = missingDnsRecords(records, wanted);
 
@@ -152,7 +180,7 @@ export async function readDomainState(vercel, projectId) {
     'GET',
     `/v9/projects/${projectId}/domains/${DOMAIN}`,
   );
-  let nameservers = ['ns1.vercel-dns.com', 'ns2.vercel-dns.com'];
+  let nameservers = [];
   try {
     const { domain } = await vercel('GET', `/v5/domains/${DOMAIN}`);
     nameservers = domain.intendedNameservers ?? nameservers;
@@ -176,25 +204,58 @@ export async function deleteCloudflarePagesProjects({
     );
     if (response.status === 404) {
       results[name] = 'skipped';
-    } else if (response.ok) {
+      continue;
+    }
+
+    const text = await response.text();
+    const body = text ? JSON.parse(text) : {};
+
+    if (response.ok && body.success === true) {
       results[name] = 'deleted';
     } else {
-      throw new Error(`Cloudflare delete ${name} -> ${response.status}`);
+      throw new Error(
+        `Cloudflare delete ${name} -> ${response.status}: ${
+          (body.errors ?? []).map((e) => e.code).join(', ') || 'success=false'
+        }`,
+      );
     }
   }
 
   return results;
 }
 
-async function gh(args) {
-  const { stdout } = await exec('gh', args, {
-    env: { ...process.env, GH_PROMPT_DISABLED: '1' },
+function run(command, args, { input } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      env: { ...process.env, GH_PROMPT_DISABLED: '1' },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => (stdout += chunk));
+    child.stderr.on('data', (chunk) => (stderr += chunk));
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) resolve(stdout.trim());
+      else {
+        const error = new Error(
+          `${command} ${args.join(' ')} exited with ${code}: ${stderr.trim()}`,
+        );
+        error.stderr = stderr;
+        reject(error);
+      }
+    });
+    if (input !== undefined) child.stdin.write(input);
+    child.stdin.end();
   });
-  return stdout.trim();
+}
+
+async function gh(args, input) {
+  return run('gh', args, { input });
 }
 
 async function setSecret(name, value) {
-  await gh(['secret', 'set', name, '--repo', REPOSITORY, '--body', value]);
+  await gh(['secret', 'set', name, '--repo', REPOSITORY], value);
 }
 
 async function deleteSecret(name) {
@@ -217,10 +278,22 @@ async function main() {
       'env-file': { type: 'string' },
       'dns-records': { type: 'string' },
       'skip-workflow': { type: 'boolean', default: false },
+      'teardown-cloudflare': { type: 'boolean', default: false },
     },
   });
 
-  if (values['env-file']) process.loadEnvFile(values['env-file']);
+  if (values['env-file']) {
+    const contents = await readFile(values['env-file'], 'utf8');
+    const overridden = [...contents.matchAll(/^([A-Z0-9_]+)=/gm)]
+      .map((match) => match[1])
+      .filter((key) => key in process.env);
+    if (overridden.length > 0) {
+      console.warn(
+        `Warning: ${overridden.join(', ')} already set in the environment; values from ${values['env-file']} are ignored for them.`,
+      );
+    }
+    process.loadEnvFile(values['env-file']);
+  }
 
   const token = process.env.VERCEL_TOKEN ?? process.env.VERCEL_API_TOKEN;
   if (!token) throw new Error('VERCEL_TOKEN or VERCEL_API_TOKEN is required.');
@@ -231,6 +304,8 @@ async function main() {
   const vercel = createVercelClient(token);
   const { user } = await vercel('GET', '/v2/user');
   log('vercel user', user.username);
+
+  let wwwProjectId;
 
   for (const target of TARGETS) {
     const { status, project } = await ensureProject(vercel, target.project);
@@ -246,6 +321,7 @@ async function main() {
     );
 
     if (target.key === 'www') {
+      wwwProjectId = project.id;
       log(
         'domain apex',
         await ensureDomain(vercel, project.id, { name: DOMAIN }),
@@ -262,6 +338,12 @@ async function main() {
       if (values['dns-records']) {
         const wanted = JSON.parse(
           await readFile(values['dns-records'], 'utf8'),
+        ).map((record) =>
+          Object.fromEntries(
+            ['name', 'type', 'value', 'ttl', 'mxPriority']
+              .map((key) => [key, record[key]])
+              .filter(([, value]) => value !== undefined),
+          ),
         );
         const { created, existing } = await ensureDnsRecords(
           vercel,
@@ -280,7 +362,16 @@ async function main() {
   await setSecret('VERCEL_ORG_ID', user.id);
   log('secrets VERCEL_*', 'set');
 
-  if (process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID) {
+  if (values['teardown-cloudflare']) {
+    if (
+      !process.env.CLOUDFLARE_API_TOKEN ||
+      !process.env.CLOUDFLARE_ACCOUNT_ID
+    ) {
+      throw new Error(
+        '--teardown-cloudflare requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.',
+      );
+    }
+
     const results = await deleteCloudflarePagesProjects({
       token: process.env.CLOUDFLARE_API_TOKEN,
       accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
@@ -300,7 +391,7 @@ async function main() {
     log(
       'cloudflare teardown',
       'skipped',
-      'set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to enable',
+      'pass --teardown-cloudflare after the domain is verified',
     );
   }
 
@@ -321,18 +412,25 @@ async function main() {
     );
   }
 
-  const www = TARGETS.find((target) => target.key === 'www');
-  const { project } = await ensureProject(vercel, www.project);
-  const { verified, nameservers } = await readDomainState(vercel, project.id);
+  const { verified, nameservers } = await readDomainState(vercel, wwwProjectId);
   log(`domain ${DOMAIN}`, verified ? 'verified' : 'pending nameservers');
   if (!verified) {
-    console.log(
-      `\nSet these nameservers at the registrar (Squarespace), then re-run this script:\n  ${nameservers.join('\n  ')}`,
-    );
+    if (nameservers.length) {
+      console.log(
+        `\nSet these nameservers at the registrar (Squarespace), then re-run this script:\n  ${nameservers.join('\n  ')}`,
+      );
+    } else {
+      console.log(
+        `\nVercel has not reported intended nameservers for ${DOMAIN} yet. Open the domain in the Vercel dashboard for the values to set at the registrar (Squarespace), then re-run this script.`,
+      );
+    }
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   main().catch((error) => {
     console.error(error.message);
     process.exitCode = 1;
