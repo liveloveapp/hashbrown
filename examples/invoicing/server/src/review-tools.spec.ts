@@ -3,13 +3,15 @@ import { createSessionStore } from './session-store';
 import { createReviewCoordinator } from './review-coordinator';
 import { createReviewMiddleware } from './review-middleware';
 import { prepareAllocationUi, reviewTools } from './review-tools';
+import { createMemoryRepositories } from './persistence/memory';
 
-function setup() {
-  const store = createSessionStore();
-  const owner = store.createSession();
+async function setup() {
+  const repositories = createMemoryRepositories();
+  const store = createSessionStore(repositories.sessions);
+  const owner = await store.createSession();
   const schema = { type: 'object', properties: { ui: { type: 'array' } } };
-  const reviews = createReviewCoordinator(store, schema);
-  const result = createReviewMiddleware(
+  const reviews = createReviewCoordinator(store, repositories.threads, schema);
+  const result = await createReviewMiddleware(
     store,
     reviews,
   )({
@@ -27,8 +29,8 @@ function setup() {
   return { store, owner, middleware: result.context };
 }
 
-test('validates middleware functions and response schema before tool access', () => {
-  const { middleware } = setup();
+test('validates middleware functions and response schema before tool access', async () => {
+  const { middleware } = await setup();
 
   const result = reviewTools({ middleware });
 
@@ -45,7 +47,7 @@ test('validates middleware functions and response schema before tool access', ()
 });
 
 test('renders the exact server proposal through the supplied schema without applying it', async () => {
-  const { middleware, store, owner } = setup();
+  const { middleware, store, owner } = await setup();
   let rendered = false;
 
   const proposal = await prepareAllocationUi(
@@ -67,13 +69,15 @@ test('renders the exact server proposal through the supplied schema without appl
   expect(rendered).toBe(true);
   expect(proposal.invoiceId).toBe('invoice-001');
   expect(proposal.amountCents).toBe(240000);
-  expect(store.snapshot(owner).allocations).toHaveLength(0);
+  expect((await store.snapshot(owner)).allocations).toHaveLength(0);
 });
 
 test('rejects generated UI with missing, duplicated, or substituted proposal identity', async () => {
-  const { middleware } = setup();
+  const { middleware } = await setup();
 
-  const proposal = middleware.prepareAllocation({ invoiceId: 'invoice-001' });
+  const proposal = await middleware.prepareAllocation({
+    invoiceId: 'invoice-001',
+  });
   const component = {
     AllocationProposal: { props: { proposalId: proposal.proposalId } },
   };
@@ -101,7 +105,7 @@ test('rejects generated UI with missing, duplicated, or substituted proposal ide
 });
 
 test('propagates model failure without applying an allocation', async () => {
-  const { middleware, store, owner } = setup();
+  const { middleware, store, owner } = await setup();
 
   await expect(
     prepareAllocationUi(middleware, { invoiceId: 'invoice-001' }, async () => {
@@ -109,5 +113,5 @@ test('propagates model failure without applying an allocation', async () => {
     }),
   ).rejects.toThrow('model_unavailable');
 
-  expect(store.snapshot(owner).allocations).toHaveLength(0);
+  expect((await store.snapshot(owner)).allocations).toHaveLength(0);
 });

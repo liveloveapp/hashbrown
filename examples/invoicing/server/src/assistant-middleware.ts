@@ -1,15 +1,18 @@
 import { isDeepStrictEqual } from 'node:util';
 import { assistantResponseSchema } from '@invoicing/contracts';
 import type { SessionStore } from './session-store';
+import type { ThreadRepository } from './persistence/types';
 import { readSessionCookie } from './http';
 
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** Read-only conversational capabilities scoped to a cookie, thread and generation. */
-export function createAssistantMiddleware(store: SessionStore) {
-  const owners = new Map<string, { sessionId: string; generation: number }>();
-  return (request: {
+export function createAssistantMiddleware(
+  store: SessionStore,
+  threads: ThreadRepository,
+) {
+  return async (request: {
     readonly method: string;
     readonly routeId: string;
     readonly headers: Readonly<Record<string, string>>;
@@ -26,7 +29,7 @@ export function createAssistantMiddleware(store: SessionStore) {
     let generation: number;
     try {
       if (!sessionId) return reject(401);
-      generation = store.generation(sessionId);
+      generation = await store.generation(sessionId);
     } catch {
       return reject(401);
     }
@@ -54,14 +57,16 @@ export function createAssistantMiddleware(store: SessionStore) {
           Object.keys(body.forwardedProps).length > 0))
     )
       return reject(422);
-    const owner = owners.get(body.threadId);
+    const owner = (await threads.load(body.threadId))?.value;
     if (
       owner &&
-      (owner.sessionId !== sessionId || owner.generation !== generation)
+      (owner.sessionId !== sessionId ||
+        owner.generation !== generation ||
+        owner.routeId !== '/assistant')
     )
       return reject(422);
-    const current = () => {
-      if (store.generation(sessionId) !== generation)
+    const current = async () => {
+      if ((await store.generation(sessionId)) !== generation)
         throw new Error('stale_generation');
       return store.snapshot(sessionId);
     };
@@ -69,16 +74,15 @@ export function createAssistantMiddleware(store: SessionStore) {
     if (
       selectedPaymentId !== undefined &&
       (typeof selectedPaymentId !== 'string' ||
-        !current().payments.some((p) => p.id === selectedPaymentId))
+        !(await current()).payments.some((p) => p.id === selectedPaymentId))
     )
       return reject(422);
-    owners.set(body.threadId, { sessionId, generation });
     return {
       action: 'continue' as const,
       context: Object.freeze({
         responseSchema: assistantResponseSchema,
-        readLedger: (input: { readonly customerId?: string } = {}) => {
-          const snapshot = current();
+        readLedger: async (input: { readonly customerId?: string } = {}) => {
+          const snapshot = await current();
           const payments = snapshot.payments.filter(
             (p) => !input.customerId || p.customerId === input.customerId,
           );
@@ -137,8 +141,10 @@ export function createAssistantMiddleware(store: SessionStore) {
             invoices,
           };
         },
-        validatePayment: (paymentId: string) => {
-          const payment = current().payments.find((p) => p.id === paymentId);
+        validatePayment: async (paymentId: string) => {
+          const payment = (await current()).payments.find(
+            (p) => p.id === paymentId,
+          );
           if (!payment || payment.unappliedCents <= 0)
             throw new Error('payment_not_found');
           return payment;

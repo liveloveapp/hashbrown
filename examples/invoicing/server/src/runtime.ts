@@ -19,6 +19,7 @@ import { createSessionStore } from './session-store';
 import { createSampleLedger } from './sample-ledger';
 import { createAssistantMiddleware } from './assistant-middleware';
 import { createThreadOwnershipGuard } from './thread-ownership';
+import { createMemoryRepositories } from './persistence/memory';
 
 const requireFromServer = createRequire(import.meta.url);
 
@@ -59,21 +60,26 @@ export async function createInvoicingRuntime() {
         'dir',
       );
     }
-    const store = createSessionStore(createSampleLedger);
-    const reviews = createReviewCoordinator(store, invoicingUiResponseSchema);
+    const repositories = createMemoryRepositories();
+    const store = createSessionStore(repositories.sessions, createSampleLedger);
+    const reviews = createReviewCoordinator(
+      store,
+      repositories.threads,
+      invoicingUiResponseSchema,
+    );
     const review = createReviewMiddleware(store, reviews);
-    const assistant = createAssistantMiddleware(store);
-    const claimThread = createThreadOwnershipGuard(store);
+    const assistant = createAssistantMiddleware(store, repositories.threads);
+    const claimThread = createThreadOwnershipGuard(store, repositories.threads);
     const runtime = await createRuntimeRequestListener({
       appRoot,
-      middleware: (request) => {
+      middleware: async (request) => {
         const result =
           request.routeId === '/assistant'
-            ? assistant(request)
-            : review(request);
+            ? await assistant(request)
+            : await review(request);
         if (result.action === 'continue') {
           try {
-            claimThread(request.headers, request.routeId, request.body);
+            await claimThread(request.headers, request.routeId, request.body);
           } catch {
             return {
               action: 'reject',

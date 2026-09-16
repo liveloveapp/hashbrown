@@ -4,10 +4,12 @@ import { expect, test } from 'vitest';
 import { createInvoicingListener } from './http';
 import { createSessionStore } from './session-store';
 import { createReviewCoordinator } from './review-coordinator';
+import { createMemoryRepositories } from './persistence/memory';
 
 async function fixture(runReview?: RequestListener) {
-  const store = createSessionStore();
-  const reviews = createReviewCoordinator(store, {});
+  const repositories = createMemoryRepositories();
+  const store = createSessionStore(repositories.sessions);
+  const reviews = createReviewCoordinator(store, repositories.threads, {});
   const server = createServer(
     createInvoicingListener(store, reviews, runReview),
   );
@@ -47,14 +49,14 @@ test('snapshot assigns an opaque HTTP-only session cookie and reuses it', async 
 
 test('operation reads are scoped to the cookie session', async () => {
   const app = await fixture();
-  const owner = app.store.createSession();
-  const other = app.store.createSession();
-  const proposal = app.store.propose(owner, {
+  const owner = await app.store.createSession();
+  const other = await app.store.createSession();
+  const proposal = await app.store.propose(owner, {
     paymentId: 'payment-001',
     invoiceId: 'invoice-001',
     amountCents: 240000,
   });
-  app.store.decide(owner, { ...proposal, decision: 'approve' });
+  await app.store.decide(owner, { ...proposal, decision: 'approve' });
 
   try {
     const own = await fetch(
@@ -97,7 +99,7 @@ test('read-only HTTP boundary rejects writes and malformed operation paths', asy
 
 test('unknown and duplicate cookie identities cannot reuse an existing session', async () => {
   const app = await fixture();
-  const owner = app.store.createSession();
+  const owner = await app.store.createSession();
 
   try {
     const unknown = await fetch(`${app.url}/api/snapshot`, {
@@ -124,9 +126,9 @@ test('unknown and duplicate cookie identities cannot reuse an existing session',
 
 test('proposal reads return stored values only to their owning session', async () => {
   const app = await fixture();
-  const owner = app.store.createSession();
-  const other = app.store.createSession();
-  const proposal = app.store.propose(owner, {
+  const owner = await app.store.createSession();
+  const other = await app.store.createSession();
+  const proposal = await app.store.propose(owner, {
     paymentId: 'payment-001',
     invoiceId: 'invoice-001',
     amountCents: 240000,
@@ -150,7 +152,7 @@ test('proposal reads return stored values only to their owning session', async (
     expect(await own.json()).toEqual(proposal);
     expect(foreign.status).toBe(404);
     expect(missing.status).toBe(404);
-    expect(app.store.snapshot(owner).allocations).toHaveLength(0);
+    expect((await app.store.snapshot(owner)).allocations).toHaveLength(0);
   } finally {
     await app.close();
   }
@@ -158,15 +160,15 @@ test('proposal reads return stored values only to their owning session', async (
 
 test('review lookup binds the proposal to its session and conversation', async () => {
   const app = await fixture();
-  const owner = app.store.createSession();
-  const other = app.store.createSession();
-  const context = app.reviews.authorize(owner, {
+  const owner = await app.store.createSession();
+  const other = await app.store.createSession();
+  const context = await app.reviews.authorize(owner, {
     threadId: 'review-1',
     runId: 'run-1',
     state: { selectedPaymentId: 'payment-001' },
     hashbrown: { ui: true, responseSchema: {} },
   });
-  const proposal = app.reviews.prepare(context, {
+  const proposal = await app.reviews.prepare(context, {
     paymentId: 'payment-001',
     invoiceId: 'invoice-001',
     amountCents: 240000,
@@ -182,7 +184,7 @@ test('review lookup binds the proposal to its session and conversation', async (
     const foreign = await read('review-1', other);
     const missing = await read('review-2');
     const write = await read('review-1', owner, 'POST');
-    app.store.reset(owner);
+    await app.store.reset(owner);
     const stale = await read('review-1');
 
     expect(own.status).toBe(200);
@@ -192,7 +194,7 @@ test('review lookup binds the proposal to its session and conversation', async (
     expect(missing.status).toBe(404);
     expect(write.status).toBe(405);
     expect(stale.status).toBe(404);
-    expect(app.store.snapshot(other).allocations).toHaveLength(0);
+    expect((await app.store.snapshot(other)).allocations).toHaveLength(0);
   } finally {
     await app.close();
   }

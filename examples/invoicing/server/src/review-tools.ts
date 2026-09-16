@@ -3,7 +3,7 @@ import type { Proposal } from '@invoicing/contracts';
 import type { createReviewMiddleware } from './review-middleware';
 
 type ReviewTools = Extract<
-  ReturnType<ReturnType<typeof createReviewMiddleware>>,
+  Awaited<ReturnType<ReturnType<typeof createReviewMiddleware>>>,
   { action: 'continue' }
 >['context'];
 
@@ -31,7 +31,9 @@ export async function prepareAllocationUi(
   input: { readonly invoiceId: string },
   render: (schema: unknown, proposal: Proposal) => Promise<unknown>,
 ): Promise<Proposal> {
-  const proposal = middleware.prepareAllocation({ invoiceId: input.invoiceId });
+  const proposal = await middleware.prepareAllocation({
+    invoiceId: input.invoiceId,
+  });
   const output = await render(middleware.responseSchema, proposal);
   const expected = {
     ui: [

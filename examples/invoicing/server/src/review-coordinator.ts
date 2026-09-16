@@ -6,6 +6,12 @@ import type {
   ProposalRequest,
 } from '@invoicing/contracts';
 import type { SessionStore } from './session-store';
+import {
+  ConflictError,
+  type Document,
+  type ThreadRecord,
+  type ThreadRepository,
+} from './persistence/types';
 
 /** Server-only bearer capability; never serialize this context to the browser. */
 export interface ReviewContext {
@@ -22,23 +28,16 @@ export interface ReviewContext {
 /** Authorization and authoritative proposal operations for a review thread. */
 export interface ReviewCoordinator {
   /** Validate an untrusted request without performing financial mutations. */
-  authorize(sessionId: string, body: unknown): ReviewContext;
+  authorize(sessionId: string, body: unknown): Promise<ReviewContext>;
   /** Prepare one immutable allocation during an initial run. */
-  prepare(context: ReviewContext, request: ProposalRequest): Proposal;
+  prepare(context: ReviewContext, request: ProposalRequest): Promise<Proposal>;
   /** Apply a stored proposal after B4 separately validates the pending interrupt. */
-  apply(context: ReviewContext, proposalId: string): DecisionResult;
+  apply(context: ReviewContext, proposalId: string): Promise<DecisionResult>;
   /** Read a proposal only from its owning session and thread. */
-  getProposal(sessionId: string, threadId: string): Proposal;
+  getProposal(sessionId: string, threadId: string): Promise<Proposal>;
 }
 
-interface Binding {
-  readonly sessionId: string;
-  readonly threadId: string;
-  readonly selectedPaymentId: string;
-  readonly selectedInvoiceId?: string;
-  readonly generation: number;
-  readonly proposalId?: string;
-}
+const decisions = ['initial', 'once', 'cancelled'] as const;
 
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -54,54 +53,105 @@ const freeze = (value: unknown, seen = new WeakSet<object>()): unknown => {
 };
 
 /**
- * Create an in-memory guard using opaque server-only capabilities.
+ * Create a guard over persisted thread records using opaque server-only capabilities.
  *
  * A once payload is only a requested decision. The B4 runtime must validate its
  * actual pending interrupt before calling apply; this guard cannot prove that.
  * Run IDs are validated as transport identifiers; authority is scoped to the
  * thread and its one immutable proposal, so a new run does not create a grant.
- * Capabilities are reused with at most three per thread. Old bindings remain
+ * Capabilities are reused with at most three per thread. Stored records remain
  * tombstones so reset cannot let an old thread claim a new session.
  */
 export function createReviewCoordinator(
   store: SessionStore,
+  threads: ThreadRepository,
   expectedResponseSchema: unknown,
 ): ReviewCoordinator {
   const responseSchema = freeze(structuredClone(expectedResponseSchema));
-  const bindings = new Map<string, Binding>();
-  const capabilities = new Map<string, ReviewContext>();
-  const tokens = new Map<
-    string,
-    Partial<Record<ReviewContext['decision'], string>>
-  >();
 
-  const current = (sessionId: string, threadId: string): Binding => {
-    const generation = store.generation(sessionId);
-    const binding = bindings.get(threadId);
-    if (!binding) throw new Error('thread_not_found');
-    if (binding.sessionId !== sessionId)
+  const check = (
+    sessionId: string,
+    generation: number,
+    stored: ThreadRecord,
+  ): ThreadRecord => {
+    if (stored.sessionId !== sessionId || stored.routeId !== '/review')
       throw new Error('thread_binding_conflict');
-    if (binding.generation !== generation) throw new Error('stale_generation');
-    return binding;
+    if (stored.generation !== generation) throw new Error('stale_generation');
+    return stored;
   };
-  const resolve = (
-    context: ReviewContext,
-  ): { grant: ReviewContext; binding: Binding } => {
-    const grant =
-      record(context) && typeof context.token === 'string'
-        ? capabilities.get(context.token)
-        : undefined;
-    if (!grant) throw new Error('invalid_review_context');
-    return { grant, binding: current(grant.sessionId, grant.threadId) };
+  const current = async (
+    sessionId: string,
+    threadId: string,
+  ): Promise<Document<ThreadRecord>> => {
+    const generation = await store.generation(sessionId);
+    const document = await threads.load(threadId);
+    if (!document) throw new Error('thread_not_found');
+    check(sessionId, generation, document.value);
+    return document;
   };
-  const proposalFor = (binding: Binding): Proposal => {
-    if (!binding.proposalId) throw new Error('proposal_not_found');
-    return store.proposal(binding.sessionId, binding.proposalId);
+  const load = async (threadId: string): Promise<Document<ThreadRecord>> => {
+    const document = await threads.load(threadId);
+    if (!document) throw new Error('thread_not_found');
+    return document;
+  };
+  const proposalFor = (stored: ThreadRecord): Promise<Proposal> => {
+    if (!stored.proposalId) throw new Error('proposal_not_found');
+    return store.proposal(stored.sessionId, stored.proposalId);
+  };
+  const context = (
+    threadId: string,
+    stored: ThreadRecord,
+    token: string,
+    decision: ReviewContext['decision'],
+  ): ReviewContext =>
+    Object.freeze({
+      token,
+      sessionId: stored.sessionId,
+      threadId,
+      selectedPaymentId: stored.selectedPaymentId as string,
+      selectedInvoiceId: stored.selectedInvoiceId,
+      generation: stored.generation,
+      responseSchema,
+      decision,
+    });
+
+  /**
+   * Resolve the stored capability a caller presents. The decision is read from
+   * the record that holds the token, so mutating the public context grants no
+   * additional authority.
+   */
+  const resolve = async (
+    caller: ReviewContext,
+  ): Promise<{
+    grant: ReviewContext;
+    binding: ThreadRecord;
+    threadId: string;
+    version: number;
+  }> => {
+    if (!record(caller) || typeof caller.token !== 'string')
+      throw new Error('invalid_review_context');
+    const document = await threads.load(caller.threadId);
+    const granted = document
+      ? decisions.find((value) => document.value.tokens[value] === caller.token)
+      : undefined;
+    if (!document || !granted) throw new Error('invalid_review_context');
+    const binding = document.value;
+    check(
+      binding.sessionId,
+      await store.generation(binding.sessionId),
+      binding,
+    );
+    return {
+      grant: context(caller.threadId, binding, caller.token, granted),
+      binding,
+      threadId: caller.threadId,
+      version: document.version,
+    };
   };
 
   return {
-    authorize(sessionId, body) {
-      const generation = store.generation(sessionId);
+    async authorize(sessionId, body) {
+      const generation = await store.generation(sessionId);
       if (
         !record(body) ||
         !identifier(body.threadId) ||
@@ -117,15 +167,15 @@ export function createReviewCoordinator(
       if (
         selectedInvoiceId !== undefined &&
         (!identifier(selectedInvoiceId) ||
-          !store
-            .snapshot(sessionId)
-            .invoices.some((invoice) => invoice.id === selectedInvoiceId))
+          !(await store.snapshot(sessionId)).invoices.some(
+            (invoice) => invoice.id === selectedInvoiceId,
+          ))
       )
         throw new Error('invoice_not_found');
       if (
-        !store
-          .snapshot(sessionId)
-          .payments.some((payment) => payment.id === selectedPaymentId)
+        !(await store.snapshot(sessionId)).payments.some(
+          (payment) => payment.id === selectedPaymentId,
+        )
       ) {
         throw new Error('payment_not_found');
       }
@@ -168,23 +218,36 @@ export function createReviewCoordinator(
           else throw new Error('invalid_resume');
         }
       }
-      const existing = bindings.get(threadId);
-      const binding = existing
-        ? current(sessionId, threadId)
-        : {
-            sessionId,
-            threadId,
-            selectedPaymentId,
-            selectedInvoiceId: selectedInvoiceId as string | undefined,
-            generation,
-          };
+      const created: ThreadRecord = {
+        sessionId,
+        routeId: '/review',
+        generation,
+        selectedPaymentId,
+        selectedInvoiceId: selectedInvoiceId as string | undefined,
+        tokens: {},
+      };
+      let document = await threads.load(threadId);
+      if (!document && decision !== 'initial') {
+        // A resume never creates a thread; it can only approve a prepared one.
+        await proposalFor(created);
+      }
+      if (!document) {
+        try {
+          await threads.commit(threadId, null, created);
+          document = await load(threadId);
+        } catch (error) {
+          if (!(error instanceof ConflictError)) throw error;
+          document = await load(threadId);
+        }
+      }
+      const binding = check(sessionId, generation, document.value);
       if (
         binding.selectedPaymentId !== selectedPaymentId ||
         binding.selectedInvoiceId !== selectedInvoiceId
       )
         throw new Error('thread_binding_conflict');
       if (decision !== 'initial') {
-        const proposal = proposalFor(binding);
+        const proposal = await proposalFor(binding);
         if (
           state.proposalId !== proposal.proposalId ||
           state.proposalVersion !== proposal.proposalVersion ||
@@ -194,28 +257,29 @@ export function createReviewCoordinator(
           throw new Error('proposal_identity_conflict');
         }
       }
-      bindings.set(threadId, binding);
-      const threadTokens = tokens.get(threadId) ?? {};
-      const existingToken = threadTokens[decision];
+      const existingToken = binding.tokens[decision];
       if (existingToken)
-        return capabilities.get(existingToken) as ReviewContext;
+        return context(threadId, binding, existingToken, decision);
       const token = randomUUID();
-      const context: ReviewContext = Object.freeze({
-        token,
-        sessionId,
-        threadId,
-        selectedPaymentId,
-        selectedInvoiceId: selectedInvoiceId as string | undefined,
-        generation,
-        responseSchema,
-        decision,
+      const mint = (stored: ThreadRecord): ThreadRecord => ({
+        ...stored,
+        tokens: { ...stored.tokens, [decision]: token },
       });
-      tokens.set(threadId, { ...threadTokens, [decision]: token });
-      capabilities.set(token, context);
-      return context;
+      try {
+        await threads.commit(threadId, document.version, mint(binding));
+        return context(threadId, binding, token, decision);
+      } catch (error) {
+        if (!(error instanceof ConflictError)) throw error;
+      }
+      const reloaded = await load(threadId);
+      const concurrent = reloaded.value.tokens[decision];
+      if (concurrent)
+        return context(threadId, reloaded.value, concurrent, decision);
+      await threads.commit(threadId, reloaded.version, mint(reloaded.value));
+      return context(threadId, reloaded.value, token, decision);
     },
-    prepare(context, request) {
-      const { grant, binding } = resolve(context);
+    async prepare(caller, request) {
+      const { grant, binding, threadId, version } = await resolve(caller);
       if (grant.decision !== 'initial')
         throw new Error('initial_request_required');
       if (!record(request) || request.paymentId !== binding.selectedPaymentId)
@@ -225,26 +289,33 @@ export function createReviewCoordinator(
         request.invoiceId !== binding.selectedInvoiceId
       )
         throw new Error('invoice_binding_conflict');
-      if (binding.proposalId) {
-        const proposal = proposalFor(binding);
+      const matching = async (proposal: Proposal): Promise<Proposal> => {
         if (
           request.invoiceId !== proposal.invoiceId ||
           request.amountCents !== proposal.amountCents
         )
           throw new Error('proposal_conflict');
         return proposal;
+      };
+      if (binding.proposalId) return matching(await proposalFor(binding));
+      const proposal = await store.propose(binding.sessionId, request);
+      try {
+        await threads.commit(threadId, version, {
+          ...binding,
+          proposalId: proposal.proposalId,
+        });
+        return proposal;
+      } catch (error) {
+        if (!(error instanceof ConflictError)) throw error;
+        const reloaded = await load(threadId);
+        if (!reloaded.value.proposalId) throw error;
+        return matching(await proposalFor(reloaded.value));
       }
-      const proposal = store.propose(binding.sessionId, request);
-      bindings.set(binding.threadId, {
-        ...binding,
-        proposalId: proposal.proposalId,
-      });
-      return proposal;
     },
-    apply(context, proposalId) {
-      const { grant, binding } = resolve(context);
+    async apply(caller, proposalId) {
+      const { grant, binding } = await resolve(caller);
       if (grant.decision !== 'once') throw new Error('approval_required');
-      const proposal = proposalFor(binding);
+      const proposal = await proposalFor(binding);
       if (proposalId !== proposal.proposalId)
         throw new Error('proposal_identity_conflict');
       return store.decide(binding.sessionId, {
@@ -255,8 +326,8 @@ export function createReviewCoordinator(
         decision: 'approve',
       });
     },
-    getProposal(sessionId, threadId) {
-      return proposalFor(current(sessionId, threadId));
+    async getProposal(sessionId, threadId) {
+      return proposalFor((await current(sessionId, threadId)).value);
     },
   };
 }

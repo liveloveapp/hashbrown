@@ -7,7 +7,7 @@ export function createReviewMiddleware(
   store: SessionStore,
   reviews: ReviewCoordinator,
 ) {
-  return (request: {
+  return async (request: {
     readonly headers: Readonly<Record<string, string>>;
     readonly method: string;
     readonly routeId: string;
@@ -23,7 +23,7 @@ export function createReviewMiddleware(
     const sessionId = readSessionCookie(request.headers.cookie);
     try {
       if (!sessionId) throw new Error('session_required');
-      store.generation(sessionId);
+      await store.generation(sessionId);
     } catch {
       return {
         action: 'reject' as const,
@@ -32,11 +32,11 @@ export function createReviewMiddleware(
       };
     }
     try {
-      const context = reviews.authorize(sessionId, request.body);
-      const readPayment = () => {
-        if (store.generation(sessionId) !== context.generation)
+      const context = await reviews.authorize(sessionId, request.body);
+      const readPayment = async () => {
+        if ((await store.generation(sessionId)) !== context.generation)
           throw new Error('stale_generation');
-        const snapshot = store.snapshot(sessionId);
+        const snapshot = await store.snapshot(sessionId);
         const payment = snapshot.payments.find(
           (item) => item.id === context.selectedPaymentId,
         );
@@ -56,8 +56,8 @@ export function createReviewMiddleware(
         context: Object.freeze({
           responseSchema: context.responseSchema,
           readPayment,
-          prepareAllocation: (input: { readonly invoiceId: string }) => {
-            const { payment, invoices } = readPayment();
+          prepareAllocation: async (input: { readonly invoiceId: string }) => {
+            const { payment, invoices } = await readPayment();
             const invoice = invoices.find(
               (item) => item.id === input.invoiceId,
             );

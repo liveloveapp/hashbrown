@@ -9,7 +9,7 @@ export default async function respond(
   context: B4ToolContext,
 ) {
   const tools = assistantTools(context);
-  if (input.paymentId) tools.validatePayment(input.paymentId);
+  if (input.paymentId) await tools.validatePayment(input.paymentId);
   const expected = {
     ui: [
       { AssistantText: { props: { text: input.text } } },

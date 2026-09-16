@@ -1,26 +1,28 @@
 import { expect, test } from 'vitest';
 import { createSessionStore } from './session-store';
 import { createThreadOwnershipGuard } from './thread-ownership';
+import { createMemoryRepositories } from './persistence/memory';
 
-test('a B4 thread cannot cross routes, sessions, or reset generations', () => {
-  const store = createSessionStore();
-  const owner = store.createSession();
-  const other = store.createSession();
-  const guard = createThreadOwnershipGuard(store);
+test('a B4 thread cannot cross routes, sessions, or reset generations', async () => {
+  const repositories = createMemoryRepositories();
+  const store = createSessionStore(repositories.sessions);
+  const owner = await store.createSession();
+  const other = await store.createSession();
+  const guard = createThreadOwnershipGuard(store, repositories.threads);
   const headers = { cookie: `invoicing_session=${owner}` };
   const body = { threadId: 'thread' };
 
-  guard(headers, '/assistant', body);
+  await guard(headers, '/assistant', body);
 
-  expect(() => guard(headers, '/assistant', body)).not.toThrow();
-  expect(() => guard(headers, '/review', body)).toThrow(
+  await expect(guard(headers, '/assistant', body)).resolves.toBeUndefined();
+  await expect(guard(headers, '/review', body)).rejects.toThrow(
     'thread_binding_conflict',
   );
-  expect(() =>
+  await expect(
     guard({ cookie: `invoicing_session=${other}` }, '/assistant', body),
-  ).toThrow('thread_binding_conflict');
-  store.reset(owner);
-  expect(() => guard(headers, '/assistant', body)).toThrow(
+  ).rejects.toThrow('thread_binding_conflict');
+  await store.reset(owner);
+  await expect(guard(headers, '/assistant', body)).rejects.toThrow(
     'thread_binding_conflict',
   );
 });

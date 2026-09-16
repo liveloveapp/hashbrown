@@ -6,11 +6,17 @@ import { invoicingUiResponseSchema } from '@invoicing/contracts';
 import { randomUUID } from 'node:crypto';
 import { createSampleLedger } from './src/sample-ledger';
 import { createSessionStore } from './src/session-store';
+import { createMemoryRepositories } from './src/persistence/memory';
 
 async function main() {
   // Test-only scripted transport; production continues to use B4 authorization.
-  const store = createSessionStore(createSampleLedger);
-  const reviews = createReviewCoordinator(store, invoicingUiResponseSchema);
+  const repositories = createMemoryRepositories();
+  const store = createSessionStore(repositories.sessions, createSampleLedger);
+  const reviews = createReviewCoordinator(
+    store,
+    repositories.threads,
+    invoicingUiResponseSchema,
+  );
   const interrupts = new Map<string, string>();
   const api = createServer(
     createInvoicingListener(store, reviews, (request, response) => {
@@ -25,7 +31,7 @@ async function main() {
         const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
         const sessionId = readSessionCookie(request.headers.cookie);
         if (!sessionId) throw new Error('missing_session');
-        const context = reviews.authorize(sessionId, body);
+        const context = await reviews.authorize(sessionId, body);
         const identity = { threadId: body.threadId, runId: body.runId };
         const events: unknown[] = [{ type: 'RUN_STARTED', ...identity }];
         if (body.resume?.length) {
@@ -34,11 +40,11 @@ async function main() {
             body.resume[0].interruptId !== interrupts.get(body.threadId)
           )
             throw new Error('invalid_fixture_approval');
-          const proposal = reviews.getProposal(sessionId, body.threadId);
-          reviews.apply(context, proposal.proposalId);
+          const proposal = await reviews.getProposal(sessionId, body.threadId);
+          await reviews.apply(context, proposal.proposalId);
           events.push({ type: 'RUN_FINISHED', ...identity });
         } else {
-          const snapshot = store.snapshot(sessionId);
+          const snapshot = await store.snapshot(sessionId);
           const payment = snapshot.payments.find(
             (p) => p.id === context.selectedPaymentId,
           );
@@ -46,7 +52,7 @@ async function main() {
             (i) => i.id === context.selectedInvoiceId,
           );
           if (!payment || !invoice) throw new Error('missing_selection');
-          const proposal = reviews.prepare(context, {
+          const proposal = await reviews.prepare(context, {
             paymentId: payment.id,
             invoiceId: invoice.id,
             amountCents: Math.min(

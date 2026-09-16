@@ -1,7 +1,7 @@
 import type { createAssistantMiddleware } from './assistant-middleware';
 
 type AssistantTools = Extract<
-  ReturnType<ReturnType<typeof createAssistantMiddleware>>,
+  Awaited<ReturnType<ReturnType<typeof createAssistantMiddleware>>>,
   { action: 'continue' }
 >['context'];
 

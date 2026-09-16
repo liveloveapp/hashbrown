@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 import { applyProposal, createProposal, getSnapshot } from './ledger';
 import { createSampleLedger, sampleScenarios } from './sample-ledger';
 import { createSessionStore } from './session-store';
+import { createMemoryRepositories } from './persistence/memory';
 
 /** Require a seeded test record and preserve its inferred type. */
 function required<T>(value: T | undefined): T {
@@ -171,42 +172,50 @@ test('supports applying a combined payment sequentially while retaining accounti
   expect(createSampleLedger()).toEqual(initial);
 });
 
-test('uses a factory on create and reset and isolates shared seed objects', () => {
+test('uses a factory on create and reset and isolates shared seed objects', async () => {
   const seed = createSampleLedger();
   let calls = 0;
-  const store = createSessionStore(() => {
+  const store = createSessionStore(createMemoryRepositories().sessions, () => {
     calls += 1;
     return seed;
   });
-  const first = store.createSession();
-  const second = store.createSession();
+  const first = await store.createSession();
+  const second = await store.createSession();
   const originalAmount = seed.payments[0].amountCents;
 
   (seed.payments[0] as { amountCents: number }).amountCents += 100;
-  const reset = store.reset(first);
+  const reset = await store.reset(first);
   (seed.payments[0] as { amountCents: number }).amountCents += 100;
 
   expect(calls).toBe(3);
-  expect(store.snapshot(second).payments[0].amountCents).toBe(originalAmount);
+  expect((await store.snapshot(second)).payments[0].amountCents).toBe(
+    originalAmount,
+  );
   expect(reset.payments[0].amountCents).toBe(originalAmount + 100);
-  expect(store.snapshot(first).payments[0].amountCents).toBe(
+  expect((await store.snapshot(first)).payments[0].amountCents).toBe(
     originalAmount + 100,
   );
-  expect(store.generation(first)).toBe(2);
+  expect(await store.generation(first)).toBe(2);
 });
 
-test('reset restores sample allocations after approval without affecting another session', () => {
-  const store = createSessionStore(createSampleLedger);
-  const first = store.createSession();
-  const second = store.createSession();
-  const baseline = store.snapshot(first);
-  const proposal = store.propose(first, {
+test('reset restores sample allocations after approval without affecting another session', async () => {
+  const store = createSessionStore(
+    createMemoryRepositories().sessions,
+    createSampleLedger,
+  );
+  const first = await store.createSession();
+  const second = await store.createSession();
+  const baseline = await store.snapshot(first);
+  const proposal = await store.propose(first, {
     ...sampleScenarios.partial,
     amountCents: 200000,
   });
 
-  const approved = store.decide(first, { ...proposal, decision: 'approve' });
-  const reset = store.reset(first);
+  const approved = await store.decide(first, {
+    ...proposal,
+    decision: 'approve',
+  });
+  const reset = await store.reset(first);
 
   expect(
     approved.snapshot.invoices.find(
@@ -214,9 +223,11 @@ test('reset restores sample allocations after approval without affecting another
     )?.outstandingCents,
   ).toBe(300000);
   expect(reset).toEqual(baseline);
-  expect(store.snapshot(second)).toEqual(baseline);
-  expect(store.operationResult(first, proposal.operationId)).toBeUndefined();
-  expect(() =>
+  expect(await store.snapshot(second)).toEqual(baseline);
+  expect(
+    await store.operationResult(first, proposal.operationId),
+  ).toBeUndefined();
+  await expect(
     store.decide(first, { ...proposal, decision: 'approve' }),
-  ).toThrow('stale_generation');
+  ).rejects.toThrow('stale_generation');
 });

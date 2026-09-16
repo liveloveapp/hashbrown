@@ -37,81 +37,101 @@ export function createInvoicingListener(
   runReview?: RequestListener,
 ): RequestListener {
   return (request, response) => {
-    let path: string;
-    try {
-      path = decodeURIComponent(
-        new URL(request.url ?? '/', 'http://localhost').pathname,
-      );
-    } catch {
-      respond(response, 400, { error: 'invalid_path' });
-      return;
-    }
-    if (
-      (path === '/agui//review#agent' || path === '/agui//assistant#agent') &&
-      runReview
-    ) {
-      if (request.method !== 'POST') {
-        response.setHeader('allow', 'POST');
+    void (async () => {
+      let path: string;
+      try {
+        path = decodeURIComponent(
+          new URL(request.url ?? '/', 'http://localhost').pathname,
+        );
+      } catch {
+        respond(response, 400, { error: 'invalid_path' });
+        return;
+      }
+      if (
+        (path === '/agui//review#agent' || path === '/agui//assistant#agent') &&
+        runReview
+      ) {
+        if (request.method !== 'POST') {
+          response.setHeader('allow', 'POST');
+          respond(response, 405, { error: 'method_not_allowed' });
+          return;
+        }
+        runReview(request, response);
+        return;
+      }
+      const operationId = /^\/api\/operations\/([^/]+)$/.exec(path)?.[1];
+      const proposalId = /^\/api\/proposals\/([^/]+)$/.exec(path)?.[1];
+      const threadId = /^\/api\/reviews\/([^/]+)$/.exec(path)?.[1];
+      if (
+        path !== '/api/snapshot' &&
+        !operationId &&
+        !proposalId &&
+        !threadId
+      ) {
+        respond(response, 404, { error: 'not_found' });
+        return;
+      }
+      if (request.method !== 'GET') {
+        response.setHeader('allow', 'GET');
         respond(response, 405, { error: 'method_not_allowed' });
         return;
       }
-      runReview(request, response);
-      return;
-    }
-    const operationId = /^\/api\/operations\/([^/]+)$/.exec(path)?.[1];
-    const proposalId = /^\/api\/proposals\/([^/]+)$/.exec(path)?.[1];
-    const threadId = /^\/api\/reviews\/([^/]+)$/.exec(path)?.[1];
-    if (path !== '/api/snapshot' && !operationId && !proposalId && !threadId) {
-      respond(response, 404, { error: 'not_found' });
-      return;
-    }
-    if (request.method !== 'GET') {
-      response.setHeader('allow', 'GET');
-      respond(response, 405, { error: 'method_not_allowed' });
-      return;
-    }
 
-    let sessionId = readSessionCookie(request.headers.cookie);
-    if (sessionId) {
-      try {
-        store.snapshot(sessionId);
-      } catch {
-        sessionId = undefined;
+      let sessionId = readSessionCookie(request.headers.cookie);
+      if (sessionId) {
+        try {
+          await store.snapshot(sessionId);
+        } catch {
+          sessionId = undefined;
+        }
       }
-    }
-    if (!sessionId) {
-      sessionId = store.createSession();
-      response.setHeader(
-        'set-cookie',
-        `${cookieName}=${sessionId}; Path=/; HttpOnly; SameSite=Lax`,
-      );
-    }
-    if (threadId) {
-      try {
-        if (!reviews) throw new Error('review_not_found');
-        respond(response, 200, reviews.getProposal(sessionId, threadId));
-      } catch {
-        respond(response, 404, { error: 'review_not_found' });
+      if (!sessionId) {
+        sessionId = await store.createSession();
+        const secure =
+          request.headers['x-forwarded-proto'] === 'https' ||
+          (request.socket as { encrypted?: boolean }).encrypted === true;
+        response.setHeader(
+          'set-cookie',
+          `${cookieName}=${sessionId}; Path=/; HttpOnly; SameSite=Lax${
+            secure ? '; Secure' : ''
+          }`,
+        );
       }
-      return;
-    }
-    if (proposalId) {
-      try {
-        respond(response, 200, store.proposal(sessionId, proposalId));
-      } catch {
-        respond(response, 404, { error: 'proposal_not_found' });
+      if (threadId) {
+        try {
+          if (!reviews) throw new Error('review_not_found');
+          respond(
+            response,
+            200,
+            await reviews.getProposal(sessionId, threadId),
+          );
+        } catch {
+          respond(response, 404, { error: 'review_not_found' });
+        }
+        return;
       }
-      return;
-    }
-    if (operationId) {
-      const result = store.operationResult(sessionId, operationId);
-      respond(
-        response,
-        result ? 200 : 404,
-        result ?? { error: 'operation_not_found' },
-      );
-      return;
-    }
-    respond(response, 200, store.snapshot(sessionId));
+      if (proposalId) {
+        try {
+          respond(response, 200, await store.proposal(sessionId, proposalId));
+        } catch {
+          respond(response, 404, { error: 'proposal_not_found' });
+        }
+        return;
+      }
+      if (operationId) {
+        const result = await store.operationResult(sessionId, operationId);
+        respond(
+          response,
+          result ? 200 : 404,
+          result ?? { error: 'operation_not_found' },
+        );
+        return;
+      }
+      respond(response, 200, await store.snapshot(sessionId));
+    })().catch(() => {
+      if (!response.headersSent)
+        respond(response, 500, { error: 'internal_error' });
+      else response.end();
+    });
   };
 }
