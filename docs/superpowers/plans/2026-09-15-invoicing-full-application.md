@@ -45,7 +45,8 @@ seeded Payments layout was visually inspected after adjusting column widths.
 - [x] Cover ambiguous invoice choice, choice reset across payment selection, advance gating, and failed review retirement/retry without mutation.
 - [x] Browser coverage for a lost approval response and explicit operation-result reconciliation using a scripted transport and real domain state.
 - Deferred beyond V1 by user decision: browser-refresh recovery and durable persistence.
-- [ ] Inventory legacy deployment and conformance dependencies before proposing retirement.
+- [x] Inventory repository deployment and conformance dependencies before proposing retirement.
+  See `2026-09-15-legacy-example-retirement.md`; external resources remain unverified.
 
 The deterministic browser target is deliberately bounded to existing behavior;
 it does not expand the financial mutation surface or introduce persistence.
@@ -55,3 +56,21 @@ it does not expand the financial mutation surface or introduce persistence.
 The user requested merging V1 on September 15, 2026. Recovery across refreshes
 or server restarts is not required for this example. Existing operation-result
 checks remain. Deployment and legacy-example retirement are separate changes.
+
+## Current checkpoint — September 15, 2026
+
+- Canonical V1 merged in PR #542; Chrome QA polish merged in PR #543.
+- Published B4 integration, seeded ledger, repeated approval/decline flows,
+  deterministic browser checks, and real-model Chrome verification are complete
+  for the bounded V1 scope.
+- Performance/query-context work is deferred by user request. Its draft is
+  `../specs/2026-09-15-invoicing-ledger-queries-design.md`; no runtime change yet.
+- Next: inventory legacy examples and their CI/conformance, package, documentation,
+  and deployment references; plan canonical deployment and staged retirement.
+- No legacy example source or hosted site has been retired in this arc. Preserve
+  independent Angular/React conformance coverage when removing showcases.
+- Refresh recovery and durable persistence remain out of scope for V1.
+
+Legacy coverage ownership and relocation gates are recorded in
+`2026-09-15-legacy-example-retirement.md`. Existing coverage stays enabled; actual
+fixture extraction must precede legacy deletion.
