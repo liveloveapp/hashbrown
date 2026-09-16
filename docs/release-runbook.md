@@ -82,14 +82,12 @@ The `NPM Publish` workflow should:
 2. Publish serially with npm trusted publishing.
 3. Verify every package exists on npm with the expected dist tag.
 
-Cloudflare production deployment is independent of npm tags and package
-publishing. Immediately before production starts, the `PR / Main CI` workflow
-checks whether the validated SHA is still the current `main` SHA. A run already
-superseded at that check skips production. A push after the check does not stop
-the active deployment; workflow concurrency allows a later run to deploy
-afterward if it passes validation and is still current at its check. Production
-publishes all four Pages projects. A release tag does not trigger or repeat that
-deployment.
+Website deployment to Vercel is independent of npm tags and package
+publishing. Pushes to `main` deploy production through the `PR / Main CI`
+workflow after validation succeeds. Production runs are serialized by the
+`deploy-production` concurrency group, and GitHub keeps only the newest pending
+run, so a superseded commit never deploys after a newer one. A release tag does
+not trigger or repeat that deployment.
 
 After the workflow succeeds, verify the GitHub release remains attached to the
 version tag:
