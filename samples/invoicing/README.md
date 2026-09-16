@@ -129,7 +129,8 @@ Playwright Chromium browser first with `npx playwright install chromium`):
 npx nx example-e2e invoicing-e2e
 ```
 
-This target uses separate ports 4329/4330 and a real seeded session store. Its
+The combined target runs `application-e2e` followed by `conformance-e2e`.
+The application checks use separate ports 4329/4330 and a real seeded session store. Their
 agent endpoint defaults to HTTP 503. An opt-in scripted approval scenario uses
 the real proposal coordinator and session store; it never loads B4 or calls a
 model. The checks cover ambiguous invoice selection, clearing an invoice choice
@@ -140,7 +141,20 @@ and temporarily blocks result lookup. It verifies that new work stays blocked
 until reconciliation restores the displayed balances without another approval.
 This tests application recovery with a scripted transport; B4 authorization
 remains covered separately by integration tests and the live-model check.
-Failure traces go to `work/invoicing-deterministic`.
+Application failure traces go to `work/invoicing-deterministic`.
+
+The conformance suite is owned by this example under `e2e/conformance`, with
+internal Angular/React hosts under `e2e/hosts`. It preserves both frameworks'
+protocol assertions; these hosts are not included in the public invoicing app.
+Its ports default to 4411/4412 (override with `RUNTIME_SMOKE_ANGULAR_PORT` and
+`RUNTIME_SMOKE_REACT_PORT`); reports go to `test-results/invoicing/conformance`
+and `playwright-report/invoicing/conformance`. Run its harness tests with
+`npx nx test invoicing-e2e`, or the browser suite alone with
+`npx nx conformance-e2e invoicing-e2e`. No model credentials are needed.
+
+During migration, native-provider showcase checks remain runnable through
+`npx nx example-e2e runtime-smoke`. They still depend on legacy source and will
+be replaced inside canonical e2e before those examples are removed.
 
 The server build type-checks; serve runs TypeScript directly. Existing warnings
 include the large minified Vite chunk and terminal color settings.

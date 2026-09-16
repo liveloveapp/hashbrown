@@ -6,7 +6,12 @@
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "tsc --noEmit -p samples/invoicing/e2e/tsconfig.json"
+        "parallel": false,
+        "commands": [
+          "tsc --noEmit -p samples/invoicing/e2e/tsconfig.json",
+          "tsc --noEmit -p samples/invoicing/e2e/conformance/tsconfig.playwright.json",
+          "tsc --noEmit -p samples/invoicing/e2e/conformance/tsconfig.spec.json"
+        ]
       }
     },
     "lint": {
@@ -21,11 +26,56 @@
         "command": "playwright test --config samples/invoicing/e2e/playwright.config.ts"
       }
     },
-    "example-e2e": {
+    "application-e2e": {
       "executor": "nx:run-commands",
       "options": {
         "command": "playwright test --config samples/invoicing/e2e/playwright.deterministic.config.ts"
+      },
+      "cache": false
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/samples/invoicing/e2e/conformance"],
+      "options": {
+        "jestConfig": "samples/invoicing/e2e/conformance/jest.config.ts",
+        "passWithNoTests": false
+      }
+    },
+    "conformance-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config samples/invoicing/e2e/conformance.playwright.config.ts"
+      }
+    },
+    "example-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "parallel": false,
+        "commands": [
+          "npx nx application-e2e invoicing-e2e",
+          "npx nx conformance-e2e invoicing-e2e"
+        ]
       }
     }
-  }
+  },
+  "implicitDependencies": [
+    "core",
+    "angular",
+    "react",
+    "testing",
+    "runtime-smoke-angular",
+    "runtime-smoke-react",
+    "openai",
+    "smart-home-server",
+    "fast-food-server",
+    "fast-food-angular"
+  ]
 }

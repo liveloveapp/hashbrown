@@ -52,23 +52,23 @@ Files: `samples/invoicing/e2e/project.json`, dedicated `jest.conformance.config.
 `tsconfig.conformance.json`, `conformance.playwright.config.ts`, `conformance/`,
 `hosts/{react,angular}/`; source `tools/runtime-smoke/{e2e,react,angular}`.
 
-- [ ] Copy harness/specs/fixtures to canonical conformance paths, preserving bodies.
-- [ ] Move internal framework hosts under canonical e2e, updating relative tsconfig,
+- [x] Copy harness/specs/fixtures to canonical conformance paths, preserving bodies.
+- [x] Move internal framework hosts under canonical e2e, updating relative tsconfig,
   package aliases, build outputs and project roots. Keep Nx host project names
   initially to limit graph churn. The canonical project owns their build dependencies.
-- [ ] Add a Jest `test` target for harness tests and distinct conformance browser
+- [x] Add a Jest `test` target for harness tests and distinct conformance browser
   target. Extend canonical build/lint to all new files; keep Jest/Playwright discovery
   separate so unit suites never import browser suites accidentally.
-- [ ] Define `conformance-e2e` and rename the current application runner to
+- [x] Define `conformance-e2e` and rename the current application runner to
   `application-e2e`. Configure `example-e2e` to run those two targets sequentially
   without self-recursion. In Batch 2 add `provider-e2e` only once it exists and passes.
   Live-model remains explicitly opt-in.
-- [ ] Validate target discovery via `npx nx show project invoicing-e2e --json`.
-- [ ] Run `npx nx test invoicing-e2e`, `npx nx build invoicing-e2e`,
+- [x] Validate target discovery via `npx nx show project invoicing-e2e --json`.
+- [x] Run `npx nx test invoicing-e2e`, `npx nx build invoicing-e2e`,
   `npx nx lint invoicing-e2e`, and canonical conformance target: expect retained
   42 harness cases and 56 both-framework browser cases before replacements.
   Run `npx nx conformance-e2e invoicing-e2e` for the browser baseline.
-- [ ] Update CI artifact paths and verify affected detection for core, Angular,
+- [x] Update CI artifact paths and verify affected detection for core, Angular,
   React and provider changes. Keep the old runner, sample-specific specs and
   their build/serve edges until Batch 2 has replaced native-provider coverage.
 
@@ -188,3 +188,20 @@ pre-change performance measurement, assertion-level equivalence tracking and
 provider unit-test discovery. All 491 assertion IDs are unique; all 22 baseline
 source files exist. This is planning evidence only; migration statuses remain
 pending until implementation and execution verification.
+
+## Batch 1 execution checkpoint
+
+Canonical e2e now owns copied harness/specs and relocated Angular/React hosts.
+All 28 harness/spec/fixture files match original bodies after relative import
+adjustment; all 18 host source/assets are unchanged. Old native-provider runner
+remains runnable until Batch 2. The canonical project graph responds to core,
+Angular, React, OpenAI and host changes.
+
+Verified: canonical build/lint; 42 Jest cases; four application browser cases;
+56 conformance browser cases; four retained native-provider browser cases; both
+host builds/lints; 116 deployment-workflow tests. Independent review approved.
+CI uploads include canonical application and conformance failure artifacts.
+Existing Nx/Vite/Jest deprecations, color warnings and host chunk warning remain.
+No new dependency or application behavior change. Live-model test was not rerun
+for this test-ownership relocation. Native-provider assertion entries remain
+pending until their final canonical fixture replacement in Batch 2.

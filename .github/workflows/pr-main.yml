@@ -67,6 +67,9 @@ jobs:
         with:
           name: runtime-smoke-diagnostics
           path: |
+            work/invoicing-deterministic
+            test-results/invoicing
+            playwright-report/invoicing
             test-results/runtime-smoke
             playwright-report/runtime-smoke
             test-results/examples

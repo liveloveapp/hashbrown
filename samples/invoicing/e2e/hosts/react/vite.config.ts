@@ -7,7 +7,10 @@ export default defineConfig({
   root: __dirname,
   plugins: [react(), nxViteTsPaths()],
   build: {
-    outDir: resolve(__dirname, '../../../dist/tools/runtime-smoke/react'),
+    outDir: resolve(
+      __dirname,
+      '../../../../../dist/samples/invoicing/e2e/hosts/react',
+    ),
     emptyOutDir: true,
   },
 });

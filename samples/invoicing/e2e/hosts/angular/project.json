@@ -1,14 +1,14 @@
 {
   "name": "runtime-smoke-angular",
-  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "$schema": "../../../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "sourceRoot": "tools/runtime-smoke/angular/src",
+  "sourceRoot": "samples/invoicing/e2e/hosts/angular/src",
   "implicitDependencies": ["core", "angular"],
   "targets": {
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "tools/runtime-smoke/angular",
+        "cwd": "samples/invoicing/e2e/hosts/angular",
         "command": "eslint ."
       }
     },
@@ -17,10 +17,10 @@
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
-        "outputPath": "dist/tools/runtime-smoke/angular",
-        "browser": "tools/runtime-smoke/angular/src/main.ts",
-        "tsConfig": "tools/runtime-smoke/angular/tsconfig.app.json",
-        "styles": ["tools/runtime-smoke/angular/src/styles.css"]
+        "outputPath": "dist/samples/invoicing/e2e/hosts/angular",
+        "browser": "samples/invoicing/e2e/hosts/angular/src/main.ts",
+        "tsConfig": "samples/invoicing/e2e/hosts/angular/tsconfig.app.json",
+        "styles": ["samples/invoicing/e2e/hosts/angular/src/styles.css"]
       },
       "configurations": {
         "production": {
@@ -32,7 +32,7 @@
       "executor": "@nx/web:file-server",
       "options": {
         "buildTarget": "runtime-smoke-angular:build:production",
-        "staticFilePath": "dist/tools/runtime-smoke/angular/browser",
+        "staticFilePath": "dist/samples/invoicing/e2e/hosts/angular/browser",
         "host": "127.0.0.1",
         "port": 4311,
         "spa": true
@@ -41,7 +41,7 @@
     "serve-built": {
       "executor": "@nx/web:file-server",
       "options": {
-        "staticFilePath": "dist/tools/runtime-smoke/angular/browser",
+        "staticFilePath": "dist/samples/invoicing/e2e/hosts/angular/browser",
         "watch": false,
         "host": "127.0.0.1",
         "port": 4311,
