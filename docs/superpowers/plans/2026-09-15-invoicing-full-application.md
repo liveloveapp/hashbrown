@@ -43,7 +43,7 @@ seeded Payments layout was visually inspected after adjusting column widths.
 - [x] Published B4 0.8.34 and Zod 4 integration, with a passing real-model browser sequence.
 - [x] Add a separate model-free browser target using actual session/seed reads and a deliberately failing agent endpoint.
 - [x] Cover ambiguous invoice choice, choice reset across payment selection, advance gating, and failed review retirement/retry without mutation.
-- [ ] Browser coverage for disconnects after approval and explicit operation-result reconciliation.
+- [x] Browser coverage for a lost approval response and explicit operation-result reconciliation using a scripted transport and real domain state.
 - [ ] Design durable session/refresh recovery before implementation.
 - [ ] Inventory legacy deployment and conformance dependencies before proposing retirement.
 

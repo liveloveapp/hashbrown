@@ -1,5 +1,26 @@
 # Invoicing compatibility checkpoint
 
+## Lost approval response recovery — September 15, 2026
+
+The deterministic browser suite now includes a fourth scenario. Its test-only
+scripted transport prepares a real session-owned proposal and applies it through
+the real coordinator/store after the browser approves. Playwright waits for the
+server response, then discards it with a connection-reset error. The first
+operation-result read also returns 503.
+
+The browser must hold chat and new reviews while the outcome is unconfirmed.
+The test verifies exactly one committed allocation/activity, then restores
+operation reads and clicks “Check allocation result.” The existing client
+recovers the recorded snapshot, updates displayed balances, and unlocks chat.
+It sends no second approval and leaves the committed snapshot unchanged.
+
+This is application-level recovery coverage, not a verification of B4 interrupt
+authorization or B4 transport recovery. The scripted approval mode exists only
+in the separate browser-fixture process. Production code is unchanged.
+Independent review found no blockers. All four browser tests pass (12.6 seconds),
+as do e2e build/lint and server build/lint/93 tests. Only existing terminal
+color warnings were emitted.
+
 ## Deterministic browser edge cases — September 15, 2026
 
 `npx nx test invoicing-e2e` runs three model-free browser scenarios against a

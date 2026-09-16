@@ -125,3 +125,100 @@ test('failed review releases chat and retries with a fresh thread without changi
   ).toHaveCount(0);
   expect(await snapshot(page)).toEqual(baseline);
 });
+
+test('lost approval response holds further work until the committed operation is reconciled', async ({
+  page,
+}) => {
+  let resumeRequests = 0;
+  let blockResult = true;
+  let operationReads = 0;
+  await page.route('**/agui/**', async (route) => {
+    const input = route.request().postDataJSON();
+    const response = await route.fetch({
+      headers: {
+        ...route.request().headers(),
+        'x-invoicing-fixture': 'approval',
+      },
+    });
+    expect(response.status()).toBe(200);
+    if (input.resume?.length) {
+      resumeRequests++;
+      await route.abort('connectionreset');
+    } else await route.fulfill({ response });
+  });
+  await page.route('**/api/operations/*', async (route) => {
+    operationReads++;
+    if (blockResult)
+      await route.fulfill({
+        status: 503,
+        json: { error: 'test_result_unavailable' },
+      });
+    else await route.continue();
+  });
+  await page.goto('/');
+  const baseline = await snapshot(page);
+  await page
+    .getByRole('button', {
+      name: 'Review payment-northstar-exact',
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole('button', { name: 'Match payment', exact: true })
+    .click();
+
+  await page
+    .getByRole('button', { name: 'Approve and apply', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Check allocation result', exact: true }),
+  ).toBeVisible();
+  const committed = await snapshot(page);
+  expect(committed.allocations).toHaveLength(baseline.allocations.length + 1);
+  expect(committed.activities).toHaveLength(baseline.activities.length + 1);
+  await expect(
+    page.getByText('Allocation applied.', { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('textbox', { name: 'Message assistant', exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole('button', { name: 'Review payment-cedar-partial', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Match payment', exact: true })
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Payment review chat', exact: true }),
+  ).toHaveCount(1);
+  blockResult = false;
+  await page
+    .getByRole('button', { name: 'Check allocation result', exact: true })
+    .click();
+
+  await expect(
+    page.getByText('Allocation applied.', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('textbox', { name: 'Message assistant', exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole('region', { name: 'Ledger totals', exact: true }),
+  ).toContainText('$11,500.00');
+  expect(resumeRequests).toBe(1);
+  expect(operationReads).toBeGreaterThanOrEqual(2);
+  expect(await snapshot(page)).toEqual(committed);
+  expect(
+    committed.payments.find(
+      (payment) => payment.id === 'payment-northstar-exact',
+    )?.unappliedCents,
+  ).toBe(0);
+  expect(
+    committed.invoices.find(
+      (invoice) => invoice.id === 'invoice-northstar-exact',
+    )?.outstandingCents,
+  ).toBe(0);
+  await expect(
+    page.getByRole('button', { name: 'Approve and apply', exact: true }),
+  ).toBeDisabled();
+});

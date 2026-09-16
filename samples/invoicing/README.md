@@ -126,11 +126,16 @@ npx nx test invoicing-e2e
 ```
 
 This target uses separate ports 4329/4330 and a real seeded session store. Its
-agent endpoint deliberately returns HTTP 503; it never loads B4 or calls a
+agent endpoint defaults to HTTP 503. An opt-in scripted approval scenario uses
+the real proposal coordinator and session store; it never loads B4 or calls a
 model. The checks cover ambiguous invoice selection, clearing an invoice choice
 when switching payments, advance-payment gating, and failed-review retirement
-with a fresh thread on retry. They assert unchanged ledger data. This complements
-the live-model test; it does not verify successful agent execution or mutation.
+with a fresh thread on retry. Those failure-before-approval cases assert unchanged
+ledger data. A fourth case commits an approved allocation, discards the response,
+and temporarily blocks result lookup. It verifies that new work stays blocked
+until reconciliation restores the displayed balances without another approval.
+This tests application recovery with a scripted transport; B4 authorization
+remains covered separately by integration tests and the live-model check.
 Failure traces go to `work/invoicing-deterministic`.
 
 The server build type-checks; serve runs TypeScript directly. Existing warnings
