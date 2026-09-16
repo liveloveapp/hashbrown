@@ -69,6 +69,8 @@ export interface ReviewChatHandle {
 export interface ReviewChatProps {
   readonly selectedPaymentId?: string;
   readonly selectedInvoiceId?: string;
+  /** Application-owned record labels; never supplied by the model. */
+  readonly snapshot?: LedgerSnapshot;
   readonly showComposer?: boolean;
   readonly onTerminal?: (status: 'applied' | 'cancelled' | 'failed') => void;
   readonly ref?: Ref<ReviewChatHandle>;
@@ -90,6 +92,7 @@ type Phase =
 export function ReviewChat({
   selectedPaymentId,
   selectedInvoiceId,
+  snapshot,
   showComposer = true,
   onTerminal,
   onApplied,
@@ -318,6 +321,7 @@ export function ReviewChat({
       <AllocationProposalContext.Provider
         value={{
           verifiedProposal: owned?.proposal,
+          snapshot,
           selectedPaymentId,
           pendingForProposal: canDecide,
           isApplying: busy && Boolean(attempt),

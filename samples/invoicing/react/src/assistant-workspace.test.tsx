@@ -219,6 +219,14 @@ for (const failCancellation of [false, true]) {
         screen.getByRole('textbox', { name: 'Message assistant' }),
       ).toBeEnabled(),
     );
+    const summary = screen.getByText(
+      failCancellation ? 'Review failed · p → i' : 'Review cancelled · p → i',
+    );
+    expect(summary.closest('details')).not.toHaveAttribute('open');
+    expect(decline).not.toBeVisible();
+    fireEvent.click(summary);
+    expect(decline).toBeVisible();
+    expect(decline).toBeDisabled();
     act(() => {
       expect(ref.current?.beginReview('p', 'i')).toBe(true);
     });
