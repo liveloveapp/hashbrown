@@ -36,6 +36,10 @@ Targets are declared in the `DEPLOY_TARGETS` environment variable of
 passed to `vercel --cwd`. Each target needs a `VERCEL_PROJECT_ID_<KEY>`
 repository secret; `VERCEL_TOKEN` and `VERCEL_ORG_ID` are shared.
 
+`invoicing` deploys `examples/invoicing/.vercel/output`, assembled by
+`tools/vercel/assemble.mjs` from B4's `vercel` build target, the React build,
+and the `api` function; see `examples/invoicing/README.md`.
+
 ## Manual deployment
 
 One-time: `npx vercel login`, then `npx vercel link` from the repository root

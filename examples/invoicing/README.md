@@ -61,6 +61,22 @@ The root lockfile includes the server workspace and registry integrity hashes.
 The temporary agent workspace resolves the same installed B4 packages as the
 server, regardless of npm hoisting. No dependency points to a local B4 checkout.
 
+## Deployment
+
+`npx nx build invoicing` produces `examples/invoicing/.vercel/output`
+(the B4 agent function, the `api` function, and the SPA). Production is
+<https://invoicing.hashbrown.dev>, deployed by `.github/workflows/deploy.yml`.
+
+The Vercel project env has `OPENAI_API_KEY` and `DATABASE_URL`. `DATABASE_URL`
+points at Neon, connected through the Vercel Marketplace integration; B4's
+checkpoints and threads and the example's sessions live there. Locally,
+`DATABASE_URL` is optional — the server falls back to memory repositories —
+so `npx nx serve invoicing-server` needs no database.
+
+`node tools/vercel/bootstrap.mjs --env-file <path> --skip-workflow`
+provisions the project, domain, and secrets, and reports a missing
+`DATABASE_URL` instead of failing.
+
 ## Authority and state
 
 The server owns amounts, record versions, immutable proposals, operation IDs,

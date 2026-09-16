@@ -19,7 +19,7 @@ permissions:
 env:
   # Deployment targets: key = Nx project, dir = directory containing .vercel/output,
   # project_id_secret = repository secret holding that target's Vercel project ID.
-  DEPLOY_TARGETS: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW"}]'
+  DEPLOY_TARGETS: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW"},{"key":"invoicing","dir":"examples/invoicing","project_id_secret":"VERCEL_PROJECT_ID_INVOICING"}]'
 
 jobs:
   ci:
