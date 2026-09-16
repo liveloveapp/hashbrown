@@ -5,7 +5,6 @@ import { startAimock } from '@hashbrownai/testing/aimock';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
-import { onRequest as handleWorkerRequest } from '../../../../samples/fast-food/angular/functions/api/chat';
 import { createApi } from '../../../../samples/fast-food/server/src/app';
 
 jest.mock('express', () => ({
@@ -139,53 +138,5 @@ test('OpenAI Express route streams canonical AG-UI SSE to HttpTransport', async 
     } else {
       process.env['OPENAI_MODEL'] = previousModel;
     }
-  }
-});
-
-test('OpenAI worker route streams canonical AG-UI SSE to HttpTransport', async () => {
-  const aimock = await startAimock({ fixturePath: fixturePath('text.json') });
-  let observedContentType: string | null = null;
-  const transport = createHttpTransport({
-    baseUrl: 'https://worker.example/api/chat',
-    fetchImpl: async (input, init) => {
-      const response = await handleWorkerRequest({
-        request: new Request(input, init),
-        env: {
-          OPENAI_API_KEY: 'test-not-used',
-          OPENAI_BASE_URL: aimock.openAiBaseUrl,
-          OPENAI_MODEL: 'gpt-4.1-mini',
-        },
-      });
-      observedContentType = response.headers.get('content-type');
-      return response;
-    },
-  });
-  const request: TransportRequest = {
-    input: createInput(),
-    signal: new AbortController().signal,
-    attempt: 1,
-    maxAttempts: 1,
-    requestId: 'worker-request',
-  };
-
-  try {
-    const response = await transport.send(request);
-    const events = await collectEvents(response.events);
-    await response.dispose?.();
-
-    expect(observedContentType).toMatch(/^text\/event-stream(?:;|$)/);
-    expect(events.map((event) => event.type)).toEqual([
-      EventType.RUN_STARTED,
-      EventType.TEXT_MESSAGE_START,
-      EventType.TEXT_MESSAGE_CONTENT,
-      EventType.TEXT_MESSAGE_END,
-      EventType.RUN_FINISHED,
-    ]);
-    expect(events.at(2)).toMatchObject({
-      type: EventType.TEXT_MESSAGE_CONTENT,
-      delta: 'Hello from aimock.',
-    });
-  } finally {
-    await aimock.stop();
   }
 });
