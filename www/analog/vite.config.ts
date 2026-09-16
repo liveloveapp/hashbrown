@@ -81,7 +81,13 @@ export default defineConfig(({ command, mode }) => {
       ...(mode === 'test'
         ? []
         : nitro({
-            preset: 'cloudflare-pages',
+            preset: 'vercel',
+            vercel: {
+              functions: {
+                // Hobby default and ceiling; streamed response time counts.
+                maxDuration: 300,
+              },
+            },
             renderer: {
               template: resolve(__dirname, 'index.html'),
             },
