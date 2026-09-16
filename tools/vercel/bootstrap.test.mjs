@@ -5,6 +5,8 @@ import {
   CLOUDFLARE_PAGES_PROJECTS,
   createVercelClient,
   deleteCloudflarePagesProjects,
+  ensureCertificate,
+  ensureDnsZone,
   ensureDomain,
   ensureProject,
   ensurePublicDeployments,
@@ -55,6 +57,26 @@ test('createVercelClient sends a bearer token and throws on non-2xx', async () =
     },
   );
   assert.deepEqual(seen, ['Bearer tok']);
+});
+
+test('createVercelClient scopes every request to the team when given', async () => {
+  const seen = [];
+  const vercel = createVercelClient(
+    'tok',
+    async (url) => {
+      seen.push(url);
+      return new Response('{}', { status: 200 });
+    },
+    { teamId: 'team_1' },
+  );
+
+  await vercel('GET', '/v5/domains/hashbrown.dev');
+  await vercel('GET', '/v5/domains/hashbrown.dev/records?limit=100');
+
+  assert.deepEqual(seen, [
+    'https://api.vercel.com/v5/domains/hashbrown.dev?teamId=team_1',
+    'https://api.vercel.com/v5/domains/hashbrown.dev/records?limit=100&teamId=team_1',
+  ]);
 });
 
 test('ensureProject returns the existing project without creating', async () => {
@@ -180,6 +202,43 @@ test('ensureDomain treats an existing project domain as exists', async () => {
     'exists',
   );
   assert.equal(calls.length, 1);
+});
+
+test('ensureDnsZone enables the zone only when it is missing', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'GET /v5/domains/hashbrown.dev': { body: { domain: { zone: false } } },
+    'PATCH /v3/domains/hashbrown.dev': { body: { zone: true } },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  assert.equal(await ensureDnsZone(vercel, 'hashbrown.dev'), 'updated');
+  assert.deepEqual(calls[1].body, { op: 'update', zone: true });
+});
+
+test('ensureDnsZone reports an existing zone without patching', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'GET /v5/domains/hashbrown.dev': { body: { domain: { zone: true } } },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  assert.equal(await ensureDnsZone(vercel, 'hashbrown.dev'), 'exists');
+  assert.equal(calls.length, 1);
+});
+
+test('ensureCertificate issues a certificate only when none exists', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'GET /v5/now/certs?domain=hashbrown.dev': { body: { certs: [] } },
+    'POST /v7/certs': { body: { id: 'cert_1' } },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  assert.equal(
+    await ensureCertificate(vercel, ['hashbrown.dev', 'www.hashbrown.dev']),
+    'issued',
+  );
+  assert.deepEqual(calls[1].body, {
+    cns: ['hashbrown.dev', 'www.hashbrown.dev'],
+  });
 });
 
 test('ensureDomain creates a missing domain with its redirect', async () => {

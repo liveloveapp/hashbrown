@@ -47,7 +47,8 @@ and pick the `hashbrown-www` project (`.vercel/` is ignored by git).
 ## Provisioning
 
 `node tools/vercel/bootstrap.mjs --env-file <path>` creates the Vercel
-project, environment variables, domains, and GitHub secrets, and can tear down
+project, environment variables, domains (including the Vercel DNS zone and
+TLS certificate), and GitHub secrets, and can tear down
 the former Cloudflare Pages projects (`--teardown-cloudflare`). It is safe to
 re-run; pass `--skip-workflow` on re-runs so it does not dispatch another
 production deployment. See the script header for options.
