@@ -116,6 +116,7 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
           NX_DAEMON: 'false'
         run: |
+          set -o pipefail
           if [[ "$EVENT" != "pull_request" ]]; then
             selected="$(jq -c . <<<"$DEPLOY_TARGETS")"
           elif git diff --name-only "$BASE...$HEAD" | grep -qxE '\.github/workflows/(pr-main|deploy)\.yml'; then
@@ -155,9 +156,6 @@ jobs:
       github.ref == 'refs/heads/main' &&
       needs.targets.outputs.matrix != '' &&
       needs.targets.outputs.matrix != '[]'
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
     permissions:
       contents: read
       deployments: write

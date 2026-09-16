@@ -39,21 +39,6 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.ref }}
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Validate deployment inputs
         env:
           ENVIRONMENT: ${{ inputs.environment }}
@@ -68,6 +53,21 @@ jobs:
             echo "::error::Missing VERCEL_TOKEN, VERCEL_ORG_ID, or $PROJECT_ID_SECRET. Run tools/vercel/bootstrap.mjs to provision them."
             exit 1
           fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build
         run: npx nx build "${{ matrix.key }}" --configuration=production
@@ -107,6 +107,7 @@ jobs:
           BRANCH: ${{ inputs.branch }}
           SHA: ${{ inputs.ref }}
         run: |
+          set -o pipefail
           args=(deploy --prebuilt --yes --cwd "$DIR"
             -m githubDeployment=1
             -m "githubCommitRef=$BRANCH"
@@ -127,7 +128,7 @@ jobs:
           echo "Deployed $DIR to $url"
 
       - name: Record deployment status
-        if: ${{ !cancelled() && steps.deployment.outputs.id != '' }}
+        if: ${{ always() && steps.deployment.outputs.id != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.id }}
@@ -135,10 +136,11 @@ jobs:
           URL: ${{ steps.deploy.outputs.url }}
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          state=failure
-          if [[ "$OUTCOME" == "success" ]]; then
-            state=success
-          fi
+          case "$OUTCOME" in
+            success) state=success ;;
+            cancelled) state=error ;;
+            *) state=failure ;;
+          esac
           # auto_inactive is scoped to the whole environment; revisit before adding a second production target.
           payload="$(jq -n \
             --arg state "$state" \
