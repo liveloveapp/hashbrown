@@ -199,6 +199,27 @@ test('generation is server owned and advances on reset', async () => {
   );
 });
 
+test('a replayed decision does not rewrite the session document', async () => {
+  const repos = createMemoryRepositories();
+  const store = createSessionStore(repos.sessions);
+  const session = await store.createSession();
+  const proposal = await store.propose(session, request);
+
+  const first = await store.decide(session, {
+    ...proposal,
+    decision: 'approve',
+  });
+  const versionAfterFirst = (await repos.sessions.load(session))!.version;
+
+  const second = await store.decide(session, {
+    ...proposal,
+    decision: 'approve',
+  });
+
+  expect((await repos.sessions.load(session))!.version).toBe(versionAfterFirst);
+  expect(second).toEqual(first);
+});
+
 it('retries a mutation once when the document moved underneath it', async () => {
   const repos = createMemoryRepositories();
   const store = createSessionStore(repos.sessions, createSampleLedger);

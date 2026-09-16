@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createLedger } from '../ledger';
 import { ConflictError, type Repositories, type Session } from './types';
 import { createMemoryRepositories } from './memory';
+import { createPostgresRepositories } from './postgres';
 
 const emptySession = (): Session => ({
   generation: 1,
@@ -98,3 +99,13 @@ export function repositoryContract(
 }
 
 repositoryContract('memory', async () => createMemoryRepositories());
+
+const testDatabaseUrl = process.env['TEST_DATABASE_URL'];
+if (testDatabaseUrl) {
+  repositoryContract('postgres', () =>
+    createPostgresRepositories({
+      connectionString: testDatabaseUrl,
+      schema: `invoicing_test_${process.pid}`,
+    }),
+  );
+}

@@ -64,6 +64,7 @@ export function createSessionStore(
     for (let attempt = 0; ; attempt += 1) {
       const doc = await load(id);
       const { session, result } = transition(doc.value);
+      if (session === doc.value) return result;
       try {
         await repository.commit(id, doc.version, session);
         return result;
