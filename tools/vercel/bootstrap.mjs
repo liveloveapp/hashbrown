@@ -120,33 +120,30 @@ export async function upsertEnv(vercel, projectId, variables) {
 }
 
 export async function ensureDomain(vercel, projectId, domain) {
+  let current;
   try {
-    const current = await vercel(
+    current = await vercel(
       'GET',
       `/v9/projects/${projectId}/domains/${domain.name}`,
     );
-    if (
-      domain.redirect !== undefined &&
-      (current.redirect !== domain.redirect ||
-        current.redirectStatusCode !== domain.redirectStatusCode)
-    ) {
-      await vercel(
-        'PATCH',
-        `/v9/projects/${projectId}/domains/${domain.name}`,
-        {
-          redirect: domain.redirect,
-          redirectStatusCode: domain.redirectStatusCode,
-        },
-      );
-      return 'updated';
-    }
-    return 'exists';
   } catch (error) {
     if (!isNotFound(error)) throw error;
+    await vercel('POST', `/v10/projects/${projectId}/domains`, domain);
+    return 'created';
   }
 
-  await vercel('POST', `/v10/projects/${projectId}/domains`, domain);
-  return 'created';
+  if (
+    domain.redirect !== undefined &&
+    (current.redirect !== domain.redirect ||
+      current.redirectStatusCode !== domain.redirectStatusCode)
+  ) {
+    await vercel('PATCH', `/v9/projects/${projectId}/domains/${domain.name}`, {
+      redirect: domain.redirect,
+      redirectStatusCode: domain.redirectStatusCode,
+    });
+    return 'updated';
+  }
+  return 'exists';
 }
 
 export function missingDnsRecords(existing, wanted) {
@@ -235,6 +232,7 @@ function run(command, args, { input } = {}) {
     child.stdout.on('data', (chunk) => (stdout += chunk));
     child.stderr.on('data', (chunk) => (stderr += chunk));
     child.on('error', reject);
+    child.stdin.on('error', reject);
     child.on('close', (code) => {
       if (code === 0) resolve(stdout.trim());
       else {
