@@ -18,7 +18,7 @@
 
 | Path | Action | Responsibility |
 | --- | --- | --- |
-| `www/analog/vite.config.ts` | modify | Nitro preset `vercel`, `maxDuration` |
+| `www/analog/vite.config.ts` | modify | Nitro preset `vercel`, `maxDuration` (output lands at `<repo-root>/.vercel/output` because Analog pins Nitro output to its `workspaceRoot`) |
 | `www/analog/src/tools/clean-build-output.mjs` | modify | remove both client `dist` and `.vercel/output` |
 | `www/analog/src/server/routes/_/chat.post.ts` | modify | `process.env` only; streaming-safe headers |
 | `www/analog/e2e/deployment-artifact.e2e.test.mjs` | modify | assert the Vercel output tree instead of the Worker |
@@ -106,7 +106,7 @@ import { rm } from 'node:fs/promises';
 
 const outputDirectories = [
   new URL('../../../../dist/www/analog', import.meta.url),
-  new URL('../../.vercel/output', import.meta.url),
+  new URL('../../../../.vercel/output', import.meta.url),
 ];
 
 await Promise.all(
@@ -131,19 +131,19 @@ Expected: exits 0. Ignore Angular budget warnings.
 
 - [ ] **Step 5: Inspect the output tree**
 
-Run: `ls www/analog/.vercel/output && ls www/analog/.vercel/output/functions && cat www/analog/.vercel/output/functions/__nitro.func/.vc-config.json && node -e "const c=require('./www/analog/.vercel/output/config.json');console.log('version',c.version,'routes',c.routes.length)"`
+Run: `ls .vercel/output && ls .vercel/output/functions && cat .vercel/output/functions/__server.func/.vc-config.json && node -e "const c=require('./.vercel/output/config.json');console.log('version',c.version,'routes',c.routes.length)"`
+
+Note: Analog's Nitro module (`@analogjs/platform/src/lib/nitro/analog-nitro-plugin.js`) overrides Nitro's output directory for any `vercel*` preset to `<analog workspaceRoot>/.vercel/output`, which is the repository root here. Nitro's own `output.dir`/`rootDir` options have no effect. The repository root is therefore the Vercel project directory for every later task.
 
 Expected:
-- `config.json  functions  static`
-- `__nitro.func`
+- `config.json  functions  nitro.json  static`
+- `__server.func` (plus a `_` directory for the `/_/**` API routes)
 - `.vc-config.json` containing `"runtime": "nodejs24.x"`, `"handler": "index.mjs"`, `"launcherType": "Nodejs"`, `"supportsResponseStreaming": true`, `"maxDuration": 300`
 - `version 3 routes <n>` with n > 0
 
-If `www/analog/.vercel/output` does not exist, find where Nitro wrote it (`find . -path ./node_modules -prune -o -name .vc-config.json -print`) and pin it by adding `output: { dir: resolve(__dirname, '.vercel/output') }` to the `nitro({...})` options, then rebuild. Vercel CLI requires exactly `<cwd>/.vercel/output`.
-
 - [ ] **Step 6: Confirm static assets and the SSR template landed**
 
-Run: `ls www/analog/.vercel/output/static | head && test -f www/analog/.vercel/output/static/index.html && echo INDEX_OK`
+Run: `ls .vercel/output/static | head && test -f .vercel/output/static/index.html && echo INDEX_OK`
 Expected: hashed JS/CSS files, `favicon*`, and `INDEX_OK`.
 
 - [ ] **Step 7: Commit**
@@ -291,9 +291,12 @@ const deploymentDirectory = new URL(
 with
 
 ```js
-const deploymentDirectory = new URL('../.vercel/output/', import.meta.url);
+const deploymentDirectory = new URL(
+  '../../../.vercel/output/',
+  import.meta.url,
+);
 const functionDirectory = new URL(
-  'functions/__nitro.func/',
+  'functions/__server.func/',
   deploymentDirectory,
 );
 const staticDirectory = new URL('static/', deploymentDirectory);
@@ -396,7 +399,7 @@ test('Nx deploys the prebuilt output with the Vercel CLI', async () => {
 
   assert.equal(
     project.targets.deploy.options.command,
-    'npx vercel deploy --prebuilt --yes --cwd www/analog',
+    'npx vercel deploy --prebuilt --yes',
   );
 });
 ```
@@ -446,7 +449,7 @@ In `www/analog/project.json`, replace the `deploy` target with:
       "executor": "nx:run-commands",
       "dependsOn": ["build"],
       "options": {
-        "command": "npx vercel deploy --prebuilt --yes --cwd www/analog"
+        "command": "npx vercel deploy --prebuilt --yes"
       }
     }
 ```
@@ -464,14 +467,14 @@ Replace `www/analog/DEPLOY.md` with:
 
 Vercel hosts the `www` site as one Node.js function (SSR and `/_/chat`) plus
 static assets. Nitro's `vercel` preset in `vite.config.ts` writes a Build
-Output API tree to `www/analog/.vercel/output`; nothing else configures the
-deployment.
+Output API tree to `.vercel/output` at the repository root (Analog pins the
+Nitro output to its `workspaceRoot`); nothing else configures the deployment.
 
 ## Build
 
 - Command: `npx nx build www --configuration=production`
-- Output: `www/analog/.vercel/output` (`config.json`, `static/`,
-  `functions/__nitro.func/`)
+- Output: `<repo-root>/.vercel/output` (`config.json`, `static/`,
+  `functions/__server.func/`)
 
 ## Environment
 
@@ -493,13 +496,14 @@ Preview. `OPENAI_MODEL` and `OPENAI_BASE_URL` are optional overrides. The
 - Forks and Dependabot pull requests receive CI only.
 
 Targets are declared in the `DEPLOY_TARGETS` environment variable of
-`pr-main.yml`. Each target needs a `VERCEL_PROJECT_ID_<KEY>` repository
+`pr-main.yml`. `dir` is the directory that contains `.vercel/output` and is passed to
+`vercel --cwd`. Each target needs a `VERCEL_PROJECT_ID_<KEY>` repository
 secret; `VERCEL_TOKEN` and `VERCEL_ORG_ID` are shared.
 
 ## Manual deployment
 
-One-time: `npx vercel login`, then `npx vercel link --cwd www/analog` and pick
-the `hashbrown-www` project (`.vercel/` is ignored by git).
+One-time: `npx vercel login`, then `npx vercel link` from the repository root
+and pick the `hashbrown-www` project (`.vercel/` is ignored by git).
 
 - Preview: `npx nx deploy www`
 - Production: `npx nx deploy www -- --prod`
@@ -808,7 +812,7 @@ env:
   # Deployment targets. key = Nx project, dir = directory containing .vercel/output.
   DEPLOY_TARGETS: >-
     [
-      { "key": "www", "dir": "www/analog", "project_id_secret": "VERCEL_PROJECT_ID_WWW" }
+      { "key": "www", "dir": ".", "project_id_secret": "VERCEL_PROJECT_ID_WWW" }
     ]
 
 jobs:
