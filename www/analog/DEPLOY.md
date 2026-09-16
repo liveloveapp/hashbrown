@@ -27,7 +27,8 @@ Preview. `OPENAI_MODEL` and `OPENAI_BASE_URL` are optional overrides. The
   Deployment in the `preview` environment, so the URL appears in the pull
   request sidebar. A preview failure fails the `PR Gate` check.
 - Pushes to `main` deploy every target to production after validation
-  succeeds. Runs are serialized by the `deploy-production` concurrency group.
+  succeeds. Every run on `main` (push or manual dispatch) shares one workflow
+  concurrency group, so production deployments are strictly ordered.
 - Forks and Dependabot pull requests receive CI only.
 
 Targets are declared in the `DEPLOY_TARGETS` environment variable of
@@ -47,7 +48,9 @@ and pick the `hashbrown-www` project (`.vercel/` is ignored by git).
 
 `node tools/vercel/bootstrap.mjs --env-file <path>` creates the Vercel
 project, environment variables, domains, and GitHub secrets, and can tear down
-the former Cloudflare Pages projects. See the script header for options.
+the former Cloudflare Pages projects (`--teardown-cloudflare`). It is safe to
+re-run; pass `--skip-workflow` on re-runs so it does not dispatch another
+production deployment. See the script header for options.
 
 ## Local preview
 

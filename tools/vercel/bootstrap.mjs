@@ -452,7 +452,7 @@ async function main() {
     );
     if (nameservers.length) {
       console.log(
-        `Set these nameservers at the registrar (Squarespace), then re-run this script:\n  ${nameservers.join('\n  ')}`,
+        `Set these nameservers at the registrar (Squarespace), then re-run this script with --skip-workflow:\n  ${nameservers.join('\n  ')}`,
       );
     } else {
       console.log(
@@ -460,7 +460,7 @@ async function main() {
           (recommendedIPv4.length
             ? `, or keep the current DNS host and point the apex A record at ${recommendedIPv4.join(', ')}`
             : '') +
-          '. Then re-run this script.',
+          '. Then re-run this script with --skip-workflow.',
       );
     }
   }

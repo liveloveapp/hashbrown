@@ -16,28 +16,28 @@
 
 ## File Map
 
-| Path | Action | Responsibility |
-| --- | --- | --- |
-| `www/analog/vite.config.ts` | modify | Nitro preset `vercel`, `maxDuration` (output lands at `<repo-root>/.vercel/output` because Analog pins Nitro output to its `workspaceRoot`) |
-| `www/analog/src/tools/clean-build-output.mjs` | modify | remove both client `dist` and `.vercel/output` |
-| `www/analog/src/server/routes/_/chat.post.ts` | modify | `process.env` only; streaming-safe headers |
-| `www/analog/e2e/deployment-artifact.e2e.test.mjs` | modify | assert the Vercel output tree instead of the Worker |
-| `www/analog/project.json` | modify | `deploy` target uses Vercel CLI |
-| `www/analog/wrangler.toml` | delete | |
-| `www/analog/DEPLOY.md` | rewrite | Vercel deployment notes |
-| `.gitignore` | modify | `.wrangler` → `.vercel` |
-| `package.json`, `package-lock.json` | modify | drop `wrangler`, add `vercel` |
-| `tools/cloudflare/**` | delete | old deployer |
-| `samples/{finance,fast-food,smart-home}/cloudflare/**` | delete | Pages Functions builds |
-| `samples/{finance,fast-food,smart-home}/angular/functions/**` | delete | Pages Functions source |
-| `samples/{finance,fast-food,smart-home}/angular/wrangler.toml` | delete | |
-| `samples/{finance,fast-food,smart-home}/angular/project.json` | modify | remove `deploy` target |
-| `AGENTS.md`, `docs/release-runbook.md` | modify | remove Cloudflare target listings |
-| `.github/workflows/deploy.yml` | create | reusable per-target deploy job |
-| `.github/workflows/pr-main.yml` | modify | target selection, preview, production, gate |
-| `tools/vercel/bootstrap.mjs` | create | idempotent provisioning |
-| `tools/vercel/bootstrap.test.mjs` | create | unit tests for the pure/API-shaped pieces |
-| `tools/vercel/project.json` | create | Nx `lint` + `test` targets |
+| Path                                                           | Action  | Responsibility                                                                                                                              |
+| -------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `www/analog/vite.config.ts`                                    | modify  | Nitro preset `vercel`, `maxDuration` (output lands at `<repo-root>/.vercel/output` because Analog pins Nitro output to its `workspaceRoot`) |
+| `www/analog/src/tools/clean-build-output.mjs`                  | modify  | remove both client `dist` and `.vercel/output`                                                                                              |
+| `www/analog/src/server/routes/_/chat.post.ts`                  | modify  | `process.env` only; streaming-safe headers                                                                                                  |
+| `www/analog/e2e/deployment-artifact.e2e.test.mjs`              | modify  | assert the Vercel output tree instead of the Worker                                                                                         |
+| `www/analog/project.json`                                      | modify  | `deploy` target uses Vercel CLI                                                                                                             |
+| `www/analog/wrangler.toml`                                     | delete  |                                                                                                                                             |
+| `www/analog/DEPLOY.md`                                         | rewrite | Vercel deployment notes                                                                                                                     |
+| `.gitignore`                                                   | modify  | `.wrangler` → `.vercel`                                                                                                                     |
+| `package.json`, `package-lock.json`                            | modify  | drop `wrangler`, add `vercel`                                                                                                               |
+| `tools/cloudflare/**`                                          | delete  | old deployer                                                                                                                                |
+| `samples/{finance,fast-food,smart-home}/cloudflare/**`         | delete  | Pages Functions builds                                                                                                                      |
+| `samples/{finance,fast-food,smart-home}/angular/functions/**`  | delete  | Pages Functions source                                                                                                                      |
+| `samples/{finance,fast-food,smart-home}/angular/wrangler.toml` | delete  |                                                                                                                                             |
+| `samples/{finance,fast-food,smart-home}/angular/project.json`  | modify  | remove `deploy` target                                                                                                                      |
+| `AGENTS.md`, `docs/release-runbook.md`                         | modify  | remove Cloudflare target listings                                                                                                           |
+| `.github/workflows/deploy.yml`                                 | create  | reusable per-target deploy job                                                                                                              |
+| `.github/workflows/pr-main.yml`                                | modify  | target selection, preview, production, gate                                                                                                 |
+| `tools/vercel/bootstrap.mjs`                                   | create  | idempotent provisioning                                                                                                                     |
+| `tools/vercel/bootstrap.test.mjs`                              | create  | unit tests for the pure/API-shaped pieces                                                                                                   |
+| `tools/vercel/project.json`                                    | create  | Nx `lint` + `test` targets                                                                                                                  |
 
 ---
 
@@ -60,6 +60,7 @@ Expected: `3.0.260522-beta` and a `vercel` entry (directory or file).
 ### Task 1: Switch the www build to the Vercel preset
 
 **Files:**
+
 - Modify: `www/analog/vite.config.ts:74-93`
 - Modify: `www/analog/src/tools/clean-build-output.mjs`
 - Modify: `.gitignore:57`
@@ -136,6 +137,7 @@ Run: `ls .vercel/output && ls .vercel/output/functions && cat .vercel/output/fun
 Note: Analog's Nitro module (`@analogjs/platform/src/lib/nitro/analog-nitro-plugin.js`) overrides Nitro's output directory for any `vercel*` preset to `<analog workspaceRoot>/.vercel/output`, which is the repository root here. Nitro's own `output.dir`/`rootDir` options have no effect. The repository root is therefore the Vercel project directory for every later task.
 
 Expected:
+
 - `config.json  functions  nitro.json  static`
 - `__server.func` (plus a `_` directory for the `/_/**` API routes)
 - `.vc-config.json` containing `"runtime": "nodejs24.x"`, `"handler": "index.mjs"`, `"launcherType": "Nodejs"`, `"supportsResponseStreaming": true`, `"maxDuration": 300`
@@ -160,6 +162,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 2: Make the chat route Vercel-native
 
 **Files:**
+
 - Modify: `www/analog/src/server/routes/_/chat.post.ts`
 
 - [ ] **Step 1: Rewrite the env access and headers**
@@ -275,6 +278,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 3: Point the deployment-artifact e2e test at the Vercel output
 
 **Files:**
+
 - Modify: `www/analog/e2e/deployment-artifact.e2e.test.mjs`
 
 - [ ] **Step 1: Change the deployment directory and skip bundled node_modules**
@@ -305,13 +309,13 @@ const staticDirectory = new URL('static/', deploymentDirectory);
 In `listJavaScriptFiles`, change the directory branch so traced dependencies are not scanned:
 
 ```js
-      if (entry.isDirectory()) {
-        if (entry.name === 'node_modules') {
-          return [];
-        }
+if (entry.isDirectory()) {
+  if (entry.name === 'node_modules') {
+    return [];
+  }
 
-        return listJavaScriptFiles(new URL(`${entry.name}/`, directory));
-      }
+  return listJavaScriptFiles(new URL(`${entry.name}/`, directory));
+}
 ```
 
 - [ ] **Step 2: Replace every test from the Cloudflare artifact test to the end of file**
@@ -345,7 +349,9 @@ test('production function does not bundle bare RxJS specifiers', async () => {
     const source = await readFile(file, 'utf8');
 
     for (const specifier of collectRxjsImports(source)) {
-      bareImports.push(`${file.href.slice(functionDirectory.href.length)}: ${specifier}`);
+      bareImports.push(
+        `${file.href.slice(functionDirectory.href.length)}: ${specifier}`,
+      );
     }
   }
 
@@ -425,6 +431,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 4: Swap the CLI dependency and the local deploy target
 
 **Files:**
+
 - Modify: `package.json`, `package-lock.json`
 - Modify: `www/analog/project.json` (`deploy` target)
 - Delete: `www/analog/wrangler.toml`
@@ -539,6 +546,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 5: Remove the Cloudflare deployer and sample Pages Functions
 
 **Files:**
+
 - Delete: `tools/cloudflare/**`
 - Delete: `samples/{finance,fast-food,smart-home}/cloudflare/**`
 - Delete: `samples/{finance,fast-food,smart-home}/angular/functions/**`
@@ -582,6 +590,7 @@ Remove these lines from the "Samples / apps" list in `AGENTS.md`:
   - `npx nx serve fast-food-cloudflare`
   - `npx nx generate-data fast-food-cloudflare`
 ```
+
 ```
   - `npx nx deploy finance-angular`
 - `finance-cloudflare`
@@ -589,6 +598,7 @@ Remove these lines from the "Samples / apps" list in `AGENTS.md`:
   - `npx nx serve finance-cloudflare`
   - `npx nx generate-data finance-cloudflare`
 ```
+
 ```
   - `npx nx deploy smart-home-angular`
 - `smart-home-cloudflare`
@@ -632,6 +642,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 6: Create the reusable deploy workflow
 
 **Files:**
+
 - Create: `.github/workflows/deploy.yml`
 
 - [ ] **Step 1: Write the workflow**
@@ -787,6 +798,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 7: Rewrite pr-main.yml around target selection
 
 **Files:**
+
 - Modify: `.github/workflows/pr-main.yml`
 
 - [ ] **Step 1: Replace the file**
@@ -1009,6 +1021,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 8: Bootstrap script — API client and idempotent operations (TDD)
 
 **Files:**
+
 - Create: `tools/vercel/bootstrap.mjs`
 - Create: `tools/vercel/bootstrap.test.mjs`
 - Create: `tools/vercel/project.json`
@@ -1063,12 +1076,20 @@ function stubFetch(routes) {
   const fetchImpl = async (url, init = {}) => {
     const method = init.method ?? 'GET';
     const path = new URL(url).pathname + new URL(url).search;
-    calls.push({ method, path, body: init.body ? JSON.parse(init.body) : undefined });
+    calls.push({
+      method,
+      path,
+      body: init.body ? JSON.parse(init.body) : undefined,
+    });
     const handler = routes[`${method} ${path}`];
     if (!handler) {
-      return new Response(JSON.stringify({ error: { code: 'not_found', message: path } }), { status: 404 });
+      return new Response(
+        JSON.stringify({ error: { code: 'not_found', message: path } }),
+        { status: 404 },
+      );
     }
-    const { status = 200, body = {} } = typeof handler === 'function' ? handler() : handler;
+    const { status = 200, body = {} } =
+      typeof handler === 'function' ? handler() : handler;
     return new Response(JSON.stringify(body), { status });
   };
   return { fetchImpl, calls };
@@ -1078,20 +1099,28 @@ test('createVercelClient sends a bearer token and throws on non-2xx', async () =
   const seen = [];
   const vercel = createVercelClient('tok', async (url, init) => {
     seen.push(init.headers.authorization);
-    return new Response(JSON.stringify({ error: { code: 'forbidden', message: 'nope' } }), { status: 403 });
+    return new Response(
+      JSON.stringify({ error: { code: 'forbidden', message: 'nope' } }),
+      { status: 403 },
+    );
   });
 
-  await assert.rejects(() => vercel('GET', '/v2/user'), (error) => {
-    assert.equal(error.status, 403);
-    assert.equal(error.code, 'forbidden');
-    return true;
-  });
+  await assert.rejects(
+    () => vercel('GET', '/v2/user'),
+    (error) => {
+      assert.equal(error.status, 403);
+      assert.equal(error.code, 'forbidden');
+      return true;
+    },
+  );
   assert.deepEqual(seen, ['Bearer tok']);
 });
 
 test('ensureProject returns the existing project without creating', async () => {
   const { fetchImpl, calls } = stubFetch({
-    'GET /v9/projects/hashbrown-www': { body: { id: 'prj_1', name: 'hashbrown-www' } },
+    'GET /v9/projects/hashbrown-www': {
+      body: { id: 'prj_1', name: 'hashbrown-www' },
+    },
   });
   const vercel = createVercelClient('tok', fetchImpl);
 
@@ -1099,7 +1128,10 @@ test('ensureProject returns the existing project without creating', async () => 
 
   assert.equal(result.status, 'exists');
   assert.equal(result.project.id, 'prj_1');
-  assert.deepEqual(calls.map((call) => call.method), ['GET']);
+  assert.deepEqual(
+    calls.map((call) => call.method),
+    ['GET'],
+  );
 });
 
 test('ensureProject creates a framework-less project when missing', async () => {
@@ -1120,20 +1152,39 @@ test('upsertEnv skips empty values and targets production and preview', async ()
   });
   const vercel = createVercelClient('tok', fetchImpl);
 
-  assert.equal(await upsertEnv(vercel, 'prj_1', { OPENAI_API_KEY: '', OPENAI_MODEL: undefined }), 'skipped');
-  assert.equal(await upsertEnv(vercel, 'prj_1', { OPENAI_API_KEY: 'sk-test' }), 'updated');
+  assert.equal(
+    await upsertEnv(vercel, 'prj_1', {
+      OPENAI_API_KEY: '',
+      OPENAI_MODEL: undefined,
+    }),
+    'skipped',
+  );
+  assert.equal(
+    await upsertEnv(vercel, 'prj_1', { OPENAI_API_KEY: 'sk-test' }),
+    'updated',
+  );
   assert.deepEqual(calls.at(-1).body, [
-    { key: 'OPENAI_API_KEY', value: 'sk-test', type: 'encrypted', target: ['production', 'preview'] },
+    {
+      key: 'OPENAI_API_KEY',
+      value: 'sk-test',
+      type: 'encrypted',
+      target: ['production', 'preview'],
+    },
   ]);
 });
 
 test('ensureDomain treats an existing project domain as exists', async () => {
   const { fetchImpl, calls } = stubFetch({
-    'GET /v9/projects/prj_1/domains/www.hashbrown.dev': { body: { name: 'www.hashbrown.dev' } },
+    'GET /v9/projects/prj_1/domains/www.hashbrown.dev': {
+      body: { name: 'www.hashbrown.dev' },
+    },
   });
   const vercel = createVercelClient('tok', fetchImpl);
 
-  assert.equal(await ensureDomain(vercel, 'prj_1', { name: 'www.hashbrown.dev' }), 'exists');
+  assert.equal(
+    await ensureDomain(vercel, 'prj_1', { name: 'www.hashbrown.dev' }),
+    'exists',
+  );
   assert.equal(calls.length, 1);
 });
 
@@ -1410,7 +1461,10 @@ async function main() {
     );
 
     if (target.key === 'www') {
-      log('domain apex', await ensureDomain(vercel, project.id, { name: DOMAIN }));
+      log(
+        'domain apex',
+        await ensureDomain(vercel, project.id, { name: DOMAIN }),
+      );
       log(
         'domain www',
         await ensureDomain(vercel, project.id, {
@@ -1421,8 +1475,14 @@ async function main() {
       );
 
       if (values['dns-records']) {
-        const wanted = JSON.parse(await readFile(values['dns-records'], 'utf8'));
-        const { created, existing } = await ensureDnsRecords(vercel, DOMAIN, wanted);
+        const wanted = JSON.parse(
+          await readFile(values['dns-records'], 'utf8'),
+        );
+        const { created, existing } = await ensureDnsRecords(
+          vercel,
+          DOMAIN,
+          wanted,
+        );
         log('dns records', `created ${created}, existing ${existing}`);
       }
     }
@@ -1443,15 +1503,37 @@ async function main() {
     for (const [name, outcome] of Object.entries(results)) {
       log(`cloudflare ${name}`, outcome);
     }
-    log('secret CLOUDFLARE_API_TOKEN', await deleteSecret('CLOUDFLARE_API_TOKEN'));
-    log('secret CLOUDFLARE_ACCOUNT_ID', await deleteSecret('CLOUDFLARE_ACCOUNT_ID'));
+    log(
+      'secret CLOUDFLARE_API_TOKEN',
+      await deleteSecret('CLOUDFLARE_API_TOKEN'),
+    );
+    log(
+      'secret CLOUDFLARE_ACCOUNT_ID',
+      await deleteSecret('CLOUDFLARE_ACCOUNT_ID'),
+    );
   } else {
-    log('cloudflare teardown', 'skipped', 'set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to enable');
+    log(
+      'cloudflare teardown',
+      'skipped',
+      'set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID to enable',
+    );
   }
 
   if (!values['skip-workflow']) {
-    await gh(['workflow', 'run', 'pr-main.yml', '--ref', 'main', '--repo', REPOSITORY]);
-    log('workflow pr-main.yml', 'dispatched', `https://github.com/${REPOSITORY}/actions/workflows/pr-main.yml`);
+    await gh([
+      'workflow',
+      'run',
+      'pr-main.yml',
+      '--ref',
+      'main',
+      '--repo',
+      REPOSITORY,
+    ]);
+    log(
+      'workflow pr-main.yml',
+      'dispatched',
+      `https://github.com/${REPOSITORY}/actions/workflows/pr-main.yml`,
+    );
   }
 
   const www = TARGETS.find((target) => target.key === 'www');
@@ -1459,7 +1541,9 @@ async function main() {
   const { verified, nameservers } = await readDomainState(vercel, project.id);
   log(`domain ${DOMAIN}`, verified ? 'verified' : 'pending nameservers');
   if (!verified) {
-    console.log(`\nSet these nameservers at the registrar (Squarespace), then re-run this script:\n  ${nameservers.join('\n  ')}`);
+    console.log(
+      `\nSet these nameservers at the registrar (Squarespace), then re-run this script:\n  ${nameservers.join('\n  ')}`,
+    );
   }
 }
 
@@ -1614,6 +1698,7 @@ curl -sSN -X POST "$url/_/chat" -H 'content-type: application/json' \
   --data '{"threadId":"t1","runId":"r1","messages":[{"id":"m1","role":"user","content":"Say hi in three words."}],"tools":[],"context":[],"state":{},"forwardedProps":{}}' \
   | head -c 600
 ```
+
 Expected: the first command prints `Angular Quick Start`; the second prints several `data: {...}` SSE lines that appear progressively (not one burst at the end) and begin with a `RUN_STARTED` event. The body is a minimal AG-UI `RunAgentInput` (same shape as `packages/core/src/transport/local-text-event-stream.spec.ts` plus one user message).
 
 - [ ] **Step 4: Check the PR sidebar**
@@ -1653,7 +1738,7 @@ Run: `curl -sSI https://hashbrown.dev | grep -i '^server:'` → `server: Vercel`
 ## Amendments applied during execution
 
 - The Vercel Build Output API tree lands at `<repo-root>/.vercel/output` (Analog pins Nitro output to its `workspaceRoot`); the deploy target `dir` is `.` and the function directory is `functions/__server.func`.
-- `deploy.yml` fails closed when `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` are empty or `environment` is invalid, drops `--token` in favour of the `VERCEL_TOKEN` env var, adds `githubRepo`/`githubCommitOrg` meta, asserts the captured URL, and skips the status post on cancellation.
+- `deploy.yml` fails closed when `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` are empty or `environment` is invalid, drops `--token` in favour of the `VERCEL_TOKEN` env var, adds `githubRepo`/`githubCommitOrg` meta, asserts the captured URL, and records a cancelled deploy as `error`.
 - `pr-main.yml` keys concurrency on the ref only (push and dispatch on `main` share one group), sets `timeout-minutes` on `ci` and `pr-gate`, launders `nx show projects` output, and guards `production` against an empty matrix.
 - `tools/vercel/bootstrap.mjs`: Cloudflare teardown is opt-in (`--teardown-cloudflare`); the DNS list uses `/v5`; env upserts surface `failed[]`; nameservers are never guessed; the `www` redirect is reconciled on re-run; the token reaches `gh secret set` via stdin.
 - `tools/runtime-smoke/e2e/harness/openai-route.spec.ts` imported the deleted fast-food Pages Function; the worker test was removed and the Express route test kept.
