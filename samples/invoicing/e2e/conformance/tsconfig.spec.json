@@ -6,5 +6,10 @@
     "moduleResolution": "node10",
     "types": ["jest", "node"]
   },
-  "include": ["jest.config.ts", "harness/**/*.spec.ts", "harness/**/*.d.ts"]
+  "include": [
+    "jest.config.ts",
+    "harness/**/*.spec.ts",
+    "harness/**/*.d.ts",
+    "../provider/routes.spec.ts"
+  ]
 }

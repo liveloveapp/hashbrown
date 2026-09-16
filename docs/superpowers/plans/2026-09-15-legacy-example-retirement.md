@@ -210,3 +210,13 @@ canonical app. Review Serverless/Vox tooling independently; no lockfile edits ye
 This establishes a preservation baseline, not a claim that fixture extraction
 has already happened. All existing suites remain enabled and legacy imports stay
 in place until equivalent replacement coverage is introduced.
+
+## Canonical migration checkpoint
+
+The tools-owned relocation proposal above is superseded and now implemented under
+`samples/invoicing/e2e`: conformance harness/specs, internal framework hosts, and
+native Node/Worker/OpenAI fixtures. The old runtime-smoke runner is removed.
+Canonical tests no longer depend on Fast Food/Smart Home source. Assertion mapping
+and execution evidence live in `canonical-example/assertion-baseline.json` and
+`2026-09-15-canonical-example-consolidation.md`. Legacy showcase source/deployments,
+Vox and Lambda have not yet been removed; those later gates still apply.

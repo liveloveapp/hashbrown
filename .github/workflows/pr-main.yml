@@ -65,15 +65,11 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: runtime-smoke-diagnostics
+          name: canonical-example-diagnostics
           path: |
             work/invoicing-deterministic
             test-results/invoicing
             playwright-report/invoicing
-            test-results/runtime-smoke
-            playwright-report/runtime-smoke
-            test-results/examples
-            playwright-report/examples
           retention-days: 7
           if-no-files-found: ignore
 

@@ -2,25 +2,26 @@ import { defineConfig } from '@playwright/test';
 import { resolve } from 'node:path';
 
 const repoRoot = resolve(__dirname, '../../..');
-const angularPort = Number(process.env['RUNTIME_SMOKE_ANGULAR_PORT'] ?? 4311);
-const reactPort = Number(process.env['RUNTIME_SMOKE_REACT_PORT'] ?? 4312);
+const angularPort = Number(process.env['NATIVE_PROVIDER_ANGULAR_PORT'] ?? 4421);
+const reactPort = Number(process.env['NATIVE_PROVIDER_REACT_PORT'] ?? 4422);
 
 export default defineConfig({
-  testDir: resolve(__dirname, 'specs'),
+  testDir: resolve(__dirname, 'provider'),
+  testMatch: 'native-ui.spec.ts',
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  timeout: 15_000,
+  timeout: 30_000,
   expect: {
     timeout: 5_000,
   },
-  outputDir: resolve(repoRoot, 'test-results/runtime-smoke'),
+  outputDir: resolve(repoRoot, 'test-results/invoicing/provider'),
   reporter: [
     ['list'],
     [
       'html',
       {
-        outputFolder: resolve(repoRoot, 'playwright-report/runtime-smoke'),
+        outputFolder: resolve(repoRoot, 'playwright-report/invoicing/provider'),
         open: 'never',
       },
     ],

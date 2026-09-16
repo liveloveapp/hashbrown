@@ -129,7 +129,8 @@ Playwright Chromium browser first with `npx playwright install chromium`):
 npx nx example-e2e invoicing-e2e
 ```
 
-The combined target runs `application-e2e` followed by `conformance-e2e`.
+The combined target runs application, conformance and native-provider cases in
+one Playwright session with shared hosts. Each suite also has its own target.
 The application checks use separate ports 4329/4330 and a real seeded session store. Their
 agent endpoint defaults to HTTP 503. An opt-in scripted approval scenario uses
 the real proposal coordinator and session store; it never loads B4 or calls a
@@ -152,9 +153,18 @@ and `playwright-report/invoicing/conformance`. Run its harness tests with
 `npx nx test invoicing-e2e`, or the browser suite alone with
 `npx nx conformance-e2e invoicing-e2e`. No model credentials are needed.
 
-During migration, native-provider showcase checks remain runnable through
-`npx nx example-e2e runtime-smoke`. They still depend on legacy source and will
-be replaced inside canonical e2e before those examples are removed.
+Native-provider checks now live in `e2e/provider`. Run them alone with
+`npx nx provider-e2e invoicing-e2e`. They exercise the real OpenAI adapter and
+SSE transport with an aimock upstream and both framework hosts; no model key is
+required. Test-only payment selection verifies tool execution without financial
+mutation. Ports default to 4421/4422 (`NATIVE_PROVIDER_ANGULAR_PORT` and
+`NATIVE_PROVIDER_REACT_PORT` override them). Reports go to
+`test-results/invoicing/provider` and `playwright-report/invoicing/provider`.
+Combined-run artifacts go to `test-results/invoicing/all`. Its whole-test
+timeout is 30 seconds for all suites; individual assertion deadlines remain
+unchanged. Standalone conformance keeps its 15-second whole-test timeout.
+Node and Worker route cases run in the canonical Jest target. The former
+`runtime-smoke` runner has been retired; both host Nx names remain unchanged.
 
 The server build type-checks; serve runs TypeScript directly. Existing warnings
 include the large minified Vite chunk and terminal color settings.

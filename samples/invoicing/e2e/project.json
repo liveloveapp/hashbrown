@@ -57,12 +57,27 @@
     "example-e2e": {
       "executor": "nx:run-commands",
       "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
       "options": {
-        "parallel": false,
-        "commands": [
-          "npx nx application-e2e invoicing-e2e",
-          "npx nx conformance-e2e invoicing-e2e"
-        ]
+        "command": "playwright test --config samples/invoicing/e2e/all.playwright.config.ts"
+      }
+    },
+    "provider-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config samples/invoicing/e2e/provider.playwright.config.ts"
       }
     }
   },
@@ -73,9 +88,6 @@
     "testing",
     "runtime-smoke-angular",
     "runtime-smoke-react",
-    "openai",
-    "smart-home-server",
-    "fast-food-server",
-    "fast-food-angular"
+    "openai"
   ]
 }

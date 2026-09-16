@@ -11,7 +11,9 @@
   "include": [
     "../conformance.playwright.config.ts",
     "harness/**/*.ts",
-    "specs/**/*.ts"
+    "specs/**/*.ts",
+    "../provider.playwright.config.ts",
+    "../provider/native-ui.spec.ts"
   ],
   "exclude": ["harness/**/*.spec.ts"]
 }

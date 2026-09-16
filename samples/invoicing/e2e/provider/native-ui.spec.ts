@@ -1,40 +1,28 @@
-/* eslint-disable @nx/enforce-module-boundaries -- Exercise the actual sample API, not a replacement endpoint. */
 import { expect, test } from '@playwright/test';
 import { LLMock } from '@copilotkit/aimock';
 import { once } from 'node:events';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { createApi } from '../../../../samples/smart-home/server/src/app';
-import type { HashbrownRunInput } from '../harness/agui';
+import { createApi } from './fixtures/node-route';
+import type { HashbrownRunInput } from '../conformance/harness/agui';
 
 for (const toolRound of [false, true]) {
-  test(`${toolRound ? 'applies a light change and continues' : 'renders trusted UI'} through the real Smart Home server and OpenAI adapter`, async ({
+  test(`${toolRound ? 'selects a payment and continues' : 'renders trusted UI'} through the canonical native-provider server and OpenAI adapter`, async ({
     page,
   }, testInfo) => {
     const angular = testInfo.project.name === 'angular';
-    const content = angular
-      ? {
-          ui: [
-            {
-              'app-markdown': {
-                props: { data: 'Example fixture rendered successfully.' },
-              },
+    const content = {
+      ui: [
+        {
+          status: {
+            props: {
+              title: 'Example fixture rendered successfully.',
+              count: 1,
             },
-          ],
-        }
-      : {
-          ui: [
-            {
-              Card: {
-                props: {
-                  title: 'Example fixture',
-                  description: 'Example fixture rendered successfully.',
-                },
-                children: [],
-              },
-            },
-          ],
-        };
+          },
+        },
+      ],
+    };
     const mock = new LLMock({ port: 0 });
     let release = () => undefined as void;
     const continuation = new Promise<void>((resolve) => {
@@ -49,8 +37,8 @@ for (const toolRound of [false, true]) {
         toolCalls: [
           {
             id: 'sample-control',
-            name: 'controlLight',
-            arguments: { lightId: angular ? 'light-1' : '1', brightness: 37 },
+            name: 'selectPayment',
+            arguments: { paymentId: 'payment-northstar-exact' },
           },
         ],
       });
@@ -76,22 +64,16 @@ for (const toolRound of [false, true]) {
         requests.push(route.request().postDataJSON());
         await route.continue({ url: `http://127.0.0.1:${port}/api/chat` });
       });
-      await page.route('https://fonts.googleapis.com/**', (route) =>
-        route.fulfill({ contentType: 'text/css', body: '' }),
+      await page.goto(
+        '/?scenario=ui&native=true&runUrl=' +
+          encodeURIComponent('http://127.0.0.1:' + port + '/api/chat'),
       );
-      await page.route('https://fonts.gstatic.com/**', (route) =>
-        route.fulfill({ body: '' }),
-      );
-      await page.goto(angular ? '/' : '/lights');
-      if (angular)
-        await page
-          .getByRole('button', { name: 'Close welcome dialog' })
-          .click();
       if (!angular)
-        await expect(page.locator('.grid-cols-7')).toHaveCSS('display', 'grid');
-      await page
-        .getByPlaceholder(angular ? 'Ask' : 'Type your message...')
-        .fill('Verify the example transport');
+        await expect(page.getByTestId('selection-grid')).toHaveCSS(
+          'display',
+          'grid',
+        );
+      await page.getByTestId('prompt').fill('Verify the example transport');
       const responsePromise = page.waitForResponse(
         (response) =>
           response.url().endsWith('/api/chat') &&
@@ -102,36 +84,26 @@ for (const toolRound of [false, true]) {
       const response = await responsePromise;
       if (toolRound) {
         await expect.poll(() => requests.length).toBe(2);
-        if (angular) {
-          const light = page
-            .locator('app-light-card')
-            .filter({ hasText: 'Living Room - Ambient 1' });
-          await expect(light.locator('input')).toHaveValue('37');
-        } else {
-          await expect(page.getByText('37%', { exact: true })).toBeVisible();
-        }
-        await expect(
-          page.getByText('Example fixture rendered successfully.', {
-            exact: true,
-          }),
-        ).toHaveCount(0);
+        await expect(page.getByTestId('selected-payment')).toHaveText(
+          'payment-northstar-exact',
+        );
+        await expect(page.getByTestId('tool-count')).toHaveText('1');
+        await expect(page.getByTestId('status-card')).toHaveCount(0);
         release();
       }
-      await expect(
-        page.getByText('Example fixture rendered successfully.', {
-          exact: true,
-        }),
-      ).toBeVisible();
+      await expect(page.getByTestId('status-card')).toBeVisible();
       if (angular) {
-        await expect(
-          page.locator('app-chat-panel mat-progress-bar'),
-        ).toHaveCount(0);
+        await expect(page.getByTestId('native-loading')).toHaveCount(0);
       } else {
         await expect(
           page.getByRole('button', { name: 'Send', exact: true }),
         ).toBeVisible();
       }
 
+      await expect(page.getByTestId('status-card')).toHaveText(
+        'Example fixture rendered successfully.: 1',
+      );
+      await expect(page.getByTestId('status')).toHaveText('idle');
       expect(response.status()).toBe(200);
       expect(response.headers()['content-type']).toContain('text/event-stream');
       expect(requests).toHaveLength(toolRound ? 2 : 1);

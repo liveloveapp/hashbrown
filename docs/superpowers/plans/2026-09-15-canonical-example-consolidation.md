@@ -77,26 +77,26 @@ Files: `samples/invoicing/e2e/project.json`, dedicated `jest.conformance.config.
 Files: `samples/invoicing/e2e/provider/{routes.spec.ts,native-ui.spec.ts,fixtures/}`,
 internal hosts, project/config files; old route/example specs.
 
-- [ ] First transplant assertions to new tests pointing at missing test-owned
+- [x] First transplant assertions to new tests pointing at missing test-owned
   routes; run targeted suite to establish failure before writing handlers.
-- [ ] Implement minimal Express and Worker handlers using existing HashbrownOpenAI
+- [x] Implement minimal Express and Worker handlers using existing HashbrownOpenAI
   and EventEncoder. Explicitly inject credentials/base URL/model into test hosts.
   Preserve HTTP content type, lifecycle, cancellation and teardown behavior.
-- [ ] Adapt the two browser scenarios for both framework hosts; verify UI rendering
+- [x] Adapt the two browser scenarios for both framework hosts; verify UI rendering
   and one simulated selection tool with delayed continuation. Keep all original
   provider request/schema/history/browser-error assertions from the baseline.
-- [ ] Include `provider/routes.spec.ts` explicitly in the canonical Jest
+- [x] Include `provider/routes.spec.ts` explicitly in the canonical Jest
   testMatch alongside conformance/harness; exclude `provider/native-ui.spec.ts`
   from Jest and route tests from Playwright. Use `npx nx test invoicing-e2e
   --listTests` plus Playwright listing to verify each file is discovered once by
   its intended runner; retain all three migrated route cases.
-- [ ] Add `provider-e2e`, then include it in the canonical `example-e2e` umbrella.
+- [x] Add `provider-e2e`, then include it in the canonical `example-e2e` umbrella.
   Run canonical test/build/lint/example-e2e. Verify native provider scenarios
   execute four framework cases and the three route cases remain represented.
-- [ ] Remove old imports and Smart Home build/serve edges only after these pass.
+- [x] Remove old imports and Smart Home build/serve edges only after these pass.
   Require `rg 'samples/(smart-home|fast-food)' samples/invoicing/e2e tools/runtime-smoke`
   to find no executable dependencies (the old tools tree may now be absent).
-- [ ] Independent review checks assertion equivalence before committing migration.
+- [x] Independent review checks assertion equivalence before committing migration.
 
 ## Batch 3: Realistic ledger tools and performance
 
@@ -205,3 +205,32 @@ Existing Nx/Vite/Jest deprecations, color warnings and host chunk warning remain
 No new dependency or application behavior change. Live-model test was not rerun
 for this test-ownership relocation. Native-provider assertion entries remain
 pending until their final canonical fixture replacement in Batch 2.
+
+## Batch 2 execution checkpoint
+
+Native provider routes and browser scenarios are now canonical-owned. All ten
+original route assertions and twenty native browser assertion sites have mapped
+counterparts, including an explicit idle check replacing the React Send-button
+visibility implication. Test hosts change simulated selection only. The public
+application and model credentials are unaffected.
+
+The old tools/runtime-smoke runner and duplicated tests are removed after the
+canonical replacements passed. Canonical dependencies no longer include Fast
+Food or Smart Home. Jest discovers seven suites (42 cases including three native
+route cases); provider Playwright discovers four cases across Angular and React.
+Independent review found no remaining blockers. No new dependency added.
+
+The first combined Batch 2 run passed application/conformance but encountered
+Nx recursive-task detection while starting repeated host targets through nested
+commands. The replacement umbrella uses one Playwright session and one shared
+host lifecycle for all 64 cases. Standalone targets remain available. The umbrella
+has a 30-second whole-test timeout (standalone conformance retains 15 seconds);
+assertion timeouts are unchanged. Review confirmed exact discovery and no live
+model or Jest cases leaking into browser discovery.
+
+Final Batch 2 verification: all 64 combined browser cases passed with the updated
+idle assertion, plus 42 canonical Jest tests, canonical and both-host build/lint,
+and 116 deployment-workflow tests. Native-only target separately passed four
+cases. No live model run was necessary for this deterministic fixture migration.
+Existing Nx/Jest/Vite deprecation, environment color and host bundle warnings
+remain. All mapped assertion destination lines were checked against current files.

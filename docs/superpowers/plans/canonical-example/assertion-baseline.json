@@ -547,7 +547,7 @@
     {
       "source": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts",
       "destination": "samples/invoicing/e2e/provider/native-ui.spec.ts",
-      "status": "pending",
+      "status": "verified",
       "tests": [
         {
           "line": 11,
@@ -559,163 +559,225 @@
           "line": 91,
           "expression": "expect(page.locator('.grid-cols-7')).toHaveCSS('display', 'grid')",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:91:1",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 72
+          },
+          "equivalenceEvidence": "Equivalent React grid layout assertion on native selection host. Same Angular/React project scope retained. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 104,
           "expression": "expect.poll(() => requests.length).toBe(2)",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:104:2",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 86
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 109,
           "expression": "expect(light.locator('input')).toHaveValue('37')",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:109:3",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 87
+          },
+          "equivalenceEvidence": "Equivalent tool-driven visible state mutation: light brightness replaced with payment selection, no financial mutation. Same Angular/React project scope retained. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 111,
           "expression": "expect(page.getByText('37%', { exact: true })).toBeVisible()",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:111:4",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 87
+          },
+          "equivalenceEvidence": "Equivalent tool-driven visible state mutation: light brightness replaced with payment selection, no financial mutation. Same Angular/React project scope retained. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 113,
           "expression": "expect(\n          page.getByText('Example fixture rendered successfully.', {\n            exact: true,\n          }),\n        ).toHaveCount(0)",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:113:5",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 91
+          },
+          "equivalenceEvidence": "Equivalent trusted component absence before released continuation / visible rendering after completion. Same Angular/React project scope retained. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 120,
           "expression": "expect(\n        page.getByText('Example fixture rendered successfully.', {\n          exact: true,\n        }),\n      ).toBeVisible()",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:120:6",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 94
+          },
+          "equivalenceEvidence": "Equivalent trusted component absence before released continuation / visible rendering after completion. Same Angular/React project scope retained. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 126,
           "expression": "expect(\n          page.locator('app-chat-panel mat-progress-bar'),\n        ).toHaveCount(0)",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:126:7",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 96
+          },
+          "equivalenceEvidence": "Equivalent Angular pending indicator removed after terminal completion. Same Angular/React project scope retained. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 130,
           "expression": "expect(\n          page.getByRole('button', { name: 'Send', exact: true }),\n        ).toBeVisible()",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:130:8",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 106
+          },
+          "equivalenceEvidence": "Original React Send visibility implied idle because it was conditional. Explicit status idle assertion now verifies terminal recovery in BOTH framework hosts; Send visibility also remains. Verified in the passing 64-case combined browser run, including both native framework cases.",
+          "status": "verified"
         },
         {
           "line": 135,
           "expression": "expect(response.status()).toBe(200)",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:135:9",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 107
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 136,
           "expression": "expect(response.headers()['content-type']).toContain('text/event-stream')",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:136:10",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 108
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 137,
           "expression": "expect(requests).toHaveLength(toolRound ? 2 : 1)",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:137:11",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 109
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 138,
           "expression": "expect(requests[0]).not.toHaveProperty('model')",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:138:12",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 110
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 139,
           "expression": "expect(requests[0]['hashbrown']).toMatchObject({\n        ui: true,\n        responseSchema: expect.any(Object),\n      })",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:139:13",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 111
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 143,
           "expression": "expect(mock.getRequests()).toHaveLength(toolRound ? 2 : 1)",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:143:14",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 115
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 144,
           "expression": "expect(\n        mock.getRequests().every((entry) => entry.response.status === 200),\n      ).toBe(true)",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:144:15",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 116
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 147,
           "expression": "expect(mock.getRequests()[0].body).toMatchObject({\n        model: 'gpt-4.1-mini',\n        stream: true,\n        response_format: {\n          type: 'json_schema',\n          json_schema: {\n            strict: true,\n            schema: requests[0].hashbrown?.responseSchema,\n          },\n        },\n      })",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:147:16",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 119
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 159,
           "expression": "expect(requests[1]['threadId']).toBe(requests[0]['threadId'])",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:159:17",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 131
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 160,
           "expression": "expect(requests[1]['messages']).toEqual(\n          expect.arrayContaining([\n            expect.objectContaining({\n              role: 'tool',\n              toolCallId: 'sample-control',\n            }),\n          ]),\n        )",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:160:18",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 132
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 168,
           "expression": "expect(\n          mock\n            .getRequests()[1]\n            .body?.messages.filter((message) => message.role === 'tool'),\n        ).toHaveLength(1)",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:168:19",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 140
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 174,
           "expression": "expect(errors).toEqual([])",
           "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:174:20",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+            "line": 146
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         }
-      ]
+      ],
+      "currentLocation": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+      "executionEvidence": "3 route tests and 4 native-provider browser tests pass. Original Node/Worker and Angular/React scopes preserved."
     },
     {
       "source": "tools/runtime-smoke/e2e/harness/agui.spec.ts",
@@ -1876,7 +1938,7 @@
     {
       "source": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts",
       "destination": "samples/invoicing/e2e/provider/routes.spec.ts",
-      "status": "pending",
+      "status": "verified",
       "tests": [
         {
           "line": 55,
@@ -1892,50 +1954,65 @@
           "line": 93,
           "expression": "expect(observedContentType).toMatch(/^text\\/event-stream(?:;|$)/)",
           "id": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts:93:1",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/routes.spec.ts",
+            "line": 100
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 94,
           "expression": "expect(events).toEqual([\n      {\n        type: EventType.RUN_STARTED,\n        threadId: 'express-thread',\n        runId: 'express-run',\n      },\n      {\n        type: EventType.TEXT_MESSAGE_START,\n        messageId: 'express-run:assistant',\n        role: 'assistant',\n      },\n      {\n        type: EventType.TEXT_MESSAGE_CONTENT,\n        messageId: 'express-run:assistant',\n        delta: 'Hello from aimock.',\n      },\n      {\n        type: EventType.TEXT_MESSAGE_END,\n        messageId: 'express-run:assistant',\n      },\n      {\n        type: EventType.RUN_FINISHED,\n        threadId: 'express-thread',\n        runId: 'express-run',\n      },\n    ])",
           "id": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts:94:2",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/routes.spec.ts",
+            "line": 101
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 176,
           "expression": "expect(observedContentType).toMatch(/^text\\/event-stream(?:;|$)/)",
           "id": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts:176:3",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/routes.spec.ts",
+            "line": 168
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 177,
           "expression": "expect(events.map((event) => event.type)).toEqual([\n      EventType.RUN_STARTED,\n      EventType.TEXT_MESSAGE_START,\n      EventType.TEXT_MESSAGE_CONTENT,\n      EventType.TEXT_MESSAGE_END,\n      EventType.RUN_FINISHED,\n    ])",
           "id": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts:177:4",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/routes.spec.ts",
+            "line": 169
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 184,
           "expression": "expect(events.at(2)).toMatchObject({\n      type: EventType.TEXT_MESSAGE_CONTENT,\n      delta: 'Hello from aimock.',\n    })",
           "id": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts:184:5",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/routes.spec.ts",
+            "line": 176
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         }
       ],
-      "currentLocation": "samples/invoicing/e2e/conformance/harness/openai-route.spec.ts",
-      "bodyIdentitySha256": "b5e4b81aeec7f47c4c6766a3aeffbd5a3915e9f29b8111f433db1753103485cf"
+      "currentLocation": "samples/invoicing/e2e/provider/routes.spec.ts",
+      "executionEvidence": "3 route tests and 4 native-provider browser tests pass. Original Node/Worker and Angular/React scopes preserved."
     },
     {
       "source": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts",
       "destination": "samples/invoicing/e2e/provider/routes.spec.ts",
-      "status": "pending",
+      "status": "verified",
       "tests": [
         {
           "line": 19,
@@ -1947,45 +2024,60 @@
           "line": 53,
           "expression": "expect(response.status).toBe(200)",
           "id": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts:53:1",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/routes.spec.ts",
+            "line": 219
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 54,
           "expression": "expect(response.headers.get('content-type')).toContain('text/event-stream')",
           "id": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts:54:2",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/routes.spec.ts",
+            "line": 220
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 55,
           "expression": "expect(events[0]).toEqual({\n      type: EventType.RUN_STARTED,\n      threadId: 'sample-thread',\n      runId: 'sample-run',\n    })",
           "id": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts:55:3",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/routes.spec.ts",
+            "line": 221
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 60,
           "expression": "expect(events.at(-1)).toEqual({\n      type: EventType.RUN_FINISHED,\n      threadId: 'sample-thread',\n      runId: 'sample-run',\n    })",
           "id": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts:60:4",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/routes.spec.ts",
+            "line": 226
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         },
         {
           "line": 65,
           "expression": "expect(events).toContainEqual(\n      expect.objectContaining({\n        type: EventType.TEXT_MESSAGE_CONTENT,\n        delta: 'Hello from aimock.',\n      }),\n    )",
           "id": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts:65:5",
-          "destination": null,
-          "equivalenceEvidence": null,
-          "status": "pending"
+          "destination": {
+            "file": "samples/invoicing/e2e/provider/routes.spec.ts",
+            "line": 231
+          },
+          "equivalenceEvidence": "Assertion expression unchanged; real native adapter/SSE boundary preserved. Passed canonical provider route/browser suites.",
+          "status": "verified"
         }
       ],
-      "currentLocation": "samples/invoicing/e2e/conformance/harness/smart-home-route.spec.ts",
-      "bodyIdentitySha256": "83642c4f65f83c37e95d7da2ca75bc056581f7cce5849baed56cee1cc66d8a21"
+      "currentLocation": "samples/invoicing/e2e/provider/routes.spec.ts",
+      "executionEvidence": "3 route tests and 4 native-provider browser tests pass. Original Node/Worker and Angular/React scopes preserved."
     },
     {
       "source": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts",

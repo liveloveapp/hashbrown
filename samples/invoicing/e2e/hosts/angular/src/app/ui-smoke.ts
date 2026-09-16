@@ -6,6 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import {
+  createTool,
   exposeComponent,
   RenderMessageComponent,
   uiChatResource,
@@ -80,7 +81,15 @@ const components = [
       <div data-testid="error" [textContent]="errorText()"></div>
       <div data-testid="sending-error"></div>
       <div data-testid="generating-error"></div>
-      <div data-testid="tool-count">0</div>
+      <div data-testid="tool-count">{{ toolCount() }}</div>
+      @if (native) {
+        <div data-testid="selection-grid" style="display: grid">
+          <span data-testid="selected-payment">{{ selectedPayment() }}</span>
+        </div>
+        @if (chat.isLoading()) {
+          <progress data-testid="native-loading"></progress>
+        }
+      }
       <div data-testid="structured-answer"></div>
       <div data-testid="structured-count"></div>
     </section>
@@ -89,9 +98,26 @@ const components = [
 export class UiSmoke {
   protected readonly prompt = signal('');
   protected readonly submitted = signal('');
+  protected readonly selectedPayment = signal('');
+  protected readonly toolCount = signal(0);
+  protected readonly native =
+    new URL(globalThis.location.href).searchParams.get('native') === 'true';
+  private readonly selectPayment = createTool({
+    name: 'selectPayment',
+    description: 'Select a simulated payment without allocating it.',
+    schema: s.object('Payment selection', {
+      paymentId: s.string('Payment ID'),
+    }),
+    handler: async ({ paymentId }) => {
+      this.selectedPayment.set(paymentId);
+      this.toolCount.update((count) => count + 1);
+      return { paymentId };
+    },
+  });
   protected readonly chat = uiChatResource({
     system: 'Runtime smoke system prompt.',
     components,
+    tools: this.native ? [this.selectPayment] : [],
   });
   protected readonly assistantMessages = computed(() =>
     this.chat.status() === 'error'

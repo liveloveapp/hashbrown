@@ -3,7 +3,7 @@ import {
   type JsonResolvedValue,
   s,
 } from '@hashbrownai/core';
-import { exposeComponent, useUiChat } from '@hashbrownai/react';
+import { exposeComponent, useTool, useUiChat } from '@hashbrownai/react';
 import { Fragment, useState } from 'react';
 
 interface RuntimeStatusProps {
@@ -52,6 +52,23 @@ function errorText(error: unknown): string {
 export function UiSmoke() {
   const [prompt, setPrompt] = useState('');
   const [submitted, setSubmitted] = useState('');
+  const [selectedPayment, setSelectedPayment] = useState('');
+  const [toolCount, setToolCount] = useState(0);
+  const native =
+    new URL(globalThis.location.href).searchParams.get('native') === 'true';
+  const selectPayment = useTool({
+    name: 'selectPayment',
+    description: 'Select a simulated payment without allocating it.',
+    schema: s.object('Payment selection', {
+      paymentId: s.string('Payment ID'),
+    }),
+    handler: async ({ paymentId }) => {
+      setSelectedPayment(paymentId);
+      setToolCount((count) => count + 1);
+      return { paymentId };
+    },
+    deps: [],
+  });
   const {
     error,
     generatingError,
@@ -63,6 +80,7 @@ export function UiSmoke() {
   } = useUiChat({
     system: 'Runtime smoke system prompt.',
     components,
+    tools: native ? [selectPayment] : [],
   });
 
   function send() {
@@ -94,7 +112,12 @@ export function UiSmoke() {
       <div data-testid="error">{errorText(error)}</div>
       <div data-testid="sending-error">{errorText(sendingError)}</div>
       <div data-testid="generating-error">{errorText(generatingError)}</div>
-      <div data-testid="tool-count">0</div>
+      <div data-testid="tool-count">{toolCount}</div>
+      {native && (
+        <div data-testid="selection-grid" style={{ display: 'grid' }}>
+          <span data-testid="selected-payment">{selectedPayment}</span>
+        </div>
+      )}
       <div data-testid="structured-answer"></div>
       <div data-testid="structured-count"></div>
     </section>
