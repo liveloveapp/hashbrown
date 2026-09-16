@@ -13,150 +13,167 @@ import {
   createProposal,
   getSnapshot,
 } from './ledger';
+import {
+  ConflictError,
+  type Session,
+  type SessionRepository,
+} from './persistence/types';
 
 /** Session-scoped API; callers never receive references to stored objects. */
 export interface SessionStore {
   /** Allocate a new opaque session identity. */
-  createSession(): string;
+  createSession(): Promise<string>;
   /** Read the current server-owned reset generation. */
-  generation(sessionId: string): number;
+  generation(sessionId: string): Promise<number>;
   /** Read the current financial snapshot. */
-  snapshot(sessionId: string): LedgerSnapshot;
+  snapshot(sessionId: string): Promise<LedgerSnapshot>;
   /** Prepare and store the authoritative allocation proposal. */
-  propose(sessionId: string, request: ProposalRequest): Proposal;
+  propose(sessionId: string, request: ProposalRequest): Promise<Proposal>;
   /** Read a proposal belonging to this session. */
-  proposal(sessionId: string, proposalId: string): Proposal;
-  /** Apply a user decision exactly once in a synchronous critical section. */
-  decide(sessionId: string, request: DecisionRequest): DecisionResult;
+  proposal(sessionId: string, proposalId: string): Promise<Proposal>;
+  /** Apply a user decision exactly once, retrying once on a concurrent write. */
+  decide(sessionId: string, request: DecisionRequest): Promise<DecisionResult>;
   /** Read a recorded operation result within its owning session. */
   operationResult(
     sessionId: string,
     operationId: string,
-  ): DecisionResult | undefined;
+  ): Promise<DecisionResult | undefined>;
   /** Restore the fixture and invalidate earlier proposal generations. */
-  reset(sessionId: string): LedgerSnapshot;
+  reset(sessionId: string): Promise<LedgerSnapshot>;
 }
 
-interface Session {
-  readonly generation: number;
-  readonly ledger: Ledger;
-  readonly proposals: ReadonlyMap<string, Proposal>;
-  readonly operations: ReadonlyMap<
-    string,
-    { readonly request: DecisionRequest; readonly result: DecisionResult }
-  >;
-}
+type Transition<R> = (session: Session) => {
+  readonly session: Session;
+  readonly result: R;
+};
 
-/** Create an in-memory store whose validation and replacement never await. */
+/** Every mutation is one compare-and-swap of the session document. */
 export function createSessionStore(
+  repository: SessionRepository,
   createInitialLedger: () => Ledger = createLedger,
 ): SessionStore {
-  const sessions = new Map<string, Session>();
-  const get = (id: string): Session => {
-    const session = sessions.get(id);
-    if (!session) throw new Error('session_not_found');
-    return session;
+  const load = async (id: string) => {
+    const doc = await repository.load(id);
+    if (!doc) throw new Error('session_not_found');
+    return doc;
   };
+  const mutate = async <R>(
+    id: string,
+    transition: Transition<R>,
+  ): Promise<R> => {
+    for (let attempt = 0; ; attempt += 1) {
+      const doc = await load(id);
+      const { session, result } = transition(doc.value);
+      try {
+        await repository.commit(id, doc.version, session);
+        return result;
+      } catch (error) {
+        if (!(error instanceof ConflictError) || attempt === 1) throw error;
+      }
+    }
+  };
+
   return {
     createSession() {
-      const id = randomUUID();
-      sessions.set(id, {
+      return repository.create({
         generation: 1,
         ledger: structuredClone(createInitialLedger()),
-        proposals: new Map(),
-        operations: new Map(),
+        proposals: {},
+        operations: {},
       });
-      return id;
     },
-    generation(id) {
-      return get(id).generation;
+    async generation(id) {
+      return (await load(id)).value.generation;
     },
-    snapshot(id) {
-      return structuredClone(getSnapshot(get(id).ledger));
+    async snapshot(id) {
+      return getSnapshot((await load(id)).value.ledger);
     },
-    propose(id, request) {
-      const session = get(id);
-      const proposal = createProposal(session.ledger, request, {
-        generation: session.generation,
-        proposalId: randomUUID(),
-        operationId: randomUUID(),
-      });
-      sessions.set(id, {
-        ...session,
-        proposals: new Map([
-          ...session.proposals,
-          [proposal.proposalId, proposal],
-        ]),
-      });
-      return structuredClone(proposal);
-    },
-    proposal(id, proposalId) {
-      const proposal = get(id).proposals.get(proposalId);
+    propose: (id, request) =>
+      mutate(id, (session) => {
+        const proposal = createProposal(session.ledger, request, {
+          generation: session.generation,
+          proposalId: randomUUID(),
+          operationId: randomUUID(),
+        });
+        return {
+          session: {
+            ...session,
+            proposals: {
+              ...session.proposals,
+              [proposal.proposalId]: proposal,
+            },
+          },
+          result: proposal,
+        };
+      }),
+    async proposal(id, proposalId) {
+      const proposal = (await load(id)).value.proposals[proposalId];
       if (!proposal) throw new Error('proposal_not_found');
-      return structuredClone(proposal);
+      return proposal;
     },
-    decide(id, request) {
-      const session = get(id);
-      if (request.generation !== session.generation)
-        throw new Error('stale_generation');
-      if (request.decision !== 'approve' && request.decision !== 'decline')
-        throw new Error('invalid_decision');
-      const recorded = session.operations.get(request.operationId);
-      if (recorded) {
-        if (
-          recorded.request.proposalId !== request.proposalId ||
-          recorded.request.proposalVersion !== request.proposalVersion ||
-          recorded.request.decision !== request.decision
-        )
+    decide: (id, request) =>
+      mutate(id, (session) => {
+        if (request.generation !== session.generation)
+          throw new Error('stale_generation');
+        if (request.decision !== 'approve' && request.decision !== 'decline')
+          throw new Error('invalid_decision');
+        const recorded = session.operations[request.operationId];
+        if (recorded) {
+          if (
+            recorded.request.proposalId !== request.proposalId ||
+            recorded.request.proposalVersion !== request.proposalVersion ||
+            recorded.request.decision !== request.decision
+          )
+            throw new Error('operation_conflict');
+          return { session, result: recorded.result };
+        }
+        const proposal = session.proposals[request.proposalId];
+        if (!proposal) throw new Error('proposal_not_found');
+        if (proposal.operationId !== request.operationId)
           throw new Error('operation_conflict');
-        return structuredClone(recorded.result);
-      }
-      const proposal = session.proposals.get(request.proposalId);
-      if (!proposal) throw new Error('proposal_not_found');
-      if (proposal.operationId !== request.operationId)
-        throw new Error('operation_conflict');
-      if (proposal.proposalVersion !== request.proposalVersion)
-        throw new Error('stale_proposal');
-      const ledger =
-        request.decision === 'approve'
-          ? applyProposal(session.ledger, proposal)
-          : session.ledger;
-      const result: DecisionResult = {
-        proposalId: proposal.proposalId,
-        operationId: proposal.operationId,
-        status: request.decision === 'approve' ? 'approved' : 'declined',
-        snapshot: getSnapshot(ledger),
-      };
-      const identity: DecisionRequest = {
-        proposalId: request.proposalId,
-        operationId: request.operationId,
-        generation: request.generation,
-        proposalVersion: request.proposalVersion,
-        decision: request.decision,
-      };
-      sessions.set(id, {
-        ...session,
-        ledger,
-        operations: new Map([
-          ...session.operations,
-          [request.operationId, { request: identity, result }],
-        ]),
-      });
-      return structuredClone(result);
+        if (proposal.proposalVersion !== request.proposalVersion)
+          throw new Error('stale_proposal');
+        const ledger =
+          request.decision === 'approve'
+            ? applyProposal(session.ledger, proposal)
+            : session.ledger;
+        const result: DecisionResult = {
+          proposalId: proposal.proposalId,
+          operationId: proposal.operationId,
+          status: request.decision === 'approve' ? 'approved' : 'declined',
+          snapshot: getSnapshot(ledger),
+        };
+        const identity: DecisionRequest = {
+          proposalId: request.proposalId,
+          operationId: request.operationId,
+          generation: request.generation,
+          proposalVersion: request.proposalVersion,
+          decision: request.decision,
+        };
+        return {
+          session: {
+            ...session,
+            ledger,
+            operations: {
+              ...session.operations,
+              [request.operationId]: { request: identity, result },
+            },
+          },
+          result,
+        };
+      }),
+    async operationResult(id, operationId) {
+      return (await load(id)).value.operations[operationId]?.result;
     },
-    operationResult(id, operationId) {
-      return structuredClone(get(id).operations.get(operationId)?.result);
-    },
-    reset(id) {
-      const session = get(id);
-      const next: Session = {
-        generation: session.generation + 1,
-        ledger: structuredClone(createInitialLedger()),
-        proposals: new Map(),
-        operations: new Map(),
-      };
-      sessions.set(id, next);
-      return structuredClone(getSnapshot(next.ledger));
-    },
+    reset: (id) =>
+      mutate(id, (session) => {
+        const next: Session = {
+          generation: session.generation + 1,
+          ledger: structuredClone(createInitialLedger()),
+          proposals: {},
+          operations: {},
+        };
+        return { session: next, result: getSnapshot(next.ledger) };
+      }),
   };
 }
