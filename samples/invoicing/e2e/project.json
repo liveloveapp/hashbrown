@@ -11,12 +11,20 @@
     },
     "lint": {
       "executor": "nx:run-commands",
-      "options": { "command": "eslint samples/invoicing/e2e" }
+      "options": {
+        "command": "eslint samples/invoicing/e2e"
+      }
     },
     "live-model": {
       "executor": "nx:run-commands",
       "options": {
         "command": "playwright test --config samples/invoicing/e2e/playwright.config.ts"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "playwright test --config samples/invoicing/e2e/playwright.deterministic.config.ts"
       }
     }
   }

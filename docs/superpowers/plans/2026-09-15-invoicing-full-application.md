@@ -24,7 +24,6 @@ User approved continuing the full arc after requesting usable chat and the full 
 
 Dedicated repeatable browser target, registry artifact installation, and careful retirement of old samples follow the working seeded application. Do not remove old examples before their replacement is verified. Multi-invoice payments may be allocated one invoice at a time, each explicitly approved, while preserving the unapplied remainder. Ambiguous matches must ask the user to select an invoice rather than silently choose.
 
-
 ## Review
 
 Independent plan review required a shared session/route/generation thread guard,
@@ -34,8 +33,19 @@ surface; both are fixed and covered by lifecycle regression tests. Re-review
 found no remaining blocking correctness/security issues. Live verification is
 recorded separately in the compatibility checkpoint.
 
-
 Final evidence: 93 server + 37 React + 3 contract tests pass; all corresponding
 build/lint targets pass. E2E build/lint and the real-model browser sequence pass
 (final run 1m39s). Missing model credentials cause an explicit failure. The
 seeded Payments layout was visually inspected after adjusting column widths.
+
+## Follow-on verification progress — September 15, 2026
+
+- [x] Published B4 0.8.34 and Zod 4 integration, with a passing real-model browser sequence.
+- [x] Add a separate model-free browser target using actual session/seed reads and a deliberately failing agent endpoint.
+- [x] Cover ambiguous invoice choice, choice reset across payment selection, advance gating, and failed review retirement/retry without mutation.
+- [ ] Browser coverage for disconnects after approval and explicit operation-result reconciliation.
+- [ ] Design durable session/refresh recovery before implementation.
+- [ ] Inventory legacy deployment and conformance dependencies before proposing retirement.
+
+The deterministic browser target is deliberately bounded to existing behavior;
+it does not expand the financial mutation surface or introduce persistence.

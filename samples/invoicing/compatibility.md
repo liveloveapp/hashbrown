@@ -1,5 +1,24 @@
 # Invoicing compatibility checkpoint
 
+## Deterministic browser edge cases — September 15, 2026
+
+`npx nx test invoicing-e2e` runs three model-free browser scenarios against a
+separate process on ports 4329/4330. The process uses the real seeded session
+store and HTTP reads; its agent route deliberately returns HTTP 503. It does
+not instantiate B4, load credentials, or contact a model.
+
+Coverage checks explicit ambiguous invoice selection, clearing that choice
+when switching to a combined payment, preventing advance-payment reviews when
+no invoice is outstanding, and retiring an initial failed review so chat and
+a fresh review thread become available. Retry requests preserve both selected
+payment and invoice IDs. Each case compares the complete authoritative ledger
+snapshot before and after. These tests complement the published B4 live test;
+they do not certify successful approvals or post-approval disconnect recovery.
+
+All three browser checks pass (15.2 seconds), alongside e2e build/lint and
+server build/lint/93 tests. Independent review found no blockers. Existing
+terminal color warnings remain.
+
 ## Published B4 and Zod 4 integration — September 15, 2026
 
 The server now pins npm-published `@b4run/sdk`, `@b4run/langchain`, and

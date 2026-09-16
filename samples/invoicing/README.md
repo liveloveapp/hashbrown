@@ -106,7 +106,7 @@ controlled transport, including repeated reviews and safe failure retirement.
 Server tests verify seed conservation, reset isolation, invoice-choice binding,
 and cross-route/session/generation thread ownership.
 
-The repeatable live browser check requires the local B4 setup, Chrome, and
+The repeatable live browser check requires installed B4 packages, Chrome, and
 server-only model credentials:
 
 ```sh
@@ -118,6 +118,20 @@ checks conversation, approval, cancellation, another approval, a follow-up
 question, and isolation. It fails when credentials are missing rather than
 silently skipping. `npx nx build invoicing-e2e` and `npx nx lint invoicing-e2e`
 validate the test code. Browser artifacts go to `work/invoicing-e2e`.
+
+Run the deterministic browser checks without model credentials:
+
+```sh
+npx nx test invoicing-e2e
+```
+
+This target uses separate ports 4329/4330 and a real seeded session store. Its
+agent endpoint deliberately returns HTTP 503; it never loads B4 or calls a
+model. The checks cover ambiguous invoice selection, clearing an invoice choice
+when switching payments, advance-payment gating, and failed-review retirement
+with a fresh thread on retry. They assert unchanged ledger data. This complements
+the live-model test; it does not verify successful agent execution or mutation.
+Failure traces go to `work/invoicing-deterministic`.
 
 The server build type-checks; serve runs TypeScript directly. Existing warnings
 include the large minified Vite chunk and terminal color settings.
