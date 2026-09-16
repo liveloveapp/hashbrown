@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { HashbrownProvider } from '@hashbrownai/react';
 import type { TransportOrFactory } from '@hashbrownai/core';
-import { ReviewChat, type ReviewChatHandle } from './review-chat';
+import {
+  AssistantWorkspace,
+  type AssistantWorkspaceHandle,
+} from './assistant-workspace';
 import { type PretableColumn, PretableSurface } from '@pretable/react';
 import type { LedgerSnapshot } from '@invoicing/contracts';
 
@@ -57,14 +59,18 @@ export function App({
   const [error, setError] = useState(false);
   const [page, setPage] = useState<'Dashboard' | 'Payments'>('Dashboard');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const reviewRef = useRef<ReviewChatHandle>(null);
+  const reviewRef = useRef<AssistantWorkspaceHandle>(null);
+  const [paymentFilter, setPaymentFilter] = useState<'unmatched' | 'all'>(
+    'unmatched',
+  );
+  const [invoiceChoice, setInvoiceChoice] = useState('');
+  const [reviewNotice, setReviewNotice] = useState('');
 
   function selectPayment(ids: string[]) {
     const addedId = ids.find((id) => !selectedIds.includes(id));
     const nextId = addedId ?? ids[0];
-    if (enableAssistant) {
-      if (!nextId || !reviewRef.current?.startReview(nextId)) return;
-    }
+    setInvoiceChoice('');
+    setReviewNotice('');
     setSelectedIds(nextId ? [nextId] : []);
   }
 
@@ -96,12 +102,63 @@ export function App({
           invoice.currency === selected.currency,
       ) ?? [])
     : [];
+  const outstandingInvoices = invoices.filter(
+    (invoice) => invoice.outstandingCents > 0,
+  );
+  const paidInvoices = invoices.filter(
+    (invoice) => invoice.outstandingCents === 0,
+  );
+  const targetInvoiceId =
+    outstandingInvoices.length === 1
+      ? outstandingInvoices[0].id
+      : invoiceChoice;
+  const visiblePayments = (snapshot?.payments ?? [])
+    .filter(
+      (payment) =>
+        paymentFilter === 'all' ||
+        payment.unappliedCents > 0 ||
+        payment.id === selected?.id,
+    )
+    .toSorted(
+      (a, b) =>
+        Number(b.unappliedCents > 0) - Number(a.unappliedCents > 0) ||
+        (b.date ?? '').localeCompare(a.date ?? ''),
+    );
+  const months = [
+    ...new Set(
+      [...(snapshot?.invoices ?? []), ...(snapshot?.payments ?? [])].flatMap(
+        (record) => (record.date ? [record.date.slice(0, 7)] : []),
+      ),
+    ),
+  ].sort();
+  function invoiceRow(invoice: LedgerSnapshot['invoices'][number]) {
+    return (
+      <div className="invoice-row" key={invoice.id}>
+        <div>
+          <strong>{invoice.reference ?? invoice.id}</strong>
+          <small>
+            {invoice.customerName ?? invoice.customerId} ·{' '}
+            {invoice.date ?? 'Undated'}
+          </small>
+        </div>
+        <div>
+          <strong>{money(invoice.outstandingCents, invoice.currency)}</strong>
+          <small>
+            {invoice.outstandingCents === 0 ? 'Paid' : 'Outstanding'}
+          </small>
+        </div>
+      </div>
+    );
+  }
   const columns: PretableColumn<Payment>[] = [
     ...(enableAssistant
       ? [
           {
             id: 'reviewSelection',
-            header: 'Review',
+            header: '',
+            widthPx: 44,
+            sortable: false,
+            filterable: false,
             type: 'text' as const,
             value: (row: Payment) => row.id,
             render: ({ row }: { row: Payment }) => (
@@ -120,6 +177,7 @@ export function App({
     {
       id: 'id',
       header: 'Payment',
+      widthPx: 175,
       type: 'text',
       value: (row) => row.id,
       render: ({ row }) => (
@@ -128,19 +186,21 @@ export function App({
           aria-label={`Review ${row.id}`}
           onClick={() => selectPayment([row.id])}
         >
-          {row.id}
+          {row.reference ?? row.id}
         </button>
       ),
     },
     {
       id: 'customer',
       header: 'Customer',
+      widthPx: 130,
       type: 'text',
-      value: (row) => row.customerId,
+      value: (row) => row.customerName ?? row.customerId,
     },
     {
       id: 'amount',
       header: 'Received',
+      widthPx: 105,
       type: 'number',
       value: (row) => row.amountCents,
       format: ({ row }) => money(row.amountCents, row.currency),
@@ -148,9 +208,24 @@ export function App({
     {
       id: 'unapplied',
       header: 'Unapplied',
+      widthPx: 105,
       type: 'number',
       value: (row) => row.unappliedCents,
       format: ({ row }) => money(row.unappliedCents, row.currency),
+    },
+    {
+      id: 'date',
+      header: 'Date',
+      widthPx: 105,
+      type: 'text',
+      value: (row) => row.date ?? '—',
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      widthPx: 90,
+      type: 'text',
+      value: (row) => (row.unappliedCents > 0 ? 'Unmatched' : 'Matched'),
     },
   ];
 
@@ -179,7 +254,7 @@ export function App({
       <main>
         <header className="page-header">
           <span>{page}</span>
-          <span className="badge">Sample ledger</span>
+          <span className="badge">Sample ledger · Sep 15, 2026</span>
         </header>
         <div className="content">
           <h1>{page === 'Dashboard' ? 'Business overview' : 'Payments'}</h1>
@@ -228,17 +303,87 @@ export function App({
                   </article>
                 </section>
               )}
+              {page === 'Dashboard' && months.length > 0 && (
+                <section
+                  className="monthly-report"
+                  aria-label="Monthly activity"
+                >
+                  <h2>Monthly activity</h2>
+                  <p className="muted">
+                    Invoiced and received across {months.length} months of
+                    consulting work.
+                  </p>
+                  <div className="monthly-scroll">
+                    <table aria-label="Monthly invoiced and received">
+                      <thead>
+                        <tr>
+                          <th>Month</th>
+                          <th>Invoiced</th>
+                          <th>Received</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {months.map((month) => (
+                          <tr key={month}>
+                            <th scope="row">
+                              {new Intl.DateTimeFormat('en-US', {
+                                month: 'short',
+                                year: 'numeric',
+                                timeZone: 'UTC',
+                              }).format(new Date(`${month}-01T00:00:00Z`))}
+                            </th>
+                            <td>
+                              {totals(
+                                snapshot.invoices.filter((invoice) =>
+                                  invoice.date?.startsWith(month),
+                                ),
+                              )}
+                            </td>
+                            <td>
+                              {totals(
+                                snapshot.payments.filter((payment) =>
+                                  payment.date?.startsWith(month),
+                                ),
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
               <div className="section-heading">
                 <h2>Incoming payments</h2>
                 <span className="muted">{snapshot.payments.length} total</span>
               </div>
+              <div className="payment-filters" aria-label="Payment filters">
+                <button
+                  aria-pressed={paymentFilter === 'unmatched'}
+                  onClick={() => setPaymentFilter('unmatched')}
+                >
+                  Unmatched
+                </button>
+                <button
+                  aria-pressed={paymentFilter === 'all'}
+                  onClick={() => setPaymentFilter('all')}
+                >
+                  All payments
+                </button>
+              </div>
+              {paymentFilter === 'unmatched' &&
+                selected?.unappliedCents === 0 && (
+                  <p className="muted">
+                    Your selected matched payment stays visible for context.
+                  </p>
+                )}
               <div className="payment-grid">
                 <PretableSurface
-                  rows={[...snapshot.payments]}
+                  rows={visiblePayments}
                   columns={columns}
                   getRowId={(row: Payment) => row.id}
                   ariaLabel="Incoming payments"
-                  viewportHeight={240}
+                  viewportHeight={320}
                   toolPanel={false}
                   rowSelectionColumn={
                     enableAssistant
@@ -266,32 +411,73 @@ export function App({
                 ) : (
                   <>
                     <p className="muted">
-                      {selected.customerId} · {selected.id}
+                      {selected.customerName ?? selected.customerId} ·{' '}
+                      {selected.reference ?? selected.id}
                     </p>
-                    {invoices.length === 0 ? (
-                      <p>No invoices for this customer and currency.</p>
-                    ) : (
-                      invoices.map((invoice) => (
-                        <div className="invoice-row" key={invoice.id}>
-                          <div>
-                            <strong>{invoice.id}</strong>
-                            <small>{invoice.customerId}</small>
-                          </div>
-                          <div>
-                            <strong>
-                              {money(
-                                invoice.outstandingCents,
-                                invoice.currency,
-                              )}
-                            </strong>
-                            <small>
-                              {invoice.outstandingCents === 0
-                                ? 'Paid'
-                                : 'Outstanding'}
-                            </small>
-                          </div>
-                        </div>
-                      ))
+                    {outstandingInvoices.map(invoiceRow)}
+                    {outstandingInvoices.length === 0 && (
+                      <p className="muted">
+                        No outstanding invoices for this customer and currency.
+                      </p>
+                    )}
+                    {paidInvoices.length > 0 && (
+                      <details>
+                        <summary>Paid invoices ({paidInvoices.length})</summary>
+                        {paidInvoices.map(invoiceRow)}
+                      </details>
+                    )}
+                    {enableAssistant && (
+                      <div className="match-controls">
+                        {outstandingInvoices.length > 1 && (
+                          <label>
+                            Invoice to match
+                            <select
+                              aria-label="Invoice to match"
+                              value={invoiceChoice}
+                              onChange={(event) =>
+                                setInvoiceChoice(event.target.value)
+                              }
+                            >
+                              <option value="">
+                                Choose an outstanding invoice
+                              </option>
+                              {outstandingInvoices.map((invoice) => (
+                                <option key={invoice.id} value={invoice.id}>
+                                  {invoice.reference ?? invoice.id} ·{' '}
+                                  {money(
+                                    invoice.outstandingCents,
+                                    invoice.currency,
+                                  )}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
+                        <button
+                          disabled={
+                            !targetInvoiceId || selected.unappliedCents === 0
+                          }
+                          onClick={() => {
+                            const started = reviewRef.current?.beginReview(
+                              selected.id,
+                              targetInvoiceId,
+                            );
+                            setReviewNotice(
+                              started
+                                ? ''
+                                : 'Finish the current assistant request or approval before starting another match.',
+                            );
+                          }}
+                        >
+                          Match payment
+                        </button>
+                        {selected.unappliedCents === 0 && (
+                          <p className="muted">
+                            This payment is fully matched.
+                          </p>
+                        )}
+                        {reviewNotice && <p role="status">{reviewNotice}</p>}
+                      </div>
                     )}
                     <p className="context-note">
                       Related by customer and currency.
@@ -315,8 +501,8 @@ export function App({
           <h2>{selected ? 'Payment context' : 'Your business assistant'}</h2>
           {selected ? (
             <div className="selection-summary">
-              <strong>{selected.id}</strong>
-              <span>{selected.customerId}</span>
+              <strong>{selected.reference ?? selected.id}</strong>
+              <span>{selected.customerName ?? selected.customerId}</span>
               <span>
                 {money(selected.unappliedCents, selected.currency)} unapplied
               </span>
@@ -327,15 +513,14 @@ export function App({
               conversation.
             </p>
           )}
-          {enableAssistant ? (
-            <HashbrownProvider url="/agui/%2Freview%23agent">
-              <ReviewChat
-                ref={reviewRef}
-                selectedPaymentId={selected?.id}
-                transport={transport}
-                onApplied={setSnapshot}
-              />
-            </HashbrownProvider>
+          {enableAssistant && snapshot ? (
+            <AssistantWorkspace
+              ref={reviewRef}
+              snapshot={snapshot}
+              selectedPaymentId={selected?.id}
+              transport={transport}
+              onApplied={setSnapshot}
+            />
           ) : (
             <p className="connection-notice">
               Assistant connection is not ready yet. Payment context is

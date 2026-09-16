@@ -68,6 +68,9 @@ export interface ReviewChatHandle {
 /** Inputs for the stable, single-payment proof runtime. */
 export interface ReviewChatProps {
   readonly selectedPaymentId?: string;
+  readonly selectedInvoiceId?: string;
+  readonly showComposer?: boolean;
+  readonly onTerminal?: (status: 'applied' | 'cancelled' | 'failed') => void;
   readonly ref?: Ref<ReviewChatHandle>;
   readonly onApplied: (snapshot: LedgerSnapshot) => void;
   readonly transport?: TransportOrFactory;
@@ -86,6 +89,9 @@ type Phase =
 /** Review a selected payment through a trusted UI and server-owned approval. */
 export function ReviewChat({
   selectedPaymentId,
+  selectedInvoiceId,
+  showComposer = true,
+  onTerminal,
   onApplied,
   transport,
   ref,
@@ -207,8 +213,38 @@ export function ReviewChat({
     owned.batch.id === pendingInterrupts?.id &&
     expectedBatch(owned.batch) &&
     phase === 'idle' &&
+    !runtimeError &&
     !busy,
   );
+  useEffect(() => {
+    if (phase === 'applied' || phase === 'cancelled') onTerminal?.(phase);
+    else if (
+      !showComposer &&
+      !attempt &&
+      !busy &&
+      phase === 'idle' &&
+      (runtimeError ||
+        (boundPaymentId.current &&
+          chat.messages.length > 0 &&
+          !pendingInterrupts))
+    ) {
+      setPhase('failed');
+      setError(
+        'No allocation proposal was completed. You can start another review.',
+      );
+    } else if (!showComposer && phase === 'failed' && !attempt)
+      onTerminal?.('failed');
+  }, [
+    phase,
+    runtimeError,
+    attempt,
+    busy,
+    onTerminal,
+    showComposer,
+    chat.messages.length,
+    pendingInterrupts,
+  ]);
+
   const holdMessages = busy || Boolean(pendingInterrupts) || phase !== 'idle';
 
   useImperativeHandle(ref, () => ({
@@ -228,7 +264,10 @@ export function ReviewChat({
     sendClaim.current = true;
     setError('');
     try {
-      chat.setState({ selectedPaymentId: paymentId });
+      chat.setState({
+        selectedPaymentId: paymentId,
+        ...(selectedInvoiceId ? { selectedInvoiceId } : {}),
+      });
       chat.sendMessage({ role: 'user', content: content.trim() });
       boundPaymentId.current = paymentId;
       setPrompt('');
@@ -249,6 +288,7 @@ export function ReviewChat({
     try {
       chat.setState({
         selectedPaymentId,
+        ...(selectedInvoiceId ? { selectedInvoiceId } : {}),
         proposalId: proposal.proposalId,
         proposalVersion: proposal.proposalVersion,
         operationId: proposal.operationId,
@@ -305,26 +345,33 @@ export function ReviewChat({
             'The review could not finish. Check the ledger before trying again.'}
         </p>
       )}
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          send(prompt);
-        }}
-      >
-        <label htmlFor={`review-message-${threadId}`}>Message</label>
-        <input
-          id={`review-message-${threadId}`}
-          value={prompt}
-          disabled={holdMessages || !selectedPaymentId}
-          onChange={(event) => setPrompt(event.currentTarget.value)}
-        />
-        <button
-          type="submit"
-          disabled={holdMessages || !selectedPaymentId || !prompt.trim()}
-        >
-          Send
+      {phase === 'failed' && attempt?.approve && (
+        <button onClick={() => setPhase('verifying')}>
+          Check allocation result
         </button>
-      </form>
+      )}
+      {showComposer && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            send(prompt);
+          }}
+        >
+          <label htmlFor={`review-message-${threadId}`}>Message</label>
+          <input
+            id={`review-message-${threadId}`}
+            value={prompt}
+            disabled={holdMessages || !selectedPaymentId}
+            onChange={(event) => setPrompt(event.currentTarget.value)}
+          />
+          <button
+            type="submit"
+            disabled={holdMessages || !selectedPaymentId || !prompt.trim()}
+          >
+            Send
+          </button>
+        </form>
+      )}
     </section>
   );
 }

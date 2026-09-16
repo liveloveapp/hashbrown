@@ -44,7 +44,7 @@ export function createInvoicingListener(
       respond(response, 400, { error: 'invalid_path' });
       return;
     }
-    if (path === '/agui//review#agent' && runReview) {
+    if ((path === '/agui//review#agent' || path === '/agui//assistant#agent') && runReview) {
       if (request.method !== 'POST') {
         response.setHeader('allow', 'POST');
         respond(response, 405, { error: 'method_not_allowed' });

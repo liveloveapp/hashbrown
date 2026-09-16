@@ -103,3 +103,62 @@ test('middleware tools ignore extra amounts and invalidate reads after reset', (
   expect(proposal.paymentId).toBe('payment-001');
   expect(() => result.context.readPayment()).toThrow('stale_generation');
 });
+
+test('an ambiguous payment requires a chosen invoice and cannot substitute another invoice', () => {
+  const store = createSessionStore(() => ({
+    payments: [
+      {
+        id: 'p',
+        customerId: 'c',
+        currency: 'USD',
+        amountCents: 10000,
+        version: 1,
+      },
+    ],
+    invoices: ['i1', 'i2'].map((id) => ({
+      id,
+      customerId: 'c',
+      currency: 'USD',
+      amountCents: 10000,
+      version: 1,
+    })),
+    allocations: [],
+    activities: [],
+  }));
+  const session = store.createSession();
+  const schema = { type: 'object' };
+  const middleware = createReviewMiddleware(
+    store,
+    createReviewCoordinator(store, schema),
+  );
+  const request = (threadId: string, selectedInvoiceId?: string) =>
+    middleware({
+      method: 'POST',
+      routeId: '/review',
+      headers: { cookie: `invoicing_session=${session}` },
+      body: {
+        threadId,
+        runId: 'run',
+        state: {
+          selectedPaymentId: 'p',
+          ...(selectedInvoiceId ? { selectedInvoiceId } : {}),
+        },
+        hashbrown: { ui: true, responseSchema: schema },
+      },
+    });
+  const ambiguous = request('ambiguous');
+  const chosen = request('chosen', 'i2');
+  if (ambiguous.action !== 'continue' || chosen.action !== 'continue')
+    throw new Error('expected continue');
+
+  expect(() =>
+    ambiguous.context.prepareAllocation({ invoiceId: 'i1' }),
+  ).toThrow('invoice_choice_required');
+  expect(() => chosen.context.prepareAllocation({ invoiceId: 'i1' })).toThrow(
+    'invoice_binding_conflict',
+  );
+  expect(chosen.context.prepareAllocation({ invoiceId: 'i2' }).invoiceId).toBe(
+    'i2',
+  );
+  expect(store.snapshot(session).allocations).toHaveLength(0);
+});

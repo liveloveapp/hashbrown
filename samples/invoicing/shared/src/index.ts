@@ -2,6 +2,14 @@
 export interface MoneyRecord {
   readonly id: string;
   readonly customerId: string;
+  /** Human-readable consulting client name. */
+  readonly customerName?: string;
+  /** Invoice issue or payment receipt date in YYYY-MM-DD format. */
+  readonly date?: string;
+  /** Invoice number or incoming payment remittance reference. */
+  readonly reference?: string;
+  /** Description of the invoiced work or incoming payment. */
+  readonly description?: string;
   readonly currency: string;
   readonly amountCents: number;
   readonly version: number;
@@ -72,3 +80,9 @@ export {
   allocationProposalConfig,
   invoicingUiResponseSchema,
 } from './ui-contract';
+
+export {
+  assistantTextConfig,
+  reviewPaymentConfig,
+  assistantResponseSchema,
+} from './assistant-contract';

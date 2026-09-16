@@ -43,6 +43,7 @@ export function createReviewMiddleware(
         if (!payment) throw new Error('payment_not_found');
         return {
           payment,
+          selectedInvoiceId: context.selectedInvoiceId,
           invoices: snapshot.invoices.filter(
             (invoice) =>
               invoice.customerId === payment.customerId &&
@@ -61,6 +62,11 @@ export function createReviewMiddleware(
               (item) => item.id === input.invoiceId,
             );
             if (!invoice) throw new Error('invoice_not_found');
+            if (
+              !context.selectedInvoiceId &&
+              invoices.filter((item) => item.outstandingCents > 0).length > 1
+            )
+              throw new Error('invoice_choice_required');
             return reviews.prepare(context, {
               paymentId: payment.id,
               invoiceId: invoice.id,

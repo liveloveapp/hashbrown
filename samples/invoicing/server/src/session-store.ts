@@ -48,7 +48,9 @@ interface Session {
 }
 
 /** Create an in-memory store whose validation and replacement never await. */
-export function createSessionStore(): SessionStore {
+export function createSessionStore(
+  createInitialLedger: () => Ledger = createLedger,
+): SessionStore {
   const sessions = new Map<string, Session>();
   const get = (id: string): Session => {
     const session = sessions.get(id);
@@ -60,7 +62,7 @@ export function createSessionStore(): SessionStore {
       const id = randomUUID();
       sessions.set(id, {
         generation: 1,
-        ledger: createLedger(),
+        ledger: structuredClone(createInitialLedger()),
         proposals: new Map(),
         operations: new Map(),
       });
@@ -149,7 +151,7 @@ export function createSessionStore(): SessionStore {
       const session = get(id);
       const next: Session = {
         generation: session.generation + 1,
-        ledger: createLedger(),
+        ledger: structuredClone(createInitialLedger()),
         proposals: new Map(),
         operations: new Map(),
       };

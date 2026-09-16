@@ -1,5 +1,53 @@
 # Invoicing compatibility checkpoint
 
+## Seeded application and usable conversation — September 15, 2026
+
+The application now uses a deterministic October 2024–September 2026 ledger
+(as of September 15, 2026): 150 invoices, 149 payments, and 144 historical
+allocations for six consulting clients. Five unapplied scenarios total $13,900:
+exact, partial, combined, ambiguous, and advance payments. Production sessions
+use this seed; the original tiny ledger remains a focused regression fixture.
+
+Selection is now context-only. Read-only conversation is available immediately,
+and an explicit matching action creates a fresh, separately authorized review.
+Multiple outstanding invoices require a user choice. Combined payments are
+applied sequentially with separate approvals. The canonical design records
+these current scope adjustments. Shared ownership guards prevent B4 thread
+reuse across session, route, or reset generation.
+
+The assistant reads server-computed totals and monthly figures. Trusted response
+components render plain text and validated payment-review suggestions; that
+route exposes no financial mutation tools. Completed reviews are inert, failed
+initial runs retire safely, and unknown approved-operation results keep new
+matching blocked until reconciliation. Independent review approved these
+boundaries after lifecycle regression fixes.
+
+Build/test/lint pass for server (93 tests), React (37), and contracts (3):
+133 tests total. The new live-model Nx target has build/lint checks and rejects
+missing credentials. Vite reports an approximately 944 kB minified chunk and
+terminal color warnings remain. See the later verification entry for final
+real-model browser results. The app still uses the fixed local B4 source build;
+this does not certify published 0.8.34 artifacts.
+
+## Final seeded browser verification — September 15, 2026
+
+`INVOICING_ENV_FILE=/path/to/.env npx nx live-model invoicing-e2e` passes
+with actual gpt-5-mini interactions (final run: 1 minute 39 seconds). The test
+asserts 150 invoices/149 payments/144 historical allocations; asks about the
+$13,900 unapplied total before selection; approves Northstar's $2,400 payment;
+declines Cedar's partial payment without mutation; retries Cedar in a new review
+and approves $2,000, leaving its invoice at exactly $3,000; then requires a new
+assistant answer reporting three remaining unapplied payments. A separate
+browser session retains 144 historical allocations and receives 404 for the
+other session's operation. No real money moves.
+
+The first browser attempts revealed test synchronization assumptions about old
+disabled approval buttons and intermediate streamed text components. Assertions
+now wait for the new review and completed semantic output. Final source passes
+all 133 unit/integration tests, application build/lint targets, and e2e
+build/lint/live-model targets. Missing credentials were separately verified to
+fail explicitly. Independent review approved the final code and test assertions.
+
 ## Working local application — September 15, 2026
 
 The user approved proceeding with the fixed local B4 build while published

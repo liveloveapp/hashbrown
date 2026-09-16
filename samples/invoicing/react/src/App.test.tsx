@@ -169,7 +169,7 @@ test('starts a fresh snapshot request for a new bootstrap', async () => {
   expect(request).toHaveBeenCalledTimes(2);
 });
 
-test('selection starts one real chat and approval refreshes the ledger without changing selection', async () => {
+test('explicit matching starts one real chat and approval refreshes the ledger without changing selection', async () => {
   cleanup();
   const requests: TransportRequest[] = [];
   const proposal = {
@@ -289,6 +289,8 @@ test('selection starts one real chat and approval refreshes the ledger without c
   );
 
   fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0]);
+  expect(requests).toHaveLength(0);
+  fireEvent.click(screen.getByRole('button', { name: 'Match payment' }));
   const approve = await screen.findByRole('button', {
     name: 'Approve and apply',
   });
@@ -300,7 +302,10 @@ test('selection starts one real chat and approval refreshes the ledger without c
   fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
 
   expect(requests).toHaveLength(1);
-  expect(requests[0].input.state).toEqual({ selectedPaymentId: 'payment-001' });
+  expect(requests[0].input.state).toMatchObject({
+    selectedPaymentId: 'payment-001',
+    selectedInvoiceId: 'invoice-001',
+  });
   expect(requests[0].input.hashbrown?.ui).toBe(true);
   expect(
     screen.getAllByRole('checkbox', { name: 'Select row' })[0],
@@ -317,8 +322,13 @@ test('selection starts one real chat and approval refreshes the ledger without c
     { interruptId: 'permission-1', status: 'resolved', payload: 'once' },
   ]);
   expect(
-    screen.getAllByRole('checkbox', { name: 'Select row' })[0],
+    within(
+      screen
+        .getByRole('button', { name: 'Review payment-001' })
+        .closest('[role="row"]') as HTMLElement,
+    ).getByRole('checkbox', { name: 'Select row' }),
   ).toBeChecked();
+  fireEvent.click(screen.getByText('Paid invoices (1)'));
   expect(
     screen.getByRole('region', { name: 'Related invoices' }),
   ).toHaveTextContent('Paid');
@@ -332,4 +342,76 @@ test('selection starts one real chat and approval refreshes the ledger without c
     screen.getByRole('complementary', { name: 'Assistant sidebar' }),
   ).toHaveTextContent('$0.00 unapplied');
   vi.unstubAllGlobals();
+});
+
+test('shows client metadata and defaults to unmatched payments', async () => {
+  cleanup();
+  const ledger = {
+    ...snapshot,
+    payments: [
+      {
+        ...snapshot.payments[0],
+        customerName: 'Northstar Labs',
+        reference: 'PAY-2026-01',
+        date: '2026-01-15',
+      },
+      {
+        ...snapshot.payments[0],
+        id: 'paid-payment',
+        unappliedCents: 0,
+        reference: 'PAY-PAID',
+      },
+    ],
+  };
+
+  render(<App initialSnapshot={ledger} />);
+
+  expect(screen.getByText('Northstar Labs')).toBeVisible();
+  expect(screen.getByText('PAY-2026-01')).toBeVisible();
+  expect(screen.getByText('2026-01-15')).toBeVisible();
+  expect(screen.queryByText('PAY-PAID')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'All payments' }));
+  expect(await screen.findByText('PAY-PAID')).toBeVisible();
+});
+
+test('requires an invoice choice when a payment has multiple outstanding invoices', () => {
+  cleanup();
+  const ledger = {
+    ...snapshot,
+    invoices: [
+      ...snapshot.invoices,
+      { ...snapshot.invoices[0], id: 'invoice-002', reference: 'INV-002' },
+    ],
+  };
+
+  render(<App initialSnapshot={ledger} enableAssistant />);
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+
+  expect(screen.getByRole('button', { name: 'Match payment' })).toBeDisabled();
+  fireEvent.change(screen.getByRole('combobox', { name: 'Invoice to match' }), {
+    target: { value: 'invoice-002' },
+  });
+  expect(screen.getByRole('button', { name: 'Match payment' })).toBeEnabled();
+});
+
+test('derives monthly invoiced and received totals from record dates', () => {
+  cleanup();
+  const ledger = {
+    ...snapshot,
+    invoices: [
+      { ...snapshot.invoices[0], date: '2026-01-01', amountCents: 10000 },
+    ],
+    payments: [
+      { ...snapshot.payments[0], date: '2026-01-15', amountCents: 5000 },
+    ],
+  };
+
+  render(<App initialSnapshot={ledger} />);
+
+  const report = screen.getByRole('table', {
+    name: 'Monthly invoiced and received',
+  });
+  expect(report).toHaveTextContent('Jan 2026');
+  expect(report).toHaveTextContent('$100.00');
+  expect(report).toHaveTextContent('$50.00');
 });

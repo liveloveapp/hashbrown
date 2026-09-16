@@ -7,6 +7,9 @@ import { createInvoicingListener } from './http';
 import { createReviewCoordinator } from './review-coordinator';
 import { createReviewMiddleware } from './review-middleware';
 import { createSessionStore } from './session-store';
+import { createSampleLedger } from './sample-ledger';
+import { createAssistantMiddleware } from './assistant-middleware';
+import { createThreadOwnershipGuard } from './thread-ownership';
 
 /** Create a fresh ledger and B4 workspace with the same process lifetime. */
 export async function createInvoicingRuntime() {
@@ -26,11 +29,31 @@ export async function createInvoicingRuntime() {
       join(appRoot, 'node_modules'),
       'dir',
     );
-    const store = createSessionStore();
+    const store = createSessionStore(createSampleLedger);
     const reviews = createReviewCoordinator(store, invoicingUiResponseSchema);
+    const review = createReviewMiddleware(store, reviews);
+    const assistant = createAssistantMiddleware(store);
+    const claimThread = createThreadOwnershipGuard(store);
     const runtime = await createRuntimeRequestListener({
       appRoot,
-      middleware: createReviewMiddleware(store, reviews),
+      middleware: (request) => {
+        const result =
+          request.routeId === '/assistant'
+            ? assistant(request)
+            : review(request);
+        if (result.action === 'continue') {
+          try {
+            claimThread(request.headers, request.routeId, request.body);
+          } catch {
+            return {
+              action: 'reject',
+              status: 422,
+              body: { error: 'invalid_thread' },
+            };
+          }
+        }
+        return result;
+      },
     });
     return {
       listener: createInvoicingListener(store, reviews, runtime.listener),

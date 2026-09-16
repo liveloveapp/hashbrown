@@ -13,6 +13,7 @@ export interface ReviewContext {
   readonly sessionId: string;
   readonly threadId: string;
   readonly selectedPaymentId: string;
+  readonly selectedInvoiceId?: string;
   readonly generation: number;
   readonly responseSchema: unknown;
   readonly decision: 'initial' | 'once' | 'cancelled';
@@ -34,6 +35,7 @@ interface Binding {
   readonly sessionId: string;
   readonly threadId: string;
   readonly selectedPaymentId: string;
+  readonly selectedInvoiceId?: string;
   readonly generation: number;
   readonly proposalId?: string;
 }
@@ -111,6 +113,15 @@ export function createReviewCoordinator(
       }
       const { threadId, state } = body;
       const selectedPaymentId = state.selectedPaymentId as string;
+      const selectedInvoiceId = state.selectedInvoiceId;
+      if (
+        selectedInvoiceId !== undefined &&
+        (!identifier(selectedInvoiceId) ||
+          !store
+            .snapshot(sessionId)
+            .invoices.some((invoice) => invoice.id === selectedInvoiceId))
+      )
+        throw new Error('invoice_not_found');
       if (
         !store
           .snapshot(sessionId)
@@ -164,9 +175,13 @@ export function createReviewCoordinator(
             sessionId,
             threadId,
             selectedPaymentId,
+            selectedInvoiceId: selectedInvoiceId as string | undefined,
             generation,
           };
-      if (binding.selectedPaymentId !== selectedPaymentId)
+      if (
+        binding.selectedPaymentId !== selectedPaymentId ||
+        binding.selectedInvoiceId !== selectedInvoiceId
+      )
         throw new Error('thread_binding_conflict');
       if (decision !== 'initial') {
         const proposal = proposalFor(binding);
@@ -190,6 +205,7 @@ export function createReviewCoordinator(
         sessionId,
         threadId,
         selectedPaymentId,
+        selectedInvoiceId: selectedInvoiceId as string | undefined,
         generation,
         responseSchema,
         decision,
@@ -204,6 +220,11 @@ export function createReviewCoordinator(
         throw new Error('initial_request_required');
       if (!record(request) || request.paymentId !== binding.selectedPaymentId)
         throw new Error('payment_binding_conflict');
+      if (
+        binding.selectedInvoiceId &&
+        request.invoiceId !== binding.selectedInvoiceId
+      )
+        throw new Error('invoice_binding_conflict');
       if (binding.proposalId) {
         const proposal = proposalFor(binding);
         if (

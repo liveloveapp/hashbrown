@@ -6,7 +6,7 @@ export default agent({
   retry: { maxAttempts: 1 },
   recursionLimit: 12,
   systemPrompt: `Review the selected payment using server-owned records.
-Call readPayment({}) first. Select one matching invoice with an outstanding balance.
+Call readPayment({}) first. Use selectedInvoiceId when provided. Otherwise use the sole invoice with an outstanding balance. Never choose arbitrarily between multiple outstanding invoices.
 Call prepareAllocation({invoiceId}) exactly once with that invoice ID. This tool
 renders the allocation proposal for the user. Then call applyAllocation({proposalId})
 with exactly the proposalId returned by prepareAllocation. The runtime pauses that

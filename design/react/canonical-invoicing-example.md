@@ -6,6 +6,21 @@ Status: Visual direction approved — compatibility-proof planning
 
 # Canonical invoicing and incoming-payments example
 
+## September 15 implementation update
+
+Following feedback that the composer was unusable and the ledger too small,
+the user approved continuing with the full seeded application and usable chat.
+The current implementation uses October 2024–September 2026, with a fixed
+September 15, 2026 as-of date. Selection now provides context; matching is an
+explicit action, and chat is available without selection. This supersedes the
+automatic selection behavior described in the original design below.
+
+The seed includes combined and ambiguous payments. The current allocation
+boundary remains one invoice per proposal: combined payments require sequential
+approvals, and ambiguous payments require an explicit invoice choice. A single
+approval covering several invoices remains a follow-up to the original design.
+The dated original design below records the wider intended product scope.
+
 ## Objective
 
 Replace the existing showcase applications with one canonical React application

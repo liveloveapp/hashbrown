@@ -358,3 +358,93 @@ h2 {
 .assistant-body button:disabled {
   opacity: 0.5;
 }
+
+.monthly-report {
+  margin: 0 0 28px;
+  border: 1px solid #e4e6e5;
+  border-radius: 8px;
+  padding: 20px;
+}
+.monthly-scroll {
+  max-height: 260px;
+  overflow: auto;
+}
+.monthly-report table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.monthly-report th,
+.monthly-report td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #efefef;
+  text-align: right;
+}
+.monthly-report th:first-child {
+  text-align: left;
+}
+.monthly-report th {
+  font-weight: 500;
+}
+.monthly-report thead {
+  position: sticky;
+  top: 0;
+  background: #fff;
+}
+.payment-filters {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.payment-filters button,
+.match-controls button {
+  padding: 8px 12px;
+  border: 1px solid #d4ddd7;
+  border-radius: 6px;
+  background: #fff;
+  color: #253d32;
+}
+.payment-filters button[aria-pressed='true'],
+.match-controls button {
+  background: #edf3ef;
+}
+.match-controls button:disabled {
+  opacity: 0.5;
+}
+.match-controls {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin-top: 18px;
+}
+.match-controls label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+}
+.match-controls select {
+  max-width: 100%;
+  padding: 8px;
+  font: inherit;
+  border: 1px solid #d4ddd7;
+  border-radius: 6px;
+}
+.invoice-context summary {
+  cursor: pointer;
+  padding: 12px 0;
+  color: #73777c;
+  font-size: 12px;
+}
+
+.assistant-body textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 10px;
+  resize: vertical;
+  border: 1px solid #e4e6e5;
+  border-radius: 6px;
+}
+.assistant-answer {
+  white-space: pre-wrap;
+}
