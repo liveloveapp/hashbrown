@@ -1,32 +1,55 @@
-# Deploying `www` to Cloudflare Pages
+# Deploying `www` to Vercel
 
-Cloudflare Pages now hosts the `www` site. The Pages configuration is stored in `wrangler.toml` and deploys the Nitro-generated `_worker.js` for SSR.
+Vercel hosts the `www` site as one Node.js function (SSR and `/_/chat`) plus
+static assets. Nitro's `vercel` preset in `vite.config.ts` writes a Build
+Output API tree to `.vercel/output` at the repository root (Analog pins the
+Nitro output to its `workspaceRoot`); nothing else configures the deployment.
 
 ## Build
 
-- Command: `npx nx run www:build:production`
-- Output directory: `dist/www/analog/analog/public` (contains `_worker.js` and static assets)
+- Command: `npx nx build www --configuration=production`
+- Output: `<repo-root>/.vercel/output` (`config.json`, `static/`,
+  `functions/__server.func/`)
 
 ## Environment
 
-- Set `OPENAI_API_KEY` in the Pages project environment variables. The `/_/chat` Nitro route reads it from the Pages environment.
+`OPENAI_API_KEY` is a Vercel project environment variable for Production and
+Preview. `OPENAI_MODEL` and `OPENAI_BASE_URL` are optional overrides. The
+`/_/chat` route reads them from `process.env`.
 
-## Automated Deployment
+## Automated deployment
 
-The `PR / Main CI` workflow validates changes before deploying Cloudflare Pages.
+`.github/workflows/pr-main.yml` validates changes, then calls
+`.github/workflows/deploy.yml`:
 
-- For pull requests from branches in this repository, the workflow builds and deploys only affected Pages applications after validation succeeds. It updates one pull request comment with the preview URLs.
-- Same-repository branches are the trusted preview boundary because preview deployment requires Cloudflare credentials. Pull requests from forks and Dependabot pull requests do not receive credentials or Pages previews.
-- Immediately before production starts, the workflow checks whether the validated SHA is still the current `main` SHA. A run already superseded at that check skips production. A push after the check does not stop the active deployment; workflow concurrency allows a later run to deploy afterward if it passes validation and is still current at its check. Production publishes all four Pages projects: the documentation site, finance sample, fast-food sample, and smart-home sample.
-- Each Cloudflare Pages project's production branch must be `main`.
-- npm package publishing is independent of Cloudflare deployment. Publishing or moving an npm trigger tag does not deploy Pages.
+- Pull requests from branches in this repository get a preview deployment
+  for each affected target. Each deployment is recorded as a GitHub
+  Deployment in the `preview` environment, so the URL appears in the pull
+  request sidebar. A preview failure fails the `PR Gate` check.
+- Pushes to `main` deploy every target to production after validation
+  succeeds. Runs are serialized by the `deploy-production` concurrency group.
+- Forks and Dependabot pull requests receive CI only.
 
-## Manual Deployment
+Targets are declared in the `DEPLOY_TARGETS` environment variable of
+`pr-main.yml`. `dir` is the directory that contains `.vercel/output` and is
+passed to `vercel --cwd`. Each target needs a `VERCEL_PROJECT_ID_<KEY>`
+repository secret; `VERCEL_TOKEN` and `VERCEL_ORG_ID` are shared.
 
-- Ensure Wrangler is authenticated (`npx wrangler login` or `npx wrangler login --scopes=d1:write` if needed).
-- Run `npx nx deploy www` to build for production and deploy the documentation output to Cloudflare Pages through Wrangler.
+## Manual deployment
 
-## Local Preview
+One-time: `npx vercel login`, then `npx vercel link` from the repository root
+and pick the `hashbrown-www` project (`.vercel/` is ignored by git).
+
+- Preview: `npx nx deploy www`
+- Production: `npx nx deploy www -- --prod`
+
+## Provisioning
+
+`node tools/vercel/bootstrap.mjs --env-file <path>` creates the Vercel
+project, environment variables, domains, and GitHub secrets, and can tear down
+the former Cloudflare Pages projects. See the script header for options.
+
+## Local preview
 
 - Terminal 1: `npx nx run www:build:development --watch`
-- Terminal 2: `npx wrangler pages dev dist/www/analog/analog/public`
+- Terminal 2: `npx nx serve www`

@@ -120,7 +120,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build"],
       "options": {
-        "command": "npx wrangler --cwd=www/analog pages deploy ../../dist/www/analog --project-name=hashbrown-www --commit-dirty=true --no-bundle"
+        "command": "npx vercel deploy --prebuilt --yes"
       }
     }
   }
