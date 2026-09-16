@@ -172,19 +172,31 @@ export async function ensureDnsRecords(vercel, domain, wanted) {
   return { created: missing.length, existing: wanted.length - missing.length };
 }
 
+/** Vercel answers 403 (not 404) for a domain that is not on this account. */
+function isNotOnAccount(error) {
+  return error?.status === 404 || error?.status === 403;
+}
+
 export async function readDomainState(vercel, projectId) {
   const projectDomain = await vercel(
     'GET',
     `/v9/projects/${projectId}/domains/${DOMAIN}`,
   );
+  const config = await vercel('GET', `/v6/domains/${DOMAIN}/config`);
   let nameservers = [];
   try {
     const { domain } = await vercel('GET', `/v5/domains/${DOMAIN}`);
     nameservers = domain.intendedNameservers ?? nameservers;
   } catch (error) {
-    if (!isNotFound(error)) throw error;
+    if (!isNotOnAccount(error)) throw error;
   }
-  return { verified: projectDomain.verified === true, nameservers };
+  return {
+    verified: projectDomain.verified === true,
+    misconfigured: config.misconfigured === true,
+    currentNameservers: config.nameservers ?? [],
+    recommendedIPv4: config.recommendedIPv4?.[0]?.value ?? [],
+    nameservers,
+  };
 }
 
 export async function deleteCloudflarePagesProjects({
@@ -410,16 +422,30 @@ async function main() {
     );
   }
 
-  const { verified, nameservers } = await readDomainState(vercel, wwwProjectId);
-  log(`domain ${DOMAIN}`, verified ? 'verified' : 'pending nameservers');
-  if (!verified) {
+  const {
+    verified,
+    misconfigured,
+    currentNameservers,
+    recommendedIPv4,
+    nameservers,
+  } = await readDomainState(vercel, wwwProjectId);
+  log(`domain ${DOMAIN}`, verified ? 'verified' : 'pending verification');
+  log('dns', misconfigured ? 'not serving from Vercel' : 'serving from Vercel');
+  if (misconfigured) {
+    console.log(
+      `\nCurrent nameservers: ${currentNameservers.join(', ') || 'unknown'}`,
+    );
     if (nameservers.length) {
       console.log(
-        `\nSet these nameservers at the registrar (Squarespace), then re-run this script:\n  ${nameservers.join('\n  ')}`,
+        `Set these nameservers at the registrar (Squarespace), then re-run this script:\n  ${nameservers.join('\n  ')}`,
       );
     } else {
       console.log(
-        `\nVercel has not reported intended nameservers for ${DOMAIN} yet. Open the domain in the Vercel dashboard for the values to set at the registrar (Squarespace), then re-run this script.`,
+        `Switch the registrar (Squarespace) to Vercel DNS using the nameservers shown on the ${DOMAIN} page in the Vercel dashboard` +
+          (recommendedIPv4.length
+            ? `, or keep the current DNS host and point the apex A record at ${recommendedIPv4.join(', ')}`
+            : '') +
+          '. Then re-run this script.',
       );
     }
   }
