@@ -1,0 +1,24 @@
+{
+  "output": ".vercel/output",
+  "tsconfig": "../../tsconfig.base.json",
+  "static": {
+    "dir": "../../dist/examples/invoicing/react",
+    "spaFallback": "index.html"
+  },
+  "functions": {
+    "index": {
+      "from": "server/.vercel/output/functions/index.func",
+      "config": { "maxDuration": 300, "supportsResponseStreaming": true }
+    },
+    "api": {
+      "entry": "server/src/api.ts",
+      "runtime": "nodejs24.x",
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api" },
+    { "src": "/(agui|threads)(/.*)?", "dest": "/index" },
+    { "src": "/healthz", "dest": "/index" }
+  ]
+}
