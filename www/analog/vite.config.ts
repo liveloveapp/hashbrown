@@ -55,9 +55,12 @@ export default defineConfig(({ command, mode }) => {
       analog({
         workspaceRoot: resolve(__dirname, '../..'),
         apiPrefix: '_',
+        // The SSR template must be the built client index.html (hashed asset
+        // tags). The Vercel preset writes the client build to the repository
+        // root .vercel/output/static, before the server bundle reads it.
         index:
           command === 'build' && mode === 'production'
-            ? resolve(__dirname, '../../dist/www/analog/index.html')
+            ? resolve(__dirname, '../../.vercel/output/static/index.html')
             : undefined,
         content: {
           highlighter: 'shiki',

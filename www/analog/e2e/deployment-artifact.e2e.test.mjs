@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readdir, readFile, stat } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import test from 'node:test';
 
 const deploymentDirectory = new URL(
@@ -398,6 +399,33 @@ test('production HTML references a built favicon', async () => {
     : false;
 
   assert.equal(faviconExists, true);
+});
+
+test('production function server-renders a docs page from the built template', async () => {
+  const { default: handler } = await import(
+    new URL('index.mjs', functionDirectory)
+  );
+  const server = createServer(handler);
+  await new Promise((resolveListening, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolveListening);
+  });
+
+  try {
+    const { port } = server.address();
+    const response = await fetch(
+      `http://127.0.0.1:${port}/docs/angular/start/quick`,
+    );
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') ?? '', /text\/html/);
+    assert.match(html, /Angular Quick Start/);
+    // Analog falls back to this shell when the built index.html is not found.
+    assert.doesNotMatch(html, /<body><div id="app"><\/div><\/body>/);
+  } finally {
+    await new Promise((resolveClosed) => server.close(resolveClosed));
+  }
 });
 
 test('Nx deploys the prebuilt output with the Vercel CLI', async () => {
