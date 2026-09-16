@@ -232,8 +232,11 @@ export function ReviewChat({
       setError(
         'No allocation proposal was completed. You can start another review.',
       );
-    } else if (!showComposer && phase === 'failed' && !attempt)
+    } else if (!showComposer && phase === 'failed' && !attempt?.approve) {
+      // A failed decline never grants allocation authority. Retire its UI,
+      // while unknown approved outcomes remain blocked for reconciliation.
       onTerminal?.('failed');
+    }
   }, [
     phase,
     runtimeError,

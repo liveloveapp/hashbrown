@@ -40,7 +40,7 @@ const snapshot: LedgerSnapshot = {
   allocations: [],
   activities: [],
 };
-function controlled(failAfterInterrupt = false) {
+function controlled(failAfterInterrupt = false, failCancellation = false) {
   const requests: TransportRequest[] = [];
   const transport: Transport = {
     name: 'conversation-test',
@@ -116,6 +116,13 @@ function controlled(failAfterInterrupt = false) {
             };
             yield { type: EventType.TEXT_MESSAGE_END, messageId: 'answer' };
           }
+          if (failCancellation && request.input.resume?.length) {
+            yield {
+              type: EventType.RUN_ERROR,
+              message: 'cancel response lost',
+            };
+            return;
+          }
           yield { type: EventType.RUN_FINISHED, ...identity };
         })(),
       };
@@ -155,70 +162,78 @@ test('conversation accepts questions before selecting a payment and remains usab
   await waitFor(() => expect(requests).toHaveLength(2));
 });
 
-test('cancellation unlocks chat and a later review uses a fresh thread and approval batch', async () => {
-  cleanup();
-  const { requests, transport } = controlled();
-  const ref = createRef<AssistantWorkspaceHandle>();
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            proposalId: 'proposal',
-            operationId: 'operation',
-            generation: 1,
-            proposalVersion: 1,
-            expectedPaymentVersion: 1,
-            expectedInvoiceVersion: 1,
-            paymentId: 'p',
-            invoiceId: 'i',
-            customerId: 'c',
-            currency: 'USD',
-            amountCents: 10000,
-          }),
-        ),
-    ),
-  );
-  render(
-    <AssistantWorkspace
-      ref={ref}
-      snapshot={snapshot}
-      onApplied={() => undefined}
-      transport={transport}
-    />,
-  );
+for (const failCancellation of [false, true]) {
+  test(`cancellation unlocks chat and retires the old approval even when the response fails: ${failCancellation}`, async () => {
+    cleanup();
+    const { requests, transport } = controlled(false, failCancellation);
+    const ref = createRef<AssistantWorkspaceHandle>();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              proposalId: 'proposal',
+              operationId: 'operation',
+              generation: 1,
+              proposalVersion: 1,
+              expectedPaymentVersion: 1,
+              expectedInvoiceVersion: 1,
+              paymentId: 'p',
+              invoiceId: 'i',
+              customerId: 'c',
+              currency: 'USD',
+              amountCents: 10000,
+            }),
+          ),
+      ),
+    );
+    render(
+      <AssistantWorkspace
+        ref={ref}
+        snapshot={snapshot}
+        onApplied={() => undefined}
+        transport={transport}
+      />,
+    );
 
-  act(() => {
-    expect(ref.current?.beginReview('p', 'i')).toBe(true);
-  });
-  const decline = await screen.findByRole('button', { name: 'Decline' });
-  await waitFor(() => expect(decline).toBeEnabled());
-  expect(
-    screen.getByRole('textbox', { name: 'Message assistant' }),
-  ).toBeDisabled();
-  act(() => {
-    expect(ref.current?.beginReview('p', 'i')).toBe(false);
-  });
-  fireEvent.click(decline);
-  await screen.findByText('Review cancelled. No allocation was requested.');
-  await waitFor(() =>
+    act(() => {
+      expect(ref.current?.beginReview('p', 'i')).toBe(true);
+    });
+    const decline = await screen.findByRole('button', { name: 'Decline' });
+    await waitFor(() => expect(decline).toBeEnabled());
     expect(
       screen.getByRole('textbox', { name: 'Message assistant' }),
-    ).toBeEnabled(),
-  );
-  act(() => {
-    expect(ref.current?.beginReview('p', 'i')).toBe(true);
-  });
+    ).toBeDisabled();
+    act(() => {
+      expect(ref.current?.beginReview('p', 'i')).toBe(false);
+    });
+    fireEvent.click(decline);
+    await screen.findByText(
+      failCancellation
+        ? 'Cancellation could not be confirmed. No allocation was requested.'
+        : 'Review cancelled. No allocation was requested.',
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Message assistant' }),
+      ).toBeEnabled(),
+    );
+    act(() => {
+      expect(ref.current?.beginReview('p', 'i')).toBe(true);
+    });
 
-  await waitFor(() => expect(requests).toHaveLength(3));
-  expect(requests[0].input.threadId).not.toBe(requests[2].input.threadId);
-  expect(requests[1].input.resume).toEqual([
-    { interruptId: 'interrupt', status: 'cancelled' },
-  ]);
-  expect(screen.getAllByRole('button', { name: 'Decline' })[0]).toBeDisabled();
-  vi.unstubAllGlobals();
-});
+    await waitFor(() => expect(requests).toHaveLength(3));
+    expect(requests[0].input.threadId).not.toBe(requests[2].input.threadId);
+    expect(requests[1].input.resume).toEqual([
+      { interruptId: 'interrupt', status: 'cancelled' },
+    ]);
+    expect(
+      screen.getAllByRole('button', { name: 'Decline' })[0],
+    ).toBeDisabled();
+    vi.unstubAllGlobals();
+  });
+}
 
 test('a completed review without an approval retires and unlocks the composer', async () => {
   cleanup();

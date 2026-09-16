@@ -28,6 +28,9 @@ Payments default to unmatched items; All payments includes historical receipts.
 A selected payment remains visible after matching to preserve context. There
 are no real transfers, collections workflows, or payment reminders.
 
+The Pretable and B4 dependencies were explicitly requested and approved as part
+of this example's design; the root Zod 4 migration was separately approved.
+
 ## Run locally
 
 The server pins published `@b4run/cli`, `@b4run/langchain`, and `@b4run/sdk`
