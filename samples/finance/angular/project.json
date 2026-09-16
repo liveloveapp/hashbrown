@@ -61,13 +61,6 @@
           "buildTarget": "finance-angular:build:development"
         }
       }
-    },
-    "deploy": {
-      "executor": "nx:run-commands",
-      "dependsOn": ["build:production"],
-      "options": {
-        "command": "npx wrangler pages deploy dist/samples/finance/angular/browser --commit-dirty=true"
-      }
     }
   }
 }

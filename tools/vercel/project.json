@@ -1,21 +1,21 @@
 {
-  "name": "cloudflare-deployment",
+  "name": "vercel-bootstrap",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "tools/cloudflare",
+  "sourceRoot": "tools/vercel",
   "projectType": "application",
   "tags": [],
   "targets": {
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "eslint tools/cloudflare",
+        "command": "eslint tools/vercel",
         "forwardAllArgs": false
       }
     },
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node --test tools/cloudflare/*.test.mjs"
+        "command": "node --test tools/vercel/*.test.mjs"
       }
     }
   }

@@ -8,7 +8,10 @@
     "build": {
       "executor": "@analogjs/platform:vite",
       "defaultConfiguration": "production",
-      "outputs": ["{workspaceRoot}/dist/www/analog"],
+      "outputs": [
+        "{workspaceRoot}/dist/www/analog",
+        "{workspaceRoot}/.vercel/output"
+      ],
       "dependsOn": ["clean-output", "collect-docs", "generate-llms"],
       "options": {
         "main": "www/analog/src/main.ts",
@@ -120,7 +123,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build"],
       "options": {
-        "command": "npx wrangler --cwd=www/analog pages deploy ../../dist/www/analog --project-name=hashbrown-www --commit-dirty=true --no-bundle"
+        "command": "npx vercel deploy --prebuilt --yes"
       }
     }
   }

@@ -68,13 +68,6 @@
       "options": {
         "jestConfig": "samples/fast-food/angular/jest.config.ts"
       }
-    },
-    "deploy": {
-      "executor": "nx:run-commands",
-      "dependsOn": ["build:production"],
-      "options": {
-        "command": "npx wrangler pages deploy dist/samples/fast-food/angular/browser --commit-dirty=true"
-      }
     }
   }
 }

@@ -8,16 +8,24 @@ on:
     branches: [main]
 
 concurrency:
-  group: pr-main-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  # One group per pull request, and one shared group for every run on main
+  # (push or manual dispatch) so production runs are strictly ordered.
+  group: pr-main-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
+env:
+  # Deployment targets: key = Nx project, dir = directory containing .vercel/output,
+  # project_id_secret = repository secret holding that target's Vercel project ID.
+  DEPLOY_TARGETS: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW"}]'
+
 jobs:
   ci:
     name: Lint, Test, Build
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -49,9 +57,6 @@ jobs:
       - name: Validate dependency tree
         run: npm ls --all
 
-      - name: Test Cloudflare deployment tooling
-        run: npx nx test cloudflare-deployment
-
       - name: Validate affected projects
         run: npx nx affected -t lint,test,typecheck,build,e2e --parallel=3
 
@@ -74,56 +79,17 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  cloudflare-preview:
-    name: Cloudflare Preview
+  targets:
+    name: Select deployment targets
     if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]'
-    needs: ci
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login != 'dependabot[bot]') ||
+      (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Checkout pull request head
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Deploy affected previews
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: >-
-          node tools/cloudflare/deploy.mjs preview
-          --base "${{ github.event.pull_request.base.sha }}"
-          --head "${{ github.event.pull_request.head.sha }}"
-          --pr "${{ github.event.pull_request.number }}"
-
-  cloudflare-production:
-    name: Cloudflare Production
-    if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      github.event_name == 'workflow_dispatch'
-    needs: ci
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -132,49 +98,95 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
+        if: github.event_name == 'pull_request'
         uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: npm
 
       - name: Install dependencies
+        if: github.event_name == 'pull_request'
         run: npm ci
 
-      - name: Check whether commit is current main
-        id: current-main
+      - name: Select targets
+        id: select
         env:
-          GH_TOKEN: ${{ github.token }}
-          EXPECTED_SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          NX_DAEMON: 'false'
         run: |
-          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
-
-          if [[ "$current_sha" == "$EXPECTED_SHA" ]]; then
-            echo "current=true" >> "$GITHUB_OUTPUT"
+          set -o pipefail
+          if [[ "$EVENT" != "pull_request" ]]; then
+            selected="$(jq -c . <<<"$DEPLOY_TARGETS")"
+          elif git diff --name-only "$BASE...$HEAD" | grep -qxE '\.github/workflows/(pr-main|deploy)\.yml'; then
+            echo "Deployment workflow changed; selecting all targets."
+            selected="$(jq -c . <<<"$DEPLOY_TARGETS")"
           else
-            echo "current=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping superseded production deployment: main is now $current_sha."
+            affected="$(npx nx show projects --affected --base="$BASE" --head="$HEAD" --withTarget=build --type=app --json | tail -n1 | jq -c .)"
+            selected="$(jq -c --argjson affected "$affected" \
+              '[ .[] | select(.key as $key | $affected | index($key) != null) ]' <<<"$DEPLOY_TARGETS")"
           fi
+          echo "Selected targets: $selected"
+          echo "matrix=$selected" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy production
-        if: steps.current-main.outputs.current == 'true'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: node tools/cloudflare/deploy.mjs production --sha "${{ github.sha }}"
+  preview:
+    name: Preview
+    needs: [ci, targets]
+    if: >-
+      github.event_name == 'pull_request' &&
+      needs.targets.outputs.matrix != '' &&
+      needs.targets.outputs.matrix != '[]'
+    permissions:
+      contents: read
+      deployments: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: preview
+      targets: ${{ needs.targets.outputs.matrix }}
+      ref: ${{ github.event.pull_request.head.sha }}
+      branch: ${{ github.event.pull_request.head.ref }}
+    secrets: inherit
+
+  production:
+    name: Production
+    needs: [ci, targets]
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main' &&
+      needs.targets.outputs.matrix != '' &&
+      needs.targets.outputs.matrix != '[]'
+    permissions:
+      contents: read
+      deployments: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      targets: ${{ needs.targets.outputs.matrix }}
+      ref: ${{ github.sha }}
+      branch: main
+    secrets: inherit
 
   pr-gate:
     name: PR Gate
-    if: ${{ always() && github.event_name == 'pull_request' }}
-    needs: [ci, cloudflare-preview]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    needs: [ci, targets, preview]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Verify required jobs
         env:
           CI_RESULT: ${{ needs.ci.result }}
-          PREVIEW_RESULT: ${{ needs.cloudflare-preview.result }}
+          TARGETS_RESULT: ${{ needs.targets.result }}
+          PREVIEW_RESULT: ${{ needs.preview.result }}
         run: |
           if [[ "$CI_RESULT" != "success" ]]; then
             echo "Validation result: $CI_RESULT"
+            exit 1
+          fi
+
+          if [[ "$TARGETS_RESULT" != "success" && "$TARGETS_RESULT" != "skipped" ]]; then
+            echo "Target selection result: $TARGETS_RESULT"
             exit 1
           fi
 

@@ -87,13 +87,6 @@
         "staticFilePath": "dist/samples/smart-home/angular/browser",
         "spa": true
       }
-    },
-    "deploy": {
-      "executor": "nx:run-commands",
-      "dependsOn": ["build:production"],
-      "options": {
-        "command": "npx wrangler pages deploy dist/samples/smart-home/angular/browser --commit-dirty=true"
-      }
     }
   }
 }
