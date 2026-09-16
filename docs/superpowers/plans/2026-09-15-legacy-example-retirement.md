@@ -5,6 +5,40 @@ Nx target, package, CI check, or deployed resource has been removed. Coverage
 relocation described below is still required before retiring Fast Food/Smart Home.
 Performance work remains deferred.
 
+## User scope revision — supersedes relocation proposals below
+
+The canonical example e2e project must own all coverage identified in this
+inventory, including the existing independent runtime smoke assertions. Do not
+create a separate permanent provider-fixture suite under tools/runtime-smoke.
+The earlier retain-in-place/extract-to-tools mapping below is historical evidence
+of current dependencies, not the approved destination.
+
+- Expand `samples/invoicing/e2e` to own the migrated deterministic framework,
+  provider/transport, application and live-model suites. Preserve each assertion
+  or record an explicit equivalent; moving tests does not justify weakening them.
+- Preserve React and Angular behavioral coverage within that project. The visible
+  application remains React; Angular can use an internal conformance host owned
+  by canonical e2e. Do not claim React/B4 runs prove Angular/native-adapter behavior.
+- Keep native OpenAI Node/Worker transport assertions alongside B4 application
+  coverage, using test-only hosts where the application has no equivalent path.
+- Re-enable bounded ledger-query and performance work as required canonical
+  scope. Define payload limits and measured latency criteria with answer-quality
+  checks; do not ship the full ledger to the model on every question.
+- Retire ALL Vox: `samples/react-vox-demo`, `packages/vox`, voice assets, aliases,
+  Nx configuration and exclusive dependencies. Vox tests retire with the feature;
+  they are not transplanted into invoicing. No package unpublishing or external
+  service deletion is implied.
+- Retire `samples/lambda-chat`, its Nx targets, Serverless configuration,
+  documentation references and exclusive dependencies, as explicitly requested.
+  AWS hosting is not required for the canonical example. Any deployed AWS
+  resources require separate inventory and decommissioning; do not invoke remove.
+- Library-local unit tests stay with their libraries; this consolidation concerns
+  the example/runtime smoke coverage inventoried here, not all repository tests.
+
+Next design: assertion-by-assertion migration matrix into canonical e2e, required
+application capabilities versus test-only hosts, bounded query/performance criteria,
+and staged removal. Existing tests continue running until their replacements pass.
+
 ## Scope and evidence
 
 Inventory uses tracked files (`git ls-files`), sample project manifests, source
@@ -32,8 +66,8 @@ remain supported independently.
 There are 18 tracked legacy project manifests across seven roots. Some targets
 are inferred by Nx plugins; an empty targets object does not establish that a
 project is unused. Do not include untracked `storybook-static/project.json` as a
-project. Lambda and Vox are inventoried but their distinct adapter/development
-roles should be explicitly resolved in the eventual deletion scope.
+project. Lambda and Vox are both explicitly included in repository retirement. Their
+configuration and exclusive dependencies must be included in the cleanup.
 
 ## CI and test ownership
 
@@ -156,7 +190,8 @@ canonical app. Review Serverless/Vox tooling independently; no lockfile edits ye
 
 - Coverage relocation complete and passing.
 - Canonical deployment verified and replacement docs/navigation prepared.
-- Explicit source scope for Lambda/Vox and platform recipes established.
+- Lambda/Vox source retirement is approved; verify exclusive dependencies and
+  remove references without decommissioning external resources.
 - Root manifest cleanup validated with npm ls and affected build/test/lint/e2e.
 - Hosted-resource/DNS inventory and redirect choices handled separately.
 

@@ -1,7 +1,8 @@
 # Bounded ledger queries for the invoicing example
 
-Status: deferred by user request. Revisit after the canonical application rollout
-and legacy-example cleanup planning. No runtime changes have been made.
+Status: required again by user scope revision. Bounded ledger access and
+performance verification are part of the expanded canonical example. No runtime
+changes have been made yet.
 
 ## Problem
 

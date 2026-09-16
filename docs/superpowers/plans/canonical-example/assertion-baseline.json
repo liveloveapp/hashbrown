@@ -1,0 +1,4400 @@
+{
+  "sourceCommit": "b44213e4b6e69efb1ccfeec9bdbcd3494cadbb06",
+  "note": "Static test declarations and expect/expect.poll calls, not expanded runtime case counts. Includes assertion helpers; browser hygiene assertions are also preserved with harness source. Migration requires equivalence review, not just matching counts.",
+  "files": [
+    {
+      "source": "samples/invoicing/e2e/live.spec.ts",
+      "destination": "samples/invoicing/e2e/live.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 4,
+          "name": "'seeded ledger supports questions, repeated approvals, cancellation and session isolation'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 12,
+          "expression": "expect(baseline.payments).toHaveLength(149)",
+          "id": "samples/invoicing/e2e/live.spec.ts:12:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 13,
+          "expression": "expect(baseline.invoices).toHaveLength(150)",
+          "id": "samples/invoicing/e2e/live.spec.ts:13:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 14,
+          "expression": "expect(baseline.allocations).toHaveLength(144)",
+          "id": "samples/invoicing/e2e/live.spec.ts:14:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 19,
+          "expression": "expect(message).toBeEnabled()",
+          "id": "samples/invoicing/e2e/live.spec.ts:19:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 25,
+          "expression": "expect(\n    page.getByRole('region', { name: 'Ledger conversation' }),\n  ).toContainText('13,900')",
+          "id": "samples/invoicing/e2e/live.spec.ts:25:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 28,
+          "expression": "expect(message).toBeEnabled()",
+          "id": "samples/invoicing/e2e/live.spec.ts:28:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 38,
+          "expression": "expect(message).toBeDisabled()",
+          "id": "samples/invoicing/e2e/live.spec.ts:38:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 43,
+          "expression": "expect(\n    page.getByText('Allocation applied.', { exact: true }),\n  ).toHaveCount(1)",
+          "id": "samples/invoicing/e2e/live.spec.ts:43:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 46,
+          "expression": "expect(message).toBeEnabled()",
+          "id": "samples/invoicing/e2e/live.spec.ts:46:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 49,
+          "expression": "expect(applied.allocations).toHaveLength(145)",
+          "id": "samples/invoicing/e2e/live.spec.ts:49:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 50,
+          "expression": "expect(\n    applied.payments.find((p) => p.id === 'payment-northstar-exact')\n      ?.unappliedCents,\n  ).toBe(0)",
+          "id": "samples/invoicing/e2e/live.spec.ts:50:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 60,
+          "expression": "expect(\n    page.getByRole('region', {\n      name: 'Payment review chat',\n      exact: true,\n      includeHidden: true,\n    }),\n  ).toHaveCount(2)",
+          "id": "samples/invoicing/e2e/live.spec.ts:60:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 67,
+          "expression": "expect(\n    page.getByRole('button', { name: 'Decline', exact: true }).last(),\n  ).toBeEnabled()",
+          "id": "samples/invoicing/e2e/live.spec.ts:67:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 75,
+          "expression": "expect(\n    page.getByText('Review cancelled. No allocation was requested.', {\n      exact: true,\n    }),\n  ).toBeVisible()",
+          "id": "samples/invoicing/e2e/live.spec.ts:75:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 80,
+          "expression": "expect(message).toBeEnabled()",
+          "id": "samples/invoicing/e2e/live.spec.ts:80:15",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 81,
+          "expression": "expect((await snapshot()).allocations).toHaveLength(145)",
+          "id": "samples/invoicing/e2e/live.spec.ts:81:16",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 86,
+          "expression": "expect(\n    page.getByRole('region', {\n      name: 'Payment review chat',\n      exact: true,\n      includeHidden: true,\n    }),\n  ).toHaveCount(3)",
+          "id": "samples/invoicing/e2e/live.spec.ts:86:17",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 93,
+          "expression": "expect(\n    page.getByRole('button', { name: 'Approve and apply', exact: true }).last(),\n  ).toBeEnabled()",
+          "id": "samples/invoicing/e2e/live.spec.ts:93:18",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 100,
+          "expression": "expect(\n    page.getByText('Allocation applied.', { exact: true }),\n  ).toHaveCount(2)",
+          "id": "samples/invoicing/e2e/live.spec.ts:100:19",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 103,
+          "expression": "expect(message).toBeEnabled()",
+          "id": "samples/invoicing/e2e/live.spec.ts:103:20",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 105,
+          "expression": "expect(final.allocations).toHaveLength(146)",
+          "id": "samples/invoicing/e2e/live.spec.ts:105:21",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 106,
+          "expression": "expect(\n    final.payments.find((p) => p.id === 'payment-cedar-partial')\n      ?.unappliedCents,\n  ).toBe(0)",
+          "id": "samples/invoicing/e2e/live.spec.ts:106:22",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 110,
+          "expression": "expect(\n    final.invoices.find((i) => i.id === 'invoice-cedar-partial')\n      ?.outstandingCents,\n  ).toBe(300000)",
+          "id": "samples/invoicing/e2e/live.spec.ts:110:23",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 120,
+          "expression": "expect(message).toBeEnabled()",
+          "id": "samples/invoicing/e2e/live.spec.ts:120:24",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 121,
+          "expression": "expect(page.locator('.assistant-answer').last()).toContainText(\n    /\\b(?:3|three)\\b/i,\n  )",
+          "id": "samples/invoicing/e2e/live.spec.ts:121:25",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 134,
+          "expression": "expect(\n      ((await isolated.json()) as LedgerSnapshot).allocations,\n    ).toHaveLength(144)",
+          "id": "samples/invoicing/e2e/live.spec.ts:134:26",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 138,
+          "expression": "expect(operation).toBeTruthy()",
+          "id": "samples/invoicing/e2e/live.spec.ts:138:27",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 139,
+          "expression": "expect(\n      (\n        await other.request.get(\n          `http://127.0.0.1:4326/api/operations/${operation}`,\n        )\n      ).status(),\n    ).toBe(404)",
+          "id": "samples/invoicing/e2e/live.spec.ts:139:28",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "samples/invoicing/e2e/workflow.spec.ts",
+      "destination": "samples/invoicing/e2e/workflow.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 9,
+          "name": "'ambiguous and combined payments require an explicit invoice choice'"
+        },
+        {
+          "line": 49,
+          "name": "'advance payment cannot start a review without an outstanding invoice'"
+        },
+        {
+          "line": 74,
+          "name": "'failed review releases chat and retries with a fresh thread without changing the ledger'"
+        },
+        {
+          "line": 129,
+          "name": "'lost approval response holds further work until the committed operation is reconciled'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 26,
+          "expression": "expect(\n    page.getByRole('button', { name: 'Match payment', exact: true }),\n  ).toBeDisabled()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:26:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 30,
+          "expression": "expect(\n    page.getByRole('button', { name: 'Match payment', exact: true }),\n  ).toBeEnabled()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:30:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 40,
+          "expression": "expect(page.getByRole('combobox')).toHaveValue('')",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:40:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 41,
+          "expression": "expect(\n    page.getByRole('button', { name: 'Match payment', exact: true }),\n  ).toBeDisabled()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:41:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 44,
+          "expression": "expect(page.getByRole('combobox').locator('option')).toHaveCount(3)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:44:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 45,
+          "expression": "expect(agentRequests).toEqual([])",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:45:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 46,
+          "expression": "expect(await snapshot(page)).toEqual(baseline)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:46:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 64,
+          "expression": "expect(\n    page.getByRole('button', { name: 'Match payment', exact: true }),\n  ).toBeDisabled()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:64:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 67,
+          "expression": "expect(\n    page.getByRole('textbox', { name: 'Message assistant', exact: true }),\n  ).toBeEnabled()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:67:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 70,
+          "expression": "expect(requests).toEqual([])",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:70:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 71,
+          "expression": "expect(await snapshot(page)).toEqual(baseline)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:71:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 93,
+          "expression": "expect(\n    page.getByText(\n      'No allocation proposal was completed. You can start another review.',\n      { exact: true },\n    ),\n  ).toHaveCount(1)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:93:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 99,
+          "expression": "expect(\n    page.getByRole('textbox', { name: 'Message assistant', exact: true }),\n  ).toBeEnabled()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:99:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 105,
+          "expression": "expect(\n    page.getByText(\n      'No allocation proposal was completed. You can start another review.',\n      { exact: true },\n    ),\n  ).toHaveCount(2)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:105:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 112,
+          "expression": "expect(\n    page.getByRole('textbox', { name: 'Message assistant', exact: true }),\n  ).toBeEnabled()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:112:15",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 115,
+          "expression": "expect(new Set(requests.map((request) => request.threadId)).size).toBe(2)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:115:16",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 116,
+          "expression": "expect(\n    requests.every(\n      (request) =>\n        request.state.selectedPaymentId === 'payment-northstar-exact' &&\n        request.state.selectedInvoiceId === 'invoice-northstar-exact',\n    ),\n  ).toBe(true)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:116:17",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 123,
+          "expression": "expect(\n    page.getByRole('button', { name: 'Approve and apply', exact: true }),\n  ).toHaveCount(0)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:123:18",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 126,
+          "expression": "expect(await snapshot(page)).toEqual(baseline)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:126:19",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 143,
+          "expression": "expect(response.status()).toBe(200)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:143:20",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 173,
+          "expression": "expect(\n    page.getByRole('button', { name: 'Check allocation result', exact: true }),\n  ).toBeVisible()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:173:21",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 177,
+          "expression": "expect(committed.allocations).toHaveLength(baseline.allocations.length + 1)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:177:22",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 178,
+          "expression": "expect(committed.activities).toHaveLength(baseline.activities.length + 1)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:178:23",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 179,
+          "expression": "expect(\n    page.getByText('Allocation applied.', { exact: true }),\n  ).toHaveCount(0)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:179:24",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 182,
+          "expression": "expect(\n    page.getByRole('textbox', { name: 'Message assistant', exact: true }),\n  ).toBeDisabled()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:182:25",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 191,
+          "expression": "expect(\n    page.getByRole('region', { name: 'Payment review chat', exact: true }),\n  ).toHaveCount(1)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:191:26",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 200,
+          "expression": "expect(\n    page.getByText('Allocation applied.', { exact: true }),\n  ).toBeVisible()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:200:27",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 203,
+          "expression": "expect(\n    page.getByRole('textbox', { name: 'Message assistant', exact: true }),\n  ).toBeEnabled()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:203:28",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 206,
+          "expression": "expect(\n    page.getByRole('region', { name: 'Ledger totals', exact: true }),\n  ).toContainText('$11,500.00')",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:206:29",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 209,
+          "expression": "expect(resumeRequests).toBe(1)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:209:30",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 210,
+          "expression": "expect(operationReads).toBeGreaterThanOrEqual(2)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:210:31",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 211,
+          "expression": "expect(await snapshot(page)).toEqual(committed)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:211:32",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 212,
+          "expression": "expect(\n    committed.payments.find(\n      (payment) => payment.id === 'payment-northstar-exact',\n    )?.unappliedCents,\n  ).toBe(0)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:212:33",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 217,
+          "expression": "expect(\n    committed.invoices.find(\n      (invoice) => invoice.id === 'invoice-northstar-exact',\n    )?.outstandingCents,\n  ).toBe(0)",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:217:34",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 222,
+          "expression": "expect(\n    page.getByRole('button', { name: 'Approve and apply', exact: true }),\n  ).toBeDisabled()",
+          "id": "samples/invoicing/e2e/workflow.spec.ts:222:35",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts",
+      "destination": "samples/invoicing/e2e/provider/native-ui.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 11,
+          "name": "`${toolRound ? 'applies a light change and continues' : 'renders trusted UI'} through the real Smart Home server and OpenAI adapter`"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 91,
+          "expression": "expect(page.locator('.grid-cols-7')).toHaveCSS('display', 'grid')",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:91:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 104,
+          "expression": "expect.poll(() => requests.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:104:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 109,
+          "expression": "expect(light.locator('input')).toHaveValue('37')",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:109:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 111,
+          "expression": "expect(page.getByText('37%', { exact: true })).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:111:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 113,
+          "expression": "expect(\n          page.getByText('Example fixture rendered successfully.', {\n            exact: true,\n          }),\n        ).toHaveCount(0)",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:113:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 120,
+          "expression": "expect(\n        page.getByText('Example fixture rendered successfully.', {\n          exact: true,\n        }),\n      ).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:120:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 126,
+          "expression": "expect(\n          page.locator('app-chat-panel mat-progress-bar'),\n        ).toHaveCount(0)",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:126:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 130,
+          "expression": "expect(\n          page.getByRole('button', { name: 'Send', exact: true }),\n        ).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:130:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 135,
+          "expression": "expect(response.status()).toBe(200)",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:135:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 136,
+          "expression": "expect(response.headers()['content-type']).toContain('text/event-stream')",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:136:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 137,
+          "expression": "expect(requests).toHaveLength(toolRound ? 2 : 1)",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:137:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 138,
+          "expression": "expect(requests[0]).not.toHaveProperty('model')",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:138:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 139,
+          "expression": "expect(requests[0]['hashbrown']).toMatchObject({\n        ui: true,\n        responseSchema: expect.any(Object),\n      })",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:139:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 143,
+          "expression": "expect(mock.getRequests()).toHaveLength(toolRound ? 2 : 1)",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:143:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 144,
+          "expression": "expect(\n        mock.getRequests().every((entry) => entry.response.status === 200),\n      ).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:144:15",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 147,
+          "expression": "expect(mock.getRequests()[0].body).toMatchObject({\n        model: 'gpt-4.1-mini',\n        stream: true,\n        response_format: {\n          type: 'json_schema',\n          json_schema: {\n            strict: true,\n            schema: requests[0].hashbrown?.responseSchema,\n          },\n        },\n      })",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:147:16",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 159,
+          "expression": "expect(requests[1]['threadId']).toBe(requests[0]['threadId'])",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:159:17",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 160,
+          "expression": "expect(requests[1]['messages']).toEqual(\n          expect.arrayContaining([\n            expect.objectContaining({\n              role: 'tool',\n              toolCallId: 'sample-control',\n            }),\n          ]),\n        )",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:160:18",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 168,
+          "expression": "expect(\n          mock\n            .getRequests()[1]\n            .body?.messages.filter((message) => message.role === 'tool'),\n        ).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:168:19",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 174,
+          "expression": "expect(errors).toEqual([])",
+          "id": "tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts:174:20",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/harness/agui.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/harness/agui.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 58,
+          "name": "'creates deterministic text events with request identity and one terminal'"
+        },
+        {
+          "line": 112,
+          "name": "'creates deterministic run-error events without a success terminal'"
+        },
+        {
+          "line": 135,
+          "name": "'registers request-specific events and captures cloned matching inputs'"
+        },
+        {
+          "line": 251,
+          "name": "'keeps overlapping delayed aimock streams bound to their request identity'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 66,
+          "expression": "expect(events).toEqual([\n    {\n      type: EventType.RUN_STARTED,\n      threadId: 'thread-text',\n      runId: 'run-text',\n      timestamp: 1_700_000_000_000,\n    },\n    {\n      type: EventType.TEXT_MESSAGE_START,\n      messageId: 'message-text',\n      role: 'assistant',\n      timestamp: 1_700_000_000_001,\n    },\n    {\n      type: EventType.TEXT_MESSAGE_CONTENT,\n      messageId: 'message-text',\n      delta: 'Hello',\n      timestamp: 1_700_000_000_002,\n    },\n    {\n      type: EventType.TEXT_MESSAGE_CONTENT,\n      messageId: 'message-text',\n      delta: ' world',\n      timestamp: 1_700_000_000_003,\n    },\n    {\n      type: EventType.TEXT_MESSAGE_END,\n      messageId: 'message-text',\n      timestamp: 1_700_000_000_004,\n    },\n    {\n      type: EventType.RUN_FINISHED,\n      threadId: 'thread-text',\n      runId: 'run-text',\n      timestamp: 1_700_000_000_005,\n    },\n  ])",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:66:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 103,
+          "expression": "expect(\n    events.filter(\n      (event) =>\n        event.type === EventType.RUN_FINISHED ||\n        event.type === EventType.RUN_ERROR,\n    ),\n  ).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:103:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 117,
+          "expression": "expect(events).toEqual([\n    {\n      type: EventType.RUN_STARTED,\n      threadId: 'thread-error',\n      runId: 'run-error',\n      timestamp: 1_700_000_000_000,\n    },\n    {\n      type: EventType.RUN_ERROR,\n      message: 'Deterministic failure',\n      timestamp: 1_700_000_000_001,\n    },\n  ])",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:117:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 130,
+          "expression": "expect(events.some((event) => event.type === EventType.RUN_FINISHED)).toBe(\n    false,\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:130:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 196,
+          "expression": "expect(didMatchNonMatchingInput).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:196:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 197,
+          "expression": "expect(capturedInputs).toEqual([])",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:197:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 198,
+          "expression": "expect(attemptedInputs).toEqual([nonMatchingInput])",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:198:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 199,
+          "expression": "expect(events).toEqual([])",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:199:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 203,
+          "expression": "expect(didMatchFirstInput).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:203:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 204,
+          "expression": "expect(events).toEqual(\n    createTextRunEvents(\n      firstInput,\n      'message-0',\n      ['response-run-one'],\n      1_700_000_001_000,\n    ),\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:204:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 216,
+          "expression": "expect(didMatchSecondInput).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:216:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 217,
+          "expression": "expect(events).not.toEqual(firstEvents)",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:217:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 218,
+          "expression": "expect(events).toEqual(\n    createTextRunEvents(\n      secondInput,\n      'message-1',\n      ['response-run-two'],\n      1_700_000_001_100,\n    ),\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:218:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 226,
+          "expression": "expect(predicateCalls).toEqual([\n    { threadId: 'ignore', requestIndex: 0 },\n    { threadId: 'match-one', requestIndex: 0 },\n    { threadId: 'match-two', requestIndex: 1 },\n  ])",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:226:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 231,
+          "expression": "expect(createEventsCalls).toEqual([\n    { input: firstInput, requestIndex: 0 },\n    { input: secondInput, requestIndex: 1 },\n  ])",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:231:15",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 235,
+          "expression": "expect(capturedInputs).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:235:16",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 236,
+          "expression": "expect(capturedInputs[0]).not.toBe(firstInput)",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:236:17",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 237,
+          "expression": "expect(attemptedInputs).toEqual([nonMatchingInput, firstInput, secondInput])",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:237:18",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 238,
+          "expression": "expect(attemptedInputs[1]).not.toBe(firstInput)",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:238:19",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 239,
+          "expression": "expect(registeredDelayMs).toBe(25)",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:239:20",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 243,
+          "expression": "expect(capturedInputs[0]?.state).toEqual({\n    nested: { value: 'original' },\n  })",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:243:21",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 246,
+          "expression": "expect(attemptedInputs[1]?.state).toEqual({\n    nested: { value: 'original' },\n  })",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:246:22",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 312,
+          "expression": "expect(firstEvents).toEqual(createIdentityEvents(firstInput, 0))",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:312:23",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 313,
+          "expression": "expect(secondEvents).toEqual(createIdentityEvents(secondInput, 1))",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:313:24",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 314,
+          "expression": "expect(capturedInputs).toEqual([firstInput, secondInput])",
+          "id": "tools/runtime-smoke/e2e/harness/agui.spec.ts:314:25",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/harness/aimock-worker.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 17,
+          "name": "'stops aimock after worker body succeeds'"
+        },
+        {
+          "line": 39,
+          "name": "'stops aimock after worker body fails and preserves the exact body error'"
+        },
+        {
+          "line": 55,
+          "name": "'surfaces a shutdown failure after a successful body'"
+        },
+        {
+          "line": 71,
+          "name": "'preserves body failure while awaiting a rejected shutdown'"
+        },
+        {
+          "line": 112,
+          "name": "'makes teardown idempotent when the body stops twice and the finalizer runs'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 33,
+          "expression": "expect(events).toEqual(['use', 'stop'])",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:33:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 34,
+          "expression": "expect(workerHandle?.stop).toEqual(expect.any(Function))",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:34:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 35,
+          "expression": "expect(workerHandle?.stop).not.toBe(originalStop)",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:35:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 36,
+          "expression": "expect(originalStop).toHaveBeenCalledTimes(1)",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:36:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 51,
+          "expression": "expect(result).rejects.toBe(bodyError)",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:51:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 52,
+          "expression": "expect(stop).toHaveBeenCalledTimes(1)",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:52:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 67,
+          "expression": "expect(result).rejects.toBe(shutdownError)",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:67:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 68,
+          "expression": "expect(stop).toHaveBeenCalledTimes(1)",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:68:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 104,
+          "expression": "expect(stop).toHaveBeenCalledTimes(1)",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:104:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 105,
+          "expression": "expect(settled).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:105:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 109,
+          "expression": "expect(result).rejects.toBe(bodyError)",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:109:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 124,
+          "expression": "expect(stop).toHaveBeenCalledTimes(1)",
+          "id": "tools/runtime-smoke/e2e/harness/aimock-worker.spec.ts:124:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/harness/browser.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/harness/browser.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 59,
+          "name": "'consumes each exact browser hygiene allowance once'"
+        },
+        {
+          "line": 92,
+          "name": "'reports a browser hygiene allowance that was not consumed'"
+        },
+        {
+          "line": 108,
+          "name": "'reports a browser hygiene allowance consumed more than once'"
+        },
+        {
+          "line": 127,
+          "name": "'rejects an ambiguous allowance match before a broad-only event'"
+        },
+        {
+          "line": 152,
+          "name": "'rejects an ambiguous allowance match after a broad-only event'"
+        },
+        {
+          "line": 177,
+          "name": "'reports a completely unmatched browser event as unexpected'"
+        },
+        {
+          "line": 196,
+          "name": "'ignores only a request failure accepted by the terminal matcher'"
+        },
+        {
+          "line": 213,
+          "name": "'waits for a pending POST failure before asserting hygiene'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 89,
+          "expression": "expect(hygiene.assertClean()).resolves.toBeUndefined()",
+          "id": "tools/runtime-smoke/e2e/harness/browser.spec.ts:89:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 103,
+          "expression": "expect(hygiene.assertClean()).rejects.toThrow(\n    'Expected request failure allowance \"cancelled run\" exactly once, observed 0',\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/browser.spec.ts:103:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 122,
+          "expression": "expect(hygiene.assertClean()).rejects.toThrow(\n    'Expected request failure allowance \"cancelled run\" exactly once, observed 2',\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/browser.spec.ts:122:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 147,
+          "expression": "expect(hygiene.assertClean()).rejects.toThrow(\n    'Ambiguous request failure allowance match: \"all POST failures\", \"cancelled run\"',\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/browser.spec.ts:147:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 172,
+          "expression": "expect(hygiene.assertClean()).rejects.toThrow(\n    'Ambiguous request failure allowance match: \"all POST failures\", \"cancelled run\"',\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/browser.spec.ts:172:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 191,
+          "expression": "expect(hygiene.assertClean()).rejects.toThrow(\n    'Request failed: POST http://127.0.0.1:4100/run (net::ERR_FAILED)',\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/browser.spec.ts:191:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 208,
+          "expression": "expect(hygiene.assertClean()).rejects.toThrow(\n    'Request failed: POST http://127.0.0.1:4100/run (net::ERR_ABORTED)',\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/browser.spec.ts:208:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 223,
+          "expression": "expect(assertion).rejects.toThrow(\n    'Request failed: POST http://127.0.0.1:4100/run (net::ERR_FAILED)',\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/browser.spec.ts:223:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/harness/event-gate.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/harness/event-gate.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 3,
+          "name": "'holds events until their index is explicitly released'"
+        },
+        {
+          "line": 22,
+          "name": "'aborting a gate rejects pending and future waits'"
+        },
+        {
+          "line": 34,
+          "name": "'unreleased gates time out instead of leaking pending work'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 14,
+          "expression": "expect(delivered).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/harness/event-gate.spec.ts:14:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 17,
+          "expression": "expect(delivered).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/harness/event-gate.spec.ts:17:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 26,
+          "expression": "expect(waiting).rejects.toThrow('aborted')",
+          "id": "tools/runtime-smoke/e2e/harness/event-gate.spec.ts:26:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 31,
+          "expression": "expect(gate.wait(0, controller.signal)).rejects.toThrow('aborted')",
+          "id": "tools/runtime-smoke/e2e/harness/event-gate.spec.ts:31:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 39,
+          "expression": "expect(waiting).rejects.toThrow('Timed out waiting for event 0')",
+          "id": "tools/runtime-smoke/e2e/harness/event-gate.spec.ts:39:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/harness/independent-endpoint.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 20,
+          "name": "`does not record absent or mismatched terminal ${JSON.stringify(terminal)}`"
+        },
+        {
+          "line": 40,
+          "name": "'gated HTTP delivery exposes a partial body before the terminal is released'"
+        },
+        {
+          "line": 94,
+          "name": "'stopping the endpoint aborts a blocked delivery gate'"
+        },
+        {
+          "line": 127,
+          "name": "'client disconnect aborts a blocked gate without recording a terminal'"
+        },
+        {
+          "line": 165,
+          "name": "'standard endpoint parses canonical input without depending on vendor fields'"
+        },
+        {
+          "line": 211,
+          "name": "'extension-aware parsing retains and validates the response schema and UI flag'"
+        },
+        {
+          "line": 239,
+          "name": "'invalid canonical requests fail before SSE headers or event generation'"
+        },
+        {
+          "line": 259,
+          "name": "'extension endpoint rejects a missing schema rather than silently stripping it'"
+        },
+        {
+          "line": 279,
+          "name": "'endpoint handles cross-origin preflight and repeated cleanup'"
+        },
+        {
+          "line": 296,
+          "name": "'malformed JSON is rejected without invoking the fixture'"
+        },
+        {
+          "line": 311,
+          "name": "'fixture errors return JSON before starting the event stream'"
+        },
+        {
+          "line": 332,
+          "name": "'unsupported paths and methods cannot invoke event generation'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 33,
+          "expression": "expect(endpoint.consumeTerminalRun(input.runId)).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:33:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 75,
+          "expression": "expect(partial).toContain('RUN_STARTED')",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:75:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 76,
+          "expression": "expect(partial).not.toContain('RUN_FINISHED')",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:76:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 77,
+          "expression": "expect(endpoint.consumeTerminalRun(input.runId)).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:77:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 86,
+          "expression": "expect(rest).toContain('RUN_FINISHED')",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:86:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 87,
+          "expression": "expect(endpoint.consumeTerminalRun(input.runId)).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:87:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 88,
+          "expression": "expect(endpoint.consumeTerminalRun(input.runId)).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:88:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 120,
+          "expression": "expect(signal?.aborted).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:120:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 156,
+          "expression": "expect(observedAbort).toBeDefined()",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:156:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 159,
+          "expression": "expect(endpoint.consumeTerminalRun(input.runId)).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:159:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 196,
+          "expression": "expect(response.status).toBe(200)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:196:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 197,
+          "expression": "expect(endpoint.consumeTerminalRun('different-run')).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:197:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 198,
+          "expression": "expect(endpoint.consumeTerminalRun(input.runId)).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:198:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 199,
+          "expression": "expect(endpoint.consumeTerminalRun(input.runId)).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:199:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 200,
+          "expression": "expect(response.headers.get('content-type')).toContain('text/event-stream')",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:200:15",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 201,
+          "expression": "expect(endpoint.inputs).toEqual([input])",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:201:16",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 202,
+          "expression": "expect(events.map((event) => event.type)).toEqual([\n      EventType.RUN_STARTED,\n      EventType.RUN_FINISHED,\n    ])",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:202:17",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 232,
+          "expression": "expect(response.status).toBe(200)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:232:18",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 233,
+          "expression": "expect(endpoint.inputs[0].hashbrown).toEqual(extension)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:233:19",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 249,
+          "expression": "expect(response.status).toBe(400)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:249:20",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 250,
+          "expression": "expect(response.headers.get('content-type')).toContain('application/json')",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:250:21",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 251,
+          "expression": "expect(await response.json()).toEqual({ error: 'Invalid run input' })",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:251:22",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 252,
+          "expression": "expect(endpoint.inputs).toEqual([])",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:252:23",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 253,
+          "expression": "expect(events).not.toHaveBeenCalled()",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:253:24",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 271,
+          "expression": "expect(response.status).toBe(400)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:271:25",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 272,
+          "expression": "expect(endpoint.inputs).toEqual([])",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:272:26",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 285,
+          "expression": "expect(response.status).toBe(204)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:285:27",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 286,
+          "expression": "expect(response.headers.get('access-control-allow-methods')).toContain(\n      'POST',\n    )",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:286:28",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 289,
+          "expression": "expect(endpoint.inputs).toEqual([])",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:289:29",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 303,
+          "expression": "expect(response.status).toBe(400)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:303:30",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 304,
+          "expression": "expect(await response.json()).toEqual({ error: 'Invalid run input' })",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:304:31",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 305,
+          "expression": "expect(events).not.toHaveBeenCalled()",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:305:32",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 324,
+          "expression": "expect(response.status).toBe(500)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:324:33",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 325,
+          "expression": "expect(response.headers.get('content-type')).toContain('application/json')",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:325:34",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 326,
+          "expression": "expect(await response.json()).toEqual({ error: 'Invalid fixture events' })",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:326:35",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 342,
+          "expression": "expect(missing.status).toBe(404)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:342:36",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 343,
+          "expression": "expect(method.status).toBe(405)",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:343:37",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 344,
+          "expression": "expect(events).not.toHaveBeenCalled()",
+          "id": "tools/runtime-smoke/e2e/harness/independent-endpoint.spec.ts:344:38",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts",
+      "destination": "samples/invoicing/e2e/provider/routes.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 55,
+          "name": "'OpenAI Express route streams canonical AG-UI SSE to HttpTransport'"
+        },
+        {
+          "line": 145,
+          "name": "'OpenAI worker route streams canonical AG-UI SSE to HttpTransport'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 93,
+          "expression": "expect(observedContentType).toMatch(/^text\\/event-stream(?:;|$)/)",
+          "id": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts:93:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 94,
+          "expression": "expect(events).toEqual([\n      {\n        type: EventType.RUN_STARTED,\n        threadId: 'express-thread',\n        runId: 'express-run',\n      },\n      {\n        type: EventType.TEXT_MESSAGE_START,\n        messageId: 'express-run:assistant',\n        role: 'assistant',\n      },\n      {\n        type: EventType.TEXT_MESSAGE_CONTENT,\n        messageId: 'express-run:assistant',\n        delta: 'Hello from aimock.',\n      },\n      {\n        type: EventType.TEXT_MESSAGE_END,\n        messageId: 'express-run:assistant',\n      },\n      {\n        type: EventType.RUN_FINISHED,\n        threadId: 'express-thread',\n        runId: 'express-run',\n      },\n    ])",
+          "id": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts:94:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 176,
+          "expression": "expect(observedContentType).toMatch(/^text\\/event-stream(?:;|$)/)",
+          "id": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts:176:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 177,
+          "expression": "expect(events.map((event) => event.type)).toEqual([\n      EventType.RUN_STARTED,\n      EventType.TEXT_MESSAGE_START,\n      EventType.TEXT_MESSAGE_CONTENT,\n      EventType.TEXT_MESSAGE_END,\n      EventType.RUN_FINISHED,\n    ])",
+          "id": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts:177:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 184,
+          "expression": "expect(events.at(2)).toMatchObject({\n      type: EventType.TEXT_MESSAGE_CONTENT,\n      delta: 'Hello from aimock.',\n    })",
+          "id": "tools/runtime-smoke/e2e/harness/openai-route.spec.ts:184:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts",
+      "destination": "samples/invoicing/e2e/provider/routes.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 19,
+          "name": "'Smart Home serves AG-UI through its native provider without process environment mutation'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 53,
+          "expression": "expect(response.status).toBe(200)",
+          "id": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts:53:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 54,
+          "expression": "expect(response.headers.get('content-type')).toContain('text/event-stream')",
+          "id": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts:54:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 55,
+          "expression": "expect(events[0]).toEqual({\n      type: EventType.RUN_STARTED,\n      threadId: 'sample-thread',\n      runId: 'sample-run',\n    })",
+          "id": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts:55:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 60,
+          "expression": "expect(events.at(-1)).toEqual({\n      type: EventType.RUN_FINISHED,\n      threadId: 'sample-thread',\n      runId: 'sample-run',\n    })",
+          "id": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts:60:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 65,
+          "expression": "expect(events).toContainEqual(\n      expect.objectContaining({\n        type: EventType.TEXT_MESSAGE_CONTENT,\n        delta: 'Hello from aimock.',\n      }),\n    )",
+          "id": "tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts:65:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/harness/terminal-response.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 31,
+          "name": "'forwards a complete terminal SSE frame before closing exactly once'"
+        },
+        {
+          "line": 51,
+          "name": "'does not close for an incomplete terminal SSE frame'"
+        },
+        {
+          "line": 63,
+          "name": "'parses all data lines as one SSE payload before detecting a terminal'"
+        },
+        {
+          "line": 79,
+          "name": "'leaves a nonterminal SSE response open until the server ends it'"
+        },
+        {
+          "line": 95,
+          "name": "'matches only a terminal accepted for the active run identity'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 43,
+          "expression": "expect(writeResult).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:43:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 44,
+          "expression": "expect(fake.writes).toEqual([])",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:44:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 45,
+          "expression": "expect(fake.endCalls).toEqual([[terminalFrame]])",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:45:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 46,
+          "expression": "expect(terminalEvents).toEqual([\n    { type: 'RUN_FINISHED', threadId: 'thread', runId: 'run' },\n  ])",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:46:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 59,
+          "expression": "expect(fake.writes).toEqual([incompleteTerminalFrame])",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:59:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 60,
+          "expression": "expect(fake.endCalls).toEqual([])",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:60:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 75,
+          "expression": "expect(fake.writes).toEqual([invalidMultilineFrame])",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:75:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 76,
+          "expression": "expect(fake.endCalls).toEqual([])",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:76:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 87,
+          "expression": "expect(fake.writes).toEqual([contentFrame])",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:87:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 88,
+          "expression": "expect(fake.endCalls).toEqual([])",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:88:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 92,
+          "expression": "expect(fake.endCalls).toEqual([['done']])",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:92:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 98,
+          "expression": "expect(\n    terminalEventMatchesRun(\n      {\n        type: EventType.RUN_FINISHED,\n        threadId: 'thread',\n        runId: 'run',\n      },\n      identity,\n    ),\n  ).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:98:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 108,
+          "expression": "expect(\n    terminalEventMatchesRun(\n      {\n        type: EventType.RUN_FINISHED,\n        threadId: 'thread',\n        runId: 'other',\n      },\n      identity,\n    ),\n  ).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:108:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 118,
+          "expression": "expect(terminalEventMatchesRun({ type: EventType.RUN_ERROR }, identity)).toBe(\n    true,\n  )",
+          "id": "tools/runtime-smoke/e2e/harness/terminal-response.spec.ts:118:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/cancellation.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 16,
+          "name": "'cancels a partial response and recovers on an explicit send'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 65,
+          "expression": "expect(driver.assistant()).toHaveJSProperty('textContent', 'Accepted')",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:65:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 70,
+          "expression": "expect.poll(() => attempted.length).toBe(1)",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:70:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 71,
+          "expression": "expect(captured).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:71:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 72,
+          "expression": "expect(driver.assistant()).not.toContainText('late')",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:72:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 77,
+          "expression": "expect.poll(() => attempted.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:77:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 78,
+          "expression": "expect.poll(() => captured.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:78:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 79,
+          "expression": "expect(driver.assistant()).toHaveJSProperty(\n    'textContent',\n    'Recovered.',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:79:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 84,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:84:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 85,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:85:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 86,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:86:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 87,
+          "expression": "expect(attempted).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:87:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 88,
+          "expression": "expect(captured).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:88:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 93,
+          "expression": "expect(secondInput.threadId).toBe(firstInput.threadId)",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:93:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 94,
+          "expression": "expect(secondInput.runId).not.toBe(firstInput.runId)",
+          "id": "tools/runtime-smoke/e2e/specs/cancellation.spec.ts:94:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/endpoint-interop.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 30,
+          "name": "`independent HTTP endpoint supports ${scenario}`"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 92,
+          "expression": "expect(page.getByTestId('fixture-ready')).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:92:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 97,
+          "expression": "expect(driver.structuredAnswer()).toHaveText('Ready')",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:97:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 98,
+          "expression": "expect(driver.structuredCount()).toHaveText('2')",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:98:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 100,
+          "expression": "expect(driver.statusCard()).toHaveText('Ready: 2')",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:100:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 102,
+          "expression": "expect(driver.assistant()).toHaveText('Ready')",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:102:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 105,
+          "expression": "expect(driver.error()).toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:105:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 106,
+          "expression": "expect(driver.sendingError()).toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:106:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 107,
+          "expression": "expect(driver.generatingError()).toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:107:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 108,
+          "expression": "expect(endpoint.inputs).toHaveLength(scenario === 'tool' ? 2 : 1)",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:108:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 110,
+          "expression": "expect(first.messages).toContainEqual(\n        expect.objectContaining({ role: 'user', content: 'Show status' }),\n      )",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:110:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 114,
+          "expression": "expect(first.hashbrown?.responseSchema).toMatchObject({\n          type: 'object',\n          additionalProperties: false,\n          required: scenario === 'ui' ? ['ui'] : ['count', 'answer'],\n          properties:\n            scenario === 'ui'\n              ? {\n                  ui: {\n                    type: 'array',\n                    items: {\n                      anyOf: [\n                        {\n                          type: 'object',\n                          required: ['status'],\n                          additionalProperties: false,\n                          properties: {\n                            status: {\n                              type: 'object',\n                              required: ['props'],\n                              additionalProperties: false,\n                              properties: {\n                                props: {\n                                  type: 'object',\n                                  required: ['count', 'title'],\n                                  additionalProperties: false,\n                                  properties: {\n                                    title: { type: 'string' },\n                                    count: { type: 'number' },\n                                  },\n                                },\n                              },\n                            },\n                          },\n                        },\n                      ],\n                    },\n                  },\n                }\n              : {\n                  answer: { type: 'string', description: 'Answer text' },\n                  count: { type: 'number', description: 'Result count' },\n                },\n        })",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:114:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 157,
+          "expression": "expect(first.hashbrown?.ui).toBe(scenario === 'ui' ? true : undefined)",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:157:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 159,
+          "expression": "expect(first).not.toHaveProperty('hashbrown')",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:159:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 162,
+          "expression": "expect(driver.toolCount()).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:162:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 165,
+          "expression": "expect(input.tools).toEqual([\n            {\n              name: 'getWeather',\n              description: 'Get the current weather for a city.',\n              parameters: {\n                $schema: 'http://json-schema.org/draft-07/schema#',\n                type: 'object',\n                description: 'Weather lookup',\n                properties: {\n                  city: {\n                    type: 'string',\n                    description: 'The city to get weather for',\n                  },\n                },\n                required: ['city'],\n                additionalProperties: false,\n              },\n            },\n          ])",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:165:15",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 185,
+          "expression": "expect(second.threadId).toBe(first.threadId)",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:185:16",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 186,
+          "expression": "expect(second.runId).not.toBe(first.runId)",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:186:17",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 187,
+          "expression": "expect(second.messages).toContainEqual(\n          expect.objectContaining({\n            role: 'assistant',\n            toolCalls: [\n              {\n                id: 'weather',\n                type: 'function',\n                function: { name: 'getWeather', arguments: '{\"city\":\"Paris\"}' },\n              },\n            ],\n          }),\n        )",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:187:18",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 199,
+          "expression": "expect(second.messages).toContainEqual(\n          expect.objectContaining({\n            role: 'tool',\n            toolCallId: 'weather',\n            content: JSON.stringify({\n              city: 'Paris',\n              temperatureC: 21,\n              condition: 'sunny',\n            }),\n          }),\n        )",
+          "id": "tools/runtime-smoke/e2e/specs/endpoint-interop.spec.ts:199:19",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/gated-progressive.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 9,
+          "name": "`gated ${scenario} renders before completion`"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 73,
+          "expression": "expect(page.getByTestId('fixture-ready')).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:73:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 78,
+          "expression": "expect(output).toHaveText('Re')",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:78:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 83,
+          "expression": "expect(output).toHaveText('Read')",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:83:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 86,
+          "expression": "expect(\n          await output.evaluate(\n            (node, original) => node === original,\n            partialNode,\n          ),\n        ).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:86:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 95,
+          "expression": "expect(output).toHaveText(scenario === 'ui' ? 'Ready: 2' : 'Ready')",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:95:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 98,
+          "expression": "expect(driver.structuredCount()).toHaveText('2')",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:98:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 101,
+          "expression": "expect(output).toHaveText(scenario === 'ui' ? 'Ready: 2' : 'Ready')",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:101:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 102,
+          "expression": "expect(driver.error()).toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:102:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 103,
+          "expression": "expect(driver.sendingError()).toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:103:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 104,
+          "expression": "expect(driver.generatingError()).toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:104:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 105,
+          "expression": "expect(endpoint.inputs).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/gated-progressive.spec.ts:105:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/generative-ui.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 61,
+          "name": "'streams trusted generative UI progressively'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 86,
+          "expression": "expect(driver.userMessage()).toHaveJSProperty(\n    'textContent',\n    'Show status',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:86:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 91,
+          "expression": "expect(driver.statusCard()).toHaveCount(0)",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:91:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 92,
+          "expression": "expect(driver.statusCard()).toHaveJSProperty('textContent', 'Re')",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:92:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 93,
+          "expression": "expect(driver.statusCard()).toHaveJSProperty('textContent', 'Ready: 2')",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:93:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 95,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:95:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 96,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:96:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 97,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:97:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 98,
+          "expression": "expect(captured).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:98:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 103,
+          "expression": "expect(input.hashbrown?.ui).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:103:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 104,
+          "expression": "expect(input.hashbrown?.responseSchema).toEqual(statusResponseSchema)",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:104:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 105,
+          "expression": "expect(input).not.toHaveProperty('responseSchema')",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:105:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 106,
+          "expression": "expect(\n    input.messages.map(({ role, content }) => ({ role, content })),\n  ).toEqual([\n    { role: 'system', content: 'Runtime smoke system prompt.' },\n    { role: 'user', content: 'Show status' },\n  ])",
+          "id": "tools/runtime-smoke/e2e/specs/generative-ui.spec.ts:106:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/interrupt-resume.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 28,
+          "name": "'resumes a complete committed batch without executing historical tools'"
+        },
+        {
+          "line": 192,
+          "name": "'publishes a fresh batch identity when the server interrupts again'"
+        },
+        {
+          "line": 251,
+          "name": "'keeps an expired batch visible and refuses to send its answers'"
+        },
+        {
+          "line": 305,
+          "name": "`stop ${acknowledged ? 'after' : 'before'} resume acknowledgement ${acknowledged ? 'requires a new thread' : 'releases the same batch'}`"
+        },
+        {
+          "line": 390,
+          "name": "'pauses incomplete structured output without a finalization error'"
+        },
+        {
+          "line": 464,
+          "name": "`failure ${acknowledged ? 'after' : 'before'} resume acknowledgement preserves the correct ownership`"
+        },
+        {
+          "line": 548,
+          "name": "'defers completion input until the resumed tool follow-up succeeds'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 121,
+          "expression": "expect(page.getByTestId('fixture-ready')).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:121:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 124,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('2')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:124:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 125,
+          "expression": "expect(page.getByTestId('interrupt-message')).toHaveText([\n      'Approve weather lookup?',\n      'Confirm?',\n    ])",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:125:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 130,
+          "expression": "expect(driver.toolCount()).toHaveText('0')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:130:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 131,
+          "expression": "expect(page.getByTestId('shared-state')).toHaveText(\n      '{\"approved\":false}',\n    )",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:131:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 135,
+          "expression": "expect(batchId).not.toBe('')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:135:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 138,
+          "expression": "expect.poll(() => endpoint.inputs.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:138:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 139,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('true')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:139:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 140,
+          "expression": "expect(page.getByTestId('interrupt-batch-id')).toHaveText(batchId)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:140:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 141,
+          "expression": "expect(page.getByTestId('resume')).toBeDisabled()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:141:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 143,
+          "expression": "expect(resumed.threadId).toBe(initial.threadId)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:143:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 144,
+          "expression": "expect(resumed.runId).not.toBe(initial.runId)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:144:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 145,
+          "expression": "expect(resumed.state).toEqual({ approved: false })",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:145:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 146,
+          "expression": "expect(resumed.resume).toEqual([\n      {\n        interruptId: 'approval',\n        status: 'resolved',\n        payload: { approved: true },\n      },\n      {\n        interruptId: 'confirm',\n        status: 'resolved',\n        payload: { approved: true },\n      },\n    ])",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:146:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 158,
+          "expression": "expect(resumed).not.toHaveProperty('batchId')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:158:15",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 159,
+          "expression": "expect(resumed.messages).toEqual([\n      ...initial.messages,\n      {\n        id: 'proposal',\n        role: 'assistant',\n        toolCalls: [\n          {\n            id: 'weather',\n            type: 'function',\n            function: { name: 'getWeather', arguments: '{\"city\":\"Paris\"}' },\n          },\n        ],\n      },\n    ])",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:159:16",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 175,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('0')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:175:17",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 176,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('true')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:176:18",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 179,
+          "expression": "expect(driver.assistant()).toHaveText('Resumed')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:179:19",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 181,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('false')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:181:20",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 182,
+          "expression": "expect(driver.toolCount()).toHaveText('0')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:182:21",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 183,
+          "expression": "expect(driver.error()).toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:183:22",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 184,
+          "expression": "expect(endpoint.inputs).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:184:23",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 221,
+          "expression": "expect(page.getByTestId('fixture-ready')).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:221:24",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 223,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:223:25",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 230,
+          "expression": "expect.poll(() => endpoint.inputs.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:230:26",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 231,
+          "expression": "expect(page.getByTestId('interrupt-batch-id')).not.toHaveText(\n      firstBatchId,\n    )",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:231:27",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 234,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:234:28",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 235,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('false')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:235:29",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 236,
+          "expression": "expect(page.getByTestId('resume')).toBeEnabled()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:236:30",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 238,
+          "expression": "expect(endpoint.inputs[1].resume).toEqual([\n      {\n        interruptId: 'same-id',\n        status: 'resolved',\n        payload: { approved: true },\n      },\n    ])",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:238:31",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 286,
+          "expression": "expect(page.getByTestId('fixture-ready')).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:286:32",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 288,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:288:33",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 293,
+          "expression": "expect(page.getByTestId('resume-error')).toContainText('expired')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:293:34",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 294,
+          "expression": "expect(page.getByTestId('interrupt-batch-id')).toHaveText(batchId)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:294:35",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 295,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('false')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:295:36",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 297,
+          "expression": "expect(endpoint.inputs).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:297:37",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 343,
+          "expression": "expect(page.getByTestId('fixture-ready')).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:343:38",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 345,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:345:39",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 348,
+          "expression": "expect.poll(() => endpoint.inputs.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:348:40",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 351,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('0')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:351:41",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 357,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('false')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:357:42",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 360,
+          "expression": "expect(page.getByTestId('command-error')).toContainText(\n          /thread/i,\n        )",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:360:43",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 363,
+          "expression": "expect(endpoint.inputs).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:363:44",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 366,
+          "expression": "expect.poll(() => endpoint.inputs.length).toBe(3)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:366:45",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 367,
+          "expression": "expect(endpoint.inputs[2].threadId).not.toBe(\n          endpoint.inputs[0].threadId,\n        )",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:367:46",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 370,
+          "expression": "expect(endpoint.inputs[2].resume).toBeUndefined()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:370:47",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 372,
+          "expression": "expect(page.getByTestId('interrupt-batch-id')).toHaveText(\n          batchId,\n        )",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:372:48",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 375,
+          "expression": "expect(page.getByTestId('resume')).toBeEnabled()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:375:49",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 377,
+          "expression": "expect.poll(() => endpoint.inputs.length).toBe(3)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:377:50",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 378,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('0')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:378:51",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 379,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('false')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:379:52",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 380,
+          "expression": "expect(endpoint.inputs[2].threadId).toBe(endpoint.inputs[0].threadId)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:380:53",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 381,
+          "expression": "expect(endpoint.inputs[2].resume).toEqual(endpoint.inputs[1].resume)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:381:54",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 439,
+          "expression": "expect(page.getByTestId('fixture-ready')).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:439:55",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 441,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:441:56",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 443,
+          "expression": "expect(driver.error()).toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:443:57",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 447,
+          "expression": "expect(page.getByTestId('structured-answer')).toHaveText('Complete')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:447:58",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 448,
+          "expression": "expect(page.getByTestId('structured-count')).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:448:59",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 449,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('0')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:449:60",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 450,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('false')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:450:61",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 452,
+          "expression": "expect(driver.error()).toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:452:62",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 453,
+          "expression": "expect(endpoint.inputs).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:453:63",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 454,
+          "expression": "expect(endpoint.inputs[1].hashbrown?.responseSchema).toEqual(\n      endpoint.inputs[0].hashbrown?.responseSchema,\n    )",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:454:64",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 508,
+          "expression": "expect(page.getByTestId('fixture-ready')).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:508:65",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 510,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:510:66",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 515,
+          "expression": "expect.poll(() => endpoint.inputs.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:515:67",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 516,
+          "expression": "expect(driver.error()).not.toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:516:68",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 518,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('false')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:518:69",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 520,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('0')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:520:70",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 522,
+          "expression": "expect(page.getByTestId('command-error')).toContainText(\n          /thread/i,\n        )",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:522:71",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 525,
+          "expression": "expect(endpoint.inputs).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:525:72",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 528,
+          "expression": "expect.poll(() => endpoint.inputs.length).toBe(3)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:528:73",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 529,
+          "expression": "expect(endpoint.inputs[2].threadId).not.toBe(\n          endpoint.inputs[0].threadId,\n        )",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:529:74",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 532,
+          "expression": "expect(endpoint.inputs[2].resume).toBeUndefined()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:532:75",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 534,
+          "expression": "expect(page.getByTestId('interrupt-batch-id')).toHaveText(\n          batchId,\n        )",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:534:76",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 537,
+          "expression": "expect(page.getByTestId('resume')).toBeEnabled()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:537:77",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 539,
+          "expression": "expect.poll(() => endpoint.inputs.length).toBe(3)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:539:78",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 540,
+          "expression": "expect(endpoint.inputs[2].resume).toEqual(endpoint.inputs[1].resume)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:540:79",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 629,
+          "expression": "expect(page.getByTestId('fixture-ready')).toBeVisible()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:629:80",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 631,
+          "expression": "expect(page.getByTestId('interrupt-count')).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:631:81",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 637,
+          "expression": "expect.poll(() => endpoint.inputs.length).toBe(3)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:637:82",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 638,
+          "expression": "expect(page.getByTestId('tool-count')).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:638:83",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 639,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('true')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:639:84",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 640,
+          "expression": "expect(endpoint.inputs[1].messages).toEqual(endpoint.inputs[0].messages)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:640:85",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 641,
+          "expression": "expect(endpoint.inputs[2].resume).toBeUndefined()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:641:86",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 642,
+          "expression": "expect(\n      endpoint.inputs[2].messages.some(\n        (message) =>\n          message.role === 'tool' && message.toolCallId === 'new-weather',\n      ),\n    ).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:642:87",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 650,
+          "expression": "expect.poll(() => endpoint.inputs.length).toBe(4)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:650:88",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 651,
+          "expression": "expect(page.getByTestId('structured-answer')).toHaveText(\n      'Completed C',\n    )",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:651:89",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 654,
+          "expression": "expect(page.getByTestId('is-resuming')).toHaveText('false')",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:654:90",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 655,
+          "expression": "expect(page.getByTestId('error')).toBeEmpty()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:655:91",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 656,
+          "expression": "expect(endpoint.inputs[3].resume).toBeUndefined()",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:656:92",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 657,
+          "expression": "expect(\n      endpoint.inputs[3].messages.filter((message) => message.role === 'user'),\n    ).toEqual([expect.objectContaining({ role: 'user', content: 'C' })])",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:657:93",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 660,
+          "expression": "expect(\n      endpoint.inputs\n        .flatMap((input) => input.messages)\n        .some((message) => message.role === 'user' && message.content === 'B'),\n    ).toBe(false)",
+          "id": "tools/runtime-smoke/e2e/specs/interrupt-resume.spec.ts:660:94",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/plain-streaming.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/plain-streaming.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 10,
+          "name": "'streams a plain text response progressively'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 32,
+          "expression": "expect(driver.userMessage()).toHaveJSProperty(\n    'textContent',\n    'Say hello',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/plain-streaming.spec.ts:32:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 37,
+          "expression": "expect(driver.assistant()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/plain-streaming.spec.ts:37:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 38,
+          "expression": "expect(driver.assistant()).toHaveJSProperty('textContent', 'Hello ')",
+          "id": "tools/runtime-smoke/e2e/specs/plain-streaming.spec.ts:38:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 39,
+          "expression": "expect(driver.assistant()).toHaveJSProperty(\n    'textContent',\n    'Hello world',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/plain-streaming.spec.ts:39:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 44,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/plain-streaming.spec.ts:44:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 45,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/plain-streaming.spec.ts:45:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 46,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/plain-streaming.spec.ts:46:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 47,
+          "expression": "expect(captured).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/plain-streaming.spec.ts:47:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/reasoning.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/reasoning.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 12,
+          "name": "'shows streamed reasoning and persists safe reasoning probes'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 45,
+          "expression": "expect(driver.reasoning()).toHaveText('I considered the greeting.')",
+          "id": "tools/runtime-smoke/e2e/specs/reasoning.spec.ts:45:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 46,
+          "expression": "expect(driver.reasoningDetailCount()).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/reasoning.spec.ts:46:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 47,
+          "expression": "expect(driver.reasoningHasOpaqueValue()).toHaveText('true')",
+          "id": "tools/runtime-smoke/e2e/specs/reasoning.spec.ts:47:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 49,
+          "expression": "expect(driver.assistant()).toHaveText('Hello from reasoning.')",
+          "id": "tools/runtime-smoke/e2e/specs/reasoning.spec.ts:49:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 50,
+          "expression": "expect(driver.reasoning()).toHaveText('I considered the greeting.')",
+          "id": "tools/runtime-smoke/e2e/specs/reasoning.spec.ts:50:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 51,
+          "expression": "expect(driver.reasoningDetailCount()).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/reasoning.spec.ts:51:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 52,
+          "expression": "expect(driver.reasoningHasOpaqueValue()).toHaveText('true')",
+          "id": "tools/runtime-smoke/e2e/specs/reasoning.spec.ts:52:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 53,
+          "expression": "expect(captured.length).toBe(1)",
+          "id": "tools/runtime-smoke/e2e/specs/reasoning.spec.ts:53:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/request-contract.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 114,
+          "name": "'sends the exact plain AG-UI request contract across explicit sends'"
+        },
+        {
+          "line": 236,
+          "name": "'sends the exact structured AG-UI request contract'"
+        },
+        {
+          "line": 313,
+          "name": "'sends the exact generative UI AG-UI request contract'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 110,
+          "expression": "expect(ids.every((id) => id.length > 0)).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:110:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 111,
+          "expression": "expect(new Set(ids).size).toBe(ids.length)",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:111:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 142,
+          "expression": "expect(driver.assistant()).toHaveJSProperty(\n    'textContent',\n    'First deterministic response.',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:142:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 150,
+          "expression": "expect(driver.assistant()).toHaveJSProperty(\n    'textContent',\n    'Second deterministic response.',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:150:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 155,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:155:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 156,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:156:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 157,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:157:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 158,
+          "expression": "expect(posts).toEqual([\n    {\n      method: 'POST',\n      url: aimock.aguiRunUrl,\n      accept: 'text/event-stream',\n      contentType: 'application/json',\n    },\n    {\n      method: 'POST',\n      url: aimock.aguiRunUrl,\n      accept: 'text/event-stream',\n      contentType: 'application/json',\n    },\n  ])",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:158:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 172,
+          "expression": "expect(inputs).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:172:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 173,
+          "expression": "expect(attemptedInputs).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:173:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 187,
+          "expression": "expect(secondInput.threadId).toBe(firstInput.threadId)",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:187:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 188,
+          "expression": "expect(secondInput.runId).not.toBe(firstInput.runId)",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:188:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 191,
+          "expression": "expect(secondInput.messages.slice(0, firstInput.messages.length)).toEqual(\n    firstInput.messages,\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:191:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 194,
+          "expression": "expect(firstInput).toEqual({\n    threadId: firstInput.threadId,\n    runId: firstInput.runId,\n    messages: [\n      {\n        id: systemMessage.id,\n        role: 'system',\n        content: 'Runtime smoke system prompt.',\n      },\n      {\n        id: firstUserMessage.id,\n        role: 'user',\n        content: 'First contract prompt',\n      },\n    ],\n    tools: [],\n    context: [],\n    forwardedProps: {},\n  })",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:194:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 213,
+          "expression": "expect(secondInput).toEqual({\n    threadId: firstInput.threadId,\n    runId: secondInput.runId,\n    messages: [\n      ...firstInput.messages,\n      {\n        id: 'plain-request-contract-0',\n        role: 'assistant',\n        content: 'First deterministic response.',\n      },\n      {\n        id: secondUserMessage.id,\n        role: 'user',\n        content: 'Second contract prompt',\n      },\n    ],\n    tools: [],\n    context: [],\n    forwardedProps: {},\n  })",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:213:15",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 262,
+          "expression": "expect(driver.structuredAnswer()).toHaveJSProperty(\n    'textContent',\n    'Structured contract response.',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:262:16",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 266,
+          "expression": "expect(driver.structuredCount()).toHaveJSProperty('textContent', '3')",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:266:17",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 268,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:268:18",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 269,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:269:19",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 270,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:270:20",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 271,
+          "expression": "expect(posts).toEqual([\n    {\n      method: 'POST',\n      url: aimock.aguiRunUrl,\n      accept: 'text/event-stream',\n      contentType: 'application/json',\n    },\n  ])",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:271:21",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 279,
+          "expression": "expect(inputs).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:279:22",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 280,
+          "expression": "expect(attemptedInputs).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:280:23",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 290,
+          "expression": "expect(input).toEqual({\n    threadId: input.threadId,\n    runId: input.runId,\n    messages: [\n      {\n        id: systemMessage.id,\n        role: 'system',\n        content: 'Runtime smoke system prompt.',\n      },\n      {\n        id: userMessage.id,\n        role: 'user',\n        content: 'Return structured contract',\n      },\n    ],\n    tools: [],\n    context: [],\n    forwardedProps: {},\n    hashbrown: { responseSchema: expectedStructuredJsonSchema },\n  })",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:290:24",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 339,
+          "expression": "expect(driver.statusCard()).toHaveJSProperty(\n    'textContent',\n    'Contract ready: 4',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:339:25",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 344,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:344:26",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 345,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:345:27",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 346,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:346:28",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 347,
+          "expression": "expect(posts).toEqual([\n    {\n      method: 'POST',\n      url: aimock.aguiRunUrl,\n      accept: 'text/event-stream',\n      contentType: 'application/json',\n    },\n  ])",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:347:29",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 355,
+          "expression": "expect(inputs).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:355:30",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 356,
+          "expression": "expect(attemptedInputs).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:356:31",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 366,
+          "expression": "expect(input).toEqual({\n    threadId: input.threadId,\n    runId: input.runId,\n    messages: [\n      {\n        id: systemMessage.id,\n        role: 'system',\n        content: 'Runtime smoke system prompt.',\n      },\n      {\n        id: userMessage.id,\n        role: 'user',\n        content: 'Render contract status',\n      },\n    ],\n    tools: [],\n    context: [],\n    forwardedProps: {},\n    hashbrown: { ui: true, responseSchema: expectedUiSchema },\n  })",
+          "id": "tools/runtime-smoke/e2e/specs/request-contract.spec.ts:366:32",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/retry-and-errors.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 50,
+          "name": "'retries structured output when the first stream has no terminal'"
+        },
+        {
+          "line": 112,
+          "name": "'recovers from an HTTP send failure after an explicit send'"
+        },
+        {
+          "line": 224,
+          "name": "'recovers from a server run error after an explicit send'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 87,
+          "expression": "expect.poll(() => attempted.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:87:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 88,
+          "expression": "expect.poll(() => captured.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:88:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 89,
+          "expression": "expect(driver.structuredAnswer()).toHaveJSProperty(\n    'textContent',\n    'Retry succeeded.',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:89:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 93,
+          "expression": "expect(driver.structuredCount()).toHaveJSProperty('textContent', '1')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:93:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 94,
+          "expression": "expect(page.getByText('Rejected attempt', { exact: true })).toHaveCount(\n    0,\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:94:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 98,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:98:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 99,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:99:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 100,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:100:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 101,
+          "expression": "expect(attempted).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:101:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 102,
+          "expression": "expect(captured).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:102:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 107,
+          "expression": "expect(secondInput.threadId).toBe(firstInput.threadId)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:107:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 108,
+          "expression": "expect(secondInput.runId).not.toBe(firstInput.runId)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:108:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 187,
+          "expression": "expect(driver.sendingError()).toContainText(transportFailureBody)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:187:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 188,
+          "expression": "expect(driver.error()).toContainText(transportFailureBody)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:188:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 189,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:189:15",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 191,
+          "expression": "expect.poll(() => observedRunPosts).toBe(1)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:191:16",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 192,
+          "expression": "expect(interceptedRequests).toBe(1)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:192:17",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 193,
+          "expression": "expect(attempted).toHaveLength(0)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:193:18",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 194,
+          "expression": "expect(captured).toHaveLength(0)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:194:19",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 201,
+          "expression": "expect.poll(() => observedRunPosts).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:201:20",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 202,
+          "expression": "expect.poll(() => attempted.length).toBe(1)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:202:21",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 203,
+          "expression": "expect.poll(() => captured.length).toBe(1)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:203:22",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 204,
+          "expression": "expect(driver.assistant()).toHaveJSProperty(\n      'textContent',\n      'Transport recovered.',\n    )",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:204:23",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 209,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:209:24",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 210,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:210:25",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 211,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:211:26",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 212,
+          "expression": "expect(interceptedRequests).toBe(1)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:212:27",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 213,
+          "expression": "expect(observedRunPosts).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:213:28",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 214,
+          "expression": "expect(attempted).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:214:29",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 215,
+          "expression": "expect(captured).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:215:30",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 262,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty(\n    'textContent',\n    runFailureMessage,\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:262:31",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 266,
+          "expression": "expect(driver.error()).toHaveJSProperty(\n    'textContent',\n    runFailureMessage,\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:266:32",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 270,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:270:33",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 272,
+          "expression": "expect.poll(() => attempted.length).toBe(1)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:272:34",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 273,
+          "expression": "expect(captured).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:273:35",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 277,
+          "expression": "expect.poll(() => attempted.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:277:36",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 278,
+          "expression": "expect.poll(() => captured.length).toBe(2)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:278:37",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 279,
+          "expression": "expect(driver.assistant()).toHaveJSProperty(\n    'textContent',\n    'Run recovered.',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:279:38",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 284,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:284:39",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 285,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:285:40",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 286,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:286:41",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 287,
+          "expression": "expect(attempted).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:287:42",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 288,
+          "expression": "expect(captured).toHaveLength(2)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:288:43",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 293,
+          "expression": "expect(secondInput.threadId).toBe(firstInput.threadId)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:293:44",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 294,
+          "expression": "expect(secondInput.runId).not.toBe(firstInput.runId)",
+          "id": "tools/runtime-smoke/e2e/specs/retry-and-errors.spec.ts:294:45",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/structured-output.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 22,
+          "name": "'streams structured output progressively'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 45,
+          "expression": "expect(driver.userMessage()).toHaveJSProperty(\n    'textContent',\n    'Count the results',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:45:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 50,
+          "expression": "expect(driver.structuredAnswer()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:50:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 51,
+          "expression": "expect(driver.structuredAnswer()).toHaveJSProperty(\n    'textContent',\n    'det',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:51:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 55,
+          "expression": "expect(driver.structuredAnswer()).toHaveJSProperty(\n    'textContent',\n    'deterministic',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:55:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 59,
+          "expression": "expect(driver.structuredCount()).toHaveJSProperty('textContent', '2')",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:59:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 61,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:61:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 62,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:62:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 63,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:63:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 64,
+          "expression": "expect(captured).toHaveLength(1)",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:64:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 69,
+          "expression": "expect(input.hashbrown).toEqual({\n    responseSchema: answerResponseSchema,\n  })",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:69:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 72,
+          "expression": "expect(\n    input.messages.map(({ role, content }) => ({ role, content })),\n  ).toEqual([\n    { role: 'system', content: 'Runtime smoke system prompt.' },\n    { role: 'user', content: 'Count the results' },\n  ])",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:72:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 78,
+          "expression": "expect(input).not.toHaveProperty('responseSchema')",
+          "id": "tools/runtime-smoke/e2e/specs/structured-output.spec.ts:78:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "source": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts",
+      "destination": "samples/invoicing/e2e/conformance/specs/tool-continuation.spec.ts",
+      "status": "pending",
+      "tests": [
+        {
+          "line": 364,
+          "name": "'executes three sequential tools once each before the terminal response'"
+        }
+      ],
+      "assertions": [
+        {
+          "line": 405,
+          "expression": "expect(driver.userMessage()).toHaveText(initialPrompt)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:405:1",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 407,
+          "expression": "expect(driver.reasoning()).toHaveText('I need the weather tools.')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:407:2",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 408,
+          "expression": "expect(driver.reasoningDetailCount()).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:408:3",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 409,
+          "expression": "expect(driver.reasoningHasOpaqueValue()).toHaveText('true')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:409:4",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 410,
+          "expression": "expect.poll(() => attempted.length).toBe(4)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:410:5",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 411,
+          "expression": "expect.poll(() => captured.length).toBe(4)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:411:6",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 412,
+          "expression": "expect(driver.assistant()).toHaveJSProperty(\n    'textContent',\n    terminalResponse,\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:412:7",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 417,
+          "expression": "expect(driver.reasoning()).toHaveText('I need the weather tools.')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:417:8",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 418,
+          "expression": "expect(driver.reasoningDetailCount()).toHaveText('1')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:418:9",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 419,
+          "expression": "expect(driver.reasoningHasOpaqueValue()).toHaveText('true')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:419:10",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 420,
+          "expression": "expect(driver.toolCount()).toHaveText('3')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:420:11",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 421,
+          "expression": "expect(driver.error()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:421:12",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 422,
+          "expression": "expect(driver.sendingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:422:13",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 423,
+          "expression": "expect(driver.generatingError()).toHaveJSProperty('textContent', '')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:423:14",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 424,
+          "expression": "expect(attempted).toHaveLength(4)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:424:15",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 425,
+          "expression": "expect(captured).toHaveLength(4)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:425:16",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 430,
+          "expression": "expect(new Set(captured.map(({ threadId }) => threadId)).size).toBe(1)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:430:17",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 431,
+          "expression": "expect(new Set(captured.map(({ runId }) => runId)).size).toBe(4)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:431:18",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 432,
+          "expression": "expect(captured.every((input) => hasOpaqueCanonicalIds(input.messages))).toBe(\n    true,\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:432:19",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 438,
+          "expression": "expect(\n      hasStableMessagePrefix(input.messages, captured[requestIndex - 1]),\n    ).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:438:20",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 442,
+          "expression": "expect(fourthInput.messages.map(({ role }) => role)).toEqual([\n    'system',\n    'user',\n    'reasoning',\n    'assistant',\n    'tool',\n    'assistant',\n    'tool',\n    'assistant',\n    'tool',\n  ])",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:442:21",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 472,
+          "expression": "expect(opaqueContinuations).toEqual(\n    weatherRounds.map((round, index) => ({\n      assistantOpaqueValue: round.assistantOpaqueValue,\n      assistantMetadata: {\n        provider: { assistantSteps: [{ index: index * 2 }] },\n      },\n      toolOpaqueValue: round.toolOpaqueValue,\n      toolMetadata: {\n        provider: { toolSteps: [{ index: index * 2 + 1 }] },\n      },\n    })),\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:472:22",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 490,
+          "expression": "expect(continuationReasoning.encryptedValue).toBe(\n    'fixture-reasoning-opaque-value',\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:490:23",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 493,
+          "expression": "expect(continuationReasoning.metadata).toEqual({\n    provider: { trace: ['weather'] },\n  })",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:493:24",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 497,
+          "expression": "expect(\n      input.messages\n        .filter(\n          (message) =>\n            message.role === 'reasoning' || message.role === 'assistant',\n        )\n        .map((message) => message.id),\n    ).toEqual(\n      requestIndex === 0\n        ? []\n        : [\n            'reasoning-weather',\n            ...weatherRounds\n              .slice(0, requestIndex)\n              .map(\n                (_round, index) =>\n                  `${firstInput.threadId}:message:${index * 2 + 1}`,\n              ),\n          ],\n    )",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:497:25",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 517,
+          "expression": "expect({\n      ...input,\n      messages: safeTranscriptWithoutMessageIds(input.messages),\n    }).toEqual({\n      threadId: firstInput.threadId,\n      runId: input.runId,\n      messages: safeTranscriptWithoutMessageIds(\n        requestIndex === 0\n          ? createInitialMessages(firstInput.threadId)\n          : createContinuationMessages(firstInput.threadId, requestIndex),\n      ),\n      tools: [expectedWeatherTool],\n      context: [],\n      forwardedProps: {},\n    })",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:517:26",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 536,
+          "expression": "expect.poll(() => attempted.length).toBe(5)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:536:27",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 537,
+          "expression": "expect.poll(() => captured.length).toBe(5)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:537:28",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 538,
+          "expression": "expect(driver.userMessage()).toHaveText(probePrompt)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:538:29",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 539,
+          "expression": "expect(driver.assistant()).toHaveJSProperty(\n    'textContent',\n    probeResponse,\n  )",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:539:30",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 544,
+          "expression": "expect(driver.toolCount()).toHaveText('3')",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:544:31",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 545,
+          "expression": "expect(attempted).toHaveLength(5)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:545:32",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 546,
+          "expression": "expect(captured).toHaveLength(5)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:546:33",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 551,
+          "expression": "expect(new Set(captured.map(({ threadId }) => threadId)).size).toBe(1)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:551:34",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 552,
+          "expression": "expect(new Set(captured.map(({ runId }) => runId)).size).toBe(5)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:552:35",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 553,
+          "expression": "expect(hasOpaqueCanonicalIds(fifthInput.messages)).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:553:36",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 554,
+          "expression": "expect(hasStableMessagePrefix(fifthInput.messages, fourthInput)).toBe(true)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:554:37",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 555,
+          "expression": "expect(\n    fifthInput.messages\n      .filter(\n        (message) =>\n          message.role === 'reasoning' || message.role === 'assistant',\n      )\n      .map((message) => message.id),\n  ).toEqual([\n    'reasoning-weather',\n    ...weatherRounds.map(\n      (_round, index) => `${firstInput.threadId}:message:${index * 2 + 1}`,\n    ),\n    'message-weather-final',\n  ])",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:555:38",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 569,
+          "expression": "expect({\n    ...fifthInput,\n    messages: safeTranscriptWithoutMessageIds(fifthInput.messages),\n  }).toEqual({\n    threadId: firstInput.threadId,\n    runId: fifthInput.runId,\n    messages: safeTranscriptWithoutMessageIds(\n      createProbeMessages(firstInput.threadId),\n    ),\n    tools: [expectedWeatherTool],\n    context: [],\n    forwardedProps: {},\n  })",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:569:39",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 584,
+          "expression": "expect(attempted).toHaveLength(5)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:584:40",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        },
+        {
+          "line": 585,
+          "expression": "expect(captured).toHaveLength(5)",
+          "id": "tools/runtime-smoke/e2e/specs/tool-continuation.spec.ts:585:41",
+          "destination": null,
+          "equivalenceEvidence": null,
+          "status": "pending"
+        }
+      ]
+    }
+  ]
+}

@@ -74,3 +74,18 @@ checks remain. Deployment and legacy-example retirement are separate changes.
 Legacy coverage ownership and relocation gates are recorded in
 `2026-09-15-legacy-example-retirement.md`. Existing coverage stays enabled; actual
 fixture extraction must precede legacy deletion.
+
+## Superseding scope revision
+
+User requires canonical example e2e to absorb the inventoried runtime/provider/
+framework assertions, with Angular and native-provider coverage preserved inside
+that project. Performance and bounded ledger context are required again. Retire
+all Vox package/demo/tooling. The retirement inventory records this override; its
+older separate-tools fixture proposal is no longer the destination. Lambda Chat
+is also approved for retirement, including source, Nx/Serverless configuration
+and exclusive dependencies. AWS hosting is not required for the canonical app;
+external AWS resource decommissioning is separate.
+
+Execution and assertion mapping: `2026-09-15-canonical-example-consolidation.md`
+and `canonical-example/assertion-baseline.json`. Earlier deferred-performance and
+tools-owned coverage destinations are superseded by the latest user scope.
