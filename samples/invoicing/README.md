@@ -119,7 +119,8 @@ question, and isolation. It fails when credentials are missing rather than
 silently skipping. `npx nx build invoicing-e2e` and `npx nx lint invoicing-e2e`
 validate the test code. Browser artifacts go to `work/invoicing-e2e`.
 
-Run the deterministic browser checks without model credentials:
+Run the deterministic browser checks without model credentials (install the
+Playwright Chromium browser first with `npx playwright install chromium`):
 
 ```sh
 npx nx test invoicing-e2e
@@ -141,6 +142,10 @@ Failure traces go to `work/invoicing-deterministic`.
 The server build type-checks; serve runs TypeScript directly. Existing warnings
 include the large minified Vite chunk and terminal color settings.
 
-Remaining work includes broader browser failure scenarios, durable state/refresh recovery, one-approval multi-invoice
-allocation, and deliberate retirement of the older examples after reviewing
-this replacement. See `compatibility.md` for dated verification evidence.
+V1 scope is complete for the local example: seeded Dashboard/Payments, real-model
+conversation, explicit simulated approvals, and operation-result verification.
+Browser-refresh recovery and durable persistence are intentionally out of scope.
+Refreshing starts a new conversation; the in-process ledger remains until the
+server restarts. Do not refresh during a pending approval in this V1 demo.
+Deployment and retirement of older examples are separate follow-ups.
+See `compatibility.md` for dated verification evidence.

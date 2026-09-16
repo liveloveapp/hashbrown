@@ -44,8 +44,14 @@ seeded Payments layout was visually inspected after adjusting column widths.
 - [x] Add a separate model-free browser target using actual session/seed reads and a deliberately failing agent endpoint.
 - [x] Cover ambiguous invoice choice, choice reset across payment selection, advance gating, and failed review retirement/retry without mutation.
 - [x] Browser coverage for a lost approval response and explicit operation-result reconciliation using a scripted transport and real domain state.
-- [ ] Design durable session/refresh recovery before implementation.
+- Deferred beyond V1 by user decision: browser-refresh recovery and durable persistence.
 - [ ] Inventory legacy deployment and conformance dependencies before proposing retirement.
 
 The deterministic browser target is deliberately bounded to existing behavior;
 it does not expand the financial mutation surface or introduce persistence.
+
+## V1 merge scope
+
+The user requested merging V1 on September 15, 2026. Recovery across refreshes
+or server restarts is not required for this example. Existing operation-result
+checks remain. Deployment and legacy-example retirement are separate changes.

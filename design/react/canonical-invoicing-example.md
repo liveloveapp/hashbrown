@@ -1,4 +1,10 @@
 ---
+
+> V1 scope decision (September 15, 2026): ship the local seeded application and
+> existing approval/result safeguards. Browser-refresh/session recovery and
+> durable persistence are deferred. Recovery proposals below are future design
+> notes, not V1 requirements. Deployment and legacy retirement remain separate.
+
 Created: 2026-09-14
 Affects: React example application, Hashbrown, Pretable, B4, example documentation and CI
 Status: Visual direction approved — compatibility-proof planning
@@ -155,8 +161,7 @@ time tracking or a project-management subsystem.
 Use stable identifiers, a fixed seed and application clock, and an explicit
 scenario manifest. Proposed initial scale is 24 fictional customers, roughly
 60 project references, 1,200 invoices, and 1,000 incoming payments spanning
-January 2024 through December 2025, with a fixed as-of date of December 31,
-2025. These counts are seed-generation targets, not business constraints or
+January 2024 through December 2025, with a fixed as-of date of December 31, 2025. These counts are seed-generation targets, not business constraints or
 performance claims. Include realistic service descriptions and seasonal changes
 without real customer information or live financial feeds. Show the simulated
 date so users do not interpret the records as current financial information.
@@ -198,16 +203,16 @@ on random generation to happen to produce an interesting case.
 
 All amounts below are synthetic USD examples. The fixture stores integer cents.
 
-| Scenario | Starting records | Expected result |
-| --- | --- | --- |
-| Exact match | $2,400 payment and one $2,400 invoice with a matching reference | Approval applies $2,400; both remaining balances are zero |
-| Partial payment | $1,200 payment against a $3,000 invoice | Approval leaves $1,800 on the invoice and no unapplied payment balance |
-| Multiple invoices | $4,000 payment referencing invoices for $1,800 and $2,200 | One proposal allocates both amounts and one approval applies it |
-| Unapplied remainder | $3,500 payment and a $3,000 invoice | Approval applies $3,000 and preserves $500 as unapplied cash |
-| Ambiguous match | $1,500 payment without a useful reference and two eligible $1,500 invoices | Present an inline choice; no application until an exact allocation is approved |
-| Customer mismatch | Equal amounts on records belonging to different customers | Never allocate across customers solely because amounts match |
-| Stale proposal | An invoice receives another allocation after the proposal is shown | Reject the stale proposal without partial writes and refresh the review |
-| Duplicate approval | Repeat an already-applied operation | Return its recorded result; balances and financial activity do not change twice |
+| Scenario            | Starting records                                                           | Expected result                                                                 |
+| ------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Exact match         | $2,400 payment and one $2,400 invoice with a matching reference            | Approval applies $2,400; both remaining balances are zero                       |
+| Partial payment     | $1,200 payment against a $3,000 invoice                                    | Approval leaves $1,800 on the invoice and no unapplied payment balance          |
+| Multiple invoices   | $4,000 payment referencing invoices for $1,800 and $2,200                  | One proposal allocates both amounts and one approval applies it                 |
+| Unapplied remainder | $3,500 payment and a $3,000 invoice                                        | Approval applies $3,000 and preserves $500 as unapplied cash                    |
+| Ambiguous match     | $1,500 payment without a useful reference and two eligible $1,500 invoices | Present an inline choice; no application until an exact allocation is approved  |
+| Customer mismatch   | Equal amounts on records belonging to different customers                  | Never allocate across customers solely because amounts match                    |
+| Stale proposal      | An invoice receives another allocation after the proposal is shown         | Reject the stale proposal without partial writes and refresh the review         |
+| Duplicate approval  | Repeat an already-applied operation                                        | Return its recorded result; balances and financial activity do not change twice |
 
 The Payments view should make the exact-match example immediately accessible.
 A compact scenario selector can navigate to other known records;
@@ -249,16 +254,16 @@ choices remain implementation-design decisions.
 
 ### Proposed review and recovery states
 
-| State | What the user sees | Financial behavior |
-| --- | --- | --- |
-| Not reviewed | Unapplied payment row | Selecting it starts matching |
-| Matching | Inline progress for the selected payment | Read-only tools; no allocation applied |
-| Needs clarification | Candidate invoices and an inline choice | No allocation applied |
-| Awaiting approval | Exact allocation, explanation, and Approve and apply | Proposal is immutable for this approval context |
-| Applying | Button disabled and inline progress | Server claims the operation and validates versions |
-| Applied | Confirmation, updated balances, and activity | Recorded result is returned for repeat delivery |
-| Stale proposal | Refreshed suggestion or an actionable validation result | Original approval cannot authorize a revised allocation |
-| Outcome unknown | Checking payment status | Query the server operation before permitting any new application |
+| State               | What the user sees                                      | Financial behavior                                               |
+| ------------------- | ------------------------------------------------------- | ---------------------------------------------------------------- |
+| Not reviewed        | Unapplied payment row                                   | Selecting it starts matching                                     |
+| Matching            | Inline progress for the selected payment                | Read-only tools; no allocation applied                           |
+| Needs clarification | Candidate invoices and an inline choice                 | No allocation applied                                            |
+| Awaiting approval   | Exact allocation, explanation, and Approve and apply    | Proposal is immutable for this approval context                  |
+| Applying            | Button disabled and inline progress                     | Server claims the operation and validates versions               |
+| Applied             | Confirmation, updated balances, and activity            | Recorded result is returned for repeat delivery                  |
+| Stale proposal      | Refreshed suggestion or an actionable validation result | Original approval cannot authorize a revised allocation          |
+| Outcome unknown     | Checking payment status                                 | Query the server operation before permitting any new application |
 
 Switching the visible payment does not approve, reject, or reinterpret the
 previous payment's proposal. In-memory review contexts retain their own
