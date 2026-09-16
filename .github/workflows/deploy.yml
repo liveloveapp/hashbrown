@@ -54,6 +54,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate deployment inputs
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          PROJECT_ID_SECRET: ${{ matrix.project_id_secret }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [[ "$ENVIRONMENT" != "preview" && "$ENVIRONMENT" != "production" ]]; then
+            echo "::error::environment must be preview or production, got '$ENVIRONMENT'."
+            exit 1
+          fi
+          if [[ -z "$VERCEL_TOKEN" || -z "$VERCEL_ORG_ID" || -z "$VERCEL_PROJECT_ID" ]]; then
+            echo "::error::Missing VERCEL_TOKEN, VERCEL_ORG_ID, or $PROJECT_ID_SECRET. Run tools/vercel/bootstrap.mjs to provision them."
+            exit 1
+          fi
+
       - name: Build
         run: npx nx build "${{ matrix.key }}" --configuration=production
 
@@ -92,21 +107,27 @@ jobs:
           BRANCH: ${{ inputs.branch }}
           SHA: ${{ inputs.ref }}
         run: |
-          args=(deploy --prebuilt --yes --cwd "$DIR" --token "$VERCEL_TOKEN"
+          args=(deploy --prebuilt --yes --cwd "$DIR"
             -m githubDeployment=1
             -m "githubCommitRef=$BRANCH"
             -m "githubCommitSha=$SHA"
             -m "githubCommitRepo=${GITHUB_REPOSITORY#*/}"
-            -m "githubOrg=${GITHUB_REPOSITORY_OWNER}")
+            -m "githubOrg=${GITHUB_REPOSITORY_OWNER}"
+            -m "githubRepo=${GITHUB_REPOSITORY#*/}"
+            -m "githubCommitOrg=${GITHUB_REPOSITORY_OWNER}")
           if [[ "$ENVIRONMENT" == "production" ]]; then
             args+=(--prod)
           fi
-          url="$(npx vercel "${args[@]}")"
+          url="$(npx vercel "${args[@]}" | tail -n1)"
+          if [[ "$url" != https://* ]]; then
+            echo "::error::Vercel CLI did not return a deployment URL: '$url'"
+            exit 1
+          fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed $DIR to $url"
 
       - name: Record deployment status
-        if: always() && steps.deployment.outputs.id != ''
+        if: ${{ !cancelled() && steps.deployment.outputs.id != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.id }}
@@ -118,6 +139,7 @@ jobs:
           if [[ "$OUTCOME" == "success" ]]; then
             state=success
           fi
+          # auto_inactive is scoped to the whole environment; revisit before adding a second production target.
           payload="$(jq -n \
             --arg state "$state" \
             --arg url "$URL" \

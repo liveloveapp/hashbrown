@@ -8,7 +8,10 @@
     "build": {
       "executor": "@analogjs/platform:vite",
       "defaultConfiguration": "production",
-      "outputs": ["{workspaceRoot}/dist/www/analog"],
+      "outputs": [
+        "{workspaceRoot}/dist/www/analog",
+        "{workspaceRoot}/.vercel/output"
+      ],
       "dependsOn": ["clean-output", "collect-docs", "generate-llms"],
       "options": {
         "main": "www/analog/src/main.ts",
