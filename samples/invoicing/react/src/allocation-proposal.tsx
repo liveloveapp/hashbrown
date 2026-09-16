@@ -1,8 +1,10 @@
 import { createContext, useContext } from 'react';
-import type { Proposal } from '@invoicing/contracts';
+import type { LedgerSnapshot, Proposal } from '@invoicing/contracts';
 
 /** Application-owned proposal review data and decision callbacks. */
 export interface AllocationProposalReview {
+  /** Trusted ledger records used only for display labels. */
+  readonly snapshot?: LedgerSnapshot;
   readonly verifiedProposal: Proposal | undefined;
   readonly selectedPaymentId: string | undefined;
   /**
@@ -43,6 +45,16 @@ export function AllocationProposal({ proposalId }: AllocationProposalProps) {
     return <p role="status">Proposal unavailable for the selected payment.</p>;
   }
 
+  const payment = review.snapshot?.payments.find(
+    (record) =>
+      record.id === proposal.paymentId &&
+      record.customerId === proposal.customerId,
+  );
+  const invoice = review.snapshot?.invoices.find(
+    (record) =>
+      record.id === proposal.invoiceId &&
+      record.customerId === proposal.customerId,
+  );
   const disabled = !review.pendingForProposal || review.isApplying;
   const amount = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -53,10 +65,22 @@ export function AllocationProposal({ proposalId }: AllocationProposalProps) {
     <section className="selection-summary" aria-label="Allocation proposal">
       <h3>Allocate payment</h3>
       <dl>
+        <dt>Client</dt>
+        <dd>
+          {payment?.customerName ??
+            invoice?.customerName ??
+            proposal.customerId}
+        </dd>
         <dt>Payment</dt>
-        <dd>{proposal.paymentId}</dd>
+        <dd>
+          {payment?.reference ?? proposal.paymentId}
+          {payment?.reference && <small>{proposal.paymentId}</small>}
+        </dd>
         <dt>Invoice</dt>
-        <dd>{proposal.invoiceId}</dd>
+        <dd>
+          {invoice?.reference ?? proposal.invoiceId}
+          {invoice?.reference && <small>{proposal.invoiceId}</small>}
+        </dd>
         <dt>Amount</dt>
         <dd>{amount}</dd>
         <dt>Currency</dt>

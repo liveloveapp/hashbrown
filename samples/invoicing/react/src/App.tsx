@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TransportOrFactory } from '@hashbrownai/core';
 import {
   AssistantWorkspace,
@@ -65,6 +65,11 @@ export function App({
   );
   const [invoiceChoice, setInvoiceChoice] = useState('');
   const [reviewNotice, setReviewNotice] = useState('');
+  const [assistantBusy, setAssistantBusy] = useState(false);
+  const handleBusyChange = useCallback((busy: boolean) => {
+    setAssistantBusy(busy);
+    if (!busy) setReviewNotice('');
+  }, []);
 
   function selectPayment(ids: string[]) {
     const addedId = ids.find((id) => !selectedIds.includes(id));
@@ -183,6 +188,7 @@ export function App({
       render: ({ row }) => (
         <button
           className="payment-link"
+          title={row.reference ?? row.id}
           aria-label={`Review ${row.id}`}
           onClick={() => selectPayment([row.id])}
         >
@@ -476,7 +482,9 @@ export function App({
                             This payment is fully matched.
                           </p>
                         )}
-                        {reviewNotice && <p role="status">{reviewNotice}</p>}
+                        {reviewNotice && assistantBusy && (
+                          <p role="status">{reviewNotice}</p>
+                        )}
                       </div>
                     )}
                     <p className="context-note">
@@ -520,6 +528,7 @@ export function App({
               selectedPaymentId={selected?.id}
               transport={transport}
               onApplied={setSnapshot}
+              onBusyChange={handleBusyChange}
             />
           ) : (
             <p className="connection-notice">

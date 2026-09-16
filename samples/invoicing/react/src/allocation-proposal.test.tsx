@@ -150,3 +150,44 @@ test('renders immutable server amounts and invokes each owned decision callback 
   expect(value.onDecline).toHaveBeenCalledWith();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
+
+test('uses only matching application records for readable client and references', () => {
+  cleanup();
+  const value = review({
+    snapshot: {
+      payments: [
+        {
+          id: proposal.paymentId,
+          customerId: proposal.customerId,
+          customerName: 'Northstar Labs',
+          reference: 'PAY-2026-01',
+          currency: 'USD',
+          amountCents: 240000,
+          unappliedCents: 240000,
+          version: 1,
+        },
+      ],
+      invoices: [
+        {
+          id: proposal.invoiceId,
+          customerId: proposal.customerId,
+          reference: 'INV-2026-01',
+          currency: 'USD',
+          amountCents: 240000,
+          outstandingCents: 240000,
+          version: 1,
+        },
+      ],
+      allocations: [],
+      activities: [],
+    },
+  });
+
+  renderProposal(value);
+
+  expect(screen.getByText('Northstar Labs')).toBeVisible();
+  expect(screen.getByText('PAY-2026-01')).toBeVisible();
+  expect(screen.getByText('INV-2026-01')).toBeVisible();
+  expect(screen.getByText('payment-001')).toBeVisible();
+  expect(screen.getByText('invoice-001')).toBeVisible();
+});

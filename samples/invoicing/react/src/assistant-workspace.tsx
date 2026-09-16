@@ -2,6 +2,7 @@ import {
   createContext,
   Fragment,
   type Ref,
+  useCallback,
   useContext,
   useEffect,
   useImperativeHandle,
@@ -58,6 +59,8 @@ export interface AssistantWorkspaceProps {
   readonly selectedPaymentId?: string;
   readonly snapshot: LedgerSnapshot;
   readonly onApplied: (snapshot: LedgerSnapshot) => void;
+  /** Reports whether conversation or an unresolved review prevents matching. */
+  readonly onBusyChange?: (busy: boolean) => void;
   readonly transport?: TransportOrFactory;
 }
 interface Session {
@@ -68,35 +71,67 @@ interface Session {
 
 function ReviewSession({
   session,
+  snapshot,
   onApplied,
   onTerminal,
   transport,
 }: {
   session: Session;
+  snapshot: LedgerSnapshot;
   onApplied: (snapshot: LedgerSnapshot) => void;
   onTerminal: () => void;
   transport?: TransportOrFactory;
 }) {
   const handle = useRef<ReviewChatHandle>(null);
   const started = useRef(false);
+  const [terminal, setTerminal] = useState<
+    'applied' | 'cancelled' | 'failed'
+  >();
+  const [expanded, setExpanded] = useState(false);
+  const finish = useCallback(
+    (status: 'applied' | 'cancelled' | 'failed') => {
+      setTerminal(status);
+      onTerminal();
+    },
+    [onTerminal],
+  );
+  const payment = snapshot.payments.find(
+    (record) => record.id === session.paymentId,
+  );
+  const invoice = snapshot.invoices.find(
+    (record) => record.id === session.invoiceId,
+  );
   useEffect(() => {
     if (!started.current && handle.current) {
       started.current = true;
-      if (!handle.current.startReview(session.paymentId)) onTerminal();
+      if (!handle.current.startReview(session.paymentId)) finish('failed');
     }
-  }, [session.paymentId, onTerminal]);
+  }, [session.paymentId, finish]);
   return (
-    <HashbrownProvider url="/agui/%2Freview%23agent">
-      <ReviewChat
-        ref={handle}
-        selectedPaymentId={session.paymentId}
-        selectedInvoiceId={session.invoiceId}
-        showComposer={false}
-        onApplied={onApplied}
-        onTerminal={onTerminal}
-        transport={transport}
-      />
-    </HashbrownProvider>
+    <details className="review-history" open={!terminal || expanded}>
+      <summary
+        onClick={(event) => {
+          event.preventDefault();
+          if (terminal) setExpanded((value) => !value);
+        }}
+      >
+        {terminal ? `Review ${terminal}` : 'Payment review'} ·{' '}
+        {payment?.reference ?? session.paymentId} →{' '}
+        {invoice?.reference ?? session.invoiceId}
+      </summary>
+      <HashbrownProvider url="/agui/%2Freview%23agent">
+        <ReviewChat
+          ref={handle}
+          selectedPaymentId={session.paymentId}
+          selectedInvoiceId={session.invoiceId}
+          snapshot={snapshot}
+          showComposer={false}
+          onApplied={onApplied}
+          onTerminal={finish}
+          transport={transport}
+        />
+      </HashbrownProvider>
+    </details>
   );
 }
 
@@ -183,6 +218,7 @@ export function AssistantWorkspace({
   selectedPaymentId,
   snapshot,
   onApplied,
+  onBusyChange,
   transport,
 }: AssistantWorkspaceProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -190,6 +226,9 @@ export function AssistantWorkspace({
   const activeClaim = useRef<string | undefined>(undefined);
   const [conversationBusy, setConversationBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  useEffect(() => {
+    onBusyChange?.(Boolean(active) || conversationBusy);
+  }, [active, conversationBusy, onBusyChange]);
   function beginReview(paymentId: string, invoiceId?: string): boolean {
     if (activeClaim.current || conversationBusy) return false;
     const payment = snapshot.payments.find((p) => p.id === paymentId);
@@ -249,6 +288,7 @@ export function AssistantWorkspace({
         <ReviewSession
           key={session.id}
           session={session}
+          snapshot={snapshot}
           onApplied={onApplied}
           transport={transport}
           onTerminal={() => {

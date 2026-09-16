@@ -58,7 +58,11 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     .getByRole('button', { name: 'Match payment', exact: true })
     .click();
   await expect(
-    page.getByRole('region', { name: 'Payment review chat', exact: true }),
+    page.getByRole('region', {
+      name: 'Payment review chat',
+      exact: true,
+      includeHidden: true,
+    }),
   ).toHaveCount(2);
   await expect(
     page.getByRole('button', { name: 'Decline', exact: true }).last(),
@@ -67,6 +71,7 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     .getByRole('button', { name: 'Decline', exact: true })
     .last()
     .click();
+  await page.locator('summary').filter({ hasText: 'Review cancelled' }).click();
   await expect(
     page.getByText('Review cancelled. No allocation was requested.', {
       exact: true,
@@ -79,7 +84,11 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     .getByRole('button', { name: 'Match payment', exact: true })
     .click();
   await expect(
-    page.getByRole('region', { name: 'Payment review chat', exact: true }),
+    page.getByRole('region', {
+      name: 'Payment review chat',
+      exact: true,
+      includeHidden: true,
+    }),
   ).toHaveCount(3);
   await expect(
     page.getByRole('button', { name: 'Approve and apply', exact: true }).last(),
