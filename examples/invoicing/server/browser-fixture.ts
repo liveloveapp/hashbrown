@@ -110,7 +110,7 @@ async function main() {
     api.listen(4329, '127.0.0.1', resolve);
   });
   const vite = await createViteServer({
-    configFile: 'samples/invoicing/react/vite.config.mts',
+    configFile: 'examples/invoicing/react/vite.config.mts',
     server: {
       port: 4330,
       proxy: {

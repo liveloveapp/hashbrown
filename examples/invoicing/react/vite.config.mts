@@ -27,7 +27,7 @@ export default defineConfig({
       '/agui': 'http://127.0.0.1:4325',
     },
   },
-  build: { outDir: '../../../dist/samples/invoicing/react', emptyOutDir: true },
+  build: { outDir: '../../../dist/examples/invoicing/react', emptyOutDir: true },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.tsx'],

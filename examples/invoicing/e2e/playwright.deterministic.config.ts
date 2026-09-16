@@ -15,7 +15,7 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'npx tsx --tsconfig samples/invoicing/server/tsconfig.json samples/invoicing/server/browser-fixture.ts',
+      'npx tsx --tsconfig examples/invoicing/server/tsconfig.json examples/invoicing/server/browser-fixture.ts',
     cwd: '../../..',
     url: 'http://127.0.0.1:4330/api/snapshot',
     reuseExistingServer: false,

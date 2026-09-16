@@ -14,7 +14,9 @@ function respond(response: ServerResponse, status: number, body: unknown) {
 }
 
 /** Read one unambiguous opaque session identity from the local cookie. */
-export function readSessionCookie(cookie: string | undefined): string | undefined {
+export function readSessionCookie(
+  cookie: string | undefined,
+): string | undefined {
   const matches = (cookie ?? '')
     .split(';')
     .map((value) => value.trim())
@@ -44,7 +46,10 @@ export function createInvoicingListener(
       respond(response, 400, { error: 'invalid_path' });
       return;
     }
-    if ((path === '/agui//review#agent' || path === '/agui//assistant#agent') && runReview) {
+    if (
+      (path === '/agui//review#agent' || path === '/agui//assistant#agent') &&
+      runReview
+    ) {
       if (request.method !== 'POST') {
         response.setHeader('allow', 'POST');
         respond(response, 405, { error: 'method_not_allowed' });
