@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 import { createSessionStore } from './session-store';
 import { createReviewCoordinator } from './review-coordinator';
 import { createMemoryRepositories } from './persistence/memory';
+import { ConflictError } from './persistence/types';
 
 const schema = { type: 'object', properties: { ui: { type: 'string' } } };
 const request = {
@@ -371,3 +372,39 @@ test.each([{ ui: true }, { ui: true, responseSchema: { type: 'number' } }])(
     ).rejects.toThrow('invalid_response_schema');
   },
 );
+
+test('authorize converges on one token under contention', async () => {
+  const repositories = createMemoryRepositories();
+  const store = createSessionStore(repositories.sessions);
+  const session = await store.createSession();
+  const threads = repositories.threads;
+  const realCommit = threads.commit.bind(threads);
+  const competitorToken = 'competitor-token';
+  let attempts = 0;
+  threads.commit = async (threadId, expectedVersion, next) => {
+    if (expectedVersion !== null && attempts < 2) {
+      attempts += 1;
+      if (attempts === 2) {
+        // A competitor mints the token for the same decision and commits it
+        // for real before this attempt's conflict is reported.
+        const existing = await threads.load(threadId);
+        await realCommit(threadId, existing!.version, {
+          ...existing!.value,
+          tokens: { ...existing!.value.tokens, initial: competitorToken },
+        });
+      }
+      throw new ConflictError();
+    }
+    return realCommit(threadId, expectedVersion, next);
+  };
+  const coordinator = createReviewCoordinator(store, threads, schema);
+
+  const context = await coordinator.authorize(session, body());
+
+  expect(context.token).toBe(competitorToken);
+  const record = await threads.load('thread-1');
+  const tokens = Object.values(record!.value.tokens).filter(
+    (value) => value === competitorToken,
+  );
+  expect(tokens).toHaveLength(1);
+});

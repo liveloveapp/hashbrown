@@ -10,6 +10,9 @@ export function repositoriesFromEnv(): Promise<Repositories> {
     const connectionString = process.env['DATABASE_URL'];
     if (!connectionString) return createMemoryRepositories();
     return createPostgresRepositories({ connectionString });
-  })();
+  })().catch((error: unknown) => {
+    shared = undefined;
+    throw error;
+  });
   return shared;
 }

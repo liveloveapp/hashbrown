@@ -275,8 +275,16 @@ export function createReviewCoordinator(
       const concurrent = reloaded.value.tokens[decision];
       if (concurrent)
         return context(threadId, reloaded.value, concurrent, decision);
-      await threads.commit(threadId, reloaded.version, mint(reloaded.value));
-      return context(threadId, reloaded.value, token, decision);
+      try {
+        await threads.commit(threadId, reloaded.version, mint(reloaded.value));
+        return context(threadId, reloaded.value, token, decision);
+      } catch (error) {
+        if (!(error instanceof ConflictError)) throw error;
+      }
+      const final = await load(threadId);
+      const converged = final.value.tokens[decision];
+      if (converged) return context(threadId, final.value, converged, decision);
+      throw new Error('review_contention');
     },
     async prepare(caller, request) {
       const { grant, binding, threadId, version } = await resolve(caller);
@@ -298,6 +306,13 @@ export function createReviewCoordinator(
         return proposal;
       };
       if (binding.proposalId) return matching(await proposalFor(binding));
+      // If the thread CAS below loses the race (e.g. a concurrent prepare
+      // already wrote proposalId), this proposal is never referenced by any
+      // thread record. It is inert: `apply` only ever reaches a proposal via
+      // `stored.proposalId`, so an orphaned one can never be applied. It
+      // remains visible read-only through `/api/proposals/:id` to the same
+      // session, since proposals live in the session document independent of
+      // thread ownership.
       const proposal = await store.propose(binding.sessionId, request);
       try {
         await threads.commit(threadId, version, {
