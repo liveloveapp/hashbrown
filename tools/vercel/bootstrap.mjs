@@ -39,10 +39,17 @@ export const CLOUDFLARE_PAGES_PROJECTS = Object.freeze([
   'hashbrown-smart-home',
 ]);
 
-/** Minimal Vercel REST client: bearer auth, JSON bodies, errors carry status/code. */
-export function createVercelClient(token, fetchImpl = fetch) {
+/**
+ * Minimal Vercel REST client: bearer auth, JSON bodies, errors carry
+ * status/code. Personal accounts are teams on Vercel, and domain endpoints
+ * reject requests that are not scoped to the team, so every request carries
+ * `teamId` when one is given.
+ */
+export function createVercelClient(token, fetchImpl = fetch, { teamId } = {}) {
   return async function vercel(method, path, body) {
-    const response = await fetchImpl(`${VERCEL_API}${path}`, {
+    const url = new URL(`${VERCEL_API}${path}`);
+    if (teamId) url.searchParams.set('teamId', teamId);
+    const response = await fetchImpl(url.toString(), {
       method,
       headers: {
         authorization: `Bearer ${token}`,
@@ -191,6 +198,32 @@ function isNotOnAccount(error) {
   return error?.status === 404 || error?.status === 403;
 }
 
+/**
+ * Attaching a domain to a project registers it on the account but does not
+ * make it a DNS zone, so Vercel's nameservers answer REFUSED once the registrar
+ * delegates to them. Enabling the zone is what publishes it.
+ */
+export async function ensureDnsZone(vercel, domainName) {
+  const { domain } = await vercel('GET', `/v5/domains/${domainName}`);
+  if (domain.zone === true) return 'exists';
+  await vercel('PATCH', `/v3/domains/${domainName}`, {
+    op: 'update',
+    zone: true,
+  });
+  return 'updated';
+}
+
+/**
+ * Vercel issues certificates lazily after DNS resolves to it; requesting one
+ * up front closes the window where HTTPS fails after the nameserver switch.
+ */
+export async function ensureCertificate(vercel, cns) {
+  const { certs = [] } = await vercel('GET', `/v5/now/certs?domain=${cns[0]}`);
+  if (certs.length > 0) return 'exists';
+  await vercel('POST', '/v7/certs', { cns });
+  return 'issued';
+}
+
 export async function readDomainState(vercel, projectId) {
   const projectDomain = await vercel(
     'GET',
@@ -325,8 +358,10 @@ async function main() {
     throw new Error('OPENAI_API_KEY is required.');
   }
 
-  const vercel = createVercelClient(token);
-  const { user } = await vercel('GET', '/v2/user');
+  const { user } = await createVercelClient(token)('GET', '/v2/user');
+  const teamId = user.defaultTeamId ?? undefined;
+  const vercel = createVercelClient(token, fetch, { teamId });
+  log('vercel scope', teamId ?? user.id);
   log('vercel user', user.username);
 
   let wwwProjectId;
@@ -359,6 +394,7 @@ async function main() {
           redirectStatusCode: 308,
         }),
       );
+      log('dns zone', await ensureDnsZone(vercel, DOMAIN));
 
       if (values['dns-records']) {
         const wanted = JSON.parse(
@@ -377,6 +413,17 @@ async function main() {
         );
         log('dns records', `created ${created}, existing ${existing}`);
       }
+
+      try {
+        log(
+          'certificate',
+          await ensureCertificate(vercel, [DOMAIN, `www.${DOMAIN}`]),
+        );
+      } catch (error) {
+        // Issuance needs DNS to resolve to Vercel; before the nameserver
+        // switch this is expected to fail and is retried on the next run.
+        log('certificate', 'pending', error.message);
+      }
     }
 
     await setSecret(target.secret, project.id);
@@ -384,7 +431,7 @@ async function main() {
   }
 
   await setSecret('VERCEL_TOKEN', token);
-  await setSecret('VERCEL_ORG_ID', user.id);
+  await setSecret('VERCEL_ORG_ID', teamId ?? user.id);
   log('secrets VERCEL_*', 'set');
 
   if (values['teardown-cloudflare']) {
