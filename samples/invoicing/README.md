@@ -123,7 +123,7 @@ Run the deterministic browser checks without model credentials (install the
 Playwright Chromium browser first with `npx playwright install chromium`):
 
 ```sh
-npx nx test invoicing-e2e
+npx nx example-e2e invoicing-e2e
 ```
 
 This target uses separate ports 4329/4330 and a real seeded session store. Its

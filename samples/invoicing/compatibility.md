@@ -23,7 +23,7 @@ color warnings were emitted.
 
 ## Deterministic browser edge cases — September 15, 2026
 
-`npx nx test invoicing-e2e` runs three model-free browser scenarios against a
+`npx nx example-e2e invoicing-e2e` runs three model-free browser scenarios against a
 separate process on ports 4329/4330. The process uses the real seeded session
 store and HTTP reads; its agent route deliberately returns HTTP 503. It does
 not instantiate B4, load credentials, or contact a model.

@@ -21,7 +21,7 @@
         "command": "playwright test --config samples/invoicing/e2e/playwright.config.ts"
       }
     },
-    "test": {
+    "example-e2e": {
       "executor": "nx:run-commands",
       "options": {
         "command": "playwright test --config samples/invoicing/e2e/playwright.deterministic.config.ts"
