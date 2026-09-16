@@ -93,6 +93,20 @@ export async function ensureNodeVersion(vercel, project) {
   return 'updated';
 }
 
+/**
+ * Vercel enables Deployment Protection (SSO) on every new project, which
+ * would hide previews behind a login and return 401 to the PR smoke checks.
+ * The docs site is public, so previews are too.
+ */
+export async function ensurePublicDeployments(vercel, project) {
+  if (!project.ssoProtection && !project.passwordProtection) return 'exists';
+  await vercel('PATCH', `/v9/projects/${project.id}`, {
+    ssoProtection: null,
+    passwordProtection: null,
+  });
+  return 'updated';
+}
+
 export async function upsertEnv(vercel, projectId, variables) {
   const entries = Object.entries(variables)
     .filter(([, value]) => typeof value === 'string' && value.length > 0)
@@ -321,6 +335,7 @@ async function main() {
     const { status, project } = await ensureProject(vercel, target.project);
     log(`project ${target.project}`, status, project.id);
     log('node version', await ensureNodeVersion(vercel, project));
+    log('public previews', await ensurePublicDeployments(vercel, project));
     log(
       'env vars',
       await upsertEnv(vercel, project.id, {

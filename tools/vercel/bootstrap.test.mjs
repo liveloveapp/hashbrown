@@ -7,6 +7,7 @@ import {
   deleteCloudflarePagesProjects,
   ensureDomain,
   ensureProject,
+  ensurePublicDeployments,
   missingDnsRecords,
   upsertEnv,
 } from './bootstrap.mjs';
@@ -72,6 +73,30 @@ test('ensureProject returns the existing project without creating', async () => 
     calls.map((call) => call.method),
     ['GET'],
   );
+});
+
+test('ensurePublicDeployments clears SSO protection once', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'PATCH /v9/projects/prj_1': { body: {} },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  assert.equal(
+    await ensurePublicDeployments(vercel, {
+      id: 'prj_1',
+      ssoProtection: { deploymentType: 'all_except_custom_domains' },
+    }),
+    'updated',
+  );
+  assert.deepEqual(calls[0].body, {
+    ssoProtection: null,
+    passwordProtection: null,
+  });
+  assert.equal(
+    await ensurePublicDeployments(vercel, { id: 'prj_1', ssoProtection: null }),
+    'exists',
+  );
+  assert.equal(calls.length, 1);
 });
 
 test('ensureProject creates a framework-less project when missing', async () => {
