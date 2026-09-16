@@ -83,10 +83,11 @@ The `NPM Publish` workflow should:
 3. Verify every package exists on npm with the expected dist tag.
 
 Website deployment to Vercel is independent of npm tags and package
-publishing. Pushes to `main` deploy production through the `PR / Main CI`
-workflow after validation succeeds. Production runs are serialized by the
-`deploy-production` concurrency group, and GitHub keeps only the newest pending
-run, so a superseded commit never deploys after a newer one. A release tag does
+publishing. Every run on `main` (push or manual dispatch) shares one workflow
+concurrency group, so production deployments are strictly ordered: an
+in-progress run finishes and deploys its commit, GitHub keeps only the newest
+pending run, and that run then deploys the latest commit. A superseded commit
+can therefore be live briefly, but never after a newer one. A release tag does
 not trigger or repeat that deployment.
 
 After the workflow succeeds, verify the GitHub release remains attached to the
