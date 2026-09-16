@@ -2,10 +2,14 @@
   "name": "@hashbrownai/invoicing-server",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@b4run/cli": "0.8.34",
     "@b4run/langchain": "0.8.34",
+    "@b4run/postgres-storage": "0.8.34",
     "@b4run/sdk": "0.8.34",
+    "@neondatabase/serverless": "^1.1.0",
+    "hono": "^4.13.8",
     "pg": "^8.23.0"
   },
   "devDependencies": {

@@ -7,5 +7,5 @@
     "types": ["node", "vitest/globals"],
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "vitest.config.mts"]
+  "include": ["src/**/*.ts", "b4.config.ts", "vitest.config.mts"]
 }

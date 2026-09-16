@@ -1,0 +1,5 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node node_modules/@b4run/cli/dist/index.js build",
+  "fluid": true
+}

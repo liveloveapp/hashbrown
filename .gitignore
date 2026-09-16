@@ -53,6 +53,7 @@ packages/angular/coverage
 # Nitro
 .nitro
 .vercel
+.b4/
 
 # Vite
 vite.config.*.timestamp*
