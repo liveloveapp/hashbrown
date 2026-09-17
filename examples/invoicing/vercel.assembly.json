@@ -6,9 +6,12 @@
     "spaFallback": "index.html"
   },
   "functions": {
-    "index": {
+    "agent": {
       "from": "server/.vercel/output/functions/index.func",
-      "config": { "maxDuration": 300, "supportsResponseStreaming": true }
+      "config": {
+        "maxDuration": 300,
+        "supportsResponseStreaming": true
+      }
     },
     "api": {
       "entry": "server/src/api.ts",
@@ -17,8 +20,17 @@
     }
   },
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api" },
-    { "src": "/(agui|threads)(/.*)?", "dest": "/index" },
-    { "src": "/healthz", "dest": "/index" }
+    {
+      "src": "/api/(.*)",
+      "dest": "/api"
+    },
+    {
+      "src": "/(agui|threads)(/.*)?",
+      "dest": "/agent"
+    },
+    {
+      "src": "/healthz",
+      "dest": "/agent"
+    }
   ]
 }

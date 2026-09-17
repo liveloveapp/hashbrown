@@ -1505,3 +1505,11 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ### Task 13: Upstream B4 gaps
 
 - [ ] With the user's go-ahead, open issues in `cacheplane/b4run` for the six items in the spec's "B4 gaps" section, each referencing this example and the concrete workaround (`assemble.mjs`, committed `vercel.json`), so the assembler can be retired once the target supports static assets and app functions natively.
+
+---
+
+## Amendments applied during execution
+
+- In the Build Output API a function named `index` is served at `/` as well as `/index`, so B4's `index.func` shadowed the SPA's `index.html` on the preview. The assembler manifest copies it as `agent.func` and routes `/agui`, `/threads`, and `/healthz` to `/agent`.
+- B4's Vercel function default-exports a Hono app (`{ fetch }`), which Vercel's Node launcher accepts; the artifact test asserts that shape rather than a Node handler.
+- `vercel integration add neon …` provisions and connects the store non-interactively once the marketplace terms have been accepted in a browser; the bootstrap keeps reporting `env DATABASE_URL missing` until then.

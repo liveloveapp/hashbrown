@@ -14,20 +14,20 @@ test('assembled output has the B4 function, the api function, and the SPA', asyn
   assert.deepEqual(config.routes.at(-1), { src: '/(.*)', dest: '/index.html' });
   const b4 = JSON.parse(
     await readFile(
-      new URL('functions/index.func/.vc-config.json', output),
+      new URL('functions/agent.func/.vc-config.json', output),
       'utf8',
     ),
   );
   assert.equal(b4.runtime, 'nodejs24.x');
   assert.equal(b4.maxDuration, 300);
   assert.equal(b4.supportsResponseStreaming, true);
-  await stat(new URL('functions/index.func/index.mjs', output));
+  await stat(new URL('functions/agent.func/index.mjs', output));
   await stat(new URL('static/index.html', output));
 });
 
 test('the B4 function exports a web fetch app', async () => {
   const { default: app } = await import(
-    new URL('functions/index.func/index.mjs', output)
+    new URL('functions/agent.func/index.mjs', output)
   );
   assert.equal(typeof app.fetch, 'function');
 });
