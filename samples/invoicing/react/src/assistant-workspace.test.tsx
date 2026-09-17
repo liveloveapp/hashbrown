@@ -7,7 +7,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { createRef } from 'react';
-import { expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import type { Transport, TransportRequest } from '@hashbrownai/core';
 import type { LedgerSnapshot } from '@invoicing/contracts';
@@ -40,6 +40,18 @@ const snapshot: LedgerSnapshot = {
   allocations: [],
   activities: [],
 };
+
+// Every test must leave no runtime work in flight: a pending debounce timer,
+// transport stream, or fetch would commit React updates after vitest tears
+// down jsdom, and React's passive-effect scheduling then throws
+// "window is not defined". Flush act, unmount, and restore globals here so the
+// final test in the file is covered as well.
+afterEach(async () => {
+  await act(() => Promise.resolve());
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
 function controlled(failAfterInterrupt = false, failCancellation = false) {
   const requests: TransportRequest[] = [];
   const transport: Transport = {
@@ -96,14 +108,17 @@ function controlled(failAfterInterrupt = false, failCancellation = false) {
               return;
             }
           } else {
+            // Ids must be unique per turn, as a real server guarantees;
+            // reusing one appends the delta to the earlier message.
+            const messageId = `answer-${requests.length}`;
             yield {
               type: EventType.TEXT_MESSAGE_START,
-              messageId: 'answer',
+              messageId,
               role: 'assistant',
             };
             yield {
               type: EventType.TEXT_MESSAGE_CONTENT,
-              messageId: 'answer',
+              messageId,
               delta: JSON.stringify({
                 ui: [
                   {
@@ -114,7 +129,7 @@ function controlled(failAfterInterrupt = false, failCancellation = false) {
                 ],
               }),
             };
-            yield { type: EventType.TEXT_MESSAGE_END, messageId: 'answer' };
+            yield { type: EventType.TEXT_MESSAGE_END, messageId };
           }
           if (failCancellation && request.input.resume?.length) {
             yield {
@@ -132,7 +147,6 @@ function controlled(failAfterInterrupt = false, failCancellation = false) {
 }
 
 test('conversation accepts questions before selecting a payment and remains usable after answering', async () => {
-  cleanup();
   const { requests, transport } = controlled();
   render(
     <AssistantWorkspace
@@ -160,11 +174,20 @@ test('conversation accepts questions before selecting a payment and remains usab
   });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
   await waitFor(() => expect(requests).toHaveLength(2));
+  await waitFor(() =>
+    expect(screen.getAllByText('There is one unapplied payment.')).toHaveLength(
+      2,
+    ),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('textbox', { name: 'Message assistant' }),
+    ).toBeEnabled(),
+  );
 });
 
 for (const failCancellation of [false, true]) {
   test(`cancellation unlocks chat and retires the old approval even when the response fails: ${failCancellation}`, async () => {
-    cleanup();
     const { requests, transport } = controlled(false, failCancellation);
     const ref = createRef<AssistantWorkspaceHandle>();
     vi.stubGlobal(
@@ -239,12 +262,15 @@ for (const failCancellation of [false, true]) {
     expect(
       screen.getAllByRole('button', { name: 'Decline' })[0],
     ).toBeDisabled();
-    vi.unstubAllGlobals();
+    await waitFor(() => {
+      const declines = screen.getAllByRole('button', { name: 'Decline' });
+      expect(declines).toHaveLength(2);
+      expect(declines[1]).toBeEnabled();
+    });
   });
 }
 
 test('a completed review without an approval retires and unlocks the composer', async () => {
-  cleanup();
   const ref = createRef<AssistantWorkspaceHandle>();
   const transport: Transport = {
     name: 'empty-review',
@@ -292,7 +318,6 @@ test('a completed review without an approval retires and unlocks the composer', 
 });
 
 test('an errored review surface cannot approve after a later review starts', async () => {
-  cleanup();
   const { transport } = controlled(true);
   const ref = createRef<AssistantWorkspaceHandle>();
   vi.stubGlobal(
@@ -348,5 +373,20 @@ test('an errored review surface cannot approve after a later review starts', asy
     name: 'Approve and apply',
   }))
     expect(button).toBeDisabled();
-  vi.unstubAllGlobals();
+  await waitFor(() =>
+    expect(
+      screen.getAllByText(
+        'No allocation proposal was completed. You can start another review.',
+      ),
+    ).toHaveLength(2),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('textbox', { name: 'Message assistant' }),
+    ).toBeEnabled(),
+  );
+  for (const button of screen.queryAllByRole('button', {
+    name: 'Approve and apply',
+  }))
+    expect(button).toBeDisabled();
 });
