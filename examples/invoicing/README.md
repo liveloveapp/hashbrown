@@ -58,8 +58,9 @@ Selection and chat survive Dashboard/Payments navigation. Matching is an
 explicit action; selecting a record never initiates a financial proposal.
 
 The root lockfile includes the server workspace and registry integrity hashes.
-The temporary agent workspace resolves the same installed B4 packages as the
-server, regardless of npm hoisting. No dependency points to a local B4 checkout.
+The server directory is itself the B4 app root, so the agent resolves the same
+installed B4 packages as the server, regardless of npm hoisting. No dependency
+points to a local B4 checkout.
 
 ## Deployment
 
@@ -93,8 +94,9 @@ Repeated identical decisions return that result; stale or conflicting decisions
 and foreign-session proposals fail without changing balances.
 
 HTTP-only SameSite cookies isolate browser sessions. Ledger and B4 history
-start fresh together on server restart; this is single-process, temporary state,
-not durable recovery. Each allocation-review thread owns one immutable proposal; the read-only
+persist together: sessions and B4 threads live in Postgres when `DATABASE_URL`
+is set, and in process memory — which does start fresh on restart — otherwise.
+Each allocation-review thread owns one immutable proposal; the read-only
 conversation uses its own route and thread. Cross-route, cross-session, and
 pre-reset thread reuse are rejected. Cancellation
 confirms no allocation was requested; it does not record a domain decline.
@@ -115,7 +117,7 @@ live in `invoicing-contracts`; clients do not import server implementation code.
 
 ## Verification and next steps
 
-Current verification: 133 unit/integration tests pass (93 server, 37 React,
+Current verification: 147 unit/integration tests pass (105 server, 39 React,
 3 contracts), all build/lint targets pass, and the real-model browser sequence
 passes. See compatibility.md for the exact scenarios and limitations.
 
@@ -163,8 +165,10 @@ include the large minified Vite chunk and terminal color settings.
 
 V1 scope is complete for the local example: seeded Dashboard/Payments, real-model
 conversation, explicit simulated approvals, and operation-result verification.
-Browser-refresh recovery and durable persistence are intentionally out of scope.
-Refreshing starts a new conversation; the in-process ledger remains until the
-server restarts. Do not refresh during a pending approval in this V1 demo.
+Per-session state is durable: the Postgres repositories commit each session and
+each thread by compare-and-swap, so a ledger outlives the process that created
+it. There is no cleanup or TTL for stored sessions and threads yet, and
+browser-refresh recovery remains out of scope — refreshing starts a new
+conversation. Do not refresh during a pending approval in this V1 demo.
 Deployment and retirement of older examples are separate follow-ups.
 See `compatibility.md` for dated verification evidence.

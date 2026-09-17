@@ -24,7 +24,8 @@ Preview. `OPENAI_MODEL` and `OPENAI_BASE_URL` are optional overrides. The
 
 - Pull requests from branches in this repository get a preview deployment
   for each affected target. Each deployment is recorded as a GitHub
-  Deployment in the `preview` environment, so the URL appears in the pull
+  Deployment in a per-target environment (`preview-www`,
+  `production-invoicing`, …), so the URL appears in the pull
   request sidebar. A preview failure fails the `PR Gate` check.
 - Pushes to `main` deploy every target to production after validation
   succeeds. Every run on `main` (push or manual dispatch) shares one workflow

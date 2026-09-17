@@ -83,11 +83,12 @@ jobs:
           payload="$(jq -n \
             --arg ref "$REF" \
             --arg environment "$ENVIRONMENT" \
+            --arg key "$KEY" \
             --arg task "deploy:$KEY" \
             --argjson production "$([[ "$ENVIRONMENT" == "production" ]] && echo true || echo false)" \
             '{
               ref: $ref,
-              environment: $environment,
+              environment: ($environment + "-" + $key),
               task: $task,
               auto_merge: false,
               required_contexts: [],
@@ -141,7 +142,7 @@ jobs:
             cancelled) state=error ;;
             *) state=failure ;;
           esac
-          # auto_inactive is scoped to the whole environment; revisit before adding a second production target.
+          # Deployments are per target-environment, so auto_inactive only retires older deployments of the same target.
           payload="$(jq -n \
             --arg state "$state" \
             --arg url "$URL" \
