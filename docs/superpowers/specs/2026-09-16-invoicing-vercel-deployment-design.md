@@ -292,6 +292,32 @@ as its motivating case:
 6. **Docs:** the package ships no `deployment/vercel.md`; the Vercel target is
    discoverable only from source and the `hono` guide's asides.
 
+Found while implementing (2026-09-16):
+
+7. **Silent `0 routes discovered`** when the app's `package.json` lacks
+   `"type": "module"`: the tsx loader yields CommonJS interop for the route
+   modules, `inferRouteKind` returns `null`, and `b4 check` reports success
+   with zero routes instead of diagnosing the module-type mismatch. This is
+   the most likely first-run failure for a new app root.
+8. **`build.targets` is typed `readonly string[]`**, so a typo such as
+   `'vercell'` type-checks and fails only at build time.
+9. **The Vercel function is named `index`.** In the Build Output API a
+   function named `index` is also served at `/`, so it shadows a static
+   `index.html`; any app that ships a frontend beside the runtime has to
+   rename the function (the assembler copies it as `agent.func`). A different
+   default name, or a name option, would avoid this.
+10. **`/healthz` initialises the request stores**, so on the Vercel target the
+    liveness probe fails when the database is unreachable or `DATABASE_URL`
+    is unset — it behaves as a readiness probe.
+11. **Store failures are opaque:** an unreachable database surfaces as
+    `B4.run runtime failure — [object ErrorEvent]` and a generic 500, with
+    the underlying WebSocket/Postgres error not logged.
+12. **Local execution of the built Vercel bundle needs a WebSocket proxy**
+    (`@neondatabase/serverless` cannot talk to a plain local Postgres; the
+    `B4_PG_WS_PROXY` value must be `host:port` without a scheme). A pooled
+    `pg` fallback for the `vercel` target — or documenting the proxy — would
+    make the artifact testable offline.
+
 ## Rollout
 
 1. Land the move to `examples/invoicing` and the persistence boundary with
