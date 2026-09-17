@@ -1,0 +1,32 @@
+{
+  "name": "invoicing-server",
+  "projectType": "application",
+  "sourceRoot": "examples/invoicing/server/src",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p examples/invoicing/server/tsconfig.json"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config examples/invoicing/server/vitest.config.mts"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint examples/invoicing/server"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "tsx --tsconfig examples/invoicing/server/tsconfig.json examples/invoicing/server/src/main.ts"
+      }
+    }
+  }
+}
