@@ -1,0 +1,23 @@
+{
+  "name": "invoicing-contracts",
+  "projectType": "library",
+  "sourceRoot": "examples/invoicing/shared/src",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p examples/invoicing/shared/tsconfig.json"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p examples/invoicing/shared/tsconfig.json && vitest run --config examples/invoicing/shared/vitest.config.mts"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "eslint examples/invoicing/shared" }
+    }
+  }
+}

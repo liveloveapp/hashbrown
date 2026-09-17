@@ -238,6 +238,6 @@
     "includedScripts": []
   },
   "workspaces": [
-    "samples/invoicing/server"
+    "examples/invoicing/server"
   ]
 }

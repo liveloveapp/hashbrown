@@ -6,6 +6,8 @@ export default [
   ...nx.configs['flat/javascript'],
   {
     ignores: [
+      '**/.b4/**',
+      '**/.vercel/**',
       '**/dist/**',
       '**/storybook-static/**',
       'node_modules/**',

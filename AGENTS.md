@@ -124,6 +124,9 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx build finance-server`
   - `npx nx serve finance-server`
   - `npx nx generate-data finance-server`
+- `invoicing`
+  - `npx nx build invoicing`
+  - `npx nx e2e invoicing`
 - `kitchen-sink-angular`
   - `npx nx build kitchen-sink-angular`
   - `npx nx serve kitchen-sink-angular`

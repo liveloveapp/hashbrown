@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   CLOUDFLARE_PAGES_PROJECTS,
+  TARGETS,
   createVercelClient,
   deleteCloudflarePagesProjects,
   ensureCertificate,
@@ -11,6 +12,7 @@ import {
   ensureProject,
   ensurePublicDeployments,
   missingDnsRecords,
+  missingEnv,
   upsertEnv,
 } from './bootstrap.mjs';
 
@@ -331,6 +333,42 @@ test('deleteCloudflarePagesProjects throws when success is false', async () => {
       }),
     /Cloudflare delete hashbrown-www -> 200: 10000/,
   );
+});
+
+test('missingEnv reports keys absent from production', async () => {
+  const { fetchImpl } = stubFetch({
+    'GET /v9/projects/prj_1/env': {
+      body: {
+        envs: [
+          { key: 'OPENAI_API_KEY', target: ['production', 'preview'] },
+          { key: 'DATABASE_URL', target: ['preview'] },
+        ],
+      },
+    },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  assert.deepEqual(
+    await missingEnv(vercel, 'prj_1', ['OPENAI_API_KEY', 'DATABASE_URL']),
+    ['DATABASE_URL'],
+  );
+});
+
+test('TARGETS entries are well-formed and secrets follow the naming convention', () => {
+  for (const target of TARGETS) {
+    assert.equal(typeof target.key, 'string');
+    assert.equal(typeof target.project, 'string');
+    assert.equal(typeof target.secret, 'string');
+    assert.ok(Array.isArray(target.domains) && target.domains.length > 0);
+    assert.ok(Array.isArray(target.env) && target.env.length > 0);
+    assert.ok(
+      Array.isArray(target.requiredEnv) && target.requiredEnv.length > 0,
+    );
+    assert.equal(
+      target.secret,
+      `VERCEL_PROJECT_ID_${target.key.toUpperCase()}`,
+    );
+  }
 });
 
 test('missingDnsRecords compares name, type and value', () => {

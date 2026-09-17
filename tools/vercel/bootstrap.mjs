@@ -14,6 +14,14 @@
  * --dns-records points at a JSON array of Vercel DNS records
  *   [{ "name": "", "type": "MX", "value": "mail.example.com.", "mxPriority": 10, "ttl": 3600 }]
  * Apex and www routing records are managed by Vercel and must not be listed.
+ *
+ * TARGETS lists every Vercel project this script provisions; each entry
+ * carries the domains to attach, the env vars upserted from process.env
+ * (`env`), and the env vars required in Production (`requiredEnv`). A
+ * required key that isn't in `env` can't be set by this script — e.g. the
+ * `invoicing` target's DATABASE_URL, which the Vercel Marketplace Neon
+ * integration injects once a store is connected in the dashboard; this
+ * script only checks for it and prints instructions when it's missing.
  */
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
@@ -25,11 +33,35 @@ export const CLOUDFLARE_API = 'https://api.cloudflare.com/client/v4';
 export const REPOSITORY = 'liveloveapp/hashbrown';
 export const DOMAIN = 'hashbrown.dev';
 export const NODE_VERSION = '24.x';
+/**
+ * Each target carries its Vercel project name, the GitHub secret that holds
+ * the project ID, the domains to attach, the env vars to upsert from
+ * process.env (`env`), and the subset that must be present in Production
+ * before the deployment can work (`requiredEnv`). A `requiredEnv` key absent
+ * from `env` (e.g. `DATABASE_URL`) cannot be set by this script — it is only
+ * checked and, if missing, reported with instructions.
+ */
 export const TARGETS = Object.freeze([
   Object.freeze({
     key: 'www',
     project: 'hashbrown-www',
     secret: 'VERCEL_PROJECT_ID_WWW',
+    domains: [
+      { name: DOMAIN },
+      { name: `www.${DOMAIN}`, redirect: DOMAIN, redirectStatusCode: 308 },
+    ],
+    env: ['OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_BASE_URL'],
+    requiredEnv: ['OPENAI_API_KEY'],
+  }),
+  Object.freeze({
+    key: 'invoicing',
+    project: 'hashbrown-invoicing',
+    secret: 'VERCEL_PROJECT_ID_INVOICING',
+    domains: [{ name: `invoicing.${DOMAIN}` }],
+    env: ['OPENAI_API_KEY'],
+    // DATABASE_URL is injected by the Vercel Marketplace Neon integration
+    // once a store is connected in the dashboard; it cannot be set via API.
+    requiredEnv: ['OPENAI_API_KEY', 'DATABASE_URL'],
   }),
 ]);
 export const CLOUDFLARE_PAGES_PROJECTS = Object.freeze([
@@ -138,6 +170,22 @@ export async function upsertEnv(vercel, projectId, variables) {
     );
   }
   return 'updated';
+}
+
+/**
+ * Reports which of `keys` have no Production env var set on the project.
+ * Some env vars (e.g. `DATABASE_URL` from the Vercel Marketplace Neon
+ * integration) cannot be set through this API and must be connected by hand
+ * in the dashboard; this lets the caller check and report rather than fail.
+ */
+export async function missingEnv(vercel, projectId, keys) {
+  const { envs = [] } = await vercel('GET', `/v9/projects/${projectId}/env`);
+  const present = new Set(
+    envs
+      .filter((e) => (e.target ?? []).includes('production'))
+      .map((e) => e.key),
+  );
+  return keys.filter((key) => !present.has(key));
 }
 
 export async function ensureDomain(vercel, projectId, domain) {
@@ -373,27 +421,34 @@ async function main() {
     log('public previews', await ensurePublicDeployments(vercel, project));
     log(
       'env vars',
-      await upsertEnv(vercel, project.id, {
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-        OPENAI_MODEL: process.env.OPENAI_MODEL,
-        OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
-      }),
+      await upsertEnv(
+        vercel,
+        project.id,
+        Object.fromEntries(target.env.map((key) => [key, process.env[key]])),
+      ),
     );
+
+    for (const domain of target.domains) {
+      log(
+        `domain ${domain.name}`,
+        await ensureDomain(vercel, project.id, domain),
+      );
+    }
+
+    for (const key of await missingEnv(
+      vercel,
+      project.id,
+      target.requiredEnv,
+    )) {
+      const hint =
+        key === 'DATABASE_URL'
+          ? `connect a Neon store to ${target.project} in the Vercel dashboard (Storage → Neon); it injects DATABASE_URL into Production and Preview`
+          : `set ${key} on ${target.project} in the Vercel dashboard`;
+      log(`env ${key}`, 'missing', hint);
+    }
 
     if (target.key === 'www') {
       wwwProjectId = project.id;
-      log(
-        'domain apex',
-        await ensureDomain(vercel, project.id, { name: DOMAIN }),
-      );
-      log(
-        'domain www',
-        await ensureDomain(vercel, project.id, {
-          name: `www.${DOMAIN}`,
-          redirect: DOMAIN,
-          redirectStatusCode: 308,
-        }),
-      );
       log('dns zone', await ensureDnsZone(vercel, DOMAIN));
 
       if (values['dns-records']) {

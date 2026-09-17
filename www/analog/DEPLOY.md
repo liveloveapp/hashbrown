@@ -24,7 +24,8 @@ Preview. `OPENAI_MODEL` and `OPENAI_BASE_URL` are optional overrides. The
 
 - Pull requests from branches in this repository get a preview deployment
   for each affected target. Each deployment is recorded as a GitHub
-  Deployment in the `preview` environment, so the URL appears in the pull
+  Deployment in a per-target environment (`preview-www`,
+  `production-invoicing`, …), so the URL appears in the pull
   request sidebar. A preview failure fails the `PR Gate` check.
 - Pushes to `main` deploy every target to production after validation
   succeeds. Every run on `main` (push or manual dispatch) shares one workflow
@@ -35,6 +36,10 @@ Targets are declared in the `DEPLOY_TARGETS` environment variable of
 `pr-main.yml`. `dir` is the directory that contains `.vercel/output` and is
 passed to `vercel --cwd`. Each target needs a `VERCEL_PROJECT_ID_<KEY>`
 repository secret; `VERCEL_TOKEN` and `VERCEL_ORG_ID` are shared.
+
+`invoicing` deploys `examples/invoicing/.vercel/output`, assembled by
+`tools/vercel/assemble.mjs` from B4's `vercel` build target, the React build,
+and the `api` function; see `examples/invoicing/README.md`.
 
 ## Manual deployment
 
