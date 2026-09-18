@@ -8,16 +8,17 @@ import { config } from '@b4run/cli';
  * `reconcileVercelJson` is off because CI deploys prebuilt output
  * (`vercel deploy --prebuilt`), so Vercel never runs a `buildCommand`.
  *
- * The runtime function's ceiling is the Vercel project's own setting — fluid
- * compute with a 300s default function timeout, which `bootstrap.mjs` asserts.
- * `build.vercel.maxDuration` states it here instead, from the release that
- * carries cacheplane/b4run#729.
+ * A review can stream for minutes, so `maxDuration` states the agent
+ * function's ceiling here rather than leaving it to the Vercel project's
+ * default. Fluid compute is what allows 300s at all, and `bootstrap.mjs`
+ * reconciles that.
  */
 export default config({
   build: {
     targets: ['vercel'],
     vercel: {
       outDir: '../.vercel/output',
+      maxDuration: 300,
       reconcileVercelJson: false,
       static: {
         dir: '../../../dist/examples/invoicing/react',

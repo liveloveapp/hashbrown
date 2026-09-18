@@ -25,9 +25,9 @@ test('the published tree has the B4 function, the api function, and the SPA', as
   );
   assert.equal(b4.runtime, 'nodejs24.x');
   assert.equal(b4.supportsResponseStreaming, true);
-  // The runtime function carries no maxDuration: its ceiling is the Vercel
-  // project default that bootstrap.mjs reconciles (fluid, 300s).
-  assert.equal(b4.maxDuration, undefined);
+  // A review can stream for minutes, so the agent function declares its own
+  // ceiling rather than inheriting the Vercel project default.
+  assert.equal(b4.maxDuration, 300);
   const api = JSON.parse(
     await readFile(new URL('functions/api.func/.vc-config.json', output), 'utf8'),
   );
