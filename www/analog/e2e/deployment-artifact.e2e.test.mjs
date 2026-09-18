@@ -428,6 +428,28 @@ test('production function server-renders a docs page from the built template', a
   }
 });
 
+test('production config routes the home page to the renderer before the filesystem', async () => {
+  const config = JSON.parse(
+    await readFile(new URL('config.json', deploymentDirectory), 'utf8'),
+  );
+  const filesystemPhase = config.routes.findIndex(
+    (route) => route.handle === 'filesystem',
+  );
+  const homeRoute = config.routes.findIndex((route) => route.src === '/');
+
+  assert.notEqual(filesystemPhase, -1);
+  // The client shell ships as static/index.html, so the filesystem phase
+  // answers "/" with an unrendered document unless the renderer claims it
+  // first. Every other route has no matching file and reaches the function on
+  // its own.
+  assert.notEqual(homeRoute, -1);
+  assert.ok(
+    homeRoute < filesystemPhase,
+    `expected the "/" route at ${homeRoute} to precede the filesystem phase at ${filesystemPhase}`,
+  );
+  assert.equal(config.routes[homeRoute].dest, '/__server');
+});
+
 test('production function server-renders the home page, parallax and all', async () => {
   const { default: handler } = await import(
     new URL('index.mjs', functionDirectory)
