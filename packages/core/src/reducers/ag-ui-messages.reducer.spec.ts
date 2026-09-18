@@ -2010,3 +2010,150 @@ test('terminal generation error rolls an active canonical draft back to committe
     activeTextMessageId: undefined,
   });
 });
+
+test('rejects a text message start that reuses an id from a finished turn', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+    }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  state = [
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'answer',
+      role: 'assistant',
+    },
+    { type: EventType.TEXT_MESSAGE_CONTENT, messageId: 'answer', delta: 'one' },
+    { type: EventType.TEXT_MESSAGE_END, messageId: 'answer' },
+  ].reduce(
+    (current, event) =>
+      reducer(current, apiActions.generateMessageEvent(event as AGUIEvent)),
+    state,
+  );
+  state = reducer(state, apiActions.generateMessageSuccess({ toolCalls: [] }));
+  state = reducer(state, internalActions.generationAttemptStarted());
+  const before = state.draft;
+
+  const reused = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'answer',
+      role: 'assistant',
+    }),
+  );
+
+  expect(reused.draft).toBe(before);
+  expect(ɵselectAgUiMessagesProtocolError(reused)).toBeInstanceOf(Error);
+  expect(ɵselectAgUiMessagesProtocolError(reused)?.message).toContain('answer');
+});
+
+test('starts a text message that history holds but never ended', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        { id: 'assistant-1', role: 'assistant', content: '' },
+      ],
+    }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+
+  const started = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    }),
+  );
+  const streamed = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: 'hydrated',
+    }),
+  );
+
+  expect(ɵselectAgUiMessagesProtocolError(started)).toBeUndefined();
+  expect(started.activeTextMessageId).toBe('assistant-1');
+  expect(ɵselectAgUiMessagesProtocolError(streamed)).toBeUndefined();
+  expect(streamed.draft).toEqual([
+    { id: 'assistant-1', role: 'assistant', content: 'hydrated' },
+  ]);
+});
+
+test('keeps one streamed message when its start repeats while it is open', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+
+  const streamed = [
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+      metadata: { attempt: 1 },
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: 'hi',
+    },
+  ].reduce(
+    (current, event) =>
+      reducer(current, apiActions.generateMessageEvent(event as AGUIEvent)),
+    state,
+  );
+
+  expect(ɵselectAgUiMessagesProtocolError(streamed)).toBeUndefined();
+  expect(streamed.draft).toEqual([
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'hi',
+      metadata: { attempt: 1 },
+    },
+  ]);
+});
+
+test('starts a text message after an end that matched no canonical message', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  const ended = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'answer',
+    } as AGUIEvent),
+  );
+
+  const started = reducer(
+    ended,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'answer',
+      role: 'assistant',
+    }),
+  );
+
+  expect(ɵselectAgUiMessagesProtocolError(started)).toBeUndefined();
+  expect(started.draft).toEqual([
+    { id: 'answer', role: 'assistant', content: '' },
+  ]);
+});
