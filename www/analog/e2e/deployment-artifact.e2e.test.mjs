@@ -428,6 +428,34 @@ test('production function server-renders a docs page from the built template', a
   }
 });
 
+test('production function server-renders the home page, parallax and all', async () => {
+  const { default: handler } = await import(
+    new URL('index.mjs', functionDirectory)
+  );
+  const server = createServer(handler);
+  await new Promise((resolveListening, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolveListening);
+  });
+
+  try {
+    const { port } = server.address();
+    const response = await fetch(`http://127.0.0.1:${port}/`);
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    // The home page runs browser-only work (parallax over `window` and
+    // requestAnimationFrame). Reaching for it during the render throws out of
+    // change detection and Analog serves the client-side shell instead, so the
+    // page ships with no content for crawlers. Guard the route that regressed,
+    // not just a docs page.
+    assert.doesNotMatch(html, /<body><div id="app"><\/div><\/body>/);
+    assert.match(html, /hb-hashy-skates-hashy/);
+  } finally {
+    await new Promise((resolveClosed) => server.close(resolveClosed));
+  }
+});
+
 test('Nx deploys the prebuilt output with the Vercel CLI', async () => {
   const project = JSON.parse(
     await readFile(new URL('../project.json', import.meta.url), 'utf8'),
