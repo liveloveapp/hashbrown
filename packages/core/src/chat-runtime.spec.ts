@@ -456,3 +456,60 @@ test('projects visible shared state and attempt status to devtools', async () =>
     }
   }
 });
+
+test('refuses a second turn that reuses the message ID of a finished answer', async () => {
+  const send = jest.fn(async (request: TransportRequest) => {
+    const identity = {
+      threadId: request.input.threadId,
+      runId: request.input.runId,
+    };
+
+    return {
+      events: (async function* (): AsyncGenerator<AGUIEvent> {
+        yield { type: EventType.RUN_STARTED, ...identity };
+        yield {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'answer',
+          role: 'assistant',
+        };
+        yield {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'answer',
+          delta: 'one',
+        };
+        yield { type: EventType.TEXT_MESSAGE_END, messageId: 'answer' };
+        yield { type: EventType.RUN_FINISHED, ...identity };
+      })(),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    retries: 0,
+    system: 'test',
+    transport: { name: 'test', send },
+  });
+  const teardown = runtime.start();
+
+  try {
+    await flushTaskBoundary();
+    runtime.sendMessage({ role: 'user', content: 'First question.' });
+    await waitForRuntimeIdle(runtime);
+    const answered = runtime.messages();
+    runtime.sendMessage({ role: 'user', content: 'Second question.' });
+    await waitForRuntimeIdle(runtime);
+
+    expect(answered.at(-1)).toMatchObject({
+      role: 'assistant',
+      content: 'one',
+    });
+    expect(runtime.error()?.message).toContain('answer');
+    expect(
+      runtime
+        .messages()
+        .filter((message) => message.role === 'assistant')
+        .map((message) => message.content),
+    ).toEqual(['one']);
+  } finally {
+    teardown();
+  }
+});
