@@ -2063,23 +2063,25 @@ test('starts a text message that history holds but never ended', () => {
   );
   state = reducer(state, internalActions.generationAttemptStarted());
 
-  const streamed = [
-    {
+  const started = reducer(
+    state,
+    apiActions.generateMessageEvent({
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'assistant-1',
       role: 'assistant',
-    },
-    {
+    }),
+  );
+  const streamed = reducer(
+    started,
+    apiActions.generateMessageEvent({
       type: EventType.TEXT_MESSAGE_CONTENT,
       messageId: 'assistant-1',
       delta: 'hydrated',
-    },
-  ].reduce(
-    (current, event) =>
-      reducer(current, apiActions.generateMessageEvent(event as AGUIEvent)),
-    state,
+    }),
   );
 
+  expect(ɵselectAgUiMessagesProtocolError(started)).toBeUndefined();
+  expect(started.activeTextMessageId).toBe('assistant-1');
   expect(ɵselectAgUiMessagesProtocolError(streamed)).toBeUndefined();
   expect(streamed.draft).toEqual([
     { id: 'assistant-1', role: 'assistant', content: 'hydrated' },
@@ -2124,5 +2126,34 @@ test('keeps one streamed message when its start repeats while it is open', () =>
       content: 'hi',
       metadata: { attempt: 1 },
     },
+  ]);
+});
+
+test('starts a text message after an end that matched no canonical message', () => {
+  let state = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  state = reducer(state, internalActions.generationAttemptStarted());
+  const ended = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_END,
+      messageId: 'answer',
+    } as AGUIEvent),
+  );
+
+  const started = reducer(
+    ended,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'answer',
+      role: 'assistant',
+    }),
+  );
+
+  expect(ɵselectAgUiMessagesProtocolError(started)).toBeUndefined();
+  expect(started.draft).toEqual([
+    { id: 'answer', role: 'assistant', content: '' },
   ]);
 });

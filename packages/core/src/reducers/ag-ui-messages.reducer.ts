@@ -253,6 +253,7 @@ export function ɵdecideAgUiMessageEvent(
     const draftFinishedTextMessageIds = nextFinishedTextMessageIds(
       state,
       event,
+      draft,
     );
     const lifecycleChanged = Object.entries(lifecycle).some(
       ([key, value]) => state[key as keyof AgUiMessagesState] !== value,
@@ -634,11 +635,14 @@ function assertTextMessageIsUnfinished(
 /**
  * Tracks the text messages this attempt has ended.
  *
- * A snapshot restates history, so the server may reopen what it just sent.
+ * An end that matched no canonical message is a no-op, so it must not close
+ * the ID to a later start. A snapshot restates history, so the server may
+ * reopen what it just sent.
  */
 function nextFinishedTextMessageIds(
   state: AgUiMessagesState,
   event: AGUIEvent,
+  draft: readonly Readonly<Message>[],
 ): readonly string[] {
   const current = state.draftFinishedTextMessageIds;
   if (event.type === EventType.MESSAGES_SNAPSHOT) {
@@ -646,7 +650,8 @@ function nextFinishedTextMessageIds(
   }
   if (
     event.type !== EventType.TEXT_MESSAGE_END ||
-    current.includes(event.messageId)
+    current.includes(event.messageId) ||
+    !draft.some((message) => message.id === event.messageId)
   ) {
     return current;
   }
