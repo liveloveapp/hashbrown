@@ -62,11 +62,9 @@ export const TARGETS = Object.freeze([
     // DATABASE_URL is injected by the Vercel Marketplace Neon integration
     // once a store is connected in the dashboard; it cannot be set via API.
     requiredEnv: ['OPENAI_API_KEY', 'DATABASE_URL'],
-    // A review can stream for minutes, so the agent function needs the long
-    // ceiling fluid compute allows. The Build Output tree does not carry a
-    // maxDuration for the runtime function, so the project default is the
-    // ceiling and belongs here rather than in a dashboard someone has to
-    // remember. See cacheplane/b4run#729 for stating it in b4.config.ts.
+    // Fluid compute is what allows a function to run for 300s at all, so the
+    // ceiling b4.config.ts asks for only holds with it on. The default timeout
+    // covers any function published without one of its own.
     resources: { fluid: true, functionDefaultTimeout: 300 },
   }),
 ]);

@@ -74,10 +74,9 @@ points to a local B4 checkout.
 
 CI deploys prebuilt output, so `build.vercel.reconcileVercelJson` is `false`
 and there is no committed `vercel.json`: Vercel would never run its
-`buildCommand`. The published tree carries no `maxDuration` for the runtime
-function, so its ceiling is the Vercel project default — fluid compute with a
-300s function timeout, reconciled by `bootstrap.mjs` rather than left to the
-dashboard.
+`buildCommand`. `build.vercel.maxDuration` gives the agent function a 300s
+ceiling, since a review can stream for minutes; `bootstrap.mjs` reconciles the
+fluid compute that allows it.
 
 The Vercel project env has `OPENAI_API_KEY` and `DATABASE_URL`. `DATABASE_URL`
 points at Neon, connected through the Vercel Marketplace integration; B4's
