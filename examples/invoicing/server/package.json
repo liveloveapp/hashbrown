@@ -9,6 +9,7 @@
     "@b4run/postgres-storage": "0.8.36",
     "@b4run/sdk": "0.8.36",
     "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "0.45.2",
     "hono": "^4.13.8",
     "pg": "^8.23.0"
   },

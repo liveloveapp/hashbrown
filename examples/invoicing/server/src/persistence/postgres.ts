@@ -1,11 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { and, eq, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool, type PoolConfig } from 'pg';
-import {
-  ConflictError,
-  type Repositories,
-  type Session,
-  type ThreadRecord,
-} from './types';
+import { ddl, tablesIn } from './schema';
+import { ConflictError, type Repositories } from './types';
 
 export interface PostgresRepositoryOptions extends PoolConfig {
   /** Optional schema for isolation (tests); production uses `public`. */
@@ -14,89 +12,94 @@ export interface PostgresRepositoryOptions extends PoolConfig {
 
 const identifier = (value: string) => {
   if (!/^[a-z_][a-z0-9_]*$/.test(value)) throw new Error('invalid_identifier');
-  return `"${value}"`;
+  return value;
 };
 
-/** JSONB document repositories with optimistic concurrency. */
+/** Every write bumps the version and stamps the clock. */
+const revise = <T>(value: T, version: number) => ({
+  value,
+  version: version + 1,
+  updatedAt: sql`now()`,
+});
+
+/**
+ * JSONB document repositories with optimistic concurrency.
+ *
+ * Each write is one statement guarded by the version the caller read, and
+ * `returning()` reports whether it matched: no rows means someone else
+ * committed first, which is a `ConflictError` for the caller to retry.
+ */
 export async function createPostgresRepositories(
   options: PostgresRepositoryOptions,
 ): Promise<Repositories> {
   const { schema = 'public', ...poolConfig } = options;
+  const name = identifier(schema);
   const pool = new Pool({ max: 2, ...poolConfig });
   pool.on('error', () => undefined);
-  const s = identifier(schema);
-  const sessionsTable = `${s}.invoicing_sessions`;
-  const threadsTable = `${s}.invoicing_threads`;
+  const db = drizzle(pool);
+  const { sessions, threads } = tablesIn(name);
 
-  await pool.query(`CREATE SCHEMA IF NOT EXISTS ${s}`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS ${sessionsTable} (
-    id uuid PRIMARY KEY,
-    version integer NOT NULL,
-    value jsonb NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now())`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS ${threadsTable} (
-    thread_id text PRIMARY KEY,
-    version integer NOT NULL,
-    value jsonb NOT NULL,
-    updated_at timestamptz NOT NULL DEFAULT now())`);
+  for (const statement of ddl(name)) await db.execute(statement);
 
   return {
     sessions: {
-      async create(initial: Session) {
-        const id = randomUUID();
-        await pool.query(
-          `INSERT INTO ${sessionsTable} (id, version, value) VALUES ($1, 0, $2)`,
-          [id, JSON.stringify(initial)],
-        );
-        return id;
+      async create(initial) {
+        const [row] = await db
+          .insert(sessions)
+          .values({ id: randomUUID(), version: 0, value: initial })
+          .returning({ id: sessions.id });
+        return row.id;
       },
       async load(id) {
-        const { rows } = await pool.query<{ version: number; value: Session }>(
-          `SELECT version, value FROM ${sessionsTable} WHERE id = $1`,
-          [id],
-        );
-        return rows[0];
+        const [row] = await db
+          .select({ version: sessions.version, value: sessions.value })
+          .from(sessions)
+          .where(eq(sessions.id, id));
+        return row;
       },
       async commit(id, expectedVersion, next) {
-        const { rowCount } = await pool.query(
-          `UPDATE ${sessionsTable} SET value = $3, version = version + 1, updated_at = now()
-           WHERE id = $1 AND version = $2`,
-          [id, expectedVersion, JSON.stringify(next)],
-        );
-        if (rowCount !== 1) throw new ConflictError();
+        const rows = await db
+          .update(sessions)
+          .set(revise(next, expectedVersion))
+          .where(
+            and(eq(sessions.id, id), eq(sessions.version, expectedVersion)),
+          )
+          .returning({ id: sessions.id });
+        if (rows.length !== 1) throw new ConflictError();
       },
     },
     threads: {
       async load(threadId) {
-        const { rows } = await pool.query<{
-          version: number;
-          value: ThreadRecord;
-        }>(`SELECT version, value FROM ${threadsTable} WHERE thread_id = $1`, [
-          threadId,
-        ]);
-        return rows[0];
+        const [row] = await db
+          .select({ version: threads.version, value: threads.value })
+          .from(threads)
+          .where(eq(threads.threadId, threadId));
+        return row;
       },
       async commit(threadId, expectedVersion, next) {
-        if (expectedVersion === null) {
-          const { rowCount } = await pool.query(
-            `INSERT INTO ${threadsTable} (thread_id, version, value) VALUES ($1, 0, $2)
-             ON CONFLICT (thread_id) DO NOTHING`,
-            [threadId, JSON.stringify(next)],
-          );
-          if (rowCount !== 1) throw new ConflictError();
-          return;
-        }
-        const { rowCount } = await pool.query(
-          `UPDATE ${threadsTable} SET value = $3, version = version + 1, updated_at = now()
-           WHERE thread_id = $1 AND version = $2`,
-          [threadId, expectedVersion, JSON.stringify(next)],
-        );
-        if (rowCount !== 1) throw new ConflictError();
+        const rows =
+          expectedVersion === null
+            ? await db
+                .insert(threads)
+                .values({ threadId, version: 0, value: next })
+                .onConflictDoNothing()
+                .returning({ threadId: threads.threadId })
+            : await db
+                .update(threads)
+                .set(revise(next, expectedVersion))
+                .where(
+                  and(
+                    eq(threads.threadId, threadId),
+                    eq(threads.version, expectedVersion),
+                  ),
+                )
+                .returning({ threadId: threads.threadId });
+        if (rows.length !== 1) throw new ConflictError();
       },
     },
     async close() {
-      if (schema !== 'public') await pool.query(`DROP SCHEMA ${s} CASCADE`);
+      if (name !== 'public')
+        await db.execute(sql`DROP SCHEMA ${sql.identifier(name)} CASCADE`);
       await pool.end();
     },
   };
