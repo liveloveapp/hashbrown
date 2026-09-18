@@ -1,4 +1,7 @@
 import { defineConfig } from '@playwright/test';
+import { resolve } from 'node:path';
+
+const repoRoot = resolve(__dirname, '../../..');
 
 if (process.env.INVOICING_ENV_FILE)
   process.loadEnvFile(process.env.INVOICING_ENV_FILE);
@@ -14,8 +17,20 @@ export default defineConfig({
   workers: 1,
   timeout: 240000,
   expect: { timeout: 90000 },
-  outputDir: '../../../work/invoicing-e2e',
-  reporter: 'list',
+  outputDir: resolve(repoRoot, 'test-results/examples/invoicing-live'),
+  reporter: [
+    ['list'],
+    [
+      'html',
+      {
+        outputFolder: resolve(
+          repoRoot,
+          'playwright-report/examples/invoicing-live',
+        ),
+        open: 'never',
+      },
+    ],
+  ],
   use: { baseURL: 'http://127.0.0.1:4326', channel: 'chrome', headless: true },
   webServer: [
     {
