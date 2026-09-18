@@ -122,7 +122,7 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     /\b(?:3|three)\b/i,
   );
   await page.screenshot({
-    path: 'work/invoicing-e2e/seeded-application.png',
+    path: 'test-results/examples/invoicing-live/seeded-application.png',
     fullPage: true,
   });
 
