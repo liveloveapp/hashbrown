@@ -21,8 +21,10 @@ test('a B4 thread cannot cross routes, sessions, or reset generations', async ()
   await expect(
     guard({ cookie: `invoicing_session=${other}` }, '/assistant', body),
   ).rejects.toThrow('thread_binding_conflict');
+  // A reset is the session's own doing, so the thread is stale rather than
+  // someone else's. Both answer the caller with 422 through the middleware.
   await store.reset(owner);
   await expect(guard(headers, '/assistant', body)).rejects.toThrow(
-    'thread_binding_conflict',
+    'stale_generation',
   );
 });

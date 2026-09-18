@@ -3,34 +3,18 @@ import type {
   RequestListener,
   ServerResponse,
 } from 'node:http';
-import { invoicingUiResponseSchema } from '@invoicing/contracts';
 import { createInvoicingListener } from './http';
-import { repositoriesFromEnv } from './persistence/from-env';
-import { createReviewCoordinator } from './review-coordinator';
-import { createSampleLedger } from './sample-ledger';
-import { createSessionStore } from './session-store';
-
-async function build(): Promise<RequestListener> {
-  const repositories = await repositoriesFromEnv();
-  const store = createSessionStore(repositories.sessions, createSampleLedger);
-  return createInvoicingListener(
-    store,
-    createReviewCoordinator(
-      store,
-      repositories.threads,
-      invoicingUiResponseSchema,
-    ),
-  );
-}
+import { getServices } from './services';
 
 let listener: Promise<RequestListener> | undefined;
 
-/** Build once per process, but let a failed cold start be retried by the next request. */
 function getListener(): Promise<RequestListener> {
-  listener ??= build().catch((error: unknown) => {
-    listener = undefined;
-    throw error;
-  });
+  listener ??= getServices()
+    .then(({ store, reviews }) => createInvoicingListener(store, reviews))
+    .catch((error: unknown) => {
+      listener = undefined;
+      throw error;
+    });
   return listener;
 }
 
