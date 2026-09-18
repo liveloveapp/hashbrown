@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { createServer as createViteServer } from 'vite';
-import { createInvoicingListener, readSessionCookie } from './src/http';
+import { createInvoicingListener } from './src/http';
+import { readSessionCookie } from './src/session-cookie';
 import { createReviewCoordinator } from './src/review-coordinator';
 import { invoicingUiResponseSchema } from '@invoicing/contracts';
 import { randomUUID } from 'node:crypto';

@@ -2,7 +2,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { assistantResponseSchema } from '@invoicing/contracts';
 import type { SessionStore } from './session-store';
 import type { ThreadRepository } from './persistence/types';
-import { readSessionCookie } from './http';
+import { readSessionCookie } from './session-cookie';
+import { assertThreadOwner } from './thread-ownership';
 
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -58,13 +59,19 @@ export function createAssistantMiddleware(
     )
       return reject(422);
     const owner = (await threads.load(body.threadId))?.value;
-    if (
-      owner &&
-      (owner.sessionId !== sessionId ||
-        owner.generation !== generation ||
-        owner.routeId !== '/assistant')
-    )
-      return reject(422);
+    if (owner) {
+      // Both a foreign thread and a thread left behind by a reset are the same
+      // answer to this caller: stop using it and open a new one.
+      try {
+        assertThreadOwner(owner, {
+          sessionId,
+          routeId: '/assistant',
+          generation,
+        });
+      } catch {
+        return reject(422);
+      }
+    }
     const current = async () => {
       if ((await store.generation(sessionId)) !== generation)
         throw new Error('stale_generation');

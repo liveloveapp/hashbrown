@@ -6,6 +6,7 @@ import type {
   ProposalRequest,
 } from '@invoicing/contracts';
 import type { SessionStore } from './session-store';
+import { assertThreadOwner } from './thread-ownership';
 import {
   ConflictError,
   type Document,
@@ -74,9 +75,7 @@ export function createReviewCoordinator(
     generation: number,
     stored: ThreadRecord,
   ): ThreadRecord => {
-    if (stored.sessionId !== sessionId || stored.routeId !== '/review')
-      throw new Error('thread_binding_conflict');
-    if (stored.generation !== generation) throw new Error('stale_generation');
+    assertThreadOwner(stored, { sessionId, routeId: '/review', generation });
     return stored;
   };
   const current = async (

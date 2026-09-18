@@ -1,6 +1,6 @@
 import type { SessionStore } from './session-store';
 import type { ReviewCoordinator } from './review-coordinator';
-import { readSessionCookie } from './http';
+import { readSessionCookie } from './session-cookie';
 
 /** Bind review tools to validated server state; B4 must validate the pending interrupt before invoking apply. */
 export function createReviewMiddleware(

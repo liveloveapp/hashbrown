@@ -1,8 +1,7 @@
 import type { RequestListener, ServerResponse } from 'node:http';
+import { readSessionCookie, sessionCookie } from './session-cookie';
 import type { SessionStore } from './session-store';
 import type { ReviewCoordinator } from './review-coordinator';
-
-const cookieName = 'invoicing_session';
 
 function respond(response: ServerResponse, status: number, body: unknown) {
   response.writeHead(status, {
@@ -11,19 +10,6 @@ function respond(response: ServerResponse, status: number, body: unknown) {
     'x-content-type-options': 'nosniff',
   });
   response.end(JSON.stringify(body));
-}
-
-/** Read one unambiguous opaque session identity from the local cookie. */
-export function readSessionCookie(
-  cookie: string | undefined,
-): string | undefined {
-  const matches = (cookie ?? '')
-    .split(';')
-    .map((value) => value.trim())
-    .filter((value) => value.startsWith(`${cookieName}=`));
-  if (matches.length !== 1) return undefined;
-  const value = matches[0].slice(cookieName.length + 1);
-  return /^[0-9a-f-]{36}$/.test(value) ? value : undefined;
 }
 
 /**
@@ -90,12 +76,7 @@ export function createInvoicingListener(
         const secure =
           request.headers['x-forwarded-proto'] === 'https' ||
           (request.socket as { encrypted?: boolean }).encrypted === true;
-        response.setHeader(
-          'set-cookie',
-          `${cookieName}=${sessionId}; Path=/; HttpOnly; SameSite=Lax${
-            secure ? '; Secure' : ''
-          }`,
-        );
+        response.setHeader('set-cookie', sessionCookie(sessionId, secure));
       }
       if (threadId) {
         try {
