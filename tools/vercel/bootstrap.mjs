@@ -62,6 +62,12 @@ export const TARGETS = Object.freeze([
     // DATABASE_URL is injected by the Vercel Marketplace Neon integration
     // once a store is connected in the dashboard; it cannot be set via API.
     requiredEnv: ['OPENAI_API_KEY', 'DATABASE_URL'],
+    // A review can stream for minutes, so the agent function needs the long
+    // ceiling fluid compute allows. The Build Output tree does not carry a
+    // maxDuration for the runtime function, so the project default is the
+    // ceiling and belongs here rather than in a dashboard someone has to
+    // remember. See cacheplane/b4run#729 for stating it in b4.config.ts.
+    resources: { fluid: true, functionDefaultTimeout: 300 },
   }),
 ]);
 export const CLOUDFLARE_PAGES_PROJECTS = Object.freeze([
@@ -142,6 +148,28 @@ export async function ensurePublicDeployments(vercel, project) {
   await vercel('PATCH', `/v9/projects/${project.id}`, {
     ssoProtection: null,
     passwordProtection: null,
+  });
+  return 'updated';
+}
+
+/**
+ * Fluid compute and the default function timeout are the runtime function's
+ * ceiling: the published Build Output tree carries no `maxDuration` for it, so
+ * whatever the project says is what an agent run gets.
+ */
+export async function ensureResources(vercel, project, resources) {
+  if (!resources) return 'skipped';
+  const current = project.resourceConfig ?? {};
+  const wanted = Object.entries(resources).filter(
+    ([key, value]) =>
+      (key === 'functionDefaultTimeout'
+        ? (project.defaultResourceConfig?.functionDefaultTimeout ??
+          current.functionDefaultTimeout)
+        : current[key]) !== value,
+  );
+  if (wanted.length === 0) return 'exists';
+  await vercel('PATCH', `/v9/projects/${project.id}`, {
+    resourceConfig: { ...current, ...Object.fromEntries(wanted) },
   });
   return 'updated';
 }
@@ -419,6 +447,7 @@ async function main() {
     log(`project ${target.project}`, status, project.id);
     log('node version', await ensureNodeVersion(vercel, project));
     log('public previews', await ensurePublicDeployments(vercel, project));
+    log('resources', await ensureResources(vercel, project, target.resources));
     log(
       'env vars',
       await upsertEnv(

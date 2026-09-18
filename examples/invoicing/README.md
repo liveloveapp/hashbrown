@@ -65,8 +65,19 @@ points to a local B4 checkout.
 ## Deployment
 
 `npx nx build invoicing` produces `examples/invoicing/.vercel/output`
-(the B4 agent function, the `api` function, and the SPA). Production is
-<https://invoicing.hashbrown.dev>, deployed by `.github/workflows/deploy.yml`.
+(the B4 runtime function `b4.func`, the `api` function, and the SPA).
+`b4 build` publishes that whole tree itself: `build.vercel` in
+`server/b4.config.ts` names the static directory and its SPA fallback, the
+`api` function and its entry, the `/api` route, and the runtime function's
+`maxDuration`. Production is <https://invoicing.hashbrown.dev>, deployed by
+`.github/workflows/deploy.yml`.
+
+CI deploys prebuilt output, so `build.vercel.reconcileVercelJson` is `false`
+and there is no committed `vercel.json`: Vercel would never run its
+`buildCommand`. The published tree carries no `maxDuration` for the runtime
+function, so its ceiling is the Vercel project default — fluid compute with a
+300s function timeout, reconciled by `bootstrap.mjs` rather than left to the
+dashboard.
 
 The Vercel project env has `OPENAI_API_KEY` and `DATABASE_URL`. `DATABASE_URL`
 points at Neon, connected through the Vercel Marketplace integration; B4's

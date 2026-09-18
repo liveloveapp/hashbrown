@@ -11,6 +11,7 @@ import {
   ensureDomain,
   ensureProject,
   ensurePublicDeployments,
+  ensureResources,
   missingDnsRecords,
   missingEnv,
   upsertEnv,
@@ -97,6 +98,54 @@ test('ensureProject returns the existing project without creating', async () => 
     calls.map((call) => call.method),
     ['GET'],
   );
+});
+
+test('ensureResources sets fluid and the function timeout once', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'PATCH /v9/projects/prj_1': { body: {} },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+  const resources = { fluid: true, functionDefaultTimeout: 300 };
+
+  assert.equal(
+    await ensureResources(
+      vercel,
+      {
+        id: 'prj_1',
+        resourceConfig: { fluid: false, buildMachineType: 'basic' },
+      },
+      resources,
+    ),
+    'updated',
+  );
+  // The existing config is carried through: a PATCH replaces resourceConfig.
+  assert.deepEqual(calls[0].body, {
+    resourceConfig: {
+      fluid: true,
+      buildMachineType: 'basic',
+      functionDefaultTimeout: 300,
+    },
+  });
+
+  // Vercel reports the effective timeout under defaultResourceConfig, so a
+  // project already at the wanted ceiling is left alone.
+  assert.equal(
+    await ensureResources(
+      vercel,
+      {
+        id: 'prj_1',
+        resourceConfig: { fluid: true },
+        defaultResourceConfig: { functionDefaultTimeout: 300 },
+      },
+      resources,
+    ),
+    'exists',
+  );
+  assert.equal(
+    await ensureResources(vercel, { id: 'prj_1' }, undefined),
+    'skipped',
+  );
+  assert.equal(calls.length, 1);
 });
 
 test('ensurePublicDeployments clears SSO protection once', async () => {
