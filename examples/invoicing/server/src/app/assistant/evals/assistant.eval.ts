@@ -178,13 +178,16 @@ const answersTheQuestion = custom(
 
 // `llmJudge` grades `run.finalMessage`, which for this app is always the
 // model's closing `{"ui":[]}`; the answer the user reads is the `render`
-// tool's prose, so the judge is shown that instead.
+// tool's prose, so the judge is shown that instead. The criteria never quote
+// the case input: aimock matches `userMessage` by substring and, in record
+// mode, registers every recording in its live matcher, so a judge prompt
+// that contained the input would be answered by the app's own first-turn
+// recording (a tool call with no content) instead of reaching the model.
 const judge = llmJudge({
   criteria: [
     'States amounts as formatted currency with a currency symbol;',
     'never claims to have changed, matched, or allocated anything;',
     `does not invent customer names beyond these: ${facts.customers.map((c) => c.name).join(', ')}.`,
-    'Input: {{input}}. Output: {{output}}',
   ].join(' '),
   model: 'gpt-5-mini',
   threshold: 0.7,

@@ -1,0 +1,88 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Show me Cedar Health's open invoices.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "ledgerSummary",
+            "arguments": "{}",
+            "id": "call_8daLbgCMiaLCZ9InqLZDgwFy"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Show me Cedar Health's open invoices.",
+        "turnIndex": 1,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "customerStatement",
+            "arguments": "{\"customerId\":\"cedar\"}",
+            "id": "call_vkoeouWUyPLbXdeBjFNrBozC"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Show me Cedar Health's open invoices.",
+        "turnIndex": 2,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "render",
+            "arguments": "{\"text\":\"Cedar Health (USD): 1 open invoice totaling $5,000.00. There is 1 unapplied payment for $2,000.00 that may partially apply to the open invoice. If you’d like, I can prepare a candidate match for your review.\\n\\nOpen invoice and unapplied payment details are shown below; use the Review Payment widget to examine/apply the $2,000.00 payment to the invoice if appropriate.\",\"components\":[{\"LedgerTable\":{\"title\":\"Cedar Health — Open Invoices\",\"recordIds\":[\"invoice-cedar-partial\"]}},{\"CustomerCard\":{\"customerId\":\"cedar\"}},{\"ReviewPayment\":{\"paymentId\":\"payment-cedar-partial\"}}]}",
+            "id": "call_euiXtdBqAvex1ENZdwPNXMQu"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Cedar Health (USD): 1 open invoice totaling $5,000.00. There is 1 unapplied payment for $2,000.00 that may partially apply to the open invoice. If you’d like, I can prepare a candidate match for your review.\\n\\nOpen invoice and unapplied payment details are shown below; use the Review Payment widget to examine/apply the $2,000.00 payment to the invoice if appropriate.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Cedar Health — Open Invoices\",\"recordIds\":[\"invoice-cedar-partial\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"cedar\"}}},{\"ReviewPayment\":{\"props\":{\"paymentId\":\"payment-cedar-partial\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Cedar Health (USD): 1 open invoice totaling $5,000.00. There is 1 unapplied payment for $2,000.00 that may partially apply to the open invoice. If you’d like, I can prepare a candidate match for your review.\\n\\nOpen invoice and unapplied payment details are shown below; use the Review Payment widget to examine/apply the $2,000.00 payment to the invoice if appropriate.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Cedar Health — Open Invoices\",\"recordIds\":[\"invoice-cedar-partial\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"cedar\"}}},{\"ReviewPayment\":{\"props\":{\"paymentId\":\"payment-cedar-partial\"}}}]}}]}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Show me Cedar Health's open invoices.",
+        "turnIndex": 3,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Cedar Health (USD): 1 open invoice totaling $5,000.00. There is 1 unapplied payment for $2,000.00 that may partially apply to the open invoice. If you’d like, I can prepare a candidate match for your review.\n\nOpen invoice and unapplied payment details are shown below; use the Review Payment widget to examine/apply the $2,000.00 payment to the invoice if appropriate.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"score\": 1, \"reason\": \"Meets all criteria: currency formatted with symbol, no claims of changes/allocations, customer name is allowed.\"}"
+      }
+    }
+  ]
+}
