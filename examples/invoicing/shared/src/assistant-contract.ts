@@ -97,7 +97,7 @@ export function createAssistantKit<C extends Record<AssistantKitName, object>>(
     component: components.AssistantText,
     children: [...leaves],
   };
-  return [text, ...leaves] as const;
+  return [text, ...leaves] as [typeof text, ...typeof leaves];
 }
 
 /** Canonical JSON response schema accepted by the invoicing server and React UI. */
