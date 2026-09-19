@@ -1756,12 +1756,14 @@ test('LedgerTable resolves ids from the snapshot and reports missing ones', () =
   expect(screen.getByText('1 record could not be shown.')).toBeVisible();
 });
 
-test('TrendChart lists the last months for a currency', () => {
+test('TrendChart lists the last calendar months for a currency, zero-filled', () => {
   withSnapshot(<TrendChart currency="USD" customerId={null} months={3} />);
 
   expect(screen.getByText('Jul 2026')).toBeVisible();
+  expect(screen.getByText('Aug 2026')).toBeVisible();
   expect(screen.getByText('Sep 2026')).toBeVisible();
   expect(screen.getByText('$250.00')).toBeVisible();
+  expect(screen.getAllByText('$0.00').length).toBeGreaterThan(0);
 });
 
 test('AgingSummary buckets open invoices as of the ledger date', () => {
@@ -1950,12 +1952,13 @@ export function TrendChart({
     );
   const invoices = own(snapshot.invoices);
   const payments = own(snapshot.payments);
-  const all = [
-    ...new Set(
-      [...invoices, ...payments].flatMap((r) => (r.date ? [r.date.slice(0, 7)] : [])),
-    ),
-  ].sort();
-  const rows = all.slice(-Math.max(1, months)).map((month) => ({
+  // Calendar months back from the as-of month, zero-filled, matching the
+  // server's monthlyTotals so the chart and the tool agree on which months exist.
+  const [asOfYear, asOfMonth] = AS_OF.split('-').map(Number);
+  const rows = Array.from({ length: Math.max(1, months) }, (_, offset) => {
+    const index = asOfYear * 12 + (asOfMonth - 1) - (months - 1 - offset);
+    return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+  }).map((month) => ({
     month,
     invoiced: invoices
       .filter((i) => i.date?.startsWith(month))
