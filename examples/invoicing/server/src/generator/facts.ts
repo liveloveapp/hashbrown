@@ -1,19 +1,15 @@
-import type { Ledger, PaymentProfile } from '@invoicing/contracts';
+import type {
+  AgingBuckets,
+  Ledger,
+  PaymentProfile,
+} from '@invoicing/contracts';
+import { agingBucket, TERMS_DAYS } from '@invoicing/contracts';
 import { getSnapshot } from '../ledger';
 import { AS_OF } from './clients';
 import { daysBetween } from './dates';
 
-/** Net terms every invoice is issued on. Overdue starts the day after. */
-export const TERMS_DAYS = 30;
-
-export interface AgingBuckets {
-  /** Not yet overdue. Undated open invoices are counted here too. */
-  readonly current: number;
-  readonly days1to30: number;
-  readonly days31to60: number;
-  readonly days61to90: number;
-  readonly over90: number;
-}
+export { agingBucket, TERMS_DAYS } from '@invoicing/contracts';
+export type { AgingBuckets } from '@invoicing/contracts';
 
 export interface CustomerFacts {
   readonly customerId: string;
@@ -60,19 +56,6 @@ export interface LedgerFacts {
    * including combined payments that cover several invoices.
    */
   readonly ambiguousPaymentIds: readonly string[];
-}
-
-/** Which aging bucket an open invoice falls in on `asOf`. */
-export function agingBucket(
-  invoiceDate: string,
-  asOf: string,
-): keyof AgingBuckets {
-  const overdue = daysBetween(invoiceDate, asOf) - TERMS_DAYS;
-  if (overdue <= 0) return 'current';
-  if (overdue <= 30) return 'days1to30';
-  if (overdue <= 60) return 'days31to60';
-  if (overdue <= 90) return 'days61to90';
-  return 'over90';
 }
 
 const sum = (values: readonly number[]) =>
