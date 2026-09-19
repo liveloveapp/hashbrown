@@ -7,6 +7,7 @@ import {
   materialize,
   overlayOf,
 } from './ledger';
+import { createSampleLedger, sampleScenarios } from './sample-ledger';
 
 const request = {
   paymentId: 'payment-001',
@@ -137,7 +138,7 @@ test.each([{ currency: 'EUR' }, { customerId: 'other-customer' }])(
 
 const empty = { allocations: [], activities: [] };
 
-test('an empty overlay materializes to the base ledger itself', () => {
+test('an empty overlay materializes to a ledger equal to the base', () => {
   const base = createLedger();
 
   expect(materialize(base, empty)).toEqual(base);
@@ -153,9 +154,10 @@ test('applying a proposal to a materialized ledger yields an overlay that reprod
 
   expect(overlay.allocations).toHaveLength(1);
   expect(overlay.activities).toHaveLength(1);
-  expect(materialize(base, overlay)).toEqual(next);
-  expect(materialize(base, overlay).payments[0].version).toBe(2);
-  expect(materialize(base, overlay).invoices[0].version).toBe(2);
+  const rebuilt = materialize(base, overlay);
+  expect(rebuilt).toEqual(next);
+  expect(rebuilt.payments[0].version).toBe(2);
+  expect(rebuilt.invoices[0].version).toBe(2);
   expect(base).toEqual(before);
 });
 
@@ -177,11 +179,37 @@ test('a second allocation on the same records advances versions again', () => {
   const afterSecond = applyProposal(materialize(base, overlay), second);
 
   expect(overlayOf(base, afterSecond).allocations).toHaveLength(2);
-  expect(
-    materialize(base, overlayOf(base, afterSecond)).payments[0].version,
-  ).toBe(3);
-  expect(
-    getSnapshot(materialize(base, overlayOf(base, afterSecond))).payments[0]
-      .unappliedCents,
-  ).toBe(0);
+  const rebuilt = materialize(base, overlayOf(base, afterSecond));
+  expect(rebuilt.payments[0].version).toBe(3);
+  expect(getSnapshot(rebuilt).payments[0].unappliedCents).toBe(0);
+});
+
+test('an overlay over a base that already carries allocations slices past the base history', () => {
+  const base = createSampleLedger();
+  const before = structuredClone(base);
+  const exact = { ...sampleScenarios.exact, amountCents: 240000 };
+  const proposal = createProposal(materialize(base, empty), exact, ids);
+
+  const next = applyProposal(materialize(base, empty), proposal);
+  const overlay = overlayOf(base, next);
+  const rebuilt = materialize(base, overlay);
+
+  expect(base.allocations.length).toBeGreaterThan(0);
+  expect(overlay.allocations).toHaveLength(1);
+  expect(overlay.activities).toHaveLength(1);
+  expect(rebuilt).toEqual(next);
+  const payment = rebuilt.payments.find((p) => p.id === exact.paymentId);
+  const invoice = rebuilt.invoices.find((i) => i.id === exact.invoiceId);
+  expect(payment?.version).toBe(2);
+  expect(invoice?.version).toBe(2);
+  expect(rebuilt.payments[0].version).toBe(base.payments[0].version);
+  expect(base).toEqual(before);
+});
+
+test('overlayOf rejects a ledger shorter than its base', () => {
+  const base = createLedger();
+  const proposal = createProposal(materialize(base, empty), request, ids);
+  const next = applyProposal(materialize(base, empty), proposal);
+
+  expect(() => overlayOf(next, base)).toThrow('overlay_base_mismatch');
 });

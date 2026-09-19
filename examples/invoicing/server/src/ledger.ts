@@ -88,6 +88,11 @@ export function materialize(base: Ledger, overlay: LedgerOverlay): Ledger {
  * which appends and never reorders.
  */
 export function overlayOf(base: Ledger, ledger: Ledger): LedgerOverlay {
+  if (
+    ledger.allocations.length < base.allocations.length ||
+    ledger.activities.length < base.activities.length
+  )
+    throw new Error('overlay_base_mismatch');
   return {
     allocations: ledger.allocations.slice(base.allocations.length),
     activities: ledger.activities.slice(base.activities.length),
