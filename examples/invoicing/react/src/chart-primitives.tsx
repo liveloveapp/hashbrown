@@ -54,8 +54,8 @@ export function Tooltip({
 }
 
 /**
- * The figure shell both charts share: the heading names the figure, the SVG is
- * decorative to assistive tech, and the details table is the accessible twin.
+ * The figure shell both charts share: the heading names the figure, each mark
+ * group in the SVG is a named `img`, and the details table is the accessible twin.
  */
 export function ChartFigure({
   title,
@@ -105,10 +105,15 @@ export function ChartFigure({
   );
 }
 
-/** Hover and keyboard focus share one highlighted key; the tooltip follows it. */
+/**
+ * Hover and keyboard focus share one highlighted key; the tooltip follows it.
+ * Each group is a focusable `img` named by its own aria-label, so its rects
+ * and text stay out of the accessibility tree.
+ */
 export function useHighlight() {
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const handlers = (key: string) => ({
+    role: 'img',
     tabIndex: 0,
     onMouseEnter: () => setHighlighted(key),
     onMouseLeave: () => setHighlighted(null),

@@ -136,7 +136,7 @@ export function TrendChart({
       </div>
       <p className="assistant-kit-caption">{caption}</p>
       <div className="plot">
-        <svg viewBox={`0 0 ${width} ${TREND.height}`} aria-hidden="true">
+        <svg viewBox={`0 0 ${width} ${TREND.height}`}>
           <defs>
             {/* Columns are drawn 4px past the baseline with rx=4 and clipped
                 here, so the caps are rounded and the foot stays square. */}
@@ -303,7 +303,7 @@ export function AgingSummary({
     >
       <p className="muted">Open: {money(total, currency)}</p>
       <div className="plot">
-        <svg viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+        <svg viewBox={`0 0 ${width} ${height}`}>
           <defs>
             {/* Bars start 4px left of the axis with rx=4 and are clipped here,
                 so the tip is rounded and the foot at the axis stays square. */}

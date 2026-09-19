@@ -98,7 +98,7 @@ test('TrendChart draws grouped columns with a legend, a caption, and a table vie
   expect(svgText.filter((t) => t?.includes('.'))).toEqual([]);
 });
 
-test('TrendChart names the figure once and hides the SVG from assistive tech', () => {
+test('TrendChart names the figure once and exposes each month group as a named img', () => {
   withSnapshot(<TrendChart currency="USD" customerId="c" months={3} />);
 
   const figure = screen.getByRole('figure', {
@@ -107,8 +107,16 @@ test('TrendChart names the figure once and hides the SVG from assistive tech', (
   expect(figure.getAttribute('aria-labelledby')).toBe(
     figure.querySelector('h4')?.id,
   );
-  expect(figure.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
-  expect(screen.queryByRole('img')).toBeNull();
+  // No aria-hidden on the SVG: its groups are focusable (axe aria-hidden-focus).
+  expect(figure.querySelector('svg')?.hasAttribute('aria-hidden')).toBe(false);
+  expect(figure.querySelector('svg')?.hasAttribute('role')).toBe(false);
+  expect(
+    screen.getAllByRole('img').map((g) => g.getAttribute('aria-label')),
+  ).toEqual([
+    'Jul 2026: invoiced $250.00, received $0.00',
+    'Aug 2026: invoiced $50.00, received $0.00',
+    'Sep 2026: invoiced $0.00, received $100.00',
+  ]);
 });
 
 test('TrendChart clamps months and shows a tooltip on hover', () => {
@@ -190,7 +198,16 @@ test('AgingSummary draws one bar per bucket with direct labels and a table view'
   expect(screen.getAllByText('31-60 days').length).toBeGreaterThan(0);
   expect(screen.getAllByText('$250.00').length).toBeGreaterThan(0);
   expect(screen.getByRole('table', { name: /Aging/ })).toBeInTheDocument();
-  expect(figure.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  expect(figure.querySelector('svg')?.hasAttribute('aria-hidden')).toBe(false);
+  expect(
+    screen.getAllByRole('img').map((g) => g.getAttribute('aria-label')),
+  ).toEqual([
+    'Current: $0.00, 0 invoices',
+    '1-30 days: $0.00, 0 invoices',
+    '31-60 days: $250.00, 1 invoice',
+    '61-90 days: $0.00, 0 invoices',
+    'Over 90 days: $0.00, 0 invoices',
+  ]);
 });
 
 test('AgingSummary names each bar row and pluralises the invoice count in its tooltip', () => {
