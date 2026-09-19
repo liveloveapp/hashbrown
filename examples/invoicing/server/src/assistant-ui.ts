@@ -18,9 +18,9 @@ export interface CanonicalUi {
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const fail = (detail: string): never => {
+function fail(detail: string): never {
   throw new Error(`invalid_ui: ${detail}`);
-};
+}
 
 /**
  * Check a composed answer against the kit and this session's snapshot and
@@ -81,11 +81,9 @@ export function validateUi(
           fail(`LedgerTable.recordIds must have 1 to ${MAX_TABLE_ROWS} ids`);
         const seen = new Set<string>();
         for (const id of ids as unknown[]) {
-          if (
-            typeof id !== 'string' ||
-            (!invoices.has(id) && !payments.has(id))
-          )
-            fail(`unknown record ${String(id)}`);
+          if (typeof id !== 'string') fail(`unknown record ${String(id)}`);
+          if (!invoices.has(id) && !payments.has(id))
+            fail(`unknown record ${id}`);
           if (seen.has(id)) fail(`duplicate record ${id}`);
           seen.add(id);
         }
