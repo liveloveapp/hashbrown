@@ -18,7 +18,7 @@ import { createRandom, type Random } from './prng';
 /** The seed behind the ledger every visitor sees. Change it and the history changes. */
 export const DEFAULT_SEED = 20260915;
 
-/** A generated invoice always has a date and a reference. */
+/** A generated invoice or payment always has a date and a reference. */
 type Dated = MoneyRecord & {
   readonly date: string;
   readonly reference: string;
@@ -35,12 +35,17 @@ interface Settlement {
   readonly allocations: readonly Allocation[];
 }
 
-const shortPaid = (amountCents: number) => Math.round(amountCents * 0.98);
+/**
+ * Ninety-eight percent of the amount. Every generated amount is a multiple
+ * of 100 cents, so the result is exact.
+ */
+const shortPaid = (amountCents: number) => Math.round((amountCents * 98) / 100);
 
 /**
  * One retainer on the first of every month, plus one to three project
- * invoices per quarter on the fifteenth. The as-of month has not had its
- * project billing run yet, so it never carries a project invoice.
+ * invoices per quarter on the fifteenth. Retainers rise by 30,000 cents in
+ * the second year. The as-of month has not had its project billing run yet,
+ * so it never carries a project invoice.
  */
 function invoicesFor(client: Client, random: Random): Issued[] {
   const issued: Issued[] = [];
@@ -84,15 +89,23 @@ function invoicesFor(client: Client, random: Random): Issued[] {
       });
     }
   }
+  // Retainers fall on the 1st and project invoices on the 15th of distinct
+  // months, so no client issues two invoices on one date: no tie-break needed.
   return issued.sort((a, b) =>
-    a.invoice.date === b.invoice.date
-      ? a.invoice.id.localeCompare(b.invoice.id)
-      : a.invoice.date.localeCompare(b.invoice.date),
+    a.invoice.date < b.invoice.date
+      ? -1
+      : a.invoice.date > b.invoice.date
+        ? 1
+        : 0,
   );
 }
 
 /** Days from issue to payment for a single-invoice settlement. */
-function lagFor(profile: PaymentProfile, monthIndex: number, random: Random) {
+function lagFor(
+  profile: PaymentProfile,
+  monthIndex: number,
+  random: Random,
+): number {
   switch (profile) {
     case 'on-time':
     case 'wrong-reference':
@@ -181,7 +194,7 @@ function settleInBatches(
     if (waited < span) continue;
     const month = monthAt(FIRST_MONTH, index);
     const date = `${month}-20`;
-    if (date > AS_OF) break;
+    if (date > AS_OF) break; // later batches are also in the future
     const paymentId = `payment-${client.id}-batch-${month}`;
     settlements.push({
       payment: {

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { expect, test } from 'vitest';
 import { getSnapshot } from '../ledger';
 import { AS_OF, clients } from './clients';
@@ -28,6 +29,17 @@ const open = (customerId: string) =>
   snapshot.invoices.filter(
     (item) => item.customerId === customerId && item.outstandingCents > 0,
   );
+
+// If this test fails, the ledger every visitor and eval sees has changed.
+// Update the literals deliberately, never to make a red test go green.
+test('default seed produces the fingerprinted ledger', () => {
+  expect(ledger.invoices).toHaveLength(483);
+  expect(ledger.payments).toHaveLength(441);
+  expect(ledger.allocations).toHaveLength(473);
+  expect(
+    createHash('sha256').update(JSON.stringify(ledger)).digest('hex'),
+  ).toBe('385a7628ff5dd6baac91075fad5899a316ded3c328735f139e6db9cfc7ec0d1f');
+});
 
 test('is deterministic per seed and differs across seeds', () => {
   expect(generateHistory(1)).toEqual(generateHistory(1));
@@ -125,10 +137,8 @@ test.each(['granite', 'kestrel'])(
     expect(settled.length).toBeGreaterThanOrEqual(24);
     for (const allocation of settled) {
       const i = invoice(allocation.invoiceId);
-      expect(allocation.amountCents).toBe(Math.round(i.amountCents * 0.98));
-      expect(i.outstandingCents).toBe(
-        i.amountCents - Math.round(i.amountCents * 0.98),
-      );
+      expect(allocation.amountCents + i.outstandingCents).toBe(i.amountCents);
+      expect(i.outstandingCents).toBe(i.amountCents / 50);
       expect(payment(allocation.paymentId).reference).toContain('LESS 2PCT');
     }
   },
