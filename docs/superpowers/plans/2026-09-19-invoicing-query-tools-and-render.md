@@ -10,7 +10,7 @@
 
 This is PR 2 of 4 from [the design spec](../specs/2026-09-19-invoicing-generative-ui-design.md), stacked on PR 1 ([#558](https://github.com/liveloveapp/hashbrown/pull/558), branch `blove/invoicing-vercel-example-dcc083`). Work on branch `blove/invoicing-query-tools`.
 
-**Two facts that shape this plan.** B4 converts each tool's TypeScript input type to JSON schema and validates arguments with zod before the tool runs, and it supports unions and optionals, so the `render` tool's `ui` argument is typed as a non-recursive union of node shapes. B4 has no post-run hook and does not apply the client's `responseSchema`, so validation must live in `render`, and the validated tree reaches the client through the nested structured-output echo the example already uses.
+**Two facts that shape this plan.** B4 converts each tool's TypeScript input type to JSON schema and validates arguments with zod before the tool runs, and it supports unions and optionals, so `render` takes a flat `AssistantRenderInput` (prose plus a list of leaf components without a `props` wrapper); the server builds the Hashbrown-shaped tree. B4's derivation also truncates schemas past depth 8 and collapses `string | null` to `string`, which is why the input is flat and optional fields are `?:` rather than nullable. B4 has no post-run hook and does not apply the client's `responseSchema`, so validation must live in `render`, and the validated tree reaches the client through the nested structured-output echo the example already uses.
 
 ---
 
@@ -19,7 +19,7 @@ This is PR 2 of 4 from [the design spec](../specs/2026-09-19-invoicing-generativ
 | File | Change | Responsibility |
 | ---- | ------ | -------------- |
 | `examples/invoicing/shared/src/aging.ts` | create | `TERMS_DAYS`, `agingBucket`, shared by server facts and React |
-| `examples/invoicing/shared/src/assistant-ui.ts` | create | TypeScript node types for the composed tree |
+| `examples/invoicing/shared/src/assistant-ui.ts` | create | `AssistantRenderInput` and leaf node types for the render tool's argument |
 | `examples/invoicing/shared/src/assistant-contract.ts` | rewrite | six kit configs, `createAssistantKit`, `assistantResponseSchema` |
 | `examples/invoicing/shared/src/assistant-contract.spec.ts` | create | schema names, parity between placeholder and real kits |
 | `examples/invoicing/shared/src/index.ts` | modify | exports |
@@ -954,6 +954,8 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ### Task 3: UI validation and the render pipeline
 
+**Amended after Task 1's review.** B4's schema derivation truncates past depth 8 and collapses `string | null` to `string`, so `render` takes a flat input, `AssistantRenderInput { text; components? }` (leaf nodes without a `props` wrapper), and the server builds the Hashbrown-shaped canonical tree: one `AssistantText` node whose children are the leaves.
+
 **Files:**
 - Create: `examples/invoicing/server/src/assistant-ui.ts`
 - Create: `examples/invoicing/server/src/assistant-ui.spec.ts`
@@ -962,85 +964,87 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 
 ```ts
 import { expect, test } from 'vitest';
-import type { AssistantTextNode, AssistantUiNode } from '@invoicing/contracts';
+import type { AssistantRenderInput } from '@invoicing/contracts';
 import { getSnapshot } from './ledger';
 import { createSampleLedger, sampleScenarios } from './sample-ledger';
 import { renderUi, validateUi } from './assistant-ui';
 
 const snapshot = getSnapshot(createSampleLedger());
-const text = (t: string, children?: AssistantUiNode[]) =>
-  ({ AssistantText: { props: { text: t }, ...(children ? { children } : {}) } }) as AssistantUiNode;
 
-test('a valid tree is normalized: children always present on text, null customer kept', () => {
-  const ui: AssistantUiNode[] = [
-    text('Atlas has two open invoices.', [
-      { LedgerTable: { props: { title: 'Open', recordIds: [...sampleScenarios.ambiguous.invoiceIds] } } },
-      { TrendChart: { props: { currency: 'USD', customerId: null, months: 6 } } },
-      { AgingSummary: { props: { currency: 'GBP', customerId: 'thistle' } } },
-      { CustomerCard: { props: { customerId: 'atlas' } } },
-      { ReviewPayment: { props: { paymentId: sampleScenarios.ambiguous.paymentId } } },
-    ]),
-    text('Nothing else.'),
-  ];
+test('a valid answer becomes one AssistantText node with canonical children', () => {
+  const input: AssistantRenderInput = {
+    text: 'Atlas has two open invoices.',
+    components: [
+      { LedgerTable: { title: 'Open', recordIds: [...sampleScenarios.ambiguous.invoiceIds] } },
+      { TrendChart: { currency: 'USD', months: 6 } },
+      { AgingSummary: { currency: 'GBP', customerId: 'thistle' } },
+      { CustomerCard: { customerId: 'atlas' } },
+      { ReviewPayment: { paymentId: sampleScenarios.ambiguous.paymentId } },
+    ],
+  };
 
-  const normalized = validateUi(snapshot, ui);
-
-  expect(normalized).toEqual({
+  expect(validateUi(snapshot, input)).toEqual({
     ui: [
       {
         AssistantText: {
           props: { text: 'Atlas has two open invoices.' },
-          children: (ui[0] as AssistantTextNode).AssistantText.children,
+          children: [
+            { LedgerTable: { props: { title: 'Open', recordIds: [...sampleScenarios.ambiguous.invoiceIds] } } },
+            { TrendChart: { props: { currency: 'USD', customerId: null, months: 6 } } },
+            { AgingSummary: { props: { currency: 'GBP', customerId: 'thistle' } } },
+            { CustomerCard: { props: { customerId: 'atlas' } } },
+            { ReviewPayment: { props: { paymentId: sampleScenarios.ambiguous.paymentId } } },
+          ],
         },
       },
-      { AssistantText: { props: { text: 'Nothing else.' }, children: [] } },
     ],
+  });
+  expect(validateUi(snapshot, { text: 'Nothing else.' })).toEqual({
+    ui: [{ AssistantText: { props: { text: 'Nothing else.' }, children: [] } }],
   });
 });
 
 test.each([
-  [[], 'invalid_ui: empty'],
-  [[{ Bogus: { props: {} } }], 'invalid_ui: unknown component Bogus'],
-  [[text('')], 'invalid_ui: AssistantText.text is empty'],
-  [[text('x', [text('nested')])], 'invalid_ui: AssistantText cannot contain AssistantText'],
-  [[{ LedgerTable: { props: { title: 't', recordIds: [] } } }], 'invalid_ui: LedgerTable.recordIds must have 1 to 50 ids'],
-  [[{ LedgerTable: { props: { title: 't', recordIds: ['nope'] } } }], 'invalid_ui: unknown record nope'],
-  [[{ LedgerTable: { props: { title: 't', recordIds: ['invoice-cedar-partial', 'invoice-cedar-partial'] } } }], 'invalid_ui: duplicate record invoice-cedar-partial'],
-  [[{ TrendChart: { props: { currency: 'JPY', customerId: null, months: 6 } } }], 'invalid_ui: unknown currency JPY'],
-  [[{ TrendChart: { props: { currency: 'USD', customerId: 'nobody', months: 6 } } }], 'invalid_ui: unknown customer nobody'],
-  [[{ TrendChart: { props: { currency: 'USD', customerId: null, months: 2 } } }], 'invalid_ui: TrendChart.months must be 3 to 24'],
-  [[{ AgingSummary: { props: { currency: 'USD', customerId: 'lumen' } } }], 'invalid_ui: customer lumen is not billed in USD'],
-  [[{ CustomerCard: { props: { customerId: 'nobody' } } }], 'invalid_ui: unknown customer nobody'],
-  [[{ ReviewPayment: { props: { paymentId: 'payment-northstar-2024-10' } } }], 'invalid_ui: payment payment-northstar-2024-10 has no unapplied balance'],
-  [[{ ReviewPayment: { props: { paymentId: 'nope' } } }], 'invalid_ui: unknown payment nope'],
-] as [unknown[], string][])('rejects %j', (ui, message) => {
-  expect(() => validateUi(snapshot, ui as AssistantUiNode[])).toThrow(message);
+  [{ text: '' }, 'invalid_ui: text is empty'],
+  [{ text: 'x', components: [{ Bogus: {} }] }, 'invalid_ui: unknown component Bogus'],
+  [{ text: 'x', components: [{ LedgerTable: { title: 't', recordIds: [] } }] }, 'invalid_ui: LedgerTable.recordIds must have 1 to 50 ids'],
+  [{ text: 'x', components: [{ LedgerTable: { title: 't', recordIds: ['nope'] } }] }, 'invalid_ui: unknown record nope'],
+  [{ text: 'x', components: [{ LedgerTable: { title: 't', recordIds: ['invoice-cedar-partial', 'invoice-cedar-partial'] } }] }, 'invalid_ui: duplicate record invoice-cedar-partial'],
+  [{ text: 'x', components: [{ LedgerTable: { title: ' ', recordIds: ['invoice-cedar-partial'] } }] }, 'invalid_ui: LedgerTable.title is empty'],
+  [{ text: 'x', components: [{ TrendChart: { currency: 'JPY', months: 6 } }] }, 'invalid_ui: unknown currency JPY'],
+  [{ text: 'x', components: [{ TrendChart: { currency: 'USD', customerId: 'nobody', months: 6 } }] }, 'invalid_ui: unknown customer nobody'],
+  [{ text: 'x', components: [{ TrendChart: { currency: 'USD', months: 2 } }] }, 'invalid_ui: TrendChart.months must be 3 to 24'],
+  [{ text: 'x', components: [{ AgingSummary: { currency: 'USD', customerId: 'lumen' } }] }, 'invalid_ui: customer lumen is not billed in USD'],
+  [{ text: 'x', components: [{ CustomerCard: { customerId: 'nobody' } }] }, 'invalid_ui: unknown customer nobody'],
+  [{ text: 'x', components: [{ ReviewPayment: { paymentId: 'payment-northstar-2024-10' } }] }, 'invalid_ui: payment payment-northstar-2024-10 has no unapplied balance'],
+  [{ text: 'x', components: [{ ReviewPayment: { paymentId: 'nope' } }] }, 'invalid_ui: unknown payment nope'],
+] as [unknown, string][])('rejects %j', (input, message) => {
+  expect(() => validateUi(snapshot, input as AssistantRenderInput)).toThrow(message);
 });
 
-test('rejects more than 20 nodes', () => {
-  const ui = Array.from({ length: 21 }, (_, i) => text(`line ${i}`));
+test('rejects more than 20 components', () => {
+  const components = Array.from({ length: 21 }, () => ({ CustomerCard: { customerId: 'atlas' } }));
 
-  expect(() => validateUi(snapshot, ui)).toThrow('invalid_ui: too many components');
+  expect(() => validateUi(snapshot, { text: 'x', components })).toThrow('invalid_ui: too many components');
 });
 
-test('renderUi streams the normalized tree through the echo and retries once on drift', async () => {
-  const ui: AssistantUiNode[] = [text('Hello')];
-  const expected = validateUi(snapshot, ui);
+test('renderUi streams the canonical tree through the echo and retries once on drift', async () => {
+  const tree = validateUi(snapshot, { text: 'Hello' });
   const calls: unknown[] = [];
   let first = true;
-  const echo = async (schema: unknown, tree: unknown) => {
+  const echo = async (schema: unknown, canonical: unknown) => {
     calls.push(schema);
     if (first) {
       first = false;
       return { ui: [] };
     }
-    return tree;
+    return canonical;
   };
 
-  await expect(renderUi(expected, { schema: 's' }, echo)).resolves.toEqual({ rendered: true });
+  await expect(renderUi(tree, { schema: 's' }, echo)).resolves.toEqual({ rendered: true });
   expect(calls).toEqual([{ schema: 's' }, { schema: 's' }]);
   await expect(
-    renderUi(expected, { schema: 's' }, async () => ({ ui: [] })),
+    renderUi(tree, { schema: 's' }, async () => ({ ui: [] })),
   ).rejects.toThrow('invalid_assistant_ui');
 });
 ```
@@ -1056,18 +1060,17 @@ Expected: FAIL, cannot find module `./assistant-ui`.
 
 ```ts
 import { isDeepStrictEqual } from 'node:util';
-import type {
-  AssistantLeafNode,
-  AssistantUiNode,
-  LedgerSnapshot,
-} from '@invoicing/contracts';
+import type { AssistantRenderInput, LedgerSnapshot } from '@invoicing/contracts';
 
-const MAX_NODES = 20;
+const MAX_COMPONENTS = 20;
 const MAX_TABLE_ROWS = 50;
+
+/** A Hashbrown UI node: one component key holding `props` and, for text, `children`. */
+export type CanonicalNode = Readonly<Record<string, unknown>>;
 
 /** The canonical tree: what the echo must reproduce byte for byte. */
 export interface CanonicalUi {
-  readonly ui: readonly AssistantUiNode[];
+  readonly ui: readonly CanonicalNode[];
 }
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -1078,31 +1081,34 @@ const fail = (detail: string): never => {
 };
 
 /**
- * Check a composed tree against the kit and this session's snapshot and
- * return it in canonical form. Every ID must resolve; text nodes always carry
- * a `children` array; nullable customers keep an explicit null. Throws
- * `invalid_ui: <detail>` naming the offending value so the model can fix it.
+ * Check a composed answer against the kit and this session's snapshot and
+ * return the Hashbrown-shaped tree the client renders: one AssistantText
+ * whose children are the validated leaves. Every ID must resolve; an omitted
+ * customer becomes an explicit null because the kit schema requires the key.
+ * Throws `invalid_ui: <detail>` naming the offending value so the model can
+ * fix it.
  */
 export function validateUi(
   snapshot: LedgerSnapshot,
-  ui: readonly AssistantUiNode[],
+  input: AssistantRenderInput,
 ): CanonicalUi {
-  if (!Array.isArray(ui) || ui.length === 0) fail('empty');
+  if (!record(input)) fail('input must be an object');
+  const text = input.text;
+  if (typeof text !== 'string' || !text.trim()) fail('text is empty');
+  const components = input.components ?? [];
+  if (!Array.isArray(components)) fail('components must be an array');
+  if (components.length > MAX_COMPONENTS) fail('too many components');
+
   const customers = new Map(snapshot.customers.map((c) => [c.id, c]));
   const currencies = new Set(snapshot.customers.map((c) => c.currency));
   const invoices = new Set(snapshot.invoices.map((i) => i.id));
   const payments = new Map(snapshot.payments.map((p) => [p.id, p]));
-  let count = 0;
-  const tick = () => {
-    count += 1;
-    if (count > MAX_NODES) fail('too many components');
-  };
-  const requireCurrency = (currency: unknown) => {
+  const requireCurrency = (currency: unknown): string => {
     if (typeof currency !== 'string' || !currencies.has(currency))
       fail(`unknown currency ${String(currency)}`);
     return currency as string;
   };
-  const requireCustomer = (customerId: unknown, currency?: string) => {
+  const requireCustomer = (customerId: unknown, currency?: string): string => {
     if (typeof customerId !== 'string' || !customers.has(customerId))
       fail(`unknown customer ${String(customerId)}`);
     const customer = customers.get(customerId as string);
@@ -1110,21 +1116,21 @@ export function validateUi(
       fail(`customer ${customerId} is not billed in ${currency}`);
     return customerId as string;
   };
-  const nullableCustomer = (customerId: unknown, currency: string) =>
-    customerId === null || customerId === undefined
+  const optionalCustomer = (customerId: unknown, currency: string) =>
+    customerId === undefined || customerId === null
       ? null
       : requireCustomer(customerId, currency);
 
-  const leaf = (node: unknown): AssistantLeafNode => {
-    tick();
+  const leaf = (node: unknown): CanonicalNode => {
     if (!record(node) || Object.keys(node).length !== 1)
-      fail('each node must have exactly one component key');
+      fail('each component must have exactly one component key');
     const [name] = Object.keys(node as object);
-    const body = (node as Record<string, unknown>)[name];
-    const props = record(body) && record(body.props) ? body.props : fail(`${name} has no props`);
+    const props = (node as Record<string, unknown>)[name];
+    if (!record(props)) fail(`${name} has no props`);
+    const p = props as Record<string, unknown>;
     switch (name) {
       case 'LedgerTable': {
-        const ids = props.recordIds;
+        const ids = p.recordIds;
         if (!Array.isArray(ids) || ids.length < 1 || ids.length > MAX_TABLE_ROWS)
           fail(`LedgerTable.recordIds must have 1 to ${MAX_TABLE_ROWS} ids`);
         const seen = new Set<string>();
@@ -1134,71 +1140,59 @@ export function validateUi(
           if (seen.has(id)) fail(`duplicate record ${id}`);
           seen.add(id);
         }
-        if (typeof props.title !== 'string' || !props.title.trim())
+        if (typeof p.title !== 'string' || !p.title.trim())
           fail('LedgerTable.title is empty');
-        return { LedgerTable: { props: { title: props.title, recordIds: [...seen] } } };
+        return { LedgerTable: { props: { title: p.title, recordIds: [...seen] } } };
       }
       case 'TrendChart': {
-        const currency = requireCurrency(props.currency);
-        const months = props.months;
+        const currency = requireCurrency(p.currency);
+        const months = p.months;
         if (typeof months !== 'number' || !Number.isInteger(months) || months < 3 || months > 24)
           fail('TrendChart.months must be 3 to 24');
         return {
           TrendChart: {
-            props: { currency, customerId: nullableCustomer(props.customerId, currency), months },
+            props: { currency, customerId: optionalCustomer(p.customerId, currency), months },
           },
         };
       }
       case 'AgingSummary': {
-        const currency = requireCurrency(props.currency);
+        const currency = requireCurrency(p.currency);
         return {
           AgingSummary: {
-            props: { currency, customerId: nullableCustomer(props.customerId, currency) },
+            props: { currency, customerId: optionalCustomer(p.customerId, currency) },
           },
         };
       }
       case 'CustomerCard':
-        return { CustomerCard: { props: { customerId: requireCustomer(props.customerId) } } };
+        return { CustomerCard: { props: { customerId: requireCustomer(p.customerId) } } };
       case 'ReviewPayment': {
-        const id = props.paymentId;
+        const id = p.paymentId;
         if (typeof id !== 'string' || !payments.has(id)) fail(`unknown payment ${String(id)}`);
         if ((payments.get(id as string)?.unappliedCents ?? 0) <= 0)
           fail(`payment ${id} has no unapplied balance`);
         return { ReviewPayment: { props: { paymentId: id as string } } };
       }
-      case 'AssistantText':
-        return fail('AssistantText cannot contain AssistantText');
       default:
         return fail(`unknown component ${name}`);
     }
   };
 
-  const node = (value: unknown): AssistantUiNode => {
-    if (record(value) && 'AssistantText' in value && Object.keys(value).length === 1) {
-      tick();
-      const body = value.AssistantText;
-      const props = record(body) && record(body.props) ? body.props : fail('AssistantText has no props');
-      if (typeof props.text !== 'string' || !props.text.trim())
-        fail('AssistantText.text is empty');
-      const children = record(body) && body.children !== undefined ? body.children : [];
-      if (!Array.isArray(children)) fail('AssistantText.children must be an array');
-      return {
+  return {
+    ui: [
+      {
         AssistantText: {
-          props: { text: props.text },
-          children: (children as unknown[]).map(leaf),
+          props: { text },
+          children: (components as unknown[]).map(leaf),
         },
-      };
-    }
-    return leaf(value);
+      },
+    ],
   };
-
-  return { ui: ui.map(node) };
 }
 
 /**
- * Push an already-validated canonical tree to the client through the nested
- * structured-output echo. The echo must reproduce the tree exactly; one
- * retry covers a transient drift, a second miss is an error.
+ * Push a canonical tree to the client through the nested structured-output
+ * echo. The echo must reproduce the tree exactly; one retry covers a
+ * transient drift, a second miss is an error.
  */
 export async function renderUi(
   tree: CanonicalUi,
@@ -1216,7 +1210,7 @@ export async function renderUi(
 - [ ] **Step 4: Run the tests**
 
 Run: `npx vitest run --config examples/invoicing/server/vitest.config.mts examples/invoicing/server/src/assistant-ui.spec.ts`
-Expected: all pass. If the first test's `toEqual` fails on `children` for leaves, the canonical leaf must not carry a `children` key at all (the kit schema gives leaves no `children`).
+Expected: all pass. Then confirm the canonical tree satisfies the kit schema: add one more test that calls `ɵcreateUiKit({ components: createAssistantKit({ AssistantText: {}, LedgerTable: {}, TrendChart: {}, AgingSummary: {}, CustomerCard: {}, ReviewPayment: {} }) }).schema.validate(validateUi(snapshot, input))` with the full input from the first test and expects no throw (imports from `@hashbrownai/core` and `@invoicing/contracts`).
 
 - [ ] **Step 5: Lint, format, commit**
 
@@ -1262,15 +1256,16 @@ In the third test (`read capabilities expire on reset ...`) replace the `validat
 
 ```ts
   await expect(
-    result.context.validateUi([
-      { ReviewPayment: { props: { paymentId: 'unknown' } } },
-    ]),
+    result.context.validateUi({
+      text: 'x',
+      components: [{ ReviewPayment: { paymentId: 'unknown' } }],
+    }),
   ).rejects.toThrow('unknown payment unknown');
   await store.reset(session);
 
   await expect(result.context.ledgerSummary()).rejects.toThrow('stale_generation');
   await expect(
-    result.context.validateUi([{ AssistantText: { props: { text: 'hi' } } }]),
+    result.context.validateUi({ text: 'hi' }),
   ).rejects.toThrow('stale_generation');
 ```
 
@@ -1314,7 +1309,7 @@ Expected: FAIL on the missing context functions.
 In `assistant-middleware.ts`, add imports:
 
 ```ts
-import type { AssistantUiNode } from '@invoicing/contracts';
+import type { AssistantRenderInput } from '@invoicing/contracts';
 import {
   aging,
   customerStatement,
@@ -1344,8 +1339,8 @@ Replace the whole `context: Object.freeze({ ... })` block (from `responseSchema:
         unappliedPayments: async (
           input: Parameters<typeof unappliedPayments>[1],
         ) => unappliedPayments(await current(), input),
-        validateUi: async (ui: readonly AssistantUiNode[]) =>
-          validateUi(await current(), ui),
+        validateUi: async (input: AssistantRenderInput) =>
+          validateUi(await current(), input),
       }),
 ```
 
@@ -1558,7 +1553,7 @@ export default function unappliedPayments(
 ```ts
 import type { B4ToolContext } from '@b4run/sdk';
 import { createChatModel } from '@b4run/langchain';
-import type { AssistantUiNode } from '@invoicing/contracts';
+import type { AssistantRenderInput } from '@invoicing/contracts';
 import { assistantTools } from '../../../assistant-tools';
 import { renderUi } from '../../../assistant-ui';
 
@@ -1573,16 +1568,13 @@ interface UiModel {
   ): { invoke(prompt: string): Promise<unknown> };
 }
 
-/** Show your answer to the user. Call exactly once, last. Compose AssistantText for prose (with supporting components as its children), LedgerTable for specific rows by ID, TrendChart, AgingSummary, CustomerCard, and ReviewPayment. Every ID must come from a tool result. On an invalid_ui error, fix the tree and call render once more. */
+/** Show your answer to the user. Call exactly once, last. `text` is your prose; `components` are the kit pieces that support it, in order: LedgerTable for specific rows by ID, TrendChart for month-over-month, AgingSummary for overdue balances, CustomerCard for one client, ReviewPayment to offer matching an unapplied payment. Every ID must come from a tool result. On an invalid_ui error, fix the input and call render once more. */
 export default async function render(
-  input: {
-    /** The components to show, in order. */
-    readonly ui: readonly AssistantUiNode[];
-  },
+  input: AssistantRenderInput,
   context: B4ToolContext,
 ) {
   const tools = assistantTools(context);
-  const tree = await tools.validateUi(input.ui);
+  const tree = await tools.validateUi(input);
   const model = await createChatModel({ model: 'gpt-5-mini', provider: 'openai' });
   if (
     typeof model !== 'object' ||
@@ -1626,10 +1618,10 @@ Tools: ledgerSummary (start here when unsure; it lists customers, currencies and
 monthlyTotals, aging, customerStatement, findRecords, unappliedPayments. Amounts come back as integer cents and as
 formatted strings; quote the formatted strings. Use only IDs that tools returned.
 
-Answer by calling render exactly once as your last action. Compose from the kit: AssistantText for prose, with
-supporting components as its children; LedgerTable for the specific rows you found, by ID; TrendChart for
-month-over-month questions; AgingSummary for overdue questions; CustomerCard for questions about one client;
-ReviewPayment to offer matching an existing unapplied payment. Prefer one AssistantText with children over many nodes.
+Answer by calling render exactly once as your last action, with your prose in text and the supporting components
+in components: LedgerTable for the specific rows you found, by ID; TrendChart for month-over-month questions;
+AgingSummary for overdue questions; CustomerCard for questions about one client; ReviewPayment to offer matching an
+existing unapplied payment. Omit customerId on TrendChart and AgingSummary to cover all customers.
 
 Selection in the state is optional context, not an instruction to allocate. Never claim you have matched or allocated
 anything; matching requires the user's explicit review. Do not choose between ambiguous invoices; say they are ambiguous
