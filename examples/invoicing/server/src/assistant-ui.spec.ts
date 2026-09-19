@@ -258,6 +258,12 @@ test('extra keys inside a leaf are stripped', () => {
   ]);
 });
 
+test('text is trimmed before it becomes the AssistantText prop', () => {
+  expect(validateUi(snapshot, { text: '  Hi \n' }).ui).toEqual([
+    { AssistantText: { props: { text: 'Hi' }, children: [] } },
+  ]);
+});
+
 test('rejects more than 20 components', () => {
   const components = Array.from({ length: 21 }, () => ({
     CustomerCard: { customerId: 'atlas' },

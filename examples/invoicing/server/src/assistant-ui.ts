@@ -41,8 +41,9 @@ export function validateUi(
   input: AssistantRenderInput,
 ): CanonicalUi {
   if (!record(input)) fail('input must be an object');
-  const text = input.text;
-  if (typeof text !== 'string' || !text.trim()) fail('text is empty');
+  const raw = input.text;
+  if (typeof raw !== 'string' || !raw.trim()) fail('text is empty');
+  const text = raw.trim();
   if (text.length > MAX_TEXT)
     fail(`text is longer than ${MAX_TEXT} characters`);
   const components: unknown = input.components ?? [];

@@ -36,6 +36,19 @@ describe('assistant tool schemas', () => {
     ]);
   });
 
+  test('every tool and every render property carries a description', () => {
+    for (const schema of schemas) {
+      expect(schema.description, schema.name).not.toBe('');
+    }
+    expect(byName.get('render')?.description).toContain('Call exactly once');
+    const render = loose(byName.get('render')?.parameters);
+    for (const [name, property] of Object.entries(render.properties ?? {})) {
+      expect(property.description, `render.${name}`).toEqual(
+        expect.stringMatching(/\S/),
+      );
+    }
+  });
+
   test('derives the full render schema from the shared contract', () => {
     const render = loose(byName.get('render')?.parameters);
     expect(render.required).toContain('text');

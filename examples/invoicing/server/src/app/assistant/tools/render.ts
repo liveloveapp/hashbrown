@@ -2,7 +2,8 @@ import type { B4ToolContext } from '@b4run/sdk';
 import { createChatModel } from '@b4run/langchain';
 // B4's schema compiler builds its own TypeScript program without the app's tsconfig `paths`, so an
 // `@invoicing/contracts` import resolves to nothing and the derived schema becomes `{}`; a relative
-// import is the only thing it can see. Tracked as an upstream B4 issue.
+// import is the only thing it can see. Tracked as an upstream B4 issue: see "Upstream findings", item 3, in
+// docs/superpowers/specs/2026-09-19-invoicing-generative-ui-design.md.
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import type { AssistantRenderInput } from '../../../../../shared/src/assistant-ui';
 import { assistantTools } from '../../../assistant-tools';
@@ -47,8 +48,8 @@ export default async function render(
       })
       .invoke(
         attempt === 0
-          ? `Return exactly this JSON, preserving every value and key: ${JSON.stringify(canonical)}`
-          : `Your previous output did not match. Return this JSON exactly, character for character, changing nothing: ${JSON.stringify(canonical)}`,
+          ? `Return exactly this JSON, preserving every value and key: ${JSON.stringify(canonical)} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.`
+          : `Your previous output did not match. Return this JSON exactly, character for character, changing nothing: ${JSON.stringify(canonical)} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.`,
       ),
   );
 }
