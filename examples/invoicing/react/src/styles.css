@@ -497,3 +497,71 @@ h2 {
   margin: 2px 0 0;
   font-weight: 600;
 }
+
+.assistant-kit-chart {
+  position: relative;
+  /* Drop the UA figure margin (1em 40px) so the chart spans the aside. */
+  margin: 12px 0 0;
+}
+.assistant-kit-chart .plot {
+  position: relative;
+}
+.assistant-kit-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  font-family: inherit;
+}
+.assistant-kit-chart svg text {
+  font-variant-numeric: tabular-nums;
+}
+.assistant-kit-chart .legend {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #73777c;
+  margin-bottom: 6px;
+}
+.assistant-kit-chart .legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+.assistant-kit-chart .tooltip {
+  position: absolute;
+  background: #202327;
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1;
+}
+.assistant-kit-chart .tooltip .key {
+  display: inline-block;
+  width: 10px;
+  height: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.assistant-kit-chart details {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.assistant-kit-chart table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.assistant-kit-chart th,
+.assistant-kit-chart td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid #e4e6e5;
+}
+.assistant-kit-chart g[tabindex]:focus-visible {
+  outline: 2px solid #2a78d6;
+}

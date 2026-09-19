@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, expect, test } from 'vitest';
 import { s, ɵcreateUiKit } from '@hashbrownai/core';
@@ -101,20 +101,37 @@ test('LedgerTable omits the missing note when every id resolves', () => {
   expect(screen.queryByText(/could not be shown/)).toBeNull();
 });
 
-test('TrendChart lists the last calendar months for a currency, zero-filled', () => {
+test('TrendChart draws grouped columns with a legend, direct labels, and a table view', () => {
   withSnapshot(<TrendChart currency="USD" customerId={null} months={3} />);
 
-  expect(screen.getByText('Jul 2026')).toBeVisible();
-  expect(screen.getByText('Aug 2026')).toBeVisible();
-  expect(screen.getByText('Sep 2026')).toBeVisible();
-  expect(screen.getByText('$250.00')).toBeVisible();
-  expect(screen.getAllByText('$0.00').length).toBeGreaterThan(0);
+  const figure = screen.getByRole('figure', {
+    name: /Invoiced vs received · USD/,
+  });
+  expect(figure).toBeVisible();
+  expect(screen.getByText('Invoiced')).toBeVisible();
+  expect(screen.getByText('Received')).toBeVisible();
+  expect(figure.querySelectorAll('rect[data-series="invoiced"]')).toHaveLength(
+    3,
+  );
+  expect(figure.querySelectorAll('rect[data-series="received"]')).toHaveLength(
+    3,
+  );
+  expect(screen.getByText('Show data')).toBeVisible();
+  expect(
+    screen.getByRole('table', { name: /Invoiced vs received/ }),
+  ).toBeInTheDocument();
+  expect(screen.getAllByText('Jul 2026').length).toBeGreaterThan(0);
 });
 
-test('TrendChart clamps months so a malformed value cannot render an unbounded table', () => {
+test('TrendChart clamps months and shows a tooltip on hover', () => {
   withSnapshot(<TrendChart currency="USD" customerId={null} months={5000} />);
-
-  expect(screen.getAllByRole('row').length).toBeLessThanOrEqual(25);
+  const figure = screen.getByRole('figure', { name: /Invoiced vs received/ });
+  expect(figure.querySelectorAll('rect[data-series="invoiced"]')).toHaveLength(
+    24,
+  );
+  const groups = figure.querySelectorAll('[data-month]');
+  fireEvent.mouseEnter(groups[groups.length - 1]);
+  expect(screen.getByRole('tooltip')).toHaveTextContent('Sep 2026');
 });
 
 test('LedgerTable dedupes repeated ids and counts missing ones once', () => {
@@ -139,11 +156,14 @@ test('LedgerTable renders nothing without a snapshot', () => {
   expect(screen.queryByRole('heading', { name: 'None' })).toBeNull();
 });
 
-test('AgingSummary buckets open invoices as of the ledger date', () => {
+test('AgingSummary draws one bar per bucket with direct labels and a table view', () => {
   withSnapshot(<AgingSummary currency="USD" customerId="c" />);
 
-  expect(screen.getByText('31-60 days')).toBeVisible();
+  const figure = screen.getByRole('figure', { name: /Aging · USD/ });
+  expect(figure.querySelectorAll('rect[data-bucket]')).toHaveLength(5);
+  expect(screen.getAllByText('31-60 days').length).toBeGreaterThan(0);
   expect(screen.getAllByText('$250.00').length).toBeGreaterThan(0);
+  expect(screen.getByRole('table', { name: /Aging/ })).toBeInTheDocument();
 });
 
 test('CustomerCard shows habit badge, balances and payment figures', () => {
