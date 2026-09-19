@@ -155,7 +155,6 @@ const CHART_TOKENS: CSSProperties = {
   '--ink': '#202327',
   '--ink-muted': '#73777c',
   '--grid': '#e4e6e5',
-  '--surface': '#fff',
 } as CSSProperties;
 
 /** A round gridline step (1/2/5 × 10^n) giving roughly `ticks` lines up to `max`. */
@@ -275,36 +274,14 @@ export function TrendChart({
     };
   });
 
-  // Direct labels only on the last month's pair. The pair always sits at the
-  // right edge, so both labels right-align there and stack (invoiced above
-  // received, the legend's order) when the two caps are level; a surface halo
-  // keeps them legible where they cross a neighbouring column.
-  const last = columns[columns.length - 1];
-  const lastLabels = (() => {
-    const edge = width - 2;
-    const labelY = (columnTop: number) => Math.max(10, columnTop - 6);
-    const a = {
-      key: 'invoiced',
-      text: money(last.row.invoicedCents, currency),
-      y: labelY(last.invoiced.top),
-    };
-    const b = {
-      key: 'received',
-      text: money(last.row.receivedCents, currency),
-      y: labelY(last.received.top),
-    };
-    const lineHeight = TREND.fontSize + 3;
-    if (Math.abs(a.y - b.y) >= lineHeight)
-      return [
-        { ...a, x: edge },
-        { ...b, x: edge },
-      ];
-    const base = Math.min(a.y, b.y);
-    return [
-      { ...a, x: edge, y: Math.max(10, base - lineHeight) },
-      { ...b, x: edge, y: base },
-    ];
-  })();
+  // The latest month's values live in an HTML caption rather than as labels
+  // in the plot: the pair always sits at the right edge, where in-plot labels
+  // would collide with neighbouring columns or clip at the edge.
+  const last = rows[rows.length - 1];
+  const caption = `${monthLabel(last.month)} · Invoiced ${money(
+    last.invoicedCents,
+    currency,
+  )} · Received ${money(last.receivedCents, currency)}`;
 
   const hoveredColumn = columns.find((c) => c.row.month === hovered);
 
@@ -325,6 +302,7 @@ export function TrendChart({
           Received
         </span>
       </div>
+      <p className="assistant-kit-caption">{caption}</p>
       <div className="plot">
         <svg
           viewBox={`0 0 ${width} ${TREND.height}`}
@@ -410,22 +388,6 @@ export function TrendChart({
                 </text>
               )}
             </g>
-          ))}
-          {lastLabels.map((l) => (
-            <text
-              key={l.key}
-              x={l.x}
-              y={l.y}
-              textAnchor="end"
-              fontSize={TREND.fontSize}
-              fontWeight={600}
-              fill="var(--ink)"
-              stroke="var(--surface)"
-              strokeWidth={3}
-              paintOrder="stroke"
-            >
-              {l.text}
-            </text>
           ))}
         </svg>
         {hoveredColumn && (

@@ -121,6 +121,14 @@ test('TrendChart draws grouped columns with a legend, direct labels, and a table
     screen.getByRole('table', { name: /Invoiced vs received/ }),
   ).toBeInTheDocument();
   expect(screen.getAllByText('Jul 2026').length).toBeGreaterThan(0);
+  // The latest month's values are a caption, not labels inside the plot.
+  expect(figure.querySelector('.assistant-kit-caption')).toHaveTextContent(
+    'Sep 2026 · Invoiced $0.00 · Received $100.00',
+  );
+  const svgText = [...figure.querySelectorAll('svg text')].map(
+    (t) => t.textContent,
+  );
+  expect(svgText.filter((t) => t?.includes('.'))).toEqual([]);
 });
 
 test('TrendChart clamps months and shows a tooltip on hover', () => {

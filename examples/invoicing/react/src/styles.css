@@ -530,6 +530,11 @@ h2 {
   margin-right: 6px;
   vertical-align: -1px;
 }
+.assistant-kit-chart .assistant-kit-caption {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #73777c;
+}
 .assistant-kit-chart .tooltip {
   position: absolute;
   background: #202327;
