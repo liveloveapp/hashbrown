@@ -55,8 +55,6 @@ function parseFrame(frame: string): Record<string, unknown> | undefined {
     const parsed: unknown = JSON.parse(frame.slice(5).trim());
     return record(parsed) ? parsed : undefined;
   } catch {
-    // A response cut off mid-frame (an aborted stream) leaves a partial
-    // trailing event; everything before it is still a valid run to score.
     return undefined;
   }
 }
@@ -67,12 +65,20 @@ export async function collectRun(
   threadId: string,
 ): Promise<InvoicingRunResult> {
   const text = await response.text();
-  const events = text
+  const frames = text
     .split('\n\n')
     .map((frame) => frame.trim())
-    .filter((frame) => frame.startsWith('data:'))
-    .map(parseFrame)
-    .filter((event) => event !== undefined);
+    .filter((frame) => frame.startsWith('data:'));
+  const events: Record<string, unknown>[] = [];
+  let error: string | undefined;
+  frames.forEach((frame, index) => {
+    const event = parseFrame(frame);
+    if (event) events.push(event);
+    // A response cut off mid-frame (an aborted stream) leaves a partial LAST
+    // event, and everything before it is still a valid run to score. A
+    // malformed frame anywhere else is a protocol fault worth reporting.
+    else if (index < frames.length - 1) error = 'malformed_frame';
+  });
 
   const calls = new Map<string, { name: string; args: string }>();
   const order: string[] = [];
@@ -80,7 +86,6 @@ export async function collectRun(
   const messages: Record<string, unknown>[] = [];
   const texts = new Map<string, string>();
   const tokens: string[] = [];
-  let error: string | undefined;
 
   for (const event of events) {
     switch (event.type) {
@@ -113,7 +118,6 @@ export async function collectRun(
             /* plain text result */
           }
         }
-        if (!order.includes(id)) order.push(id);
         results.set(id, toolResult(name, content, status));
         break;
       }
@@ -141,13 +145,17 @@ export async function collectRun(
         for (const raw of Array.isArray(messages) ? messages : []) {
           const message = serializedMessage(raw);
           if (message?.type !== 'ToolMessage') continue;
+          // Only this run's own calls: the list also carries earlier turns.
           const id = String(message.kwargs.tool_call_id ?? '');
-          if (results.has(id)) continue;
-          if (!order.includes(id)) order.push(id);
-          const name = calls.get(id)?.name ?? String(message.kwargs.name ?? '');
+          const call = calls.get(id);
+          if (!call || results.has(id)) continue;
           results.set(
             id,
-            toolResult(name, message.kwargs.content, message.kwargs.status),
+            toolResult(
+              call.name,
+              message.kwargs.content,
+              message.kwargs.status,
+            ),
           );
         }
         break;

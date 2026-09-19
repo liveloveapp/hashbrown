@@ -1,12 +1,18 @@
 import { createRuntimeRequestListener } from '@b4run/cli/runtime';
+import { createThreadsStore } from '@b4run/sqlite-storage';
 import {
+  type Aimock,
   createAimock,
   type FixtureSet,
   type ScriptBuilder,
 } from '@b4run/testing';
 import { assistantResponseSchema } from '@invoicing/contracts';
+import { MemorySaver } from '@langchain/langgraph-checkpoint';
 import { randomUUID } from 'node:crypto';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import handler from '../src/api';
 import middleware from '../src/middleware';
@@ -24,7 +30,7 @@ export interface InvoicingHarness {
     fixtures?: FixtureSet | ScriptBuilder;
     state?: Record<string, unknown>;
   }): Promise<InvoicingRunResult>;
-  /** Fixtures for the model calls the last `run()` proxied (record mode only). */
+  /** Fixtures for the model calls the last `run()` proxied; record mode only. */
   lastRecordedFixtures(): FixtureSet;
   close(): Promise<void>;
 }
@@ -77,11 +83,22 @@ function listen(server: Server): Promise<number> {
   });
 }
 
+function startAimock(mode: HarnessMode, upstream: string): Promise<Aimock> {
+  if (mode === 'replay') return createAimock({ fixtures: [] });
+  return createAimock({
+    fixtures: [],
+    proxy: { openai: upstream },
+    ...(mode === 'record' ? { record: true } : {}),
+  });
+}
+
 /**
  * Boot the invoicing server in-process, exactly as `main.ts` wires it, with
  * the model pointed at an aimock so evals replay recorded fixtures, record new
- * ones against the real API, or run live. Memory repositories are forced so a
- * developer's `DATABASE_URL` never receives eval sessions.
+ * ones against the real API, or run live. Storage is isolated from `b4 dev`:
+ * memory repositories (so a developer's `DATABASE_URL` never receives eval
+ * sessions), an in-memory checkpointer, and a threads store in a temp dir
+ * that is removed on close.
  */
 export async function createInvoicingHarness(opts: {
   mode: HarnessMode;
@@ -97,19 +114,41 @@ export async function createInvoicingHarness(opts: {
     );
   delete process.env['DATABASE_URL'];
 
-  const upstream = opts.recordUpstream ?? 'https://api.openai.com';
-  const aimock = await createAimock(
-    opts.mode === 'replay'
-      ? { fixtures: [] }
-      : {
-          fixtures: [],
-          proxy: { openai: upstream },
-          ...(opts.mode === 'record' ? { record: true } : {}),
-        },
-  );
-  process.env['OPENAI_BASE_URL'] = aimock.baseUrl;
+  let aimock: Aimock | undefined;
+  let storageDir: string | undefined;
+  try {
+    aimock = await startAimock(
+      opts.mode,
+      opts.recordUpstream ?? 'https://api.openai.com',
+    );
+    process.env['OPENAI_BASE_URL'] = aimock.baseUrl;
+    storageDir = mkdtempSync(join(tmpdir(), 'invoicing-evals-'));
+    return await boot(opts.mode, aimock, storageDir, previous);
+  } catch (error) {
+    if (storageDir) rmSync(storageDir, { recursive: true, force: true });
+    try {
+      await aimock?.close();
+    } finally {
+      restoreEnv(previous);
+    }
+    throw error;
+  }
+}
 
-  const runtime = await createRuntimeRequestListener({ appRoot, middleware });
+async function boot(
+  mode: HarnessMode,
+  aimock: Aimock,
+  storageDir: string,
+  previousEnv: Record<string, string | undefined>,
+): Promise<InvoicingHarness> {
+  const runtime = await createRuntimeRequestListener({
+    appRoot,
+    middleware,
+    checkpointer: new MemorySaver(),
+    threadsStore: createThreadsStore({
+      path: join(storageDir, 'threads.sqlite'),
+    }),
+  });
   const server = createServer((request, response) => {
     const path = new URL(request.url ?? '/', 'http://localhost').pathname;
     if (
@@ -120,24 +159,30 @@ export async function createInvoicingHarness(opts: {
       runtime.listener(request, response);
     else void handler(request, response);
   });
-  const port = await listen(server);
+  let port: number;
+  try {
+    port = await listen(server);
+  } catch (error) {
+    await runtime.close();
+    throw error;
+  }
   const baseUrl = `http://127.0.0.1:${port}`;
   let lastWindow: { journalStart: number; fixtureStart: number } | undefined;
 
   return {
     baseUrl,
     async run({ input, fixtures, state = {} }) {
-      if (opts.mode === 'replay') {
+      if (mode === 'replay') {
         aimock.clearFixtures();
         aimock.addFixtures(toFixtures(fixtures));
-      } else if (opts.mode === 'record') {
+      } else if (mode === 'record') {
         lastWindow = {
           journalStart: aimock.getRequests().length,
           fixtureStart: aimock.getFixtureCount(),
         };
       }
       const session = await fetch(`${baseUrl}/api/snapshot`);
-      const cookie = session.headers.get('set-cookie')?.split(';')[0];
+      const cookie = session.headers.getSetCookie()[0]?.split(';')[0];
       if (!session.ok || !cookie)
         throw new Error(
           `GET /api/snapshot did not open a session: ${session.status} ${await session.text()}`,
@@ -155,6 +200,10 @@ export async function createInvoicingHarness(opts: {
       return collectRun(response, threadId);
     },
     lastRecordedFixtures() {
+      if (mode !== 'record')
+        throw new Error(
+          'lastRecordedFixtures is only available in record mode',
+        );
       if (!lastWindow) return [];
       return recordingsToFixtures(
         aimock.getRecordingsSince(
@@ -164,11 +213,27 @@ export async function createInvoicingHarness(opts: {
       );
     },
     async close() {
-      server.close();
-      server.closeAllConnections();
-      await runtime.close();
-      await aimock.close();
-      restoreEnv(previous);
+      // Same order as main.ts: stop accepting, drain the runtime, then drop
+      // whatever connections are still open. Each step runs even if an
+      // earlier one rejects.
+      const closed = new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+      try {
+        await runtime.close();
+      } finally {
+        server.closeAllConnections();
+        try {
+          await closed;
+        } finally {
+          try {
+            await aimock.close();
+          } finally {
+            rmSync(storageDir, { recursive: true, force: true });
+            restoreEnv(previousEnv);
+          }
+        }
+      }
     },
   };
 }

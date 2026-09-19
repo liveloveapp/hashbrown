@@ -21,8 +21,9 @@ export interface Recording {
 /**
  * Key each recording the way aimock actually matches at replay: the
  * request's LAST user message, the number of assistant messages already in
- * the request (`turnIndex`), and whether a tool-role message is present
- * (`hasToolResult`). `@b4run/testing`'s own `recordingsToFixtures` keys
+ * the request (`turnIndex`), and whether a tool-role message follows that
+ * last user message (`hasToolResult`, scoped to the current turn exactly as
+ * aimock's `currentTurnHasToolResult` scopes it). `@b4run/testing`'s own `recordingsToFixtures` keys
  * `turnIndex` by the recording's ordinal in the array and `userMessage` by
  * the FIRST user message, which mismatches for the `render` tool's nested
  * echo call — a fresh one-message request that starts a new "turn" from
@@ -33,14 +34,17 @@ export function recordingsToFixtures(
 ): FixtureSet {
   return recordings.map((rec): AimockFixture => {
     const messages = rec.request.messages ?? [];
-    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+    const lastUserIndex = messages.findLastIndex((m) => m.role === 'user');
+    const lastUser = messages[lastUserIndex];
     return {
       match: {
         ...(typeof lastUser?.content === 'string'
           ? { userMessage: lastUser.content }
           : {}),
         turnIndex: messages.filter((m) => m.role === 'assistant').length,
-        hasToolResult: messages.some((m) => m.role === 'tool'),
+        hasToolResult: messages
+          .slice(lastUserIndex + 1)
+          .some((m) => m.role === 'tool'),
       },
       response: rec.response,
     };

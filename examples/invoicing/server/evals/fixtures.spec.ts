@@ -48,6 +48,29 @@ test('re-keys each recording from its own request, not its ordinal', () => {
   ]);
 });
 
+test('scopes hasToolResult to the current turn, as aimock does', () => {
+  const [fixture] = recordingsToFixtures([
+    {
+      request: {
+        messages: [
+          { role: 'user', content: 'Q1' },
+          { role: 'assistant', content: '' },
+          { role: 'tool', content: '{}' },
+          { role: 'assistant', content: 'A1' },
+          { role: 'user', content: 'Q2' },
+        ],
+      },
+      response: { content: 'A2' },
+    },
+  ]);
+
+  expect(fixture.match).toEqual({
+    userMessage: 'Q2',
+    turnIndex: 2,
+    hasToolResult: false,
+  });
+});
+
 test('sibling fixture path follows the b4 eval convention', () => {
   expect(
     siblingFixturePath(

@@ -173,7 +173,52 @@ test('backfills a thrown tool error from the RUN_FINISHED message list', async (
   expect(run.finalMessage).toBe('{"ui":[]}');
 });
 
-test('skips a truncated trailing frame instead of throwing', async () => {
+test('ignores RUN_FINISHED tool messages from calls this run did not make', async () => {
+  const body = sse([
+    { type: 'TOOL_CALL_START', toolCallId: 'c2', toolCallName: 'render' },
+    { type: 'TOOL_CALL_ARGS', toolCallId: 'c2', delta: '{"text":"x"}' },
+    { type: 'TOOL_CALL_END', toolCallId: 'c2' },
+    {
+      type: 'RUN_FINISHED',
+      threadId: 't',
+      runId: 'r',
+      result: {
+        messages: [
+          JSON.parse(
+            toolMessage({
+              status: 'success',
+              content: '{"asOf":"2026-09-15"}',
+              name: 'ledgerSummary',
+              tool_call_id: 'c1-from-an-earlier-turn',
+            }),
+          ),
+          JSON.parse(
+            toolMessage({
+              status: 'error',
+              content: 'Error: render_failed',
+              name: 'render',
+              tool_call_id: 'c2',
+            }),
+          ),
+        ],
+      },
+    },
+  ]);
+
+  const run = await collectRun(new Response(body), 't');
+
+  expect(run.toolCalls.map((c) => c.id)).toEqual(['c2']);
+  expect(run.toolResults).toEqual([
+    {
+      name: 'render',
+      content: 'Error: render_failed',
+      isError: true,
+      status: 'error',
+    },
+  ]);
+});
+
+test('skips a truncated last frame instead of throwing', async () => {
   const body =
     sse([
       { type: 'TEXT_MESSAGE_START', messageId: 'final', role: 'assistant' },
@@ -185,4 +230,22 @@ test('skips a truncated trailing frame instead of throwing', async () => {
 
   expect(run.finalMessage).toBe('{"ui":[]}');
   expect(run.error).toBeUndefined();
+});
+
+test('reports a malformed mid-stream frame as an error and keeps parsing', async () => {
+  const body =
+    sse([
+      { type: 'TEXT_MESSAGE_START', messageId: 'final', role: 'assistant' },
+    ]) +
+    'data: {"type":"TEXT_MESSAGE_CONTENT","mess\n\n' +
+    sse([
+      { type: 'TEXT_MESSAGE_CONTENT', messageId: 'final', delta: '{"ui":[]}' },
+      { type: 'TEXT_MESSAGE_END', messageId: 'final' },
+      { type: 'RUN_FINISHED', threadId: 't', runId: 'r' },
+    ]);
+
+  const run = await collectRun(new Response(body), 't');
+
+  expect(run.finalMessage).toBe('{"ui":[]}');
+  expect(run.error).toBe('malformed_frame');
 });
