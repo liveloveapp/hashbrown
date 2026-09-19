@@ -4,6 +4,8 @@ import {
   createLedger,
   createProposal,
   getSnapshot,
+  materialize,
+  overlayOf,
 } from './ledger';
 
 const request = {
@@ -132,3 +134,54 @@ test.each([{ currency: 'EUR' }, { customerId: 'other-customer' }])(
     expect(changed.allocations).toHaveLength(0);
   },
 );
+
+const empty = { allocations: [], activities: [] };
+
+test('an empty overlay materializes to the base ledger itself', () => {
+  const base = createLedger();
+
+  expect(materialize(base, empty)).toEqual(base);
+});
+
+test('applying a proposal to a materialized ledger yields an overlay that reproduces it', () => {
+  const base = createLedger();
+  const before = structuredClone(base);
+  const proposal = createProposal(materialize(base, empty), request, ids);
+
+  const next = applyProposal(materialize(base, empty), proposal);
+  const overlay = overlayOf(base, next);
+
+  expect(overlay.allocations).toHaveLength(1);
+  expect(overlay.activities).toHaveLength(1);
+  expect(materialize(base, overlay)).toEqual(next);
+  expect(materialize(base, overlay).payments[0].version).toBe(2);
+  expect(materialize(base, overlay).invoices[0].version).toBe(2);
+  expect(base).toEqual(before);
+});
+
+test('a second allocation on the same records advances versions again', () => {
+  const base = createLedger();
+  const first = createProposal(
+    materialize(base, empty),
+    { ...request, amountCents: 100000 },
+    ids,
+  );
+  const afterFirst = applyProposal(materialize(base, empty), first);
+  const overlay = overlayOf(base, afterFirst);
+  const second = createProposal(
+    materialize(base, overlay),
+    { ...request, amountCents: 140000 },
+    { ...ids, proposalId: 'proposal-002', operationId: 'operation-002' },
+  );
+
+  const afterSecond = applyProposal(materialize(base, overlay), second);
+
+  expect(overlayOf(base, afterSecond).allocations).toHaveLength(2);
+  expect(
+    materialize(base, overlayOf(base, afterSecond)).payments[0].version,
+  ).toBe(3);
+  expect(
+    getSnapshot(materialize(base, overlayOf(base, afterSecond))).payments[0]
+      .unappliedCents,
+  ).toBe(0);
+});

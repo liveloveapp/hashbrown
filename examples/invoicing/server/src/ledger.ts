@@ -1,6 +1,8 @@
 import type {
   Ledger,
+  LedgerOverlay,
   LedgerSnapshot,
+  MoneyRecord,
   Proposal,
   ProposalRequest,
 } from '@invoicing/contracts';
@@ -49,6 +51,46 @@ export function getSnapshot(ledger: Ledger): LedgerSnapshot {
           .filter((a) => a.invoiceId === invoice.id)
           .reduce((sum, a) => sum + a.amountCents, 0),
     })),
+  };
+}
+
+/**
+ * The ledger one session sees: the shared base plus that session's own
+ * allocations. Record versions advance once per overlay allocation touching
+ * them, which is exactly how `applyProposal` advances them, so a ledger
+ * produced by applying proposals and the same ledger rebuilt from its overlay
+ * are equal.
+ */
+export function materialize(base: Ledger, overlay: LedgerOverlay): Ledger {
+  const advance = <T extends MoneyRecord>(
+    record: T,
+    key: 'paymentId' | 'invoiceId',
+  ): T => {
+    const bumps = overlay.allocations.filter(
+      (a) => a[key] === record.id,
+    ).length;
+    return bumps === 0
+      ? record
+      : { ...record, version: record.version + bumps };
+  };
+  return {
+    customers: base.customers,
+    payments: base.payments.map((p) => advance(p, 'paymentId')),
+    invoices: base.invoices.map((i) => advance(i, 'invoiceId')),
+    allocations: [...base.allocations, ...overlay.allocations],
+    activities: [...base.activities, ...overlay.activities],
+  };
+}
+
+/**
+ * The overlay that materializes over `base` into `ledger`. Only meaningful
+ * for a ledger produced by applying proposals to `materialize(base, …)`,
+ * which appends and never reorders.
+ */
+export function overlayOf(base: Ledger, ledger: Ledger): LedgerOverlay {
+  return {
+    allocations: ledger.allocations.slice(base.allocations.length),
+    activities: ledger.activities.slice(base.activities.length),
   };
 }
 
