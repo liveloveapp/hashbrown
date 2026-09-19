@@ -133,6 +133,8 @@ test('conversation totals are computed by month and currency instead of inferred
 
   const context = await result.context.readLedger({});
 
+  expect(context).not.toHaveProperty('payments');
+  expect(context).not.toHaveProperty('invoices');
   expect(context.monthlyTotals).toEqual([
     {
       month: '2026-01',

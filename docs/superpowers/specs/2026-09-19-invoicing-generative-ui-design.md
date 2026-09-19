@@ -98,7 +98,7 @@ Profiles are data on the client record:
 | `late-drifting`   | Days-to-pay grows month over month; the most recent invoices are open.                        |
 | `short-payer`     | Deducts a 2% early-payment discount and pays within 10 days; the remainder stays outstanding. |
 | `batch-payer`     | Settles two or three invoices in one transfer every second or third month.                    |
-| `wrong-reference` | Pays on time but the remittance cites the previous month's invoice number.                    |
+| `wrong-reference` | Pays on time but the remittance cites the previously issued invoice's number.                 |
 
 Every client has a monthly retainer over 24 months (October 2024 to
 September 2026) plus one to three project invoices per quarter at irregular

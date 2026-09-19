@@ -48,7 +48,9 @@ test('conserves cents with valid unique history and no overallocations', () => {
     0,
   );
 
-  expect(ledger.allocations.length).toBeGreaterThanOrEqual(23 * 6);
+  expect(ledger.allocations.length).toBeGreaterThanOrEqual(
+    23 * ledger.customers.length,
+  );
   expect(
     new Set([...ledger.invoices, ...ledger.payments].map((item) => item.id))
       .size,
