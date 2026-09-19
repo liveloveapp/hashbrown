@@ -1955,8 +1955,9 @@ export function TrendChart({
   // Calendar months back from the as-of month, zero-filled, matching the
   // server's monthlyTotals so the chart and the tool agree on which months exist.
   const [asOfYear, asOfMonth] = AS_OF.split('-').map(Number);
-  const rows = Array.from({ length: Math.max(1, months) }, (_, offset) => {
-    const index = asOfYear * 12 + (asOfMonth - 1) - (months - 1 - offset);
+  const count = Math.max(1, months);
+  const rows = Array.from({ length: count }, (_, offset) => {
+    const index = asOfYear * 12 + (asOfMonth - 1) - (count - 1 - offset);
     return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
   }).map((month) => ({
     month,
