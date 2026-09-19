@@ -470,3 +470,30 @@ h2 {
   color: #73777c;
   margin-top: 3px;
 }
+
+.assistant-kit {
+  margin-top: 12px;
+}
+.assistant-kit h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.assistant-kit-customer header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.assistant-kit-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 8px 0;
+}
+.assistant-kit-stats dt {
+  color: #73777c;
+  font-size: 12px;
+}
+.assistant-kit-stats dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}

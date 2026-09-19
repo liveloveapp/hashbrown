@@ -1,14 +1,26 @@
-import { type ReactNode, useContext } from 'react';
+import { type ReactNode, useContext, useMemo } from 'react';
+import {
+  PretableBadge,
+  type PretableBadgeTone,
+  type PretableColumn,
+  PretableSurface,
+} from '@pretable/react';
 import {
   AGING_BUCKETS,
   agingBucket,
   type AgingBuckets,
   createAssistantKit,
+  type PaymentProfile,
 } from '@invoicing/contracts';
+import {
+  AS_OF,
+  customerSummary,
+  type LedgerRow,
+  money,
+  monthLabel,
+  resolveRecords,
+} from './ledger-views';
 import { SnapshotContext } from './snapshot-context';
-
-/** The ledger's fixed as-of date; the server's snapshot is dated the same. */
-const AS_OF = '2026-09-15';
 
 const BUCKET_LABELS: Record<keyof AgingBuckets, string> = {
   current: 'Current',
@@ -18,24 +30,61 @@ const BUCKET_LABELS: Record<keyof AgingBuckets, string> = {
   over90: 'Over 90 days',
 };
 
-function money(amountCents: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(
-    amountCents / 100,
-  );
-}
+const PROFILE_TONE: Record<PaymentProfile, PretableBadgeTone | undefined> = {
+  'on-time': 'positive',
+  'late-fixed': 'warning',
+  'late-drifting': 'negative',
+  'short-payer': 'warning',
+  'batch-payer': 'info',
+  'wrong-reference': 'info',
+};
 
-function monthLabel(month: string): string {
-  const [year, m] = month.split('-').map(Number);
-  return new Date(Date.UTC(year, m - 1, 1)).toLocaleString('en-US', {
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-}
-
-function useSnapshot() {
-  return useContext(SnapshotContext);
-}
+const columns: PretableColumn<LedgerRow>[] = [
+  {
+    id: 'reference',
+    header: 'Reference',
+    widthPx: 200,
+    type: 'text',
+    value: (r) => r.reference,
+  },
+  {
+    id: 'customer',
+    header: 'Customer',
+    widthPx: 140,
+    type: 'text',
+    value: (r) => r.customer,
+  },
+  {
+    id: 'date',
+    header: 'Date',
+    widthPx: 100,
+    type: 'text',
+    value: (r) => r.date || '—',
+  },
+  {
+    id: 'amount',
+    header: 'Amount',
+    widthPx: 110,
+    type: 'number',
+    value: (r) => r.amountCents,
+    format: ({ row }) => money(row.amountCents, row.currency),
+  },
+  {
+    id: 'balance',
+    header: 'Balance',
+    widthPx: 110,
+    type: 'number',
+    value: (r) => r.balanceCents,
+    format: ({ row }) => money(row.balanceCents, row.currency),
+  },
+  {
+    id: 'kind',
+    header: 'Kind',
+    widthPx: 90,
+    type: 'text',
+    value: (r) => (r.kind === 'invoice' ? 'Invoice' : 'Payment'),
+  },
+];
 
 export function AssistantText({
   text,
@@ -60,64 +109,26 @@ export function LedgerTable({
   title: string;
   recordIds: string[];
 }) {
-  const snapshot = useSnapshot();
-  if (!snapshot) return null;
-  const ids = [...new Set(recordIds)];
-  const rows = ids.flatMap((id) => {
-    const invoice = snapshot.invoices.find((i) => i.id === id);
-    if (invoice)
-      return [
-        {
-          id,
-          reference: invoice.reference ?? id,
-          customer: invoice.customerName ?? invoice.customerId,
-          date: invoice.date ?? '',
-          amount: money(invoice.amountCents, invoice.currency),
-          balance: money(invoice.outstandingCents, invoice.currency),
-        },
-      ];
-    const payment = snapshot.payments.find((p) => p.id === id);
-    if (payment)
-      return [
-        {
-          id,
-          reference: payment.reference ?? id,
-          customer: payment.customerName ?? payment.customerId,
-          date: payment.date ?? '',
-          amount: money(payment.amountCents, payment.currency),
-          balance: money(payment.unappliedCents, payment.currency),
-        },
-      ];
-    return [];
-  });
-  const missing = ids.length - rows.length;
+  const snapshot = useContext(SnapshotContext);
+  const resolved = useMemo(
+    () => (snapshot ? resolveRecords(snapshot, recordIds) : undefined),
+    [snapshot, recordIds],
+  );
+  if (!resolved) return null;
+  const { rows, missing } = resolved;
   return (
-    <section className="assistant-table">
+    <section className="assistant-kit assistant-kit-table">
       <h4>{title}</h4>
-      <table>
-        <thead>
-          <tr>
-            <th>Reference</th>
-            <th>Customer</th>
-            <th>Date</th>
-            <th>Amount</th>
-            <th>Balance</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td>{row.reference}</td>
-              <td>{row.customer}</td>
-              <td>{row.date}</td>
-              <td>{row.amount}</td>
-              <td>{row.balance}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <PretableSurface
+        rows={rows}
+        columns={columns}
+        getRowId={(row: LedgerRow) => row.id}
+        ariaLabel={title}
+        viewportHeight={Math.min(320, 44 + rows.length * 32)}
+        toolPanel={false}
+      />
       {missing > 0 && (
-        <p role="status">
+        <p role="status" className="muted">
           {missing} record{missing === 1 ? '' : 's'} could not be shown.
         </p>
       )}
@@ -134,7 +145,7 @@ export function TrendChart({
   customerId: string | null;
   months: number;
 }) {
-  const snapshot = useSnapshot();
+  const snapshot = useContext(SnapshotContext);
   if (!snapshot) return null;
   const own = <
     T extends { currency: string; customerId: string; date?: string },
@@ -199,7 +210,7 @@ export function AgingSummary({
   currency: string;
   customerId: string | null;
 }) {
-  const snapshot = useSnapshot();
+  const snapshot = useContext(SnapshotContext);
   if (!snapshot) return null;
   const totals: Record<keyof AgingBuckets, number> = {
     current: 0,
@@ -237,31 +248,60 @@ export function AgingSummary({
 }
 
 export function CustomerCard({ customerId }: { customerId: string }) {
-  const snapshot = useSnapshot();
-  const customer = snapshot?.customers.find((c) => c.id === customerId);
-  if (!snapshot || !customer) return null;
-  const open = snapshot.invoices
-    .filter((i) => i.customerId === customerId)
-    .reduce((sum, i) => sum + i.outstandingCents, 0);
-  const unapplied = snapshot.payments
-    .filter((p) => p.customerId === customerId)
-    .reduce((sum, p) => sum + p.unappliedCents, 0);
+  const snapshot = useContext(SnapshotContext);
+  const summary = snapshot
+    ? customerSummary(snapshot, customerId, AS_OF)
+    : undefined;
+  if (!summary) return null;
+  const habit =
+    summary.averageDaysToPay === null || summary.latePaymentRate === null
+      ? null
+      : {
+          days: `${summary.averageDaysToPay} days`,
+          late: `${Math.round(summary.latePaymentRate * 100)}% late`,
+        };
   return (
-    <section className="assistant-customer">
-      <h4>{customer.name}</h4>
-      <p>
-        {customer.currency} · pays {customer.profile}
-      </p>
-      <dl>
+    <section className="assistant-kit assistant-kit-customer">
+      <header>
+        <h4>{summary.name}</h4>
+        <span className="muted">{summary.currency}</span>
+        <PretableBadge tone={PROFILE_TONE[summary.profile]}>
+          {summary.profile}
+        </PretableBadge>
+      </header>
+      <dl className="assistant-kit-stats">
         <div>
           <dt>Open</dt>
-          <dd>{money(open, customer.currency)}</dd>
+          <dd>{money(summary.openCents, summary.currency)}</dd>
         </div>
         <div>
           <dt>Unapplied</dt>
-          <dd>{money(unapplied, customer.currency)}</dd>
+          <dd>{money(summary.unappliedCents, summary.currency)}</dd>
+        </div>
+        <div>
+          <dt>Invoiced</dt>
+          <dd>{money(summary.invoicedCents, summary.currency)}</dd>
+        </div>
+        <div>
+          <dt>Received</dt>
+          <dd>{money(summary.receivedCents, summary.currency)}</dd>
+        </div>
+        <div>
+          <dt>Avg. days to pay</dt>
+          <dd>{habit ? habit.days : 'No payments yet'}</dd>
+        </div>
+        <div>
+          <dt>Paid late</dt>
+          <dd>{habit ? habit.late : '—'}</dd>
         </div>
       </dl>
+      <p className="muted">
+        {summary.openInvoiceCount} open invoice
+        {summary.openInvoiceCount === 1 ? '' : 's'}
+        {summary.lastPaymentDate
+          ? ` · last payment ${summary.lastPaymentDate}`
+          : ''}
+      </p>
     </section>
   );
 }
