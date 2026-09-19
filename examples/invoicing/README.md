@@ -107,12 +107,15 @@ npx nx run invoicing-server:eval -- --record     # real model, rewrite fixtures
 
 `--live` and `--record` need `OPENAI_API_KEY`, or `INVOICING_ENV_FILE`
 pointing at an env file that provides it, exactly as `serve` does. A trailing
-argument filters by case name (`-- --record "habit summit"` re-records one
-case); `--json[=file]` also writes the reports as JSON. Fixtures are one
+argument filters by case name or by the eval file's basename
+(`-- --record "habit summit"` re-records one case); `--json[=file]` also writes the reports as JSON. Fixtures are one
 `assistant.<case>.fixtures.json` per case, next to the eval file, and are
 committed: each holds every model call the case made, the LLM judge's
 included, so replay needs no network and reproduces the record run's report.
-The suite runs on demand, not in CI, by decision.
+The suite runs on demand, not in CI, by decision. The gate is currently red
+on purpose: four recorded cases close with `{}` instead of `{"ui":[]}` (B4
+finding 2 in `docs/superpowers/upstream/2026-09-19-b4-findings.md`), and the
+fix is tracked as a follow-up rather than hidden by re-recording.
 
 `server/evals/harness.ts` boots the server in-process against an aimock
 instance and posts each case through the real `/assistant` route with a

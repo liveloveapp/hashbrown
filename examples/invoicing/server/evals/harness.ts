@@ -77,10 +77,33 @@ function toFixtures(fixtures: FixtureSet | ScriptBuilder | undefined) {
   return Array.isArray(fixtures) ? fixtures : fixtures.build();
 }
 
-/** Restore each remembered variable, deleting the ones that were unset. */
-function restoreEnv(previous: Record<string, string | undefined>) {
+/** The environment as it stood before the harness touched it. */
+interface EnvSnapshot {
+  /** Values of the variables the harness itself overrides. */
+  readonly values: Record<string, string | undefined>;
+  /** Variables that `INVOICING_ENV_FILE` added; they are removed on close. */
+  readonly added: readonly string[];
+}
+
+/**
+ * Snapshot the variables the harness overrides, then load the env file (if
+ * any) and note every variable it added, so close() leaves `process.env`
+ * exactly as it was found.
+ */
+function snapshotAndLoadEnv(): EnvSnapshot {
+  const values = Object.fromEntries(envKeys.map((k) => [k, process.env[k]]));
+  const before = new Set(Object.keys(process.env));
+  const envFile = process.env['INVOICING_ENV_FILE'];
+  if (envFile) process.loadEnvFile(envFile);
+  const added = Object.keys(process.env).filter((k) => !before.has(k));
+  return { values, added };
+}
+
+/** Restore each remembered variable and drop the ones the env file added. */
+function restoreEnv(previous: EnvSnapshot) {
+  for (const key of previous.added) delete process.env[key];
   for (const key of envKeys) {
-    const value = previous[key];
+    const value = previous.values[key];
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
@@ -119,9 +142,7 @@ export async function createInvoicingHarness(opts: {
   mode: HarnessMode;
   recordUpstream?: string;
 }): Promise<InvoicingHarness> {
-  if (process.env['INVOICING_ENV_FILE'])
-    process.loadEnvFile(process.env['INVOICING_ENV_FILE']);
-  const previous = Object.fromEntries(envKeys.map((k) => [k, process.env[k]]));
+  const previous = snapshotAndLoadEnv();
   if (opts.mode === 'replay') process.env['OPENAI_API_KEY'] = 'mock';
   else if (!process.env['OPENAI_API_KEY'])
     throw new Error(
@@ -154,7 +175,7 @@ async function boot(
   mode: HarnessMode,
   aimock: Aimock,
   storageDir: string,
-  previousEnv: Record<string, string | undefined>,
+  previousEnv: EnvSnapshot,
 ): Promise<InvoicingHarness> {
   const runtime = await createRuntimeRequestListener({
     appRoot,

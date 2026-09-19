@@ -322,10 +322,12 @@ Four pull requests, each green on its own, in order.
    Playwright config re-recorded where it pins assistant output.
 4. **Evals and runner.** Eval files, dataset generation from facts, custom
    `runCase`, fixtures recorded once and replay verified. README documents
-   `b4 eval`, `--live`, `--record`. Upstream issues filed; the harness PR
-   opened. PR 4 shipped its own harness (`server/evals/harness.ts`) because
-   `createAgentHarness` runs no route middleware, so the assistant's tools
-   would have had no ledger context.
+   `b4 eval`, `--live`, `--record`. The B4 findings are drafted in
+   `docs/superpowers/upstream/2026-09-19-b4-findings.md`; filing them is a
+   separate step. PR 4 shipped its own harness (`server/evals/harness.ts`)
+   because `createAgentHarness` runs no route middleware, so the assistant's
+   tools would have had no ledger context; the harness lives in the example
+   until B4 gains a `middlewareContext` option.
 
 ## Open items carried, not changed
 

@@ -104,7 +104,15 @@ const rendersOnce = custom(
   { name: 'rendersOnce', threshold: 1 },
 );
 const endsWithEmptyUi = custom(
-  (run) => run.finalMessage.trim() === '{"ui":[]}',
+  (run) => {
+    const text = run.finalMessage.trim();
+    return text === '{"ui":[]}'
+      ? 1
+      : {
+          score: 0,
+          reason: `final message was ${text.slice(0, 40)}; the model must close with {"ui":[]} (see docs/superpowers/upstream/2026-09-19-b4-findings.md, finding 2)`,
+        };
+  },
   { name: 'endsWithEmptyUi', threshold: 1 },
 );
 const noToolErrors = custom(
