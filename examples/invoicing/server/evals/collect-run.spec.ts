@@ -88,3 +88,101 @@ test('marks tool errors and surfaces RUN_ERROR', async () => {
   expect(run.error).toBe('boom');
   expect(run.finalMessage).toBe('');
 });
+
+const toolMessage = (kwargs: Record<string, unknown>) =>
+  JSON.stringify({
+    lc: 1,
+    type: 'constructor',
+    id: ['langchain_core', 'messages', 'ToolMessage'],
+    kwargs,
+  });
+
+test('unwraps a streamed ToolMessage to what the tool returned', async () => {
+  const body = sse([
+    { type: 'TOOL_CALL_START', toolCallId: 'c1', toolCallName: 'aging' },
+    { type: 'TOOL_CALL_ARGS', toolCallId: 'c1', delta: '{}' },
+    { type: 'TOOL_CALL_END', toolCallId: 'c1' },
+    {
+      type: 'TOOL_CALL_RESULT',
+      toolCallId: 'c1',
+      messageId: 'm1',
+      role: 'tool',
+      content: toolMessage({
+        status: 'success',
+        content: '{"buckets":[]}',
+        name: 'aging',
+        tool_call_id: 'c1',
+      }),
+    },
+  ]);
+
+  const run = await collectRun(new Response(body), 't');
+
+  expect(run.toolResults).toEqual([
+    { name: 'aging', content: '{"buckets":[]}', isError: false },
+  ]);
+});
+
+test('backfills a thrown tool error from the RUN_FINISHED message list', async () => {
+  const body = sse([
+    { type: 'TOOL_CALL_START', toolCallId: 'c1', toolCallName: 'render' },
+    { type: 'TOOL_CALL_ARGS', toolCallId: 'c1', delta: '{"text":"x"}' },
+    { type: 'TOOL_CALL_END', toolCallId: 'c1' },
+    { type: 'TEXT_MESSAGE_START', messageId: 'final', role: 'assistant' },
+    { type: 'TEXT_MESSAGE_CONTENT', messageId: 'final', delta: '{"ui":[]}' },
+    { type: 'TEXT_MESSAGE_END', messageId: 'final' },
+    {
+      type: 'RUN_FINISHED',
+      threadId: 't',
+      runId: 'r',
+      result: {
+        messages: [
+          {
+            lc: 1,
+            type: 'constructor',
+            id: ['langchain_core', 'messages', 'HumanMessage'],
+            kwargs: { content: 'Bad render' },
+          },
+          JSON.parse(
+            toolMessage({
+              status: 'error',
+              content:
+                'Error: invalid_ui: components[0].CustomerCard.customerId: unknown customer nobody\n Please fix your mistakes.',
+              name: 'render',
+              tool_call_id: 'c1',
+            }),
+          ),
+        ],
+      },
+    },
+  ]);
+
+  const run = await collectRun(new Response(body), 't');
+
+  expect(run.toolCalls).toEqual([
+    { id: 'c1', name: 'render', args: { text: 'x' } },
+  ]);
+  expect(run.toolResults).toEqual([
+    {
+      name: 'render',
+      content: expect.stringContaining('unknown customer nobody'),
+      isError: true,
+      status: 'error',
+    },
+  ]);
+  expect(run.finalMessage).toBe('{"ui":[]}');
+});
+
+test('skips a truncated trailing frame instead of throwing', async () => {
+  const body =
+    sse([
+      { type: 'TEXT_MESSAGE_START', messageId: 'final', role: 'assistant' },
+      { type: 'TEXT_MESSAGE_CONTENT', messageId: 'final', delta: '{"ui":[]}' },
+      { type: 'TEXT_MESSAGE_END', messageId: 'final' },
+    ]) + 'data: {"type":"RUN_FINISHED","threadId":"t","run';
+
+  const run = await collectRun(new Response(body), 't');
+
+  expect(run.finalMessage).toBe('{"ui":[]}');
+  expect(run.error).toBeUndefined();
+});
