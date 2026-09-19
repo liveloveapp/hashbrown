@@ -87,19 +87,49 @@ test('the canonical tree satisfies the kit schema the client renders', () => {
 test.each([
   [{ text: '' }, 'invalid_ui: text is empty'],
   [
+    { text: 'x'.repeat(4001) },
+    'invalid_ui: text is longer than 4000 characters',
+  ],
+  [
+    {
+      text: {
+        toString() {
+          return 'x';
+        },
+      },
+    },
+    'invalid_ui: text is empty',
+  ],
+  [
+    { text: 'x', components: 'nope' },
+    'invalid_ui: components must be an array',
+  ],
+  [
+    { text: 'x', components: [[{ CustomerCard: { customerId: 'atlas' } }]] },
+    'invalid_ui: components[0]: each component must have exactly one component key',
+  ],
+  [
     { text: 'x', components: [{ Bogus: {} }] },
-    'invalid_ui: unknown component Bogus',
+    'invalid_ui: components[0].Bogus: unknown component Bogus',
+  ],
+  [
+    { text: 'x', components: [JSON.parse('{"__proto__":{}}')] },
+    'invalid_ui: components[0].__proto__: unknown component __proto__',
+  ],
+  [
+    { text: 'x', components: [{ constructor: {} }] },
+    'invalid_ui: components[0].constructor: unknown component constructor',
   ],
   [
     { text: 'x', components: [{ LedgerTable: { title: 't', recordIds: [] } }] },
-    'invalid_ui: LedgerTable.recordIds must have 1 to 50 ids',
+    'invalid_ui: components[0].LedgerTable.recordIds must have 1 to 50 ids',
   ],
   [
     {
       text: 'x',
       components: [{ LedgerTable: { title: 't', recordIds: ['nope'] } }],
     },
-    'invalid_ui: unknown record nope',
+    'invalid_ui: components[0].LedgerTable.recordIds: unknown record nope',
   ],
   [
     {
@@ -113,7 +143,7 @@ test.each([
         },
       ],
     },
-    'invalid_ui: duplicate record invoice-cedar-partial',
+    'invalid_ui: components[0].LedgerTable.recordIds: duplicate record invoice-cedar-partial',
   ],
   [
     {
@@ -122,11 +152,29 @@ test.each([
         { LedgerTable: { title: ' ', recordIds: ['invoice-cedar-partial'] } },
       ],
     },
-    'invalid_ui: LedgerTable.title is empty',
+    'invalid_ui: components[0].LedgerTable.title is empty',
+  ],
+  [
+    {
+      text: 'x',
+      components: [
+        {
+          LedgerTable: {
+            title: 't'.repeat(121),
+            recordIds: ['invoice-cedar-partial'],
+          },
+        },
+      ],
+    },
+    'invalid_ui: components[0].LedgerTable.title is longer than 120 characters',
   ],
   [
     { text: 'x', components: [{ TrendChart: { currency: 'JPY', months: 6 } }] },
-    'invalid_ui: unknown currency JPY',
+    'invalid_ui: components[0].TrendChart.currency: unknown currency JPY',
+  ],
+  [
+    { text: 'x', components: [{ TrendChart: { months: 6 } }] },
+    'invalid_ui: components[0].TrendChart.currency: unknown currency undefined',
   ],
   [
     {
@@ -135,22 +183,45 @@ test.each([
         { TrendChart: { currency: 'USD', customerId: 'nobody', months: 6 } },
       ],
     },
-    'invalid_ui: unknown customer nobody',
+    'invalid_ui: components[0].TrendChart.customerId: unknown customer nobody',
+  ],
+  [
+    {
+      text: 'x',
+      components: [
+        { TrendChart: { currency: 'USD', customerId: 'lumen', months: 6 } },
+      ],
+    },
+    'invalid_ui: components[0].TrendChart.customerId: customer lumen is billed in EUR, not USD',
   ],
   [
     { text: 'x', components: [{ TrendChart: { currency: 'USD', months: 2 } }] },
-    'invalid_ui: TrendChart.months must be 3 to 24',
+    'invalid_ui: components[0].TrendChart.months must be a whole number from 3 to 24',
+  ],
+  [
+    {
+      text: 'x',
+      components: [{ TrendChart: { currency: 'USD', months: 6.5 } }],
+    },
+    'invalid_ui: components[0].TrendChart.months must be a whole number from 3 to 24',
   ],
   [
     {
       text: 'x',
       components: [{ AgingSummary: { currency: 'USD', customerId: 'lumen' } }],
     },
-    'invalid_ui: customer lumen is not billed in USD',
+    'invalid_ui: components[0].AgingSummary.customerId: customer lumen is billed in EUR, not USD',
   ],
   [
-    { text: 'x', components: [{ CustomerCard: { customerId: 'nobody' } }] },
-    'invalid_ui: unknown customer nobody',
+    {
+      text: 'x',
+      components: [
+        { CustomerCard: { customerId: 'atlas' } },
+        { CustomerCard: { customerId: 'atlas' } },
+        { CustomerCard: { customerId: 'nobody' } },
+      ],
+    },
+    'invalid_ui: components[2].CustomerCard.customerId: unknown customer nobody',
   ],
   [
     {
@@ -159,16 +230,32 @@ test.each([
         { ReviewPayment: { paymentId: 'payment-northstar-2024-10' } },
       ],
     },
-    'invalid_ui: payment payment-northstar-2024-10 has no unapplied balance',
+    'invalid_ui: components[0].ReviewPayment.paymentId: payment payment-northstar-2024-10 has no unapplied balance',
   ],
   [
     { text: 'x', components: [{ ReviewPayment: { paymentId: 'nope' } }] },
-    'invalid_ui: unknown payment nope',
+    'invalid_ui: components[0].ReviewPayment.paymentId: unknown payment nope',
   ],
 ] as [unknown, string][])('rejects %j', (input, message) => {
   expect(() => validateUi(snapshot, input as AssistantRenderInput)).toThrow(
     message,
   );
+});
+
+test('extra keys inside a leaf are stripped', () => {
+  const input = {
+    text: 'x',
+    components: [{ CustomerCard: { customerId: 'atlas', evil: 1, props: {} } }],
+  };
+
+  expect(validateUi(snapshot, input as AssistantRenderInput).ui).toEqual([
+    {
+      AssistantText: {
+        props: { text: 'x' },
+        children: [{ CustomerCard: { props: { customerId: 'atlas' } } }],
+      },
+    },
+  ]);
 });
 
 test('rejects more than 20 components', () => {
@@ -183,22 +270,22 @@ test('rejects more than 20 components', () => {
 
 test('renderUi streams the canonical tree through the echo and retries once on drift', async () => {
   const tree = validateUi(snapshot, { text: 'Hello' });
-  const calls: unknown[] = [];
-  let first = true;
-  const echo = async (schema: unknown, canonical: unknown) => {
-    calls.push(schema);
-    if (first) {
-      first = false;
-      return { ui: [] };
-    }
-    return canonical;
+  const calls: unknown[][] = [];
+  const echo = async (schema: unknown, canonical: unknown, attempt: number) => {
+    calls.push([schema, canonical, attempt]);
+    return attempt === 0 ? { ui: [] } : canonical;
   };
 
   await expect(renderUi(tree, { schema: 's' }, echo)).resolves.toEqual({
     rendered: true,
   });
-  expect(calls).toEqual([{ schema: 's' }, { schema: 's' }]);
+  expect(calls).toEqual([
+    [{ schema: 's' }, tree, 0],
+    [{ schema: 's' }, tree, 1],
+  ]);
+  expect(calls[0][1]).toBe(tree);
+  expect(calls[1][1]).toBe(tree);
   await expect(
     renderUi(tree, { schema: 's' }, async () => ({ ui: [] })),
-  ).rejects.toThrow('invalid_assistant_ui');
+  ).rejects.toThrow('render_failed');
 });
