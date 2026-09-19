@@ -111,7 +111,7 @@ export {
   reviewPaymentConfig,
   createAssistantKit,
   assistantResponseSchema,
-  type AssistantKitComponents,
+  type AssistantKitName,
 } from './assistant-contract';
 export {
   AGING_BUCKETS,
@@ -121,8 +121,7 @@ export {
   type AgingBuckets,
 } from './aging';
 export type {
-  AssistantUiNode,
-  AssistantTextNode,
+  AssistantRenderInput,
   AssistantLeafNode,
   LedgerTableNode,
   TrendChartNode,

@@ -67,15 +67,14 @@ export const reviewPaymentConfig = {
   props: { paymentId: s.string('The exact existing payment ID') },
 } as const;
 
-/** The component implementations a kit is built over, keyed by kit name. */
-export interface AssistantKitComponents<T> {
-  readonly AssistantText: T;
-  readonly LedgerTable: T;
-  readonly TrendChart: T;
-  readonly AgingSummary: T;
-  readonly CustomerCard: T;
-  readonly ReviewPayment: T;
-}
+/** The names of the components in the assistant kit. */
+export type AssistantKitName =
+  | 'AssistantText'
+  | 'LedgerTable'
+  | 'TrendChart'
+  | 'AgingSummary'
+  | 'CustomerCard'
+  | 'ReviewPayment';
 
 /**
  * Build the kit the same way on every side. The server passes placeholder
@@ -83,7 +82,9 @@ export interface AssistantKitComponents<T> {
  * leaf descriptors are the same objects at the top level and under
  * AssistantText, which is what keeps the two JSON schemas equal.
  */
-export function createAssistantKit<T>(components: AssistantKitComponents<T>) {
+export function createAssistantKit<C extends Record<AssistantKitName, object>>(
+  components: C,
+) {
   const leaves = [
     { ...ledgerTableConfig, component: components.LedgerTable },
     { ...trendChartConfig, component: components.TrendChart },
@@ -96,14 +97,13 @@ export function createAssistantKit<T>(components: AssistantKitComponents<T>) {
     component: components.AssistantText,
     children: [...leaves],
   };
-  return [text, ...leaves];
+  return [text, ...leaves] as const;
 }
 
 /** Canonical JSON response schema accepted by the invoicing server and React UI. */
 export const assistantResponseSchema: Record<string, unknown> = s.toJsonSchema(
   ɵcreateUiKit({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    components: createAssistantKit<any>({
+    components: createAssistantKit({
       AssistantText: {},
       LedgerTable: {},
       TrendChart: {},
