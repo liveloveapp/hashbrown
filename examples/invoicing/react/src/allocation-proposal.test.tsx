@@ -178,6 +178,7 @@ test('uses only matching application records for readable client and references'
           version: 1,
         },
       ],
+      customers: [],
       allocations: [],
       activities: [],
     },

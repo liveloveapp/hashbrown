@@ -1,43 +1,6 @@
 import type { Ledger, MoneyRecord } from '@invoicing/contracts';
-
-const clients = [
-  {
-    id: 'northstar',
-    name: 'Northstar Labs',
-    service: 'Platform engineering',
-    fee: 960000,
-  },
-  {
-    id: 'cedar',
-    name: 'Cedar Health',
-    service: 'Patient portal development',
-    fee: 720000,
-  },
-  {
-    id: 'harbor',
-    name: 'Harbor Commerce',
-    service: 'Commerce API integration',
-    fee: 840000,
-  },
-  {
-    id: 'atlas',
-    name: 'Atlas Analytics',
-    service: 'Data platform consulting',
-    fee: 600000,
-  },
-  {
-    id: 'summit',
-    name: 'Summit Logistics',
-    service: 'Dispatch software support',
-    fee: 480000,
-  },
-  {
-    id: 'juniper',
-    name: 'Juniper Studio',
-    service: 'Web application development',
-    fee: 360000,
-  },
-] as const;
+import { clients } from './generator/clients';
+import { DEFAULT_SEED, generateHistory } from './generator/history';
 
 /** Stable record identities for the demo's unapplied payment scenarios. */
 export const sampleScenarios = {
@@ -60,73 +23,45 @@ export const sampleScenarios = {
   advance: { paymentId: 'payment-summit-advance' },
 } as const;
 
-/** Build two years of deterministic consulting history as of September 15, 2026. */
-export function createSampleLedger(): Ledger {
-  const history = Array.from({ length: 24 }, (_, index) => {
-    const year = 2024 + Math.floor((9 + index) / 12);
-    const month = `${year}-${String(((9 + index) % 12) + 1).padStart(2, '0')}`;
-    return clients.map((client) => {
-      const key = `${client.id}-${month}`;
-      const reference = `INV-${month.replace('-', '')}-${client.id.toUpperCase()}`;
-      const common = {
-        customerId: client.id,
-        customerName: client.name,
-        currency: 'USD',
-        amountCents: client.fee + Math.floor(index / 12) * 30000,
-        version: 2,
-      };
-      return {
-        invoice: {
-          ...common,
-          id: `invoice-${key}`,
-          date: `${month}-01`,
-          reference,
-          description: `${client.service} — ${month} monthly retainer`,
-        },
-        payment: {
-          ...common,
-          id: `payment-${key}`,
-          date: `${month}-10`,
-          reference: `ACH ${reference}`,
-          description: `${client.name} monthly consulting payment`,
-        },
-        allocation: {
-          paymentId: `payment-${key}`,
-          invoiceId: `invoice-${key}`,
-          amountCents: common.amountCents,
-          proposalId: `historical-proposal-${key}`,
-        },
-        activity: {
-          operationId: `historical-operation-${key}`,
-          proposalId: `historical-proposal-${key}`,
-          description: `${month}-10: Applied ${client.name} payment to ${reference}`,
-        },
-      };
-    });
-  }).flat();
-  const record = (
-    clientIndex: number,
-    id: string,
-    amountCents: number,
-    reference: string,
-    description: string,
-    date: string,
-  ): MoneyRecord => ({
-    id,
-    customerId: clients[clientIndex].id,
-    customerName: clients[clientIndex].name,
-    currency: 'USD',
-    amountCents,
-    version: 1,
-    reference,
-    description,
-    date,
-  });
+const client = (id: string) => {
+  const found = clients.find((c) => c.id === id);
+  if (!found) throw new Error(`unknown_client:${id}`);
+  return found;
+};
+
+const record = (
+  clientId: string,
+  id: string,
+  amountCents: number,
+  reference: string,
+  description: string,
+  date: string,
+): MoneyRecord => ({
+  id,
+  customerId: clientId,
+  customerName: client(clientId).name,
+  currency: client(clientId).currency,
+  amountCents,
+  version: 1,
+  reference,
+  description,
+  date,
+});
+
+/**
+ * The ledger every visitor starts from: generated history for twelve clients
+ * plus five hand-written September 2026 scenarios that exercise matching.
+ * The scenario rows are appended last and never allocated, so the five
+ * payments are the only unapplied cash in the base ledger.
+ */
+export function createSampleLedger(seed = DEFAULT_SEED): Ledger {
+  const history = generateHistory(seed);
   return {
+    ...history,
     invoices: [
-      ...history.map((item) => item.invoice),
+      ...history.invoices,
       record(
-        0,
+        'northstar',
         sampleScenarios.exact.invoiceId,
         240000,
         'INV-202609-NS-101',
@@ -134,7 +69,7 @@ export function createSampleLedger(): Ledger {
         '2026-09-08',
       ),
       record(
-        1,
+        'cedar',
         sampleScenarios.partial.invoiceId,
         500000,
         'INV-202609-CH-102',
@@ -142,7 +77,7 @@ export function createSampleLedger(): Ledger {
         '2026-09-08',
       ),
       record(
-        2,
+        'harbor',
         sampleScenarios.combined.invoiceIds[0],
         320000,
         'INV-202609-HC-103',
@@ -150,7 +85,7 @@ export function createSampleLedger(): Ledger {
         '2026-09-09',
       ),
       record(
-        2,
+        'harbor',
         sampleScenarios.combined.invoiceIds[1],
         180000,
         'INV-202609-HC-104',
@@ -158,7 +93,7 @@ export function createSampleLedger(): Ledger {
         '2026-09-10',
       ),
       record(
-        3,
+        'atlas',
         sampleScenarios.ambiguous.invoiceIds[0],
         150000,
         'INV-202609-AA-105',
@@ -166,7 +101,7 @@ export function createSampleLedger(): Ledger {
         '2026-09-10',
       ),
       record(
-        3,
+        'atlas',
         sampleScenarios.ambiguous.invoiceIds[1],
         150000,
         'INV-202609-AA-106',
@@ -175,9 +110,9 @@ export function createSampleLedger(): Ledger {
       ),
     ],
     payments: [
-      ...history.map((item) => item.payment),
+      ...history.payments,
       record(
-        0,
+        'northstar',
         sampleScenarios.exact.paymentId,
         240000,
         'ACH INV-202609-NS-101',
@@ -185,7 +120,7 @@ export function createSampleLedger(): Ledger {
         '2026-09-12',
       ),
       record(
-        1,
+        'cedar',
         sampleScenarios.partial.paymentId,
         200000,
         'ACH INV-202609-CH-102 PARTIAL',
@@ -193,7 +128,7 @@ export function createSampleLedger(): Ledger {
         '2026-09-12',
       ),
       record(
-        2,
+        'harbor',
         sampleScenarios.combined.paymentId,
         500000,
         'ACH INV-202609-HC-103 + INV-202609-HC-104',
@@ -201,7 +136,7 @@ export function createSampleLedger(): Ledger {
         '2026-09-14',
       ),
       record(
-        3,
+        'atlas',
         sampleScenarios.ambiguous.paymentId,
         150000,
         'ACH ATLAS SEPTEMBER WORKSHOP',
@@ -209,7 +144,7 @@ export function createSampleLedger(): Ledger {
         '2026-09-14',
       ),
       record(
-        4,
+        'summit',
         sampleScenarios.advance.paymentId,
         300000,
         'ACH SUMMIT OCTOBER ADVANCE',
@@ -217,7 +152,5 @@ export function createSampleLedger(): Ledger {
         '2026-09-15',
       ),
     ],
-    allocations: history.map((item) => item.allocation),
-    activities: history.map((item) => item.activity),
   };
 }

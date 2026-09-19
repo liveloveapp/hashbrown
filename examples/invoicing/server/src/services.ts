@@ -17,7 +17,7 @@ export interface Services {
 
 async function build(): Promise<Services> {
   const repositories = await repositoriesFromEnv();
-  const store = createSessionStore(repositories.sessions, createSampleLedger);
+  const store = createSessionStore(repositories.sessions, createSampleLedger());
   const reviews = createReviewCoordinator(
     store,
     repositories.threads,

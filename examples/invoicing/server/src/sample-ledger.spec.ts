@@ -23,9 +23,13 @@ test('creates deterministic independent records spanning 24 consulting months', 
   expect(months.size).toBe(24);
   expect([...months].sort()[0]).toBe('2024-10');
   expect([...months].sort().at(-1)).toBe('2026-09');
+  expect(first.customers).toHaveLength(12);
   expect(
     new Set(first.invoices.map((record) => record.customerName)).size,
-  ).toBe(6);
+  ).toBe(12);
+  expect(new Set(first.customers.map((c) => c.currency))).toEqual(
+    new Set(['USD', 'EUR', 'GBP']),
+  );
   for (const record of [...first.invoices, ...first.payments]) {
     expect(record.customerName).toBeTruthy();
     expect(record.reference).toBeTruthy();
@@ -44,7 +48,9 @@ test('conserves cents with valid unique history and no overallocations', () => {
     0,
   );
 
-  expect(ledger.allocations.length).toBeGreaterThanOrEqual(23 * 6);
+  expect(ledger.allocations.length).toBeGreaterThanOrEqual(
+    23 * ledger.customers.length,
+  );
   expect(
     new Set([...ledger.invoices, ...ledger.payments].map((item) => item.id))
       .size,
@@ -133,6 +139,21 @@ test('provides exact, partial, combined, ambiguous, and advance payment scenario
       )
       .every((item) => item.outstandingCents === 0),
   ).toBe(true);
+  // The scenario invoices are the only open candidates for their payments, so
+  // the review flows never have to choose between a scenario and history.
+  for (const customerId of ['northstar', 'cedar', 'harbor', 'atlas']) {
+    const openIds = snapshot.invoices
+      .filter((i) => i.customerId === customerId && i.outstandingCents > 0)
+      .map((i) => i.id)
+      .sort();
+    const expected = {
+      northstar: [sampleScenarios.exact.invoiceId],
+      cedar: [sampleScenarios.partial.invoiceId],
+      harbor: [...sampleScenarios.combined.invoiceIds],
+      atlas: [...sampleScenarios.ambiguous.invoiceIds],
+    }[customerId];
+    expect(openIds).toEqual([...(expected ?? [])].sort());
+  }
 });
 
 test('supports applying a combined payment sequentially while retaining accounting history', () => {
@@ -172,36 +193,10 @@ test('supports applying a combined payment sequentially while retaining accounti
   expect(createSampleLedger()).toEqual(initial);
 });
 
-test('uses a factory on create and reset and isolates shared seed objects', async () => {
-  const seed = createSampleLedger();
-  let calls = 0;
-  const store = createSessionStore(createMemoryRepositories().sessions, () => {
-    calls += 1;
-    return seed;
-  });
-  const first = await store.createSession();
-  const second = await store.createSession();
-  const originalAmount = seed.payments[0].amountCents;
-
-  (seed.payments[0] as { amountCents: number }).amountCents += 100;
-  const reset = await store.reset(first);
-  (seed.payments[0] as { amountCents: number }).amountCents += 100;
-
-  expect(calls).toBe(3);
-  expect((await store.snapshot(second)).payments[0].amountCents).toBe(
-    originalAmount,
-  );
-  expect(reset.payments[0].amountCents).toBe(originalAmount + 100);
-  expect((await store.snapshot(first)).payments[0].amountCents).toBe(
-    originalAmount + 100,
-  );
-  expect(await store.generation(first)).toBe(2);
-});
-
 test('reset restores sample allocations after approval without affecting another session', async () => {
   const store = createSessionStore(
     createMemoryRepositories().sessions,
-    createSampleLedger,
+    createSampleLedger(),
   );
   const first = await store.createSession();
   const second = await store.createSession();

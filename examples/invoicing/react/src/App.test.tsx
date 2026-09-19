@@ -34,6 +34,7 @@ const snapshot: LedgerSnapshot = {
       outstandingCents: 240000,
     },
   ],
+  customers: [],
   allocations: [],
   activities: [],
 };

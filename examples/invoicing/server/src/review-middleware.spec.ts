@@ -110,7 +110,7 @@ test('middleware tools ignore extra amounts and invalidate reads after reset', a
 
 test('an ambiguous payment requires a chosen invoice and cannot substitute another invoice', async () => {
   const repositories = createMemoryRepositories();
-  const store = createSessionStore(repositories.sessions, () => ({
+  const store = createSessionStore(repositories.sessions, {
     payments: [
       {
         id: 'p',
@@ -127,9 +127,10 @@ test('an ambiguous payment requires a chosen invoice and cannot substitute anoth
       amountCents: 10000,
       version: 1,
     })),
+    customers: [],
     allocations: [],
     activities: [],
-  }));
+  });
   const session = await store.createSession();
   const schema = { type: 'object' };
   const middleware = createReviewMiddleware(

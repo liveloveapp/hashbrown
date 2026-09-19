@@ -1,5 +1,22 @@
 # Invoicing compatibility checkpoint
 
+## Generated ledger and session overlay — September 19, 2026
+
+The sample ledger is now generated from a fixed seed instead of a hand-written
+fixture. It covers twelve clients across USD, EUR and GBP, each with a payment
+profile that shapes how its invoices are settled. The five scenario rows and
+their ids are unchanged and remain the only unapplied cash ($13,900), so the
+seeded browser and live e2e flows still target the same payments. Record
+counts are no longer fixed; tests assert relative to the generated baseline
+rather than against literal totals.
+
+Sessions store an overlay over a shared base ledger rather than a full ledger
+copy. A row written under the old shape is treated as a reset and normalizes
+to an empty overlay one generation later, so existing session rows need no
+migration. The assistant's `readLedger` tool withholds the raw payment and
+invoice rows, returning only the derived sections and the `customerId` filter,
+until query-shaped tools land in a later PR.
+
 ## Lost approval response recovery — September 15, 2026
 
 The deterministic browser suite now includes a fourth scenario. Its test-only
