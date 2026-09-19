@@ -23,9 +23,13 @@ test('creates deterministic independent records spanning 24 consulting months', 
   expect(months.size).toBe(24);
   expect([...months].sort()[0]).toBe('2024-10');
   expect([...months].sort().at(-1)).toBe('2026-09');
+  expect(first.customers).toHaveLength(12);
   expect(
     new Set(first.invoices.map((record) => record.customerName)).size,
-  ).toBe(6);
+  ).toBe(12);
+  expect(new Set(first.customers.map((c) => c.currency))).toEqual(
+    new Set(['USD', 'EUR', 'GBP']),
+  );
   for (const record of [...first.invoices, ...first.payments]) {
     expect(record.customerName).toBeTruthy();
     expect(record.reference).toBeTruthy();
@@ -133,6 +137,21 @@ test('provides exact, partial, combined, ambiguous, and advance payment scenario
       )
       .every((item) => item.outstandingCents === 0),
   ).toBe(true);
+  // The scenario invoices are the only open candidates for their payments, so
+  // the review flows never have to choose between a scenario and history.
+  for (const customerId of ['northstar', 'cedar', 'harbor', 'atlas']) {
+    const openIds = snapshot.invoices
+      .filter((i) => i.customerId === customerId && i.outstandingCents > 0)
+      .map((i) => i.id)
+      .sort();
+    const expected = {
+      northstar: [sampleScenarios.exact.invoiceId],
+      cedar: [sampleScenarios.partial.invoiceId],
+      harbor: [...sampleScenarios.combined.invoiceIds],
+      atlas: [...sampleScenarios.ambiguous.invoiceIds],
+    }[customerId];
+    expect(openIds).toEqual([...(expected ?? [])].sort());
+  }
 });
 
 test('supports applying a combined payment sequentially while retaining accounting history', () => {
