@@ -98,6 +98,21 @@ test('TrendChart lists the last calendar months for a currency, zero-filled', ()
   expect(screen.getAllByText('$0.00').length).toBeGreaterThan(0);
 });
 
+test('TrendChart clamps months so a malformed value cannot render an unbounded table', () => {
+  withSnapshot(<TrendChart currency="USD" customerId={null} months={5000} />);
+
+  expect(screen.getAllByRole('row').length).toBeLessThanOrEqual(25);
+});
+
+test('LedgerTable dedupes repeated ids and counts missing ones once', () => {
+  withSnapshot(
+    <LedgerTable title="Rows" recordIds={['i', 'i', 'nope', 'nope']} />,
+  );
+
+  expect(screen.getAllByText('INV-1')).toHaveLength(1);
+  expect(screen.getByText('1 record could not be shown.')).toBeVisible();
+});
+
 test('AgingSummary buckets open invoices as of the ledger date', () => {
   withSnapshot(<AgingSummary currency="USD" customerId="c" />);
 

@@ -62,7 +62,8 @@ export function LedgerTable({
 }) {
   const snapshot = useSnapshot();
   if (!snapshot) return null;
-  const rows = recordIds.flatMap((id) => {
+  const ids = [...new Set(recordIds)];
+  const rows = ids.flatMap((id) => {
     const invoice = snapshot.invoices.find((i) => i.id === id);
     if (invoice)
       return [
@@ -89,7 +90,7 @@ export function LedgerTable({
       ];
     return [];
   });
-  const missing = recordIds.length - rows.length;
+  const missing = ids.length - rows.length;
   return (
     <section className="assistant-table">
       <h4>{title}</h4>
@@ -149,7 +150,8 @@ export function TrendChart({
   // Calendar months back from the as-of month, zero-filled, matching the
   // server's monthlyTotals so the chart and the tool agree on which months exist.
   const [asOfYear, asOfMonth] = AS_OF.split('-').map(Number);
-  const count = Math.max(1, months);
+  // Defense in depth: the server validates 3 to 24, but never trust a model-typed count.
+  const count = Math.min(24, Math.max(1, months));
   const rows = Array.from({ length: count }, (_, offset) => {
     const index = asOfYear * 12 + (asOfMonth - 1) - (count - 1 - offset);
     return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
