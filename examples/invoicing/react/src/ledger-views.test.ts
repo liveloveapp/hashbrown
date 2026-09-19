@@ -170,8 +170,37 @@ test('agingTotals buckets open invoices with counts', () => {
   });
 });
 
+test('agingTotals puts a dateless open invoice in the current bucket', () => {
+  const dateless: LedgerSnapshot = {
+    ...snapshot,
+    invoices: [
+      {
+        id: 'undated',
+        customerId: 'c',
+        customerName: 'Cedar Health',
+        currency: 'USD',
+        amountCents: 4000,
+        outstandingCents: 4000,
+        version: 1,
+      },
+    ],
+  };
+
+  const rows = agingTotals(dateless, {
+    currency: 'USD',
+    customerId: null,
+    asOf: AS_OF,
+  });
+
+  expect(rows.find((b) => b.bucket === 'current')).toMatchObject({
+    cents: 4000,
+    count: 1,
+  });
+  expect(rows.reduce((s, b) => s + b.cents, 0)).toBe(4000);
+});
+
 test('customerSummary computes balances and habit from the snapshot', () => {
-  const cedar = customerSummary(snapshot, 'c', AS_OF);
+  const cedar = customerSummary(snapshot, 'c');
 
   expect(cedar).toMatchObject({
     id: 'c',
@@ -187,9 +216,9 @@ test('customerSummary computes balances and habit from the snapshot', () => {
     latePaymentRate: 1,
     lastPaymentDate: '2026-09-12',
   });
-  expect(customerSummary(snapshot, 'e', AS_OF)).toMatchObject({
+  expect(customerSummary(snapshot, 'e')).toMatchObject({
     averageDaysToPay: null,
     latePaymentRate: null,
   });
-  expect(customerSummary(snapshot, 'nobody', AS_OF)).toBeUndefined();
+  expect(customerSummary(snapshot, 'nobody')).toBeUndefined();
 });

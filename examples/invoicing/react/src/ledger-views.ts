@@ -4,6 +4,7 @@ import {
   type AgingBuckets,
   daysBetween,
   type LedgerSnapshot,
+  monthAt,
   type PaymentProfile,
   TERMS_DAYS,
 } from '@invoicing/contracts';
@@ -113,11 +114,10 @@ export function monthlySeries(
     );
   const invoices = own(snapshot.invoices);
   const payments = own(snapshot.payments);
-  const [year, month] = input.asOf.split('-').map(Number);
   const count = Math.min(24, Math.max(1, Math.floor(input.months) || 1));
+  const asOfMonth = input.asOf.slice(0, 7);
   return Array.from({ length: count }, (_, offset) => {
-    const index = year * 12 + (month - 1) - (count - 1 - offset);
-    const key = `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+    const key = monthAt(asOfMonth, offset - (count - 1));
     return {
       month: key,
       invoicedCents: invoices
@@ -180,17 +180,11 @@ export interface CustomerSummary {
   readonly lastPaymentDate: string | null;
 }
 
-/**
- * One client's balances and habit, computed from the snapshot's own allocations.
- * `asOf` is accepted for symmetry with the server's facts and reserved for
- * aging-aware figures.
- */
+/** One client's balances and habit, computed from the snapshot's own allocations. */
 export function customerSummary(
   snapshot: LedgerSnapshot,
   customerId: string,
-  asOf: string,
 ): CustomerSummary | undefined {
-  void asOf;
   const customer = snapshot.customers.find((c) => c.id === customerId);
   if (!customer) return undefined;
   const invoices = snapshot.invoices.filter((i) => i.customerId === customerId);

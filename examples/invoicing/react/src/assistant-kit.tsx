@@ -5,6 +5,7 @@ import {
   type PretableColumn,
   PretableSurface,
 } from '@pretable/react';
+import { getDensityHeights } from '@pretable/ui';
 import {
   AGING_BUCKETS,
   agingBucket,
@@ -30,41 +31,40 @@ const BUCKET_LABELS: Record<keyof AgingBuckets, string> = {
   over90: 'Over 90 days',
 };
 
-const PROFILE_TONE: Record<PaymentProfile, PretableBadgeTone | undefined> = {
+const PROFILE_LABEL: Record<PaymentProfile, string> = {
+  'on-time': 'On time',
+  'late-fixed': 'Late, fixed lag',
+  'late-drifting': 'Late, drifting',
+  'short-payer': 'Short payer',
+  'batch-payer': 'Batch payer',
+  'wrong-reference': 'Wrong reference',
+};
+
+const PROFILE_TONE: Record<PaymentProfile, PretableBadgeTone> = {
   'on-time': 'positive',
   'late-fixed': 'warning',
   'late-drifting': 'negative',
   'short-payer': 'warning',
   'batch-payer': 'info',
-  'wrong-reference': 'info',
+  'wrong-reference': 'warning',
 };
 
+// The assistant aside is narrow (~270-310px): the client is named by the prose
+// and the CustomerCard, so the grid spends its width on reference and money.
 const columns: PretableColumn<LedgerRow>[] = [
   {
     id: 'reference',
     header: 'Reference',
-    widthPx: 200,
+    flex: 2,
+    minWidthPx: 110,
     type: 'text',
     value: (r) => r.reference,
   },
   {
-    id: 'customer',
-    header: 'Customer',
-    widthPx: 140,
-    type: 'text',
-    value: (r) => r.customer,
-  },
-  {
-    id: 'date',
-    header: 'Date',
-    widthPx: 100,
-    type: 'text',
-    value: (r) => r.date || '—',
-  },
-  {
     id: 'amount',
     header: 'Amount',
-    widthPx: 110,
+    flex: 1,
+    minWidthPx: 90,
     type: 'number',
     value: (r) => r.amountCents,
     format: ({ row }) => money(row.amountCents, row.currency),
@@ -72,15 +72,23 @@ const columns: PretableColumn<LedgerRow>[] = [
   {
     id: 'balance',
     header: 'Balance',
-    widthPx: 110,
+    flex: 1,
+    minWidthPx: 90,
     type: 'number',
     value: (r) => r.balanceCents,
     format: ({ row }) => money(row.balanceCents, row.currency),
   },
   {
+    id: 'date',
+    header: 'Date',
+    widthPx: 88,
+    type: 'text',
+    value: (r) => r.date || '—',
+  },
+  {
     id: 'kind',
     header: 'Kind',
-    widthPx: 90,
+    widthPx: 76,
     type: 'text',
     value: (r) => (r.kind === 'invoice' ? 'Invoice' : 'Payment'),
   },
@@ -110,12 +118,17 @@ export function LedgerTable({
   recordIds: string[];
 }) {
   const snapshot = useContext(SnapshotContext);
+  // Hashbrown hands the renderer a fresh `recordIds` array on every streamed
+  // render, so key the memo on the ids' content rather than array identity.
+  const idsKey = recordIds.join(' ');
   const resolved = useMemo(
-    () => (snapshot ? resolveRecords(snapshot, recordIds) : undefined),
-    [snapshot, recordIds],
+    () => (snapshot ? resolveRecords(snapshot, idsKey.split(' ')) : undefined),
+    [snapshot, idsKey],
   );
   if (!resolved) return null;
   const { rows, missing } = resolved;
+  // Size the viewport from the theme's own density so no row is clipped.
+  const { rowHeight, headerHeight } = getDensityHeights();
   return (
     <section className="assistant-kit assistant-kit-table">
       <h4>{title}</h4>
@@ -124,7 +137,7 @@ export function LedgerTable({
         columns={columns}
         getRowId={(row: LedgerRow) => row.id}
         ariaLabel={title}
-        viewportHeight={Math.min(320, 44 + rows.length * 32)}
+        viewportHeight={Math.min(320, headerHeight + rows.length * rowHeight)}
         toolPanel={false}
       />
       {missing > 0 && (
@@ -249,9 +262,7 @@ export function AgingSummary({
 
 export function CustomerCard({ customerId }: { customerId: string }) {
   const snapshot = useContext(SnapshotContext);
-  const summary = snapshot
-    ? customerSummary(snapshot, customerId, AS_OF)
-    : undefined;
+  const summary = snapshot ? customerSummary(snapshot, customerId) : undefined;
   if (!summary) return null;
   const habit =
     summary.averageDaysToPay === null || summary.latePaymentRate === null
@@ -266,7 +277,7 @@ export function CustomerCard({ customerId }: { customerId: string }) {
         <h4>{summary.name}</h4>
         <span className="muted">{summary.currency}</span>
         <PretableBadge tone={PROFILE_TONE[summary.profile]}>
-          {summary.profile}
+          {PROFILE_LABEL[summary.profile]}
         </PretableBadge>
       </header>
       <dl className="assistant-kit-stats">
@@ -288,7 +299,7 @@ export function CustomerCard({ customerId }: { customerId: string }) {
         </div>
         <div>
           <dt>Avg. days to pay</dt>
-          <dd>{habit ? habit.days : 'No payments yet'}</dd>
+          <dd>{habit ? habit.days : 'No applied payments'}</dd>
         </div>
         <div>
           <dt>Paid late</dt>
