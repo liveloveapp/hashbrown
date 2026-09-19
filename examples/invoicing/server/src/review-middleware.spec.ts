@@ -127,6 +127,7 @@ test('an ambiguous payment requires a chosen invoice and cannot substitute anoth
       amountCents: 10000,
       version: 1,
     })),
+    customers: [],
     allocations: [],
     activities: [],
   }));

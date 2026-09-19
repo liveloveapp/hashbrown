@@ -1,3 +1,18 @@
+/** How a client habitually settles invoices; drives the generated history. */
+export type PaymentProfile =
+  | 'on-time'
+  | 'late-fixed'
+  | 'late-drifting'
+  | 'short-payer'
+  | 'batch-payer'
+  | 'wrong-reference';
+/** A billed client. */
+export interface Customer {
+  readonly id: string;
+  readonly name: string;
+  readonly currency: string;
+  readonly profile: PaymentProfile;
+}
 /** A customer-owned money record; amounts are positive safe integer cents. */
 export interface MoneyRecord {
   readonly id: string;
@@ -29,8 +44,14 @@ export interface Activity {
 }
 /** Canonical ledger data; remaining balances are derived from allocations. */
 export interface Ledger {
+  readonly customers: readonly Customer[];
   readonly payments: readonly MoneyRecord[];
   readonly invoices: readonly MoneyRecord[];
+  readonly allocations: readonly Allocation[];
+  readonly activities: readonly Activity[];
+}
+/** What one session has changed on top of the shared base ledger. */
+export interface LedgerOverlay {
   readonly allocations: readonly Allocation[];
   readonly activities: readonly Activity[];
 }

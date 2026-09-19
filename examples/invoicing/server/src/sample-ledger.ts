@@ -123,6 +123,7 @@ export function createSampleLedger(): Ledger {
     date,
   });
   return {
+    customers: [],
     invoices: [
       ...history.map((item) => item.invoice),
       record(

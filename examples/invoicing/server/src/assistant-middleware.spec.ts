@@ -110,6 +110,7 @@ test('conversation totals are computed by month and currency instead of inferred
         version: 1,
       },
     ],
+    customers: [],
     allocations: [],
     activities: [],
   }));

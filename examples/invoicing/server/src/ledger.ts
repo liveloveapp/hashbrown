@@ -14,6 +14,14 @@ export function createLedger(): Ledger {
     version: 1,
   };
   return {
+    customers: [
+      {
+        id: 'customer-001',
+        name: 'Customer 001',
+        currency: 'USD',
+        profile: 'on-time',
+      },
+    ],
     payments: [{ ...record, id: 'payment-001' }],
     invoices: [{ ...record, id: 'invoice-001' }],
     allocations: [],
@@ -105,6 +113,7 @@ export function applyProposal(ledger: Ledger, proposal: Proposal): Ledger {
   )
     throw new Error('incompatible_records');
   return {
+    customers: ledger.customers,
     payments: ledger.payments.map((record) =>
       record.id === proposal.paymentId
         ? { ...record, version: record.version + 1 }
