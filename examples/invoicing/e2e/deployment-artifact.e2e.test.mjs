@@ -29,7 +29,10 @@ test('the published tree has the B4 function, the api function, and the SPA', as
   // ceiling rather than inheriting the Vercel project default.
   assert.equal(b4.maxDuration, 300);
   const api = JSON.parse(
-    await readFile(new URL('functions/api.func/.vc-config.json', output), 'utf8'),
+    await readFile(
+      new URL('functions/api.func/.vc-config.json', output),
+      'utf8',
+    ),
   );
   assert.equal(api.maxDuration, 30);
   await stat(new URL('functions/b4.func/index.mjs', output));
@@ -59,7 +62,13 @@ test('the api function serves a seeded snapshot and sets the session cookie', as
       /^invoicing_session=[0-9a-f-]{36}; Path=\/; HttpOnly; SameSite=Lax$/,
     );
     const snapshot = await response.json();
-    assert.equal(snapshot.invoices.length, 150);
+    // The ledger is generated, so pin its shape rather than a row count.
+    assert.equal(snapshot.customers.length, 12);
+    assert.ok(snapshot.invoices.length > 100);
+    assert.equal(
+      snapshot.payments.filter((payment) => payment.unappliedCents > 0).length,
+      5,
+    );
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
