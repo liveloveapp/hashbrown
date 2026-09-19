@@ -1,3 +1,4 @@
+import type { Ledger, MoneyRecord } from '@invoicing/contracts';
 import { expect, test } from 'vitest';
 import { getSnapshot } from './ledger';
 import { createSampleLedger, sampleScenarios } from './sample-ledger';
@@ -14,6 +15,27 @@ const snapshot = getSnapshot(createSampleLedger());
 /** Roughly 3K tokens; the whole point of query-shaped tools. */
 const BUDGET = 12000;
 const size = (value: unknown) => JSON.stringify(value).length;
+
+/** A one-customer USD ledger with the given invoices and no payments. */
+function fixture(
+  invoices: readonly Pick<MoneyRecord, 'id' | 'date' | 'amountCents'>[],
+) {
+  const ledger: Ledger = {
+    customers: [
+      { id: 'solo', name: 'Solo Co', currency: 'USD', profile: 'on-time' },
+    ],
+    invoices: invoices.map((i) => ({
+      ...i,
+      customerId: 'solo',
+      currency: 'USD',
+      version: 1,
+    })),
+    payments: [],
+    allocations: [],
+    activities: [],
+  };
+  return getSnapshot(ledger);
+}
 
 test('ledgerSummary is small and names every customer and currency', () => {
   const result = ledgerSummary(snapshot);
@@ -56,6 +78,35 @@ test('monthlyTotals returns the last N months for a currency, optionally one cus
   expect(size(all)).toBeLessThan(BUDGET);
 });
 
+test('monthlyTotals zero-fills gap months inside the window', () => {
+  const gappy = fixture([
+    { id: 'inv-jul', date: '2026-07-10', amountCents: 100 },
+    { id: 'inv-sep', date: '2026-09-01', amountCents: 300 },
+  ]);
+
+  const result = monthlyTotals(gappy, { currency: 'usd', months: 3 });
+
+  expect(result.currency).toBe('USD');
+  expect(result.rows.map((r) => [r.month, r.invoicedCents])).toEqual([
+    ['2026-07', 100],
+    ['2026-08', 0],
+    ['2026-09', 300],
+  ]);
+  expect(result.rows[1].invoiced).toBe('$0.00');
+});
+
+test('monthlyTotals and aging reject a customer billed in another currency', () => {
+  expect(() =>
+    monthlyTotals(snapshot, { currency: 'EUR', customerId: 'cedar' }),
+  ).toThrow('customer_currency_mismatch: cedar bills in USD');
+  expect(() =>
+    aging(snapshot, { currency: 'EUR', customerId: 'cedar' }),
+  ).toThrow('customer_currency_mismatch: cedar bills in USD');
+  expect(() => aging(snapshot, { currency: 'XXX' })).toThrow(
+    'currency_not_found: XXX; ledger currencies are EUR, GBP, USD',
+  );
+});
+
 test('aging buckets reconcile with open balances and list invoice ids', () => {
   const gbp = aging(snapshot, { currency: 'GBP' });
   const thistle = aging(snapshot, { currency: 'GBP', customerId: 'thistle' });
@@ -63,9 +114,13 @@ test('aging buckets reconcile with open balances and list invoice ids', () => {
   const open = snapshot.invoices.filter(
     (i) => i.currency === 'GBP' && i.outstandingCents > 0,
   );
-  expect(gbp.buckets.reduce((sum, b) => sum + b.cents, 0)).toBe(
+  expect(gbp.buckets.reduce((sum, b) => sum + b.outstandingCents, 0)).toBe(
     open.reduce((sum, i) => sum + i.outstandingCents, 0),
   );
+  expect(gbp.openCents).toBe(
+    open.reduce((sum, i) => sum + i.outstandingCents, 0),
+  );
+  expect(gbp.open).toMatch(/^£[\d,]+\.\d{2}$/);
   expect(gbp.buckets.flatMap((b) => b.invoiceIds).sort()).toEqual(
     open.map((i) => i.id).sort(),
   );
@@ -101,15 +156,33 @@ test('customerStatement reports habit and open items for one client', () => {
   ]);
   expect(cedar.averageDaysToPay).toBeGreaterThanOrEqual(5);
   expect(cedar.averageDaysToPay).toBeLessThanOrEqual(12);
+  expect(cedar.asOf).toBe('2026-09-15');
   expect(granite.openInvoices.length).toBeGreaterThanOrEqual(24);
   expect(granite.openInvoices.length).toBeLessThanOrEqual(50);
-  expect(granite.openInvoicesTruncated).toBe(
-    granite.openInvoices.length < granite.openInvoiceCount,
-  );
+  expect(granite.openInvoicesTruncated).toBe(false);
+  expect(granite.unappliedPaymentCount).toBe(0);
+  expect(granite.unappliedPaymentsTruncated).toBe(false);
   expect(() => customerStatement(snapshot, { customerId: 'nobody' })).toThrow(
-    'customer_not_found',
+    'customer_not_found: nobody',
   );
   expect(size(granite)).toBeLessThan(BUDGET);
+});
+
+test('customerStatement caps open invoices at 50 and says so', () => {
+  const busy = fixture(
+    Array.from({ length: 51 }, (_, n) => ({
+      id: `inv-${n}`,
+      date: `2026-08-${String((n % 28) + 1).padStart(2, '0')}`,
+      amountCents: 1000 + n,
+    })),
+  );
+
+  const result = customerStatement(busy, { customerId: 'solo' });
+
+  expect(result.openInvoices).toHaveLength(50);
+  expect(result.openInvoiceCount).toBe(51);
+  expect(result.openInvoicesTruncated).toBe(true);
+  expect(size(result)).toBeLessThan(BUDGET);
 });
 
 test('findRecords filters, caps, and reports the total', () => {
@@ -169,6 +242,7 @@ test('unappliedPayments lists candidates per payment', () => {
   expect(atlas?.candidates.map((c) => c.invoiceId).sort()).toEqual(
     [...sampleScenarios.ambiguous.invoiceIds].sort(),
   );
+  expect(atlas?.candidateCount).toBe(2);
   expect(
     all.payments.find((p) => p.id === sampleScenarios.advance.paymentId)
       ?.candidates,

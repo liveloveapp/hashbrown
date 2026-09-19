@@ -3,15 +3,16 @@ import {
   agingBucket,
   type AgingBuckets,
   type LedgerSnapshot,
-  type PaymentProfile,
 } from '@invoicing/contracts';
 import { AS_OF } from './generator/clients';
+import { monthAt } from './generator/dates';
 import { deriveFacts } from './generator/facts';
 import { formatMoney } from './money';
 
 /** Row caps keep one tool result near 3K tokens. */
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
+const MAX_CANDIDATES = 10;
 const DEFAULT_MONTHS = 12;
 const MAX_MONTHS = 24;
 
@@ -23,17 +24,46 @@ const sum = (values: readonly number[]) =>
   values.reduce((total, value) => total + value, 0);
 const byDateDesc = <T extends { readonly date?: string }>(a: T, b: T) =>
   (b.date ?? '').localeCompare(a.date ?? '');
+/** Clamp an optional count to `[1, max]`, falling back when it is not a number. */
+const clampCount = (value: number | undefined, fallback: number, max: number) =>
+  Math.min(
+    max,
+    Math.max(
+      1,
+      Math.floor(
+        typeof value === 'number' && Number.isFinite(value) ? value : fallback,
+      ),
+    ),
+  );
 
 function requireCustomer(snapshot: Snapshot, customerId: string) {
   const customer = snapshot.customers.find((c) => c.id === customerId);
-  if (!customer) throw new Error('customer_not_found');
+  if (!customer) throw new Error(`customer_not_found: ${customerId}`);
   return customer;
 }
 
-function requireCurrency(snapshot: Snapshot, currency: string) {
-  if (!snapshot.customers.some((c) => c.currency === currency))
-    throw new Error('currency_not_found');
+function requireCurrency(snapshot: Snapshot, input: string) {
+  const currency = input.trim().toUpperCase();
+  const known = [...new Set(snapshot.customers.map((c) => c.currency))].sort();
+  if (!known.includes(currency))
+    throw new Error(
+      `currency_not_found: ${input}; ledger currencies are ${known.join(', ')}`,
+    );
   return currency;
+}
+
+/** A customer filter combined with a currency filter must agree. */
+function requireCustomerIn(
+  snapshot: Snapshot,
+  customerId: string,
+  currency: string,
+) {
+  const customer = requireCustomer(snapshot, customerId);
+  if (customer.currency !== currency)
+    throw new Error(
+      `customer_currency_mismatch: ${customerId} bills in ${customer.currency}`,
+    );
+  return customer;
 }
 
 const invoiceRow = (i: Invoice) => ({
@@ -57,7 +87,7 @@ const paymentRow = (p: Payment) => ({
 });
 
 /** Start here: per-currency totals and the customer list. */
-export function ledgerSummary(snapshot: Snapshot) {
+export function ledgerSummary(snapshot: Snapshot, asOf = AS_OF) {
   const currencies = [...new Set(snapshot.customers.map((c) => c.currency))]
     .sort()
     .map((currency) => {
@@ -82,7 +112,7 @@ export function ledgerSummary(snapshot: Snapshot) {
       };
     });
   return {
-    asOf: AS_OF,
+    asOf,
     currencies,
     customers: snapshot.customers.map(({ id, name, currency, profile }) => ({
       id,
@@ -93,7 +123,11 @@ export function ledgerSummary(snapshot: Snapshot) {
   };
 }
 
-/** Invoiced versus received per month for one currency, optionally one customer. */
+/**
+ * Invoiced versus received per calendar month for one currency, optionally
+ * one customer. Rows cover the last N months ending at `asOf`, zero-filled,
+ * so a quiet month reads as quiet rather than vanishing.
+ */
 export function monthlyTotals(
   snapshot: Snapshot,
   input: {
@@ -101,13 +135,11 @@ export function monthlyTotals(
     readonly customerId?: string;
     readonly months?: number;
   },
+  asOf = AS_OF,
 ) {
   const currency = requireCurrency(snapshot, input.currency);
-  if (input.customerId) requireCustomer(snapshot, input.customerId);
-  const months = Math.min(
-    MAX_MONTHS,
-    Math.max(1, Math.floor(input.months ?? DEFAULT_MONTHS)),
-  );
+  if (input.customerId) requireCustomerIn(snapshot, input.customerId, currency);
+  const months = clampCount(input.months, DEFAULT_MONTHS, MAX_MONTHS);
   const own = <T extends Invoice | Payment>(records: readonly T[]) =>
     records.filter(
       (r) =>
@@ -116,14 +148,9 @@ export function monthlyTotals(
     );
   const invoices = own(snapshot.invoices);
   const payments = own(snapshot.payments);
-  const allMonths = [
-    ...new Set(
-      [...invoices, ...payments].flatMap((r) =>
-        r.date ? [r.date.slice(0, 7)] : [],
-      ),
-    ),
-  ].sort();
-  const rows = allMonths.slice(-months).map((month) => {
+  const last = asOf.slice(0, 7);
+  const rows = Array.from({ length: months }, (_, index) => {
+    const month = monthAt(last, index - (months - 1));
     const invoicedCents = sum(
       invoices
         .filter((i) => i.date?.startsWith(month))
@@ -149,9 +176,10 @@ export function monthlyTotals(
 export function aging(
   snapshot: Snapshot,
   input: { readonly currency: string; readonly customerId?: string },
+  asOf = AS_OF,
 ) {
   const currency = requireCurrency(snapshot, input.currency);
-  if (input.customerId) requireCustomer(snapshot, input.customerId);
+  if (input.customerId) requireCustomerIn(snapshot, input.customerId, currency);
   const open = snapshot.invoices.filter(
     (i) =>
       i.currency === currency &&
@@ -173,33 +201,42 @@ export function aging(
     over90: [],
   };
   for (const invoice of open) {
-    const bucket = invoice.date ? agingBucket(invoice.date, AS_OF) : 'current';
+    const bucket = invoice.date ? agingBucket(invoice.date, asOf) : 'current';
     cents[bucket] += invoice.outstandingCents;
     ids[bucket].push(invoice.id);
   }
+  const openCents = sum(open.map((i) => i.outstandingCents));
   return {
     currency,
     customerId: input.customerId ?? null,
-    asOf: AS_OF,
+    asOf,
+    openCents,
+    open: formatMoney(openCents, currency),
     buckets: AGING_BUCKETS.map((bucket) => ({
       bucket,
-      cents: cents[bucket],
-      formatted: formatMoney(cents[bucket], currency),
+      outstandingCents: cents[bucket],
+      outstanding: formatMoney(cents[bucket], currency),
       invoiceIds: ids[bucket],
     })),
   };
 }
 
-/** One client's habit, balances, and open items (capped). */
+/**
+ * One client's habit, balances, and open items. Open invoices and unapplied
+ * payments are newest first and capped at 50 each; the counts and truncated
+ * flags say when there is more.
+ */
 export function customerStatement(
   snapshot: Snapshot,
   input: { readonly customerId: string },
+  asOf = AS_OF,
 ) {
   const customer = requireCustomer(snapshot, input.customerId);
-  const facts = deriveFacts(snapshot).customers.find(
+  // `find` cannot miss: deriveFacts reports every customer in the snapshot.
+  const facts = deriveFacts(snapshot, asOf).customers.find(
     (c) => c.customerId === customer.id,
   );
-  if (!facts) throw new Error('customer_not_found');
+  if (!facts) throw new Error(`customer_not_found: ${customer.id}`); // type guard
   const openInvoices = snapshot.invoices
     .filter((i) => i.customerId === customer.id && i.outstandingCents > 0)
     .sort(byDateDesc);
@@ -210,11 +247,12 @@ export function customerStatement(
     .filter((p) => p.customerId === customer.id)
     .sort(byDateDesc)[0];
   return {
+    asOf,
     customer: {
       id: customer.id,
       name: customer.name,
       currency: customer.currency,
-      profile: customer.profile as PaymentProfile,
+      profile: customer.profile,
     },
     invoicedCents: facts.invoicedCents,
     invoiced: formatMoney(facts.invoicedCents, customer.currency),
@@ -230,14 +268,18 @@ export function customerStatement(
     openInvoiceCount: openInvoices.length,
     openInvoicesTruncated: openInvoices.length > MAX_LIMIT,
     openInvoices: openInvoices.slice(0, MAX_LIMIT).map(invoiceRow),
-    unappliedPayments: unapplied.map(paymentRow),
+    unappliedPaymentCount: unapplied.length,
+    unappliedPaymentsTruncated: unapplied.length > MAX_LIMIT,
+    unappliedPayments: unapplied.slice(0, MAX_LIMIT).map(paymentRow),
   };
 }
 
 /**
  * Search invoices and payments; returns IDs the model can pass to LedgerTable.
- * Rows carry the customer ID but not the name or description (the summary
- * maps IDs to names and the table shows descriptions) so fifty fit the budget.
+ * `balance` is the outstanding amount on an invoice or the unapplied amount on
+ * a payment. Rows carry the customer ID but not the name or description (the
+ * summary maps IDs to names and the table shows descriptions) so fifty fit
+ * the budget.
  */
 export function findRecords(
   snapshot: Snapshot,
@@ -253,11 +295,13 @@ export function findRecords(
   },
 ) {
   if (input.customerId) requireCustomer(snapshot, input.customerId);
-  if (input.currency) requireCurrency(snapshot, input.currency);
+  const currency = input.currency
+    ? requireCurrency(snapshot, input.currency)
+    : undefined;
   const needle = input.text?.trim().toLowerCase();
   const matches = <T extends Invoice | Payment>(r: T, balance: number) =>
     (!input.customerId || r.customerId === input.customerId) &&
-    (!input.currency || r.currency === input.currency) &&
+    (!currency || r.currency === currency) &&
     (!input.status ||
       (input.status === 'open' ? balance > 0 : balance === 0)) &&
     (!input.from || (r.date ?? '') >= input.from) &&
@@ -299,45 +343,50 @@ export function findRecords(
             balance: formatMoney(p.unappliedCents, p.currency),
           }));
   const all = [...invoices, ...payments].sort(byDateDesc);
-  const limit = Math.min(
-    MAX_LIMIT,
-    Math.max(1, Math.floor(input.limit ?? DEFAULT_LIMIT)),
-  );
+  const limit = clampCount(input.limit, DEFAULT_LIMIT, MAX_LIMIT);
   return { total: all.length, records: all.slice(0, limit) };
 }
 
-/** The cash-application inbox: every unapplied payment with its candidate invoices. */
+/**
+ * The cash-application inbox: every unapplied payment with its candidate
+ * invoices (the customer's open invoices in the same currency, newest first,
+ * capped at 10; `candidateCount` is the uncapped number).
+ */
 export function unappliedPayments(
   snapshot: Snapshot,
   input: { readonly currency?: string },
 ) {
-  if (input.currency) requireCurrency(snapshot, input.currency);
+  const currency = input.currency
+    ? requireCurrency(snapshot, input.currency)
+    : undefined;
   const payments = snapshot.payments
     .filter(
-      (p) =>
-        p.unappliedCents > 0 &&
-        (!input.currency || p.currency === input.currency),
+      (p) => p.unappliedCents > 0 && (!currency || p.currency === currency),
     )
     .sort(byDateDesc)
-    .map((p) => ({
-      ...paymentRow(p),
-      customerId: p.customerId,
-      customerName: p.customerName ?? p.customerId,
-      currency: p.currency,
-      candidates: snapshot.invoices
+    .map((p) => {
+      const candidates = snapshot.invoices
         .filter(
           (i) =>
             i.customerId === p.customerId &&
             i.currency === p.currency &&
             i.outstandingCents > 0,
         )
-        .map((i) => ({
+        .sort(byDateDesc);
+      return {
+        ...paymentRow(p),
+        customerId: p.customerId,
+        customerName: p.customerName ?? p.customerId,
+        currency: p.currency,
+        candidateCount: candidates.length,
+        candidates: candidates.slice(0, MAX_CANDIDATES).map((i) => ({
           invoiceId: i.id,
           reference: i.reference ?? i.id,
           outstandingCents: i.outstandingCents,
           outstanding: formatMoney(i.outstandingCents, i.currency),
         })),
-    }));
+      };
+    });
   const totals = [...new Set(payments.map((p) => p.currency))]
     .sort()
     .map((currency) => {
