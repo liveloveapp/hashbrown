@@ -12,7 +12,10 @@ import { formatMoney } from './money';
 /** Row caps keep one tool result near 3K tokens. */
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
-const MAX_CANDIDATES = 10;
+/** Unapplied payments are the exception on a statement; the inbox has the rest. */
+const MAX_STATEMENT_UNAPPLIED = 10;
+/** Most payments match one to three invoices; `candidateCount` says when more exist. */
+const MAX_CANDIDATES = 3;
 const DEFAULT_MONTHS = 12;
 const MAX_MONTHS = 24;
 
@@ -222,9 +225,10 @@ export function aging(
 }
 
 /**
- * One client's habit, balances, and open items. Open invoices and unapplied
- * payments are newest first and capped at 50 each; the counts and truncated
- * flags say when there is more.
+ * One client's habit, balances, and open items, newest first. Open invoices
+ * are capped at 50 and unapplied payments at 10 (the `unappliedPayments`
+ * inbox lists them all); the counts and truncated flags say when there is
+ * more.
  */
 export function customerStatement(
   snapshot: Snapshot,
@@ -269,8 +273,10 @@ export function customerStatement(
     openInvoicesTruncated: openInvoices.length > MAX_LIMIT,
     openInvoices: openInvoices.slice(0, MAX_LIMIT).map(invoiceRow),
     unappliedPaymentCount: unapplied.length,
-    unappliedPaymentsTruncated: unapplied.length > MAX_LIMIT,
-    unappliedPayments: unapplied.slice(0, MAX_LIMIT).map(paymentRow),
+    unappliedPaymentsTruncated: unapplied.length > MAX_STATEMENT_UNAPPLIED,
+    unappliedPayments: unapplied
+      .slice(0, MAX_STATEMENT_UNAPPLIED)
+      .map(paymentRow),
   };
 }
 
@@ -348,9 +354,11 @@ export function findRecords(
 }
 
 /**
- * The cash-application inbox: every unapplied payment with its candidate
- * invoices (the customer's open invoices in the same currency, newest first,
- * capped at 10; `candidateCount` is the uncapped number).
+ * The cash-application inbox: unapplied payments, newest first and capped at
+ * 20, each with its candidate invoices (the customer's open invoices in the
+ * same currency, newest first, capped at 3). `paymentCount` and
+ * `candidateCount` are the uncapped numbers, and `totals` cover every
+ * unapplied payment, not only the listed ones.
  */
 export function unappliedPayments(
   snapshot: Snapshot,
@@ -359,39 +367,39 @@ export function unappliedPayments(
   const currency = input.currency
     ? requireCurrency(snapshot, input.currency)
     : undefined;
-  const payments = snapshot.payments
+  const unapplied = snapshot.payments
     .filter(
       (p) => p.unappliedCents > 0 && (!currency || p.currency === currency),
     )
-    .sort(byDateDesc)
-    .map((p) => {
-      const candidates = snapshot.invoices
-        .filter(
-          (i) =>
-            i.customerId === p.customerId &&
-            i.currency === p.currency &&
-            i.outstandingCents > 0,
-        )
-        .sort(byDateDesc);
-      return {
-        ...paymentRow(p),
-        customerId: p.customerId,
-        customerName: p.customerName ?? p.customerId,
-        currency: p.currency,
-        candidateCount: candidates.length,
-        candidates: candidates.slice(0, MAX_CANDIDATES).map((i) => ({
-          invoiceId: i.id,
-          reference: i.reference ?? i.id,
-          outstandingCents: i.outstandingCents,
-          outstanding: formatMoney(i.outstandingCents, i.currency),
-        })),
-      };
-    });
-  const totals = [...new Set(payments.map((p) => p.currency))]
+    .sort(byDateDesc);
+  const payments = unapplied.slice(0, DEFAULT_LIMIT).map((p) => {
+    const candidates = snapshot.invoices
+      .filter(
+        (i) =>
+          i.customerId === p.customerId &&
+          i.currency === p.currency &&
+          i.outstandingCents > 0,
+      )
+      .sort(byDateDesc);
+    return {
+      ...paymentRow(p),
+      customerId: p.customerId,
+      customerName: p.customerName ?? p.customerId,
+      currency: p.currency,
+      candidateCount: candidates.length,
+      candidates: candidates.slice(0, MAX_CANDIDATES).map((i) => ({
+        invoiceId: i.id,
+        reference: i.reference ?? i.id,
+        outstandingCents: i.outstandingCents,
+        outstanding: formatMoney(i.outstandingCents, i.currency),
+      })),
+    };
+  });
+  const totals = [...new Set(unapplied.map((p) => p.currency))]
     .sort()
     .map((currency) => {
       const unappliedCents = sum(
-        payments
+        unapplied
           .filter((p) => p.currency === currency)
           .map((p) => p.unappliedCents),
       );
@@ -401,5 +409,10 @@ export function unappliedPayments(
         unapplied: formatMoney(unappliedCents, currency),
       };
     });
-  return { payments, totals };
+  return {
+    paymentCount: unapplied.length,
+    paymentsTruncated: unapplied.length > DEFAULT_LIMIT,
+    payments,
+    totals,
+  };
 }

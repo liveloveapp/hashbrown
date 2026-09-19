@@ -16,10 +16,10 @@ const snapshot = getSnapshot(createSampleLedger());
 const BUDGET = 12000;
 const size = (value: unknown) => JSON.stringify(value).length;
 
-/** A one-customer USD ledger with the given invoices and no payments. */
-function fixture(
-  invoices: readonly Pick<MoneyRecord, 'id' | 'date' | 'amountCents'>[],
-) {
+type Row = Pick<MoneyRecord, 'id' | 'date' | 'amountCents'>;
+
+/** A one-customer USD ledger with the given invoices and payments, unallocated. */
+function fixture(invoices: readonly Row[], payments: readonly Row[] = []) {
   const ledger: Ledger = {
     customers: [
       { id: 'solo', name: 'Solo Co', currency: 'USD', profile: 'on-time' },
@@ -30,7 +30,12 @@ function fixture(
       currency: 'USD',
       version: 1,
     })),
-    payments: [],
+    payments: payments.map((p) => ({
+      ...p,
+      customerId: 'solo',
+      currency: 'USD',
+      version: 1,
+    })),
     allocations: [],
     activities: [],
   };
@@ -250,6 +255,36 @@ test('unappliedPayments lists candidates per payment', () => {
   expect(all.totals).toEqual([
     { currency: 'USD', unappliedCents: 1390000, unapplied: '$13,900.00' },
   ]);
+  expect(all.paymentCount).toBe(5);
+  expect(all.paymentsTruncated).toBe(false);
   expect(eur.payments).toEqual([]);
   expect(size(all)).toBeLessThan(BUDGET);
+});
+
+test('unappliedPayments caps payments at 20 and candidates at 3', () => {
+  const day = (n: number) => `2026-08-${String((n % 28) + 1).padStart(2, '0')}`;
+  const busy = fixture(
+    Array.from({ length: 12 }, (_, n) => ({
+      id: `inv-${n}`,
+      date: day(n),
+      amountCents: 1000 + n,
+    })),
+    Array.from({ length: 25 }, (_, n) => ({
+      id: `pay-${n}`,
+      date: day(n),
+      amountCents: 500 + n,
+    })),
+  );
+
+  const result = unappliedPayments(busy, {});
+
+  expect(result.payments).toHaveLength(20);
+  expect(result.paymentCount).toBe(25);
+  expect(result.paymentsTruncated).toBe(true);
+  expect(result.payments.every((p) => p.candidates.length === 3)).toBe(true);
+  expect(result.payments.every((p) => p.candidateCount === 12)).toBe(true);
+  expect(result.totals[0].unappliedCents).toBe(
+    busy.payments.reduce((sum, p) => sum + p.unappliedCents, 0),
+  );
+  expect(size(result)).toBeLessThan(BUDGET);
 });
