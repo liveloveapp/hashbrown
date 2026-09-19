@@ -100,16 +100,26 @@ export function createAssistantKit<C extends Record<AssistantKitName, object>>(
   return [text, ...leaves] as [typeof text, ...typeof leaves];
 }
 
-/** Canonical JSON response schema accepted by the invoicing server and React UI. */
-export const assistantResponseSchema: Record<string, unknown> = s.toJsonSchema(
-  ɵcreateUiKit({
-    components: createAssistantKit({
-      AssistantText: {},
-      LedgerTable: {},
-      TrendChart: {},
-      AgingSummary: {},
-      CustomerCard: {},
-      ReviewPayment: {},
-    }),
-  }).schema,
+/**
+ * Canonical JSON response schema accepted by the invoicing server and React UI.
+ *
+ * The middleware compares this against the schema the client sent as JSON with
+ * `isDeepStrictEqual`, and `s.nullish()` emits a `const: undefined` key that
+ * JSON drops, so the canonical schema must itself be JSON-clean.
+ */
+export const assistantResponseSchema: Record<string, unknown> = JSON.parse(
+  JSON.stringify(
+    s.toJsonSchema(
+      ɵcreateUiKit({
+        components: createAssistantKit({
+          AssistantText: {},
+          LedgerTable: {},
+          TrendChart: {},
+          AgingSummary: {},
+          CustomerCard: {},
+          ReviewPayment: {},
+        }),
+      }).schema,
+    ),
+  ),
 );

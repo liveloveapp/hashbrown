@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { s, ɵcreateUiKit } from '@hashbrownai/core';
 import { expect, test } from 'vitest';
 import { assistantResponseSchema, createAssistantKit } from './index';
@@ -49,6 +50,14 @@ test('the assistant schema names every kit component and nothing else', () => {
   expect(serialized).not.toContain('amountCents');
 });
 
+test('the exported schema is JSON-clean, so the wire comparison holds', () => {
+  // s.nullish() emits a `const: undefined` key that JSON drops; the exported
+  // schema must already be round-tripped so it equals what the client sends.
+  const roundTripped = JSON.parse(JSON.stringify(assistantResponseSchema));
+  expect(roundTripped).toStrictEqual(assistantResponseSchema);
+  expect(isDeepStrictEqual(assistantResponseSchema, roundTripped)).toBe(true);
+});
+
 test('a kit built with any component implementations yields the same schema', () => {
   const kit = createAssistantKit({
     AssistantText: () => null,
@@ -59,7 +68,12 @@ test('a kit built with any component implementations yields the same schema', ()
     ReviewPayment: () => null,
   });
 
-  const schema = s.toJsonSchema(ɵcreateUiKit({ components: kit }).schema);
+  // Round-trip through JSON like the exported schema does, since the raw
+  // s.toJsonSchema output still carries the `const: undefined` keys that
+  // JSON.stringify drops.
+  const schema = JSON.parse(
+    JSON.stringify(s.toJsonSchema(ɵcreateUiKit({ components: kit }).schema)),
+  );
 
   expect(schema).toEqual(assistantResponseSchema);
   expect(kit.map((c) => c.name)).toEqual(names);

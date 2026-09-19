@@ -19,7 +19,11 @@ async function setup() {
       threadId: 'conversation',
       runId: 'turn',
       state: {},
-      hashbrown: { ui: true, responseSchema: assistantResponseSchema },
+      // The client always sends JSON, so pin wire behavior here too.
+      hashbrown: {
+        ui: true,
+        responseSchema: JSON.parse(JSON.stringify(assistantResponseSchema)),
+      },
     },
   };
   return { store, session, middleware, claimThread, request };
@@ -135,7 +139,11 @@ test('conversation totals are computed by month and currency instead of inferred
       threadId: 'month',
       runId: 'run',
       state: {},
-      hashbrown: { ui: true, responseSchema: assistantResponseSchema },
+      // The client always sends JSON, so pin wire behavior here too.
+      hashbrown: {
+        ui: true,
+        responseSchema: JSON.parse(JSON.stringify(assistantResponseSchema)),
+      },
     },
   });
   if (result.action !== 'continue') throw new Error('expected continue');
