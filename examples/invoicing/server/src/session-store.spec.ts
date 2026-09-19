@@ -264,11 +264,16 @@ test('a session written before the overlay shape is read as an empty overlay and
   const legacy = {
     generation: 1,
     ledger: createLedger(),
-    proposals: {},
+    proposals: { 'legacy-proposal': { proposalId: 'legacy-proposal' } },
     operations: {},
   } as unknown as Session;
   const id = await repos.sessions.create(legacy);
   const store = createSessionStore(repos.sessions);
+
+  await expect(store.proposal(id, 'legacy-proposal')).rejects.toThrow(
+    'proposal_not_found',
+  );
+  expect(await store.generation(id)).toBe(2);
 
   const before = await store.snapshot(id);
   const proposal = await store.propose(id, request);

@@ -59,18 +59,24 @@ const empty = (generation: number): Session => ({
 
 /**
  * Rows written before sessions became overlays hold a full `ledger` and no
- * `allocations`. Rebuilding the document from named fields drops the old key
- * on the next commit and reads the row as a fresh overlay on today's base.
+ * `allocations`. Their proposals and operations were captured against that
+ * per-session ledger, so such a row reads as a fresh overlay one generation
+ * later: the bump invalidates its old proposals through the existing
+ * `stale_generation` path, and the next commit drops the `ledger` key.
  */
 const normalize = (
-  value: Partial<Session> & Pick<Session, 'generation'>,
-): Session => ({
-  generation: value.generation,
-  allocations: value.allocations ?? [],
-  activities: value.activities ?? [],
-  proposals: value.proposals ?? {},
-  operations: value.operations ?? {},
-});
+  value: Partial<Session> &
+    Pick<Session, 'generation'> & { readonly ledger?: unknown },
+): Session =>
+  'ledger' in value
+    ? empty(value.generation + 1)
+    : {
+        generation: value.generation,
+        allocations: value.allocations ?? [],
+        activities: value.activities ?? [],
+        proposals: value.proposals ?? {},
+        operations: value.operations ?? {},
+      };
 
 /**
  * Every mutation is one compare-and-swap of the session document. The base
@@ -179,7 +185,7 @@ export function createSessionStore(
         return {
           session: {
             ...session,
-            ...overlayOf(base, ledger),
+            ...(request.decision === 'approve' ? overlayOf(base, ledger) : {}),
             operations: {
               ...session.operations,
               [request.operationId]: { request: identity, result },
