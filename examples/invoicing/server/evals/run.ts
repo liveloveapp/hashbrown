@@ -4,20 +4,26 @@
  * eval; `--record` creates them against the real model; `--live` skips
  * fixtures entirely.
  *
- *   tsx evals/run.ts [--live | --record] [--json [file]] [filter]
+ *   tsx evals/run.ts [--live | --record] [--json[=file]] [filter]
  */
 import {
   type EvalCase,
   type EvalDefinition,
   type EvalReport,
+  resolveDataset,
   runEval,
 } from '@b4run/evals';
-import { loadFixtures, writeFixtures } from '@b4run/testing';
+import { type FixtureSet, loadFixtures, writeFixtures } from '@b4run/testing';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { basename, dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { siblingFixturePath } from './fixtures';
-import { createInvoicingHarness, type HarnessMode } from './harness';
+import {
+  createInvoicingHarness,
+  type HarnessMode,
+  type InvoicingHarness,
+  type RecordMark,
+} from './harness';
 
 const serverRoot = fileURLToPath(new URL('..', import.meta.url));
 const evalsDir = join(serverRoot, 'src/app/assistant/evals');
@@ -27,7 +33,7 @@ const USAGE = `Usage: nx run invoicing-server:eval -- [options] [filter]
   filter            substring of an eval file name or a case name
   --live            run against the real model without touching fixtures
   --record          run against the real model and write replay fixtures
-  --json [file]     write the reports as JSON (default .b4/eval-report.json)
+  --json[=file]     write the reports as JSON (default .b4/eval-report.json)
   --help            show this help`;
 
 interface Args {
@@ -36,10 +42,15 @@ interface Args {
   filter?: string;
 }
 
+/** A dataset row with its position in the unfiltered dataset. */
+interface Selected {
+  readonly testCase: EvalCase;
+  readonly index: number;
+}
+
 function parseArgs(argv: readonly string[]): Args {
   const args: Args = { mode: 'replay' };
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
+  for (const arg of argv) {
     if (arg === '--help' || arg === '-h') {
       console.log(USAGE);
       process.exit(0);
@@ -48,25 +59,18 @@ function parseArgs(argv: readonly string[]): Args {
       if (args.mode !== 'replay' && args.mode !== mode)
         throw new Error('--live and --record are mutually exclusive');
       args.mode = mode;
-    } else if (arg === '--json') {
-      const next = argv[i + 1];
+    } else if (arg === '--json' || arg.startsWith('--json=')) {
       args.json =
-        next && !next.startsWith('-')
-          ? (i++, next)
-          : join(serverRoot, '.b4/eval-report.json');
+        arg.slice('--json='.length) || join(serverRoot, '.b4/eval-report.json');
     } else if (arg.startsWith('-')) {
       throw new Error(`unknown option ${arg}\n${USAGE}`);
     } else if (args.filter) {
       throw new Error(`only one filter is accepted, got "${arg}" too`);
     } else {
-      args.filter = arg;
+      args.filter = arg.toLowerCase();
     }
   }
   return args;
-}
-
-function matches(filter: string | undefined, ...names: readonly string[]) {
-  return !filter || names.some((n) => n.toLowerCase().includes(filter));
 }
 
 function printReport(report: EvalReport) {
@@ -86,10 +90,87 @@ function printReport(report: EvalReport) {
   console.log(`  mean ${report.mean.toFixed(2)}, ${verdict}`);
 }
 
+/** Every selected case's fixtures, or one error naming every missing file. */
+function replayFixtures(evalFile: string, selected: readonly Selected[]) {
+  const fixtures = new Map<EvalCase, FixtureSet>();
+  const missing: string[] = [];
+  for (const { testCase, index } of selected) {
+    const own = testCase.fixtures;
+    const sibling = siblingFixturePath(evalFile, testCase.name, index);
+    if (own) fixtures.set(testCase, Array.isArray(own) ? own : own.build());
+    else if (existsSync(sibling)) fixtures.set(testCase, loadFixtures(sibling));
+    else missing.push(relative(serverRoot, sibling));
+  }
+  if (missing.length > 0)
+    throw new Error(
+      `${missing.length} case(s) have no fixtures:\n  ${missing.join('\n  ')}\n` +
+        'Run with --record to create them, or --live to skip fixtures.',
+    );
+  return fixtures;
+}
+
+async function runOne(
+  harness: InvoicingHarness,
+  evalFile: string,
+  definition: EvalDefinition,
+  args: Args,
+): Promise<EvalReport | undefined> {
+  const all = await resolveDataset(definition.dataset, dirname(evalFile));
+  const selected = all
+    .map((testCase, index): Selected => ({ testCase, index }))
+    .filter(
+      ({ testCase }) =>
+        !args.filter ||
+        basename(evalFile).toLowerCase().includes(args.filter) ||
+        (testCase.name ?? '').toLowerCase().includes(args.filter),
+    );
+  if (selected.length === 0) return undefined;
+  const indexOf = new Map(selected.map((s) => [s.testCase, s.index]));
+  const fixtures =
+    args.mode === 'replay' ? replayFixtures(evalFile, selected) : undefined;
+  if (args.mode === 'record') {
+    const unnamed = selected.filter((s) => !s.testCase.name);
+    if (unnamed.length > 0)
+      throw new Error(
+        `cannot record unnamed case(s) at dataset index ${unnamed.map((s) => s.index).join(', ')}: fixture files are named after the case`,
+      );
+  }
+
+  // Scorers (the LLM judge included) call the model after runCase returns,
+  // so tapes are cut only once runEval resolves, each case bounded by the
+  // next case's mark.
+  const marks: { testCase: EvalCase; mark: RecordMark }[] = [];
+  const runCase = async (testCase: EvalCase) => {
+    const { input } = testCase;
+    if (typeof input !== 'string')
+      throw new Error(`case "${testCase.name}" input must be a string`);
+    if (args.mode === 'record') marks.push({ testCase, mark: harness.mark() });
+    return harness.run({ input, fixtures: fixtures?.get(testCase) });
+  };
+  const report = await runEval(
+    { ...definition, dataset: selected.map((s) => s.testCase) },
+    { baseDir: dirname(evalFile), runCase },
+  );
+  marks.forEach(({ testCase, mark }, i) => {
+    const sibling = siblingFixturePath(
+      evalFile,
+      testCase.name,
+      indexOf.get(testCase) ?? i,
+    );
+    const recorded = harness.recordedFixturesSince(mark, marks[i + 1]?.mark);
+    writeFixtures(sibling, recorded);
+    console.log(
+      `  recorded ${recorded.length} fixture(s) to ${relative(serverRoot, sibling)}`,
+    );
+  });
+  return report;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const evalFiles = readdirSync(evalsDir)
     .filter((f) => f.endsWith('.eval.ts'))
+    .sort()
     .map((f) => join(evalsDir, f));
   if (evalFiles.length === 0) throw new Error(`no *.eval.ts in ${evalsDir}`);
 
@@ -98,60 +179,12 @@ async function main() {
   let failed = false;
   try {
     for (const evalFile of evalFiles) {
-      const definition = (
-        (await import(pathToFileURL(evalFile).href)) as {
-          default: EvalDefinition;
-        }
-      ).default;
-      // Only an inline dataset can be filtered by case name; a path or a
-      // factory is handed to runEval untouched.
-      const dataset = definition.dataset;
-      const filtered = Array.isArray(dataset)
-        ? (dataset as readonly EvalCase[]).filter((c) =>
-            matches(args.filter, evalFile, definition.name, c.name ?? ''),
-          )
-        : dataset;
-      if (Array.isArray(filtered) && filtered.length === 0) continue;
-
-      let index = -1;
-      const runCase = async (testCase: EvalCase) => {
-        index += 1;
-        const { input, name } = testCase;
-        if (typeof input !== 'string')
-          throw new Error(`case "${name}" input must be a string`);
-        const sibling = siblingFixturePath(evalFile, name, index);
-        if (args.mode === 'replay') {
-          const own = testCase.fixtures;
-          const fixtures = own
-            ? Array.isArray(own)
-              ? own
-              : own.build()
-            : existsSync(sibling)
-              ? loadFixtures(sibling)
-              : undefined;
-          if (!fixtures)
-            throw new Error(
-              `case "${name}" has no fixtures: ${relative(serverRoot, sibling)} does not exist. ` +
-                'Run with --record to create it, or --live to skip fixtures.',
-            );
-          return harness.run({ input, fixtures });
-        }
-        const run = await harness.run({ input });
-        if (args.mode === 'record') {
-          const recorded = harness.lastRecordedFixtures();
-          writeFixtures(sibling, recorded);
-          console.log(
-            `  recorded ${recorded.length} fixture(s) to ${relative(serverRoot, sibling)}`,
-          );
-        }
-        return run;
-      };
-
+      const { default: definition } = (await import(
+        pathToFileURL(evalFile).href
+      )) as { default: EvalDefinition };
       try {
-        const report = await runEval(
-          { ...definition, dataset: filtered },
-          { baseDir: dirname(evalFile), runCase },
-        );
+        const report = await runOne(harness, evalFile, definition, args);
+        if (!report) continue;
         reports.push(report);
         printReport(report);
         if (report.gated && !report.passed) failed = true;

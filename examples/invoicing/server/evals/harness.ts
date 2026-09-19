@@ -21,6 +21,12 @@ import { recordingsToFixtures } from './fixtures';
 
 export type HarnessMode = 'replay' | 'record' | 'live';
 
+/** A point in the aimock journal; recordings are windowed between two of them. */
+export interface RecordMark {
+  readonly journalStart: number;
+  readonly fixtureStart: number;
+}
+
 export interface InvoicingHarness {
   /** Origin of the in-process server, e.g. `http://127.0.0.1:51234`. */
   readonly baseUrl: string;
@@ -30,7 +36,16 @@ export interface InvoicingHarness {
     fixtures?: FixtureSet | ScriptBuilder;
     state?: Record<string, unknown>;
   }): Promise<InvoicingRunResult>;
-  /** Fixtures for the model calls the last `run()` proxied; record mode only. */
+  /** Where the aimock journal stands now; any mode. */
+  mark(): RecordMark;
+  /**
+   * Fixtures for every model call proxied since `mark`, up to `until` when
+   * given; record mode only. Scorers such as an LLM judge call the model
+   * after `run()` returns, so a case's tape is everything between its own
+   * mark and the next case's.
+   */
+  recordedFixturesSince(mark: RecordMark, until?: RecordMark): FixtureSet;
+  /** `recordedFixturesSince` from the last `run()`'s mark; record mode only. */
   lastRecordedFixtures(): FixtureSet;
   close(): Promise<void>;
 }
@@ -167,7 +182,24 @@ async function boot(
     throw error;
   }
   const baseUrl = `http://127.0.0.1:${port}`;
-  let lastWindow: { journalStart: number; fixtureStart: number } | undefined;
+  let lastWindow: RecordMark | undefined;
+  const mark = (): RecordMark => ({
+    journalStart: aimock.getRequests().length,
+    fixtureStart: aimock.getFixtureCount(),
+  });
+  const recordedFixturesSince = (from: RecordMark, until?: RecordMark) => {
+    if (mode !== 'record')
+      throw new Error('recorded fixtures are only available in record mode');
+    const recordings = aimock.getRecordingsSince(
+      from.journalStart,
+      from.fixtureStart,
+    );
+    return recordingsToFixtures(
+      until
+        ? recordings.slice(0, until.fixtureStart - from.fixtureStart)
+        : recordings,
+    );
+  };
 
   return {
     baseUrl,
@@ -176,10 +208,7 @@ async function boot(
         aimock.clearFixtures();
         aimock.addFixtures(toFixtures(fixtures));
       } else if (mode === 'record') {
-        lastWindow = {
-          journalStart: aimock.getRequests().length,
-          fixtureStart: aimock.getFixtureCount(),
-        };
+        lastWindow = mark();
       }
       const session = await fetch(`${baseUrl}/api/snapshot`);
       const cookie = session.headers.getSetCookie()[0]?.split(';')[0];
@@ -199,18 +228,14 @@ async function boot(
         );
       return collectRun(response, threadId);
     },
+    mark,
+    recordedFixturesSince,
     lastRecordedFixtures() {
       if (mode !== 'record')
         throw new Error(
           'lastRecordedFixtures is only available in record mode',
         );
-      if (!lastWindow) return [];
-      return recordingsToFixtures(
-        aimock.getRecordingsSince(
-          lastWindow.journalStart,
-          lastWindow.fixtureStart,
-        ),
-      );
+      return lastWindow ? recordedFixturesSince(lastWindow) : [];
     },
     async close() {
       // Same order as main.ts: stop accepting, drain the runtime, then drop

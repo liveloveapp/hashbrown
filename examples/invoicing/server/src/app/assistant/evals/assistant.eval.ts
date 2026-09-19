@@ -1,11 +1,13 @@
-import { custom, defineEval, gate, llmJudge, tokensUnder } from '@b4run/evals';
+import { custom, defineEval, gate, llmJudge } from '@b4run/evals';
 import type { AgentRunResult } from '@b4run/testing';
 import type {
   AgingBuckets,
   AssistantLeafNode,
   AssistantRenderInput,
+  CustomerCardNode,
   LedgerTableNode,
   PaymentProfile,
+  TrendChartNode,
 } from '@invoicing/contracts';
 import { agingBucket } from '@invoicing/contracts';
 import { AS_OF } from '../../../generator/clients';
@@ -41,13 +43,11 @@ const mostOver90Gbp =
   )[0]?.customerId ?? '';
 const unappliedUsd =
   facts.currencies.find((c) => c.currency === 'USD')?.unappliedCents ?? 0;
-const unappliedCount = snapshot.payments.filter(
-  (p) => p.unappliedCents > 0,
-).length;
+const unappliedPaymentIds = snapshot.payments
+  .filter((p) => p.unappliedCents > 0)
+  .map((p) => p.id);
 const cedarOpen =
   facts.customers.find((c) => c.customerId === 'cedar')?.openInvoiceIds ?? [];
-const nameOf = (id: string) =>
-  facts.customers.find((c) => c.customerId === id)?.name.toLowerCase() ?? id;
 
 const renderInput = (run: AgentRunResult): AssistantRenderInput | undefined =>
   run.toolCalls.find((c) => c.name === 'render')?.args as
@@ -56,21 +56,48 @@ const prose = (run: AgentRunResult) =>
   (renderInput(run)?.text ?? '').toLowerCase();
 const components = (run: AgentRunResult): readonly AssistantLeafNode[] =>
   renderInput(run)?.components ?? [];
-const has = (run: AgentRunResult, name: string) =>
-  components(run).some((c) => Object.keys(c)[0] === name);
-const componentsJson = (run: AgentRunResult) => JSON.stringify(components(run));
-const mentions = (run: AgentRunResult, customerId: string) =>
-  prose(run).includes(nameOf(customerId)) ||
-  componentsJson(run).includes(customerId);
+const ledgerTable = (run: AgentRunResult) =>
+  components(run).find((k): k is LedgerTableNode => 'LedgerTable' in k);
+const customerCard = (run: AgentRunResult, customerId: string) =>
+  components(run).some(
+    (k): k is CustomerCardNode =>
+      'CustomerCard' in k && k.CustomerCard.customerId === customerId,
+  );
+const sameSet = (actual: readonly string[], expected: readonly string[]) =>
+  expected.length > 0 &&
+  new Set(actual).size === expected.length &&
+  expected.every((id) => actual.includes(id));
 
-const COUNT_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six'];
-
-/** Words a plain-English description of each payment habit would use. */
-const habitWords: Partial<Record<PaymentProfile, readonly string[]>> = {
-  'on-time': ['on time', 'promptly', 'within terms', 'reliabl'],
-  'late-fixed': ['late', 'after terms', 'days after', 'past due'],
-  'short-payer': ['short', 'less than', 'discount', 'underpay'],
+/**
+ * The prose names the expected customer before any other customer in the
+ * same currency, or a CustomerCard shows them. Record ids embed customer
+ * ids, so a substring search over components would pass vacuously.
+ */
+const namesFirst = (
+  run: AgentRunResult,
+  expected: string,
+  among: readonly { customerId: string; name: string }[],
+) => {
+  if (customerCard(run, expected)) return true;
+  const text = prose(run);
+  const first = among
+    .map((c) => ({ id: c.customerId, at: text.indexOf(c.name.toLowerCase()) }))
+    .filter((c) => c.at >= 0)
+    .sort((a, b) => a.at - b.at)[0];
+  return first?.id === expected;
 };
+
+/** How a plain-English description of each payment habit reads. */
+const habitPattern: Partial<Record<PaymentProfile, RegExp>> = {
+  'on-time': /\bon time\b|\bpromptly\b|\bwithin terms\b/,
+  'late-fixed': /\blate\b|\bafter terms\b|\bpast due\b/,
+  'short-payer': /\bshort\b|\bdiscount\b|\bless than\b/,
+};
+
+const ALLOCATION_CLAIM =
+  /\b(i have|i've|i) (matched|applied|allocated)\b|\b(has|have) been (applied|matched|allocated)\b|\bwas (applied|matched|allocated)\b|\bsuccessfully (applied|matched|allocated)\b/i;
+const AMBIGUITY =
+  /ambiguous|two (open )?invoices|both invoices|multiple|cannot (be )?(determine|match)/i;
 
 const rendersOnce = custom(
   (run) => run.toolCalls.filter((c) => c.name === 'render').length === 1,
@@ -83,6 +110,8 @@ const endsWithEmptyUi = custom(
 const noToolErrors = custom(
   (run) => {
     const failed = run.toolResults.filter((r) => r.isError).map((r) => r.name);
+    const error = (run as { error?: string }).error;
+    if (error) return { score: 0, reason: `run error: ${error}` };
     return failed.length === 0
       ? 1
       : { score: 0, reason: `tool errors: ${failed.join(', ')}` };
@@ -90,51 +119,56 @@ const noToolErrors = custom(
   { name: 'noToolErrors', threshold: 1 },
 );
 const noAllocationClaim = custom(
-  (run) => !/\b(i have|i've|i) (matched|applied|allocated)\b/i.test(prose(run)),
+  (run) => !ALLOCATION_CLAIM.test(renderInput(run)?.text ?? ''),
   { name: 'noAllocationClaim', threshold: 1 },
+);
+/** The render input is the whole answer, so its size is what a user reads. */
+const answerSizeUnder = custom(
+  (run) => JSON.stringify(renderInput(run) ?? null).length < 6000,
+  { name: 'answerSizeUnder(6000)', threshold: 1 },
 );
 
 const answersTheQuestion = custom(
   (run, c) => {
     switch (c.name) {
       case 'unapplied total': {
-        const count = Number(c.metadata?.['paymentCount']);
-        const countWords = [String(count), COUNT_WORDS[count] ?? ''].filter(
-          Boolean,
-        );
-        return (
-          prose(run).includes(String(c.expected).toLowerCase()) &&
-          new RegExp(`\\b(${countWords.join('|')})\\b`).test(prose(run))
-        );
+        const ids = ledgerTable(run)?.LedgerTable.recordIds ?? [];
+        const total = String(c.expected).toLowerCase();
+        if (!prose(run).includes(total))
+          return { score: 0, reason: `prose lacks ${c.expected}` };
+        return sameSet(ids, unappliedPaymentIds)
+          ? 1
+          : { score: 0, reason: 'table is not exactly the unapplied payments' };
       }
       case 'gbp largest open balance':
       case 'gbp over 90 days':
-        return mentions(run, String(c.expected));
+        return namesFirst(run, String(c.expected), gbpCustomers);
       case 'cedar open invoices': {
-        const table = components(run).find(
-          (k): k is LedgerTableNode => 'LedgerTable' in k,
-        );
-        const ids = new Set(table?.LedgerTable.recordIds ?? []);
-        const missing = (c.expected as readonly string[]).filter(
-          (id) => !ids.has(id),
-        );
-        return missing.length === 0
+        const ids = ledgerTable(run)?.LedgerTable.recordIds ?? [];
+        const expected = c.expected as readonly string[];
+        return sameSet(ids, expected)
           ? 1
-          : { score: 0, reason: `table lacks ${missing.join(', ')}` };
+          : { score: 0, reason: `table is not exactly ${expected.join(', ')}` };
       }
       case 'eur trend':
-        return has(run, 'TrendChart');
+        return components(run).some(
+          (k): k is TrendChartNode =>
+            'TrendChart' in k && k.TrendChart.currency === 'EUR',
+        );
       case 'atlas match':
         return (
-          has(run, 'ReviewPayment') &&
-          componentsJson(run).includes(String(c.expected)) &&
-          prose(run).includes('ambiguous')
+          components(run).some(
+            (k) =>
+              'ReviewPayment' in k &&
+              k.ReviewPayment.paymentId === String(c.expected),
+          ) && AMBIGUITY.test(renderInput(run)?.text ?? '')
         );
       default: {
-        const profile = c.expected as PaymentProfile;
-        const words = habitWords[profile] ?? [profile];
+        const customerId = String(c.metadata?.['customerId']);
+        const pattern = habitPattern[c.expected as PaymentProfile];
         return (
-          words.some((w) => prose(run).includes(w)) || has(run, 'CustomerCard')
+          customerCard(run, customerId) ||
+          (pattern !== undefined && pattern.test(prose(run)))
         );
       }
     }
@@ -146,8 +180,12 @@ const answersTheQuestion = custom(
 // model's closing `{"ui":[]}`; the answer the user reads is the `render`
 // tool's prose, so the judge is shown that instead.
 const judge = llmJudge({
-  criteria:
-    'The answer states amounts as formatted currency, cites only figures that could come from the ledger, and never claims to have changed, matched or allocated anything. Input: {{input}}. Output: {{output}}',
+  criteria: [
+    'States amounts as formatted currency with a currency symbol;',
+    'never claims to have changed, matched, or allocated anything;',
+    `does not invent customer names beyond these: ${facts.customers.map((c) => c.name).join(', ')}.`,
+    'Input: {{input}}. Output: {{output}}',
+  ].join(' '),
   model: 'gpt-5-mini',
   threshold: 0.7,
 });
@@ -164,7 +202,7 @@ export default defineEval({
       name: 'unapplied total',
       input: `How many incoming payments still need matching, and what is the unapplied total?`,
       expected: formatMoney(unappliedUsd, 'USD'),
-      metadata: { paymentCount: unappliedCount },
+      metadata: { paymentIds: unappliedPaymentIds },
     },
     {
       name: 'gbp largest open balance',
@@ -194,6 +232,7 @@ export default defineEval({
         name: `habit ${c.customerId}`,
         input: `How does ${c.name} usually pay?`,
         expected: c.profile,
+        metadata: { customerId: c.customerId },
       })),
   ],
   scorers: [
@@ -201,7 +240,7 @@ export default defineEval({
     endsWithEmptyUi,
     noToolErrors,
     noAllocationClaim,
-    tokensUnder(4000),
+    answerSizeUnder,
     answersTheQuestion,
     judgeProse,
   ],

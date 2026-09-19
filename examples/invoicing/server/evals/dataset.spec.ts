@@ -1,13 +1,15 @@
 import { describe, expect, test } from 'vitest';
 import assistantEval from '../src/app/assistant/evals/assistant.eval';
 import { AS_OF } from '../src/generator/clients';
-import { agingBucket } from '../src/generator/facts';
+import { agingBucket, deriveFacts } from '../src/generator/facts';
 import { getSnapshot } from '../src/ledger';
 import { createSampleLedger } from '../src/sample-ledger';
 
 const cases = assistantEval.dataset;
 if (!Array.isArray(cases)) throw new Error('dataset must be inline');
 const caseNamed = (name: string) => cases.find((c) => c.name === name);
+const ledger = createSampleLedger();
+const facts = deriveFacts(ledger);
 
 describe('assistant eval dataset', () => {
   test('has nine uniquely named cases', () => {
@@ -28,16 +30,27 @@ describe('assistant eval dataset', () => {
     // more than 90 days past terms.
     expect(caseNamed('gbp largest open balance')?.expected).toBe('thistle');
     expect(caseNamed('gbp over 90 days')?.expected).toBe('kestrel');
+    expect(caseNamed('gbp over 90 days')?.expected).not.toBe(
+      caseNamed('gbp largest open balance')?.expected,
+    );
     expect(caseNamed('cedar open invoices')?.expected).toEqual([
       'invoice-cedar-partial',
     ]);
     expect(caseNamed('unapplied total')?.expected).toBe('$13,900.00');
-    expect(caseNamed('unapplied total')?.metadata).toEqual({ paymentCount: 5 });
+    expect(caseNamed('unapplied total')?.metadata).toEqual({
+      paymentIds: [
+        'payment-northstar-exact',
+        'payment-cedar-partial',
+        'payment-harbor-combined',
+        'payment-atlas-ambiguous',
+        'payment-summit-advance',
+      ],
+    });
     expect(caseNamed('atlas match')?.expected).toBe('payment-atlas-ambiguous');
   });
 
   test('the over-90 expectation agrees with an independent computation', () => {
-    const snapshot = getSnapshot(createSampleLedger());
+    const snapshot = getSnapshot(ledger);
     const over90 = new Map<string, number>();
     for (const invoice of snapshot.invoices) {
       if (invoice.currency !== 'GBP' || invoice.outstandingCents <= 0) continue;
@@ -53,9 +66,18 @@ describe('assistant eval dataset', () => {
     expect(caseNamed('gbp over 90 days')?.expected).toBe(top[0]);
   });
 
-  test('habit cases carry the profile the ledger assigns', () => {
-    expect(caseNamed('habit summit')?.expected).toBe('on-time');
-    expect(caseNamed('habit pioneer')?.expected).toBe('late-fixed');
-    expect(caseNamed('habit granite')?.expected).toBe('short-payer');
+  test('habit cases name the customer and carry the profile the ledger assigns', () => {
+    const profiles = {
+      summit: 'on-time',
+      pioneer: 'late-fixed',
+      granite: 'short-payer',
+    };
+    for (const [customerId, profile] of Object.entries(profiles)) {
+      const c = caseNamed(`habit ${customerId}`);
+      const customer = facts.customers.find((f) => f.customerId === customerId);
+      expect(c?.expected).toBe(profile);
+      expect(c?.metadata).toEqual({ customerId });
+      expect(String(c?.input)).toContain(customer?.name);
+    }
   });
 });

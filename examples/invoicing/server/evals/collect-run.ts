@@ -97,7 +97,11 @@ export async function collectRun(
       }
       case 'TOOL_CALL_ARGS': {
         const call = calls.get(String(event.toolCallId));
-        if (call) call.args += String(event.delta ?? '');
+        const delta = String(event.delta ?? '');
+        if (call) call.args += delta;
+        // Tool arguments are model output too: the render prose is the
+        // whole answer, so a size budget has to count them.
+        tokens.push(delta);
         break;
       }
       case 'TOOL_CALL_RESULT': {

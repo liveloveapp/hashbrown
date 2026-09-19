@@ -58,7 +58,8 @@ test('collects text, tool calls and results from an AG-UI stream', async () => {
     { name: 'render', content: '{"rendered":true}', isError: false },
   ]);
   expect(run.finalMessage).toBe('{"ui":[]}');
-  expect(run.tokens).toHaveLength(3);
+  // Three tool-argument deltas plus three text deltas.
+  expect(run.tokens).toHaveLength(6);
   expect(run.messages.map((m) => m.role)).toEqual(['assistant', 'assistant']);
   expect(run.error).toBeUndefined();
 });
