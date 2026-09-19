@@ -126,6 +126,13 @@ test('LedgerTable dedupes repeated ids and counts missing ones once', () => {
   expect(screen.getByText('1 record could not be shown.')).toBeVisible();
 });
 
+test('LedgerTable with no ids renders the heading and no missing note', () => {
+  withSnapshot(<LedgerTable title="Empty" recordIds={[]} />);
+
+  expect(screen.getByRole('heading', { name: 'Empty' })).toBeVisible();
+  expect(screen.queryByText(/could not be shown/)).toBeNull();
+});
+
 test('LedgerTable renders nothing without a snapshot', () => {
   render(<LedgerTable title="None" recordIds={['i']} />);
 

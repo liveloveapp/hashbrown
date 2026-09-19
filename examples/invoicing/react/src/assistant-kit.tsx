@@ -120,9 +120,12 @@ export function LedgerTable({
   const snapshot = useContext(SnapshotContext);
   // Hashbrown hands the renderer a fresh `recordIds` array on every streamed
   // render, so key the memo on the ids' content rather than array identity.
-  const idsKey = recordIds.join(' ');
+  const idsKey = JSON.stringify(recordIds);
   const resolved = useMemo(
-    () => (snapshot ? resolveRecords(snapshot, idsKey.split(' ')) : undefined),
+    () =>
+      snapshot
+        ? resolveRecords(snapshot, JSON.parse(idsKey) as string[])
+        : undefined,
     [snapshot, idsKey],
   );
   if (!resolved) return null;
