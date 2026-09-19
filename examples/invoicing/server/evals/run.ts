@@ -147,23 +147,27 @@ async function runOne(
     if (args.mode === 'record') marks.push({ testCase, mark: harness.mark() });
     return harness.run({ input, fixtures: fixtures?.get(testCase) });
   };
-  const report = await runEval(
-    { ...definition, dataset: selected.map((s) => s.testCase) },
-    { baseDir: dirname(evalFile), runCase },
-  );
-  marks.forEach(({ testCase, mark }, i) => {
-    const sibling = siblingFixturePath(
-      evalFile,
-      testCase.name,
-      indexOf.get(testCase) ?? i,
+  try {
+    return await runEval(
+      { ...definition, dataset: selected.map((s) => s.testCase) },
+      { baseDir: dirname(evalFile), runCase },
     );
-    const recorded = harness.recordedFixturesSince(mark, marks[i + 1]?.mark);
-    writeFixtures(sibling, recorded);
-    console.log(
-      `  recorded ${recorded.length} fixture(s) to ${relative(serverRoot, sibling)}`,
-    );
-  });
-  return report;
+  } finally {
+    // Whatever was taped is kept, so a failure on case N does not discard
+    // cases 1 to N-1. The last case's window runs to the end of the journal.
+    marks.forEach(({ testCase, mark }, i) => {
+      const sibling = siblingFixturePath(
+        evalFile,
+        testCase.name,
+        indexOf.get(testCase) ?? i,
+      );
+      const recorded = harness.recordedFixturesSince(mark, marks[i + 1]?.mark);
+      writeFixtures(sibling, recorded);
+      console.log(
+        `  recorded ${recorded.length} fixture(s) to ${relative(serverRoot, sibling)}`,
+      );
+    });
+  }
 }
 
 async function main() {

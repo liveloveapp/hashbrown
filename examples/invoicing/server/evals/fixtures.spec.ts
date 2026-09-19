@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { createAimock } from '@b4run/testing';
 import { recordingsToFixtures, siblingFixturePath } from './fixtures';
 
 test('re-keys each recording from its own request, not its ordinal', () => {
@@ -38,12 +39,13 @@ test('re-keys each recording from its own request, not its ordinal', () => {
   ]);
 
   expect(fixtures.map((f) => f.match)).toEqual([
-    { userMessage: 'Q', turnIndex: 0, hasToolResult: false },
-    { userMessage: 'Q', turnIndex: 1, hasToolResult: true },
+    { userMessage: 'Q', turnIndex: 0, hasToolResult: false, sequenceIndex: 0 },
+    { userMessage: 'Q', turnIndex: 1, hasToolResult: true, sequenceIndex: 0 },
     {
       userMessage: 'Return exactly this JSON: {"ui":[]}',
       turnIndex: 0,
       hasToolResult: false,
+      sequenceIndex: 0,
     },
   ]);
 });
@@ -68,8 +70,52 @@ test('scopes hasToolResult to the current turn, as aimock does', () => {
     userMessage: 'Q2',
     turnIndex: 2,
     hasToolResult: false,
+    sequenceIndex: 0,
   });
 });
+
+test('the judge request falls through to its own recording once the app has consumed its fixture', async () => {
+  // Both are first-turn requests with no tool result, and the judge's user
+  // message quotes the case input, so on substring matching the app's
+  // fixture is a candidate for both.
+  const judgePrompt = 'Criteria: be strict. Input: Q. Output: two.';
+  const fixtures = recordingsToFixtures([
+    {
+      request: { messages: [{ role: 'user', content: 'Q' }] },
+      response: { content: 'app answer' },
+    },
+    {
+      request: {
+        messages: [
+          { role: 'system', content: 'You are a strict grader.' },
+          { role: 'user', content: judgePrompt },
+        ],
+      },
+      response: { content: '{"score":1,"reason":"fine"}' },
+    },
+  ]);
+  const aimock = await createAimock({ fixtures });
+  const complete = async (content: string) => {
+    const res = await fetch(`${aimock.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-5-mini',
+        messages: [{ role: 'user', content }],
+      }),
+    });
+    const json = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    return json.choices?.[0]?.message?.content;
+  };
+  try {
+    expect(await complete('Q')).toBe('app answer');
+    expect(await complete(judgePrompt)).toBe('{"score":1,"reason":"fine"}');
+  } finally {
+    await aimock.close();
+  }
+}, 30_000);
 
 test('sibling fixture path follows the b4 eval convention', () => {
   expect(
