@@ -1,8 +1,13 @@
 import { expect, it, test } from 'vitest';
 import { createSessionStore } from './session-store';
 import { createMemoryRepositories } from './persistence/memory';
-import { ConflictError, type SessionRepository } from './persistence/types';
-import { createSampleLedger } from './sample-ledger';
+import { createLedger } from './ledger';
+import { createSampleLedger, sampleScenarios } from './sample-ledger';
+import {
+  ConflictError,
+  type Session,
+  type SessionRepository,
+} from './persistence/types';
 
 const request = {
   paymentId: 'payment-001',
@@ -222,7 +227,7 @@ test('a replayed decision does not rewrite the session document', async () => {
 
 it('retries a mutation once when the document moved underneath it', async () => {
   const repos = createMemoryRepositories();
-  const store = createSessionStore(repos.sessions, createSampleLedger);
+  const store = createSessionStore(repos.sessions, createSampleLedger());
   const id = await store.createSession();
   const original = repos.sessions.commit.bind(repos.sessions);
   let injected = false;
@@ -252,4 +257,60 @@ it('retries a mutation once when the document moved underneath it', async () => 
   expect(
     Object.keys((await repos.sessions.load(id))!.value.proposals),
   ).toHaveLength(2);
+});
+
+test('a session written before the overlay shape is read as an empty overlay and rewritten without its ledger', async () => {
+  const repos = createMemoryRepositories();
+  const legacy = {
+    generation: 1,
+    ledger: createLedger(),
+    proposals: {},
+    operations: {},
+  } as unknown as Session;
+  const id = await repos.sessions.create(legacy);
+  const store = createSessionStore(repos.sessions);
+
+  const before = await store.snapshot(id);
+  const proposal = await store.propose(id, request);
+  await store.decide(id, { ...proposal, decision: 'approve' });
+  const stored = (await repos.sessions.load(id))!.value;
+
+  expect(before.allocations).toHaveLength(0);
+  expect(before.payments[0].unappliedCents).toBe(240000);
+  expect(stored.allocations).toHaveLength(1);
+  expect('ledger' in stored).toBe(false);
+});
+
+test('sessions share one base ledger, never mutate it, and store only their own changes', async () => {
+  const repos = createMemoryRepositories();
+  const base = createSampleLedger();
+  const frozen = structuredClone(base);
+  const store = createSessionStore(repos.sessions, base);
+  const first = await store.createSession();
+  const second = await store.createSession();
+  const proposal = await store.propose(first, {
+    ...sampleScenarios.partial,
+    amountCents: 200000,
+  });
+
+  await store.decide(first, { ...proposal, decision: 'approve' });
+
+  expect(base).toEqual(frozen);
+  expect((await repos.sessions.load(first))!.value.allocations).toHaveLength(1);
+  expect((await repos.sessions.load(second))!.value.allocations).toHaveLength(
+    0,
+  );
+  expect(
+    (await store.snapshot(second)).invoices.find(
+      (i) => i.id === sampleScenarios.partial.invoiceId,
+    )?.outstandingCents,
+  ).toBe(500000);
+  expect(
+    (await store.snapshot(first)).invoices.find(
+      (i) => i.id === sampleScenarios.partial.invoiceId,
+    )?.outstandingCents,
+  ).toBe(300000);
+  expect((await store.snapshot(first)).allocations).toHaveLength(
+    base.allocations.length + 1,
+  );
 });

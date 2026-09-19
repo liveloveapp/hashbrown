@@ -1,14 +1,18 @@
 import type {
   DecisionRequest,
   DecisionResult,
-  Ledger,
+  LedgerOverlay,
   Proposal,
 } from '@invoicing/contracts';
 
-/** One session's authoritative state; plain records so it serialises to JSONB. */
-export interface Session {
+/**
+ * One session's authoritative state; plain records so it serialises to JSONB.
+ * It is an overlay on the process-wide base ledger: only what this visitor
+ * changed is stored. Rows written before this shape carry a `ledger` key and
+ * no `allocations`; the session store normalizes them on load.
+ */
+export interface Session extends LedgerOverlay {
   readonly generation: number;
-  readonly ledger: Ledger;
   readonly proposals: Readonly<Record<string, Proposal>>;
   readonly operations: Readonly<
     Record<

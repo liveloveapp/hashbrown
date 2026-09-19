@@ -12,7 +12,7 @@ import { createMemoryRepositories } from './src/persistence/memory';
 async function main() {
   // Test-only scripted transport; production continues to use B4 authorization.
   const repositories = createMemoryRepositories();
-  const store = createSessionStore(repositories.sessions, createSampleLedger);
+  const store = createSessionStore(repositories.sessions, createSampleLedger());
   const reviews = createReviewCoordinator(
     store,
     repositories.threads,

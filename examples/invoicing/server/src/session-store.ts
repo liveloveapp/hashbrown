@@ -12,6 +12,8 @@ import {
   createLedger,
   createProposal,
   getSnapshot,
+  materialize,
+  overlayOf,
 } from './ledger';
 import {
   ConflictError,
@@ -38,7 +40,7 @@ export interface SessionStore {
     sessionId: string,
     operationId: string,
   ): Promise<DecisionResult | undefined>;
-  /** Restore the fixture and invalidate earlier proposal generations. */
+  /** Drop this session's changes and invalidate earlier proposal generations. */
   reset(sessionId: string): Promise<LedgerSnapshot>;
 }
 
@@ -47,16 +49,44 @@ type Transition<R> = (session: Session) => {
   readonly result: R;
 };
 
-/** Every mutation is one compare-and-swap of the session document. */
+const empty = (generation: number): Session => ({
+  generation,
+  allocations: [],
+  activities: [],
+  proposals: {},
+  operations: {},
+});
+
+/**
+ * Rows written before sessions became overlays hold a full `ledger` and no
+ * `allocations`. Rebuilding the document from named fields drops the old key
+ * on the next commit and reads the row as a fresh overlay on today's base.
+ */
+const normalize = (
+  value: Partial<Session> & Pick<Session, 'generation'>,
+): Session => ({
+  generation: value.generation,
+  allocations: value.allocations ?? [],
+  activities: value.activities ?? [],
+  proposals: value.proposals ?? {},
+  operations: value.operations ?? {},
+});
+
+/**
+ * Every mutation is one compare-and-swap of the session document. The base
+ * ledger is shared by every session and never written; a session sees
+ * `materialize(base, session)`.
+ */
 export function createSessionStore(
   repository: SessionRepository,
-  createInitialLedger: () => Ledger = createLedger,
+  base: Ledger = createLedger(),
 ): SessionStore {
   const load = async (id: string) => {
     const doc = await repository.load(id);
     if (!doc) throw new Error('session_not_found');
-    return doc;
+    return { version: doc.version, value: normalize(doc.value) };
   };
+  const view = (session: Session) => materialize(base, session);
   const mutate = async <R>(
     id: string,
     transition: Transition<R>,
@@ -76,22 +106,17 @@ export function createSessionStore(
 
   return {
     createSession() {
-      return repository.create({
-        generation: 1,
-        ledger: structuredClone(createInitialLedger()),
-        proposals: {},
-        operations: {},
-      });
+      return repository.create(empty(1));
     },
     async generation(id) {
       return (await load(id)).value.generation;
     },
     async snapshot(id) {
-      return getSnapshot((await load(id)).value.ledger);
+      return getSnapshot(view((await load(id)).value));
     },
     propose: (id, request) =>
       mutate(id, (session) => {
-        const proposal = createProposal(session.ledger, request, {
+        const proposal = createProposal(view(session), request, {
           generation: session.generation,
           proposalId: randomUUID(),
           operationId: randomUUID(),
@@ -136,8 +161,8 @@ export function createSessionStore(
           throw new Error('stale_proposal');
         const ledger =
           request.decision === 'approve'
-            ? applyProposal(session.ledger, proposal)
-            : session.ledger;
+            ? applyProposal(view(session), proposal)
+            : view(session);
         const result: DecisionResult = {
           proposalId: proposal.proposalId,
           operationId: proposal.operationId,
@@ -154,7 +179,7 @@ export function createSessionStore(
         return {
           session: {
             ...session,
-            ledger,
+            ...overlayOf(base, ledger),
             operations: {
               ...session.operations,
               [request.operationId]: { request: identity, result },
@@ -168,13 +193,8 @@ export function createSessionStore(
     },
     reset: (id) =>
       mutate(id, (session) => {
-        const next: Session = {
-          generation: session.generation + 1,
-          ledger: structuredClone(createInitialLedger()),
-          proposals: {},
-          operations: {},
-        };
-        return { session: next, result: getSnapshot(next.ledger) };
+        const next = empty(session.generation + 1);
+        return { session: next, result: getSnapshot(view(next)) };
       }),
   };
 }

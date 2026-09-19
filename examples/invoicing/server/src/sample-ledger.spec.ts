@@ -191,36 +191,10 @@ test('supports applying a combined payment sequentially while retaining accounti
   expect(createSampleLedger()).toEqual(initial);
 });
 
-test('uses a factory on create and reset and isolates shared seed objects', async () => {
-  const seed = createSampleLedger();
-  let calls = 0;
-  const store = createSessionStore(createMemoryRepositories().sessions, () => {
-    calls += 1;
-    return seed;
-  });
-  const first = await store.createSession();
-  const second = await store.createSession();
-  const originalAmount = seed.payments[0].amountCents;
-
-  (seed.payments[0] as { amountCents: number }).amountCents += 100;
-  const reset = await store.reset(first);
-  (seed.payments[0] as { amountCents: number }).amountCents += 100;
-
-  expect(calls).toBe(3);
-  expect((await store.snapshot(second)).payments[0].amountCents).toBe(
-    originalAmount,
-  );
-  expect(reset.payments[0].amountCents).toBe(originalAmount + 100);
-  expect((await store.snapshot(first)).payments[0].amountCents).toBe(
-    originalAmount + 100,
-  );
-  expect(await store.generation(first)).toBe(2);
-});
-
 test('reset restores sample allocations after approval without affecting another session', async () => {
   const store = createSessionStore(
     createMemoryRepositories().sessions,
-    createSampleLedger,
+    createSampleLedger(),
   );
   const first = await store.createSession();
   const second = await store.createSession();

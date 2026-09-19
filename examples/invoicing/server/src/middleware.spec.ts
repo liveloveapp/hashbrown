@@ -26,7 +26,7 @@ async function setup(
   vi.spyOn(repositories.threads, 'load').mockImplementation(async (threadId) =>
     ++reads === 1 ? load(threadId) : laterLoads(),
   );
-  const store = createSessionStore(repositories.sessions, createSampleLedger);
+  const store = createSessionStore(repositories.sessions, createSampleLedger());
   const session = await store.createSession();
   vi.resetModules();
   vi.doMock('./persistence/from-env', () => ({
