@@ -7,6 +7,7 @@ import { daysBetween } from './dates';
 export const TERMS_DAYS = 30;
 
 export interface AgingBuckets {
+  /** Not yet overdue. Undated open invoices are counted here too. */
   readonly current: number;
   readonly days1to30: number;
   readonly days31to60: number;
@@ -24,10 +25,18 @@ export interface CustomerFacts {
   readonly openCents: number;
   readonly unappliedCents: number;
   readonly openInvoiceIds: readonly string[];
-  /** Mean days from invoice date to payment date over allocations; undefined with none. */
+  /**
+   * Mean days from invoice date to payment date over allocations. It is a
+   * count-weighted mean, so an invoice settled by two allocations counts
+   * twice and a batch payer looks late even when it settles on schedule.
+   * Undefined when the customer has no payment history.
+   */
   readonly averageDaysToPay: number | undefined;
-  /** Share of allocations paid after the terms elapsed, 0 to 1. */
-  readonly latePaymentRate: number;
+  /**
+   * Share of allocations paid after the terms elapsed, 0 to 1. Undefined,
+   * like `averageDaysToPay`, when the customer has no payment history.
+   */
+  readonly latePaymentRate: number | undefined;
 }
 
 export interface CurrencyFacts {
@@ -46,7 +55,10 @@ export interface LedgerFacts {
   readonly asOf: string;
   readonly customers: readonly CustomerFacts[];
   readonly currencies: readonly CurrencyFacts[];
-  /** Unapplied payments with more than one open invoice to choose from. */
+  /**
+   * Unapplied payments with more than one open invoice to choose from,
+   * including combined payments that cover several invoices.
+   */
   readonly ambiguousPaymentIds: readonly string[];
 }
 
@@ -66,7 +78,15 @@ export function agingBucket(
 const sum = (values: readonly number[]) =>
   values.reduce((total, value) => total + value, 0);
 
-/** Derive ground truth from a ledger. Pure; the same ledger gives the same facts. */
+/**
+ * Derive ground truth from a ledger. Pure; the same ledger gives the same
+ * facts. `asOf` only drives the aging buckets: totals, open balances and
+ * payment lags are taken from the whole ledger, which is assumed to contain
+ * nothing dated after `asOf`.
+ *
+ * @param ledger The ledger to describe.
+ * @param asOf The date the aging buckets are measured on.
+ */
 export function deriveFacts(ledger: Ledger, asOf = AS_OF): LedgerFacts {
   const snapshot = getSnapshot(ledger);
   const paymentsById = new Map(snapshot.payments.map((p) => [p.id, p]));
@@ -102,7 +122,7 @@ export function deriveFacts(ledger: Ledger, asOf = AS_OF): LedgerFacts {
         : undefined,
       latePaymentRate: lags.length
         ? lags.filter((lag) => lag > TERMS_DAYS).length / lags.length
-        : 0,
+        : undefined,
     };
   });
 
@@ -126,7 +146,7 @@ export function deriveFacts(ledger: Ledger, asOf = AS_OF): LedgerFacts {
           aging[agingBucket(invoice.date, asOf)] += invoice.outstandingCents;
         else aging.current += invoice.outstandingCents;
       }
-      const largest = [...own]
+      const largest = own
         .filter((c) => c.openCents > 0)
         .sort((a, b) => b.openCents - a.openCents)[0];
       return {

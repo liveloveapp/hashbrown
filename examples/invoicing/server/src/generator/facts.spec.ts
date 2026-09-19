@@ -1,8 +1,10 @@
 import { expect, test } from 'vitest';
+import { createLedger } from '../ledger';
 import { createSampleLedger } from '../sample-ledger';
 import { agingBucket, deriveFacts } from './facts';
 
-const facts = deriveFacts(createSampleLedger());
+const ledger = createSampleLedger();
+const facts = deriveFacts(ledger);
 const customer = (id: string) => {
   const found = facts.customers.find((c) => c.customerId === id);
   if (!found) throw new Error(`missing customer ${id}`);
@@ -42,7 +44,21 @@ test('lists currencies sorted and totals reconcile with customers', () => {
     expect(c.openCents).toBe(sum('openCents'));
     const buckets = Object.values(c.aging).reduce((a, b) => a + b, 0);
     expect(buckets).toBe(c.openCents);
+    expect(c.invoicedCents - c.openCents).toBe(
+      c.receivedCents - c.unappliedCents,
+    );
   }
+  for (const c of facts.customers) {
+    expect(c.invoicedCents - c.openCents).toBe(
+      c.receivedCents - c.unappliedCents,
+    );
+  }
+  // Summit paid a 3,000.00 advance nothing has been invoiced for yet.
+  expect(
+    customer('summit').receivedCents - customer('summit').invoicedCents,
+  ).toBe(300000);
+  // Cedar's partial payment scenario leaves 2,000.00 unapplied.
+  expect(customer('cedar').unappliedCents).toBe(200000);
 });
 
 test('profiles surface as measurable habits', () => {
@@ -59,8 +75,35 @@ test('profiles surface as measurable habits', () => {
   expect(customer('juniper').latePaymentRate).toBeLessThan(1);
   expect(customer('juniper').openInvoiceIds.length).toBeGreaterThanOrEqual(1);
 
-  expect(customer('granite').openInvoiceIds.length).toBeGreaterThanOrEqual(24);
+  // Orbital pays in batches, so its count-weighted lag looks late.
+  expect(customer('orbital').latePaymentRate).toBeGreaterThan(0);
+  expect(customer('orbital').latePaymentRate).toBeLessThan(1);
+  expect(customer('orbital').averageDaysToPay).toBeGreaterThan(12);
+
+  // A short-payer leaves 2% of every invoice open.
+  const graniteInvoices = ledger.invoices.filter(
+    (i) => i.customerId === 'granite',
+  );
+  expect(customer('granite').openInvoiceIds.length).toBe(
+    graniteInvoices.length,
+  );
   expect(customer('granite').profile).toBe('short-payer');
+});
+
+test('a customer with no payment history has no habits and ages as current', () => {
+  const base = deriveFacts(createLedger());
+  expect(base.customers).toHaveLength(1);
+  expect(base.customers[0]?.averageDaysToPay).toBeUndefined();
+  expect(base.customers[0]?.latePaymentRate).toBeUndefined();
+  const usd = base.currencies.find((c) => c.currency === 'USD');
+  expect(usd?.aging).toEqual({
+    current: usd?.openCents,
+    days1to30: 0,
+    days31to60: 0,
+    days61to90: 0,
+    over90: 0,
+  });
+  expect(usd?.openCents).toBeGreaterThan(0);
 });
 
 test('the largest open balance per currency is the customer with the most outstanding', () => {
@@ -74,7 +117,10 @@ test('the largest open balance per currency is the customer with the most outsta
         : undefined,
     );
   }
-  expect(currency('GBP').largestOpen).toBeDefined();
+  // The ledger is fingerprinted, so the winners are stable enough to pin.
+  expect(currency('EUR').largestOpen?.customerId).toBe('orbital');
+  expect(currency('GBP').largestOpen?.customerId).toBe('thistle');
+  expect(currency('USD').largestOpen?.customerId).toBe('juniper');
 });
 
 test('only payments with several candidate invoices are ambiguous', () => {
