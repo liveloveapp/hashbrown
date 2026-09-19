@@ -71,30 +71,34 @@ review thread; the server prepares the proposal; B4 approval gates
 
 ### Base ledger
 
-`server/src/ledger/generate.ts` builds the base ledger once per process from
+`server/src/generator/history.ts` builds the base ledger once per process from
 a seed. It is immutable and shared by every session.
 
-Inputs are a client table and a seed. Ten clients across three currencies:
+Inputs are a client table and a seed. Twelve clients across three currencies:
 
-| Currency | Clients | Profiles represented |
-| -------- | ------- | -------------------- |
-| USD      | 6       | on-time, late-fixed, late-drifting, short-payer, batch-payer, wrong-reference |
-| EUR      | 2       | on-time, batch-payer |
-| GBP      | 2       | late-drifting, short-payer |
+| Currency | Clients | Profiles represented                                                |
+| -------- | ------- | ------------------------------------------------------------------- |
+| USD      | 8       | on-time ×4, wrong-reference, late-drifting, late-fixed, short-payer |
+| EUR      | 2       | on-time, batch-payer                                                |
+| GBP      | 2       | late-drifting, short-payer                                          |
 
-The six existing USD clients keep their IDs and names and receive one profile
-each. Four new clients are added for EUR and GBP coverage.
+The six existing USD clients keep their IDs and names. The five scenario
+clients settle every generated invoice by the as-of date (four `on-time`,
+Atlas `wrong-reference`, which also pays on time): the review flows in the e2e
+suite depend on a scenario invoice being the only outstanding candidate for
+its payment. Juniper is `late-drifting`. Six new clients carry the remaining
+profiles: two USD, two EUR, two GBP.
 
 Profiles are data on the client record:
 
-| Profile           | Behavior |
-| ----------------- | -------- |
-| `on-time`         | Pays each invoice in full 5 to 12 days after issue. |
-| `late-fixed`      | Pays in full, always 35 to 45 days after issue. |
-| `late-drifting`   | Days-to-pay grows month over month; the most recent invoices are open. |
+| Profile           | Behavior                                                                                      |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| `on-time`         | Pays each invoice in full 5 to 12 days after issue.                                           |
+| `late-fixed`      | Pays in full, always 35 to 45 days after issue.                                               |
+| `late-drifting`   | Days-to-pay grows month over month; the most recent invoices are open.                        |
 | `short-payer`     | Deducts a 2% early-payment discount and pays within 10 days; the remainder stays outstanding. |
-| `batch-payer`     | Settles two or three invoices in one transfer every second or third month. |
-| `wrong-reference` | Pays on time but the remittance cites the previous month's invoice number. |
+| `batch-payer`     | Settles two or three invoices in one transfer every second or third month.                    |
+| `wrong-reference` | Pays on time but the remittance cites the previous month's invoice number.                    |
 
 Every client has a monthly retainer over 24 months (October 2024 to
 September 2026) plus one to three project invoices per quarter at irregular
@@ -112,7 +116,7 @@ and documented; tests may pass another.
 
 ### Ground truth
 
-`server/src/ledger/facts.ts` derives a facts object from the generated
+`server/src/generator/facts.ts` derives a facts object from the generated
 ledger:
 
 - per client: profile, currency, average days to pay, late-payment rate,
@@ -145,9 +149,11 @@ before deriving `unappliedCents` and `outstandingCents`. `applyProposal`
 appends to the overlay. `reset` clears the overlay and bumps the generation.
 `createSessionStore` takes the base ledger instead of a factory.
 
-Existing Postgres rows contain a `ledger` key and no `allocations` key. The
-loader treats a missing `allocations` as empty and ignores unknown keys, so an
-old session reads as a fresh overlay against the current base. No migration.
+Existing Postgres rows contain a `ledger` key and no `allocations` key. A row
+written under the old shape (it carries a `ledger` key) reads as an empty
+overlay one generation later, which invalidates its old proposals through the
+existing stale-generation path and drops the key on the next commit. No
+migration.
 The schema note in `persistence/schema.ts` about `CREATE TABLE IF NOT EXISTS`
 still applies to any new column; this change adds none.
 
@@ -158,14 +164,14 @@ as `readLedger` does today. Every amount is returned twice: integer cents and
 a formatted string with currency, so the model never divides. Every tool
 result is a small object; none returns the whole ledger.
 
-| Tool | Input | Returns |
-| ---- | ----- | ------- |
-| `ledgerSummary` | none | as-of date; per-currency totals; counts of open invoices and unapplied payments; customers with id, name, currency, profile label |
-| `monthlyTotals` | `currency`, `customerId?`, `months?` (default 12, max 24) | rows of month, invoiced, received |
-| `aging` | `currency`, `customerId?` | buckets current, 1-30, 31-60, 61-90, 90+ with totals and invoice IDs |
-| `customerStatement` | `customerId` | profile, totals, open invoices, unapplied payments, average days to pay, last payment |
-| `findRecords` | `kind?` (invoice/payment), `customerId?`, `currency?`, `status?` (open/settled/unapplied), `text?`, `from?`, `to?`, `limit?` (default 20, max 50) | matching IDs with one summary line each and a total count |
-| `unappliedPayments` | `currency?` | each unapplied payment with candidate invoices for the same customer and currency |
+| Tool                | Input                                                                                                                                             | Returns                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `ledgerSummary`     | none                                                                                                                                              | as-of date; per-currency totals; counts of open invoices and unapplied payments; customers with id, name, currency, profile label |
+| `monthlyTotals`     | `currency`, `customerId?`, `months?` (default 12, max 24)                                                                                         | rows of month, invoiced, received                                                                                                 |
+| `aging`             | `currency`, `customerId?`                                                                                                                         | buckets current, 1-30, 31-60, 61-90, 90+ with totals and invoice IDs                                                              |
+| `customerStatement` | `customerId`                                                                                                                                      | profile, totals, open invoices, unapplied payments, average days to pay, last payment                                             |
+| `findRecords`       | `kind?` (invoice/payment), `customerId?`, `currency?`, `status?` (open/settled/unapplied), `text?`, `from?`, `to?`, `limit?` (default 20, max 50) | matching IDs with one summary line each and a total count                                                                         |
+| `unappliedPayments` | `currency?`                                                                                                                                       | each unapplied payment with candidate invoices for the same customer and currency                                                 |
 
 `readLedger` is deleted. The system prompt no longer instructs a tool call per
 turn; it describes the tools and tells the model to call `render` once as its
@@ -176,14 +182,14 @@ last action.
 Contracts live in `shared/src/assistant-contract.ts`, consumed by the server
 response schema and the React `exposeComponent` calls, as today.
 
-| Component | Props | Children | Server validation |
-| --------- | ----- | -------- | ----------------- |
-| `AssistantText` | `text` | yes | none |
-| `LedgerTable` | `title`, `recordIds: string[]` | no | every ID is an invoice or payment in the snapshot; 1 to 50 IDs |
-| `TrendChart` | `currency`, `customerId?`, `months` | no | currency present in ledger; customer exists if given; months 3 to 24 |
-| `AgingSummary` | `currency`, `customerId?` | no | as above |
-| `CustomerCard` | `customerId` | no | customer exists |
-| `ReviewPayment` | `paymentId` | no | payment exists and is unapplied (today's `validatePayment`) |
+| Component       | Props                               | Children | Server validation                                                    |
+| --------------- | ----------------------------------- | -------- | -------------------------------------------------------------------- |
+| `AssistantText` | `text`                              | yes      | none                                                                 |
+| `LedgerTable`   | `title`, `recordIds: string[]`      | no       | every ID is an invoice or payment in the snapshot; 1 to 50 IDs       |
+| `TrendChart`    | `currency`, `customerId?`, `months` | no       | currency present in ledger; customer exists if given; months 3 to 24 |
+| `AgingSummary`  | `currency`, `customerId?`           | no       | as above                                                             |
+| `CustomerCard`  | `customerId`                        | no       | customer exists                                                      |
+| `ReviewPayment` | `paymentId`                         | no       | payment exists and is unapplied (today's `validatePayment`)          |
 
 `TrendChart` and `AgingSummary` deliberately carry no data. The React side
 computes their series from the snapshot so a chart can never plot a number
@@ -283,7 +289,7 @@ Filed against `cacheplane/b4run` during implementation. Small ones get a PR.
 
 Four pull requests, each green on its own, in order.
 
-1. **Ledger generator, facts, base/overlay store.** New `ledger/` module;
+1. **Ledger generator, facts, base/overlay store.** New `generator/` module;
    `sample-ledger.ts` reduced to the client table and the five scenarios;
    session store and `getSnapshot` take base plus overlay; Postgres loader
    tolerates old rows. Tests: generator determinism, one test per profile

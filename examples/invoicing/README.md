@@ -1,10 +1,19 @@
 # Invoicing example — local sample application
 
 The React / Hashbrown / Pretable / B4 example includes a deterministic ledger
-for a software consulting firm: **150 invoices, 149 incoming payments, and 144
-historical allocations**, spanning October 2024 through September 2026. The
-fixed simulated as-of date is **September 15, 2026**. Six fictional clients have
-monthly retainers and realistic project invoice references.
+for a software consulting firm: two years of invoices and payments for twelve
+fictional clients billed in USD, EUR and GBP, generated from a fixed seed by
+`server/src/generator`. Each client has a payment profile that shapes its
+history: on time, late by a fixed lag, drifting later every month, short-paying
+by an early-payment discount, batching several invoices into one transfer, or
+citing the previous invoice on every remittance. The fixed simulated as-of date
+is **September 15, 2026**. `server/src/generator/facts.ts` derives ground truth
+from the ledger (aging, days to pay, late-payment rates), which the evals and
+customer views read from.
+
+The base ledger is built once per process and shared by every visitor. A
+session stores only what its visitor changed: allocations, proposals and
+operation results. Reset drops those and returns the visitor to the base.
 
 Five incoming payments initially have unapplied cash totaling **$13,900**:
 
