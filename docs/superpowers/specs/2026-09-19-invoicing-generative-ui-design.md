@@ -323,7 +323,9 @@ Four pull requests, each green on its own, in order.
 4. **Evals and runner.** Eval files, dataset generation from facts, custom
    `runCase`, fixtures recorded once and replay verified. README documents
    `b4 eval`, `--live`, `--record`. Upstream issues filed; the harness PR
-   opened.
+   opened. PR 4 shipped its own harness (`server/evals/harness.ts`) because
+   `createAgentHarness` runs no route middleware, so the assistant's tools
+   would have had no ledger context.
 
 ## Open items carried, not changed
 
