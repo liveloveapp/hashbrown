@@ -99,6 +99,11 @@ export function createAssistantMiddleware(
           const currencies = [
             ...new Set([...payments, ...invoices].map((r) => r.currency)),
           ];
+          // The raw payment and invoice rows are withheld to keep a turn small:
+          // the generated ledger is several hundred KB as JSON. The derived
+          // sections below plus the customerId filter cover the questions the
+          // assistant answers today; query-shaped tools replace this in a
+          // later PR.
           return {
             monthlyTotals: [
               ...new Set(
@@ -144,8 +149,6 @@ export function createAssistantMiddleware(
             })),
             unappliedPayments: payments.filter((p) => p.unappliedCents > 0),
             outstandingInvoices: invoices.filter((i) => i.outstandingCents > 0),
-            payments,
-            invoices,
           };
         },
         validatePayment: async (paymentId: string) => {

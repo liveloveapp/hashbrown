@@ -1,6 +1,8 @@
 import type {
   Ledger,
+  LedgerOverlay,
   LedgerSnapshot,
+  MoneyRecord,
   Proposal,
   ProposalRequest,
 } from '@invoicing/contracts';
@@ -14,6 +16,14 @@ export function createLedger(): Ledger {
     version: 1,
   };
   return {
+    customers: [
+      {
+        id: 'customer-001',
+        name: 'Customer 001',
+        currency: 'USD',
+        profile: 'on-time',
+      },
+    ],
     payments: [{ ...record, id: 'payment-001' }],
     invoices: [{ ...record, id: 'invoice-001' }],
     allocations: [],
@@ -41,6 +51,51 @@ export function getSnapshot(ledger: Ledger): LedgerSnapshot {
           .filter((a) => a.invoiceId === invoice.id)
           .reduce((sum, a) => sum + a.amountCents, 0),
     })),
+  };
+}
+
+/**
+ * The ledger one session sees: the shared base plus that session's own
+ * allocations. Record versions advance once per overlay allocation touching
+ * them, which is exactly how `applyProposal` advances them, so a ledger
+ * produced by applying proposals and the same ledger rebuilt from its overlay
+ * are equal.
+ */
+export function materialize(base: Ledger, overlay: LedgerOverlay): Ledger {
+  const advance = <T extends MoneyRecord>(
+    record: T,
+    key: 'paymentId' | 'invoiceId',
+  ): T => {
+    const bumps = overlay.allocations.filter(
+      (a) => a[key] === record.id,
+    ).length;
+    return bumps === 0
+      ? record
+      : { ...record, version: record.version + bumps };
+  };
+  return {
+    customers: base.customers,
+    payments: base.payments.map((p) => advance(p, 'paymentId')),
+    invoices: base.invoices.map((i) => advance(i, 'invoiceId')),
+    allocations: [...base.allocations, ...overlay.allocations],
+    activities: [...base.activities, ...overlay.activities],
+  };
+}
+
+/**
+ * The overlay that materializes over `base` into `ledger`. Only meaningful
+ * for a ledger produced by applying proposals to `materialize(base, …)`,
+ * which appends and never reorders.
+ */
+export function overlayOf(base: Ledger, ledger: Ledger): LedgerOverlay {
+  if (
+    ledger.allocations.length < base.allocations.length ||
+    ledger.activities.length < base.activities.length
+  )
+    throw new Error('overlay_base_mismatch');
+  return {
+    allocations: ledger.allocations.slice(base.allocations.length),
+    activities: ledger.activities.slice(base.activities.length),
   };
 }
 
@@ -105,6 +160,7 @@ export function applyProposal(ledger: Ledger, proposal: Proposal): Ledger {
   )
     throw new Error('incompatible_records');
   return {
+    customers: ledger.customers,
     payments: ledger.payments.map((record) =>
       record.id === proposal.paymentId
         ? { ...record, version: record.version + 1 }

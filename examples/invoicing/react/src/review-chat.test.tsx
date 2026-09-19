@@ -29,6 +29,7 @@ const proposal = {
 const snapshot = {
   payments: [],
   invoices: [],
+  customers: [],
   allocations: [],
   activities: [],
 };

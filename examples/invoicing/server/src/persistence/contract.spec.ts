@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createLedger } from '../ledger';
 import { ConflictError, type Repositories, type Session } from './types';
 import { createMemoryRepositories } from './memory';
 import { createPostgresRepositories } from './postgres';
 
 const emptySession = (): Session => ({
   generation: 1,
-  ledger: createLedger(),
+  allocations: [],
+  activities: [],
   proposals: {},
   operations: {},
 });

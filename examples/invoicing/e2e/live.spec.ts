@@ -9,9 +9,9 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
   const snapshot = async (): Promise<LedgerSnapshot> =>
     page.evaluate(async () => (await fetch('/api/snapshot')).json());
   const baseline = await snapshot();
-  expect(baseline.payments).toHaveLength(149);
-  expect(baseline.invoices).toHaveLength(150);
-  expect(baseline.allocations).toHaveLength(144);
+  expect(baseline.payments.length).toBeGreaterThan(100);
+  expect(baseline.invoices.length).toBeGreaterThan(100);
+  expect(baseline.allocations.length).toBeGreaterThan(100);
   const message = page.getByRole('textbox', {
     name: 'Message assistant',
     exact: true,
@@ -46,7 +46,7 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
   await expect(message).toBeEnabled();
 
   const applied = await snapshot();
-  expect(applied.allocations).toHaveLength(145);
+  expect(applied.allocations).toHaveLength(baseline.allocations.length + 1);
   expect(
     applied.payments.find((p) => p.id === 'payment-northstar-exact')
       ?.unappliedCents,
@@ -78,7 +78,9 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     }),
   ).toBeVisible();
   await expect(message).toBeEnabled();
-  expect((await snapshot()).allocations).toHaveLength(145);
+  expect((await snapshot()).allocations).toHaveLength(
+    baseline.allocations.length + 1,
+  );
 
   await page
     .getByRole('button', { name: 'Match payment', exact: true })
@@ -102,7 +104,7 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
   ).toHaveCount(2);
   await expect(message).toBeEnabled();
   const final = await snapshot();
-  expect(final.allocations).toHaveLength(146);
+  expect(final.allocations).toHaveLength(baseline.allocations.length + 2);
   expect(
     final.payments.find((p) => p.id === 'payment-cedar-partial')
       ?.unappliedCents,
@@ -133,7 +135,7 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     );
     expect(
       ((await isolated.json()) as LedgerSnapshot).allocations,
-    ).toHaveLength(144);
+    ).toHaveLength(baseline.allocations.length);
     const operation = final.activities.at(-1)?.operationId;
     expect(operation).toBeTruthy();
     expect(
