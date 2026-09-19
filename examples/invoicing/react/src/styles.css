@@ -519,7 +519,7 @@ h2 {
   display: flex;
   gap: 16px;
   font-size: 12px;
-  color: #73777c;
+  color: var(--ink-muted);
   margin-bottom: 6px;
 }
 .assistant-kit-chart .legend i {
@@ -533,7 +533,7 @@ h2 {
 .assistant-kit-chart .assistant-kit-caption {
   margin: 0 0 6px;
   font-size: 12px;
-  color: #73777c;
+  color: var(--ink-muted);
 }
 .assistant-kit-chart .tooltip {
   position: absolute;

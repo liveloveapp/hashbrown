@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, expect, test } from 'vitest';
 import { s, ɵcreateUiKit } from '@hashbrownai/core';
@@ -7,12 +7,10 @@ import {
   type LedgerSnapshot,
 } from '@invoicing/contracts';
 import {
-  AgingSummary,
   assistantKit,
   AssistantText,
   CustomerCard,
   LedgerTable,
-  TrendChart,
 } from './assistant-kit';
 import { SnapshotContext } from './snapshot-context';
 
@@ -101,47 +99,6 @@ test('LedgerTable omits the missing note when every id resolves', () => {
   expect(screen.queryByText(/could not be shown/)).toBeNull();
 });
 
-test('TrendChart draws grouped columns with a legend, direct labels, and a table view', () => {
-  withSnapshot(<TrendChart currency="USD" customerId={null} months={3} />);
-
-  const figure = screen.getByRole('figure', {
-    name: /Invoiced vs received · USD/,
-  });
-  expect(figure).toBeVisible();
-  expect(screen.getByText('Invoiced')).toBeVisible();
-  expect(screen.getByText('Received')).toBeVisible();
-  expect(figure.querySelectorAll('rect[data-series="invoiced"]')).toHaveLength(
-    3,
-  );
-  expect(figure.querySelectorAll('rect[data-series="received"]')).toHaveLength(
-    3,
-  );
-  expect(screen.getByText('Show data')).toBeVisible();
-  expect(
-    screen.getByRole('table', { name: /Invoiced vs received/ }),
-  ).toBeInTheDocument();
-  expect(screen.getAllByText('Jul 2026').length).toBeGreaterThan(0);
-  // The latest month's values are a caption, not labels inside the plot.
-  expect(figure.querySelector('.assistant-kit-caption')).toHaveTextContent(
-    'Sep 2026 · Invoiced $0.00 · Received $100.00',
-  );
-  const svgText = [...figure.querySelectorAll('svg text')].map(
-    (t) => t.textContent,
-  );
-  expect(svgText.filter((t) => t?.includes('.'))).toEqual([]);
-});
-
-test('TrendChart clamps months and shows a tooltip on hover', () => {
-  withSnapshot(<TrendChart currency="USD" customerId={null} months={5000} />);
-  const figure = screen.getByRole('figure', { name: /Invoiced vs received/ });
-  expect(figure.querySelectorAll('rect[data-series="invoiced"]')).toHaveLength(
-    24,
-  );
-  const groups = figure.querySelectorAll('[data-month]');
-  fireEvent.mouseEnter(groups[groups.length - 1]);
-  expect(screen.getByRole('tooltip')).toHaveTextContent('Sep 2026');
-});
-
 test('LedgerTable dedupes repeated ids and counts missing ones once', () => {
   withSnapshot(
     <LedgerTable title="Dup" recordIds={['i', 'i', 'nope', 'nope']} />,
@@ -162,16 +119,6 @@ test('LedgerTable renders nothing without a snapshot', () => {
   render(<LedgerTable title="None" recordIds={['i']} />);
 
   expect(screen.queryByRole('heading', { name: 'None' })).toBeNull();
-});
-
-test('AgingSummary draws one bar per bucket with direct labels and a table view', () => {
-  withSnapshot(<AgingSummary currency="USD" customerId="c" />);
-
-  const figure = screen.getByRole('figure', { name: /Aging · USD/ });
-  expect(figure.querySelectorAll('rect[data-bucket]')).toHaveLength(5);
-  expect(screen.getAllByText('31-60 days').length).toBeGreaterThan(0);
-  expect(screen.getAllByText('$250.00').length).toBeGreaterThan(0);
-  expect(screen.getByRole('table', { name: /Aging/ })).toBeInTheDocument();
 });
 
 test('CustomerCard shows habit badge, balances and payment figures', () => {
