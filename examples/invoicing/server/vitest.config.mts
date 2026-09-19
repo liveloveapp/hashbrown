@@ -12,7 +12,10 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['examples/invoicing/server/src/**/*.spec.ts'],
+    include: [
+      'examples/invoicing/server/src/**/*.spec.ts',
+      'examples/invoicing/server/evals/**/*.spec.ts',
+    ],
     environment: 'node',
   },
 });
