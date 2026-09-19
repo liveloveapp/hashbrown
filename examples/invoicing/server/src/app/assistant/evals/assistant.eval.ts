@@ -1,6 +1,7 @@
 import { custom, defineEval, gate, llmJudge, tokensUnder } from '@b4run/evals';
 import type { AgentRunResult } from '@b4run/testing';
 import type {
+  AgingBuckets,
   AssistantLeafNode,
   AssistantRenderInput,
   LedgerTableNode,
@@ -17,25 +18,26 @@ import { createSampleLedger, sampleScenarios } from '../../../sample-ledger';
 // never drift from the data the assistant actually queries. "Open" and
 // "overdue" are different questions: a live run answered "largest overdue
 // balance" by summing the aging buckets past terms, which is a defensible
-// reading, so each case asks for exactly one of them.
+// reading, so each case names exactly one bucket of the ledger.
 const ledger = createSampleLedger();
 const snapshot = getSnapshot(ledger);
 const facts = deriveFacts(ledger);
 
-/** Open balance past net-30 terms per customer, the way an "overdue" question reads. */
-const overdueCents = (customerId: string) =>
+/** A customer's open balance whose aging bucket on AS_OF is `bucket`. */
+const bucketCents = (customerId: string, bucket: keyof AgingBuckets) =>
   snapshot.invoices
     .filter((i) => i.customerId === customerId && i.outstandingCents > 0)
-    .filter((i) => i.date && agingBucket(i.date, AS_OF) !== 'current')
+    .filter((i) => i.date && agingBucket(i.date, AS_OF) === bucket)
     .reduce((sum, i) => sum + i.outstandingCents, 0);
 
 const gbpCustomers = facts.customers.filter((c) => c.currency === 'GBP');
 const largestOpenGbp =
   facts.currencies.find((c) => c.currency === 'GBP')?.largestOpen?.customerId ??
   '';
-const mostOverdueGbp =
+const mostOver90Gbp =
   [...gbpCustomers].sort(
-    (a, b) => overdueCents(b.customerId) - overdueCents(a.customerId),
+    (a, b) =>
+      bucketCents(b.customerId, 'over90') - bucketCents(a.customerId, 'over90'),
   )[0]?.customerId ?? '';
 const unappliedUsd =
   facts.currencies.find((c) => c.currency === 'USD')?.unappliedCents ?? 0;
@@ -106,7 +108,7 @@ const answersTheQuestion = custom(
         );
       }
       case 'gbp largest open balance':
-      case 'gbp most overdue':
+      case 'gbp over 90 days':
         return mentions(run, String(c.expected));
       case 'cedar open invoices': {
         const table = components(run).find(
@@ -170,9 +172,10 @@ export default defineEval({
       expected: largestOpenGbp,
     },
     {
-      name: 'gbp most overdue',
-      input: 'Which GBP client has the most money past net-30 terms?',
-      expected: mostOverdueGbp,
+      name: 'gbp over 90 days',
+      input:
+        'Which GBP client has the most money more than 90 days past net-30 terms?',
+      expected: mostOver90Gbp,
     },
     {
       name: 'cedar open invoices',

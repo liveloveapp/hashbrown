@@ -23,10 +23,11 @@ describe('assistant eval dataset', () => {
   });
 
   test('expectations are computed from the sample ledger', () => {
-    // In the sample ledger Thistle has both the largest open GBP balance and
-    // the most GBP past net-30 terms: 800,000 versus Kestrel's 343,600.
+    // Thistle's open GBP balance is the largest, but its late-drifting
+    // invoices are all recent; Kestrel's short-pays are the only GBP money
+    // more than 90 days past terms.
     expect(caseNamed('gbp largest open balance')?.expected).toBe('thistle');
-    expect(caseNamed('gbp most overdue')?.expected).toBe('thistle');
+    expect(caseNamed('gbp over 90 days')?.expected).toBe('kestrel');
     expect(caseNamed('cedar open invoices')?.expected).toEqual([
       'invoice-cedar-partial',
     ]);
@@ -35,20 +36,21 @@ describe('assistant eval dataset', () => {
     expect(caseNamed('atlas match')?.expected).toBe('payment-atlas-ambiguous');
   });
 
-  test('the overdue expectation agrees with an independent computation', () => {
+  test('the over-90 expectation agrees with an independent computation', () => {
     const snapshot = getSnapshot(createSampleLedger());
-    const overdue = new Map<string, number>();
+    const over90 = new Map<string, number>();
     for (const invoice of snapshot.invoices) {
       if (invoice.currency !== 'GBP' || invoice.outstandingCents <= 0) continue;
-      if (!invoice.date || agingBucket(invoice.date, AS_OF) === 'current')
+      if (!invoice.date || agingBucket(invoice.date, AS_OF) !== 'over90')
         continue;
-      overdue.set(
+      over90.set(
         invoice.customerId,
-        (overdue.get(invoice.customerId) ?? 0) + invoice.outstandingCents,
+        (over90.get(invoice.customerId) ?? 0) + invoice.outstandingCents,
       );
     }
-    const [top] = [...overdue.entries()].sort((a, b) => b[1] - a[1]);
-    expect(caseNamed('gbp most overdue')?.expected).toBe(top[0]);
+    const [top] = [...over90.entries()].sort((a, b) => b[1] - a[1]);
+    expect(top[1]).toBeGreaterThan(0);
+    expect(caseNamed('gbp over 90 days')?.expected).toBe(top[0]);
   });
 
   test('habit cases carry the profile the ledger assigns', () => {
