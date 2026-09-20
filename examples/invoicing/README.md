@@ -81,6 +81,48 @@ The server directory is itself the B4 app root, so the agent resolves the same
 installed B4 packages as the server, regardless of npm hoisting. No dependency
 points to a local B4 checkout.
 
+## Evals
+
+The assistant has an on-demand eval suite in
+`server/src/app/assistant/evals/assistant.eval.ts`: nine questions whose
+expected answers are computed from the generated ledger's facts at load time
+(the unapplied USD total, the GBP client with the largest open balance, the
+GBP client with the most over 90 days, Cedar Health's open invoice IDs, the
+ambiguous Atlas payment, three payment habits), so the dataset can never
+drift from the data the assistant queries. Scorers check that the model
+renders exactly once and closes with `{"ui":[]}`, that no tool errored, that
+the prose never claims to have allocated anything, that the answer is under
+6,000 characters, that it answers the question (the right rows, customer,
+chart, or habit), and an LLM judge grades the prose for formatted amounts,
+no allocation claims, and no invented customers. The gate is a 0.8 pass
+rate plus every scorer's threshold.
+
+Three modes, all from the repository root:
+
+```sh
+npx nx run invoicing-server:eval                 # replay committed fixtures, no key
+npx nx run invoicing-server:eval -- --live       # real model, fixtures untouched
+npx nx run invoicing-server:eval -- --record     # real model, rewrite fixtures
+```
+
+`--live` and `--record` need `OPENAI_API_KEY`, or `INVOICING_ENV_FILE`
+pointing at an env file that provides it, exactly as `serve` does. A trailing
+argument filters by case name or by the eval file's basename
+(`-- --record "habit summit"` re-records one case); `--json[=file]` also writes the reports as JSON. Fixtures are one
+`assistant.<case>.fixtures.json` per case, next to the eval file, and are
+committed: each holds every model call the case made, the LLM judge's
+included, so replay needs no network and reproduces the record run's report.
+The suite runs on demand, not in CI, by decision. The gate is currently red
+on purpose: four recorded cases close with `{}` instead of `{"ui":[]}` (B4
+finding 2 in `docs/superpowers/upstream/2026-09-19-b4-findings.md`), and the
+fix is tracked as a follow-up rather than hidden by re-recording.
+
+`server/evals/harness.ts` boots the server in-process against an aimock
+instance and posts each case through the real `/assistant` route with a
+session cookie, because B4's `createAgentHarness` runs no route middleware
+and the assistant's tools read their ledger from it. It should be removed
+when `createAgentHarness` gains a `middlewareContext` option.
+
 ## Deployment
 
 `npx nx build invoicing` produces `examples/invoicing/.vercel/output`

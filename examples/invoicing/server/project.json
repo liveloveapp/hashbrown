@@ -21,6 +21,13 @@
         "command": "eslint examples/invoicing/server"
       }
     },
+    "eval": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx --tsconfig examples/invoicing/server/tsconfig.json examples/invoicing/server/evals/run.ts",
+        "forwardAllArgs": true
+      }
+    },
     "serve": {
       "executor": "nx:run-commands",
       "continuous": true,
