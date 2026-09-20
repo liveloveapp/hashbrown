@@ -44,6 +44,17 @@ test('the harness context exposes exactly what the route middleware does', async
     Object.keys(result.context).sort(),
   );
   expect(evalContext.responseSchema).toBe(result.context.responseSchema);
+  // Matching key sets would still pass if one side's query took an argument
+  // the other never supplies, so compare each closure's arity too.
+  for (const [name, value] of Object.entries(evalContext)) {
+    if (typeof value !== 'function') continue;
+    const counterpart = result.context[name];
+    expect(typeof counterpart).toBe('function');
+    expect([name, value.length]).toEqual([
+      name,
+      (counterpart as (...args: unknown[]) => unknown).length,
+    ]);
+  }
   expect(await evalContext.ledgerSummary()).toEqual(
     await result.context.ledgerSummary(),
   );
