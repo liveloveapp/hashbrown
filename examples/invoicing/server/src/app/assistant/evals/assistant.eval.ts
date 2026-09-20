@@ -103,17 +103,37 @@ const rendersOnce = custom(
   (run) => run.toolCalls.filter((c) => c.name === 'render').length === 1,
   { name: 'rendersOnce', threshold: 1 },
 );
-const endsWithEmptyUi = custom(
+/**
+ * B4 ignores the response schema the client sends (finding 2 in
+ * docs/superpowers/upstream/2026-09-19-b4-findings.md), so the prompt asks
+ * for `{"ui":[]}` after `render` and nothing enforces it; gpt-5-mini closes
+ * with `{}` about half the time. Both are silent: Hashbrown's client keeps a
+ * message whose content misses the UI schema without rendering anything or
+ * raising an error. Prose or components in the closing message are the real
+ * failures: prose surfaces the "could not finish" alert, and components
+ * would render unvalidated.
+ */
+export function closingIsSilent(finalMessage: string): true | string {
+  const text = finalMessage.trim();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return `closing message was prose (${JSON.stringify(text.slice(0, 40))}); the client shows an error alert for it`;
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
+    return `closing message was ${text.slice(0, 40)}, not a JSON object`;
+  const ui = (parsed as { ui?: unknown }).ui;
+  if (ui !== undefined && !(Array.isArray(ui) && ui.length === 0))
+    return `closing message carried UI outside render: ${text.slice(0, 40)}`;
+  return true;
+}
+const closesSilently = custom(
   (run) => {
-    const text = run.finalMessage.trim();
-    return text === '{"ui":[]}'
-      ? 1
-      : {
-          score: 0,
-          reason: `final message was ${text.slice(0, 40)}; the model must close with {"ui":[]} (see docs/superpowers/upstream/2026-09-19-b4-findings.md, finding 2)`,
-        };
+    const verdict = closingIsSilent(run.finalMessage);
+    return verdict === true ? 1 : { score: 0, reason: verdict };
   },
-  { name: 'endsWithEmptyUi', threshold: 1 },
+  { name: 'closesSilently', threshold: 1 },
 );
 const noToolErrors = custom(
   (run) => {
@@ -248,7 +268,7 @@ export default defineEval({
   ],
   scorers: [
     rendersOnce,
-    endsWithEmptyUi,
+    closesSilently,
     noToolErrors,
     noAllocationClaim,
     answerSizeUnder,

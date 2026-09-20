@@ -267,7 +267,8 @@ object so expected values are computed:
 **Scorers.** `toolCalled` for routing; `custom` scorers that read the
 `render` argument for component choice and ID sets; `tokensUnder` for the
 context budget; a `custom` scorer that fails unless the final message is
-exactly `{"ui":[]}`; `llmJudge` on grounding for free-text cases, replayed
+silent (a JSON object with no UI: `{"ui":[]}`, or the `{}` the model often
+sends instead, since B4 does not enforce the schema); `llmJudge` on grounding for free-text cases, replayed
 from fixtures like everything else.
 
 ## Upstream findings
