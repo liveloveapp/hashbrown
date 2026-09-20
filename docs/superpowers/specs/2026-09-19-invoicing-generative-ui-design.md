@@ -241,13 +241,16 @@ with `b4 eval` in three modes: replay from committed fixtures with no key,
 `--live` against the real model, and `--record` to refresh fixtures. The
 README documents all three. The suite is on demand, not in CI.
 
-**Runner.** B4's `createAgentHarness` does not run route middleware, so the
-assistant tools would have no context. The example ships its own `runCase`
-until the upstream option lands: it starts the Hono app against an aimock
-instance, creates a session cookie, posts the AG-UI request for the case's
-input, collects the stream into an `AgentRunResult`, and hands it to
-`runEval`. Same eval files, same scorers. The runner is deleted when
-`createAgentHarness` gains a `middlewareContext` option.
+**Runner.** B4's `createAgentHarness` did not run route middleware at
+0.8.36, so the assistant tools would have had no context. The example
+shipped its own `runCase` until the upstream option landed: it started the
+Hono app against an aimock instance, created a session cookie, posted the
+AG-UI request for the case's input, collected the stream into an
+`AgentRunResult`, and handed it to `runEval`. With B4 0.9.0 that runner is
+gone: `server/evals/harness.ts` wraps `createAgentHarness` with the
+`middlewareContext` the route middleware would have built (shared
+`assistantContext`), and `run.ts` hands its result to `runEval`. Same eval
+files, same scorers.
 
 **Dataset.** Around fifteen cases, generated at eval-load time from the facts
 object so expected values are computed:
@@ -278,29 +281,35 @@ Filed against `cacheplane/b4run` during implementation. Small ones get a PR.
 
 1. **`createAgentHarness` runs no route middleware.** Add a `middlewareContext`
    option threaded to `streamResolvedRoute`, which already accepts one. Blocks
-   `b4 eval` for any app whose tools depend on middleware. Small.
+   `b4 eval` for any app whose tools depend on middleware. Small. Fixed in
+   0.9.0 (#756); the example's own runner was removed.
 2. **Client `responseSchema` is accepted and ignored.** Hashbrown sends
    `hashbrown.responseSchema`; nothing in B4 reads it. Either apply it as the
-   root model's response format or reject it, as #740 does for `tools`.
+   root model's response format or reject it, as #740 does for `tools`. Fixed
+   in 0.9.0 (#758): applied as a strict `json_schema` response format in
+   production; the eval harness does not send it.
 3. **Tool schema derivation ignores the app's `tsconfig` paths.** B4's
    compiler builds its own TypeScript program without `paths`, so a tool
    whose input type is imported through a path alias (`@invoicing/contracts`)
    derives an empty schema, `{ properties: {} }`, and `b4 typegen` reports
    success. Two fixes: read the app's tsconfig when building the program,
-   and fail loudly when an input type resolves to `any`. The example works
+   and fail loudly when an input type resolves to `any`. The example worked
    around it with a relative import in `render.ts` and a regression test on
-   the derived schema.
+   the derived schema. Fixed in 0.9.0 (#759); the alias import is back and
+   the regression test stays.
 4. **A thrown tool error never reaches the AG-UI stream.** The LangChain
    adapter emits nothing on `on_tool_error`, and only `on_tool_end` produces
    a `tool_result` chunk, so a client sees `TOOL_CALL_START`, `ARGS` and
    `END` for a failing tool and never a `TOOL_CALL_RESULT`; the failure is
    visible only inside `RUN_FINISHED.result.messages`. Found while building
-   the eval harness, which backfills results from there. Emit a
-   `TOOL_CALL_RESULT` carrying the error `ToolMessage`.
+   the eval harness, which backfilled results from there. Emit a
+   `TOOL_CALL_RESULT` carrying the error `ToolMessage`. Fixed in 0.9.0
+   (#757); the backfill (`collect-run.ts`) was deleted.
 5. **No post-run hook on the final assistant message.** The only server-side
    validation seam is a tool, which is why `render` exists. A
    `middleware.after` or output guard would let a read path validate composed
-   UI without the tool detour.
+   UI without the tool detour. 0.9.0 ships an `after` hook; adopting it is a
+   separate design change.
 
 ## Delivery
 
@@ -327,9 +336,10 @@ Four pull requests, each green on its own, in order.
    `b4 eval`, `--live`, `--record`. The B4 findings in
    `docs/superpowers/upstream/2026-09-19-b4-findings.md` were filed as
    cacheplane/b4run#751 to #755 on 2026-09-19. PR 4 shipped its own harness (`server/evals/harness.ts`)
-   because `createAgentHarness` runs no route middleware, so the assistant's
-   tools would have had no ledger context; the harness lives in the example
-   until B4 gains a `middlewareContext` option.
+   because `createAgentHarness` ran no route middleware, so the assistant's
+   tools would have had no ledger context. B4 0.9.0 added the
+   `middlewareContext` option, and a follow-up PR replaced that harness with
+   a wrapper over `createAgentHarness`.
 
 ## Open items carried, not changed
 
