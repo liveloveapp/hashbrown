@@ -107,26 +107,32 @@ const rendersOnce = custom(
  * B4 ignores the response schema the client sends (finding 2 in
  * docs/superpowers/upstream/2026-09-19-b4-findings.md), so the prompt asks
  * for `{"ui":[]}` after `render` and nothing enforces it; gpt-5-mini closes
- * with `{}` about half the time. Both are silent: Hashbrown's client keeps a
- * message whose content misses the UI schema without rendering anything or
- * raising an error. Prose or components in the closing message are the real
- * failures: prose surfaces the "could not finish" alert, and components
- * would render unvalidated.
+ * with `{}` about half the time. The React client (see "closing message" in
+ * react/src/assistant-workspace.test.tsx) renders nothing for `{"ui":[]}`,
+ * `{}` and an empty message; it prints any other JSON verbatim into the
+ * conversation, shows the "could not finish" alert for prose, and renders
+ * components from the closing message without the server's ledger checks.
+ * Only the three silent forms pass.
  */
 export function closingIsSilent(finalMessage: string): true | string {
   const text = finalMessage.trim();
+  if (text === '') return true;
+  const shown = JSON.stringify(text.slice(0, 40));
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    return `closing message was prose (${JSON.stringify(text.slice(0, 40))}); the client shows an error alert for it`;
+    return `closing message was prose (${shown}); the client shows an error alert for it`;
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
-    return `closing message was ${text.slice(0, 40)}, not a JSON object`;
+    return `closing message was ${shown}, not a JSON object; the client prints it as text`;
+  const entries = Object.entries(parsed);
+  if (entries.length === 0) return true;
   const ui = (parsed as { ui?: unknown }).ui;
-  if (ui !== undefined && !(Array.isArray(ui) && ui.length === 0))
-    return `closing message carried UI outside render: ${text.slice(0, 40)}`;
-  return true;
+  if (Array.isArray(ui) && ui.length > 0)
+    return `closing message carried UI outside render (${shown}); the client renders it without the server's ledger checks`;
+  if (entries.length === 1 && Array.isArray(ui)) return true;
+  return `closing message was ${shown}; the client prints it as text`;
 }
 const closesSilently = custom(
   (run) => {
@@ -204,8 +210,8 @@ const answersTheQuestion = custom(
   { name: 'answersTheQuestion', threshold: 1 },
 );
 
-// `llmJudge` grades `run.finalMessage`, which for this app is always the
-// model's closing `{"ui":[]}`; the answer the user reads is the `render`
+// `llmJudge` grades `run.finalMessage`, which for this app is the model's
+// closing `{"ui":[]}` or `{}`; the answer the user reads is the `render`
 // tool's prose, so the judge is shown that instead. The criteria never quote
 // the case input: aimock matches `userMessage` by substring and, in record
 // mode, registers every recording in its live matcher, so a judge prompt

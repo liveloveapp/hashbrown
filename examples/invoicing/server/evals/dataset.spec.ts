@@ -85,21 +85,33 @@ describe('assistant eval dataset', () => {
 });
 
 describe('closingIsSilent', () => {
-  test('accepts the prompted closing and the bare object the model often sends', () => {
+  test('accepts the three closings the client renders nothing for', () => {
     expect(closingIsSilent('{"ui":[]}')).toBe(true);
     expect(closingIsSilent(' {} \n')).toBe(true);
+    expect(closingIsSilent('')).toBe(true);
   });
 
   test('rejects prose, because the client shows an error alert for it', () => {
     expect(closingIsSilent('Done, let me know if you need more.')).toMatch(
-      /prose/,
+      /prose .* error alert/,
     );
   });
 
-  test('rejects UI outside render and non-object JSON', () => {
+  test('rejects UI outside render', () => {
     expect(
       closingIsSilent('{"ui":[{"AssistantText":{"props":{"text":"hi"}}}]}'),
     ).toMatch(/UI outside render/);
-    expect(closingIsSilent('[]')).toMatch(/not a JSON object/);
+  });
+
+  test('rejects any other JSON, because the client prints it as text', () => {
+    for (const text of [
+      '[]',
+      'null',
+      '{"ui":null}',
+      '{"text":"hi"}',
+      '{"ui":[],"x":1}',
+    ]) {
+      expect(closingIsSilent(text), text).toMatch(/prints it as text/);
+    }
   });
 });

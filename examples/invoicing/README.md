@@ -90,8 +90,8 @@ expected answers are computed from the generated ledger's facts at load time
 GBP client with the most over 90 days, Cedar Health's open invoice IDs, the
 ambiguous Atlas payment, three payment habits), so the dataset can never
 drift from the data the assistant queries. Scorers check that the model
-renders exactly once and closes silently (a JSON object with no UI, so
-`{"ui":[]}` or the `{}` gpt-5-mini often sends instead), that no tool errored, that
+renders exactly once and closes silently (`{"ui":[]}`, the `{}` gpt-5-mini
+often sends instead, or nothing), that no tool errored, that
 the prose never claims to have allocated anything, that the answer is under
 6,000 characters, that it answers the question (the right rows, customer,
 chart, or habit), and an LLM judge grades the prose for formatted amounts,
@@ -117,8 +117,9 @@ The suite runs on demand, not in CI, by decision. B4 ignores the response
 schema the client sends (finding 2 in
 `docs/superpowers/upstream/2026-09-19-b4-findings.md`), so the prompt's
 closing `{"ui":[]}` is not enforced and four recorded cases close with `{}`.
-The client treats both as silence, so the scorer accepts both; prose in the
-closing message still fails, because the client shows an error alert for it.
+The client renders nothing for either (or for an empty message), so the
+scorer accepts those; prose still fails, because the client shows an error
+alert for it, and any other JSON fails because the client prints it as text.
 
 `server/evals/harness.ts` boots the server in-process against an aimock
 instance and posts each case through the real `/assistant` route with a
