@@ -43,7 +43,25 @@ export interface Recording {
  * the app's first-turn fixture would otherwise answer the judge too. Served
  * once, it is consumed by the app's call and the judge falls through to its
  * own recording.
+ *
+ * One recording is also rewritten. Since the system prompt stopped asking for
+ * a closing message (the `after` hook in `src/middleware.ts` decides it now),
+ * gpt-5-mini ends a run with an empty assistant message, and aimock rejects a
+ * fixture whose `content` is the empty string with no `blocks` ("content is
+ * empty string"), so the tape could not be replayed at all. Such a recording
+ * is stored as `{}` instead: the closing message is inert for this app — the
+ * user reads the `render` echo, no scorer looks at `run.finalMessage`, and in
+ * production `after` replaces the message whatever it was.
  */
+/** A recorded response that says nothing and calls nothing. */
+const emptyClosing = (response: AimockResponse): boolean => {
+  const { content, toolCalls } = response as {
+    content?: unknown;
+    toolCalls?: unknown;
+  };
+  return content === '' && !Array.isArray(toolCalls);
+};
+
 export function recordingsToFixtures(
   recordings: readonly Recording[],
 ): FixtureSet {
@@ -62,7 +80,7 @@ export function recordingsToFixtures(
           .some((m) => m.role === 'tool'),
         sequenceIndex: 0,
       },
-      response: rec.response,
+      response: emptyClosing(rec.response) ? { content: '{}' } : rec.response,
     };
   });
 }

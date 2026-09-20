@@ -12,7 +12,7 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_souocIJZCVZpISs48bVUJHkQ"
+            "id": "call_dWIeLDhogKUET4QrPJD72t4W"
           }
         ]
       }
@@ -29,7 +29,7 @@
           {
             "name": "customerStatement",
             "arguments": "{\"customerId\":\"summit\"}",
-            "id": "call_Zwx8xdfcY81ZtPXWdZHDXVSl"
+            "id": "call_kE6af69fz6VY8HiiTuUTbNTS"
           }
         ]
       }
@@ -45,21 +45,21 @@
         "toolCalls": [
           {
             "name": "render",
-            "arguments": "{\"text\":\"Summit Logistics pays on-time. Summary from their account:\\n\\n- Profile: on-time\\n- Average days to pay: 8 days\\n- Late payment rate: 0%\\n- Last payment date: 2026-09-15\\n- Current open invoices: $0.00\\n- They have one unapplied payment: \\\"ACH SUMMIT OCTOBER ADVANCE\\\" for $3,000.00 (unapplied)\\n\\nThe payment reference indicates they used ACH. If you’d like, I can review that $3,000.00 unapplied payment to suggest invoice matches — tell me to review it and I’ll prepare candidate matches.\",\"components\":[{\"LedgerTable\":{\"title\":\"Unapplied payments from Summit Logistics\",\"recordIds\":[\"payment-summit-advance\"]}},{\"CustomerCard\":{\"customerId\":\"summit\"}}]}",
-            "id": "call_SxXZnSAPKBGkgelbcEqjsk8G"
+            "arguments": "{\"text\":\"Summit Logistics is an “on-time” payer: average days to pay 8 days, late payment rate 0%. Last payment received on 2026-09-15. They currently have no open invoices.\\n\\nTotals for Summit: invoiced \\\"$178,550.00\\\", received \\\"$181,550.00\\\", and an unapplied balance of \\\"$3,000.00\\\". There is one unapplied payment (id: \\\"payment-summit-advance\\\", reference: \\\"ACH SUMMIT OCTOBER ADVANCE\\\", date: 2026-09-15, amount: \\\"$3,000.00\\\"). The payment reference contains “ACH”, which suggests they use ACH transfers.\\n\\nIf you’d like, I can show the unapplied payment for review or attempt to match it to open invoices — tell me if you want to review that payment.\",\"components\":[{\"CustomerCard\":{\"customerId\":\"summit\"}}]}",
+            "id": "call_qdwqHnY69UucZdJk15ufiiqP"
           }
         ]
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summit Logistics pays on-time. Summary from their account:\\n\\n- Profile: on-time\\n- Average days to pay: 8 days\\n- Late payment rate: 0%\\n- Last payment date: 2026-09-15\\n- Current open invoices: $0.00\\n- They have one unapplied payment: \\\"ACH SUMMIT OCTOBER ADVANCE\\\" for $3,000.00 (unapplied)\\n\\nThe payment reference indicates they used ACH. If you’d like, I can review that $3,000.00 unapplied payment to suggest invoice matches — tell me to review it and I’ll prepare candidate matches.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Unapplied payments from Summit Logistics\",\"recordIds\":[\"payment-summit-advance\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"summit\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summit Logistics is an “on-time” payer: average days to pay 8 days, late payment rate 0%. Last payment received on 2026-09-15. They currently have no open invoices.\\n\\nTotals for Summit: invoiced \\\"$178,550.00\\\", received \\\"$181,550.00\\\", and an unapplied balance of \\\"$3,000.00\\\". There is one unapplied payment (id: \\\"payment-summit-advance\\\", reference: \\\"ACH SUMMIT OCTOBER ADVANCE\\\", date: 2026-09-15, amount: \\\"$3,000.00\\\"). The payment reference contains “ACH”, which suggests they use ACH transfers.\\n\\nIf you’d like, I can show the unapplied payment for review or attempt to match it to open invoices — tell me if you want to review that payment.\"},\"children\":[{\"CustomerCard\":{\"props\":{\"customerId\":\"summit\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summit Logistics pays on-time. Summary from their account:\\n\\n- Profile: on-time\\n- Average days to pay: 8 days\\n- Late payment rate: 0%\\n- Last payment date: 2026-09-15\\n- Current open invoices: $0.00\\n- They have one unapplied payment: \\\"ACH SUMMIT OCTOBER ADVANCE\\\" for $3,000.00 (unapplied)\\n\\nThe payment reference indicates they used ACH. If you’d like, I can review that $3,000.00 unapplied payment to suggest invoice matches — tell me to review it and I’ll prepare candidate matches.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Unapplied payments from Summit Logistics\",\"recordIds\":[\"payment-summit-advance\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"summit\"}}}]}}]}"
+        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summit Logistics is an “on-time” payer: average days to pay 8 days, late payment rate 0%. Last payment received on 2026-09-15. They currently have no open invoices.\\n\\nTotals for Summit: invoiced \\\"$178,550.00\\\", received \\\"$181,550.00\\\", and an unapplied balance of \\\"$3,000.00\\\". There is one unapplied payment (id: \\\"payment-summit-advance\\\", reference: \\\"ACH SUMMIT OCTOBER ADVANCE\\\", date: 2026-09-15, amount: \\\"$3,000.00\\\"). The payment reference contains “ACH”, which suggests they use ACH transfers.\\n\\nIf you’d like, I can show the unapplied payment for review or attempt to match it to open invoices — tell me if you want to review that payment.\"},\"children\":[{\"CustomerCard\":{\"props\":{\"customerId\":\"summit\"}}}]}}]}"
       }
     },
     {
@@ -75,13 +75,13 @@
     },
     {
       "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summit Logistics pays on-time. Summary from their account:\n\n- Profile: on-time\n- Average days to pay: 8 days\n- Late payment rate: 0%\n- Last payment date: 2026-09-15\n- Current open invoices: $0.00\n- They have one unapplied payment: \"ACH SUMMIT OCTOBER ADVANCE\" for $3,000.00 (unapplied)\n\nThe payment reference indicates they used ACH. If you’d like, I can review that $3,000.00 unapplied payment to suggest invoice matches — tell me to review it and I’ll prepare candidate matches.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summit Logistics is an “on-time” payer: average days to pay 8 days, late payment rate 0%. Last payment received on 2026-09-15. They currently have no open invoices.\n\nTotals for Summit: invoiced \"$178,550.00\", received \"$181,550.00\", and an unapplied balance of \"$3,000.00\". There is one unapplied payment (id: \"payment-summit-advance\", reference: \"ACH SUMMIT OCTOBER ADVANCE\", date: 2026-09-15, amount: \"$3,000.00\"). The payment reference contains “ACH”, which suggests they use ACH transfers.\n\nIf you’d like, I can show the unapplied payment for review or attempt to match it to open invoices — tell me if you want to review that payment.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"score\": 1, \"reason\": \"Meets all criteria: currency formatted, no allocation/matching claimed, and uses an allowed customer name.\"}"
+        "content": "{\"score\":1,\"reason\":\"Meets all criteria: amounts use currency symbols, no claims of matching/allocating, and customer name is allowed.\"}"
       }
     }
   ]

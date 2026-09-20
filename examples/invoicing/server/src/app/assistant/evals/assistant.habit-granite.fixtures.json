@@ -12,7 +12,7 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_hwJOBhXBpnI7iiAnK7jiCpeP"
+            "id": "call_4BCTVBMb6eiPveaBVoBUWhdF"
           }
         ]
       }
@@ -29,7 +29,7 @@
           {
             "name": "customerStatement",
             "arguments": "{\"customerId\":\"granite\"}",
-            "id": "call_KBkvlSiyRVcfjHY8CkwdYqua"
+            "id": "call_T9PcZhyLT7LJzRTtWqFaRIjn"
           }
         ]
       }
@@ -45,21 +45,21 @@
         "toolCalls": [
           {
             "name": "render",
-            "arguments": "{\"text\":\"Summary for Granite Mutual:\\n\\n- Profile: “short-payer” (system label).\\n- Timing: averageDaysToPay is 6 days — they pay fairly promptly.\\n- Punctuality: latePaymentRate is 0% and lastPaymentDate is \\\"2026-09-06\\\" — they don’t usually pay late.\\n- Short pays: total invoiced $220,250.00 vs received $215,845.00, leaving an open balance of $4,405.00 — they typically remit nearly the full invoice but leave small shortfalls (many invoices show outstanding amounts like \\\"$138.00\\\", \\\"$90.00\\\", etc.).\\n- Payment pattern: frequent full monthly invoices (~$6,600–$6,900) with smaller partial payments (P1/P2/P3 items) that leave small remaining balances.\\n\\nIf you’d like, I can show their recent invoices (below) or review specific payments for matching.\", \"components\":[{\"LedgerTable\":{\"title\":\"Recent Granite invoices\",\"recordIds\":[\"invoice-granite-2026-09\",\"invoice-granite-2026-08-p2\",\"invoice-granite-2026-08\",\"invoice-granite-2026-07-p1\",\"invoice-granite-2026-07\",\"invoice-granite-2026-06\"]}},{\"CustomerCard\":{\"customerId\":\"granite\"}}]}",
-            "id": "call_LZLzk2anRYDIngxEQpFIfLMz"
+            "arguments": "{\"text\":\"Summary — how Granite Mutual pays\\n\\n- Profile: \\\"short-payer\\\" — they usually pay quickly but tend to underpay slightly.\\n- Speed: average days to pay = 6 days.\\n- Timeliness: late payment rate = 0% (they are not generally late).\\n- Amounts: invoiced \\\"$220,250.00\\\", received \\\"$215,845.00\\\", currently open \\\"$4,405.00\\\" across 41 open invoices (many small residuals around $90–$138 each).\\n- Last payment date: 2026-09-06.\\n\\nInterpretation: expect prompt payments, often as partials or with small shortfalls that leave low outstanding balances on many invoices. If you want to clear those residuals, I can show the open invoices for review.\", \"components\":[{\"CustomerCard\":{\"customerId\":\"granite\"}}]}",
+            "id": "call_RKZWX7fEIcJgNTWhxXBrkyfr"
           }
         ]
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary for Granite Mutual:\\n\\n- Profile: “short-payer” (system label).\\n- Timing: averageDaysToPay is 6 days — they pay fairly promptly.\\n- Punctuality: latePaymentRate is 0% and lastPaymentDate is \\\"2026-09-06\\\" — they don’t usually pay late.\\n- Short pays: total invoiced $220,250.00 vs received $215,845.00, leaving an open balance of $4,405.00 — they typically remit nearly the full invoice but leave small shortfalls (many invoices show outstanding amounts like \\\"$138.00\\\", \\\"$90.00\\\", etc.).\\n- Payment pattern: frequent full monthly invoices (~$6,600–$6,900) with smaller partial payments (P1/P2/P3 items) that leave small remaining balances.\\n\\nIf you’d like, I can show their recent invoices (below) or review specific payments for matching.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Recent Granite invoices\",\"recordIds\":[\"invoice-granite-2026-09\",\"invoice-granite-2026-08-p2\",\"invoice-granite-2026-08\",\"invoice-granite-2026-07-p1\",\"invoice-granite-2026-07\",\"invoice-granite-2026-06\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"granite\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary — how Granite Mutual pays\\n\\n- Profile: \\\"short-payer\\\" — they usually pay quickly but tend to underpay slightly.\\n- Speed: average days to pay = 6 days.\\n- Timeliness: late payment rate = 0% (they are not generally late).\\n- Amounts: invoiced \\\"$220,250.00\\\", received \\\"$215,845.00\\\", currently open \\\"$4,405.00\\\" across 41 open invoices (many small residuals around $90–$138 each).\\n- Last payment date: 2026-09-06.\\n\\nInterpretation: expect prompt payments, often as partials or with small shortfalls that leave low outstanding balances on many invoices. If you want to clear those residuals, I can show the open invoices for review.\"},\"children\":[{\"CustomerCard\":{\"props\":{\"customerId\":\"granite\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary for Granite Mutual:\\n\\n- Profile: “short-payer” (system label).\\n- Timing: averageDaysToPay is 6 days — they pay fairly promptly.\\n- Punctuality: latePaymentRate is 0% and lastPaymentDate is \\\"2026-09-06\\\" — they don’t usually pay late.\\n- Short pays: total invoiced $220,250.00 vs received $215,845.00, leaving an open balance of $4,405.00 — they typically remit nearly the full invoice but leave small shortfalls (many invoices show outstanding amounts like \\\"$138.00\\\", \\\"$90.00\\\", etc.).\\n- Payment pattern: frequent full monthly invoices (~$6,600–$6,900) with smaller partial payments (P1/P2/P3 items) that leave small remaining balances.\\n\\nIf you’d like, I can show their recent invoices (below) or review specific payments for matching.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Recent Granite invoices\",\"recordIds\":[\"invoice-granite-2026-09\",\"invoice-granite-2026-08-p2\",\"invoice-granite-2026-08\",\"invoice-granite-2026-07-p1\",\"invoice-granite-2026-07\",\"invoice-granite-2026-06\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"granite\"}}}]}}]}"
+        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary — how Granite Mutual pays\\n\\n- Profile: \\\"short-payer\\\" — they usually pay quickly but tend to underpay slightly.\\n- Speed: average days to pay = 6 days.\\n- Timeliness: late payment rate = 0% (they are not generally late).\\n- Amounts: invoiced \\\"$220,250.00\\\", received \\\"$215,845.00\\\", currently open \\\"$4,405.00\\\" across 41 open invoices (many small residuals around $90–$138 each).\\n- Last payment date: 2026-09-06.\\n\\nInterpretation: expect prompt payments, often as partials or with small shortfalls that leave low outstanding balances on many invoices. If you want to clear those residuals, I can show the open invoices for review.\"},\"children\":[{\"CustomerCard\":{\"props\":{\"customerId\":\"granite\"}}}]}}]}"
       }
     },
     {
@@ -70,18 +70,18 @@
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[]}"
+        "content": "{}"
       }
     },
     {
       "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summary for Granite Mutual:\n\n- Profile: “short-payer” (system label).\n- Timing: averageDaysToPay is 6 days — they pay fairly promptly.\n- Punctuality: latePaymentRate is 0% and lastPaymentDate is \"2026-09-06\" — they don’t usually pay late.\n- Short pays: total invoiced $220,250.00 vs received $215,845.00, leaving an open balance of $4,405.00 — they typically remit nearly the full invoice but leave small shortfalls (many invoices show outstanding amounts like \"$138.00\", \"$90.00\", etc.).\n- Payment pattern: frequent full monthly invoices (~$6,600–$6,900) with smaller partial payments (P1/P2/P3 items) that leave small remaining balances.\n\nIf you’d like, I can show their recent invoices (below) or review specific payments for matching.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summary — how Granite Mutual pays\n\n- Profile: \"short-payer\" — they usually pay quickly but tend to underpay slightly.\n- Speed: average days to pay = 6 days.\n- Timeliness: late payment rate = 0% (they are not generally late).\n- Amounts: invoiced \"$220,250.00\", received \"$215,845.00\", currently open \"$4,405.00\" across 41 open invoices (many small residuals around $90–$138 each).\n- Last payment date: 2026-09-06.\n\nInterpretation: expect prompt payments, often as partials or with small shortfalls that leave low outstanding balances on many invoices. If you want to clear those residuals, I can show the open invoices for review.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"score\": 1.0, \"reason\": \"Meets all criteria: currency values use a symbol and formatting, no claims of changing/matching/allocating, and customer name is on the allowed list.\"}"
+        "content": "{\"score\":1,\"reason\":\"Meets criteria: amounts use currency symbols, no claims of changes/matching/allocation, customer name allowed.\"}"
       }
     }
   ]
