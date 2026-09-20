@@ -4,21 +4,19 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@b4run/cli": "0.8.36",
-    "@b4run/langchain": "0.8.36",
-    "@b4run/postgres-storage": "0.8.36",
-    "@b4run/sdk": "0.8.36",
+    "@b4run/cli": "0.9.0",
+    "@b4run/langchain": "0.9.0",
+    "@b4run/postgres-storage": "0.9.0",
+    "@b4run/sdk": "0.9.0",
     "@neondatabase/serverless": "^1.1.0",
     "drizzle-orm": "0.45.2",
     "hono": "^4.13.8",
     "pg": "^8.23.0"
   },
   "devDependencies": {
-    "@b4run/core": "0.8.36",
-    "@b4run/evals": "0.8.36",
-    "@b4run/sqlite-storage": "0.8.36",
-    "@b4run/testing": "0.8.36",
-    "@langchain/langgraph-checkpoint": "1.1.5",
+    "@b4run/core": "0.9.0",
+    "@b4run/evals": "0.9.0",
+    "@b4run/testing": "0.9.0",
     "@types/pg": "^8.23.1"
   }
 }

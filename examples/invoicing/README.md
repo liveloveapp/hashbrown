@@ -53,7 +53,7 @@ of this example's design; the root Zod 4 migration was separately approved.
 ## Run locally
 
 The server pins published `@b4run/cli`, `@b4run/langchain`, and `@b4run/sdk`
-packages at **0.8.36** in its private npm workspace. A separate B4 checkout or
+packages at **0.9.0** in its private npm workspace. A separate B4 checkout or
 local package-linking step is no longer required.
 
 From the repository root:
@@ -113,19 +113,28 @@ argument filters by case name or by the eval file's basename
 `assistant.<case>.fixtures.json` per case, next to the eval file, and are
 committed: each holds every model call the case made, the LLM judge's
 included, so replay needs no network and reproduces the record run's report.
-The suite runs on demand, not in CI, by decision. B4 ignores the response
-schema the client sends (finding 2 in
-`docs/superpowers/upstream/2026-09-19-b4-findings.md`), so the prompt's
-closing `{"ui":[]}` is not enforced and four recorded cases close with `{}`.
-The client renders nothing for either (or for an empty message), so the
-scorer accepts those; prose still fails, because the client shows an error
-alert for it, and any other JSON fails because the client prints it as text.
+The suite runs on demand, not in CI, by decision. In production, B4 0.9.0
+applies the `hashbrown.responseSchema` the client sends as a strict OpenAI
+`json_schema` response format on the root model (or rejects the run with 422
+on a provider that cannot), so the closing message is schema-enforced there
+(finding 2 in `docs/superpowers/upstream/2026-09-19-b4-findings.md`). The
+eval harness calls the agent directly and sends no client body, so nothing
+enforces it in the evals, and the committed tapes, recorded before that fix,
+have four cases closing with `{}` instead of `{"ui":[]}`. The client renders
+nothing for either (or for an empty message), so the scorer accepts those;
+prose still fails, because the client shows an error alert for it, and any
+other JSON fails because the client prints it as text.
 
-`server/evals/harness.ts` boots the server in-process against an aimock
-instance and posts each case through the real `/assistant` route with a
-session cookie, because B4's `createAgentHarness` runs no route middleware
-and the assistant's tools read their ledger from it. It should be removed
-when `createAgentHarness` gains a `middlewareContext` option.
+`server/evals/harness.ts` wraps B4's `createAgentHarness` (which gained a
+`middlewareContext` option in 0.9.0) with the context
+`server/src/assistant-middleware.ts` would build for a fresh session on the
+sample ledger (`assistantContext`, shared by both so they cannot drift), so
+each case runs through the real agent, tools and `render` with no HTTP
+server, session cookie or storage. Record mode chains a second aimock
+behind the harness's own so each case's tape, the LLM judge's calls
+included, is cut with the app's own fixture keying
+(`server/evals/fixtures.ts`), which the harness's `getRecordedFixtures()`
+would not replay for the nested `render` echo call.
 
 ## Deployment
 

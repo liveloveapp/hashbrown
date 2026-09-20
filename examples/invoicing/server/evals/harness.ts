@@ -1,283 +1,154 @@
-import { createRuntimeRequestListener } from '@b4run/cli/runtime';
-import { createThreadsStore } from '@b4run/sqlite-storage';
 import {
+  type AgentHarness,
+  type AgentRunResult,
   type Aimock,
+  createAgentHarness,
   createAimock,
   type FixtureSet,
   type ScriptBuilder,
 } from '@b4run/testing';
-import { assistantResponseSchema } from '@invoicing/contracts';
-import { MemorySaver } from '@langchain/langgraph-checkpoint';
-import { randomUUID } from 'node:crypto';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { createServer, type Server } from 'node:http';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import handler from '../src/api';
-import middleware from '../src/middleware';
-import { collectRun, type InvoicingRunResult } from './collect-run';
+import { assistantContext } from '../src/assistant-middleware';
+import { getSnapshot } from '../src/ledger';
+import { createSampleLedger } from '../src/sample-ledger';
 import { recordingsToFixtures } from './fixtures';
 
 export type HarnessMode = 'replay' | 'record' | 'live';
 
-/** A point in the aimock journal; recordings are windowed between two of them. */
-export interface RecordMark {
-  readonly journalStart: number;
-  readonly fixtureStart: number;
-}
-
 export interface InvoicingHarness {
-  /** Origin of the in-process server, e.g. `http://127.0.0.1:51234`. */
-  readonly baseUrl: string;
-  /** Send one user turn on a fresh thread through the real assistant route. */
+  /** Send one user turn on a fresh thread through the `/assistant` agent. */
   run(opts: {
     input: string;
     fixtures?: FixtureSet | ScriptBuilder;
-    state?: Record<string, unknown>;
-  }): Promise<InvoicingRunResult>;
-  /** Where the aimock journal stands now; any mode. */
-  mark(): RecordMark;
+  }): Promise<AgentRunResult>;
   /**
-   * Fixtures for every model call proxied since `mark`, up to `until` when
-   * given; record mode only. Scorers such as an LLM judge call the model
-   * after `run()` returns, so a case's tape is everything between its own
-   * mark and the next case's.
+   * Fixtures for every model call made since the most recent `run()` began,
+   * up to now; record mode only. Scorers such as the LLM judge call the model
+   * after `run()` returns, so read this just before the next `run()` (or once
+   * the whole eval has resolved) to get a case's complete tape.
    */
-  recordedFixturesSince(mark: RecordMark, until?: RecordMark): FixtureSet;
-  /** `recordedFixturesSince` from the last `run()`'s mark; record mode only. */
-  lastRecordedFixtures(): FixtureSet;
+  getRecordedFixtures(): FixtureSet;
   close(): Promise<void>;
 }
 
-const envKeys = ['OPENAI_BASE_URL', 'OPENAI_API_KEY', 'DATABASE_URL'] as const;
+/** The B4 app root: the server directory. */
+export const appRoot = fileURLToPath(new URL('..', import.meta.url));
 
-const appRoot = fileURLToPath(new URL('..', import.meta.url));
+/**
+ * What `assistant-middleware.ts` hands the tools for a fresh session: the
+ * untouched sample ledger, the same base every server session materializes.
+ * `createAgentHarness` invokes the agent directly, so the route middleware
+ * never runs and this stands in for it.
+ */
+export function evalMiddlewareContext() {
+  const snapshot = getSnapshot(createSampleLedger());
+  return assistantContext(async () => snapshot);
+}
 
-/** The AG-UI body the React client posts to `/assistant`. */
-function assistantBody(
-  threadId: string,
-  input: string,
-  state: Record<string, unknown>,
-) {
-  return {
-    threadId,
-    runId: randomUUID(),
-    messages: [{ id: randomUUID(), role: 'user', content: input }],
-    tools: [],
-    context: [],
-    state,
-    forwardedProps: {},
-    hashbrown: { ui: true, responseSchema: assistantResponseSchema },
+/**
+ * Load `INVOICING_ENV_FILE` (if set) into `process.env`, exactly as `serve`
+ * does, and return a function that puts the environment back as it was
+ * found: variables the file added are removed, ones it changed are restored.
+ */
+function loadEnvFile(): () => void {
+  const before: Record<string, string | undefined> = { ...process.env };
+  const envFile = process.env['INVOICING_ENV_FILE'];
+  if (envFile) process.loadEnvFile(envFile);
+  return () => {
+    for (const key of Object.keys(process.env))
+      if (!(key in before)) delete process.env[key];
+    for (const [key, value] of Object.entries(before)) process.env[key] = value;
   };
 }
 
-function toFixtures(fixtures: FixtureSet | ScriptBuilder | undefined) {
-  if (!fixtures) return [];
-  return Array.isArray(fixtures) ? fixtures : fixtures.build();
-}
-
-/** The environment as it stood before the harness touched it. */
-interface EnvSnapshot {
-  /** Values of the variables the harness itself overrides. */
-  readonly values: Record<string, string | undefined>;
-  /** Variables that `INVOICING_ENV_FILE` added; they are removed on close. */
-  readonly added: readonly string[];
-}
-
 /**
- * Snapshot the variables the harness overrides, then load the env file (if
- * any) and note every variable it added, so close() leaves `process.env`
- * exactly as it was found.
- */
-function snapshotAndLoadEnv(): EnvSnapshot {
-  const values = Object.fromEntries(envKeys.map((k) => [k, process.env[k]]));
-  const before = new Set(Object.keys(process.env));
-  const envFile = process.env['INVOICING_ENV_FILE'];
-  if (envFile) process.loadEnvFile(envFile);
-  const added = Object.keys(process.env).filter((k) => !before.has(k));
-  return { values, added };
-}
-
-/** Restore each remembered variable and drop the ones the env file added. */
-function restoreEnv(previous: EnvSnapshot) {
-  for (const key of previous.added) delete process.env[key];
-  for (const key of envKeys) {
-    const value = previous.values[key];
-    if (value === undefined) delete process.env[key];
-    else process.env[key] = value;
-  }
-}
-
-function listen(server: Server): Promise<number> {
-  return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address();
-      if (!address || typeof address === 'string')
-        reject(new Error('server did not bind a TCP port'));
-      else resolve(address.port);
-    });
-  });
-}
-
-function startAimock(mode: HarnessMode, upstream: string): Promise<Aimock> {
-  if (mode === 'replay') return createAimock({ fixtures: [] });
-  return createAimock({
-    fixtures: [],
-    proxy: { openai: upstream },
-    ...(mode === 'record' ? { record: true } : {}),
-  });
-}
-
-/**
- * Boot the invoicing server in-process, exactly as `main.ts` wires it, with
- * the model pointed at an aimock so evals replay recorded fixtures, record new
- * ones against the real API, or run live. Storage is isolated from `b4 dev`:
- * memory repositories (so a developer's `DATABASE_URL` never receives eval
- * sessions), an in-memory checkpointer, and a threads store in a temp dir
- * that is removed on close.
+ * Drive the `/assistant` agent through B4's `createAgentHarness` with the
+ * middleware context the tools expect, the model pointed at an aimock so
+ * evals replay recorded fixtures, record new ones against the real API, or
+ * run live.
+ *
+ * Record mode chains a second aimock behind the harness's own: the harness
+ * proxies to it, and it proxies to the real API and keeps the raw request and
+ * response of every call. `AgentHarness.getRecordedFixtures()` re-keys
+ * recordings by their ordinal and the first user message, which does not
+ * replay for this app (see `recordingsToFixtures` in `fixtures.ts`), and the
+ * harness does not expose its journal, so the tape is cut here instead.
  */
 export async function createInvoicingHarness(opts: {
   mode: HarnessMode;
   recordUpstream?: string;
 }): Promise<InvoicingHarness> {
-  const previous = snapshotAndLoadEnv();
-  if (opts.mode === 'replay') process.env['OPENAI_API_KEY'] = 'mock';
-  else if (!process.env['OPENAI_API_KEY'])
+  const restoreEnv = loadEnvFile();
+  if (opts.mode !== 'replay' && !process.env['OPENAI_API_KEY']) {
+    restoreEnv();
     throw new Error(
       `Set OPENAI_API_KEY or INVOICING_ENV_FILE to run the evals in ${opts.mode} mode.`,
     );
-  delete process.env['DATABASE_URL'];
+  }
 
-  let aimock: Aimock | undefined;
-  let storageDir: string | undefined;
+  let tape: Aimock | undefined;
+  let harness: AgentHarness | undefined;
   try {
-    aimock = await startAimock(
-      opts.mode,
-      opts.recordUpstream ?? 'https://api.openai.com',
-    );
-    process.env['OPENAI_BASE_URL'] = aimock.baseUrl;
-    storageDir = mkdtempSync(join(tmpdir(), 'invoicing-evals-'));
-    return await boot(opts.mode, aimock, storageDir, previous);
+    if (opts.mode === 'record')
+      tape = await createAimock({
+        fixtures: [],
+        proxy: { openai: opts.recordUpstream ?? 'https://api.openai.com' },
+        record: true,
+      });
+    harness = await createAgentHarness({
+      appRoot,
+      route: '/assistant#agent',
+      middlewareContext: evalMiddlewareContext(),
+      live: opts.mode === 'live',
+      record: opts.mode === 'record',
+      // aimock appends the request path, so the upstream is the origin only.
+      ...(tape ? { recordUpstream: new URL(tape.baseUrl).origin } : {}),
+    });
   } catch (error) {
-    if (storageDir) rmSync(storageDir, { recursive: true, force: true });
     try {
-      await aimock?.close();
+      await harness?.close();
     } finally {
-      restoreEnv(previous);
+      try {
+        await tape?.close();
+      } finally {
+        restoreEnv();
+      }
     }
     throw error;
   }
-}
 
-async function boot(
-  mode: HarnessMode,
-  aimock: Aimock,
-  storageDir: string,
-  previousEnv: EnvSnapshot,
-): Promise<InvoicingHarness> {
-  const runtime = await createRuntimeRequestListener({
-    appRoot,
-    middleware,
-    checkpointer: new MemorySaver(),
-    threadsStore: createThreadsStore({
-      path: join(storageDir, 'threads.sqlite'),
-    }),
-  });
-  const server = createServer((request, response) => {
-    const path = new URL(request.url ?? '/', 'http://localhost').pathname;
-    if (
-      path.startsWith('/agui/') ||
-      path.startsWith('/threads') ||
-      path === '/healthz'
-    )
-      runtime.listener(request, response);
-    else void handler(request, response);
-  });
-  let port: number;
-  try {
-    port = await listen(server);
-  } catch (error) {
-    await runtime.close();
-    throw error;
-  }
-  const baseUrl = `http://127.0.0.1:${port}`;
-  let lastWindow: RecordMark | undefined;
-  const mark = (): RecordMark => ({
-    journalStart: aimock.getRequests().length,
-    fixtureStart: aimock.getFixtureCount(),
-  });
-  const recordedFixturesSince = (from: RecordMark, until?: RecordMark) => {
-    if (mode !== 'record')
-      throw new Error('recorded fixtures are only available in record mode');
-    const recordings = aimock.getRecordingsSince(
-      from.journalStart,
-      from.fixtureStart,
-    );
-    return recordingsToFixtures(
-      until
-        ? recordings.slice(0, until.fixtureStart - from.fixtureStart)
-        : recordings,
-    );
-  };
-
+  const agent = harness;
+  let journalStart = 0;
+  let fixtureStart = 0;
   return {
-    baseUrl,
-    async run({ input, fixtures, state = {} }) {
-      if (mode === 'replay') {
-        aimock.clearFixtures();
-        aimock.addFixtures(toFixtures(fixtures));
-      } else if (mode === 'record') {
-        lastWindow = mark();
+    async run({ input, fixtures }) {
+      // A fresh thread per case, and in replay no fixture left over from the
+      // previous case (the harness registers fixtures additively).
+      agent.reset();
+      if (tape) {
+        // Recordings register as live fixtures on the tape as they are made;
+        // drop the previous case's so they can never answer this one.
+        tape.clearFixtures();
+        journalStart = tape.getRequests().length;
+        fixtureStart = tape.getFixtureCount();
       }
-      const session = await fetch(`${baseUrl}/api/snapshot`);
-      const cookie = session.headers.getSetCookie()[0]?.split(';')[0];
-      if (!session.ok || !cookie)
-        throw new Error(
-          `GET /api/snapshot did not open a session: ${session.status} ${await session.text()}`,
-        );
-      const threadId = randomUUID();
-      const response = await fetch(`${baseUrl}/agui/%2Fassistant%23agent`, {
-        method: 'POST',
-        headers: { cookie, 'content-type': 'application/json' },
-        body: JSON.stringify(assistantBody(threadId, input, state)),
-      });
-      if (response.status !== 200)
-        throw new Error(
-          `POST /assistant failed: ${response.status} ${await response.text()}`,
-        );
-      return collectRun(response, threadId);
+      return agent.run({ input, ...(fixtures ? { fixtures } : {}) });
     },
-    mark,
-    recordedFixturesSince,
-    lastRecordedFixtures() {
-      if (mode !== 'record')
-        throw new Error(
-          'lastRecordedFixtures is only available in record mode',
-        );
-      return lastWindow ? recordedFixturesSince(lastWindow) : [];
+    getRecordedFixtures() {
+      if (!tape)
+        throw new Error('recorded fixtures are only available in record mode');
+      return recordingsToFixtures(
+        tape.getRecordingsSince(journalStart, fixtureStart),
+      );
     },
     async close() {
-      // Same order as main.ts: stop accepting, drain the runtime, then drop
-      // whatever connections are still open. Each step runs even if an
-      // earlier one rejects.
-      const closed = new Promise<void>((resolve, reject) =>
-        server.close((error) => (error ? reject(error) : resolve())),
-      );
       try {
-        await runtime.close();
+        await agent.close();
       } finally {
-        server.closeAllConnections();
         try {
-          await closed;
+          await tape?.close();
         } finally {
-          try {
-            await aimock.close();
-          } finally {
-            rmSync(storageDir, { recursive: true, force: true });
-            restoreEnv(previousEnv);
-          }
+          restoreEnv();
         }
       }
     },

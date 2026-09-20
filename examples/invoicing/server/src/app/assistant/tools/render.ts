@@ -1,11 +1,6 @@
 import type { B4ToolContext } from '@b4run/sdk';
 import { createChatModel } from '@b4run/langchain';
-// B4's schema compiler builds its own TypeScript program without the app's tsconfig `paths`, so an
-// `@invoicing/contracts` import resolves to nothing and the derived schema becomes `{}`; a relative
-// import is the only thing it can see. Tracked as an upstream B4 issue: see "Upstream findings", item 3, in
-// docs/superpowers/specs/2026-09-19-invoicing-generative-ui-design.md.
-// eslint-disable-next-line @nx/enforce-module-boundaries
-import type { AssistantRenderInput } from '../../../../../shared/src/assistant-ui';
+import type { AssistantRenderInput } from '@invoicing/contracts';
 import { assistantTools } from '../../../assistant-tools';
 import { renderUi } from '../../../assistant-ui';
 
