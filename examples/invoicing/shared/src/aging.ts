@@ -27,6 +27,13 @@ export function daysBetween(from: string, to: string): number {
   );
 }
 
+/** The month `offset` months after `first`, as YYYY-MM. Negative offsets walk backwards. */
+export function monthAt(first: string, offset: number): string {
+  const [year, month] = first.split('-').map(Number);
+  const index = year * 12 + (month - 1) + offset;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+}
+
 /** Which aging bucket an open invoice falls in on `asOf`. */
 export function agingBucket(
   invoiceDate: string,

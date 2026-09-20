@@ -7,12 +7,10 @@ import {
   type LedgerSnapshot,
 } from '@invoicing/contracts';
 import {
-  AgingSummary,
   assistantKit,
   AssistantText,
   CustomerCard,
   LedgerTable,
-  TrendChart,
 } from './assistant-kit';
 import { SnapshotContext } from './snapshot-context';
 
@@ -79,54 +77,60 @@ test('AssistantText renders prose and its children', () => {
   expect(screen.getByText('Cedar Health')).toBeVisible();
 });
 
-test('LedgerTable resolves ids from the snapshot and reports missing ones', () => {
+test('LedgerTable renders a Pretable grid of resolved rows and reports missing ones', () => {
   withSnapshot(<LedgerTable title="Rows" recordIds={['i', 'p', 'nope']} />);
 
   expect(screen.getByRole('heading', { name: 'Rows' })).toBeVisible();
+  expect(screen.getByRole('grid', { name: 'Rows' })).toBeVisible();
   expect(screen.getByText('INV-1')).toBeVisible();
   expect(screen.getByText('ACH 1')).toBeVisible();
+  expect(screen.getByText('Invoice')).toBeVisible();
+  expect(screen.getByText('Payment')).toBeVisible();
+  // INV-1 is fully outstanding, so its amount and balance both read $250.00.
+  expect(screen.getAllByText('$250.00')).toHaveLength(2);
   expect(screen.getByText('1 record could not be shown.')).toBeVisible();
 });
 
-test('TrendChart lists the last calendar months for a currency, zero-filled', () => {
-  withSnapshot(<TrendChart currency="USD" customerId={null} months={3} />);
+test('LedgerTable omits the missing note when every id resolves', () => {
+  withSnapshot(<LedgerTable title="All" recordIds={['i', 'i', 'p']} />);
 
-  expect(screen.getByText('Jul 2026')).toBeVisible();
-  expect(screen.getByText('Aug 2026')).toBeVisible();
-  expect(screen.getByText('Sep 2026')).toBeVisible();
-  expect(screen.getByText('$250.00')).toBeVisible();
-  expect(screen.getAllByText('$0.00').length).toBeGreaterThan(0);
-});
-
-test('TrendChart clamps months so a malformed value cannot render an unbounded table', () => {
-  withSnapshot(<TrendChart currency="USD" customerId={null} months={5000} />);
-
-  expect(screen.getAllByRole('row').length).toBeLessThanOrEqual(25);
+  expect(screen.getByText('INV-1')).toBeVisible();
+  expect(screen.getByText('ACH 1')).toBeVisible();
+  expect(screen.queryByText(/could not be shown/)).toBeNull();
 });
 
 test('LedgerTable dedupes repeated ids and counts missing ones once', () => {
   withSnapshot(
-    <LedgerTable title="Rows" recordIds={['i', 'i', 'nope', 'nope']} />,
+    <LedgerTable title="Dup" recordIds={['i', 'i', 'nope', 'nope']} />,
   );
 
   expect(screen.getAllByText('INV-1')).toHaveLength(1);
   expect(screen.getByText('1 record could not be shown.')).toBeVisible();
 });
 
-test('AgingSummary buckets open invoices as of the ledger date', () => {
-  withSnapshot(<AgingSummary currency="USD" customerId="c" />);
+test('LedgerTable with no ids renders the heading and no missing note', () => {
+  withSnapshot(<LedgerTable title="Empty" recordIds={[]} />);
 
-  expect(screen.getByText('31-60 days')).toBeVisible();
-  expect(screen.getAllByText('$250.00').length).toBeGreaterThan(0);
+  expect(screen.getByRole('heading', { name: 'Empty' })).toBeVisible();
+  expect(screen.queryByText(/could not be shown/)).toBeNull();
 });
 
-test('CustomerCard shows habit and balances', () => {
+test('LedgerTable renders nothing without a snapshot', () => {
+  render(<LedgerTable title="None" recordIds={['i']} />);
+
+  expect(screen.queryByRole('heading', { name: 'None' })).toBeNull();
+});
+
+test('CustomerCard shows habit badge, balances and payment figures', () => {
   withSnapshot(<CustomerCard customerId="c" />);
 
-  expect(screen.getByText('Cedar Health')).toBeVisible();
-  expect(screen.getByText(/on-time/)).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Cedar Health' })).toBeVisible();
+  expect(screen.getByText('On time')).toBeVisible();
+  expect(screen.getByText('USD')).toBeVisible();
   expect(screen.getByText('$250.00')).toBeVisible();
-  expect(screen.getByText('$100.00')).toBeVisible();
+  expect(screen.getAllByText('$100.00')).toHaveLength(2);
+  expect(screen.getByText('$300.00')).toBeVisible();
+  expect(screen.getByText('No applied payments')).toBeVisible();
 });
 
 test('the React kit produces the exact schema the server expects', () => {
