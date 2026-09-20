@@ -1856,7 +1856,6 @@ export const NullType: HashbrownTypeCtor<NullType> = HashbrownTypeCtor({
   toJsonSchemaImpl: (schema: any) => {
     return {
       type: 'null',
-      const: schema[internal].definition.value,
       description: schema[internal].definition.description,
     };
   },
