@@ -12,7 +12,7 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_Cv5R6FYc98ZskhNlHsiT9WeS"
+            "id": "call_QbvEBvvQCZVo09sz1b7FHxdV"
           }
         ]
       }
@@ -29,7 +29,7 @@
           {
             "name": "monthlyTotals",
             "arguments": "{\"currency\":\"EUR\",\"months\":12}",
-            "id": "call_rPpCrD31iwLcw22tF9iHsYk6"
+            "id": "call_wP6y3QYcDhbAVkDhb4Edz2xI"
           }
         ]
       }
@@ -45,21 +45,21 @@
         "toolCalls": [
           {
             "name": "render",
-            "arguments": "{\"text\":\"Summary of EUR invoicing (last 12 months shown Oct 2025 → Sep 2026):\\n\\n- Monthly range: invoiced between €12,600.00 and €24,100.00. Peak invoicing was €24,100.00 in 2026-07; the lowest months were €12,600.00 in 2026-03 and €12,600.00 in 2026-09.\\n- Year-to-date (Jan–Sep 2026) invoiced total: approximately €158,650.00 (9 months). Average ≈ €17,627.78/month.\\n- Pattern: invoicing is variable month-to-month with 2–3 clear peaks (Jan, Apr, Jul) and troughs in Mar and Sep.\\n- Collections vs invoicing: some months show strong receipts exceeding that month’s invoicing (e.g. 2026-02 received €29,600.00 vs invoiced €14,600.00; 2026-05 received €28,100.00 vs invoiced €17,100.00; 2026-08 received €33,100.00 vs invoiced €18,350.00), indicating large collections of prior billed amounts in those months. Other months show receipts lagging current invoicing (e.g. 2026-01 invoiced €21,350.00 vs received €13,100.00; 2026-03 invoiced €12,600.00 vs received €8,100.00).\\n\\nIf you’d like, I can:\\n- Show the month-by-month table behind the chart; or\\n- Break this down by EUR customers (Lumen Fintech, Orbital Media); or\\n- Compare EUR month-over-month to GBP/USD.\\n\\n(Chart below.)\",\"components\":[{\"TrendChart\":{\"currency\":\"EUR\",\"months\":12}}]}",
-            "id": "call_wgV9coGhyJ1ZONOsRMfE7u4P"
+            "arguments": "{\"text\":\"Summary — EUR invoicing (Jan–Sep 2026):\\n\\n- Total invoiced (Jan–Sep): €158,650.00\\n- Average per month (Jan–Sep): ≈ €17,627.78\\n- Highest month: July — \\\"€24,100.00\\\"\\n- Lowest months: March and September — both \\\"€12,600.00\\\"\\n- Notable collection activity: February received \\\"€29,600.00\\\" vs invoiced \\\"€14,600.00\\\"; August received \\\"€33,100.00\\\" vs invoiced \\\"€18,350.00\\\" (suggests receipts include prior-period collections).\\n- Current open EUR balance: \\\"€4,500.00\\\" (1 open invoice, no unapplied payments).\\n\\nWould you like the same chart for a single EUR customer, a 24-month view, or the underlying invoice list for any specific month?\",\"components\":[{\"TrendChart\":{\"currency\":\"EUR\",\"months\":12}}]}",
+            "id": "call_hKOOx2mwy8rpir2FuW5QAF5w"
           }
         ]
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary of EUR invoicing (last 12 months shown Oct 2025 → Sep 2026):\\n\\n- Monthly range: invoiced between €12,600.00 and €24,100.00. Peak invoicing was €24,100.00 in 2026-07; the lowest months were €12,600.00 in 2026-03 and €12,600.00 in 2026-09.\\n- Year-to-date (Jan–Sep 2026) invoiced total: approximately €158,650.00 (9 months). Average ≈ €17,627.78/month.\\n- Pattern: invoicing is variable month-to-month with 2–3 clear peaks (Jan, Apr, Jul) and troughs in Mar and Sep.\\n- Collections vs invoicing: some months show strong receipts exceeding that month’s invoicing (e.g. 2026-02 received €29,600.00 vs invoiced €14,600.00; 2026-05 received €28,100.00 vs invoiced €17,100.00; 2026-08 received €33,100.00 vs invoiced €18,350.00), indicating large collections of prior billed amounts in those months. Other months show receipts lagging current invoicing (e.g. 2026-01 invoiced €21,350.00 vs received €13,100.00; 2026-03 invoiced €12,600.00 vs received €8,100.00).\\n\\nIf you’d like, I can:\\n- Show the month-by-month table behind the chart; or\\n- Break this down by EUR customers (Lumen Fintech, Orbital Media); or\\n- Compare EUR month-over-month to GBP/USD.\\n\\n(Chart below.)\"},\"children\":[{\"TrendChart\":{\"props\":{\"currency\":\"EUR\",\"customerId\":null,\"months\":12}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary — EUR invoicing (Jan–Sep 2026):\\n\\n- Total invoiced (Jan–Sep): €158,650.00\\n- Average per month (Jan–Sep): ≈ €17,627.78\\n- Highest month: July — \\\"€24,100.00\\\"\\n- Lowest months: March and September — both \\\"€12,600.00\\\"\\n- Notable collection activity: February received \\\"€29,600.00\\\" vs invoiced \\\"€14,600.00\\\"; August received \\\"€33,100.00\\\" vs invoiced \\\"€18,350.00\\\" (suggests receipts include prior-period collections).\\n- Current open EUR balance: \\\"€4,500.00\\\" (1 open invoice, no unapplied payments).\\n\\nWould you like the same chart for a single EUR customer, a 24-month view, or the underlying invoice list for any specific month?\"},\"children\":[{\"TrendChart\":{\"props\":{\"currency\":\"EUR\",\"customerId\":null,\"months\":12}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary of EUR invoicing (last 12 months shown Oct 2025 → Sep 2026):\\n\\n- Monthly range: invoiced between €12,600.00 and €24,100.00. Peak invoicing was €24,100.00 in 2026-07; the lowest months were €12,600.00 in 2026-03 and €12,600.00 in 2026-09.\\n- Year-to-date (Jan–Sep 2026) invoiced total: approximately €158,650.00 (9 months). Average ≈ €17,627.78/month.\\n- Pattern: invoicing is variable month-to-month with 2–3 clear peaks (Jan, Apr, Jul) and troughs in Mar and Sep.\\n- Collections vs invoicing: some months show strong receipts exceeding that month’s invoicing (e.g. 2026-02 received €29,600.00 vs invoiced €14,600.00; 2026-05 received €28,100.00 vs invoiced €17,100.00; 2026-08 received €33,100.00 vs invoiced €18,350.00), indicating large collections of prior billed amounts in those months. Other months show receipts lagging current invoicing (e.g. 2026-01 invoiced €21,350.00 vs received €13,100.00; 2026-03 invoiced €12,600.00 vs received €8,100.00).\\n\\nIf you’d like, I can:\\n- Show the month-by-month table behind the chart; or\\n- Break this down by EUR customers (Lumen Fintech, Orbital Media); or\\n- Compare EUR month-over-month to GBP/USD.\\n\\n(Chart below.)\"},\"children\":[{\"TrendChart\":{\"props\":{\"currency\":\"EUR\",\"customerId\":null,\"months\":12}}}]}}]}"
+        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary — EUR invoicing (Jan–Sep 2026):\\n\\n- Total invoiced (Jan–Sep): €158,650.00\\n- Average per month (Jan–Sep): ≈ €17,627.78\\n- Highest month: July — \\\"€24,100.00\\\"\\n- Lowest months: March and September — both \\\"€12,600.00\\\"\\n- Notable collection activity: February received \\\"€29,600.00\\\" vs invoiced \\\"€14,600.00\\\"; August received \\\"€33,100.00\\\" vs invoiced \\\"€18,350.00\\\" (suggests receipts include prior-period collections).\\n- Current open EUR balance: \\\"€4,500.00\\\" (1 open invoice, no unapplied payments).\\n\\nWould you like the same chart for a single EUR customer, a 24-month view, or the underlying invoice list for any specific month?\"},\"children\":[{\"TrendChart\":{\"props\":{\"currency\":\"EUR\",\"customerId\":null,\"months\":12}}}]}}]}"
       }
     },
     {
@@ -75,13 +75,13 @@
     },
     {
       "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summary of EUR invoicing (last 12 months shown Oct 2025 → Sep 2026):\n\n- Monthly range: invoiced between €12,600.00 and €24,100.00. Peak invoicing was €24,100.00 in 2026-07; the lowest months were €12,600.00 in 2026-03 and €12,600.00 in 2026-09.\n- Year-to-date (Jan–Sep 2026) invoiced total: approximately €158,650.00 (9 months). Average ≈ €17,627.78/month.\n- Pattern: invoicing is variable month-to-month with 2–3 clear peaks (Jan, Apr, Jul) and troughs in Mar and Sep.\n- Collections vs invoicing: some months show strong receipts exceeding that month’s invoicing (e.g. 2026-02 received €29,600.00 vs invoiced €14,600.00; 2026-05 received €28,100.00 vs invoiced €17,100.00; 2026-08 received €33,100.00 vs invoiced €18,350.00), indicating large collections of prior billed amounts in those months. Other months show receipts lagging current invoicing (e.g. 2026-01 invoiced €21,350.00 vs received €13,100.00; 2026-03 invoiced €12,600.00 vs received €8,100.00).\n\nIf you’d like, I can:\n- Show the month-by-month table behind the chart; or\n- Break this down by EUR customers (Lumen Fintech, Orbital Media); or\n- Compare EUR month-over-month to GBP/USD.\n\n(Chart below.)\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summary — EUR invoicing (Jan–Sep 2026):\n\n- Total invoiced (Jan–Sep): €158,650.00\n- Average per month (Jan–Sep): ≈ €17,627.78\n- Highest month: July — \"€24,100.00\"\n- Lowest months: March and September — both \"€12,600.00\"\n- Notable collection activity: February received \"€29,600.00\" vs invoiced \"€14,600.00\"; August received \"€33,100.00\" vs invoiced \"€18,350.00\" (suggests receipts include prior-period collections).\n- Current open EUR balance: \"€4,500.00\" (1 open invoice, no unapplied payments).\n\nWould you like the same chart for a single EUR customer, a 24-month view, or the underlying invoice list for any specific month?\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"score\": 1, \"reason\": \"Meets all criteria: currency formatted with symbol, no prohibited change/match/allocation claims, and only allowed customer names used.\"}"
+        "content": "{\"score\":1.0,\"reason\":\"All amounts use the € symbol and are formatted; no customer names invented beyond the allowed list; the output does not assert any changes, matches, or allocations.\"}"
       }
     }
   ]

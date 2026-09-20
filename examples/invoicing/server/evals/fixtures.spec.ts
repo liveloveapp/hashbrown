@@ -117,6 +117,22 @@ test('the judge request falls through to its own recording once the app has cons
   }
 }, 30_000);
 
+test('stores the empty closing message aimock cannot encode as an inert one', () => {
+  const [closing, spoke] = recordingsToFixtures([
+    {
+      request: { messages: [{ role: 'user', content: 'Q' }] },
+      response: { content: '' },
+    },
+    {
+      request: { messages: [{ role: 'user', content: 'Q' }] },
+      response: { content: 'A' },
+    },
+  ]);
+
+  expect(closing.response).toEqual({ content: '{}' });
+  expect(spoke.response).toEqual({ content: 'A' });
+});
+
 test('sibling fixture path follows the b4 eval convention', () => {
   expect(
     siblingFixturePath(

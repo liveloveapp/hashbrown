@@ -208,12 +208,17 @@ the model typed.
    call, exactly as `respond` does today, and deep-equal the echo.
 
 `respond` is deleted. The system prompt tells the model to call `render`
-exactly once as its last action and then output `{"ui":[]}`. If the model
-emits UI in its final text instead of through `render`, Hashbrown would
-render it without the server's ledger checks, because B4 does not apply
-the response schema. The
-prompt forbids it and an eval scorer fails on it. See
-[Upstream findings](#upstream-findings) for the proper fix.
+exactly once as its last action. If the model emitted UI in its final text
+instead of through `render`, Hashbrown would render it without the server's
+ledger checks.
+
+This was originally a prompt-level contract — "output exactly `{"ui":[]}`"
+after `render`, with an eval scorer on it — because B4 had no server-side
+seam for the final message. Since 0.9.0 the middleware's `after` hook
+(finding 5) decides it instead: the closing message is suppressed when the
+run validated UI through `render`, and the run is rejected, surfacing the
+client's error alert, when it validated none. The prompt no longer mentions
+a closing message. See [Upstream findings](#upstream-findings).
 
 ### React
 
@@ -270,10 +275,9 @@ object so expected values are computed:
 
 **Scorers.** `toolCalled` for routing; `custom` scorers that read the
 `render` argument for component choice and ID sets; `tokensUnder` for the
-context budget; a `custom` scorer that fails unless the final message is
-silent (a JSON object with no UI: `{"ui":[]}`, or the `{}` the model often
-sends instead, since B4 does not enforce the schema); `llmJudge` on grounding for free-text cases, replayed
-from fixtures like everything else.
+context budget; `llmJudge` on grounding for free-text cases, replayed
+from fixtures like everything else. (The scorer that graded the closing
+message was removed once the `after` hook took over that contract.)
 
 ## Upstream findings
 
@@ -308,8 +312,10 @@ Filed against `cacheplane/b4run` during implementation. Small ones get a PR.
 5. **No post-run hook on the final assistant message.** The only server-side
    validation seam is a tool, which is why `render` exists. A
    `middleware.after` or output guard would let a read path validate composed
-   UI without the tool detour. 0.9.0 ships an `after` hook; adopting it is a
-   separate design change.
+   UI without the tool detour. 0.9.0 ships an `after` hook, and the example
+   adopted it: the hook, not the prompt, now decides the assistant's closing
+   message. The `render` detour stays, because its echo is what the browser
+   renders.
 
 ## Delivery
 

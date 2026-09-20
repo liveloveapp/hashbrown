@@ -28,9 +28,18 @@ const record = (value: unknown): value is Record<string, unknown> =>
  * `current`, which yields the ledger snapshot a call should see. The route
  * middleware builds it from a session; the eval harness from the sample
  * ledger directly, so both share this one shape.
+ *
+ * It also carries `rendered`, the marker `after` in `middleware.ts` reads to
+ * learn whether this run ever validated UI through `render`. `Object.freeze`
+ * is shallow, so the holder stays mutable inside the frozen context, and
+ * `after` receives the very object `handle` allowed, which is why no
+ * run-correlation map is needed. The marker is invisible to the model: the
+ * six query tools and `validateUi` return exactly what they did before.
  */
 export function assistantContext(current: () => Promise<LedgerSnapshot>) {
+  const rendered = { ui: false };
   return Object.freeze({
+    rendered,
     responseSchema: assistantResponseSchema,
     ledgerSummary: async () => ledgerSummary(await current()),
     monthlyTotals: async (input: Parameters<typeof monthlyTotals>[1]) =>
@@ -43,9 +52,23 @@ export function assistantContext(current: () => Promise<LedgerSnapshot>) {
       findRecords(await current(), input),
     unappliedPayments: async (input: Parameters<typeof unappliedPayments>[1]) =>
       unappliedPayments(await current(), input),
-    validateUi: async (input: AssistantRenderInput) =>
-      validateUi(await current(), input),
+    validateUi: async (input: AssistantRenderInput) => {
+      const tree = validateUi(await current(), input);
+      rendered.ui = true;
+      return tree;
+    },
   });
+}
+
+/**
+ * Whether the run that produced `context` validated UI through `render`.
+ * `after` in `middleware.ts` decides the assistant's closing message on this.
+ */
+export function validatedUi(
+  context: Readonly<Record<string, unknown>> | undefined,
+): boolean {
+  const marker = context?.['rendered'];
+  return record(marker) && marker['ui'] === true;
 }
 
 /** Read-only query and UI-validation capabilities scoped to a cookie, thread and generation. */

@@ -12,7 +12,7 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_4yaZVnktnWP4gaMdh7q2vuG7"
+            "id": "call_HVo5L5IxbMF6up3iR51MmaSK"
           }
         ]
       }
@@ -29,7 +29,7 @@
           {
             "name": "customerStatement",
             "arguments": "{\"customerId\":\"pioneer\"}",
-            "id": "call_4hmjx6GWV7sl17LC7U9Xh4pl"
+            "id": "call_GGQpIZH1lbZ00wJxc26KPSoI"
           }
         ]
       }
@@ -45,21 +45,21 @@
         "toolCalls": [
           {
             "name": "render",
-            "arguments": "{\"text\":\"Pioneer Robotics is a “late‑fixed” payer: they consistently pay late by a similar amount. Key stats:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days (about 9 days past net-30)\\n- Late payment rate: 100% (late on known payments)\\n- Invoiced: \\\"$184,700.00\\\"\\n- Received: \\\"$174,750.00\\\"\\n- Open balance: \\\"$9,950.00\\\"\\n- Last payment received: 2026-09-05\\n- Unapplied payments: \\\"$0.00\\\"\\n\\nThey currently have 2 open invoices totaling $9,950.00 (listed below). Recommended options: send reminders shortly after net terms (for example net+5), apply consistent late fees or formalize a shorter payment term, or reach out to discuss a standing payment schedule. If you want, I can prepare reminders or look for additional history.\\n\",\"components\":[{\"LedgerTable\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}},{\"CustomerCard\":{\"customerId\":\"pioneer\"}}]}",
-            "id": "call_otG4grc9vtqIFbcroywkpyVF"
+            "arguments": "{\"text\":\"Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days\\n- Late payment rate: 1 (they pay late consistently)\\n- Last payment: 2026-09-05\\n- Outstanding balance: \\\"$9,950.00\\\"\\n\\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\",\"components\":[{\"LedgerTable\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}},{\"CustomerCard\":{\"customerId\":\"pioneer\"}}]}",
+            "id": "call_QVnkJmR5frhXad8k0YyVk620"
           }
         ]
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Pioneer Robotics is a “late‑fixed” payer: they consistently pay late by a similar amount. Key stats:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days (about 9 days past net-30)\\n- Late payment rate: 100% (late on known payments)\\n- Invoiced: \\\"$184,700.00\\\"\\n- Received: \\\"$174,750.00\\\"\\n- Open balance: \\\"$9,950.00\\\"\\n- Last payment received: 2026-09-05\\n- Unapplied payments: \\\"$0.00\\\"\\n\\nThey currently have 2 open invoices totaling $9,950.00 (listed below). Recommended options: send reminders shortly after net terms (for example net+5), apply consistent late fees or formalize a shorter payment term, or reach out to discuss a standing payment schedule. If you want, I can prepare reminders or look for additional history.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"pioneer\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days\\n- Late payment rate: 1 (they pay late consistently)\\n- Last payment: 2026-09-05\\n- Outstanding balance: \\\"$9,950.00\\\"\\n\\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"pioneer\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Pioneer Robotics is a “late‑fixed” payer: they consistently pay late by a similar amount. Key stats:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days (about 9 days past net-30)\\n- Late payment rate: 100% (late on known payments)\\n- Invoiced: \\\"$184,700.00\\\"\\n- Received: \\\"$174,750.00\\\"\\n- Open balance: \\\"$9,950.00\\\"\\n- Last payment received: 2026-09-05\\n- Unapplied payments: \\\"$0.00\\\"\\n\\nThey currently have 2 open invoices totaling $9,950.00 (listed below). Recommended options: send reminders shortly after net terms (for example net+5), apply consistent late fees or formalize a shorter payment term, or reach out to discuss a standing payment schedule. If you want, I can prepare reminders or look for additional history.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"pioneer\"}}}]}}]}"
+        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days\\n- Late payment rate: 1 (they pay late consistently)\\n- Last payment: 2026-09-05\\n- Outstanding balance: \\\"$9,950.00\\\"\\n\\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"pioneer\"}}}]}}]}"
       }
     },
     {
@@ -70,18 +70,18 @@
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[]}"
+        "content": "{}"
       }
     },
     {
       "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Pioneer Robotics is a “late‑fixed” payer: they consistently pay late by a similar amount. Key stats:\n\n- Profile: late-fixed\n- Average days to pay: 39 days (about 9 days past net-30)\n- Late payment rate: 100% (late on known payments)\n- Invoiced: \"$184,700.00\"\n- Received: \"$174,750.00\"\n- Open balance: \"$9,950.00\"\n- Last payment received: 2026-09-05\n- Unapplied payments: \"$0.00\"\n\nThey currently have 2 open invoices totaling $9,950.00 (listed below). Recommended options: send reminders shortly after net terms (for example net+5), apply consistent late fees or formalize a shorter payment term, or reach out to discuss a standing payment schedule. If you want, I can prepare reminders or look for additional history.\n\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\n\n- Profile: late-fixed\n- Average days to pay: 39 days\n- Late payment rate: 1 (they pay late consistently)\n- Last payment: 2026-09-05\n- Outstanding balance: \"$9,950.00\"\n\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"score\": 1, \"reason\": \"Meets criteria: all amounts use currency symbol formatting, no claims of having changed/matched/allocated funds, and customer name is allowed.\"}"
+        "content": "{\"score\": 1, \"reason\": \"All criteria met: currency formatted with symbol, no claims of changing/matching/allocating, and only an allowed customer name used.\"}"
       }
     }
   ]

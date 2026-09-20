@@ -147,10 +147,11 @@ function controlled(failAfterInterrupt = false, failCancellation = false) {
   return { requests, transport };
 }
 
-// B4 does not enforce the response schema the client sends, so the model's
-// closing message after `render` is whatever it chose to write: `{"ui":[]}`
-// as prompted, or the `{}` gpt-5-mini often sends instead. The assistant
-// eval's `closesSilently` scorer relies on both being invisible here.
+// The server now suppresses the assistant's closing message in middleware
+// (the `after` hook in `server/src/middleware.ts`), so these shapes should
+// not reach a browser. They are pinned anyway as defence in depth: if that
+// hook is ever removed or bypassed, the client must still render nothing for
+// an empty wrapper or a bare object rather than showing the user raw JSON.
 function closingTransport(closing: string): Transport {
   return {
     name: 'closing-test',
