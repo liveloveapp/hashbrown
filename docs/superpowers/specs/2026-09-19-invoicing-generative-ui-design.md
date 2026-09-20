@@ -210,7 +210,8 @@ the model typed.
 `respond` is deleted. The system prompt tells the model to call `render`
 exactly once as its last action and then output `{"ui":[]}`. If the model
 emits UI in its final text instead of through `render`, Hashbrown would
-render it unvalidated, because B4 does not apply the response schema. The
+render it without the server's ledger checks, because B4 does not apply
+the response schema. The
 prompt forbids it and an eval scorer fails on it. See
 [Upstream findings](#upstream-findings) for the proper fix.
 
@@ -267,7 +268,8 @@ object so expected values are computed:
 **Scorers.** `toolCalled` for routing; `custom` scorers that read the
 `render` argument for component choice and ID sets; `tokensUnder` for the
 context budget; a `custom` scorer that fails unless the final message is
-exactly `{"ui":[]}`; `llmJudge` on grounding for free-text cases, replayed
+silent (a JSON object with no UI: `{"ui":[]}`, or the `{}` the model often
+sends instead, since B4 does not enforce the schema); `llmJudge` on grounding for free-text cases, replayed
 from fixtures like everything else.
 
 ## Upstream findings

@@ -90,7 +90,8 @@ expected answers are computed from the generated ledger's facts at load time
 GBP client with the most over 90 days, Cedar Health's open invoice IDs, the
 ambiguous Atlas payment, three payment habits), so the dataset can never
 drift from the data the assistant queries. Scorers check that the model
-renders exactly once and closes with `{"ui":[]}`, that no tool errored, that
+renders exactly once and closes silently (`{"ui":[]}`, the `{}` gpt-5-mini
+often sends instead, or nothing), that no tool errored, that
 the prose never claims to have allocated anything, that the answer is under
 6,000 characters, that it answers the question (the right rows, customer,
 chart, or habit), and an LLM judge grades the prose for formatted amounts,
@@ -112,10 +113,13 @@ argument filters by case name or by the eval file's basename
 `assistant.<case>.fixtures.json` per case, next to the eval file, and are
 committed: each holds every model call the case made, the LLM judge's
 included, so replay needs no network and reproduces the record run's report.
-The suite runs on demand, not in CI, by decision. The gate is currently red
-on purpose: four recorded cases close with `{}` instead of `{"ui":[]}` (B4
-finding 2 in `docs/superpowers/upstream/2026-09-19-b4-findings.md`), and the
-fix is tracked as a follow-up rather than hidden by re-recording.
+The suite runs on demand, not in CI, by decision. B4 ignores the response
+schema the client sends (finding 2 in
+`docs/superpowers/upstream/2026-09-19-b4-findings.md`), so the prompt's
+closing `{"ui":[]}` is not enforced and four recorded cases close with `{}`.
+The client renders nothing for either (or for an empty message), so the
+scorer accepts those; prose still fails, because the client shows an error
+alert for it, and any other JSON fails because the client prints it as text.
 
 `server/evals/harness.ts` boots the server in-process against an aimock
 instance and posts each case through the real `/assistant` route with a

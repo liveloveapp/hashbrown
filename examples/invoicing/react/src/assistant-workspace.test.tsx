@@ -147,6 +147,88 @@ function controlled(failAfterInterrupt = false, failCancellation = false) {
   return { requests, transport };
 }
 
+// B4 does not enforce the response schema the client sends, so the model's
+// closing message after `render` is whatever it chose to write: `{"ui":[]}`
+// as prompted, or the `{}` gpt-5-mini often sends instead. The assistant
+// eval's `closesSilently` scorer relies on both being invisible here.
+function closingTransport(closing: string): Transport {
+  return {
+    name: 'closing-test',
+    async send(request) {
+      const identity = {
+        threadId: request.input.threadId,
+        runId: request.input.runId,
+      };
+      return {
+        events: (async function* (): AsyncIterable<AGUIEvent> {
+          yield { type: EventType.RUN_STARTED, ...identity };
+          yield {
+            type: EventType.TEXT_MESSAGE_START,
+            messageId: 'answer',
+            role: 'assistant',
+          };
+          yield {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId: 'answer',
+            delta: JSON.stringify({
+              ui: [{ AssistantText: { props: { text: 'One payment.' } } }],
+            }),
+          };
+          yield { type: EventType.TEXT_MESSAGE_END, messageId: 'answer' };
+          yield {
+            type: EventType.TEXT_MESSAGE_START,
+            messageId: 'closing',
+            role: 'assistant',
+          };
+          yield {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId: 'closing',
+            delta: closing,
+          };
+          yield { type: EventType.TEXT_MESSAGE_END, messageId: 'closing' };
+          yield { type: EventType.RUN_FINISHED, ...identity };
+        })(),
+      };
+    },
+  };
+}
+
+for (const [label, closing, visible] of [
+  ['the prompted empty wrapper', '{"ui":[]}', 'nothing'],
+  ['a bare object', '{}', 'nothing'],
+  ['other JSON', '{"text":"hi"}', 'text'],
+] as const) {
+  test(`closing message: ${label} renders ${visible} and raises no error`, async () => {
+    cleanup();
+    render(
+      <AssistantWorkspace
+        snapshot={snapshot}
+        onApplied={() => undefined}
+        transport={closingTransport(closing)}
+      />,
+    );
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Message assistant' }),
+      { target: { value: 'What needs matching?' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await screen.findByText('One payment.');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Message assistant' }),
+      ).toBeEnabled(),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    const conversation = screen.getByRole('region', {
+      name: 'Ledger conversation',
+    });
+    expect(conversation.textContent).toBe(
+      `What needs matching?One payment.${visible === 'text' ? closing : ''}Message assistantSend`,
+    );
+    await settle();
+  });
+}
+
 test('conversation accepts questions before selecting a payment and remains usable after answering', async () => {
   cleanup();
   const { requests, transport } = controlled();

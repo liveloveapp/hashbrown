@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import assistantEval from '../src/app/assistant/evals/assistant.eval';
+import assistantEval, {
+  closingIsSilent,
+} from '../src/app/assistant/evals/assistant.eval';
 import { AS_OF } from '../src/generator/clients';
 import { agingBucket, deriveFacts } from '../src/generator/facts';
 import { getSnapshot } from '../src/ledger';
@@ -78,6 +80,38 @@ describe('assistant eval dataset', () => {
       expect(c?.expected).toBe(profile);
       expect(c?.metadata).toEqual({ customerId });
       expect(String(c?.input)).toContain(customer?.name);
+    }
+  });
+});
+
+describe('closingIsSilent', () => {
+  test('accepts the three closings the client renders nothing for', () => {
+    expect(closingIsSilent('{"ui":[]}')).toBe(true);
+    expect(closingIsSilent(' {} \n')).toBe(true);
+    expect(closingIsSilent('')).toBe(true);
+  });
+
+  test('rejects prose, because the client shows an error alert for it', () => {
+    expect(closingIsSilent('Done, let me know if you need more.')).toMatch(
+      /prose .* error alert/,
+    );
+  });
+
+  test('rejects UI outside render', () => {
+    expect(
+      closingIsSilent('{"ui":[{"AssistantText":{"props":{"text":"hi"}}}]}'),
+    ).toMatch(/UI outside render/);
+  });
+
+  test('rejects any other JSON, because the client prints it as text', () => {
+    for (const text of [
+      '[]',
+      'null',
+      '{"ui":null}',
+      '{"text":"hi"}',
+      '{"ui":[],"x":1}',
+    ]) {
+      expect(closingIsSilent(text), text).toMatch(/prints it as text/);
     }
   });
 });
