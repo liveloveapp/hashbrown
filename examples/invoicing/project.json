@@ -18,8 +18,9 @@
       ],
       "outputs": ["{projectRoot}/.vercel/output"],
       "options": {
-        "commands": ["npx b4 build --cwd examples/invoicing/server --clean"],
-        "parallel": false
+        "commands": ["npx b4 build --clean"],
+        "parallel": false,
+        "cwd": "examples/invoicing/server"
       }
     },
     "e2e": {
