@@ -144,3 +144,25 @@ test('anyOf: multiple literals per object are direct', () => {
   const json = toJsonSchema(schema);
   expect(json).toMatchSnapshot();
 });
+
+test('nullish: JSON schema survives a JSON round trip with no undefined keys', () => {
+  const schema = s.anyOf([s.string('x'), s.nullish()]);
+  const json = toJsonSchema(schema);
+
+  expect(JSON.parse(JSON.stringify(json))).toStrictEqual(json);
+
+  const undefinedKeys: string[] = [];
+  const walk = (value: unknown, path: string) => {
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => walk(item, `${path}[${index}]`));
+    } else if (value && typeof value === 'object') {
+      for (const [key, child] of Object.entries(value)) {
+        const childPath = path ? `${path}.${key}` : key;
+        if (child === undefined) undefinedKeys.push(childPath);
+        walk(child, childPath);
+      }
+    }
+  };
+  walk(json, '');
+  expect(undefinedKeys).toEqual([]);
+});
