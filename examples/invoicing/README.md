@@ -40,7 +40,11 @@ The server validates every component against the kit and every ID against the
 session's snapshot before the UI reaches the browser; components carry IDs,
 never amounts, and the React side resolves them against the application's own
 snapshot. The kit is built by one shared helper (`createAssistantKit`) so the
-server and the client always agree on its schema.
+server and the client always agree on its schema. That validated echo is the
+assistant message the browser renders, so the middleware's `after` hook
+suppresses the root model's own closing message, and ends the run with a
+`RUN_ERROR` — the client's "could not finish" alert — when a turn produced no
+validated UI at all.
 
 Dashboard includes ledger-derived totals and monthly invoiced/received data.
 Payments default to unmatched items; All payments includes historical receipts.
@@ -90,8 +94,7 @@ expected answers are computed from the generated ledger's facts at load time
 GBP client with the most over 90 days, Cedar Health's open invoice IDs, the
 ambiguous Atlas payment, three payment habits), so the dataset can never
 drift from the data the assistant queries. Scorers check that the model
-renders exactly once and closes silently (`{"ui":[]}`, the `{}` gpt-5-mini
-often sends instead, or nothing), that no tool errored, that
+renders exactly once, that no tool errored, that
 the prose never claims to have allocated anything, that the answer is under
 6,000 characters, that it answers the question (the right rows, customer,
 chart, or habit), and an LLM judge grades the prose for formatted amounts,
@@ -113,17 +116,17 @@ argument filters by case name or by the eval file's basename
 `assistant.<case>.fixtures.json` per case, next to the eval file, and are
 committed: each holds every model call the case made, the LLM judge's
 included, so replay needs no network and reproduces the record run's report.
-The suite runs on demand, not in CI, by decision. In production, B4 0.9.0
-applies the `hashbrown.responseSchema` the client sends as a strict OpenAI
-`json_schema` response format on the root model (or rejects the run with 422
-on a provider that cannot), so the closing message is schema-enforced there
-(finding 2 in `docs/superpowers/upstream/2026-09-19-b4-findings.md`). The
-eval harness calls the agent directly and sends no client body, so nothing
-enforces it in the evals, and the committed tapes, recorded before that fix,
-have four cases closing with `{}` instead of `{"ui":[]}`. The client renders
-nothing for either (or for an empty message), so the scorer accepts those;
-prose still fails, because the client shows an error alert for it, and any
-other JSON fails because the client prints it as text.
+The suite runs on demand, not in CI, by decision. Nothing scores the model's
+closing message any more: the `after` hook in `server/src/middleware.ts`
+decides it, suppressing it when the run validated UI through `render` and
+failing the run when it did not. The eval harness calls the agent directly,
+so `after` never runs there and `run.finalMessage` is the model's raw closing
+message; the LLM judge is therefore shown the `render` prose, which is what
+the user actually reads. With the closing-message instruction gone from the
+prompt, gpt-5-mini ends a run saying nothing at all, and aimock rejects a
+fixture whose `content` is the empty string, so `server/evals/fixtures.ts`
+stores that recording as `{}` — inert here, since `after` replaces the
+message in production and no scorer reads it.
 
 `server/evals/harness.ts` wraps B4's `createAgentHarness` (which gained a
 `middlewareContext` option in 0.9.0) with the context
