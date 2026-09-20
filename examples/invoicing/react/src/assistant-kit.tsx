@@ -1,11 +1,18 @@
-import { type ReactNode, useContext, useMemo } from 'react';
+import {
+  type ReactNode,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   PretableBadge,
   type PretableBadgeTone,
   type PretableColumn,
   PretableSurface,
 } from '@pretable/react';
-import { getDensityHeights } from '@pretable/ui';
+import { type DensityHeights, getDensityHeights } from '@pretable/ui';
 import { createAssistantKit, type PaymentProfile } from '@invoicing/contracts';
 import { AgingSummary, TrendChart } from './assistant-charts';
 import {
@@ -36,14 +43,18 @@ const PROFILE_TONE: Record<PaymentProfile, PretableBadgeTone> = {
   'wrong-reference': 'warning',
 };
 
-// The assistant aside is narrow (~270-310px): the client is named by the prose
-// and the CustomerCard, so the grid spends its width on reference and money.
+// The assistant aside is narrow (310px, 270px at the medium breakpoint): the
+// client is named by the prose and the CustomerCard, and the table's title
+// says what the rows are, so the grid spends its width on reference and money.
+// The minimums sum to 348px, so the grid still scrolls at 270px, but Reference,
+// Amount and Balance are the first three columns and stay in view. Pretable has
+// no per-column `hidden` option, so `date` stays rather than folding away.
 const columns: PretableColumn<LedgerRow>[] = [
   {
     id: 'reference',
     header: 'Reference',
     flex: 2,
-    minWidthPx: 110,
+    minWidthPx: 96,
     type: 'text',
     value: (r) => r.reference,
   },
@@ -51,7 +62,7 @@ const columns: PretableColumn<LedgerRow>[] = [
     id: 'amount',
     header: 'Amount',
     flex: 1,
-    minWidthPx: 90,
+    minWidthPx: 84,
     type: 'number',
     value: (r) => r.amountCents,
     format: ({ row }) => money(row.amountCents, row.currency),
@@ -60,7 +71,7 @@ const columns: PretableColumn<LedgerRow>[] = [
     id: 'balance',
     header: 'Balance',
     flex: 1,
-    minWidthPx: 90,
+    minWidthPx: 84,
     type: 'number',
     value: (r) => r.balanceCents,
     format: ({ row }) => money(row.balanceCents, row.currency),
@@ -68,16 +79,9 @@ const columns: PretableColumn<LedgerRow>[] = [
   {
     id: 'date',
     header: 'Date',
-    widthPx: 88,
+    widthPx: 84,
     type: 'text',
     value: (r) => r.date || '—',
-  },
-  {
-    id: 'kind',
-    header: 'Kind',
-    widthPx: 76,
-    type: 'text',
-    value: (r) => (r.kind === 'invoice' ? 'Invoice' : 'Payment'),
   },
 ];
 
@@ -115,12 +119,25 @@ export function LedgerTable({
         : undefined,
     [snapshot, idsKey],
   );
+  // Size the viewport from the density the grid actually paints at. The
+  // section scopes `data-density="compact"`, and the tokens inherit, so the
+  // heights must be read against the section (or a descendant), not the
+  // document root: the root never sees a wrapper-scoped density. The element
+  // only exists after mount, so the first render falls back to the root.
+  const sectionRef = useRef<HTMLElement>(null);
+  const [heights, setHeights] = useState<DensityHeights | null>(null);
+  useLayoutEffect(() => {
+    setHeights(getDensityHeights(sectionRef.current));
+  }, []);
   if (!resolved) return null;
   const { rows, missing } = resolved;
-  // Size the viewport from the theme's own density so no row is clipped.
-  const { rowHeight, headerHeight } = getDensityHeights();
+  const { rowHeight, headerHeight } = heights ?? getDensityHeights();
   return (
-    <section className="assistant-kit assistant-kit-table">
+    <section
+      ref={sectionRef}
+      className="assistant-kit assistant-kit-table"
+      data-density="compact"
+    >
       <h4>{title}</h4>
       <PretableSurface
         rows={rows}
