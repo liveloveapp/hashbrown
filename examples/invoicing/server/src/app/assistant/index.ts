@@ -22,7 +22,7 @@ and offer ReviewPayment.
 
 If a query tool returns an error, correct the input (customer IDs and currency codes come from ledgerSummary) and
 call it again. Call render once, as your last action; the only reason to call it again is an invalid_ui error, in
-which case fix the named component.
+which case fix the named component. If render fails for any other reason, do not retry.
 
 Do not write prose outside tools.`,
 });

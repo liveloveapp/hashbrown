@@ -36,12 +36,15 @@ export default defineMiddleware({
    * checks in `validateUi`. Suppress it when the run validated UI, and end
    * the run with a `RUN_ERROR` when it did not (the model skipped `render`,
    * or gave up after it failed) so the client shows its "could not finish"
-   * alert rather than nothing at all. The review route is untouched and
-   * keeps streaming its final message.
+   * alert rather than nothing at all. The review route keeps its own final
+   * message: the hook returns `undefined` for it and B4 releases the text
+   * unchanged.
    *
-   * Defining this hook buffers the final assistant message instead of
-   * streaming it token by token, which costs nothing here: the message the
-   * user reads is the render echo, emitted earlier and still streamed live.
+   * Defining this hook at all buffers every route's final assistant message
+   * instead of streaming it token by token, because B4 binds `after` once per
+   * middleware rather than per route. That costs nothing on either route
+   * here: the assistant's message is dropped, and the review's confirmation
+   * is a short paragraph that arrives in one piece instead of typing out.
    */
   after: (run) => {
     if (run.routeId !== '/assistant') return undefined;

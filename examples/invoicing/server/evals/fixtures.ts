@@ -1,6 +1,15 @@
 import { basename, dirname, join } from 'node:path';
 import type { AimockFixture, AimockResponse, FixtureSet } from '@b4run/testing';
 
+/** A recorded response that says nothing and calls nothing. */
+const emptyClosing = (response: AimockResponse): boolean => {
+  const { content, toolCalls } = response as {
+    content?: unknown;
+    toolCalls?: unknown;
+  };
+  return content === '' && !Array.isArray(toolCalls);
+};
+
 /**
  * `@b4run/testing` narrows aimock's `match` to three keys, but aimock's router
  * also honours `sequenceIndex`: which occurrence of a matching request the
@@ -53,15 +62,6 @@ export interface Recording {
  * user reads the `render` echo, no scorer looks at `run.finalMessage`, and in
  * production `after` replaces the message whatever it was.
  */
-/** A recorded response that says nothing and calls nothing. */
-const emptyClosing = (response: AimockResponse): boolean => {
-  const { content, toolCalls } = response as {
-    content?: unknown;
-    toolCalls?: unknown;
-  };
-  return content === '' && !Array.isArray(toolCalls);
-};
-
 export function recordingsToFixtures(
   recordings: readonly Recording[],
 ): FixtureSet {
