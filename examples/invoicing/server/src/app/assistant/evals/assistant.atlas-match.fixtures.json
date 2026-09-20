@@ -1,0 +1,88 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Match the Atlas payment.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "ledgerSummary",
+            "arguments": "{}",
+            "id": "call_iIlILe2EdPSbz6VBsTCPdbt7"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Match the Atlas payment.",
+        "turnIndex": 1,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "customerStatement",
+            "arguments": "{\"customerId\":\"atlas\"}",
+            "id": "call_IlwaYHNRzO3lziBki0s0N6px"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Match the Atlas payment.",
+        "turnIndex": 2,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "render",
+            "arguments": "{\"text\":\"Atlas Analytics has one unapplied payment for $1,500 (\\\"ACH ATLAS SEPTEMBER WORKSHOP\\\", 2026-09-14). There are two open invoices, each for $1,500: INV-202609-AA-106 (2026-09-11) and INV-202609-AA-105 (2026-09-10). The payment amount matches either invoice, so the correct application is ambiguous.\\n\\nI will not match anything without your confirmation. Use the Review Payment action below to select which invoice to apply this payment to (or to split/apply it differently).\",\"components\":[{\"LedgerTable\":{\"title\":\"Atlas — candidate invoices and payment\",\"recordIds\":[\"invoice-atlas-review\",\"invoice-atlas-discovery\",\"payment-atlas-ambiguous\"]}},{\"CustomerCard\":{\"customerId\":\"atlas\"}},{\"ReviewPayment\":{\"paymentId\":\"payment-atlas-ambiguous\"}}]}",
+            "id": "call_5S8KC6qPrjZT1z87HDzq60JW"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Atlas Analytics has one unapplied payment for $1,500 (\\\"ACH ATLAS SEPTEMBER WORKSHOP\\\", 2026-09-14). There are two open invoices, each for $1,500: INV-202609-AA-106 (2026-09-11) and INV-202609-AA-105 (2026-09-10). The payment amount matches either invoice, so the correct application is ambiguous.\\n\\nI will not match anything without your confirmation. Use the Review Payment action below to select which invoice to apply this payment to (or to split/apply it differently).\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Atlas — candidate invoices and payment\",\"recordIds\":[\"invoice-atlas-review\",\"invoice-atlas-discovery\",\"payment-atlas-ambiguous\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"atlas\"}}},{\"ReviewPayment\":{\"props\":{\"paymentId\":\"payment-atlas-ambiguous\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Atlas Analytics has one unapplied payment for $1,500 (\\\"ACH ATLAS SEPTEMBER WORKSHOP\\\", 2026-09-14). There are two open invoices, each for $1,500: INV-202609-AA-106 (2026-09-11) and INV-202609-AA-105 (2026-09-10). The payment amount matches either invoice, so the correct application is ambiguous.\\n\\nI will not match anything without your confirmation. Use the Review Payment action below to select which invoice to apply this payment to (or to split/apply it differently).\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Atlas — candidate invoices and payment\",\"recordIds\":[\"invoice-atlas-review\",\"invoice-atlas-discovery\",\"payment-atlas-ambiguous\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"atlas\"}}},{\"ReviewPayment\":{\"props\":{\"paymentId\":\"payment-atlas-ambiguous\"}}}]}}]}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Match the Atlas payment.",
+        "turnIndex": 3,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Atlas Analytics has one unapplied payment for $1,500 (\"ACH ATLAS SEPTEMBER WORKSHOP\", 2026-09-14). There are two open invoices, each for $1,500: INV-202609-AA-106 (2026-09-11) and INV-202609-AA-105 (2026-09-10). The payment amount matches either invoice, so the correct application is ambiguous.\n\nI will not match anything without your confirmation. Use the Review Payment action below to select which invoice to apply this payment to (or to split/apply it differently).\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"score\": 1, \"reason\": \"All criteria met: currency formatting with symbol, no matching/allocation claimed, allowed customer name used.\"}"
+      }
+    }
+  ]
+}

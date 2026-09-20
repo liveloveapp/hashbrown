@@ -1,0 +1,88 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Which GBP client has the most money more than 90 days past net-30 terms?",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "ledgerSummary",
+            "arguments": "{}",
+            "id": "call_OPMbIwZ3DpzuDChTQyrLbG23"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Which GBP client has the most money more than 90 days past net-30 terms?",
+        "turnIndex": 1,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "aging",
+            "arguments": "{\"currency\":\"GBP\"}",
+            "id": "call_IUgEqDoWJJhYG0nRQLhNwA40"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Which GBP client has the most money more than 90 days past net-30 terms?",
+        "turnIndex": 2,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "render",
+            "arguments": "{\"text\":\"Kestrel Energy has the most GBP more than 90 days past net-30: £3,093.00. The over-90 invoices are listed below.\",\"components\":[{\"LedgerTable\":{\"title\":\"Kestrel — invoices >90 days (GBP)\",\"recordIds\":[\"invoice-kestrel-2024-10\",\"invoice-kestrel-2024-10-p1\",\"invoice-kestrel-2024-11\",\"invoice-kestrel-2024-11-p2\",\"invoice-kestrel-2024-12\",\"invoice-kestrel-2025-01\",\"invoice-kestrel-2025-01-p1\",\"invoice-kestrel-2025-02\",\"invoice-kestrel-2025-02-p2\",\"invoice-kestrel-2025-03\",\"invoice-kestrel-2025-03-p3\",\"invoice-kestrel-2025-04\",\"invoice-kestrel-2025-04-p1\",\"invoice-kestrel-2025-05\",\"invoice-kestrel-2025-05-p2\",\"invoice-kestrel-2025-06\",\"invoice-kestrel-2025-06-p3\",\"invoice-kestrel-2025-07\",\"invoice-kestrel-2025-07-p1\",\"invoice-kestrel-2025-08\",\"invoice-kestrel-2025-08-p2\",\"invoice-kestrel-2025-09\",\"invoice-kestrel-2025-09-p3\",\"invoice-kestrel-2025-10\",\"invoice-kestrel-2025-10-p1\",\"invoice-kestrel-2025-11\",\"invoice-kestrel-2025-12\",\"invoice-kestrel-2026-01\",\"invoice-kestrel-2026-01-p1\",\"invoice-kestrel-2026-02\",\"invoice-kestrel-2026-02-p2\",\"invoice-kestrel-2026-03\",\"invoice-kestrel-2026-03-p3\",\"invoice-kestrel-2026-04\",\"invoice-kestrel-2026-04-p1\",\"invoice-kestrel-2026-05\"]}},{\"AgingSummary\":{\"currency\":\"GBP\"}},{\"CustomerCard\":{\"customerId\":\"kestrel\"}}]}",
+            "id": "call_CxUJri1dGewPYOExIEIKflBU"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Kestrel Energy has the most GBP more than 90 days past net-30: £3,093.00. The over-90 invoices are listed below.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Kestrel — invoices >90 days (GBP)\",\"recordIds\":[\"invoice-kestrel-2024-10\",\"invoice-kestrel-2024-10-p1\",\"invoice-kestrel-2024-11\",\"invoice-kestrel-2024-11-p2\",\"invoice-kestrel-2024-12\",\"invoice-kestrel-2025-01\",\"invoice-kestrel-2025-01-p1\",\"invoice-kestrel-2025-02\",\"invoice-kestrel-2025-02-p2\",\"invoice-kestrel-2025-03\",\"invoice-kestrel-2025-03-p3\",\"invoice-kestrel-2025-04\",\"invoice-kestrel-2025-04-p1\",\"invoice-kestrel-2025-05\",\"invoice-kestrel-2025-05-p2\",\"invoice-kestrel-2025-06\",\"invoice-kestrel-2025-06-p3\",\"invoice-kestrel-2025-07\",\"invoice-kestrel-2025-07-p1\",\"invoice-kestrel-2025-08\",\"invoice-kestrel-2025-08-p2\",\"invoice-kestrel-2025-09\",\"invoice-kestrel-2025-09-p3\",\"invoice-kestrel-2025-10\",\"invoice-kestrel-2025-10-p1\",\"invoice-kestrel-2025-11\",\"invoice-kestrel-2025-12\",\"invoice-kestrel-2026-01\",\"invoice-kestrel-2026-01-p1\",\"invoice-kestrel-2026-02\",\"invoice-kestrel-2026-02-p2\",\"invoice-kestrel-2026-03\",\"invoice-kestrel-2026-03-p3\",\"invoice-kestrel-2026-04\",\"invoice-kestrel-2026-04-p1\",\"invoice-kestrel-2026-05\"]}}},{\"AgingSummary\":{\"props\":{\"currency\":\"GBP\",\"customerId\":null}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"kestrel\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Kestrel Energy has the most GBP more than 90 days past net-30: £3,093.00. The over-90 invoices are listed below.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Kestrel — invoices >90 days (GBP)\",\"recordIds\":[\"invoice-kestrel-2024-10\",\"invoice-kestrel-2024-10-p1\",\"invoice-kestrel-2024-11\",\"invoice-kestrel-2024-11-p2\",\"invoice-kestrel-2024-12\",\"invoice-kestrel-2025-01\",\"invoice-kestrel-2025-01-p1\",\"invoice-kestrel-2025-02\",\"invoice-kestrel-2025-02-p2\",\"invoice-kestrel-2025-03\",\"invoice-kestrel-2025-03-p3\",\"invoice-kestrel-2025-04\",\"invoice-kestrel-2025-04-p1\",\"invoice-kestrel-2025-05\",\"invoice-kestrel-2025-05-p2\",\"invoice-kestrel-2025-06\",\"invoice-kestrel-2025-06-p3\",\"invoice-kestrel-2025-07\",\"invoice-kestrel-2025-07-p1\",\"invoice-kestrel-2025-08\",\"invoice-kestrel-2025-08-p2\",\"invoice-kestrel-2025-09\",\"invoice-kestrel-2025-09-p3\",\"invoice-kestrel-2025-10\",\"invoice-kestrel-2025-10-p1\",\"invoice-kestrel-2025-11\",\"invoice-kestrel-2025-12\",\"invoice-kestrel-2026-01\",\"invoice-kestrel-2026-01-p1\",\"invoice-kestrel-2026-02\",\"invoice-kestrel-2026-02-p2\",\"invoice-kestrel-2026-03\",\"invoice-kestrel-2026-03-p3\",\"invoice-kestrel-2026-04\",\"invoice-kestrel-2026-04-p1\",\"invoice-kestrel-2026-05\"]}}},{\"AgingSummary\":{\"props\":{\"currency\":\"GBP\",\"customerId\":null}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"kestrel\"}}}]}}]}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Which GBP client has the most money more than 90 days past net-30 terms?",
+        "turnIndex": 3,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"ui\":[]}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Kestrel Energy has the most GBP more than 90 days past net-30: £3,093.00. The over-90 invoices are listed below.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"score\":1,\"reason\":\"Meets all criteria: amount formatted with currency symbol, used an allowed customer name (Kestrel Energy), and made no claims of changing/matching/allocating.\"}"
+      }
+    }
+  ]
+}

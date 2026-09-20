@@ -288,7 +288,14 @@ Filed against `cacheplane/b4run` during implementation. Small ones get a PR.
    and fail loudly when an input type resolves to `any`. The example works
    around it with a relative import in `render.ts` and a regression test on
    the derived schema.
-4. **No post-run hook on the final assistant message.** The only server-side
+4. **A thrown tool error never reaches the AG-UI stream.** The LangChain
+   adapter emits nothing on `on_tool_error`, and only `on_tool_end` produces
+   a `tool_result` chunk, so a client sees `TOOL_CALL_START`, `ARGS` and
+   `END` for a failing tool and never a `TOOL_CALL_RESULT`; the failure is
+   visible only inside `RUN_FINISHED.result.messages`. Found while building
+   the eval harness, which backfills results from there. Emit a
+   `TOOL_CALL_RESULT` carrying the error `ToolMessage`.
+5. **No post-run hook on the final assistant message.** The only server-side
    validation seam is a tool, which is why `render` exists. A
    `middleware.after` or output guard would let a read path validate composed
    UI without the tool detour.
@@ -315,8 +322,12 @@ Four pull requests, each green on its own, in order.
    Playwright config re-recorded where it pins assistant output.
 4. **Evals and runner.** Eval files, dataset generation from facts, custom
    `runCase`, fixtures recorded once and replay verified. README documents
-   `b4 eval`, `--live`, `--record`. Upstream issues filed; the harness PR
-   opened.
+   `b4 eval`, `--live`, `--record`. The B4 findings are drafted in
+   `docs/superpowers/upstream/2026-09-19-b4-findings.md`; filing them is a
+   separate step. PR 4 shipped its own harness (`server/evals/harness.ts`)
+   because `createAgentHarness` runs no route middleware, so the assistant's
+   tools would have had no ledger context; the harness lives in the example
+   until B4 gains a `middlewareContext` option.
 
 ## Open items carried, not changed
 
