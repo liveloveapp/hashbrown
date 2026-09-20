@@ -104,9 +104,10 @@ const rendersOnce = custom(
   { name: 'rendersOnce', threshold: 1 },
 );
 /**
- * B4 ignores the response schema the client sends (finding 2 in
- * docs/superpowers/upstream/2026-09-19-b4-findings.md), so the prompt asks
- * for `{"ui":[]}` after `render` and nothing enforces it; gpt-5-mini closes
+ * In production B4 0.9.0 enforces the client's response schema on the root
+ * model (finding 2 in docs/superpowers/upstream/2026-09-19-b4-findings.md),
+ * but the eval harness calls the agent directly with no client body, so here
+ * only the prompt asks for `{"ui":[]}` after `render`; gpt-5-mini closes
  * with `{}` about half the time. The React client (see "closing message" in
  * react/src/assistant-workspace.test.tsx) renders nothing for `{"ui":[]}`,
  * `{}` and an empty message; it prints any other JSON verbatim into the
@@ -144,8 +145,6 @@ const closesSilently = custom(
 const noToolErrors = custom(
   (run) => {
     const failed = run.toolResults.filter((r) => r.isError).map((r) => r.name);
-    const error = (run as { error?: string }).error;
-    if (error) return { score: 0, reason: `run error: ${error}` };
     return failed.length === 0
       ? 1
       : { score: 0, reason: `tool errors: ${failed.join(', ')}` };

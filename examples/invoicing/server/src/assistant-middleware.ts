@@ -1,6 +1,9 @@
 import { isDeepStrictEqual } from 'node:util';
 import { assistantResponseSchema } from '@invoicing/contracts';
-import type { AssistantRenderInput } from '@invoicing/contracts';
+import type {
+  AssistantRenderInput,
+  LedgerSnapshot,
+} from '@invoicing/contracts';
 import {
   aging,
   customerStatement,
@@ -17,6 +20,33 @@ import { assertThreadOwner } from './thread-ownership';
 
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The middleware context the assistant's tools read (`assistantTools` in
+ * `assistant-tools.ts`): the response schema the nested `render` model is
+ * held to, the six read-only queries, and `validateUi`, each closed over
+ * `current`, which yields the ledger snapshot a call should see. The route
+ * middleware builds it from a session; the eval harness from the sample
+ * ledger directly, so both share this one shape.
+ */
+export function assistantContext(current: () => Promise<LedgerSnapshot>) {
+  return Object.freeze({
+    responseSchema: assistantResponseSchema,
+    ledgerSummary: async () => ledgerSummary(await current()),
+    monthlyTotals: async (input: Parameters<typeof monthlyTotals>[1]) =>
+      monthlyTotals(await current(), input),
+    aging: async (input: Parameters<typeof aging>[1]) =>
+      aging(await current(), input),
+    customerStatement: async (input: Parameters<typeof customerStatement>[1]) =>
+      customerStatement(await current(), input),
+    findRecords: async (input: Parameters<typeof findRecords>[1]) =>
+      findRecords(await current(), input),
+    unappliedPayments: async (input: Parameters<typeof unappliedPayments>[1]) =>
+      unappliedPayments(await current(), input),
+    validateUi: async (input: AssistantRenderInput) =>
+      validateUi(await current(), input),
+  });
+}
 
 /** Read-only query and UI-validation capabilities scoped to a cookie, thread and generation. */
 export function createAssistantMiddleware(
@@ -94,26 +124,6 @@ export function createAssistantMiddleware(
         !(await current()).payments.some((p) => p.id === selectedPaymentId))
     )
       return reject(422);
-    return {
-      action: 'continue' as const,
-      context: Object.freeze({
-        responseSchema: assistantResponseSchema,
-        ledgerSummary: async () => ledgerSummary(await current()),
-        monthlyTotals: async (input: Parameters<typeof monthlyTotals>[1]) =>
-          monthlyTotals(await current(), input),
-        aging: async (input: Parameters<typeof aging>[1]) =>
-          aging(await current(), input),
-        customerStatement: async (
-          input: Parameters<typeof customerStatement>[1],
-        ) => customerStatement(await current(), input),
-        findRecords: async (input: Parameters<typeof findRecords>[1]) =>
-          findRecords(await current(), input),
-        unappliedPayments: async (
-          input: Parameters<typeof unappliedPayments>[1],
-        ) => unappliedPayments(await current(), input),
-        validateUi: async (input: AssistantRenderInput) =>
-          validateUi(await current(), input),
-      }),
-    };
+    return { action: 'continue' as const, context: assistantContext(current) };
   };
 }

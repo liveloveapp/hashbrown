@@ -1,6 +1,15 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { script } from '@b4run/testing';
-import { createInvoicingHarness, type InvoicingHarness } from './harness';
+import { assistantResponseSchema } from '@invoicing/contracts';
+import { createAssistantMiddleware } from '../src/assistant-middleware';
+import { createMemoryRepositories } from '../src/persistence/memory';
+import { createSampleLedger } from '../src/sample-ledger';
+import { createSessionStore } from '../src/session-store';
+import {
+  createInvoicingHarness,
+  evalMiddlewareContext,
+  type InvoicingHarness,
+} from './harness';
 
 let harness: InvoicingHarness;
 
@@ -11,7 +20,36 @@ afterAll(async () => {
   await harness.close();
 });
 
-test('replays a scripted answer through the real route, middleware, tools and render', async () => {
+test('the harness context exposes exactly what the route middleware does', async () => {
+  const repositories = createMemoryRepositories();
+  const store = createSessionStore(repositories.sessions, createSampleLedger());
+  const session = await store.createSession();
+  const middleware = createAssistantMiddleware(store, repositories.threads);
+  const result = await middleware({
+    method: 'POST',
+    routeId: '/assistant',
+    headers: { cookie: `invoicing_session=${session}` },
+    body: {
+      threadId: 'conversation',
+      runId: 'turn',
+      state: {},
+      hashbrown: { ui: true, responseSchema: assistantResponseSchema },
+    },
+  });
+  if (result.action !== 'continue') throw new Error('expected continue');
+
+  const evalContext = evalMiddlewareContext();
+
+  expect(Object.keys(evalContext).sort()).toEqual(
+    Object.keys(result.context).sort(),
+  );
+  expect(evalContext.responseSchema).toBe(result.context.responseSchema);
+  expect(await evalContext.ledgerSummary()).toEqual(
+    await result.context.ledgerSummary(),
+  );
+});
+
+test('replays a scripted answer through the real agent, tools and render', async () => {
   const canonical =
     '{"ui":[{"AssistantText":{"props":{"text":"There are five."},"children":[]}}]}';
   const fixtures = [
@@ -32,7 +70,6 @@ test('replays a scripted answer through the real route, middleware, tools and re
     fixtures,
   });
 
-  expect(run.error).toBeUndefined();
   expect(run.toolCalls.map((c) => c.name)).toEqual([
     'unappliedPayments',
     'render',
@@ -40,7 +77,8 @@ test('replays a scripted answer through the real route, middleware, tools and re
   expect(run.toolResults.every((r) => !r.isError)).toBe(true);
   expect(String(run.toolResults[0].content)).toContain('"paymentCount":5');
   expect(run.finalMessage).toBe('{"ui":[]}');
-  expect(run.messages.map((m) => m.content)).toContain(canonical);
+  // The render tool streams its echo to the client as assistant text.
+  expect(run.tokens).toContain(canonical);
 }, 60_000);
 
 test('a rejected render surfaces as a tool error the model could act on', async () => {
@@ -61,23 +99,16 @@ test('a rejected render surfaces as a tool error the model could act on', async 
   );
 }, 60_000);
 
-test('marks advance with the journal and only record mode can window it', async () => {
-  const before = harness.mark();
-  expect(before).toEqual({
-    journalStart: expect.any(Number),
-    fixtureStart: expect.any(Number),
+test('each run starts a fresh thread and only record mode can read the tape', async () => {
+  const first = await harness.run({
+    input: 'Fresh thread',
+    fixtures: script().user('Fresh thread').replies('{"ui":[]}').build(),
+  });
+  const second = await harness.run({
+    input: 'Fresh thread',
+    fixtures: script().user('Fresh thread').replies('{"ui":[]}').build(),
   });
 
-  await harness.run({
-    input: 'Mark me',
-    fixtures: script().user('Mark me').replies('{"ui":[]}').build(),
-  });
-
-  const after = harness.mark();
-  expect(after.journalStart).toBeGreaterThan(before.journalStart);
-  expect(() => harness.recordedFixturesSince(before)).toThrow(/record mode/);
-  expect(() => harness.recordedFixturesSince(before, after)).toThrow(
-    /record mode/,
-  );
-  expect(() => harness.lastRecordedFixtures()).toThrow(/record mode/);
+  expect(second.threadId).not.toBe(first.threadId);
+  expect(() => harness.getRecordedFixtures()).toThrow(/record mode/);
 }, 60_000);

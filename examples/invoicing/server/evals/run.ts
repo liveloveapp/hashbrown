@@ -1,5 +1,5 @@
 /**
- * Runs every `src/app/assistant/evals/*.eval.ts` through the in-process
+ * Runs every `src/app/assistant/evals/*.eval.ts` through B4's agent
  * harness. Replay (the default) needs a recorded fixture file beside each
  * eval; `--record` creates them against the real model; `--live` skips
  * fixtures entirely.
@@ -22,7 +22,6 @@ import {
   createInvoicingHarness,
   type HarnessMode,
   type InvoicingHarness,
-  type RecordMark,
 } from './harness';
 
 const serverRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -125,7 +124,7 @@ async function runOne(
         (testCase.name ?? '').toLowerCase().includes(args.filter),
     );
   if (selected.length === 0) return undefined;
-  const indexOf = new Map(selected.map((s) => [s.testCase, s.index]));
+  const byCase = new Map(selected.map((s) => [s.testCase, s]));
   const fixtures =
     args.mode === 'replay' ? replayFixtures(evalFile, selected) : undefined;
   if (args.mode === 'record') {
@@ -137,14 +136,32 @@ async function runOne(
   }
 
   // Scorers (the LLM judge included) call the model after runCase returns,
-  // so tapes are cut only once runEval resolves, each case bounded by the
-  // next case's mark.
-  const marks: { testCase: EvalCase; mark: RecordMark }[] = [];
+  // and the harness tapes everything from a run's start until the next one
+  // begins, so a case's tape is cut just before the next case runs and, for
+  // the last case, once runEval resolves.
+  let taped: Selected | undefined;
+  const cut = () => {
+    if (!taped) return;
+    const sibling = siblingFixturePath(
+      evalFile,
+      taped.testCase.name,
+      taped.index,
+    );
+    const recorded = harness.getRecordedFixtures();
+    writeFixtures(sibling, recorded);
+    console.log(
+      `  recorded ${recorded.length} fixture(s) to ${relative(serverRoot, sibling)}`,
+    );
+    taped = undefined;
+  };
   const runCase = async (testCase: EvalCase) => {
     const { input } = testCase;
     if (typeof input !== 'string')
       throw new Error(`case "${testCase.name}" input must be a string`);
-    if (args.mode === 'record') marks.push({ testCase, mark: harness.mark() });
+    if (args.mode === 'record') {
+      cut();
+      taped = byCase.get(testCase);
+    }
     return harness.run({ input, fixtures: fixtures?.get(testCase) });
   };
   try {
@@ -154,19 +171,8 @@ async function runOne(
     );
   } finally {
     // Whatever was taped is kept, so a failure on case N does not discard
-    // cases 1 to N-1. The last case's window runs to the end of the journal.
-    marks.forEach(({ testCase, mark }, i) => {
-      const sibling = siblingFixturePath(
-        evalFile,
-        testCase.name,
-        indexOf.get(testCase) ?? i,
-      );
-      const recorded = harness.recordedFixturesSince(mark, marks[i + 1]?.mark);
-      writeFixtures(sibling, recorded);
-      console.log(
-        `  recorded ${recorded.length} fixture(s) to ${relative(serverRoot, sibling)}`,
-      );
-    });
+    // cases 1 to N-1.
+    cut();
   }
 }
 
