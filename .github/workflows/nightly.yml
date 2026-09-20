@@ -25,6 +25,15 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
       - name: Test e2e
         run: npx nx run-many -t e2e --parallel=3
         env:
