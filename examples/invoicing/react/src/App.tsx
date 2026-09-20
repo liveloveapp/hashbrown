@@ -6,6 +6,7 @@ import {
 } from './assistant-workspace';
 import { type PretableColumn, PretableSurface } from '@pretable/react';
 import type { LedgerSnapshot } from '@invoicing/contracts';
+import { money } from './ledger-views';
 
 type Payment = LedgerSnapshot['payments'][number];
 
@@ -22,12 +23,6 @@ async function fetchSnapshot(): Promise<LedgerSnapshot> {
   if (!response.ok)
     throw new Error(`Snapshot request failed: ${response.status}`);
   return response.json();
-}
-
-function money(amountCents: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(
-    amountCents / 100,
-  );
 }
 
 function totals(

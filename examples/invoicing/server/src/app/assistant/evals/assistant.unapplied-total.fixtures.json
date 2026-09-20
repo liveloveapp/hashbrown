@@ -1,0 +1,71 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "How many incoming payments still need matching, and what is the unapplied total?",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "unappliedPayments",
+            "arguments": "{\"currency\":\"\"}",
+            "id": "call_NHvxDycJvScL4Ftl6BQcEg1Y"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "How many incoming payments still need matching, and what is the unapplied total?",
+        "turnIndex": 1,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "render",
+            "arguments": "{\"text\":\"There are 5 incoming payments that still need matching, with an unapplied total of \\\"$13,900.00\\\". See the payments below for review.\",\"components\":[{\"LedgerTable\":{\"title\":\"Unapplied incoming payments\",\"recordIds\":[\"payment-summit-advance\",\"payment-harbor-combined\",\"payment-atlas-ambiguous\",\"payment-northstar-exact\",\"payment-cedar-partial\"]}}]}",
+            "id": "call_Do6rM1Nt6lqlofOnsVjVQG9S"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"There are 5 incoming payments that still need matching, with an unapplied total of \\\"$13,900.00\\\". See the payments below for review.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Unapplied incoming payments\",\"recordIds\":[\"payment-summit-advance\",\"payment-harbor-combined\",\"payment-atlas-ambiguous\",\"payment-northstar-exact\",\"payment-cedar-partial\"]}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"There are 5 incoming payments that still need matching, with an unapplied total of \\\"$13,900.00\\\". See the payments below for review.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Unapplied incoming payments\",\"recordIds\":[\"payment-summit-advance\",\"payment-harbor-combined\",\"payment-atlas-ambiguous\",\"payment-northstar-exact\",\"payment-cedar-partial\"]}}}]}}]}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "How many incoming payments still need matching, and what is the unapplied total?",
+        "turnIndex": 2,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"ui\":[]}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: There are 5 incoming payments that still need matching, with an unapplied total of \"$13,900.00\". See the payments below for review.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"score\":1,\"reason\":\"Meets all criteria: uses formatted currency, does not claim changes/matching/allocation, and includes no invented customer names.\"}"
+      }
+    }
+  ]
+}
