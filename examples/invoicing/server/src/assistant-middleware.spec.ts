@@ -43,6 +43,9 @@ test('allows questions without selection and only supplies read-only capabilitie
     'findRecords',
     'ledgerSummary',
     'monthlyTotals',
+    // Not a capability: the marker `after` reads to learn whether this run
+    // validated UI. `assistantTools` never exposes it to the model.
+    'rendered',
     'responseSchema',
     'unappliedPayments',
     'validateUi',
