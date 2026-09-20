@@ -9,28 +9,18 @@ import {
   useRef,
   useState,
 } from 'react';
-import {
-  exposeComponent,
-  HashbrownProvider,
-  useUiChat,
-} from '@hashbrownai/react';
+import { HashbrownProvider, useUiChat } from '@hashbrownai/react';
 import type { TransportOrFactory } from '@hashbrownai/core';
-import {
-  assistantTextConfig,
-  type LedgerSnapshot,
-  reviewPaymentConfig,
-} from '@invoicing/contracts';
+import type { LedgerSnapshot } from '@invoicing/contracts';
+import { assistantKit } from './assistant-kit';
 import { ReviewChat, type ReviewChatHandle } from './review-chat';
+import { SnapshotContext } from './snapshot-context';
 
 const ActionContext = createContext<{
   review: (id: string) => boolean;
   disabled: boolean;
   snapshot: LedgerSnapshot;
 } | null>(null);
-function AssistantText({ text }: { text: string }) {
-  if (!text) return null;
-  return <p className="assistant-answer">{text}</p>;
-}
 function ReviewPayment({ paymentId }: { paymentId: string }) {
   const context = useContext(ActionContext);
   const payment = context?.snapshot.payments.find((p) => p.id === paymentId);
@@ -44,10 +34,7 @@ function ReviewPayment({ paymentId }: { paymentId: string }) {
     </button>
   );
 }
-const components = [
-  exposeComponent(AssistantText, assistantTextConfig),
-  exposeComponent(ReviewPayment, reviewPaymentConfig),
-];
+const components = assistantKit(ReviewPayment);
 
 /** Explicit matching entry point; false means an existing operation or invoice choice needs attention. */
 export interface AssistantWorkspaceHandle {
@@ -275,30 +262,32 @@ export function AssistantWorkspace({
         snapshot,
       }}
     >
-      <HashbrownProvider url="/agui/%2Fassistant%23agent">
-        <Conversation
-          selectedPaymentId={selectedPaymentId}
-          locked={Boolean(active)}
-          onBusy={setConversationBusy}
-          transport={transport}
-        />
-      </HashbrownProvider>
-      {notice && <p role="status">{notice}</p>}
-      {sessions.map((session) => (
-        <ReviewSession
-          key={session.id}
-          session={session}
-          snapshot={snapshot}
-          onApplied={onApplied}
-          transport={transport}
-          onTerminal={() => {
-            if (activeClaim.current === session.id) {
-              activeClaim.current = undefined;
-              setActive(undefined);
-            }
-          }}
-        />
-      ))}
+      <SnapshotContext.Provider value={snapshot}>
+        <HashbrownProvider url="/agui/%2Fassistant%23agent">
+          <Conversation
+            selectedPaymentId={selectedPaymentId}
+            locked={Boolean(active)}
+            onBusy={setConversationBusy}
+            transport={transport}
+          />
+        </HashbrownProvider>
+        {notice && <p role="status">{notice}</p>}
+        {sessions.map((session) => (
+          <ReviewSession
+            key={session.id}
+            session={session}
+            snapshot={snapshot}
+            onApplied={onApplied}
+            transport={transport}
+            onTerminal={() => {
+              if (activeClaim.current === session.id) {
+                activeClaim.current = undefined;
+                setActive(undefined);
+              }
+            }}
+          />
+        ))}
+      </SnapshotContext.Provider>
     </ActionContext.Provider>
   );
 }

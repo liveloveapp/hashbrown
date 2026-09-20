@@ -32,6 +32,16 @@ own approval. **Decline** leaves the ledger unchanged. Chat becomes available
 again after a completed or safely retired review, and subsequent matching uses
 a fresh review thread. Unknown allocation outcomes remain blocked until checked.
 
+The assistant answers through six read-only tools (`ledgerSummary`,
+`monthlyTotals`, `aging`, `customerStatement`, `findRecords`,
+`unappliedPayments`) that each return a small, shaped result, then composes
+its answer from a component kit and hands prose plus components to `render`.
+The server validates every component against the kit and every ID against the
+session's snapshot before the UI reaches the browser; components carry IDs,
+never amounts, and the React side resolves them against the application's own
+snapshot. The kit is built by one shared helper (`createAssistantKit`) so the
+server and the client always agree on its schema.
+
 Dashboard includes ledger-derived totals and monthly invoiced/received data.
 Payments default to unmatched items; All payments includes historical receipts.
 A selected payment remains visible after matching to preserve context. There
@@ -43,7 +53,7 @@ of this example's design; the root Zod 4 migration was separately approved.
 ## Run locally
 
 The server pins published `@b4run/cli`, `@b4run/langchain`, and `@b4run/sdk`
-packages at **0.8.34** in its private npm workspace. A separate B4 checkout or
+packages at **0.8.36** in its private npm workspace. A separate B4 checkout or
 local package-linking step is no longer required.
 
 From the repository root:

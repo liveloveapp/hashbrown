@@ -280,7 +280,15 @@ Filed against `cacheplane/b4run` during implementation. Small ones get a PR.
 2. **Client `responseSchema` is accepted and ignored.** Hashbrown sends
    `hashbrown.responseSchema`; nothing in B4 reads it. Either apply it as the
    root model's response format or reject it, as #740 does for `tools`.
-3. **No post-run hook on the final assistant message.** The only server-side
+3. **Tool schema derivation ignores the app's `tsconfig` paths.** B4's
+   compiler builds its own TypeScript program without `paths`, so a tool
+   whose input type is imported through a path alias (`@invoicing/contracts`)
+   derives an empty schema, `{ properties: {} }`, and `b4 typegen` reports
+   success. Two fixes: read the app's tsconfig when building the program,
+   and fail loudly when an input type resolves to `any`. The example works
+   around it with a relative import in `render.ts` and a regression test on
+   the derived schema.
+4. **No post-run hook on the final assistant message.** The only server-side
    validation seam is a tool, which is why `render` exists. A
    `middleware.after` or output guard would let a read path validate composed
    UI without the tool detour.

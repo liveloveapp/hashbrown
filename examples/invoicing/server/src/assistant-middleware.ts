@@ -1,5 +1,15 @@
 import { isDeepStrictEqual } from 'node:util';
 import { assistantResponseSchema } from '@invoicing/contracts';
+import type { AssistantRenderInput } from '@invoicing/contracts';
+import {
+  aging,
+  customerStatement,
+  findRecords,
+  ledgerSummary,
+  monthlyTotals,
+  unappliedPayments,
+} from './assistant-queries';
+import { validateUi } from './assistant-ui';
 import type { SessionStore } from './session-store';
 import type { ThreadRepository } from './persistence/types';
 import { readSessionCookie } from './session-cookie';
@@ -8,7 +18,7 @@ import { assertThreadOwner } from './thread-ownership';
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** Read-only conversational capabilities scoped to a cookie, thread and generation. */
+/** Read-only query and UI-validation capabilities scoped to a cookie, thread and generation. */
 export function createAssistantMiddleware(
   store: SessionStore,
   threads: ThreadRepository,
@@ -88,77 +98,21 @@ export function createAssistantMiddleware(
       action: 'continue' as const,
       context: Object.freeze({
         responseSchema: assistantResponseSchema,
-        readLedger: async (input: { readonly customerId?: string } = {}) => {
-          const snapshot = await current();
-          const payments = snapshot.payments.filter(
-            (p) => !input.customerId || p.customerId === input.customerId,
-          );
-          const invoices = snapshot.invoices.filter(
-            (i) => !input.customerId || i.customerId === input.customerId,
-          );
-          const currencies = [
-            ...new Set([...payments, ...invoices].map((r) => r.currency)),
-          ];
-          // The raw payment and invoice rows are withheld to keep a turn small:
-          // the generated ledger is several hundred KB as JSON. The derived
-          // sections below plus the customerId filter cover the questions the
-          // assistant answers today; query-shaped tools replace this in a
-          // later PR.
-          return {
-            monthlyTotals: [
-              ...new Set(
-                [...payments, ...invoices].flatMap((r) =>
-                  r.date ? [r.date.slice(0, 7)] : [],
-                ),
-              ),
-            ]
-              .sort()
-              .flatMap((month) =>
-                currencies.map((currency) => ({
-                  month,
-                  currency,
-                  receivedCents: payments
-                    .filter(
-                      (p) =>
-                        p.currency === currency && p.date?.startsWith(month),
-                    )
-                    .reduce((sum, p) => sum + p.amountCents, 0),
-                  invoicedCents: invoices
-                    .filter(
-                      (i) =>
-                        i.currency === currency && i.date?.startsWith(month),
-                    )
-                    .reduce((sum, i) => sum + i.amountCents, 0),
-                })),
-              ),
-            selectedPayment: payments.find((p) => p.id === selectedPaymentId),
-            totals: currencies.map((currency) => ({
-              currency,
-              receivedCents: payments
-                .filter((p) => p.currency === currency)
-                .reduce((s, p) => s + p.amountCents, 0),
-              invoicedCents: invoices
-                .filter((i) => i.currency === currency)
-                .reduce((s, i) => s + i.amountCents, 0),
-              unappliedCents: payments
-                .filter((p) => p.currency === currency)
-                .reduce((s, p) => s + p.unappliedCents, 0),
-              outstandingCents: invoices
-                .filter((i) => i.currency === currency)
-                .reduce((s, i) => s + i.outstandingCents, 0),
-            })),
-            unappliedPayments: payments.filter((p) => p.unappliedCents > 0),
-            outstandingInvoices: invoices.filter((i) => i.outstandingCents > 0),
-          };
-        },
-        validatePayment: async (paymentId: string) => {
-          const payment = (await current()).payments.find(
-            (p) => p.id === paymentId,
-          );
-          if (!payment || payment.unappliedCents <= 0)
-            throw new Error('payment_not_found');
-          return payment;
-        },
+        ledgerSummary: async () => ledgerSummary(await current()),
+        monthlyTotals: async (input: Parameters<typeof monthlyTotals>[1]) =>
+          monthlyTotals(await current(), input),
+        aging: async (input: Parameters<typeof aging>[1]) =>
+          aging(await current(), input),
+        customerStatement: async (
+          input: Parameters<typeof customerStatement>[1],
+        ) => customerStatement(await current(), input),
+        findRecords: async (input: Parameters<typeof findRecords>[1]) =>
+          findRecords(await current(), input),
+        unappliedPayments: async (
+          input: Parameters<typeof unappliedPayments>[1],
+        ) => unappliedPayments(await current(), input),
+        validateUi: async (input: AssistantRenderInput) =>
+          validateUi(await current(), input),
       }),
     };
   };

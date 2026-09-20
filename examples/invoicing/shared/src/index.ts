@@ -104,6 +104,28 @@ export {
 
 export {
   assistantTextConfig,
+  ledgerTableConfig,
+  trendChartConfig,
+  agingSummaryConfig,
+  customerCardConfig,
   reviewPaymentConfig,
+  createAssistantKit,
   assistantResponseSchema,
+  type AssistantKitName,
 } from './assistant-contract';
+export {
+  AGING_BUCKETS,
+  agingBucket,
+  daysBetween,
+  TERMS_DAYS,
+  type AgingBuckets,
+} from './aging';
+export type {
+  AssistantRenderInput,
+  AssistantLeafNode,
+  LedgerTableNode,
+  TrendChartNode,
+  AgingSummaryNode,
+  CustomerCardNode,
+  ReviewPaymentNode,
+} from './assistant-ui';

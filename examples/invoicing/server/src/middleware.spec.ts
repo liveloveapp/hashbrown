@@ -41,7 +41,11 @@ async function setup(
       threadId: 'conversation',
       runId: 'turn',
       state: {},
-      hashbrown: { ui: true, responseSchema: assistantResponseSchema },
+      // The client always sends JSON, so pin wire behavior here too.
+      hashbrown: {
+        ui: true,
+        responseSchema: JSON.parse(JSON.stringify(assistantResponseSchema)),
+      },
     },
     params: {},
     url: '/agui/%2Fassistant%23agent',
