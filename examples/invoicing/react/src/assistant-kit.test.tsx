@@ -81,11 +81,13 @@ test('LedgerTable renders a Pretable grid of resolved rows and reports missing o
   withSnapshot(<LedgerTable title="Rows" recordIds={['i', 'p', 'nope']} />);
 
   expect(screen.getByRole('heading', { name: 'Rows' })).toBeVisible();
-  expect(screen.getByRole('grid', { name: 'Rows' })).toBeVisible();
+  const grid = screen.getByRole('grid', { name: 'Rows' });
+  expect(grid).toBeVisible();
+  // The aside is narrow, so the section scopes Pretable's compact density.
+  expect(grid.closest('section')).toHaveAttribute('data-density', 'compact');
+  expect(screen.queryByText('Kind')).toBeNull();
   expect(screen.getByText('INV-1')).toBeVisible();
   expect(screen.getByText('ACH 1')).toBeVisible();
-  expect(screen.getByText('Invoice')).toBeVisible();
-  expect(screen.getByText('Payment')).toBeVisible();
   // INV-1 is fully outstanding, so its amount and balance both read $250.00.
   expect(screen.getAllByText('$250.00')).toHaveLength(2);
   expect(screen.getByText('1 record could not be shown.')).toBeVisible();
