@@ -117,6 +117,7 @@ export {
   AGING_BUCKETS,
   agingBucket,
   daysBetween,
+  monthAt,
   TERMS_DAYS,
   type AgingBuckets,
 } from './aging';
