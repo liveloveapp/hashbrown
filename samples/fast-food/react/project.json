@@ -1,8 +1,0 @@
-{
-  "name": "fast-food-react",
-  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "samples/fast-food/react/src",
-  "projectType": "application",
-  "tags": [],
-  "targets": {}
-}

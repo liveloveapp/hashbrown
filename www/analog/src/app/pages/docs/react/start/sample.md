@@ -1,73 +1,51 @@
 ---
-title: 'Sample App: Hashbrown React Docs'
+title: 'Example App: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Smart home client built with React.'
+    content: 'Explore the maintained invoicing example with React, B4 and Pretable.'
 ---
 
-# Sample App
+# Invoicing Example
 
-<p class="subtitle">Smart home client built with React.</p>
+The maintained example uses React, Hashbrown, B4 and Pretable to explore a
+simulated ledger, answer questions with generated UI, and review payment
+allocations before applying them. All data and allocations are simulated.
 
-Some of the basic features of the sample app include:
+[Try the app](https://invoicing.hashbrown.dev) or
+[read the source and setup guide](https://github.com/liveloveapp/hashbrown/tree/main/examples/invoicing).
 
-1. Simple Chat
-2. Tool Calling
-3. UI Chat
-4. Text completion
-5. Structured output
-6. Structured completion
+## Run locally
 
-[Check out our smart home sample app on GitHub](https://github.com/liveloveapp/hashbrown/tree/main/samples/smart-home/react)
-
----
-
-## Clone Repository
-
-<hb-code-example header="terminal">
+Clone the repository and install its dependencies:
 
 ```bash
 git clone https://github.com/liveloveapp/hashbrown.git
-```
-
-</hb-code-example>
-
-Then install the dependencies:
-
-<hb-code-example header="terminal">
-
-```bash
 cd hashbrown
-npm install
+nvm use
+npm ci
 ```
 
-</hb-code-example>
-
-## OpenAI API Key
-
-Our samples are built using OpenAI's models.
-
-1. [Sign up for OpenAI's API](https://openai.com/api/)
-2. [Create an organization and API Key](https://platform.openai.com/settings/organization/api-keys)
-3. Set the `OPENAI_API_KEY` environment variable in the `.env` file in the root directory, which allows the smart-home-server process to load it
-
-```
-OPENAI_API_KEY=your_openai_api_key
-```
-
-## See the code
-
-Open up the `samples/smart-home/react` directory.
-
-## Start the Application
-
-You will need to start both the server and the client to run the sample application.
-
-<hb-code-example header="terminal">
+Create an environment file containing `OPENAI_API_KEY`, then start the server:
 
 ```bash
-npx nx serve smart-home-server
-npx nx serve smart-home-react
+INVOICING_ENV_FILE=/path/to/.env npx nx serve invoicing-server
 ```
 
-</hb-code-example>
+In another terminal, start the React frontend:
+
+```bash
+npx nx serve invoicing-react
+```
+
+Open http://127.0.0.1:4326/. Credentials are loaded only by the server.
+
+## Framework guidance
+
+The public example is a React application. Angular and React protocol coverage
+lives in internal conformance hosts within the example's end-to-end suite.
+For framework integration, follow the
+[Angular quickstart](/docs/angular/start/quick) or
+[React quickstart](/docs/react/start/quick). The standalone
+[UI chatbot recipe](/docs/react/recipes/ui-chatbot) remains available.
+
+The former Smart Home example has been retired.

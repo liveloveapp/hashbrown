@@ -259,3 +259,28 @@ browser-refresh recovery remains out of scope — refreshing starts a new
 conversation. Do not refresh during a pending approval in this V1 demo.
 Deployment and retirement of older examples are separate follow-ups.
 See `compatibility.md` for dated verification evidence.
+
+
+## Canonical e2e consolidation
+
+The conformance suite is owned by this example under `e2e/conformance`, with
+internal Angular/React hosts under `e2e/hosts`. It preserves both frameworks'
+protocol assertions; these hosts are not included in the public invoicing app.
+Its ports default to 4411/4412 (override with `RUNTIME_SMOKE_ANGULAR_PORT` and
+`RUNTIME_SMOKE_REACT_PORT`); reports go to `test-results/invoicing/conformance`
+and `playwright-report/invoicing/conformance`. Run its harness tests with
+`npx nx test invoicing-e2e`, or the browser suite alone with
+`npx nx conformance-e2e invoicing-e2e`. No model credentials are needed.
+
+Native-provider checks now live in `e2e/provider`. Run them alone with
+`npx nx provider-e2e invoicing-e2e`. They exercise the real OpenAI adapter and
+SSE transport with an aimock upstream and both framework hosts; no model key is
+required. Test-only payment selection verifies tool execution without financial
+mutation. Ports default to 4421/4422 (`NATIVE_PROVIDER_ANGULAR_PORT` and
+`NATIVE_PROVIDER_REACT_PORT` override them). Reports go to
+`test-results/invoicing/provider` and `playwright-report/invoicing/provider`.
+Combined-run artifacts go to `test-results/invoicing/all`. Its whole-test
+timeout is 30 seconds for all suites; individual assertion deadlines remain
+unchanged. Standalone conformance keeps its 15-second whole-test timeout.
+Node and Worker route cases run in the canonical Jest target. The former
+`runtime-smoke` runner has been retired; both host Nx names remain unchanged.

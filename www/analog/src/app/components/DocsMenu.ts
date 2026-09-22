@@ -129,7 +129,7 @@ import { Squircle } from './Squircle';
             [routerLink]="[docsUrl(), 'start', 'sample']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >Samples</a
+            >Example app</a
           >
         </li>
         <li>
