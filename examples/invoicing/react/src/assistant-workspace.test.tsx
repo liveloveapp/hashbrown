@@ -582,8 +582,8 @@ test('the render call paints its prose and table from the streamed arguments bef
       screen.getByText('Cedar Health has one open invoice.'),
     ).toBeInTheDocument(),
   );
-  // The client-side `render` definition exists for hashbrown's benefit only;
-  // the server refuses any run that advertises tools, so none go on the wire.
+  // The draft comes from the server's own call; the client registers no
+  // tools, and the server refuses any run that advertises one.
   expect(requests[0]?.input.tools).toEqual([]);
   expect(
     screen.getByRole('heading', { name: 'Open invoices' }),

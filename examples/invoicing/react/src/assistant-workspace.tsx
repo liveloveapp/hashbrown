@@ -6,19 +6,13 @@ import {
   useContext,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from 'react';
 import { HashbrownProvider, useUiChat } from '@hashbrownai/react';
-import {
-  createHttpTransport,
-  resolveTransport,
-  type Transport,
-  type TransportOrFactory,
-} from '@hashbrownai/core';
+import type { TransportOrFactory } from '@hashbrownai/core';
 import type { LedgerSnapshot } from '@invoicing/contracts';
-import { findRenderCall, RenderDraft, useRenderTool } from './assistant-draft';
+import { findRenderCall, RenderDraft } from './assistant-draft';
 import { assistantKit } from './assistant-kit';
 import { ReviewChat, type ReviewChatHandle } from './review-chat';
 import { SnapshotContext } from './snapshot-context';
@@ -43,20 +37,6 @@ function ReviewPayment({ paymentId }: { paymentId: string }) {
 }
 const components = assistantKit(ReviewPayment);
 const ASSISTANT_URL = '/agui/%2Fassistant%23agent';
-
-/**
- * The conversation registers a client-side `render` tool so hashbrown surfaces
- * the server's render call, with its arguments as they stream, on the
- * assistant message. That definition is for the client alone: the server
- * refuses any run that advertises tools, so it never goes on the wire.
- */
-function withoutClientTools(transport: Transport): Transport {
-  return {
-    name: transport.name,
-    send: (request) =>
-      transport.send({ ...request, input: { ...request.input, tools: [] } }),
-  };
-}
 
 /** Explicit matching entry point; false means an existing operation or invoice choice needs attention. */
 export interface AssistantWorkspaceHandle {
@@ -157,20 +137,10 @@ function Conversation({
 }) {
   const [threadId] = useState(() => crypto.randomUUID());
   const [prompt, setPrompt] = useState('');
-  const renderTool = useRenderTool();
-  const wireTransport = useMemo(
-    () =>
-      withoutClientTools(
-        resolveTransport(transport) ??
-          createHttpTransport({ baseUrl: ASSISTANT_URL }),
-      ),
-    [transport],
-  );
   const chat = useUiChat({
     components,
     threadId,
-    transport: wireTransport,
-    tools: [renderTool],
+    transport,
     state: {} as Record<string, unknown>,
     debounceTime: 0,
     system:
@@ -194,9 +164,10 @@ function Conversation({
         if (message.role !== 'assistant') return null;
         if (message.ui) return <Fragment key={index}>{message.ui}</Fragment>;
         // The validated answer arrives as a later assistant message with
-        // `ui`; until it does, the render call's streamed arguments stand in
-        // for it, drawn through the same components so the swap is invisible.
-        const draft = findRenderCall(message.toolCalls);
+        // `ui`; until it does, the server's render call, surfaced by hashbrown
+        // with its arguments as they stream, stands in for it, drawn through
+        // the same components so the swap is invisible.
+        const draft = findRenderCall(message.serverToolCalls);
         const superseded = chat.messages
           .slice(index + 1)
           .some((later) => later.role === 'assistant' && later.ui);
