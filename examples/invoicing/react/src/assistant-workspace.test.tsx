@@ -482,3 +482,147 @@ test('an errored review surface cannot approve after a later review starts', asy
     expect(button).toBeDisabled();
   await settle();
 });
+
+// Streams a `render` call's arguments in pieces, pausing before TOOL_CALL_END
+// until the test releases the gate, then delivers the validated echo the way
+// the server does: as a separate assistant message that the after hook holds
+// until the tool result has landed.
+function streamingRender(components: readonly Record<string, unknown>[]) {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const requests: TransportRequest[] = [];
+  const args = JSON.stringify({
+    text: 'Cedar Health has one open invoice.',
+    components,
+  });
+  const echo = {
+    ui: [
+      {
+        AssistantText: {
+          props: { text: 'Cedar Health has one open invoice.' },
+          children: components.map((leaf) => {
+            const [name] = Object.keys(leaf);
+            return { [name]: { props: leaf[name] } };
+          }),
+        },
+      },
+    ],
+  };
+  const transport: Transport = {
+    name: 'streaming-render-test',
+    async send(request) {
+      requests.push(request);
+      const identity = {
+        threadId: request.input.threadId,
+        runId: request.input.runId,
+      };
+      return {
+        events: (async function* (): AsyncIterable<AGUIEvent> {
+          yield { type: EventType.RUN_STARTED, ...identity };
+          yield {
+            type: EventType.TOOL_CALL_START,
+            toolCallId: 'call-render',
+            toolCallName: 'render',
+          };
+          for (let offset = 0; offset < args.length; offset += 7) {
+            yield {
+              type: EventType.TOOL_CALL_ARGS,
+              toolCallId: 'call-render',
+              delta: args.slice(offset, offset + 7),
+            };
+          }
+          await gate;
+          yield { type: EventType.TOOL_CALL_END, toolCallId: 'call-render' };
+          yield {
+            type: EventType.TEXT_MESSAGE_START,
+            messageId: 'echo',
+            role: 'assistant',
+          };
+          yield {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId: 'echo',
+            delta: JSON.stringify(echo),
+          };
+          yield { type: EventType.TEXT_MESSAGE_END, messageId: 'echo' };
+          yield {
+            type: EventType.TOOL_CALL_RESULT,
+            messageId: 'result',
+            toolCallId: 'call-render',
+            content: JSON.stringify({ rendered: true }),
+          };
+          yield { type: EventType.RUN_FINISHED, ...identity };
+        })(),
+      };
+    },
+  };
+  return { transport, release, requests };
+}
+
+async function ask(transport: Transport, question: string) {
+  render(
+    <AssistantWorkspace
+      snapshot={snapshot}
+      onApplied={() => undefined}
+      transport={transport}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Message assistant'), {
+    target: { value: question },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+}
+
+test('the render call paints its prose and table from the streamed arguments before the call ends', async () => {
+  const { transport, release, requests } = streamingRender([
+    { LedgerTable: { title: 'Open invoices', recordIds: ['i'] } },
+  ]);
+  await ask(transport, 'Show Cedar Health');
+  await waitFor(() =>
+    expect(
+      screen.getByText('Cedar Health has one open invoice.'),
+    ).toBeInTheDocument(),
+  );
+  // The client-side `render` definition exists for hashbrown's benefit only;
+  // the server refuses any run that advertises tools, so none go on the wire.
+  expect(requests[0]?.input.tools).toEqual([]);
+  expect(
+    screen.getByRole('heading', { name: 'Open invoices' }),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Reading your ledger…')).toBeInTheDocument();
+
+  release();
+  await waitFor(() =>
+    expect(screen.queryByText('Reading your ledger…')).not.toBeInTheDocument(),
+  );
+  // The validated answer replaced the draft rather than joining it.
+  expect(
+    screen.getAllByText('Cedar Health has one open invoice.'),
+  ).toHaveLength(1);
+  expect(
+    screen.getAllByRole('heading', { name: 'Open invoices' }),
+  ).toHaveLength(1);
+  await settle();
+});
+
+test('a ReviewPayment leaf is not drawn from a draft, only from the validated answer', async () => {
+  const { transport, release } = streamingRender([
+    { ReviewPayment: { paymentId: 'p' } },
+  ]);
+  await ask(transport, 'Which payment should I review?');
+  await waitFor(() =>
+    expect(
+      screen.getByText('Cedar Health has one open invoice.'),
+    ).toBeInTheDocument(),
+  );
+  expect(
+    screen.queryByRole('button', { name: /^Review / }),
+  ).not.toBeInTheDocument();
+
+  release();
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: /^Review / }),
+    ).toBeInTheDocument(),
+  );
+  await settle();
+});

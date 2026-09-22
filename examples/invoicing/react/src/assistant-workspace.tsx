@@ -6,12 +6,19 @@ import {
   useContext,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { HashbrownProvider, useUiChat } from '@hashbrownai/react';
-import type { TransportOrFactory } from '@hashbrownai/core';
+import {
+  createHttpTransport,
+  resolveTransport,
+  type Transport,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 import type { LedgerSnapshot } from '@invoicing/contracts';
+import { findRenderCall, RenderDraft, useRenderTool } from './assistant-draft';
 import { assistantKit } from './assistant-kit';
 import { ReviewChat, type ReviewChatHandle } from './review-chat';
 import { SnapshotContext } from './snapshot-context';
@@ -35,6 +42,21 @@ function ReviewPayment({ paymentId }: { paymentId: string }) {
   );
 }
 const components = assistantKit(ReviewPayment);
+const ASSISTANT_URL = '/agui/%2Fassistant%23agent';
+
+/**
+ * The conversation registers a client-side `render` tool so hashbrown surfaces
+ * the server's render call, with its arguments as they stream, on the
+ * assistant message. That definition is for the client alone: the server
+ * refuses any run that advertises tools, so it never goes on the wire.
+ */
+function withoutClientTools(transport: Transport): Transport {
+  return {
+    name: transport.name,
+    send: (request) =>
+      transport.send({ ...request, input: { ...request.input, tools: [] } }),
+  };
+}
 
 /** Explicit matching entry point; false means an existing operation or invoice choice needs attention. */
 export interface AssistantWorkspaceHandle {
@@ -135,10 +157,20 @@ function Conversation({
 }) {
   const [threadId] = useState(() => crypto.randomUUID());
   const [prompt, setPrompt] = useState('');
+  const renderTool = useRenderTool();
+  const wireTransport = useMemo(
+    () =>
+      withoutClientTools(
+        resolveTransport(transport) ??
+          createHttpTransport({ baseUrl: ASSISTANT_URL }),
+      ),
+    [transport],
+  );
   const chat = useUiChat({
     components,
     threadId,
-    transport,
+    transport: wireTransport,
+    tools: [renderTool],
     state: {} as Record<string, unknown>,
     debounceTime: 0,
     system:
@@ -152,15 +184,26 @@ function Conversation({
   }, [busy, onBusy]);
   return (
     <section aria-label="Ledger conversation">
-      {chat.messages.map((message, index) =>
-        message.role === 'assistant' ? (
-          <Fragment key={index}>{message.ui}</Fragment>
-        ) : message.role === 'user' ? (
-          <p className="user-message" key={index}>
-            {typeof message.content === 'string' ? message.content : ''}
-          </p>
-        ) : null,
-      )}
+      {chat.messages.map((message, index) => {
+        if (message.role === 'user')
+          return (
+            <p className="user-message" key={index}>
+              {typeof message.content === 'string' ? message.content : ''}
+            </p>
+          );
+        if (message.role !== 'assistant') return null;
+        if (message.ui) return <Fragment key={index}>{message.ui}</Fragment>;
+        // The validated answer arrives as a later assistant message with
+        // `ui`; until it does, the render call's streamed arguments stand in
+        // for it, drawn through the same components so the swap is invisible.
+        const draft = findRenderCall(message.toolCalls);
+        const superseded = chat.messages
+          .slice(index + 1)
+          .some((later) => later.role === 'assistant' && later.ui);
+        return draft && !superseded ? (
+          <RenderDraft key={index} args={draft} />
+        ) : null;
+      })}
       {(chat.error || chat.sendingError || chat.generatingError) && (
         <p role="alert">
           The assistant could not finish. No financial changes were made by this
@@ -263,7 +306,7 @@ export function AssistantWorkspace({
       }}
     >
       <SnapshotContext.Provider value={snapshot}>
-        <HashbrownProvider url="/agui/%2Fassistant%23agent">
+        <HashbrownProvider url={ASSISTANT_URL}>
           <Conversation
             selectedPaymentId={selectedPaymentId}
             locked={Boolean(active)}
