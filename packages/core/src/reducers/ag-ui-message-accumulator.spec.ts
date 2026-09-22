@@ -1495,3 +1495,82 @@ test('structurally shares untouched message, tool, parser, cache, and diagnostic
   expect(next.diagnostics).toBe(state.diagnostics);
   expect(next.configSnapshot).toBe(state.configSnapshot);
 });
+
+test('resolves an unregistered tool call arguments progressively as JSON completes', () => {
+  // Arrange
+  const state = createState(undefined, {});
+  const args = '{"text":"Cedar Health has one open invoice.","components":[]}';
+
+  // Act
+  const partial = accumulateEvents(state, [
+    toolStart('call-render', 'render'),
+    ...jsonChunks(args.slice(0, 30)).map((delta) =>
+      toolArgs('call-render', delta),
+    ),
+  ]);
+  const whole = accumulateEvents(partial, [
+    ...jsonChunks(args.slice(30)).map((delta) =>
+      toolArgs('call-render', delta),
+    ),
+  ]);
+
+  // Assert
+  expect(partial.toolCalls[0]).toEqual(
+    expect.objectContaining({
+      name: 'render',
+      arguments: args.slice(0, 30),
+      argumentsResolved: { text: 'Cedar Health has one ' },
+    }),
+  );
+  expect(whole.toolCalls[0]).toEqual(
+    expect.objectContaining({
+      arguments: args,
+      argumentsResolved: {
+        text: 'Cedar Health has one open invoice.',
+        components: [],
+      },
+    }),
+  );
+  expect(whole.error).toBeUndefined();
+});
+
+test('marks an unregistered tool call arguments complete at TOOL_CALL_END', () => {
+  // Arrange
+  const state = createState(undefined, {});
+
+  // Act
+  const streaming = accumulateEvents(state, [
+    toolStart('call-render', 'render'),
+    toolArgs('call-render', '{"text":"hi"}'),
+  ]);
+  const ended = accumulateEvents(streaming, [
+    { type: EventType.TOOL_CALL_END, toolCallId: 'call-render' },
+  ]);
+
+  // Assert
+  expect(streaming.toolCalls[0]?.argumentsComplete).toBeUndefined();
+  expect(ended.toolCalls[0]).toEqual(
+    expect.objectContaining({
+      argumentsComplete: true,
+      argumentsResolved: { text: 'hi' },
+      status: 'pending',
+    }),
+  );
+});
+
+test('leaves malformed unregistered tool call arguments unresolved without a stream error', () => {
+  // Arrange
+  const state = createState(undefined, {});
+
+  // Act
+  const next = accumulateEvents(state, [
+    toolStart('call-render', 'render'),
+    toolArgs('call-render', '{"text": nope}'),
+    { type: EventType.TOOL_CALL_END, toolCallId: 'call-render' },
+  ]);
+
+  // Assert
+  expect(next.toolCalls[0]?.argumentsResolved).toBeUndefined();
+  expect(next.toolCalls[0]?.argumentsComplete).toBe(true);
+  expect(next.error).toBeUndefined();
+});

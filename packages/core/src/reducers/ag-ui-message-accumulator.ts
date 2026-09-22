@@ -179,6 +179,23 @@ function resolveJsonValue(parserState: StreamState) {
   return resolve(parserState);
 }
 
+/**
+ * The JSON parsed so far, complete or not, for a call with no registered tool
+ * and therefore no schema to stream against. Malformed input yields nothing
+ * rather than an error: the client never executes such a call, so its
+ * arguments are display-only.
+ */
+function resolvePartialJsonValue(parserState: StreamState) {
+  if (parserState.error) {
+    return undefined;
+  }
+  try {
+    return resolve(parserState);
+  } catch {
+    return undefined;
+  }
+}
+
 function cloneMetadata(metadata: Metadata | undefined) {
   return metadata === undefined ? undefined : structuredClone(metadata);
 }
@@ -664,7 +681,7 @@ function appendToolArguments(
   let toolCacheById = state.toolCacheById;
   let error = state.error;
 
-  if (tool && event.delta.length > 0) {
+  if (event.delta.length > 0) {
     const parserState = push(
       ensureParserState(readOwn(toolParserStateById, event.toolCallId)),
       event.delta,
@@ -675,7 +692,12 @@ function appendToolArguments(
       parserState,
     );
 
-    if (s.isHashbrownType(tool.schema)) {
+    if (!tool) {
+      const resolvedValue = resolvePartialJsonValue(parserState);
+      if (resolvedValue !== undefined) {
+        argumentsResolved = resolvedValue;
+      }
+    } else if (s.isHashbrownType(tool.schema)) {
       const resolved = resolveSchemaValue(
         tool.schema,
         parserState,
@@ -951,7 +973,30 @@ function finalizeToolCalls(
 
     const parserState = readOwn(toolParserStateById, toolCall.id);
     const tool = toolsByName[toolCall.name];
-    if (!parserState || !tool) {
+    if (!tool) {
+      // A server-executed call: finish the schemaless parse and record that
+      // its arguments are complete, without ever raising a stream error.
+      finalizedToolCallIds = withOwn(finalizedToolCallIds, toolCall.id, true);
+      let argumentsResolved = toolCall.argumentsResolved;
+      if (parserState) {
+        const finalized = finish(parserState);
+        toolParserStateById = withOwn(
+          toolParserStateById,
+          toolCall.id,
+          finalized,
+        );
+        const resolvedValue = resolveJsonValue(finalized);
+        if (resolvedValue !== undefined) {
+          argumentsResolved = resolvedValue;
+        }
+      }
+      return {
+        ...toolCall,
+        ...(argumentsResolved !== undefined ? { argumentsResolved } : {}),
+        argumentsComplete: true,
+      };
+    }
+    if (!parserState) {
       return toolCall;
     }
 

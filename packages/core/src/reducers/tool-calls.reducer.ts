@@ -260,7 +260,8 @@ export const reducer = createReducer(
         delta.length === 0 &&
         metadata === existing.metadata &&
         state.activeToolCallId === activeToolCallId &&
-        state.activeToolCallName === activeToolCallName
+        state.activeToolCallName === activeToolCallName &&
+        (!ending || existing.argumentsComplete === true)
       ) {
         return state;
       }
@@ -268,6 +269,7 @@ export const reducer = createReducer(
         ? updateEntity(state.draft, id, {
             arguments: `${existing.arguments}${delta}`,
             ...(metadata === undefined ? {} : { metadata }),
+            ...(ending ? { argumentsComplete: true } : {}),
           })
         : toolCallName
           ? addEntities(state.draft, [

@@ -36,6 +36,8 @@ export interface ToolCall {
   name: string;
   arguments: string;
   argumentsResolved?: JsonValue;
+  /** Set once the stream has finished delivering the arguments (TOOL_CALL_END). */
+  argumentsComplete?: boolean;
   result?: PromiseSettledResult<any>;
   progress?: number;
   status: 'pending' | 'done';

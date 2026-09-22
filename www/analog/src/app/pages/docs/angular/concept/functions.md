@@ -192,6 +192,50 @@ Let's review the code above.
 
 ---
 
+## Server-Executed Tool Calls
+
+Not every tool the model calls runs in the browser. An agent server can
+execute its own tools and stream only the call and its result to Hashbrown.
+Those calls appear on the assistant message as `serverToolCalls`, a
+display-only list that Hashbrown never executes. Each entry carries the tool's
+`name`, its `toolCallId`, a `status`, and `args`: the arguments resolved so
+far, growing as the server streams them, or `null` before any JSON has parsed.
+
+| Status       | Meaning                                                    |
+| ------------ | ---------------------------------------------------------- |
+| `inProgress` | Argument deltas are still arriving; `args` may be partial  |
+| `executing`  | The arguments are complete; the server is running the tool |
+| `complete`   | The server reported the tool's `result`                    |
+
+Because `args` resolve progressively, a component can render from a server
+call before it finishes, the way it does for streaming text.
+
+<hb-code-example header="server tool calls">
+
+```ts
+@Component({
+  selector: 'app-answer',
+  template: `
+    @for (call of message().serverToolCalls ?? []; track call.toolCallId) {
+      @if (call.name === 'render' && call.args) {
+        <app-draft [args]="call.args" />
+      }
+    }
+  `,
+})
+export class AnswerComponent {
+  readonly message = input.required<UiAssistantMessage>();
+}
+```
+
+</hb-code-example>
+
+Tools you register with @hashbrownai/angular!createTool:function keep
+appearing in `toolCalls` exactly as before; only calls with no matching client
+tool land in `serverToolCalls`.
+
+---
+
 ## Next Steps
 
 <hb-next-steps>
