@@ -55,9 +55,12 @@ export default defineConfig(({ command, mode }) => {
       analog({
         workspaceRoot: resolve(__dirname, '../..'),
         apiPrefix: '_',
+        // The SSR template must be the built client index.html (hashed asset
+        // tags). The Vercel preset writes the client build to the repository
+        // root .vercel/output/static, before the server bundle reads it.
         index:
           command === 'build' && mode === 'production'
-            ? resolve(__dirname, '../../dist/www/analog/index.html')
+            ? resolve(__dirname, '../../.vercel/output/static/index.html')
             : undefined,
         content: {
           highlighter: 'shiki',
@@ -81,7 +84,24 @@ export default defineConfig(({ command, mode }) => {
       ...(mode === 'test'
         ? []
         : nitro({
-            preset: 'cloudflare-pages',
+            preset: 'vercel',
+            vercel: {
+              functions: {
+                // Hobby default and ceiling; streamed response time counts.
+                maxDuration: 300,
+              },
+              config: {
+                // The client build writes its shell to the deployed static
+                // root, and the preset puts `{ handle: "filesystem" }` ahead
+                // of the catch-all, so Vercel answered "/" with that
+                // unrendered shell and the server function never ran. Every
+                // other route has no matching file and renders. These routes
+                // are concatenated ahead of the generated ones, so "/" reaches
+                // the renderer while the shell stays on disk for the SSR
+                // template to read.
+                routes: [{ src: '/', dest: '/__server' }],
+              },
+            },
             renderer: {
               template: resolve(__dirname, 'index.html'),
             },

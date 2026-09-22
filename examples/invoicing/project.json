@@ -1,0 +1,34 @@
+{
+  "name": "invoicing",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "implicitDependencies": [
+    "invoicing-react",
+    "invoicing-server",
+    "invoicing-contracts"
+  ],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        {
+          "projects": ["invoicing-react"],
+          "target": "build"
+        }
+      ],
+      "outputs": ["{projectRoot}/.vercel/output"],
+      "options": {
+        "commands": ["npx b4 build --clean"],
+        "parallel": false,
+        "cwd": "examples/invoicing/server"
+      }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "node --test examples/invoicing/e2e/*.e2e.test.mjs"
+      }
+    }
+  }
+}

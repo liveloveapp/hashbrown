@@ -38,8 +38,7 @@ Each package must have an npm trusted publisher entry with:
 node --test scripts/verify-release-versions.spec.mjs scripts/verify-npm-release.spec.mjs
 node scripts/verify-release-versions.mjs --tag vX.Y.Z
 actionlint .github/workflows/*.yml
-npx nx test cloudflare-deployment
-npx nx lint cloudflare-deployment
+npx nx run-many -t test,lint -p vercel-bootstrap
 npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react --parallel=3
 npx nx run-many -t test -p angular anthropic azure bedrock core google ollama openai --parallel=3
 npx nx run-many -t lint -p angular anthropic azure bedrock core google ollama openai --parallel=3
@@ -84,14 +83,13 @@ The `NPM Publish` workflow should:
 2. Publish serially with npm trusted publishing.
 3. Verify every package exists on npm with the expected dist tag.
 
-Cloudflare production deployment is independent of npm tags and package
-publishing. Immediately before production starts, the `PR / Main CI` workflow
-checks whether the validated SHA is still the current `main` SHA. A run already
-superseded at that check skips production. A push after the check does not stop
-the active deployment; workflow concurrency allows a later run to deploy
-afterward if it passes validation and is still current at its check. Production
-publishes all four Pages projects. A release tag does not trigger or repeat that
-deployment.
+Website deployment to Vercel is independent of npm tags and package
+publishing. Every run on `main` (push or manual dispatch) shares one workflow
+concurrency group, so production deployments are strictly ordered: an
+in-progress run finishes and deploys its commit, GitHub keeps only the newest
+pending run, and that run then deploys the latest commit. A superseded commit
+can therefore be live briefly, but never after a newer one. A release tag does
+not trigger or repeat that deployment.
 
 After the workflow succeeds, verify the GitHub release remains attached to the
 version tag:

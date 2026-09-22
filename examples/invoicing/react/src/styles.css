@@ -1,0 +1,572 @@
+:root {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  color: #202327;
+  background: #fff;
+  font-synthesis: none;
+  font-size: 14px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+button:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #3d745a;
+  outline-offset: 3px;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr) 310px;
+  min-height: 100vh;
+}
+.navigation {
+  background: #fafafa;
+  border-right: 1px solid #e7e7e7;
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.brand {
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 10px 30px;
+  font-size: 16px;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  background: #253d32;
+  color: #fff;
+  width: 27px;
+  height: 27px;
+  border-radius: 7px;
+}
+.navigation button {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  text-align: left;
+  color: #64686d;
+}
+.navigation button[aria-current] {
+  background: #eceeed;
+  color: #202327;
+  font-weight: 550;
+}
+.nav-footer {
+  margin: auto 10px 0;
+  font-size: 11px;
+  line-height: 1.8;
+  color: #878a8d;
+}
+main {
+  min-width: 0;
+}
+.page-header {
+  height: 64px;
+  border-bottom: 1px solid #e7e7e7;
+  padding: 0 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.badge {
+  font-size: 10px;
+  border: 1px solid #e7e7e7;
+  border-radius: 5px;
+  padding: 4px 7px;
+  color: #6e7276;
+}
+.content {
+  padding: 34px 28px;
+  max-width: 1250px;
+  margin: auto;
+}
+h1 {
+  font-size: 25px;
+  font-weight: 550;
+  letter-spacing: -0.7px;
+  margin: 0 0 8px;
+}
+h2 {
+  font-size: 14px;
+  font-weight: 550;
+  margin: 0;
+}
+.muted {
+  color: #73777c;
+  line-height: 1.6;
+  font-size: 12px;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 28px 0 32px;
+}
+.stats article {
+  border: 1px solid #e4e6e5;
+  border-radius: 8px;
+  padding: 18px 16px;
+}
+.stats span,
+.stats small {
+  display: block;
+  font-size: 11px;
+  color: #757a7e;
+}
+.stats strong {
+  display: block;
+  font-size: 26px;
+  font-weight: 550;
+  letter-spacing: -0.8px;
+  margin: 12px 0;
+  font-variant-numeric: tabular-nums;
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.payment-grid {
+  border: 1px solid #e4e6e5;
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 0;
+}
+.payment-link {
+  background: none;
+  border: 0;
+  padding: 5px 0;
+  text-align: left;
+  color: #293e34;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.invoice-context {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #e4e6e5;
+  border-radius: 8px;
+}
+.invoice-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid #efefef;
+  font-size: 12px;
+}
+.invoice-row div:last-child {
+  text-align: right;
+}
+.invoice-row strong {
+  font-weight: 500;
+}
+.invoice-row small {
+  display: block;
+  color: #777d80;
+  margin-top: 6px;
+}
+.context-note {
+  font-size: 11px;
+  color: #73777c;
+  margin-bottom: 0;
+}
+.assistant {
+  border-left: 1px solid #e7e7e7;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.assistant .page-header {
+  padding: 0 20px;
+}
+.assistant-body {
+  padding: 27px 20px;
+  flex: 1;
+}
+.assistant-icon {
+  display: grid;
+  place-items: center;
+  border: 1px solid #e4e6e5;
+  border-radius: 7px;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 20px;
+}
+.assistant-body h2 {
+  margin-bottom: 14px;
+}
+.connection-notice {
+  font-size: 12px;
+  color: #73777c;
+  line-height: 1.7;
+  margin-top: 23px;
+}
+.selection-summary {
+  padding: 14px;
+  border: 1px solid #e4e6e5;
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 12px;
+}
+.selection-summary strong {
+  font-weight: 550;
+}
+.selection-summary span {
+  color: #73777c;
+}
+.composer {
+  margin: 16px;
+  border: 1px solid #e4e6e5;
+  border-radius: 9px;
+  padding: 10px;
+}
+.composer textarea {
+  width: 100%;
+  resize: none;
+  border: 0;
+  min-height: 50px;
+  font-size: 12px;
+  background: transparent;
+}
+.composer > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #8a8d90;
+}
+.composer small {
+  font-size: 10px;
+}
+.composer button {
+  border: 0;
+  border-radius: 5px;
+  background: #f0f1f0;
+  color: #a1a4a2;
+  padding: 4px 9px;
+}
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 150px minmax(0, 1fr) 270px;
+  }
+  .content {
+    padding: 28px 18px;
+  }
+  .stats {
+    gap: 8px;
+  }
+  .stats article {
+    padding: 14px 10px;
+  }
+  .stats strong {
+    font-size: 21px;
+  }
+}
+@media (max-width: 800px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .navigation {
+    flex-direction: row;
+    align-items: center;
+    border-right: 0;
+    border-bottom: 1px solid #e7e7e7;
+    padding: 10px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    margin: 0 16px 0 0;
+  }
+  .nav-footer {
+    display: none;
+  }
+  .assistant {
+    border-left: 0;
+    border-top: 1px solid #e7e7e7;
+  }
+  .assistant-body {
+    min-height: 200px;
+  }
+  .stats strong {
+    font-size: 20px;
+  }
+}
+@media (pointer: coarse) {
+  button {
+    min-height: 44px;
+  }
+  .composer textarea {
+    font-size: 16px;
+  }
+}
+
+.assistant-body section[aria-label='Payment review chat'] {
+  margin-top: 20px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.assistant-body form {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+}
+.assistant-body input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #e4e6e5;
+  border-radius: 6px;
+  font: inherit;
+}
+.assistant-body button {
+  padding: 8px 12px;
+  border: 1px solid #d4ddd7;
+  border-radius: 6px;
+  background: #edf3ef;
+  color: #253d32;
+}
+.assistant-body button:disabled {
+  opacity: 0.5;
+}
+
+.monthly-report {
+  margin: 0 0 28px;
+  border: 1px solid #e4e6e5;
+  border-radius: 8px;
+  padding: 20px;
+}
+.monthly-scroll {
+  max-height: 260px;
+  overflow: auto;
+}
+.monthly-report table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.monthly-report th,
+.monthly-report td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #efefef;
+  text-align: right;
+}
+.monthly-report th:first-child {
+  text-align: left;
+}
+.monthly-report th {
+  font-weight: 500;
+}
+.monthly-report thead {
+  position: sticky;
+  top: 0;
+  background: #fff;
+}
+.payment-filters {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.payment-filters button,
+.match-controls button {
+  padding: 8px 12px;
+  border: 1px solid #d4ddd7;
+  border-radius: 6px;
+  background: #fff;
+  color: #253d32;
+}
+.payment-filters button[aria-pressed='true'],
+.match-controls button {
+  background: #edf3ef;
+}
+.match-controls button:disabled {
+  opacity: 0.5;
+}
+.match-controls {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin-top: 18px;
+}
+.match-controls label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+}
+.match-controls select {
+  max-width: 100%;
+  padding: 8px;
+  font: inherit;
+  border: 1px solid #d4ddd7;
+  border-radius: 6px;
+}
+.invoice-context summary {
+  cursor: pointer;
+  padding: 12px 0;
+  color: #73777c;
+  font-size: 12px;
+}
+
+.assistant-body textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 10px;
+  resize: vertical;
+  border: 1px solid #e4e6e5;
+  border-radius: 6px;
+}
+.assistant-answer {
+  white-space: pre-wrap;
+}
+
+.review-history {
+  margin-top: 16px;
+  border-top: 1px solid #e4e6e5;
+  padding-top: 12px;
+}
+.review-history summary {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  margin-bottom: 10px;
+}
+.selection-summary dd {
+  margin: 3px 0 12px;
+  overflow-wrap: anywhere;
+}
+.selection-summary dd small {
+  display: block;
+  color: #73777c;
+  margin-top: 3px;
+}
+
+.assistant-kit {
+  margin-top: 12px;
+}
+.assistant-kit h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.assistant-kit-customer header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.assistant-kit-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 8px 0;
+}
+.assistant-kit-stats dt {
+  color: #73777c;
+  font-size: 12px;
+}
+.assistant-kit-stats dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+.assistant-kit-chart {
+  position: relative;
+  /* Drop the UA figure margin (1em 40px) so the chart spans the aside. */
+  margin: 12px 0 0;
+}
+.assistant-kit-chart .plot {
+  position: relative;
+}
+.assistant-kit-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  font-family: inherit;
+}
+.assistant-kit-chart svg text {
+  font-variant-numeric: tabular-nums;
+}
+.assistant-kit-chart .legend {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+.assistant-kit-chart .legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+.assistant-kit-chart .assistant-kit-caption {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.assistant-kit-chart .tooltip {
+  position: absolute;
+  background: #202327;
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1;
+}
+.assistant-kit-chart .tooltip .key {
+  display: inline-block;
+  width: 10px;
+  height: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.assistant-kit-chart details {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.assistant-kit-chart table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.assistant-kit-chart th,
+.assistant-kit-chart td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid #e4e6e5;
+}
+.assistant-kit-chart g[tabindex]:focus-visible {
+  outline: 2px solid #2a78d6;
+}

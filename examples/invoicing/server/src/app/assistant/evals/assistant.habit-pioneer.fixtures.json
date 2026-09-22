@@ -1,0 +1,88 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "How does Pioneer Robotics usually pay?",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "ledgerSummary",
+            "arguments": "{}",
+            "id": "call_HVo5L5IxbMF6up3iR51MmaSK"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "How does Pioneer Robotics usually pay?",
+        "turnIndex": 1,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "customerStatement",
+            "arguments": "{\"customerId\":\"pioneer\"}",
+            "id": "call_GGQpIZH1lbZ00wJxc26KPSoI"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "How does Pioneer Robotics usually pay?",
+        "turnIndex": 2,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "render",
+            "arguments": "{\"text\":\"Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days\\n- Late payment rate: 1 (they pay late consistently)\\n- Last payment: 2026-09-05\\n- Outstanding balance: \\\"$9,950.00\\\"\\n\\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\",\"components\":[{\"LedgerTable\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}},{\"CustomerCard\":{\"customerId\":\"pioneer\"}}]}",
+            "id": "call_QVnkJmR5frhXad8k0YyVk620"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days\\n- Late payment rate: 1 (they pay late consistently)\\n- Last payment: 2026-09-05\\n- Outstanding balance: \\\"$9,950.00\\\"\\n\\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"pioneer\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days\\n- Late payment rate: 1 (they pay late consistently)\\n- Last payment: 2026-09-05\\n- Outstanding balance: \\\"$9,950.00\\\"\\n\\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"pioneer\"}}}]}}]}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "How does Pioneer Robotics usually pay?",
+        "turnIndex": 3,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\n\n- Profile: late-fixed\n- Average days to pay: 39 days\n- Late payment rate: 1 (they pay late consistently)\n- Last payment: 2026-09-05\n- Outstanding balance: \"$9,950.00\"\n\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"score\": 1, \"reason\": \"All criteria met: currency formatted with symbol, no claims of changing/matching/allocating, and only an allowed customer name used.\"}"
+      }
+    }
+  ]
+}

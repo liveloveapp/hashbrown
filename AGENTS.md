@@ -109,11 +109,6 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx build fast-food-angular`
   - `npx nx serve fast-food-angular`
   - `npx nx test fast-food-angular`
-  - `npx nx deploy fast-food-angular`
-- `fast-food-cloudflare`
-  - `npx nx build fast-food-cloudflare`
-  - `npx nx serve fast-food-cloudflare`
-  - `npx nx generate-data fast-food-cloudflare`
 - `fast-food-react`
   - No Nx targets are currently defined.
 - `fast-food-server`
@@ -123,17 +118,15 @@ This file defines how agents should work in this repository. Keep changes aligne
 - `finance-angular`
   - `npx nx build finance-angular`
   - `npx nx serve finance-angular`
-  - `npx nx deploy finance-angular`
-- `finance-cloudflare`
-  - `npx nx build finance-cloudflare`
-  - `npx nx serve finance-cloudflare`
-  - `npx nx generate-data finance-cloudflare`
 - `finance-react`
   - No Nx targets are currently defined.
 - `finance-server`
   - `npx nx build finance-server`
   - `npx nx serve finance-server`
   - `npx nx generate-data finance-server`
+- `invoicing`
+  - `npx nx build invoicing`
+  - `npx nx e2e invoicing`
 - `kitchen-sink-angular`
   - `npx nx build kitchen-sink-angular`
   - `npx nx serve kitchen-sink-angular`
@@ -156,10 +149,6 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx serve-static smart-home-angular`
   - `npx nx extract-i18n smart-home-angular`
   - `npx nx lint smart-home-angular`
-  - `npx nx deploy smart-home-angular`
-- `smart-home-cloudflare`
-  - `npx nx build smart-home-cloudflare`
-  - `npx nx serve smart-home-cloudflare`
 - `smart-home-react`
   - `npx nx build smart-home-react`
 - `smart-home-server`

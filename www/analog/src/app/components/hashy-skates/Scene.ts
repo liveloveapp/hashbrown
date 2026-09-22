@@ -1,9 +1,11 @@
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   effect,
   ElementRef,
   inject,
+  PLATFORM_ID,
 } from '@angular/core';
 import { fromEvent, tap } from 'rxjs';
 import { Clouds } from './Clouds';
@@ -39,6 +41,7 @@ import { Shadow } from './Shadow';
 })
 export class Scene {
   elementRef = inject<ElementRef<SVGSVGElement>>(ElementRef);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   // motion tuning
   private readonly stiffness = 0.12; // higher = snappier
@@ -46,6 +49,12 @@ export class Scene {
 
   constructor() {
     effect((teardown) => {
+      // Effects run while the server renders too, and the parallax needs
+      // `window`, `requestAnimationFrame` and layout boxes that only exist in a
+      // browser. Reaching for them on the server throws out of the render, and
+      // the whole home page falls back to the client-side shell.
+      if (!this.isBrowser) return;
+
       const svg = this.elementRef.nativeElement;
       const clouds = svg.querySelector<SVGGElement>(
         'g[hb-hashy-skates-clouds]',

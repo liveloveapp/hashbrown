@@ -1,0 +1,154 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: preview or production
+        required: true
+        type: string
+      targets:
+        description: JSON array of { key, dir, project_id_secret }
+        required: true
+        type: string
+      ref:
+        description: Commit SHA to build and deploy
+        required: true
+        type: string
+      branch:
+        description: Git branch name recorded on the Vercel deployment
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: ${{ inputs.environment }} / ${{ matrix.key }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      deployments: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.targets) }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
+    steps:
+      - name: Validate deployment inputs
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          PROJECT_ID_SECRET: ${{ matrix.project_id_secret }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [[ "$ENVIRONMENT" != "preview" && "$ENVIRONMENT" != "production" ]]; then
+            echo "::error::environment must be preview or production, got '$ENVIRONMENT'."
+            exit 1
+          fi
+          if [[ -z "$VERCEL_TOKEN" || -z "$VERCEL_ORG_ID" || -z "$VERCEL_PROJECT_ID" ]]; then
+            echo "::error::Missing VERCEL_TOKEN, VERCEL_ORG_ID, or $PROJECT_ID_SECRET. Run tools/vercel/bootstrap.mjs to provision them."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npx nx build "${{ matrix.key }}" --configuration=production
+
+      - name: Create GitHub deployment
+        id: deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ inputs.ref }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          KEY: ${{ matrix.key }}
+        run: |
+          payload="$(jq -n \
+            --arg ref "$REF" \
+            --arg environment "$ENVIRONMENT" \
+            --arg key "$KEY" \
+            --arg task "deploy:$KEY" \
+            --argjson production "$([[ "$ENVIRONMENT" == "production" ]] && echo true || echo false)" \
+            '{
+              ref: $ref,
+              environment: ($environment + "-" + $key),
+              task: $task,
+              auto_merge: false,
+              required_contexts: [],
+              transient_environment: ($production | not),
+              production_environment: $production,
+              description: ("Vercel " + $environment + " deployment for " + $task)
+            }')"
+          id="$(gh api "repos/${GITHUB_REPOSITORY}/deployments" --input - --jq '.id' <<<"$payload")"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Vercel
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DIR: ${{ matrix.dir }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          BRANCH: ${{ inputs.branch }}
+          SHA: ${{ inputs.ref }}
+        run: |
+          set -o pipefail
+          args=(deploy --prebuilt --yes --cwd "$DIR"
+            -m githubDeployment=1
+            -m "githubCommitRef=$BRANCH"
+            -m "githubCommitSha=$SHA"
+            -m "githubCommitRepo=${GITHUB_REPOSITORY#*/}"
+            -m "githubOrg=${GITHUB_REPOSITORY_OWNER}"
+            -m "githubRepo=${GITHUB_REPOSITORY#*/}"
+            -m "githubCommitOrg=${GITHUB_REPOSITORY_OWNER}")
+          if [[ "$ENVIRONMENT" == "production" ]]; then
+            args+=(--prod)
+          fi
+          url="$(npx vercel "${args[@]}" | tail -n1)"
+          if [[ "$url" != https://* ]]; then
+            echo "::error::Vercel CLI did not return a deployment URL: '$url'"
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed $DIR to $url"
+
+      - name: Record deployment status
+        if: ${{ always() && steps.deployment.outputs.id != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.id }}
+          OUTCOME: ${{ steps.deploy.outcome }}
+          URL: ${{ steps.deploy.outputs.url }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          case "$OUTCOME" in
+            success) state=success ;;
+            cancelled) state=error ;;
+            *) state=failure ;;
+          esac
+          # Deployments are per target-environment, so auto_inactive only retires older deployments of the same target.
+          payload="$(jq -n \
+            --arg state "$state" \
+            --arg url "$URL" \
+            --arg log_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --argjson auto_inactive "$([[ "$ENVIRONMENT" == "production" ]] && echo true || echo false)" \
+            '{ state: $state, log_url: $log_url, auto_inactive: $auto_inactive }
+             + (if $url == "" then {} else { environment_url: $url } end)')"
+          gh api "repos/${GITHUB_REPOSITORY}/deployments/${DEPLOYMENT_ID}/statuses" \
+            -H "Accept: application/vnd.github+json" --input - <<<"$payload" > /dev/null

@@ -1,0 +1,93 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Which GBP client has the largest open balance?",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "ledgerSummary",
+            "arguments": "{}",
+            "id": "call_tBc9gCzWyNSUdUV9x5BE3E3R"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Which GBP client has the largest open balance?",
+        "turnIndex": 1,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "customerStatement",
+            "arguments": "{\"customerId\": \"thistle\"}",
+            "id": "call_WiLadZ5onJF5RskLBqo7UCmu"
+          },
+          {
+            "name": "customerStatement",
+            "arguments": "{\"customerId\": \"kestrel\"}",
+            "id": "call_qNAftV9DmVGpO8hgrfQxxarE"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Which GBP client has the largest open balance?",
+        "turnIndex": 2,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "render",
+            "arguments": "{\"text\":\"Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\",\"components\":[{\"LedgerTable\":{\"title\":\"Thistle — open invoices\",\"recordIds\":[\"invoice-thistle-2026-09\",\"invoice-thistle-2026-08\",\"invoice-thistle-2026-07-p1\"]}},{\"CustomerCard\":{\"customerId\":\"thistle\"}}]}",
+            "id": "call_2Jy685H5pTkfeawkbvILC5h0"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Thistle — open invoices\",\"recordIds\":[\"invoice-thistle-2026-09\",\"invoice-thistle-2026-08\",\"invoice-thistle-2026-07-p1\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"thistle\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Thistle — open invoices\",\"recordIds\":[\"invoice-thistle-2026-09\",\"invoice-thistle-2026-08\",\"invoice-thistle-2026-07-p1\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"thistle\"}}}]}}]}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Which GBP client has the largest open balance?",
+        "turnIndex": 3,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{}"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"score\":1, \"reason\":\"Compliant: amounts use currency symbol and two decimals; no claim of changing/matching/allocating; only allowed customer names used.\"}"
+      }
+    }
+  ]
+}

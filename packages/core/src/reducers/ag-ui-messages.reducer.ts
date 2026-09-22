@@ -22,6 +22,9 @@ export interface AgUiMessagesState {
   readonly protocolError: Error | undefined;
   readonly systemMessage: Readonly<SystemMessage> | undefined;
   readonly attemptStartToolCallIds: readonly string[];
+  /** Text messages the server ended, which may never be started again. */
+  readonly finishedTextMessageIds: readonly string[];
+  readonly draftFinishedTextMessageIds: readonly string[];
   readonly activeTextMessageId: string | undefined;
   readonly activeReasoningMessageId: string | undefined;
   readonly activeToolCallId: string | undefined;
@@ -48,6 +51,8 @@ export const initialAgUiMessagesState: AgUiMessagesState = Object.freeze({
   protocolError: undefined,
   systemMessage: undefined,
   attemptStartToolCallIds: Object.freeze([]),
+  finishedTextMessageIds: Object.freeze([]),
+  draftFinishedTextMessageIds: Object.freeze([]),
   activeTextMessageId: undefined,
   activeReasoningMessageId: undefined,
   activeToolCallId: undefined,
@@ -69,6 +74,8 @@ export const reducer = createReducer(
       protocolError: undefined,
       systemMessage,
       attemptStartToolCallIds: Object.freeze([]),
+      finishedTextMessageIds: Object.freeze([]),
+      draftFinishedTextMessageIds: Object.freeze([]),
       ...inactiveLifecycle(),
     };
   }),
@@ -89,6 +96,7 @@ export const reducer = createReducer(
       attemptActive: true,
       protocolError: undefined,
       attemptStartToolCallIds: freezeStrings(findToolCallIds(state.committed)),
+      draftFinishedTextMessageIds: state.finishedTextMessageIds,
       ...inactiveLifecycle(),
     };
   }),
@@ -109,6 +117,8 @@ export const reducer = createReducer(
       attemptActive: false,
       protocolError: undefined,
       attemptStartToolCallIds: Object.freeze([]),
+      finishedTextMessageIds: state.draftFinishedTextMessageIds,
+      draftFinishedTextMessageIds: Object.freeze([]),
       ...inactiveLifecycle(),
     };
   }),
@@ -137,6 +147,7 @@ export const reducer = createReducer(
         attemptActive: false,
         protocolError: undefined,
         attemptStartToolCallIds: Object.freeze([]),
+        draftFinishedTextMessageIds: Object.freeze([]),
         ...inactiveLifecycle(),
       };
     } catch (error) {
@@ -158,6 +169,8 @@ export const reducer = createReducer(
       attemptActive: false,
       protocolError: undefined,
       attemptStartToolCallIds: Object.freeze([]),
+      finishedTextMessageIds: Object.freeze([]),
+      draftFinishedTextMessageIds: Object.freeze([]),
       ...inactiveLifecycle(),
     };
   }),
@@ -175,6 +188,7 @@ export const reducer = createReducer(
       attemptActive: false,
       protocolError: undefined,
       attemptStartToolCallIds: Object.freeze([]),
+      draftFinishedTextMessageIds: Object.freeze([]),
       ...inactiveLifecycle(),
     };
   }),
@@ -232,8 +246,15 @@ export function ɵdecideAgUiMessageEvent(
 
   try {
     const event = correlateEvent(state, input);
-    const draft = applyCanonicalMessageEvent(state.draft, event);
+    const draft = applyCanonicalMessageEvent(state.draft, event, {
+      finishedTextMessageIds: state.draftFinishedTextMessageIds,
+    });
     const lifecycle = nextLifecycle(state, event, draft);
+    const draftFinishedTextMessageIds = nextFinishedTextMessageIds(
+      state,
+      event,
+      draft,
+    );
     const lifecycleChanged = Object.entries(lifecycle).some(
       ([key, value]) => state[key as keyof AgUiMessagesState] !== value,
     );
@@ -245,12 +266,16 @@ export function ɵdecideAgUiMessageEvent(
       event,
       priorState: state,
       state:
-        draft === state.draft && !lifecycleChanged && !state.protocolError
+        draft === state.draft &&
+        !lifecycleChanged &&
+        !state.protocolError &&
+        draftFinishedTextMessageIds === state.draftFinishedTextMessageIds
           ? state
           : {
               ...state,
               draft,
               protocolError: undefined,
+              draftFinishedTextMessageIds,
               ...lifecycle,
             },
     };
@@ -281,11 +306,18 @@ export function ɵreadAgUiMessageEventDecision(
 /**
  * Applies a single AG-UI event to canonical history.
  *
+ * @param messages - Canonical history the event applies to.
+ * @param event - The correlated AG-UI event.
+ * @param context - Attempt facts that decide whether the event is legal.
  * @internal
  */
 export function applyCanonicalMessageEvent(
   messages: readonly Readonly<Message>[],
   event: AGUIEvent,
+  context?: {
+    /** Text messages the server already ended in this thread. */
+    readonly finishedTextMessageIds?: readonly string[];
+  },
 ): readonly Readonly<Message>[] {
   switch (event.type) {
     case EventType.MESSAGES_SNAPSHOT:
@@ -294,6 +326,7 @@ export function applyCanonicalMessageEvent(
     case EventType.ACTIVITY_DELTA:
       return messages;
     case EventType.TEXT_MESSAGE_START:
+      assertTextMessageIsUnfinished(event.messageId, context);
       return upsertText(
         messages,
         event.messageId,
@@ -410,6 +443,7 @@ function rollback(state: AgUiMessagesState): AgUiMessagesState {
     attemptActive: false,
     protocolError: undefined,
     attemptStartToolCallIds: Object.freeze([]),
+    draftFinishedTextMessageIds: state.finishedTextMessageIds,
     ...inactiveLifecycle(),
   };
 }
@@ -577,6 +611,51 @@ function findToolCallIds(messages: readonly Readonly<Message>[]): string[] {
       ? (message.toolCalls ?? []).map((tool) => tool.id)
       : [],
   );
+}
+
+/**
+ * Rejects starting a text message the server already ended.
+ *
+ * Starting a message that history merely holds is legal, because a snapshot or
+ * an earlier turn can deliver the message a later stream fills in. Starting one
+ * that already ended is not: the deltas that follow would silently extend the
+ * finished message instead of opening the new one the server meant to send.
+ */
+function assertTextMessageIsUnfinished(
+  id: string,
+  context: { readonly finishedTextMessageIds?: readonly string[] } | undefined,
+): void {
+  if (context?.finishedTextMessageIds?.includes(id)) {
+    throw new Error(
+      `AG-UI message ${id} already ended and cannot start again; message IDs must be unique within a thread`,
+    );
+  }
+}
+
+/**
+ * Tracks the text messages this attempt has ended.
+ *
+ * An end that matched no canonical message is a no-op, so it must not close
+ * the ID to a later start. A snapshot restates history, so the server may
+ * reopen what it just sent.
+ */
+function nextFinishedTextMessageIds(
+  state: AgUiMessagesState,
+  event: AGUIEvent,
+  draft: readonly Readonly<Message>[],
+): readonly string[] {
+  const current = state.draftFinishedTextMessageIds;
+  if (event.type === EventType.MESSAGES_SNAPSHOT) {
+    return current.length === 0 ? current : Object.freeze([]);
+  }
+  if (
+    event.type !== EventType.TEXT_MESSAGE_END ||
+    current.includes(event.messageId) ||
+    !draft.some((message) => message.id === event.messageId)
+  ) {
+    return current;
+  }
+  return Object.freeze([...current, event.messageId]);
 }
 
 function upsertText(

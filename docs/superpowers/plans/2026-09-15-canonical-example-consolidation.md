@@ -1,5 +1,9 @@
 # Canonical Example Consolidation Implementation Plan
 
+> September 22 update: consult `2026-09-22-canonical-example-reassessment.md`
+> before executing remaining batches. Upstream implements much of Batch 3 and
+> Vercel deployment; canonical paths are now `examples/invoicing`.
+
 > Execute using superpowers:executing-plans, with independent review at each boundary.
 
 **Goal:** Make invoicing the canonical example and e2e owner, preserve all inventoried
