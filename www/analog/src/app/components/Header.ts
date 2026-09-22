@@ -11,7 +11,6 @@ import { Menu } from '../icons/Menu';
 import { ConfigService } from '../services/ConfigService';
 import { ApiMenu } from './ApiMenu';
 import { DocsMenu } from './DocsMenu';
-import { DropdownMenu } from './DropDownMenu';
 import { FullscreenMenu } from './FullscreenMenu';
 import { GitHubStarButton } from './GitHubStarButton';
 import { SEARCH_OVERLAY_OPEN_EVENT } from './SearchOverlay';
@@ -24,7 +23,6 @@ import { Squircle } from './Squircle';
     Command,
     DocsMenu,
     GitHubStarButton,
-    DropdownMenu,
     FullscreenMenu,
     Menu,
     RouterLink,
@@ -50,46 +48,7 @@ import { Squircle } from './Squircle';
                 <a routerLink="/api" routerLinkActive="active">api</a>
               </li>
               <li>
-                <www-dropdown-menu
-                  [positions]="[
-                    {
-                      originX: 'end',
-                      originY: 'bottom',
-                      overlayX: 'end',
-                      overlayY: 'top',
-                      offsetX: 16,
-                      offsetY: 8,
-                    },
-                  ]"
-                  openMode="hover"
-                >
-                  <label>
-                    <a routerLink="/samples" routerLinkActive="active">
-                      examples
-                    </a>
-                  </label>
-                  <div content class="dropdown-content">
-                    <a
-                      routerLink="/samples/finance"
-                      class="menu-item"
-                      wwwSquircle="8"
-                      >finance app
-                    </a>
-                    <!-- <a
-                      routerLink="/samples/fast-food"
-                      class="menu-item"
-                      wwwSquircle="8"
-                      >fast food app
-                    </a> -->
-                    <a
-                      routerLink="/samples/smart-home"
-                      class="menu-item"
-                      wwwSquircle="8"
-                    >
-                      smart home app
-                    </a>
-                  </div>
-                </www-dropdown-menu>
+                <a routerLink="/samples" routerLinkActive="active">example</a>
               </li>
               <!-- <li>
                 <www-dropdown-menu

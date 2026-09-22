@@ -122,7 +122,7 @@ app.post('/run', async (req, res) => {
 });
 ```
 
-See [sample server main.ts](/samples/smart-home/server/src/main.ts) for a fuller example.
+See the [provider documentation](https://hashbrown.dev/docs/react/platform/openai) for backend integration guidance.
 
 ### In React
 
@@ -180,55 +180,31 @@ For Angular: https://hashbrown.dev/docs/angular/start/intro
 
 For React: https://hashbrown.dev/docs/react/start/intro
 
-## Sample Apps
+## Example App
 
-To enable demonstration, ideation and development, we've added several sample apps to the repo. These apps have state, reactivity, etc., just like a full-fledged app. They also each include a simple backend server to enable using LLM providers, but they don't generally include persistence, etc.
+[Invoicing](examples/invoicing/README.md) is the maintained example: a React app
+using Hashbrown, B4 and Pretable to explore a simulated ledger, answer questions
+with generated UI, and review payment allocations before applying them.
+All data and allocations are simulated.
 
-### Angular Smart Home
-
-An Angular-based smart home app that can control lights, create and apply scenes and schedule events. Users can interact with a chat prompt that can render lights, scenes, etc. right in the chat.
-
-Smart-home-server is set up to use OpenAI (you'll just need to provide your API key as an environment variable), but can be quickly adapted to any of our other backend wrappers.
-
-```shell
-nvm use
-npm install
-npx nx serve smart-home-server && npx nx serve smart-home-angular
-```
-
-### React Smart Home
-
-A React-based smart home app that can control lights, create and apply scenes and schedule events. Users can interact with a chat prompt that can render lights, scenes, etc. right in the chat.
-
-Smart-home-server is set up to use OpenAI (you'll just need to provide your API key as an environment variable), but can be quickly adapted to any of our other backend wrappers.
+[Try the invoicing app](https://invoicing.hashbrown.dev) or run it locally:
 
 ```shell
 nvm use
-npm install
-npx nx serve smart-home-server && npx nx serve smart-home-react
+npm ci
+INVOICING_ENV_FILE=/path/to/.env npx nx serve invoicing-server
 ```
 
-### Angular Finance
-
-The finance app comes with a large amount of data representing breakfast food supplies, and it demonstrates Hashbrown's ability to generate Javascript to slice/rollup data, configure a chart in an arbitrary way, and then render that chart for a user.
-
-Note: the theme can be changed via natural language, like "Make the legend bigger and green". "1990s Excel" has proven a popular choice.
+The environment file must contain `OPENAI_API_KEY`. In another terminal:
 
 ```shell
-nvm use
-npm install
-npx nx serve finance-server && npx nx serve finance-angular
+npx nx serve invoicing-react
 ```
 
-### Angular Kitchen Sink
-
-The Kitchen Sink app is a version of the Angular smart home app with an expanded feature set. It serves as an experimental playground for contributors exploring and adding new features and mechanisms (i.e. "explain this page to me").
-
-```shell
-nvm use
-npm install
-npx nx serve kitchen-sink-server && npx nx serve kitchen-sink-angular
-```
+Open http://127.0.0.1:4326/. See the [example README](examples/invoicing/README.md)
+for architecture, verification and deployment details. Angular integration
+remains covered by the [Angular documentation](https://hashbrown.dev/docs/angular/start/quick)
+and the example's internal conformance hosts.
 
 ## Core Team
 

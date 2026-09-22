@@ -35,31 +35,26 @@ Thank you for your interest in contributing to hashbrown.
    npm install
    ```
 
-## Running the project
+## Running the example
 
-1. **Start the backend server:**
+The maintained example is [Invoicing](examples/invoicing/README.md), built with
+React, Hashbrown, B4 and Pretable. It uses simulated data and allocations.
 
-   Edit `samples/smart-home/server/src/main.ts` to enable the appropriate AI provider by commenting/uncommenting the relevant lines.
+Start the server with an environment file containing `OPENAI_API_KEY`:
 
-   Run the following command to start the backend server:
+```sh
+INVOICING_ENV_FILE=/path/to/.env npx nx serve invoicing-server
+```
 
-   ```sh
-   npx nx serve server
-   ```
+In another terminal, start the frontend:
 
-2. **Start the frontend application:**
+```sh
+npx nx serve invoicing-react
+```
 
-   Run the following command to start the Angular sample application:
-
-   ```sh
-   npx nx serve client
-   ```
-
-   Run the following command to start the React sample application:
-
-   ```sh
-   npx nx serve client-react
-   ```
+Open http://127.0.0.1:4326/. The example README documents additional setup and
+verification targets. Angular and React protocol coverage lives in its internal
+conformance hosts; they are test infrastructure rather than public examples.
 
 ## Optional Dev Container
 

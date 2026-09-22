@@ -579,4 +579,4 @@ Ready to extend? Hashbrown's approach makes it trivial to add richer tools, more
 - [Go deeper with Skillet schemas](/docs/react/concept/schema)
 - [Advanced system instructions and prompt engineering](/docs/react/guide/prompt-engineering)
 - [Explore streaming responses](/docs/react/concept/streaming)
-- [Try the open-source smart home Hashbrown example](https://github.com/liveloveapp/hashbrown)
+- [Explore the maintained invoicing example](https://github.com/liveloveapp/hashbrown/tree/main/examples/invoicing)

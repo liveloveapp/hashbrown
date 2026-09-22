@@ -37,7 +37,7 @@
     "node_modules",
     "**/*/node_modules",
     "packages/**/*",
-    "samples/**/*",
+    "examples/**/*",
     "www/**/*"
   ]
 }

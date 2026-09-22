@@ -164,8 +164,8 @@ test('ignores private Hashbrown packages outside the release set', async () => {
         version: '0.5.0',
         publishRoot: 'dist/packages/react',
       },
-      'packages/vox': {
-        name: '@hashbrownai/vox',
+      'packages/private-fixture': {
+        name: '@hashbrownai/private-fixture',
         version: '0.0.1',
         private: true,
       },

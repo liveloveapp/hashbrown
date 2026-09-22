@@ -1,34 +1,40 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Header } from '../../components/Header';
-import { Squircle } from '../../components/Squircle';
 
 @Component({
-  imports: [Header, Squircle],
+  imports: [Header, RouterLink],
   template: `
     <www-header />
-    <main class="container" wwwSquircle="16 16 0 0">
-      <iframe src="https://finance.hashbrown.dev"></iframe>
+    <main>
+      <h1>Finance example retired</h1>
+      <p>This legacy example is no longer maintained.</p>
+      <p>
+        <a routerLink="/samples">Explore the maintained invoicing example</a>,
+        built with React, Hashbrown, B4 and Pretable using simulated data.
+      </p>
     </main>
   `,
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
-    :host {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
+    main {
+      max-width: 960px;
+      margin: 48px auto;
+      padding: 24px;
     }
-
-    .container {
-      display: flex;
-      flex-direction: column;
-      background: #fff;
-      height: 100%;
-
-      > iframe {
-        flex: 1 auto;
-        width: 100%;
-        border: none;
-      }
+    h1 {
+      font:
+        750 32px/1.2 KefirVariable,
+        sans-serif;
+    }
+    p {
+      font:
+        400 18px/1.6 Fredoka,
+        sans-serif;
+      margin-top: 24px;
+    }
+    a {
+      text-decoration: underline;
     }
   `,
 })

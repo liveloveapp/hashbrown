@@ -31,7 +31,10 @@ Here is what we built in 4 hours.
 
 ## Source Code
 
-- [Source code on GitHub](https://github.com/liveloveapp/hashbrown/tree/main/samples/spotify).
+This article describes a retired example. The source below is preserved at its
+historical revision. For the maintained example, see [Invoicing](/samples).
+
+- [Archived source code on GitHub](https://github.com/liveloveapp/hashbrown/tree/43e40ba5/samples/spotify).
 
 ---
 
