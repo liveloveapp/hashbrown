@@ -20,8 +20,9 @@ whose schema mirrors the server's input (`text`, `components`) using
 hashbrown's streaming string, object and array builders, so `args` resolves
 progressively. Its handler throws: the server executes `render` and its
 `TOOL_CALL_RESULT` marks the call done before hashbrown would run a client
-handler. B4 0.10.0 does not interpret tools the client advertises, so the
-definition is inert server-side.
+handler. The assistant middleware refuses any run that advertises tools, so
+the conversation wraps its transport to send an empty tools list: the
+definition exists for hashbrown alone and never reaches the wire.
 
 **A draft from the arguments.** For an assistant message that carries a
 `render` call and has no `ui`, the panel renders the call's `args` through the
