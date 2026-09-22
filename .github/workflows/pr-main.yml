@@ -60,9 +60,6 @@ jobs:
       - name: Validate affected projects
         run: npx nx affected -t lint,test,typecheck,build,e2e --parallel=3
 
-      - name: Validate smart-home React tooling
-        run: npx nx run-many -t eslint:lint,build-storybook -p smart-home-react --parallel=2
-
       - name: Verify affected real examples
         run: npx nx affected -t example-e2e --parallel=1
 

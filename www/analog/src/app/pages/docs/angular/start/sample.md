@@ -1,73 +1,51 @@
 ---
-title: 'Sample App: Hashbrown Angular Docs'
+title: 'Example App: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Smart home client built with Angular.'
+    content: 'Explore the maintained invoicing example with React, B4 and Pretable.'
 ---
 
-# Sample App
+# Invoicing Example
 
-<p class="subtitle">Smart home client built with Angular.</p>
+The maintained example uses React, Hashbrown, B4 and Pretable to explore a
+simulated ledger, answer questions with generated UI, and review payment
+allocations before applying them. All data and allocations are simulated.
 
-Some of the basic features of the sample app include:
+[Try the app](https://invoicing.hashbrown.dev) or
+[read the source and setup guide](https://github.com/liveloveapp/hashbrown/tree/main/examples/invoicing).
 
-1. Simple Chat
-2. Tool Calling
-3. UI Chat
-4. Text completion
-5. Structured output
-6. Structured completion
+## Run locally
 
-[Check out our smart home sample app on GitHub](https://github.com/liveloveapp/hashbrown/tree/main/samples/smart-home/angular)
-
----
-
-## Clone Repository
-
-<hb-code-example header="terminal">
+Clone the repository and install its dependencies:
 
 ```bash
 git clone https://github.com/liveloveapp/hashbrown.git
+cd hashbrown
+nvm use
+npm ci
 ```
 
-</hb-code-example>
-
-Then install the dependencies:
-
-<hb-code-example header="terminal">
+Create an environment file containing `OPENAI_API_KEY`, then start the server:
 
 ```bash
-cd Hashbrown
-npm install
+INVOICING_ENV_FILE=/path/to/.env npx nx serve invoicing-server
 ```
 
-</hb-code-example>
-
-## OpenAI API Key
-
-Our samples are built using OpenAI's models.
-
-1. [Sign up for OpenAI's API](https://openai.com/api/)
-2. [Create an organization and API Key](https://platform.openai.com/settings/organization/api-keys)
-3. Set the `OPENAI_API_KEY` environment variable in the `.env` file in the root directory, which allows the smart-home-server process to load it
-
-```
-OPENAI_API_KEY=your_openai_api_key
-```
-
-## See the code
-
-Open up the `samples/smart-home/angular` directory.
-
-## Start the Application
-
-You will need to start both the server and the client to run the sample application.
-
-<hb-code-example header="terminal">
+In another terminal, start the React frontend:
 
 ```bash
-npx nx serve smart-home-server
-npx nx serve smart-home-angular
+npx nx serve invoicing-react
 ```
 
-</hb-code-example>
+Open http://127.0.0.1:4326/. Credentials are loaded only by the server.
+
+## Framework guidance
+
+The public example is a React application. Angular and React protocol coverage
+lives in internal conformance hosts within the example's end-to-end suite.
+For framework integration, follow the
+[Angular quickstart](/docs/angular/start/quick) or
+[React quickstart](/docs/react/start/quick). The standalone
+[UI chatbot recipe](/docs/angular/recipes/ui-chatbot) remains available.
+
+The former Smart Home example has been retired.

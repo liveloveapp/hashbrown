@@ -103,66 +103,48 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx build-api-report ollama`
   - `npx nx nx-release-publish ollama`
 
-### Samples / apps
+### Example application and test hosts
 
-- `fast-food-angular`
-  - `npx nx build fast-food-angular`
-  - `npx nx serve fast-food-angular`
-  - `npx nx test fast-food-angular`
-- `fast-food-react`
-  - No Nx targets are currently defined.
-- `fast-food-server`
-  - `npx nx build fast-food-server`
-  - `npx nx serve fast-food-server`
-  - `npx nx generate-data fast-food-server`
-- `finance-angular`
-  - `npx nx build finance-angular`
-  - `npx nx serve finance-angular`
-- `finance-react`
-  - No Nx targets are currently defined.
-- `finance-server`
-  - `npx nx build finance-server`
-  - `npx nx serve finance-server`
-  - `npx nx generate-data finance-server`
+The maintained public example is `examples/invoicing` (React, B4 and Pretable;
+simulated ledger and allocations). Conformance hosts are internal test infrastructure.
+
 - `invoicing`
   - `npx nx build invoicing`
   - `npx nx e2e invoicing`
-- `kitchen-sink-angular`
-  - `npx nx build kitchen-sink-angular`
-  - `npx nx serve kitchen-sink-angular`
-  - `npx nx serve-static kitchen-sink-angular`
-  - `npx nx extract-i18n kitchen-sink-angular`
-  - `npx nx lint kitchen-sink-angular`
-- `kitchen-sink-server`
-  - `npx nx build kitchen-sink-server`
-  - `npx nx serve kitchen-sink-server`
-- `lambda-chat`
-  - `npx nx deploy lambda-chat`
-  - `npx nx invoke-local lambda-chat`
-  - `npx nx lint lambda-chat`
-  - `npx nx offline lambda-chat`
-  - `npx nx package lambda-chat`
-  - `npx nx remove lambda-chat`
-- `smart-home-angular`
-  - `npx nx build smart-home-angular`
-  - `npx nx serve smart-home-angular`
-  - `npx nx serve-static smart-home-angular`
-  - `npx nx extract-i18n smart-home-angular`
-  - `npx nx lint smart-home-angular`
-- `smart-home-react`
-  - `npx nx build smart-home-react`
-- `smart-home-server`
-  - `npx nx build smart-home-server`
-  - `npx nx serve smart-home-server`
-- `spotify-angular`
-  - `npx nx build spotify-angular`
-  - `npx nx serve spotify-angular`
-  - `npx nx serve-static spotify-angular`
-  - `npx nx extract-i18n spotify-angular`
-  - `npx nx lint spotify-angular`
-- `spotify-server`
-  - `npx nx build spotify-server`
-  - `npx nx serve spotify-server`
+- `invoicing-e2e`
+  - `npx nx build invoicing-e2e`
+  - `npx nx lint invoicing-e2e`
+  - `npx nx live-model invoicing-e2e`
+  - `npx nx application-e2e invoicing-e2e`
+  - `npx nx test invoicing-e2e`
+  - `npx nx conformance-e2e invoicing-e2e`
+  - `npx nx example-e2e invoicing-e2e`
+  - `npx nx provider-e2e invoicing-e2e`
+- `invoicing-react`
+  - `npx nx build invoicing-react`
+  - `npx nx test invoicing-react`
+  - `npx nx lint invoicing-react`
+  - `npx nx serve invoicing-react`
+- `invoicing-server`
+  - `npx nx build invoicing-server`
+  - `npx nx test invoicing-server`
+  - `npx nx lint invoicing-server`
+  - `npx nx eval invoicing-server`
+  - `npx nx serve invoicing-server`
+- `invoicing-contracts`
+  - `npx nx build invoicing-contracts`
+  - `npx nx test invoicing-contracts`
+  - `npx nx lint invoicing-contracts`
+- `runtime-smoke-angular`
+  - `npx nx lint runtime-smoke-angular`
+  - `npx nx build runtime-smoke-angular`
+  - `npx nx serve-static runtime-smoke-angular`
+  - `npx nx serve-built runtime-smoke-angular`
+- `runtime-smoke-react`
+  - `npx nx lint runtime-smoke-react`
+  - `npx nx build runtime-smoke-react`
+  - `npx nx serve-static runtime-smoke-react`
+  - `npx nx serve-built runtime-smoke-react`
 
 ### Docs site
 

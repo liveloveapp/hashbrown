@@ -1,5 +1,9 @@
 # Legacy example inventory and coverage preservation
 
+> Retirement update: repository cleanup is implemented in
+> [the completion record](2026-09-22-legacy-example-retirement-completion.md).
+> Earlier inventory and sequencing below are retained as historical context.
+
 Status: repository inventory complete; coverage ownership mapped. No source,
 Nx target, package, CI check, or deployed resource has been removed. Coverage
 relocation described below is still required before retiring Fast Food/Smart Home.
@@ -53,15 +57,15 @@ remain supported independently.
 
 ## Source and Nx inventory
 
-| Legacy root | Tracked Nx projects | Retirement dependencies |
-|---|---|---|
-| `samples/fast-food` | fast-food-angular, fast-food-react, fast-food-server, fast-food-cloudflare | Native OpenAI Express/Worker route tests; public sample page; Cloudflare target; generated-data assets |
-| `samples/finance` | finance-angular, finance-react, finance-server, finance-cloudflare | Homepage showcase, sample page, charts/recipe references, Cloudflare target; generated-data assets |
-| `samples/smart-home` | smart-home-angular, smart-home-react, smart-home-server, smart-home-cloudflare | Both framework example browser projects, server route test, explicit Storybook/lint CI step, onboarding guides, Cloudflare target |
-| `samples/kitchen-sink` | kitchen-sink-angular, kitchen-sink-server | README instructions; NgRx/Angular-specific feature demonstrations and tests |
-| `samples/spotify` | spotify-angular, spotify-server | MCP/music integration; historical blog article; package candidates below |
-| `samples/lambda-chat` | lambda-chat | AWS streaming Lambda recipe and Serverless deployment config; separate platform example rather than UI showcase |
-| `samples/react-vox-demo` | react-vox-demo | Vox/VAD development demo; separate library capability rather than invoicing showcase |
+| Legacy root              | Tracked Nx projects                                                            | Retirement dependencies                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `samples/fast-food`      | fast-food-angular, fast-food-react, fast-food-server, fast-food-cloudflare     | Native OpenAI Express/Worker route tests; public sample page; Cloudflare target; generated-data assets                            |
+| `samples/finance`        | finance-angular, finance-react, finance-server, finance-cloudflare             | Homepage showcase, sample page, charts/recipe references, Cloudflare target; generated-data assets                                |
+| `samples/smart-home`     | smart-home-angular, smart-home-react, smart-home-server, smart-home-cloudflare | Both framework example browser projects, server route test, explicit Storybook/lint CI step, onboarding guides, Cloudflare target |
+| `samples/kitchen-sink`   | kitchen-sink-angular, kitchen-sink-server                                      | README instructions; NgRx/Angular-specific feature demonstrations and tests                                                       |
+| `samples/spotify`        | spotify-angular, spotify-server                                                | MCP/music integration; historical blog article; package candidates below                                                          |
+| `samples/lambda-chat`    | lambda-chat                                                                    | AWS streaming Lambda recipe and Serverless deployment config; separate platform example rather than UI showcase                   |
+| `samples/react-vox-demo` | react-vox-demo                                                                 | Vox/VAD development demo; separate library capability rather than invoicing showcase                                              |
 
 There are 18 tracked legacy project manifests across seven roots. Some targets
 are inferred by Nx plugins; an empty targets object does not establish that a
@@ -87,15 +91,15 @@ configuration and exclusive dependencies must be included in the cleanup.
 
 ### Relocate before source removal
 
-| Current dependency | Coverage that must survive | Destination/action |
-|---|---|---|
-| `tools/runtime-smoke/e2e/harness/openai-route.spec.ts` imports Fast Food Express API and Angular Pages function | Native Hashbrown OpenAI adapter → SSE → HttpTransport; content type, lifecycle and text events on both Node and Worker request surfaces | Put minimal test-owned Express and Worker handlers under `tools/runtime-smoke/e2e/fixtures/provider-routes/`; retain assertions and aimock provider boundary |
-| `tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts` imports Smart Home API | Injected provider options, native adapter, canonical SSE, no environment mutation | Consolidate into the Node fixture suite without dropping its injected-configuration case |
-| `tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts` imports Smart Home API and drives both showcases | Both frameworks render trusted UI via real native adapter; execute one tool once, change app state and continue; preserve thread/tool history; forward strict response schema; no browser errors | Add native-provider scenarios against the existing independent Angular/React smoke fixtures with a small test-owned server; preserve both no-tool and tool-round scenarios |
-| `tools/runtime-smoke/e2e/project.json` includes smart-home projects, build dependencies and `serve-example-*` targets | Correct Nx affected propagation and runnable native-provider browser coverage | Replace sample dependencies with the test-owned fixtures; replace old serving paths/config only when replacement scenarios pass |
-| `.github/workflows/pr-main.yml` always runs smart-home-react eslint:lint/build-storybook | Showcase-specific build/tooling validation | Remove this explicit step only with Smart Home retirement, updating `tools/cloudflare/workflow.test.mjs`; keep generic affected checks and canonical browser checks |
+| Current dependency                                                                                                    | Coverage that must survive                                                                                                                                                                       | Destination/action                                                                                                                                                         |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tools/runtime-smoke/e2e/harness/openai-route.spec.ts` imports Fast Food Express API and Angular Pages function       | Native Hashbrown OpenAI adapter → SSE → HttpTransport; content type, lifecycle and text events on both Node and Worker request surfaces                                                          | Put minimal test-owned Express and Worker handlers under `tools/runtime-smoke/e2e/fixtures/provider-routes/`; retain assertions and aimock provider boundary               |
+| `tools/runtime-smoke/e2e/harness/smart-home-route.spec.ts` imports Smart Home API                                     | Injected provider options, native adapter, canonical SSE, no environment mutation                                                                                                                | Consolidate into the Node fixture suite without dropping its injected-configuration case                                                                                   |
+| `tools/runtime-smoke/e2e/example-specs/smart-home.spec.ts` imports Smart Home API and drives both showcases           | Both frameworks render trusted UI via real native adapter; execute one tool once, change app state and continue; preserve thread/tool history; forward strict response schema; no browser errors | Add native-provider scenarios against the existing independent Angular/React smoke fixtures with a small test-owned server; preserve both no-tool and tool-round scenarios |
+| `tools/runtime-smoke/e2e/project.json` includes smart-home projects, build dependencies and `serve-example-*` targets | Correct Nx affected propagation and runnable native-provider browser coverage                                                                                                                    | Replace sample dependencies with the test-owned fixtures; replace old serving paths/config only when replacement scenarios pass                                            |
+| `.github/workflows/pr-main.yml` always runs smart-home-react eslint:lint/build-storybook                              | Showcase-specific build/tooling validation                                                                                                                                                       | Remove this explicit step only with Smart Home retirement, updating `tools/cloudflare/workflow.test.mjs`; keep generic affected checks and canonical browser checks        |
 
-The current four Smart Home browser cases are *not* equivalent to the independent
+The current four Smart Home browser cases are _not_ equivalent to the independent
 mock-transport suite: they exercise a real provider adapter and real SSE endpoint.
 Do not delete them merely because the independent tests pass. The new fixture
 route must call HashbrownOpenAI, with only the provider mocked by aimock.
@@ -147,10 +151,10 @@ routes as redirects/archive notices where appropriate, not broken public links.
 
 `tools/cloudflare/deployment.mjs` owns Pages target definitions:
 
-| Configured project | Configured public URL | Build output |
-|---|---|---|
-| hashbrown-fast-food | https://fast-food.hashbrown.dev | dist/samples/fast-food/angular/browser |
-| hashbrown-finance | https://finance.hashbrown.dev | dist/samples/finance/angular/browser |
+| Configured project   | Configured public URL            | Build output                            |
+| -------------------- | -------------------------------- | --------------------------------------- |
+| hashbrown-fast-food  | https://fast-food.hashbrown.dev  | dist/samples/fast-food/angular/browser  |
+| hashbrown-finance    | https://finance.hashbrown.dev    | dist/samples/finance/angular/browser    |
 | hashbrown-smart-home | https://smart-home.hashbrown.dev | dist/samples/smart-home/angular/browser |
 
 Each also has `samples/<name>/angular/wrangler.toml`. Synchronize target removal

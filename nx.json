@@ -10,10 +10,7 @@
       "!{projectRoot}/.eslintrc.json",
       "!{projectRoot}/eslint.config.mjs",
       "!{projectRoot}/jest.config.[jt]s",
-      "!{projectRoot}/test-setup.[jt]s",
-      "!{projectRoot}/**/*.stories.@(js|jsx|ts|tsx|mdx)",
-      "!{projectRoot}/.storybook/**/*",
-      "!{projectRoot}/tsconfig.storybook.json"
+      "!{projectRoot}/test-setup.[jt]s"
     ],
     "sharedGlobals": []
   },
@@ -154,15 +151,6 @@
       }
     },
     {
-      "plugin": "@nx/storybook/plugin",
-      "options": {
-        "serveStorybookTargetName": "storybook",
-        "buildStorybookTargetName": "build-storybook",
-        "testStorybookTargetName": "test-storybook",
-        "staticStorybookTargetName": "static-storybook"
-      }
-    },
-    {
       "plugin": "@nx/js/typescript",
       "options": {
         "typecheck": {
@@ -174,25 +162,10 @@
           "buildDepsName": "tsc:build-deps",
           "watchDepsName": "tsc:watch-deps"
         }
-      },
-      "exclude": ["packages/vox/*"]
-    },
-    {
-      "plugin": "@nx/js/typescript",
-      "include": ["packages/vox/*"],
-      "options": {
-        "typecheck": {
-          "targetName": "typecheck"
-        },
-        "build": {
-          "targetName": "build",
-          "configName": "tsconfig.lib.json"
-        }
       }
     },
     {
       "plugin": "@nx/rollup/plugin",
-      "exclude": ["packages/vox/rollup.config.cjs"],
       "options": {
         "buildTargetName": "build",
         "buildDepsTargetName": "build-deps",

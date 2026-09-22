@@ -1,5 +1,9 @@
 # Invoicing compatibility checkpoint
 
+Historical checkpoints below describe the repository at their recorded dates.
+Legacy examples and Vox were retired in September 2026; current verification
+belongs to `examples/invoicing/e2e`.
+
 ## Generated ledger and session overlay — September 19, 2026
 
 The sample ledger is now generated from a fixed seed instead of a hand-written

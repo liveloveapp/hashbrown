@@ -2,7 +2,6 @@
 dist
 tmp
 out-tsc
-.serverless
 
 # dependencies
 node_modules
@@ -63,9 +62,6 @@ vitest.config.*.timestamp*
 .npm-cache
 .npmrc
 
-# Storybook
-storybook-static
-
 # API Extractor
 reports
 tsdoc-metadata.json
@@ -74,9 +70,6 @@ packages/*/*.api.md
 
 # References
 www/analog/src/app/reference/*
-
-# Samples
-samples/finance/server/src/*.json
 
 ## LLMs
 llms.txt
@@ -88,3 +81,6 @@ llms-full.txt
 .nx/self-healing
 
 .nx/migrate-runs
+
+# Local output from retired examples
+samples/

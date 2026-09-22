@@ -1,5 +1,9 @@
 # Canonical example reassessment — September 22, 2026
 
+> Retirement update: repository cleanup is implemented in
+> [the completion record](2026-09-22-legacy-example-retirement-completion.md).
+> Earlier inventory and sequencing below are retained as historical context.
+
 Upstream checkpoint: `42be88af` (PR #569). Integration preserves the four local
 inventory/conformance migration commits and follows the upstream move from
 `samples/invoicing` to `examples/invoicing`.
