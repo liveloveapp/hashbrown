@@ -81,12 +81,50 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
 export type AnyToolCall = ToolCall<AnyTool>;
 
 /**
+ * A tool call the agent server executes itself, surfaced for display only.
+ *
+ * Hashbrown never runs these: the client has no tool of that name. The
+ * arguments resolve as they stream, so a renderer can paint from them before
+ * the call finishes. `status` is `inProgress` while argument deltas arrive,
+ * `executing` once the arguments are complete and no result has arrived, and
+ * `complete` once the server reports the result.
+ *
+ * @public
+ */
+export type ServerToolCall = {
+  toolCallId: string;
+  name: string;
+  status: 'inProgress' | 'executing' | 'complete';
+  /** The arguments resolved so far, or `null` before any JSON has parsed. */
+  args: JsonValue | null;
+  /** The server's result, present once `status` is `complete`. */
+  result?: PromiseSettledResult<unknown>;
+  progress?: number;
+
+  /**
+   * Opaque provider continuation data preserved across AG-UI runs.
+   * Hashbrown does not inspect or display this value.
+   */
+  encryptedValue?: string;
+
+  /** Provider metadata preserved across AG-UI runs. */
+  metadata?: Metadata;
+};
+
+/**
  * @public
  */
 export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
   role: 'assistant';
   content?: Output;
   toolCalls: ToolCall<ToolUnion>[];
+
+  /**
+   * Tool calls the agent server executed itself, in the order the model made
+   * them, as `ServerToolCall` records. Present only when the message carries
+   * at least one.
+   */
+  readonly serverToolCalls?: readonly ServerToolCall[];
 
   /**
    * Opaque provider continuation data preserved across AG-UI runs.

@@ -1,5 +1,3 @@
-import { s } from '@hashbrownai/core';
-import { useTool } from '@hashbrownai/react';
 import type { Chat } from '@hashbrownai/core';
 import {
   AgingSummary,
@@ -10,76 +8,28 @@ import {
 } from './assistant-kit';
 
 /**
- * A client-side twin of the server's `render` tool, registered for display
- * only. Hashbrown surfaces a tool call on an assistant message only when the
- * client has a tool of that name, and resolves its arguments as they stream
- * when the schema marks them streaming; this is what lets the panel paint
- * the answer while the model is still writing it. The server executes the
- * real `render` and its result marks the call done before hashbrown would
- * ever run a client handler, so the handler here is unreachable. B4 does not
- * interpret tools the client advertises, so the definition is inert on the
- * wire.
+ * The server's `render` arguments as far as they have streamed. Hashbrown
+ * resolves a server-executed call's JSON progressively, so any field may be
+ * absent or partial until the call completes.
  */
-const renderSchema = s.streaming.object('The answer to show the user', {
-  text: s.streaming.string('Plain prose answer'),
-  components: s.streaming.array(
-    'Components to show under the prose',
-    s.anyOf([
-      s.object('A table of specific records', {
-        LedgerTable: s.object('LedgerTable', {
-          title: s.string('Table title'),
-          recordIds: s.array('Record IDs', s.string('A record ID')),
-        }),
-      }),
-      s.object('Monthly invoiced versus received', {
-        TrendChart: s.object('TrendChart', {
-          currency: s.string('ISO currency code'),
-          customerId: s.anyOf([s.string('A customer ID'), s.nullish()]),
-          months: s.integer('Months of history'),
-        }),
-      }),
-      s.object('Outstanding balance by aging bucket', {
-        AgingSummary: s.object('AgingSummary', {
-          currency: s.string('ISO currency code'),
-          customerId: s.anyOf([s.string('A customer ID'), s.nullish()]),
-        }),
-      }),
-      s.object('One client', {
-        CustomerCard: s.object('CustomerCard', {
-          customerId: s.string('A customer ID'),
-        }),
-      }),
-      s.object('Offer to review one unapplied payment', {
-        ReviewPayment: s.object('ReviewPayment', {
-          paymentId: s.string('A payment ID'),
-        }),
-      }),
-    ]),
-  ),
-});
-
-export type RenderArgs = s.Infer<typeof renderSchema>;
-export type RenderTool = Chat.Tool<'render', RenderArgs, never>;
-
-export function useRenderTool(): RenderTool {
-  return useTool({
-    name: 'render',
-    description: 'Show the answer to the user.',
-    schema: renderSchema,
-    handler: async () => {
-      throw new Error('render is executed by the server');
-    },
-    deps: [],
-  });
+export interface RenderArgs {
+  readonly text?: string;
+  readonly components?: readonly Record<string, Record<string, unknown>>[];
 }
 
-/** The `render` call on a message, if any: the last one, since a rejected call is retried. */
+/**
+ * The `render` call on a message, if any: the last one, since a rejected call
+ * is retried. Its arguments are read-only display data; the server executes
+ * the call and validates the tree before the answer is committed.
+ */
 export function findRenderCall(
-  toolCalls: readonly Chat.AnyToolCall[],
+  serverToolCalls: readonly Chat.ServerToolCall[] | undefined,
 ): RenderArgs | undefined {
-  const call = toolCalls.findLast((toolCall) => toolCall.name === 'render');
-  const args = call?.args as Partial<RenderArgs> | null | undefined;
-  return args && typeof args === 'object' ? (args as RenderArgs) : undefined;
+  const call = serverToolCalls?.findLast((c) => c.name === 'render');
+  const args = call?.args;
+  return args && typeof args === 'object' && !Array.isArray(args)
+    ? (args as RenderArgs)
+    : undefined;
 }
 
 /**

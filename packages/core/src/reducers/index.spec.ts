@@ -3750,9 +3750,24 @@ test('combined root preserves snapshot assistant and tool-call baselines through
     }),
   );
 
+  // `lookup` is not a registered tool, so the call surfaces as a server call
+  // with its arguments resolved so far.
+  const serverToolCalls = [
+    {
+      toolCallId: 'tool-1',
+      name: 'lookup',
+      status: 'inProgress',
+      args: { query: 'tea' },
+    },
+  ];
   expect(selectViewMessages(withToolDelta)).toEqual([
     { role: 'user', content: 'hello' },
-    { role: 'assistant', content: 'snapshot stream', toolCalls: [] },
+    {
+      role: 'assistant',
+      content: 'snapshot stream',
+      toolCalls: [],
+      serverToolCalls,
+    },
   ]);
   expect(withToolDelta.toolCalls.entities['tool-1']).toMatchObject({
     arguments: '{"query":"tea"}',
@@ -3777,6 +3792,7 @@ test('combined root preserves snapshot assistant and tool-call baselines through
       role: 'assistant',
       content: 'snapshot stream',
       toolCalls: [],
+      serverToolCalls,
     },
   ]);
   expect(

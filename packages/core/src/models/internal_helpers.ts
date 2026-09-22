@@ -159,6 +159,63 @@ export function toInternalMessagesFromView(
   }
 }
 
+/** The raw argument text as JSON when it is complete and valid, else null. */
+function parseArguments(rawArguments: string): JsonValue | null {
+  try {
+    return JSON.parse(rawArguments) as JsonValue;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Project the tool calls the client has no tool for, which the agent server
+ * executes itself, to the display-only `serverToolCalls` field. Returns an
+ * empty object when there are none so the field stays absent.
+ */
+function toServerToolCalls(
+  toolCallIds: readonly string[],
+  toolCalls: Record<string, Chat.Internal.ToolCall>,
+  tools: Chat.AnyTool[],
+): { serverToolCalls?: readonly Chat.ServerToolCall[] } {
+  const serverToolCalls = toolCallIds.flatMap(
+    (toolCallId): Chat.ServerToolCall[] => {
+      const toolCall = toolCalls[toolCallId];
+      if (!toolCall || tools.some((tool) => tool.name === toolCall.name)) {
+        return [];
+      }
+      const status =
+        toolCall.status === 'done'
+          ? 'complete'
+          : toolCall.argumentsComplete
+            ? 'executing'
+            : 'inProgress';
+      return [
+        {
+          toolCallId,
+          name: toolCall.name,
+          status,
+          args:
+            toolCall.argumentsResolved ?? parseArguments(toolCall.arguments),
+          ...(toolCall.status === 'done' && toolCall.result !== undefined
+            ? { result: toolCall.result }
+            : {}),
+          ...(toolCall.progress !== undefined
+            ? { progress: toolCall.progress }
+            : {}),
+          ...(toolCall.encryptedValue !== undefined
+            ? { encryptedValue: toolCall.encryptedValue }
+            : {}),
+          ...(toolCall.metadata !== undefined
+            ? { metadata: cloneMetadata(toolCall.metadata) }
+            : {}),
+        },
+      ];
+    },
+  );
+  return serverToolCalls.length > 0 ? { serverToolCalls } : {};
+}
+
 /**
  * Converts an internal message to a view message.
  *
@@ -210,6 +267,7 @@ export function toViewMessagesFromInternal(
             ? { metadata: cloneMetadata(message.metadata) }
             : {}),
           ...toReasoningOutput(message.reasoning),
+          ...toServerToolCalls(message.toolCallIds, toolCalls, tools),
           toolCalls: message.toolCallIds.flatMap(
             (toolCallId): Chat.AnyToolCall[] => {
               const toolCall = toolCalls[toolCallId];

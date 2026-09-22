@@ -1,5 +1,6 @@
 import { type ReasoningMessage } from '@ag-ui/core';
 import { Chat } from './index';
+import { s } from '../schema';
 import {
   type AnyTool,
   type AssistantMessage as ViewAssistantMessage,
@@ -659,4 +660,155 @@ test('includes a developer tool named output in API history', () => {
       },
     ],
   });
+});
+
+function internalAssistantWithCalls(
+  toolCallIds: string[],
+): Chat.Internal.AssistantMessage {
+  return { role: 'assistant', content: '', toolCallIds };
+}
+
+const lookupTool: AnyTool = {
+  name: 'lookup',
+  description: '',
+  schema: s.object('arguments', { q: s.string('q') }),
+  handler: async () => undefined,
+};
+
+test('projects an unregistered pending tool call to serverToolCalls with its partial arguments', () => {
+  // Arrange
+  const message = internalAssistantWithCalls(['call-render']);
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-render': {
+      id: 'call-render',
+      name: 'render',
+      arguments: '{"text":"Cedar',
+      argumentsResolved: { text: 'Cedar' },
+      status: 'pending',
+    },
+  };
+
+  // Act
+  const [view] = toViewMessagesFromInternal(message, toolCalls, [lookupTool]);
+
+  // Assert
+  expect(view).toEqual(
+    expect.objectContaining({
+      role: 'assistant',
+      toolCalls: [],
+      serverToolCalls: [
+        {
+          toolCallId: 'call-render',
+          name: 'render',
+          status: 'inProgress',
+          args: { text: 'Cedar' },
+        },
+      ],
+    }),
+  );
+});
+
+test('projects a completed unregistered tool call as executing, then complete with its result', () => {
+  // Arrange
+  const message = internalAssistantWithCalls(['call-render']);
+  const executing: Record<string, Chat.Internal.ToolCall> = {
+    'call-render': {
+      id: 'call-render',
+      name: 'render',
+      arguments: '{"text":"hi"}',
+      argumentsResolved: { text: 'hi' },
+      argumentsComplete: true,
+      status: 'pending',
+      progress: 0.5,
+    },
+  };
+  const complete: Record<string, Chat.Internal.ToolCall> = {
+    'call-render': {
+      ...executing['call-render'],
+      status: 'done',
+      result: { status: 'fulfilled', value: '{"rendered":true}' },
+      metadata: { trace: 'abc' },
+    },
+  };
+
+  // Act
+  const [executingView] = toViewMessagesFromInternal(message, executing, []);
+  const [completeView] = toViewMessagesFromInternal(message, complete, []);
+
+  // Assert
+  expect(
+    (executingView as ViewAssistantMessage<string, AnyTool>).serverToolCalls,
+  ).toEqual([
+    {
+      toolCallId: 'call-render',
+      name: 'render',
+      status: 'executing',
+      args: { text: 'hi' },
+      progress: 0.5,
+    },
+  ]);
+  expect(
+    (completeView as ViewAssistantMessage<string, AnyTool>).serverToolCalls,
+  ).toEqual([
+    {
+      toolCallId: 'call-render',
+      name: 'render',
+      status: 'complete',
+      args: { text: 'hi' },
+      result: { status: 'fulfilled', value: '{"rendered":true}' },
+      progress: 0.5,
+      metadata: { trace: 'abc' },
+    },
+  ]);
+});
+
+test('keeps registered tool calls in toolCalls and omits serverToolCalls when there are none', () => {
+  // Arrange
+  const message = internalAssistantWithCalls(['call-lookup']);
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-lookup': {
+      id: 'call-lookup',
+      name: 'lookup',
+      arguments: '{"q":"x"}',
+      argumentsResolved: { q: 'x' },
+      status: 'pending',
+    },
+  };
+
+  // Act
+  const [view] = toViewMessagesFromInternal(message, toolCalls, [lookupTool]);
+
+  // Assert
+  expect((view as ViewAssistantMessage<string, AnyTool>).toolCalls).toEqual([
+    expect.objectContaining({ name: 'lookup', status: 'pending' }),
+  ]);
+  expect(view).not.toHaveProperty('serverToolCalls');
+});
+
+test('an unregistered call with no parsed arguments yet exposes null args', () => {
+  // Arrange
+  const message = internalAssistantWithCalls(['call-render']);
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-render': {
+      id: 'call-render',
+      name: 'render',
+      arguments: '{"te',
+      status: 'pending',
+    },
+  };
+
+  // Act
+  const [view] = toViewMessagesFromInternal(message, toolCalls, []);
+
+  // Assert
+  expect(
+    (view as ViewAssistantMessage<string, AnyTool>).serverToolCalls,
+  ).toEqual([
+    {
+      toolCallId: 'call-render',
+      name: 'render',
+      status: 'inProgress',
+      args: null,
+    },
+  ]);
 });

@@ -718,9 +718,65 @@ test('creates and commits a pending tool projection from compact chunks alone', 
     status: 'pending',
   });
   expect(ended.activeToolCallId).toBeUndefined();
-  expect(committed.entities['tool-1']).toEqual(
-    continued.draft.entities['tool-1'],
+  expect(ended.draft.entities['tool-1']).toEqual({
+    ...continued.draft.entities['tool-1'],
+    argumentsComplete: true,
+  });
+  expect(committed.entities['tool-1']).toEqual(ended.draft.entities['tool-1']);
+});
+
+test('TOOL_CALL_END records that the arguments are complete, once', () => {
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: [] }),
   );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call-render',
+      toolCallName: 'render',
+    }),
+  );
+  const streamed = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'call-render',
+      delta: '{"text":"hi"}',
+    }),
+  );
+
+  const ended = reducer(
+    streamed,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'call-render',
+    }),
+  );
+  const endedAgain = reducer(
+    ended,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'call-render',
+    }),
+  );
+
+  expect(
+    streamed.draft.entities['call-render']?.argumentsComplete,
+  ).toBeUndefined();
+  expect(ended.draft.entities['call-render']).toEqual({
+    id: 'call-render',
+    name: 'render',
+    arguments: '{"text":"hi"}',
+    status: 'pending',
+    argumentsComplete: true,
+  });
+  expect(endedAgain).toBe(ended);
 });
 
 test('ignores unknown tool args and end events without changing an active tool correlation', () => {
