@@ -34,14 +34,14 @@ import { INVOICING_LINKS } from './home.content';
         </div>
         <div class="actions">
           <a
-            class="btn primary"
+            class="hb-btn primary"
             [href]="links.app"
             target="_blank"
             rel="noopener"
             (click)="analytics.track('invoicing-demo-clicked')"
             >Try the app ↗</a
           >
-          <a class="btn" [href]="links.source" target="_blank" rel="noopener"
+          <a class="hb-btn" [href]="links.source" target="_blank" rel="noopener"
             >Read the source</a
           >
         </div>
@@ -137,24 +137,6 @@ import { INVOICING_LINKS } from './home.content';
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
-    }
-
-    .btn {
-      display: inline-flex;
-      padding: 11px 18px;
-      border: 1.5px solid var(--chocolate-brown);
-      border-radius: 12px;
-      background: #fff;
-      color: var(--chocolate-brown);
-      font:
-        600 15px/1 'Fredoka',
-        sans-serif;
-      text-decoration: none;
-    }
-
-    .btn.primary {
-      background: var(--chocolate-brown);
-      color: #fff;
     }
 
     .shot img {

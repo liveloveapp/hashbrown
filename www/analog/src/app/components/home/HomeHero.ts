@@ -29,12 +29,12 @@ import { InstallCommand } from './InstallCommand';
       <www-install-command />
       <div class="actions">
         <a
-          class="btn primary"
+          class="hb-btn primary"
           [routerLink]="quickStart()"
           (click)="analytics.track('quick-start-clicked')"
           >Quick start →</a
         >
-        <button type="button" class="btn" (click)="copyPrompt()">
+        <button type="button" class="hb-btn" (click)="copyPrompt()">
           Copy prompt for your coding agent
         </button>
       </div>
@@ -102,26 +102,6 @@ import { InstallCommand } from './InstallCommand';
       flex-wrap: wrap;
       gap: 12px;
       margin-top: 16px;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      padding: 11px 18px;
-      border: 1.5px solid var(--chocolate-brown);
-      border-radius: 12px;
-      background: #fff;
-      color: var(--chocolate-brown);
-      font:
-        600 15px/1 'Fredoka',
-        sans-serif;
-      cursor: pointer;
-      text-decoration: none;
-    }
-
-    .btn.primary {
-      background: var(--chocolate-brown);
-      color: #fff;
     }
 
     .proof {

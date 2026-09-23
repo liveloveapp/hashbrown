@@ -21,12 +21,12 @@ import { InstallCommand } from './InstallCommand';
       <www-install-command [centered]="true" />
       <div class="actions">
         <a
-          class="btn primary"
+          class="hb-btn primary"
           [routerLink]="quickStart()"
           (click)="analytics.track('quick-start-clicked')"
           >Quick start →</a
         >
-        <a class="btn" [href]="github" target="_blank" rel="noopener"
+        <a class="hb-btn" [href]="github" target="_blank" rel="noopener"
           >★ Star on GitHub</a
         >
       </div>
@@ -60,24 +60,6 @@ import { InstallCommand } from './InstallCommand';
       flex-wrap: wrap;
       justify-content: center;
       gap: 12px;
-    }
-
-    .btn {
-      display: inline-flex;
-      padding: 11px 18px;
-      border: 1.5px solid var(--chocolate-brown);
-      border-radius: 12px;
-      background: #fff;
-      color: var(--chocolate-brown);
-      font:
-        600 15px/1 'Fredoka',
-        sans-serif;
-      text-decoration: none;
-    }
-
-    .btn.primary {
-      background: var(--chocolate-brown);
-      color: #fff;
     }
 
     @media screen and (min-width: 1024px) {

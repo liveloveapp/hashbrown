@@ -331,3 +331,37 @@ code {
   background-position: center;
   border-radius: inherit;
 }
+
+.hb-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 11px 18px;
+  border: 1.5px solid var(--chocolate-brown);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--chocolate-brown);
+  font:
+    600 15px/1 'Fredoka',
+    sans-serif;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.hb-btn.primary {
+  background: var(--chocolate-brown);
+  color: #fff;
+}
+
+.hb-btn:hover {
+  background: var(--sunshine-yellow-light);
+}
+
+.hb-btn.primary:hover {
+  background: var(--gray-dark);
+}
+
+.hb-btn:focus-visible {
+  outline: 2px solid var(--sunset-orange);
+  outline-offset: 2px;
+}
