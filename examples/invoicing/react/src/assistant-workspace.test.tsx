@@ -484,10 +484,22 @@ test('an errored review surface cannot approve after a later review starts', asy
 });
 
 // Streams a `render` call's arguments in pieces, pausing before TOOL_CALL_END
-// until the test releases the gate, then delivers the validated echo the way
-// the server does: as a separate assistant message that the after hook holds
-// until the tool result has landed.
-function streamingRender(components: readonly Record<string, unknown>[]) {
+// until the test releases the gate, then delivers the tool's result the way
+// B4 does: a serialized LangChain ToolMessage. There is no echo message; the
+// browser renders the answer from the call itself.
+function toolMessage(content: string, status: 'success' | 'error') {
+  return JSON.stringify({
+    lc: 1,
+    type: 'constructor',
+    id: ['langchain_core', 'messages', 'ToolMessage'],
+    kwargs: { content, tool_call_id: 'call-render', name: 'render', status },
+  });
+}
+
+function streamingRender(
+  components: readonly Record<string, unknown>[],
+  outcome: 'success' | 'error' = 'success',
+) {
   let release!: () => void;
   const gate = new Promise<void>((resolve) => (release = resolve));
   const requests: TransportRequest[] = [];
@@ -495,19 +507,6 @@ function streamingRender(components: readonly Record<string, unknown>[]) {
     text: 'Cedar Health has one open invoice.',
     components,
   });
-  const echo = {
-    ui: [
-      {
-        AssistantText: {
-          props: { text: 'Cedar Health has one open invoice.' },
-          children: components.map((leaf) => {
-            const [name] = Object.keys(leaf);
-            return { [name]: { props: leaf[name] } };
-          }),
-        },
-      },
-    ],
-  };
   const transport: Transport = {
     name: 'streaming-render-test',
     async send(request) {
@@ -534,22 +533,21 @@ function streamingRender(components: readonly Record<string, unknown>[]) {
           await gate;
           yield { type: EventType.TOOL_CALL_END, toolCallId: 'call-render' };
           yield {
-            type: EventType.TEXT_MESSAGE_START,
-            messageId: 'echo',
-            role: 'assistant',
-          };
-          yield {
-            type: EventType.TEXT_MESSAGE_CONTENT,
-            messageId: 'echo',
-            delta: JSON.stringify(echo),
-          };
-          yield { type: EventType.TEXT_MESSAGE_END, messageId: 'echo' };
-          yield {
             type: EventType.TOOL_CALL_RESULT,
             messageId: 'result',
             toolCallId: 'call-render',
-            content: JSON.stringify({ rendered: true }),
+            content:
+              outcome === 'success'
+                ? toolMessage('{"rendered":true}', 'success')
+                : toolMessage(
+                    'Error: invalid_ui: components[0].ReviewPayment.paymentId: unknown payment nope',
+                    'error',
+                  ),
           };
+          if (outcome === 'error') {
+            yield { type: EventType.RUN_ERROR, message: 'no_answer' };
+            return;
+          }
           yield { type: EventType.RUN_FINISHED, ...identity };
         })(),
       };
@@ -582,7 +580,7 @@ test('the render call paints its prose and table from the streamed arguments bef
       screen.getByText('Cedar Health has one open invoice.'),
     ).toBeInTheDocument(),
   );
-  // The draft comes from the server's own call; the client registers no
+  // The answer comes from the server's own call; the client registers no
   // tools, and the server refuses any run that advertises one.
   expect(requests[0]?.input.tools).toEqual([]);
   expect(
@@ -594,17 +592,19 @@ test('the render call paints its prose and table from the streamed arguments bef
   await waitFor(() =>
     expect(screen.queryByText('Reading your ledger…')).not.toBeInTheDocument(),
   );
-  // The validated answer replaced the draft rather than joining it.
+  // The result settles the same answer in place: nothing is duplicated and
+  // no echo message is needed.
   expect(
     screen.getAllByText('Cedar Health has one open invoice.'),
   ).toHaveLength(1);
   expect(
     screen.getAllByRole('heading', { name: 'Open invoices' }),
   ).toHaveLength(1);
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   await settle();
 });
 
-test('a ReviewPayment leaf is not drawn from a draft, only from the validated answer', async () => {
+test('a ReviewPayment leaf is not drawn from a draft, only once the server has validated the call', async () => {
   const { transport, release } = streamingRender([
     { ReviewPayment: { paymentId: 'p' } },
   ]);
@@ -624,5 +624,28 @@ test('a ReviewPayment leaf is not drawn from a draft, only from the validated an
       screen.getByRole('button', { name: /^Review / }),
     ).toBeInTheDocument(),
   );
+  await settle();
+});
+
+test('a render call the server rejected renders nothing and the run surfaces the error alert', async () => {
+  const { transport, release } = streamingRender(
+    [{ ReviewPayment: { paymentId: 'nope' } }],
+    'error',
+  );
+  await ask(transport, 'Review nope');
+  await waitFor(() =>
+    expect(
+      screen.getByText('Cedar Health has one open invoice.'),
+    ).toBeInTheDocument(),
+  );
+
+  release();
+  await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+  expect(
+    screen.queryByText('Cedar Health has one open invoice.'),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: /^Review / }),
+  ).not.toBeInTheDocument();
   await settle();
 });

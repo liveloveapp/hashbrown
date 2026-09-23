@@ -6,7 +6,7 @@ import {
 } from '@invoicing/contracts';
 import { getSnapshot } from './ledger';
 import { createSampleLedger, sampleScenarios } from './sample-ledger';
-import { renderUi, validateUi } from './assistant-ui';
+import { validateUi } from './assistant-ui';
 
 const snapshot = getSnapshot(createSampleLedger());
 const full: AssistantRenderInput = {
@@ -272,26 +272,4 @@ test('rejects more than 20 components', () => {
   expect(() => validateUi(snapshot, { text: 'x', components })).toThrow(
     'invalid_ui: too many components',
   );
-});
-
-test('renderUi streams the canonical tree through the echo and retries once on drift', async () => {
-  const tree = validateUi(snapshot, { text: 'Hello' });
-  const calls: unknown[][] = [];
-  const echo = async (schema: unknown, canonical: unknown, attempt: number) => {
-    calls.push([schema, canonical, attempt]);
-    return attempt === 0 ? { ui: [] } : canonical;
-  };
-
-  await expect(renderUi(tree, { schema: 's' }, echo)).resolves.toEqual({
-    rendered: true,
-  });
-  expect(calls).toEqual([
-    [{ schema: 's' }, tree, 0],
-    [{ schema: 's' }, tree, 1],
-  ]);
-  expect(calls[0][1]).toBe(tree);
-  expect(calls[1][1]).toBe(tree);
-  await expect(
-    renderUi(tree, { schema: 's' }, async () => ({ ui: [] })),
-  ).rejects.toThrow('render_failed');
 });

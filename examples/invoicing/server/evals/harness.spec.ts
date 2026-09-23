@@ -77,8 +77,10 @@ test('replays a scripted answer through the real agent, tools and render', async
   expect(run.toolResults.every((r) => !r.isError)).toBe(true);
   expect(String(run.toolResults[0].content)).toContain('"paymentCount":5');
   expect(run.finalMessage).toBe('{"ui":[]}');
-  // The render tool streams its echo to the client as assistant text.
-  expect(run.tokens).toContain(canonical);
+  // The render tool validates and returns; the browser renders the answer
+  // from the call's own arguments, so nothing is echoed as assistant text.
+  expect(String(run.toolResults[1].content)).toContain('"rendered":true');
+  expect(run.tokens).not.toContain(canonical);
 }, 60_000);
 
 test('a rejected render surfaces as a tool error the model could act on', async () => {

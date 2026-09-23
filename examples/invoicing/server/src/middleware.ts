@@ -28,9 +28,9 @@ export default defineMiddleware({
     return allow(result.context);
   },
   /**
-   * The assistant answers by calling `render`, whose echo of the canonical UI
-   * is what streams to the client as the message it shows; the root model's
-   * own final message is redundant. B4 applies the client's
+   * The assistant answers by calling `render`; the browser renders that call
+   * from its own streamed arguments once the server has validated it, so the
+   * root model's own final message is redundant. B4 applies the client's
    * `hashbrown.responseSchema` to that message in production, so left alone
    * it could carry real-looking components that never passed the ledger-ID
    * checks in `validateUi`. Suppress it when the run validated UI, and end

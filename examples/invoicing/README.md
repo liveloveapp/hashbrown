@@ -40,11 +40,14 @@ The server validates every component against the kit and every ID against the
 session's snapshot before the UI reaches the browser; components carry IDs,
 never amounts, and the React side resolves them against the application's own
 snapshot. The kit is built by one shared helper (`createAssistantKit`) so the
-server and the client always agree on its schema. That validated echo is the
-assistant message the browser renders, so the middleware's `after` hook
-suppresses the root model's own closing message, and ends the run with a
-`RUN_ERROR` — the client's "could not finish" alert — when a turn produced no
-validated UI at all.
+server and the client always agree on its schema. The browser renders the
+answer from the `render` call itself: Hashbrown surfaces the server's call on
+the assistant message with its arguments as they stream, the client paints a
+draft from them, and the same renderer shows the final answer once the
+server's result confirms the tree was validated. No model echoes the tree
+back, so the middleware's `after` hook suppresses the root model's own closing
+message, and ends the run with a `RUN_ERROR` — the client's "could not
+finish" alert — when a turn produced no validated UI at all.
 
 Dashboard includes ledger-derived totals and monthly invoiced/received data.
 Payments default to unmatched items; All payments includes historical receipts.
@@ -137,7 +140,7 @@ server, session cookie or storage. Record mode chains a second aimock
 behind the harness's own so each case's tape, the LLM judge's calls
 included, is cut with the app's own fixture keying
 (`server/evals/fixtures.ts`), which the harness's `getRecordedFixtures()`
-would not replay for the nested `render` echo call.
+keyed differently.
 
 ## Deployment
 
