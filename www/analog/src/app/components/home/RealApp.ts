@@ -53,13 +53,21 @@ import { INVOICING_LINKS } from './home.content';
         rel="noopener"
         (click)="analytics.track('invoicing-demo-clicked')"
       >
-        <img
-          src="/image/landing-page/invoicing.jpg"
-          alt="The Hashbrown invoicing example: an invoice grid next to an AI assistant chat"
-          loading="lazy"
-          width="1400"
-          height="875"
-        />
+        <picture>
+          <source
+            media="(max-width: 767px)"
+            srcset="/image/landing-page/invoicing-mobile.webp"
+            width="585"
+            height="1650"
+          />
+          <img
+            src="/image/landing-page/invoicing.webp"
+            alt="The Hashbrown invoicing example: the assistant answers which USD customers are more than 60 days overdue, with a rendered ledger table of overdue invoices, an aging summary chart, and a customer card for Granite Mutual"
+            loading="lazy"
+            width="1400"
+            height="875"
+          />
+        </picture>
       </a>
     </div>
   `,
