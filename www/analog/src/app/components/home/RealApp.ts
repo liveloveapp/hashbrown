@@ -58,14 +58,14 @@ import { INVOICING_LINKS } from './home.content';
             media="(max-width: 767px)"
             srcset="/image/landing-page/invoicing-mobile.webp"
             width="585"
-            height="1650"
+            height="1100"
           />
           <img
             src="/image/landing-page/invoicing.webp"
             alt="The Hashbrown invoicing example: the assistant answers which USD customers are more than 60 days overdue, with a rendered ledger table of overdue invoices, an aging summary chart, and a customer card for Granite Mutual"
             loading="lazy"
             width="1400"
-            height="875"
+            height="1200"
           />
         </picture>
       </a>
