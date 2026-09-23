@@ -8,6 +8,7 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import shikiHashbrown from './src/app/themes/shiki-hashbrown';
 import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
+import { angularLinkerBabel } from './src/tools/angular-linker-babel';
 import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
 import { normalizeNitroPublicAssetPaths } from './src/tools/nitro-public-assets';
 
@@ -27,6 +28,17 @@ export default defineConfig(({ command, mode }) => {
       ssr: {
         resolve: {
           noExternal: [/^@ag-ui\/client$/, /^rxjs(?:\/.*)?$/],
+        },
+        // Dev only; production builds do not run the dependency optimizer.
+        // Analog pre-bundles five Angular entry points for SSR, and Vite does
+        // not discover the rest, so entries such as `@angular/router` and
+        // `@angular/core/rxjs-interop` loaded natively with a second copy of
+        // `@angular/core` (NG0203). Discovery bundles them against one core.
+        // RxJS is listed because its `node` export condition resolves a
+        // CommonJS build the SSR module runner cannot evaluate.
+        optimizeDeps: {
+          noDiscovery: false,
+          include: ['rxjs', 'rxjs/operators'],
         },
         build: {
           rollupOptions: {
@@ -81,6 +93,7 @@ export default defineConfig(({ command, mode }) => {
           },
         },
       }),
+      angularLinkerBabel(),
       ...(mode === 'test'
         ? []
         : nitro({
