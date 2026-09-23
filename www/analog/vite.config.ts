@@ -11,14 +11,22 @@ import { CanonicalReferenceExtension } from './src/extensions/CanonicalReference
 import homeCodePlugin from './src/tools/home-code-plugin';
 import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
 import { normalizeNitroPublicAssetPaths } from './src/tools/nitro-public-assets';
+import { angularLinkerDepsPlugin } from './src/tools/angular-linker-deps-plugin';
+import { ssrDepsReadyPlugin } from './src/tools/ssr-deps-ready-plugin';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   return {
     root: __dirname,
     cacheDir: `../../node_modules/.vite`,
 
     environments: {
       client: {
+        // Analog alpha.87 never links the client's pre-bundled Angular
+        // packages; see angularLinkerDepsPlugin.
+        optimizeDeps:
+          command === 'serve'
+            ? { rolldownOptions: { plugins: [angularLinkerDepsPlugin()] } }
+            : {},
         build: {
           rollupOptions: {
             input: resolve(__dirname, 'index.html'),
@@ -30,7 +38,14 @@ export default defineConfig(({ mode }) => {
           noExternal: [/^@ag-ui\/client$/, /^rxjs(?:\/.*)?$/],
         },
         optimizeDeps: {
-          include: ['rxjs', 'rxjs/operators'],
+          // Analog pre-bundles @angular/platform-browser for SSR but not its
+          // animations entry, which would otherwise load its own copy of the
+          // shared renderer chunks and fail with NG0201.
+          include: [
+            'rxjs',
+            'rxjs/operators',
+            '@angular/platform-browser/animations',
+          ],
         },
         build: {
           rollupOptions: {
@@ -55,6 +70,7 @@ export default defineConfig(({ mode }) => {
       noExternal: [/^rxjs(?:\/.*)?$/],
     },
     plugins: [
+      ssrDepsReadyPlugin(),
       angular(),
       analog({
         workspaceRoot: resolve(__dirname, '../..'),
