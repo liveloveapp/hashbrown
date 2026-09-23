@@ -11,7 +11,7 @@ import { CanonicalReferenceExtension } from './src/extensions/CanonicalReference
 import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
 import { normalizeNitroPublicAssetPaths } from './src/tools/nitro-public-assets';
 
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ mode }) => {
   return {
     root: __dirname,
     cacheDir: `../../node_modules/.vite`,
@@ -27,6 +27,9 @@ export default defineConfig(({ command, mode }) => {
       ssr: {
         resolve: {
           noExternal: [/^@ag-ui\/client$/, /^rxjs(?:\/.*)?$/],
+        },
+        optimizeDeps: {
+          include: ['rxjs', 'rxjs/operators'],
         },
         build: {
           rollupOptions: {
@@ -55,13 +58,6 @@ export default defineConfig(({ command, mode }) => {
       analog({
         workspaceRoot: resolve(__dirname, '../..'),
         apiPrefix: '_',
-        // The SSR template must be the built client index.html (hashed asset
-        // tags). The Vercel preset writes the client build to the repository
-        // root .vercel/output/static, before the server bundle reads it.
-        index:
-          command === 'build' && mode === 'production'
-            ? resolve(__dirname, '../../.vercel/output/static/index.html')
-            : undefined,
         content: {
           highlighter: 'shiki',
           shikiOptions: {
