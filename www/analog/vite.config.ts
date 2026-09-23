@@ -8,6 +8,7 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import shikiHashbrown from './src/app/themes/shiki-hashbrown';
 import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
+import homeCodePlugin from './src/tools/home-code-plugin';
 import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
 import { normalizeNitroPublicAssetPaths } from './src/tools/nitro-public-assets';
 
@@ -119,6 +120,7 @@ export default defineConfig(({ mode }) => {
       normalizeNitroPublicAssetPaths(__dirname),
       nxViteTsPaths(),
       hashbrownStackblitzPlugin(),
+      homeCodePlugin(__dirname),
     ],
     test: {
       globals: true,
