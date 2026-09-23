@@ -7,7 +7,6 @@ import { Hero } from '../components/home/Hero';
 import { Media } from '../components/home/Media';
 import { OpenSource } from '../components/home/OpenSource';
 import { Samples } from '../components/home/Samples';
-import { TheGravy } from '../components/TheGravy';
 
 export const routeMeta: RouteMeta = {
   title: 'Hashbrown: The TypeScript Framework for Generative UI',
@@ -29,16 +28,7 @@ export const routeMeta: RouteMeta = {
 };
 
 @Component({
-  imports: [
-    Features,
-    Footer,
-    Header,
-    Hero,
-    Media,
-    OpenSource,
-    Samples,
-    TheGravy,
-  ],
+  imports: [Features, Footer, Header, Hero, Media, OpenSource, Samples],
   template: `
     <www-header />
     <main class="home">
@@ -47,7 +37,6 @@ export const routeMeta: RouteMeta = {
       <www-open-source />
       <www-features />
       <www-media />
-      <www-the-gravy />
     </main>
     <www-footer />
   `,
