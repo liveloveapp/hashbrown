@@ -7,6 +7,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { Squircle } from '../Squircle';
 import { ConfigService } from '../../services/ConfigService';
+import { quickStartUrl } from './home.content';
 
 @Component({
   selector: 'www-samples',
@@ -85,7 +86,5 @@ import { ConfigService } from '../../services/ConfigService';
 export class Samples {
   configService = inject(ConfigService);
 
-  quickStartUrl = computed(
-    () => `/docs/${this.configService.sdk()}/start/quick`,
-  );
+  quickStartUrl = computed(() => quickStartUrl(this.configService.sdk()));
 }
