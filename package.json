@@ -163,6 +163,7 @@
     "portfinder": "^1.0.38",
     "postcss": "^8.5.16",
     "prettier": "^3.9.4",
+    "sharp": "0.34.5",
     "shiki": "^1.29.2",
     "ts-jest": "^29.4.11",
     "ts-node": "10.9.1",
