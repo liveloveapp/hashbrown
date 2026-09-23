@@ -152,4 +152,4 @@ Clone the repo, run the server, open the finance demo, and type a few prompts:
 
 ---
 
-By the way, quick introduction! My name is Mike Ryan, and I’m the tech lead for [Hashbrown](https://hashbrown.dev), a 100% open‑source framework for building AI‑connected React and Angular components.
+By the way, quick introduction! My name is Mike Ryan, and I’m the tech lead for [Hashbrown](https://hashbrown.dev), a 100% open‑source framework for building AI‑connected React and Angular components. I’m also a Principal Architect at [LiveLoveApp](https://liveloveapp.com), a consultancy focused on AG Grid and AI. Drop me a line if you need help with your project at [mike@liveloveapp.com](mailto:mike@liveloveapp.com).
