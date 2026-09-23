@@ -4,8 +4,9 @@ import {
   computed,
   inject,
 } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
-import { CodeHighlight } from '../../pipes/CodeHighlight';
+import { HOME_CODE_HTML } from 'virtual:home-code-html';
 import { AnalyticsService } from '../../services/AnalyticsService';
 import { ConfigService } from '../../services/ConfigService';
 import { ToastService } from '../../services/ToastService';
@@ -16,7 +17,7 @@ import { InstallCommand } from './InstallCommand';
 
 @Component({
   selector: 'www-home-hero',
-  imports: [CodeHighlight, GitHubStarButton, InstallCommand, RouterLink],
+  imports: [GitHubStarButton, InstallCommand, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="copy">
@@ -52,10 +53,7 @@ import { InstallCommand } from './InstallCommand';
         </span>
         <span class="file">{{ sample().file }}</span>
       </div>
-      <div
-        class="code"
-        [innerHTML]="sample().code | codeHighlight: sample().lang"
-      ></div>
+      <div class="code" [innerHTML]="codeHtml()"></div>
       <div class="result" aria-hidden="true">
         <div class="bubble">Show me Acme's overdue invoice</div>
         <div class="invoice">
@@ -130,11 +128,12 @@ import { InstallCommand } from './InstallCommand';
       align-items: center;
       gap: 6px;
       padding: 10px 14px;
+      background: var(--gray-dark);
       border-bottom: 1px solid rgba(0, 0, 0, 0.05);
       font:
         400 12px/1 'Fredoka',
         sans-serif;
-      color: var(--gray);
+      color: var(--gray-light);
     }
 
     .dots {
@@ -146,7 +145,7 @@ import { InstallCommand } from './InstallCommand';
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: #e7e3d6;
+      background: var(--gray);
     }
 
     .file {
@@ -156,10 +155,19 @@ import { InstallCommand } from './InstallCommand';
     .code {
       padding: 16px 18px;
       overflow-x: auto;
+      background: var(--gray-dark);
       font:
         400 12.5px/1.6 'JetBrains Mono',
         monospace;
-      color: var(--gray-dark);
+
+      ::ng-deep pre {
+        margin: 0;
+        background: transparent !important;
+      }
+
+      ::ng-deep code {
+        font: inherit;
+      }
     }
 
     .result {
@@ -246,10 +254,17 @@ import { InstallCommand } from './InstallCommand';
 export class HomeHero {
   private readonly config = inject(ConfigService);
   private readonly toast = inject(ToastService);
+  private readonly sanitizer = inject(DomSanitizer);
   readonly analytics = inject(AnalyticsService);
 
   readonly sample = computed(() => HERO_CODE[this.config.sdk()]);
   readonly quickStart = computed(() => quickStartUrl(this.config.sdk()));
+  // Build-time constant HTML; bypassing is required to keep Shiki's inline token colors.
+  readonly codeHtml = computed(() =>
+    this.sanitizer.bypassSecurityTrustHtml(
+      HOME_CODE_HTML.hero[this.config.sdk()],
+    ),
+  );
 
   async copyPrompt(): Promise<void> {
     const sdk = this.config.sdk();

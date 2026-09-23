@@ -4,13 +4,14 @@ import {
   computed,
   inject,
 } from '@angular/core';
-import { CodeHighlight } from '../../pipes/CodeHighlight';
+import { DomSanitizer } from '@angular/platform-browser';
+import { HOME_CODE_HTML } from 'virtual:home-code-html';
 import { ConfigService } from '../../services/ConfigService';
 import { STEPS } from './home.content';
 
 @Component({
   selector: 'www-how-it-works',
-  imports: [CodeHighlight],
+  imports: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header>
@@ -23,10 +24,7 @@ import { STEPS } from './home.content';
           <span class="num">{{ i + 1 }}</span>
           <h3>{{ step.title }}</h3>
           <p>{{ step.body }}</p>
-          <div
-            class="code"
-            [innerHTML]="step.code | codeHighlight: step.lang ?? 'typescript'"
-          ></div>
+          <div class="code" [innerHTML]="step.html"></div>
         </li>
       }
     </ol>
@@ -106,10 +104,19 @@ import { STEPS } from './home.content';
       padding: 12px 14px;
       overflow-x: auto;
       border-radius: 12px;
-      background: var(--vanilla-ivory);
+      background: var(--gray-dark);
       font:
         400 12px/1.6 'JetBrains Mono',
         monospace;
+
+      ::ng-deep pre {
+        margin: 0;
+        background: transparent !important;
+      }
+
+      ::ng-deep code {
+        font: inherit;
+      }
     }
 
     @media screen and (min-width: 1024px) {
@@ -121,5 +128,16 @@ import { STEPS } from './home.content';
 })
 export class HowItWorks {
   private readonly config = inject(ConfigService);
-  readonly steps = computed(() => STEPS[this.config.sdk()]);
+  private readonly sanitizer = inject(DomSanitizer);
+
+  readonly steps = computed(() => {
+    const sdk = this.config.sdk();
+    return STEPS[sdk].map((step, i) => ({
+      ...step,
+      // Build-time constant HTML; bypassing is required to keep Shiki's inline token colors.
+      html: this.sanitizer.bypassSecurityTrustHtml(
+        HOME_CODE_HTML.steps[sdk][i],
+      ),
+    }));
+  });
 }
