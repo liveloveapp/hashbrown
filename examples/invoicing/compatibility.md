@@ -4,6 +4,26 @@ Historical checkpoints below describe the repository at their recorded dates.
 Legacy examples and Vox were retired in September 2026; current verification
 belongs to `examples/invoicing/e2e`.
 
+## Render echo removed — September 22, 2026
+
+The assistant's `render` tool no longer makes a nested model call to echo the
+validated tree as an assistant message. Hashbrown surfaces the server's call
+on the assistant message (`serverToolCalls`) with its arguments as they
+stream, so the browser paints a draft from them and shows the same tree as
+the final answer once the tool result confirms validation. `ReviewPayment`
+appears only in the validated answer; a rejected call shows nothing and the
+`after` hook still ends a turn with no validated UI in the error alert.
+
+Measured in Chrome against gpt-5-mini on the sample ledger: the render
+arguments streamed from 22.9 s to 24.0 s after the question was sent, the
+tool result landed at 24.0 s, and the run finished at 28.0 s with no
+assistant text message on the wire. Before this change the echo message
+landed roughly nine seconds after the arguments finished. The evals score the
+render arguments as before; recorded tapes replay unchanged, their echo
+recording unused. Unit coverage: `server/src/render-tool.spec.ts`, the
+harness replay tests, and the React conversation tests, which now deliver a
+serialized `ToolMessage` result instead of an echo message.
+
 ## Generated ledger and session overlay — September 19, 2026
 
 The sample ledger is now generated from a fixed seed instead of a hand-written
