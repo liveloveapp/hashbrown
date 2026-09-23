@@ -21,7 +21,11 @@ import { CAPABILITIES, Capability } from './home.content';
           <h3>{{ capability.title }}</h3>
           <p>{{ capability.body }}</p>
           <div class="why">{{ capability.why }}</div>
-          <a [routerLink]="docsLink(capability)">Read the docs</a>
+          <a
+            [routerLink]="docsLink(capability)"
+            [attr.aria-label]="'Read the docs: ' + capability.title"
+            >Read the docs</a
+          >
         </article>
       }
     </div>

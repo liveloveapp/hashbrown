@@ -2,8 +2,10 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  ElementRef,
   inject,
   input,
+  viewChildren,
 } from '@angular/core';
 import { AnalyticsService } from '../../services/AnalyticsService';
 import { ConfigService } from '../../services/ConfigService';
@@ -19,11 +21,14 @@ import { installCommand, Sdk, SDK_LABELS } from './home.content';
     <div class="tabs" role="radiogroup" aria-label="Framework">
       @for (option of sdks; track option) {
         <button
+          #radio
           type="button"
           role="radio"
           [attr.aria-checked]="sdk() === option"
+          [attr.tabindex]="sdk() === option ? 0 : -1"
           [class.on]="sdk() === option"
           (click)="select(option)"
+          (keydown)="onKeydown($event, option)"
         >
           {{ labels[option] }}
         </button>
@@ -129,8 +134,39 @@ export class InstallCommand {
   readonly sdk = this.config.sdk;
   readonly command = computed(() => installCommand(this.sdk()));
 
+  private readonly radios =
+    viewChildren<ElementRef<HTMLButtonElement>>('radio');
+
   select(sdk: Sdk): void {
     this.config.set({ sdk });
+  }
+
+  /**
+   * Moves selection with the arrow keys, following the standard radio-group
+   * roving-tabindex pattern: the next/previous option is selected and
+   * focused immediately, wrapping around at either end.
+   *
+   * @param event - The keydown event from a radio button.
+   * @param option - The framework the event's radio button represents.
+   */
+  onKeydown(event: KeyboardEvent, option: Sdk): void {
+    const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown';
+    const backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp';
+
+    if (!forward && !backward) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const currentIndex = this.sdks.indexOf(option);
+    const delta = forward ? 1 : -1;
+    const nextIndex =
+      (currentIndex + delta + this.sdks.length) % this.sdks.length;
+    const nextSdk = this.sdks[nextIndex];
+
+    this.select(nextSdk);
+    this.radios()[nextIndex]?.nativeElement.focus();
   }
 
   async copy(): Promise<void> {

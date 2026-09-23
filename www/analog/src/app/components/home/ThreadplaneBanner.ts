@@ -11,7 +11,6 @@ import { THREADPLANE_URL } from './home.content';
       [href]="url"
       target="_blank"
       rel="noopener"
-      aria-label="Explore threadplane"
       (click)="analytics.track('threadplane-banner-clicked')"
     >
       <div class="text">

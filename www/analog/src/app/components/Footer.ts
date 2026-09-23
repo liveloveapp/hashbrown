@@ -22,7 +22,7 @@ import { ConfigService } from '../services/ConfigService';
           </div>
           <small>
             © LiveLoveApp, LLC {{ currentYear }}. <br />
-            <a href="https://analogjs.org" target="_blank">
+            <a href="https://analogjs.org" target="_blank" rel="noopener">
               Built with AnalogJS
               <www-arrow-up-right height="12px" width="12px" />
             </a>
@@ -41,13 +41,23 @@ import { ConfigService } from '../services/ConfigService';
               <a routerLink="/samples" class="underline">Examples</a>
             </li>
             <li>
-              <a href="/llms.txt" target="_blank" class="underline">
+              <a
+                href="/llms.txt"
+                target="_blank"
+                rel="noopener"
+                class="underline"
+              >
                 llms.txt
                 <www-arrow-up-right height="12px" width="12px" />
               </a>
             </li>
             <li>
-              <a href="/llms-full.txt" target="_blank" class="underline">
+              <a
+                href="/llms-full.txt"
+                target="_blank"
+                rel="noopener"
+                class="underline"
+              >
                 llms-full.txt
                 <www-arrow-up-right height="12px" width="12px" />
               </a>
@@ -67,6 +77,7 @@ import { ConfigService } from '../services/ConfigService';
               <a
                 href="https://threadplane.ai/?utm_source=hashbrown&utm_medium=footer"
                 target="_blank"
+                rel="noopener"
                 class="underline"
               >
                 threadplane.ai
@@ -74,13 +85,23 @@ import { ConfigService } from '../services/ConfigService';
               </a>
             </li>
             <li>
-              <a href="https://b4.run" target="_blank" class="underline">
+              <a
+                href="https://b4.run"
+                target="_blank"
+                rel="noopener"
+                class="underline"
+              >
                 b4.run
                 <www-arrow-up-right height="12px" width="12px" />
               </a>
             </li>
             <li>
-              <a href="https://pretable.ai" target="_blank" class="underline">
+              <a
+                href="https://pretable.ai"
+                target="_blank"
+                rel="noopener"
+                class="underline"
+              >
                 pretable.ai
                 <www-arrow-up-right height="12px" width="12px" />
               </a>
@@ -95,12 +116,19 @@ import { ConfigService } from '../services/ConfigService';
             <a
               href="https://www.linkedin.com/company/liveloveapp"
               target="_blank"
+              rel="noopener"
+              aria-label="Hashbrown on LinkedIn"
             >
               <www-brand-linkedin />
             </a>
           </li>
           <li>
-            <a href="https://github.com/liveloveapp/hashbrown" target="_blank">
+            <a
+              href="https://github.com/liveloveapp/hashbrown"
+              target="_blank"
+              rel="noopener"
+              aria-label="Hashbrown on GitHub"
+            >
               <www-brand-github />
             </a>
           </li>
@@ -194,10 +222,7 @@ import { ConfigService } from '../services/ConfigService';
           gap: 8px;
 
           > .title {
-            font:
-              600 14px/18px Fredoka,
-              sans-serif;
-            font-family: var(--font-heading);
+            font: 600 14px/18px var(--font-heading);
           }
 
           > ul {

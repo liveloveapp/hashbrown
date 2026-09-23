@@ -23,7 +23,10 @@ import { STEPS } from './home.content';
           <span class="num">{{ i + 1 }}</span>
           <h3>{{ step.title }}</h3>
           <p>{{ step.body }}</p>
-          <div class="code" [innerHTML]="step.code | codeHighlight"></div>
+          <div
+            class="code"
+            [innerHTML]="step.code | codeHighlight: step.lang ?? 'typescript'"
+          ></div>
         </li>
       }
     </ol>

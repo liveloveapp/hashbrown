@@ -105,6 +105,8 @@ export interface Step {
   title: string;
   body: string;
   code: string;
+  /** The syntax-highlighting language for `code`. Defaults to `typescript`. */
+  lang?: string;
 }
 
 const STEP_COPY = [
@@ -164,6 +166,7 @@ export const STEPS: Record<Sdk, Step[]> = {
     {
       ...STEP_COPY[2],
       code: `<hb-render-message [message]="m" />`,
+      lang: 'html',
     },
   ],
 };
