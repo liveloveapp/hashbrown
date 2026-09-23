@@ -43,9 +43,10 @@ export interface Recording {
  * last user message (`hasToolResult`, scoped to the current turn exactly as
  * aimock's `currentTurnHasToolResult` scopes it). `@b4run/testing`'s own `recordingsToFixtures` keys
  * `turnIndex` by the recording's ordinal in the array and `userMessage` by
- * the FIRST user message, which mismatches for the `render` tool's nested
- * echo call — a fresh one-message request that starts a new "turn" from
- * aimock's point of view.
+ * the FIRST user message, which mismatched for the nested echo call the
+ * `render` tool used to make (a fresh one-message request that started a
+ * new "turn" from aimock's point of view). The echo is gone; the tapes that
+ * still carry its recording replay unchanged, that fixture simply unused.
  *
  * Every fixture also gets `sequenceIndex: 0`. aimock matches `userMessage`
  * by substring, and the LLM judge's user message quotes the case input, so
@@ -59,7 +60,7 @@ export interface Recording {
  * fixture whose `content` is the empty string with no `blocks` ("content is
  * empty string"), so the tape could not be replayed at all. Such a recording
  * is stored as `{}` instead: the closing message is inert for this app — the
- * user reads the `render` echo, no scorer looks at `run.finalMessage`, and in
+ * user reads the `render` call, no scorer looks at `run.finalMessage`, and in
  * production `after` replaces the message whatever it was.
  */
 export function recordingsToFixtures(

@@ -163,16 +163,19 @@ function Conversation({
           );
         if (message.role !== 'assistant') return null;
         if (message.ui) return <Fragment key={index}>{message.ui}</Fragment>;
-        // The validated answer arrives as a later assistant message with
-        // `ui`; until it does, the server's render call, surfaced by hashbrown
-        // with its arguments as they stream, stands in for it, drawn through
-        // the same components so the swap is invisible.
-        const draft = findRenderCall(message.serverToolCalls);
-        const superseded = chat.messages
-          .slice(index + 1)
-          .some((later) => later.role === 'assistant' && later.ui);
-        return draft && !superseded ? (
-          <RenderDraft key={index} args={draft} />
+        // The answer is the server's render call, surfaced by hashbrown with
+        // its arguments as they stream: a draft until the server validates the
+        // call, then the final answer, drawn through the same components. A
+        // call the server rejected shows nothing; the model retries or the
+        // run ends in the error alert below.
+        const call = findRenderCall(message.serverToolCalls);
+        return call && call.state !== 'failed' ? (
+          <RenderDraft
+            key={index}
+            args={call.args}
+            validated={call.state === 'validated'}
+            ReviewPayment={ReviewPayment}
+          />
         ) : null;
       })}
       {(chat.error || chat.sendingError || chat.generatingError) && (

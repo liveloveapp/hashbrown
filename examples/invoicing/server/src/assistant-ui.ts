@@ -1,4 +1,3 @@
-import { isDeepStrictEqual } from 'node:util';
 import type {
   AssistantRenderInput,
   LedgerSnapshot,
@@ -10,13 +9,11 @@ const MAX_TEXT = 4000;
 const MAX_TITLE = 120;
 const MIN_MONTHS = 3;
 const MAX_MONTHS = 24;
-/** How many times the echo may try to reproduce the tree before rendering fails. */
-const ECHO_ATTEMPTS = 2;
 
 /** A Hashbrown UI node: one component key holding `props` and, for text, `children`. */
 export type CanonicalNode = Readonly<Record<string, unknown>>;
 
-/** The canonical tree: what the echo must reproduce byte for byte. */
+/** The canonical tree the browser renders from the validated call. */
 export interface CanonicalUi {
   readonly ui: readonly CanonicalNode[];
 }
@@ -182,27 +179,4 @@ export function validateUi(
       },
     ],
   };
-}
-
-/**
- * Push a canonical tree to the client through the nested structured-output
- * echo. The echo must reproduce the tree exactly; one retry covers a
- * transient drift, a second miss is an error. That error is `render_failed`,
- * not `invalid_ui`: the tree was already validated, so the model's input is
- * not at fault.
- */
-export async function renderUi(
-  tree: CanonicalUi,
-  schema: unknown,
-  echo: (
-    schema: unknown,
-    tree: CanonicalUi,
-    attempt: number,
-  ) => Promise<unknown>,
-): Promise<{ rendered: true }> {
-  for (let attempt = 0; attempt < ECHO_ATTEMPTS; attempt += 1) {
-    const output = await echo(schema, tree, attempt);
-    if (isDeepStrictEqual(output, tree)) return { rendered: true };
-  }
-  throw new Error('render_failed');
 }
