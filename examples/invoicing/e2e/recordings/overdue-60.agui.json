@@ -1,0 +1,4192 @@
+{
+  "version": 1,
+  "recordedAt": "2026-09-23T22:14:14.246Z",
+  "question": "Which USD customers are more than 60 days overdue?",
+  "events": [
+    {
+      "event": {
+        "type": "RUN_STARTED",
+        "threadId": "67e09552-b62a-402f-a986-5d541d64044e",
+        "runId": "8e971dae-187d-4aa4-a5e4-303b5b858a41"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_START",
+        "toolCallId": "call_aAWxtUIpTszU0YHcFlVwnHHk",
+        "toolCallName": "ledgerSummary"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_aAWxtUIpTszU0YHcFlVwnHHk",
+        "delta": "{}"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_END",
+        "toolCallId": "call_aAWxtUIpTszU0YHcFlVwnHHk"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_RESULT",
+        "messageId": "tr-35bb2410-37c3-421d-beef-b2e435bb9b70",
+        "toolCallId": "call_aAWxtUIpTszU0YHcFlVwnHHk",
+        "content": "{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain_core\",\"messages\",\"ToolMessage\"],\"kwargs\":{\"status\":\"success\",\"content\":\"{\\\"asOf\\\":\\\"2026-09-15\\\",\\\"currencies\\\":[{\\\"currency\\\":\\\"EUR\\\",\\\"invoicedCents\\\":41820000,\\\"invoiced\\\":\\\"€418,200.00\\\",\\\"receivedCents\\\":41370000,\\\"received\\\":\\\"€413,700.00\\\",\\\"openCents\\\":450000,\\\"open\\\":\\\"€4,500.00\\\",\\\"unappliedCents\\\":0,\\\"unapplied\\\":\\\"€0.00\\\",\\\"openInvoices\\\":1,\\\"unappliedPayments\\\":0},{\\\"currency\\\":\\\"GBP\\\",\\\"invoicedCents\\\":38325000,\\\"invoiced\\\":\\\"£383,250.00\\\",\\\"receivedCents\\\":36571800,\\\"received\\\":\\\"£365,718.00\\\",\\\"openCents\\\":1753200,\\\"open\\\":\\\"£17,532.00\\\",\\\"unappliedCents\\\":0,\\\"unapplied\\\":\\\"£0.00\\\",\\\"openInvoices\\\":44,\\\"unappliedPayments\\\":0},{\\\"currency\\\":\\\"USD\\\",\\\"invoicedCents\\\":171060000,\\\"invoiced\\\":\\\"$1,710,600.00\\\",\\\"receivedCents\\\":168219500,\\\"received\\\":\\\"$1,682,195.00\\\",\\\"openCents\\\":4230500,\\\"open\\\":\\\"$42,305.00\\\",\\\"unappliedCents\\\":1390000,\\\"unapplied\\\":\\\"$13,900.00\\\",\\\"openInvoices\\\":53,\\\"unappliedPayments\\\":5}],\\\"customers\\\":[{\\\"id\\\":\\\"northstar\\\",\\\"name\\\":\\\"Northstar Labs\\\",\\\"currency\\\":\\\"USD\\\",\\\"profile\\\":\\\"on-time\\\"},{\\\"id\\\":\\\"cedar\\\",\\\"name\\\":\\\"Cedar Health\\\",\\\"currency\\\":\\\"USD\\\",\\\"profile\\\":\\\"on-time\\\"},{\\\"id\\\":\\\"harbor\\\",\\\"name\\\":\\\"Harbor Commerce\\\",\\\"currency\\\":\\\"USD\\\",\\\"profile\\\":\\\"on-time\\\"},{\\\"id\\\":\\\"atlas\\\",\\\"name\\\":\\\"Atlas Analytics\\\",\\\"currency\\\":\\\"USD\\\",\\\"profile\\\":\\\"wrong-reference\\\"},{\\\"id\\\":\\\"summit\\\",\\\"name\\\":\\\"Summit Logistics\\\",\\\"currency\\\":\\\"USD\\\",\\\"profile\\\":\\\"on-time\\\"},{\\\"id\\\":\\\"juniper\\\",\\\"name\\\":\\\"Juniper Studio\\\",\\\"currency\\\":\\\"USD\\\",\\\"profile\\\":\\\"late-drifting\\\"},{\\\"id\\\":\\\"pioneer\\\",\\\"name\\\":\\\"Pioneer Robotics\\\",\\\"currency\\\":\\\"USD\\\",\\\"profile\\\":\\\"late-fixed\\\"},{\\\"id\\\":\\\"granite\\\",\\\"name\\\":\\\"Granite Mutual\\\",\\\"currency\\\":\\\"USD\\\",\\\"profile\\\":\\\"short-payer\\\"},{\\\"id\\\":\\\"lumen\\\",\\\"name\\\":\\\"Lumen Fintech\\\",\\\"currency\\\":\\\"EUR\\\",\\\"profile\\\":\\\"on-time\\\"},{\\\"id\\\":\\\"orbital\\\",\\\"name\\\":\\\"Orbital Media\\\",\\\"currency\\\":\\\"EUR\\\",\\\"profile\\\":\\\"batch-payer\\\"},{\\\"id\\\":\\\"thistle\\\",\\\"name\\\":\\\"Thistle Retail\\\",\\\"currency\\\":\\\"GBP\\\",\\\"profile\\\":\\\"late-drifting\\\"},{\\\"id\\\":\\\"kestrel\\\",\\\"name\\\":\\\"Kestrel Energy\\\",\\\"currency\\\":\\\"GBP\\\",\\\"profile\\\":\\\"short-payer\\\"}]}\",\"tool_call_id\":\"call_aAWxtUIpTszU0YHcFlVwnHHk\",\"name\":\"ledgerSummary\",\"metadata\":{\"versions\":{\"@langchain/core\":\"1.2.12\"}},\"additional_kwargs\":{},\"response_metadata\":{}}}"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_START",
+        "toolCallId": "call_bGTB2MqY5a9qBWHyd0dXETZh",
+        "toolCallName": "aging"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_bGTB2MqY5a9qBWHyd0dXETZh",
+        "delta": "{"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_bGTB2MqY5a9qBWHyd0dXETZh",
+        "delta": "\"currency\":\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_bGTB2MqY5a9qBWHyd0dXETZh",
+        "delta": "USD"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_bGTB2MqY5a9qBWHyd0dXETZh",
+        "delta": "\"}"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_END",
+        "toolCallId": "call_bGTB2MqY5a9qBWHyd0dXETZh"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_RESULT",
+        "messageId": "tr-a65853f3-4e94-476c-9e07-9cd4d453c099",
+        "toolCallId": "call_bGTB2MqY5a9qBWHyd0dXETZh",
+        "content": "{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain_core\",\"messages\",\"ToolMessage\"],\"kwargs\":{\"status\":\"success\",\"content\":\"{\\\"currency\\\":\\\"USD\\\",\\\"customerId\\\":null,\\\"asOf\\\":\\\"2026-09-15\\\",\\\"openCents\\\":4230500,\\\"open\\\":\\\"$42,305.00\\\",\\\"buckets\\\":[{\\\"bucket\\\":\\\"current\\\",\\\"outstandingCents\\\":2513800,\\\"outstanding\\\":\\\"$25,138.00\\\",\\\"invoiceIds\\\":[\\\"invoice-juniper-2026-09\\\",\\\"invoice-pioneer-2026-09\\\",\\\"invoice-granite-2026-09\\\",\\\"invoice-northstar-exact\\\",\\\"invoice-cedar-partial\\\",\\\"invoice-harbor-api\\\",\\\"invoice-harbor-migration\\\",\\\"invoice-atlas-discovery\\\",\\\"invoice-atlas-review\\\"]},{\\\"bucket\\\":\\\"days1to30\\\",\\\"outstandingCents\\\":933300,\\\"outstanding\\\":\\\"$9,333.00\\\",\\\"invoiceIds\\\":[\\\"invoice-juniper-2026-08\\\",\\\"invoice-juniper-2026-08-p2\\\",\\\"invoice-pioneer-2026-08-p2\\\",\\\"invoice-granite-2026-08\\\",\\\"invoice-granite-2026-08-p2\\\"]},{\\\"bucket\\\":\\\"days31to60\\\",\\\"outstandingCents\\\":396800,\\\"outstanding\\\":\\\"$3,968.00\\\",\\\"invoiceIds\\\":[\\\"invoice-juniper-2026-07-p1\\\",\\\"invoice-granite-2026-07\\\",\\\"invoice-granite-2026-07-p1\\\"]},{\\\"bucket\\\":\\\"days61to90\\\",\\\"outstandingCents\\\":13800,\\\"outstanding\\\":\\\"$138.00\\\",\\\"invoiceIds\\\":[\\\"invoice-granite-2026-06\\\"]},{\\\"bucket\\\":\\\"over90\\\",\\\"outstandingCents\\\":372800,\\\"outstanding\\\":\\\"$3,728.00\\\",\\\"invoiceIds\\\":[\\\"invoice-granite-2024-10\\\",\\\"invoice-granite-2024-10-p1\\\",\\\"invoice-granite-2024-11\\\",\\\"invoice-granite-2024-12\\\",\\\"invoice-granite-2025-01\\\",\\\"invoice-granite-2025-01-p1\\\",\\\"invoice-granite-2025-02\\\",\\\"invoice-granite-2025-02-p2\\\",\\\"invoice-granite-2025-03\\\",\\\"invoice-granite-2025-04\\\",\\\"invoice-granite-2025-04-p1\\\",\\\"invoice-granite-2025-05\\\",\\\"invoice-granite-2025-05-p2\\\",\\\"invoice-granite-2025-06\\\",\\\"invoice-granite-2025-06-p3\\\",\\\"invoice-granite-2025-07\\\",\\\"invoice-granite-2025-07-p1\\\",\\\"invoice-granite-2025-08\\\",\\\"invoice-granite-2025-08-p2\\\",\\\"invoice-granite-2025-09\\\",\\\"invoice-granite-2025-10\\\",\\\"invoice-granite-2025-10-p1\\\",\\\"invoice-granite-2025-11\\\",\\\"invoice-granite-2025-11-p2\\\",\\\"invoice-granite-2025-12\\\",\\\"invoice-granite-2026-01\\\",\\\"invoice-granite-2026-01-p1\\\",\\\"invoice-granite-2026-02\\\",\\\"invoice-granite-2026-02-p2\\\",\\\"invoice-granite-2026-03\\\",\\\"invoice-granite-2026-03-p3\\\",\\\"invoice-granite-2026-04\\\",\\\"invoice-granite-2026-04-p1\\\",\\\"invoice-granite-2026-05\\\",\\\"invoice-granite-2026-05-p2\\\"]}]}\",\"tool_call_id\":\"call_bGTB2MqY5a9qBWHyd0dXETZh\",\"name\":\"aging\",\"metadata\":{\"versions\":{\"@langchain/core\":\"1.2.12\"}},\"additional_kwargs\":{},\"response_metadata\":{}}}"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_START",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "toolCallName": "render"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "{"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"text\":\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "Only"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " one"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " USD"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " customer"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " is"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " more"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " than"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " "
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "60"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " days"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " overdue"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": ":"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " Granite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " Mutual"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " ("
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "customer"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " ID"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": ":"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " granite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": ")."
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\\n"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\\n"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "Break"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "down"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": ":"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " $"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "138"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "."
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "00"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " in"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " "
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "61"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "–"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "90"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " days"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " and"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " $"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "3"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": ","
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "728"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "."
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "00"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " over"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " "
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "90"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " days"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " —"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " $"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "3"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": ","
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "866"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "."
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "00"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " total"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " >"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "60"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " days"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " overdue"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "."
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\\n"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\\n"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "I"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "’ve"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " included"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " the"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " aging"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " summary"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " for"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " USD"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " and"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " a"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " ledger"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " table"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " of"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " the"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " invoices"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " >"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "60"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " days"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " for"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " your"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " review"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": ","
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " plus"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " the"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " customer"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " card"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " for"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " Granite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " Mutual"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "."
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " If"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " you"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "’d"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " like"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": ","
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " I"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " can"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " review"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " any"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " unap"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "plied"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " payments"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " that"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " might"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " match"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " these"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " invoices"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": ".\","
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"components\":["
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "{"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"LedgerTable\":{"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"title\":\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "Invoices"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " >"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "60"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " days"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " —"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": " USD"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\","
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"recordIds\":[\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "06"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "4"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "10"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "4"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "10"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "1"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "4"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "11"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "4"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "12"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "01"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "01"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "1"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "02"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "02"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "2"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "03"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "04"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "04"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "1"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "05"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "05"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "2"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "06"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "06"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "3"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "07"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "07"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "1"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "08"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "08"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "2"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "09"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "10"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "10"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "1"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "11"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "11"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "2"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "5"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "12"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "01"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "01"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "1"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "02"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "02"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "2"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "03"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "03"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "3"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "04"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "04"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "1"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "05"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\",\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "invoice"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-gr"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "an"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "202"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "6"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "05"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "-p"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "2"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"]"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "}},"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "{"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"AgingSummary\":{"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"currency\":\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "USD"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"}"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "},{"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"CustomerCard\":{"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"customerId\":\""
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "gran"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "ite"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "\"}}"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_ARGS",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "delta": "]}"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_END",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD"
+      }
+    },
+    {
+      "event": {
+        "type": "TOOL_CALL_RESULT",
+        "messageId": "tr-664e9921-ec32-4c3f-acad-48c09e954b88",
+        "toolCallId": "call_8PVvZjS1DF845WjMx8XNBnmD",
+        "content": "{\"lc\":1,\"type\":\"constructor\",\"id\":[\"langchain_core\",\"messages\",\"ToolMessage\"],\"kwargs\":{\"status\":\"success\",\"content\":\"{\\\"rendered\\\":true}\",\"tool_call_id\":\"call_8PVvZjS1DF845WjMx8XNBnmD\",\"name\":\"render\",\"metadata\":{\"versions\":{\"@langchain/core\":\"1.2.12\"}},\"additional_kwargs\":{},\"response_metadata\":{}}}"
+      }
+    },
+    {
+      "event": {
+        "type": "RUN_FINISHED",
+        "threadId": "67e09552-b62a-402f-a986-5d541d64044e",
+        "runId": "8e971dae-187d-4aa4-a5e4-303b5b858a41",
+        "result": {
+          "messages": [
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "HumanMessage"],
+              "kwargs": {
+                "content": "Which USD customers are more than 60 days overdue?",
+                "additional_kwargs": {},
+                "response_metadata": {},
+                "id": "f2ebc900-cfa3-4272-b5cd-1d762d335222"
+              }
+            },
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "AIMessageChunk"],
+              "kwargs": {
+                "content": "",
+                "additional_kwargs": {
+                  "tool_calls": [
+                    {
+                      "index": 0,
+                      "id": "call_aAWxtUIpTszU0YHcFlVwnHHk",
+                      "type": "function",
+                      "function": {
+                        "name": "ledgerSummary",
+                        "arguments": "{}"
+                      }
+                    }
+                  ]
+                },
+                "response_metadata": {
+                  "model_provider": "openai",
+                  "usage": {
+                    "prompt_tokens": 1922,
+                    "completion_tokens": 148,
+                    "total_tokens": 2070,
+                    "prompt_tokens_details": {
+                      "cached_tokens": 1536,
+                      "audio_tokens": 0
+                    },
+                    "completion_tokens_details": {
+                      "reasoning_tokens": 128,
+                      "audio_tokens": 0,
+                      "accepted_prediction_tokens": 0,
+                      "rejected_prediction_tokens": 0
+                    }
+                  }
+                },
+                "tool_call_chunks": [
+                  {
+                    "name": "ledgerSummary",
+                    "args": "{}",
+                    "id": "call_aAWxtUIpTszU0YHcFlVwnHHk",
+                    "index": 0,
+                    "type": "tool_call_chunk"
+                  }
+                ],
+                "tool_calls": [
+                  {
+                    "name": "ledgerSummary",
+                    "args": {},
+                    "id": "call_aAWxtUIpTszU0YHcFlVwnHHk",
+                    "type": "tool_call"
+                  }
+                ],
+                "id": "chatcmpl-ERPVXo4czBXNh97SNnACingUtfxFV",
+                "usage_metadata": {
+                  "input_tokens": 1922,
+                  "output_tokens": 148,
+                  "total_tokens": 2070,
+                  "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 1536
+                  },
+                  "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 128
+                  }
+                },
+                "invalid_tool_calls": []
+              }
+            },
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "ToolMessage"],
+              "kwargs": {
+                "status": "success",
+                "content": "{\"asOf\":\"2026-09-15\",\"currencies\":[{\"currency\":\"EUR\",\"invoicedCents\":41820000,\"invoiced\":\"€418,200.00\",\"receivedCents\":41370000,\"received\":\"€413,700.00\",\"openCents\":450000,\"open\":\"€4,500.00\",\"unappliedCents\":0,\"unapplied\":\"€0.00\",\"openInvoices\":1,\"unappliedPayments\":0},{\"currency\":\"GBP\",\"invoicedCents\":38325000,\"invoiced\":\"£383,250.00\",\"receivedCents\":36571800,\"received\":\"£365,718.00\",\"openCents\":1753200,\"open\":\"£17,532.00\",\"unappliedCents\":0,\"unapplied\":\"£0.00\",\"openInvoices\":44,\"unappliedPayments\":0},{\"currency\":\"USD\",\"invoicedCents\":171060000,\"invoiced\":\"$1,710,600.00\",\"receivedCents\":168219500,\"received\":\"$1,682,195.00\",\"openCents\":4230500,\"open\":\"$42,305.00\",\"unappliedCents\":1390000,\"unapplied\":\"$13,900.00\",\"openInvoices\":53,\"unappliedPayments\":5}],\"customers\":[{\"id\":\"northstar\",\"name\":\"Northstar Labs\",\"currency\":\"USD\",\"profile\":\"on-time\"},{\"id\":\"cedar\",\"name\":\"Cedar Health\",\"currency\":\"USD\",\"profile\":\"on-time\"},{\"id\":\"harbor\",\"name\":\"Harbor Commerce\",\"currency\":\"USD\",\"profile\":\"on-time\"},{\"id\":\"atlas\",\"name\":\"Atlas Analytics\",\"currency\":\"USD\",\"profile\":\"wrong-reference\"},{\"id\":\"summit\",\"name\":\"Summit Logistics\",\"currency\":\"USD\",\"profile\":\"on-time\"},{\"id\":\"juniper\",\"name\":\"Juniper Studio\",\"currency\":\"USD\",\"profile\":\"late-drifting\"},{\"id\":\"pioneer\",\"name\":\"Pioneer Robotics\",\"currency\":\"USD\",\"profile\":\"late-fixed\"},{\"id\":\"granite\",\"name\":\"Granite Mutual\",\"currency\":\"USD\",\"profile\":\"short-payer\"},{\"id\":\"lumen\",\"name\":\"Lumen Fintech\",\"currency\":\"EUR\",\"profile\":\"on-time\"},{\"id\":\"orbital\",\"name\":\"Orbital Media\",\"currency\":\"EUR\",\"profile\":\"batch-payer\"},{\"id\":\"thistle\",\"name\":\"Thistle Retail\",\"currency\":\"GBP\",\"profile\":\"late-drifting\"},{\"id\":\"kestrel\",\"name\":\"Kestrel Energy\",\"currency\":\"GBP\",\"profile\":\"short-payer\"}]}",
+                "tool_call_id": "call_aAWxtUIpTszU0YHcFlVwnHHk",
+                "name": "ledgerSummary",
+                "metadata": {
+                  "versions": {
+                    "@langchain/core": "1.2.12"
+                  }
+                },
+                "additional_kwargs": {},
+                "response_metadata": {},
+                "id": "39041ea9-0e02-40e1-99d4-7d6a57312c76"
+              }
+            },
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "AIMessageChunk"],
+              "kwargs": {
+                "content": "",
+                "additional_kwargs": {
+                  "tool_calls": [
+                    {
+                      "index": 0,
+                      "id": "call_bGTB2MqY5a9qBWHyd0dXETZh",
+                      "type": "function",
+                      "function": {
+                        "name": "aging",
+                        "arguments": "{\"currency\":\"USD\"}"
+                      }
+                    }
+                  ]
+                },
+                "response_metadata": {
+                  "model_provider": "openai",
+                  "usage": {
+                    "prompt_tokens": 2486,
+                    "completion_tokens": 23,
+                    "total_tokens": 2509,
+                    "prompt_tokens_details": {
+                      "cached_tokens": 2304,
+                      "audio_tokens": 0
+                    },
+                    "completion_tokens_details": {
+                      "reasoning_tokens": 0,
+                      "audio_tokens": 0,
+                      "accepted_prediction_tokens": 0,
+                      "rejected_prediction_tokens": 0
+                    }
+                  }
+                },
+                "tool_call_chunks": [
+                  {
+                    "name": "aging",
+                    "args": "{\"currency\":\"USD\"}",
+                    "id": "call_bGTB2MqY5a9qBWHyd0dXETZh",
+                    "index": 0,
+                    "type": "tool_call_chunk"
+                  }
+                ],
+                "tool_calls": [
+                  {
+                    "name": "aging",
+                    "args": {
+                      "currency": "USD"
+                    },
+                    "id": "call_bGTB2MqY5a9qBWHyd0dXETZh",
+                    "type": "tool_call"
+                  }
+                ],
+                "id": "chatcmpl-ERPVaATHUWt9dfnVuGvFsyscjRYYl",
+                "usage_metadata": {
+                  "input_tokens": 2486,
+                  "output_tokens": 23,
+                  "total_tokens": 2509,
+                  "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 2304
+                  },
+                  "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                  }
+                },
+                "invalid_tool_calls": []
+              }
+            },
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "ToolMessage"],
+              "kwargs": {
+                "status": "success",
+                "content": "{\"currency\":\"USD\",\"customerId\":null,\"asOf\":\"2026-09-15\",\"openCents\":4230500,\"open\":\"$42,305.00\",\"buckets\":[{\"bucket\":\"current\",\"outstandingCents\":2513800,\"outstanding\":\"$25,138.00\",\"invoiceIds\":[\"invoice-juniper-2026-09\",\"invoice-pioneer-2026-09\",\"invoice-granite-2026-09\",\"invoice-northstar-exact\",\"invoice-cedar-partial\",\"invoice-harbor-api\",\"invoice-harbor-migration\",\"invoice-atlas-discovery\",\"invoice-atlas-review\"]},{\"bucket\":\"days1to30\",\"outstandingCents\":933300,\"outstanding\":\"$9,333.00\",\"invoiceIds\":[\"invoice-juniper-2026-08\",\"invoice-juniper-2026-08-p2\",\"invoice-pioneer-2026-08-p2\",\"invoice-granite-2026-08\",\"invoice-granite-2026-08-p2\"]},{\"bucket\":\"days31to60\",\"outstandingCents\":396800,\"outstanding\":\"$3,968.00\",\"invoiceIds\":[\"invoice-juniper-2026-07-p1\",\"invoice-granite-2026-07\",\"invoice-granite-2026-07-p1\"]},{\"bucket\":\"days61to90\",\"outstandingCents\":13800,\"outstanding\":\"$138.00\",\"invoiceIds\":[\"invoice-granite-2026-06\"]},{\"bucket\":\"over90\",\"outstandingCents\":372800,\"outstanding\":\"$3,728.00\",\"invoiceIds\":[\"invoice-granite-2024-10\",\"invoice-granite-2024-10-p1\",\"invoice-granite-2024-11\",\"invoice-granite-2024-12\",\"invoice-granite-2025-01\",\"invoice-granite-2025-01-p1\",\"invoice-granite-2025-02\",\"invoice-granite-2025-02-p2\",\"invoice-granite-2025-03\",\"invoice-granite-2025-04\",\"invoice-granite-2025-04-p1\",\"invoice-granite-2025-05\",\"invoice-granite-2025-05-p2\",\"invoice-granite-2025-06\",\"invoice-granite-2025-06-p3\",\"invoice-granite-2025-07\",\"invoice-granite-2025-07-p1\",\"invoice-granite-2025-08\",\"invoice-granite-2025-08-p2\",\"invoice-granite-2025-09\",\"invoice-granite-2025-10\",\"invoice-granite-2025-10-p1\",\"invoice-granite-2025-11\",\"invoice-granite-2025-11-p2\",\"invoice-granite-2025-12\",\"invoice-granite-2026-01\",\"invoice-granite-2026-01-p1\",\"invoice-granite-2026-02\",\"invoice-granite-2026-02-p2\",\"invoice-granite-2026-03\",\"invoice-granite-2026-03-p3\",\"invoice-granite-2026-04\",\"invoice-granite-2026-04-p1\",\"invoice-granite-2026-05\",\"invoice-granite-2026-05-p2\"]}]}",
+                "tool_call_id": "call_bGTB2MqY5a9qBWHyd0dXETZh",
+                "name": "aging",
+                "metadata": {
+                  "versions": {
+                    "@langchain/core": "1.2.12"
+                  }
+                },
+                "additional_kwargs": {},
+                "response_metadata": {},
+                "id": "dfbc315a-7562-4832-88ff-dd2ea6b6e066"
+              }
+            },
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "AIMessageChunk"],
+              "kwargs": {
+                "content": "",
+                "additional_kwargs": {
+                  "tool_calls": [
+                    {
+                      "index": 0,
+                      "id": "call_8PVvZjS1DF845WjMx8XNBnmD",
+                      "type": "function",
+                      "function": {
+                        "name": "render",
+                        "arguments": "{\"text\":\"Only one USD customer is more than 60 days overdue: Granite Mutual (customer ID: granite).\\n\\nBreakdown: $138.00 in 61–90 days and $3,728.00 over 90 days — $3,866.00 total >60 days overdue.\\n\\nI’ve included the aging summary for USD and a ledger table of the invoices >60 days for your review, plus the customer card for Granite Mutual. If you’d like, I can review any unapplied payments that might match these invoices.\",\"components\":[{\"LedgerTable\":{\"title\":\"Invoices >60 days — USD\",\"recordIds\":[\"invoice-granite-2026-06\",\"invoice-granite-2024-10\",\"invoice-granite-2024-10-p1\",\"invoice-granite-2024-11\",\"invoice-granite-2024-12\",\"invoice-granite-2025-01\",\"invoice-granite-2025-01-p1\",\"invoice-granite-2025-02\",\"invoice-granite-2025-02-p2\",\"invoice-granite-2025-03\",\"invoice-granite-2025-04\",\"invoice-granite-2025-04-p1\",\"invoice-granite-2025-05\",\"invoice-granite-2025-05-p2\",\"invoice-granite-2025-06\",\"invoice-granite-2025-06-p3\",\"invoice-granite-2025-07\",\"invoice-granite-2025-07-p1\",\"invoice-granite-2025-08\",\"invoice-granite-2025-08-p2\",\"invoice-granite-2025-09\",\"invoice-granite-2025-10\",\"invoice-granite-2025-10-p1\",\"invoice-granite-2025-11\",\"invoice-granite-2025-11-p2\",\"invoice-granite-2025-12\",\"invoice-granite-2026-01\",\"invoice-granite-2026-01-p1\",\"invoice-granite-2026-02\",\"invoice-granite-2026-02-p2\",\"invoice-granite-2026-03\",\"invoice-granite-2026-03-p3\",\"invoice-granite-2026-04\",\"invoice-granite-2026-04-p1\",\"invoice-granite-2026-05\",\"invoice-granite-2026-05-p2\"]}},{\"AgingSummary\":{\"currency\":\"USD\"}},{\"CustomerCard\":{\"customerId\":\"granite\"}}]}"
+                      }
+                    }
+                  ]
+                },
+                "response_metadata": {
+                  "model_provider": "openai",
+                  "usage": {
+                    "prompt_tokens": 3240,
+                    "completion_tokens": 2670,
+                    "total_tokens": 5910,
+                    "prompt_tokens_details": {
+                      "cached_tokens": 2560,
+                      "audio_tokens": 0
+                    },
+                    "completion_tokens_details": {
+                      "reasoning_tokens": 2112,
+                      "audio_tokens": 0,
+                      "accepted_prediction_tokens": 0,
+                      "rejected_prediction_tokens": 0
+                    }
+                  }
+                },
+                "tool_call_chunks": [
+                  {
+                    "name": "render",
+                    "args": "{\"text\":\"Only one USD customer is more than 60 days overdue: Granite Mutual (customer ID: granite).\\n\\nBreakdown: $138.00 in 61–90 days and $3,728.00 over 90 days — $3,866.00 total >60 days overdue.\\n\\nI’ve included the aging summary for USD and a ledger table of the invoices >60 days for your review, plus the customer card for Granite Mutual. If you’d like, I can review any unapplied payments that might match these invoices.\",\"components\":[{\"LedgerTable\":{\"title\":\"Invoices >60 days — USD\",\"recordIds\":[\"invoice-granite-2026-06\",\"invoice-granite-2024-10\",\"invoice-granite-2024-10-p1\",\"invoice-granite-2024-11\",\"invoice-granite-2024-12\",\"invoice-granite-2025-01\",\"invoice-granite-2025-01-p1\",\"invoice-granite-2025-02\",\"invoice-granite-2025-02-p2\",\"invoice-granite-2025-03\",\"invoice-granite-2025-04\",\"invoice-granite-2025-04-p1\",\"invoice-granite-2025-05\",\"invoice-granite-2025-05-p2\",\"invoice-granite-2025-06\",\"invoice-granite-2025-06-p3\",\"invoice-granite-2025-07\",\"invoice-granite-2025-07-p1\",\"invoice-granite-2025-08\",\"invoice-granite-2025-08-p2\",\"invoice-granite-2025-09\",\"invoice-granite-2025-10\",\"invoice-granite-2025-10-p1\",\"invoice-granite-2025-11\",\"invoice-granite-2025-11-p2\",\"invoice-granite-2025-12\",\"invoice-granite-2026-01\",\"invoice-granite-2026-01-p1\",\"invoice-granite-2026-02\",\"invoice-granite-2026-02-p2\",\"invoice-granite-2026-03\",\"invoice-granite-2026-03-p3\",\"invoice-granite-2026-04\",\"invoice-granite-2026-04-p1\",\"invoice-granite-2026-05\",\"invoice-granite-2026-05-p2\"]}},{\"AgingSummary\":{\"currency\":\"USD\"}},{\"CustomerCard\":{\"customerId\":\"granite\"}}]}",
+                    "id": "call_8PVvZjS1DF845WjMx8XNBnmD",
+                    "index": 0,
+                    "type": "tool_call_chunk"
+                  }
+                ],
+                "tool_calls": [
+                  {
+                    "name": "render",
+                    "args": {
+                      "text": "Only one USD customer is more than 60 days overdue: Granite Mutual (customer ID: granite).\n\nBreakdown: $138.00 in 61–90 days and $3,728.00 over 90 days — $3,866.00 total >60 days overdue.\n\nI’ve included the aging summary for USD and a ledger table of the invoices >60 days for your review, plus the customer card for Granite Mutual. If you’d like, I can review any unapplied payments that might match these invoices.",
+                      "components": [
+                        {
+                          "LedgerTable": {
+                            "title": "Invoices >60 days — USD",
+                            "recordIds": [
+                              "invoice-granite-2026-06",
+                              "invoice-granite-2024-10",
+                              "invoice-granite-2024-10-p1",
+                              "invoice-granite-2024-11",
+                              "invoice-granite-2024-12",
+                              "invoice-granite-2025-01",
+                              "invoice-granite-2025-01-p1",
+                              "invoice-granite-2025-02",
+                              "invoice-granite-2025-02-p2",
+                              "invoice-granite-2025-03",
+                              "invoice-granite-2025-04",
+                              "invoice-granite-2025-04-p1",
+                              "invoice-granite-2025-05",
+                              "invoice-granite-2025-05-p2",
+                              "invoice-granite-2025-06",
+                              "invoice-granite-2025-06-p3",
+                              "invoice-granite-2025-07",
+                              "invoice-granite-2025-07-p1",
+                              "invoice-granite-2025-08",
+                              "invoice-granite-2025-08-p2",
+                              "invoice-granite-2025-09",
+                              "invoice-granite-2025-10",
+                              "invoice-granite-2025-10-p1",
+                              "invoice-granite-2025-11",
+                              "invoice-granite-2025-11-p2",
+                              "invoice-granite-2025-12",
+                              "invoice-granite-2026-01",
+                              "invoice-granite-2026-01-p1",
+                              "invoice-granite-2026-02",
+                              "invoice-granite-2026-02-p2",
+                              "invoice-granite-2026-03",
+                              "invoice-granite-2026-03-p3",
+                              "invoice-granite-2026-04",
+                              "invoice-granite-2026-04-p1",
+                              "invoice-granite-2026-05",
+                              "invoice-granite-2026-05-p2"
+                            ]
+                          }
+                        },
+                        {
+                          "AgingSummary": {
+                            "currency": "USD"
+                          }
+                        },
+                        {
+                          "CustomerCard": {
+                            "customerId": "granite"
+                          }
+                        }
+                      ]
+                    },
+                    "id": "call_8PVvZjS1DF845WjMx8XNBnmD",
+                    "type": "tool_call"
+                  }
+                ],
+                "id": "chatcmpl-ERPVbjy6DU7XFhxQGy6UO44MiRGfB",
+                "usage_metadata": {
+                  "input_tokens": 3240,
+                  "output_tokens": 2670,
+                  "total_tokens": 5910,
+                  "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 2560
+                  },
+                  "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 2112
+                  }
+                },
+                "invalid_tool_calls": []
+              }
+            },
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "ToolMessage"],
+              "kwargs": {
+                "status": "success",
+                "content": "{\"rendered\":true}",
+                "tool_call_id": "call_8PVvZjS1DF845WjMx8XNBnmD",
+                "name": "render",
+                "metadata": {
+                  "versions": {
+                    "@langchain/core": "1.2.12"
+                  }
+                },
+                "additional_kwargs": {},
+                "response_metadata": {},
+                "id": "db784520-2532-446f-a003-f66866617997"
+              }
+            },
+            {
+              "lc": 1,
+              "type": "constructor",
+              "id": ["langchain_core", "messages", "AIMessageChunk"],
+              "kwargs": {
+                "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Only one USD customer is more than 60 days overdue: Granite Mutual (customer ID: granite).\\n\\nBreakdown: $138.00 in 61–90 days and $3,728.00 over 90 days — $3,866.00 total >60 days overdue.\\n\\nI’ve included the aging summary for USD and a ledger table of the invoices >60 days for your review, plus the customer card for Granite Mutual. If you’d like, I can review any unapplied payments that might match these invoices.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Invoices >60 days — USD\",\"recordIds\":[\"invoice-granite-2026-06\",\"invoice-granite-2024-10\",\"invoice-granite-2024-10-p1\",\"invoice-granite-2024-11\",\"invoice-granite-2024-12\",\"invoice-granite-2025-01\",\"invoice-granite-2025-01-p1\",\"invoice-granite-2025-02\",\"invoice-granite-2025-02-p2\",\"invoice-granite-2025-03\",\"invoice-granite-2025-04\",\"invoice-granite-2025-04-p1\",\"invoice-granite-2025-05\",\"invoice-granite-2025-05-p2\",\"invoice-granite-2025-06\",\"invoice-granite-2025-06-p3\",\"invoice-granite-2025-07\",\"invoice-granite-2025-07-p1\",\"invoice-granite-2025-08\",\"invoice-granite-2025-08-p2\",\"invoice-granite-2025-09\",\"invoice-granite-2025-10\",\"invoice-granite-2025-10-p1\",\"invoice-granite-2025-11\",\"invoice-granite-2025-11-p2\",\"invoice-granite-2025-12\",\"invoice-granite-2026-01\",\"invoice-granite-2026-01-p1\",\"invoice-granite-2026-02\",\"invoice-granite-2026-02-p2\",\"invoice-granite-2026-03\",\"invoice-granite-2026-03-p3\",\"invoice-granite-2026-04\",\"invoice-granite-2026-04-p1\",\"invoice-granite-2026-05\",\"invoice-granite-2026-05-p2\"]}}}]} }]}",
+                "additional_kwargs": {},
+                "response_metadata": {
+                  "model_provider": "openai",
+                  "usage": {
+                    "prompt_tokens": 3808,
+                    "completion_tokens": 544,
+                    "total_tokens": 4352,
+                    "prompt_tokens_details": {
+                      "cached_tokens": 3072,
+                      "audio_tokens": 0
+                    },
+                    "completion_tokens_details": {
+                      "reasoning_tokens": 0,
+                      "audio_tokens": 0,
+                      "accepted_prediction_tokens": 0,
+                      "rejected_prediction_tokens": 0
+                    }
+                  }
+                },
+                "tool_call_chunks": [],
+                "tool_calls": [],
+                "id": "chatcmpl-ERPW3E67Pso7oYsKcKB2eV46LChNo",
+                "usage_metadata": {
+                  "input_tokens": 3808,
+                  "output_tokens": 544,
+                  "total_tokens": 4352,
+                  "input_token_details": {
+                    "audio": 0,
+                    "cache_read": 3072
+                  },
+                  "output_token_details": {
+                    "audio": 0,
+                    "reasoning": 0
+                  }
+                },
+                "invalid_tool_calls": []
+              }
+            }
+          ]
+        },
+        "outcome": {
+          "type": "success"
+        }
+      }
+    }
+  ]
+}
