@@ -22,8 +22,6 @@
     "@angular/cdk": "22.1.1",
     "front-matter": "^4.0.2",
     "figma-squircle": "^1.1.0",
-    "@angular/forms": "22.1.1",
-    "firebase": "^11.10.0",
     "marked": "18.0.9",
     "marked-highlight": "^2.2.4",
     "shiki": "^1.29.2",

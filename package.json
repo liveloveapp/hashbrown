@@ -58,7 +58,6 @@
     "@stackblitz/sdk": "^1.11.1",
     "arktype": "^2.2.2",
     "express": "^4.22.2",
-    "firebase": "^11.10.0",
     "front-matter": "^4.0.2",
     "highlight.js": "^11.11.1",
     "marked": "18.0.9",

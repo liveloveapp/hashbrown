@@ -224,16 +224,6 @@ And so in a way, we've built something like Hashbrown at least a half dozen time
 
 ---
 
-## How does LiveLoveApp support enterprises?
-
-The team at [LiveLiveApp](https://liveloveapp.com) are industry leaders in app design and development, focused on helping companies build the next generation of banking, finance, and accounting applications.
-
-We can't stop thinking about how AI changes the way people explore, visualize, and act on complex information—all through the power of natural language.
-
-LiveLoveApp provides AI Engineering consulting services from the team who build Hashbrown.
-
----
-
 ## What comes next?
 
 Going forward we are focused on:
