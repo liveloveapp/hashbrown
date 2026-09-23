@@ -1,6 +1,12 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Squircle } from '../Squircle';
+import { ConfigService } from '../../services/ConfigService';
 
 @Component({
   selector: 'www-samples',
@@ -23,7 +29,7 @@ import { Squircle } from '../Squircle';
         >
           Explore the source and setup
         </a>
-        <a routerLink="/docs/angular/start/quick">Build with Angular</a>
+        <a [routerLink]="quickStartUrl()">Build your own</a>
       </nav>
     </section>
   `,
@@ -76,4 +82,10 @@ import { Squircle } from '../Squircle';
   `,
 })
 /** Presents the maintained, simulated invoicing example. */
-export class Samples {}
+export class Samples {
+  configService = inject(ConfigService);
+
+  quickStartUrl = computed(
+    () => `/docs/${this.configService.sdk()}/start/quick`,
+  );
+}

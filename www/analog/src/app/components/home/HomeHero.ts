@@ -203,7 +203,7 @@ import { InstallCommand } from './InstallCommand';
 
     .invoice {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 4px 12px;
       padding: 12px 14px;
       border: 1px solid rgba(0, 0, 0, 0.1);
