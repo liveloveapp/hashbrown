@@ -53,7 +53,7 @@ import { CAPABILITIES, Capability } from './home.content';
 
     .grid {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 20px;
     }
 
@@ -107,13 +107,13 @@ import { CAPABILITIES, Capability } from './home.content';
 
     @media screen and (min-width: 768px) {
       .grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
     @media screen and (min-width: 1024px) {
       .grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
   `,

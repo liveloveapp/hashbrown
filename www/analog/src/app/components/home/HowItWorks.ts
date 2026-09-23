@@ -55,7 +55,7 @@ import { STEPS } from './home.content';
 
     ol {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 20px;
       margin: 0;
       padding: 0;
@@ -111,7 +111,7 @@ import { STEPS } from './home.content';
 
     @media screen and (min-width: 1024px) {
       ol {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
   `,

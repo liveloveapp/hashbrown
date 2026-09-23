@@ -71,7 +71,7 @@ import { INVOICING_LINKS } from './home.content';
 
     .card {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 32px;
       align-items: center;
       padding: 28px;
@@ -96,7 +96,7 @@ import { INVOICING_LINKS } from './home.content';
 
     .built {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 12px;
       margin: 22px 0;
     }
@@ -167,13 +167,13 @@ import { INVOICING_LINKS } from './home.content';
 
     @media screen and (min-width: 1024px) {
       .card {
-        grid-template-columns: 0.9fr 1.1fr;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
         gap: 36px;
         padding: 36px;
       }
 
       .built {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
   `,

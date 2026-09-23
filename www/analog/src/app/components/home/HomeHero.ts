@@ -72,10 +72,14 @@ import { InstallCommand } from './InstallCommand';
   styles: `
     :host {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 40px;
       align-items: center;
       padding: 48px 0;
+    }
+
+    .copy {
+      min-width: 0;
     }
 
     h1 {
@@ -247,7 +251,7 @@ import { InstallCommand } from './InstallCommand';
 
     @media screen and (min-width: 1024px) {
       :host {
-        grid-template-columns: 1.02fr 1fr;
+        grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr);
         gap: 56px;
         padding: 64px 0 56px;
       }

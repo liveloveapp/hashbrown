@@ -36,7 +36,7 @@ import { selectLatestPosts } from './latest-posts';
 
     .posts {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 20px;
     }
 
@@ -78,7 +78,7 @@ import { selectLatestPosts } from './latest-posts';
 
     @media screen and (min-width: 1024px) {
       .posts {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
   `,

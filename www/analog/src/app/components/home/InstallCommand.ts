@@ -94,6 +94,7 @@ import { installCommand, Sdk, SDK_LABELS } from './home.content';
     }
 
     .command code {
+      min-width: 0;
       font:
         500 15px/1.4 'JetBrains Mono',
         monospace;
