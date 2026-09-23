@@ -93,7 +93,7 @@ import { THREADPLANE_URL } from './home.content';
     p {
       max-width: 500px;
       margin: 20px 0 26px;
-      font: 500 17px/1.5 var(--font-heading);
+      font: 600 17px/1.5 var(--font-heading);
       opacity: 0.88;
     }
 

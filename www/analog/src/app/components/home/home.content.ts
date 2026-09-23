@@ -145,7 +145,7 @@ export const STEPS: Record<Sdk, Step[]> = {
     {
       ...STEP_COPY[2],
       code: `chat.messages.map((m) =>
-  m.ui ?? m.content
+  m.role === 'assistant' ? m.ui : m.content
 )`,
     },
   ],
@@ -209,7 +209,7 @@ export const CAPABILITIES: Capability[] = [
   },
   {
     title: 'Streaming, everywhere',
-    body: 'Strings, arrays and objects parse as they arrive. Magic Text streams markdown.',
+    body: 'Strings, arrays, and objects parse as they arrive. Magic Text streams markdown.',
     why: 'Incremental parser, low latency',
     docsPath: ['concept', 'streaming'],
     tint: 'var(--olive-green-light)',
