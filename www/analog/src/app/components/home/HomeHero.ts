@@ -34,7 +34,7 @@ import { InstallCommand } from './InstallCommand';
           (click)="analytics.track('quick-start-clicked')"
           >Quick start →</a
         >
-        <button class="btn" (click)="copyPrompt()">
+        <button type="button" class="btn" (click)="copyPrompt()">
           Copy prompt for your coding agent
         </button>
       </div>
@@ -46,8 +46,10 @@ import { InstallCommand } from './InstallCommand';
     </div>
     <div class="panel">
       <div class="bar">
-        <span class="dot"></span><span class="dot"></span
-        ><span class="dot"></span>
+        <span class="dots" aria-hidden="true">
+          <span class="dot"></span><span class="dot"></span
+          ><span class="dot"></span>
+        </span>
         <span class="file">{{ sample().file }}</span>
       </div>
       <div
@@ -149,6 +151,11 @@ import { InstallCommand } from './InstallCommand';
         400 12px/1 'Fredoka',
         sans-serif;
       color: var(--gray);
+    }
+
+    .dots {
+      display: inline-flex;
+      gap: 6px;
     }
 
     .dot {

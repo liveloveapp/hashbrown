@@ -16,11 +16,12 @@ import { installCommand, Sdk, SDK_LABELS } from './home.content';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class.centered]': 'centered()' },
   template: `
-    <div class="tabs" role="tablist" aria-label="Framework">
+    <div class="tabs" role="radiogroup" aria-label="Framework">
       @for (option of sdks; track option) {
         <button
-          role="tab"
-          [attr.aria-selected]="sdk() === option"
+          type="button"
+          role="radio"
+          [attr.aria-checked]="sdk() === option"
           [class.on]="sdk() === option"
           (click)="select(option)"
         >
@@ -30,7 +31,12 @@ import { installCommand, Sdk, SDK_LABELS } from './home.content';
     </div>
     <div class="command">
       <code>{{ command() }}</code>
-      <button class="copy" (click)="copy()" aria-label="Copy install command">
+      <button
+        type="button"
+        class="copy"
+        (click)="copy()"
+        aria-label="Copy install command"
+      >
         Copy
       </button>
     </div>
