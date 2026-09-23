@@ -83,3 +83,43 @@ test('rewrites run identity and drops message snapshots for replay', () => {
   expect(events.some((e) => e.type === 'MESSAGES_SNAPSHOT')).toBe(false);
   expect(input.events[0].event).toEqual(complete[0]);
 });
+
+test('accepts a render result serialized as a LangChain tool message', () => {
+  const wrapped = JSON.stringify({
+    lc: 1,
+    type: 'constructor',
+    id: ['langchain_core', 'messages', 'ToolMessage'],
+    kwargs: { status: 'success', content: '{"rendered":true}' },
+  });
+  const input = tape(
+    complete.map((event) =>
+      event.type === 'TOOL_CALL_RESULT'
+        ? { ...event, content: wrapped }
+        : event,
+    ),
+  );
+
+  const problems = validateTape(input);
+
+  expect(problems).toEqual([]);
+});
+
+test('rejects a render result that reports an error', () => {
+  const wrapped = JSON.stringify({
+    lc: 1,
+    type: 'constructor',
+    id: ['langchain_core', 'messages', 'ToolMessage'],
+    kwargs: { status: 'error', content: '{"rendered":true}' },
+  });
+  const input = tape(
+    complete.map((event) =>
+      event.type === 'TOOL_CALL_RESULT'
+        ? { ...event, content: wrapped }
+        : event,
+    ),
+  );
+
+  const problems = validateTape(input);
+
+  expect(problems).toContain('missing successful render tool call');
+});

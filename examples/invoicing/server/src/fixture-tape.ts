@@ -46,6 +46,33 @@ export function parseSseEvents(body: string): Record<string, unknown>[] {
     .map((data) => JSON.parse(data) as Record<string, unknown>);
 }
 
+const parseJson = (value: unknown): unknown => {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Whether a `render` tool result reports success. B4 streams tool results as
+ * serialized LangChain `ToolMessage`s whose `kwargs.content` holds the tool's
+ * own JSON, so unwrap that envelope when present.
+ *
+ * @param content - The `content` field of a `TOOL_CALL_RESULT` event.
+ */
+export function isRenderSuccess(content: unknown): boolean {
+  const parsed = parseJson(content) as
+    | { kwargs?: { status?: string; content?: unknown }; rendered?: unknown }
+    | undefined;
+  if (parsed?.kwargs) {
+    if (parsed.kwargs.status === 'error') return false;
+    return isRenderSuccess(parsed.kwargs.content);
+  }
+  return parsed?.rendered === true;
+}
+
 /**
  * List the problems that make a take unfit to commit. An empty list means the take is valid.
  *
@@ -65,7 +92,7 @@ export function validateTape(tape: AgUiTape): string[] {
     (e) =>
       e.type === 'TOOL_CALL_RESULT' &&
       renderCalls.has(e['toolCallId']) &&
-      String(e['content']).includes('"rendered":true'),
+      isRenderSuccess(e['content']),
   );
   if (!rendered) problems.push('missing successful render tool call');
   if (events.at(-1)?.type !== 'RUN_FINISHED')
