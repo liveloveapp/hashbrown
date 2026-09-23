@@ -1,4 +1,6 @@
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createServer as createViteServer } from 'vite';
 import { createInvoicingListener } from './src/http';
 import { readSessionCookie } from './src/session-cookie';
@@ -8,6 +10,27 @@ import { randomUUID } from 'node:crypto';
 import { createSampleLedger } from './src/sample-ledger';
 import { createSessionStore } from './src/session-store';
 import { createMemoryRepositories } from './src/persistence/memory';
+import { type AgUiTape, prepareReplay } from './src/fixture-tape';
+
+// Loaded once at startup; the fixture runs from the repo root (`cwd: ../../..`).
+const overdue60Tape: AgUiTape = JSON.parse(
+  readFileSync(
+    resolve('examples/invoicing/e2e/recordings/overdue-60.agui.json'),
+    'utf8',
+  ),
+);
+
+/** Whether a request targets the assistant agent's AG-UI route. */
+function isAssistantAgentRequest(url: string | undefined): boolean {
+  if (!url) return false;
+  let path: string;
+  try {
+    path = decodeURIComponent(new URL(url, 'http://localhost').pathname);
+  } catch {
+    return false;
+  }
+  return path === '/agui//assistant#agent';
+}
 
 async function main() {
   // Test-only scripted transport; production continues to use B4 authorization.
@@ -21,6 +44,31 @@ async function main() {
   const interrupts = new Map<string, string>();
   const api = createServer(
     createInvoicingListener(store, reviews, (request, response) => {
+      if (isAssistantAgentRequest(request.url)) {
+        void (async () => {
+          const chunks: Buffer[] = [];
+          for await (const chunk of request) chunks.push(Buffer.from(chunk));
+          const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+          // The replay ignores the question text: it always answers with the
+          // committed "overdue 60 days" tape, whatever the assistant was
+          // asked. That's fine for a deterministic test fixture, never for
+          // production.
+          const events = prepareReplay(overdue60Tape, {
+            threadId: body.threadId,
+            runId: body.runId,
+          });
+          response.writeHead(200, { 'content-type': 'text/event-stream' });
+          response.end(
+            events
+              .map((event) => `data: ${JSON.stringify(event)}\n\n`)
+              .join(''),
+          );
+        })().catch(() => {
+          response.writeHead(422, { 'content-type': 'application/json' });
+          response.end(JSON.stringify({ error: 'invalid_fixture_request' }));
+        });
+        return;
+      }
       if (request.headers['x-invoicing-fixture'] !== 'approval') {
         response.writeHead(503, { 'content-type': 'application/json' });
         response.end(JSON.stringify({ error: 'test_agent_unavailable' }));

@@ -84,6 +84,26 @@ test('rewrites run identity and drops message snapshots for replay', () => {
   expect(input.events[0].event).toEqual(complete[0]);
 });
 
+test('strips the RUN_FINISHED result snapshot for replay', () => {
+  const input = tape([
+    ...complete.slice(0, 6),
+    {
+      type: 'RUN_FINISHED',
+      threadId: 't0',
+      runId: 'r0',
+      result: { messages: [{ id: 'm1' }] },
+    },
+  ]);
+
+  const events = prepareReplay(input, { threadId: 't9', runId: 'r9' });
+
+  expect(events.at(-1)).toEqual({
+    type: 'RUN_FINISHED',
+    threadId: 't9',
+    runId: 'r9',
+  });
+});
+
 test('accepts a render result serialized as a LangChain tool message', () => {
   const wrapped = JSON.stringify({
     lc: 1,

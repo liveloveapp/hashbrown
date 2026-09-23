@@ -109,6 +109,11 @@ export function validateTape(tape: AgUiTape): string[] {
 /**
  * Prepare a tape for replay against a new request: rewrite run identity and drop message snapshots.
  *
+ * The recorded `RUN_FINISHED.result` carries the original run's serialized LangChain messages,
+ * which still reference the recorded thread/run identity rather than the replayed one. Nothing in
+ * the client currently reads `RUN_FINISHED.result`, but shipping it would mean 16KB+ of stale,
+ * mismatched messages on every replay, so it is dropped here rather than rewritten.
+ *
  * @param tape - The committed take.
  * @param identity - The incoming request's thread and run IDs.
  */
@@ -119,9 +124,13 @@ export function prepareReplay(
   return tape.events
     .map((entry) => entry.event)
     .filter((event) => event.type !== 'MESSAGES_SNAPSHOT')
-    .map((event) =>
-      event.type === 'RUN_STARTED' || event.type === 'RUN_FINISHED'
-        ? { ...event, ...identity }
-        : event,
-    );
+    .map((event) => {
+      if (event.type === 'RUN_STARTED') return { ...event, ...identity };
+      if (event.type === 'RUN_FINISHED') {
+        const rest = { ...event };
+        delete rest['result'];
+        return { ...rest, ...identity };
+      }
+      return event;
+    });
 }
