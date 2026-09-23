@@ -228,6 +228,16 @@ import { Squircle } from './Squircle';
                       600 14px/1 'Fredoka',
                       sans-serif;
                     text-decoration: none;
+
+                    &:hover,
+                    &:focus-visible {
+                      background: var(--chocolate-brown-light);
+                    }
+
+                    &:focus-visible {
+                      outline: 2px solid var(--chocolate-brown-light);
+                      outline-offset: 2px;
+                    }
                   }
 
                   > button {
