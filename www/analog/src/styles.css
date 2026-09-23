@@ -34,6 +34,9 @@
   --indian-red-dark: rgba(146, 78, 78, 1);
   --indian-red: rgba(184, 96, 96, 1);
   --indian-red-light: rgba(226, 118, 118, 1);
+
+  /* Typography */
+  --font-heading: 'Inter Tight', 'Fredoka', system-ui, sans-serif;
 }
 
 html,
