@@ -6,14 +6,13 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ArrowUpRight } from '../icons/ArrowUpRight';
-import { BrandBlueSky } from '../icons/BrandBlueSky';
 import { BrandGitHub } from '../icons/BrandGitHub';
 import { BrandLinkedIn } from '../icons/BrandLinkedIn';
 import { ConfigService } from '../services/ConfigService';
 
 @Component({
   selector: 'www-footer',
-  imports: [ArrowUpRight, BrandBlueSky, BrandGitHub, BrandLinkedIn, RouterLink],
+  imports: [ArrowUpRight, BrandGitHub, BrandLinkedIn, RouterLink],
   template: `
     <footer>
       <div class="links">
@@ -58,32 +57,32 @@ import { ConfigService } from '../services/ConfigService';
         <div class="learn">
           <div class="title">Learn</div>
           <ul>
-            <li>
-              <a
-                routerLink="/workshops/react-generative-ui-engineering"
-                class="underline"
-                >React Workshop</a
-              >
-            </li>
-            <li>
-              <a
-                routerLink="/workshops/angular-generative-ui-engineering"
-                class="underline"
-                >Angular Workshop</a
-              >
-            </li>
+            <li><a routerLink="/blog" class="underline">Blog</a></li>
           </ul>
         </div>
-        <div class="contact">
-          <div class="title">Contact</div>
+        <div class="team">
+          <div class="title">More from the team</div>
           <ul>
             <li>
-              <a routerLink="/contact-us" class="underline">Contact sales</a>
+              <a
+                href="https://threadplane.ai/?utm_source=hashbrown&utm_medium=footer"
+                target="_blank"
+                class="underline"
+              >
+                threadplane.ai
+                <www-arrow-up-right height="12px" width="12px" />
+              </a>
             </li>
             <li>
-              <a href="mailto:hello@liveloveapp.com" class="underline">
-                <span>hello&#64;liveloveapp.com</span>
-                <span>Email us</span>
+              <a href="https://b4.run" target="_blank" class="underline">
+                b4.run
+                <www-arrow-up-right height="12px" width="12px" />
+              </a>
+            </li>
+            <li>
+              <a href="https://pretable.ai" target="_blank" class="underline">
+                pretable.ai
+                <www-arrow-up-right height="12px" width="12px" />
               </a>
             </li>
           </ul>
@@ -92,11 +91,6 @@ import { ConfigService } from '../services/ConfigService';
       <div class="bottom">
         <span></span>
         <ul>
-          <li>
-            <a href="https://bsky.app/profile/liveloveapp.dev" target="_blank">
-              <www-brand-blue-sky />
-            </a>
-          </li>
           <li>
             <a
               href="https://www.linkedin.com/company/liveloveapp"
@@ -194,7 +188,7 @@ import { ConfigService } from '../services/ConfigService';
 
         > .docs,
         > .learn,
-        > .contact {
+        > .team {
           display: flex;
           flex-direction: column;
           gap: 8px;
@@ -203,6 +197,7 @@ import { ConfigService } from '../services/ConfigService';
             font:
               600 14px/18px Fredoka,
               sans-serif;
+            font-family: var(--font-heading);
           }
 
           > ul {
@@ -231,7 +226,7 @@ import { ConfigService } from '../services/ConfigService';
           }
         }
 
-        > .contact {
+        > .team {
           grid-column: span 12;
         }
       }
@@ -271,22 +266,6 @@ import { ConfigService } from '../services/ConfigService';
     @media screen and (min-width: 768px) and (max-width: 1023px) {
       footer {
         > .links {
-          > .contact {
-            > ul {
-              > li {
-                > a {
-                  > span:first-child {
-                    display: none;
-                  }
-
-                  > span:last-child {
-                    display: block;
-                  }
-                }
-              }
-            }
-          }
-
           > .brand {
             grid-column: span 3;
           }
@@ -299,8 +278,8 @@ import { ConfigService } from '../services/ConfigService';
             grid-column: 8 / span 2;
           }
 
-          > .contact {
-            grid-column: 11 / span 2;
+          > .team {
+            grid-column: 10 / span 3;
           }
         }
       }
@@ -322,7 +301,7 @@ import { ConfigService } from '../services/ConfigService';
             grid-column: 9 / span 2;
           }
 
-          > .contact {
+          > .team {
             grid-column: 11 / span 2;
           }
         }
