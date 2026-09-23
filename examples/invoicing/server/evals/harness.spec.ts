@@ -101,6 +101,26 @@ test('a rejected render surfaces as a tool error the model could act on', async 
   );
 }, 60_000);
 
+// Guards the render tool's retry contract. B4's `returnDirect` would end the
+// run on this tool's result, but LangGraph ends it on an error result too, so
+// a rejected tree would never get the retry the tool description promises.
+test('a rejected render leaves the model a turn to fix it and render again', async () => {
+  const fixtures = script()
+    .user('Retry render')
+    .callsTool('render', {
+      text: 'x',
+      components: [{ CustomerCard: { customerId: 'nobody' } }],
+    })
+    .callsTool('render', { text: 'Fixed.', components: [] })
+    .replies('{"ui":[]}')
+    .build();
+
+  const run = await harness.run({ input: 'Retry render', fixtures });
+
+  expect(run.toolCalls.map((c) => c.name)).toEqual(['render', 'render']);
+  expect(run.toolResults.map((r) => r.isError)).toEqual([true, false]);
+}, 60_000);
+
 test('each run starts a fresh thread and only record mode can read the tape', async () => {
   const first = await harness.run({
     input: 'Fresh thread',
