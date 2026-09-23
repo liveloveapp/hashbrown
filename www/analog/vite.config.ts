@@ -85,6 +85,16 @@ export default defineConfig(({ command, mode }) => {
         ? []
         : nitro({
             preset: 'vercel',
+            // The migration notes moved into a versioned Migrations section.
+            // Keep the old URLs working for links in posts and search results.
+            routeRules: {
+              '/docs/react/start/migration': {
+                redirect: { to: '/docs/react/migrations/v0-6', status: 301 },
+              },
+              '/docs/angular/start/migration': {
+                redirect: { to: '/docs/angular/migrations/v0-6', status: 301 },
+              },
+            },
             vercel: {
               functions: {
                 // Hobby default and ceiling; streamed response time counts.
