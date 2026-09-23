@@ -3,7 +3,6 @@ import { RouteMeta } from '@analogjs/router';
 import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Squircle } from '../../components/Squircle';
-import { TheGravy } from '../../components/TheGravy';
 import { ChevronRight } from '../../icons/ChevronRight';
 import { WorkshopAttributes } from '../../models/workshop.models';
 import { Markdown } from '../../pipes/Markdown';
@@ -27,7 +26,7 @@ export const routeMeta: RouteMeta = {
 };
 
 @Component({
-  imports: [ChevronRight, RouterLink, Squircle, Markdown, TheGravy],
+  imports: [ChevronRight, RouterLink, Squircle, Markdown],
   template: `
     <div class="bleed">
       <div class="heading">
@@ -63,7 +62,6 @@ export const routeMeta: RouteMeta = {
         }
       </div>
     </div>
-    <www-the-gravy id="dd18d015-795c-4c3b-a7c1-3c6f73caa7f0" />
   `,
   changeDetection: ChangeDetectionStrategy.Eager,
   styles: `
