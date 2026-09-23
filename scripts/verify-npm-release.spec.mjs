@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { verifyNpmRelease } from './verify-npm-release.mjs';
+import { parseArgs, verifyNpmRelease } from './verify-npm-release.mjs';
 
 const EXPECTED_REPOSITORY_URL = 'https://github.com/liveloveapp/hashbrown.git';
 
@@ -127,5 +127,38 @@ test('rejects packages whose dist tag does not point at the release version', as
       }),
     }),
     /expected latest to point at 0\.6\.0, found 0\.5\.0/,
+  );
+});
+
+test('parses the tag and registry in both the spaced and the equals form', () => {
+  const spaced = ['--tag', 'latest', '--registry', 'https://r.example/'];
+  const equals = ['--tag=latest', '--registry=https://r.example/'];
+
+  const fromSpaced = parseArgs(spaced);
+  const fromEquals = parseArgs(equals);
+
+  // The publish workflow passes `--tag=latest`; the equals form must work.
+  assert.deepEqual(fromSpaced, {
+    tag: 'latest',
+    registry: 'https://r.example/',
+  });
+  assert.deepEqual(fromEquals, {
+    tag: 'latest',
+    registry: 'https://r.example/',
+  });
+});
+
+test('rejects unknown and incomplete arguments', () => {
+  assert.throws(
+    () => parseArgs(['--tags=latest']),
+    /Unknown or incomplete argument: --tags=latest/,
+  );
+  assert.throws(
+    () => parseArgs(['--tag']),
+    /Unknown or incomplete argument: --tag/,
+  );
+  assert.throws(
+    () => parseArgs(['--tag=']),
+    /Unknown or incomplete argument: --tag=/,
   );
 });
