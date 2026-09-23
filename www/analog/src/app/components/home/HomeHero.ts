@@ -133,7 +133,7 @@ import { InstallCommand } from './InstallCommand';
       font:
         400 12px/1 'Fredoka',
         sans-serif;
-      color: var(--gray-light);
+      color: #e3e3e3;
     }
 
     .dots {

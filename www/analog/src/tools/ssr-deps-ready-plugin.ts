@@ -23,7 +23,14 @@ export function ssrDepsReadyPlugin(): Plugin {
     // The optimizer's `init` returns immediately after its first call, so the
     // first caller must keep the promise. Vite calls it from `listen`, which
     // runs after `configureServer`.
-    const pending = Promise.resolve(environment.depsOptimizer?.init());
+    const pending = Promise.resolve(environment.depsOptimizer?.init()).catch(
+      (error: unknown) => {
+        // Forget a failed init so the next request retries instead of
+        // failing every SSR resolution until the dev server restarts.
+        ready.delete(environment);
+        throw error;
+      },
+    );
     ready.set(environment, pending);
     return pending;
   };
