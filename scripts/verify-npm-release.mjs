@@ -58,20 +58,26 @@ export async function verifyNpmRelease({
   };
 }
 
-function parseArgs(argv) {
+const OPTIONS = { '--tag': 'tag', '--registry': 'registry' };
+
+/**
+ * Parse `--tag <value>` / `--tag=<value>` and `--registry <value>` /
+ * `--registry=<value>`. The publish workflow passes the equals form.
+ */
+export function parseArgs(argv) {
   const options = {};
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (arg === '--tag' && argv[index + 1]) {
-      options.tag = argv[index + 1];
-      index += 1;
-    } else if (arg === '--registry' && argv[index + 1]) {
-      options.registry = argv[index + 1];
-      index += 1;
-    } else {
+    const equals = arg.indexOf('=');
+    const flag = equals === -1 ? arg : arg.slice(0, equals);
+    const key = Object.hasOwn(OPTIONS, flag) ? OPTIONS[flag] : undefined;
+    const value = equals === -1 ? argv[index + 1] : arg.slice(equals + 1);
+    if (!key || !value) {
       throw new Error(`Unknown or incomplete argument: ${arg}`);
     }
+    options[key] = value;
+    if (equals === -1) index += 1;
   }
 
   return options;

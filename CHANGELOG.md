@@ -1,3 +1,38 @@
+## 0.6.0 (2026-09-23)
+
+### ⚠️ Breaking Changes
+
+- Hashbrown transports are AG-UI event-only: providers and the HTTP transport speak AG-UI events, and the legacy frame transport is removed ([#508](https://github.com/liveloveapp/hashbrown/pull/508), [#521](https://github.com/liveloveapp/hashbrown/pull/521), [#507](https://github.com/liveloveapp/hashbrown/pull/507), [#506](https://github.com/liveloveapp/hashbrown/pull/506))
+- structured output controls are removed ([#522](https://github.com/liveloveapp/hashbrown/pull/522))
+- the Writer provider is removed ([#515](https://github.com/liveloveapp/hashbrown/pull/515))
+- model selection moves behind AG-UI transports ([#523](https://github.com/liveloveapp/hashbrown/pull/523))
+- the chat runtime is isolated and renamed ([#524](https://github.com/liveloveapp/hashbrown/pull/524))
+
+### 🚀 Features
+
+- **core:** surface server-executed tool calls on assistant messages as `serverToolCalls`, with arguments that resolve as they stream ([#573](https://github.com/liveloveapp/hashbrown/pull/573))
+- support AG-UI interrupt and resume ([#541](https://github.com/liveloveapp/hashbrown/pull/541))
+- **core:** synchronize AG-UI state and message history ([#538](https://github.com/liveloveapp/hashbrown/pull/538))
+- **core:** preserve AG-UI continuation data and metadata across runs ([#513](https://github.com/liveloveapp/hashbrown/pull/513), [#514](https://github.com/liveloveapp/hashbrown/pull/514))
+- add native AG-UI reasoning and Anthropic streaming ([#512](https://github.com/liveloveapp/hashbrown/pull/512))
+- **openai:** adopt AG-UI event streaming ([#511](https://github.com/liveloveapp/hashbrown/pull/511))
+- **google:** migrate provider to AG-UI ([#516](https://github.com/liveloveapp/hashbrown/pull/516))
+- **azure:** migrate provider to AG-UI ([#517](https://github.com/liveloveapp/hashbrown/pull/517))
+- **bedrock:** stream canonical AG-UI events ([#518](https://github.com/liveloveapp/hashbrown/pull/518))
+- **ollama:** migrate provider to AG-UI ([#520](https://github.com/liveloveapp/hashbrown/pull/520))
+- replace the JSON parser and Magic Text with Cacheplane's streaming parsers ([#504](https://github.com/liveloveapp/hashbrown/pull/504), [#505](https://github.com/liveloveapp/hashbrown/pull/505))
+
+### 🩹 Fixes
+
+- **core:** emit only defined keys from the nullish JSON schema ([#564](https://github.com/liveloveapp/hashbrown/pull/564))
+- **core:** reject a text message that starts after it already ended ([#548](https://github.com/liveloveapp/hashbrown/pull/548))
+- **markdown:** adopt parser invariant hardening ([#531](https://github.com/liveloveapp/hashbrown/pull/531))
+- repair core inferred typecheck ([#509](https://github.com/liveloveapp/hashbrown/pull/509))
+
+### ❤️ Thank You
+
+- Brian Love @blove
+
 ## 0.5.0 (2026-07-09)
 
 ### 🚀 Features
