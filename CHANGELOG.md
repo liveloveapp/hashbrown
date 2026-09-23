@@ -1,12 +1,19 @@
 ## 0.6.0 (2026-09-23)
 
+### 🧭 Migrating from 0.5
+
+0.6 is a breaking release. Every app must move its server endpoint to AG-UI; most React and Angular apps also remove the `model` and `structuredOutput` options. Read the step-by-step guide for [React](https://hashbrown.dev/docs/react/migrations/v0-6) or [Angular](https://hashbrown.dev/docs/angular/migrations/v0-6), which includes a prompt you can hand to an AI coding assistant.
+
 ### ⚠️ Breaking Changes
 
-- Hashbrown transports are AG-UI event-only: providers and the HTTP transport speak AG-UI events, and the legacy frame transport is removed ([#508](https://github.com/liveloveapp/hashbrown/pull/508), [#521](https://github.com/liveloveapp/hashbrown/pull/521), [#507](https://github.com/liveloveapp/hashbrown/pull/507), [#506](https://github.com/liveloveapp/hashbrown/pull/506))
-- structured output controls are removed ([#522](https://github.com/liveloveapp/hashbrown/pull/522))
-- the Writer provider is removed ([#515](https://github.com/liveloveapp/hashbrown/pull/515))
-- model selection moves behind AG-UI transports ([#523](https://github.com/liveloveapp/hashbrown/pull/523))
-- the chat runtime is isolated and renamed ([#524](https://github.com/liveloveapp/hashbrown/pull/524))
+- servers must speak AG-UI: provider adapters such as `HashbrownOpenAI.stream.text` take an AG-UI `RunAgentInput` as `input` plus a server-side `model`, and return `AsyncIterable<AGUIEvent>` instead of encoded frames (`AsyncIterable<Uint8Array>`); the route encodes events as SSE with `@ag-ui/encoder`, and the client posts to `/run` by default ([#508](https://github.com/liveloveapp/hashbrown/pull/508), [#511](https://github.com/liveloveapp/hashbrown/pull/511), [#516](https://github.com/liveloveapp/hashbrown/pull/516), [#517](https://github.com/liveloveapp/hashbrown/pull/517), [#518](https://github.com/liveloveapp/hashbrown/pull/518), [#520](https://github.com/liveloveapp/hashbrown/pull/520))
+- the legacy frame transport is removed: `encodeFrame`, `decodeFrames` and the `Frame` types are no longer exported, `TransportRequest.input` is required and `TransportRequest.params` is removed ([#521](https://github.com/liveloveapp/hashbrown/pull/521), [#507](https://github.com/liveloveapp/hashbrown/pull/507), [#506](https://github.com/liveloveapp/hashbrown/pull/506))
+- model selection moves to the server: hooks, resources and the core runtime no longer accept `model`, `ModelInput`, `ModelSpec`, `ModelResolver` and the known-model ID lists are removed, and `experimental_chrome`, `experimental_edge` and `experimental_local` now return transport factories ([#523](https://github.com/liveloveapp/hashbrown/pull/523))
+- structured output controls are removed: `structuredOutput`, `emulateStructuredOutput`, `StructuredOutputMode`, `StructuredOutputOptions`, `ResponseFormatMode` and `CompletionCreateParams`; `output` is no longer a reserved tool name ([#522](https://github.com/liveloveapp/hashbrown/pull/522))
+- thread loading and saving are removed: adapters no longer accept `loadThread` / `saveThread`, and hooks and resources no longer expose `isLoadingThread`, `isSavingThread`, `threadLoadError` or `threadSaveError`; persist messages in your application ([#508](https://github.com/liveloveapp/hashbrown/pull/508))
+- the core runtime is renamed: `fryHashbrown` is now `createChatRuntime`, `Hashbrown` is now `ChatRuntime`, `sizzle()` is now `start()`, and direct core `apiUrl` / `middleware` options move to `createHttpTransport` ([#524](https://github.com/liveloveapp/hashbrown/pull/524))
+- core no longer exports the Magic Text parser helpers and node types (such as `createMagicTextParserState` and `parseMagicTextChunk`) or the JSON parser internals (such as `createParserState`, `parseChunk` and `JsonAstNode`); use `@cacheplane/partial-markdown` or the framework parser APIs ([#504](https://github.com/liveloveapp/hashbrown/pull/504), [#505](https://github.com/liveloveapp/hashbrown/pull/505))
+- the Writer provider (`@hashbrownai/writer`) and `WriterKnownModelIds` are removed ([#515](https://github.com/liveloveapp/hashbrown/pull/515))
 
 ### 🚀 Features
 
