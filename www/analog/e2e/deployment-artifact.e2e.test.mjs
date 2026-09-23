@@ -473,7 +473,7 @@ test('production function server-renders the home page content', async () => {
     // not just a docs page.
     assert.doesNotMatch(html, /<body><div id="app"><\/div><\/body>/);
     assert.match(html, /AI chat and agents for your React or Angular app/);
-    assert.match(html, /npm i @hashbrownai\/\{core,/);
+    assert.match(html, /npm i @hashbrownai\/(?:<wbr[^>]*>)?\{core,/);
     assert.match(html, /www-threadplane-banner/);
   } finally {
     await new Promise((resolveClosed) => server.close(resolveClosed));

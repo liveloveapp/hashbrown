@@ -35,7 +35,7 @@ import { installCommand, Sdk, SDK_LABELS } from './home.content';
       }
     </div>
     <div class="command">
-      <code>{{ command() }}</code>
+      <code>{{ commandParts()[0] }}<wbr />{{ commandParts()[1] }}</code>
       <button
         type="button"
         class="copy"
@@ -103,8 +103,7 @@ import { installCommand, Sdk, SDK_LABELS } from './home.content';
       font:
         500 15px/1.4 'JetBrains Mono',
         monospace;
-      overflow-x: auto;
-      white-space: nowrap;
+      overflow-wrap: normal;
     }
 
     .copy {
@@ -133,6 +132,12 @@ export class InstallCommand {
   readonly labels = SDK_LABELS;
   readonly sdk = this.config.sdk;
   readonly command = computed(() => installCommand(this.sdk()));
+  // Split after the scope so narrow screens wrap there, not mid-package.
+  readonly commandParts = computed(() => {
+    const command = this.command();
+    const split = command.indexOf('/') + 1;
+    return [command.slice(0, split), command.slice(split)];
+  });
 
   private readonly radios =
     viewChildren<ElementRef<HTMLButtonElement>>('radio');

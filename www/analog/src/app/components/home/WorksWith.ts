@@ -10,14 +10,13 @@ import { OpenAi } from './providers/OpenAi';
   imports: [Anthropic, Bedrock, Gemini, Ollama, OpenAi],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <small>Works with</small>
     <span class="provider"><app-home-openai /> OpenAI</span>
     <span class="provider"><app-home-anthropic /> Anthropic</span>
     <span class="provider"><app-home-gemini /> Gemini</span>
     <span class="provider"><app-home-bedrock /> Bedrock</span>
     <span class="provider">Azure</span>
     <span class="provider"><app-home-ollama /> Ollama</span>
-    <span class="provider">Chrome / Edge local models</span>
+    <span class="provider">Local models</span>
   `,
   styles: `
     :host {
@@ -34,13 +33,6 @@ import { OpenAi } from './providers/OpenAi';
         500 15px/1 'Fredoka',
         sans-serif;
       color: var(--gray);
-    }
-
-    small {
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--chocolate-brown-light);
     }
 
     .provider {

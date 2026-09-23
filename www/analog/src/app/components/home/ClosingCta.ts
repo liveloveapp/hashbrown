@@ -17,7 +17,7 @@ import { InstallCommand } from './InstallCommand';
   template: `
     <div class="card">
       <img src="/image/logo/brand-mark.svg" alt="" width="56" height="56" />
-      <h2>Start building in five minutes</h2>
+      <h2>Get started</h2>
       <www-install-command [centered]="true" />
       <div class="actions">
         <a
@@ -27,7 +27,7 @@ import { InstallCommand } from './InstallCommand';
           >Quick start →</a
         >
         <a class="hb-btn" [href]="github" target="_blank" rel="noopener"
-          >★ Star on GitHub</a
+          >Star on GitHub</a
         >
       </div>
     </div>

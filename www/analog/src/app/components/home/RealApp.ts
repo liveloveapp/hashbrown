@@ -10,17 +10,15 @@ import { INVOICING_LINKS } from './home.content';
       <div class="copy">
         <h2>See it in a real app</h2>
         <p>
-          An invoicing assistant that reads the ledger, explains balances, and
-          renders tables and charts from your components. Data is simulated.
+          An invoicing assistant that answers with the app's own tables and
+          charts. The data is simulated.
         </p>
         <div class="built">
           <div class="tile">
-            <small>Generative UI</small><strong>hashbrown</strong
-            ><span>Chat, tools, streamed components</span>
+            <strong>hashbrown</strong><span>Chat and generative UI</span>
           </div>
           <a class="tile" [href]="links.b4" target="_blank" rel="noopener">
-            <small>Agent backend</small><strong>b4.run ↗</strong
-            ><span>TypeScript agents on LangGraph.js</span>
+            <strong>b4.run ↗</strong><span>Agent backend</span>
           </a>
           <a
             class="tile"
@@ -28,8 +26,7 @@ import { INVOICING_LINKS } from './home.content';
             target="_blank"
             rel="noopener"
           >
-            <small>Data grid</small><strong>pretable.ai ↗</strong
-            ><span>Fast React grid for streaming data</span>
+            <strong>pretable.ai ↗</strong><span>Data grid</span>
           </a>
         </div>
         <div class="actions">
@@ -62,7 +59,7 @@ import { INVOICING_LINKS } from './home.content';
           />
           <img
             src="/image/landing-page/invoicing.webp"
-            alt="The Hashbrown invoicing example: the assistant answers which USD customers are more than 60 days overdue, with a rendered ledger table of overdue invoices, an aging summary chart, and a customer card for Granite Mutual"
+            alt="The invoicing example answering which USD customers are more than 60 days overdue with a ledger table, an aging chart, and a customer card"
             loading="lazy"
             width="1400"
             height="1200"
@@ -118,15 +115,6 @@ import { INVOICING_LINKS } from './home.content';
       background: var(--vanilla-ivory);
       color: inherit;
       text-decoration: none;
-    }
-
-    .tile small {
-      font:
-        600 10.5px/1.2 'Fredoka',
-        sans-serif;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--sunset-orange);
     }
 
     .tile strong {

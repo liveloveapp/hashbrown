@@ -10,22 +10,20 @@ import { HOME_CODE_HTML } from 'virtual:home-code-html';
 import { AnalyticsService } from '../../services/AnalyticsService';
 import { ConfigService } from '../../services/ConfigService';
 import { ToastService } from '../../services/ToastService';
-import { GitHubStarButton } from '../GitHubStarButton';
 import { copyText } from './copy-text';
 import { agentPrompt, HERO_CODE, quickStartUrl } from './home.content';
 import { InstallCommand } from './InstallCommand';
 
 @Component({
   selector: 'www-home-hero',
-  imports: [GitHubStarButton, InstallCommand, RouterLink],
+  imports: [InstallCommand, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="copy">
       <h1>AI chat and agents for your React or Angular app</h1>
       <p class="lead">
-        Hashbrown is a headless TypeScript framework. Let the model render your
-        own components, run tools in the browser, and stream typed output from
-        any model.
+        Hashbrown is a headless TypeScript framework. The model renders your
+        components and calls your tools, in the browser, with any provider.
       </p>
       <www-install-command />
       <div class="actions">
@@ -36,13 +34,8 @@ import { InstallCommand } from './InstallCommand';
           >Quick start →</a
         >
         <button type="button" class="hb-btn" (click)="copyPrompt()">
-          Copy prompt for your coding agent
+          Copy agent prompt
         </button>
-      </div>
-      <div class="proof">
-        <www-github-star-button />
-        <span>MIT licensed</span>
-        <span>OpenAI · Anthropic · Gemini · Bedrock · Azure · Ollama</span>
       </div>
     </div>
     <div class="panel">
@@ -100,18 +93,6 @@ import { InstallCommand } from './InstallCommand';
       flex-wrap: wrap;
       gap: 12px;
       margin-top: 16px;
-    }
-
-    .proof {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 14px;
-      margin-top: 22px;
-      font:
-        400 14px/1.4 'Fredoka',
-        sans-serif;
-      color: var(--gray);
     }
 
     .panel {

@@ -112,7 +112,7 @@ export interface Step {
 const STEP_COPY = [
   {
     title: 'Expose your components',
-    body: 'The model can only render what you register, with props validated by a Skillet schema.',
+    body: 'The model only renders components you register. Skillet validates their props.',
   },
   {
     title: 'Give it tools',
@@ -120,7 +120,7 @@ const STEP_COPY = [
   },
   {
     title: 'Render the stream',
-    body: 'Components render as they stream in. No waiting for the full response.',
+    body: 'Components render while the response streams in.',
   },
 ];
 
@@ -145,7 +145,9 @@ export const STEPS: Record<Sdk, Step[]> = {
     {
       ...STEP_COPY[2],
       code: `chat.messages.map((m) =>
-  m.role === 'assistant' ? m.ui : m.content
+  m.role === 'assistant'
+    ? m.ui
+    : m.content
 )`,
     },
   ],
@@ -177,9 +179,7 @@ export const STEPS: Record<Sdk, Step[]> = {
 export interface Capability {
   title: string;
   body: string;
-  why: string;
   docsPath: [string, string];
-  tint: string;
 }
 
 /**
@@ -188,45 +188,33 @@ export interface Capability {
 export const CAPABILITIES: Capability[] = [
   {
     title: 'Generative UI',
-    body: 'The model composes your trusted components. UI kits bundle them for reuse.',
-    why: 'Only your components, never arbitrary HTML',
+    body: 'The model composes your components. Bundle them into UI kits.',
     docsPath: ['concept', 'components'],
-    tint: 'var(--sunshine-yellow-light)',
   },
   {
     title: 'Client-side tools',
-    body: "Call your app's functions from the model, and connect MCP servers when you need them.",
-    why: 'Runs in the browser, not just on a server',
+    body: 'The model calls functions in your app. Connect MCP servers too.',
     docsPath: ['concept', 'functions'],
-    tint: 'var(--sky-blue-light)',
   },
   {
     title: 'Structured output',
-    body: 'Skillet schemas give you typed JSON you can use directly.',
-    why: 'A schema language built for LLMs and streaming',
+    body: 'Skillet schemas turn model output into typed JSON.',
     docsPath: ['concept', 'structured-output'],
-    tint: 'var(--sunset-orange-light)',
   },
   {
-    title: 'Streaming, everywhere',
-    body: 'Strings, arrays, and objects parse as they arrive. Magic Text streams markdown.',
-    why: 'Incremental parser, low latency',
+    title: 'Streaming',
+    body: 'Strings, arrays, and objects parse as they arrive. Magic Text streams Markdown.',
     docsPath: ['concept', 'streaming'],
-    tint: 'var(--olive-green-light)',
   },
   {
     title: 'Any model',
-    body: 'OpenAI, Anthropic, Gemini, Bedrock, Azure, Ollama, and local browser models.',
-    why: 'Swap providers without rewriting UI',
+    body: 'OpenAI, Anthropic, Gemini, Bedrock, Azure, Ollama, or a model in the browser.',
     docsPath: ['platform', 'openai'],
-    tint: 'var(--sunshine-yellow-light)',
   },
   {
-    title: 'Safe code execution',
-    body: 'A sandboxed JavaScript runtime for model-written code.',
-    why: 'Charts and transforms without eval',
+    title: 'Code execution',
+    body: 'Run model-written JavaScript in a sandbox.',
     docsPath: ['concept', 'runtime'],
-    tint: 'var(--sky-blue-light)',
   },
 ];
 

@@ -16,7 +16,6 @@ import { selectLatestPosts } from './latest-posts';
         <a [routerLink]="['/blog', post.slug]">
           <small>{{ post.attributes.date | date: 'mediumDate' : 'UTC' }}</small>
           <h3>{{ post.attributes.title }}</h3>
-          <p>{{ post.attributes.description }}</p>
         </a>
       }
     </div>
@@ -63,17 +62,6 @@ import { selectLatestPosts } from './latest-posts';
       font: 700 19px/1.25 var(--font-heading);
       letter-spacing: -0.02em;
       color: var(--chocolate-brown);
-    }
-
-    p {
-      font:
-        400 14.5px/1.5 'Fredoka',
-        sans-serif;
-      color: var(--gray);
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
     }
 
     @media screen and (min-width: 1024px) {

@@ -14,12 +14,11 @@ import { THREADPLANE_URL } from './home.content';
       (click)="analytics.track('threadplane-banner-clicked')"
     >
       <div class="text">
-        <div class="eyebrow"><span class="plane"></span>threadplane</div>
         <div class="big">Your chat UI<br /><em>isn't done.</em></div>
         <p>
-          Threads, approvals, tool progress, retries. threadplane is the whole
-          agent UI for React and Angular, free and MIT, with enterprise support
-          from the team that built both.
+          threadplane is the full agent UI for React and Angular: threads,
+          approvals, and tool progress. Free and MIT, with enterprise support
+          from the team behind Hashbrown.
         </p>
         <span class="cta">Explore threadplane →</span>
       </div>
@@ -59,24 +58,6 @@ import { THREADPLANE_URL } from './home.content';
       z-index: 1;
       max-width: 620px;
       padding: 36px 24px 240px;
-    }
-
-    .eyebrow {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 18px;
-      font: 600 12px/1 var(--font-heading);
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      opacity: 0.75;
-    }
-
-    .plane {
-      width: 16px;
-      height: 16px;
-      background: #ffaf00;
-      clip-path: polygon(0 50%, 100% 0, 70% 100%, 50% 60%);
     }
 
     .big {

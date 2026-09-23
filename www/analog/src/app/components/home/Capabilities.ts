@@ -9,18 +9,13 @@ import { CAPABILITIES, Capability } from './home.content';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header>
-      <h2>Everything you need to build it</h2>
-      <p>
-        A small set of primitives that compose into chat, copilots, and agents.
-      </p>
+      <h2>Features</h2>
     </header>
     <div class="grid">
       @for (capability of capabilities; track capability.title) {
         <article>
-          <span class="swatch" [style.background]="capability.tint"></span>
           <h3>{{ capability.title }}</h3>
           <p>{{ capability.body }}</p>
-          <div class="why">{{ capability.why }}</div>
           <a
             [routerLink]="docsLink(capability)"
             [attr.aria-label]="'Read the docs: ' + capability.title"
@@ -68,14 +63,6 @@ import { CAPABILITIES, Capability } from './home.content';
       background: #fff;
     }
 
-    .swatch {
-      display: block;
-      width: 40px;
-      height: 40px;
-      margin-bottom: 12px;
-      border-radius: 12px;
-    }
-
     h3 {
       margin-bottom: 6px;
       font: 700 20px/1.2 var(--font-heading);
@@ -89,13 +76,6 @@ import { CAPABILITIES, Capability } from './home.content';
         400 15px/1.5 'Fredoka',
         sans-serif;
       color: var(--gray);
-    }
-
-    .why {
-      font:
-        600 13.5px/1.4 'Fredoka',
-        sans-serif;
-      color: var(--sunset-orange);
     }
 
     a {

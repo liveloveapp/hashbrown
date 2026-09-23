@@ -16,7 +16,7 @@ import { STEPS } from './home.content';
   template: `
     <header>
       <h2>How it works</h2>
-      <p>Three pieces. Same API in React and Angular.</p>
+      <p>The same API in React and Angular.</p>
     </header>
     <ol>
       @for (step of steps(); track step.title; let i = $index) {
