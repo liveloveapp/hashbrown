@@ -13,7 +13,7 @@ import { selectLatestPosts } from './latest-posts';
     <h2>From the blog</h2>
     <div class="posts">
       @for (post of posts; track post.slug) {
-        <a [routerLink]="['/blog', post.attributes.slug]">
+        <a [routerLink]="['/blog', post.slug]">
           <small>{{ post.attributes.date | date: 'mediumDate' : 'UTC' }}</small>
           <h3>{{ post.attributes.title }}</h3>
           <p>{{ post.attributes.description }}</p>

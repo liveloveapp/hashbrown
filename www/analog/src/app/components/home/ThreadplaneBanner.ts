@@ -11,6 +11,7 @@ import { THREADPLANE_URL } from './home.content';
       [href]="url"
       target="_blank"
       rel="noopener"
+      aria-label="Explore threadplane"
       (click)="analytics.track('threadplane-banner-clicked')"
     >
       <div class="text">
@@ -27,7 +28,7 @@ import { THREADPLANE_URL } from './home.content';
         src="/image/landing-page/threadplane/brian-skeptical.webp"
         alt="Brian Love"
         loading="lazy"
-        width="790"
+        width="840"
         height="900"
       />
     </a>
