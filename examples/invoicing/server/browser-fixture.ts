@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createServer as createViteServer } from 'vite';
 import { createInvoicingListener } from './src/http';
 import { readSessionCookie } from './src/session-cookie';
@@ -12,10 +12,12 @@ import { createSessionStore } from './src/session-store';
 import { createMemoryRepositories } from './src/persistence/memory';
 import { type AgUiTape, prepareReplay } from './src/fixture-tape';
 
-// Loaded once at startup; the fixture runs from the repo root (`cwd: ../../..`).
+// Loaded once at startup, relative to this file so any working directory works.
 const overdue60Tape: AgUiTape = JSON.parse(
   readFileSync(
-    resolve('examples/invoicing/e2e/recordings/overdue-60.agui.json'),
+    fileURLToPath(
+      new URL('../e2e/recordings/overdue-60.agui.json', import.meta.url),
+    ),
     'utf8',
   ),
 );
