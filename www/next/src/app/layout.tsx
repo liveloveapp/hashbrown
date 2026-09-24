@@ -19,7 +19,8 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: ['/image/logo/favicon.png', '/image/meta/favicon.svg'],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+    // Analog's index.html pointed at /apple-touch-icon.png, which doesn't exist.
+    apple: [{ url: '/image/meta/apple-touch-icon.png', sizes: '180x180' }],
   },
 };
 
