@@ -1,6 +1,6 @@
 {
   "name": "@hashbrownai/bedrock",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Amazon Bedrock provider for Hashbrown AI",
   "license": "MIT",
   "repository": {

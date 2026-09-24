@@ -1,3 +1,13 @@
+## 0.6.1 (2026-09-24)
+
+### 🩹 Fixes
+
+- **angular:** export `JsonParserRef` and `ImperativeJsonParserRef`, the types `injectJsonParser` and `injectImperativeJsonParser` return ([#580](https://github.com/liveloveapp/hashbrown/pull/580))
+
+### ❤️ Thank You
+
+- Brian Love @blove
+
 ## 0.6.0 (2026-09-23)
 
 ### 🧭 Migrating from 0.5
