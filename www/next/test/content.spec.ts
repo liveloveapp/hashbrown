@@ -48,3 +48,12 @@ test('reads a blog post by slug', () => {
   expect(post?.title).toBe('Hashbrown v0.6 speaks AG-UI end to end');
   expect(post?.body).toContain('Today we are releasing Hashbrown v0.6.');
 });
+
+test('uses the file name as the post slug, like the Analog site', () => {
+  const posts = listBlogPosts();
+
+  const slugs = posts.map((p) => p.slug);
+
+  expect(slugs).toContain('2025-06-25-hashbrown-launch');
+  expect(slugs).not.toContain('2025-06-25-Hashbrown-launch');
+});

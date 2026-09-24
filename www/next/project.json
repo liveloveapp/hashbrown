@@ -45,10 +45,10 @@
         "command": "eslint www/next/src www/next/test"
       }
     },
-    "report": {
+    "spike-report": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node --experimental-strip-types www/next/src/tools/spike-report.ts"
+        "command": "tsx www/next/src/tools/spike-report.ts"
       }
     }
   }

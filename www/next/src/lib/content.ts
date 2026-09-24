@@ -1,6 +1,6 @@
 import fm from 'front-matter';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, relative, resolve, sep } from 'node:path';
+import { basename, join, relative, resolve, sep } from 'node:path';
 import { repoRoot } from './repo-root';
 
 /** The frameworks the docs are written for. */
@@ -18,6 +18,7 @@ export interface DocPage {
 
 /** A blog post: its frontmatter metadata and markdown body. */
 export interface BlogPost {
+  /** URL slug: the file name without `.md`, as Analog's content routes use. */
   slug: string;
   title: string;
   description: string;
@@ -33,7 +34,6 @@ interface DocAttributes {
 
 interface PostAttributes {
   title: string;
-  slug: string;
   description: string;
   tags?: string[];
 }
@@ -88,17 +88,18 @@ export function readDoc(
 
 function toPost(file: string): BlogPost {
   const { attributes, body } = fm<PostAttributes>(readFileSync(file, 'utf-8'));
+  const slug = basename(file, '.md');
   return {
-    slug: attributes.slug,
+    slug,
     title: attributes.title,
     description: attributes.description,
-    date: attributes.slug.slice(0, 10),
+    date: slug.slice(0, 10),
     tags: attributes.tags ?? [],
     body,
   };
 }
 
-/** List blog posts, newest first (post slugs start with an ISO date). */
+/** List blog posts, newest first (post file names start with an ISO date). */
 export function listBlogPosts(): BlogPost[] {
   return readdirSync(blogRoot())
     .filter((name) => name.endsWith('.md'))
@@ -107,9 +108,9 @@ export function listBlogPosts(): BlogPost[] {
 }
 
 /**
- * Read one blog post by its frontmatter slug.
+ * Read one blog post by its URL slug.
  *
- * @param slug - The post's `slug` frontmatter value.
+ * @param slug - The post's file name without `.md`.
  */
 export function readBlogPost(slug: string): BlogPost | undefined {
   return listBlogPosts().find((post) => post.slug === slug);
