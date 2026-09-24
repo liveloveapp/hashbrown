@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { SearchOverlay } from '../../src/components/search/SearchOverlay';
 import { SEARCH_OVERLAY_OPEN_EVENT } from '../../src/components/site/links';
 
@@ -21,18 +21,27 @@ const LAZY_LOAD = { timeout: 10_000 };
 
 const mounted: Root[] = [];
 
-afterEach(() => {
+/**
+ * Undo the previous test: unmount its roots, restore globals and clear the
+ * DOM. Tests start with this (through `stubFetch`) rather than relying on an
+ * after-hook, so a failed test can't leak into the next one.
+ */
+function reset() {
   act(() => mounted.splice(0).forEach((root) => root.unmount()));
   vi.unstubAllGlobals();
   document.body.replaceChildren();
-});
+}
 
-/** Stub `fetch`: the index URL answers with `INDEX`; chat requests hang. */
-function stubFetch() {
+/**
+ * Reset, then stub `fetch`: the index URL answers with `indexResponse()`
+ * (the `INDEX` by default); chat requests hang.
+ */
+function stubFetch(indexResponse: () => Response = () => Response.json(INDEX)) {
+  reset();
   const chatBodies: string[] = [];
   const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     if (String(url) === '/_/search-index') {
-      return Response.json(INDEX);
+      return indexResponse();
     }
     chatBodies.push(String(init?.body ?? ''));
     return new Promise<Response>(() => undefined);
@@ -198,10 +207,7 @@ test('the clear button empties the query and refocuses it', async () => {
 });
 
 test('says so when the index fails to load, and keeps search disabled', async () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async () => new Response('nope', { status: 500 })),
-  );
+  stubFetch(() => new Response('nope', { status: 500 }));
   mount();
 
   await open();
