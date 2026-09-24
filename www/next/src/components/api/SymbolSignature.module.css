@@ -1,0 +1,43 @@
+/* Ports of SymbolParams.ts, SymbolTypeParams.ts, SymbolReturns.ts and
+   SymbolReturn.ts. */
+.params {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.param {
+  display: flex;
+  flex-direction: column;
+}
+
+.paramHeader,
+.typeParam,
+.returns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paramHeader > code,
+.typeParam > code,
+.returns > code {
+  color: var(--sunset-orange, #fbbb52);
+}
+
+.paramHeader > code.symbol,
+.typeParam > code.symbol,
+.returns > code.symbol {
+  font-weight: 300;
+  color: var(--vanilla-ivory, #faf9f0);
+}
+
+.param > p {
+  color: var(--vanilla-ivory, #faf9f0);
+  font-size: 12px;
+}
+
+.return {
+  display: inline-flex;
+}

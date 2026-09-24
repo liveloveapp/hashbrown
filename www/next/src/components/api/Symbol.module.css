@@ -1,0 +1,82 @@
+/* Ports of Symbol.ts and SymbolMethods.ts. */
+.host {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 24px;
+  width: 100%;
+  max-width: 752px;
+}
+
+.symbols {
+  width: 100%;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.article {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+}
+
+/* Section headings ("API", "Examples") inside the article, as the live site
+   renders them; popovers sit outside an article and keep plain headings. */
+.article h2 {
+  font:
+    500 18px/24px Fredoka,
+    sans-serif;
+  color: var(--gray, #5e5c5a);
+  margin: 32px 0 0;
+}
+
+/* Angular rendered each overload's parts as direct children of <article>. */
+.overload {
+  display: contents;
+}
+
+.symbol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.symbol > * + * {
+  border-top: 1px solid var(--gray, #5e5c5a);
+  padding-top: 16px;
+}
+
+.methods {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.methodSymbol {
+  color: var(--vanilla-ivory, #faf9f0);
+}
+
+@media screen and (min-width: 1024px) {
+  .symbols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .article {
+    max-width: 738px;
+  }
+}
+
+@media screen and (min-width: 1281px) {
+  .symbols {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .article {
+    max-width: 956px;
+  }
+}

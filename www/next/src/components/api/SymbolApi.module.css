@@ -1,0 +1,44 @@
+/* Ports of SymbolApi.ts and SymbolExcerptGroup.ts; the squircle becomes a
+   border radius with a 4px border. */
+.api {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.groupHost {
+  display: block;
+  padding: 8px 0;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #3d3c3a;
+  min-width: 100%;
+  width: auto;
+  border: 4px solid var(--gray-light, #a4a3a1);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.groupContent {
+  overflow-x: auto;
+  padding: 24px;
+}
+
+.members {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 16px;
+}
+
+.memberLink {
+  display: block;
+}
+
+.memberLink:hover {
+  background: #3d3c3a;
+}

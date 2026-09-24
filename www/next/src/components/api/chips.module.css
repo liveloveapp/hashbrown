@@ -1,0 +1,56 @@
+/* Ports of SymbolChip.ts, KindChip.ts and DeprecatedChip.ts. The global
+   `.kind.<Kind>` colors and `a.underline` rules live in globals.css. */
+.chip {
+  font-family: sans-serif;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: rgba(61, 60, 58, 0.72);
+  transition: all 0.2s ease-in-out;
+}
+
+.chip:hover {
+  color: rgb(61, 60, 58);
+}
+
+.kindChip {
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.kindChip:hover {
+  color: rgba(61, 60, 58, 0.72);
+  border-color: rgba(61, 60, 58, 0.24);
+}
+
+.kindChip.selected {
+  background: rgba(61, 60, 58, 0.04);
+}
+
+.initial {
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+  margin: 0 0.5em 0 0;
+  border-radius: 2px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.deprecated {
+  display: flex;
+  width: 84px;
+  height: 24px;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 0;
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 10px;
+  background-color: rgba(255, 0, 0, 0.36);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
