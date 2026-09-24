@@ -201,29 +201,24 @@ export function Assistant() {
 
 ## 5. Use the Parser Directly
 
-If you need the Magic Text AST instead of React elements, use the parser helpers from `@hashbrownai/core`.
+If you need the Markdown AST instead of React elements, use the streaming Markdown parser that powers Magic Text, from `@cacheplane/partial-markdown`.
 
 <hb-code-example header="parse.ts">
 
 ```ts
-import {
-  createMagicTextParserState,
-  finalizeMagicText,
-  parseMagicTextChunk,
-} from '@hashbrownai/core';
+import { createPartialMarkdownParser } from '@cacheplane/partial-markdown';
 
-let state = createMagicTextParserState({
-  segmenter: { granularity: 'word' },
-});
+const parser = createPartialMarkdownParser();
 
-state = parseMagicTextChunk(state, 'Hello **wor');
-state = parseMagicTextChunk(
-  state,
-  'ld** [^docs]\n\n[^docs]: Docs https://hashbrown.dev',
-);
-state = finalizeMagicText(state);
+parser.push('Hello **wor');
+parser.push('ld** [^docs]\n\n[^docs]: Docs https://hashbrown.dev');
+parser.finish();
+
+const document = parser.root;
 ```
 
 </hb-code-example>
 
-The parser state includes the Markdown AST, citation metadata, warnings, and completion state.
+`parser.root` is the Markdown document node. It is available while you push chunks, so you can render partial Markdown, and `finish()` settles it. Nodes link to their `parent`, so walk the tree rather than passing it to `JSON.stringify`.
+
+In Hashbrown v0.5 these helpers were exported from `@hashbrownai/core`. See [Upgrade to v0.6](/docs/react/migrations/v0-6#magic-text-and-json-parser-internals).

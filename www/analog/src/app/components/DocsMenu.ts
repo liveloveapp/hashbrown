@@ -140,12 +140,25 @@ import { Squircle } from './Squircle';
             >API Overview</a
           >
         </li>
+      </ul>
+    </div>
+    <div>
+      <h2>Migrations</h2>
+      <ul>
         <li>
           <a
-            [routerLink]="[docsUrl(), 'start', 'migration']"
+            [routerLink]="[docsUrl(), 'migrations', 'v0-6']"
             routerLinkActive="active"
             wwwSquircle="8"
-            >Migration Notes</a
+            >Upgrade to v0.6</a
+          >
+        </li>
+        <li>
+          <a
+            [routerLink]="[docsUrl(), 'migrations', 'v0-5']"
+            routerLinkActive="active"
+            wwwSquircle="8"
+            >Upgrade to v0.5</a
           >
         </li>
       </ul>

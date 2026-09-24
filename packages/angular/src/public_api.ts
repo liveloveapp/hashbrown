@@ -53,6 +53,8 @@ export {
   type ExposeMarkdownBuiltInRendererConfig,
   type ExposeMarkdownCustomRendererConfig,
   type ExposedComponent,
+  type ImperativeJsonParserRef,
+  type JsonParserRef,
   type MagicTextParserRef,
   type MagicTextExposeInputs,
   type MagicTextRendererComponentType,

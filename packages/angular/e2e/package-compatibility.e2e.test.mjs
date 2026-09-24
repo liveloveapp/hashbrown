@@ -131,6 +131,8 @@ test(
         `
           import type {
             ChatResourceOptions,
+            ImperativeJsonParserRef,
+            JsonParserRef,
             ProvideHashbrownOptions,
             StructuredChatResourceOptions,
             StructuredCompletionResourceOptions,
@@ -149,6 +151,11 @@ test(
           import { s } from '@hashbrownai/core';
 
           declare const providerOptions: ProvideHashbrownOptions;
+          // The JSON parser injectors return these; consumers must be able to name them.
+          declare const jsonParser: JsonParserRef<{ answer: string }>;
+          declare const imperativeJsonParser: ImperativeJsonParserRef<{ answer: string }>;
+          void jsonParser;
+          void imperativeJsonParser;
           declare const structuredChatOptions: StructuredChatResourceOptions<any, any>;
           declare const structuredCompletionOptions: StructuredCompletionResourceOptions<any, any>;
           declare const uiChatOptions: UiChatResourceOptions<any>;
