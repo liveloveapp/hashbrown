@@ -1,0 +1,43 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 16px;
+}
+
+.step > a {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.step > a > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.step > a > div:first-child {
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--sunshine-yellow-light, #fbe7b6);
+  border: 1px solid var(--sunshine-yellow-dark, #e8a23d);
+}
+
+.step h4 {
+  margin: 0;
+}
+
+.step p {
+  margin: 0;
+  color: var(--gray, #5e5c5a);
+  font:
+    350 13px/130% 'JetBrains Mono',
+    monospace;
+}
