@@ -14,7 +14,7 @@
     "@analogjs/content": "3.0.0-alpha.87",
     "@analogjs/router": "3.0.0-alpha.87",
     "@angular/platform-browser": "22.1.1",
-    "@hashbrownai/angular": "0.6.0",
+    "@hashbrownai/angular": "0.6.1",
     "nitro": "3.0.260522-beta",
     "ngx-markdown": "22.0.0",
     "@angular/material": "22.1.1",
