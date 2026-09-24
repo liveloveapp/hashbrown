@@ -54,8 +54,18 @@ Then:
 - Remove the dev-server workarounds that only existed for Analog (`angular-linker-deps-plugin.ts`, `ssr-deps-ready-plugin.ts`; they go with the directory). Close the loop on analogjs/analog#2577 and #2578 as no longer blocking us.
 - Update memory and `SPIKE.md`: the migration is complete.
 
-## Decisions for review
+## Decisions (2026-09-24)
 
-1. Keep `next.hashbrown.dev` after cutover, or redirect it to the apex?
-2. In PR 2, keep `www/analog` building (repoint its content paths) or retire its deploy target early?
-3. In PR 3, final location: keep `www/next`, or move the Next app to `www/`?
+1. `next.hashbrown.dev` is dropped. The site serves at `hashbrown.dev`, with `www.hashbrown.dev` redirecting to it (308) as before.
+2. Analog stops deploying in PR 1 instead of being kept building. PRs 2 and 3 merge into one: move to `www/` and delete `www/analog`.
+3. The Next app moves to `www/`, and the Nx project is renamed `www`.
+4. The Vercel project `hashbrown-www` is deleted by hand in the dashboard after the switch is verified; deletion is permanent. The agent moves the domains and tidies the GitHub secrets.
+
+## As executed
+
+- **PR 1 (domains, stop Analog):**
+  - `DEPLOY_TARGETS` drops `www` and makes `www-next` required.
+  - Bootstrap's `www-next` target takes both domains through Vercel's move endpoint (`POST /v1/projects/{from}/domains/{name}/move`), so they're never detached in between. `previousProject: 'hashbrown-www'` tells it where they live, and `removedDomains` detaches `next.hashbrown.dev`.
+  - The DNS and certificate steps key on whichever target owns the apex.
+  - **Run order:** merge, then run `node tools/vercel/bootstrap.mjs --env-file <root .env> --skip-workflow`. hashbrown.dev switches to the Next project's current production deployment when the move completes, so that deployment must exist and be verified first.
+- **PR 2 (move to `www/`, delete Analog):** see the tasks above. PR 2 and PR 3 are combined.

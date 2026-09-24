@@ -10,6 +10,7 @@ import {
   ensureDnsZone,
   ensureBuildSettings,
   ensureDomain,
+  ensureDomainRemoved,
   ensureProject,
   ensurePublicDeployments,
   ensureResources,
@@ -188,6 +189,12 @@ test('the www-next target builds the Next.js site from www/next', () => {
   const target = TARGETS.find((t) => t.key === 'www-next');
 
   assert.equal(target?.secret, 'VERCEL_PROJECT_ID_WWW_NEXT');
+  assert.deepEqual(
+    target?.domains.map((d) => d.name),
+    ['hashbrown.dev', 'www.hashbrown.dev'],
+  );
+  assert.equal(target?.previousProject, 'hashbrown-www');
+  assert.deepEqual(target?.removedDomains, ['next.hashbrown.dev']);
   assert.deepEqual(target?.build, {
     framework: 'nextjs',
     rootDirectory: 'www/next',
@@ -285,6 +292,71 @@ test('upsertEnv throws when the API reports failed variables', async () => {
       assert.doesNotMatch(error.message, /sk-test/);
       return true;
     },
+  );
+});
+
+test('ensureDomain moves a domain from the previous project in one step', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'GET /v9/projects/prj_old/domains/www.hashbrown.dev': {
+      body: { name: 'www.hashbrown.dev' },
+    },
+    'POST /v1/projects/prj_old/domains/www.hashbrown.dev/move': { body: {} },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  const result = await ensureDomain(
+    vercel,
+    'prj_new',
+    { name: 'www.hashbrown.dev', redirect: 'hashbrown.dev', redirectStatusCode: 308 },
+    'prj_old',
+  );
+
+  assert.equal(result, 'moved');
+  assert.deepEqual(calls.at(-1), {
+    method: 'POST',
+    path: '/v1/projects/prj_old/domains/www.hashbrown.dev/move',
+    body: {
+      projectId: 'prj_new',
+      redirect: 'hashbrown.dev',
+      redirectStatusCode: 308,
+    },
+  });
+});
+
+test('ensureDomain creates the domain when neither project has it', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'POST /v10/projects/prj_new/domains': { body: {} },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  const result = await ensureDomain(
+    vercel,
+    'prj_new',
+    { name: 'hashbrown.dev' },
+    'prj_old',
+  );
+
+  assert.equal(result, 'created');
+  assert.equal(calls.at(-1).path, '/v10/projects/prj_new/domains');
+});
+
+test('ensureDomainRemoved detaches a domain only when attached', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'GET /v9/projects/prj_1/domains/next.hashbrown.dev': {
+      body: { name: 'next.hashbrown.dev' },
+    },
+    'DELETE /v9/projects/prj_1/domains/next.hashbrown.dev': { body: {} },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  const removed = await ensureDomainRemoved(vercel, 'prj_1', 'next.hashbrown.dev');
+  const absent = await ensureDomainRemoved(vercel, 'prj_1', 'gone.hashbrown.dev');
+
+  assert.equal(removed, 'removed');
+  assert.equal(absent, 'absent');
+  assert.equal(
+    calls.filter((c) => c.method === 'DELETE').length,
+    1,
   );
 });
 

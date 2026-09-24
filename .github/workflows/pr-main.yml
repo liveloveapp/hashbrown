@@ -23,7 +23,8 @@ env:
   # project_id_secret = repository secret holding that target's Vercel project ID.
   # builder "vercel" = build with `vercel build` (Next.js); optional = skip while
   # the project secret is unset (see .github/workflows/deploy.yml).
-  DEPLOY_TARGETS: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW"},{"key":"invoicing","dir":"examples/invoicing","project_id_secret":"VERCEL_PROJECT_ID_INVOICING"},{"key":"www-next","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW_NEXT","builder":"vercel","optional":true}]'
+  # The Analog site (`www`) no longer deploys; www-next serves hashbrown.dev.
+  DEPLOY_TARGETS: '[{"key":"www-next","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW_NEXT","builder":"vercel"},{"key":"invoicing","dir":"examples/invoicing","project_id_secret":"VERCEL_PROJECT_ID_INVOICING"}]'
 
 jobs:
   ci:

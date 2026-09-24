@@ -43,17 +43,6 @@ export const NODE_VERSION = '24.x';
  */
 export const TARGETS = Object.freeze([
   Object.freeze({
-    key: 'www',
-    project: 'hashbrown-www',
-    secret: 'VERCEL_PROJECT_ID_WWW',
-    domains: [
-      { name: DOMAIN },
-      { name: `www.${DOMAIN}`, redirect: DOMAIN, redirectStatusCode: 308 },
-    ],
-    env: ['OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_BASE_URL'],
-    requiredEnv: ['OPENAI_API_KEY'],
-  }),
-  Object.freeze({
     key: 'invoicing',
     project: 'hashbrown-invoicing',
     secret: 'VERCEL_PROJECT_ID_INVOICING',
@@ -67,15 +56,21 @@ export const TARGETS = Object.freeze([
     // covers any function published without one of its own.
     resources: { fluid: true, functionDefaultTimeout: 300 },
   }),
-  // The Next.js port of the site (www/next). CI runs `vercel pull` and
-  // `vercel build` for it, so the project carries real build settings
-  // instead of consuming a prebuilt Nitro output like `www`. It serves at
-  // next.hashbrown.dev until it replaces `www`.
+  // The site (Next.js, www/next). CI runs `vercel pull` and `vercel build`
+  // for it, so the project carries real build settings. It took over the
+  // domains of the retired Analog project `hashbrown-www`; `previousProject`
+  // lets reruns move them without a gap, and `removedDomains` drops the
+  // preview-era subdomain.
   Object.freeze({
     key: 'www-next',
     project: 'hashbrown-www-next',
     secret: 'VERCEL_PROJECT_ID_WWW_NEXT',
-    domains: [{ name: `next.${DOMAIN}` }],
+    domains: [
+      { name: DOMAIN },
+      { name: `www.${DOMAIN}`, redirect: DOMAIN, redirectStatusCode: 308 },
+    ],
+    previousProject: 'hashbrown-www',
+    removedDomains: [`next.${DOMAIN}`],
     env: ['OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_BASE_URL'],
     requiredEnv: ['OPENAI_API_KEY'],
     build: {
@@ -253,7 +248,26 @@ export async function missingEnv(vercel, projectId, keys) {
   return keys.filter((key) => !present.has(key));
 }
 
-export async function ensureDomain(vercel, projectId, domain) {
+async function projectHasDomain(vercel, projectId, name) {
+  try {
+    await vercel('GET', `/v9/projects/${projectId}/domains/${name}`);
+    return true;
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+    return false;
+  }
+}
+
+/**
+ * Attach a domain to a project. When it's still on `previousProjectId`, it's
+ * moved with Vercel's move endpoint, so it's never detached in between.
+ *
+ * @param vercel - A client from {@link createVercelClient}.
+ * @param projectId - The project that should serve the domain.
+ * @param domain - `{ name, redirect?, redirectStatusCode? }`.
+ * @param previousProjectId - A project the domain may still be attached to.
+ */
+export async function ensureDomain(vercel, projectId, domain, previousProjectId) {
   let current;
   try {
     current = await vercel(
@@ -262,6 +276,23 @@ export async function ensureDomain(vercel, projectId, domain) {
     );
   } catch (error) {
     if (!isNotFound(error)) throw error;
+    if (
+      previousProjectId &&
+      (await projectHasDomain(vercel, previousProjectId, domain.name))
+    ) {
+      await vercel(
+        'POST',
+        `/v1/projects/${previousProjectId}/domains/${domain.name}/move`,
+        {
+          projectId,
+          ...(domain.redirect !== undefined && {
+            redirect: domain.redirect,
+            redirectStatusCode: domain.redirectStatusCode,
+          }),
+        },
+      );
+      return 'moved';
+    }
     await vercel('POST', `/v10/projects/${projectId}/domains`, domain);
     return 'created';
   }
@@ -278,6 +309,19 @@ export async function ensureDomain(vercel, projectId, domain) {
     return 'updated';
   }
   return 'exists';
+}
+
+/**
+ * Detach a domain from a project if it's attached.
+ *
+ * @param vercel - A client from {@link createVercelClient}.
+ * @param projectId - The project to detach the domain from.
+ * @param name - The domain name.
+ */
+export async function ensureDomainRemoved(vercel, projectId, name) {
+  if (!(await projectHasDomain(vercel, projectId, name))) return 'absent';
+  await vercel('DELETE', `/v9/projects/${projectId}/domains/${name}`);
+  return 'removed';
 }
 
 export function missingDnsRecords(existing, wanted) {
@@ -477,7 +521,7 @@ async function main() {
   log('vercel scope', teamId ?? user.id);
   log('vercel user', user.username);
 
-  let wwwProjectId;
+  let apexProjectId;
 
   for (const target of TARGETS) {
     const { status, project } = await ensureProject(vercel, target.project);
@@ -495,10 +539,25 @@ async function main() {
       ),
     );
 
+    const previousProjectId = target.previousProject
+      ? await vercel('GET', `/v9/projects/${target.previousProject}`).then(
+          (previous) => previous.id,
+          (error) => {
+            if (isNotFound(error)) return undefined;
+            throw error;
+          },
+        )
+      : undefined;
     for (const domain of target.domains) {
       log(
         `domain ${domain.name}`,
-        await ensureDomain(vercel, project.id, domain),
+        await ensureDomain(vercel, project.id, domain, previousProjectId),
+      );
+    }
+    for (const name of target.removedDomains ?? []) {
+      log(
+        `domain ${name}`,
+        await ensureDomainRemoved(vercel, project.id, name),
       );
     }
 
@@ -514,8 +573,8 @@ async function main() {
       log(`env ${key}`, 'missing', hint);
     }
 
-    if (target.key === 'www') {
-      wwwProjectId = project.id;
+    if (target.domains.some((domain) => domain.name === DOMAIN)) {
+      apexProjectId = project.id;
       log('dns zone', await ensureDnsZone(vercel, DOMAIN));
 
       if (values['dns-records']) {
@@ -612,7 +671,7 @@ async function main() {
     currentNameservers,
     recommendedIPv4,
     nameservers,
-  } = await readDomainState(vercel, wwwProjectId);
+  } = await readDomainState(vercel, apexProjectId);
   log(`domain ${DOMAIN}`, verified ? 'verified' : 'pending verification');
   log('dns', misconfigured ? 'not serving from Vercel' : 'serving from Vercel');
   if (misconfigured) {
