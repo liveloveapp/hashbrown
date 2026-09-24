@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterAll, expect, test } from 'vitest';
+import { expect, test } from 'vitest';
 import { InstallCommand } from '../../src/components/home/InstallCommand';
 import { SdkSwitch } from '../../src/components/home/SdkSwitch';
 
@@ -9,17 +9,16 @@ import { SdkSwitch } from '../../src/components/home/SdkSwitch';
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-const mounted: Root[] = [];
+/** A mounted toggle; each test unmounts its own so no subscription outlives it. */
+interface Mounted {
+  container: HTMLElement;
+  unmount: () => void;
+}
 
-afterAll(() => {
-  act(() => mounted.forEach((root) => root.unmount()));
-});
-
-function mount(): HTMLElement {
+function mount(): Mounted {
   const container = document.createElement('div');
   document.body.replaceChildren(container);
-  const root = createRoot(container);
-  mounted.push(root);
+  const root: Root = createRoot(container);
   act(() => {
     root.render(
       <>
@@ -28,7 +27,7 @@ function mount(): HTMLElement {
       </>,
     );
   });
-  return container;
+  return { container, unmount: () => act(() => root.unmount()) };
 }
 
 function radio(container: HTMLElement, label: string): HTMLButtonElement {
@@ -39,27 +38,29 @@ function radio(container: HTMLElement, label: string): HTMLButtonElement {
 
 test('selecting React switches the code and stores the preference', () => {
   localStorage.clear();
-  const container = mount();
+  const { container, unmount } = mount();
 
   act(() => radio(container, 'React').click());
 
   expect(container.textContent).toContain('react code');
   expect(container.textContent).toContain('{core,react,openai}');
   expect(JSON.parse(localStorage.getItem('config') ?? '{}').sdk).toBe('react');
+  unmount();
 });
 
 test('a stored preference picks the framework', () => {
   localStorage.setItem('config', JSON.stringify({ sdk: 'react' }));
 
-  const container = mount();
+  const { container, unmount } = mount();
 
   expect(container.textContent).toContain('react code');
   expect(radio(container, 'React').getAttribute('aria-checked')).toBe('true');
+  unmount();
 });
 
 test('arrow keys select and focus the other framework', () => {
   localStorage.clear();
-  const container = mount();
+  const { container, unmount } = mount();
 
   act(() => {
     radio(container, 'Angular').dispatchEvent(
@@ -69,4 +70,5 @@ test('arrow keys select and focus the other framework', () => {
 
   expect(container.textContent).toContain('react code');
   expect(document.activeElement).toBe(radio(container, 'React'));
+  unmount();
 });

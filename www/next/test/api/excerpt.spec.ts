@@ -4,6 +4,7 @@ import {
   excerptFromTokens,
   segmentLines,
 } from '../../src/components/api/excerpt';
+import { createExcerptHighlighter } from '../../src/components/api/highlight-excerpt';
 import type { ApiExcerptToken } from '../../src/lib/api-reference';
 
 const tokens: ApiExcerptToken[] = [
@@ -103,4 +104,27 @@ test('splits highlighted tokens at reference boundaries', () => {
       { text: ';', color: '#0f0', fontStyle: undefined, reference: undefined },
     ],
   ]);
+});
+
+test('links a reference on a later line of a real Shiki highlight', async () => {
+  const code = 'function useChat(\n  options: UseChatOptions,\n): void;';
+  const start = code.indexOf('UseChatOptions');
+  const highlight = await createExcerptHighlighter();
+
+  const { lines } = highlight({
+    code,
+    ranges: [
+      {
+        start,
+        end: start + 'UseChatOptions'.length,
+        reference: '@hashbrownai/react!UseChatOptions:interface',
+      },
+    ],
+  });
+
+  // Shiki's token offsets index the whole code, not each line; this breaks
+  // if an upgrade changes that.
+  expect(
+    lines[1].filter((segment) => segment.reference).map((s) => s.text),
+  ).toEqual(['UseChatOptions']);
 });
