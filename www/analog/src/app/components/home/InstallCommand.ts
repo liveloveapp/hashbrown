@@ -128,7 +128,7 @@ export class InstallCommand {
   /** Center the tabs and command, used by the closing CTA. */
   readonly centered = input(false);
 
-  readonly sdks: Sdk[] = ['react', 'angular'];
+  readonly sdks: Sdk[] = ['angular', 'react'];
   readonly labels = SDK_LABELS;
   readonly sdk = this.config.sdk;
   readonly command = computed(() => installCommand(this.sdk()));
