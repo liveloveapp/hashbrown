@@ -1,0 +1,38 @@
+/* Squircle (8px, 2px border) replaced with border-radius. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  width: 144px;
+  border: 2px solid var(--chocolate-brown-light, #ad907c);
+  border-radius: 8px;
+}
+
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.count {
+  font-family: Fredoka, sans-serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.count,
+.star {
+  color: var(--sunshine-yellow-dark);
+}
+
+.label {
+  font-family: Fredoka, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  color: var(--gray-dark);
+}
