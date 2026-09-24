@@ -1,0 +1,12 @@
+/* Port of www/analog/src/app/components/Youtube.ts. */
+.host {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.iframe {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  height: auto;
+}

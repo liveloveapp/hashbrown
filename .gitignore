@@ -83,7 +83,7 @@ llms-full.txt
 .nx/migrate-runs
 
 # Local output from retired examples
-samples/
+/samples/
 
 # Next.js build output
 .next

@@ -26,6 +26,10 @@ export interface BlogPost {
   tags: string[];
   /** Absolute Open Graph image URL from frontmatter, if the post sets one. */
   ogImage: string | undefined;
+  /** Team member ids for the byline; each maps to `/image/team/<id>.png`. */
+  team: string[];
+  /** YouTube URL for posts that embed a video (talks). */
+  youtube: string | undefined;
   body: string;
 }
 
@@ -39,6 +43,8 @@ interface PostAttributes {
   description: string;
   tags?: string[];
   ogImage?: string;
+  team?: string[];
+  youtube?: string;
 }
 
 const docsRoot = (sdk: Sdk) =>
@@ -99,6 +105,8 @@ function toPost(file: string): BlogPost {
     date: slug.slice(0, 10),
     tags: attributes.tags ?? [],
     ogImage: attributes.ogImage,
+    team: attributes.team ?? [],
+    youtube: attributes.youtube,
     body,
   };
 }

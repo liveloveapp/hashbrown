@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { BlogPostView } from '../../../components/blog/BlogPostView';
 import { docsComponents } from '../../../components/docs-components';
 import { listBlogPosts, readBlogPost } from '../../../lib/content';
 import { renderMarkdown } from '../../../lib/markdown';
 import { pageMetadata } from '../../../lib/site-metadata';
-import styles from '../../docs/docs.module.css';
 
 type Params = { slug: string };
 
@@ -15,6 +15,7 @@ export function generateStaticParams(): Params[] {
 
 export const dynamicParams = false;
 
+/** Title, description, Open Graph image and publish date from the post. */
 export async function generateMetadata({
   params,
 }: {
@@ -41,13 +42,10 @@ export default async function BlogPostPage({
   if (!post) {
     notFound();
   }
+  const { body, ...summary } = post;
   return (
-    <article className={styles.prose}>
-      <h1>{post.title}</h1>
-      <p>
-        <small>{post.date}</small>
-      </p>
-      {(await renderMarkdown(post.body, docsComponents('react'))).content}
-    </article>
+    <BlogPostView post={summary}>
+      {(await renderMarkdown(body, docsComponents('react'))).content}
+    </BlogPostView>
   );
 }

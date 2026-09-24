@@ -1,0 +1,66 @@
+/* Port of www/analog/src/app/components/PostPreview.ts. */
+.host {
+  display: flex;
+  flex-direction: column;
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  height: 100%;
+  padding: 32px;
+}
+
+.title {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title > h2 {
+  color: var(--gray-dark, #3d3c3a);
+  transition: color 0.2s ease-in-out;
+  /* Longhands: with the `font` shorthand, Next's CSS minifier drops
+     font-variation-settings, and the variable font renders light. */
+  font-family: 'KefirVariable', sans-serif;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 400;
+  font-variation-settings: 'wght' 400;
+}
+
+.link:hover > .title > h2 {
+  color: var(--sunset-orange, #e88c4d);
+}
+
+.title > time {
+  color: var(--gray-light, #a4a3a1);
+  font:
+    400 normal 14px/18px Fredoka,
+    sans-serif;
+}
+
+.description {
+  flex: 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spacer {
+  flex: 1 auto;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.youtube {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
