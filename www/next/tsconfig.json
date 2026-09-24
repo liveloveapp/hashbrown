@@ -15,10 +15,10 @@
     "incremental": true,
     "ignoreDeprecations": "6.0",
     "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["www/next/src/*"],
-      "@hashbrownai/core": ["packages/core/src/index.ts"],
-      "@hashbrownai/openai": ["packages/openai/src/index.ts"]
+      "@/*": ["src/*"],
+      "@hashbrownai/openai": ["../../dist/packages/openai"]
     }
   },
   "include": [
