@@ -1,10 +1,12 @@
-<h1 align="center">Hashbrown - Build Generative User Interfaces</h1>
+<h1 align="center">Hashbrown</h1>
 
 <p align="center">
   <img src="https://hashbrown.dev/image/logo/brand-mark.svg" alt="Hashbrown Logo" width="144px" height="136px"/>
   <br>
-  <em>Hashbrown is an open-source framework for building user interfaces
-    <br />that converse with users, dynamically reorganize, and even code themselves.</em>
+  <strong>AI chat and agents for your React or Angular app.</strong>
+  <br>
+  <em>Hashbrown is a headless TypeScript framework. The model renders your
+    <br />components and calls your tools, in the browser, with any provider.</em>
   <br>
 </p>
 
@@ -12,6 +14,8 @@
   <a href="https://hashbrown.dev/"><strong>hashbrown.dev</strong></a>
   <br>
 </p>
+
+`@hashbrownai/ollama` is the Node adapter for Ollama. It maps an AG-UI run from Hashbrown's React or Angular packages to the Ollama SDK and streams AG-UI events back, so you can run local models.
 
 ## Getting Started
 
@@ -66,13 +70,7 @@ app.listen(3000);
 
 ## Contributing
 
-hashbrown is a community-driven project. Read our [contributing guidelines](https://github.com/liveloveapp/hashbrown?tab=contributing-ov-file) on how to get involved.
-
-## Workshops and Consulting
-
-Want to learn how to build web apps with AI? [Learn more about our workshops](https://hashbrown.dev/workshops).
-
-LiveLoveApp provides hands-on engagement with our AI engineers for architecture reviews, custom integrations, proof-of-concept builds, performance tuning, and expert guidance on best practices. [Learn more about LiveLoveApp](https://liveloveapp.com).
+Hashbrown is a community-driven project. Read our [contributing guidelines](https://github.com/liveloveapp/hashbrown?tab=contributing-ov-file) on how to get involved.
 
 ## License
 

@@ -1,12 +1,15 @@
-<h1 align="center">Hashbrown - Build Agents for the Browser</h1>
+<h1 align="center">Hashbrown</h1>
 
 <p align="center">
   <img src="www/public/image/logo/brand-mark.svg" alt="Hashbrown Logo" width="144px" height="136px"/>
   <br>
-  <em>Hashbrown is an open-source framework for 
-    <br />building agents that run in the browser.</em>
+  <strong>AI chat and agents for your React or Angular app.</strong>
   <br>
-    <a href="https://hashbrown.dev/docs/angular/start/intro">Read Angular Docs</a> | <a href="https://hashbrown.dev/docs/react/start/intro">Read React Docs</a>
+  <em>Hashbrown is a headless TypeScript framework. The model renders your
+    <br />components and calls your tools, in the browser, with any provider.</em>
+  <br>
+  <br>
+    <a href="https://hashbrown.dev/docs/angular/start/quick">Angular quick start</a> | <a href="https://hashbrown.dev/docs/react/start/quick">React quick start</a>
   <br>
 </p>
 
@@ -29,68 +32,185 @@
   </a>
 </p>
 
-[What is Hashbrown](#what-is-hashbrown) | [Installation](#installation) | [Getting Started](#getting-started) | [Supported LLM Providers](#supported-llm-providers) | [Features](#features) | [Walkthroughs](#walkthroughs) | [Core Team](#core-team) | [Consulting](#consulting)
-
-<!-- TODO: embed "marketing" video here when finished-->
+[What is Hashbrown](#what-is-hashbrown) | [Installation](#installation) | [How it works](#how-it-works) | [Features](#features) | [Connect a model](#connect-a-model) | [See it in a real app](#see-it-in-a-real-app) | [Contributing](#contributing)
 
 <hr>
 
 ## What Is Hashbrown
 
-Hashbrown is a set of core and framework-specific packages for the UI along with LLM SDK wrappers for Node backends. Hashbrown makes it easy to embed intelligence in your React or Angular components. Use Hashbrown to generate user interfaces, turn natural language into structured data, and predict your user's next action.
+Hashbrown is a headless TypeScript framework for AI chat and agents in React
+and Angular. It brings generative UI from your own components, client-side
+tools, and streaming structured output from any model. Hashbrown ships no chat
+UI of its own: you keep your components and your design system.
+
+- **Generative UI.** The model only renders components you register, and
+  Skillet schemas validate their props.
+- **Tools in the browser.** Tools run in your app, with its state and services.
+- **Built for streaming.** Components render while the response streams in.
+- **Any model.** Your server keeps the API key and streams from OpenAI,
+  Anthropic, Gemini, Bedrock, Azure, or Ollama.
 
 ## Installation
 
-Hashbrown typically needs three packages installed:
+Hashbrown has three kinds of packages:
 
-- @hashbrownai/core: a shared set of primitives for managing state to/from LLM providers
-- @hashbrownai/<angular|react>: a framework-specific set of wrappers for the core primitives to easily tie Hashbrown into framework lifecycle flows
-- @hashbrownai/<provider>: A provider-specific wrapper for Node backends that wraps a provider SDK to provide consistency between providers.
+- `@hashbrownai/core`: the framework-agnostic primitives, including the Skillet schema language and the streaming JSON parser
+- `@hashbrownai/<angular|react>`: resources, hooks, and components for your framework
+- `@hashbrownai/<provider>`: a Node adapter that streams from a model provider's SDK
 
-For example, to use Hashbrown with Angular and OpenAI's GPT models, you could install the requisite packages like so:
-
-```sh
-npm install @hashbrownai/{core,angular,openai} --save
-```
-
-To use Hashbrown with React and Azure, you'd instead do:
+For Angular and OpenAI:
 
 ```sh
-npm install @hashbrownai/{core,react,azure} --save
+npm install @hashbrownai/{core,angular,openai}
 ```
 
-## Supported LLM Providers
+For React and OpenAI:
 
-Hashbrown supports a (growing) list of proprietary and open-weights models via vendor-specific packages that wrap each SDK's inputs and outputs into a consistent shape for Hashbrown to consume.
+```sh
+npm install @hashbrownai/{core,react,openai}
+```
 
-They include:
+## How It Works
 
-- [OpenAI](https://hashbrown.dev/docs/angular/platform/openai)
-- [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure)
-- [Anthropic](https://hashbrown.dev/docs/angular/platform/anthropic)
-- [Amazon Bedrock](https://hashbrown.dev/docs/angular/platform/bedrock)
-- [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
-- [Google Gemini](https://hashbrown.dev/docs/angular/platform/google)
+The same API in React and Angular.
 
-Note that any model supported by a vendor's SDK will generally be usable via Hashbrown. That said, not all models (especially some older, smaller ones) will be able to handle the full feature set of Hashbrown.
+### 1. Expose your components
 
-## Getting Started
+The model only renders components you register. Skillet validates their props.
 
-### In Node
+Angular:
 
-Hashbrown backend SDK wrappers put a consistent API surface around varied SDK APIs, and allow you to provide API keys and model choices, as well as other vendor-specific parameters.
+```ts
+export const invoiceKit = createUiKit({
+  components: [
+    exposeComponent(InvoiceCard, {
+      description: 'Show one invoice',
+      input: { id: s.string('Invoice id') },
+    }),
+  ],
+});
+```
 
-Hashbrown uses HTTP streaming to communicate between Node backends and UI
-hooks/resources.
+React:
 
-The below example demonstrates exposing a POST endpoint `/run` that:
+```tsx
+const invoiceKit = useUiKit({
+  components: [
+    exposeComponent(InvoiceCard, {
+      description: 'Show one invoice',
+      props: { id: s.string('Invoice id') },
+    }),
+  ],
+});
+```
 
-- accepts an AG-UI run input containing messages, context, state, and tool definitions
-- streams AG-UI events back to the Hashbrown UI mechanisms over SSE
+### 2. Give it tools
 
-Hashbrown uses `/run` by default. You can configure another URL as long as the backend and UI use the same value.
+Tools run in the browser, with your app's state and services.
 
-```typescript
+Angular:
+
+```ts
+chat = uiChatResource({
+  system: 'Help users understand invoices.',
+  components: [invoiceKit],
+  tools: [
+    createTool({
+      name: 'getInvoices',
+      description: 'List the invoices',
+      handler: () => inject(InvoiceApi).list(),
+    }),
+  ],
+});
+```
+
+React:
+
+```tsx
+const getInvoices = useTool({
+  name: 'getInvoices',
+  description: 'List the invoices',
+  handler: () => api.list(),
+  deps: [api],
+});
+
+const chat = useUiChat({
+  system: 'Help users understand invoices.',
+  components: [invoiceKit],
+  tools: [getInvoices],
+});
+```
+
+### 3. Render the stream
+
+Components render while the response streams in.
+
+Angular:
+
+<!-- prettier-ignore -->
+```html
+@for (message of chat.value(); track $index) {
+  <hb-render-message [message]="message" />
+}
+```
+
+React:
+
+```tsx
+chat.messages.map((message) =>
+  message.role === 'assistant' ? message.ui : message.content,
+);
+```
+
+Before you use Hashbrown's hooks or resources, point them at your server.
+
+Angular:
+
+```ts
+export const appConfig: ApplicationConfig = {
+  providers: [provideHashbrown({ baseUrl: '/run' })],
+};
+```
+
+React:
+
+```tsx
+<HashbrownProvider url="/run">{children}</HashbrownProvider>
+```
+
+## Features
+
+| Feature                                                                           | What it does                                                                    |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [Generative UI](https://hashbrown.dev/docs/angular/concept/components)            | The model composes your components. Bundle them into UI kits.                   |
+| [Client-side tools](https://hashbrown.dev/docs/angular/concept/functions)         | The model calls functions in your app. Connect MCP servers too.                 |
+| [Structured output](https://hashbrown.dev/docs/angular/concept/structured-output) | Skillet schemas turn model output into typed JSON.                              |
+| [Streaming](https://hashbrown.dev/docs/angular/concept/streaming)                 | Strings, arrays, and objects parse as they arrive. Magic Text streams Markdown. |
+| [Any model](https://hashbrown.dev/docs/angular/start/platforms)                   | OpenAI, Anthropic, Gemini, Bedrock, Azure, Ollama, or a model in the browser.   |
+| [Code execution](https://hashbrown.dev/docs/angular/concept/runtime)              | Run model-written JavaScript in a sandbox.                                      |
+
+Every feature is documented for both frameworks:
+[Angular docs](https://hashbrown.dev/docs/angular/start/intro) |
+[React docs](https://hashbrown.dev/docs/react/start/intro)
+
+## Connect a Model
+
+Your server keeps the API key. A Hashbrown adapter maps an AG-UI run to your
+provider's SDK and streams AG-UI events back to the browser.
+
+- [OpenAI](https://hashbrown.dev/docs/angular/platform/openai): `@hashbrownai/openai`
+- [Anthropic](https://hashbrown.dev/docs/angular/platform/anthropic): `@hashbrownai/anthropic`
+- [Google Gemini](https://hashbrown.dev/docs/angular/platform/google): `@hashbrownai/google`
+- [Amazon Bedrock](https://hashbrown.dev/docs/angular/platform/bedrock): `@hashbrownai/bedrock`
+- [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure): `@hashbrownai/azure`
+- [Ollama](https://hashbrown.dev/docs/angular/platform/ollama): `@hashbrownai/ollama`
+- [Your own backend](https://hashbrown.dev/docs/angular/platform/custom)
+
+Hashbrown's UI packages post to `/run` by default. You can change the URL as
+long as the server and the UI use the same one. An Express endpoint with the
+OpenAI adapter:
+
+```ts
 import type { RunAgentInput } from '@ag-ui/core';
 import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
@@ -122,72 +242,17 @@ app.post('/run', async (req, res) => {
 });
 ```
 
-See the [provider documentation](https://hashbrown.dev/docs/react/platform/openai) for backend integration guidance.
+Not every model handles every feature. Some older, smaller models struggle with
+generative UI and tool calling.
 
-### In React
+## See It in a Real App
 
-Configure the provider:
+[Invoicing](examples/invoicing/README.md) is an invoicing assistant that answers
+with the app's own tables and charts. It pairs Hashbrown (chat and generative
+UI) with [b4.run](https://b4.run) (agent backend) and
+[pretable.ai](https://pretable.ai) (data grid). The data is simulated.
 
-```ts
-export function Providers() {
-  return (
-    <HashbrownProvider url={url}>
-      {children}
-    </HashbrownProvider>
-  )
-}
-```
-
-With the provider set up, you can use Hashbrown hooks anywhere in your application.
-
-Our docs site has various examples and recipes, like [extracting structured data from a text input](https://hashbrown.dev/docs/react/recipes/natural-language-to-structured-data).
-
-### In Angular
-
-Configure the provider:
-
-```ts
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideHashbrown({
-      baseUrl: '/run',
-    }),
-  ],
-};
-```
-
-With the provider set up, you can use Hashbrown hooks anywhere in your application.
-
-Our docs site has various examples and recipes, like [equipping a chatbot with tool calling](https://hashbrown.dev/docs/angular/recipes/ui-chatbot).
-
-## Features
-
-Hashbrown offers a toolkit of ways to enhance a UI with intelligence:
-
-- input completions
-- structured completions (i.e. natural language )
-- component selection and rendering
-- tool calling
-- code generation and execution
-
-Each of these can interact with an app's state, persistence, components, etc., so there is a maximum flexibility in how and when to apply AI.
-
-In addition, because LLMs can handle most languages, all Hashbrown features can handle most any language as an input or output.
-
-We've chosen to document them in the context of each UI framework we support.
-
-For Angular: https://hashbrown.dev/docs/angular/start/intro
-
-For React: https://hashbrown.dev/docs/react/start/intro
-
-## Example App
-
-[Invoicing](examples/invoicing/README.md) is the maintained example: a React app
-using Hashbrown, B4 and Pretable to explore a simulated ledger, answer questions
-with generated UI, and review payment allocations before applying them.
-All data and allocations are simulated.
-
-[Try the invoicing app](https://invoicing.hashbrown.dev) or run it locally:
+[Try the app](https://invoicing.hashbrown.dev) or run it locally:
 
 ```shell
 nvm use
@@ -206,17 +271,19 @@ for architecture, verification and deployment details. Angular integration
 remains covered by the [Angular documentation](https://hashbrown.dev/docs/angular/start/quick)
 and the example's internal conformance hosts.
 
+## Need a Complete Chat UI?
+
+Hashbrown is headless. [threadplane](https://threadplane.ai) is the full agent
+UI for React and Angular, built on Hashbrown: threads, approvals, and tool
+progress. Free and MIT, with enterprise support from the team behind Hashbrown.
+
 ## Core Team
 
-`hashbrown` is a community effort led by Mike Ryan, Brian Love and Ben Taylor.
+Hashbrown is a community effort led by Mike Ryan, Brian Love and Ben Taylor.
 
 ## Contributing
 
-hashbrown is a community-driven project. Read our [contributing guidelines](./CONTRIBUTING.md) on how to get involved.
-
-## Consulting
-
-Hashbrown is built in the open by [LiveLoveApp](https://www.liveloveapp.com). We love building products for the web, and have helped engineering teams across startups, banking, and finance.
+Hashbrown is a community-driven project. Read our [contributing guidelines](./CONTRIBUTING.md) on how to get involved.
 
 ## License
 
