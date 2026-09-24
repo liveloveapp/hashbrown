@@ -12,11 +12,9 @@ import {
 } from '../../lib/canonical-reference';
 import { type MarkdownComponents, renderMarkdown } from '../../lib/markdown';
 import { docsComponents } from '../docs-components';
-import { SymbolLink } from '../SymbolLink';
 import type { Excerpt, HighlightedCode } from './excerpt';
 import { createExcerptHighlighter } from './highlight-excerpt';
 import { methodsOf } from './symbol-model';
-import { SymbolPopover } from './SymbolPopover';
 import { SymbolPopoverContent } from './SymbolPopoverContent';
 
 /** Where a referenced symbol links to, and its popover when it has a page here. */
@@ -133,6 +131,59 @@ function popoverFor(reference: string): Promise<ReactNode | undefined> {
   return popover;
 }
 
+async function resolveTargets(
+  references: string[],
+): Promise<Map<string, ReferenceTarget>> {
+  const served = pagesByKey();
+  return new Map(
+    await Promise.all(
+      references.flatMap((reference) => {
+        const target = internalHref(reference, served);
+        if (!target) {
+          return [];
+        }
+        return [
+          (async () =>
+            [
+              reference,
+              {
+                ...target,
+                popover: target.external
+                  ? undefined
+                  : await popoverFor(reference),
+              },
+            ] as const)(),
+        ];
+      }),
+    ),
+  );
+}
+
+function popoversOf(
+  targets: Map<string, ReferenceTarget>,
+): Map<string, ReactNode> {
+  return new Map(
+    [...targets].flatMap(([reference, { popover }]) =>
+      popover ? [[reference, popover] as const] : [],
+    ),
+  );
+}
+
+/**
+ * Server-rendered popover bodies for the given canonical references, keyed by
+ * reference. Only public Hashbrown symbols with a page here get one; private,
+ * unknown and external references are left out. Bodies are built once per
+ * reference and shared across pages.
+ *
+ * @param references - The references a page links, e.g. from
+ *   `collectSymbolReferences`.
+ */
+export async function symbolPopovers(
+  references: string[],
+): Promise<Map<string, ReactNode>> {
+  return popoversOf(await resolveTargets(references));
+}
+
 async function renderAll(
   sources: string[],
   components: MarkdownComponents,
@@ -163,50 +214,14 @@ export async function buildSymbolContext(
 ): Promise<SymbolRenderContext> {
   const highlight = await createExcerptHighlighter();
   const sources = collectMarkdown(summary);
-  const served = pagesByKey();
   const references = links
     ? collectReferences(summary, [...sources.block, ...sources.inline])
     : [];
-  const targets = new Map(
-    await Promise.all(
-      references.flatMap((reference) => {
-        const target = internalHref(reference, served);
-        if (!target) {
-          return [];
-        }
-        return [
-          (async () =>
-            [
-              reference,
-              {
-                ...target,
-                popover: target.external
-                  ? undefined
-                  : await popoverFor(reference),
-              },
-            ] as const)(),
-        ];
-      }),
-    ),
+  const targets = await resolveTargets(references);
+  const components = docsComponents(
+    pkg === 'angular' ? 'angular' : 'react',
+    popoversOf(targets),
   );
-
-  const base = docsComponents(pkg === 'angular' ? 'angular' : 'react');
-  const components: MarkdownComponents = links
-    ? {
-        ...base,
-        'hb-symbol-link': ({ reference = '' }: { reference?: string }) => {
-          const popover = targets.get(reference)?.popover;
-          const link = <SymbolLink reference={reference} />;
-          return popover ? (
-            <SymbolPopover reference={reference} content={popover}>
-              {link}
-            </SymbolPopover>
-          ) : (
-            link
-          );
-        },
-      }
-    : base;
   const [block, inline] = await Promise.all([
     renderAll(sources.block, components),
     renderAll(sources.inline, { ...components, p: unwrapParagraph }),

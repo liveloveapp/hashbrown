@@ -30,22 +30,22 @@ export interface RenderedMarkdown {
   headings: Heading[];
 }
 
+/** Markdown parsed to a hast tree, before its elements become components. */
+export interface ParsedMarkdown {
+  tree: Root;
+  headings: Heading[];
+}
+
 /**
- * Render site markdown, including inline HTML and `<hb-*>` custom elements, to
- * React elements. Runs at build time in server components.
+ * Parse site markdown to hast: GFM, canonical references as `hb-symbol-link`
+ * elements, raw HTML, heading ids and highlighted code. Split from
+ * {@link renderMarkdownTree} so a page can inspect the tree (for example, to
+ * collect its symbol references) before choosing its components.
  *
  * @param source - Markdown without frontmatter.
- * @param components - Element-name to component map. Unmapped `hb-*`/`www-*`
- *   elements render as marked placeholders.
  */
-export async function renderMarkdown(
-  source: string,
-  components: MarkdownComponents,
-): Promise<RenderedMarkdown> {
-  const { tree, headings } = await new Promise<{
-    tree: Root;
-    headings: Heading[];
-  }>((resolve, reject) => {
+export function parseMarkdown(source: string): Promise<ParsedMarkdown> {
+  return new Promise<ParsedMarkdown>((resolve, reject) => {
     // The callback form hands back the file, where rehypeHeadingIds leaves
     // the headings; the promise form returns only the tree.
     processor.run(processor.parse(source), source, (error, tree, file) => {
@@ -59,9 +59,23 @@ export async function renderMarkdown(
       });
     });
   });
-  markUnported(tree, components);
+}
+
+/**
+ * Turn a parsed tree into React elements. Unmapped `hb-*`/`www-*` elements
+ * render as marked placeholders. Works on a copy; the parsed tree is unchanged.
+ *
+ * @param parsed - Output of {@link parseMarkdown}.
+ * @param components - Element-name to component map.
+ */
+export function renderMarkdownTree(
+  { tree, headings }: ParsedMarkdown,
+  components: MarkdownComponents,
+): RenderedMarkdown {
+  const marked = structuredClone(tree);
+  markUnported(marked, components);
   return {
-    content: toJsxRuntime(tree, {
+    content: toJsxRuntime(marked, {
       Fragment,
       jsx,
       jsxs,
@@ -69,6 +83,21 @@ export async function renderMarkdown(
     }),
     headings,
   };
+}
+
+/**
+ * Render site markdown, including inline HTML and `<hb-*>` custom elements, to
+ * React elements. Runs at build time in server components.
+ *
+ * @param source - Markdown without frontmatter.
+ * @param components - Element-name to component map. Unmapped `hb-*`/`www-*`
+ *   elements render as marked placeholders.
+ */
+export async function renderMarkdown(
+  source: string,
+  components: MarkdownComponents,
+): Promise<RenderedMarkdown> {
+  return renderMarkdownTree(await parseMarkdown(source), components);
 }
 
 /**
