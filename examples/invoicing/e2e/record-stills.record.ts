@@ -6,7 +6,7 @@ import sharp from 'sharp';
 // Regenerate by hand after the tape or the invoicing UI changes:
 //   npx nx stills invoicing-e2e
 // Stills are committed; CI never rewrites them.
-const OUT = resolve(__dirname, '../../../www/analog/public/image/landing-page');
+const OUT = resolve(__dirname, '../../../www/public/image/landing-page');
 const QUESTION = 'Which USD customers are more than 60 days overdue?';
 const BUDGET = 150 * 1024;
 
