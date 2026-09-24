@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { GitHubStarButton } from './GitHubStarButton';
-import { DEFAULT_SDK, docsUrl, quickStartUrl, type Sdk } from './links';
+import type { Sdk } from './links';
 import { MobileMenu } from './MobileMenu';
 import { NavLink } from './NavLink';
+import { SdkLink } from './SdkLink';
 import { SearchButton } from './SearchButton';
 import styles from './Header.module.css';
 
@@ -12,13 +13,13 @@ import styles from './Header.module.css';
  * quick start link, with a fullscreen menu below 768px. Ports the Angular
  * `www-header`.
  *
- * @param props.sdk - The SDK the docs and quick start links point to.
- *   Defaults to `angular`, the Angular `ConfigService` default.
+ * @param props.sdk - The SDK the docs and quick start links point to. Omit it
+ *   to follow the reader's saved preference (Angular by default).
  * @param props.docsMenu - The docs menu shown in the mobile menu's docs tab.
  * @param props.apiMenu - The API menu shown in the mobile menu's api tab.
  */
 export function Header({
-  sdk = DEFAULT_SDK,
+  sdk,
   docsMenu,
   apiMenu,
 }: {
@@ -40,9 +41,9 @@ export function Header({
           <nav aria-label="Main">
             <ul>
               <li>
-                <NavLink href={docsUrl(sdk)} activeClassName={active}>
+                <SdkLink to="docs" sdk={sdk} activeClassName={active}>
                   docs
-                </NavLink>
+                </SdkLink>
               </li>
               <li>
                 <NavLink href="/api" activeClassName={active}>
@@ -66,9 +67,13 @@ export function Header({
                 <GitHubStarButton />
               </li>
               <li>
-                <Link className={styles.quickStart} href={quickStartUrl(sdk)}>
+                <SdkLink
+                  to="quick-start"
+                  sdk={sdk}
+                  className={styles.quickStart}
+                >
                   Quick start
-                </Link>
+                </SdkLink>
               </li>
             </ul>
           </nav>

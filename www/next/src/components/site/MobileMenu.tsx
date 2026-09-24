@@ -13,7 +13,8 @@ import {
   useState,
 } from 'react';
 import { CloseIcon, MenuIcon } from './icons';
-import { quickStartUrl, type Sdk } from './links';
+import type { Sdk } from './links';
+import { SdkLink } from './SdkLink';
 import styles from './MobileMenu.module.css';
 
 /** Which menu the mobile menu shows. */
@@ -38,7 +39,7 @@ export function MobileMenuPanel({
   closeButtonRef,
 }: {
   id: string;
-  sdk: Sdk;
+  sdk?: Sdk;
   tab: MobileMenuTab;
   onTabChange: (tab: MobileMenuTab) => void;
   onClose: () => void;
@@ -123,9 +124,9 @@ export function MobileMenuPanel({
             <Link href="/blog" onClick={onClose}>
               blog
             </Link>
-            <Link href={quickStartUrl(sdk)} onClick={onClose}>
+            <SdkLink to="quick-start" sdk={sdk} onClick={onClose}>
               quick start
-            </Link>
+            </SdkLink>
           </div>
         </div>
       </div>
@@ -144,7 +145,7 @@ export function MobileMenu({
   docsMenu,
   apiMenu,
 }: {
-  sdk: Sdk;
+  sdk?: Sdk;
   docsMenu?: ReactNode;
   apiMenu?: ReactNode;
 }) {

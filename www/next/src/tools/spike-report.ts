@@ -85,11 +85,22 @@ const blogRoutes = [
     .map((f) => `/blog/${f.replace(/\.md$/, '')}`),
 ];
 
+const pagesDir = join(root, 'www/analog/src/app/pages');
+const otherRoutes = [
+  '/',
+  '/api',
+  ...readdirSync(join(pagesDir, 'samples'))
+    .filter((f) => f.endsWith('.page.ts'))
+    .map((f) => f.replace(/\.page\.ts$/, ''))
+    .map((name) => (name === 'index' ? '/samples' : `/samples/${name}`)),
+];
+
 console.log('\nRoute parity (source → prerendered by Next):');
 for (const [label, routes] of [
   ['docs (llms.txt)', llmsDocs],
   ['api (api-report.min.json)', apiRoutes],
   ['blog (content files)', blogRoutes],
+  ['home, api index, samples', otherRoutes],
 ] as const) {
   const missing = routes.filter((route) => !built.has(route));
   console.log(
