@@ -1,0 +1,228 @@
+/* Port of www/analog/src/app/pages/blog/[slug].page.ts. The Angular markdown
+   rules targeted `article ::ng-deep analog-markdown > div`; here they target
+   `.markdown`. */
+.host {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.bleed {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 16px 16px 64px;
+  width: 100%;
+}
+
+.title {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title > h1 {
+  color: var(--gray-dark);
+  /* Longhands: with the `font` shorthand, Next's CSS minifier drops
+     font-variation-settings, and the variable font renders light. */
+  font-family: 'KefirVariable', sans-serif;
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  font-variation-settings: 'wght' 700;
+}
+
+/* The date isn't on the Angular post page; styled like the preview's date. */
+.title > time {
+  color: var(--gray-light, #a4a3a1);
+  font:
+    400 normal 14px/18px Fredoka,
+    sans-serif;
+}
+
+.markdown {
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown h2 {
+  font:
+    500 24px/32px Fredoka,
+    sans-serif;
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+.markdown h3 {
+  font:
+    500 20px/28px Fredoka,
+    sans-serif;
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+.markdown h4 {
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+.markdown p {
+  margin: 0 0 24px;
+  line-height: 1.8;
+}
+
+.markdown a {
+  text-decoration: underline;
+  text-decoration-color: #774625;
+  color: #774625;
+  font-weight: 600;
+}
+
+.markdown a:hover {
+  text-decoration-color: #fbbb52;
+}
+
+.markdown ul,
+.markdown ol {
+  margin-bottom: 24px;
+}
+
+.markdown hr {
+  border: 0;
+  border-top: 1px solid rgba(47, 47, 43, 0.24);
+  margin: 40px 0;
+}
+
+.markdown strong {
+  font-weight: 600;
+}
+
+.markdown ul {
+  list-style: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-left: 24px;
+}
+
+.markdown ol {
+  list-style: decimal;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-left: 24px;
+}
+
+.markdown > pre:global(.shiki.hashbrown) {
+  padding: 16px;
+  border-radius: 8px;
+  background: #2b2a29 !important;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.markdown code:not(pre code) {
+  font:
+    700 16px/24px 'JetBrains Mono',
+    monospace;
+}
+
+.markdown [data-component='code-example'] {
+  margin-bottom: 16px;
+}
+
+.markdown blockquote {
+  background: #faf9f0;
+  border-radius: 16px;
+  padding: 24px;
+  margin: 32px 0;
+}
+
+.markdown blockquote > p {
+  margin: 0;
+  font:
+    500 24px/32px Fredoka,
+    sans-serif;
+}
+
+.markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* In Angular the carousel's `.scroller > *` rule reset margin and padding on
+   its slides; this selector is more specific, so leave slides out of it. */
+.markdown img:not([data-scroller] > img) {
+  margin: 32px 0;
+  padding: 32px;
+}
+
+/* `hb-carousel` host: the Carousel root holds the `[data-scroller]` wrapper. */
+.markdown div:has(> div > [data-scroller]) {
+  margin: 32px 0 56px;
+}
+
+/* Angular's `.carousel` rule matched the Carousel's inner wrapper. */
+.markdown div:has(> [data-scroller]) {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.markdown div:has(> [data-scroller])::-webkit-scrollbar {
+  display: none;
+}
+
+.markdown table {
+  border-collapse: collapse;
+  border-radius: 12px;
+  margin: 0 0 24px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px #000;
+}
+
+.markdown table > thead {
+  padding: 8px 16px;
+  color: rgba(250, 249, 240, 0.8);
+  background: #3d3c3a;
+  border-bottom: 1px solid #000;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.markdown table tr {
+  border-bottom: 1px solid #000;
+}
+
+.markdown table th,
+.markdown table td {
+  padding: 16px;
+  text-align: left;
+}
+
+.markdown table th {
+  font:
+    400 16px/24px Fredoka,
+    sans-serif;
+}
+
+.markdown table code {
+  white-space: nowrap;
+}
+
+@media screen and (min-width: 768px) {
+  .bleed {
+    padding: 64px 32px;
+    max-width: 768px;
+    gap: 64px;
+  }
+
+  .title > h1 {
+    font-family: 'KefirVariable', sans-serif;
+    font-size: 32px;
+    line-height: 44px;
+    font-weight: 800;
+    font-variation-settings: 'wght' 700;
+    color: var(--gray-dark);
+  }
+}

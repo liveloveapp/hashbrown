@@ -1,10 +1,33 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { SearchOverlay } from '../components/search/SearchOverlay';
+import { RememberSdk } from '../components/site/RememberSdk';
+import { pageMetadata } from '../lib/site-metadata';
 import './globals.css';
 
+/** Site-wide head tags, ported from `www/analog/index.html`. */
 export const metadata: Metadata = {
-  title: 'Hashbrown',
-  description: 'Hashbrown: The TypeScript Framework for Generative UI',
+  metadataBase: new URL('https://hashbrown.dev'),
+  ...pageMetadata({
+    title: 'Hashbrown: AI chat and agents for React and Angular',
+    description:
+      'Hashbrown is a headless TypeScript framework for AI chat and agents in React and Angular: generative UI from your own components, client-side tools, and streaming structured output from any model.',
+  }),
+  twitter: {
+    card: 'summary_large_image',
+    site: '@liveloveappdev',
+    creator: '@liveloveappdev',
+    images: ['https://hashbrown.dev/image/meta/twitter-card.png'],
+  },
+  icons: {
+    icon: ['/image/logo/favicon.png', '/image/meta/favicon.svg'],
+    // Analog's index.html pointed at /apple-touch-icon.png, which doesn't exist.
+    apple: [{ url: '/image/meta/apple-touch-icon.png', sizes: '180x180' }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#FDE4BA',
 };
 
 /** Root layout: fonts and global styles shared by every route. */
@@ -27,7 +50,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           href="https://cdn.fonts.net/kit/b29934de-5479-4373-aeff-bf0861be360f/b29934de-5479-4373-aeff-bf0861be360f_enhanced.css"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <RememberSdk />
+        {children}
+        <SearchOverlay />
+      </body>
     </html>
   );
 }

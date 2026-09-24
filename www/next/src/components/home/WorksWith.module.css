@@ -1,0 +1,27 @@
+/* Port of www/analog/src/app/components/home/WorksWith.ts. */
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px 32px;
+  padding: 22px 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.55);
+  font:
+    500 15px/1 'Fredoka',
+    sans-serif;
+  color: var(--gray);
+}
+
+.provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.provider svg {
+  width: 24px;
+  height: 24px;
+}

@@ -120,3 +120,71 @@ retired the risky parts: the markdown pipeline, static generation of every
 existing URL, the reference-data pipeline and the streaming chat route. What's
 left is mostly translating components and styling them, which is predictable
 work.
+
+## Phase 2: docs parity
+
+Plan: [`docs/superpowers/plans/2026-09-24-www-next-docs-parity.md`](../../docs/superpowers/plans/2026-09-24-www-next-docs-parity.md).
+
+Ported: the header, footer (with the mobile menu), docs and API menus, the SDK
+switcher, the markdown typography and table of contents, and the remaining
+markdown elements. Also the section layouts for docs, API and blog, and the
+head tags from `index.html` and each `routeMeta`. The spike report shows no
+MISSING elements, and route parity is still 77/77 docs, 191/191 API and 11/11 blog.
+
+Checked in a browser against hashbrown.dev at 1440px and 375px: layout,
+menus, SDK switcher (goes to the same page in the other SDK), active links, TOC,
+backend tabs saved across reloads in the Angular `config` localStorage shape,
+the magic-text slider, and the mobile menu (Escape closes it and returns
+focus). No console errors and no hydration warnings.
+
+**Kept differences**
+- The Angular docs menu lists Anthropic twice; the port lists it once.
+- Open Graph tags use `property="og:*"`; Analog emitted `name="og:*"`.
+- The mobile menu uses dialog semantics, traps focus and restores it on close;
+  Angular used `role="menu"`.
+
+**Findings**
+- Next's CSS minifier drops `font-variation-settings` when a rule also uses
+  the `font` shorthand. Kefir is a variable font, so the H1 rendered light.
+  That rule now uses longhands.
+- Turbopack bundles `@hashbrownai/core` and `@hashbrownai/react` from source
+  (their `package.json` has no `"type"`), unlike the CommonJS-declared provider
+  packages. Vitest needs `resolve.tsconfigPaths` to match.
+- Turbopack rejects a `node_modules` symlink that points outside the project
+  root. The `public -> ../analog/public` symlink stays inside the repo and works.
+
+**Not yet ported:** see Phase 3.
+
+## Phase 3: content pages
+
+Plan: [`docs/superpowers/plans/2026-09-24-www-next-content-pages.md`](../../docs/superpowers/plans/2026-09-24-www-next-content-pages.md).
+
+Ported: the API reference index (search and kind filters) and full symbol
+pages, including namespace members such as `/api/core/s.string` (281 symbol
+pages). Also the blog index (filters) and post pages (team byline, YouTube
+embeds), the samples pages, and the homepage. The build prerenders 378 pages.
+The spike report shows no MISSING elements, and parity covers docs 77/77, API
+191/191, blog 11/11, and home, API index and samples 6/6.
+
+**Behavior carried over from Angular's `ConfigService`:** header, footer and
+homepage links follow the SDK of the page being viewed, or otherwise the
+reader's saved preference. Visiting any path containing `angular` or `react`
+saves that SDK, and the saved value lives under the same `config` key.
+`RememberSdk` saves only on navigation, because saving on every storage
+change made two tabs on different SDKs overwrite each other forever.
+
+**Kept differences**
+- API signatures are highlighted and their references linked. The live site
+  renders them as an empty dark box, and in Angular the links were commented out.
+- Code examples on API pages get the dark surface `SymbolExamples.ts` declares,
+  which doesn't apply on the live site.
+- Blog post pages show the post date. Dates are formatted in UTC; the live
+  site shows them a day early in US time zones.
+- Kind chips work from the keyboard. Team avatars have alt text. The
+  deprecated tooltip uses a native `title`.
+- The header is 84px like the live site. The port had drawn the GitHub star
+  button's squircle border as a real CSS border, which added 4px.
+
+**Not yet ported:** search; symbol popovers on docs pages (API pages have
+them); a site-wide toast outlet (the homepage has its own for now); the
+announcement toast.

@@ -1,0 +1,16 @@
+/* The `.team` rules shared by PostPreview.ts and blog/[slug].page.ts. */
+.team {
+  display: flex;
+  align-items: center;
+}
+
+.team > img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+.team > img:not(:first-child) {
+  margin-left: -8px;
+}

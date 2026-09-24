@@ -1,0 +1,132 @@
+.header {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 16px;
+}
+
+.bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+
+  > a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.right {
+  display: none;
+
+  > nav > ul {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+
+    > li {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      > a {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--gray, #5e5c5a);
+        font:
+          500 18px/140% Fredoka,
+          sans-serif;
+
+        &:hover,
+        &.active {
+          color: var(--sunset-orange, #e88c4d);
+        }
+      }
+
+      > a.quickStart {
+        display: inline-flex;
+        padding: 8px 14px;
+        border-radius: 10px;
+        background: var(--chocolate-brown);
+        color: #fff !important;
+        font:
+          600 14px/1 'Fredoka',
+          sans-serif;
+        text-decoration: none;
+
+        &:hover,
+        &:focus-visible {
+          background: var(--chocolate-brown-light);
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--chocolate-brown-light);
+          outline-offset: 2px;
+        }
+      }
+    }
+  }
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+
+  /* Squircle (4px, 2px border) replaced with border-radius. */
+  > kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--chocolate-brown-light, #ad907c);
+    height: 16px;
+    width: 16px;
+    border: 2px solid var(--chocolate-brown-light, #ad907c);
+    border-radius: 4px;
+    text-transform: uppercase;
+    font:
+      500 12px/140% Fredoka,
+      sans-serif;
+  }
+}
+
+.menu {
+  display: flex;
+  margin-top: -4px;
+  margin-bottom: -4px;
+}
+
+@media print {
+  .header {
+    display: none;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .header {
+    padding: 24px;
+  }
+
+  .right {
+    display: flex;
+  }
+
+  .menu {
+    display: none;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .right > nav > ul {
+    gap: 24px;
+  }
+}

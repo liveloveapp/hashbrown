@@ -1,0 +1,72 @@
+/* Port of www/analog/src/app/components/home/InstallCommand.ts. */
+.install {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+.centered {
+  align-items: center;
+}
+
+.tabs {
+  display: inline-flex;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid rgba(232, 162, 61, 0.4);
+  border-radius: 12px;
+}
+
+.tabs button {
+  font:
+    600 14px/1 'Fredoka',
+    sans-serif;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.tabs button.on {
+  background: var(--sunshine-yellow);
+  color: var(--gray-dark);
+}
+
+.command {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  max-width: 520px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 2px solid var(--sunshine-yellow);
+  border-radius: 14px;
+  color: var(--chocolate-brown);
+}
+
+.command code {
+  min-width: 0;
+  font:
+    500 15px/1.4 'JetBrains Mono',
+    monospace;
+  overflow-wrap: normal;
+}
+
+.copy {
+  flex-shrink: 0;
+  font:
+    600 13px/1 'Fredoka',
+    sans-serif;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--sunshine-yellow-light);
+  color: var(--chocolate-brown);
+  cursor: pointer;
+}

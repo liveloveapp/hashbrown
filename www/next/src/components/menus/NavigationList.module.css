@@ -1,0 +1,90 @@
+/* Ported from the Angular NavigationList styles; squircles are plain radii. */
+.navigationList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+
+  &.hasActive {
+    > li.section {
+      display: none;
+
+      &.active {
+        display: grid;
+      }
+    }
+  }
+
+  > li {
+    display: flex;
+
+    &.section {
+      display: grid;
+      grid-template-columns: repeat(2, 100%);
+      column-gap: 32px;
+      padding: 0 16px;
+    }
+
+    a,
+    button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      color: var(--chocolate-brown, #774625);
+      width: 100%;
+      border-radius: 8px;
+      cursor: pointer;
+      font:
+        400 13px/18px Fredoka,
+        sans-serif;
+      justify-content: flex-start;
+
+      &:hover {
+        background: var(--sunshine-yellow-light, #fde4ba);
+      }
+    }
+
+    button {
+      justify-content: space-between;
+    }
+
+    > .children {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      > button {
+        justify-content: flex-start;
+      }
+    }
+  }
+}
+
+@media (min-width: 768px) {
+  .navigationList {
+    > li.section {
+      grid-template-columns: repeat(2, 160px);
+      column-gap: 32px;
+      align-items: flex-start;
+    }
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .navigationList {
+    > li.section {
+      grid-template-columns: repeat(2, 224px);
+      align-items: flex-start;
+    }
+  }
+}
+
+@media screen and (min-width: 1281px) {
+  .navigationList {
+    > li.section {
+      grid-template-columns: repeat(2, 288px);
+      align-items: flex-start;
+    }
+  }
+}

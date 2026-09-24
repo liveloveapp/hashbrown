@@ -1,0 +1,25 @@
+/* Port of SymbolExcerpt.ts. */
+.excerpt {
+  position: relative;
+  display: block;
+}
+
+.excerpt pre {
+  margin: 0;
+}
+
+.reference {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+}
+
+.reference:hover {
+  text-decoration-color: #ffa657;
+}
+
+.deprecated {
+  text-decoration: line-through;
+  font-style: italic;
+  opacity: 0.72;
+}

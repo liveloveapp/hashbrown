@@ -1,0 +1,35 @@
+/* Port of SymbolHeader.ts. */
+.host {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.header > h1 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--gray, #5e5c5a);
+  font:
+    800 20px/24px 'JetBrains Mono',
+    monospace;
+}
+
+.header > h1:first-child {
+  margin-top: 0;
+}
+
+.header > h1.deprecated {
+  text-decoration: line-through;
+}
+
+.meta {
+  display: flex;
+  gap: 8px;
+}

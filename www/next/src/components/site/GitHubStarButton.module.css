@@ -1,0 +1,40 @@
+/* Squircle (8px, 2px border) replaced with border-radius. The squircle drew
+   its border as an overlay, so an inset shadow keeps it out of the layout:
+   a real border made the header 4px taller than the live site. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  width: 144px;
+  box-shadow: inset 0 0 0 2px var(--chocolate-brown-light, #ad907c);
+  border-radius: 8px;
+}
+
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.count {
+  font-family: Fredoka, sans-serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.count,
+.star {
+  color: var(--sunshine-yellow-dark);
+}
+
+.label {
+  font-family: Fredoka, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  color: var(--gray-dark);
+}

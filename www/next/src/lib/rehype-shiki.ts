@@ -27,7 +27,11 @@ const ALIASES: Record<string, string> = {
 
 let highlighter: Promise<Highlighter> | undefined;
 
-function getHighlighter(): Promise<Highlighter> {
+/**
+ * The site's shared Shiki highlighter (hashbrown theme, the docs' languages),
+ * created once per process.
+ */
+export function getHighlighter(): Promise<Highlighter> {
   return (highlighter ??= createHighlighter({
     // A VS Code theme export; Shiki fills in fg/bg from `colors` at runtime.
     themes: [shikiHashbrown as unknown as ThemeRegistration],
@@ -92,3 +96,23 @@ export const rehypeShiki: Plugin<[], Root> = () => async (tree) => {
     await getHighlighter(),
   );
 };
+
+/**
+ * Highlight a code string with the site's Shiki theme, producing the same
+ * `<pre class="shiki hashbrown">` markup as fenced code in the docs. Unlike
+ * {@link rehypeShiki}, an unknown language throws, so a typo fails the build.
+ *
+ * @param code - The source to highlight.
+ * @param lang - A language the site loads, such as `typescript`, `tsx` or `html`.
+ * @returns The highlighted HTML.
+ */
+export async function highlightCode(
+  code: string,
+  lang: string,
+): Promise<string> {
+  const hl = await getHighlighter();
+  return hl.codeToHtml(code, {
+    lang: ALIASES[lang] ?? lang,
+    theme: 'hashbrown',
+  });
+}

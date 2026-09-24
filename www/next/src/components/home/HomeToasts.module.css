@@ -1,0 +1,98 @@
+/* Port of the top-center success toast from www/analog/src/app/components/
+   ToastContainer.ts and ToastItem.ts. */
+.container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.position {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: auto;
+  padding: 16px;
+  max-height: 100vh;
+  overflow: visible;
+}
+
+.item {
+  display: block;
+  animation: slideInTop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideInTop {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  min-width: 280px;
+  max-width: 480px;
+  box-shadow: 0 8px 16px rgba(61, 60, 58, 0.24);
+  border: 1px solid var(--olive-green, #616f36);
+  border-radius: 12px;
+  background: #e8ebe0;
+  font:
+    400 14px/20px 'Fredoka',
+    sans-serif;
+}
+
+.message {
+  flex: 1;
+  color: var(--gray-dark, #3d3c3a);
+}
+
+.close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(61, 60, 58, 0.08);
+  color: var(--gray, #5e5c5a);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.close:hover {
+  background: rgba(61, 60, 58, 0.16);
+  color: var(--gray-dark, #3d3c3a);
+}
+
+@media (max-width: 768px) {
+  .position {
+    padding: 12px;
+    align-items: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .position {
+    padding: 8px;
+    left: 0;
+    right: 0;
+    transform: none;
+  }
+}

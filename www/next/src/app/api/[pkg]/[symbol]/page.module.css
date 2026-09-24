@@ -1,0 +1,6 @@
+/* Port of the :host rule in pages/api/[package]/[symbol].page.ts. */
+.page {
+  flex: 1 auto;
+  display: flex;
+  flex-direction: column;
+}

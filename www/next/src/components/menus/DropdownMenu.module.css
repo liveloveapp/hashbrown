@@ -1,0 +1,31 @@
+.host {
+  position: relative;
+  display: inline-block;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+
+  > label {
+    cursor: pointer;
+  }
+}
+
+/* The CDK overlay pane: placed by DropdownMenu from the trigger's rect. */
+.panel {
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  overflow: visible;
+
+  &:popover-open {
+    display: flex;
+  }
+}

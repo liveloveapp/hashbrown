@@ -1,0 +1,15 @@
+/* Ports of www/analog/src/app/pages/samples.page.ts (:host) and
+   samples/index.page.ts (h1). */
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.heading {
+  text-align: center;
+  margin: 32px 16px;
+  font:
+    750 40px/1.2 KefirVariable,
+    sans-serif;
+}
