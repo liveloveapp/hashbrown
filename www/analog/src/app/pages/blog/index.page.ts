@@ -30,12 +30,6 @@ export const routeMeta: RouteMeta = {
 @Component({
   imports: [PostPreview],
   template: `
-    <div class="hero">
-      <img
-        src="/image/blog/brian-mike-jason.jpg"
-        alt="Brian, Mike and Jason looking at a laptop and computer screen with code and a generative user interface application"
-      />
-    </div>
     <div class="bleed">
       <div class="filters">
         @for (filter of filters; track filter.query) {
@@ -60,20 +54,6 @@ export const routeMeta: RouteMeta = {
       display: flex;
       flex-direction: column;
       height: 100%;
-    }
-
-    .hero {
-      width: 100%;
-      height: 480px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-
-      > img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
     }
 
     .bleed {
