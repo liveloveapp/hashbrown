@@ -148,6 +148,12 @@ simulated ledger and allocations). Conformance hosts are internal test infrastru
 
 ### Docs site
 
+- `www-next` (Next.js port of `www`; deploys to next.hashbrown.dev until cutover)
+  - `npx nx build www-next`
+  - `npx nx serve www-next`
+  - `npx nx test www-next`
+  - `npx nx lint www-next`
+  - `npx nx run www-next:spike-report`
 - `www`
   - `npx nx build www`
   - `npx nx serve www`

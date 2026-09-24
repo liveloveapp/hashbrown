@@ -188,3 +188,46 @@ change made two tabs on different SDKs overwrite each other forever.
 **Not yet ported:** search; symbol popovers on docs pages (API pages have
 them); a site-wide toast outlet (the homepage has its own for now); the
 announcement toast.
+
+## Phase 4: search and preview deploys
+
+**Search.** The AI search overlay is ported onto `@hashbrownai/react`: `useUiChat`
+with the Angular system prompt and the same result components. The index is a
+static route, `/_/search-index` (~5 KB gzipped), fetched on first open. The chat
+panel and hashbrown runtime (~92 KB gzipped) load lazily, so pages only carry
+the ⌘K listener. On the query "how do I expose a component to the model" the
+port returns the same results as hashbrown.dev.
+
+**Preview deploys.** CI gets a third deploy target, `www-next`, built with
+`vercel pull` + `vercel build` (Vercel's Next builder produces `.vercel/output`)
+instead of `nx build` + a prebuilt Nitro output. It's marked optional: until
+its project secret exists, the deploy job skips it with a notice instead of
+failing the PR gate. `tools/vercel/bootstrap.mjs` provisions the project
+`hashbrown-www-next`:
+
+| Setting | Value |
+| --- | --- |
+| framework | `nextjs` |
+| root directory | `www/next` |
+| build command | `npx nx build www-next` |
+| install command | `true` (CI already ran `npm ci`) |
+| domain | `next.hashbrown.dev` |
+| env | OpenAI env vars |
+| GitHub secret | `VERCEL_PROJECT_ID_WWW_NEXT` |
+
+`vercel build` has to run from the repo root with `rootDirectory: www/next`.
+From `www/next`, Vercel's Next builder resolves `.next` against the monorepo
+tracing root and looks in `www/next/www/next/.next`. Checked locally: the build
+output has the `/_/chat` and `/_/search-index` functions, prerendered pages,
+and the public assets through the `public` symlink.
+
+**To turn previews on:** run `node tools/vercel/bootstrap.mjs --env-file <.env
+with VERCEL_TOKEN and OPENAI_API_KEY>` once. The script is idempotent; the
+existing projects are left as they are.
+
+**Cutover (a later PR):**
+1. Move `hashbrown.dev` and `www.hashbrown.dev` to `hashbrown-www-next` (or
+   point `www` at the Next build).
+2. Move the content, reference generation and public assets out of
+   `www/analog`.
+3. Delete `www/analog` and the Analog, Nitro and Angular site dependencies.

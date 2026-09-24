@@ -8,7 +8,11 @@ on:
         required: true
         type: string
       targets:
-        description: JSON array of { key, dir, project_id_secret }
+        description: >-
+          JSON array of { key, dir, project_id_secret, builder?, optional? }.
+          builder "vercel" builds with `vercel pull` + `vercel build` instead of
+          `nx build`; optional targets are skipped while their project secret
+          is unset.
         required: true
         type: string
       ref:
@@ -40,14 +44,21 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
     steps:
       - name: Validate deployment inputs
+        id: validate
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           PROJECT_ID_SECRET: ${{ matrix.project_id_secret }}
+          OPTIONAL: ${{ matrix.optional }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           if [[ "$ENVIRONMENT" != "preview" && "$ENVIRONMENT" != "production" ]]; then
             echo "::error::environment must be preview or production, got '$ENVIRONMENT'."
             exit 1
+          fi
+          if [[ "$OPTIONAL" == "true" && -z "$VERCEL_PROJECT_ID" ]]; then
+            echo "::notice::$PROJECT_ID_SECRET is not set; skipping the optional ${{ matrix.key }} deployment. Run tools/vercel/bootstrap.mjs to provision it."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           if [[ -z "$VERCEL_TOKEN" || -z "$VERCEL_ORG_ID" || -z "$VERCEL_PROJECT_ID" ]]; then
             echo "::error::Missing VERCEL_TOKEN, VERCEL_ORG_ID, or $PROJECT_ID_SECRET. Run tools/vercel/bootstrap.mjs to provision them."
@@ -55,24 +66,47 @@ jobs:
           fi
 
       - name: Checkout
+        if: steps.validate.outputs.skip != 'true'
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - name: Setup Node.js
+        if: steps.validate.outputs.skip != 'true'
         uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: npm
 
       - name: Install dependencies
+        if: steps.validate.outputs.skip != 'true'
         run: npm ci
 
       - name: Build
+        if: steps.validate.outputs.skip != 'true' && matrix.builder != 'vercel'
         run: npx nx build "${{ matrix.key }}" --configuration=production
 
+      # Next.js targets: Vercel's Next builder turns the build into
+      # .vercel/output. The project's settings (framework, root directory,
+      # build command) come from `vercel pull`; see tools/vercel/bootstrap.mjs.
+      - name: Build with Vercel
+        if: steps.validate.outputs.skip != 'true' && matrix.builder == 'vercel'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          DIR: ${{ matrix.dir }}
+        run: |
+          set -o pipefail
+          npx vercel pull --yes --environment="$ENVIRONMENT" --cwd "$DIR"
+          args=(build --yes --cwd "$DIR")
+          if [[ "$ENVIRONMENT" == "production" ]]; then
+            args+=(--prod)
+          fi
+          npx vercel "${args[@]}"
+
       - name: Create GitHub deployment
+        if: steps.validate.outputs.skip != 'true'
         id: deployment
         env:
           GH_TOKEN: ${{ github.token }}
@@ -100,6 +134,7 @@ jobs:
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to Vercel
+        if: steps.validate.outputs.skip != 'true'
         id: deploy
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

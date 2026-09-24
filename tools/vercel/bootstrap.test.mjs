@@ -8,6 +8,7 @@ import {
   deleteCloudflarePagesProjects,
   ensureCertificate,
   ensureDnsZone,
+  ensureBuildSettings,
   ensureDomain,
   ensureProject,
   ensurePublicDeployments,
@@ -146,6 +147,53 @@ test('ensureResources sets fluid and the function timeout once', async () => {
     'skipped',
   );
   assert.equal(calls.length, 1);
+});
+
+test('ensureBuildSettings patches only the build settings that differ', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'PATCH /v9/projects/prj_1': { body: {} },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+  const build = {
+    framework: 'nextjs',
+    rootDirectory: 'www/next',
+    buildCommand: 'npx nx build www-next',
+    installCommand: 'true',
+  };
+
+  const updated = await ensureBuildSettings(
+    vercel,
+    { id: 'prj_1', framework: null, rootDirectory: 'www/next' },
+    build,
+  );
+  const unchanged = await ensureBuildSettings(
+    vercel,
+    { id: 'prj_1', ...build },
+    build,
+  );
+  const skipped = await ensureBuildSettings(vercel, { id: 'prj_1' }, undefined);
+
+  assert.equal(updated, 'updated');
+  assert.deepEqual(calls[0].body, {
+    framework: 'nextjs',
+    buildCommand: 'npx nx build www-next',
+    installCommand: 'true',
+  });
+  assert.equal(unchanged, 'exists');
+  assert.equal(skipped, 'skipped');
+  assert.equal(calls.length, 1);
+});
+
+test('the www-next target builds the Next.js site from www/next', () => {
+  const target = TARGETS.find((t) => t.key === 'www-next');
+
+  assert.equal(target?.secret, 'VERCEL_PROJECT_ID_WWW_NEXT');
+  assert.deepEqual(target?.build, {
+    framework: 'nextjs',
+    rootDirectory: 'www/next',
+    buildCommand: 'npx nx build www-next',
+    installCommand: 'true',
+  });
 });
 
 test('ensurePublicDeployments clears SSO protection once', async () => {
@@ -415,7 +463,7 @@ test('TARGETS entries are well-formed and secrets follow the naming convention',
     );
     assert.equal(
       target.secret,
-      `VERCEL_PROJECT_ID_${target.key.toUpperCase()}`,
+      `VERCEL_PROJECT_ID_${target.key.toUpperCase().replaceAll('-', '_')}`,
     );
   }
 });

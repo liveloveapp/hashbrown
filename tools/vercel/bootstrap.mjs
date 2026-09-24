@@ -67,6 +67,25 @@ export const TARGETS = Object.freeze([
     // covers any function published without one of its own.
     resources: { fluid: true, functionDefaultTimeout: 300 },
   }),
+  // The Next.js port of the site (www/next). CI runs `vercel pull` and
+  // `vercel build` for it, so the project carries real build settings
+  // instead of consuming a prebuilt Nitro output like `www`. It serves at
+  // next.hashbrown.dev until it replaces `www`.
+  Object.freeze({
+    key: 'www-next',
+    project: 'hashbrown-www-next',
+    secret: 'VERCEL_PROJECT_ID_WWW_NEXT',
+    domains: [{ name: `next.${DOMAIN}` }],
+    env: ['OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_BASE_URL'],
+    requiredEnv: ['OPENAI_API_KEY'],
+    build: {
+      framework: 'nextjs',
+      rootDirectory: 'www/next',
+      buildCommand: 'npx nx build www-next',
+      // CI installs dependencies with `npm ci` before `vercel build`.
+      installCommand: 'true',
+    },
+  }),
 ]);
 export const CLOUDFLARE_PAGES_PROJECTS = Object.freeze([
   'hashbrown-www',
@@ -133,6 +152,26 @@ export async function ensureNodeVersion(vercel, project) {
   await vercel('PATCH', `/v9/projects/${project.id}`, {
     nodeVersion: NODE_VERSION,
   });
+  return 'updated';
+}
+
+/**
+ * Build settings for a project that Vercel builds itself (`vercel build`)
+ * rather than one fed a prebuilt output. Only settings that differ are
+ * patched, so reruns are no-ops.
+ *
+ * @param vercel - A client from {@link createVercelClient}.
+ * @param project - The project as returned by the API.
+ * @param build - Wanted `framework`, `rootDirectory`, `buildCommand` and
+ *   `installCommand`; `undefined` skips the step.
+ */
+export async function ensureBuildSettings(vercel, project, build) {
+  if (!build) return 'skipped';
+  const changes = Object.fromEntries(
+    Object.entries(build).filter(([key, value]) => project[key] !== value),
+  );
+  if (Object.keys(changes).length === 0) return 'exists';
+  await vercel('PATCH', `/v9/projects/${project.id}`, changes);
   return 'updated';
 }
 
@@ -446,6 +485,7 @@ async function main() {
     log('node version', await ensureNodeVersion(vercel, project));
     log('public previews', await ensurePublicDeployments(vercel, project));
     log('resources', await ensureResources(vercel, project, target.resources));
+    log('build settings', await ensureBuildSettings(vercel, project, target.build));
     log(
       'env vars',
       await upsertEnv(
