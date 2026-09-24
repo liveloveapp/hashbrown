@@ -1,0 +1,35 @@
+.expander {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.title svg {
+  transform: rotate(-90deg);
+  transition: transform 0.2s;
+}
+
+.open .title svg {
+  transform: rotate(0);
+}
+
+.content {
+  display: none;
+}
+
+.open .content {
+  display: block;
+}
