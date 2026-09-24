@@ -9,6 +9,8 @@ const nextConfig = {
   // Content, reference JSON and workspace packages live outside www/next.
   turbopack: { root: repoRoot },
   outputFileTracingRoot: repoRoot,
+  // The repo keeps its own AGENTS.md; don't let `next dev` write copies here.
+  agentRules: false,
 };
 
 export default nextConfig;

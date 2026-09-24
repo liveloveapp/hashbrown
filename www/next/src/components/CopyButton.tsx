@@ -15,9 +15,13 @@ export function CopyButton() {
         const content = event.currentTarget
           .closest('[data-component="code-example"]')
           ?.querySelector('[data-content]');
-        await navigator.clipboard.writeText(content?.textContent ?? '');
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        try {
+          await navigator.clipboard.writeText(content?.textContent ?? '');
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch (err) {
+          console.error('Copy failed', err);
+        }
       }}
     >
       {copied ? 'copied' : <CopyIcon />}

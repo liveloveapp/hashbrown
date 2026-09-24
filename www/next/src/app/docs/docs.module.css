@@ -13,3 +13,13 @@
   padding: 0;
   overflow-x: auto;
 }
+
+/* The hashbrown theme is dark with a transparent background; code outside an
+   hb-code-example panel needs its own dark surface. */
+.prose > :global(pre.shiki),
+.prose section > :global(pre.shiki),
+.prose section > div > :global(pre.shiki) {
+  background: var(--gray-dark, #3d3c3a) !important;
+  padding: 16px;
+  border-radius: 12px;
+}
