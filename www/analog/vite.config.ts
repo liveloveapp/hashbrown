@@ -8,9 +8,12 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import shikiHashbrown from './src/app/themes/shiki-hashbrown';
 import { CanonicalReferenceExtension } from './src/extensions/CanonicalReferenceExtension';
-import { angularLinkerBabel } from './src/tools/angular-linker-babel';
+import homeCodePlugin from './src/tools/home-code-plugin';
 import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
 import { normalizeNitroPublicAssetPaths } from './src/tools/nitro-public-assets';
+import { angularLinkerDepsPlugin } from './src/tools/angular-linker-deps-plugin';
+import { ssrDepsReadyPlugin } from './src/tools/ssr-deps-ready-plugin';
+import { contentModulesNoCachePlugin } from './src/tools/content-modules-no-cache-plugin';
 
 export default defineConfig(({ command, mode }) => {
   return {
@@ -19,6 +22,21 @@ export default defineConfig(({ command, mode }) => {
 
     environments: {
       client: {
+        // Analog alpha.87 never links the client's pre-bundled Angular
+        // packages; see angularLinkerDepsPlugin.
+        optimizeDeps:
+          command === 'serve'
+            ? {
+                // Compiled templates import these for directives that
+                // Material modules re-export (MatSliderModule's Dir and
+                // MatTooltipModule's CdkScrollable). The dependency scan
+                // reads the uncompiled source and misses them, so a cold
+                // first visit re-optimizes and reloads with 504 (Outdated
+                // Optimize Dep).
+                include: ['@angular/cdk/bidi', '@angular/cdk/scrolling'],
+                rolldownOptions: { plugins: [angularLinkerDepsPlugin()] },
+              }
+            : {},
         build: {
           rollupOptions: {
             input: resolve(__dirname, 'index.html'),
@@ -29,16 +47,15 @@ export default defineConfig(({ command, mode }) => {
         resolve: {
           noExternal: [/^@ag-ui\/client$/, /^rxjs(?:\/.*)?$/],
         },
-        // Dev only; production builds do not run the dependency optimizer.
-        // Analog pre-bundles five Angular entry points for SSR, and Vite does
-        // not discover the rest, so entries such as `@angular/router` and
-        // `@angular/core/rxjs-interop` loaded natively with a second copy of
-        // `@angular/core` (NG0203). Discovery bundles them against one core.
-        // RxJS is listed because its `node` export condition resolves a
-        // CommonJS build the SSR module runner cannot evaluate.
         optimizeDeps: {
-          noDiscovery: false,
-          include: ['rxjs', 'rxjs/operators'],
+          // Analog pre-bundles @angular/platform-browser for SSR but not its
+          // animations entry, which would otherwise load its own copy of the
+          // shared renderer chunks and fail with NG0201.
+          include: [
+            'rxjs',
+            'rxjs/operators',
+            '@angular/platform-browser/animations',
+          ],
         },
         build: {
           rollupOptions: {
@@ -63,17 +80,12 @@ export default defineConfig(({ command, mode }) => {
       noExternal: [/^rxjs(?:\/.*)?$/],
     },
     plugins: [
+      ssrDepsReadyPlugin(),
+      contentModulesNoCachePlugin(),
       angular(),
       analog({
         workspaceRoot: resolve(__dirname, '../..'),
         apiPrefix: '_',
-        // The SSR template must be the built client index.html (hashed asset
-        // tags). The Vercel preset writes the client build to the repository
-        // root .vercel/output/static, before the server bundle reads it.
-        index:
-          command === 'build' && mode === 'production'
-            ? resolve(__dirname, '../../.vercel/output/static/index.html')
-            : undefined,
         content: {
           highlighter: 'shiki',
           shikiOptions: {
@@ -93,7 +105,6 @@ export default defineConfig(({ command, mode }) => {
           },
         },
       }),
-      angularLinkerBabel(),
       ...(mode === 'test'
         ? []
         : nitro({
@@ -146,6 +157,7 @@ export default defineConfig(({ command, mode }) => {
       normalizeNitroPublicAssetPaths(__dirname),
       nxViteTsPaths(),
       hashbrownStackblitzPlugin(),
+      homeCodePlugin(__dirname),
     ],
     test: {
       globals: true,

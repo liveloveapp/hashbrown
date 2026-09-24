@@ -28,3 +28,11 @@ test('replaces a removed provider with the default provider', () => {
     backend: 'fastify',
   });
 });
+
+test('defaults to Angular when nothing is saved', () => {
+  const saved = null;
+
+  const result = normalizeAppConfig(saved);
+
+  expect(result.sdk).toBe('angular');
+});

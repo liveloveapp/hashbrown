@@ -26,6 +26,20 @@
         "command": "playwright test --config examples/invoicing/e2e/playwright.config.ts"
       }
     },
+    "record-answer": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "playwright test --config examples/invoicing/e2e/record-answer.config.ts"
+      }
+    },
+    "stills": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "playwright test --config examples/invoicing/e2e/record-stills.config.ts"
+      }
+    },
     "application-e2e": {
       "executor": "nx:run-commands",
       "options": {

@@ -6,6 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { quickStartUrl } from './home/home.content';
 import { Command } from '../icons/Command';
 import { Menu } from '../icons/Menu';
 import { ConfigService } from '../services/ConfigService';
@@ -50,41 +51,6 @@ import { Squircle } from './Squircle';
               <li>
                 <a routerLink="/samples" routerLinkActive="active">example</a>
               </li>
-              <!-- <li>
-                <www-dropdown-menu
-                  [positions]="[
-                    {
-                      originX: 'end',
-                      originY: 'bottom',
-                      overlayX: 'end',
-                      overlayY: 'top',
-                      offsetX: 16,
-                      offsetY: 8,
-                    },
-                  ]"
-                  openMode="hover"
-                >
-                  <label>
-                    <a routerLink="/workshops" routerLinkActive="active">
-                      workshops
-                    </a>
-                  </label>
-                  <div content class="dropdown-content">
-                    <a
-                      routerLink="/workshops/react-generative-ui-engineering"
-                      class="menu-item"
-                      wwwSquircle="8"
-                      >react workshop</a
-                    >
-                    <a
-                      routerLink="/workshops/angular-generative-ui-engineering"
-                      class="menu-item"
-                      wwwSquircle="8"
-                      >angular workshop</a
-                    >
-                  </div>
-                </www-dropdown-menu>
-              </li> -->
               <li>
                 <a routerLink="/blog" routerLinkActive="active">blog</a>
               </li>
@@ -106,6 +72,11 @@ import { Squircle } from './Squircle';
               </li>
               <li>
                 <www-github-star-button />
+              </li>
+              <li>
+                <a class="quick-start" [routerLink]="quickStartUrl()"
+                  >Quick start</a
+                >
               </li>
             </ul>
           </nav>
@@ -166,19 +137,19 @@ import { Squircle } from './Squircle';
                   >
                     examples
                   </a>
-                  <!-- <a
-                    (click)="fullScreenMenu.onClick()"
-                    routerLink="/workshops"
-                    wwwSquircle="8"
-                  >
-                    workshops
-                  </a> -->
                   <a
                     (click)="fullScreenMenu.onClick()"
                     routerLink="/blog"
                     wwwSquircle="8"
                   >
                     blog
+                  </a>
+                  <a
+                    (click)="fullScreenMenu.onClick()"
+                    [routerLink]="quickStartUrl()"
+                    wwwSquircle="8"
+                  >
+                    quick start
                   </a>
                 </div>
               </div>
@@ -245,6 +216,28 @@ import { Squircle } from './Squircle';
                     &:hover,
                     &.active {
                       color: var(--sunset-orange, #e88c4d);
+                    }
+                  }
+
+                  > a.quick-start {
+                    display: inline-flex;
+                    padding: 8px 14px;
+                    border-radius: 10px;
+                    background: var(--chocolate-brown);
+                    color: #fff !important;
+                    font:
+                      600 14px/1 'Fredoka',
+                      sans-serif;
+                    text-decoration: none;
+
+                    &:hover,
+                    &:focus-visible {
+                      background: var(--chocolate-brown-light);
+                    }
+
+                    &:focus-visible {
+                      outline: 2px solid var(--chocolate-brown-light);
+                      outline-offset: 2px;
                     }
                   }
 
@@ -467,6 +460,10 @@ export class Header {
 
   docsUrl = computed(() => {
     return `/docs/${this.configService.sdk()}/start/intro`;
+  });
+
+  quickStartUrl = computed(() => {
+    return quickStartUrl(this.configService.sdk());
   });
 
   search() {

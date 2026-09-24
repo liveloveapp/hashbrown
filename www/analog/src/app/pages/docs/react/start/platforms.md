@@ -48,4 +48,4 @@ Can't find your preferred AI provider? [Create a custom adapter](/docs/react/pla
 
 ## Where is X platform?
 
-If you are an enterprise customer and want to use a platform that is not listed here, please reach out to us at [hello@liveloveapp.com](mailto:hello@liveloveapp.com). Or better yet, [create your own custom adapter](/docs/react/platform/custom)!
+Need a platform that is not listed here? [Open an issue on GitHub](https://github.com/liveloveapp/hashbrown/issues/new) and tell us what you are building. If your team wants a finished, headful agent UI with enterprise support, take a look at [threadplane](https://threadplane.ai/?utm_source=hashbrown&utm_medium=docs).

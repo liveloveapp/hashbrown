@@ -450,7 +450,7 @@ test('production config routes the home page to the renderer before the filesyst
   assert.equal(config.routes[homeRoute].dest, '/__server');
 });
 
-test('production function server-renders the home page, parallax and all', async () => {
+test('production function server-renders the home page content', async () => {
   const { default: handler } = await import(
     new URL('index.mjs', functionDirectory)
   );
@@ -466,13 +466,15 @@ test('production function server-renders the home page, parallax and all', async
     const html = await response.text();
 
     assert.equal(response.status, 200);
-    // The home page runs browser-only work (parallax over `window` and
-    // requestAnimationFrame). Reaching for it during the render throws out of
-    // change detection and Analog serves the client-side shell instead, so the
-    // page ships with no content for crawlers. Guard the route that regressed,
+    // The home page must server-render real content so crawlers get more than
+    // an empty shell. Browser-only work (clipboard, localStorage, parallax
+    // over `window`) has previously thrown during render and made Analog
+    // fall back to the client-side shell. Guard the route that regressed,
     // not just a docs page.
     assert.doesNotMatch(html, /<body><div id="app"><\/div><\/body>/);
-    assert.match(html, /hb-hashy-skates-hashy/);
+    assert.match(html, /AI chat and agents for your React or Angular app/);
+    assert.match(html, /npm i @hashbrownai\/(?:<wbr[^>]*>)?\{core,angular,openai\}/);
+    assert.match(html, /www-threadplane-banner/);
   } finally {
     await new Promise((resolveClosed) => server.close(resolveClosed));
   }

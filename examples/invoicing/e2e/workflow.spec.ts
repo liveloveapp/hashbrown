@@ -223,3 +223,36 @@ test('lost approval response holds further work until the committed operation is
     page.getByRole('button', { name: 'Approve and apply', exact: true }),
   ).toBeDisabled();
 });
+
+test('a recorded assistant answer replays as validated generative UI', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  await page
+    .getByRole('textbox', { name: 'Message assistant', exact: true })
+    .fill('Which USD customers are more than 60 days overdue?');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+
+  const answer = page.locator('.assistant-answer').last();
+  await expect(answer).toBeVisible();
+  // Pretable grids keep their own always-present `role="status"` live region,
+  // so check the busy text itself rather than the role count.
+  await expect(page.getByText('Reading your ledger…')).toHaveCount(0);
+  // LedgerTable rows: Pretable renders a real grid, not an HTML table, so a
+  // body row is `[data-pretable-row]` with `role="row"` (the header row also
+  // has `role="row"` but no `data-pretable-row`).
+  await expect(answer.locator('[data-pretable-row]').first()).toBeVisible();
+  // AgingSummary buckets: each bar is `[data-bucket]`; the recorded answer is
+  // about customers over 60 days late, so the 61-90 or over-90 bucket bar
+  // must be present.
+  await expect(
+    answer
+      .locator('[data-bucket="days61to90"], [data-bucket="over90"]')
+      .first(),
+  ).toBeVisible();
+  // CustomerCard: the recorded answer is about Granite Mutual.
+  await expect(
+    answer.getByRole('heading', { name: 'Granite Mutual' }),
+  ).toBeVisible();
+});

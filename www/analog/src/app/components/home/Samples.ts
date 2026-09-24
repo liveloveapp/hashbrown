@@ -1,6 +1,13 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Squircle } from '../Squircle';
+import { ConfigService } from '../../services/ConfigService';
+import { quickStartUrl } from './home.content';
 
 @Component({
   selector: 'www-samples',
@@ -8,22 +15,20 @@ import { Squircle } from '../Squircle';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section wwwSquircle="32" aria-labelledby="example-heading">
-      <p class="eyebrow">Explore the maintained example</p>
       <h2 id="example-heading">Invoicing with an AI assistant</h2>
       <p>
-        Ask questions about a simulated ledger, explore generated views, and
-        review payment allocations before applying them. Built with React,
-        Hashbrown, B4 and Pretable.
+        Ask questions about a ledger, explore generated views, and review
+        payment allocations before applying them. Built with React, Hashbrown,
+        B4, and Pretable. All data is simulated.
       </p>
-      <p>All data and allocations are simulated.</p>
       <nav aria-label="Invoicing example">
         <a href="https://invoicing.hashbrown.dev">Try the invoicing app</a>
         <a
           href="https://github.com/liveloveapp/hashbrown/tree/main/examples/invoicing"
         >
-          Explore the source and setup
+          Read the source
         </a>
-        <a routerLink="/docs/angular/start/quick">Build with Angular</a>
+        <a [routerLink]="quickStartUrl()">Build your own</a>
       </nav>
     </section>
   `,
@@ -52,9 +57,6 @@ import { Squircle } from '../Squircle';
       max-width: 760px;
       margin: 16px 0;
     }
-    .eyebrow {
-      font-size: 14px;
-    }
     nav {
       display: flex;
       flex-wrap: wrap;
@@ -76,4 +78,8 @@ import { Squircle } from '../Squircle';
   `,
 })
 /** Presents the maintained, simulated invoicing example. */
-export class Samples {}
+export class Samples {
+  configService = inject(ConfigService);
+
+  quickStartUrl = computed(() => quickStartUrl(this.configService.sdk()));
+}

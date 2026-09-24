@@ -8,11 +8,11 @@ import { RouterLink } from '@angular/router';
   template: `
     @if (showAnnouncement) {
       <div class="alert" wwwSquircle="0 0 8 8">
-        <a routerLink="/blog/2026-07-09-hashbrown-v-0-5-0">
-          <strong>New!</strong> Hashbrown v0.5 brings UI Kits, a streaming JSON
-          parser, and structured outputs
+        <a routerLink="/blog/2026-09-23-hashbrown-v-0-6-0">
+          <strong>New:</strong> Hashbrown v0.6 speaks AG-UI end to end
         </a>
         <button
+          type="button"
           class="close"
           (click)="onDismiss()"
           aria-label="Dismiss announcement"
@@ -136,7 +136,7 @@ import { RouterLink } from '@angular/router';
   `,
 })
 export class Announcement {
-  currentAnnouncementDate = new Date('2026-07-09T18:00:00Z');
+  currentAnnouncementDate = new Date('2026-09-23T18:00:00Z');
   showAnnouncement = false;
 
   constructor() {

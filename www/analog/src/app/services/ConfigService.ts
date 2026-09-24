@@ -20,7 +20,7 @@ export interface AppConfig {
 }
 
 const DEFAULT_CONFIG: AppConfig = {
-  sdk: 'react',
+  sdk: 'angular',
   provider: 'openai',
   backend: 'express',
 };

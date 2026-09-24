@@ -310,10 +310,6 @@ export const routeMeta: RouteMeta = {
               sans-serif;
           }
         }
-
-        > .workshops {
-          grid-template-columns: 1fr 1fr;
-        }
       }
     }
   `,

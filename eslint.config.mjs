@@ -24,6 +24,9 @@ export default [
           allow: [
             '^.*/eslint(\\.base)?\\.config\\.[cm]?js$',
             '^@hashbrownai/testing/aimock$',
+            // The e2e recorder reuses the fixture server's tape helpers directly;
+            // there is no separate library boundary between the two.
+            '^\\.\\./server/src/fixture-tape$',
           ],
           depConstraints: [
             {
