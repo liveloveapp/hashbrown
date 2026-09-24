@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { Capabilities } from '../components/home/Capabilities';
 import { ClosingCta } from '../components/home/ClosingCta';
 import { HomeHero } from '../components/home/HomeHero';
-import { HomeToasts } from '../components/home/HomeToasts';
 import { HowItWorks } from '../components/home/HowItWorks';
 import { LatestPosts } from '../components/home/LatestPosts';
 import { RealApp } from '../components/home/RealApp';
@@ -47,7 +46,6 @@ export default async function HomePage() {
         </div>
       </main>
       <Footer />
-      <HomeToasts />
     </div>
   );
 }

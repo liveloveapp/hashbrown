@@ -1,9 +1,9 @@
 'use client';
 
+import { toastService } from '../toast/toast-service';
 import { useSiteConfig } from '../use-site-config';
 import { copyText } from './copy-text';
 import { agentPrompt } from './home.content';
-import { showSuccessToast } from './toast';
 
 /**
  * Copies the coding-agent prompt for the selected framework and confirms
@@ -18,7 +18,9 @@ export function CopyPromptButton({ className }: { className?: string }) {
     if (
       await copyText(agentPrompt(config.sdk), globalThis.navigator?.clipboard)
     ) {
-      showSuccessToast('Prompt copied. Paste it into your coding agent.');
+      toastService.success('Prompt copied. Paste it into your coding agent.', {
+        position: 'top-center',
+      });
     }
   };
 
