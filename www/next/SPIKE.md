@@ -120,3 +120,40 @@ retired the risky parts: the markdown pipeline, static generation of every
 existing URL, the reference-data pipeline and the streaming chat route. What's
 left is mostly translating components and styling them, which is predictable
 work.
+
+## Phase 2: docs parity
+
+Plan: [`docs/superpowers/plans/2026-09-24-www-next-docs-parity.md`](../../docs/superpowers/plans/2026-09-24-www-next-docs-parity.md).
+
+Ported: the header, footer (with the mobile menu), docs and API menus, the SDK
+switcher, the markdown typography and table of contents, and the remaining
+markdown elements. Also the section layouts for docs, API and blog, and the
+head tags from `index.html` and each `routeMeta`. The spike report shows no
+MISSING elements, and route parity is still 77/77 docs, 191/191 API and 11/11 blog.
+
+Checked in a browser against hashbrown.dev at 1440px and 375px: layout,
+menus, SDK switcher (goes to the same page in the other SDK), active links, TOC,
+backend tabs saved across reloads in the Angular `config` localStorage shape,
+the magic-text slider, and the mobile menu (Escape closes it and returns
+focus). No console errors and no hydration warnings.
+
+**Kept differences**
+- The Angular docs menu lists Anthropic twice; the port lists it once.
+- Open Graph tags use `property="og:*"`; Analog emitted `name="og:*"`.
+- The mobile menu uses dialog semantics, traps focus and restores it on close;
+  Angular used `role="menu"`.
+
+**Findings**
+- Next's CSS minifier drops `font-variation-settings` when a rule also uses
+  the `font` shorthand. Kefir is a variable font, so the H1 rendered light.
+  That rule now uses longhands.
+- Turbopack bundles `@hashbrownai/core` and `@hashbrownai/react` from source
+  (their `package.json` has no `"type"`), unlike the CommonJS-declared provider
+  packages. Vitest needs `resolve.tsconfigPaths` to match.
+- Turbopack rejects a `node_modules` symlink that points outside the project
+  root. The `public -> ../analog/public` symlink stays inside the repo and works.
+
+**Not yet ported:** `/api` index (search and kind filters), `/samples`, the
+homepage, search, the API symbol components (params, methods, popovers), the
+blog page styling (`blog/index.page.ts`, `blog/[slug].page.ts`) and the
+announcement toast.

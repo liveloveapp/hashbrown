@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
+import { type Heading, rehypeHeadingIds } from './rehype-heading-ids';
 import { rehypeShiki } from './rehype-shiki';
 import { remarkCanonicalReference } from './remark-canonical-reference';
 
@@ -20,7 +21,14 @@ const processor = unified()
   .use(remarkCanonicalReference)
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
+  .use(rehypeHeadingIds)
   .use(rehypeShiki);
+
+/** Rendered markdown and the headings for its table of contents. */
+export interface RenderedMarkdown {
+  content: ReactNode;
+  headings: Heading[];
+}
 
 /**
  * Render site markdown, including inline HTML and `<hb-*>` custom elements, to
@@ -33,15 +41,34 @@ const processor = unified()
 export async function renderMarkdown(
   source: string,
   components: MarkdownComponents,
-): Promise<ReactNode> {
-  const tree = (await processor.run(processor.parse(source))) as Root;
-  markUnported(tree, components);
-  return toJsxRuntime(tree, {
-    Fragment,
-    jsx,
-    jsxs,
-    components: components as Partial<Components>,
+): Promise<RenderedMarkdown> {
+  const { tree, headings } = await new Promise<{
+    tree: Root;
+    headings: Heading[];
+  }>((resolve, reject) => {
+    // The callback form hands back the file, where rehypeHeadingIds leaves
+    // the headings; the promise form returns only the tree.
+    processor.run(processor.parse(source), source, (error, tree, file) => {
+      if (error || !tree) {
+        reject(error);
+        return;
+      }
+      resolve({
+        tree: tree as Root,
+        headings: (file?.data['headings'] as Heading[] | undefined) ?? [],
+      });
+    });
   });
+  markUnported(tree, components);
+  return {
+    content: toJsxRuntime(tree, {
+      Fragment,
+      jsx,
+      jsxs,
+      components: components as Partial<Components>,
+    }),
+    headings,
+  };
 }
 
 /**

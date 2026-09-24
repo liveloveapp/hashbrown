@@ -1,0 +1,156 @@
+.root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(61, 60, 58, 0.24);
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  margin: 0 auto;
+  padding: 24px;
+  width: 100%;
+}
+
+.links {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  row-gap: 16px;
+}
+
+.brand {
+  grid-column: span 12;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  > .title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font:
+      500 24px/32px Fredoka,
+      sans-serif;
+    color: #5e5c5a;
+  }
+
+  > small {
+    font:
+      300 11px/16px Fredoka,
+      sans-serif;
+    color: rgba(61, 60, 58, 0.64);
+
+    > a {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      transition: text-decoration-color 0.2s ease-in-out;
+
+      &:hover {
+        text-decoration-color: rgba(61, 60, 58, 0.64);
+      }
+    }
+  }
+}
+
+.docs,
+.learn,
+.team {
+  grid-column: span 12;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  > .title {
+    font: 600 14px/18px var(--font-heading);
+  }
+
+  > ul {
+    font:
+      400 14px/18px Fredoka,
+      sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    > li > a {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+}
+
+.bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  > ul {
+    display: flex;
+    gap: 16px;
+
+    > li > a {
+      display: block;
+      width: 24px;
+      height: 24px;
+    }
+  }
+}
+
+.stripe {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  background-image: url('/image/footer/stripe.svg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+@media screen and (min-width: 768px) and (max-width: 1023px) {
+  .brand {
+    grid-column: span 3;
+  }
+
+  .docs {
+    grid-column: 5 / span 2;
+  }
+
+  .learn {
+    grid-column: 8 / span 2;
+  }
+
+  .team {
+    grid-column: 10 / span 3;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .footer {
+    padding: 64px 24px 24px;
+  }
+
+  .brand {
+    grid-column: span 4;
+  }
+
+  .docs {
+    grid-column: 7 / span 2;
+  }
+
+  .learn {
+    grid-column: 9 / span 2;
+  }
+
+  .team {
+    grid-column: 11 / span 2;
+  }
+}

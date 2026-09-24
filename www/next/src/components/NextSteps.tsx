@@ -34,7 +34,7 @@ export function NextStep({
   children?: ReactNode;
 }) {
   return (
-    <li className={styles.step}>
+    <li className={styles.step} data-component="next-step">
       <Link href={resolveStepLink(link, sdk)}>{children}</Link>
     </li>
   );

@@ -1,9 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { listBlogPosts } from '../../lib/content';
+import { pageMetadata } from '../../lib/site-metadata';
 import styles from '../docs/docs.module.css';
 
-export const metadata: Metadata = { title: 'Home: Hashbrown Blog' };
+export const metadata: Metadata = pageMetadata({
+  title: 'Home: Hashbrown Blog',
+  description: 'Hashbrown Blog.',
+});
 
 /** Blog index, newest first. */
 export default function BlogIndex() {

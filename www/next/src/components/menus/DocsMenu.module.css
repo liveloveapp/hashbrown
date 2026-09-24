@@ -1,0 +1,164 @@
+/* Ported from the Angular DocsMenu styles; squircles are plain radii. */
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sdk,
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section {
+  > h2 {
+    padding: 6px 12px;
+    color: var(--gray, #5e5c5a);
+    font:
+      400 16px/18px Fredoka,
+      sans-serif;
+  }
+
+  > ul,
+  > ol {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+
+    > li {
+      display: flex;
+      align-items: center;
+      padding: 0;
+
+      > a {
+        display: flex;
+        color: var(--chocolate-brown, #774625);
+        padding: 6px 12px;
+        width: 100%;
+        border-radius: 8px;
+        font:
+          400 13px/18px Fredoka,
+          sans-serif;
+
+        &:hover,
+        &.active {
+          background: var(--sunshine-yellow-light, #fde4ba);
+        }
+      }
+    }
+  }
+}
+
+.search {
+  display: flex;
+  flex-direction: row;
+  padding: 8px 8px 8px 12px;
+  justify-content: space-between;
+  align-items: center;
+  align-self: stretch;
+  border: 2px solid var(--chocolate-brown-light, #ad907c);
+  border-radius: 8px;
+  cursor: pointer;
+
+  > p {
+    color: var(--chocolate-brown-light, #ad907c);
+    font:
+      500 12px/140% Fredoka,
+      sans-serif;
+  }
+
+  > div {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    > span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--chocolate-brown-light, #ad907c);
+      height: 24px;
+      width: 24px;
+      border: 2px solid var(--chocolate-brown-light, #ad907c);
+      border-radius: 4px;
+      text-transform: uppercase;
+      font:
+        500 12px/140% Fredoka,
+        sans-serif;
+    }
+  }
+}
+
+.dropdownContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px 2px rgba(0, 0, 0, 0.12);
+  background: #fff;
+}
+
+/* Scoped under .sdk so it wins over DropdownMenu's .trigger reset. */
+.sdk .sdkTrigger {
+  display: flex;
+  height: 40px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--sky-blue, #9ecfd7);
+  border-radius: 8px;
+  background: rgba(158, 207, 215, 0.24);
+
+  > label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    color: rgba(0, 0, 0, 0.54);
+    font:
+      500 12px/16px Fredoka,
+      sans-serif;
+
+    > span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  width: 100%;
+  border-radius: 8px;
+  color: var(--chocolate-brown, #774625);
+  font:
+    400 13px/18px Fredoka,
+    sans-serif;
+
+  &:hover {
+    background: var(--sunshine-yellow-light, #fde4ba);
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .menuItem {
+    width: 128px;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .menuItem {
+    width: 192px;
+  }
+}

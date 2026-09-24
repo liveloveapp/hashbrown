@@ -5,7 +5,9 @@ import { readDoc } from '../src/lib/content';
 import { renderMarkdown } from '../src/lib/markdown';
 
 const render = async (md: string) =>
-  renderToStaticMarkup(await renderMarkdown(md, docsComponents('react')));
+  renderToStaticMarkup(
+    (await renderMarkdown(md, docsComponents('react'))).content,
+  );
 
 test('renders hb-code-example as the CodeExample component around highlighted code', async () => {
   const md =
@@ -66,10 +68,22 @@ test('renders the full React quick start page without unported elements', async 
   const doc = readDoc('react', ['start', 'quick']);
 
   const html = renderToStaticMarkup(
-    await renderMarkdown(doc?.body ?? '', docsComponents('react')),
+    (await renderMarkdown(doc?.body ?? '', docsComponents('react'))).content,
   );
 
   expect(html).toContain('<h1');
   expect(html).not.toContain('data-unported');
   expect(html.match(/data-component="code-example"/g)?.length).toBe(7);
+});
+
+test('returns the page headings for the table of contents', async () => {
+  const doc = readDoc('react', ['start', 'quick']);
+
+  const { headings } = await renderMarkdown(
+    doc?.body ?? '',
+    docsComponents('react'),
+  );
+
+  expect(headings[0]).toEqual({ level: 1, text: 'React Quick Start', id: 'react-quick-start' });
+  expect(headings.map((h) => h.id)).toContain('install');
 });

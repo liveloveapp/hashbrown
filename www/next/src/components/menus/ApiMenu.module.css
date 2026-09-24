@@ -1,0 +1,33 @@
+/* Ported from the Angular ApiMenu styles. */
+.menu {
+  display: block;
+  padding: 16px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.window {
+  transition: transform 0.2s ease-in-out;
+}
+
+.window.level1 {
+  transform: translateX(-100%);
+}
+
+@media screen and (min-width: 768px) {
+  .window.level1 {
+    transform: translateX(-196px);
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .window.level1 {
+    transform: translateX(-256px);
+  }
+}
+
+@media screen and (min-width: 1281px) {
+  .window.level1 {
+    transform: translateX(-320px);
+  }
+}

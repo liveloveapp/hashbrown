@@ -1,0 +1,51 @@
+/* Port of www/analog/src/app/components/MagicTextDemo.ts. The squircles become
+   border radii; mat-slider becomes a native range input. */
+.demo {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  padding: 16px;
+  background: #ffffff;
+  border: 2px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  box-sizing: border-box;
+  color: inherit;
+}
+
+.preview {
+  height: 180px;
+  overflow: hidden;
+  padding: 16px;
+  background: linear-gradient(180deg, #fbfbff 0%, #ffffff 80%);
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.magic {
+  width: 100%;
+}
+
+.controls {
+  display: grid;
+  gap: 4px;
+  width: 80%;
+  margin: 0 auto;
+}
+
+.controls label {
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+
+.controls input[type='range'] {
+  width: 100%;
+  accent-color: var(--sunshine-yellow);
+}

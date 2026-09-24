@@ -1,0 +1,95 @@
+/* Port of www/analog/src/app/components/Carousel.ts. */
+.host {
+  display: flex;
+  flex-direction: column;
+  justify-content: stretch;
+  align-items: stretch;
+  --gap: 16px;
+  --peek: 48px;
+  --columns: 1;
+}
+
+.carousel {
+  position: relative;
+}
+
+.scroller {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc(
+    (100% - var(--peek) - (var(--columns) * var(--gap))) / var(--columns)
+  );
+  column-gap: var(--gap);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+}
+
+.scroller > * {
+  scroll-snap-align: start;
+  padding: 0;
+  margin: 0;
+}
+
+.actions {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.actions > button {
+  background: rgba(61, 60, 58, 0.24);
+  color: var(--gray-light, #a4a3a1);
+  width: 24px;
+  height: 24px;
+  border: 0;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.actions > button:disabled {
+  cursor: default;
+}
+
+.actions > button.active {
+  color: var(--gray-dark, #3d3c3a);
+}
+
+@media screen and (min-width: 768px) {
+  .host {
+    --columns: 2;
+  }
+
+  .scroller {
+    grid-auto-rows: 1fr;
+    align-items: stretch;
+    grid-auto-columns: max-content;
+    padding-right: var(--peek);
+  }
+
+  .scroller > * {
+    width: auto;
+    height: 100%;
+  }
+
+  .scroller img,
+  .scroller video {
+    width: auto;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .host {
+    --columns: 3;
+  }
+}

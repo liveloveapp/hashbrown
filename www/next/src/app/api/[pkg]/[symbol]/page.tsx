@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { docsComponents } from '../../../../components/docs-components';
 import { listSymbols, readSymbol } from '../../../../lib/api-reference';
 import { renderMarkdown } from '../../../../lib/markdown';
+import { pageMetadata } from '../../../../lib/site-metadata';
 import styles from '../../../docs/docs.module.css';
 
 type Params = { pkg: string; symbol: string };
@@ -20,7 +21,11 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { pkg, symbol } = await params;
-  return { title: `${symbol}: Hashbrown ${pkg} API` };
+  // Same title as the Analog symbol page's routeMeta.
+  return pageMetadata({
+    title: `@hashbrownai/${pkg}.${symbol}: Hashbrown API`,
+    description: 'Hashbrown API documentation.',
+  });
 }
 
 /** An API reference page: summary, signature and examples for each member. */
@@ -38,14 +43,17 @@ export default async function SymbolPage({
   const sections = await Promise.all(
     data.members.map(async (member) => ({
       key: member.canonicalReference,
-      summary: await renderMarkdown(member.docs.summary, components),
-      signature: await renderMarkdown(
-        '```ts\n' + member.formattedContent + '\n```',
-        components,
-      ),
+      summary: (await renderMarkdown(member.docs.summary, components)).content,
+      signature: (
+        await renderMarkdown(
+          '```ts\n' + member.formattedContent + '\n```',
+          components,
+        )
+      ).content,
       examples: await Promise.all(
-        member.docs.examples.map((example) =>
-          renderMarkdown(example, components),
+        member.docs.examples.map(
+          async (example) =>
+            (await renderMarkdown(example, components)).content,
         ),
       ),
     })),
