@@ -1,5 +1,9 @@
 import type { Element, ElementContent, Root } from 'hast';
-import { createHighlighter, type Highlighter } from 'shiki';
+import {
+  createHighlighter,
+  type Highlighter,
+  type ThemeRegistration,
+} from 'shiki';
 import type { Plugin } from 'unified';
 // Copied from www/analog/src/app/themes; a real migration moves it here.
 import shikiHashbrown from './shiki-hashbrown';
@@ -25,12 +29,8 @@ let highlighter: Promise<Highlighter> | undefined;
 
 function getHighlighter(): Promise<Highlighter> {
   return (highlighter ??= createHighlighter({
-    // The theme object matches Shiki's ThemeRegistration shape at runtime.
-    themes: [
-      shikiHashbrown as Parameters<
-        typeof createHighlighter
-      >[0]['themes'][number],
-    ],
+    // A VS Code theme export; Shiki fills in fg/bg from `colors` at runtime.
+    themes: [shikiHashbrown as unknown as ThemeRegistration],
     langs: [...LANGS],
   }));
 }

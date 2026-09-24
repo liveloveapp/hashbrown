@@ -1,0 +1,15 @@
+.prose {
+  max-width: 768px;
+  margin: 48px auto;
+  padding: 0 24px;
+}
+
+.prose :global(.subtitle) {
+  font-size: 1.125rem;
+  color: var(--gray, #5e5c5a);
+}
+
+.prose :global(pre.shiki) {
+  padding: 0;
+  overflow-x: auto;
+}
