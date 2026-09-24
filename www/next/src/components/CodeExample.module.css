@@ -1,0 +1,76 @@
+/* Port of the .code-example rules in www/analog/src/app/components/CodeExample.ts;
+   the squircle becomes a plain border radius. */
+.example {
+  display: flex;
+  flex-direction: column;
+  background: var(--gray, #5e5c5a);
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 16px 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 24px 12px;
+  color: var(--vanilla-ivory, #faf9f0);
+  font:
+    400 13px/18px 'JetBrains Mono',
+    sans-serif;
+}
+
+.header > div {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header button,
+.header a {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #e3e3e3;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+  font:
+    500 12px/14px 'Fredoka',
+    sans-serif;
+}
+
+.active {
+  position: relative;
+}
+
+.active::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  margin-bottom: -12px;
+  border-radius: 1px;
+  background: linear-gradient(
+    to right,
+    #fbbb52 0%,
+    var(--sunset-orange) 25%,
+    var(--indian-red-light) 50%,
+    var(--sky-blue-dark) 75%,
+    var(--olive-green-light) 100%
+  );
+}
+
+.content {
+  background: var(--gray-dark, #3d3c3a);
+  padding: 16px;
+  overflow-x: auto;
+  margin: 0 4px 4px;
+  border-radius: 12px;
+}
+
+.content pre {
+  margin: 0;
+}
