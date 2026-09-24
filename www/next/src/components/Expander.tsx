@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import styles from './Expander.module.css';
 import { ChevronDownIcon } from './icons';
 

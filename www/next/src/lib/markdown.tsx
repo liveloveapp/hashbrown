@@ -1,5 +1,5 @@
 import type { Element, Root } from 'hast';
-import { toJsxRuntime, type Components } from 'hast-util-to-jsx-runtime';
+import { type Components, toJsxRuntime } from 'hast-util-to-jsx-runtime';
 import type { ComponentType, ReactNode } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import rehypeRaw from 'rehype-raw';

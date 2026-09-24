@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { docsComponents } from '../../../../components/docs-components';
-import { listDocs, readDoc, SDKS, type Sdk } from '../../../../lib/content';
+import { listDocs, readDoc, type Sdk, SDKS } from '../../../../lib/content';
 import { renderMarkdown } from '../../../../lib/markdown';
 import styles from '../../docs.module.css';
 
