@@ -9,10 +9,10 @@ on:
         type: string
       targets:
         description: >-
-          JSON array of { key, dir, project_id_secret, builder?, optional? }.
+          JSON array of { key, dir, project_id_secret, builder?, root?, optional? }.
           builder "vercel" builds with `vercel pull` + `vercel build` instead of
-          `nx build`; optional targets are skipped while their project secret
-          is unset.
+          `nx build`, using the Next.js app in `root` and `nx build <key>`;
+          optional targets are skipped while their project secret is unset.
         required: true
         type: string
       ref:
@@ -88,17 +88,29 @@ jobs:
         run: npx nx build "${{ matrix.key }}" --configuration=production
 
       # Next.js targets: Vercel's Next builder turns the build into
-      # .vercel/output. The project's settings (framework, root directory,
-      # build command) come from `vercel pull`; see tools/vercel/bootstrap.mjs.
+      # .vercel/output. `vercel pull` brings the project's env vars; the build
+      # settings are written from the matrix, so what CI builds is defined in
+      # this repo and not by whatever the project's dashboard settings are.
       - name: Build with Vercel
         if: steps.validate.outputs.skip != 'true' && matrix.builder == 'vercel'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           ENVIRONMENT: ${{ inputs.environment }}
           DIR: ${{ matrix.dir }}
+          KEY: ${{ matrix.key }}
+          ROOT: ${{ matrix.root }}
         run: |
           set -o pipefail
+          if [[ -z "$ROOT" ]]; then
+            echo "::error::builder \"vercel\" targets need a root directory (matrix.root)."
+            exit 1
+          fi
           npx vercel pull --yes --environment="$ENVIRONMENT" --cwd "$DIR"
+          settings="$DIR/.vercel/project.json"
+          jq --arg root "$ROOT" --arg build "npx nx build $KEY" \
+            '.settings += { framework: "nextjs", rootDirectory: $root, buildCommand: $build, installCommand: "true" }' \
+            "$settings" > "$settings.tmp"
+          mv "$settings.tmp" "$settings"
           args=(build --yes --cwd "$DIR")
           if [[ "$ENVIRONMENT" == "production" ]]; then
             args+=(--prod)
