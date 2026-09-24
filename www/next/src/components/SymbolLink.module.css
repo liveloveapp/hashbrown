@@ -1,0 +1,11 @@
+/* Port of the hb-markdown-symbol-link styles in MarkdownSymbolLink.ts. */
+.link {
+  color: var(--sky-blue-dark, #64afb5);
+  font:
+    700 14px/21px 'JetBrains Mono',
+    monospace;
+  text-decoration: underline;
+  text-decoration-style: solid;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}

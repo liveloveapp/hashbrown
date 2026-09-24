@@ -1,0 +1,295 @@
+/* Port of www/analog/src/app/components/MarkdownPage.ts. The Angular rules
+   targeted `analog-markdown-route > div`; here they target `.article`. */
+
+.page {
+  display: block;
+  position: relative;
+  padding: 32px;
+  overflow: hidden;
+}
+
+.article {
+  display: flex;
+  flex-direction: column;
+  color: var(--gray-dark, #3d3c3a);
+  font:
+    400 15px/21px Fredoka,
+    sans-serif;
+}
+
+.article h1 {
+  color: var(--gray, #5e5c5a);
+  /* Longhands: with the `font` shorthand, Next's CSS minifier drops
+     font-variation-settings, and the variable font renders light. */
+  font-family: KefirVariable, sans-serif;
+  font-size: 22px;
+  line-height: 32px;
+  font-weight: 750;
+  font-variation-settings: 'wght' 750;
+  margin: 0 0 8px 0;
+}
+
+.article h2,
+.article h3,
+.article h4 {
+  color: var(--gray, #5e5c5a);
+  margin-bottom: 8px;
+  font:
+    500 18px/24px Fredoka,
+    sans-serif;
+}
+
+.article h2 > code,
+.article h3 > code,
+.article h4 > code {
+  font-size: 17px;
+  line-height: 24px;
+}
+
+.article h3,
+.article h4 {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.article p {
+  margin: 0 0 8px 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+.article p:global(.subtitle) {
+  color: var(--chocolate-brown-light);
+  margin: -8px 0 16px 0;
+  font:
+    300 18px/24px Fredoka,
+    sans-serif;
+}
+
+.article hr {
+  border: 0;
+  border-top: 1px solid #dcdad5;
+  margin: 32px 0;
+}
+
+.article strong {
+  font-weight: 600;
+}
+
+.article ul,
+.article ol {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0 0 8px 8px;
+  padding: 0;
+}
+
+.article ul > li,
+.article ol > li {
+  position: relative;
+  padding-left: 40px;
+  font:
+    400 15px/24px Fredoka,
+    sans-serif;
+}
+
+.article ul {
+  gap: 8px;
+}
+
+.article ul > li {
+  padding-left: 32px;
+}
+
+.article ul > li::before {
+  position: absolute;
+  top: 9px;
+  left: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--chocolate-brown);
+  content: '';
+}
+
+.article ol {
+  gap: 16px;
+  counter-reset: ordered-listitem;
+  margin-top: 8px;
+}
+
+.article ol > li::after {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  background: var(--sunshine-yellow-light, #fbe7b6);
+  border: 1px solid var(--sunshine-yellow-dark, #e8a23d);
+  border-radius: 8px;
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+  text-align: center;
+  content: counter(ordered-listitem);
+  counter-increment: ordered-listitem;
+}
+
+/* Next steps are lists too, but styled by their own component. */
+.article ul:has(> [data-component='next-step']) {
+  gap: 16px;
+  margin-left: 0;
+}
+
+.article ul > [data-component='next-step'] {
+  padding-left: 0;
+}
+
+.article ul > [data-component='next-step']::before {
+  content: none;
+}
+
+.article a:not([data-symbol-link]) {
+  text-decoration: underline;
+  text-decoration-color: #774625;
+  color: #774625;
+  font-weight: 600;
+}
+
+.article a:not([data-symbol-link]):hover {
+  text-decoration-color: #fbbb52;
+}
+
+.article a:global(.cta) {
+  align-self: flex-end;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 32px;
+  border: 6px solid #64afb5;
+  background: #9ecfd7;
+  color: #384849;
+  font:
+    500 18px/24px 'Fredoka',
+    sans-serif;
+  text-decoration: none;
+  padding: 12px 24px;
+}
+
+.article [data-component='next-step'] a {
+  text-decoration: none;
+}
+
+.article > pre:global(.shiki) {
+  padding: 24px;
+  border-radius: 16px;
+  border: 4px solid var(--gray-light, #a4a3a1);
+  background: var(--gray-dark, #3d3c3a) !important;
+  overflow-x: auto;
+  margin: 0 0 16px;
+}
+
+.article code:not(pre code) {
+  font:
+    700 14px/21px 'JetBrains Mono',
+    monospace;
+}
+
+.article table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  border-radius: 12px;
+  margin: 0 0 24px;
+  box-shadow: inset 0 0 0 1px #000;
+}
+
+.article table > thead {
+  padding: 8px 16px;
+  color: rgba(250, 249, 240, 0.8);
+  background: #3d3c3a;
+  border-bottom: 1px solid #000;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.article table tr {
+  border-bottom: 1px solid #000;
+}
+
+.article table th,
+.article table td {
+  padding: 16px;
+  text-align: left;
+}
+
+.article table th {
+  font:
+    400 16px/24px Fredoka,
+    sans-serif;
+}
+
+.article table code {
+  white-space: nowrap;
+}
+
+/* Table of contents */
+.toc {
+  display: none;
+  width: 186px;
+  flex-direction: column;
+  position: fixed;
+  top: 128px;
+  right: 32px;
+  margin: 0;
+  padding: 0;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.toc.faded {
+  opacity: 0;
+}
+
+.toc a {
+  padding: 4px 0;
+  color: var(--gray, #5e5c5a);
+  text-decoration: none;
+  font:
+    400 13px/18px Fredoka,
+    sans-serif;
+  border-left: 1px solid #dcdad5;
+}
+
+.toc a:hover {
+  color: rgb(47, 47, 43);
+}
+
+.toc a.active {
+  color: rgb(47, 47, 43);
+  border-left: 1px solid var(--gray-dark, #3d3c3a);
+}
+
+.sentinel {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+}
+
+@media screen and (min-width: 1024px) {
+  .page {
+    max-width: 800px;
+    padding: 32px 48px;
+  }
+}
+
+@media screen and (min-width: 1281px) {
+  .page {
+    padding-right: 250px;
+    max-width: 1024px;
+  }
+
+  .toc {
+    display: flex;
+  }
+}

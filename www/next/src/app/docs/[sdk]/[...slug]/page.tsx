@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { docsComponents } from '../../../../components/docs-components';
+import { MarkdownPage } from '../../../../components/markdown/MarkdownPage';
 import { listDocs, readDoc, type Sdk, SDKS } from '../../../../lib/content';
 import { renderMarkdown } from '../../../../lib/markdown';
-import styles from '../../docs.module.css';
+import { pageMetadata } from '../../../../lib/site-metadata';
 
 type Params = { sdk: string; slug: string[] };
 
@@ -24,7 +25,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { sdk, slug } = await params;
   const doc = isSdk(sdk) ? readDoc(sdk, slug) : undefined;
-  return doc ? { title: doc.title, description: doc.description } : {};
+  return doc
+    ? pageMetadata({ title: doc.title, description: doc.description })
+    : {};
 }
 
 /** A docs page rendered from the existing markdown. */
@@ -38,9 +41,9 @@ export default async function DocsPage({
   if (!doc) {
     notFound();
   }
-  return (
-    <article className={styles.prose}>
-      {await renderMarkdown(doc.body, docsComponents(sdk))}
-    </article>
+  const { content, headings } = await renderMarkdown(
+    doc.body,
+    docsComponents(sdk),
   );
+  return <MarkdownPage headings={headings}>{content}</MarkdownPage>;
 }
