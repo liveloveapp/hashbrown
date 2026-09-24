@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Alert } from './components/Alert';
+import { Announcement } from './components/Announcement';
 import { BackendCodeExample } from './components/BackendCodeExample';
 import { CodeExample } from './components/CodeExample';
 import { Carousel } from './components/Carousel';
@@ -33,9 +34,10 @@ import { ToastContainer } from './components/ToastContainer';
 
 @Component({
   selector: 'www-root',
-  imports: [RouterOutlet, SearchOverlay, ToastContainer],
+  imports: [RouterOutlet, Announcement, SearchOverlay, ToastContainer],
   template: `
     <router-outlet />
+    <www-announcement />
     <www-search-overlay />
     @defer {
       <www-toast-container />
