@@ -89,3 +89,28 @@ export const StarShineIcon = ({ height, width, style, ...p }: SiteIconProps) => 
     />
   </svg>
 );
+
+/** Tabler "file" icon, used by docs search results. */
+export const FileIcon = ({ height, width, style, ...p }: SiteIconProps) => (
+  <svg {...stroked} strokeWidth={1} stroke="#000000" style={size({ height, width }, style)} {...p}>
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+  </svg>
+);
+
+/** Tabler "file-code" icon, used by API search results. */
+export const FileCodeIcon = ({ height, width, style, ...p }: SiteIconProps) => (
+  <svg {...stroked} strokeWidth={1} stroke="currentColor" style={size({ height, width }, style)} {...p}>
+    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+    <path d="M10 13l-1 2l1 2" />
+    <path d="M14 13l1 2l-1 2" />
+  </svg>
+);
+
+/** Tabler "loader-2" icon: a three-quarter circle the search spins while loading. */
+export const LoaderIcon = ({ height, width, style, ...p }: SiteIconProps) => (
+  <svg {...stroked} strokeWidth={1} stroke="#000000" style={size({ height, width }, style)} {...p}>
+    <path d="M12 3a9 9 0 1 0 9 9" />
+  </svg>
+);
