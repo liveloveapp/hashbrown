@@ -62,12 +62,14 @@ npx nx run www-next:spike-report      # element coverage + route parity (after a
    built `dist/packages/openai` (tsconfig path plus `dependsOn: openai:build`), the
    way an npm consumer would. A change to the provider source now needs a
    rebuild before the site sees it.
-2. **Generated inputs aren't wired up.** The site reads `collect-docs` output
-   (reference JSON) and `generate-llms` output (`llms.txt`). Both are gitignored,
-   and stale copies silently produced wrong results during the spike: 189 vs
-   191 symbols, and old migration-guide URLs. `www-next:build` needs `dependsOn`
-   on those targets, and a real migration should move content and reference
-   generation to a neutral location such as `www/content`.
+2. **Generated inputs have to be build dependencies.** The site reads
+   `collect-docs` output (reference JSON) and `generate-llms` output
+   (`llms.txt`). Both are gitignored, and stale copies silently produced wrong
+   results during the spike: 189 vs 191 symbols, and old migration-guide URLs.
+   On a clean checkout the reference directory doesn't exist at all. `build`,
+   `serve` and `test` now depend on `www:collect-docs`, and `spike-report`
+   depends on `www:generate-llms`. A real migration should also move content and
+   reference generation to a neutral location such as `www/content`.
 3. **Nx module boundaries block importing from `www/analog`.** The Shiki theme
    was copied into `src/lib/shiki-hashbrown.ts`. Shared assets have to move,
    not be imported across projects.
