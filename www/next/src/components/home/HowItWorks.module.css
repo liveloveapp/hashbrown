@@ -1,0 +1,95 @@
+/* Port of www/analog/src/app/components/home/HowItWorks.ts. */
+.section {
+  display: block;
+  padding: 72px 0;
+}
+
+.header {
+  max-width: 640px;
+  margin-bottom: 32px;
+}
+
+.header h2 {
+  font: 800 40px/1.08 var(--font-heading);
+  letter-spacing: -0.03em;
+  color: var(--chocolate-brown);
+}
+
+.header p {
+  margin-top: 12px;
+  font:
+    400 17px/1.5 'Fredoka',
+    sans-serif;
+  color: var(--gray);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.num {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: var(--sunshine-yellow);
+  font: 800 15px/1 var(--font-heading);
+  color: var(--gray-dark);
+}
+
+.steps h3 {
+  margin-bottom: 6px;
+  font: 700 20px/1.2 var(--font-heading);
+  letter-spacing: -0.02em;
+  color: var(--chocolate-brown);
+}
+
+.steps li p {
+  margin-bottom: 14px;
+  font:
+    400 15px/1.5 'Fredoka',
+    sans-serif;
+  color: var(--gray);
+}
+
+.code {
+  margin-top: auto;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border-radius: 12px;
+  background: var(--gray-dark);
+  font:
+    400 12px/1.6 'JetBrains Mono',
+    monospace;
+}
+
+.code :global(pre) {
+  margin: 0;
+  background: transparent !important;
+}
+
+/* The Angular component's `::ng-deep code { font: inherit }` never matched,
+   so the live site renders code with the global `code` font (700 14px/1.5rem).
+   It's left out here to match. */
+
+@media screen and (min-width: 1024px) {
+  .steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

@@ -1,0 +1,29 @@
+/* Ports of the :host styles in www/analog/src/app/components/home/providers. */
+.icon {
+  display: inline;
+  --color: #a4a3a1;
+}
+
+.icon path {
+  transition: fill 0.2s ease-in-out;
+}
+
+.openai:hover {
+  --color: #23ab86;
+}
+
+.anthropic:hover {
+  --color: #d97757;
+}
+
+.gemini:hover {
+  --color: #3274f6;
+}
+
+.bedrock:hover {
+  --color: #4893fa;
+}
+
+.ollama:hover {
+  --color: #080808;
+}
