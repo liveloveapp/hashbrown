@@ -1,0 +1,35 @@
+{
+  "name": "www-next",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "www/next/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/.next"],
+      "options": { "command": "next build", "cwd": "www/next" }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": { "command": "next dev", "cwd": "www/next" }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config www/next/vitest.config.mts"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "eslint www/next/src www/next/test" }
+    },
+    "report": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node --experimental-strip-types www/next/src/tools/spike-report.ts"
+      }
+    }
+  }
+}
