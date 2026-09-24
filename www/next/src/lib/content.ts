@@ -24,6 +24,8 @@ export interface BlogPost {
   description: string;
   date: string;
   tags: string[];
+  /** Absolute Open Graph image URL from frontmatter, if the post sets one. */
+  ogImage: string | undefined;
   body: string;
 }
 
@@ -36,6 +38,7 @@ interface PostAttributes {
   title: string;
   description: string;
   tags?: string[];
+  ogImage?: string;
 }
 
 const docsRoot = (sdk: Sdk) =>
@@ -95,6 +98,7 @@ function toPost(file: string): BlogPost {
     description: attributes.description,
     date: slug.slice(0, 10),
     tags: attributes.tags ?? [],
+    ogImage: attributes.ogImage,
     body,
   };
 }

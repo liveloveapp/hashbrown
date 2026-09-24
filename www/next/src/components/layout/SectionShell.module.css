@@ -1,0 +1,68 @@
+/* Ports of the :host and grid rules in www/analog/src/app/pages/docs.page.ts,
+   api.page.ts and blog.page.ts. */
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--vanilla-ivory, #faf9f0);
+  background-image: url('/image/texture/fabric.png');
+  background-size: auto;
+  background-repeat: repeat;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.grid {
+  flex: 1 auto;
+  display: grid;
+  grid-template-columns: auto;
+  overflow: hidden;
+}
+
+.menu {
+  display: none;
+}
+
+.docs .menu {
+  padding: 16px;
+}
+
+.panel {
+  background: #fff;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-top-left-radius: 16px;
+}
+
+.blog {
+  height: auto;
+}
+
+.blogPanel {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+}
+
+@media screen and (min-width: 768px) {
+  .grid {
+    grid-template-columns: 192px auto;
+  }
+
+  .menu {
+    display: flex;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .grid {
+    grid-template-columns: 256px auto;
+  }
+}
+
+@media screen and (min-width: 1281px) {
+  .api .grid {
+    grid-template-columns: 320px auto;
+  }
+}
