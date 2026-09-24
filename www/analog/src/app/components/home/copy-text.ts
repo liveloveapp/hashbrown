@@ -1,34 +1,21 @@
-import { AnalyticsEvent } from '../../services/AnalyticsService';
-
 /**
- * Dependencies for {@link copyText}. Passed in so the function stays pure and testable.
- */
-export interface CopyTextDeps {
-  clipboard: Pick<Clipboard, 'writeText'> | undefined;
-  track: (event: AnalyticsEvent) => void;
-}
-
-/**
- * Copy text to the clipboard and track the event only if the copy succeeded.
+ * Copy text to the clipboard.
  *
  * @param text - The text to copy.
- * @param event - The analytics event to send on success.
- * @param deps - The clipboard and tracker to use.
+ * @param clipboard - The clipboard to write to, or `undefined` when unavailable (for example during SSR).
  * @returns Whether the copy succeeded.
  */
 export async function copyText(
   text: string,
-  event: AnalyticsEvent,
-  deps: CopyTextDeps,
+  clipboard: Pick<Clipboard, 'writeText'> | undefined,
 ): Promise<boolean> {
-  if (!deps.clipboard) {
+  if (!clipboard) {
     return false;
   }
   try {
-    await deps.clipboard.writeText(text);
+    await clipboard.writeText(text);
+    return true;
   } catch {
     return false;
   }
-  deps.track(event);
-  return true;
 }

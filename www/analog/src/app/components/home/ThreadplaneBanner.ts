@@ -1,18 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { AnalyticsService } from '../../services/AnalyticsService';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { THREADPLANE_URL } from './home.content';
 
 @Component({
   selector: 'www-threadplane-banner',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <a
-      class="banner"
-      [href]="url"
-      target="_blank"
-      rel="noopener"
-      (click)="analytics.track('threadplane-banner-clicked')"
-    >
+    <a class="banner" [href]="url" target="_blank" rel="noopener">
       <div class="text">
         <div class="big">Your chat UI<br /><em>isn't done.</em></div>
         <p>
@@ -112,6 +105,5 @@ import { THREADPLANE_URL } from './home.content';
   `,
 })
 export class ThreadplaneBanner {
-  readonly analytics = inject(AnalyticsService);
   readonly url = THREADPLANE_URL;
 }

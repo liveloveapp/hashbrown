@@ -9,7 +9,6 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { quickStartUrl } from './home/home.content';
 import { Command } from '../icons/Command';
 import { Menu } from '../icons/Menu';
-import { AnalyticsService } from '../services/AnalyticsService';
 import { ConfigService } from '../services/ConfigService';
 import { ApiMenu } from './ApiMenu';
 import { DocsMenu } from './DocsMenu';
@@ -75,10 +74,7 @@ import { Squircle } from './Squircle';
                 <www-github-star-button />
               </li>
               <li>
-                <a
-                  class="quick-start"
-                  [routerLink]="quickStartUrl()"
-                  (click)="trackQuickStart()"
+                <a class="quick-start" [routerLink]="quickStartUrl()"
                   >Quick start</a
                 >
               </li>
@@ -149,7 +145,7 @@ import { Squircle } from './Squircle';
                     blog
                   </a>
                   <a
-                    (click)="fullScreenMenu.onClick(); trackQuickStart()"
+                    (click)="fullScreenMenu.onClick()"
                     [routerLink]="quickStartUrl()"
                     wwwSquircle="8"
                   >
@@ -458,7 +454,6 @@ import { Squircle } from './Squircle';
 })
 export class Header {
   configService = inject(ConfigService);
-  analytics = inject(AnalyticsService);
   sdk = this.configService.sdk;
 
   menu = signal<'docs' | 'api'>('docs');
@@ -473,9 +468,5 @@ export class Header {
 
   search() {
     window.dispatchEvent(new Event(SEARCH_OVERLAY_OPEN_EVENT));
-  }
-
-  trackQuickStart() {
-    this.analytics.track('quick-start-clicked');
   }
 }

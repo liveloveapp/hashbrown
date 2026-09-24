@@ -1,5 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { AnalyticsService } from '../../services/AnalyticsService';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { INVOICING_LINKS } from './home.content';
 
 @Component({
@@ -35,7 +34,6 @@ import { INVOICING_LINKS } from './home.content';
             [href]="links.app"
             target="_blank"
             rel="noopener"
-            (click)="analytics.track('invoicing-demo-clicked')"
             >Try the app ↗</a
           >
           <a class="hb-btn" [href]="links.source" target="_blank" rel="noopener"
@@ -43,13 +41,7 @@ import { INVOICING_LINKS } from './home.content';
           >
         </div>
       </div>
-      <a
-        class="shot"
-        [href]="links.app"
-        target="_blank"
-        rel="noopener"
-        (click)="analytics.track('invoicing-demo-clicked')"
-      >
+      <a class="shot" [href]="links.app" target="_blank" rel="noopener">
         <picture>
           <source
             media="(max-width: 767px)"
@@ -157,6 +149,5 @@ import { INVOICING_LINKS } from './home.content';
   `,
 })
 export class RealApp {
-  readonly analytics = inject(AnalyticsService);
   readonly links = INVOICING_LINKS;
 }

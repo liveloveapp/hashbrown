@@ -7,7 +7,6 @@ import {
   input,
   viewChildren,
 } from '@angular/core';
-import { AnalyticsService } from '../../services/AnalyticsService';
 import { ConfigService } from '../../services/ConfigService';
 import { ToastService } from '../../services/ToastService';
 import { copyText } from './copy-text';
@@ -122,7 +121,6 @@ import { installCommand, Sdk, SDK_LABELS } from './home.content';
 })
 export class InstallCommand {
   private readonly config = inject(ConfigService);
-  private readonly analytics = inject(AnalyticsService);
   private readonly toast = inject(ToastService);
 
   /** Center the tabs and command, used by the closing CTA. */
@@ -177,11 +175,7 @@ export class InstallCommand {
   async copy(): Promise<void> {
     const copied = await copyText(
       this.command(),
-      `install-copied-${this.sdk()}` as const,
-      {
-        clipboard: globalThis.navigator?.clipboard,
-        track: (event) => this.analytics.track(event),
-      },
+      globalThis.navigator?.clipboard,
     );
     if (copied) {
       this.toast.success('Install command copied', { position: 'top-center' });

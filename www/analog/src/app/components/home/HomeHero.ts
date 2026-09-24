@@ -7,7 +7,6 @@ import {
 import { DomSanitizer } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { HOME_CODE_HTML } from 'virtual:home-code-html';
-import { AnalyticsService } from '../../services/AnalyticsService';
 import { ConfigService } from '../../services/ConfigService';
 import { ToastService } from '../../services/ToastService';
 import { copyText } from './copy-text';
@@ -27,12 +26,7 @@ import { InstallCommand } from './InstallCommand';
       </p>
       <www-install-command />
       <div class="actions">
-        <a
-          class="hb-btn primary"
-          [routerLink]="quickStart()"
-          (click)="analytics.track('quick-start-clicked')"
-          >Quick start →</a
-        >
+        <a class="hb-btn primary" [routerLink]="quickStart()">Quick start →</a>
         <button type="button" class="hb-btn" (click)="copyPrompt()">
           Copy agent prompt
         </button>
@@ -236,7 +230,6 @@ export class HomeHero {
   private readonly config = inject(ConfigService);
   private readonly toast = inject(ToastService);
   private readonly sanitizer = inject(DomSanitizer);
-  readonly analytics = inject(AnalyticsService);
 
   readonly sample = computed(() => HERO_CODE[this.config.sdk()]);
   readonly quickStart = computed(() => quickStartUrl(this.config.sdk()));
@@ -248,14 +241,9 @@ export class HomeHero {
   );
 
   async copyPrompt(): Promise<void> {
-    const sdk = this.config.sdk();
     const copied = await copyText(
-      agentPrompt(sdk),
-      `prompt-copied-${sdk}` as const,
-      {
-        clipboard: globalThis.navigator?.clipboard,
-        track: (event) => this.analytics.track(event),
-      },
+      agentPrompt(this.config.sdk()),
+      globalThis.navigator?.clipboard,
     );
     if (copied) {
       this.toast.success('Prompt copied. Paste it into your coding agent.', {

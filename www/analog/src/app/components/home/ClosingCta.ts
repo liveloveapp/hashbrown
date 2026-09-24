@@ -5,7 +5,6 @@ import {
   inject,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AnalyticsService } from '../../services/AnalyticsService';
 import { ConfigService } from '../../services/ConfigService';
 import { GITHUB_URL, quickStartUrl } from './home.content';
 import { InstallCommand } from './InstallCommand';
@@ -20,12 +19,7 @@ import { InstallCommand } from './InstallCommand';
       <h2>Get started</h2>
       <www-install-command [centered]="true" />
       <div class="actions">
-        <a
-          class="hb-btn primary"
-          [routerLink]="quickStart()"
-          (click)="analytics.track('quick-start-clicked')"
-          >Quick start →</a
-        >
+        <a class="hb-btn primary" [routerLink]="quickStart()">Quick start →</a>
         <a class="hb-btn" [href]="github" target="_blank" rel="noopener"
           >Star on GitHub</a
         >
@@ -71,7 +65,6 @@ import { InstallCommand } from './InstallCommand';
 })
 export class ClosingCta {
   private readonly config = inject(ConfigService);
-  readonly analytics = inject(AnalyticsService);
   readonly github = GITHUB_URL;
   readonly quickStart = computed(() => quickStartUrl(this.config.sdk()));
 }
