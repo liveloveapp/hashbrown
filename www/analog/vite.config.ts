@@ -13,6 +13,7 @@ import hashbrownStackblitzPlugin from './src/tools/stackblitz-plugin';
 import { normalizeNitroPublicAssetPaths } from './src/tools/nitro-public-assets';
 import { angularLinkerDepsPlugin } from './src/tools/angular-linker-deps-plugin';
 import { ssrDepsReadyPlugin } from './src/tools/ssr-deps-ready-plugin';
+import { contentModulesNoCachePlugin } from './src/tools/content-modules-no-cache-plugin';
 
 export default defineConfig(({ command, mode }) => {
   return {
@@ -25,7 +26,16 @@ export default defineConfig(({ command, mode }) => {
         // packages; see angularLinkerDepsPlugin.
         optimizeDeps:
           command === 'serve'
-            ? { rolldownOptions: { plugins: [angularLinkerDepsPlugin()] } }
+            ? {
+                // Compiled templates import these for directives that
+                // Material modules re-export (MatSliderModule's Dir and
+                // MatTooltipModule's CdkScrollable). The dependency scan
+                // reads the uncompiled source and misses them, so a cold
+                // first visit re-optimizes and reloads with 504 (Outdated
+                // Optimize Dep).
+                include: ['@angular/cdk/bidi', '@angular/cdk/scrolling'],
+                rolldownOptions: { plugins: [angularLinkerDepsPlugin()] },
+              }
             : {},
         build: {
           rollupOptions: {
@@ -71,6 +81,7 @@ export default defineConfig(({ command, mode }) => {
     },
     plugins: [
       ssrDepsReadyPlugin(),
+      contentModulesNoCachePlugin(),
       angular(),
       analog({
         workspaceRoot: resolve(__dirname, '../..'),
