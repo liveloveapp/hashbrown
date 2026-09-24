@@ -1,28 +1,15 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { BlogIndex } from '../../components/blog/BlogIndex';
+import { toPostSummary } from '../../components/blog/PostPreview';
 import { listBlogPosts } from '../../lib/content';
 import { pageMetadata } from '../../lib/site-metadata';
-import styles from '../docs/docs.module.css';
 
 export const metadata: Metadata = pageMetadata({
   title: 'Home: Hashbrown Blog',
   description: 'Hashbrown Blog.',
 });
 
-/** Blog index, newest first. */
-export default function BlogIndex() {
-  return (
-    <main className={styles.prose}>
-      <h1>Blog</h1>
-      <ul>
-        {listBlogPosts().map((post) => (
-          <li key={post.slug}>
-            <Link href={`/blog/${post.slug}`}>{post.title}</Link>{' '}
-            <small>{post.date}</small>
-            <p>{post.description}</p>
-          </li>
-        ))}
-      </ul>
-    </main>
-  );
+/** Blog index, newest first. Post bodies stay on the server. */
+export default function BlogIndexPage() {
+  return <BlogIndex posts={listBlogPosts().map(toPostSummary)} />;
 }

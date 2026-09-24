@@ -1,0 +1,24 @@
+/* Port of the styles shared by www/analog/src/app/pages/samples/finance.page.ts,
+   fast-food.page.ts and smart-home.page.ts. */
+.main {
+  max-width: 960px;
+  margin: 48px auto;
+  padding: 24px;
+}
+
+.main h1 {
+  font:
+    750 32px/1.2 KefirVariable,
+    sans-serif;
+}
+
+.main p {
+  font:
+    400 18px/1.6 Fredoka,
+    sans-serif;
+  margin-top: 24px;
+}
+
+.main a {
+  text-decoration: underline;
+}

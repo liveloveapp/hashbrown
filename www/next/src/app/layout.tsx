@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { RememberSdk } from '../components/site/RememberSdk';
 import { pageMetadata } from '../lib/site-metadata';
 import './globals.css';
 
@@ -48,7 +49,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           href="https://cdn.fonts.net/kit/b29934de-5479-4373-aeff-bf0861be360f/b29934de-5479-4373-aeff-bf0861be360f_enhanced.css"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <RememberSdk />
+        {children}
+      </body>
     </html>
   );
 }

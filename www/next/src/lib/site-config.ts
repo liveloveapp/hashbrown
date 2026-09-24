@@ -80,3 +80,16 @@ export function parseStoredAppConfig(raw: string | null): AppConfig {
     return DEFAULT_APP_CONFIG;
   }
 }
+
+/**
+ * The SDK a path belongs to, using the Angular `ConfigService` rule: any path
+ * containing `angular` is Angular, otherwise any containing `react` is React.
+ *
+ * @param path - The current URL path.
+ */
+export function sdkFromPath(path: string): AppConfig['sdk'] | undefined {
+  if (path.includes('angular')) {
+    return 'angular';
+  }
+  return path.includes('react') ? 'react' : undefined;
+}

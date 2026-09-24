@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowUpRightIcon, BrandGitHubIcon, BrandLinkedInIcon } from './icons';
-import { DEFAULT_SDK, docsUrl, GITHUB_REPO_URL, type Sdk } from './links';
+import { GITHUB_REPO_URL, type Sdk } from './links';
+import { SdkLink } from './SdkLink';
 import styles from './Footer.module.css';
 
 const external = { target: '_blank', rel: 'noopener' } as const;
@@ -11,10 +12,10 @@ const Arrow = () => <ArrowUpRightIcon height="12px" width="12px" />;
  * The site footer: brand and copyright, documentation, learn and team link
  * columns, and social links. Ports the Angular `www-footer`.
  *
- * @param props.sdk - The SDK the docs link points to. Defaults to `angular`,
- *   the Angular `ConfigService` default.
+ * @param props.sdk - The SDK the docs link points to. Omit it to follow the
+ *   reader's saved preference (Angular by default).
  */
-export function Footer({ sdk = DEFAULT_SDK }: { sdk?: Sdk } = {}) {
+export function Footer({ sdk }: { sdk?: Sdk } = {}) {
   const currentYear = new Date().getFullYear();
 
   return (
@@ -37,9 +38,9 @@ export function Footer({ sdk = DEFAULT_SDK }: { sdk?: Sdk } = {}) {
             <div className={styles.title}>Documentation</div>
             <ul>
               <li>
-                <Link href={docsUrl(sdk)} className="underline">
+                <SdkLink to="docs" sdk={sdk} className="underline">
                   Docs
-                </Link>
+                </SdkLink>
               </li>
               <li>
                 <Link href="/api" className="underline">

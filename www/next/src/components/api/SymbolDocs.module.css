@@ -1,0 +1,70 @@
+/* Ports of SymbolSummary.ts, SymbolUsageNotes.ts and SymbolExamples.ts. */
+.summaryHost {
+  display: block;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.summary p {
+  font:
+    400 15px/21px Fredoka,
+    sans-serif;
+}
+
+.notes {
+  display: block;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.notes > h2.notesTitle {
+  margin: 0;
+  font:
+    700 14px/18px 'JetBrains Mono',
+    monospace;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.examples {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.content {
+  overflow: hidden;
+}
+
+.example {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.example > p {
+  color: var(--gray-dark, #3d3c3a);
+  font:
+    400 15px/21px Fredoka,
+    sans-serif;
+}
+
+/* The hashbrown theme has a transparent background, so examples get the
+   dark surface SymbolExamples.ts declares. */
+.example :global(pre.shiki.hashbrown) {
+  padding: 24px;
+  border-radius: 16px;
+  border: 4px solid var(--gray-light, #a4a3a1);
+  background: var(--gray-dark, #3d3c3a) !important;
+  overflow-x: auto;
+}
+
+.example code:not(pre code) {
+  font:
+    700 14px/21px 'JetBrains Mono',
+    monospace;
+}

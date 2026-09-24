@@ -153,7 +153,38 @@ focus). No console errors and no hydration warnings.
 - Turbopack rejects a `node_modules` symlink that points outside the project
   root. The `public -> ../analog/public` symlink stays inside the repo and works.
 
-**Not yet ported:** `/api` index (search and kind filters), `/samples`, the
-homepage, search, the API symbol components (params, methods, popovers), the
-blog page styling (`blog/index.page.ts`, `blog/[slug].page.ts`) and the
+**Not yet ported:** see Phase 3.
+
+## Phase 3: content pages
+
+Plan: [`docs/superpowers/plans/2026-09-24-www-next-content-pages.md`](../../docs/superpowers/plans/2026-09-24-www-next-content-pages.md).
+
+Ported: the API reference index (search and kind filters) and full symbol
+pages, including namespace members such as `/api/core/s.string` (281 symbol
+pages). Also the blog index (filters) and post pages (team byline, YouTube
+embeds), the samples pages, and the homepage. The build prerenders 378 pages.
+The spike report shows no MISSING elements, and parity covers docs 77/77, API
+191/191, blog 11/11, and home, API index and samples 6/6.
+
+**Behavior carried over from Angular's `ConfigService`:** header, footer and
+homepage links follow the SDK of the page being viewed, or otherwise the
+reader's saved preference. Visiting any path containing `angular` or `react`
+saves that SDK, and the saved value lives under the same `config` key.
+`RememberSdk` saves only on navigation, because saving on every storage
+change made two tabs on different SDKs overwrite each other forever.
+
+**Kept differences**
+- API signatures are highlighted and their references linked. The live site
+  renders them as an empty dark box, and in Angular the links were commented out.
+- Code examples on API pages get the dark surface `SymbolExamples.ts` declares,
+  which doesn't apply on the live site.
+- Blog post pages show the post date. Dates are formatted in UTC; the live
+  site shows them a day early in US time zones.
+- Kind chips work from the keyboard. Team avatars have alt text. The
+  deprecated tooltip uses a native `title`.
+- The header is 84px like the live site. The port had drawn the GitHub star
+  button's squircle border as a real CSS border, which added 4px.
+
+**Not yet ported:** search; symbol popovers on docs pages (API pages have
+them); a site-wide toast outlet (the homepage has its own for now); the
 announcement toast.

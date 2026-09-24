@@ -1,0 +1,127 @@
+/* Port of the styles in www/analog/src/app/pages/api/index.page.ts. */
+.index {
+  display: flex;
+  flex-direction: column;
+  flex: 1 auto;
+}
+
+.controls {
+  display: flex;
+  align-items: flex-end;
+  padding: 16px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+/* Longhands: Next's minifier drops font-variation-settings next to `font`. */
+.controls > h1 {
+  color: var(--gray, #5e5c5a);
+  font-family: KefirVariable, sans-serif;
+  font-size: 22px;
+  font-weight: 750;
+  line-height: 32px;
+  font-variation-settings: 'wght' 750;
+}
+
+.controls > h1:first-child {
+  margin-top: 0;
+}
+
+.search {
+  position: relative;
+}
+
+.search > label {
+  position: absolute;
+  top: 10px;
+  left: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.search > input {
+  background-color: transparent;
+  font-size: 16px;
+  padding: 8px 0 8px 38px;
+  width: 100%;
+  border: 1px solid rgba(61, 60, 58, 0.24);
+  border-radius: 8px;
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.kinds {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.index > hr {
+  border: 0;
+  border-top: 1px solid rgba(61, 60, 58, 0.24);
+  margin: 32px 32px;
+}
+
+.packages {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+  max-width: 767px;
+  padding: 16px;
+}
+
+.packages > h2 {
+  font:
+    700 14px/18px 'JetBrains Mono',
+    monospace;
+  color: #774625;
+  margin-top: 32px;
+}
+
+.packages > h2:first-child {
+  margin-top: 0;
+}
+
+.symbols {
+  width: 100%;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+@media screen and (min-width: 768px) {
+  .controls {
+    padding: 24px;
+  }
+
+  .filters {
+    padding: 24px;
+  }
+
+  .packages {
+    padding: 24px;
+  }
+
+  .symbols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (min-width: 1281px) {
+  .packages {
+    max-width: 1024px;
+  }
+
+  .symbols {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

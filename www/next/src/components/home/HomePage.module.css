@@ -1,0 +1,23 @@
+/* Port of the styles in www/analog/src/app/pages/(home).page.ts. */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background-color: var(--vanilla-ivory, #faf9f0);
+  background-image: url('/image/texture/fabric.png');
+  background-repeat: repeat;
+  background-attachment: fixed;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media screen and (min-width: 768px) {
+  .wrap {
+    padding: 0 32px;
+  }
+}
