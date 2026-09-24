@@ -57,7 +57,6 @@ test('replays a scripted answer through the real agent, tools and render', async
       .user('How many payments need matching?')
       .callsTool('unappliedPayments', {})
       .callsTool('render', { text: 'There are five.', components: [] })
-      .replies('{"ui":[]}')
       .build(),
     {
       match: { userMessage: 'Return exactly this JSON' },
@@ -76,9 +75,10 @@ test('replays a scripted answer through the real agent, tools and render', async
   ]);
   expect(run.toolResults.every((r) => !r.isError)).toBe(true);
   expect(String(run.toolResults[0].content)).toContain('"paymentCount":5');
-  expect(run.finalMessage).toBe('{"ui":[]}');
-  // The render tool validates and returns; the browser renders the answer
-  // from the call's own arguments, so nothing is echoed as assistant text.
+  // `render` is returnDirect: its successful result ends the run, so the
+  // model gets no closing turn and there is no final assistant message. The
+  // browser renders the answer from the call's own arguments.
+  expect(run.finalMessage).toBe('');
   expect(String(run.toolResults[1].content)).toContain('"rendered":true');
   expect(run.tokens).not.toContain(canonical);
 }, 60_000);
@@ -101,9 +101,10 @@ test('a rejected render surfaces as a tool error the model could act on', async 
   );
 }, 60_000);
 
-// Guards the render tool's retry contract. B4's `returnDirect` would end the
-// run on this tool's result, but LangGraph ends it on an error result too, so
-// a rejected tree would never get the retry the tool description promises.
+// Guards the render tool's retry contract. `render` is returnDirect, which in
+// B4 0.12.0 ends the run only on a successful result: a rejected tree goes back
+// to the model for the retry the tool description promises, and the fixed
+// render then ends the run with no closing model turn.
 test('a rejected render leaves the model a turn to fix it and render again', async () => {
   const fixtures = script()
     .user('Retry render')
@@ -112,13 +113,13 @@ test('a rejected render leaves the model a turn to fix it and render again', asy
       components: [{ CustomerCard: { customerId: 'nobody' } }],
     })
     .callsTool('render', { text: 'Fixed.', components: [] })
-    .replies('{"ui":[]}')
     .build();
 
   const run = await harness.run({ input: 'Retry render', fixtures });
 
   expect(run.toolCalls.map((c) => c.name)).toEqual(['render', 'render']);
   expect(run.toolResults.map((r) => r.isError)).toEqual([true, false]);
+  expect(run.finalMessage).toBe('');
 }, 60_000);
 
 test('each run starts a fresh thread and only record mode can read the tape', async () => {
