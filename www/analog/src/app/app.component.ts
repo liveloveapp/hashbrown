@@ -15,7 +15,6 @@ import { CodeExample } from './components/CodeExample';
 import { Carousel } from './components/Carousel';
 import { Expander } from './components/Expander';
 import { MagicTextDemo } from './components/MagicTextDemo';
-import { LocalModelsDemo } from './components/LocalModelsDemo';
 import { MarkdownSymbolLink } from './components/MarkdownSymbolLink';
 import { NextStep } from './components/NextStep';
 import { NextSteps } from './components/NextSteps';
@@ -145,11 +144,6 @@ export class AppComponent {
       injector: this.injector,
     });
     customElements.define('hb-magic-text-demo', magicTextDemoElement);
-
-    const localModelsDemoElement = createCustomElement(LocalModelsDemo, {
-      injector: this.injector,
-    });
-    customElements.define('hb-local-models-demo', localModelsDemoElement);
 
     const markdownSymbolLinkElement = createCustomElement(MarkdownSymbolLink, {
       injector: this.injector,
