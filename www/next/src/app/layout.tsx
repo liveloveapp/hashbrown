@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { SearchOverlay } from '../components/search/SearchOverlay';
 import { RememberSdk } from '../components/site/RememberSdk';
 import { pageMetadata } from '../lib/site-metadata';
 import './globals.css';
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <RememberSdk />
         {children}
+        <SearchOverlay />
       </body>
     </html>
   );

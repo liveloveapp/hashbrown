@@ -1,0 +1,274 @@
+/* Port of www/analog/src/app/components/SearchOverlay.ts. The CDK overlay
+   becomes a fixed backdrop and a fullscreen dialog; squircles become plain
+   border radii, as elsewhere in the port. */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(61, 60, 58, 0.32);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+}
+
+.panel {
+  width: min(760px, 100%);
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: var(--vanilla-ivory, #faf9f0);
+  box-shadow: 0 8px 16px rgba(61, 60, 58, 0.4);
+}
+
+.panel > form {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.panel > form > div {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+}
+
+.panel > form > div > input {
+  width: 100%;
+  padding: 8px 40px 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--gray-light, #a4a3a1);
+  background: #fff;
+  color: var(--gray, #3d3c3a);
+  font-family: 'Fredoka', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 24px;
+  transition: all 200ms;
+}
+
+.panel > form > div > input:focus {
+  outline: none;
+  border-color: var(--sunset-orange, #e88c4d);
+  box-shadow: 0 0 0 4px rgba(232, 140, 77, 0.2);
+}
+
+.panel > form > div > button {
+  position: absolute;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  color: var(--gray, #3d3c3a);
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.panel > form > div > button:hover {
+  background: var(--gray-lighter, #e8e7e5);
+  color: var(--sunset-orange, #e88c4d);
+}
+
+.panel > form > .loading > input {
+  background: linear-gradient(
+    to right,
+    rgba(251, 187, 82, 0.15) 0%,
+    rgba(232, 140, 77, 0.15) 25%,
+    rgba(237, 131, 144, 0.15) 50%,
+    rgba(108, 175, 228, 0.15) 75%,
+    rgba(175, 191, 119, 0.15) 100%
+  );
+  background-clip: border-box;
+  background-size: 400% 400%;
+  animation: inputShimmer 3s ease infinite;
+  border-color: var(--sunshine-orange-dark, #e88c4d);
+}
+
+.panel > form > .loading > button {
+  animation: spin 1s linear infinite;
+}
+
+.panel > form > .loading > button:hover {
+  animation: none;
+}
+
+.panel > form > button {
+  padding: 9px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--sunshine-yellow-light, #fbd38e);
+  color: var(--gray, #5e5c5a);
+  font-family: 'Fredoka', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.panel > form > button:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.panel > section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 16px;
+  max-height: min(50vh, 360px);
+  overflow-y: auto;
+}
+
+.error {
+  padding: 0 16px 16px;
+  color: var(--gray, #3d3c3a);
+  font-family: 'Fredoka', sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+/* <www-doc-results> / <www-api-results> */
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.results > p {
+  color: var(--gray-dark, #3d3c3a);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+/* <www-doc-result> / <www-api-result> */
+.result {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--gray, #3d3c3a);
+  font-family: 'Fredoka', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.apiResult {
+  line-height: 24px;
+}
+
+.result:hover,
+.result:focus-visible {
+  background: var(--sunshine-yellow-light, #fde4ba);
+}
+
+.result > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.result > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+}
+
+.result > div:last-child > span,
+.kind {
+  color: var(--gray-light, #a4a3a1);
+  font-family: 'Fredoka', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.symbol {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gray, #3d3c3a);
+  font-family: 'JetBrains Mono', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.package {
+  border-radius: 4px;
+  background: rgba(61, 60, 58, 0.036);
+  color: #774625;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 18px;
+  padding: 4px;
+}
+
+/* <www-markdown> */
+.markdown {
+  color: var(--gray, #3d3c3a);
+  font-family: 'Fredoka', sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.markdown a {
+  color: var(--sunset-orange, #e88c4d);
+}
+
+@media screen and (min-width: 768px) {
+  .overlay {
+    padding: 24px;
+  }
+}
+
+@keyframes inputShimmer {
+  0% {
+    background-position: 20% 50%;
+  }
+  50% {
+    background-position: 80% 50%;
+  }
+  100% {
+    background-position: 20% 50%;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
