@@ -45,9 +45,11 @@ answer from the `render` call itself: Hashbrown surfaces the server's call on
 the assistant message with its arguments as they stream, the client paints a
 draft from them, and the same renderer shows the final answer once the
 server's result confirms the tree was validated. No model echoes the tree
-back, so the middleware's `after` hook suppresses the root model's own closing
-message, and ends the run with a `RUN_ERROR` — the client's "could not
-finish" alert — when a turn produced no validated UI at all.
+back: `render` exports `returnDirect`, so a successful render ends the run
+with no closing model turn, while a rejected render (`invalid_ui`) goes back
+to the model to fix and render again. The middleware's `after` hook ends the
+run with a `RUN_ERROR` — the client's "could not finish" alert — when a turn
+produced no validated UI at all.
 
 Dashboard includes ledger-derived totals and monthly invoiced/received data.
 Payments default to unmatched items; All payments includes historical receipts.
@@ -60,7 +62,7 @@ of this example's design; the root Zod 4 migration was separately approved.
 ## Run locally
 
 The server pins published `@b4run/cli`, `@b4run/langchain`, and `@b4run/sdk`
-packages at **0.11.0** in its private npm workspace. A separate B4 checkout or
+packages at **0.12.0** in its private npm workspace. A separate B4 checkout or
 local package-linking step is no longer required.
 
 From the repository root:
@@ -119,17 +121,15 @@ argument filters by case name or by the eval file's basename
 `assistant.<case>.fixtures.json` per case, next to the eval file, and are
 committed: each holds every model call the case made, the LLM judge's
 included, so replay needs no network and reproduces the record run's report.
-The suite runs on demand, not in CI, by decision. Nothing scores the model's
-closing message any more: the `after` hook in `server/src/middleware.ts`
-decides it, suppressing it when the run validated UI through `render` and
-failing the run when it did not. The eval harness calls the agent directly,
-so `after` never runs there and `run.finalMessage` is the model's raw closing
-message; the LLM judge is therefore shown the `render` prose, which is what
-the user actually reads. With the closing-message instruction gone from the
-prompt, gpt-5-mini ends a run saying nothing at all, and aimock rejects a
-fixture whose `content` is the empty string, so `server/evals/fixtures.ts`
-stores that recording as `{}` — inert here, since `after` replaces the
-message in production and no scorer reads it.
+The suite runs on demand, not in CI, by decision. Nothing scores a closing
+message: a successful `render` ends the run before the model could write one,
+so `run.finalMessage` is empty, and the LLM judge is shown the `render` prose,
+which is what the user actually reads. The eval harness calls the agent
+directly, so the `after` hook in `server/src/middleware.ts` never runs there.
+Fixtures recorded before `render` became `returnDirect` still hold the model's
+empty closing call, which replay leaves unused; aimock rejects a fixture whose
+`content` is the empty string, so `server/evals/fixtures.ts` stores such a
+recording as `{}`.
 
 `server/evals/harness.ts` wraps B4's `createAgentHarness` (which gained a
 `middlewareContext` option in 0.9.0) with the context
@@ -262,7 +262,6 @@ browser-refresh recovery remains out of scope — refreshing starts a new
 conversation. Do not refresh during a pending approval in this V1 demo.
 Deployment and retirement of older examples are separate follow-ups.
 See `compatibility.md` for dated verification evidence.
-
 
 ## Canonical e2e consolidation
 
