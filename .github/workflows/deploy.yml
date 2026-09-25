@@ -142,6 +142,7 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
           BRANCH: ${{ inputs.branch }}
           SHA: ${{ inputs.ref }}
+          BUILDER: ${{ matrix.builder }}
         run: |
           set -o pipefail
           args=(deploy --prebuilt --yes --cwd "$DIR"
@@ -154,6 +155,12 @@ jobs:
             -m "githubCommitOrg=${GITHUB_REPOSITORY_OWNER}")
           if [[ "$ENVIRONMENT" == "production" ]]; then
             args+=(--prod)
+          fi
+          # A Next.js build output is thousands of files; uploaded one by one it
+          # exceeds the Hobby plan's 5000-uploads-per-day limit
+          # (api-upload-free). One archive is a single upload.
+          if [[ "$BUILDER" == "vercel" ]]; then
+            args+=(--archive=tgz)
           fi
           url="$(npx vercel "${args[@]}" | tail -n1)"
           if [[ "$url" != https://* ]]; then
