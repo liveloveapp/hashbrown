@@ -27,15 +27,33 @@ test('the samples section links match the Angular www-samples', () => {
 test('the samples section renders its heading and copy', () => {
   const html = renderToStaticMarkup(<Samples />);
 
-  expect(html).toContain(
-    '<section aria-labelledby="example-heading" class="',
-  );
+  expect(html).toContain('<section aria-labelledby="example-heading" class="');
   expect(html).toContain(
     '<h2 id="example-heading">Invoicing with an AI assistant</h2>',
   );
   expect(html).toContain('All data is simulated.');
   expect(html).toContain('<nav aria-label="Invoicing example">');
   expect(html).toContain('href="/docs/angular/start/quick"');
+});
+
+test('the samples section plays the invoicing walkthrough on demand, with a poster', () => {
+  const html = renderToStaticMarkup(<Samples />);
+
+  const video = html.match(/<video [^>]*>/)?.[0] ?? '';
+
+  expect(video).toMatch(
+    /src="https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/video\/invoicing-walkthrough-[0-9a-f]{12}\.mp4"/,
+  );
+  expect(video).toContain(
+    'poster="/image/landing-page/invoicing-walkthrough.webp"',
+  );
+  expect(video).toContain('controls=""');
+  expect(video).toContain('preload="none"');
+  expect(video).toContain('muted=""');
+  expect(video).toContain('playsInline=""');
+  expect(video).not.toContain('autoPlay');
+  expect(html).toContain('<figcaption');
+  expect(html).toContain('Walkthrough: ');
 });
 
 test('the samples page renders the heading, section, header and footer', () => {

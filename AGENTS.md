@@ -120,6 +120,8 @@ simulated ledger and allocations). Conformance hosts are internal test infrastru
   - `npx nx conformance-e2e invoicing-e2e`
   - `npx nx example-e2e invoicing-e2e`
   - `npx nx provider-e2e invoicing-e2e`
+  - `npx nx test-walkthrough invoicing-e2e`
+  - `npx nx walkthrough invoicing-e2e` (records the hashbrown.dev/samples video; needs ffmpeg and a live model key)
 - `invoicing-react`
   - `npx nx build invoicing-react`
   - `npx nx test invoicing-react`

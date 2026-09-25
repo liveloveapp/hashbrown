@@ -43,6 +43,29 @@
   text-decoration: underline;
 }
 
+.walkthrough {
+  margin: 24px 0 0;
+}
+
+.walkthrough video {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 20px;
+  background: var(--vanilla-ivory, #faf9f0);
+  box-shadow:
+    0 24px 60px rgba(61, 60, 58, 0.18),
+    0 0 0 1px rgba(61, 60, 58, 0.08);
+}
+
+.walkthrough figcaption {
+  font:
+    400 15px/1.5 Fredoka,
+    sans-serif;
+  margin-top: 12px;
+  color: var(--gray, #5e5c5a);
+}
+
 @media (max-width: 768px) {
   .section {
     margin: 16px;
