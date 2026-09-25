@@ -283,7 +283,9 @@ progress. Free and MIT, with enterprise support from the team behind Hashbrown.
 
 ## Core Team
 
-Hashbrown is a community effort led by Mike Ryan, Brian Love and Ben Taylor.
+Hashbrown is led by Brian Love. We are always eagerly looking for contributors
+and collaborators, so if you'd like to help shape Hashbrown, we'd love to hear
+from you.
 
 ## Contributing
 
