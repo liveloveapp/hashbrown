@@ -17,7 +17,7 @@ import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { chromium } from '@playwright/test';
+import { type Browser, chromium } from '@playwright/test';
 import sharp from 'sharp';
 import { assemble, duration, frameAt } from './assemble';
 import { recordCards } from './cards';
@@ -68,7 +68,12 @@ async function ensure(url: string, command: string, args: string[]) {
     stdio: 'inherit',
     env: process.env,
   });
-  await waitFor(url, child);
+  try {
+    await waitFor(url, child);
+  } catch (error) {
+    child.kill();
+    throw error;
+  }
   return child;
 }
 
@@ -116,22 +121,28 @@ async function publish(video: string) {
 async function main() {
   execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' });
   const bin = (name: string) => join(ROOT, 'node_modules/.bin', name);
-  const servers = [
-    await ensure(AGENT, bin('tsx'), [
-      '--tsconfig',
-      'examples/invoicing/server/tsconfig.json',
-      'examples/invoicing/server/src/main.ts',
-    ]),
-    await ensure(APP, bin('vite'), [
-      '--config',
-      'examples/invoicing/react/vite.config.mts',
-    ]),
-  ];
-  const browser = await chromium.launch({
-    headless: false,
-    args: ['--window-position=-4000,0'],
-  });
+  // Everything started below is stopped in `finally`, even when a later
+  // step (a second server, or a headed browser without a display) fails.
+  const servers: (ChildProcess | undefined)[] = [];
+  let browser: Browser | undefined;
   try {
+    servers.push(
+      await ensure(AGENT, bin('tsx'), [
+        '--tsconfig',
+        'examples/invoicing/server/tsconfig.json',
+        'examples/invoicing/server/src/main.ts',
+      ]),
+    );
+    servers.push(
+      await ensure(APP, bin('vite'), [
+        '--config',
+        'examples/invoicing/react/vite.config.mts',
+      ]),
+    );
+    browser = await chromium.launch({
+      headless: false,
+      args: ['--window-position=-4000,0'],
+    });
     await rm(WORK, { recursive: true, force: true });
     await mkdir(WORK, { recursive: true });
     const cards = await recordCards(
@@ -159,7 +170,7 @@ async function main() {
     );
     await publish(VIDEO);
   } finally {
-    await browser.close();
+    await browser?.close();
     for (const server of servers) server?.kill();
   }
 }
