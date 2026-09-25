@@ -77,12 +77,12 @@ export function AllocationProposal({ proposalId }: AllocationProposalProps) {
         <dd>
           {payment?.customerName ??
             invoice?.customerName ??
-            proposal.customerId}
+            'Unknown client'}
         </dd>
         <dt>Payment</dt>
-        <dd>{payment?.reference ?? proposal.paymentId}</dd>
+        <dd>{payment?.reference ?? 'No reference'}</dd>
         <dt>Invoice</dt>
-        <dd>{invoice?.reference ?? proposal.invoiceId}</dd>
+        <dd>{invoice?.reference ?? 'No reference'}</dd>
         <dt>Amount</dt>
         <dd>{format(proposal.amountCents)}</dd>
         {leftCents !== undefined && (

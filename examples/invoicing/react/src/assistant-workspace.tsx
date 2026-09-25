@@ -96,7 +96,7 @@ interface Session {
 function appliedSummary(snapshot: LedgerSnapshot, proposal: Proposal): string {
   const invoice = snapshot.invoices.find((i) => i.id === proposal.invoiceId);
   const payment = snapshot.payments.find((p) => p.id === proposal.paymentId);
-  const applied = `Applied ${money(proposal.amountCents, proposal.currency)} to ${invoice?.reference ?? proposal.invoiceId}.`;
+  const applied = `Applied ${money(proposal.amountCents, proposal.currency)} to ${invoice?.reference ?? 'the invoice'}.`;
   if (!payment) return applied;
   return payment.unappliedCents > 0
     ? `${applied} ${money(payment.unappliedCents, payment.currency)} of this payment is still unapplied.`

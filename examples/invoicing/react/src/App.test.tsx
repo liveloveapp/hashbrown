@@ -324,7 +324,7 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
   await screen.findByText('Allocation applied.');
   expect(
     await screen.findByText(
-      'Applied $2,400.00 to invoice-001. This payment is fully matched.',
+      'Applied $2,400.00 to the invoice. This payment is fully matched.',
     ),
   ).toBeVisible();
 

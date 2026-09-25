@@ -141,8 +141,6 @@ test('renders immutable server amounts and invokes each owned decision callback 
   fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
 
   expect(screen.getByText('$2,400.00')).toBeVisible();
-  expect(screen.getByText('payment-001')).toBeVisible();
-  expect(screen.getByText('invoice-001')).toBeVisible();
   expect(value.onApprove).toHaveBeenCalledTimes(1);
   expect(value.onApprove).toHaveBeenCalledWith();
   expect(value.onDecline).toHaveBeenCalledTimes(1);
@@ -190,6 +188,18 @@ test('uses only matching application records for readable client and references'
   expect(screen.getByText('INV-2026-01')).toBeVisible();
   expect(screen.queryByText('payment-001')).not.toBeInTheDocument();
   expect(screen.queryByText('invoice-001')).not.toBeInTheDocument();
+});
+
+test('never falls back to internal IDs when records lack a reference', () => {
+  cleanup();
+  const value = review();
+
+  renderProposal(value);
+
+  expect(screen.queryByText('customer-001')).not.toBeInTheDocument();
+  expect(screen.queryByText('payment-001')).not.toBeInTheDocument();
+  expect(screen.queryByText('invoice-001')).not.toBeInTheDocument();
+  expect(screen.getAllByText('No reference')).toHaveLength(2);
 });
 
 test('shows what stays unapplied on the payment after this allocation', () => {
