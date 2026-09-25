@@ -1,10 +1,12 @@
-<h1 align="center">Hashbrown - Build Generative User Interfaces</h1>
+<h1 align="center">Hashbrown</h1>
 
 <p align="center">
   <img src="https://hashbrown.dev/image/logo/brand-mark.svg" alt="Hashbrown Logo" width="144px" height="136px"/>
   <br>
-  <em>Hashbrown is an open-source framework for building user interfaces
-    <br />that converse with users, dynamically reorganize, and even code themselves.</em>
+  <strong>AI chat and agents for your React or Angular app.</strong>
+  <br>
+  <em>Hashbrown is a headless TypeScript framework. The model renders your
+    <br />components and calls your tools, in the browser, with any provider.</em>
   <br>
 </p>
 
@@ -13,64 +15,75 @@
   <br>
 </p>
 
+`@hashbrownai/angular` gives you Hashbrown's resources and components for Angular: chat and UI chat resources, tools, UI kits, and message rendering.
+
 ## Getting Started
 
-Install:
-
 ```sh
-npm install @hashbrownai/{core,angular,openai} --save
+npm install @hashbrownai/{core,angular,openai}
 ```
 
-Configure the provider:
+Point Hashbrown at your server:
 
 ```ts
 export const appConfig: ApplicationConfig = {
-  providers: [
-    provideHashbrown({
-      baseUrl: '/run',
-    }),
-  ],
+  providers: [provideHashbrown({ baseUrl: '/run' })],
 };
 ```
 
-## Adapters
+Expose your components and give the model tools. The model only renders components you register, and Skillet validates their inputs. Tools run in the browser, with your app's state and services.
 
-Hashbrown supports multiple providers:
-
-- [OpenAI](https://hashbrown.dev/docs/angular/platform/openai)
-- [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure)
-- [Amazon Bedrock](https://hashbrown.dev/docs/angular/platform/bedrock)
-- [Google Gemini](https://hashbrown.dev/docs/angular/platform/google)
-- [Ollama](https://hashbrown.dev/docs/angular/platform/ollama)
-
-## Magic Text Renderer
-
-Render streaming magic text from `@hashbrownai/core` with defaults or per-node overrides:
-
-```html
-<hb-magic-text-renderer [text]="text" [citations]="citations">
-  <ng-template hbMagicTextLink let-node="node">
-    <a [href]="node.href" (click)="onLink(node, $event)">{{ node.text }}</a>
-  </ng-template>
-
-  <ng-template hbMagicTextText let-node="node">
-    <span [class.code]="node.isCode">{{ node.text }}</span>
-  </ng-template>
-</hb-magic-text-renderer>
+```ts
+chat = uiChatResource({
+  system: 'Help users understand invoices.',
+  components: [
+    exposeComponent(InvoiceCard, {
+      description: 'Show one invoice',
+      input: { id: s.string('Invoice id') },
+    }),
+  ],
+  tools: [
+    createTool({
+      name: 'getInvoices',
+      description: 'List the invoices',
+      handler: () => inject(InvoiceApi).list(),
+    }),
+  ],
+});
 ```
 
-Inputs: `text` (string) and optional `citations` (`{ id: string; url: string }[]`).
-Outputs: `(linkClick)` and `(citationClick)` fire before navigation; the default handler prevents navigation unless the target opts in via `data-allow-navigation="true"`.
+Render the stream. Components render while the response streams in.
+
+<!-- prettier-ignore -->
+```html
+@for (message of chat.value(); track $index) {
+  <hb-render-message [message]="message" />
+}
+```
+
+## Docs
+
+Read the [Angular quick start](https://hashbrown.dev/docs/angular/start/quick) and the [Angular docs](https://hashbrown.dev/docs/angular/start/intro).
+
+## Connect a Model
+
+Your server keeps the API key and streams from a Hashbrown adapter:
+
+- [OpenAI](https://hashbrown.dev/docs/angular/platform/openai): `@hashbrownai/openai`
+- [Anthropic](https://hashbrown.dev/docs/angular/platform/anthropic): `@hashbrownai/anthropic`
+- [Google Gemini](https://hashbrown.dev/docs/angular/platform/google): `@hashbrownai/google`
+- [Amazon Bedrock](https://hashbrown.dev/docs/angular/platform/bedrock): `@hashbrownai/bedrock`
+- [Azure OpenAI](https://hashbrown.dev/docs/angular/platform/azure): `@hashbrownai/azure`
+- [Ollama](https://hashbrown.dev/docs/angular/platform/ollama): `@hashbrownai/ollama`
+- [Your own backend](https://hashbrown.dev/docs/angular/platform/custom)
+
+## Need a Complete Chat UI?
+
+Hashbrown is headless. [threadplane](https://threadplane.ai) is the full agent UI for React and Angular, built on Hashbrown: threads, approvals, and tool progress. Free and MIT, with enterprise support from the team behind Hashbrown.
 
 ## Contributing
 
-hashbrown is a community-driven project. Read our [contributing guidelines](https://github.com/liveloveapp/hashbrown?tab=contributing-ov-file) on how to get involved.
-
-## Workshops and Consulting
-
-Want to learn how to build Angular apps with AI? [Learn more about our workshops](https://hashbrown.dev/workshops).
-
-LiveLoveApp provides hands-on engagement with our AI engineers for architecture reviews, custom integrations, proof-of-concept builds, performance tuning, and expert guidance on best practices. [Learn more about LiveLoveApp](https://liveloveapp.com).
+Hashbrown is a community-driven project. Read our [contributing guidelines](https://github.com/liveloveapp/hashbrown?tab=contributing-ov-file) on how to get involved.
 
 ## License
 
