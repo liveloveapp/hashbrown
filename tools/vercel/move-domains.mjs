@@ -3,7 +3,7 @@
  * Move the site's domains between two Vercel projects, e.g. to roll back the
  * cutover to the Next.js site:
  *
- *   node tools/vercel/move-domains.mjs --env-file .env --from hashbrown-www-next --to hashbrown-www
+ *   node tools/vercel/move-domains.mjs --env-file .env --from hashbrown-www --to hashbrown-www-analog
  *
  * Each domain moves with Vercel's move endpoint, so it's never detached in
  * between; the apex moves before www, which redirects to it. Domains already
