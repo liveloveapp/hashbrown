@@ -13,10 +13,15 @@ const proposal: Proposal = Object.freeze({
   generation: 1,
   proposalVersion: 1,
   expectedPaymentVersion: 1,
-  expectedInvoiceVersion: 1,
   customerId: 'customer-001',
   paymentId: 'payment-001',
-  invoiceId: 'invoice-001',
+  lines: [
+    {
+      invoiceId: 'invoice-001',
+      amountCents: 240000,
+      expectedInvoiceVersion: 1,
+    },
+  ],
   amountCents: 240000,
   currency: 'USD',
 });
@@ -166,7 +171,7 @@ test('uses only matching application records for readable client and references'
       ],
       invoices: [
         {
-          id: proposal.invoiceId,
+          id: proposal.lines[0].invoiceId,
           customerId: proposal.customerId,
           reference: 'INV-2026-01',
           currency: 'USD',
@@ -228,6 +233,78 @@ test('shows what stays unapplied on the payment after this allocation', () => {
 
   const left = screen.getByText('Left unapplied');
   expect(left.nextElementSibling).toHaveTextContent('$2,600.00');
+});
+
+test('lists each invoice of a combined allocation with its amount and the total', () => {
+  cleanup();
+  const record = {
+    customerId: proposal.customerId,
+    currency: 'USD',
+    version: 1,
+  };
+  const value = review({
+    verifiedProposal: {
+      ...proposal,
+      amountCents: 500000,
+      lines: [
+        {
+          invoiceId: 'invoice-a',
+          amountCents: 320000,
+          expectedInvoiceVersion: 1,
+        },
+        {
+          invoiceId: 'invoice-b',
+          amountCents: 180000,
+          expectedInvoiceVersion: 1,
+        },
+      ],
+    },
+    snapshot: {
+      payments: [
+        {
+          ...record,
+          id: proposal.paymentId,
+          reference: 'PAY-1',
+          amountCents: 500000,
+          unappliedCents: 500000,
+        },
+      ],
+      invoices: [
+        {
+          ...record,
+          id: 'invoice-a',
+          reference: 'INV-A',
+          amountCents: 320000,
+          outstandingCents: 320000,
+        },
+        {
+          ...record,
+          id: 'invoice-b',
+          reference: 'INV-B',
+          amountCents: 180000,
+          outstandingCents: 180000,
+        },
+      ],
+      customers: [],
+      allocations: [],
+      activities: [],
+    },
+  });
+
+  renderProposal(value);
+
+  expect(screen.getByText('INV-A').nextElementSibling).toHaveTextContent(
+    '$3,200.00',
+  );
+  expect(screen.getByText('INV-B').nextElementSibling).toHaveTextContent(
+    '$1,800.00',
+  );
+  expect(screen.getByText('Total').nextElementSibling).toHaveTextContent(
+    '$5,000.00',
+  );
+  expect(
+    screen.getByText('Left unapplied').nextElementSibling,
+  ).toHaveTextContent('$0.00');
 });
 
 test('makes approving the primary action and declining the secondary one', () => {

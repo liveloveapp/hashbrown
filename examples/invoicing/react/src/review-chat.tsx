@@ -27,21 +27,38 @@ const components = [
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const positiveCents = (value: unknown) =>
+  Number.isSafeInteger(value) && Number(value) > 0;
+
+function validLine(value: unknown): boolean {
+  return (
+    record(value) &&
+    typeof value.invoiceId === 'string' &&
+    value.invoiceId.length > 0 &&
+    positiveCents(value.amountCents) &&
+    positiveCents(value.expectedInvoiceVersion)
+  );
+}
+
 function validProposal(value: unknown, paymentId: string): value is Proposal {
   if (!record(value) || value.paymentId !== paymentId) return false;
+  const lines = value.lines;
   return (
-    ['proposalId', 'operationId', 'invoiceId', 'customerId', 'currency'].every(
+    ['proposalId', 'operationId', 'customerId', 'currency'].every(
       (key) => typeof value[key] === 'string' && value[key].length > 0,
     ) &&
     [
       'generation',
       'proposalVersion',
       'expectedPaymentVersion',
-      'expectedInvoiceVersion',
       'amountCents',
-    ].every(
-      (key) => Number.isSafeInteger(value[key]) && Number(value[key]) > 0,
-    ) &&
+    ].every((key) => positiveCents(value[key])) &&
+    Array.isArray(lines) &&
+    lines.length > 0 &&
+    lines.every(validLine) &&
+    new Set(lines.map((line) => line.invoiceId)).size === lines.length &&
+    lines.reduce((sum, line) => sum + line.amountCents, 0) ===
+      value.amountCents &&
     typeof value.currency === 'string' &&
     /^[A-Z]{3}$/.test(value.currency)
   );
@@ -68,7 +85,8 @@ export interface ReviewChatHandle {
 /** Inputs for the stable, single-payment proof runtime. */
 export interface ReviewChatProps {
   readonly selectedPaymentId?: string;
-  readonly selectedInvoiceId?: string;
+  /** Invoices the review must fill, in order. */
+  readonly selectedInvoiceIds?: readonly string[];
   /** Application-owned record labels; never supplied by the model. */
   readonly snapshot?: LedgerSnapshot;
   readonly showComposer?: boolean;
@@ -95,7 +113,7 @@ type Phase =
 /** Review a selected payment through a trusted UI and server-owned approval. */
 export function ReviewChat({
   selectedPaymentId,
-  selectedInvoiceId,
+  selectedInvoiceIds,
   snapshot,
   showComposer = true,
   onTerminal,
@@ -277,7 +295,9 @@ export function ReviewChat({
     try {
       chat.setState({
         selectedPaymentId: paymentId,
-        ...(selectedInvoiceId ? { selectedInvoiceId } : {}),
+        ...(selectedInvoiceIds?.length
+          ? { selectedInvoiceIds: [...selectedInvoiceIds] }
+          : {}),
       });
       chat.sendMessage({ role: 'user', content: content.trim() });
       boundPaymentId.current = paymentId;
@@ -299,7 +319,9 @@ export function ReviewChat({
     try {
       chat.setState({
         selectedPaymentId,
-        ...(selectedInvoiceId ? { selectedInvoiceId } : {}),
+        ...(selectedInvoiceIds?.length
+          ? { selectedInvoiceIds: [...selectedInvoiceIds] }
+          : {}),
         proposalId: proposal.proposalId,
         proposalVersion: proposal.proposalVersion,
         operationId: proposal.operationId,

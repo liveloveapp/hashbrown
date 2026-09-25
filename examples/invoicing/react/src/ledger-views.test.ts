@@ -2,7 +2,9 @@ import { expect, test } from 'vitest';
 import type { LedgerSnapshot } from '@invoicing/contracts';
 import {
   agingTotals,
+  appliedSummary,
   customerSummary,
+  listJoin,
   money,
   monthLabel,
   monthlySeries,
@@ -221,4 +223,90 @@ test('customerSummary computes balances and habit from the snapshot', () => {
     latePaymentRate: null,
   });
   expect(customerSummary(snapshot, 'nobody')).toBeUndefined();
+});
+
+test('listJoin reads a list the way a sentence would', () => {
+  expect(listJoin(['a'])).toBe('a');
+  expect(listJoin(['a', 'b'])).toBe('a and b');
+  expect(listJoin(['a', 'b', 'c'])).toBe('a, b and c');
+});
+
+const applied = {
+  proposalId: 'x',
+  operationId: 'o',
+  generation: 1,
+  proposalVersion: 1,
+  expectedPaymentVersion: 1,
+  customerId: 'c',
+  currency: 'USD',
+  paymentId: 'p',
+};
+const settled: LedgerSnapshot = {
+  customers: [],
+  allocations: [],
+  activities: [],
+  payments: [
+    {
+      id: 'p',
+      customerId: 'c',
+      currency: 'USD',
+      amountCents: 500000,
+      unappliedCents: 0,
+      version: 3,
+    },
+  ],
+  invoices: [
+    {
+      id: 'a',
+      customerId: 'c',
+      currency: 'USD',
+      reference: 'INV-A',
+      amountCents: 320000,
+      outstandingCents: 0,
+      version: 2,
+    },
+    {
+      id: 'b',
+      customerId: 'c',
+      currency: 'USD',
+      amountCents: 180000,
+      outstandingCents: 0,
+      version: 2,
+    },
+  ],
+};
+
+test('appliedSummary names each invoice and its share of a combined payment', () => {
+  const proposal = {
+    ...applied,
+    amountCents: 500000,
+    lines: [
+      { invoiceId: 'a', amountCents: 320000, expectedInvoiceVersion: 1 },
+      { invoiceId: 'b', amountCents: 180000, expectedInvoiceVersion: 1 },
+    ],
+  };
+
+  const summary = appliedSummary(settled, proposal);
+
+  expect(summary).toBe(
+    'Applied $5,000.00 to INV-A ($3,200.00) and an invoice ($1,800.00). This payment is fully matched.',
+  );
+});
+
+test('appliedSummary keeps the one-invoice wording', () => {
+  const proposal = {
+    ...applied,
+    amountCents: 320000,
+    lines: [{ invoiceId: 'a', amountCents: 320000, expectedInvoiceVersion: 1 }],
+  };
+  const partly = {
+    ...settled,
+    payments: [{ ...settled.payments[0], unappliedCents: 180000 }],
+  };
+
+  const summary = appliedSummary(partly, proposal);
+
+  expect(summary).toBe(
+    'Applied $3,200.00 to INV-A. $1,800.00 of this payment is still unapplied.',
+  );
 });

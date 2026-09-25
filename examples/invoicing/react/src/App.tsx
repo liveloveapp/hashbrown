@@ -485,7 +485,7 @@ export function App({
                           onClick={() => {
                             const started = reviewRef.current?.beginReview(
                               selected.id,
-                              targetInvoiceId,
+                              targetInvoiceId ? [targetInvoiceId] : undefined,
                             );
                             setReviewNotice(
                               started

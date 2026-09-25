@@ -16,44 +16,51 @@ import type { TransportOrFactory } from '@hashbrownai/core';
 import type { LedgerSnapshot, Proposal } from '@invoicing/contracts';
 import { findRenderCall, RenderDraft } from './assistant-draft';
 import { assistantKit } from './assistant-kit';
-import { money } from './ledger-views';
+import { appliedSummary, listJoin } from './ledger-views';
 import { ReviewChat, type ReviewChatHandle } from './review-chat';
 import { SnapshotContext } from './snapshot-context';
 
 const ActionContext = createContext<{
-  review: (paymentId: string, invoiceId?: string) => boolean;
+  review: (paymentId: string, invoiceIds?: readonly string[]) => boolean;
   disabled: boolean;
   snapshot: LedgerSnapshot;
 } | null>(null);
 
 /**
- * The model's offer to match a payment. With an invoice it starts that review
- * directly; without one it reviews the payment, or hands an ambiguous payment
- * to the page's invoice picker.
+ * The model's offer to match a payment. With invoices it starts that review
+ * directly, one review for all of them; without any it reviews the payment,
+ * or hands an ambiguous payment to the page's invoice picker.
  */
 function ReviewPayment({
   paymentId,
-  invoiceId,
+  invoiceIds,
 }: {
   paymentId: string;
-  invoiceId?: string | null;
+  invoiceIds?: readonly string[] | null;
 }) {
   const context = useContext(ActionContext);
   const payment = context?.snapshot.payments.find((p) => p.id === paymentId);
-  const invoice = invoiceId
-    ? context?.snapshot.invoices.find((i) => i.id === invoiceId)
-    : undefined;
+  const invoices = (invoiceIds ?? []).map((id) =>
+    context?.snapshot.invoices.find((i) => i.id === id),
+  );
   if (!context || !payment || payment.unappliedCents <= 0) return null;
-  if (invoiceId && (!invoice || invoice.outstandingCents <= 0)) return null;
+  if (invoices.some((invoice) => !invoice || invoice.outstandingCents <= 0))
+    return null;
+  const named = invoices.filter((invoice) => invoice !== undefined);
   return (
     <button
       className="review-action"
       disabled={context.disabled}
-      onClick={() => context.review(paymentId, invoice?.id)}
+      onClick={() =>
+        context.review(
+          paymentId,
+          named.length ? named.map((invoice) => invoice.id) : undefined,
+        )
+      }
     >
-      {invoice
-        ? `Match to ${invoice.reference ?? invoice.id}`
-        : `Review ${payment.reference ?? paymentId}`}
+      {named.length
+        ? `Match to ${listJoin(named.map((invoice) => invoice.reference ?? 'invoice'))}`
+        : `Review ${payment.reference ?? 'payment'}`}
     </button>
   );
 }
@@ -69,7 +76,7 @@ const SELECTED_STARTER = 'Which invoices does this payment cover?';
 
 /** Explicit matching entry point; false means an existing operation or invoice choice needs attention. */
 export interface AssistantWorkspaceHandle {
-  beginReview(paymentId: string, invoiceId?: string): boolean;
+  beginReview(paymentId: string, invoiceIds?: readonly string[]): boolean;
 }
 /** Application state and transports for the conversational assistant and isolated reviews. */
 export interface AssistantWorkspaceProps {
@@ -89,18 +96,7 @@ export interface AssistantWorkspaceProps {
 interface Session {
   readonly id: string;
   readonly paymentId: string;
-  readonly invoiceId: string;
-}
-
-/** What an applied review did, in words, read from the refreshed ledger. */
-function appliedSummary(snapshot: LedgerSnapshot, proposal: Proposal): string {
-  const invoice = snapshot.invoices.find((i) => i.id === proposal.invoiceId);
-  const payment = snapshot.payments.find((p) => p.id === proposal.paymentId);
-  const applied = `Applied ${money(proposal.amountCents, proposal.currency)} to ${invoice?.reference ?? 'the invoice'}.`;
-  if (!payment) return applied;
-  return payment.unappliedCents > 0
-    ? `${applied} ${money(payment.unappliedCents, payment.currency)} of this payment is still unapplied.`
-    : `${applied} This payment is fully matched.`;
+  readonly invoiceIds: readonly string[];
 }
 
 function ReviewSession({
@@ -134,8 +130,8 @@ function ReviewSession({
   const payment = snapshot.payments.find(
     (record) => record.id === session.paymentId,
   );
-  const invoice = snapshot.invoices.find(
-    (record) => record.id === session.invoiceId,
+  const invoices = session.invoiceIds.map((id) =>
+    snapshot.invoices.find((record) => record.id === id),
   );
   useEffect(() => {
     if (!started.current && handle.current) {
@@ -154,13 +150,15 @@ function ReviewSession({
         >
           {terminal ? `Review ${terminal}` : 'Payment review'} ·{' '}
           {payment?.reference ?? 'payment'} →{' '}
-          {invoice?.reference ?? 'invoice'}
+          {invoices
+            .map((invoice) => invoice?.reference ?? 'invoice')
+            .join(', ')}
         </summary>
         <HashbrownProvider url="/agui/%2Freview%23agent">
           <ReviewChat
             ref={handle}
             selectedPaymentId={session.paymentId}
-            selectedInvoiceId={session.invoiceId}
+            selectedInvoiceIds={session.invoiceIds}
             snapshot={snapshot}
             showComposer={false}
             onApplied={onApplied}
@@ -339,7 +337,10 @@ export function AssistantWorkspace({
   useEffect(() => {
     onBusyChange?.(Boolean(active) || conversationBusy);
   }, [active, conversationBusy, onBusyChange]);
-  function beginReview(paymentId: string, invoiceId?: string): boolean {
+  function beginReview(
+    paymentId: string,
+    invoiceIds?: readonly string[],
+  ): boolean {
     if (activeClaim.current || conversationBusy) return false;
     const payment = snapshot.payments.find((p) => p.id === paymentId);
     if (!payment || payment.unappliedCents <= 0) {
@@ -352,13 +353,14 @@ export function AssistantWorkspace({
         i.currency === payment.currency &&
         i.outstandingCents > 0,
     );
-    const invoice = invoiceId
-      ? candidates.find((i) => i.id === invoiceId)
+    const requested = invoiceIds?.length
+      ? invoiceIds.map((id) => candidates.find((i) => i.id === id))
       : candidates.length === 1
-        ? candidates[0]
-        : undefined;
-    if (!invoice) {
-      if (!invoiceId && candidates.length > 1 && onChooseInvoice) {
+        ? [candidates[0]]
+        : [];
+    const named = requested.filter((invoice) => invoice !== undefined);
+    if (named.length === 0 || named.length !== requested.length) {
+      if (!invoiceIds?.length && candidates.length > 1 && onChooseInvoice) {
         setNotice('');
         onChooseInvoice(paymentId);
         return false;
@@ -373,7 +375,7 @@ export function AssistantWorkspace({
     const session = {
       id: crypto.randomUUID(),
       paymentId,
-      invoiceId: invoice.id,
+      invoiceIds: named.map((invoice) => invoice.id),
     };
     activeClaim.current = session.id;
     setActive(session.id);
