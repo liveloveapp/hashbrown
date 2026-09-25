@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [main]
+    # `labeled` so adding the `preview` label deploys a preview right away.
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
 
@@ -129,11 +131,15 @@ jobs:
           echo "Selected targets: $selected"
           echo "matrix=$selected" >> "$GITHUB_OUTPUT"
 
+  # Previews are opt-in (label a PR `preview`) and never block a merge: the
+  # Vercel Hobby plan allows 5000 file uploads a day per account, and a
+  # refused upload shouldn't hold up CI.
   preview:
     name: Preview
     needs: [ci, targets]
     if: >-
       github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'preview') &&
       needs.targets.outputs.matrix != '' &&
       needs.targets.outputs.matrix != '[]'
     permissions:
@@ -189,7 +195,8 @@ jobs:
             exit 1
           fi
 
+          # Previews are informational: a failed deploy (for example Vercel's
+          # daily upload limit) is reported but doesn't block the merge.
           if [[ "$PREVIEW_RESULT" != "success" && "$PREVIEW_RESULT" != "skipped" ]]; then
-            echo "Preview result: $PREVIEW_RESULT"
-            exit 1
+            echo "::warning::Preview deployment result: $PREVIEW_RESULT (not required for merge)."
           fi
