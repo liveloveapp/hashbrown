@@ -70,8 +70,7 @@ export const TARGETS = Object.freeze([
   }),
   // The site (Next.js in www/). CI builds it with `vercel pull` + `vercel
   // build`; the project's build settings mirror what CI writes. It took over
-  // the domains of the retired Analog project (renamed `hashbrown-www-analog`);
-  // `previousProject` lets reruns move them without a gap, and
+  // the domains of the retired Analog project, which has since been deleted;
   // `removedDomains` drops the preview-era subdomain.
   Object.freeze({
     key: 'www',
@@ -80,7 +79,6 @@ export const TARGETS = Object.freeze([
     domains: SITE_DOMAINS,
     // To roll back, move the domains the other way with move-domains.mjs;
     // re-adding an old target here can't, because it creates rather than moves.
-    previousProject: 'hashbrown-www-analog',
     removedDomains: [`next.${DOMAIN}`],
     env: ['OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_BASE_URL'],
     requiredEnv: ['OPENAI_API_KEY'],
