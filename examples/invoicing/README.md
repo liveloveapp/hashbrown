@@ -30,14 +30,16 @@ payment". The assistant column stays in view while the page scrolls, with the
 message box pinned under the thread; Enter sends and Shift+Enter adds a line.
 
 **Match payment** opens a separately authorized allocation review, and so does
-the assistant's own offer: **Match to INV-…** when it names the invoice, or
+the assistant's own offer: **Match to INV-…** when it names the invoice (or
+**Match to INV-… and INV-…** when one payment covers several), or
 **Review …** for an ambiguous payment, which selects it and focuses the invoice
 picker instead. **Approve and apply** records the simulated allocation,
 refreshes the balances and leaves a confirmation in the thread saying what was
 applied and what stays unapplied; the grid marks such a payment **Partially
-matched**. With multiple open invoices, choose an invoice first. Combined
-payments are currently applied one invoice at a time, each with its own
-approval. **Decline** leaves the ledger unchanged. Chat becomes available
+matched**. With multiple open invoices, choose an invoice first. A combined
+payment is one proposal with a line per invoice and takes a single approval:
+the card lists each invoice's share and the total, and approving applies every
+line together or none of them. **Decline** leaves the ledger unchanged. Chat becomes available
 again after a completed or safely retired review, and subsequent matching uses
 a fresh review thread. Unknown allocation outcomes remain blocked until checked.
 
@@ -102,11 +104,12 @@ points to a local B4 checkout.
 ## Evals
 
 The assistant has an on-demand eval suite in
-`server/src/app/assistant/evals/assistant.eval.ts`: nine questions whose
+`server/src/app/assistant/evals/assistant.eval.ts`: ten questions whose
 expected answers are computed from the generated ledger's facts at load time
 (the unapplied USD total, the GBP client with the largest open balance, the
 GBP client with the most over 90 days, Cedar Health's open invoice IDs, the
-ambiguous Atlas payment, three payment habits), so the dataset can never
+ambiguous Atlas payment, Harbor's combined payment, three payment habits), so
+the dataset can never
 drift from the data the assistant queries. Scorers check that the model
 renders exactly once, that no tool errored, that
 the prose never claims to have allocated anything, that the answer is under
@@ -187,8 +190,10 @@ refreshing balances, including when the approval stream fails after submission.
 One unanswered interrupt holds the entire batch.
 
 The review middleware binds B4 tools to the validated cookie session and exact
-conversation. Proposed amounts come from server balances. Approval revalidates
-records and applies the allocation synchronously with its recorded result.
+conversation. Proposed amounts come from server balances: a review bound to
+several invoices fills them in order from the payment's unapplied amount.
+Approval revalidates every record and applies all of the proposal's lines
+synchronously with its recorded result.
 Repeated identical decisions return that result; stale or conflicting decisions
 and foreign-session proposals fail without changing balances.
 
