@@ -22,10 +22,19 @@ import { SymbolLink } from './SymbolLink';
  * as marked placeholders (see `renderMarkdown`).
  *
  * @param sdk - The SDK whose docs are rendering; resolves relative next-step links.
+ * @param popovers - Server-rendered popover bodies by canonical reference, for
+ *   the symbol links this page contains (see `renderDocsMarkdown`). Links
+ *   without an entry render without a popover.
  */
-export function docsComponents(sdk: string): MarkdownComponents {
+export function docsComponents(
+  sdk: string,
+  popovers: ReadonlyMap<string, ReactNode> = new Map(),
+): MarkdownComponents {
   const DocsNextStep = (props: { link?: string; children?: ReactNode }) => (
     <NextStep {...props} sdk={sdk} />
+  );
+  const DocsSymbolLink = ({ reference = '' }: { reference?: string }) => (
+    <SymbolLink reference={reference} popover={popovers.get(reference)} />
   );
   return {
     'hb-code-example': CodeExample,
@@ -35,7 +44,7 @@ export function docsComponents(sdk: string): MarkdownComponents {
     'hb-next-steps': NextSteps,
     'hb-next-step': DocsNextStep,
     'hb-expander': Expander,
-    'hb-symbol-link': SymbolLink,
+    'hb-symbol-link': DocsSymbolLink,
     'hb-code': () => <CodeIcon />,
     'hb-components': () => <ComponentsIcon />,
     'hb-functions': () => <FunctionsIcon />,

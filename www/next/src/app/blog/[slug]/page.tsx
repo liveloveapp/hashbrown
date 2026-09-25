@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { BlogPostView } from '../../../components/blog/BlogPostView';
-import { docsComponents } from '../../../components/docs-components';
+import { renderDocsMarkdown } from '../../../components/docs-markdown';
 import { listBlogPosts, readBlogPost } from '../../../lib/content';
-import { renderMarkdown } from '../../../lib/markdown';
 import { pageMetadata } from '../../../lib/site-metadata';
 
 type Params = { slug: string };
@@ -45,7 +44,7 @@ export default async function BlogPostPage({
   const { body, ...summary } = post;
   return (
     <BlogPostView post={summary}>
-      {(await renderMarkdown(body, docsComponents('react'))).content}
+      {(await renderDocsMarkdown(body, 'react')).content}
     </BlogPostView>
   );
 }

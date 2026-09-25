@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { docsComponents } from '../../../../components/docs-components';
+import { renderDocsMarkdown } from '../../../../components/docs-markdown';
 import { MarkdownPage } from '../../../../components/markdown/MarkdownPage';
 import { listDocs, readDoc, type Sdk, SDKS } from '../../../../lib/content';
-import { renderMarkdown } from '../../../../lib/markdown';
 import { pageMetadata } from '../../../../lib/site-metadata';
 
 type Params = { sdk: string; slug: string[] };
@@ -41,9 +40,6 @@ export default async function DocsPage({
   if (!doc) {
     notFound();
   }
-  const { content, headings } = await renderMarkdown(
-    doc.body,
-    docsComponents(sdk),
-  );
+  const { content, headings } = await renderDocsMarkdown(doc.body, sdk);
   return <MarkdownPage headings={headings}>{content}</MarkdownPage>;
 }

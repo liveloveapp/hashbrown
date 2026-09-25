@@ -1,30 +1,36 @@
 'use client';
 
-import { useState } from 'react';
 import { CopyIcon } from './icons';
+import { toastService } from './toast/toast-service';
 
-/** Copies the text of the enclosing code example's content to the clipboard. */
+/**
+ * Copies the text of the enclosing code example's content to the clipboard
+ * and confirms with a toast, like the Angular `CodeExample.onCopy`.
+ */
 export function CopyButton() {
-  const [copied, setCopied] = useState(false);
-
   return (
     <button
       type="button"
       aria-label="Copy code to clipboard"
       onClick={async (event) => {
-        const content = event.currentTarget
-          .closest('[data-component="code-example"]')
-          ?.querySelector('[data-content]');
+        const text =
+          event.currentTarget
+            .closest('[data-component="code-example"]')
+            ?.querySelector('[data-content]')?.textContent ?? '';
+        if (!text) {
+          return;
+        }
         try {
-          await navigator.clipboard.writeText(content?.textContent ?? '');
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
+          await navigator.clipboard.writeText(text);
+          toastService.success('Code copied to clipboard', {
+            position: 'top-center',
+          });
         } catch (err) {
           console.error('Copy failed', err);
         }
       }}
     >
-      {copied ? 'copied' : <CopyIcon />}
+      <CopyIcon />
     </button>
   );
 }

@@ -1,0 +1,90 @@
+/* Port of the styles in www/analog/src/app/components/Announcement.ts
+   (.announcement is its :host). */
+.announcement {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100vw;
+  position: fixed;
+  bottom: 32px;
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 800ms ease-in-out;
+  padding: 0 16px;
+}
+
+@starting-style {
+  .announcement {
+    opacity: 0;
+  }
+}
+
+/* The squircle ("0 0 8 8") clipped the alert, which hid its shadow; the
+   rounded inset clip keeps that look without the SVG path. */
+.alert {
+  display: inline-grid;
+  grid-template-areas: 'announcement close' 'gradient gradient';
+  grid-template-columns: 1fr 32px;
+  grid-template-rows: 1fr 8px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px 8px 1px 1px;
+  clip-path: inset(0 round 8px);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.12);
+  width: auto;
+  transition: background-color 300ms ease-in-out;
+}
+
+.alert:hover {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.alert a {
+  grid-area: announcement;
+  padding: 11px 24px 12px 24px;
+  color: rgba(0, 0, 0, 0.64);
+  text-align: center;
+  font:
+    400 13px/140% 'Fredoka',
+    sans-serif;
+}
+
+.alert a strong {
+  font-weight: 700;
+}
+
+.close {
+  grid-area: close;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 24px;
+  padding-right: 8px;
+  background: none;
+  border: none;
+  opacity: 0.56;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.close:hover {
+  opacity: 1;
+}
+
+.gradient {
+  grid-area: gradient;
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(
+    to right,
+    #fbbb52 0%,
+    var(--sunset-orange) 25%,
+    var(--indian-red-light) 50%,
+    var(--sky-blue-dark) 75%,
+    var(--olive-green-light) 100%
+  );
+  background-clip: border-box;
+}

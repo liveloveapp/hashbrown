@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { SearchOverlay } from '../components/search/SearchOverlay';
+import { Announcement } from '../components/site/Announcement';
 import { RememberSdk } from '../components/site/RememberSdk';
+import { ToastContainer } from '../components/toast/ToastContainer';
 import { pageMetadata } from '../lib/site-metadata';
 import './globals.css';
 
@@ -30,7 +32,10 @@ export const viewport: Viewport = {
   themeColor: '#FDE4BA',
 };
 
-/** Root layout: fonts and global styles shared by every route. */
+/**
+ * Root layout: fonts, global styles, and the site-wide announcement, search
+ * overlay and toast outlet (as the Angular `AppComponent` mounted them).
+ */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
@@ -53,7 +58,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <RememberSdk />
         {children}
+        <Announcement />
         <SearchOverlay />
+        <ToastContainer />
       </body>
     </html>
   );

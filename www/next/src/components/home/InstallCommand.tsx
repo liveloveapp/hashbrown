@@ -1,10 +1,10 @@
 'use client';
 
 import { useRef } from 'react';
+import { toastService } from '../toast/toast-service';
 import { useSiteConfig } from '../use-site-config';
 import { copyText } from './copy-text';
 import { installCommand, type Sdk, SDK_LABELS } from './home.content';
-import { showSuccessToast } from './toast';
 import styles from './InstallCommand.module.css';
 
 /** The frameworks in the order the toggle shows them. */
@@ -56,7 +56,9 @@ export function InstallCommand({ centered = false }: { centered?: boolean }) {
 
   const copy = async () => {
     if (await copyText(command, globalThis.navigator?.clipboard)) {
-      showSuccessToast('Install command copied');
+      toastService.success('Install command copied', {
+        position: 'top-center',
+      });
     }
   };
 
