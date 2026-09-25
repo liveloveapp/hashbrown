@@ -149,6 +149,23 @@ const answersTheQuestion = custom(
           (k): k is TrendChartNode =>
             'TrendChart' in k && k.TrendChart.currency === 'EUR',
         );
+      case 'harbor combined': {
+        const offers = components(run).filter(
+          (k) =>
+            'ReviewPayment' in k &&
+            k.ReviewPayment.paymentId === sampleScenarios.combined.paymentId,
+        );
+        const invoiceIds =
+          offers.length === 1 && 'ReviewPayment' in offers[0]
+            ? (offers[0].ReviewPayment.invoiceIds ?? [])
+            : [];
+        return sameSet(invoiceIds, sampleScenarios.combined.invoiceIds)
+          ? 1
+          : {
+              score: 0,
+              reason: 'expected one ReviewPayment covering both invoices',
+            };
+      }
       case 'atlas match':
         return (
           components(run).some(
@@ -224,6 +241,10 @@ export default defineEval({
       name: 'atlas match',
       input: 'Match the Atlas payment.',
       expected: sampleScenarios.ambiguous.paymentId,
+    },
+    {
+      name: 'harbor combined',
+      input: "Which invoices does Harbor Commerce's combined payment cover?",
     },
     ...facts.customers
       .filter((c) => ['summit', 'pioneer', 'granite'].includes(c.customerId))

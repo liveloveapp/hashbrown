@@ -103,7 +103,7 @@ test('the kit schema accepts a full canonical tree and rejects unknown component
             },
             { AgingSummary: { props: { currency: 'USD', customerId: 'c' } } },
             { CustomerCard: { props: { customerId: 'c' } } },
-            { ReviewPayment: { props: { paymentId: 'p', invoiceId: null } } },
+            { ReviewPayment: { props: { paymentId: 'p', invoiceIds: null } } },
           ],
         },
       },
