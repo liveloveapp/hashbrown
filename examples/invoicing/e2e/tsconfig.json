@@ -8,5 +8,5 @@
     "types": ["node"],
     "ignoreDeprecations": "6.0"
   },
-  "include": ["*.ts", "../server/browser-fixture.ts"]
+  "include": ["*.ts", "walkthrough/*.ts", "../server/browser-fixture.ts"]
 }

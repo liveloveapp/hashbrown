@@ -154,6 +154,36 @@ included, is cut with the app's own fixture keying
 (`server/evals/fixtures.ts`), which the harness's `getRecordedFixtures()`
 keyed differently.
 
+## Walkthrough video
+
+The video on [hashbrown.dev/samples](https://hashbrown.dev/samples) is
+recorded from this app, against the live model:
+
+```sh
+INVOICING_ENV_FILE=.env npx nx walkthrough invoicing-e2e
+```
+
+It needs `ffmpeg` with libx264 on `PATH` and an OpenAI key, because the
+assistant answers live. The target starts the agent server and the React app,
+and stops if ports 4325 or 4326 are taken; pass `-- --reuse-servers` when the
+servers already running serve this checkout. Playwright drives a headed Chrome
+parked off-screen: on a Retina display the screencast captures physical
+pixels, which gives a sharp 1080p. Captions, the presenter cursor and zoom are
+injected into the page (`e2e/walkthrough/overlay.ts`). The build fast-forwards
+the model's tool calls (and labels those spans "Fast-forward"), caps each
+streamed answer at three seconds of screen time, and adds the title and end
+cards. It writes the video to `test-results/examples/invoicing-walkthrough/`
+and its poster to `www/public/image/landing-page/invoicing-walkthrough.webp`.
+
+The video is not committed; it lives in the `hashbrown-www-media` Vercel Blob
+store. With `BLOB_READ_WRITE_TOKEN` (the store's token, set on the
+`hashbrown-www` project) and `VERCEL_TOKEN` in the environment, the target
+uploads it under a content-hashed name and prints the URL; otherwise it prints
+the upload command. Put that URL in
+`www/src/components/samples/walkthrough.ts`. Every run differs a little, so
+watch the video before publishing it. `npx nx test-walkthrough invoicing-e2e`
+covers the timing logic.
+
 ## Deployment
 
 `npx nx build invoicing` produces `examples/invoicing/.vercel/output`

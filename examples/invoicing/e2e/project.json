@@ -40,6 +40,19 @@
         "command": "playwright test --config examples/invoicing/e2e/record-stills.config.ts"
       }
     },
+    "walkthrough": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx --tsconfig examples/invoicing/e2e/tsconfig.json examples/invoicing/e2e/walkthrough/main.ts"
+      }
+    },
+    "test-walkthrough": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config examples/invoicing/e2e/walkthrough/vitest.config.mts"
+      }
+    },
     "application-e2e": {
       "executor": "nx:run-commands",
       "options": {
