@@ -270,20 +270,45 @@ async function projectHasDomain(vercel, projectId, name) {
   }
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function reconcileRedirect(vercel, projectId, domain, current) {
+  if (
+    domain.redirect === undefined ||
+    (current.redirect === domain.redirect &&
+      current.redirectStatusCode === domain.redirectStatusCode)
+  ) {
+    return false;
+  }
+  await vercel('PATCH', `/v9/projects/${projectId}/domains/${domain.name}`, {
+    redirect: domain.redirect,
+    redirectStatusCode: domain.redirectStatusCode,
+  });
+  return true;
+}
+
 /**
  * Attach a domain to a project. When it's still on `previousProjectId`, it's
  * moved with Vercel's move endpoint, so it's never detached in between.
+ *
+ * Moving an apex also moves its `www.` redirect, asynchronously, so for a
+ * moment that domain is on neither project and creating it fails with 409.
+ * With a `previousProjectId`, a 409 is retried by waiting for the domain to
+ * arrive on the target.
  *
  * @param vercel - A client from {@link createVercelClient}.
  * @param projectId - The project that should serve the domain.
  * @param domain - `{ name, redirect?, redirectStatusCode? }`.
  * @param previousProjectId - A project the domain may still be attached to.
+ * @param options.wait - Delay between checks (injectable for tests).
+ * @param options.attempts - How many times to check for an in-flight move.
  */
 export async function ensureDomain(
   vercel,
   projectId,
   domain,
   previousProjectId,
+  { wait = sleep, attempts = 10 } = {},
 ) {
   let current;
   try {
@@ -310,22 +335,31 @@ export async function ensureDomain(
       );
       return 'moved';
     }
-    await vercel('POST', `/v10/projects/${projectId}/domains`, domain);
-    return 'created';
+    try {
+      await vercel('POST', `/v10/projects/${projectId}/domains`, domain);
+      return 'created';
+    } catch (createError) {
+      if (createError?.status !== 409 || !previousProjectId) throw createError;
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        await wait(1000 * (attempt + 1));
+        try {
+          const arrived = await vercel(
+            'GET',
+            `/v9/projects/${projectId}/domains/${domain.name}`,
+          );
+          await reconcileRedirect(vercel, projectId, domain, arrived);
+          return 'moved';
+        } catch (error) {
+          if (!isNotFound(error)) throw error;
+        }
+      }
+      throw createError;
+    }
   }
 
-  if (
-    domain.redirect !== undefined &&
-    (current.redirect !== domain.redirect ||
-      current.redirectStatusCode !== domain.redirectStatusCode)
-  ) {
-    await vercel('PATCH', `/v9/projects/${projectId}/domains/${domain.name}`, {
-      redirect: domain.redirect,
-      redirectStatusCode: domain.redirectStatusCode,
-    });
-    return 'updated';
-  }
-  return 'exists';
+  return (await reconcileRedirect(vercel, projectId, domain, current))
+    ? 'updated'
+    : 'exists';
 }
 
 /**

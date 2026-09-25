@@ -308,7 +308,11 @@ test('ensureDomain moves a domain from the previous project in one step', async 
   const result = await ensureDomain(
     vercel,
     'prj_new',
-    { name: 'www.hashbrown.dev', redirect: 'hashbrown.dev', redirectStatusCode: 308 },
+    {
+      name: 'www.hashbrown.dev',
+      redirect: 'hashbrown.dev',
+      redirectStatusCode: 308,
+    },
     'prj_old',
   );
 
@@ -322,6 +326,57 @@ test('ensureDomain moves a domain from the previous project in one step', async 
       redirectStatusCode: 308,
     },
   });
+});
+
+test('ensureDomain waits out a www redirect that moved with its apex', async () => {
+  // Moving the apex also moves its www redirect, asynchronously: for a moment
+  // www is on neither project, so creating it fails with 409.
+  let targetChecks = 0;
+  const { fetchImpl, calls } = stubFetch({
+    'GET /v9/projects/prj_new/domains/www.hashbrown.dev': () =>
+      ++targetChecks < 3
+        ? { status: 404, body: { error: { code: 'not_found' } } }
+        : { body: { redirect: 'hashbrown.dev', redirectStatusCode: 308 } },
+    'POST /v10/projects/prj_new/domains': {
+      status: 409,
+      body: { error: { code: 'domain_already_in_use' } },
+    },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  const result = await ensureDomain(
+    vercel,
+    'prj_new',
+    {
+      name: 'www.hashbrown.dev',
+      redirect: 'hashbrown.dev',
+      redirectStatusCode: 308,
+    },
+    'prj_old',
+    { wait: async () => undefined },
+  );
+
+  assert.equal(result, 'moved');
+  assert.equal(targetChecks, 3);
+  assert.equal(calls.filter((c) => c.method === 'PATCH').length, 0);
+});
+
+test('ensureDomain gives up when a 409 domain never arrives', async () => {
+  const { fetchImpl } = stubFetch({
+    'POST /v10/projects/prj_new/domains': {
+      status: 409,
+      body: { error: { code: 'domain_already_in_use' } },
+    },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+
+  await assert.rejects(
+    ensureDomain(vercel, 'prj_new', { name: 'www.hashbrown.dev' }, 'prj_old', {
+      wait: async () => undefined,
+      attempts: 3,
+    }),
+    /409/,
+  );
 });
 
 test('ensureDomain creates the domain when neither project has it', async () => {
@@ -350,15 +405,20 @@ test('ensureDomainRemoved detaches a domain only when attached', async () => {
   });
   const vercel = createVercelClient('tok', fetchImpl);
 
-  const removed = await ensureDomainRemoved(vercel, 'prj_1', 'next.hashbrown.dev');
-  const absent = await ensureDomainRemoved(vercel, 'prj_1', 'gone.hashbrown.dev');
+  const removed = await ensureDomainRemoved(
+    vercel,
+    'prj_1',
+    'next.hashbrown.dev',
+  );
+  const absent = await ensureDomainRemoved(
+    vercel,
+    'prj_1',
+    'gone.hashbrown.dev',
+  );
 
   assert.equal(removed, 'removed');
   assert.equal(absent, 'absent');
-  assert.equal(
-    calls.filter((c) => c.method === 'DELETE').length,
-    1,
-  );
+  assert.equal(calls.filter((c) => c.method === 'DELETE').length, 1);
 });
 
 test('ensureDomain treats an existing project domain as exists', async () => {
