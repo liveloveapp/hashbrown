@@ -64,17 +64,6 @@
     },
     {
       "match": {
-        "userMessage": "How does Summit Logistics usually pay?",
-        "turnIndex": 3,
-        "hasToolResult": true,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{}"
-      }
-    },
-    {
-      "match": {
         "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summit Logistics is an “on-time” payer: average days to pay 8 days, late payment rate 0%. Last payment received on 2026-09-15. They currently have no open invoices.\n\nTotals for Summit: invoiced \"$178,550.00\", received \"$181,550.00\", and an unapplied balance of \"$3,000.00\". There is one unapplied payment (id: \"payment-summit-advance\", reference: \"ACH SUMMIT OCTOBER ADVANCE\", date: 2026-09-15, amount: \"$3,000.00\"). The payment reference contains “ACH”, which suggests they use ACH transfers.\n\nIf you’d like, I can show the unapplied payment for review or attempt to match it to open invoices — tell me if you want to review that payment.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,

@@ -1,14 +1,10 @@
 import { basename, dirname, join } from 'node:path';
-import type { AimockFixture, AimockResponse, FixtureSet } from '@b4run/testing';
-
-/** A recorded response that says nothing and calls nothing. */
-const emptyClosing = (response: AimockResponse): boolean => {
-  const { content, toolCalls } = response as {
-    content?: unknown;
-    toolCalls?: unknown;
-  };
-  return content === '' && !Array.isArray(toolCalls);
-};
+import {
+  type AimockFixture,
+  type AimockResponse,
+  createAimock,
+  type FixtureSet,
+} from '@b4run/testing';
 
 /**
  * `@b4run/testing` narrows aimock's `match` to three keys, but aimock's router
@@ -54,14 +50,8 @@ export interface Recording {
  * once, it is consumed by the app's call and the judge falls through to its
  * own recording.
  *
- * One recording is also rewritten. Since the system prompt stopped asking for
- * a closing message (the `after` hook in `src/middleware.ts` decides it now),
- * gpt-5-mini ends a run with an empty assistant message, and aimock rejects a
- * fixture whose `content` is the empty string with no `blocks` ("content is
- * empty string"), so the tape could not be replayed at all. Such a recording
- * is stored as `{}` instead: the closing message is inert for this app — the
- * user reads the `render` call, no scorer looks at `run.finalMessage`, and in
- * production `after` replaces the message whatever it was.
+ * Responses are kept exactly as recorded. A recording replay would reject is
+ * refused by {@link assertReplayable} before it is written, never rewritten.
  */
 export function recordingsToFixtures(
   recordings: readonly Recording[],
@@ -81,9 +71,76 @@ export function recordingsToFixtures(
           .some((m) => m.role === 'tool'),
         sequenceIndex: 0,
       },
-      response: emptyClosing(rec.response) ? { content: '{}' } : rec.response,
+      response: rec.response,
     };
   });
+}
+
+/** The prefix aimock puts on the error it throws for fixtures it refuses. */
+const REFUSED = 'Fixture validation failed: ';
+
+/** One problem aimock's loader reports, as it serializes them in that error. */
+interface LoadIssue {
+  readonly severity?: string;
+  readonly fixtureIndex?: number;
+  readonly message?: string;
+}
+
+/**
+ * Name each refused turn by its conversation position and user message,
+ * falling back to aimock's own message when it is not in the shape above.
+ */
+function describeRefusal(fixtures: FixtureSet, error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  if (!raw.startsWith(REFUSED)) return raw;
+  let issues: unknown;
+  try {
+    issues = JSON.parse(raw.slice(REFUSED.length));
+  } catch {
+    return raw;
+  }
+  if (!Array.isArray(issues)) return raw;
+  const turns = (issues as LoadIssue[])
+    .filter((issue) => issue.severity === 'error')
+    .map((issue) => {
+      const match =
+        issue.fixtureIndex === undefined
+          ? undefined
+          : fixtures[issue.fixtureIndex]?.match;
+      const where =
+        match === undefined
+          ? `fixture ${issue.fixtureIndex ?? '?'}`
+          : `turn ${match.turnIndex ?? '?'}` +
+            (match.userMessage === undefined
+              ? ''
+              : ` of ${JSON.stringify(match.userMessage)}`);
+      return `${where}: ${issue.message ?? 'refused'}`;
+    });
+  return turns.length > 0 ? turns.join('; ') : raw;
+}
+
+/**
+ * Refuse a tape that replay would reject.
+ *
+ * aimock validates fixtures whenever it loads them for replay, and refuses
+ * some responses a recording can legitimately capture, notably an assistant
+ * message whose content is empty. Loading the tape through the same validator
+ * before it is written makes such a recording fail now, naming the turn,
+ * instead of producing a file the next replay cannot open.
+ *
+ * `@b4run/testing` applies the same check to its own recordings since
+ * cacheplane/b4run#844. This app keys its fixtures itself (see
+ * {@link recordingsToFixtures}), so it has to apply the check itself.
+ *
+ * @param fixtures - The tape about to be written.
+ * @returns Resolves when replay would load the tape.
+ * @throws Error naming each refused turn and aimock's reason.
+ */
+export async function assertReplayable(fixtures: FixtureSet): Promise<void> {
+  const mock = await createAimock({ fixtures }).catch((error: unknown) => {
+    throw new Error(describeRefusal(fixtures, error));
+  });
+  await mock.close();
 }
 
 /** `<dir>/<evalBase>.<slug>.fixtures.json`, matching `b4 eval`'s convention. */

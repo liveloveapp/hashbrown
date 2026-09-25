@@ -81,17 +81,6 @@
     },
     {
       "match": {
-        "userMessage": "Show me Cedar Health's open invoices.",
-        "turnIndex": 4,
-        "hasToolResult": true,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{}"
-      }
-    },
-    {
-      "match": {
         "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Cedar Health — open invoices\n\nSummary:\n- Open invoices: 1 totaling $5,000.00.\n- Unapplied payments: 1 totaling $2,000.00 (candidate for the open invoice).\n\nDetails:\n- Invoice INV-202609-CH-102 (invoice-cedar-partial), date 2026-09-08 — outstanding $5,000.00.\n- Unapplied payment ACH INV-202609-CH-102 PARTIAL (payment-cedar-partial), date 2026-09-12 — unapplied $2,000.00. This payment is listed as a candidate for the invoice above.\n\nWould you like to review the unapplied payment to match it to the invoice?\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,

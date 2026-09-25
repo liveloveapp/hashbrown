@@ -17,7 +17,7 @@ import { type FixtureSet, loadFixtures, writeFixtures } from '@b4run/testing';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { siblingFixturePath } from './fixtures';
+import { assertReplayable, siblingFixturePath } from './fixtures';
 import {
   createInvoicingHarness,
   type HarnessMode,
@@ -113,7 +113,7 @@ async function runOne(
   evalFile: string,
   definition: EvalDefinition,
   args: Args,
-): Promise<EvalReport | undefined> {
+): Promise<{ report: EvalReport; refused: string[] } | undefined> {
   const all = await resolveDataset(definition.dataset, dirname(evalFile));
   const selected = all
     .map((testCase, index): Selected => ({ testCase, index }))
@@ -139,41 +139,56 @@ async function runOne(
   // and the harness tapes everything from a run's start until the next one
   // begins, so a case's tape is cut just before the next case runs and, for
   // the last case, once runEval resolves.
+  //
+  // A tape replay would reject is refused rather than written, so a broken
+  // recording surfaces now instead of on the next replay. Refusals are
+  // collected, not thrown, because a tape is cut as the NEXT case starts and
+  // throwing there would fail the wrong case.
   let taped: Selected | undefined;
-  const cut = () => {
+  const refused: string[] = [];
+  const cut = async () => {
     if (!taped) return;
-    const sibling = siblingFixturePath(
-      evalFile,
-      taped.testCase.name,
-      taped.index,
-    );
+    const { testCase, index } = taped;
+    taped = undefined;
+    const sibling = siblingFixturePath(evalFile, testCase.name, index);
     const recorded = harness.getRecordedFixtures();
+    try {
+      await assertReplayable(recorded);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      refused.push(`${testCase.name}: ${reason}`);
+      console.error(
+        `  refused to record ${testCase.name}; no fixture written: ${reason}`,
+      );
+      return;
+    }
     writeFixtures(sibling, recorded);
     console.log(
       `  recorded ${recorded.length} fixture(s) to ${relative(serverRoot, sibling)}`,
     );
-    taped = undefined;
   };
   const runCase = async (testCase: EvalCase) => {
     const { input } = testCase;
     if (typeof input !== 'string')
       throw new Error(`case "${testCase.name}" input must be a string`);
     if (args.mode === 'record') {
-      cut();
+      await cut();
       taped = byCase.get(testCase);
     }
     return harness.run({ input, fixtures: fixtures?.get(testCase) });
   };
+  let report: EvalReport;
   try {
-    return await runEval(
+    report = await runEval(
       { ...definition, dataset: selected.map((s) => s.testCase) },
       { baseDir: dirname(evalFile), runCase },
     );
   } finally {
     // Whatever was taped is kept, so a failure on case N does not discard
     // cases 1 to N-1.
-    cut();
+    await cut();
   }
+  return { report, refused };
 }
 
 async function main() {
@@ -193,11 +208,18 @@ async function main() {
         pathToFileURL(evalFile).href
       )) as { default: EvalDefinition };
       try {
-        const report = await runOne(harness, evalFile, definition, args);
-        if (!report) continue;
+        const outcome = await runOne(harness, evalFile, definition, args);
+        if (!outcome) continue;
+        const { report, refused } = outcome;
         reports.push(report);
         printReport(report);
         if (report.gated && !report.passed) failed = true;
+        if (refused.length > 0) {
+          failed = true;
+          console.error(
+            `\n${definition.name}: refused to record ${refused.length} case(s):\n  ${refused.join('\n  ')}`,
+          );
+        }
       } catch (error) {
         failed = true;
         console.error(

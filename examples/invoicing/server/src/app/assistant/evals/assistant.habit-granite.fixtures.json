@@ -64,17 +64,6 @@
     },
     {
       "match": {
-        "userMessage": "How does Granite Mutual usually pay?",
-        "turnIndex": 3,
-        "hasToolResult": true,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{}"
-      }
-    },
-    {
-      "match": {
         "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summary — how Granite Mutual pays\n\n- Profile: \"short-payer\" — they usually pay quickly but tend to underpay slightly.\n- Speed: average days to pay = 6 days.\n- Timeliness: late payment rate = 0% (they are not generally late).\n- Amounts: invoiced \"$220,250.00\", received \"$215,845.00\", currently open \"$4,405.00\" across 41 open invoices (many small residuals around $90–$138 each).\n- Last payment date: 2026-09-06.\n\nInterpretation: expect prompt payments, often as partials or with small shortfalls that leave low outstanding balances on many invoices. If you want to clear those residuals, I can show the open invoices for review.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,

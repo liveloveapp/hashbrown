@@ -64,17 +64,6 @@
     },
     {
       "match": {
-        "userMessage": "Which GBP client has the most money more than 90 days past net-30 terms?",
-        "turnIndex": 3,
-        "hasToolResult": true,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{}"
-      }
-    },
-    {
-      "match": {
         "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Kestrel Energy (customer ID: kestrel) has the largest balance more than 90 days past net-30: £3,093.00. See the over-90 invoices and Kestrel's customer card below.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
