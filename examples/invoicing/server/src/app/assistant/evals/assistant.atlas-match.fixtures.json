@@ -81,17 +81,6 @@
     },
     {
       "match": {
-        "userMessage": "Match the Atlas payment.",
-        "turnIndex": 4,
-        "hasToolResult": true,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{}"
-      }
-    },
-    {
-      "match": {
         "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: I found Atlas’s unapplied payment and the two open invoices that match the amount. Because the payment equals the full amount of either invoice, the correct allocation is ambiguous — please review and choose which invoice to apply it to.\n\nOptions:\n- Apply the $1,500 payment (ACH ATLAS SEPTEMBER WORKSHOP, 2026-09-14) to INV-202609-AA-106 (INV-202609-AA-106, $1,500, 2026-09-11)\n- Apply it to INV-202609-AA-105 (INV-202609-AA-105, $1,500, 2026-09-10)\n- Leave the payment unapplied for now\n\nUse the ReviewPayment component below to propose a match; I will not allocate anything until you confirm.\n\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,

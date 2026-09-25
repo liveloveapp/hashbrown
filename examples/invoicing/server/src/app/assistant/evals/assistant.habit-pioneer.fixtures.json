@@ -64,17 +64,6 @@
     },
     {
       "match": {
-        "userMessage": "How does Pioneer Robotics usually pay?",
-        "turnIndex": 3,
-        "hasToolResult": true,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{}"
-      }
-    },
-    {
-      "match": {
         "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\n\n- Profile: late-fixed\n- Average days to pay: 39 days\n- Late payment rate: 1 (they pay late consistently)\n- Last payment: 2026-09-05\n- Outstanding balance: \"$9,950.00\"\n\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,

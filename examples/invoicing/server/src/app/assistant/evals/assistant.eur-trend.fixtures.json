@@ -64,17 +64,6 @@
     },
     {
       "match": {
-        "userMessage": "How did EUR invoicing trend this year?",
-        "turnIndex": 3,
-        "hasToolResult": true,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{}"
-      }
-    },
-    {
-      "match": {
         "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summary — EUR invoicing (Jan–Sep 2026):\n\n- Total invoiced (Jan–Sep): €158,650.00\n- Average per month (Jan–Sep): ≈ €17,627.78\n- Highest month: July — \"€24,100.00\"\n- Lowest months: March and September — both \"€12,600.00\"\n- Notable collection activity: February received \"€29,600.00\" vs invoiced \"€14,600.00\"; August received \"€33,100.00\" vs invoiced \"€18,350.00\" (suggests receipts include prior-period collections).\n- Current open EUR balance: \"€4,500.00\" (1 open invoice, no unapplied payments).\n\nWould you like the same chart for a single EUR customer, a 24-month view, or the underlying invoice list for any specific month?\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
