@@ -49,7 +49,7 @@ export function validateUi(
 
   const customers = new Map(snapshot.customers.map((c) => [c.id, c]));
   const currencies = new Set(snapshot.customers.map((c) => c.currency));
-  const invoices = new Set(snapshot.invoices.map((i) => i.id));
+  const invoices = new Map(snapshot.invoices.map((i) => [i.id, i]));
   const payments = new Map(snapshot.payments.map((p) => [p.id, p]));
 
   const leaf = (node: unknown, index: number): CanonicalNode => {
@@ -162,7 +162,35 @@ export function validateUi(
           fail(
             `${at}.ReviewPayment.paymentId: payment ${payment.id} has no unapplied balance`,
           );
-        return { ReviewPayment: { props: { paymentId: payment.id } } };
+        const invoiceId = p.invoiceId;
+        if (invoiceId === undefined || invoiceId === null)
+          return {
+            ReviewPayment: {
+              props: { paymentId: payment.id, invoiceId: null },
+            },
+          };
+        const invoice =
+          typeof invoiceId === 'string' ? invoices.get(invoiceId) : undefined;
+        if (!invoice)
+          fail(
+            `${at}.ReviewPayment.invoiceId: unknown invoice ${String(invoiceId)}`,
+          );
+        if (
+          invoice.customerId !== payment.customerId ||
+          invoice.currency !== payment.currency
+        )
+          fail(
+            `${at}.ReviewPayment.invoiceId: invoice ${invoice.id} is not for this payment's customer and currency`,
+          );
+        if (invoice.outstandingCents <= 0)
+          fail(
+            `${at}.ReviewPayment.invoiceId: invoice ${invoice.id} has no outstanding balance`,
+          );
+        return {
+          ReviewPayment: {
+            props: { paymentId: payment.id, invoiceId: invoice.id },
+          },
+        };
       }
       default:
         return fail(`${at}.${name}: unknown component ${name}`);

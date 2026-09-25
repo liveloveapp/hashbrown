@@ -53,7 +53,10 @@ test('a valid answer becomes one AssistantText node with canonical children', ()
             { CustomerCard: { props: { customerId: 'atlas' } } },
             {
               ReviewPayment: {
-                props: { paymentId: sampleScenarios.ambiguous.paymentId },
+                props: {
+                  paymentId: sampleScenarios.ambiguous.paymentId,
+                  invoiceId: null,
+                },
               },
             },
           ],
@@ -240,6 +243,76 @@ test.each([
   expect(() => validateUi(snapshot, input as AssistantRenderInput)).toThrow(
     message,
   );
+});
+
+const harborPaidInvoiceId = snapshot.invoices.find(
+  (invoice) =>
+    invoice.customerId === 'harbor' && invoice.outstandingCents === 0,
+)?.id;
+
+test('ReviewPayment keeps an invoice that the payment can settle', () => {
+  const input: AssistantRenderInput = {
+    text: 'Harbor paid two invoices at once.',
+    components: [
+      {
+        ReviewPayment: {
+          paymentId: sampleScenarios.combined.paymentId,
+          invoiceId: sampleScenarios.combined.invoiceIds[0],
+        },
+      },
+    ],
+  };
+
+  const result = validateUi(snapshot, input);
+
+  expect(result.ui).toEqual([
+    {
+      AssistantText: {
+        props: { text: 'Harbor paid two invoices at once.' },
+        children: [
+          {
+            ReviewPayment: {
+              props: {
+                paymentId: sampleScenarios.combined.paymentId,
+                invoiceId: sampleScenarios.combined.invoiceIds[0],
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+});
+
+test.each([
+  [
+    'nope',
+    'invalid_ui: components[0].ReviewPayment.invoiceId: unknown invoice nope',
+  ],
+  [
+    sampleScenarios.ambiguous.invoiceIds[0],
+    `invalid_ui: components[0].ReviewPayment.invoiceId: invoice ${sampleScenarios.ambiguous.invoiceIds[0]} is not for this payment's customer and currency`,
+  ],
+  [
+    harborPaidInvoiceId,
+    `invalid_ui: components[0].ReviewPayment.invoiceId: invoice ${harborPaidInvoiceId} has no outstanding balance`,
+  ],
+])('ReviewPayment rejects invoice %s', (invoiceId, message) => {
+  const input = {
+    text: 'x',
+    components: [
+      {
+        ReviewPayment: {
+          paymentId: sampleScenarios.combined.paymentId,
+          invoiceId,
+        },
+      },
+    ],
+  };
+
+  const act = () => validateUi(snapshot, input as AssistantRenderInput);
+
+  expect(act).toThrow(message);
 });
 
 test('extra keys inside a leaf are stripped', () => {

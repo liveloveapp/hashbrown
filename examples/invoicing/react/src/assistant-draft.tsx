@@ -85,7 +85,10 @@ export function RenderDraft({
   /** Offer actions such as `ReviewPayment`; only once the server validated the tree. */
   validated?: boolean;
   /** The workspace's review action, which owns the review flow. */
-  ReviewPayment?: (props: { paymentId: string }) => ReactNode;
+  ReviewPayment?: (props: {
+    paymentId: string;
+    invoiceId?: string | null;
+  }) => ReactNode;
 }) {
   const text = typeof args.text === 'string' ? args.text : '';
   const components = Array.isArray(args.components) ? args.components : [];
@@ -136,9 +139,15 @@ export function RenderDraft({
           'ReviewPayment' in leaf &&
           leaf.ReviewPayment
         ) {
-          const { paymentId } = leaf.ReviewPayment;
+          const { paymentId, invoiceId } = leaf.ReviewPayment;
           if (typeof paymentId !== 'string') return null;
-          return <ReviewPayment key={index} paymentId={paymentId} />;
+          return (
+            <ReviewPayment
+              key={index}
+              paymentId={paymentId}
+              invoiceId={typeof invoiceId === 'string' ? invoiceId : null}
+            />
+          );
         }
         return null;
       })}

@@ -47,9 +47,28 @@ test('allows questions without selection and only supplies read-only capabilitie
     // validated UI. `assistantTools` never exposes it to the model.
     'rendered',
     'responseSchema',
+    'selectedPayment',
     'unappliedPayments',
     'validateUi',
   ]);
+  expect(await result.context.selectedPayment()).toEqual({ selected: null });
+});
+
+test('the selected payment reaches the tools that answer about it', async () => {
+  const { middleware, request } = await setup();
+  const probe = await middleware(request);
+  if (probe.action !== 'continue') throw new Error('expected continue');
+  const [payment] = (await probe.context.unappliedPayments({})).payments;
+
+  const result = await middleware({
+    ...request,
+    body: { ...request.body, state: { selectedPaymentId: payment.id } },
+  });
+
+  if (result.action !== 'continue') throw new Error('expected continue');
+  expect((await result.context.selectedPayment()).selected?.id).toBe(
+    payment.id,
+  );
 });
 
 test('rejects missing sessions, wrong schema, resume grants, and foreign conversations', async () => {

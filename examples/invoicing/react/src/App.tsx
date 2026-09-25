@@ -61,6 +61,8 @@ export function App({
   const [invoiceChoice, setInvoiceChoice] = useState('');
   const [reviewNotice, setReviewNotice] = useState('');
   const [assistantBusy, setAssistantBusy] = useState(false);
+  const pickerRef = useRef<HTMLSelectElement>(null);
+  const [pickerRequest, setPickerRequest] = useState(0);
   const handleBusyChange = useCallback((busy: boolean) => {
     setAssistantBusy(busy);
     if (!busy) setReviewNotice('');
@@ -72,6 +74,20 @@ export function App({
     setInvoiceChoice('');
     setReviewNotice('');
     setSelectedIds(nextId ? [nextId] : []);
+  }
+
+  // The assistant asked for an invoice choice: bring the picker to the user.
+  useEffect(() => {
+    if (!pickerRequest) return;
+    pickerRef.current?.scrollIntoView?.({ block: 'center' });
+    pickerRef.current?.focus();
+  }, [pickerRequest]);
+
+  function chooseInvoice(paymentId: string) {
+    setInvoiceChoice('');
+    setReviewNotice('');
+    setSelectedIds([paymentId]);
+    setPickerRequest((count) => count + 1);
   }
 
   useEffect(() => {
@@ -177,7 +193,8 @@ export function App({
     {
       id: 'id',
       header: 'Payment',
-      widthPx: 175,
+      flex: 3,
+      minWidthPx: 215,
       type: 'text',
       value: (row) => row.id,
       render: ({ row }) => (
@@ -194,14 +211,15 @@ export function App({
     {
       id: 'customer',
       header: 'Customer',
-      widthPx: 130,
+      flex: 2,
+      minWidthPx: 140,
       type: 'text',
       value: (row) => row.customerName ?? row.customerId,
     },
     {
       id: 'amount',
       header: 'Received',
-      widthPx: 105,
+      widthPx: 100,
       type: 'number',
       value: (row) => row.amountCents,
       format: ({ row }) => money(row.amountCents, row.currency),
@@ -209,7 +227,7 @@ export function App({
     {
       id: 'unapplied',
       header: 'Unapplied',
-      widthPx: 105,
+      widthPx: 100,
       type: 'number',
       value: (row) => row.unappliedCents,
       format: ({ row }) => money(row.unappliedCents, row.currency),
@@ -217,16 +235,21 @@ export function App({
     {
       id: 'date',
       header: 'Date',
-      widthPx: 105,
+      widthPx: 100,
       type: 'text',
       value: (row) => row.date ?? '—',
     },
     {
       id: 'status',
       header: 'Status',
-      widthPx: 90,
+      widthPx: 130,
       type: 'text',
-      value: (row) => (row.unappliedCents > 0 ? 'Unmatched' : 'Matched'),
+      value: (row) =>
+        row.unappliedCents === 0
+          ? 'Matched'
+          : row.unappliedCents < row.amountCents
+            ? 'Partially matched'
+            : 'Unmatched',
     },
   ];
 
@@ -433,6 +456,7 @@ export function App({
                           <label>
                             Invoice to match
                             <select
+                              ref={pickerRef}
                               aria-label="Invoice to match"
                               value={invoiceChoice}
                               onChange={(event) =>
@@ -498,9 +522,6 @@ export function App({
           <span aria-hidden="true">✧</span>
         </header>
         <div className="assistant-body">
-          <div className="assistant-icon" aria-hidden="true">
-            ✧
-          </div>
           <h2>{selected ? 'Payment context' : 'Your business assistant'}</h2>
           {selected ? (
             <div className="selection-summary">
@@ -524,6 +545,7 @@ export function App({
               transport={transport}
               onApplied={setSnapshot}
               onBusyChange={handleBusyChange}
+              onChooseInvoice={chooseInvoice}
             />
           ) : (
             <p className="connection-notice">

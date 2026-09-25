@@ -2,6 +2,11 @@ import { s, ɵcreateUiKit } from '@hashbrownai/core';
 
 const nullableCustomerId = () =>
   s.anyOf([s.string('A customer ID'), s.nullish()]);
+const nullableInvoiceId = () =>
+  s.anyOf([
+    s.string('The outstanding invoice ID this payment settles'),
+    s.nullish(),
+  ]);
 
 /** Plain prose that may carry other kit components under it. */
 export const assistantTextConfig = {
@@ -62,9 +67,13 @@ export const customerCardConfig = {
 /** An explicit user action that opens a separately authorized payment review. */
 export const reviewPaymentConfig = {
   name: 'ReviewPayment',
-  description: 'Offer to review one existing unapplied payment.',
+  description:
+    'Offer to match one existing unapplied payment, optionally to one outstanding invoice.',
   children: false,
-  props: { paymentId: s.string('The exact existing payment ID') },
+  props: {
+    paymentId: s.string('The exact existing payment ID'),
+    invoiceId: nullableInvoiceId(),
+  },
 } as const;
 
 /** The names of the components in the assistant kit. */

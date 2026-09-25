@@ -215,7 +215,10 @@ export function CustomerCard({ customerId }: { customerId: string }) {
 
 /** Build the kit over concrete renderers; `ReviewPayment` is supplied by the workspace, which owns the review action. */
 export function assistantKit(
-  ReviewPayment: (props: { paymentId: string }) => ReactNode,
+  ReviewPayment: (props: {
+    paymentId: string;
+    invoiceId?: string | null;
+  }) => ReactNode,
 ) {
   return createAssistantKit({
     AssistantText,

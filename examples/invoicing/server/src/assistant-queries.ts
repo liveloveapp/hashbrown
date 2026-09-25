@@ -89,6 +89,49 @@ const paymentRow = (p: Payment) => ({
   unapplied: formatMoney(p.unappliedCents, p.currency),
 });
 
+/** A payment with the open invoices it could settle: same customer and currency, newest first. */
+function withCandidates(snapshot: Snapshot, p: Payment, limit: number) {
+  const candidates = snapshot.invoices
+    .filter(
+      (i) =>
+        i.customerId === p.customerId &&
+        i.currency === p.currency &&
+        i.outstandingCents > 0,
+    )
+    .sort(byDateDesc);
+  return {
+    ...paymentRow(p),
+    customerId: p.customerId,
+    customerName: p.customerName ?? p.customerId,
+    currency: p.currency,
+    candidateCount: candidates.length,
+    candidates: candidates.slice(0, limit).map((i) => ({
+      invoiceId: i.id,
+      reference: i.reference ?? i.id,
+      outstandingCents: i.outstandingCents,
+      outstanding: formatMoney(i.outstandingCents, i.currency),
+    })),
+  };
+}
+
+/**
+ * The payment the user selected on the page, with every open invoice it could
+ * settle (up to the default limit), or `selected: null` when none is selected.
+ * The selection arrives validated in the run state, which the model cannot
+ * read directly.
+ */
+export function selectedPayment(
+  snapshot: Snapshot,
+  paymentId: string | undefined,
+) {
+  const payment = paymentId
+    ? snapshot.payments.find((p) => p.id === paymentId)
+    : undefined;
+  return {
+    selected: payment ? withCandidates(snapshot, payment, DEFAULT_LIMIT) : null,
+  };
+}
+
 /** Start here: per-currency totals and the customer list. */
 export function ledgerSummary(snapshot: Snapshot, asOf = AS_OF) {
   const currencies = [...new Set(snapshot.customers.map((c) => c.currency))]
@@ -372,29 +415,9 @@ export function unappliedPayments(
       (p) => p.unappliedCents > 0 && (!currency || p.currency === currency),
     )
     .sort(byDateDesc);
-  const payments = unapplied.slice(0, DEFAULT_LIMIT).map((p) => {
-    const candidates = snapshot.invoices
-      .filter(
-        (i) =>
-          i.customerId === p.customerId &&
-          i.currency === p.currency &&
-          i.outstandingCents > 0,
-      )
-      .sort(byDateDesc);
-    return {
-      ...paymentRow(p),
-      customerId: p.customerId,
-      customerName: p.customerName ?? p.customerId,
-      currency: p.currency,
-      candidateCount: candidates.length,
-      candidates: candidates.slice(0, MAX_CANDIDATES).map((i) => ({
-        invoiceId: i.id,
-        reference: i.reference ?? i.id,
-        outstandingCents: i.outstandingCents,
-        outstanding: formatMoney(i.outstandingCents, i.currency),
-      })),
-    };
-  });
+  const payments = unapplied
+    .slice(0, DEFAULT_LIMIT)
+    .map((p) => withCandidates(snapshot, p, MAX_CANDIDATES));
   const totals = [...new Set(unapplied.map((p) => p.currency))]
     .sort()
     .map((currency) => {

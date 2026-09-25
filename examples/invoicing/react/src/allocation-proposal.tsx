@@ -56,13 +56,21 @@ export function AllocationProposal({ proposalId }: AllocationProposalProps) {
       record.customerId === proposal.customerId,
   );
   const disabled = !review.pendingForProposal || review.isApplying;
-  const amount = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: proposal.currency,
-  }).format(proposal.amountCents / 100);
+  const format = (cents: number) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: proposal.currency,
+    }).format(cents / 100);
+  // What the payment keeps after this allocation; unknown without its record.
+  const leftCents = payment
+    ? Math.max(0, payment.unappliedCents - proposal.amountCents)
+    : undefined;
 
   return (
-    <section className="selection-summary" aria-label="Allocation proposal">
+    <section
+      className="selection-summary proposal-card"
+      aria-label="Allocation proposal"
+    >
       <h3>Allocate payment</h3>
       <dl>
         <dt>Client</dt>
@@ -72,19 +80,17 @@ export function AllocationProposal({ proposalId }: AllocationProposalProps) {
             proposal.customerId}
         </dd>
         <dt>Payment</dt>
-        <dd>
-          {payment?.reference ?? proposal.paymentId}
-          {payment?.reference && <small>{proposal.paymentId}</small>}
-        </dd>
+        <dd>{payment?.reference ?? proposal.paymentId}</dd>
         <dt>Invoice</dt>
-        <dd>
-          {invoice?.reference ?? proposal.invoiceId}
-          {invoice?.reference && <small>{proposal.invoiceId}</small>}
-        </dd>
+        <dd>{invoice?.reference ?? proposal.invoiceId}</dd>
         <dt>Amount</dt>
-        <dd>{amount}</dd>
-        <dt>Currency</dt>
-        <dd>{proposal.currency}</dd>
+        <dd>{format(proposal.amountCents)}</dd>
+        {leftCents !== undefined && (
+          <>
+            <dt>Left unapplied</dt>
+            <dd>{format(leftCents)}</dd>
+          </>
+        )}
       </dl>
       <p role="status">
         {review.isApplying
@@ -95,6 +101,7 @@ export function AllocationProposal({ proposalId }: AllocationProposalProps) {
       </p>
       <button
         type="button"
+        className="primary"
         disabled={disabled}
         onClick={() => review.onApprove()}
       >
