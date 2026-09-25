@@ -194,7 +194,7 @@ test('the www target builds the Next.js site from www', () => {
     target?.domains.map((d) => d.name),
     ['hashbrown.dev', 'www.hashbrown.dev'],
   );
-  assert.equal(target?.previousProject, 'hashbrown-www-analog');
+  assert.equal(target?.previousProject, undefined);
   assert.deepEqual(target?.removedDomains, ['next.hashbrown.dev']);
   assert.deepEqual(target?.build, {
     framework: 'nextjs',
