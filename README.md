@@ -127,18 +127,22 @@ chat = uiChatResource({
 React:
 
 ```tsx
-const getInvoices = useTool({
-  name: 'getInvoices',
-  description: 'List the invoices',
-  handler: () => api.list(),
-  deps: [api],
-});
+export function InvoiceChat({ api }: { api: InvoiceApi }) {
+  const getInvoices = useTool({
+    name: 'getInvoices',
+    description: 'List the invoices',
+    handler: () => api.list(),
+    deps: [api],
+  });
 
-const chat = useUiChat({
-  system: 'Help users understand invoices.',
-  components: [invoiceKit],
-  tools: [getInvoices],
-});
+  const chat = useUiChat({
+    system: 'Help users understand invoices.',
+    components: [invoiceKit],
+    tools: [getInvoices],
+  });
+
+  // Render the stream (step 3).
+}
 ```
 
 ### 3. Render the stream
@@ -154,10 +158,10 @@ Angular:
 }
 ```
 
-React:
+React, at the end of `InvoiceChat`:
 
 ```tsx
-chat.messages.map((message) =>
+return chat.messages.map((message) =>
   message.role === 'assistant' ? message.ui : message.content,
 );
 ```
