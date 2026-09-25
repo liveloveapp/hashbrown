@@ -64,20 +64,31 @@ export interface LedgerSnapshot extends Ledger {
     readonly outstandingCents: number;
   })[];
 }
-/** Untrusted request to prepare a payment allocation. */
-export interface ProposalRequest {
-  readonly paymentId: string;
+/** One invoice's share of a requested allocation. */
+export interface ProposalLineRequest {
   readonly invoiceId: string;
   readonly amountCents: number;
 }
+/** Untrusted request to allocate one payment across one or more invoices. */
+export interface ProposalRequest {
+  readonly paymentId: string;
+  readonly lines: readonly ProposalLineRequest[];
+}
+/** A stored line with the invoice version it was prepared against. */
+export interface ProposalLine extends ProposalLineRequest {
+  readonly expectedInvoiceVersion: number;
+}
 /** Exact allocation prepared and stored by the server for review. */
-export interface Proposal extends ProposalRequest {
+export interface Proposal {
+  readonly paymentId: string;
+  readonly lines: readonly ProposalLine[];
+  /** Sum of the line amounts. */
+  readonly amountCents: number;
   readonly proposalId: string;
   readonly operationId: string;
   readonly generation: number;
   readonly proposalVersion: number;
   readonly expectedPaymentVersion: number;
-  readonly expectedInvoiceVersion: number;
   readonly customerId: string;
   readonly currency: string;
 }

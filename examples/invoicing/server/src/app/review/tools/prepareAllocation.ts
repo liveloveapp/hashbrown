@@ -13,9 +13,9 @@ interface UiModel {
   ): { invoke(prompt: string): Promise<unknown> };
 }
 
-/** Prepare one authoritative allocation and stream its UI through a nested model call. */
+/** Prepare one authoritative allocation across the given invoices, in order, and stream its UI through a nested model call. */
 export default async function prepareAllocation(
-  input: { readonly invoiceId: string },
+  input: { readonly invoiceIds: readonly string[] },
   context: B4ToolContext,
 ) {
   return prepareAllocationUi(

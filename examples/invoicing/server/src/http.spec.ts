@@ -53,8 +53,7 @@ test('operation reads are scoped to the cookie session', async () => {
   const other = await app.store.createSession();
   const proposal = await app.store.propose(owner, {
     paymentId: 'payment-001',
-    invoiceId: 'invoice-001',
-    amountCents: 240000,
+    lines: [{ invoiceId: 'invoice-001', amountCents: 240000 }],
   });
   await app.store.decide(owner, { ...proposal, decision: 'approve' });
 
@@ -130,8 +129,7 @@ test('proposal reads return stored values only to their owning session', async (
   const other = await app.store.createSession();
   const proposal = await app.store.propose(owner, {
     paymentId: 'payment-001',
-    invoiceId: 'invoice-001',
-    amountCents: 240000,
+    lines: [{ invoiceId: 'invoice-001', amountCents: 240000 }],
   });
 
   try {
@@ -170,8 +168,7 @@ test('review lookup binds the proposal to its session and conversation', async (
   });
   const proposal = await app.reviews.prepare(context, {
     paymentId: 'payment-001',
-    invoiceId: 'invoice-001',
-    amountCents: 240000,
+    lines: [{ invoiceId: 'invoice-001', amountCents: 240000 }],
   });
 
   try {

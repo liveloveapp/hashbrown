@@ -117,7 +117,8 @@ test('failed review releases chat and retries with a fresh thread without changi
     requests.every(
       (request) =>
         request.state.selectedPaymentId === 'payment-northstar-exact' &&
-        request.state.selectedInvoiceId === 'invoice-northstar-exact',
+        JSON.stringify(request.state.selectedInvoiceIds) ===
+          JSON.stringify(['invoice-northstar-exact']),
     ),
   ).toBe(true);
   await expect(

@@ -4,6 +4,7 @@ import type {
   LedgerSnapshot,
   MoneyRecord,
   Proposal,
+  ProposalLineRequest,
   ProposalRequest,
 } from '@invoicing/contracts';
 
@@ -99,6 +100,30 @@ export function overlayOf(base: Ledger, ledger: Ledger): LedgerOverlay {
   };
 }
 
+/** The most invoices one proposal may allocate across. */
+export const MAX_PROPOSAL_LINES = 10;
+
+/**
+ * Fill invoices in order from a payment's unapplied cents: each receives the
+ * smaller of what is left and its outstanding balance. An invoice the payment
+ * cannot reach is an error, never a silently dropped line.
+ */
+export function fillLines(
+  unappliedCents: number,
+  invoices: readonly {
+    readonly id: string;
+    readonly outstandingCents: number;
+  }[],
+): ProposalLineRequest[] {
+  let remaining = unappliedCents;
+  return invoices.map((invoice) => {
+    const amountCents = Math.min(remaining, invoice.outstandingCents);
+    if (amountCents <= 0) throw new Error('insufficient_balance');
+    remaining -= amountCents;
+    return { invoiceId: invoice.id, amountCents };
+  });
+}
+
 /** Validate an allocation and capture versions using server-owned identities. */
 export function createProposal(
   ledger: Ledger,
@@ -106,35 +131,52 @@ export function createProposal(
   ids: Pick<Proposal, 'proposalId' | 'operationId' | 'generation'>,
 ): Proposal {
   const snapshot = getSnapshot(ledger);
+  if (
+    !Array.isArray(request.lines) ||
+    request.lines.length === 0 ||
+    request.lines.length > MAX_PROPOSAL_LINES
+  )
+    throw new Error('invalid_lines');
+  const invoiceIds = request.lines.map((line) => line.invoiceId);
+  if (new Set(invoiceIds).size !== invoiceIds.length)
+    throw new Error('duplicate_invoice');
   const payment = snapshot.payments.find(
     (record) => record.id === request.paymentId,
   );
-  const invoice = snapshot.invoices.find(
-    (record) => record.id === request.invoiceId,
+  const invoices = request.lines.map((line) =>
+    snapshot.invoices.find((record) => record.id === line.invoiceId),
   );
-  if (!payment || !invoice) throw new Error('record_not_found');
-  if (
-    payment.currency !== invoice.currency ||
-    payment.customerId !== invoice.customerId
-  )
-    throw new Error('incompatible_records');
-  if (!Number.isSafeInteger(request.amountCents) || request.amountCents <= 0)
-    throw new Error('invalid_amount');
-  if (
-    request.amountCents > payment.unappliedCents ||
-    request.amountCents > invoice.outstandingCents
-  )
+  if (!payment || invoices.some((invoice) => !invoice))
+    throw new Error('record_not_found');
+  const lines = request.lines.map((line, index) => {
+    const invoice = invoices[index] as (typeof snapshot.invoices)[number];
+    if (
+      payment.currency !== invoice.currency ||
+      payment.customerId !== invoice.customerId
+    )
+      throw new Error('incompatible_records');
+    if (!Number.isSafeInteger(line.amountCents) || line.amountCents <= 0)
+      throw new Error('invalid_amount');
+    if (line.amountCents > invoice.outstandingCents)
+      throw new Error('insufficient_balance');
+    return {
+      invoiceId: invoice.id,
+      amountCents: line.amountCents,
+      expectedInvoiceVersion: invoice.version,
+    };
+  });
+  const amountCents = lines.reduce((sum, line) => sum + line.amountCents, 0);
+  if (amountCents > payment.unappliedCents)
     throw new Error('insufficient_balance');
   return {
     paymentId: payment.id,
-    invoiceId: invoice.id,
-    amountCents: request.amountCents,
+    lines,
+    amountCents,
     proposalId: ids.proposalId,
     operationId: ids.operationId,
     generation: ids.generation,
     proposalVersion: 1,
     expectedPaymentVersion: payment.version,
-    expectedInvoiceVersion: invoice.version,
     customerId: payment.customerId,
     currency: payment.currency,
   };
@@ -145,12 +187,16 @@ export function applyProposal(ledger: Ledger, proposal: Proposal): Ledger {
   const payment = ledger.payments.find(
     (record) => record.id === proposal.paymentId,
   );
-  const invoice = ledger.invoices.find(
-    (record) => record.id === proposal.invoiceId,
+  const expected = new Map(
+    proposal.lines.map((line) => [line.invoiceId, line.expectedInvoiceVersion]),
   );
   if (
     payment?.version !== proposal.expectedPaymentVersion ||
-    invoice?.version !== proposal.expectedInvoiceVersion
+    proposal.lines.some(
+      (line) =>
+        ledger.invoices.find((record) => record.id === line.invoiceId)
+          ?.version !== line.expectedInvoiceVersion,
+    )
   )
     throw new Error('stale_version');
   const validated = createProposal(ledger, proposal, proposal);
@@ -159,33 +205,37 @@ export function applyProposal(ledger: Ledger, proposal: Proposal): Ledger {
     validated.customerId !== proposal.customerId
   )
     throw new Error('incompatible_records');
+  const count = proposal.lines.length;
   return {
     customers: ledger.customers,
     payments: ledger.payments.map((record) =>
       record.id === proposal.paymentId
-        ? { ...record, version: record.version + 1 }
+        ? { ...record, version: record.version + count }
         : record,
     ),
     invoices: ledger.invoices.map((record) =>
-      record.id === proposal.invoiceId
+      expected.has(record.id)
         ? { ...record, version: record.version + 1 }
         : record,
     ),
     allocations: [
       ...ledger.allocations,
-      {
+      ...proposal.lines.map((line) => ({
         paymentId: proposal.paymentId,
-        invoiceId: proposal.invoiceId,
-        amountCents: proposal.amountCents,
+        invoiceId: line.invoiceId,
+        amountCents: line.amountCents,
         proposalId: proposal.proposalId,
-      },
+      })),
     ],
     activities: [
       ...ledger.activities,
       {
         operationId: proposal.operationId,
         proposalId: proposal.proposalId,
-        description: 'Payment applied to invoice',
+        description:
+          count === 1
+            ? 'Payment applied to invoice'
+            : `Payment applied to ${count} invoices`,
       },
     ],
   };

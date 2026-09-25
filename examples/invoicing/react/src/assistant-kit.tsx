@@ -217,7 +217,7 @@ export function CustomerCard({ customerId }: { customerId: string }) {
 export function assistantKit(
   ReviewPayment: (props: {
     paymentId: string;
-    invoiceId?: string | null;
+    invoiceIds?: readonly string[] | null;
   }) => ReactNode,
 ) {
   return createAssistantKit({

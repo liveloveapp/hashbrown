@@ -55,7 +55,7 @@ test('a valid answer becomes one AssistantText node with canonical children', ()
               ReviewPayment: {
                 props: {
                   paymentId: sampleScenarios.ambiguous.paymentId,
-                  invoiceId: null,
+                  invoiceIds: null,
                 },
               },
             },
@@ -250,14 +250,15 @@ const harborPaidInvoiceId = snapshot.invoices.find(
     invoice.customerId === 'harbor' && invoice.outstandingCents === 0,
 )?.id;
 
-test('ReviewPayment keeps an invoice that the payment can settle', () => {
+test('ReviewPayment keeps the invoices a combined payment covers, in order', () => {
+  const invoiceIds = [...sampleScenarios.combined.invoiceIds].reverse();
   const input: AssistantRenderInput = {
     text: 'Harbor paid two invoices at once.',
     components: [
       {
         ReviewPayment: {
           paymentId: sampleScenarios.combined.paymentId,
-          invoiceId: sampleScenarios.combined.invoiceIds[0],
+          invoiceIds,
         },
       },
     ],
@@ -274,7 +275,7 @@ test('ReviewPayment keeps an invoice that the payment can settle', () => {
             ReviewPayment: {
               props: {
                 paymentId: sampleScenarios.combined.paymentId,
-                invoiceId: sampleScenarios.combined.invoiceIds[0],
+                invoiceIds,
               },
             },
           },
@@ -284,27 +285,30 @@ test('ReviewPayment keeps an invoice that the payment can settle', () => {
   ]);
 });
 
+const [harborApi, harborMigration] = sampleScenarios.combined.invoiceIds;
+const at = 'invalid_ui: components[0].ReviewPayment.invoiceIds';
+
 test.each([
+  [[], `${at}: list at least one invoice`],
+  [[harborApi, harborApi], `${at}: invoice ${harborApi} is listed twice`],
+  ['nope', `${at}: list at least one invoice`],
+  [['nope'], `${at}: unknown invoice nope`],
   [
-    'nope',
-    'invalid_ui: components[0].ReviewPayment.invoiceId: unknown invoice nope',
+    [sampleScenarios.ambiguous.invoiceIds[0]],
+    `${at}: invoice ${sampleScenarios.ambiguous.invoiceIds[0]} is not for this payment's customer and currency`,
   ],
   [
-    sampleScenarios.ambiguous.invoiceIds[0],
-    `invalid_ui: components[0].ReviewPayment.invoiceId: invoice ${sampleScenarios.ambiguous.invoiceIds[0]} is not for this payment's customer and currency`,
+    [harborPaidInvoiceId],
+    `${at}: invoice ${harborPaidInvoiceId} has no outstanding balance`,
   ],
-  [
-    harborPaidInvoiceId,
-    `invalid_ui: components[0].ReviewPayment.invoiceId: invoice ${harborPaidInvoiceId} has no outstanding balance`,
-  ],
-])('ReviewPayment rejects invoice %s', (invoiceId, message) => {
+])('ReviewPayment rejects invoices %j', (invoiceIds, message) => {
   const input = {
     text: 'x',
     components: [
       {
         ReviewPayment: {
           paymentId: sampleScenarios.combined.paymentId,
-          invoiceId,
+          invoiceIds,
         },
       },
     ],
@@ -313,6 +317,34 @@ test.each([
   const act = () => validateUi(snapshot, input as AssistantRenderInput);
 
   expect(act).toThrow(message);
+});
+
+test('ReviewPayment rejects an invoice the payment runs out before reaching', () => {
+  const short = {
+    ...snapshot,
+    payments: snapshot.payments.map((payment) =>
+      payment.id === sampleScenarios.combined.paymentId
+        ? { ...payment, unappliedCents: 320000 }
+        : payment,
+    ),
+  };
+  const input: AssistantRenderInput = {
+    text: 'x',
+    components: [
+      {
+        ReviewPayment: {
+          paymentId: sampleScenarios.combined.paymentId,
+          invoiceIds: [harborApi, harborMigration],
+        },
+      },
+    ],
+  };
+
+  const act = () => validateUi(short, input);
+
+  expect(act).toThrow(
+    `${at}: the payment is used up before invoice ${harborMigration}`,
+  );
 });
 
 test('extra keys inside a leaf are stripped', () => {

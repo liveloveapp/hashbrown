@@ -19,10 +19,15 @@ const proposal = {
   generation: 1,
   proposalVersion: 1,
   expectedPaymentVersion: 1,
-  expectedInvoiceVersion: 1,
   customerId: 'customer-001',
   paymentId: 'payment-001',
-  invoiceId: 'invoice-001',
+  lines: [
+    {
+      invoiceId: 'invoice-001',
+      amountCents: 240000,
+      expectedInvoiceVersion: 1,
+    },
+  ],
   amountCents: 240000,
   currency: 'USD',
 };
@@ -213,6 +218,23 @@ test('sends selection and actual UI schema, then holds messages for the verified
   expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
   expect(subject.start()).toBe(false);
   expect(subject.ref.current?.startReview('payment-002')).toBe(false);
+});
+
+test('offers no approval for a proposal whose total disagrees with its lines', async () => {
+  const subject = setup({ review: { ...proposal, amountCents: 1 } });
+
+  act(() => {
+    subject.start();
+  });
+
+  expect(
+    await screen.findByText(
+      'Unable to verify this proposal. No approval is available.',
+    ),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Approve and apply' }),
+  ).not.toBeInTheDocument();
 });
 
 test('resumes once with exact identity and waits for completion before checking the operation', async () => {

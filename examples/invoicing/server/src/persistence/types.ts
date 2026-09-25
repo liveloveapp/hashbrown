@@ -32,7 +32,8 @@ export interface ThreadRecord {
   readonly routeId: string;
   readonly generation: number;
   readonly selectedPaymentId?: string;
-  readonly selectedInvoiceId?: string;
+  /** Invoices the review must fill, in order; absent when the payment has one candidate. */
+  readonly selectedInvoiceIds?: readonly string[];
   readonly proposalId?: string;
   readonly tokens: Readonly<
     Partial<Record<'initial' | 'once' | 'cancelled', string>>

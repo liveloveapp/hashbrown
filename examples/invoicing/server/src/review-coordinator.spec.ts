@@ -7,8 +7,7 @@ import { ConflictError } from './persistence/types';
 const schema = { type: 'object', properties: { ui: { type: 'string' } } };
 const request = {
   paymentId: 'payment-001',
-  invoiceId: 'invoice-001',
-  amountCents: 240000,
+  lines: [{ invoiceId: 'invoice-001', amountCents: 240000 }],
 };
 const body = () => ({
   threadId: 'thread-1',
@@ -131,10 +130,13 @@ test('prepares once without financial mutation and rejects conflicting allocatio
   Reflect.set(proposal, 'amountCents', 1);
   const again = await coordinator.prepare(context, request);
 
-  expect(again.amountCents).toBe(request.amountCents);
+  expect(again.amountCents).toBe(request.lines[0].amountCents);
   expect(await store.snapshot(session)).toEqual(before);
   await expect(
-    coordinator.prepare(context, { ...request, amountCents: 1 }),
+    coordinator.prepare(context, {
+      ...request,
+      lines: [{ invoiceId: 'invoice-001', amountCents: 1 }],
+    }),
   ).rejects.toThrow('proposal_conflict');
   await expect(
     coordinator.prepare(context, { ...request, paymentId: 'payment-002' }),
@@ -239,7 +241,7 @@ test('once resume applies only the stored proposal and duplicate apply is idempo
   expect(second).toEqual(first);
   expect((await store.snapshot(session)).allocations).toHaveLength(1);
   expect((await store.snapshot(session)).allocations[0].amountCents).toBe(
-    request.amountCents,
+    request.lines[0].amountCents,
   );
 });
 
@@ -302,7 +304,7 @@ test('empty client containers are valid initial runs and reuse a bounded capabil
   expect(next.token).toBe(context.token);
   expect(next.decision).toBe('initial');
   expect((await coordinator.prepare(next, request)).amountCents).toBe(
-    request.amountCents,
+    request.lines[0].amountCents,
   );
 });
 
@@ -347,7 +349,7 @@ test('resume cannot create a thread or approve a proposal that was never prepare
   );
 
   expect((await coordinator.prepare(context, request)).amountCents).toBe(
-    request.amountCents,
+    request.lines[0].amountCents,
   );
 });
 
@@ -407,4 +409,42 @@ test('authorize converges on one token under contention', async () => {
     (value) => value === competitorToken,
   );
   expect(tokens).toHaveLength(1);
+});
+
+test('binds a thread to an ordered list of distinct known invoices', async () => {
+  const { coordinator, session } = await setup();
+  const withInvoices = (threadId: string, selectedInvoiceIds: unknown) => ({
+    ...body(),
+    threadId,
+    state: { selectedPaymentId: request.paymentId, selectedInvoiceIds },
+  });
+
+  const bound = await coordinator.authorize(
+    session,
+    withInvoices('bound', ['invoice-001']),
+  );
+
+  expect(bound.selectedInvoiceIds).toEqual(['invoice-001']);
+  for (const invalid of [
+    [],
+    ['invoice-001', 'invoice-001'],
+    ['unknown'],
+    'invoice-001',
+    Array.from({ length: 11 }, (_, i) => `invoice-${i}`),
+  ])
+    await expect(
+      coordinator.authorize(session, withInvoices('invalid', invalid)),
+    ).rejects.toThrow('invoice_not_found');
+  await expect(
+    coordinator.authorize(session, {
+      ...body(),
+      threadId: 'bound',
+    }),
+  ).rejects.toThrow('thread_binding_conflict');
+  await expect(
+    coordinator.prepare(bound, {
+      paymentId: request.paymentId,
+      lines: [],
+    }),
+  ).rejects.toThrow('invoice_binding_conflict');
 });

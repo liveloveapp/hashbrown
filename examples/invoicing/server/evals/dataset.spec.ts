@@ -12,9 +12,9 @@ const ledger = createSampleLedger();
 const facts = deriveFacts(ledger);
 
 describe('assistant eval dataset', () => {
-  test('has nine uniquely named cases', () => {
-    expect(cases).toHaveLength(9);
-    expect(new Set(cases.map((c) => c.name)).size).toBe(9);
+  test('has ten uniquely named cases', () => {
+    expect(cases).toHaveLength(10);
+    expect(new Set(cases.map((c) => c.name)).size).toBe(10);
   });
 
   test('every scorer is named', () => {

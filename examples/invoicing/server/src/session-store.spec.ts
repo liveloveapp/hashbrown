@@ -11,8 +11,7 @@ import {
 
 const request = {
   paymentId: 'payment-001',
-  invoiceId: 'invoice-001',
-  amountCents: 240000,
+  lines: [{ invoiceId: 'invoice-001', amountCents: 240000 }],
 };
 
 test('duplicate approval returns recorded result without duplicate effects', async () => {
@@ -250,8 +249,12 @@ it('retries a mutation once when the document moved underneath it', async () => 
   )!;
   const proposal = await store.propose(id, {
     paymentId: payment.id,
-    invoiceId: invoice.id,
-    amountCents: Math.min(payment.unappliedCents, invoice.outstandingCents),
+    lines: [
+      {
+        invoiceId: invoice.id,
+        amountCents: Math.min(payment.unappliedCents, invoice.outstandingCents),
+      },
+    ],
   });
   expect(proposal.proposalId).toBeTruthy();
   expect(
@@ -286,6 +289,46 @@ test('a session written before the overlay shape is read as an empty overlay and
   expect('ledger' in stored).toBe(false);
 });
 
+test('a single-invoice proposal stored before lines is read as one line and can still be approved', async () => {
+  const repos = createMemoryRepositories();
+  const legacyProposal = {
+    proposalId: 'legacy-proposal',
+    operationId: 'legacy-operation',
+    generation: 1,
+    proposalVersion: 1,
+    paymentId: 'payment-001',
+    invoiceId: 'invoice-001',
+    amountCents: 240000,
+    expectedPaymentVersion: 1,
+    expectedInvoiceVersion: 1,
+    customerId: 'customer-001',
+    currency: 'USD',
+  };
+  const id = await repos.sessions.create({
+    generation: 1,
+    allocations: [],
+    activities: [],
+    proposals: { 'legacy-proposal': legacyProposal },
+    operations: {},
+  } as unknown as Session);
+  const store = createSessionStore(repos.sessions);
+
+  const proposal = await store.proposal(id, 'legacy-proposal');
+  const result = await store.decide(id, { ...proposal, decision: 'approve' });
+
+  expect(proposal.lines).toEqual([
+    {
+      invoiceId: 'invoice-001',
+      amountCents: 240000,
+      expectedInvoiceVersion: 1,
+    },
+  ]);
+  expect(proposal).not.toHaveProperty('invoiceId');
+  expect(proposal).not.toHaveProperty('expectedInvoiceVersion');
+  expect(result.status).toBe('approved');
+  expect(result.snapshot.payments[0].unappliedCents).toBe(0);
+});
+
 test('sessions share one base ledger, never mutate it, and store only their own changes', async () => {
   const repos = createMemoryRepositories();
   const base = createSampleLedger();
@@ -294,8 +337,10 @@ test('sessions share one base ledger, never mutate it, and store only their own 
   const first = await store.createSession();
   const second = await store.createSession();
   const proposal = await store.propose(first, {
-    ...sampleScenarios.partial,
-    amountCents: 200000,
+    paymentId: sampleScenarios.partial.paymentId,
+    lines: [
+      { invoiceId: sampleScenarios.partial.invoiceId, amountCents: 200000 },
+    ],
   });
 
   await store.decide(first, { ...proposal, decision: 'approve' });

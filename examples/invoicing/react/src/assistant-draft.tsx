@@ -87,7 +87,7 @@ export function RenderDraft({
   /** The workspace's review action, which owns the review flow. */
   ReviewPayment?: (props: {
     paymentId: string;
-    invoiceId?: string | null;
+    invoiceIds?: readonly string[] | null;
   }) => ReactNode;
 }) {
   const text = typeof args.text === 'string' ? args.text : '';
@@ -139,13 +139,18 @@ export function RenderDraft({
           'ReviewPayment' in leaf &&
           leaf.ReviewPayment
         ) {
-          const { paymentId, invoiceId } = leaf.ReviewPayment;
+          const { paymentId, invoiceIds } = leaf.ReviewPayment;
           if (typeof paymentId !== 'string') return null;
           return (
             <ReviewPayment
               key={index}
               paymentId={paymentId}
-              invoiceId={typeof invoiceId === 'string' ? invoiceId : null}
+              invoiceIds={
+                Array.isArray(invoiceIds) &&
+                invoiceIds.every((id) => typeof id === 'string')
+                  ? invoiceIds
+                  : null
+              }
             />
           );
         }

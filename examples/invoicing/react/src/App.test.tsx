@@ -179,10 +179,15 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
     generation: 1,
     proposalVersion: 1,
     expectedPaymentVersion: 1,
-    expectedInvoiceVersion: 1,
     customerId: 'customer-001',
     paymentId: 'payment-001',
-    invoiceId: 'invoice-001',
+    lines: [
+      {
+        invoiceId: 'invoice-001',
+        amountCents: 240000,
+        expectedInvoiceVersion: 1,
+      },
+    ],
     amountCents: 240000,
     currency: 'USD',
   };
@@ -305,7 +310,7 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
   expect(requests).toHaveLength(1);
   expect(requests[0].input.state).toMatchObject({
     selectedPaymentId: 'payment-001',
-    selectedInvoiceId: 'invoice-001',
+    selectedInvoiceIds: ['invoice-001'],
   });
   expect(requests[0].input.hashbrown?.ui).toBe(true);
   expect(

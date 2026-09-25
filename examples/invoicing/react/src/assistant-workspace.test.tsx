@@ -67,7 +67,7 @@ function controlled(failAfterInterrupt = false, failCancellation = false) {
       return {
         events: (async function* (): AsyncIterable<AGUIEvent> {
           yield { type: EventType.RUN_STARTED, ...identity };
-          if ('selectedInvoiceId' in (request.input.state ?? {})) {
+          if ('selectedInvoiceIds' in (request.input.state ?? {})) {
             if (!request.input.resume?.length) {
               yield {
                 type: EventType.TEXT_MESSAGE_START,
@@ -289,9 +289,14 @@ for (const failCancellation of [false, true]) {
               generation: 1,
               proposalVersion: 1,
               expectedPaymentVersion: 1,
-              expectedInvoiceVersion: 1,
               paymentId: 'p',
-              invoiceId: 'i',
+              lines: [
+                {
+                  invoiceId: 'i',
+                  amountCents: 10000,
+                  expectedInvoiceVersion: 1,
+                },
+              ],
               customerId: 'c',
               currency: 'USD',
               amountCents: 10000,
@@ -309,7 +314,7 @@ for (const failCancellation of [false, true]) {
     );
 
     act(() => {
-      expect(ref.current?.beginReview('p', 'i')).toBe(true);
+      expect(ref.current?.beginReview('p', ['i'])).toBe(true);
     });
     const decline = await screen.findByRole('button', { name: 'Decline' });
     await waitFor(() => expect(decline).toBeEnabled());
@@ -317,7 +322,7 @@ for (const failCancellation of [false, true]) {
       screen.getByRole('textbox', { name: 'Message assistant' }),
     ).toBeDisabled();
     act(() => {
-      expect(ref.current?.beginReview('p', 'i')).toBe(false);
+      expect(ref.current?.beginReview('p', ['i'])).toBe(false);
     });
     fireEvent.click(decline);
     await screen.findByText(
@@ -341,7 +346,7 @@ for (const failCancellation of [false, true]) {
     expect(decline).toBeVisible();
     expect(decline).toBeDisabled();
     act(() => {
-      expect(ref.current?.beginReview('p', 'i')).toBe(true);
+      expect(ref.current?.beginReview('p', ['i'])).toBe(true);
     });
 
     await waitFor(() => expect(requests).toHaveLength(3));
@@ -393,7 +398,7 @@ test('a completed review without an approval retires and unlocks the composer', 
   );
 
   act(() => {
-    ref.current?.beginReview('p', 'i');
+    ref.current?.beginReview('p', ['i']);
   });
 
   await screen.findByText(
@@ -425,9 +430,10 @@ test('an errored review surface cannot approve after a later review starts', asy
             generation: 1,
             proposalVersion: 1,
             expectedPaymentVersion: 1,
-            expectedInvoiceVersion: 1,
             paymentId: 'p',
-            invoiceId: 'i',
+            lines: [
+              { invoiceId: 'i', amountCents: 10000, expectedInvoiceVersion: 1 },
+            ],
             customerId: 'c',
             currency: 'USD',
             amountCents: 10000,
@@ -445,7 +451,7 @@ test('an errored review surface cannot approve after a later review starts', asy
   );
 
   act(() => {
-    ref.current?.beginReview('p', 'i');
+    ref.current?.beginReview('p', ['i']);
   });
 
   await screen.findByText(
@@ -461,7 +467,7 @@ test('an errored review surface cannot approve after a later review starts', asy
   }))
     expect(button).toBeDisabled();
   act(() => {
-    expect(ref.current?.beginReview('p', 'i')).toBe(true);
+    expect(ref.current?.beginReview('p', ['i'])).toBe(true);
   });
   for (const button of screen.queryAllByRole('button', {
     name: 'Approve and apply',
@@ -670,7 +676,7 @@ const twoInvoices: LedgerSnapshot = {
 test('a ReviewPayment that names its invoice starts that review directly', async () => {
   cleanup();
   const { transport, release, requests } = streamingRender([
-    { ReviewPayment: { paymentId: 'p', invoiceId: 'i2' } },
+    { ReviewPayment: { paymentId: 'p', invoiceIds: ['i2'] } },
   ]);
   render(
     <AssistantWorkspace
@@ -692,8 +698,41 @@ test('a ReviewPayment that names its invoice starts that review directly', async
   await waitFor(() => expect(requests).toHaveLength(2));
   expect(requests[1].input.state).toEqual({
     selectedPaymentId: 'p',
-    selectedInvoiceId: 'i2',
+    selectedInvoiceIds: ['i2'],
   });
+  await settle();
+});
+
+test('a ReviewPayment that names several invoices starts one review for all of them', async () => {
+  cleanup();
+  const { transport, release, requests } = streamingRender([
+    { ReviewPayment: { paymentId: 'p', invoiceIds: ['i', 'i2'] } },
+  ]);
+  render(
+    <AssistantWorkspace
+      snapshot={twoInvoices}
+      onApplied={() => undefined}
+      transport={transport}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Message assistant'), {
+    target: { value: 'Match PAY-1' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+  release();
+  const match = await screen.findByRole('button', {
+    name: 'Match to INV-1 and INV-2',
+  });
+  await waitFor(() => expect(match).toBeEnabled());
+
+  fireEvent.click(match);
+
+  await waitFor(() => expect(requests).toHaveLength(2));
+  expect(requests[1].input.state).toEqual({
+    selectedPaymentId: 'p',
+    selectedInvoiceIds: ['i', 'i2'],
+  });
+  expect(screen.getByText(/PAY-1 → INV-1, INV-2/)).toBeInTheDocument();
   await settle();
 });
 
@@ -701,7 +740,7 @@ test('a ReviewPayment without an invoice hands an ambiguous payment to the invoi
   cleanup();
   const onChooseInvoice = vi.fn();
   const { transport, release, requests } = streamingRender([
-    { ReviewPayment: { paymentId: 'p', invoiceId: null } },
+    { ReviewPayment: { paymentId: 'p', invoiceIds: null } },
   ]);
   render(
     <AssistantWorkspace
@@ -800,7 +839,7 @@ test('an embedded review does not echo the message that started it', async () =>
   );
 
   act(() => {
-    ref.current?.beginReview('p', 'i');
+    ref.current?.beginReview('p', ['i']);
   });
 
   await screen.findByText(

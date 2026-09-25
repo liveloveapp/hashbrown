@@ -45,8 +45,8 @@ export interface ReviewPaymentNode {
   readonly ReviewPayment: {
     /** An existing unapplied payment ID. */
     readonly paymentId: string;
-    /** The one outstanding invoice this payment should settle, when the match is clear. Omit when it is ambiguous. */
-    readonly invoiceId?: string | null;
+    /** The outstanding invoices this payment settles, in the order to fill, when the match is clear. Omit when it is ambiguous. */
+    readonly invoiceIds?: readonly string[] | null;
   };
 }
 export type AssistantLeafNode =

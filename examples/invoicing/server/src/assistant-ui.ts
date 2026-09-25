@@ -2,6 +2,7 @@ import type {
   AssistantRenderInput,
   LedgerSnapshot,
 } from '@invoicing/contracts';
+import { MAX_PROPOSAL_LINES } from './ledger';
 
 const MAX_COMPONENTS = 20;
 const MAX_TABLE_ROWS = 50;
@@ -162,33 +163,49 @@ export function validateUi(
           fail(
             `${at}.ReviewPayment.paymentId: payment ${payment.id} has no unapplied balance`,
           );
-        const invoiceId = p.invoiceId;
-        if (invoiceId === undefined || invoiceId === null)
+        const invoiceIds = p.invoiceIds;
+        const field = `${at}.ReviewPayment.invoiceIds`;
+        if (invoiceIds === undefined || invoiceIds === null)
           return {
             ReviewPayment: {
-              props: { paymentId: payment.id, invoiceId: null },
+              props: { paymentId: payment.id, invoiceIds: null },
             },
           };
-        const invoice =
-          typeof invoiceId === 'string' ? invoices.get(invoiceId) : undefined;
-        if (!invoice)
-          fail(
-            `${at}.ReviewPayment.invoiceId: unknown invoice ${String(invoiceId)}`,
-          );
-        if (
-          invoice.customerId !== payment.customerId ||
-          invoice.currency !== payment.currency
-        )
-          fail(
-            `${at}.ReviewPayment.invoiceId: invoice ${invoice.id} is not for this payment's customer and currency`,
-          );
-        if (invoice.outstandingCents <= 0)
-          fail(
-            `${at}.ReviewPayment.invoiceId: invoice ${invoice.id} has no outstanding balance`,
-          );
+        if (!Array.isArray(invoiceIds) || invoiceIds.length === 0)
+          fail(`${field}: list at least one invoice`);
+        if (invoiceIds.length > MAX_PROPOSAL_LINES)
+          fail(`${field}: list at most ${MAX_PROPOSAL_LINES} invoices`);
+        const chosen = invoiceIds.map((invoiceId: unknown, index: number) => {
+          const invoice =
+            typeof invoiceId === 'string' ? invoices.get(invoiceId) : undefined;
+          if (!invoice) fail(`${field}: unknown invoice ${String(invoiceId)}`);
+          if (invoiceIds.indexOf(invoiceId) !== index)
+            fail(`${field}: invoice ${invoice.id} is listed twice`);
+          if (
+            invoice.customerId !== payment.customerId ||
+            invoice.currency !== payment.currency
+          )
+            fail(
+              `${field}: invoice ${invoice.id} is not for this payment's customer and currency`,
+            );
+          if (invoice.outstandingCents <= 0)
+            fail(`${field}: invoice ${invoice.id} has no outstanding balance`);
+          return invoice;
+        });
+        let remaining = payment.unappliedCents;
+        for (const invoice of chosen) {
+          if (remaining <= 0)
+            fail(
+              `${field}: the payment is used up before invoice ${invoice.id}`,
+            );
+          remaining -= Math.min(remaining, invoice.outstandingCents);
+        }
         return {
           ReviewPayment: {
-            props: { paymentId: payment.id, invoiceId: invoice.id },
+            props: {
+              paymentId: payment.id,
+              invoiceIds: chosen.map((invoice) => invoice.id),
+            },
           },
         };
       }

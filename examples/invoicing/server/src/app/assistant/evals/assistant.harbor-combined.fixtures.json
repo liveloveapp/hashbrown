@@ -1,0 +1,66 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Which invoices does Harbor Commerce's combined payment cover?",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "ledgerSummary",
+            "arguments": "{}",
+            "id": "call_SZSA8cZHOAvXIBjyFm60vtR8"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Which invoices does Harbor Commerce's combined payment cover?",
+        "turnIndex": 1,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "customerStatement",
+            "arguments": "{\"customerId\":\"harbor\"}",
+            "id": "call_RUQYFjQquXHDCYMw0ZLTEvOQ"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Which invoices does Harbor Commerce's combined payment cover?",
+        "turnIndex": 2,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "render",
+            "arguments": "{\"text\":\"Direct answer: The $5,000 combined payment from Harbor Commerce is a candidate to apply to INV-202609-HC-103 and INV-202609-HC-104.\\n\\nDetails: \\n- Payment: \\\"ACH INV-202609-HC-103 + INV-202609-HC-104\\\" (Harbor Commerce) — amount: $5,000.00.\\n- INV-202609-HC-103 (Harbor Commerce) — outstanding: $3,200.00.\\n- INV-202609-HC-104 (Harbor Commerce) — outstanding: $1,800.00.\\n\\nTogether the two invoice outstanding balances total $5,000.00, equal to the combined payment amount. If you want to apply this payment to those invoices, review and confirm below.\",\"components\":[{\"LedgerTable\":{\"title\":\"Harbor Commerce — candidate invoices and combined payment\",\"recordIds\":[\"invoice-harbor-api\",\"invoice-harbor-migration\",\"payment-harbor-combined\"]}},{\"ReviewPayment\":{\"paymentId\":\"payment-harbor-combined\",\"invoiceIds\":[\"invoice-harbor-api\",\"invoice-harbor-migration\"]}}]}",
+            "id": "call_tR1gS3B8AduBGsYU89E8BZKL"
+          }
+        ]
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Direct answer: The $5,000 combined payment from Harbor Commerce is a candidate to apply to INV-202609-HC-103 and INV-202609-HC-104.\n\nDetails: \n- Payment: \"ACH INV-202609-HC-103 + INV-202609-HC-104\" (Harbor Commerce) — amount: $5,000.00.\n- INV-202609-HC-103 (Harbor Commerce) — outstanding: $3,200.00.\n- INV-202609-HC-104 (Harbor Commerce) — outstanding: $1,800.00.\n\nTogether the two invoice outstanding balances total $5,000.00, equal to the combined payment amount. If you want to apply this payment to those invoices, review and confirm below.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "turnIndex": 0,
+        "hasToolResult": false,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "content": "{\"score\": 1, \"reason\": \"All criteria met: amounts shown with currency symbols, no allocation claimed, and customer name is on the allowed list.\"}"
+      }
+    }
+  ]
+}

@@ -3,17 +3,22 @@ import {
   applyProposal,
   createLedger,
   createProposal,
+  fillLines,
   getSnapshot,
   materialize,
   overlayOf,
 } from './ledger';
 import { createSampleLedger, sampleScenarios } from './sample-ledger';
+import type { Ledger } from '@invoicing/contracts';
 
 const request = {
   paymentId: 'payment-001',
-  invoiceId: 'invoice-001',
-  amountCents: 240000,
+  lines: [{ invoiceId: 'invoice-001', amountCents: 240000 }],
 };
+const withAmount = (amountCents: number) => ({
+  ...request,
+  lines: [{ ...request.lines[0], amountCents }],
+});
 const ids = {
   proposalId: 'proposal-001',
   operationId: 'operation-001',
@@ -27,7 +32,7 @@ test('creating a proposal leaves balances unchanged', () => {
 
   expect(proposal.amountCents).toBe(240000);
   expect(proposal.expectedPaymentVersion).toBe(1);
-  expect(proposal.expectedInvoiceVersion).toBe(1);
+  expect(proposal.lines[0].expectedInvoiceVersion).toBe(1);
   expect(getSnapshot(ledger).payments[0].unappliedCents).toBe(240000);
   expect(getSnapshot(ledger).invoices[0].outstandingCents).toBe(240000);
 });
@@ -61,7 +66,7 @@ test.each([-1, 0, 0.5, Number.MAX_SAFE_INTEGER + 1, 240001])(
     const ledger = createLedger();
 
     expect(() =>
-      createProposal(ledger, { ...request, amountCents }, ids),
+      createProposal(ledger, withAmount(amountCents), ids),
     ).toThrow();
 
     expect(ledger.allocations).toHaveLength(0);
@@ -109,9 +114,9 @@ test.each([NaN, Infinity, -Infinity])(
   (amountCents) => {
     const ledger = createLedger();
 
-    expect(() =>
-      createProposal(ledger, { ...request, amountCents }, ids),
-    ).toThrow('invalid_amount');
+    expect(() => createProposal(ledger, withAmount(amountCents), ids)).toThrow(
+      'invalid_amount',
+    );
 
     expect(ledger.allocations).toHaveLength(0);
   },
@@ -165,14 +170,14 @@ test('a second allocation on the same records advances versions again', () => {
   const base = createLedger();
   const first = createProposal(
     materialize(base, empty),
-    { ...request, amountCents: 100000 },
+    withAmount(100000),
     ids,
   );
   const afterFirst = applyProposal(materialize(base, empty), first);
   const overlay = overlayOf(base, afterFirst);
   const second = createProposal(
     materialize(base, overlay),
-    { ...request, amountCents: 140000 },
+    withAmount(140000),
     { ...ids, proposalId: 'proposal-002', operationId: 'operation-002' },
   );
 
@@ -187,8 +192,15 @@ test('a second allocation on the same records advances versions again', () => {
 test('an overlay over a base that already carries allocations slices past the base history', () => {
   const base = createSampleLedger();
   const before = structuredClone(base);
-  const exact = { ...sampleScenarios.exact, amountCents: 240000 };
-  const proposal = createProposal(materialize(base, empty), exact, ids);
+  const exact = sampleScenarios.exact;
+  const proposal = createProposal(
+    materialize(base, empty),
+    {
+      paymentId: exact.paymentId,
+      lines: [{ invoiceId: exact.invoiceId, amountCents: 240000 }],
+    },
+    ids,
+  );
 
   const next = applyProposal(materialize(base, empty), proposal);
   const overlay = overlayOf(base, next);
@@ -212,4 +224,132 @@ test('overlayOf rejects a ledger shorter than its base', () => {
   const next = applyProposal(materialize(base, empty), proposal);
 
   expect(() => overlayOf(next, base)).toThrow('overlay_base_mismatch');
+});
+
+/** One USD payment of $5,000 against two open invoices of $3,200 and $1,800. */
+function twoInvoiceLedger(): Ledger {
+  const record = { customerId: 'c', currency: 'USD', version: 1 };
+  return {
+    customers: [],
+    payments: [{ ...record, id: 'payment', amountCents: 500000 }],
+    invoices: [
+      { ...record, id: 'invoice-a', amountCents: 320000 },
+      { ...record, id: 'invoice-b', amountCents: 180000 },
+    ],
+    allocations: [],
+    activities: [],
+  };
+}
+const twoLines = {
+  paymentId: 'payment',
+  lines: [
+    { invoiceId: 'invoice-a', amountCents: 320000 },
+    { invoiceId: 'invoice-b', amountCents: 180000 },
+  ],
+};
+
+test('a two-line proposal records each invoice version and the total', () => {
+  const ledger = twoInvoiceLedger();
+
+  const proposal = createProposal(ledger, twoLines, ids);
+
+  expect(proposal.amountCents).toBe(500000);
+  expect(proposal.lines).toEqual([
+    { invoiceId: 'invoice-a', amountCents: 320000, expectedInvoiceVersion: 1 },
+    { invoiceId: 'invoice-b', amountCents: 180000, expectedInvoiceVersion: 1 },
+  ]);
+});
+
+test('approving a two-line proposal applies every line under one proposal and activity', () => {
+  const ledger = twoInvoiceLedger();
+  const proposal = createProposal(ledger, twoLines, ids);
+
+  const next = applyProposal(ledger, proposal);
+
+  expect(
+    next.allocations.map((a) => [a.invoiceId, a.amountCents, a.proposalId]),
+  ).toEqual([
+    ['invoice-a', 320000, 'proposal-001'],
+    ['invoice-b', 180000, 'proposal-001'],
+  ]);
+  expect(next.activities).toEqual([
+    {
+      operationId: 'operation-001',
+      proposalId: 'proposal-001',
+      description: 'Payment applied to 2 invoices',
+    },
+  ]);
+  expect(getSnapshot(next).payments[0].unappliedCents).toBe(0);
+  expect(next.payments[0].version).toBe(3);
+  expect(materialize(ledger, overlayOf(ledger, next))).toEqual(next);
+});
+
+test.each([
+  { name: 'no lines', lines: [], error: 'invalid_lines' },
+  {
+    name: 'more than ten lines',
+    lines: Array.from({ length: 11 }, () => ({
+      invoiceId: 'invoice-a',
+      amountCents: 1,
+    })),
+    error: 'invalid_lines',
+  },
+  {
+    name: 'a repeated invoice',
+    lines: [
+      { invoiceId: 'invoice-a', amountCents: 100 },
+      { invoiceId: 'invoice-a', amountCents: 100 },
+    ],
+    error: 'duplicate_invoice',
+  },
+  {
+    name: 'lines above the payment',
+    lines: [
+      { invoiceId: 'invoice-a', amountCents: 320000 },
+      { invoiceId: 'invoice-b', amountCents: 180001 },
+    ],
+    error: 'insufficient_balance',
+  },
+])('rejects a proposal with $name', ({ lines, error }) => {
+  const ledger = twoInvoiceLedger();
+
+  expect(() =>
+    createProposal(ledger, { paymentId: 'payment', lines }, ids),
+  ).toThrow(error);
+});
+
+test('a stale version on any line blocks the whole approval', () => {
+  const ledger = twoInvoiceLedger();
+  const proposal = createProposal(ledger, twoLines, ids);
+  const changed = {
+    ...ledger,
+    invoices: ledger.invoices.map((invoice) =>
+      invoice.id === 'invoice-b' ? { ...invoice, version: 2 } : invoice,
+    ),
+  };
+
+  expect(() => applyProposal(changed, proposal)).toThrow('stale_version');
+});
+
+test('fillLines gives each invoice what remains of the payment, in order', () => {
+  const invoices = [
+    { id: 'a', outstandingCents: 320000 },
+    { id: 'b', outstandingCents: 180000 },
+  ];
+
+  const lines = fillLines(400000, invoices);
+
+  expect(lines).toEqual([
+    { invoiceId: 'a', amountCents: 320000 },
+    { invoiceId: 'b', amountCents: 80000 },
+  ]);
+});
+
+test('fillLines rejects an invoice the payment cannot reach', () => {
+  const invoices = [
+    { id: 'a', outstandingCents: 320000 },
+    { id: 'b', outstandingCents: 180000 },
+  ];
+
+  expect(() => fillLines(320000, invoices)).toThrow('insufficient_balance');
 });

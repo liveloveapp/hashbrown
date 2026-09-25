@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, Fragment, useContext } from 'react';
 import type { LedgerSnapshot, Proposal } from '@invoicing/contracts';
 
 /** Application-owned proposal review data and decision callbacks. */
@@ -50,9 +50,14 @@ export function AllocationProposal({ proposalId }: AllocationProposalProps) {
       record.id === proposal.paymentId &&
       record.customerId === proposal.customerId,
   );
-  const invoice = review.snapshot?.invoices.find(
+  const invoiceReference = (invoiceId: string) =>
+    review.snapshot?.invoices.find(
+      (record) =>
+        record.id === invoiceId && record.customerId === proposal.customerId,
+    )?.reference;
+  const firstInvoice = review.snapshot?.invoices.find(
     (record) =>
-      record.id === proposal.invoiceId &&
+      record.id === proposal.lines[0]?.invoiceId &&
       record.customerId === proposal.customerId,
   );
   const disabled = !review.pendingForProposal || review.isApplying;
@@ -76,15 +81,32 @@ export function AllocationProposal({ proposalId }: AllocationProposalProps) {
         <dt>Client</dt>
         <dd>
           {payment?.customerName ??
-            invoice?.customerName ??
+            firstInvoice?.customerName ??
             'Unknown client'}
         </dd>
         <dt>Payment</dt>
         <dd>{payment?.reference ?? 'No reference'}</dd>
-        <dt>Invoice</dt>
-        <dd>{invoice?.reference ?? 'No reference'}</dd>
-        <dt>Amount</dt>
-        <dd>{format(proposal.amountCents)}</dd>
+        {proposal.lines.length === 1 ? (
+          <>
+            <dt>Invoice</dt>
+            <dd>
+              {invoiceReference(proposal.lines[0].invoiceId) ?? 'No reference'}
+            </dd>
+            <dt>Amount</dt>
+            <dd>{format(proposal.amountCents)}</dd>
+          </>
+        ) : (
+          <>
+            {proposal.lines.map((line) => (
+              <Fragment key={line.invoiceId}>
+                <dt>{invoiceReference(line.invoiceId) ?? 'No reference'}</dt>
+                <dd>{format(line.amountCents)}</dd>
+              </Fragment>
+            ))}
+            <dt>Total</dt>
+            <dd>{format(proposal.amountCents)}</dd>
+          </>
+        )}
         {leftCents !== undefined && (
           <>
             <dt>Left unapplied</dt>

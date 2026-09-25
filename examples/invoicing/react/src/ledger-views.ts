@@ -6,6 +6,7 @@ import {
   type LedgerSnapshot,
   monthAt,
   type PaymentProfile,
+  type Proposal,
   TERMS_DAYS,
 } from '@invoicing/contracts';
 
@@ -220,4 +221,39 @@ export function customerSummary(
       : null,
     lastPaymentDate: lastPayment?.date ?? null,
   };
+}
+
+/** Join labels the way a sentence would: "a", "a and b", "a, b and c". */
+export function listJoin(items: readonly string[]): string {
+  return items.length < 2
+    ? (items[0] ?? '')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+/**
+ * What an applied proposal did, in words, read from the refreshed ledger.
+ * Invoices are named by reference, never by internal ID.
+ */
+export function appliedSummary(
+  snapshot: LedgerSnapshot,
+  proposal: Proposal,
+): string {
+  const reference = (invoiceId: string) =>
+    snapshot.invoices.find((i) => i.id === invoiceId)?.reference;
+  const total = money(proposal.amountCents, proposal.currency);
+  const target =
+    proposal.lines.length === 1
+      ? (reference(proposal.lines[0].invoiceId) ?? 'the invoice')
+      : listJoin(
+          proposal.lines.map(
+            (line) =>
+              `${reference(line.invoiceId) ?? 'an invoice'} (${money(line.amountCents, proposal.currency)})`,
+          ),
+        );
+  const applied = `Applied ${total} to ${target}.`;
+  const payment = snapshot.payments.find((p) => p.id === proposal.paymentId);
+  if (!payment) return applied;
+  return payment.unappliedCents > 0
+    ? `${applied} ${money(payment.unappliedCents, payment.currency)} of this payment is still unapplied.`
+    : `${applied} This payment is fully matched.`;
 }

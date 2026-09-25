@@ -58,6 +58,26 @@ const empty = (generation: number): Session => ({
 });
 
 /**
+ * Proposals stored before they carried `lines` name one invoice at the top
+ * level. Read such a proposal as its one line, with the same identity and
+ * versions, so a review pending across the deploy can still be decided.
+ */
+const legacyProposal = (proposal: Proposal): Proposal => {
+  if (Array.isArray(proposal.lines)) return proposal;
+  const { invoiceId, expectedInvoiceVersion, ...rest } =
+    proposal as unknown as Omit<Proposal, 'lines'> & {
+      readonly invoiceId: string;
+      readonly expectedInvoiceVersion: number;
+    };
+  return {
+    ...rest,
+    lines: [
+      { invoiceId, amountCents: rest.amountCents, expectedInvoiceVersion },
+    ],
+  };
+};
+
+/**
  * Rows written before sessions became overlays hold a full `ledger` and no
  * `allocations`. Their proposals and operations were captured against that
  * per-session ledger, so such a row reads as a fresh overlay one generation
@@ -74,7 +94,12 @@ const normalize = (
         generation: value.generation,
         allocations: value.allocations ?? [],
         activities: value.activities ?? [],
-        proposals: value.proposals ?? {},
+        proposals: Object.fromEntries(
+          Object.entries(value.proposals ?? {}).map(([id, proposal]) => [
+            id,
+            legacyProposal(proposal),
+          ]),
+        ),
         operations: value.operations ?? {},
       };
 

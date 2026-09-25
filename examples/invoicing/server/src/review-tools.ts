@@ -28,11 +28,11 @@ export function reviewTools(context: unknown): ReviewTools {
 /** Prepare a server-owned proposal and verify that generated UI preserves its identity. */
 export async function prepareAllocationUi(
   middleware: ReviewTools,
-  input: { readonly invoiceId: string },
+  input: { readonly invoiceIds: readonly string[] },
   render: (schema: unknown, proposal: Proposal) => Promise<unknown>,
 ): Promise<Proposal> {
   const proposal = await middleware.prepareAllocation({
-    invoiceId: input.invoiceId,
+    invoiceIds: input.invoiceIds,
   });
   const output = await render(middleware.responseSchema, proposal);
   const expected = {

@@ -2,9 +2,12 @@ import { s, ɵcreateUiKit } from '@hashbrownai/core';
 
 const nullableCustomerId = () =>
   s.anyOf([s.string('A customer ID'), s.nullish()]);
-const nullableInvoiceId = () =>
+const nullableInvoiceIds = () =>
   s.anyOf([
-    s.string('The outstanding invoice ID this payment settles'),
+    s.array(
+      'Outstanding invoice IDs this payment settles, in the order to fill',
+      s.string('An outstanding invoice ID'),
+    ),
     s.nullish(),
   ]);
 
@@ -68,11 +71,11 @@ export const customerCardConfig = {
 export const reviewPaymentConfig = {
   name: 'ReviewPayment',
   description:
-    'Offer to match one existing unapplied payment, optionally to one outstanding invoice.',
+    'Offer to match one existing unapplied payment, optionally to the outstanding invoices it settles.',
   children: false,
   props: {
     paymentId: s.string('The exact existing payment ID'),
-    invoiceId: nullableInvoiceId(),
+    invoiceIds: nullableInvoiceIds(),
   },
 } as const;
 
