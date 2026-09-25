@@ -38,7 +38,7 @@ test('middleware supplies server-owned payment tools without financial writes', 
     'invoice-001',
   ]);
   const proposal = await result.context.prepareAllocation({
-    invoiceId: 'invoice-001',
+    invoiceIds: ['invoice-001'],
   });
   expect(proposal.amountCents).toBe(240000);
   await expect(
@@ -93,7 +93,7 @@ test('middleware tools ignore extra amounts and invalidate reads after reset', a
   const result = await middleware(request);
   if (result.action !== 'continue') throw new Error('Expected trusted tools');
   const candidate = {
-    invoiceId: 'invoice-001',
+    invoiceIds: ['invoice-001'],
     amountCents: 1,
     paymentId: 'foreign',
   };
@@ -108,7 +108,8 @@ test('middleware tools ignore extra amounts and invalidate reads after reset', a
   );
 });
 
-test('an ambiguous payment requires a chosen invoice and cannot substitute another invoice', async () => {
+/** A $150 payment against two open $100 invoices for the same client. */
+async function twoInvoices() {
   const repositories = createMemoryRepositories();
   const store = createSessionStore(repositories.sessions, {
     payments: [
@@ -116,7 +117,7 @@ test('an ambiguous payment requires a chosen invoice and cannot substitute anoth
         id: 'p',
         customerId: 'c',
         currency: 'USD',
-        amountCents: 10000,
+        amountCents: 15000,
         version: 1,
       },
     ],
@@ -137,8 +138,8 @@ test('an ambiguous payment requires a chosen invoice and cannot substitute anoth
     store,
     createReviewCoordinator(store, repositories.threads, schema),
   );
-  const request = (threadId: string, selectedInvoiceId?: string) =>
-    middleware({
+  const request = async (threadId: string, selectedInvoiceIds?: string[]) => {
+    const result = await middleware({
       method: 'POST',
       routeId: '/review',
       headers: { cookie: `invoicing_session=${session}` },
@@ -147,25 +148,53 @@ test('an ambiguous payment requires a chosen invoice and cannot substitute anoth
         runId: 'run',
         state: {
           selectedPaymentId: 'p',
-          ...(selectedInvoiceId ? { selectedInvoiceId } : {}),
+          ...(selectedInvoiceIds ? { selectedInvoiceIds } : {}),
         },
         hashbrown: { ui: true, responseSchema: schema },
       },
     });
+    if (result.action !== 'continue') throw new Error('expected continue');
+    return result.context;
+  };
+  return { store, session, request };
+}
+
+test('an ambiguous payment requires a chosen invoice and cannot substitute another invoice', async () => {
+  const { store, session, request } = await twoInvoices();
   const ambiguous = await request('ambiguous');
-  const chosen = await request('chosen', 'i2');
-  if (ambiguous.action !== 'continue' || chosen.action !== 'continue')
-    throw new Error('expected continue');
+  const chosen = await request('chosen', ['i2']);
 
   await expect(
-    ambiguous.context.prepareAllocation({ invoiceId: 'i1' }),
+    ambiguous.prepareAllocation({ invoiceIds: ['i1'] }),
   ).rejects.toThrow('invoice_choice_required');
   await expect(
-    chosen.context.prepareAllocation({ invoiceId: 'i1' }),
+    ambiguous.prepareAllocation({ invoiceIds: ['i1', 'i2'] }),
+  ).rejects.toThrow('invoice_choice_required');
+  await expect(
+    chosen.prepareAllocation({ invoiceIds: ['i1'] }),
   ).rejects.toThrow('invoice_binding_conflict');
-  expect(
-    (await chosen.context.prepareAllocation({ invoiceId: 'i2' })).lines[0]
-      .invoiceId,
-  ).toBe('i2');
+  const proposal = await chosen.prepareAllocation({ invoiceIds: ['i2'] });
+
+  expect(proposal.lines.map((line) => line.invoiceId)).toEqual(['i2']);
+  expect((await store.snapshot(session)).allocations).toHaveLength(0);
+});
+
+test('a review bound to several invoices fills them in order from the payment', async () => {
+  const { store, session, request } = await twoInvoices();
+  const combined = await request('combined', ['i2', 'i1']);
+
+  const read = await combined.readPayment();
+  const reordered = combined.prepareAllocation({ invoiceIds: ['i1', 'i2'] });
+  const proposal = await combined.prepareAllocation({
+    invoiceIds: ['i2', 'i1'],
+  });
+
+  expect(read.selectedInvoiceIds).toEqual(['i2', 'i1']);
+  await expect(reordered).rejects.toThrow('invoice_binding_conflict');
+  expect(proposal.lines).toEqual([
+    { invoiceId: 'i2', amountCents: 10000, expectedInvoiceVersion: 1 },
+    { invoiceId: 'i1', amountCents: 5000, expectedInvoiceVersion: 1 },
+  ]);
+  expect(proposal.amountCents).toBe(15000);
   expect((await store.snapshot(session)).allocations).toHaveLength(0);
 });

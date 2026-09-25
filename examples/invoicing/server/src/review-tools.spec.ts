@@ -52,7 +52,7 @@ test('renders the exact server proposal through the supplied schema without appl
 
   const proposal = await prepareAllocationUi(
     middleware,
-    { invoiceId: 'invoice-001' },
+    { invoiceIds: ['invoice-001'] },
     async (schema, expected) => {
       expect(schema).toBe(middleware.responseSchema);
       rendered = true;
@@ -76,7 +76,7 @@ test('rejects generated UI with missing, duplicated, or substituted proposal ide
   const { middleware } = await setup();
 
   const proposal = await middleware.prepareAllocation({
-    invoiceId: 'invoice-001',
+    invoiceIds: ['invoice-001'],
   });
   const component = {
     AllocationProposal: { props: { proposalId: proposal.proposalId } },
@@ -97,7 +97,7 @@ test('rejects generated UI with missing, duplicated, or substituted proposal ide
     await expect(
       prepareAllocationUi(
         middleware,
-        { invoiceId: 'invoice-001' },
+        { invoiceIds: ['invoice-001'] },
         async () => ({ ui }),
       ),
     ).rejects.toThrow('invalid_allocation_ui');
@@ -108,9 +108,13 @@ test('propagates model failure without applying an allocation', async () => {
   const { middleware, store, owner } = await setup();
 
   await expect(
-    prepareAllocationUi(middleware, { invoiceId: 'invoice-001' }, async () => {
-      throw new Error('model_unavailable');
-    }),
+    prepareAllocationUi(
+      middleware,
+      { invoiceIds: ['invoice-001'] },
+      async () => {
+        throw new Error('model_unavailable');
+      },
+    ),
   ).rejects.toThrow('model_unavailable');
 
   expect((await store.snapshot(owner)).allocations).toHaveLength(0);

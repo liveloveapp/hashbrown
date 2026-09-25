@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+import { fillLines } from './ledger';
 import type { SessionStore } from './session-store';
 import type { ReviewCoordinator } from './review-coordinator';
 import { readSessionCookie } from './session-cookie';
@@ -43,7 +45,7 @@ export function createReviewMiddleware(
         if (!payment) throw new Error('payment_not_found');
         return {
           payment,
-          selectedInvoiceId: context.selectedInvoiceId,
+          selectedInvoiceIds: context.selectedInvoiceIds,
           invoices: snapshot.invoices.filter(
             (invoice) =>
               invoice.customerId === payment.customerId &&
@@ -56,28 +58,28 @@ export function createReviewMiddleware(
         context: Object.freeze({
           responseSchema: context.responseSchema,
           readPayment,
-          prepareAllocation: async (input: { readonly invoiceId: string }) => {
+          prepareAllocation: async (input: {
+            readonly invoiceIds: readonly string[];
+          }) => {
             const { payment, invoices } = await readPayment();
-            const invoice = invoices.find(
-              (item) => item.id === input.invoiceId,
-            );
-            if (!invoice) throw new Error('invoice_not_found');
-            if (
-              !context.selectedInvoiceId &&
+            const ids = input.invoiceIds;
+            if (!Array.isArray(ids)) throw new Error('invoice_not_found');
+            if (context.selectedInvoiceIds) {
+              if (!isDeepStrictEqual([...ids], [...context.selectedInvoiceIds]))
+                throw new Error('invoice_binding_conflict');
+            } else if (
+              ids.length !== 1 ||
               invoices.filter((item) => item.outstandingCents > 0).length > 1
             )
               throw new Error('invoice_choice_required');
+            const chosen = ids.map((id) => {
+              const invoice = invoices.find((item) => item.id === id);
+              if (!invoice) throw new Error('invoice_not_found');
+              return invoice;
+            });
             return reviews.prepare(context, {
               paymentId: payment.id,
-              lines: [
-                {
-                  invoiceId: invoice.id,
-                  amountCents: Math.min(
-                    payment.unappliedCents,
-                    invoice.outstandingCents,
-                  ),
-                },
-              ],
+              lines: fillLines(payment.unappliedCents, chosen),
             });
           },
           applyAllocation: (input: { readonly proposalId: string }) =>

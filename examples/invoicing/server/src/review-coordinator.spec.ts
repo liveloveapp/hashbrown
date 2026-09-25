@@ -410,3 +410,41 @@ test('authorize converges on one token under contention', async () => {
   );
   expect(tokens).toHaveLength(1);
 });
+
+test('binds a thread to an ordered list of distinct known invoices', async () => {
+  const { coordinator, session } = await setup();
+  const withInvoices = (threadId: string, selectedInvoiceIds: unknown) => ({
+    ...body(),
+    threadId,
+    state: { selectedPaymentId: request.paymentId, selectedInvoiceIds },
+  });
+
+  const bound = await coordinator.authorize(
+    session,
+    withInvoices('bound', ['invoice-001']),
+  );
+
+  expect(bound.selectedInvoiceIds).toEqual(['invoice-001']);
+  for (const invalid of [
+    [],
+    ['invoice-001', 'invoice-001'],
+    ['unknown'],
+    'invoice-001',
+    Array.from({ length: 11 }, (_, i) => `invoice-${i}`),
+  ])
+    await expect(
+      coordinator.authorize(session, withInvoices('invalid', invalid)),
+    ).rejects.toThrow('invoice_not_found');
+  await expect(
+    coordinator.authorize(session, {
+      ...body(),
+      threadId: 'bound',
+    }),
+  ).rejects.toThrow('thread_binding_conflict');
+  await expect(
+    coordinator.prepare(bound, {
+      paymentId: request.paymentId,
+      lines: [],
+    }),
+  ).rejects.toThrow('invoice_binding_conflict');
+});

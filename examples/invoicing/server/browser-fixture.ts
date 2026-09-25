@@ -7,6 +7,7 @@ import { readSessionCookie } from './src/session-cookie';
 import { createReviewCoordinator } from './src/review-coordinator';
 import { invoicingUiResponseSchema } from '@invoicing/contracts';
 import { randomUUID } from 'node:crypto';
+import { fillLines } from './src/ledger';
 import { createSampleLedger } from './src/sample-ledger';
 import { createSessionStore } from './src/session-store';
 import { createMemoryRepositories } from './src/persistence/memory';
@@ -99,16 +100,16 @@ async function main() {
           const payment = snapshot.payments.find(
             (p) => p.id === context.selectedPaymentId,
           );
-          const invoice = snapshot.invoices.find(
-            (i) => i.id === context.selectedInvoiceId,
+          const invoices = (context.selectedInvoiceIds ?? []).map((id) =>
+            snapshot.invoices.find((i) => i.id === id),
           );
-          if (!payment || !invoice) throw new Error('missing_selection');
+          if (!payment || invoices.length === 0 || !invoices.every(Boolean))
+            throw new Error('missing_selection');
           const proposal = await reviews.prepare(context, {
             paymentId: payment.id,
-            invoiceId: invoice.id,
-            amountCents: Math.min(
+            lines: fillLines(
               payment.unappliedCents,
-              invoice.outstandingCents,
+              invoices as NonNullable<(typeof invoices)[number]>[],
             ),
           });
           const interruptId = randomUUID();

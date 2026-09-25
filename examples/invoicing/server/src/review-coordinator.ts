@@ -5,6 +5,7 @@ import type {
   Proposal,
   ProposalRequest,
 } from '@invoicing/contracts';
+import { MAX_PROPOSAL_LINES } from './ledger';
 import type { SessionStore } from './session-store';
 import { assertThreadOwner } from './thread-ownership';
 import {
@@ -20,7 +21,7 @@ export interface ReviewContext {
   readonly sessionId: string;
   readonly threadId: string;
   readonly selectedPaymentId: string;
-  readonly selectedInvoiceId?: string;
+  readonly selectedInvoiceIds?: readonly string[];
   readonly generation: number;
   readonly responseSchema: unknown;
   readonly decision: 'initial' | 'once' | 'cancelled';
@@ -108,7 +109,7 @@ export function createReviewCoordinator(
       sessionId: stored.sessionId,
       threadId,
       selectedPaymentId: stored.selectedPaymentId as string,
-      selectedInvoiceId: stored.selectedInvoiceId,
+      selectedInvoiceIds: stored.selectedInvoiceIds,
       generation: stored.generation,
       responseSchema,
       decision,
@@ -162,15 +163,20 @@ export function createReviewCoordinator(
       }
       const { threadId, state } = body;
       const selectedPaymentId = state.selectedPaymentId as string;
-      const selectedInvoiceId = state.selectedInvoiceId;
-      if (
-        selectedInvoiceId !== undefined &&
-        (!identifier(selectedInvoiceId) ||
-          !(await store.snapshot(sessionId)).invoices.some(
-            (invoice) => invoice.id === selectedInvoiceId,
-          ))
-      )
-        throw new Error('invoice_not_found');
+      const selectedInvoiceIds = state.selectedInvoiceIds;
+      if (selectedInvoiceIds !== undefined) {
+        const known = new Set(
+          (await store.snapshot(sessionId)).invoices.map((i) => i.id),
+        );
+        if (
+          !Array.isArray(selectedInvoiceIds) ||
+          selectedInvoiceIds.length === 0 ||
+          selectedInvoiceIds.length > MAX_PROPOSAL_LINES ||
+          new Set(selectedInvoiceIds).size !== selectedInvoiceIds.length ||
+          !selectedInvoiceIds.every((id) => identifier(id) && known.has(id))
+        )
+          throw new Error('invoice_not_found');
+      }
       if (
         !(await store.snapshot(sessionId)).payments.some(
           (payment) => payment.id === selectedPaymentId,
@@ -222,7 +228,9 @@ export function createReviewCoordinator(
         routeId: '/review',
         generation,
         selectedPaymentId,
-        selectedInvoiceId: selectedInvoiceId as string | undefined,
+        ...(selectedInvoiceIds
+          ? { selectedInvoiceIds: [...(selectedInvoiceIds as string[])] }
+          : {}),
         tokens: {},
       };
       let document = await threads.load(threadId);
@@ -242,7 +250,7 @@ export function createReviewCoordinator(
       const binding = check(sessionId, generation, document.value);
       if (
         binding.selectedPaymentId !== selectedPaymentId ||
-        binding.selectedInvoiceId !== selectedInvoiceId
+        !isDeepStrictEqual(binding.selectedInvoiceIds, selectedInvoiceIds)
       )
         throw new Error('thread_binding_conflict');
       if (decision !== 'initial') {
@@ -296,9 +304,11 @@ export function createReviewCoordinator(
       )
         throw new Error('payment_binding_conflict');
       if (
-        binding.selectedInvoiceId &&
-        (request.lines.length !== 1 ||
-          request.lines[0].invoiceId !== binding.selectedInvoiceId)
+        binding.selectedInvoiceIds &&
+        !isDeepStrictEqual(
+          request.lines.map((line) => line.invoiceId),
+          binding.selectedInvoiceIds,
+        )
       )
         throw new Error('invoice_binding_conflict');
       const matching = async (proposal: Proposal): Promise<Proposal> => {
