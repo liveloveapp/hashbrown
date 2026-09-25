@@ -23,19 +23,28 @@ Five incoming payments initially have unapplied cash totaling **$13,900**:
 - Atlas Analytics: an ambiguous choice between two invoices.
 - Summit Logistics: an advance with no outstanding invoice.
 
-The assistant accepts questions immediately, without selecting a payment.
-Selecting a row adds context. **Match payment** opens a separately authorized
-allocation review; **Approve and apply** records the simulated allocation and
-refreshes the balances. With multiple open invoices, choose an invoice first.
-Combined payments are currently applied one invoice at a time, each with its
-own approval. **Decline** leaves the ledger unchanged. Chat becomes available
+The assistant accepts questions immediately, without selecting a payment, and
+an empty conversation offers starter questions. Selecting a row adds context:
+the assistant reads it through `selectedPayment` when you ask about "this
+payment". The assistant column stays in view while the page scrolls, with the
+message box pinned under the thread; Enter sends and Shift+Enter adds a line.
+
+**Match payment** opens a separately authorized allocation review, and so does
+the assistant's own offer: **Match to INV-…** when it names the invoice, or
+**Review …** for an ambiguous payment, which selects it and focuses the invoice
+picker instead. **Approve and apply** records the simulated allocation,
+refreshes the balances and leaves a confirmation in the thread saying what was
+applied and what stays unapplied; the grid marks such a payment **Partially
+matched**. With multiple open invoices, choose an invoice first. Combined
+payments are currently applied one invoice at a time, each with its own
+approval. **Decline** leaves the ledger unchanged. Chat becomes available
 again after a completed or safely retired review, and subsequent matching uses
 a fresh review thread. Unknown allocation outcomes remain blocked until checked.
 
-The assistant answers through six read-only tools (`ledgerSummary`,
+The assistant answers through seven read-only tools (`ledgerSummary`,
 `monthlyTotals`, `aging`, `customerStatement`, `findRecords`,
-`unappliedPayments`) that each return a small, shaped result, then composes
-its answer from a component kit and hands prose plus components to `render`.
+`unappliedPayments`, `selectedPayment`) that each return a small, shaped
+result, then composes its answer from a component kit and hands prose plus components to `render`.
 The server validates every component against the kit and every ID against the
 session's snapshot before the UI reaches the browser; components carry IDs,
 never amounts, and the React side resolves them against the application's own

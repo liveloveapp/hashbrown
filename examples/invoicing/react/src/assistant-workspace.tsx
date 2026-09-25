@@ -1,42 +1,71 @@
 import {
   createContext,
   Fragment,
+  type ReactNode,
   type Ref,
   useCallback,
   useContext,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
 import { HashbrownProvider, useUiChat } from '@hashbrownai/react';
 import type { TransportOrFactory } from '@hashbrownai/core';
-import type { LedgerSnapshot } from '@invoicing/contracts';
+import type { LedgerSnapshot, Proposal } from '@invoicing/contracts';
 import { findRenderCall, RenderDraft } from './assistant-draft';
 import { assistantKit } from './assistant-kit';
+import { money } from './ledger-views';
 import { ReviewChat, type ReviewChatHandle } from './review-chat';
 import { SnapshotContext } from './snapshot-context';
 
 const ActionContext = createContext<{
-  review: (id: string) => boolean;
+  review: (paymentId: string, invoiceId?: string) => boolean;
   disabled: boolean;
   snapshot: LedgerSnapshot;
 } | null>(null);
-function ReviewPayment({ paymentId }: { paymentId: string }) {
+
+/**
+ * The model's offer to match a payment. With an invoice it starts that review
+ * directly; without one it reviews the payment, or hands an ambiguous payment
+ * to the page's invoice picker.
+ */
+function ReviewPayment({
+  paymentId,
+  invoiceId,
+}: {
+  paymentId: string;
+  invoiceId?: string | null;
+}) {
   const context = useContext(ActionContext);
   const payment = context?.snapshot.payments.find((p) => p.id === paymentId);
+  const invoice = invoiceId
+    ? context?.snapshot.invoices.find((i) => i.id === invoiceId)
+    : undefined;
   if (!context || !payment || payment.unappliedCents <= 0) return null;
+  if (invoiceId && (!invoice || invoice.outstandingCents <= 0)) return null;
   return (
     <button
+      className="review-action"
       disabled={context.disabled}
-      onClick={() => context.review(paymentId)}
+      onClick={() => context.review(paymentId, invoice?.id)}
     >
-      Review {payment.reference ?? paymentId}
+      {invoice
+        ? `Match to ${invoice.reference ?? invoice.id}`
+        : `Review ${payment.reference ?? paymentId}`}
     </button>
   );
 }
 const components = assistantKit(ReviewPayment);
 const ASSISTANT_URL = '/agui/%2Fassistant%23agent';
+
+const STARTERS = [
+  'How much cash is still unapplied?',
+  'Which clients pay late?',
+  'How did invoicing trend over the last 6 months?',
+] as const;
+const SELECTED_STARTER = 'Which invoices does this payment cover?';
 
 /** Explicit matching entry point; false means an existing operation or invoice choice needs attention. */
 export interface AssistantWorkspaceHandle {
@@ -50,12 +79,28 @@ export interface AssistantWorkspaceProps {
   readonly onApplied: (snapshot: LedgerSnapshot) => void;
   /** Reports whether conversation or an unresolved review prevents matching. */
   readonly onBusyChange?: (busy: boolean) => void;
+  /**
+   * Called when the assistant offers a payment with several open invoices and
+   * no clear match, so the page can select it and ask the user to choose.
+   */
+  readonly onChooseInvoice?: (paymentId: string) => void;
   readonly transport?: TransportOrFactory;
 }
 interface Session {
   readonly id: string;
   readonly paymentId: string;
   readonly invoiceId: string;
+}
+
+/** What an applied review did, in words, read from the refreshed ledger. */
+function appliedSummary(snapshot: LedgerSnapshot, proposal: Proposal): string {
+  const invoice = snapshot.invoices.find((i) => i.id === proposal.invoiceId);
+  const payment = snapshot.payments.find((p) => p.id === proposal.paymentId);
+  const applied = `Applied ${money(proposal.amountCents, proposal.currency)} to ${invoice?.reference ?? 'the invoice'}.`;
+  if (!payment) return applied;
+  return payment.unappliedCents > 0
+    ? `${applied} ${money(payment.unappliedCents, payment.currency)} of this payment is still unapplied.`
+    : `${applied} This payment is fully matched.`;
 }
 
 function ReviewSession({
@@ -76,10 +121,12 @@ function ReviewSession({
   const [terminal, setTerminal] = useState<
     'applied' | 'cancelled' | 'failed'
   >();
+  const [appliedProposal, setAppliedProposal] = useState<Proposal>();
   const [expanded, setExpanded] = useState(false);
   const finish = useCallback(
-    (status: 'applied' | 'cancelled' | 'failed') => {
+    (status: 'applied' | 'cancelled' | 'failed', proposal?: Proposal) => {
       setTerminal(status);
+      if (status === 'applied') setAppliedProposal(proposal);
       onTerminal();
     },
     [onTerminal],
@@ -97,30 +144,37 @@ function ReviewSession({
     }
   }, [session.paymentId, finish]);
   return (
-    <details className="review-history" open={!terminal || expanded}>
-      <summary
-        onClick={(event) => {
-          event.preventDefault();
-          if (terminal) setExpanded((value) => !value);
-        }}
-      >
-        {terminal ? `Review ${terminal}` : 'Payment review'} ·{' '}
-        {payment?.reference ?? session.paymentId} →{' '}
-        {invoice?.reference ?? session.invoiceId}
-      </summary>
-      <HashbrownProvider url="/agui/%2Freview%23agent">
-        <ReviewChat
-          ref={handle}
-          selectedPaymentId={session.paymentId}
-          selectedInvoiceId={session.invoiceId}
-          snapshot={snapshot}
-          showComposer={false}
-          onApplied={onApplied}
-          onTerminal={finish}
-          transport={transport}
-        />
-      </HashbrownProvider>
-    </details>
+    <>
+      <details className="review-history" open={!terminal || expanded}>
+        <summary
+          onClick={(event) => {
+            event.preventDefault();
+            if (terminal) setExpanded((value) => !value);
+          }}
+        >
+          {terminal ? `Review ${terminal}` : 'Payment review'} ·{' '}
+          {payment?.reference ?? 'payment'} →{' '}
+          {invoice?.reference ?? 'invoice'}
+        </summary>
+        <HashbrownProvider url="/agui/%2Freview%23agent">
+          <ReviewChat
+            ref={handle}
+            selectedPaymentId={session.paymentId}
+            selectedInvoiceId={session.invoiceId}
+            snapshot={snapshot}
+            showComposer={false}
+            onApplied={onApplied}
+            onTerminal={finish}
+            transport={transport}
+          />
+        </HashbrownProvider>
+      </details>
+      {appliedProposal && (
+        <p className="review-outcome" role="status">
+          {appliedSummary(snapshot, appliedProposal)}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -129,14 +183,18 @@ function Conversation({
   locked,
   onBusy,
   transport,
+  children,
 }: {
   selectedPaymentId?: string;
   locked: boolean;
   onBusy: (busy: boolean) => void;
   transport?: TransportOrFactory;
+  /** Reviews and notices that belong in the thread, after the messages. */
+  children?: ReactNode;
 }) {
   const [threadId] = useState(() => crypto.randomUUID());
   const [prompt, setPrompt] = useState('');
+  const thread = useRef<HTMLDivElement>(null);
   const chat = useUiChat({
     components,
     threadId,
@@ -152,52 +210,89 @@ function Conversation({
     claim.current = false;
     onBusy(busy);
   }, [busy, onBusy]);
+  // Keep the newest message, answer or review in view as the thread grows.
+  const childCount = Array.isArray(children) ? children.flat().length : 0;
+  useLayoutEffect(() => {
+    const element = thread.current;
+    if (element) element.scrollTop = element.scrollHeight;
+  }, [chat.messages.length, childCount, locked]);
+
+  function send(text: string) {
+    const content = text.trim();
+    if (!content || busy || locked || claim.current) return;
+    claim.current = true;
+    chat.setState(selectedPaymentId ? { selectedPaymentId } : {});
+    chat.sendMessage({ role: 'user', content });
+    setPrompt('');
+  }
+
+  const starters = selectedPaymentId
+    ? [SELECTED_STARTER, ...STARTERS.slice(0, 2)]
+    : STARTERS;
   return (
-    <section aria-label="Ledger conversation">
-      {chat.messages.map((message, index) => {
-        if (message.role === 'user')
-          return (
-            <p className="user-message" key={index}>
-              {typeof message.content === 'string' ? message.content : ''}
-            </p>
-          );
-        if (message.role !== 'assistant') return null;
-        if (message.ui) return <Fragment key={index}>{message.ui}</Fragment>;
-        // The answer is the server's render call, surfaced by hashbrown with
-        // its arguments as they stream: a draft until the server validates the
-        // call, then the final answer, drawn through the same components. A
-        // call the server rejected shows nothing; the model retries or the
-        // run ends in the error alert below.
-        const call = findRenderCall(message.serverToolCalls);
-        return call && call.state !== 'failed' ? (
-          <RenderDraft
-            key={index}
-            args={call.args}
-            validated={call.state === 'validated'}
-            ReviewPayment={ReviewPayment}
-          />
-        ) : null;
-      })}
-      {(chat.error || chat.sendingError || chat.generatingError) && (
-        <p role="alert">
-          The assistant could not finish. No financial changes were made by this
-          conversation. Try again.
-        </p>
-      )}
-      {busy && <p role="status">Reading your ledger…</p>}
+    <section className="conversation" aria-label="Ledger conversation">
+      <div className="thread" ref={thread}>
+        {chat.messages.length === 0 && !locked && (
+          <div
+            className="starters"
+            role="group"
+            aria-label="Suggested questions"
+          >
+            {starters.map((starter) => (
+              <button
+                key={starter}
+                type="button"
+                disabled={busy}
+                onClick={() => send(starter)}
+              >
+                {starter}
+              </button>
+            ))}
+          </div>
+        )}
+        {chat.messages.map((message, index) => {
+          if (message.role === 'user')
+            return (
+              <p className="user-message" key={index}>
+                {typeof message.content === 'string' ? message.content : ''}
+              </p>
+            );
+          if (message.role !== 'assistant') return null;
+          if (message.ui) return <Fragment key={index}>{message.ui}</Fragment>;
+          // The answer is the server's render call, surfaced by hashbrown with
+          // its arguments as they stream: a draft until the server validates
+          // the call, then the final answer, drawn through the same
+          // components. A call the server rejected shows nothing; the model
+          // retries or the run ends in the error alert below.
+          const call = findRenderCall(message.serverToolCalls);
+          return call && call.state !== 'failed' ? (
+            <RenderDraft
+              key={index}
+              args={call.args}
+              validated={call.state === 'validated'}
+              ReviewPayment={ReviewPayment}
+            />
+          ) : null;
+        })}
+        {(chat.error || chat.sendingError || chat.generatingError) && (
+          <p role="alert">
+            The assistant could not finish. No financial changes were made by
+            this conversation. Try again.
+          </p>
+        )}
+        {busy && <p role="status">Reading your ledger…</p>}
+        {children}
+      </div>
       {locked && (
-        <p role="status">
-          Finish the payment review below before sending another message.
+        <p role="status" className="composer-note">
+          Finish the payment review above before sending another message.
         </p>
       )}
       <form
+        className="composer-form"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!prompt.trim() || busy || locked || claim.current) return;
-          claim.current = true;
-          chat.setState(selectedPaymentId ? { selectedPaymentId } : {});
-          chat.sendMessage({ role: 'user', content: prompt.trim() });
-          setPrompt('');
+          send(prompt);
         }}
       >
         <label htmlFor="ledger-message">Message assistant</label>
@@ -207,6 +302,16 @@ function Conversation({
           placeholder="Ask about invoices or incoming payments…"
           disabled={busy || locked}
           onChange={(event) => setPrompt(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
+              send(prompt);
+            }
+          }}
         />
         <button type="submit" disabled={busy || locked || !prompt.trim()}>
           Send
@@ -223,6 +328,7 @@ export function AssistantWorkspace({
   snapshot,
   onApplied,
   onBusyChange,
+  onChooseInvoice,
   transport,
 }: AssistantWorkspaceProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -252,6 +358,11 @@ export function AssistantWorkspace({
         ? candidates[0]
         : undefined;
     if (!invoice) {
+      if (!invoiceId && candidates.length > 1 && onChooseInvoice) {
+        setNotice('');
+        onChooseInvoice(paymentId);
+        return false;
+      }
       setNotice(
         candidates.length
           ? 'Select this payment in the grid and choose an invoice before matching.'
@@ -286,24 +397,25 @@ export function AssistantWorkspace({
             locked={Boolean(active)}
             onBusy={setConversationBusy}
             transport={transport}
-          />
+          >
+            {notice && <p role="status">{notice}</p>}
+            {sessions.map((session) => (
+              <ReviewSession
+                key={session.id}
+                session={session}
+                snapshot={snapshot}
+                onApplied={onApplied}
+                transport={transport}
+                onTerminal={() => {
+                  if (activeClaim.current === session.id) {
+                    activeClaim.current = undefined;
+                    setActive(undefined);
+                  }
+                }}
+              />
+            ))}
+          </Conversation>
         </HashbrownProvider>
-        {notice && <p role="status">{notice}</p>}
-        {sessions.map((session) => (
-          <ReviewSession
-            key={session.id}
-            session={session}
-            snapshot={snapshot}
-            onApplied={onApplied}
-            transport={transport}
-            onTerminal={() => {
-              if (activeClaim.current === session.id) {
-                activeClaim.current = undefined;
-                setActive(undefined);
-              }
-            }}
-          />
-        ))}
       </SnapshotContext.Provider>
     </ActionContext.Provider>
   );

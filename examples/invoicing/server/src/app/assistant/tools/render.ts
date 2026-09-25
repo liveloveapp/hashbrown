@@ -10,7 +10,7 @@ import { assistantTools } from '../../../assistant-tools';
  */
 export const returnDirect = true;
 
-/** Show your answer to the user. Call exactly once, last. `text` is your prose; `components` are the kit pieces that support it, in order: LedgerTable for specific rows by ID, TrendChart for month-over-month, AgingSummary for overdue balances, CustomerCard for one client, ReviewPayment to offer matching an unapplied payment. Every ID must come from a tool result. On an invalid_ui error, fix the named component and call render once more. */
+/** Show your answer to the user. Call exactly once, last. `text` is your prose; `components` are the kit pieces that support it, in order: LedgerTable for specific rows by ID, TrendChart for month-over-month, AgingSummary for overdue balances, CustomerCard for one client, ReviewPayment to offer matching an unapplied payment, with invoiceId when one invoice clearly matches. Every ID must come from a tool result. On an invalid_ui error, fix the named component and call render once more. */
 export default async function render(
   input: AssistantRenderInput,
   context: B4ToolContext,

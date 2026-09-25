@@ -322,6 +322,11 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
 
   fireEvent.click(approve);
   await screen.findByText('Allocation applied.');
+  expect(
+    await screen.findByText(
+      'Applied $2,400.00 to the invoice. This payment is fully matched.',
+    ),
+  ).toBeVisible();
 
   await waitFor(() =>
     expect(
@@ -429,4 +434,111 @@ test('derives monthly invoiced and received totals from record dates', () => {
   expect(report).toHaveTextContent('Jan 2026');
   expect(report).toHaveTextContent('$100.00');
   expect(report).toHaveTextContent('$50.00');
+});
+
+test('the Status column tells partially matched payments apart', async () => {
+  cleanup();
+  const ledger = {
+    ...snapshot,
+    payments: [
+      { ...snapshot.payments[0], unappliedCents: 100000, reference: 'PART' },
+      {
+        ...snapshot.payments[0],
+        id: 'payment-002',
+        unappliedCents: 0,
+        reference: 'DONE',
+      },
+      { ...snapshot.payments[0], id: 'payment-003', reference: 'OPEN' },
+    ],
+  };
+
+  render(<App initialSnapshot={ledger} />);
+  fireEvent.click(screen.getByRole('button', { name: 'All payments' }));
+  await screen.findByText('DONE');
+
+  const rowOf = (reference: string) =>
+    screen.getByText(reference).closest('[role="row"]') as HTMLElement;
+  expect(rowOf('PART')).toHaveTextContent('Partially matched');
+  expect(rowOf('DONE')).toHaveTextContent('Matched');
+  expect(rowOf('DONE')).not.toHaveTextContent('Partially');
+  expect(rowOf('OPEN')).toHaveTextContent('Unmatched');
+});
+
+test('an assistant review of an ambiguous payment selects it and focuses the invoice picker', async () => {
+  cleanup();
+  const requests: TransportRequest[] = [];
+  const args = JSON.stringify({
+    text: 'PAY-1 could settle either invoice.',
+    components: [{ ReviewPayment: { paymentId: 'payment-001' } }],
+  });
+  const transport: Transport = {
+    name: 'app-render',
+    async send(request) {
+      requests.push(request);
+      const identity = {
+        threadId: request.input.threadId,
+        runId: request.input.runId,
+      };
+      return {
+        events: (async function* (): AsyncIterable<AGUIEvent> {
+          yield { type: EventType.RUN_STARTED, ...identity };
+          yield {
+            type: EventType.TOOL_CALL_START,
+            toolCallId: 'call-render',
+            toolCallName: 'render',
+          };
+          yield {
+            type: EventType.TOOL_CALL_ARGS,
+            toolCallId: 'call-render',
+            delta: args,
+          };
+          yield { type: EventType.TOOL_CALL_END, toolCallId: 'call-render' };
+          yield {
+            type: EventType.TOOL_CALL_RESULT,
+            messageId: 'result',
+            toolCallId: 'call-render',
+            content: JSON.stringify({
+              lc: 1,
+              type: 'constructor',
+              id: ['langchain_core', 'messages', 'ToolMessage'],
+              kwargs: {
+                content: '{"rendered":true}',
+                tool_call_id: 'call-render',
+                name: 'render',
+                status: 'success',
+              },
+            }),
+          };
+          yield { type: EventType.RUN_FINISHED, ...identity };
+        })(),
+      };
+    },
+  };
+  const ledger = {
+    ...snapshot,
+    payments: [{ ...snapshot.payments[0], reference: 'PAY-1' }],
+    invoices: [
+      ...snapshot.invoices,
+      { ...snapshot.invoices[0], id: 'invoice-002', reference: 'INV-002' },
+    ],
+  };
+  render(
+    <App initialSnapshot={ledger} enableAssistant transport={transport} />,
+  );
+  fireEvent.change(screen.getByLabelText('Message assistant'), {
+    target: { value: 'Which invoice is PAY-1 for?' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+  const review = await screen.findByRole('button', { name: 'Review PAY-1' });
+  await waitFor(() => expect(review).toBeEnabled());
+
+  fireEvent.click(review);
+
+  expect(screen.getByRole('checkbox', { name: 'Select row' })).toBeChecked();
+  await waitFor(() =>
+    expect(
+      screen.getByRole('combobox', { name: 'Invoice to match' }),
+    ).toHaveFocus(),
+  );
+  expect(requests).toHaveLength(1);
 });

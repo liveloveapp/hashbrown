@@ -8,6 +8,7 @@ import {
   findRecords,
   ledgerSummary,
   monthlyTotals,
+  selectedPayment,
   unappliedPayments,
 } from './assistant-queries';
 
@@ -287,4 +288,24 @@ test('unappliedPayments caps payments at 20 and candidates at 3', () => {
     busy.payments.reduce((sum, p) => sum + p.unappliedCents, 0),
   );
   expect(size(result)).toBeLessThan(BUDGET);
+});
+
+test('selectedPayment describes the payment selected on the page with every candidate invoice', () => {
+  const id = sampleScenarios.combined.paymentId;
+
+  const result = selectedPayment(snapshot, id);
+
+  expect(result.selected?.id).toBe(id);
+  expect(result.selected?.customerName).toBe('Harbor Commerce');
+  expect(result.selected?.unapplied).toBe('$5,000.00');
+  expect(result.selected?.candidates.map((c) => c.invoiceId).sort()).toEqual(
+    [...sampleScenarios.combined.invoiceIds].sort(),
+  );
+  expect(result.selected?.candidateCount).toBe(2);
+});
+
+test('selectedPayment reports no selection', () => {
+  const result = selectedPayment(snapshot, undefined);
+
+  expect(result).toEqual({ selected: null });
 });

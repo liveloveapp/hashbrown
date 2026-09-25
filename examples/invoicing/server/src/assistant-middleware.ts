@@ -10,6 +10,7 @@ import {
   findRecords,
   ledgerSummary,
   monthlyTotals,
+  selectedPayment,
   unappliedPayments,
 } from './assistant-queries';
 import { validateUi } from './assistant-ui';
@@ -24,7 +25,7 @@ const record = (value: unknown): value is Record<string, unknown> =>
 /**
  * The middleware context the assistant's tools read (`assistantTools` in
  * `assistant-tools.ts`): the response schema the nested `render` model is
- * held to, the six read-only queries, and `validateUi`, each closed over
+ * held to, the read-only queries (including the page's selected payment), and `validateUi`, each closed over
  * `current`, which yields the ledger snapshot a call should see. The route
  * middleware builds it from a session; the eval harness from the sample
  * ledger directly, so both share this one shape.
@@ -36,7 +37,10 @@ const record = (value: unknown): value is Record<string, unknown> =>
  * run-correlation map is needed. The marker is invisible to the model: the
  * six query tools and `validateUi` return exactly what they did before.
  */
-export function assistantContext(current: () => Promise<LedgerSnapshot>) {
+export function assistantContext(
+  current: () => Promise<LedgerSnapshot>,
+  selectedPaymentId?: string,
+) {
   const rendered = { ui: false };
   return Object.freeze({
     rendered,
@@ -52,6 +56,8 @@ export function assistantContext(current: () => Promise<LedgerSnapshot>) {
       findRecords(await current(), input),
     unappliedPayments: async (input: Parameters<typeof unappliedPayments>[1]) =>
       unappliedPayments(await current(), input),
+    selectedPayment: async () =>
+      selectedPayment(await current(), selectedPaymentId),
     validateUi: async (input: AssistantRenderInput) => {
       const tree = validateUi(await current(), input);
       rendered.ui = true;
@@ -147,6 +153,12 @@ export function createAssistantMiddleware(
         !(await current()).payments.some((p) => p.id === selectedPaymentId))
     )
       return reject(422);
-    return { action: 'continue' as const, context: assistantContext(current) };
+    return {
+      action: 'continue' as const,
+      context: assistantContext(
+        current,
+        typeof selectedPaymentId === 'string' ? selectedPaymentId : undefined,
+      ),
+    };
   };
 }

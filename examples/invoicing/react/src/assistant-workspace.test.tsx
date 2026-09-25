@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { createRef } from 'react';
 import { expect, test, vi } from 'vitest';
@@ -330,7 +331,9 @@ for (const failCancellation of [false, true]) {
       ).toBeEnabled(),
     );
     const summary = screen.getByText(
-      failCancellation ? 'Review failed · p → i' : 'Review cancelled · p → i',
+      failCancellation
+        ? 'Review failed · payment → invoice'
+        : 'Review cancelled · payment → invoice',
     );
     expect(summary.closest('details')).not.toHaveAttribute('open');
     expect(decline).not.toBeVisible();
@@ -646,6 +649,167 @@ test('a render call the server rejected renders nothing and the run surfaces the
   ).not.toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: /^Review / }),
+  ).not.toBeInTheDocument();
+  await settle();
+});
+
+const twoInvoices: LedgerSnapshot = {
+  ...snapshot,
+  payments: [{ ...snapshot.payments[0], reference: 'PAY-1' }],
+  invoices: [
+    { ...snapshot.invoices[0], reference: 'INV-1', outstandingCents: 6000 },
+    {
+      ...snapshot.invoices[0],
+      id: 'i2',
+      reference: 'INV-2',
+      outstandingCents: 4000,
+    },
+  ],
+};
+
+test('a ReviewPayment that names its invoice starts that review directly', async () => {
+  cleanup();
+  const { transport, release, requests } = streamingRender([
+    { ReviewPayment: { paymentId: 'p', invoiceId: 'i2' } },
+  ]);
+  render(
+    <AssistantWorkspace
+      snapshot={twoInvoices}
+      onApplied={() => undefined}
+      transport={transport}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Message assistant'), {
+    target: { value: 'Match PAY-1' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+  release();
+  const match = await screen.findByRole('button', { name: 'Match to INV-2' });
+  await waitFor(() => expect(match).toBeEnabled());
+
+  fireEvent.click(match);
+
+  await waitFor(() => expect(requests).toHaveLength(2));
+  expect(requests[1].input.state).toEqual({
+    selectedPaymentId: 'p',
+    selectedInvoiceId: 'i2',
+  });
+  await settle();
+});
+
+test('a ReviewPayment without an invoice hands an ambiguous payment to the invoice picker', async () => {
+  cleanup();
+  const onChooseInvoice = vi.fn();
+  const { transport, release, requests } = streamingRender([
+    { ReviewPayment: { paymentId: 'p', invoiceId: null } },
+  ]);
+  render(
+    <AssistantWorkspace
+      snapshot={twoInvoices}
+      onApplied={() => undefined}
+      onChooseInvoice={onChooseInvoice}
+      transport={transport}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Message assistant'), {
+    target: { value: 'Match PAY-1' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+  release();
+  const review = await screen.findByRole('button', { name: 'Review PAY-1' });
+  await waitFor(() => expect(review).toBeEnabled());
+
+  fireEvent.click(review);
+
+  expect(onChooseInvoice).toHaveBeenCalledWith('p');
+  expect(requests).toHaveLength(1);
+  expect(
+    screen.queryByText(/choose an invoice before matching/),
+  ).not.toBeInTheDocument();
+  await settle();
+});
+
+test('Enter sends a message and Shift+Enter starts a new line', async () => {
+  cleanup();
+  const { requests, transport } = controlled();
+  render(
+    <AssistantWorkspace
+      snapshot={snapshot}
+      onApplied={() => undefined}
+      transport={transport}
+    />,
+  );
+  const box = screen.getByRole('textbox', { name: 'Message assistant' });
+  fireEvent.change(box, { target: { value: 'What needs matching?' } });
+
+  fireEvent.keyDown(box, { key: 'Enter', shiftKey: true });
+  const afterShiftEnter = requests.length;
+  fireEvent.keyDown(box, { key: 'Enter' });
+
+  expect(afterShiftEnter).toBe(0);
+  await waitFor(() => expect(requests).toHaveLength(1));
+  await screen.findByText('There is one unapplied payment.');
+  await settle();
+});
+
+test('an empty conversation offers starter questions that send when clicked', async () => {
+  cleanup();
+  const { requests, transport } = controlled();
+  render(
+    <AssistantWorkspace
+      snapshot={snapshot}
+      selectedPaymentId="p"
+      onApplied={() => undefined}
+      transport={transport}
+    />,
+  );
+  const starters = screen.getByRole('group', { name: 'Suggested questions' });
+
+  fireEvent.click(
+    within(starters).getByRole('button', {
+      name: 'Which invoices does this payment cover?',
+    }),
+  );
+
+  await waitFor(() => expect(requests).toHaveLength(1));
+  expect(JSON.stringify(requests[0].input.messages)).toContain(
+    'Which invoices does this payment cover?',
+  );
+  await screen.findByText('There is one unapplied payment.');
+  expect(
+    screen.queryByRole('group', { name: 'Suggested questions' }),
+  ).not.toBeInTheDocument();
+  await settle();
+});
+
+test('an embedded review does not echo the message that started it', async () => {
+  cleanup();
+  const { transport } = controlled();
+  const ref = createRef<AssistantWorkspaceHandle>();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response('{}', { status: 404 })),
+  );
+  render(
+    <AssistantWorkspace
+      ref={ref}
+      snapshot={snapshot}
+      onApplied={() => undefined}
+      transport={transport}
+    />,
+  );
+
+  act(() => {
+    ref.current?.beginReview('p', 'i');
+  });
+
+  await screen.findByText(
+    'Unable to verify this proposal. No approval is available.',
+  );
+  expect(
+    screen.queryByText(
+      'Review the selected payment and propose an allocation.',
+    ),
   ).not.toBeInTheDocument();
   await settle();
 });

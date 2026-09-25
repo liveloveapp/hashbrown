@@ -34,8 +34,8 @@ textarea:focus-visible {
 }
 .workspace {
   display: grid;
-  grid-template-columns: 184px minmax(0, 1fr) 310px;
-  min-height: 100vh;
+  grid-template-columns: 184px minmax(0, 1fr) 380px;
+  height: 100vh;
 }
 .navigation {
   background: #fafafa;
@@ -79,12 +79,13 @@ textarea:focus-visible {
 }
 .nav-footer {
   margin: auto 10px 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   color: #878a8d;
 }
 main {
   min-width: 0;
+  overflow-y: auto;
 }
 .page-header {
   height: 64px;
@@ -96,14 +97,14 @@ main {
   font-size: 12px;
 }
 .badge {
-  font-size: 10px;
+  font-size: 12px;
   border: 1px solid #e7e7e7;
   border-radius: 5px;
   padding: 4px 7px;
   color: #6e7276;
 }
 .content {
-  padding: 34px 28px;
+  padding: 34px 24px;
   max-width: 1250px;
   margin: auto;
 }
@@ -137,7 +138,7 @@ h2 {
 .stats span,
 .stats small {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   color: #757a7e;
 }
 .stats strong {
@@ -195,7 +196,7 @@ h2 {
   margin-top: 6px;
 }
 .context-note {
-  font-size: 11px;
+  font-size: 12px;
   color: #73777c;
   margin-bottom: 0;
 }
@@ -204,25 +205,72 @@ h2 {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  height: 100vh;
 }
 .assistant .page-header {
   padding: 0 20px;
 }
 .assistant-body {
-  padding: 27px 20px;
+  padding: 20px 16px 16px;
   flex: 1;
-}
-.assistant-icon {
-  display: grid;
-  place-items: center;
-  border: 1px solid #e4e6e5;
-  border-radius: 7px;
-  width: 28px;
-  height: 28px;
-  margin-bottom: 20px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .assistant-body h2 {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
+}
+/* The thread scrolls; the composer stays pinned under it. */
+.conversation {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+}
+.thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.user-message {
+  align-self: flex-end;
+  max-width: 85%;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 12px 12px 4px 12px;
+  background: #253d32;
+  color: #fff;
+}
+.starters {
+  display: grid;
+  gap: 8px;
+}
+.assistant-body .starters button {
+  text-align: left;
+  background: #fff;
+}
+.review-action {
+  align-self: flex-start;
+}
+.review-outcome {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: #edf3ef;
+  border: 1px solid #cfe0d5;
+  color: #1d3a2b;
+}
+.composer-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #73777c;
 }
 .connection-notice {
   font-size: 12px;
@@ -266,7 +314,7 @@ h2 {
   color: #8a8d90;
 }
 .composer small {
-  font-size: 10px;
+  font-size: 12px;
 }
 .composer button {
   border: 0;
@@ -277,7 +325,7 @@ h2 {
 }
 @media (max-width: 1100px) {
   .workspace {
-    grid-template-columns: 150px minmax(0, 1fr) 270px;
+    grid-template-columns: 150px minmax(0, 1fr) 320px;
   }
   .content {
     padding: 28px 18px;
@@ -295,6 +343,15 @@ h2 {
 @media (max-width: 800px) {
   .workspace {
     grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+  main {
+    overflow-y: visible;
+  }
+  .assistant,
+  .thread {
+    height: auto;
+    overflow-y: visible;
   }
   .navigation {
     flex-direction: row;
@@ -338,7 +395,16 @@ h2 {
 .assistant-body form {
   display: grid;
   gap: 8px;
-  margin-top: 20px;
+  margin-top: 12px;
+}
+.composer-form {
+  flex: none;
+  border-top: 1px solid #efefef;
+  padding-top: 12px;
+}
+.composer-form label {
+  font-size: 12px;
+  color: #73777c;
 }
 .assistant-body input {
   width: 100%;
@@ -357,6 +423,43 @@ h2 {
 }
 .assistant-body button:disabled {
   opacity: 0.5;
+}
+.assistant-body button.primary {
+  background: #253d32;
+  border-color: #253d32;
+  color: #fff;
+  font-weight: 550;
+}
+.assistant-body button.primary:hover:not(:disabled) {
+  background: #1b2e25;
+}
+.assistant-body button:hover:not(:disabled):not(.primary) {
+  background: #e2ece5;
+}
+.proposal-card {
+  gap: 8px;
+}
+.proposal-card h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.proposal-card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+}
+.proposal-card dt {
+  color: #73777c;
+}
+.selection-summary.proposal-card dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.proposal-card p {
+  margin: 4px 0 0;
+  color: #73777c;
 }
 
 .monthly-report {
@@ -439,9 +542,10 @@ h2 {
 
 .assistant-body textarea {
   width: 100%;
-  min-height: 76px;
+  min-height: 64px;
+  max-height: 160px;
   padding: 10px;
-  resize: vertical;
+  resize: none;
   border: 1px solid #e4e6e5;
   border-radius: 6px;
 }
@@ -450,7 +554,6 @@ h2 {
 }
 
 .review-history {
-  margin-top: 16px;
   border-top: 1px solid #e4e6e5;
   padding-top: 12px;
 }

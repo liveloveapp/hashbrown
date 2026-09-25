@@ -24,7 +24,7 @@ type Loose = Record<string, unknown> & {
 const loose = (value: unknown): Loose => value as Loose;
 
 describe('assistant tool schemas', () => {
-  test('exposes the seven current tools and none of the retired ones', () => {
+  test('exposes the eight current tools and none of the retired ones', () => {
     expect([...byName.keys()].sort()).toEqual([
       'aging',
       'customerStatement',
@@ -32,6 +32,7 @@ describe('assistant tool schemas', () => {
       'ledgerSummary',
       'monthlyTotals',
       'render',
+      'selectedPayment',
       'unappliedPayments',
     ]);
   });

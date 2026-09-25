@@ -72,7 +72,11 @@ export interface ReviewChatProps {
   /** Application-owned record labels; never supplied by the model. */
   readonly snapshot?: LedgerSnapshot;
   readonly showComposer?: boolean;
-  readonly onTerminal?: (status: 'applied' | 'cancelled' | 'failed') => void;
+  /** Reports how the review ended, with the proposal the user decided on, if any. */
+  readonly onTerminal?: (
+    status: 'applied' | 'cancelled' | 'failed',
+    proposal?: Proposal,
+  ) => void;
   readonly ref?: Ref<ReviewChatHandle>;
   readonly onApplied: (snapshot: LedgerSnapshot) => void;
   readonly transport?: TransportOrFactory;
@@ -220,7 +224,8 @@ export function ReviewChat({
     !busy,
   );
   useEffect(() => {
-    if (phase === 'applied' || phase === 'cancelled') onTerminal?.(phase);
+    if (phase === 'applied' || phase === 'cancelled')
+      onTerminal?.(phase, attempt?.proposal);
     else if (
       !showComposer &&
       !attempt &&
@@ -332,7 +337,9 @@ export function ReviewChat({
         {chat.messages.map((message, index) =>
           message.role === 'assistant' ? (
             <Fragment key={index}>{message.ui}</Fragment>
-          ) : message.role === 'user' ? (
+          ) : message.role === 'user' && showComposer ? (
+            // Embedded reviews start from a fixed kickoff message the user
+            // never typed; only a review with its own composer shows them.
             <p key={index}>
               {typeof message.content === 'string' ? message.content : ''}
             </p>
