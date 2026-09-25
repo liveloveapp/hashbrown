@@ -331,7 +331,9 @@ for (const failCancellation of [false, true]) {
       ).toBeEnabled(),
     );
     const summary = screen.getByText(
-      failCancellation ? 'Review failed · p → i' : 'Review cancelled · p → i',
+      failCancellation
+        ? 'Review failed · payment → invoice'
+        : 'Review cancelled · payment → invoice',
     );
     expect(summary.closest('details')).not.toHaveAttribute('open');
     expect(decline).not.toBeVisible();

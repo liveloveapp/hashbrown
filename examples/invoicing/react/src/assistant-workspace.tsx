@@ -153,8 +153,8 @@ function ReviewSession({
           }}
         >
           {terminal ? `Review ${terminal}` : 'Payment review'} ·{' '}
-          {payment?.reference ?? session.paymentId} →{' '}
-          {invoice?.reference ?? session.invoiceId}
+          {payment?.reference ?? 'payment'} →{' '}
+          {invoice?.reference ?? 'invoice'}
         </summary>
         <HashbrownProvider url="/agui/%2Freview%23agent">
           <ReviewChat
