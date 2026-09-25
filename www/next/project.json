@@ -20,6 +20,10 @@
         {
           "projects": ["www"],
           "target": "collect-docs"
+        },
+        {
+          "projects": ["www"],
+          "target": "generate-llms"
         }
       ]
     },
@@ -38,6 +42,10 @@
         {
           "projects": ["www"],
           "target": "collect-docs"
+        },
+        {
+          "projects": ["www"],
+          "target": "generate-llms"
         }
       ]
     },
