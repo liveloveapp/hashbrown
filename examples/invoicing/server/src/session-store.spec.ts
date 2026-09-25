@@ -11,8 +11,7 @@ import {
 
 const request = {
   paymentId: 'payment-001',
-  invoiceId: 'invoice-001',
-  amountCents: 240000,
+  lines: [{ invoiceId: 'invoice-001', amountCents: 240000 }],
 };
 
 test('duplicate approval returns recorded result without duplicate effects', async () => {
@@ -250,8 +249,12 @@ it('retries a mutation once when the document moved underneath it', async () => 
   )!;
   const proposal = await store.propose(id, {
     paymentId: payment.id,
-    invoiceId: invoice.id,
-    amountCents: Math.min(payment.unappliedCents, invoice.outstandingCents),
+    lines: [
+      {
+        invoiceId: invoice.id,
+        amountCents: Math.min(payment.unappliedCents, invoice.outstandingCents),
+      },
+    ],
   });
   expect(proposal.proposalId).toBeTruthy();
   expect(
@@ -294,8 +297,10 @@ test('sessions share one base ledger, never mutate it, and store only their own 
   const first = await store.createSession();
   const second = await store.createSession();
   const proposal = await store.propose(first, {
-    ...sampleScenarios.partial,
-    amountCents: 200000,
+    paymentId: sampleScenarios.partial.paymentId,
+    lines: [
+      { invoiceId: sampleScenarios.partial.invoiceId, amountCents: 200000 },
+    ],
   });
 
   await store.decide(first, { ...proposal, decision: 'approve' });

@@ -1,5 +1,10 @@
 import { expect, test } from 'vitest';
-import { applyProposal, createProposal, getSnapshot } from './ledger';
+import {
+  applyProposal,
+  createProposal,
+  fillLines,
+  getSnapshot,
+} from './ledger';
 import { createSampleLedger, sampleScenarios } from './sample-ledger';
 import { createSessionStore } from './session-store';
 import { createMemoryRepositories } from './persistence/memory';
@@ -156,40 +161,36 @@ test('provides exact, partial, combined, ambiguous, and advance payment scenario
   }
 });
 
-test('supports applying a combined payment sequentially while retaining accounting history', () => {
+test('applies a combined payment across both invoices in one proposal', () => {
   const initial = createSampleLedger();
+  const snapshot = getSnapshot(initial);
+  const payment = required(
+    snapshot.payments.find(
+      (item) => item.id === sampleScenarios.combined.paymentId,
+    ),
+  );
+  const invoices = sampleScenarios.combined.invoiceIds.map((id) =>
+    required(snapshot.invoices.find((item) => item.id === id)),
+  );
 
-  const result = sampleScenarios.combined.invoiceIds.reduce(
-    (ledger, invoiceId, index) => {
-      const invoice = required(
-        getSnapshot(ledger).invoices.find((item) => item.id === invoiceId),
-      );
-      return applyProposal(
-        ledger,
-        createProposal(
-          ledger,
-          {
-            paymentId: sampleScenarios.combined.paymentId,
-            invoiceId,
-            amountCents: invoice.outstandingCents,
-          },
-          {
-            generation: 1,
-            proposalId: `test-proposal-${index}`,
-            operationId: `test-operation-${index}`,
-          },
-        ),
-      );
-    },
+  const result = applyProposal(
     initial,
+    createProposal(
+      initial,
+      {
+        paymentId: payment.id,
+        lines: fillLines(payment.unappliedCents, invoices),
+      },
+      { generation: 1, proposalId: 'test-proposal', operationId: 'test-op' },
+    ),
   );
 
   expect(
-    getSnapshot(result).payments.find(
-      (item) => item.id === sampleScenarios.combined.paymentId,
-    )?.unappliedCents,
+    getSnapshot(result).payments.find((item) => item.id === payment.id)
+      ?.unappliedCents,
   ).toBe(0);
   expect(result.allocations.length).toBe(initial.allocations.length + 2);
+  expect(result.activities.length).toBe(initial.activities.length + 1);
   expect(createSampleLedger()).toEqual(initial);
 });
 
@@ -202,8 +203,10 @@ test('reset restores sample allocations after approval without affecting another
   const second = await store.createSession();
   const baseline = await store.snapshot(first);
   const proposal = await store.propose(first, {
-    ...sampleScenarios.partial,
-    amountCents: 200000,
+    paymentId: sampleScenarios.partial.paymentId,
+    lines: [
+      { invoiceId: sampleScenarios.partial.invoiceId, amountCents: 200000 },
+    ],
   });
 
   const approved = await store.decide(first, {

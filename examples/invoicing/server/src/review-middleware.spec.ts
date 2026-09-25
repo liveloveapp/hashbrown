@@ -164,7 +164,8 @@ test('an ambiguous payment requires a chosen invoice and cannot substitute anoth
     chosen.context.prepareAllocation({ invoiceId: 'i1' }),
   ).rejects.toThrow('invoice_binding_conflict');
   expect(
-    (await chosen.context.prepareAllocation({ invoiceId: 'i2' })).invoiceId,
+    (await chosen.context.prepareAllocation({ invoiceId: 'i2' })).lines[0]
+      .invoiceId,
   ).toBe('i2');
   expect((await store.snapshot(session)).allocations).toHaveLength(0);
 });

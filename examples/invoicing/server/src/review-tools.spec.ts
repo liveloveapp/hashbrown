@@ -67,7 +67,7 @@ test('renders the exact server proposal through the supplied schema without appl
   );
 
   expect(rendered).toBe(true);
-  expect(proposal.invoiceId).toBe('invoice-001');
+  expect(proposal.lines[0].invoiceId).toBe('invoice-001');
   expect(proposal.amountCents).toBe(240000);
   expect((await store.snapshot(owner)).allocations).toHaveLength(0);
 });

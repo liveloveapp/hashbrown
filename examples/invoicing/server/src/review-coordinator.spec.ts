@@ -7,8 +7,7 @@ import { ConflictError } from './persistence/types';
 const schema = { type: 'object', properties: { ui: { type: 'string' } } };
 const request = {
   paymentId: 'payment-001',
-  invoiceId: 'invoice-001',
-  amountCents: 240000,
+  lines: [{ invoiceId: 'invoice-001', amountCents: 240000 }],
 };
 const body = () => ({
   threadId: 'thread-1',
@@ -131,10 +130,13 @@ test('prepares once without financial mutation and rejects conflicting allocatio
   Reflect.set(proposal, 'amountCents', 1);
   const again = await coordinator.prepare(context, request);
 
-  expect(again.amountCents).toBe(request.amountCents);
+  expect(again.amountCents).toBe(request.lines[0].amountCents);
   expect(await store.snapshot(session)).toEqual(before);
   await expect(
-    coordinator.prepare(context, { ...request, amountCents: 1 }),
+    coordinator.prepare(context, {
+      ...request,
+      lines: [{ invoiceId: 'invoice-001', amountCents: 1 }],
+    }),
   ).rejects.toThrow('proposal_conflict');
   await expect(
     coordinator.prepare(context, { ...request, paymentId: 'payment-002' }),
@@ -239,7 +241,7 @@ test('once resume applies only the stored proposal and duplicate apply is idempo
   expect(second).toEqual(first);
   expect((await store.snapshot(session)).allocations).toHaveLength(1);
   expect((await store.snapshot(session)).allocations[0].amountCents).toBe(
-    request.amountCents,
+    request.lines[0].amountCents,
   );
 });
 
@@ -302,7 +304,7 @@ test('empty client containers are valid initial runs and reuse a bounded capabil
   expect(next.token).toBe(context.token);
   expect(next.decision).toBe('initial');
   expect((await coordinator.prepare(next, request)).amountCents).toBe(
-    request.amountCents,
+    request.lines[0].amountCents,
   );
 });
 
@@ -347,7 +349,7 @@ test('resume cannot create a thread or approve a proposal that was never prepare
   );
 
   expect((await coordinator.prepare(context, request)).amountCents).toBe(
-    request.amountCents,
+    request.lines[0].amountCents,
   );
 });
 

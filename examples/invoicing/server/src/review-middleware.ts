@@ -69,11 +69,15 @@ export function createReviewMiddleware(
               throw new Error('invoice_choice_required');
             return reviews.prepare(context, {
               paymentId: payment.id,
-              invoiceId: invoice.id,
-              amountCents: Math.min(
-                payment.unappliedCents,
-                invoice.outstandingCents,
-              ),
+              lines: [
+                {
+                  invoiceId: invoice.id,
+                  amountCents: Math.min(
+                    payment.unappliedCents,
+                    invoice.outstandingCents,
+                  ),
+                },
+              ],
             });
           },
           applyAllocation: (input: { readonly proposalId: string }) =>

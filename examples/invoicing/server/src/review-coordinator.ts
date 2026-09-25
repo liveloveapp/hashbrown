@@ -289,17 +289,30 @@ export function createReviewCoordinator(
       const { grant, binding, threadId, version } = await resolve(caller);
       if (grant.decision !== 'initial')
         throw new Error('initial_request_required');
-      if (!record(request) || request.paymentId !== binding.selectedPaymentId)
+      if (
+        !record(request) ||
+        request.paymentId !== binding.selectedPaymentId ||
+        !Array.isArray(request.lines)
+      )
         throw new Error('payment_binding_conflict');
       if (
         binding.selectedInvoiceId &&
-        request.invoiceId !== binding.selectedInvoiceId
+        (request.lines.length !== 1 ||
+          request.lines[0].invoiceId !== binding.selectedInvoiceId)
       )
         throw new Error('invoice_binding_conflict');
       const matching = async (proposal: Proposal): Promise<Proposal> => {
         if (
-          request.invoiceId !== proposal.invoiceId ||
-          request.amountCents !== proposal.amountCents
+          !isDeepStrictEqual(
+            request.lines.map(({ invoiceId, amountCents }) => ({
+              invoiceId,
+              amountCents,
+            })),
+            proposal.lines.map(({ invoiceId, amountCents }) => ({
+              invoiceId,
+              amountCents,
+            })),
+          )
         )
           throw new Error('proposal_conflict');
         return proposal;
