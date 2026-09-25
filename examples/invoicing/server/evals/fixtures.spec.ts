@@ -1,6 +1,10 @@
 import { expect, test } from 'vitest';
 import { createAimock } from '@b4run/testing';
-import { recordingsToFixtures, siblingFixturePath } from './fixtures';
+import {
+  assertReplayable,
+  recordingsToFixtures,
+  siblingFixturePath,
+} from './fixtures';
 
 test('re-keys each recording from its own request, not its ordinal', () => {
   const fixtures = recordingsToFixtures([
@@ -117,8 +121,8 @@ test('the judge request falls through to its own recording once the app has cons
   }
 }, 30_000);
 
-test('stores the empty closing message aimock cannot encode as an inert one', () => {
-  const [closing, spoke] = recordingsToFixtures([
+test('keeps every recorded response exactly as the model returned it', () => {
+  const recordings = [
     {
       request: { messages: [{ role: 'user', content: 'Q' }] },
       response: { content: '' },
@@ -127,11 +131,43 @@ test('stores the empty closing message aimock cannot encode as an inert one', ()
       request: { messages: [{ role: 'user', content: 'Q' }] },
       response: { content: 'A' },
     },
+  ];
+
+  const fixtures = recordingsToFixtures(recordings);
+
+  expect(fixtures.map((f) => f.response)).toEqual([
+    { content: '' },
+    { content: 'A' },
+  ]);
+});
+
+test('refuses a tape replay would reject, naming the turn', async () => {
+  const fixtures = recordingsToFixtures([
+    {
+      request: { messages: [{ role: 'user', content: 'Which GBP client?' }] },
+      response: { content: '' },
+    },
   ]);
 
-  expect(closing.response).toEqual({ content: '{}' });
-  expect(spoke.response).toEqual({ content: 'A' });
-});
+  const checked = assertReplayable(fixtures);
+
+  await expect(checked).rejects.toThrow(
+    /turn 0 of "Which GBP client\?".*content is empty string/,
+  );
+}, 30_000);
+
+test('accepts a tape replay will load', async () => {
+  const fixtures = recordingsToFixtures([
+    {
+      request: { messages: [{ role: 'user', content: 'Q' }] },
+      response: { content: 'A' },
+    },
+  ]);
+
+  const checked = assertReplayable(fixtures);
+
+  await expect(checked).resolves.toBeUndefined();
+}, 30_000);
 
 test('sibling fixture path follows the b4 eval convention', () => {
   expect(

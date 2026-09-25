@@ -138,10 +138,10 @@ message: a successful `render` ends the run before the model could write one,
 so `run.finalMessage` is empty, and the LLM judge is shown the `render` prose,
 which is what the user actually reads. The eval harness calls the agent
 directly, so the `after` hook in `server/src/middleware.ts` never runs there.
-Fixtures recorded before `render` became `returnDirect` still hold the model's
-empty closing call, which replay leaves unused; aimock rejects a fixture whose
-`content` is the empty string, so `server/evals/fixtures.ts` stores such a
-recording as `{}`.
+Tapes keep every response exactly as recorded. A recording that replay would
+reject, such as an assistant message with empty `content`, is refused before
+its file is written: `--record` reports the case and exits non-zero rather
+than committing a tape the next replay cannot load.
 
 `server/evals/harness.ts` wraps B4's `createAgentHarness` (which gained a
 `middlewareContext` option in 0.9.0) with the context
