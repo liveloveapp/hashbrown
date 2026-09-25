@@ -188,13 +188,13 @@ test('ensureBuildSettings patches only the build settings that differ', async ()
 test('the www target builds the Next.js site from www', () => {
   const target = TARGETS.find((t) => t.key === 'www');
 
-  assert.equal(target?.project, 'hashbrown-www-next');
+  assert.equal(target?.project, 'hashbrown-www');
   assert.equal(target?.secret, 'VERCEL_PROJECT_ID_WWW');
   assert.deepEqual(
     target?.domains.map((d) => d.name),
     ['hashbrown.dev', 'www.hashbrown.dev'],
   );
-  assert.equal(target?.previousProject, 'hashbrown-www');
+  assert.equal(target?.previousProject, 'hashbrown-www-analog');
   assert.deepEqual(target?.removedDomains, ['next.hashbrown.dev']);
   assert.deepEqual(target?.build, {
     framework: 'nextjs',
