@@ -34,6 +34,18 @@ export const REPOSITORY = 'liveloveapp/hashbrown';
 export const DOMAIN = 'hashbrown.dev';
 export const NODE_VERSION = '24.x';
 /**
+ * The site's public domains: the apex, and www redirecting to it. Shared by
+ * the site's bootstrap target and `move-domains.mjs`, the rollback path.
+ */
+export const SITE_DOMAINS = Object.freeze([
+  Object.freeze({ name: DOMAIN }),
+  Object.freeze({
+    name: `www.${DOMAIN}`,
+    redirect: DOMAIN,
+    redirectStatusCode: 308,
+  }),
+]);
+/**
  * Each target carries its Vercel project name, the GitHub secret that holds
  * the project ID, the domains to attach, the env vars to upsert from
  * process.env (`env`), and the subset that must be present in Production
@@ -65,10 +77,9 @@ export const TARGETS = Object.freeze([
     key: 'www-next',
     project: 'hashbrown-www-next',
     secret: 'VERCEL_PROJECT_ID_WWW_NEXT',
-    domains: [
-      { name: DOMAIN },
-      { name: `www.${DOMAIN}`, redirect: DOMAIN, redirectStatusCode: 308 },
-    ],
+    domains: SITE_DOMAINS,
+    // To roll back, move the domains the other way with move-domains.mjs;
+    // re-adding an old target here can't, because it creates rather than moves.
     previousProject: 'hashbrown-www',
     removedDomains: [`next.${DOMAIN}`],
     env: ['OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_BASE_URL'],
@@ -267,7 +278,12 @@ async function projectHasDomain(vercel, projectId, name) {
  * @param domain - `{ name, redirect?, redirectStatusCode? }`.
  * @param previousProjectId - A project the domain may still be attached to.
  */
-export async function ensureDomain(vercel, projectId, domain, previousProjectId) {
+export async function ensureDomain(
+  vercel,
+  projectId,
+  domain,
+  previousProjectId,
+) {
   let current;
   try {
     current = await vercel(
@@ -529,7 +545,10 @@ async function main() {
     log('node version', await ensureNodeVersion(vercel, project));
     log('public previews', await ensurePublicDeployments(vercel, project));
     log('resources', await ensureResources(vercel, project, target.resources));
-    log('build settings', await ensureBuildSettings(vercel, project, target.build));
+    log(
+      'build settings',
+      await ensureBuildSettings(vercel, project, target.build),
+    );
     log(
       'env vars',
       await upsertEnv(
