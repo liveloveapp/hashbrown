@@ -8,14 +8,14 @@ Affects: www
 
 ## Objective
 
-Capture how documentation is currently authored in `www/analog/src/app/pages/docs` so future agents can write new pages that match existing style, structure, and rendering capabilities.
+Capture how documentation is currently authored in `www/content/docs` so future agents can write new pages that match existing style, structure, and rendering capabilities.
 
 ## Scope
 
 This document is based on the current docs corpus under:
 
-- `www/analog/src/app/pages/docs/react/**`
-- `www/analog/src/app/pages/docs/angular/**`
+- `www/content/docs/react/**`
+- `www/content/docs/angular/**`
 
 Current corpus shape:
 
@@ -34,7 +34,7 @@ The docs are mostly mirrored between React and Angular with framework-specific c
 
 ### Content source
 
-Docs pages are Markdown files under file-based routes in `www/analog/src/app/pages/docs`.
+Docs pages are Markdown files under file-based routes in `www/content/docs`.
 
 ### Markdown renderer
 

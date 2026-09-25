@@ -68,15 +68,16 @@ export const TARGETS = Object.freeze([
     // covers any function published without one of its own.
     resources: { fluid: true, functionDefaultTimeout: 300 },
   }),
-  // The site (Next.js, www/next). CI runs `vercel pull` and `vercel build`
-  // for it, so the project carries real build settings. It took over the
-  // domains of the retired Analog project `hashbrown-www`; `previousProject`
-  // lets reruns move them without a gap, and `removedDomains` drops the
-  // preview-era subdomain.
+  // The site (Next.js in www/). CI builds it with `vercel pull` + `vercel
+  // build`; the project's build settings mirror what CI writes. It took over
+  // the domains of the retired Analog project `hashbrown-www`;
+  // `previousProject` lets reruns move them without a gap, and
+  // `removedDomains` drops the preview-era subdomain. The Vercel project keeps
+  // its migration-era name.
   Object.freeze({
-    key: 'www-next',
+    key: 'www',
     project: 'hashbrown-www-next',
-    secret: 'VERCEL_PROJECT_ID_WWW_NEXT',
+    secret: 'VERCEL_PROJECT_ID_WWW',
     domains: SITE_DOMAINS,
     // To roll back, move the domains the other way with move-domains.mjs;
     // re-adding an old target here can't, because it creates rather than moves.
@@ -86,8 +87,8 @@ export const TARGETS = Object.freeze([
     requiredEnv: ['OPENAI_API_KEY'],
     build: {
       framework: 'nextjs',
-      rootDirectory: 'www/next',
-      buildCommand: 'npx nx build www-next',
+      rootDirectory: 'www',
+      buildCommand: 'npx nx build www',
       // CI installs dependencies with `npm ci` before `vercel build`.
       installCommand: 'true',
     },

@@ -157,14 +157,14 @@ test('ensureBuildSettings patches only the build settings that differ', async ()
   const vercel = createVercelClient('tok', fetchImpl);
   const build = {
     framework: 'nextjs',
-    rootDirectory: 'www/next',
-    buildCommand: 'npx nx build www-next',
+    rootDirectory: 'www',
+    buildCommand: 'npx nx build www',
     installCommand: 'true',
   };
 
   const updated = await ensureBuildSettings(
     vercel,
-    { id: 'prj_1', framework: null, rootDirectory: 'www/next' },
+    { id: 'prj_1', framework: null, rootDirectory: 'www' },
     build,
   );
   const unchanged = await ensureBuildSettings(
@@ -177,7 +177,7 @@ test('ensureBuildSettings patches only the build settings that differ', async ()
   assert.equal(updated, 'updated');
   assert.deepEqual(calls[0].body, {
     framework: 'nextjs',
-    buildCommand: 'npx nx build www-next',
+    buildCommand: 'npx nx build www',
     installCommand: 'true',
   });
   assert.equal(unchanged, 'exists');
@@ -185,10 +185,11 @@ test('ensureBuildSettings patches only the build settings that differ', async ()
   assert.equal(calls.length, 1);
 });
 
-test('the www-next target builds the Next.js site from www/next', () => {
-  const target = TARGETS.find((t) => t.key === 'www-next');
+test('the www target builds the Next.js site from www', () => {
+  const target = TARGETS.find((t) => t.key === 'www');
 
-  assert.equal(target?.secret, 'VERCEL_PROJECT_ID_WWW_NEXT');
+  assert.equal(target?.project, 'hashbrown-www-next');
+  assert.equal(target?.secret, 'VERCEL_PROJECT_ID_WWW');
   assert.deepEqual(
     target?.domains.map((d) => d.name),
     ['hashbrown.dev', 'www.hashbrown.dev'],
@@ -197,8 +198,8 @@ test('the www-next target builds the Next.js site from www/next', () => {
   assert.deepEqual(target?.removedDomains, ['next.hashbrown.dev']);
   assert.deepEqual(target?.build, {
     framework: 'nextjs',
-    rootDirectory: 'www/next',
-    buildCommand: 'npx nx build www-next',
+    rootDirectory: 'www',
+    buildCommand: 'npx nx build www',
     installCommand: 'true',
   });
 });

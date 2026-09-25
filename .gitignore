@@ -69,7 +69,7 @@ temp
 packages/*/*.api.md
 
 # References
-www/analog/src/app/reference/*
+www/content/reference/*
 
 ## LLMs
 llms.txt

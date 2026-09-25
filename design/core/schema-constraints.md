@@ -113,10 +113,10 @@ Unit tests only:
 
 Update these docs to reflect new supported constraints and remove outdated limitations:
 
-- `www/analog/src/app/pages/docs/angular/concept/schema.md`
+- `www/content/docs/angular/concept/schema.md`
   - Update "Numeric Types" section (remove “does not support minimum/maximum” note).
   - Add new sections (or a short table) for string constraints (`pattern`, `format`), numeric constraints, and array constraints with examples.
-- `www/analog/src/app/pages/docs/react/concept/schema.md`
+- `www/content/docs/react/concept/schema.md`
   - Same updates as Angular docs.
 
 ## Open Questions
