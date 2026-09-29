@@ -3,6 +3,7 @@ import { assistantResponseSchema } from '@invoicing/contracts';
 import { createSessionStore } from './session-store';
 import { createAssistantMiddleware } from './assistant-middleware';
 import { createMemoryRepositories } from './persistence/memory';
+import { createSampleLedger } from './sample-ledger';
 import { createThreadOwnershipGuard } from './thread-ownership';
 
 async function setup() {
@@ -41,6 +42,7 @@ test('allows questions without selection and only supplies read-only capabilitie
     'aging',
     'customerStatement',
     'findRecords',
+    'focusedClient',
     'ledgerSummary',
     'monthlyTotals',
     // Not a capability: the marker `after` reads to learn whether this run
@@ -197,4 +199,67 @@ test('conversation totals are computed by month and currency instead of inferred
       openCents: 25000,
     }),
   ]);
+});
+
+test('a focused client and invoice reach the tool that answers about them', async () => {
+  const { store, session, middleware, request } = await setup();
+  const ledger = await store.snapshot(session);
+  const invoice = ledger.invoices.find((i) => i.outstandingCents > 0);
+  if (!invoice) throw new Error('the session ledger has open invoices');
+
+  const result = await middleware({
+    ...request,
+    body: {
+      ...request.body,
+      state: {
+        focusedClientId: invoice.customerId,
+        focusedInvoiceId: invoice.id,
+      },
+    },
+  });
+
+  if (result.action !== 'continue') throw new Error('expected continue');
+  const { focused } = await result.context.focusedClient();
+  expect(focused?.customer.id).toBe(invoice.customerId);
+  expect(focused?.invoice?.id).toBe(invoice.id);
+});
+
+test('rejects focus the ledger does not hold or that crosses clients', async () => {
+  // The default session ledger has one client; crossing clients needs the sample ledger.
+  const { request } = await setup();
+  const repositories = createMemoryRepositories();
+  const store = createSessionStore(repositories.sessions, createSampleLedger());
+  const session = await store.createSession();
+  const middleware = createAssistantMiddleware(store, repositories.threads);
+  const ledger = await store.snapshot(session);
+  const invoice = ledger.invoices.find((i) => i.customerId === 'thistle');
+  const other = ledger.customers.find((c) => c.id !== 'thistle');
+  if (!invoice || !other)
+    throw new Error('the sample ledger has Thistle and others');
+  const withState = (state: Record<string, unknown>) =>
+    middleware({
+      ...request,
+      headers: { cookie: `invoicing_session=${session}` },
+      body: { ...request.body, state },
+    });
+
+  const actions = [
+    (await withState({ focusedClientId: 'nobody' })).action,
+    (
+      await withState({
+        focusedClientId: other.id,
+        focusedInvoiceId: invoice.id,
+      })
+    ).action,
+    (await withState({ focusedInvoiceId: invoice.id })).action,
+    (await withState({ focusedClientId: 42 })).action,
+    (
+      await withState({
+        focusedClientId: 'thistle',
+        focusedInvoiceId: invoice.id,
+      })
+    ).action,
+  ];
+
+  expect(actions).toEqual(['reject', 'reject', 'reject', 'reject', 'continue']);
 });

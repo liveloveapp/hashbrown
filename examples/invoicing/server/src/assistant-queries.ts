@@ -132,6 +132,33 @@ export function selectedPayment(
   };
 }
 
+/**
+ * The client the user focused on the dashboard, as its statement, plus the
+ * focused invoice when there is one, or `focused: null` when nothing is
+ * focused. Both IDs arrive validated in the run state, which the model
+ * cannot read directly.
+ */
+export function focusedClient(
+  snapshot: Snapshot,
+  clientId: string | undefined,
+  invoiceId: string | undefined,
+  asOf = AS_OF,
+) {
+  if (!clientId || !snapshot.customers.some((c) => c.id === clientId))
+    return { focused: null };
+  const invoice = invoiceId
+    ? snapshot.invoices.find(
+        (i) => i.id === invoiceId && i.customerId === clientId,
+      )
+    : undefined;
+  return {
+    focused: {
+      ...customerStatement(snapshot, { customerId: clientId }, asOf),
+      invoice: invoice ? invoiceRow(invoice) : null,
+    },
+  };
+}
+
 /** Start here: per-currency totals and the customer list. */
 export function ledgerSummary(snapshot: Snapshot, asOf = AS_OF) {
   const currencies = [...new Set(snapshot.customers.map((c) => c.currency))]
