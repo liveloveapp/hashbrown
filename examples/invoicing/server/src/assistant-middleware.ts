@@ -182,7 +182,10 @@ export function createAssistantMiddleware(
     if (selection.focusedInvoiceId && !selection.focusedClientId)
       return reject(422);
     if (Object.keys(selection).length > 0) {
-      const ledger = await current();
+      // A reset between the ownership check and this read is the same stale
+      // conversation: reject it rather than throw.
+      const ledger = await current().catch(() => undefined);
+      if (!ledger) return reject(422);
       if (
         (selection.selectedPaymentId !== undefined &&
           !ledger.payments.some((p) => p.id === selection.selectedPaymentId)) ||

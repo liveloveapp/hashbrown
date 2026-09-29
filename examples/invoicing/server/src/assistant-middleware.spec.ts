@@ -253,6 +253,8 @@ test('rejects focus the ledger does not hold or that crosses clients', async () 
     ).action,
     (await withState({ focusedInvoiceId: invoice.id })).action,
     (await withState({ focusedClientId: 42 })).action,
+    (await withState({ selectedPaymentId: 'nobody' })).action,
+    (await withState({ selectedPaymentId: 42 })).action,
     (
       await withState({
         focusedClientId: 'thistle',
@@ -261,5 +263,13 @@ test('rejects focus the ledger does not hold or that crosses clients', async () 
     ).action,
   ];
 
-  expect(actions).toEqual(['reject', 'reject', 'reject', 'reject', 'continue']);
+  expect(actions).toEqual([
+    'reject',
+    'reject',
+    'reject',
+    'reject',
+    'reject',
+    'reject',
+    'continue',
+  ]);
 });
