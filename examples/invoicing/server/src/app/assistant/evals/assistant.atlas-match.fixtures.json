@@ -12,9 +12,24 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_BffFwSVHWi3lb9G2wzByvnVT"
+            "id": "call_npuTKRMf7aeHWkHuiJ9dcmio"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2273,
+          "completion_tokens": 84,
+          "total_tokens": 2357,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 64,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -27,11 +42,26 @@
       "response": {
         "toolCalls": [
           {
-            "name": "unappliedPayments",
-            "arguments": "{\"currency\":\"USD\"}",
-            "id": "call_LLT3yp2mifd2q5U0dvOuvg71"
+            "name": "customerStatement",
+            "arguments": "{\"customerId\":\"atlas\"}",
+            "id": "call_0JHY0Uuq4lqWZf1i00zpE6F5"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2838,
+          "completion_tokens": 152,
+          "total_tokens": 2990,
+          "prompt_tokens_details": {
+            "cached_tokens": 2048,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 128,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -44,50 +74,52 @@
       "response": {
         "toolCalls": [
           {
-            "name": "customerStatement",
-            "arguments": "{\"customerId\":\"atlas\"}",
-            "id": "call_GEO79fF87GqkFsgebw33FBmq"
-          }
-        ]
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Match the Atlas payment.",
-        "turnIndex": 3,
-        "hasToolResult": true,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "toolCalls": [
-          {
             "name": "render",
-            "arguments": "{\"text\":\"I found Atlas’s unapplied payment and the two open invoices that match the amount. Because the payment equals the full amount of either invoice, the correct allocation is ambiguous — please review and choose which invoice to apply it to.\\n\\nOptions:\\n- Apply the $1,500 payment (ACH ATLAS SEPTEMBER WORKSHOP, 2026-09-14) to INV-202609-AA-106 (INV-202609-AA-106, $1,500, 2026-09-11)\\n- Apply it to INV-202609-AA-105 (INV-202609-AA-105, $1,500, 2026-09-10)\\n- Leave the payment unapplied for now\\n\\nUse the ReviewPayment component below to propose a match; I will not allocate anything until you confirm.\\n\",\"components\":[{\"LedgerTable\":{\"title\":\"Atlas — payment and open invoices\",\"recordIds\":[\"payment-atlas-ambiguous\",\"invoice-atlas-review\",\"invoice-atlas-discovery\"]}},{\"CustomerCard\":{\"customerId\":\"atlas\"}},{\"ReviewPayment\":{\"paymentId\":\"payment-atlas-ambiguous\"}}]}",
-            "id": "call_30js0RmVEVJ5TODOT6jqbE8j"
+            "arguments": "{\"text\":\"I can’t pick which invoice for you — Atlas Analytics has an unapplied payment that could apply to either open invoice. The unapplied payment “ACH ATLAS SEPTEMBER WORKSHOP” is for $1,500.00, and Atlas has two open invoices, each outstanding $1,500.00: INV-202609-AA-106 and INV-202609-AA-105. Please review which invoice to apply it to.\",\"components\":[{\"LedgerTable\":{\"title\":\"Atlas open invoices\",\"recordIds\":[\"invoice-atlas-review\",\"invoice-atlas-discovery\"]}},{\"CustomerCard\":{\"customerId\":\"atlas\"}},{\"ReviewPayment\":{\"paymentId\":\"payment-atlas-ambiguous\"}}]}",
+            "id": "call_N49mbX4rs2tEf8mNyyspP9H3"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 3225,
+          "completion_tokens": 1246,
+          "total_tokens": 4471,
+          "prompt_tokens_details": {
+            "cached_tokens": 2688,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 1088,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"I found Atlas’s unapplied payment and the two open invoices that match the amount. Because the payment equals the full amount of either invoice, the correct allocation is ambiguous — please review and choose which invoice to apply it to.\\n\\nOptions:\\n- Apply the $1,500 payment (ACH ATLAS SEPTEMBER WORKSHOP, 2026-09-14) to INV-202609-AA-106 (INV-202609-AA-106, $1,500, 2026-09-11)\\n- Apply it to INV-202609-AA-105 (INV-202609-AA-105, $1,500, 2026-09-10)\\n- Leave the payment unapplied for now\\n\\nUse the ReviewPayment component below to propose a match; I will not allocate anything until you confirm.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Atlas — payment and open invoices\",\"recordIds\":[\"payment-atlas-ambiguous\",\"invoice-atlas-review\",\"invoice-atlas-discovery\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"atlas\"}}},{\"ReviewPayment\":{\"props\":{\"paymentId\":\"payment-atlas-ambiguous\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: I can’t pick which invoice for you — Atlas Analytics has an unapplied payment that could apply to either open invoice. The unapplied payment “ACH ATLAS SEPTEMBER WORKSHOP” is for $1,500.00, and Atlas has two open invoices, each outstanding $1,500.00: INV-202609-AA-106 and INV-202609-AA-105. Please review which invoice to apply it to.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"I found Atlas’s unapplied payment and the two open invoices that match the amount. Because the payment equals the full amount of either invoice, the correct allocation is ambiguous — please review and choose which invoice to apply it to.\\n\\nOptions:\\n- Apply the $1,500 payment (ACH ATLAS SEPTEMBER WORKSHOP, 2026-09-14) to INV-202609-AA-106 (INV-202609-AA-106, $1,500, 2026-09-11)\\n- Apply it to INV-202609-AA-105 (INV-202609-AA-105, $1,500, 2026-09-10)\\n- Leave the payment unapplied for now\\n\\nUse the ReviewPayment component below to propose a match; I will not allocate anything until you confirm.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Atlas — payment and open invoices\",\"recordIds\":[\"payment-atlas-ambiguous\",\"invoice-atlas-review\",\"invoice-atlas-discovery\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"atlas\"}}},{\"ReviewPayment\":{\"props\":{\"paymentId\":\"payment-atlas-ambiguous\"}}}]}}]}"
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: I found Atlas’s unapplied payment and the two open invoices that match the amount. Because the payment equals the full amount of either invoice, the correct allocation is ambiguous — please review and choose which invoice to apply it to.\n\nOptions:\n- Apply the $1,500 payment (ACH ATLAS SEPTEMBER WORKSHOP, 2026-09-14) to INV-202609-AA-106 (INV-202609-AA-106, $1,500, 2026-09-11)\n- Apply it to INV-202609-AA-105 (INV-202609-AA-105, $1,500, 2026-09-10)\n- Leave the payment unapplied for now\n\nUse the ReviewPayment component below to propose a match; I will not allocate anything until you confirm.\n\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
-        "turnIndex": 0,
-        "hasToolResult": false,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{\"score\":1,\"reason\":\"Meets criteria: amounts shown with $ currency symbol, no claim of having allocated or matched payments, and customer referenced (Atlas/Atlas Analytics) is allowed.\"}"
+        "content": "{\"score\":1,\"reason\":\"All criteria met: amounts use $ currency formatting, no claim of allocation/matching, and customer name (Atlas Analytics) is on the allowed list.\"}",
+        "usage": {
+          "prompt_tokens": 208,
+          "completion_tokens": 495,
+          "total_tokens": 703,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 448,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     }
   ]

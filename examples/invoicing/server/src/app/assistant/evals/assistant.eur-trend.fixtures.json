@@ -10,11 +10,26 @@
       "response": {
         "toolCalls": [
           {
-            "name": "ledgerSummary",
-            "arguments": "{}",
-            "id": "call_QbvEBvvQCZVo09sz1b7FHxdV"
+            "name": "monthlyTotals",
+            "arguments": "{\"currency\":\"EUR\",\"months\":12}",
+            "id": "call_ZAWkztkkLmZ49Qs7diHgHFDj"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2277,
+          "completion_tokens": 92,
+          "total_tokens": 2369,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 64,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -27,50 +42,52 @@
       "response": {
         "toolCalls": [
           {
-            "name": "monthlyTotals",
-            "arguments": "{\"currency\":\"EUR\",\"months\":12}",
-            "id": "call_wP6y3QYcDhbAVkDhb4Edz2xI"
-          }
-        ]
-      }
-    },
-    {
-      "match": {
-        "userMessage": "How did EUR invoicing trend this year?",
-        "turnIndex": 2,
-        "hasToolResult": true,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "toolCalls": [
-          {
             "name": "render",
-            "arguments": "{\"text\":\"Summary — EUR invoicing (Jan–Sep 2026):\\n\\n- Total invoiced (Jan–Sep): €158,650.00\\n- Average per month (Jan–Sep): ≈ €17,627.78\\n- Highest month: July — \\\"€24,100.00\\\"\\n- Lowest months: March and September — both \\\"€12,600.00\\\"\\n- Notable collection activity: February received \\\"€29,600.00\\\" vs invoiced \\\"€14,600.00\\\"; August received \\\"€33,100.00\\\" vs invoiced \\\"€18,350.00\\\" (suggests receipts include prior-period collections).\\n- Current open EUR balance: \\\"€4,500.00\\\" (1 open invoice, no unapplied payments).\\n\\nWould you like the same chart for a single EUR customer, a 24-month view, or the underlying invoice list for any specific month?\",\"components\":[{\"TrendChart\":{\"currency\":\"EUR\",\"months\":12}}]}",
-            "id": "call_hKOOx2mwy8rpir2FuW5QAF5w"
+            "arguments": "{\"text\":\"EUR invoicing this year has been variable rather than steadily rising or falling: it peaked at €24,100.00 (July 2026) and hit lows of €12,600.00 (March and September 2026). Year-to-date (Jan–Sep 2026) total invoiced is €158,650.00; over the last 12 months (Oct 2025–Sep 2026) total invoiced is €214,200.00. Key months (invoiced): 2026-01 €21,350.00; 2026-02 €14,600.00; 2026-03 €12,600.00; 2026-04 €20,600.00; 2026-05 €17,100.00; 2026-06 €17,350.00; 2026-07 €24,100.00; 2026-08 €18,350.00; 2026-09 €12,600.00. The chart below shows invoiced vs received each month for the past 12 months.\",\"components\":[{\"TrendChart\":{\"currency\":\"EUR\",\"months\":12}}]}",
+            "id": "call_20molVXrETykRaRr80kAK1Cb"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2862,
+          "completion_tokens": 1865,
+          "total_tokens": 4727,
+          "prompt_tokens_details": {
+            "cached_tokens": 2048,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 1600,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary — EUR invoicing (Jan–Sep 2026):\\n\\n- Total invoiced (Jan–Sep): €158,650.00\\n- Average per month (Jan–Sep): ≈ €17,627.78\\n- Highest month: July — \\\"€24,100.00\\\"\\n- Lowest months: March and September — both \\\"€12,600.00\\\"\\n- Notable collection activity: February received \\\"€29,600.00\\\" vs invoiced \\\"€14,600.00\\\"; August received \\\"€33,100.00\\\" vs invoiced \\\"€18,350.00\\\" (suggests receipts include prior-period collections).\\n- Current open EUR balance: \\\"€4,500.00\\\" (1 open invoice, no unapplied payments).\\n\\nWould you like the same chart for a single EUR customer, a 24-month view, or the underlying invoice list for any specific month?\"},\"children\":[{\"TrendChart\":{\"props\":{\"currency\":\"EUR\",\"customerId\":null,\"months\":12}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: EUR invoicing this year has been variable rather than steadily rising or falling: it peaked at €24,100.00 (July 2026) and hit lows of €12,600.00 (March and September 2026). Year-to-date (Jan–Sep 2026) total invoiced is €158,650.00; over the last 12 months (Oct 2025–Sep 2026) total invoiced is €214,200.00. Key months (invoiced): 2026-01 €21,350.00; 2026-02 €14,600.00; 2026-03 €12,600.00; 2026-04 €20,600.00; 2026-05 €17,100.00; 2026-06 €17,350.00; 2026-07 €24,100.00; 2026-08 €18,350.00; 2026-09 €12,600.00. The chart below shows invoiced vs received each month for the past 12 months.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary — EUR invoicing (Jan–Sep 2026):\\n\\n- Total invoiced (Jan–Sep): €158,650.00\\n- Average per month (Jan–Sep): ≈ €17,627.78\\n- Highest month: July — \\\"€24,100.00\\\"\\n- Lowest months: March and September — both \\\"€12,600.00\\\"\\n- Notable collection activity: February received \\\"€29,600.00\\\" vs invoiced \\\"€14,600.00\\\"; August received \\\"€33,100.00\\\" vs invoiced \\\"€18,350.00\\\" (suggests receipts include prior-period collections).\\n- Current open EUR balance: \\\"€4,500.00\\\" (1 open invoice, no unapplied payments).\\n\\nWould you like the same chart for a single EUR customer, a 24-month view, or the underlying invoice list for any specific month?\"},\"children\":[{\"TrendChart\":{\"props\":{\"currency\":\"EUR\",\"customerId\":null,\"months\":12}}}]}}]}"
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summary — EUR invoicing (Jan–Sep 2026):\n\n- Total invoiced (Jan–Sep): €158,650.00\n- Average per month (Jan–Sep): ≈ €17,627.78\n- Highest month: July — \"€24,100.00\"\n- Lowest months: March and September — both \"€12,600.00\"\n- Notable collection activity: February received \"€29,600.00\" vs invoiced \"€14,600.00\"; August received \"€33,100.00\" vs invoiced \"€18,350.00\" (suggests receipts include prior-period collections).\n- Current open EUR balance: \"€4,500.00\" (1 open invoice, no unapplied payments).\n\nWould you like the same chart for a single EUR customer, a 24-month view, or the underlying invoice list for any specific month?\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
-        "turnIndex": 0,
-        "hasToolResult": false,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{\"score\":1.0,\"reason\":\"All amounts use the € symbol and are formatted; no customer names invented beyond the allowed list; the output does not assert any changes, matches, or allocations.\"}"
+        "content": "{\"score\":1.0, \"reason\":\"All amounts use a currency symbol and proper formatting; no claims of changing/matching/allocating; no unauthorized customer names.\"}",
+        "usage": {
+          "prompt_tokens": 351,
+          "completion_tokens": 429,
+          "total_tokens": 780,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 384,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     }
   ]

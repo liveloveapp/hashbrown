@@ -12,9 +12,24 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_8DtgsK99hK6gGBXremHKuyzQ"
+            "id": "call_tQUu1eirZjfhPs6NKnkKMGIx"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2276,
+          "completion_tokens": 20,
+          "total_tokens": 2296,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -29,9 +44,24 @@
           {
             "name": "customerStatement",
             "arguments": "{\"customerId\":\"cedar\"}",
-            "id": "call_FI9z1aPdYCZswobbTxKTnoNO"
+            "id": "call_IeWnzJlpySU2ftewTYDkICi0"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2841,
+          "completion_tokens": 25,
+          "total_tokens": 2866,
+          "prompt_tokens_details": {
+            "cached_tokens": 2048,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -44,50 +74,52 @@
       "response": {
         "toolCalls": [
           {
-            "name": "unappliedPayments",
-            "arguments": "{\"currency\":\"USD\"}",
-            "id": "call_4yLjvOfmG3o5gBOwMEr0YzZr"
-          }
-        ]
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Show me Cedar Health's open invoices.",
-        "turnIndex": 3,
-        "hasToolResult": true,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "toolCalls": [
-          {
             "name": "render",
-            "arguments": "{\"text\":\"Cedar Health — open invoices\\n\\nSummary:\\n- Open invoices: 1 totaling $5,000.00.\\n- Unapplied payments: 1 totaling $2,000.00 (candidate for the open invoice).\\n\\nDetails:\\n- Invoice INV-202609-CH-102 (invoice-cedar-partial), date 2026-09-08 — outstanding $5,000.00.\\n- Unapplied payment ACH INV-202609-CH-102 PARTIAL (payment-cedar-partial), date 2026-09-12 — unapplied $2,000.00. This payment is listed as a candidate for the invoice above.\\n\\nWould you like to review the unapplied payment to match it to the invoice?\", \"components\":[{\"LedgerTable\":{\"title\":\"Cedar Health — Open Invoices\",\"recordIds\":[\"invoice-cedar-partial\"]}},{\"CustomerCard\":{\"customerId\":\"cedar\"}},{\"ReviewPayment\":{\"paymentId\":\"payment-cedar-partial\"}}]}",
-            "id": "call_wVC2Jz0I5RAnjlLGQEA8rDDG"
+            "arguments": "{\"text\":\"Cedar Health has one open invoice: INV-202609-CH-102 for $5,000.00 (outstanding $5,000.00). There is one unapplied payment — “ACH INV-202609-CH-102 PARTIAL” dated 2026-09-12 for $2,000.00 — which is a candidate to apply to that invoice.\\n\\nSummary: total invoiced $230,900.00; received $227,900.00; open $5,000.00; unapplied $2,000.00. Open invoice count: 1. Average days to pay: 9. Last payment date: 2026-09-12.\\n\\nIf you’d like to apply the $2,000 unapplied payment to INV-202609-CH-102, I can start a review for you to confirm how to allocate it.\",\"components\":[{\"LedgerTable\":{\"title\":\"Cedar Health — open invoices\",\"recordIds\":[\"invoice-cedar-partial\"]}},{\"CustomerCard\":{\"customerId\":\"cedar\"}},{\"ReviewPayment\":{\"paymentId\":\"payment-cedar-partial\",\"invoiceIds\":[\"invoice-cedar-partial\"]}}]}",
+            "id": "call_kKRQ9vkK7TV1UHT34Ano3EVu"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 3177,
+          "completion_tokens": 1547,
+          "total_tokens": 4724,
+          "prompt_tokens_details": {
+            "cached_tokens": 2688,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 1280,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Cedar Health — open invoices\\n\\nSummary:\\n- Open invoices: 1 totaling $5,000.00.\\n- Unapplied payments: 1 totaling $2,000.00 (candidate for the open invoice).\\n\\nDetails:\\n- Invoice INV-202609-CH-102 (invoice-cedar-partial), date 2026-09-08 — outstanding $5,000.00.\\n- Unapplied payment ACH INV-202609-CH-102 PARTIAL (payment-cedar-partial), date 2026-09-12 — unapplied $2,000.00. This payment is listed as a candidate for the invoice above.\\n\\nWould you like to review the unapplied payment to match it to the invoice?\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Cedar Health — Open Invoices\",\"recordIds\":[\"invoice-cedar-partial\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"cedar\"}}},{\"ReviewPayment\":{\"props\":{\"paymentId\":\"payment-cedar-partial\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Cedar Health has one open invoice: INV-202609-CH-102 for $5,000.00 (outstanding $5,000.00). There is one unapplied payment — “ACH INV-202609-CH-102 PARTIAL” dated 2026-09-12 for $2,000.00 — which is a candidate to apply to that invoice.\n\nSummary: total invoiced $230,900.00; received $227,900.00; open $5,000.00; unapplied $2,000.00. Open invoice count: 1. Average days to pay: 9. Last payment date: 2026-09-12.\n\nIf you’d like to apply the $2,000 unapplied payment to INV-202609-CH-102, I can start a review for you to confirm how to allocate it.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Cedar Health — open invoices\\n\\nSummary:\\n- Open invoices: 1 totaling $5,000.00.\\n- Unapplied payments: 1 totaling $2,000.00 (candidate for the open invoice).\\n\\nDetails:\\n- Invoice INV-202609-CH-102 (invoice-cedar-partial), date 2026-09-08 — outstanding $5,000.00.\\n- Unapplied payment ACH INV-202609-CH-102 PARTIAL (payment-cedar-partial), date 2026-09-12 — unapplied $2,000.00. This payment is listed as a candidate for the invoice above.\\n\\nWould you like to review the unapplied payment to match it to the invoice?\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Cedar Health — Open Invoices\",\"recordIds\":[\"invoice-cedar-partial\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"cedar\"}}},{\"ReviewPayment\":{\"props\":{\"paymentId\":\"payment-cedar-partial\"}}}]}}]}"
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Cedar Health — open invoices\n\nSummary:\n- Open invoices: 1 totaling $5,000.00.\n- Unapplied payments: 1 totaling $2,000.00 (candidate for the open invoice).\n\nDetails:\n- Invoice INV-202609-CH-102 (invoice-cedar-partial), date 2026-09-08 — outstanding $5,000.00.\n- Unapplied payment ACH INV-202609-CH-102 PARTIAL (payment-cedar-partial), date 2026-09-12 — unapplied $2,000.00. This payment is listed as a candidate for the invoice above.\n\nWould you like to review the unapplied payment to match it to the invoice?\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
-        "turnIndex": 0,
-        "hasToolResult": false,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{\"score\": 1, \"reason\": \"All criteria met: amounts use currency symbol, no claim of matching/allocating, and customer name is allowed.\"}"
+        "content": "{\"score\": 1.0, \"reason\": \"Meets all criteria: currency amounts formatted with symbol, no claim of applying/matching/allocating funds, and uses an allowed customer name (Cedar Health).\"}",
+        "usage": {
+          "prompt_tokens": 301,
+          "completion_tokens": 503,
+          "total_tokens": 804,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 448,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     }
   ]

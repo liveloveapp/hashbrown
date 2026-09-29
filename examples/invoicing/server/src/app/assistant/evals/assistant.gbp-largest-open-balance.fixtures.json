@@ -12,9 +12,24 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_tBc9gCzWyNSUdUV9x5BE3E3R"
+            "id": "call_EdSY8YZSOt5IfQN0g3gWgUDe"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2277,
+          "completion_tokens": 20,
+          "total_tokens": 2297,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -28,15 +43,25 @@
         "toolCalls": [
           {
             "name": "customerStatement",
-            "arguments": "{\"customerId\": \"thistle\"}",
-            "id": "call_WiLadZ5onJF5RskLBqo7UCmu"
-          },
-          {
-            "name": "customerStatement",
-            "arguments": "{\"customerId\": \"kestrel\"}",
-            "id": "call_qNAftV9DmVGpO8hgrfQxxarE"
+            "arguments": "{\"customerId\":\"thistle\"}",
+            "id": "call_bSftqSQ8EJ99qfAZd6BVU0j3"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2842,
+          "completion_tokens": 281,
+          "total_tokens": 3123,
+          "prompt_tokens_details": {
+            "cached_tokens": 2048,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 256,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -49,33 +74,84 @@
       "response": {
         "toolCalls": [
           {
-            "name": "render",
-            "arguments": "{\"text\":\"Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\",\"components\":[{\"LedgerTable\":{\"title\":\"Thistle — open invoices\",\"recordIds\":[\"invoice-thistle-2026-09\",\"invoice-thistle-2026-08\",\"invoice-thistle-2026-07-p1\"]}},{\"CustomerCard\":{\"customerId\":\"thistle\"}}]}",
-            "id": "call_2Jy685H5pTkfeawkbvILC5h0"
+            "name": "customerStatement",
+            "arguments": "{\"customerId\":\"kestrel\"}",
+            "id": "call_YpKikGIfodE5ESibkV8rI3Jx"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 3252,
+          "completion_tokens": 154,
+          "total_tokens": 3406,
+          "prompt_tokens_details": {
+            "cached_tokens": 2688,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 128,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Thistle — open invoices\",\"recordIds\":[\"invoice-thistle-2026-09\",\"invoice-thistle-2026-08\",\"invoice-thistle-2026-07-p1\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"thistle\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Which GBP client has the largest open balance?",
+        "turnIndex": 3,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "render",
+            "arguments": "{\"text\":\"Thistle Retail has the largest GBP open balance: \\\"£14,000.00\\\".\\n\\nDetails: Thistle Retail (profile: late-drifting) open \\\"£14,000.00\\\" across 3 open invoices. Kestrel Energy has \\\"£3,532.00\\\" open across 41 open invoices. Total GBP open across all customers is \\\"£17,532.00\\\".\",\"components\":[{\"CustomerCard\":{\"customerId\":\"thistle\"}}]}",
+            "id": "call_piJ48ijoNAllD7wNV3tnm2ie"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 6149,
+          "completion_tokens": 1014,
+          "total_tokens": 7163,
+          "prompt_tokens_details": {
+            "cached_tokens": 3072,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 896,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Thistle Retail has the largest GBP open balance: \"£14,000.00\".\n\nDetails: Thistle Retail (profile: late-drifting) open \"£14,000.00\" across 3 open invoices. Kestrel Energy has \"£3,532.00\" open across 41 open invoices. Total GBP open across all customers is \"£17,532.00\".\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Thistle — open invoices\",\"recordIds\":[\"invoice-thistle-2026-09\",\"invoice-thistle-2026-08\",\"invoice-thistle-2026-07-p1\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"thistle\"}}}]}}]}"
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
-        "turnIndex": 0,
-        "hasToolResult": false,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{\"score\":1, \"reason\":\"Compliant: amounts use currency symbol and two decimals; no claim of changing/matching/allocating; only allowed customer names used.\"}"
+        "content": "{\"score\": 1, \"reason\": \"Meets all criteria: currency formatting present, no change/match/allocation claims, only allowed customer names used.\"}",
+        "usage": {
+          "prompt_tokens": 202,
+          "completion_tokens": 427,
+          "total_tokens": 629,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 384,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     }
   ]
