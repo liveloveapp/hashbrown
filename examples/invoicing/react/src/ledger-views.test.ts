@@ -4,11 +4,14 @@ import {
   agingTotals,
   appliedSummary,
   customerSummary,
+  HABITS,
+  invoiceStatusLabel,
   listJoin,
   money,
   monthLabel,
   monthlySeries,
   resolveRecords,
+  wholeMoney,
 } from './ledger-views';
 
 const snapshot: LedgerSnapshot = {
@@ -309,4 +312,50 @@ test('appliedSummary keeps the one-invoice wording', () => {
   expect(summary).toBe(
     'Applied $3,200.00 to INV-A. $1,800.00 of this payment is still unapplied.',
   );
+});
+
+test('wholeMoney drops the cents for tiles and grid cells', () => {
+  const values = [
+    wholeMoney(4230500, 'USD'),
+    wholeMoney(1400000, 'GBP'),
+    wholeMoney(450000, 'EUR'),
+  ];
+
+  expect(values).toEqual(['$42,305', '£14,000', '€4,500']);
+});
+
+test('every payment profile has a habit label and a status tone', () => {
+  const profiles = Object.keys(HABITS);
+
+  expect(profiles.sort()).toEqual([
+    'batch-payer',
+    'late-drifting',
+    'late-fixed',
+    'on-time',
+    'short-payer',
+    'wrong-reference',
+  ]);
+  expect(HABITS['late-drifting']).toEqual({
+    label: 'Late, drifting',
+    tone: 'serious',
+  });
+  expect(HABITS['on-time']).toEqual({ label: 'On time', tone: 'good' });
+});
+
+test('invoiceStatusLabel words each status with a tone by how late it is', () => {
+  const labels = [
+    invoiceStatusLabel({ kind: 'paid' }),
+    invoiceStatusLabel({ kind: 'current' }),
+    invoiceStatusLabel({ kind: 'overdue', days: 1 }),
+    invoiceStatusLabel({ kind: 'overdue', days: 32 }),
+    invoiceStatusLabel({ kind: 'partly-paid', days: 305 }),
+  ];
+
+  expect(labels).toEqual([
+    { label: 'Paid', tone: 'good' },
+    { label: 'Current', tone: 'neutral' },
+    { label: '1 day overdue', tone: 'warning' },
+    { label: '32 days overdue', tone: 'serious' },
+    { label: 'Partly paid · 305 days', tone: 'critical' },
+  ]);
 });

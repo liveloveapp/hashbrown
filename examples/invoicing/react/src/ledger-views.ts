@@ -3,6 +3,7 @@ import {
   agingBucket,
   type AgingBuckets,
   daysBetween,
+  type InvoiceStatus,
   type LedgerSnapshot,
   monthAt,
   type PaymentProfile,
@@ -256,4 +257,57 @@ export function appliedSummary(
   return payment.unappliedCents > 0
     ? `${applied} ${money(payment.unappliedCents, payment.currency)} of this payment is still unapplied.`
     : `${applied} This payment is fully matched.`;
+}
+
+/** `$42,305`: whole units, for KPI tiles and grid cells where cents are noise. */
+export function wholeMoney(amountCents: number, currency: string): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amountCents / 100);
+}
+
+/** Status tones, reserved for state; each always ships with a text label. */
+export type StatusTone =
+  'good' | 'neutral' | 'warning' | 'serious' | 'critical';
+
+/** How each payment profile reads in the grid and band. */
+export const HABITS: Record<
+  PaymentProfile,
+  { readonly label: string; readonly tone: StatusTone }
+> = {
+  'on-time': { label: 'On time', tone: 'good' },
+  'late-fixed': { label: 'Late, fixed', tone: 'warning' },
+  'late-drifting': { label: 'Late, drifting', tone: 'serious' },
+  'short-payer': { label: 'Short-pays', tone: 'warning' },
+  'batch-payer': { label: 'Batches payments', tone: 'neutral' },
+  'wrong-reference': { label: 'Wrong references', tone: 'neutral' },
+};
+
+const lateTone = (days: number): StatusTone =>
+  days > 90 ? 'critical' : days > 30 ? 'serious' : 'warning';
+
+/** Words and tone for an invoice status: up to 30 days late is a warning, up to 90 serious, beyond critical. */
+export function invoiceStatusLabel(status: InvoiceStatus): {
+  readonly label: string;
+  readonly tone: StatusTone;
+} {
+  switch (status.kind) {
+    case 'paid':
+      return { label: 'Paid', tone: 'good' };
+    case 'current':
+      return { label: 'Current', tone: 'neutral' };
+    case 'overdue':
+      return {
+        label: `${status.days} day${status.days === 1 ? '' : 's'} overdue`,
+        tone: lateTone(status.days),
+      };
+    case 'partly-paid':
+      return {
+        label: `Partly paid · ${status.days} days`,
+        tone: status.days > 0 ? lateTone(status.days) : 'neutral',
+      };
+  }
 }
