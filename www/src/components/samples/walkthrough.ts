@@ -6,4 +6,4 @@
  * that run prints.
  */
 export const WALKTHROUGH_VIDEO_URL =
-  'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com/video/invoicing-walkthrough-fa5404934b91.mp4';
+  'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com/video/invoicing-walkthrough-65fa793cb0b1.mp4';
