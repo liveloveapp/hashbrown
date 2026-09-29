@@ -12,9 +12,24 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_4BCTVBMb6eiPveaBVoBUWhdF"
+            "id": "call_ONi7XU4842UpQa7PRt8FEPOy"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2337,
+          "completion_tokens": 20,
+          "total_tokens": 2357,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -29,9 +44,24 @@
           {
             "name": "customerStatement",
             "arguments": "{\"customerId\":\"granite\"}",
-            "id": "call_T9PcZhyLT7LJzRTtWqFaRIjn"
+            "id": "call_Q9YEvOj4VCB3v3xmqiGtUFN5"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2902,
+          "completion_tokens": 153,
+          "total_tokens": 3055,
+          "prompt_tokens_details": {
+            "cached_tokens": 2176,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 128,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -45,32 +75,51 @@
         "toolCalls": [
           {
             "name": "render",
-            "arguments": "{\"text\":\"Summary — how Granite Mutual pays\\n\\n- Profile: \\\"short-payer\\\" — they usually pay quickly but tend to underpay slightly.\\n- Speed: average days to pay = 6 days.\\n- Timeliness: late payment rate = 0% (they are not generally late).\\n- Amounts: invoiced \\\"$220,250.00\\\", received \\\"$215,845.00\\\", currently open \\\"$4,405.00\\\" across 41 open invoices (many small residuals around $90–$138 each).\\n- Last payment date: 2026-09-06.\\n\\nInterpretation: expect prompt payments, often as partials or with small shortfalls that leave low outstanding balances on many invoices. If you want to clear those residuals, I can show the open invoices for review.\", \"components\":[{\"CustomerCard\":{\"customerId\":\"granite\"}}]}",
-            "id": "call_RKZWX7fEIcJgNTWhxXBrkyfr"
+            "arguments": "{\n  \"text\": \"Short answer: Granite Mutual is a short-payer — they pay quickly (average 6 days, 0% late rate) but routinely leave small residual balances on invoices.\\n\\nDetails:\\n- Totals (USD): invoiced \\\"$220,250.00\\\", received \\\"$215,845.00\\\", open \\\"$4,405.00\\\". Unapplied: \\\"$0.00\\\".\\n- Payment profile: \\\"short-payer\\\"; average days to pay: 6; late payment rate: 0%; last payment date: 2026-09-06. They have 41 open invoices.\\n- Pattern in the open invoices: many show small outstanding amounts (examples): INV-202609-GRANITE — \\\"$138.00\\\"; INV-202608-GRANITE-P2 — \\\"$45.00\\\"; INV-202608-GRANITE — \\\"$138.00\\\"; INV-202607-GRANITE-P1 — \\\"$80.00\\\"; INV-202607-GRANITE — \\\"$138.00\\\". These repeated small remainders explain the \\\"short-payer\\\" profile.\\n\\nWould you like me to show all open invoices for Granite Mutual or draft a small-balance statement to send them?\",\n  \"components\": [\n    {\n      \"LedgerTable\": {\n        \"title\": \"Recent Granite Mutual open invoices (examples)\",\n        \"recordIds\": [\n          \"invoice-granite-2026-09\",\n          \"invoice-granite-2026-08-p2\",\n          \"invoice-granite-2026-08\",\n          \"invoice-granite-2026-07-p1\",\n          \"invoice-granite-2026-07\",\n          \"invoice-granite-2026-06\"\n        ]\n      }\n    },\n    {\n      \"CustomerCard\": {\n        \"customerId\": \"granite\"\n      }\n    }\n  ]\n}",
+            "id": "call_aalpMM2iIVnFTwrbH4sUdbtC"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 5796,
+          "completion_tokens": 1963,
+          "total_tokens": 7759,
+          "prompt_tokens_details": {
+            "cached_tokens": 2688,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 1536,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary — how Granite Mutual pays\\n\\n- Profile: \\\"short-payer\\\" — they usually pay quickly but tend to underpay slightly.\\n- Speed: average days to pay = 6 days.\\n- Timeliness: late payment rate = 0% (they are not generally late).\\n- Amounts: invoiced \\\"$220,250.00\\\", received \\\"$215,845.00\\\", currently open \\\"$4,405.00\\\" across 41 open invoices (many small residuals around $90–$138 each).\\n- Last payment date: 2026-09-06.\\n\\nInterpretation: expect prompt payments, often as partials or with small shortfalls that leave low outstanding balances on many invoices. If you want to clear those residuals, I can show the open invoices for review.\"},\"children\":[{\"CustomerCard\":{\"props\":{\"customerId\":\"granite\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Short answer: Granite Mutual is a short-payer — they pay quickly (average 6 days, 0% late rate) but routinely leave small residual balances on invoices.\n\nDetails:\n- Totals (USD): invoiced \"$220,250.00\", received \"$215,845.00\", open \"$4,405.00\". Unapplied: \"$0.00\".\n- Payment profile: \"short-payer\"; average days to pay: 6; late payment rate: 0%; last payment date: 2026-09-06. They have 41 open invoices.\n- Pattern in the open invoices: many show small outstanding amounts (examples): INV-202609-GRANITE — \"$138.00\"; INV-202608-GRANITE-P2 — \"$45.00\"; INV-202608-GRANITE — \"$138.00\"; INV-202607-GRANITE-P1 — \"$80.00\"; INV-202607-GRANITE — \"$138.00\". These repeated small remainders explain the \"short-payer\" profile.\n\nWould you like me to show all open invoices for Granite Mutual or draft a small-balance statement to send them?\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summary — how Granite Mutual pays\\n\\n- Profile: \\\"short-payer\\\" — they usually pay quickly but tend to underpay slightly.\\n- Speed: average days to pay = 6 days.\\n- Timeliness: late payment rate = 0% (they are not generally late).\\n- Amounts: invoiced \\\"$220,250.00\\\", received \\\"$215,845.00\\\", currently open \\\"$4,405.00\\\" across 41 open invoices (many small residuals around $90–$138 each).\\n- Last payment date: 2026-09-06.\\n\\nInterpretation: expect prompt payments, often as partials or with small shortfalls that leave low outstanding balances on many invoices. If you want to clear those residuals, I can show the open invoices for review.\"},\"children\":[{\"CustomerCard\":{\"props\":{\"customerId\":\"granite\"}}}]}}]}"
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summary — how Granite Mutual pays\n\n- Profile: \"short-payer\" — they usually pay quickly but tend to underpay slightly.\n- Speed: average days to pay = 6 days.\n- Timeliness: late payment rate = 0% (they are not generally late).\n- Amounts: invoiced \"$220,250.00\", received \"$215,845.00\", currently open \"$4,405.00\" across 41 open invoices (many small residuals around $90–$138 each).\n- Last payment date: 2026-09-06.\n\nInterpretation: expect prompt payments, often as partials or with small shortfalls that leave low outstanding balances on many invoices. If you want to clear those residuals, I can show the open invoices for review.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
-        "turnIndex": 0,
-        "hasToolResult": false,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{\"score\":1,\"reason\":\"Meets criteria: amounts use currency symbols, no claims of changes/matching/allocation, customer name allowed.\"}"
+        "content": "{\"score\":1.0,\"reason\":\"Compliant: all amounts use currency symbols, uses allowed customer name (Granite Mutual), and makes no claims of changing/matching/allocating funds.\"}",
+        "usage": {
+          "prompt_tokens": 368,
+          "completion_tokens": 434,
+          "total_tokens": 802,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 384,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     }
   ]

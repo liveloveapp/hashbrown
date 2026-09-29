@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { script } from '@b4run/testing';
+import { createAimock, script } from '@b4run/testing';
 import { assistantResponseSchema } from '@invoicing/contracts';
 import { createAssistantMiddleware } from '../src/assistant-middleware';
 import { createMemoryRepositories } from '../src/persistence/memory';
@@ -134,4 +134,39 @@ test('each run starts a fresh thread and only record mode can read the tape', as
 
   expect(second.threadId).not.toBe(first.threadId);
   expect(() => harness.getRecordedFixtures()).toThrow(/record mode/);
+}, 60_000);
+
+test('sends the model the production response schema on every call', async () => {
+  // Record mode proxies every model call to an upstream, so a local aimock
+  // standing in for the provider sees exactly what the model would.
+  const upstream = await createAimock({
+    fixtures: [{ match: {}, response: { content: '{"ui":[]}' } }],
+  });
+  const previousKey = process.env['OPENAI_API_KEY'];
+  process.env['OPENAI_API_KEY'] = previousKey ?? 'test-record-placeholder';
+  const recording = await createInvoicingHarness({
+    mode: 'record',
+    recordUpstream: upstream.baseUrl.replace(/\/v1$/, ''),
+  });
+  try {
+    await recording.run({ input: 'How many payments need matching?' });
+    const bodies = upstream
+      .getRequests()
+      .map((request) => request.body as Record<string, unknown> | null);
+    expect(bodies.length).toBeGreaterThan(0);
+    for (const body of bodies)
+      expect(body?.['response_format']).toEqual({
+        type: 'json_schema',
+        json_schema: {
+          name: 'hashbrown_response',
+          schema: assistantResponseSchema,
+          strict: true,
+        },
+      });
+  } finally {
+    await recording.close();
+    await upstream.close();
+    if (previousKey === undefined) delete process.env['OPENAI_API_KEY'];
+    else process.env['OPENAI_API_KEY'] = previousKey;
+  }
 }, 60_000);

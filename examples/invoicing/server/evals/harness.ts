@@ -7,6 +7,7 @@ import {
   type FixtureSet,
   type ScriptBuilder,
 } from '@b4run/testing';
+import { assistantResponseSchema } from '@invoicing/contracts';
 import { fileURLToPath } from 'node:url';
 import { assistantContext } from '../src/assistant-middleware';
 import { getSnapshot } from '../src/ledger';
@@ -99,6 +100,12 @@ export async function createInvoicingHarness(opts: {
       appRoot,
       route: '/assistant#agent',
       middlewareContext: evalMiddlewareContext(),
+      // The schema every production `/assistant` run carries: the workspace
+      // chat sends it as `hashbrown.responseSchema`, and the route middleware
+      // refuses a run whose schema is not exactly this one. Binding it here
+      // puts the model under the same `response_format` in evals, so a
+      // recorded tape shows what the model does in production.
+      responseSchema: assistantResponseSchema,
       live: opts.mode === 'live',
       record: opts.mode === 'record',
       // aimock appends the request path, so the upstream is the origin only.

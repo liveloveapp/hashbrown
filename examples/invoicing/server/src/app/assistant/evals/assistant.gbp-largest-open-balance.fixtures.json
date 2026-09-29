@@ -12,9 +12,24 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_tBc9gCzWyNSUdUV9x5BE3E3R"
+            "id": "call_ZB2fw46gMtakhmj9vSXsWpMk"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2339,
+          "completion_tokens": 20,
+          "total_tokens": 2359,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -29,14 +44,29 @@
           {
             "name": "customerStatement",
             "arguments": "{\"customerId\": \"thistle\"}",
-            "id": "call_WiLadZ5onJF5RskLBqo7UCmu"
+            "id": "call_OFrJ7NlijVcEIR0mK0pztlM5"
           },
           {
             "name": "customerStatement",
             "arguments": "{\"customerId\": \"kestrel\"}",
-            "id": "call_qNAftV9DmVGpO8hgrfQxxarE"
+            "id": "call_YFkVyU2TLeyBzgIK0Jf5VrhK"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2904,
+          "completion_tokens": 314,
+          "total_tokens": 3218,
+          "prompt_tokens_details": {
+            "cached_tokens": 2176,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 256,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -50,32 +80,51 @@
         "toolCalls": [
           {
             "name": "render",
-            "arguments": "{\"text\":\"Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\",\"components\":[{\"LedgerTable\":{\"title\":\"Thistle — open invoices\",\"recordIds\":[\"invoice-thistle-2026-09\",\"invoice-thistle-2026-08\",\"invoice-thistle-2026-07-p1\"]}},{\"CustomerCard\":{\"customerId\":\"thistle\"}}]}",
-            "id": "call_2Jy685H5pTkfeawkbvILC5h0"
+            "arguments": "{\"text\":\"Thistle Retail has the largest GBP open balance: £14,000.00.\\n\\nFor comparison: Kestrel Energy has an open balance of £3,532.00; total GBP open across customers is £17,532.00 (ledger as of 2026-09-15).\\n\\nThistle Retail’s open invoices are INV-202609-THISTLE (£6,000.00), INV-202608-THISTLE (£6,000.00), and INV-202607-THISTLE-P1 (£2,000.00).\",\"components\":[{\"CustomerCard\":{\"customerId\":\"thistle\"}}]}",
+            "id": "call_Rdybjt22xKtv2WPqZzQGOOJh"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 6909,
+          "completion_tokens": 921,
+          "total_tokens": 7830,
+          "prompt_tokens_details": {
+            "cached_tokens": 2688,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 768,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Thistle — open invoices\",\"recordIds\":[\"invoice-thistle-2026-09\",\"invoice-thistle-2026-08\",\"invoice-thistle-2026-07-p1\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"thistle\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Thistle Retail has the largest GBP open balance: £14,000.00.\n\nFor comparison: Kestrel Energy has an open balance of £3,532.00; total GBP open across customers is £17,532.00 (ledger as of 2026-09-15).\n\nThistle Retail’s open invoices are INV-202609-THISTLE (£6,000.00), INV-202608-THISTLE (£6,000.00), and INV-202607-THISTLE-P1 (£2,000.00).\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Thistle — open invoices\",\"recordIds\":[\"invoice-thistle-2026-09\",\"invoice-thistle-2026-08\",\"invoice-thistle-2026-07-p1\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"thistle\"}}}]}}]}"
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Thistle Retail has the largest GBP open balance: £14,000.00. (Kestrel Energy’s open balance is £3,532.00.) Included: Thistle’s open invoices and customer card for review.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
-        "turnIndex": 0,
-        "hasToolResult": false,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{\"score\":1, \"reason\":\"Compliant: amounts use currency symbol and two decimals; no claim of changing/matching/allocating; only allowed customer names used.\"}"
+        "content": "{\"score\": 1.0, \"reason\": \"All amounts use currency formatting; no change/match/allocation claims; only allowed customer names used.\"}",
+        "usage": {
+          "prompt_tokens": 236,
+          "completion_tokens": 362,
+          "total_tokens": 598,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 320,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     }
   ]
