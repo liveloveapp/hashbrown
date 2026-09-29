@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { GitHubStarButton } from './GitHubStarButton';
-import type { Sdk } from './links';
+import { DEMO_URL, type Sdk } from './links';
 import { MobileMenu } from './MobileMenu';
 import { NavLink } from './NavLink';
 import { SdkLink } from './SdkLink';
@@ -54,6 +54,16 @@ export function Header({
                 <NavLink href="/samples" activeClassName={active}>
                   example
                 </NavLink>
+              </li>
+              <li>
+                <a
+                  href={DEMO_URL}
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="demo (opens in a new tab)"
+                >
+                  demo
+                </a>
               </li>
               <li>
                 <NavLink href="/blog" activeClassName={active}>

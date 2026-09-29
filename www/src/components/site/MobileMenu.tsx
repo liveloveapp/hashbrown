@@ -13,7 +13,7 @@ import {
   useState,
 } from 'react';
 import { CloseIcon, MenuIcon } from './icons';
-import type { Sdk } from './links';
+import { DEMO_URL, type Sdk } from './links';
 import { SdkLink } from './SdkLink';
 import styles from './MobileMenu.module.css';
 
@@ -25,7 +25,7 @@ const FOCUSABLE =
 
 /**
  * The open mobile menu: a fullscreen panel with the docs/api switcher, the
- * selected menu, and links to examples, blog and quick start. Ports the
+ * selected menu, and links to examples, the demo, blog and quick start. Ports the
  * `.fullscreen` content of the Angular header's `FullscreenMenu`.
  */
 export function MobileMenuPanel({
@@ -121,6 +121,15 @@ export function MobileMenuPanel({
             <Link href="/samples" onClick={onClose}>
               examples
             </Link>
+            <a
+              href={DEMO_URL}
+              target="_blank"
+              rel="noopener"
+              aria-label="demo (opens in a new tab)"
+              onClick={onClose}
+            >
+              demo
+            </a>
             <Link href="/blog" onClick={onClose}>
               blog
             </Link>
