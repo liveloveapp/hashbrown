@@ -12,7 +12,9 @@ declare global {
 
 /**
  * Presenter chrome for the walkthrough: a cursor with click ripples that
- * fades when idle, a caption pill, a smooth zoom, and thread following.
+ * fades when idle, a caption pill, a smooth zoom, and thread following. The
+ * caption sits well above the bottom edge so a video player's control bar
+ * never covers it.
  * Passed to `addInitScript`, so it must stay self-contained. Everything is
  * appended to `<html>`, outside `<body>`, so zooming the body never moves it.
  */
@@ -33,7 +35,7 @@ export function installOverlay(): void {
     border: 3px solid rgba(232,162,61,.9); pointer-events: none; z-index: 2147483646;
     animation: wt-ripple 620ms cubic-bezier(.2,.8,.2,1) forwards; }
   @keyframes wt-ripple { to { transform: scale(4.2); opacity: 0; } }
-  #wt-caption { position: fixed; left: 36px; bottom: 34px; z-index: 2147483645; pointer-events: none;
+  #wt-caption { position: fixed; left: 36px; bottom: 150px; z-index: 2147483645; pointer-events: none;
     font-family: 'Poppins', system-ui, sans-serif; max-width: 640px;
     padding: 16px 22px 16px 18px; border-radius: 18px; display: flex; gap: 14px; align-items: center;
     background: rgba(40,38,36,.86); backdrop-filter: blur(14px) saturate(140%);
