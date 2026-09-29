@@ -58,7 +58,7 @@ export function DashboardView({
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     const target = event.target as HTMLElement;
-    if (target.closest('input, textarea, select, [contenteditable="true"]'))
+    if (target.isContentEditable || target.closest('input, textarea, select'))
       return;
     if (event.key === 'Escape') {
       onFocus({ type: 'clear' });

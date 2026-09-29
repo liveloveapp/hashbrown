@@ -66,7 +66,9 @@ export function focusReducer(focus: Focus, action: FocusAction): Focus {
         record: { kind: 'invoice', id: action.invoiceId },
       };
     case 'clear':
-      return { tab: focus.tab, currency: focus.currency };
+      return !focus.clientId && !focus.record
+        ? focus
+        : { tab: focus.tab, currency: focus.currency };
     case 'set-tab':
       // A record belongs to the tab it was picked on; the client carries over.
       return focus.clientId
@@ -119,20 +121,18 @@ export function focusToSearch(focus: Focus): string {
 /**
  * Drop anything the ledger does not recognise: an unknown client clears the
  * focus, and a record that is missing or belongs to another client is dropped.
+ * Returns the same object when nothing is dropped, so React can bail out.
  */
 export function sanitizeFocus(focus: Focus, snapshot: LedgerSnapshot): Focus {
   const base = { tab: focus.tab, currency: focus.currency };
-  if (!focus.clientId) return base;
+  if (!focus.clientId) return focus.record ? base : focus;
   if (!snapshot.customers.some((c) => c.id === focus.clientId)) return base;
   const record = focus.record;
-  const owned =
-    record &&
-    snapshot.invoices.some(
-      (i) => i.id === record.id && i.customerId === focus.clientId,
-    );
-  return owned
-    ? { ...base, clientId: focus.clientId, record }
-    : { ...base, clientId: focus.clientId };
+  if (!record) return focus;
+  const owned = snapshot.invoices.some(
+    (i) => i.id === record.id && i.customerId === focus.clientId,
+  );
+  return owned ? focus : { ...base, clientId: focus.clientId };
 }
 
 /** What the page tells the assistant it is looking at. */

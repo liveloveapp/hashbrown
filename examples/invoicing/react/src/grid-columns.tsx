@@ -16,13 +16,16 @@ export function currencyGroupOrder(first: string) {
 export function currencyColumn<Row extends { readonly currency: string }>(
   first: string,
 ): PretableColumn<Row> {
-  return {
+  const column: PretableColumn<Row> & {
+    readonly compare: (a: string, b: string) => number;
+  } = {
     id: 'currency',
     header: 'Currency',
     type: 'text',
     value: (row) => row.currency,
-    ...({ compare: currencyGroupOrder(first) } as object),
+    compare: currencyGroupOrder(first),
   };
+  return column;
 }
 
 /** A right-aligned whole-unit money column, summed per currency group. */

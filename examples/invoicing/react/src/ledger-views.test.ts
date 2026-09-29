@@ -349,6 +349,7 @@ test('invoiceStatusLabel words each status with a tone by how late it is', () =>
     invoiceStatusLabel({ kind: 'overdue', days: 1 }),
     invoiceStatusLabel({ kind: 'overdue', days: 32 }),
     invoiceStatusLabel({ kind: 'partly-paid', days: 305 }),
+    invoiceStatusLabel({ kind: 'partly-paid', days: 1 }),
   ];
 
   expect(labels).toEqual([
@@ -357,5 +358,6 @@ test('invoiceStatusLabel words each status with a tone by how late it is', () =>
     { label: '1 day overdue', tone: 'warning' },
     { label: '32 days overdue', tone: 'serious' },
     { label: 'Partly paid · 305 days', tone: 'critical' },
+    { label: 'Partly paid · 1 day', tone: 'warning' },
   ]);
 });

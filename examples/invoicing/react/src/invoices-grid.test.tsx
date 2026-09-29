@@ -122,3 +122,25 @@ test('clicking an invoice reports it with its client', () => {
 
   expect(onSelect).toHaveBeenCalledWith('b1', 'birch');
 });
+
+test('a partly-paid invoice past terms counts as overdue and says how late it is', async () => {
+  cleanup();
+  const partlyPaid: InvoiceRow = {
+    ...invoice('p1', 'acme', 'USD', 30000, 5),
+    status: { kind: 'partly-paid', days: 5 },
+  };
+  const withPartlyPaid = [...rows, partlyPaid];
+  render(
+    <InvoicesGrid
+      rows={withPartlyPaid}
+      currency="USD"
+      onSelect={vi.fn()}
+      viewportHeight={600}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Overdue 3' }));
+
+  await waitFor(() => expect(dataRowIds()).toEqual(['a2', 'b1', 'p1']));
+  expect(screen.getByText('Partly paid · 5 days')).toBeVisible();
+});

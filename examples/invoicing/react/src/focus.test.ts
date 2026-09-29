@@ -191,6 +191,33 @@ test('sanitizeFocus keeps a focus the ledger recognises, and drops only an unkno
   expect(droppedRecord).toEqual({ ...DEFAULT_FOCUS, clientId: 'thistle' });
 });
 
+test('sanitizeFocus returns the same focus when nothing is dropped', () => {
+  const known = {
+    ...DEFAULT_FOCUS,
+    clientId: 'thistle',
+    record: { kind: 'invoice' as const, id: 'inv-t' },
+  };
+  const client = { ...DEFAULT_FOCUS, clientId: 'thistle' };
+
+  const results = [
+    sanitizeFocus(known, snapshot),
+    sanitizeFocus(client, snapshot),
+    sanitizeFocus(DEFAULT_FOCUS, snapshot),
+  ];
+
+  expect(results[0]).toBe(known);
+  expect(results[1]).toBe(client);
+  expect(results[2]).toBe(DEFAULT_FOCUS);
+});
+
+test('clear returns the same focus when nothing is focused', () => {
+  const focus = { ...DEFAULT_FOCUS, tab: 'invoices' as const };
+
+  const cleared = focusReducer(focus, { type: 'clear' });
+
+  expect(cleared).toBe(focus);
+});
+
 test('assistantRunState keeps only the selections that are set', () => {
   const selections = [
     {},

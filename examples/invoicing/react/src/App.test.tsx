@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import { StrictMode } from 'react';
 import type { Transport, TransportRequest } from '@hashbrownai/core';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
@@ -536,6 +536,7 @@ test('an assistant review of an ambiguous payment selects it and focuses the inv
 });
 
 test('the dashboard focus drives the band and is mirrored to the URL', () => {
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
   cleanup();
   window.history.replaceState(null, '', '/');
   const ledger: LedgerSnapshot = {
@@ -557,10 +558,10 @@ test('the dashboard focus drives the band and is mirrored to the URL', () => {
     screen.getByRole('heading', { name: 'Northstar Labs', level: 2 }),
   ).toBeVisible();
   expect(window.location.search).toBe('?client=customer-001');
-  window.history.replaceState(null, '', '/');
 });
 
 test('a shared URL opens the dashboard on its focus, dropping ids the ledger does not know', () => {
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
   cleanup();
   window.history.replaceState(null, '', '/?tab=invoices&client=nobody');
 
@@ -571,5 +572,4 @@ test('a shared URL opens the dashboard on its focus, dropping ids the ledger doe
     'true',
   );
   expect(window.location.search).toBe('?tab=invoices');
-  window.history.replaceState(null, '', '/');
 });

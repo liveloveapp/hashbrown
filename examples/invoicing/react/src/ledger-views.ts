@@ -306,7 +306,7 @@ export function invoiceStatusLabel(status: InvoiceStatus): {
       };
     case 'partly-paid':
       return {
-        label: `Partly paid · ${status.days} days`,
+        label: `Partly paid · ${status.days} day${status.days === 1 ? '' : 's'}`,
         tone: status.days > 0 ? lateTone(status.days) : 'neutral',
       };
   }
