@@ -12,19 +12,19 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_LXcNlQ4SAR9uwGv1KnDpBUF4"
+            "id": "call_kb9ZSE4jHfkHWs3FiYOHgdeL"
           }
         ],
         "usage": {
-          "prompt_tokens": 2275,
-          "completion_tokens": 20,
-          "total_tokens": 2295,
+          "prompt_tokens": 2337,
+          "completion_tokens": 84,
+          "total_tokens": 2421,
           "prompt_tokens_details": {
-            "cached_tokens": 1536,
+            "cached_tokens": 2176,
             "audio_tokens": 0
           },
           "completion_tokens_details": {
-            "reasoning_tokens": 0,
+            "reasoning_tokens": 64,
             "audio_tokens": 0,
             "accepted_prediction_tokens": 0,
             "rejected_prediction_tokens": 0
@@ -44,15 +44,15 @@
           {
             "name": "customerStatement",
             "arguments": "{\"customerId\":\"summit\"}",
-            "id": "call_8VDcBy0NYfJHNCRZNxEHU1u3"
+            "id": "call_pQxr0LaC2y4icWbcMzLaiIXy"
           }
         ],
         "usage": {
-          "prompt_tokens": 2840,
+          "prompt_tokens": 2902,
           "completion_tokens": 89,
-          "total_tokens": 2929,
+          "total_tokens": 2991,
           "prompt_tokens_details": {
-            "cached_tokens": 2048,
+            "cached_tokens": 2176,
             "audio_tokens": 0
           },
           "completion_tokens_details": {
@@ -75,20 +75,20 @@
         "toolCalls": [
           {
             "name": "render",
-            "arguments": "{\"text\":\"Summit Logistics pays on time. Their profile is “on-time” and they typically pay quickly (average 8 days; late payment rate 0%). Their most recent incoming payment is referenced “ACH SUMMIT OCTOBER ADVANCE” and is currently an unapplied amount of \\\"$3,000.00\\\" (received 2026-09-15) — the reference suggests an ACH transfer.\\n\\nKey figures for Summit Logistics:\\n- Invoiced: \\\"$178,550.00\\\"\\n- Received: \\\"$181,550.00\\\"\\n- Open balance: \\\"$0.00\\\"\\n- Unapplied: \\\"$3,000.00\\\"\\n- Average days to pay: 8\\n- Late payment rate: 0%\\n\\nIf you’d like, I can prepare a review to apply the unapplied payment “ACH SUMMIT OCTOBER ADVANCE” to outstanding invoices.\",\"components\":[{\"CustomerCard\":{\"customerId\":\"summit\"}},{\"ReviewPayment\":{\"paymentId\":\"payment-summit-advance\"}}]}",
-            "id": "call_sHVLezc8hkDBr1r16FlHNYKH"
+            "arguments": "{\"text\":\"Summit Logistics pays on time, typically by ACH: their profile is “on-time” with an average of 8 days to pay and a 0% late-payment rate. They have no open invoices and one unapplied payment: the payment referenced “ACH SUMMIT OCTOBER ADVANCE” dated 2026-09-15 for $3,000.00. Totals: invoiced $178,550.00, received $181,550.00 (which corresponds with the $3,000.00 unapplied amount). Last payment received 2026-09-15.\",\"components\":[{\"CustomerCard\":{\"customerId\":\"summit\"}}]}",
+            "id": "call_Mx1BCFdQJweNPum8lvevDPl3"
           }
         ],
         "usage": {
-          "prompt_tokens": 3106,
-          "completion_tokens": 1449,
-          "total_tokens": 4555,
+          "prompt_tokens": 3168,
+          "completion_tokens": 858,
+          "total_tokens": 4026,
           "prompt_tokens_details": {
             "cached_tokens": 2688,
             "audio_tokens": 0
           },
           "completion_tokens_details": {
-            "reasoning_tokens": 1216,
+            "reasoning_tokens": 704,
             "audio_tokens": 0,
             "accepted_prediction_tokens": 0,
             "rejected_prediction_tokens": 0
@@ -98,23 +98,23 @@
     },
     {
       "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summit Logistics pays on time. Their profile is “on-time” and they typically pay quickly (average 8 days; late payment rate 0%). Their most recent incoming payment is referenced “ACH SUMMIT OCTOBER ADVANCE” and is currently an unapplied amount of \"$3,000.00\" (received 2026-09-15) — the reference suggests an ACH transfer.\n\nKey figures for Summit Logistics:\n- Invoiced: \"$178,550.00\"\n- Received: \"$181,550.00\"\n- Open balance: \"$0.00\"\n- Unapplied: \"$3,000.00\"\n- Average days to pay: 8\n- Late payment rate: 0%\n\nIf you’d like, I can prepare a review to apply the unapplied payment “ACH SUMMIT OCTOBER ADVANCE” to outstanding invoices.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summit Logistics pays on time, typically by ACH: their profile is “on-time” with an average of 8 days to pay and a 0% late-payment rate. They have no open invoices and one unapplied payment: the payment referenced “ACH SUMMIT OCTOBER ADVANCE” dated 2026-09-15 for $3,000.00. Totals: invoiced $178,550.00, received $181,550.00 (which corresponds with the $3,000.00 unapplied amount). Last payment received 2026-09-15.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"score\": 1, \"reason\": \"Compliant: currency formatted, no actions claimed, allowed customer name used.\"}",
+        "content": "{\"score\": 1, \"reason\": \"Meets all criteria.\"}",
         "usage": {
-          "prompt_tokens": 297,
-          "completion_tokens": 419,
-          "total_tokens": 716,
+          "prompt_tokens": 241,
+          "completion_tokens": 601,
+          "total_tokens": 842,
           "prompt_tokens_details": {
             "cached_tokens": 0,
             "audio_tokens": 0
           },
           "completion_tokens_details": {
-            "reasoning_tokens": 384,
+            "reasoning_tokens": 576,
             "audio_tokens": 0,
             "accepted_prediction_tokens": 0,
             "rejected_prediction_tokens": 0
