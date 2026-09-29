@@ -13,6 +13,7 @@ const FUNCTIONS = [
   'findRecords',
   'unappliedPayments',
   'selectedPayment',
+  'focusedClient',
   'validateUi',
 ] as const;
 

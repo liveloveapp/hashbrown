@@ -6,6 +6,7 @@ import {
   aging,
   customerStatement,
   findRecords,
+  focusedClient,
   ledgerSummary,
   monthlyTotals,
   selectedPayment,
@@ -308,4 +309,22 @@ test('selectedPayment reports no selection', () => {
   const result = selectedPayment(snapshot, undefined);
 
   expect(result).toEqual({ selected: null });
+});
+
+test('focusedClient describes the focused client and the focused invoice, or nothing', () => {
+  const invoice = snapshot.invoices.find(
+    (i) => i.customerId === 'thistle' && i.outstandingCents > 0,
+  );
+  if (!invoice) throw new Error('the sample ledger has open Thistle invoices');
+
+  const focused = focusedClient(snapshot, 'thistle', invoice.id);
+  const clientOnly = focusedClient(snapshot, 'thistle', undefined);
+  const none = focusedClient(snapshot, undefined, undefined);
+
+  expect(focused.focused?.customer.name).toBe('Thistle Retail');
+  expect(focused.focused?.openCents).toBe(1400000);
+  expect(focused.focused?.invoice?.id).toBe(invoice.id);
+  expect(clientOnly.focused?.invoice).toBeNull();
+  expect(none).toEqual({ focused: null });
+  expect(size(focused)).toBeLessThan(BUDGET);
 });

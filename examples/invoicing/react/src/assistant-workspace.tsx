@@ -16,6 +16,7 @@ import type { TransportOrFactory } from '@hashbrownai/core';
 import type { LedgerSnapshot, Proposal } from '@invoicing/contracts';
 import { findRenderCall, RenderDraft } from './assistant-draft';
 import { assistantKit } from './assistant-kit';
+import { assistantRunState } from './focus';
 import { appliedSummary, listJoin } from './ledger-views';
 import { ReviewChat, type ReviewChatHandle } from './review-chat';
 import { SnapshotContext } from './snapshot-context';
@@ -82,6 +83,10 @@ export interface AssistantWorkspaceHandle {
 export interface AssistantWorkspaceProps {
   readonly ref?: Ref<AssistantWorkspaceHandle>;
   readonly selectedPaymentId?: string;
+  /** The client focused on the dashboard; validated server-side like the payment. */
+  readonly focusedClientId?: string;
+  /** The invoice focused on the dashboard; always one of `focusedClientId`'s. */
+  readonly focusedInvoiceId?: string;
   readonly snapshot: LedgerSnapshot;
   readonly onApplied: (snapshot: LedgerSnapshot) => void;
   /** Reports whether conversation or an unresolved review prevents matching. */
@@ -178,12 +183,19 @@ function ReviewSession({
 
 function Conversation({
   selectedPaymentId,
+  focusedClientId,
+  focusedInvoiceId,
+  focusedClientName,
   locked,
   onBusy,
   transport,
   children,
 }: {
   selectedPaymentId?: string;
+  focusedClientId?: string;
+  focusedInvoiceId?: string;
+  /** Names the focused client in the first starter question. */
+  focusedClientName?: string;
   locked: boolean;
   onBusy: (busy: boolean) => void;
   transport?: TransportOrFactory;
@@ -219,14 +231,25 @@ function Conversation({
     const content = text.trim();
     if (!content || busy || locked || claim.current) return;
     claim.current = true;
-    chat.setState(selectedPaymentId ? { selectedPaymentId } : {});
+    chat.setState(
+      assistantRunState({
+        selectedPaymentId,
+        focusedClientId,
+        focusedInvoiceId,
+      }),
+    );
     chat.sendMessage({ role: 'user', content });
     setPrompt('');
   }
 
   const starters = selectedPaymentId
     ? [SELECTED_STARTER, ...STARTERS.slice(0, 2)]
-    : STARTERS;
+    : focusedClientName
+      ? [
+          `What does ${focusedClientName} owe, and how late is it?`,
+          ...STARTERS.slice(0, 2),
+        ]
+      : STARTERS;
   return (
     <section className="conversation" aria-label="Ledger conversation">
       <div className="thread" ref={thread}>
@@ -323,6 +346,8 @@ function Conversation({
 export function AssistantWorkspace({
   ref,
   selectedPaymentId,
+  focusedClientId,
+  focusedInvoiceId,
   snapshot,
   onApplied,
   onBusyChange,
@@ -396,6 +421,11 @@ export function AssistantWorkspace({
         <HashbrownProvider url={ASSISTANT_URL}>
           <Conversation
             selectedPaymentId={selectedPaymentId}
+            focusedClientId={focusedClientId}
+            focusedInvoiceId={focusedInvoiceId}
+            focusedClientName={
+              snapshot.customers.find((c) => c.id === focusedClientId)?.name
+            }
             locked={Boolean(active)}
             onBusy={setConversationBusy}
             transport={transport}

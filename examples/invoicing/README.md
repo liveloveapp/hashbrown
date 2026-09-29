@@ -25,8 +25,10 @@ Five incoming payments initially have unapplied cash totaling **$13,900**:
 
 The assistant accepts questions immediately, without selecting a payment, and
 an empty conversation offers starter questions. Selecting a row adds context:
-the assistant reads it through `selectedPayment` when you ask about "this
-payment". The assistant column stays in view while the page scrolls, with the
+the assistant reads a payment through `selectedPayment` when you ask about
+"this payment", and a focused client or invoice through `focusedClient`. The
+most recent selection wins, so the rail shows either a payment or a client,
+never both. The assistant column stays in view while the page scrolls, with the
 message box pinned under the thread; Enter sends and Shift+Enter adds a line.
 
 **Match payment** opens a separately authorized allocation review, and so does
@@ -43,9 +45,9 @@ line together or none of them. **Decline** leaves the ledger unchanged. Chat bec
 again after a completed or safely retired review, and subsequent matching uses
 a fresh review thread. Unknown allocation outcomes remain blocked until checked.
 
-The assistant answers through seven read-only tools (`ledgerSummary`,
+The assistant answers through eight read-only tools (`ledgerSummary`,
 `monthlyTotals`, `aging`, `customerStatement`, `findRecords`,
-`unappliedPayments`, `selectedPayment`) that each return a small, shaped
+`unappliedPayments`, `selectedPayment`, `focusedClient`) that each return a small, shaped
 result, then composes its answer from a component kit and hands prose plus components to `render`.
 The server validates every component against the kit and every ID against the
 session's snapshot before the UI reaches the browser; components carry IDs,
@@ -62,7 +64,12 @@ to the model to fix and render again. The middleware's `after` hook ends the
 run with a `RUN_ERROR` — the client's "could not finish" alert — when a turn
 produced no validated UI at all.
 
-Dashboard includes ledger-derived totals and monthly invoiced/received data.
+The Dashboard opens on a KPI strip with a USD/EUR/GBP switcher, a
+fixed-height focus band (an invoiced vs received trend and aging for the chosen
+currency or the focused client) and Clients/Invoices grids grouped by
+currency. Selecting a row focuses the charts and the assistant; keys 1/2 switch
+tabs and Esc clears the focus, which is shareable through `?client=` and
+`?tab=` in the URL. Payments and matching live on the Payments page.
 Payments default to unmatched items; All payments includes historical receipts.
 A selected payment remains visible after matching to preserve context. There
 are no real transfers, collections workflows, or payment reminders.

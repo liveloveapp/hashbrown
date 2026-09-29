@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import { StrictMode } from 'react';
 import type { Transport, TransportRequest } from '@hashbrownai/core';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
@@ -47,11 +47,13 @@ test('lands on Dashboard with canonical totals and an open Assistant', () => {
   expect(
     screen.getByRole('heading', { name: 'Business overview' }),
   ).toBeVisible();
+  // Open and Unapplied are both $2,400 in the one-invoice, one-payment fixture.
   expect(
     within(screen.getByRole('region', { name: 'Ledger totals' })).getAllByText(
-      '$2,400.00',
+      '$2,400',
     ),
-  ).toHaveLength(3);
+  ).toHaveLength(2);
+  expect(screen.getByRole('tab', { name: /Clients/ })).toBeVisible();
   expect(
     screen.getByRole('complementary', { name: 'Assistant sidebar' }),
   ).toBeVisible();
@@ -69,14 +71,15 @@ test('preserves selected payment context when navigating between pages', () => {
     screen.getByRole('heading', { name: 'Business overview' }),
   ).toBeVisible();
   expect(
-    screen.getByRole('region', { name: 'Related invoices' }),
-  ).toHaveTextContent('invoice-001');
-  expect(
     screen.getByRole('complementary', { name: 'Assistant sidebar' }),
   ).toHaveTextContent('payment-001');
   expect(
     screen.getByRole('textbox', { name: 'Message assistant' }),
   ).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
+  expect(
+    screen.getByRole('region', { name: 'Related invoices' }),
+  ).toHaveTextContent('invoice-001');
 });
 
 test('shows a loading state while the initial snapshot is requested', () => {
@@ -128,6 +131,7 @@ test('selects the newly checked payment even when it precedes the old selection'
     ],
   };
   render(<App initialSnapshot={twoPayments} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
 
   fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[1]);
   fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0]);
@@ -146,6 +150,7 @@ test('selects the newly checked payment even when it precedes the old selection'
 test('clears payment and invoice context when the selected row is unchecked', () => {
   cleanup();
   render(<App initialSnapshot={snapshot} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
   fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
 
   fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
@@ -293,6 +298,7 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
       />
     </StrictMode>,
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
 
   fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0]);
   expect(requests).toHaveLength(0);
@@ -305,7 +311,6 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
   fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[1]);
   fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0]);
   fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
 
   expect(requests).toHaveLength(1);
   expect(requests[0].input.state).toMatchObject({
@@ -356,6 +361,7 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
   expect(
     screen.getByRole('region', { name: 'Related invoices' }),
   ).toHaveTextContent('$0.00');
+  fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
   expect(
     screen.getByRole('region', { name: 'Ledger totals' }),
   ).toHaveTextContent('1 payment to match');
@@ -386,6 +392,7 @@ test('shows client metadata and defaults to unmatched payments', async () => {
   };
 
   render(<App initialSnapshot={ledger} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
 
   expect(screen.getByText('Northstar Labs')).toBeVisible();
   expect(screen.getByText('PAY-2026-01')).toBeVisible();
@@ -410,6 +417,7 @@ test('requires an invoice choice when a payment has multiple outstanding invoice
   };
 
   render(<App initialSnapshot={ledger} enableAssistant />);
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
   fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
 
   expect(screen.getByRole('button', { name: 'Match payment' })).toBeDisabled();
@@ -417,28 +425,6 @@ test('requires an invoice choice when a payment has multiple outstanding invoice
     target: { value: 'invoice-002' },
   });
   expect(screen.getByRole('button', { name: 'Match payment' })).toBeEnabled();
-});
-
-test('derives monthly invoiced and received totals from record dates', () => {
-  cleanup();
-  const ledger = {
-    ...snapshot,
-    invoices: [
-      { ...snapshot.invoices[0], date: '2026-01-01', amountCents: 10000 },
-    ],
-    payments: [
-      { ...snapshot.payments[0], date: '2026-01-15', amountCents: 5000 },
-    ],
-  };
-
-  render(<App initialSnapshot={ledger} />);
-
-  const report = screen.getByRole('table', {
-    name: 'Monthly invoiced and received',
-  });
-  expect(report).toHaveTextContent('Jan 2026');
-  expect(report).toHaveTextContent('$100.00');
-  expect(report).toHaveTextContent('$50.00');
 });
 
 test('the Status column tells partially matched payments apart', async () => {
@@ -458,6 +444,7 @@ test('the Status column tells partially matched payments apart', async () => {
   };
 
   render(<App initialSnapshot={ledger} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
   fireEvent.click(screen.getByRole('button', { name: 'All payments' }));
   await screen.findByText('DONE');
 
@@ -546,4 +533,90 @@ test('an assistant review of an ambiguous payment selects it and focuses the inv
     ).toHaveFocus(),
   );
   expect(requests).toHaveLength(1);
+});
+
+test('the dashboard focus drives the band and is mirrored to the URL', () => {
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
+  cleanup();
+  window.history.replaceState(null, '', '/');
+  const ledger: LedgerSnapshot = {
+    ...snapshot,
+    customers: [
+      {
+        id: 'customer-001',
+        name: 'Northstar Labs',
+        currency: 'USD',
+        profile: 'on-time',
+      },
+    ],
+  };
+  render(<App initialSnapshot={ledger} />);
+
+  fireEvent.click(screen.getByText('Northstar Labs'));
+
+  expect(
+    screen.getByRole('heading', { name: 'Northstar Labs', level: 2 }),
+  ).toBeVisible();
+  expect(window.location.search).toBe('?client=customer-001');
+});
+
+test('a shared URL opens the dashboard on its focus, dropping ids the ledger does not know', () => {
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
+  cleanup();
+  window.history.replaceState(null, '', '/?tab=invoices&client=nobody');
+
+  render(<App initialSnapshot={snapshot} />);
+
+  expect(screen.getByRole('tab', { name: /Invoices/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(window.location.search).toBe('?tab=invoices');
+});
+
+const ledgerWithClient: LedgerSnapshot = {
+  ...snapshot,
+  customers: [
+    {
+      id: 'customer-001',
+      name: 'Northstar Labs',
+      currency: 'USD',
+      profile: 'on-time',
+    },
+  ],
+};
+
+test('focusing a client replaces a payment selected earlier in the rail', () => {
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
+  cleanup();
+  window.history.replaceState(null, '', '/');
+  render(<App initialSnapshot={ledgerWithClient} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
+
+  fireEvent.click(screen.getByText('Northstar Labs'));
+
+  const rail = screen.getByRole('complementary', { name: 'Assistant sidebar' });
+  expect(
+    within(rail).getByRole('heading', { name: 'Client context' }),
+  ).toBeVisible();
+  expect(rail).not.toHaveTextContent('payment-001');
+});
+
+test('selecting a payment replaces a client focused earlier in the rail', () => {
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
+  cleanup();
+  window.history.replaceState(null, '', '/');
+  render(<App initialSnapshot={ledgerWithClient} />);
+  fireEvent.click(screen.getByText('Northstar Labs'));
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
+
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+
+  const rail = screen.getByRole('complementary', { name: 'Assistant sidebar' });
+  expect(
+    within(rail).getByRole('heading', { name: 'Payment context' }),
+  ).toBeVisible();
+  expect(window.location.search).not.toContain('client');
 });

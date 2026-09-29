@@ -26,6 +26,7 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     page.getByRole('region', { name: 'Ledger conversation' }),
   ).toContainText('13,900');
   await expect(message).toBeEnabled();
+  await page.getByRole('button', { name: 'Payments', exact: true }).click();
   await page
     .getByRole('button', {
       name: 'Review payment-northstar-exact',

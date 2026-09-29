@@ -8,6 +8,7 @@ import {
   aging,
   customerStatement,
   findRecords,
+  focusedClient,
   ledgerSummary,
   monthlyTotals,
   selectedPayment,
@@ -22,10 +23,23 @@ import { assertThreadOwner } from './thread-ownership';
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/** What the page says it is looking at, each ID already checked against the ledger. */
+export interface AssistantSelection {
+  readonly selectedPaymentId?: string;
+  readonly focusedClientId?: string;
+  readonly focusedInvoiceId?: string;
+}
+
+const SELECTION_KEYS = [
+  'selectedPaymentId',
+  'focusedClientId',
+  'focusedInvoiceId',
+] as const;
+
 /**
  * The middleware context the assistant's tools read (`assistantTools` in
  * `assistant-tools.ts`): the response schema the nested `render` model is
- * held to, the read-only queries (including the page's selected payment), and `validateUi`, each closed over
+ * held to, the read-only queries (including the page's selected payment and focused client), and `validateUi`, each closed over
  * `current`, which yields the ledger snapshot a call should see. The route
  * middleware builds it from a session; the eval harness from the sample
  * ledger directly, so both share this one shape.
@@ -39,7 +53,7 @@ const record = (value: unknown): value is Record<string, unknown> =>
  */
 export function assistantContext(
   current: () => Promise<LedgerSnapshot>,
-  selectedPaymentId?: string,
+  selection: AssistantSelection = {},
 ) {
   const rendered = { ui: false };
   return Object.freeze({
@@ -57,7 +71,13 @@ export function assistantContext(
     unappliedPayments: async (input: Parameters<typeof unappliedPayments>[1]) =>
       unappliedPayments(await current(), input),
     selectedPayment: async () =>
-      selectedPayment(await current(), selectedPaymentId),
+      selectedPayment(await current(), selection.selectedPaymentId),
+    focusedClient: async () =>
+      focusedClient(
+        await current(),
+        selection.focusedClientId,
+        selection.focusedInvoiceId,
+      ),
     validateUi: async (input: AssistantRenderInput) => {
       const tree = validateUi(await current(), input);
       rendered.ui = true;
@@ -146,19 +166,43 @@ export function createAssistantMiddleware(
         throw new Error('stale_generation');
       return store.snapshot(sessionId);
     };
-    const selectedPaymentId = body.state.selectedPaymentId;
+    const state: Record<string, unknown> = body.state;
     if (
-      selectedPaymentId !== undefined &&
-      (typeof selectedPaymentId !== 'string' ||
-        !(await current()).payments.some((p) => p.id === selectedPaymentId))
+      SELECTION_KEYS.some(
+        (key) => state[key] !== undefined && typeof state[key] !== 'string',
+      )
     )
       return reject(422);
+    const selection: AssistantSelection = Object.fromEntries(
+      SELECTION_KEYS.flatMap((key) => {
+        const value = state[key];
+        return typeof value === 'string' ? [[key, value]] : [];
+      }),
+    );
+    if (selection.focusedInvoiceId && !selection.focusedClientId)
+      return reject(422);
+    if (Object.keys(selection).length > 0) {
+      // A reset between the ownership check and this read is the same stale
+      // conversation: reject it rather than throw.
+      const ledger = await current().catch(() => undefined);
+      if (!ledger) return reject(422);
+      if (
+        (selection.selectedPaymentId !== undefined &&
+          !ledger.payments.some((p) => p.id === selection.selectedPaymentId)) ||
+        (selection.focusedClientId !== undefined &&
+          !ledger.customers.some((c) => c.id === selection.focusedClientId)) ||
+        (selection.focusedInvoiceId !== undefined &&
+          !ledger.invoices.some(
+            (i) =>
+              i.id === selection.focusedInvoiceId &&
+              i.customerId === selection.focusedClientId,
+          ))
+      )
+        return reject(422);
+    }
     return {
       action: 'continue' as const,
-      context: assistantContext(
-        current,
-        typeof selectedPaymentId === 'string' ? selectedPaymentId : undefined,
-      ),
+      context: assistantContext(current, selection),
     };
   };
 }

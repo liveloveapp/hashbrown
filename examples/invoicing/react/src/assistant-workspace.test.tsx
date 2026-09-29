@@ -852,3 +852,43 @@ test('an embedded review does not echo the message that started it', async () =>
   ).not.toBeInTheDocument();
   await settle();
 });
+
+test('a focused client leads the starters and reaches the run state', async () => {
+  cleanup();
+  const { requests, transport } = controlled();
+  const ledger: LedgerSnapshot = {
+    ...snapshot,
+    customers: [
+      {
+        id: 'c',
+        name: 'Cedar Health',
+        currency: 'USD',
+        profile: 'short-payer',
+      },
+    ],
+  };
+  render(
+    <AssistantWorkspace
+      snapshot={ledger}
+      focusedClientId="c"
+      focusedInvoiceId="i"
+      onApplied={() => undefined}
+      transport={transport}
+    />,
+  );
+  const starters = screen.getByRole('group', { name: 'Suggested questions' });
+
+  fireEvent.click(
+    within(starters).getByRole('button', {
+      name: 'What does Cedar Health owe, and how late is it?',
+    }),
+  );
+
+  await waitFor(() => expect(requests).toHaveLength(1));
+  expect(requests[0].input.state).toEqual({
+    focusedClientId: 'c',
+    focusedInvoiceId: 'i',
+  });
+  await screen.findByText('There is one unapplied payment.');
+  await settle();
+});
