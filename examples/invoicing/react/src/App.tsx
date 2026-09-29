@@ -66,7 +66,18 @@ export function App({
     [focusState, snapshot],
   );
   function dispatchFocus(action: FocusAction) {
-    setFocusState(focusReducer(focus, action));
+    setFocusState((prev) =>
+      focusReducer(snapshot ? sanitizeFocus(prev, snapshot) : prev, action),
+    );
+  }
+  // The most recent selection owns the assistant: focusing a client or invoice drops the payment.
+  function handleFocus(action: FocusAction) {
+    dispatchFocus(action);
+    if (action.type !== 'select-client' && action.type !== 'select-invoice')
+      return;
+    setInvoiceChoice('');
+    setReviewNotice('');
+    setSelectedIds((ids) => (ids.length ? [] : ids));
   }
   useEffect(() => {
     const search = focusToSearch(focus);
@@ -80,6 +91,9 @@ export function App({
   const focusedClient = snapshot?.customers.find(
     (customer) => customer.id === focus.clientId,
   );
+  const focusedInvoice = snapshot?.invoices.find(
+    (invoice) => invoice.id === focus.record?.id,
+  );
 
   function selectPayment(ids: string[]) {
     const addedId = ids.find((id) => !selectedIds.includes(id));
@@ -87,6 +101,8 @@ export function App({
     setInvoiceChoice('');
     setReviewNotice('');
     setSelectedIds(nextId ? [nextId] : []);
+    // A payment selected now replaces any client focused earlier.
+    if (nextId) dispatchFocus({ type: 'clear' });
   }
 
   // The assistant asked for an invoice choice: bring the picker to the user.
@@ -101,6 +117,7 @@ export function App({
     setInvoiceChoice('');
     setReviewNotice('');
     setSelectedIds([paymentId]);
+    dispatchFocus({ type: 'clear' });
     setPickerRequest((count) => count + 1);
   }
 
@@ -303,7 +320,7 @@ export function App({
                 <DashboardView
                   snapshot={snapshot}
                   focus={focus}
-                  onFocus={dispatchFocus}
+                  onFocus={handleFocus}
                 />
               )}
               {page === 'Payments' && (
@@ -484,10 +501,13 @@ export function App({
               <span>
                 {focusedClient.currency} · {HABITS[focusedClient.profile].label}
               </span>
+              {focusedInvoice && (
+                <span>{focusedInvoice.reference ?? focusedInvoice.id}</span>
+              )}
             </div>
           ) : (
             <p className="muted">
-              Select an incoming payment to bring its details into the
+              Select a client, invoice or payment to bring its details into the
               conversation.
             </p>
           )}

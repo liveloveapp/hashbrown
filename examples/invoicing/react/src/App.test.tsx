@@ -573,3 +573,50 @@ test('a shared URL opens the dashboard on its focus, dropping ids the ledger doe
   );
   expect(window.location.search).toBe('?tab=invoices');
 });
+
+const ledgerWithClient: LedgerSnapshot = {
+  ...snapshot,
+  customers: [
+    {
+      id: 'customer-001',
+      name: 'Northstar Labs',
+      currency: 'USD',
+      profile: 'on-time',
+    },
+  ],
+};
+
+test('focusing a client replaces a payment selected earlier in the rail', () => {
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
+  cleanup();
+  window.history.replaceState(null, '', '/');
+  render(<App initialSnapshot={ledgerWithClient} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
+
+  fireEvent.click(screen.getByText('Northstar Labs'));
+
+  const rail = screen.getByRole('complementary', { name: 'Assistant sidebar' });
+  expect(
+    within(rail).getByRole('heading', { name: 'Client context' }),
+  ).toBeVisible();
+  expect(rail).not.toHaveTextContent('payment-001');
+});
+
+test('selecting a payment replaces a client focused earlier in the rail', () => {
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
+  cleanup();
+  window.history.replaceState(null, '', '/');
+  render(<App initialSnapshot={ledgerWithClient} />);
+  fireEvent.click(screen.getByText('Northstar Labs'));
+  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
+
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+
+  const rail = screen.getByRole('complementary', { name: 'Assistant sidebar' });
+  expect(
+    within(rail).getByRole('heading', { name: 'Payment context' }),
+  ).toBeVisible();
+  expect(window.location.search).not.toContain('client');
+});

@@ -50,7 +50,7 @@ export function FocusBand({
         key={customerId ?? currency}
         data-outline-bucket={invoice?.bucket ?? undefined}
       >
-        <TrendChart currency={currency} customerId={customerId} months={6} />
+        <TrendChart currency={currency} customerId={customerId} months={12} />
         <AgingSummary currency={currency} customerId={customerId} />
       </div>
     </section>
