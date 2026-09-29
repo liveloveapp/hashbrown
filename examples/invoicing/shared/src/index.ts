@@ -132,6 +132,19 @@ export {
   TERMS_DAYS,
   type AgingBuckets,
 } from './aging';
+export {
+  clientRows,
+  currencyTotals,
+  daysOverdue,
+  invoiceRows,
+  invoiceStatus,
+  invoiceType,
+  type ClientRow,
+  type CurrencyTotals,
+  type InvoiceRow,
+  type InvoiceStatus,
+  type InvoiceType,
+} from './dashboard';
 export type {
   AssistantRenderInput,
   AssistantLeafNode,
