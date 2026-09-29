@@ -54,7 +54,11 @@ export function focusReducer(focus: Focus, action: FocusAction): Focus {
             clientId: action.clientId,
           };
     case 'select-invoice':
-      if (focus.record?.id === action.invoiceId) return focus;
+      if (
+        focus.record?.id === action.invoiceId &&
+        focus.clientId === action.clientId
+      )
+        return focus;
       return {
         tab: focus.tab,
         currency: focus.currency,
@@ -107,7 +111,7 @@ export function focusToSearch(focus: Focus): string {
   if (focus.currency !== DEFAULT_FOCUS.currency)
     params.set('currency', focus.currency);
   if (focus.clientId) params.set('client', focus.clientId);
-  if (focus.record) params.set('invoice', focus.record.id);
+  if (focus.clientId && focus.record) params.set('invoice', focus.record.id);
   const query = params.toString();
   return query ? `?${query}` : '';
 }

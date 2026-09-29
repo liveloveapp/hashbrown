@@ -49,14 +49,42 @@ test('selecting a client focuses it; selecting an invoice focuses its client and
     invoiceId: 'inv-t',
     clientId: 'thistle',
   });
+  const reselected = focusReducer(client, {
+    type: 'select-client',
+    clientId: 'thistle',
+  });
 
   expect(client).toEqual({ ...DEFAULT_FOCUS, clientId: 'thistle' });
-  expect(
-    focusReducer(client, { type: 'select-client', clientId: 'thistle' }),
-  ).toBe(client);
+  expect(reselected).toBe(client);
   expect(invoice).toEqual({
     ...DEFAULT_FOCUS,
     clientId: 'thistle',
+    record: { kind: 'invoice', id: 'inv-t' },
+  });
+});
+
+test('re-selecting the same invoice for the same client bails out; a different client refocuses it', () => {
+  const invoice = {
+    ...DEFAULT_FOCUS,
+    clientId: 'thistle',
+    record: { kind: 'invoice' as const, id: 'inv-t' },
+  };
+
+  const reselected = focusReducer(invoice, {
+    type: 'select-invoice',
+    invoiceId: 'inv-t',
+    clientId: 'thistle',
+  });
+  const otherClient = focusReducer(invoice, {
+    type: 'select-invoice',
+    invoiceId: 'inv-t',
+    clientId: 'harbor',
+  });
+
+  expect(reselected).toBe(invoice);
+  expect(otherClient).toEqual({
+    ...DEFAULT_FOCUS,
+    clientId: 'harbor',
     record: { kind: 'invoice', id: 'inv-t' },
   });
 });
@@ -114,6 +142,17 @@ test('the focus round-trips through the query string, omitting defaults', () => 
   expect(focusFromSearch('?tab=unknown&currency=XYZ')).toEqual(DEFAULT_FOCUS);
 });
 
+test('focusToSearch omits a record that has no client', () => {
+  const focus = {
+    ...DEFAULT_FOCUS,
+    record: { kind: 'invoice' as const, id: 'inv-t' },
+  };
+
+  const search = focusToSearch(focus);
+
+  expect(search).toBe('');
+});
+
 test('sanitizeFocus drops ids the ledger does not know, and records that belong to another client', () => {
   const unknown = sanitizeFocus(
     { ...DEFAULT_FOCUS, clientId: 'nobody' },
@@ -130,4 +169,23 @@ test('sanitizeFocus drops ids the ledger does not know, and records that belong 
 
   expect(unknown).toEqual(DEFAULT_FOCUS);
   expect(mismatched).toEqual({ ...DEFAULT_FOCUS, clientId: 'harbor' });
+});
+
+test('sanitizeFocus keeps a focus the ledger recognises, and drops only an unknown invoice', () => {
+  const known = {
+    ...DEFAULT_FOCUS,
+    clientId: 'thistle',
+    record: { kind: 'invoice' as const, id: 'inv-t' },
+  };
+  const unknownInvoice = {
+    ...DEFAULT_FOCUS,
+    clientId: 'thistle',
+    record: { kind: 'invoice' as const, id: 'inv-ghost' },
+  };
+
+  const kept = sanitizeFocus(known, snapshot);
+  const droppedRecord = sanitizeFocus(unknownInvoice, snapshot);
+
+  expect(kept).toEqual(known);
+  expect(droppedRecord).toEqual({ ...DEFAULT_FOCUS, clientId: 'thistle' });
 });
