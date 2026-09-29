@@ -3822,3 +3822,9 @@ Use superpowers:finishing-a-development-branch. The PR description lists the thr
 - Short-payer residuals (Granite Mutual, Kestrel Energy) dominate age-based sorts on the Invoices tab, as the spec's open items note. The Open chip plus the balance sort keeps them below the large balances.
 - The Payments page, related-invoices panel and match controls are unchanged; PR 2 moves them into the band.
 - The spec's "bars grow with `transform: scaleY`" is not in PR 1: the band reuses the assistant's chart components as they are, and PR 1 animates only the 120 ms crossfade. Adding a grow-in belongs with the PR 3 chart changes.
+- The URL is written with `replaceState` only, so Back does not restore an earlier focus.
+- The assistant run state carries the focused client and invoice but not the tab.
+- The focus reaches the model through a new `focusedClient` tool; the spec only required the server to validate it.
+- The URL uses `currency` and `invoice` keys; the spec's `bucket` key arrives with PR 3.
+- The Dashboard no longer shows the payments grid; it lives only on the Payments page until PR 2.
+- The most recent of payment selection and client focus wins in the assistant rail, so at most one of them is sent as context.
