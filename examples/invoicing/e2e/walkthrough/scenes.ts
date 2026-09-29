@@ -94,7 +94,7 @@ export async function recordApp(
     'React · streaming · generative UI',
   );
   await pause(1200);
-  await glide(page, page.locator('.stats'), false);
+  await glide(page, page.locator('.kpi-strip'), false);
   await pause(700);
 
   await caption(

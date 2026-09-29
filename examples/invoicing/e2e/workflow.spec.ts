@@ -6,6 +6,11 @@ async function snapshot(page: Page): Promise<LedgerSnapshot> {
   return page.evaluate(async () => (await fetch('/api/snapshot')).json());
 }
 
+async function openPayments(page: Page) {
+  await page.getByRole('button', { name: 'Payments', exact: true }).click();
+  await page.getByRole('heading', { name: 'Payments', level: 1 }).waitFor();
+}
+
 test('ambiguous and combined payments require an explicit invoice choice', async ({
   page,
 }) => {
@@ -16,6 +21,7 @@ test('ambiguous and combined payments require an explicit invoice choice', async
   });
   await page.goto('/');
   const baseline = await snapshot(page);
+  await openPayments(page);
 
   await page
     .getByRole('button', {
@@ -55,11 +61,11 @@ test('advance payment cannot start a review without an outstanding invoice', asy
   });
   await page.goto('/');
   const baseline = await snapshot(page);
+  await openPayments(page);
 
   await page
     .getByRole('button', { name: 'Review payment-summit-advance', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Payments', exact: true }).click();
 
   await expect(
     page.getByRole('button', { name: 'Match payment', exact: true }),
@@ -80,6 +86,7 @@ test('failed review releases chat and retries with a fresh thread without changi
   });
   await page.goto('/');
   const baseline = await snapshot(page);
+  await openPayments(page);
   await page
     .getByRole('button', {
       name: 'Review payment-northstar-exact',
@@ -158,6 +165,7 @@ test('lost approval response holds further work until the committed operation is
   });
   await page.goto('/');
   const baseline = await snapshot(page);
+  await openPayments(page);
   await page
     .getByRole('button', {
       name: 'Review payment-northstar-exact',
@@ -204,9 +212,10 @@ test('lost approval response holds further work until the committed operation is
   await expect(
     page.getByRole('textbox', { name: 'Message assistant', exact: true }),
   ).toBeEnabled();
+  await page.getByRole('button', { name: 'Dashboard', exact: true }).click();
   await expect(
     page.getByRole('region', { name: 'Ledger totals', exact: true }),
-  ).toContainText('$11,500.00');
+  ).toContainText('$11,500');
   expect(resumeRequests).toBe(1);
   expect(operationReads).toBeGreaterThanOrEqual(2);
   expect(await snapshot(page)).toEqual(committed);
@@ -223,6 +232,48 @@ test('lost approval response holds further work until the committed operation is
   await expect(
     page.getByRole('button', { name: 'Approve and apply', exact: true }),
   ).toBeDisabled();
+});
+
+test('selecting a client focuses the band, and arrow keys move the focus', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const band = page.getByRole('region', { name: 'Focus', exact: true });
+  const portfolioHeight = (await band.boundingBox())?.height;
+
+  await page
+    .getByRole('treegrid', { name: 'Clients' })
+    .getByText('Thistle Retail')
+    .click();
+
+  await expect(
+    band.getByRole('heading', { name: 'Thistle Retail' }),
+  ).toBeVisible();
+  const strip = page.getByRole('region', {
+    name: 'Ledger totals',
+    exact: true,
+  });
+  await expect(strip).toContainText('£14,000');
+  await expect(strip).toContainText('£8,000');
+  await expect(
+    page.getByRole('button', { name: 'USD', exact: true }),
+  ).toBeDisabled();
+  await expect(page).toHaveURL(/[?&]client=thistle\b/);
+  expect((await band.boundingBox())?.height).toBe(portfolioHeight);
+
+  await page.keyboard.press('ArrowDown');
+
+  await expect(
+    band.getByRole('heading', { name: 'Thistle Retail' }),
+  ).toHaveCount(0);
+  expect((await band.boundingBox())?.height).toBe(portfolioHeight);
+
+  await page.keyboard.press('Escape');
+
+  await expect(
+    band.getByRole('heading', { name: 'All USD clients' }),
+  ).toBeVisible();
+  await expect(page).not.toHaveURL(/client=/);
 });
 
 test('a recorded assistant answer replays as validated generative UI', async ({
