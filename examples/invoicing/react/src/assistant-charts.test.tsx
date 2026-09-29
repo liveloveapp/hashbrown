@@ -230,3 +230,19 @@ test('AgingSummary names each bar row and pluralises the invoice count in its to
   fireEvent.mouseEnter(none);
   expect(screen.getByRole('tooltip')).toHaveTextContent('$0.00 · 0 invoices');
 });
+
+test('AgingSummary shades buckets from light to dark as invoices get older', () => {
+  withSnapshot(<AgingSummary currency="USD" customerId="c" />);
+
+  const fills = [
+    ...document.querySelectorAll<SVGRectElement>('rect[data-bucket]'),
+  ].map((rect) => rect.getAttribute('fill'));
+
+  expect(fills).toEqual([
+    '#94a3b8',
+    '#7b8aa0',
+    '#5f6f86',
+    '#465569',
+    '#1e293b',
+  ]);
+});

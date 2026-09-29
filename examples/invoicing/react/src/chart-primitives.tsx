@@ -10,6 +10,19 @@ export const CHART_TOKENS = {
   '--grid': '#e4e6e5',
 } as CSSProperties;
 
+/**
+ * Ordinal ramp for aging buckets, lighter to darker as invoices get older.
+ * Neutral so it never competes with series 1 ("invoiced"). Validated with the
+ * dataviz palette validator (light, ordinal): all checks pass.
+ */
+export const AGE_RAMP = [
+  '#94a3b8',
+  '#7b8aa0',
+  '#5f6f86',
+  '#465569',
+  '#1e293b',
+] as const;
+
 /** A round gridline step (1/2/5 × 10^n) giving roughly `ticks` lines up to `max`. */
 export function niceStep(max: number, ticks = 4): number {
   if (max <= 0) return 1;

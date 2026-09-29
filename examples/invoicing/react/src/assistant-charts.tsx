@@ -1,5 +1,6 @@
 import { useContext, useId } from 'react';
 import {
+  AGE_RAMP,
   ChartFigure,
   chartTitle,
   compactMoney,
@@ -324,7 +325,7 @@ export function AgingSummary({
             stroke="var(--grid)"
             strokeWidth={1}
           />
-          {bars.map((b) => (
+          {bars.map((b, index) => (
             <g
               key={b.row.bucket}
               data-bucket-row={b.row.bucket}
@@ -356,7 +357,7 @@ export function AgingSummary({
                   width={b.length + 4}
                   height={barHeight}
                   rx={4}
-                  fill="var(--series-1)"
+                  fill={AGE_RAMP[index]}
                 />
               </g>
               <text
