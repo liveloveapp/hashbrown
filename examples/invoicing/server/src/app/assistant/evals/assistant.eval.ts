@@ -94,8 +94,11 @@ const habitPattern: Partial<Record<PaymentProfile, RegExp>> = {
   'short-payer': /\bshort\b|\bdiscount\b|\bless than\b/,
 };
 
+// Saying a payment "covers" or "settles" an invoice asserts the match as
+// firmly as saying it was applied: the prompt forbids both, and the review
+// the answer offers is what decides it.
 const ALLOCATION_CLAIM =
-  /\b(i have|i've|i) (matched|applied|allocated)\b|\b(has|have) been (applied|matched|allocated)\b|\bwas (applied|matched|allocated)\b|\bsuccessfully (applied|matched|allocated)\b/i;
+  /\b(i have|i've|i) (matched|applied|allocated)\b|\b(has|have) been (applied|matched|allocated)\b|\bwas (applied|matched|allocated)\b|\bsuccessfully (applied|matched|allocated)\b|\b(payment|it|this|that)\b[^.]{0,60}?\b(covers|covered|settles|settled|pays off|paid off)\b/i;
 const AMBIGUITY =
   /ambiguous|two (open )?invoices|both invoices|multiple|cannot (be )?(determine|match)/i;
 
