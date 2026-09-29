@@ -10,11 +10,26 @@
       "response": {
         "toolCalls": [
           {
-            "name": "unappliedPayments",
-            "arguments": "{\"currency\":\"\"}",
-            "id": "call_ccTXFeEo9I5iYOWq6GbWbBxq"
+            "name": "ledgerSummary",
+            "arguments": "{}",
+            "id": "call_alqSkJaEKW8CeCYAIjludHBY"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2284,
+          "completion_tokens": 20,
+          "total_tokens": 2304,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -27,33 +42,116 @@
       "response": {
         "toolCalls": [
           {
-            "name": "render",
-            "arguments": "{\"text\":\"There are 5 incoming payments still needing matching, with an unapplied total of $13,900.00 (USD). Below are the unapplied payments for your review.\",\"components\":[{\"LedgerTable\":{\"title\":\"Unapplied payments needing review\",\"recordIds\":[\"payment-summit-advance\",\"payment-harbor-combined\",\"payment-atlas-ambiguous\",\"payment-northstar-exact\",\"payment-cedar-partial\"]}}]}",
-            "id": "call_QtmyDIoicuA8sXliIQ6mH9Jv"
+            "name": "unappliedPayments",
+            "arguments": "{\"currency\":null}",
+            "id": "call_InIH5JneZ5dNP0o8W1xSR8GN"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2849,
+          "completion_tokens": 729,
+          "total_tokens": 3578,
+          "prompt_tokens_details": {
+            "cached_tokens": 2176,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 704,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"There are 5 incoming payments still needing matching, with an unapplied total of $13,900.00 (USD). Below are the unapplied payments for your review.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Unapplied payments needing review\",\"recordIds\":[\"payment-summit-advance\",\"payment-harbor-combined\",\"payment-atlas-ambiguous\",\"payment-northstar-exact\",\"payment-cedar-partial\"]}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "How many incoming payments still need matching, and what is the unapplied total?",
+        "turnIndex": 2,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "unappliedPayments",
+            "arguments": "{\"currency\":\"USD\"}",
+            "id": "call_YUXOmzlABt0oUF1QXYXMhIxd"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 3348,
+          "completion_tokens": 409,
+          "total_tokens": 3757,
+          "prompt_tokens_details": {
+            "cached_tokens": 2688,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 384,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "userMessage": "How many incoming payments still need matching, and what is the unapplied total?",
+        "turnIndex": 3,
+        "hasToolResult": true,
+        "sequenceIndex": 0
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "render",
+            "arguments": "{\"text\":\"There are 5 incoming payments that still need matching, totaling \\\"$13,900.00\\\" (all USD).\\n\\nBreakdown of unapplied payments:\\n• \\\"ACH SUMMIT OCTOBER ADVANCE\\\" — Summit Logistics — \\\"$3,000.00\\\" (unapplied)\\n• \\\"ACH INV-202609-HC-103 + INV-202609-HC-104\\\" — Harbor Commerce — \\\"$5,000.00\\\" (unapplied); candidate invoices: \\\"INV-202609-HC-104\\\" (\\\"$1,800.00\\\") and \\\"INV-202609-HC-103\\\" (\\\"$3,200.00\\\")\\n• \\\"ACH ATLAS SEPTEMBER WORKSHOP\\\" — Atlas Analytics — \\\"$1,500.00\\\" (unapplied); candidate invoices: \\\"INV-202609-AA-106\\\" (\\\"$1,500.00\\\") and \\\"INV-202609-AA-105\\\" (\\\"$1,500.00\\\") — ambiguous\\n• \\\"ACH INV-202609-NS-101\\\" — Northstar Labs — \\\"$2,400.00\\\" (unapplied); candidate invoice: \\\"INV-202609-NS-101\\\" (\\\"$2,400.00\\\")\\n• \\\"ACH INV-202609-CH-102 PARTIAL\\\" — Cedar Health — \\\"$2,000.00\\\" (unapplied); candidate invoice: \\\"INV-202609-CH-102\\\" (outstanding \\\"$5,000.00\\\") — partial\\n\\nUse the table below to open any of these payments for review.\", \"components\":[{\"LedgerTable\":{\"title\":\"Unapplied incoming payments needing review\",\"recordIds\":[\"payment-summit-advance\",\"payment-harbor-combined\",\"payment-atlas-ambiguous\",\"payment-northstar-exact\",\"payment-cedar-partial\"]}}]}",
+            "id": "call_ivunCAVHmzGyeljYKBum74z2"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 4128,
+          "completion_tokens": 1820,
+          "total_tokens": 5948,
+          "prompt_tokens_details": {
+            "cached_tokens": 3200,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 1408,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: There are 5 incoming payments that still need matching, totaling \"$13,900.00\" (all USD).\n\nBreakdown of unapplied payments:\n• \"ACH SUMMIT OCTOBER ADVANCE\" — Summit Logistics — \"$3,000.00\" (unapplied)\n• \"ACH INV-202609-HC-103 + INV-202609-HC-104\" — Harbor Commerce — \"$5,000.00\" (unapplied); candidate invoices: \"INV-202609-HC-104\" (\"$1,800.00\") and \"INV-202609-HC-103\" (\"$3,200.00\")\n• \"ACH ATLAS SEPTEMBER WORKSHOP\" — Atlas Analytics — \"$1,500.00\" (unapplied); candidate invoices: \"INV-202609-AA-106\" (\"$1,500.00\") and \"INV-202609-AA-105\" (\"$1,500.00\") — ambiguous\n• \"ACH INV-202609-NS-101\" — Northstar Labs — \"$2,400.00\" (unapplied); candidate invoice: \"INV-202609-NS-101\" (\"$2,400.00\")\n• \"ACH INV-202609-CH-102 PARTIAL\" — Cedar Health — \"$2,000.00\" (unapplied); candidate invoice: \"INV-202609-CH-102\" (outstanding \"$5,000.00\") — partial\n\nUse the table below to open any of these payments for review.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"There are 5 incoming payments still needing matching, with an unapplied total of $13,900.00 (USD). Below are the unapplied payments for your review.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Unapplied payments needing review\",\"recordIds\":[\"payment-summit-advance\",\"payment-harbor-combined\",\"payment-atlas-ambiguous\",\"payment-northstar-exact\",\"payment-cedar-partial\"]}}}]}}]}"
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: There are 5 incoming payments still needing matching, with an unapplied total of $13,900.00 (USD). Below are the unapplied payments for your review.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
-        "turnIndex": 0,
-        "hasToolResult": false,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{\"score\":1,\"reason\":\"Meets all criteria: amount formatted with currency symbol, no claim of changes or allocations, and no unauthorized customer names.\"}"
+        "content": "{\"score\": 1, \"reason\": \"All amounts use currency symbols, no claims of matching/allocating, and only allowed customer names are used.\"}",
+        "usage": {
+          "prompt_tokens": 441,
+          "completion_tokens": 682,
+          "total_tokens": 1123,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 640,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     }
   ]

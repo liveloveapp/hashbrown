@@ -137,10 +137,12 @@ for (const toolRound of [false, true]) {
             }),
           ]),
         );
+        // aimock types a journaled request body as `unknown` (1.43+).
+        const toolRoundBody = mock.getRequests()[1].body as {
+          messages?: ReadonlyArray<{ role?: string }>;
+        } | null;
         expect(
-          mock
-            .getRequests()[1]
-            .body?.messages.filter((message) => message.role === 'tool'),
+          toolRoundBody?.messages?.filter((message) => message.role === 'tool'),
         ).toHaveLength(1);
       }
       expect(errors).toEqual([]);

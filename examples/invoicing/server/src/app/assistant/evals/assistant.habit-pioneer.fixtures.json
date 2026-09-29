@@ -12,9 +12,24 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_HVo5L5IxbMF6up3iR51MmaSK"
+            "id": "call_3n3kvRiZf0csWYAnjxWowAno"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2275,
+          "completion_tokens": 20,
+          "total_tokens": 2295,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -29,9 +44,24 @@
           {
             "name": "customerStatement",
             "arguments": "{\"customerId\":\"pioneer\"}",
-            "id": "call_GGQpIZH1lbZ00wJxc26KPSoI"
+            "id": "call_YamdgynACazLRcvmly41Avyn"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2840,
+          "completion_tokens": 281,
+          "total_tokens": 3121,
+          "prompt_tokens_details": {
+            "cached_tokens": 2048,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 256,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -45,32 +75,51 @@
         "toolCalls": [
           {
             "name": "render",
-            "arguments": "{\"text\":\"Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days\\n- Late payment rate: 1 (they pay late consistently)\\n- Last payment: 2026-09-05\\n- Outstanding balance: \\\"$9,950.00\\\"\\n\\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\",\"components\":[{\"LedgerTable\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}},{\"CustomerCard\":{\"customerId\":\"pioneer\"}}]}",
-            "id": "call_QVnkJmR5frhXad8k0YyVk620"
+            "arguments": "{\"text\":\"They’re a late, consistently-late payer: profile “late-fixed,” with an average payment lag of 39 days.\\n\\nSupporting figures (Pioneer Robotics): invoiced $184,700.00, received $174,750.00, open $9,950.00 across 2 invoices. Late payment rate: 100% (latePaymentRate = 1). Last payment on record: 2026-09-05.\\n\\nOpen invoices (references and outstanding): INV-202609-PIONEER — $5,700.00; INV-202608-PIONEER-P2 — $4,250.00. Use the card below for Pioneer’s profile and the table to inspect those open invoices.\", \"components\":[{\"LedgerTable\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}},{\"CustomerCard\":{\"customerId\":\"pioneer\"}}]}",
+            "id": "call_ImBgRYJ8eFyaJOtlrA5JI8cs"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 3173,
+          "completion_tokens": 1436,
+          "total_tokens": 4609,
+          "prompt_tokens_details": {
+            "cached_tokens": 2688,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 1216,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days\\n- Late payment rate: 1 (they pay late consistently)\\n- Last payment: 2026-09-05\\n- Outstanding balance: \\\"$9,950.00\\\"\\n\\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"pioneer\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: They’re a late, consistently-late payer: profile “late-fixed,” with an average payment lag of 39 days.\n\nSupporting figures (Pioneer Robotics): invoiced $184,700.00, received $174,750.00, open $9,950.00 across 2 invoices. Late payment rate: 100% (latePaymentRate = 1). Last payment on record: 2026-09-05.\n\nOpen invoices (references and outstanding): INV-202609-PIONEER — $5,700.00; INV-202608-PIONEER-P2 — $4,250.00. Use the card below for Pioneer’s profile and the table to inspect those open invoices.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\\n\\n- Profile: late-fixed\\n- Average days to pay: 39 days\\n- Late payment rate: 1 (they pay late consistently)\\n- Last payment: 2026-09-05\\n- Outstanding balance: \\\"$9,950.00\\\"\\n\\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"Pioneer Robotics — open invoices\",\"recordIds\":[\"invoice-pioneer-2026-09\",\"invoice-pioneer-2026-08-p2\"]}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"pioneer\"}}}]}}]}"
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Pioneer Robotics is a “late-fixed” payer: they typically pay late by a consistent amount. Key metrics:\n\n- Profile: late-fixed\n- Average days to pay: 39 days\n- Late payment rate: 1 (they pay late consistently)\n- Last payment: 2026-09-05\n- Outstanding balance: \"$9,950.00\"\n\nI’ve listed their open invoices below so you can review specifics and decide whether to send reminders or adjust terms.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
-        "turnIndex": 0,
-        "hasToolResult": false,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{\"score\": 1, \"reason\": \"All criteria met: currency formatted with symbol, no claims of changing/matching/allocating, and only an allowed customer name used.\"}"
+        "content": "{\"score\": 1, \"reason\": \"All criteria met: currency-formatted amounts, no allocation/matching claims, allowed customer name (Pioneer Robotics).\"}",
+        "usage": {
+          "prompt_tokens": 266,
+          "completion_tokens": 427,
+          "total_tokens": 693,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 384,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     }
   ]

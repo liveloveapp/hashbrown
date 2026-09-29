@@ -12,9 +12,24 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_dWIeLDhogKUET4QrPJD72t4W"
+            "id": "call_LXcNlQ4SAR9uwGv1KnDpBUF4"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2275,
+          "completion_tokens": 20,
+          "total_tokens": 2295,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -29,9 +44,24 @@
           {
             "name": "customerStatement",
             "arguments": "{\"customerId\":\"summit\"}",
-            "id": "call_kE6af69fz6VY8HiiTuUTbNTS"
+            "id": "call_8VDcBy0NYfJHNCRZNxEHU1u3"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2840,
+          "completion_tokens": 89,
+          "total_tokens": 2929,
+          "prompt_tokens_details": {
+            "cached_tokens": 2048,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 64,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -45,32 +75,51 @@
         "toolCalls": [
           {
             "name": "render",
-            "arguments": "{\"text\":\"Summit Logistics is an “on-time” payer: average days to pay 8 days, late payment rate 0%. Last payment received on 2026-09-15. They currently have no open invoices.\\n\\nTotals for Summit: invoiced \\\"$178,550.00\\\", received \\\"$181,550.00\\\", and an unapplied balance of \\\"$3,000.00\\\". There is one unapplied payment (id: \\\"payment-summit-advance\\\", reference: \\\"ACH SUMMIT OCTOBER ADVANCE\\\", date: 2026-09-15, amount: \\\"$3,000.00\\\"). The payment reference contains “ACH”, which suggests they use ACH transfers.\\n\\nIf you’d like, I can show the unapplied payment for review or attempt to match it to open invoices — tell me if you want to review that payment.\",\"components\":[{\"CustomerCard\":{\"customerId\":\"summit\"}}]}",
-            "id": "call_qdwqHnY69UucZdJk15ufiiqP"
+            "arguments": "{\"text\":\"Summit Logistics pays on time. Their profile is “on-time” and they typically pay quickly (average 8 days; late payment rate 0%). Their most recent incoming payment is referenced “ACH SUMMIT OCTOBER ADVANCE” and is currently an unapplied amount of \\\"$3,000.00\\\" (received 2026-09-15) — the reference suggests an ACH transfer.\\n\\nKey figures for Summit Logistics:\\n- Invoiced: \\\"$178,550.00\\\"\\n- Received: \\\"$181,550.00\\\"\\n- Open balance: \\\"$0.00\\\"\\n- Unapplied: \\\"$3,000.00\\\"\\n- Average days to pay: 8\\n- Late payment rate: 0%\\n\\nIf you’d like, I can prepare a review to apply the unapplied payment “ACH SUMMIT OCTOBER ADVANCE” to outstanding invoices.\",\"components\":[{\"CustomerCard\":{\"customerId\":\"summit\"}},{\"ReviewPayment\":{\"paymentId\":\"payment-summit-advance\"}}]}",
+            "id": "call_sHVLezc8hkDBr1r16FlHNYKH"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 3106,
+          "completion_tokens": 1449,
+          "total_tokens": 4555,
+          "prompt_tokens_details": {
+            "cached_tokens": 2688,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 1216,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summit Logistics is an “on-time” payer: average days to pay 8 days, late payment rate 0%. Last payment received on 2026-09-15. They currently have no open invoices.\\n\\nTotals for Summit: invoiced \\\"$178,550.00\\\", received \\\"$181,550.00\\\", and an unapplied balance of \\\"$3,000.00\\\". There is one unapplied payment (id: \\\"payment-summit-advance\\\", reference: \\\"ACH SUMMIT OCTOBER ADVANCE\\\", date: 2026-09-15, amount: \\\"$3,000.00\\\"). The payment reference contains “ACH”, which suggests they use ACH transfers.\\n\\nIf you’d like, I can show the unapplied payment for review or attempt to match it to open invoices — tell me if you want to review that payment.\"},\"children\":[{\"CustomerCard\":{\"props\":{\"customerId\":\"summit\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summit Logistics pays on time. Their profile is “on-time” and they typically pay quickly (average 8 days; late payment rate 0%). Their most recent incoming payment is referenced “ACH SUMMIT OCTOBER ADVANCE” and is currently an unapplied amount of \"$3,000.00\" (received 2026-09-15) — the reference suggests an ACH transfer.\n\nKey figures for Summit Logistics:\n- Invoiced: \"$178,550.00\"\n- Received: \"$181,550.00\"\n- Open balance: \"$0.00\"\n- Unapplied: \"$3,000.00\"\n- Average days to pay: 8\n- Late payment rate: 0%\n\nIf you’d like, I can prepare a review to apply the unapplied payment “ACH SUMMIT OCTOBER ADVANCE” to outstanding invoices.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Summit Logistics is an “on-time” payer: average days to pay 8 days, late payment rate 0%. Last payment received on 2026-09-15. They currently have no open invoices.\\n\\nTotals for Summit: invoiced \\\"$178,550.00\\\", received \\\"$181,550.00\\\", and an unapplied balance of \\\"$3,000.00\\\". There is one unapplied payment (id: \\\"payment-summit-advance\\\", reference: \\\"ACH SUMMIT OCTOBER ADVANCE\\\", date: 2026-09-15, amount: \\\"$3,000.00\\\"). The payment reference contains “ACH”, which suggests they use ACH transfers.\\n\\nIf you’d like, I can show the unapplied payment for review or attempt to match it to open invoices — tell me if you want to review that payment.\"},\"children\":[{\"CustomerCard\":{\"props\":{\"customerId\":\"summit\"}}}]}}]}"
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Summit Logistics is an “on-time” payer: average days to pay 8 days, late payment rate 0%. Last payment received on 2026-09-15. They currently have no open invoices.\n\nTotals for Summit: invoiced \"$178,550.00\", received \"$181,550.00\", and an unapplied balance of \"$3,000.00\". There is one unapplied payment (id: \"payment-summit-advance\", reference: \"ACH SUMMIT OCTOBER ADVANCE\", date: 2026-09-15, amount: \"$3,000.00\"). The payment reference contains “ACH”, which suggests they use ACH transfers.\n\nIf you’d like, I can show the unapplied payment for review or attempt to match it to open invoices — tell me if you want to review that payment.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
-        "turnIndex": 0,
-        "hasToolResult": false,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{\"score\":1,\"reason\":\"Meets all criteria: amounts use currency symbols, no claims of matching/allocating, and customer name is allowed.\"}"
+        "content": "{\"score\": 1, \"reason\": \"Compliant: currency formatted, no actions claimed, allowed customer name used.\"}",
+        "usage": {
+          "prompt_tokens": 297,
+          "completion_tokens": 419,
+          "total_tokens": 716,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 384,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     }
   ]

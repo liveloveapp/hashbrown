@@ -12,9 +12,24 @@
           {
             "name": "ledgerSummary",
             "arguments": "{}",
-            "id": "call_RMDcjXp3QzPsoElCnyyNiCFl"
+            "id": "call_gWJFaEh6KgmL2rFGKTtT9HoS"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2286,
+          "completion_tokens": 20,
+          "total_tokens": 2306,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -29,9 +44,24 @@
           {
             "name": "aging",
             "arguments": "{\"currency\":\"GBP\"}",
-            "id": "call_EXWKIbDyjfqJ7FHVz6zdz6fB"
+            "id": "call_heVkAJGouGOw4BQQ0SgZXwfe"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 2851,
+          "completion_tokens": 87,
+          "total_tokens": 2938,
+          "prompt_tokens_details": {
+            "cached_tokens": 2176,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 64,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
@@ -45,32 +75,51 @@
         "toolCalls": [
           {
             "name": "render",
-            "arguments": "{\"text\":\"Kestrel Energy (customer ID: kestrel) has the largest balance more than 90 days past net-30: £3,093.00. See the over-90 invoices and Kestrel's customer card below.\",\"components\":[{\"LedgerTable\":{\"title\":\"GBP invoices >90 days (over90)\",\"recordIds\":[\"invoice-kestrel-2024-10\",\"invoice-kestrel-2024-10-p1\",\"invoice-kestrel-2024-11\",\"invoice-kestrel-2024-11-p2\",\"invoice-kestrel-2024-12\",\"invoice-kestrel-2025-01\",\"invoice-kestrel-2025-01-p1\",\"invoice-kestrel-2025-02\",\"invoice-kestrel-2025-02-p2\",\"invoice-kestrel-2025-03\",\"invoice-kestrel-2025-03-p3\",\"invoice-kestrel-2025-04\",\"invoice-kestrel-2025-04-p1\",\"invoice-kestrel-2025-05\",\"invoice-kestrel-2025-05-p2\",\"invoice-kestrel-2025-06\",\"invoice-kestrel-2025-06-p3\",\"invoice-kestrel-2025-07\",\"invoice-kestrel-2025-07-p1\",\"invoice-kestrel-2025-08\",\"invoice-kestrel-2025-08-p2\",\"invoice-kestrel-2025-09\",\"invoice-kestrel-2025-09-p3\",\"invoice-kestrel-2025-10\",\"invoice-kestrel-2025-10-p1\",\"invoice-kestrel-2025-11\",\"invoice-kestrel-2025-12\",\"invoice-kestrel-2026-01\",\"invoice-kestrel-2026-01-p1\",\"invoice-kestrel-2026-02\",\"invoice-kestrel-2026-02-p2\",\"invoice-kestrel-2026-03\",\"invoice-kestrel-2026-03-p3\",\"invoice-kestrel-2026-04\",\"invoice-kestrel-2026-04-p1\",\"invoice-kestrel-2026-05\"]}},{\"AgingSummary\":{\"currency\":\"GBP\"}},{\"CustomerCard\":{\"customerId\":\"kestrel\"}}]}",
-            "id": "call_ba3lsPLs9Y9t3oFKwb27cdS1"
+            "arguments": "{\"text\":\"Kestrel Energy — £3,093.00 is the largest GBP balance more than 90 days past net-30.\\n\\nAll of the GBP amounts in the over‑90 bucket are for Kestrel Energy: £3,093.00 across 36 invoices. Thistle Retail has no GBP invoices over 90 days.\\n\\nBelow are the over‑90 invoices for review, the GBP aging summary, and Kestrel Energy’s customer card.\",\"components\":[{\"LedgerTable\":{\"title\":\"GBP invoices >90 days (candidates)\",\"recordIds\":[\"invoice-kestrel-2024-10\",\"invoice-kestrel-2024-10-p1\",\"invoice-kestrel-2024-11\",\"invoice-kestrel-2024-11-p2\",\"invoice-kestrel-2024-12\",\"invoice-kestrel-2025-01\",\"invoice-kestrel-2025-01-p1\",\"invoice-kestrel-2025-02\",\"invoice-kestrel-2025-02-p2\",\"invoice-kestrel-2025-03\",\"invoice-kestrel-2025-03-p3\",\"invoice-kestrel-2025-04\",\"invoice-kestrel-2025-04-p1\",\"invoice-kestrel-2025-05\",\"invoice-kestrel-2025-05-p2\",\"invoice-kestrel-2025-06\",\"invoice-kestrel-2025-06-p3\",\"invoice-kestrel-2025-07\",\"invoice-kestrel-2025-07-p1\",\"invoice-kestrel-2025-08\",\"invoice-kestrel-2025-08-p2\",\"invoice-kestrel-2025-09\",\"invoice-kestrel-2025-09-p3\",\"invoice-kestrel-2025-10\",\"invoice-kestrel-2025-10-p1\",\"invoice-kestrel-2025-11\",\"invoice-kestrel-2025-12\",\"invoice-kestrel-2026-01\",\"invoice-kestrel-2026-01-p1\",\"invoice-kestrel-2026-02\",\"invoice-kestrel-2026-02-p2\",\"invoice-kestrel-2026-03\",\"invoice-kestrel-2026-03-p3\",\"invoice-kestrel-2026-04\",\"invoice-kestrel-2026-04-p1\",\"invoice-kestrel-2026-05\"]}},{\"AgingSummary\":{\"currency\":\"GBP\"}},{\"CustomerCard\":{\"customerId\":\"kestrel\"}}]}",
+            "id": "call_56lGoGkvR3rvXjY276zslxuE"
           }
-        ]
+        ],
+        "usage": {
+          "prompt_tokens": 3532,
+          "completion_tokens": 2918,
+          "total_tokens": 6450,
+          "prompt_tokens_details": {
+            "cached_tokens": 2688,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 2368,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     },
     {
       "match": {
-        "userMessage": "Return exactly this JSON, preserving every value and key: {\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Kestrel Energy (customer ID: kestrel) has the largest balance more than 90 days past net-30: £3,093.00. See the over-90 invoices and Kestrel's customer card below.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"GBP invoices >90 days (over90)\",\"recordIds\":[\"invoice-kestrel-2024-10\",\"invoice-kestrel-2024-10-p1\",\"invoice-kestrel-2024-11\",\"invoice-kestrel-2024-11-p2\",\"invoice-kestrel-2024-12\",\"invoice-kestrel-2025-01\",\"invoice-kestrel-2025-01-p1\",\"invoice-kestrel-2025-02\",\"invoice-kestrel-2025-02-p2\",\"invoice-kestrel-2025-03\",\"invoice-kestrel-2025-03-p3\",\"invoice-kestrel-2025-04\",\"invoice-kestrel-2025-04-p1\",\"invoice-kestrel-2025-05\",\"invoice-kestrel-2025-05-p2\",\"invoice-kestrel-2025-06\",\"invoice-kestrel-2025-06-p3\",\"invoice-kestrel-2025-07\",\"invoice-kestrel-2025-07-p1\",\"invoice-kestrel-2025-08\",\"invoice-kestrel-2025-08-p2\",\"invoice-kestrel-2025-09\",\"invoice-kestrel-2025-09-p3\",\"invoice-kestrel-2025-10\",\"invoice-kestrel-2025-10-p1\",\"invoice-kestrel-2025-11\",\"invoice-kestrel-2025-12\",\"invoice-kestrel-2026-01\",\"invoice-kestrel-2026-01-p1\",\"invoice-kestrel-2026-02\",\"invoice-kestrel-2026-02-p2\",\"invoice-kestrel-2026-03\",\"invoice-kestrel-2026-03-p3\",\"invoice-kestrel-2026-04\",\"invoice-kestrel-2026-04-p1\",\"invoice-kestrel-2026-05\"]}}},{\"AgingSummary\":{\"props\":{\"currency\":\"GBP\",\"customerId\":null}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"kestrel\"}}}]}}]} Copy every string value exactly, including punctuation, quotes and whitespace; do not correct, trim, translate or reformat anything.",
+        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Kestrel Energy — £3,093.00 is the largest GBP balance more than 90 days past net-30.\n\nAll of the GBP amounts in the over‑90 bucket are for Kestrel Energy: £3,093.00 across 36 invoices. Thistle Retail has no GBP invoices over 90 days.\n\nBelow are the over‑90 invoices for review, the GBP aging summary, and Kestrel Energy’s customer card.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
         "turnIndex": 0,
         "hasToolResult": false,
         "sequenceIndex": 0
       },
       "response": {
-        "content": "{\"ui\":[{\"AssistantText\":{\"props\":{\"text\":\"Kestrel Energy (customer ID: kestrel) has the largest balance more than 90 days past net-30: £3,093.00. See the over-90 invoices and Kestrel's customer card below.\"},\"children\":[{\"LedgerTable\":{\"props\":{\"title\":\"GBP invoices >90 days (over90)\",\"recordIds\":[\"invoice-kestrel-2024-10\",\"invoice-kestrel-2024-10-p1\",\"invoice-kestrel-2024-11\",\"invoice-kestrel-2024-11-p2\",\"invoice-kestrel-2024-12\",\"invoice-kestrel-2025-01\",\"invoice-kestrel-2025-01-p1\",\"invoice-kestrel-2025-02\",\"invoice-kestrel-2025-02-p2\",\"invoice-kestrel-2025-03\",\"invoice-kestrel-2025-03-p3\",\"invoice-kestrel-2025-04\",\"invoice-kestrel-2025-04-p1\",\"invoice-kestrel-2025-05\",\"invoice-kestrel-2025-05-p2\",\"invoice-kestrel-2025-06\",\"invoice-kestrel-2025-06-p3\",\"invoice-kestrel-2025-07\",\"invoice-kestrel-2025-07-p1\",\"invoice-kestrel-2025-08\",\"invoice-kestrel-2025-08-p2\",\"invoice-kestrel-2025-09\",\"invoice-kestrel-2025-09-p3\",\"invoice-kestrel-2025-10\",\"invoice-kestrel-2025-10-p1\",\"invoice-kestrel-2025-11\",\"invoice-kestrel-2025-12\",\"invoice-kestrel-2026-01\",\"invoice-kestrel-2026-01-p1\",\"invoice-kestrel-2026-02\",\"invoice-kestrel-2026-02-p2\",\"invoice-kestrel-2026-03\",\"invoice-kestrel-2026-03-p3\",\"invoice-kestrel-2026-04\",\"invoice-kestrel-2026-04-p1\",\"invoice-kestrel-2026-05\"]}}},{\"AgingSummary\":{\"props\":{\"currency\":\"GBP\",\"customerId\":null}}},{\"CustomerCard\":{\"props\":{\"customerId\":\"kestrel\"}}}]}}]}"
-      }
-    },
-    {
-      "match": {
-        "userMessage": "Criteria: States amounts as formatted currency with a currency symbol; never claims to have changed, matched, or allocated anything; does not invent customer names beyond these: Northstar Labs, Cedar Health, Harbor Commerce, Atlas Analytics, Summit Logistics, Juniper Studio, Pioneer Robotics, Granite Mutual, Lumen Fintech, Orbital Media, Thistle Retail, Kestrel Energy.\nAgent output: Kestrel Energy (customer ID: kestrel) has the largest balance more than 90 days past net-30: £3,093.00. See the over-90 invoices and Kestrel's customer card below.\nRespond ONLY with JSON: {\"score\": <0..1>, \"reason\": \"<short>\"}.",
-        "turnIndex": 0,
-        "hasToolResult": false,
-        "sequenceIndex": 0
-      },
-      "response": {
-        "content": "{\"score\":1.0, \"reason\":\"Meets all criteria: amount formatted with currency symbol, no claims of changes/matching/allocation, and allowed customer name used.\"}"
+        "content": "{\"score\": 1.0, \"reason\": \"All criteria met: amounts use a currency symbol and formatting; no claims of changing/matching/allocating; only allowed customer names used.\"}",
+        "usage": {
+          "prompt_tokens": 212,
+          "completion_tokens": 370,
+          "total_tokens": 582,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 320,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
       }
     }
   ]
