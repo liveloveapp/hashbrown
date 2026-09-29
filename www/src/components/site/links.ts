@@ -8,6 +8,9 @@ export const DEFAULT_SDK: Sdk = 'angular';
 /** The GitHub repository the header and footer link to. */
 export const GITHUB_REPO_URL = 'https://github.com/liveloveapp/hashbrown';
 
+/** The hosted invoicing example app the header's "demo" link opens. */
+export const DEMO_URL = 'https://invoicing.hashbrown.dev';
+
 /** Window event that opens the search overlay (from `SearchOverlay.ts`). */
 export const SEARCH_OVERLAY_OPEN_EVENT = 'hashbrown:search-overlay:open';
 
