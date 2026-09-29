@@ -134,3 +134,24 @@ export function sanitizeFocus(focus: Focus, snapshot: LedgerSnapshot): Focus {
     ? { ...base, clientId: focus.clientId, record }
     : { ...base, clientId: focus.clientId };
 }
+
+/** What the page tells the assistant it is looking at. */
+export interface AssistantSelection {
+  readonly selectedPaymentId?: string;
+  readonly focusedClientId?: string;
+  readonly focusedInvoiceId?: string;
+}
+
+/**
+ * The assistant run state for a selection, with unset keys left out: the
+ * server validates every key it receives against the session's ledger.
+ */
+export function assistantRunState(
+  selection: AssistantSelection,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(selection).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  );
+}

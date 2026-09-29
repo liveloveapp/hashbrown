@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import type { LedgerSnapshot } from '@invoicing/contracts';
 import {
+  assistantRunState,
   DEFAULT_FOCUS,
   focusFromSearch,
   focusReducer,
@@ -188,4 +189,22 @@ test('sanitizeFocus keeps a focus the ledger recognises, and drops only an unkno
 
   expect(kept).toEqual(known);
   expect(droppedRecord).toEqual({ ...DEFAULT_FOCUS, clientId: 'thistle' });
+});
+
+test('assistantRunState keeps only the selections that are set', () => {
+  const selections = [
+    {},
+    { selectedPaymentId: 'p' },
+    { focusedClientId: 'thistle', focusedInvoiceId: undefined },
+    { focusedClientId: 'thistle', focusedInvoiceId: 'inv-t' },
+  ];
+
+  const states = selections.map(assistantRunState);
+
+  expect(states).toEqual([
+    {},
+    { selectedPaymentId: 'p' },
+    { focusedClientId: 'thistle' },
+    { focusedClientId: 'thistle', focusedInvoiceId: 'inv-t' },
+  ]);
 });
