@@ -12,7 +12,6 @@ test('footer links match the Angular footer', () => {
     'https://analogjs.org',
     '/docs/react/start/intro',
     '/api',
-    '/samples',
     '/llms.txt',
     '/llms-full.txt',
     '/blog',

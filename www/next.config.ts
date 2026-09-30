@@ -11,13 +11,22 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: repoRoot,
   // The repo keeps its own AGENTS.md; don't let `next dev` write copies here.
   agentRules: false,
-  // The migration guides moved to /docs/<sdk>/migrations in #579.
   async redirects() {
-    return ['react', 'angular'].map((sdk) => ({
-      source: `/docs/${sdk}/start/migration`,
-      destination: `/docs/${sdk}/migrations/v0-6`,
-      statusCode: 301 as const,
-    }));
+    return [
+      // The migration guides moved to /docs/<sdk>/migrations in #579.
+      ...['react', 'angular'].map((sdk) => ({
+        source: `/docs/${sdk}/start/migration`,
+        destination: `/docs/${sdk}/migrations/v0-6`,
+        statusCode: 301 as const,
+      })),
+      // The /samples pages were retired; the example app's docs page (React,
+      // the example's own framework) carries its walkthrough video now.
+      ...['/samples', '/samples/:path*'].map((source) => ({
+        source,
+        destination: '/docs/react/start/sample',
+        statusCode: 301 as const,
+      })),
+    ];
   },
 };
 

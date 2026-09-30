@@ -39,13 +39,15 @@ function reset() {
 function stubFetch(indexResponse: () => Response = () => Response.json(INDEX)) {
   reset();
   const chatBodies: string[] = [];
-  const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
-    if (String(url) === '/_/search-index') {
-      return indexResponse();
-    }
-    chatBodies.push(String(init?.body ?? ''));
-    return new Promise<Response>(() => undefined);
-  });
+  const fetchMock = vi.fn(
+    async (url: RequestInfo | URL, init?: RequestInit) => {
+      if (String(url) === '/_/search-index') {
+        return indexResponse();
+      }
+      chatBodies.push(String(init?.body ?? ''));
+      return new Promise<Response>(() => undefined);
+    },
+  );
   vi.stubGlobal('fetch', fetchMock);
   return { fetchMock, chatBodies };
 }
@@ -203,7 +205,9 @@ test('the clear button empties the query and refocuses it', async () => {
 
   expect(queryInput()?.value).toBe('');
   expect(document.activeElement).toBe(queryInput());
-  expect(document.querySelector('button[aria-label="Clear search"]')).toBeNull();
+  expect(
+    document.querySelector('button[aria-label="Clear search"]'),
+  ).toBeNull();
 });
 
 test('says so when the index fails to load, and keeps search disabled', async () => {

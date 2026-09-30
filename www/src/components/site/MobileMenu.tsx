@@ -25,7 +25,7 @@ const FOCUSABLE =
 
 /**
  * The open mobile menu: a fullscreen panel with the docs/api switcher, the
- * selected menu, and links to examples, the demo, blog and quick start. Ports the
+ * selected menu, and links to the demo, blog and quick start. Ports the
  * `.fullscreen` content of the Angular header's `FullscreenMenu`.
  */
 export function MobileMenuPanel({
@@ -118,9 +118,6 @@ export function MobileMenuPanel({
             {apiMenu}
           </div>
           <div className={styles.footer}>
-            <Link href="/samples" onClick={onClose}>
-              examples
-            </Link>
             <a
               href={DEMO_URL}
               target="_blank"

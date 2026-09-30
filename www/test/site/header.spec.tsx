@@ -19,7 +19,6 @@ test('header links match the Angular header for react', () => {
     '/',
     '/docs/react/start/intro',
     '/api',
-    '/samples',
     'https://invoicing.hashbrown.dev',
     '/blog',
     'https://github.com/liveloveapp/hashbrown',
@@ -46,9 +45,10 @@ test('the header renders the nav labels and logo', () => {
 
   expect(html).toContain('src="/image/logo/word-mark.svg"');
   expect(html).toContain('alt="hashbrown"');
-  for (const label of ['docs', 'api', 'example', 'blog', 'Quick start']) {
+  for (const label of ['docs', 'api', 'blog', 'Quick start']) {
     expect(html).toContain(`>${label}</a>`);
   }
+  expect(html).not.toContain('>example</a>');
   expect(html).toContain('on GitHub');
 });
 
@@ -87,7 +87,7 @@ test('the mobile menu button has an accessible name and starts closed', () => {
   expect(html).not.toContain('role="dialog"');
 });
 
-test('the mobile menu panel links to examples, the demo, blog and quick start', () => {
+test('the mobile menu panel links to the demo, blog and quick start', () => {
   const html = renderToStaticMarkup(
     <MobileMenuPanel
       id="menu"
@@ -102,7 +102,7 @@ test('the mobile menu panel links to examples, the demo, blog and quick start', 
 
   expect(html).toContain('role="dialog"');
   expect(html).toMatch(/<button[^>]*aria-label="Close menu"/);
-  expect(html).toContain('href="/samples"');
+  expect(html).not.toContain('href="/samples"');
   expect(html).toMatch(
     /<a [^>]*href="https:\/\/invoicing\.hashbrown\.dev"[^>]*target="_blank"[^>]*>demo<\/a>/,
   );

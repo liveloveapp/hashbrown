@@ -19,3 +19,22 @@ test('keeps the Analog site redirects for the old migration guides', async () =>
     ]),
   );
 });
+
+test('the retired /samples pages redirect to the example app docs', async () => {
+  const redirects = await nextConfig.redirects?.();
+
+  expect(redirects).toEqual(
+    expect.arrayContaining([
+      {
+        source: '/samples',
+        destination: '/docs/react/start/sample',
+        statusCode: 301,
+      },
+      {
+        source: '/samples/:path*',
+        destination: '/docs/react/start/sample',
+        statusCode: 301,
+      },
+    ]),
+  );
+});

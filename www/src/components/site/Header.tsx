@@ -51,11 +51,6 @@ export function Header({
                 </NavLink>
               </li>
               <li>
-                <NavLink href="/samples" activeClassName={active}>
-                  example
-                </NavLink>
-              </li>
-              <li>
                 <a
                   href={DEMO_URL}
                   target="_blank"

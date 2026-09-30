@@ -171,7 +171,7 @@ keyed differently.
 
 ## Walkthrough video
 
-The video on [hashbrown.dev/samples](https://hashbrown.dev/samples) is
+The video on the [example app docs](https://hashbrown.dev/docs/react/start/sample) is
 recorded from this app, against the live model:
 
 ```sh
@@ -195,7 +195,7 @@ store. With `BLOB_READ_WRITE_TOKEN` (the store's token, set on the
 `hashbrown-www` project) and `VERCEL_TOKEN` in the environment, the target
 uploads it under a content-hashed name and prints the URL; otherwise it prints
 the upload command. Put that URL in
-`www/src/components/samples/walkthrough.ts`. Every run differs a little, so
+`www/src/components/elements/walkthrough.ts`. Every run differs a little, so
 watch the video before publishing it. `npx nx test-walkthrough invoicing-e2e`
 covers the timing logic.
 

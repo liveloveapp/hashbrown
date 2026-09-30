@@ -11,7 +11,7 @@
 // BLOB_READ_WRITE_TOKEN (the hashbrown-www-media store's token) and
 // VERCEL_TOKEN set, it uploads the video to Vercel Blob under a
 // content-hashed name and prints the URL to put in
-// www/src/components/samples/walkthrough.ts. Answers come from a live model,
+// www/src/components/elements/walkthrough.ts. Answers come from a live model,
 // so every run differs a little; watch the video before publishing it.
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -114,7 +114,7 @@ async function publish(video: string) {
     { cwd: ROOT, stdio: ['ignore', 'inherit', 'inherit'] },
   );
   console.log(
-    'Set WALKTHROUGH_VIDEO_URL in www/src/components/samples/walkthrough.ts to the URL above.',
+    'Set WALKTHROUGH_VIDEO_URL in www/src/components/elements/walkthrough.ts to the URL above.',
   );
 }
 
