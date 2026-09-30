@@ -34,7 +34,14 @@ const snapshot: LedgerSnapshot = {
       outstandingCents: 240000,
     },
   ],
-  customers: [],
+  customers: [
+    {
+      id: 'customer-001',
+      name: 'Northstar Labs',
+      currency: 'USD',
+      profile: 'on-time',
+    },
+  ],
   allocations: [],
   activities: [],
 };
@@ -57,29 +64,6 @@ test('lands on Dashboard with canonical totals and an open Assistant', () => {
   expect(
     screen.getByRole('complementary', { name: 'Assistant sidebar' }),
   ).toBeVisible();
-});
-
-test('preserves selected payment context when navigating between pages', () => {
-  cleanup();
-  render(<App initialSnapshot={snapshot} />);
-
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
-
-  expect(
-    screen.getByRole('heading', { name: 'Business overview' }),
-  ).toBeVisible();
-  expect(
-    screen.getByRole('complementary', { name: 'Assistant sidebar' }),
-  ).toHaveTextContent('payment-001');
-  expect(
-    screen.getByRole('textbox', { name: 'Message assistant' }),
-  ).toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
-  expect(
-    screen.getByRole('region', { name: 'Related invoices' }),
-  ).toHaveTextContent('invoice-001');
 });
 
 test('shows a loading state while the initial snapshot is requested', () => {
@@ -121,48 +105,6 @@ test('requests one initial snapshot for a StrictMode bootstrap', async () => {
   expect(request).toHaveBeenCalledTimes(1);
 });
 
-test('selects the newly checked payment even when it precedes the old selection', () => {
-  cleanup();
-  const twoPayments = {
-    ...snapshot,
-    payments: [
-      ...snapshot.payments,
-      { ...snapshot.payments[0], id: 'payment-002' },
-    ],
-  };
-  render(<App initialSnapshot={twoPayments} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
-
-  fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[1]);
-  fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0]);
-
-  expect(
-    screen.getByRole('complementary', { name: 'Assistant sidebar' }),
-  ).toHaveTextContent('payment-001');
-  expect(
-    screen.getAllByRole('checkbox', { name: 'Select row' })[0],
-  ).toBeChecked();
-  expect(
-    screen.getAllByRole('checkbox', { name: 'Select row' })[1],
-  ).not.toBeChecked();
-});
-
-test('clears payment and invoice context when the selected row is unchecked', () => {
-  cleanup();
-  render(<App initialSnapshot={snapshot} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
-
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
-
-  expect(
-    screen.getByRole('complementary', { name: 'Assistant sidebar' }),
-  ).not.toHaveTextContent('payment-001');
-  expect(
-    screen.getByRole('region', { name: 'Related invoices' }),
-  ).not.toHaveTextContent('invoice-001');
-});
-
 test('starts a fresh snapshot request for a new bootstrap', async () => {
   const request = vi.fn(async () => snapshot);
   const firstBootstrap = createSnapshotLoader(request);
@@ -175,7 +117,7 @@ test('starts a fresh snapshot request for a new bootstrap', async () => {
   expect(request).toHaveBeenCalledTimes(2);
 });
 
-test('explicit matching starts one real chat and approval refreshes the ledger without changing selection', async () => {
+test('matching from the band starts one real chat and approval refreshes the ledger without changing the focus', async () => {
   cleanup();
   const requests: TransportRequest[] = [];
   const proposal = {
@@ -298,19 +240,19 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
       />
     </StrictMode>,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
+  fireEvent.click(screen.getByRole('tab', { name: /Unapplied/ }));
+  fireEvent.click(screen.getByText('payment-001'));
 
-  fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0]);
   expect(requests).toHaveLength(0);
-  fireEvent.click(screen.getByRole('button', { name: 'Match payment' }));
+  expect(
+    screen.getByRole('checkbox', { name: 'Apply to invoice-001' }),
+  ).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: 'Review match' }));
   const approve = await screen.findByRole('button', {
     name: 'Approve and apply',
   });
   await waitFor(() => expect(approve).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', { name: 'Review payment-001' }));
-  fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[1]);
-  fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0]);
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Review match' }));
 
   expect(requests).toHaveLength(1);
   expect(requests[0].input.state).toMatchObject({
@@ -318,14 +260,6 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
     selectedInvoiceIds: ['invoice-001'],
   });
   expect(requests[0].input.hashbrown?.ui).toBe(true);
-  expect(
-    screen.getAllByRole('checkbox', { name: 'Select row' })[0],
-  ).toBeChecked();
-  expect(
-    screen.getAllByRole('checkbox', { name: 'Select row' })[1],
-  ).not.toBeChecked();
-
-  fireEvent.click(screen.getByRole('button', { name: 'Match payment' }));
   expect(
     screen.getByText(/Finish the current assistant request/),
   ).toBeVisible();
@@ -349,114 +283,19 @@ test('explicit matching starts one real chat and approval refreshes the ledger w
   ]);
   expect(
     within(
-      screen
-        .getByRole('button', { name: 'Review payment-001' })
-        .closest('[role="row"]') as HTMLElement,
-    ).getByRole('checkbox', { name: 'Select row' }),
-  ).toBeChecked();
-  fireEvent.click(screen.getByText('Paid invoices (1)'));
-  expect(
-    screen.getByRole('region', { name: 'Related invoices' }),
-  ).toHaveTextContent('Paid');
-  expect(
-    screen.getByRole('region', { name: 'Related invoices' }),
-  ).toHaveTextContent('$0.00');
-  fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
-  expect(
-    screen.getByRole('region', { name: 'Ledger totals' }),
-  ).toHaveTextContent('1 payment to match');
+      screen.getByRole('region', { name: 'Match this payment' }),
+    ).getByText('This payment is fully matched.'),
+  ).toBeVisible();
+  expect(screen.getByRole('tab', { name: /Unapplied/ })).toHaveTextContent(
+    'Unapplied 1',
+  );
   expect(
     screen.getByRole('complementary', { name: 'Assistant sidebar' }),
   ).toHaveTextContent('$0.00 unapplied');
   vi.unstubAllGlobals();
 });
 
-test('shows client metadata and defaults to unmatched payments', async () => {
-  cleanup();
-  const ledger = {
-    ...snapshot,
-    payments: [
-      {
-        ...snapshot.payments[0],
-        customerName: 'Northstar Labs',
-        reference: 'PAY-2026-01',
-        date: '2026-01-15',
-      },
-      {
-        ...snapshot.payments[0],
-        id: 'paid-payment',
-        unappliedCents: 0,
-        reference: 'PAY-PAID',
-      },
-    ],
-  };
-
-  render(<App initialSnapshot={ledger} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
-
-  expect(screen.getByText('Northstar Labs')).toBeVisible();
-  expect(screen.getByText('PAY-2026-01')).toBeVisible();
-  expect(screen.getByText('PAY-2026-01')).toHaveAttribute(
-    'title',
-    'PAY-2026-01',
-  );
-  expect(screen.getByText('2026-01-15')).toBeVisible();
-  expect(screen.queryByText('PAY-PAID')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'All payments' }));
-  expect(await screen.findByText('PAY-PAID')).toBeVisible();
-});
-
-test('requires an invoice choice when a payment has multiple outstanding invoices', () => {
-  cleanup();
-  const ledger = {
-    ...snapshot,
-    invoices: [
-      ...snapshot.invoices,
-      { ...snapshot.invoices[0], id: 'invoice-002', reference: 'INV-002' },
-    ],
-  };
-
-  render(<App initialSnapshot={ledger} enableAssistant />);
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
-
-  expect(screen.getByRole('button', { name: 'Match payment' })).toBeDisabled();
-  fireEvent.change(screen.getByRole('combobox', { name: 'Invoice to match' }), {
-    target: { value: 'invoice-002' },
-  });
-  expect(screen.getByRole('button', { name: 'Match payment' })).toBeEnabled();
-});
-
-test('the Status column tells partially matched payments apart', async () => {
-  cleanup();
-  const ledger = {
-    ...snapshot,
-    payments: [
-      { ...snapshot.payments[0], unappliedCents: 100000, reference: 'PART' },
-      {
-        ...snapshot.payments[0],
-        id: 'payment-002',
-        unappliedCents: 0,
-        reference: 'DONE',
-      },
-      { ...snapshot.payments[0], id: 'payment-003', reference: 'OPEN' },
-    ],
-  };
-
-  render(<App initialSnapshot={ledger} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
-  fireEvent.click(screen.getByRole('button', { name: 'All payments' }));
-  await screen.findByText('DONE');
-
-  const rowOf = (reference: string) =>
-    screen.getByText(reference).closest('[role="row"]') as HTMLElement;
-  expect(rowOf('PART')).toHaveTextContent('Partially matched');
-  expect(rowOf('DONE')).toHaveTextContent('Matched');
-  expect(rowOf('DONE')).not.toHaveTextContent('Partially');
-  expect(rowOf('OPEN')).toHaveTextContent('Unmatched');
-});
-
-test('an assistant review of an ambiguous payment selects it and focuses the invoice picker', async () => {
+test('an assistant review of an ambiguous payment focuses it and brings its match panel to the user', async () => {
   cleanup();
   const requests: TransportRequest[] = [];
   const args = JSON.stringify({
@@ -526,10 +365,19 @@ test('an assistant review of an ambiguous payment selects it and focuses the inv
 
   fireEvent.click(review);
 
-  expect(screen.getByRole('checkbox', { name: 'Select row' })).toBeChecked();
+  expect(screen.getByRole('tab', { name: /Unapplied/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(
+    screen.getByRole('checkbox', { name: 'Apply to invoice-001' }),
+  ).not.toBeChecked();
+  expect(
+    screen.getByRole('checkbox', { name: 'Apply to INV-002' }),
+  ).not.toBeChecked();
   await waitFor(() =>
     expect(
-      screen.getByRole('combobox', { name: 'Invoice to match' }),
+      screen.getByRole('region', { name: 'Match this payment' }),
     ).toHaveFocus(),
   );
   expect(requests).toHaveLength(1);
@@ -574,49 +422,43 @@ test('a shared URL opens the dashboard on its focus, dropping ids the ledger doe
   expect(window.location.search).toBe('?tab=invoices');
 });
 
-const ledgerWithClient: LedgerSnapshot = {
-  ...snapshot,
-  customers: [
-    {
-      id: 'customer-001',
-      name: 'Northstar Labs',
-      currency: 'USD',
-      profile: 'on-time',
-    },
-  ],
-};
-
-test('focusing a client replaces a payment selected earlier in the rail', () => {
-  onTestFinished(() => window.history.replaceState(null, '', '/'));
+test('selecting a payment on the Unapplied tab opens its match panel and payment context', () => {
   cleanup();
-  window.history.replaceState(null, '', '/');
-  render(<App initialSnapshot={ledgerWithClient} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
+  render(<App initialSnapshot={snapshot} />);
+  fireEvent.click(screen.getByRole('tab', { name: /Unapplied/ }));
 
-  fireEvent.click(screen.getByText('Northstar Labs'));
+  fireEvent.click(screen.getByText('payment-001'));
 
-  const rail = screen.getByRole('complementary', { name: 'Assistant sidebar' });
   expect(
-    within(rail).getByRole('heading', { name: 'Client context' }),
+    screen.getByRole('region', { name: 'Match this payment' }),
   ).toBeVisible();
-  expect(rail).not.toHaveTextContent('payment-001');
+  expect(screen.getByText('$2,400.00 of $2,400.00 ✓')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Review match' })).toBeDisabled();
+  expect(
+    screen.getByRole('complementary', { name: 'Assistant sidebar' }),
+  ).toHaveTextContent('Payment context');
+  expect(window.location.search).toBe(
+    '?tab=unapplied&client=customer-001&payment=payment-001',
+  );
 });
 
-test('selecting a payment replaces a client focused earlier in the rail', () => {
-  onTestFinished(() => window.history.replaceState(null, '', '/'));
+test('focusing a client after a payment replaces the payment context', () => {
   cleanup();
-  window.history.replaceState(null, '', '/');
-  render(<App initialSnapshot={ledgerWithClient} />);
-  fireEvent.click(screen.getByText('Northstar Labs'));
-  fireEvent.click(screen.getByRole('button', { name: 'Payments' }));
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
+  render(<App initialSnapshot={snapshot} />);
+  fireEvent.click(screen.getByRole('tab', { name: /Unapplied/ }));
+  fireEvent.click(screen.getByText('payment-001'));
 
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+  fireEvent.click(screen.getByRole('tab', { name: /Clients/ }));
+  fireEvent.click(
+    within(screen.getByRole('treegrid', { name: 'Clients' })).getByText(
+      'Northstar Labs',
+    ),
+  );
 
-  const rail = screen.getByRole('complementary', { name: 'Assistant sidebar' });
   expect(
-    within(rail).getByRole('heading', { name: 'Payment context' }),
-  ).toBeVisible();
-  expect(window.location.search).not.toContain('client');
+    screen.getByRole('complementary', { name: 'Assistant sidebar' }),
+  ).toHaveTextContent('Client context');
+  expect(window.location.search).toBe('?client=customer-001');
 });

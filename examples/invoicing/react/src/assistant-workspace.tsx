@@ -392,7 +392,7 @@ export function AssistantWorkspace({
       }
       setNotice(
         candidates.length
-          ? 'Select this payment in the grid and choose an invoice before matching.'
+          ? 'Select this payment on the Unapplied tab and check an invoice before matching.'
           : 'No outstanding invoice is available for this payment.',
       );
       return false;
