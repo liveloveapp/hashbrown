@@ -736,7 +736,7 @@ test('a ReviewPayment that names several invoices starts one review for all of t
   await settle();
 });
 
-test('a ReviewPayment without an invoice hands an ambiguous payment to the invoice picker', async () => {
+test("a ReviewPayment without an invoice hands an ambiguous payment to the page's match panel", async () => {
   cleanup();
   const onChooseInvoice = vi.fn();
   const { transport, release, requests } = streamingRender([
@@ -763,7 +763,7 @@ test('a ReviewPayment without an invoice hands an ambiguous payment to the invoi
   expect(onChooseInvoice).toHaveBeenCalledWith('p');
   expect(requests).toHaveLength(1);
   expect(
-    screen.queryByText(/choose an invoice before matching/),
+    screen.queryByText(/check an invoice before matching/),
   ).not.toBeInTheDocument();
   await settle();
 });

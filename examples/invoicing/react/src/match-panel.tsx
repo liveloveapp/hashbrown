@@ -15,8 +15,8 @@ export const MAX_MATCH_INVOICES = 10;
 export interface MatchPanelProps {
   readonly paymentId: string;
   /**
-   * Hands the checked invoices, in fill order, to the assistant's approval
-   * flow. Absent while the assistant is unavailable.
+   * Hands the checked invoices that receive money, in fill order, to the
+   * assistant's approval flow. Absent while the assistant is unavailable.
    */
   readonly onReview?: (
     paymentId: string,
@@ -64,6 +64,9 @@ export function MatchPanel({ paymentId, onReview, notice }: MatchPanelProps) {
   const tiesOut =
     payment.unappliedCents > 0 && plan.appliedCents === payment.unappliedCents;
   const full = order.length >= MAX_MATCH_INVOICES;
+  const paid = plan.lines
+    .filter((l) => l.amountCents > 0)
+    .map((l) => l.invoiceId);
   const toggle = (id: string) =>
     setChecked((current) =>
       current.includes(id)
@@ -91,12 +94,12 @@ export function MatchPanel({ paymentId, onReview, notice }: MatchPanelProps) {
           <thead>
             <tr>
               <th scope="col">
-                <span className="visually-hidden">Apply</span>
+                <span className="visually-hidden">Select</span>
               </th>
               <th scope="col">Invoice</th>
               <th scope="col">Issued</th>
               <th scope="col">Balance</th>
-              <th scope="col">Apply</th>
+              <th scope="col">Amount applied</th>
             </tr>
           </thead>
           <tbody>
@@ -132,15 +135,19 @@ export function MatchPanel({ paymentId, onReview, notice }: MatchPanelProps) {
       )}
       {payment.unappliedCents > 0 && candidates.length > 0 && (
         <div className="match-footer">
-          <p className="match-total" data-ties-out={tiesOut || undefined}>
+          <p
+            className="match-total"
+            data-ties-out={tiesOut || undefined}
+            aria-live="polite"
+          >
             {money(plan.appliedCents, payment.currency)} of{' '}
             {money(payment.unappliedCents, payment.currency)}
             {tiesOut ? ' ✓' : ''}
           </p>
           <button
             type="button"
-            disabled={!onReview || order.length === 0}
-            onClick={() => onReview?.(payment.id, order)}
+            disabled={!onReview || paid.length === 0}
+            onClick={() => onReview?.(payment.id, paid)}
           >
             Review match
           </button>
@@ -149,7 +156,7 @@ export function MatchPanel({ paymentId, onReview, notice }: MatchPanelProps) {
       {!onReview && payment.unappliedCents > 0 && candidates.length > 0 && (
         <p className="muted">Matching opens once the assistant is connected.</p>
       )}
-      {notice && <p role="status">{notice}</p>}
+      <p role="status">{notice}</p>
     </section>
   );
 }

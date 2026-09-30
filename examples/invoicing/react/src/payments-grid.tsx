@@ -56,7 +56,8 @@ function Payer({ row }: { readonly row: PaymentRow }) {
 /**
  * The Payments tab (every payment, newest first) or the Unapplied tab (cash
  * still to match, oldest first, with a match hint), grouped by currency. A row
- * click focuses the payment and its payer.
+ * click focuses the payment and its payer. The initial sort is read once from
+ * `mode`, so callers must key the grid by mode.
  */
 export function PaymentsGrid({
   rows,
@@ -121,7 +122,9 @@ export function PaymentsGrid({
           type: 'number',
           value: (row) => row.ageDays,
           format: ({ row }) =>
-            `${row.ageDays} day${row.ageDays === 1 ? '' : 's'}`,
+            row.received
+              ? `${row.ageDays} day${row.ageDays === 1 ? '' : 's'}`
+              : '—',
         },
         {
           id: 'hint',

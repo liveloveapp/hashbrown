@@ -443,6 +443,44 @@ test('selecting a payment on the Unapplied tab opens its match panel and payment
   );
 });
 
+test('a chat message sent with a payment focused carries that payment and its client as run state', async () => {
+  cleanup();
+  onTestFinished(() => window.history.replaceState(null, '', '/'));
+  const requests: TransportRequest[] = [];
+  const transport: Transport = {
+    name: 'app-state',
+    async send(request) {
+      requests.push(request);
+      const identity = {
+        threadId: request.input.threadId,
+        runId: request.input.runId,
+      };
+      return {
+        events: (async function* (): AsyncIterable<AGUIEvent> {
+          yield { type: EventType.RUN_STARTED, ...identity };
+          yield { type: EventType.RUN_FINISHED, ...identity };
+        })(),
+      };
+    },
+  };
+  render(
+    <App initialSnapshot={snapshot} enableAssistant transport={transport} />,
+  );
+  fireEvent.click(screen.getByRole('tab', { name: /Unapplied/ }));
+  fireEvent.click(screen.getByText('payment-001'));
+
+  fireEvent.change(screen.getByLabelText('Message assistant'), {
+    target: { value: 'Which invoices does this payment cover?' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+  await waitFor(() => expect(requests).toHaveLength(1));
+  expect(requests[0].input.state).toEqual({
+    selectedPaymentId: 'payment-001',
+    focusedClientId: 'customer-001',
+  });
+});
+
 test('focusing a client after a payment replaces the payment context', () => {
   cleanup();
   onTestFinished(() => window.history.replaceState(null, '', '/'));

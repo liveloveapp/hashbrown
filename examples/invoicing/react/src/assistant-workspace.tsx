@@ -30,7 +30,7 @@ const ActionContext = createContext<{
 /**
  * The model's offer to match a payment. With invoices it starts that review
  * directly, one review for all of them; without any it reviews the payment,
- * or hands an ambiguous payment to the page's invoice picker.
+ * or, when the payment is ambiguous, focuses it and opens its match panel.
  */
 function ReviewPayment({
   paymentId,

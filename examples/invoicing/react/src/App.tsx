@@ -100,7 +100,7 @@ export function App({
 
   function review(paymentId: string, invoiceIds: readonly string[]) {
     const started = reviewRef.current?.beginReview(paymentId, invoiceIds);
-    setReviewNotice(started ? '' : BUSY_NOTICE);
+    setReviewNotice(started || !assistantBusy ? '' : BUSY_NOTICE);
   }
 
   useEffect(() => {

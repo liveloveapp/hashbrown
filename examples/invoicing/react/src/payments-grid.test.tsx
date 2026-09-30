@@ -82,6 +82,24 @@ test('the Unapplied tab lists cash still to match, oldest first, with its hint',
   ).toBeVisible();
 });
 
+test('an undated payment shows no age rather than zero days', () => {
+  cleanup();
+
+  render(
+    <PaymentsGrid
+      rows={[{ ...payment('p5', 'birch', '', 40000, 40000), ageDays: 0 }]}
+      mode="unapplied"
+      currency="USD"
+      hints={new Map([['p5', 'Advance: no open invoice']])}
+      onSelect={vi.fn()}
+      viewportHeight={600}
+    />,
+  );
+
+  expect(screen.queryByText('0 days')).not.toBeInTheDocument();
+  expect(screen.getAllByText('—')).toHaveLength(2);
+});
+
 test('a focused client narrows the grid to its payments', () => {
   cleanup();
 

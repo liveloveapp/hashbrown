@@ -75,6 +75,47 @@ test('a payment that ties out starts with its invoices checked and reviews them 
   expect(onReview).toHaveBeenCalledWith('harbor-pay', ['api', 'mig']);
 });
 
+test('the panel labels its columns and announces the total and later notices', () => {
+  cleanup();
+
+  withSnapshot(<MatchPanel paymentId="harbor-pay" onReview={vi.fn()} />);
+
+  expect(
+    screen.getAllByRole('columnheader').map((cell) => cell.textContent),
+  ).toEqual(['Select', 'Invoice', 'Issued', 'Balance', 'Amount applied']);
+  expect(screen.getByText('$5,000.00 of $5,000.00 ✓')).toHaveAttribute(
+    'aria-live',
+    'polite',
+  );
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+});
+
+test('review sends only the invoices that receive money', () => {
+  cleanup();
+  const onReview = vi.fn();
+  const view = withSnapshot(
+    <MatchPanel paymentId="harbor-pay" onReview={onReview} />,
+  );
+  const lower: LedgerSnapshot = {
+    ...snapshot,
+    payments: snapshot.payments.map((p) =>
+      p.id === 'harbor-pay' ? { ...p, unappliedCents: 320000 } : p,
+    ),
+  };
+
+  view.rerender(
+    <SnapshotContext.Provider value={lower}>
+      <MatchPanel paymentId="harbor-pay" onReview={onReview} />
+    </SnapshotContext.Provider>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Review match' }));
+
+  expect(
+    screen.getByRole('checkbox', { name: 'Apply to INV-MIG' }),
+  ).toBeChecked();
+  expect(onReview).toHaveBeenCalledWith('harbor-pay', ['api']);
+});
+
 test('an ambiguous payment starts unchecked, and one choice uses up the cash', () => {
   cleanup();
   const onReview = vi.fn();
