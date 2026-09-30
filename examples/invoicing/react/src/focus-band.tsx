@@ -1,6 +1,7 @@
-import type { ClientRow, InvoiceRow } from '@invoicing/contracts';
+import type { ClientRow, InvoiceRow, PaymentRow } from '@invoicing/contracts';
 import { AgingSummary, TrendChart } from './assistant-charts';
 import { HABITS, wholeMoney } from './ledger-views';
+import { MatchPanel, type MatchPanelProps } from './match-panel';
 import { StatusDot } from './status-dot';
 
 /** Inputs for {@link FocusBand}. */
@@ -8,17 +9,24 @@ export interface FocusBandProps {
   readonly currency: string;
   readonly client?: ClientRow;
   readonly invoice?: InvoiceRow;
+  /** A focused payment turns the band's right half into "Match this payment". */
+  readonly payment?: PaymentRow;
+  /** Review wiring for the match panel. */
+  readonly match?: Pick<MatchPanelProps, 'onReview' | 'notice'>;
   readonly onClear: () => void;
 }
 
 /**
  * The fixed-height band of charts under the KPI strip: every client in one
- * currency, or the focused client. Reads the ledger from `SnapshotContext`.
+ * currency, or the focused client, with a focused payment's match panel in
+ * place of the aging chart. Reads the ledger from `SnapshotContext`.
  */
 export function FocusBand({
   currency,
   client,
   invoice,
+  payment,
+  match,
   onClear,
 }: FocusBandProps) {
   const customerId = client?.id ?? null;
@@ -31,6 +39,12 @@ export function FocusBand({
           <span className="focus-record">
             {invoice.reference} ·{' '}
             {wholeMoney(invoice.balanceCents, invoice.currency)} open
+          </span>
+        )}
+        {payment && (
+          <span className="focus-record">
+            {payment.reference} ·{' '}
+            {wholeMoney(payment.unappliedCents, payment.currency)} unapplied
           </span>
         )}
         {client && (
@@ -51,7 +65,16 @@ export function FocusBand({
         data-outline-bucket={invoice?.bucket ?? undefined}
       >
         <TrendChart currency={currency} customerId={customerId} months={12} />
-        <AgingSummary currency={currency} customerId={customerId} />
+        {payment ? (
+          <MatchPanel
+            key={payment.id}
+            paymentId={payment.id}
+            onReview={match?.onReview}
+            notice={match?.notice}
+          />
+        ) : (
+          <AgingSummary currency={currency} customerId={customerId} />
+        )}
       </div>
     </section>
   );

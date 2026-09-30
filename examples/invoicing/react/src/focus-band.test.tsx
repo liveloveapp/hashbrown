@@ -5,6 +5,7 @@ import type {
   ClientRow,
   InvoiceRow,
   LedgerSnapshot,
+  PaymentRow,
 } from '@invoicing/contracts';
 import { FocusBand } from './focus-band';
 import { SnapshotContext } from './snapshot-context';
@@ -123,4 +124,59 @@ test('a focused invoice is named and its age bucket is outlined', () => {
     'data-outline-bucket',
     'days1to30',
   );
+});
+
+test('a focused payment swaps the aging chart for the match panel', () => {
+  cleanup();
+  const withPayment: LedgerSnapshot = {
+    ...snapshot,
+    payments: [
+      {
+        id: 'tp',
+        customerId: 'thistle',
+        reference: 'BACS THISTLE',
+        date: '2026-09-12',
+        currency: 'GBP',
+        amountCents: 200000,
+        unappliedCents: 200000,
+        version: 1,
+      },
+    ],
+  };
+  const payment: PaymentRow = {
+    id: 'tp',
+    reference: 'BACS THISTLE',
+    payerId: 'thistle',
+    payerName: 'Thistle Retail',
+    currency: 'GBP',
+    received: '2026-09-12',
+    amountCents: 200000,
+    appliedCents: 0,
+    unappliedCents: 200000,
+    ageDays: 3,
+    status: 'unmatched',
+  };
+
+  render(
+    <SnapshotContext.Provider value={withPayment}>
+      <FocusBand
+        currency="GBP"
+        client={thistle}
+        payment={payment}
+        match={{ onReview: vi.fn() }}
+        onClear={vi.fn()}
+      />
+    </SnapshotContext.Provider>,
+  );
+
+  expect(screen.getByText('BACS THISTLE · £2,000 unapplied')).toBeVisible();
+  expect(
+    screen.getByRole('region', { name: 'Match this payment' }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole('checkbox', { name: 'Apply to INV-T1' }),
+  ).toBeChecked();
+  expect(
+    screen.queryByRole('figure', { name: /Aging/ }),
+  ).not.toBeInTheDocument();
 });
