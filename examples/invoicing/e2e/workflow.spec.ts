@@ -6,12 +6,19 @@ async function snapshot(page: Page): Promise<LedgerSnapshot> {
   return page.evaluate(async () => (await fetch('/api/snapshot')).json());
 }
 
-async function openPayments(page: Page) {
-  await page.getByRole('button', { name: 'Payments', exact: true }).click();
-  await page.getByRole('heading', { name: 'Payments', level: 1 }).waitFor();
+/** Open the Unapplied tab and focus one payment, which brings up its match panel. */
+async function focusPayment(page: Page, paymentId: string) {
+  await page.getByRole('tab', { name: /^Unapplied/ }).click();
+  await page.locator(`[data-pretable-row-id="${paymentId}"]`).click();
+  await page
+    .getByRole('region', { name: 'Match this payment', exact: true })
+    .waitFor();
 }
 
-test('ambiguous and combined payments require an explicit invoice choice', async ({
+const reviewMatch = (page: Page) =>
+  page.getByRole('button', { name: 'Review match', exact: true });
+
+test('the match panel suggests a tie-out but never picks between ambiguous invoices', async ({
   page,
 }) => {
   const agentRequests: unknown[] = [];
@@ -21,33 +28,39 @@ test('ambiguous and combined payments require an explicit invoice choice', async
   });
   await page.goto('/');
   const baseline = await snapshot(page);
-  await openPayments(page);
+  await page.getByRole('tab', { name: /^Unapplied/ }).click();
+  await expect(
+    page.getByText('Ambiguous: 2 invoices at $1,500', { exact: true }),
+  ).toBeVisible();
 
+  await focusPayment(page, 'payment-atlas-ambiguous');
+  await expect(reviewMatch(page)).toBeDisabled();
   await page
-    .getByRole('button', {
-      name: 'Review payment-atlas-ambiguous',
-      exact: true,
-    })
-    .click();
+    .getByRole('checkbox', { name: 'Apply to INV-202609-AA-105', exact: true })
+    .check();
+  await expect(reviewMatch(page)).toBeEnabled();
   await expect(
-    page.getByRole('button', { name: 'Match payment', exact: true }),
+    page.getByRole('checkbox', {
+      name: 'Apply to INV-202609-AA-106',
+      exact: true,
+    }),
   ).toBeDisabled();
-  await page.getByRole('combobox').selectOption('invoice-atlas-discovery');
-  await expect(
-    page.getByRole('button', { name: 'Match payment', exact: true }),
-  ).toBeEnabled();
-  await page
-    .getByRole('button', {
-      name: 'Review payment-harbor-combined',
-      exact: true,
-    })
-    .click();
+  await focusPayment(page, 'payment-harbor-combined');
 
-  await expect(page.getByRole('combobox')).toHaveValue('');
   await expect(
-    page.getByRole('button', { name: 'Match payment', exact: true }),
-  ).toBeDisabled();
-  await expect(page.getByRole('combobox').locator('option')).toHaveCount(3);
+    page.getByRole('checkbox', {
+      name: 'Apply to INV-202609-HC-103',
+      exact: true,
+    }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole('checkbox', {
+      name: 'Apply to INV-202609-HC-104',
+      exact: true,
+    }),
+  ).toBeChecked();
+  await expect(page.getByText('$5,000.00 of $5,000.00 ✓')).toBeVisible();
+  await expect(reviewMatch(page)).toBeEnabled();
   expect(agentRequests).toEqual([]);
   expect(await snapshot(page)).toEqual(baseline);
 });
@@ -61,15 +74,13 @@ test('advance payment cannot start a review without an outstanding invoice', asy
   });
   await page.goto('/');
   const baseline = await snapshot(page);
-  await openPayments(page);
 
-  await page
-    .getByRole('button', { name: 'Review payment-summit-advance', exact: true })
-    .click();
+  await focusPayment(page, 'payment-summit-advance');
 
   await expect(
-    page.getByRole('button', { name: 'Match payment', exact: true }),
-  ).toBeDisabled();
+    page.getByText(/No open USD invoice for this client/),
+  ).toBeVisible();
+  await expect(reviewMatch(page)).toHaveCount(0);
   await expect(
     page.getByRole('textbox', { name: 'Message assistant', exact: true }),
   ).toBeEnabled();
@@ -86,17 +97,9 @@ test('failed review releases chat and retries with a fresh thread without changi
   });
   await page.goto('/');
   const baseline = await snapshot(page);
-  await openPayments(page);
-  await page
-    .getByRole('button', {
-      name: 'Review payment-northstar-exact',
-      exact: true,
-    })
-    .click();
+  await focusPayment(page, 'payment-northstar-exact');
 
-  await page
-    .getByRole('button', { name: 'Match payment', exact: true })
-    .click();
+  await reviewMatch(page).click();
   await expect(
     page.getByText(
       'No allocation proposal was completed. You can start another review.',
@@ -106,9 +109,7 @@ test('failed review releases chat and retries with a fresh thread without changi
   await expect(
     page.getByRole('textbox', { name: 'Message assistant', exact: true }),
   ).toBeEnabled();
-  await page
-    .getByRole('button', { name: 'Match payment', exact: true })
-    .click();
+  await reviewMatch(page).click();
   await expect(
     page.getByText(
       'No allocation proposal was completed. You can start another review.',
@@ -165,16 +166,8 @@ test('lost approval response holds further work until the committed operation is
   });
   await page.goto('/');
   const baseline = await snapshot(page);
-  await openPayments(page);
-  await page
-    .getByRole('button', {
-      name: 'Review payment-northstar-exact',
-      exact: true,
-    })
-    .click();
-  await page
-    .getByRole('button', { name: 'Match payment', exact: true })
-    .click();
+  await focusPayment(page, 'payment-northstar-exact');
+  await reviewMatch(page).click();
 
   await page
     .getByRole('button', { name: 'Approve and apply', exact: true })
@@ -191,12 +184,11 @@ test('lost approval response holds further work until the committed operation is
   await expect(
     page.getByRole('textbox', { name: 'Message assistant', exact: true }),
   ).toBeDisabled();
-  await page
-    .getByRole('button', { name: 'Review payment-cedar-partial', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Match payment', exact: true })
-    .click();
+  await focusPayment(page, 'payment-cedar-partial');
+  await reviewMatch(page).click();
+  await expect(
+    page.getByText(/Finish the current assistant request/),
+  ).toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Payment review chat', exact: true }),
   ).toHaveCount(1);
@@ -212,7 +204,7 @@ test('lost approval response holds further work until the committed operation is
   await expect(
     page.getByRole('textbox', { name: 'Message assistant', exact: true }),
   ).toBeEnabled();
-  await page.getByRole('button', { name: 'Dashboard', exact: true }).click();
+  await page.getByRole('button', { name: 'Clear focus', exact: true }).click();
   await expect(
     page.getByRole('region', { name: 'Ledger totals', exact: true }),
   ).toContainText('$11,500');
