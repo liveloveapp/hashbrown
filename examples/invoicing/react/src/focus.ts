@@ -1,16 +1,21 @@
 import type { LedgerSnapshot } from '@invoicing/contracts';
 
-/** The dashboard's tabs. PR 2 adds Payments and Unapplied. */
-export const DASHBOARD_TABS = ['clients', 'invoices'] as const;
+/** The dashboard's tabs, in the order keys 1–4 select them. */
+export const DASHBOARD_TABS = [
+  'clients',
+  'invoices',
+  'payments',
+  'unapplied',
+] as const;
 /** One of {@link DASHBOARD_TABS}. */
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];
 
 /** The currencies the switcher offers, in its order. */
 export const SWITCHER_CURRENCIES = ['USD', 'EUR', 'GBP'] as const;
 
-/** A single record the focus marks inside its client's charts. */
+/** A single invoice or payment the focus marks inside its client's band. */
 export interface FocusRecord {
-  readonly kind: 'invoice';
+  readonly kind: 'invoice' | 'payment';
   readonly id: string;
 }
 
@@ -24,6 +29,12 @@ export interface Focus {
   readonly currency: string;
   readonly clientId?: string;
   readonly record?: FocusRecord;
+  /**
+   * True when the client was picked on the Clients tab: the other tabs then
+   * list only that client's rows. Picking an invoice or payment from a full
+   * list focuses its client without narrowing the list under the pointer.
+   */
+  readonly scoped?: true;
 }
 
 /** Everything that can change the focus. */
@@ -34,6 +45,11 @@ export type FocusAction =
       readonly invoiceId: string;
       readonly clientId: string;
     }
+  | {
+      readonly type: 'select-payment';
+      readonly paymentId: string;
+      readonly clientId: string;
+    }
   | { readonly type: 'clear' }
   | { readonly type: 'set-tab'; readonly tab: DashboardTab }
   | { readonly type: 'set-currency'; readonly currency: string };
@@ -41,41 +57,58 @@ export type FocusAction =
 /** Nothing focused, Clients tab, USD. */
 export const DEFAULT_FOCUS: Focus = { tab: 'clients', currency: 'USD' };
 
+function selectRecord(
+  focus: Focus,
+  kind: FocusRecord['kind'],
+  id: string,
+  clientId: string,
+): Focus {
+  if (
+    focus.record?.kind === kind &&
+    focus.record.id === id &&
+    focus.clientId === clientId
+  )
+    return focus;
+  // A list narrowed to this client stays narrowed; a full list stays full.
+  const scoped = focus.scoped && focus.clientId === clientId;
+  return {
+    tab: focus.tab,
+    currency: focus.currency,
+    clientId,
+    record: { kind, id },
+    ...(scoped ? { scoped: true as const } : {}),
+  };
+}
+
 /** Apply one action; pure, so the page and tests share it. */
 export function focusReducer(focus: Focus, action: FocusAction): Focus {
   switch (action.type) {
     case 'select-client':
       // Pretable reports one click several times; keep the same object so React bails out.
-      return focus.clientId === action.clientId && !focus.record
+      return focus.clientId === action.clientId && !focus.record && focus.scoped
         ? focus
         : {
             tab: focus.tab,
             currency: focus.currency,
             clientId: action.clientId,
+            scoped: true,
           };
     case 'select-invoice':
-      if (
-        focus.record?.id === action.invoiceId &&
-        focus.clientId === action.clientId
-      )
-        return focus;
-      return {
-        tab: focus.tab,
-        currency: focus.currency,
-        clientId: action.clientId,
-        record: { kind: 'invoice', id: action.invoiceId },
-      };
+      return selectRecord(focus, 'invoice', action.invoiceId, action.clientId);
+    case 'select-payment':
+      return selectRecord(focus, 'payment', action.paymentId, action.clientId);
     case 'clear':
       return !focus.clientId && !focus.record
         ? focus
         : { tab: focus.tab, currency: focus.currency };
     case 'set-tab':
-      // A record belongs to the tab it was picked on; the client carries over.
+      // A record belongs to the tab it was picked on; the client and its scope carry over.
       return focus.clientId
         ? {
             tab: action.tab,
             currency: focus.currency,
             clientId: focus.clientId,
+            ...(focus.scoped ? { scoped: true as const } : {}),
           }
         : { tab: action.tab, currency: focus.currency };
     case 'set-currency':
@@ -96,13 +129,19 @@ export function focusFromSearch(search: string): Focus {
   const currency = params.get('currency');
   const clientId = params.get('client') ?? undefined;
   const invoiceId = params.get('invoice') ?? undefined;
+  const paymentId = params.get('payment') ?? undefined;
+  const record: FocusRecord | undefined = invoiceId
+    ? { kind: 'invoice', id: invoiceId }
+    : paymentId
+      ? { kind: 'payment', id: paymentId }
+      : undefined;
   return {
     tab: isTab(tab) ? tab : DEFAULT_FOCUS.tab,
     currency: isCurrency(currency) ? currency : DEFAULT_FOCUS.currency,
     ...(clientId ? { clientId } : {}),
-    ...(clientId && invoiceId
-      ? { record: { kind: 'invoice' as const, id: invoiceId } }
-      : {}),
+    ...(clientId && record ? { record } : {}),
+    // A shared link to a client alone narrows the lists; one to a record does not.
+    ...(clientId && !record ? { scoped: true as const } : {}),
   };
 }
 
@@ -113,7 +152,8 @@ export function focusToSearch(focus: Focus): string {
   if (focus.currency !== DEFAULT_FOCUS.currency)
     params.set('currency', focus.currency);
   if (focus.clientId) params.set('client', focus.clientId);
-  if (focus.clientId && focus.record) params.set('invoice', focus.record.id);
+  if (focus.clientId && focus.record)
+    params.set(focus.record.kind, focus.record.id);
   const query = params.toString();
   return query ? `?${query}` : '';
 }
@@ -129,10 +169,18 @@ export function sanitizeFocus(focus: Focus, snapshot: LedgerSnapshot): Focus {
   if (!snapshot.customers.some((c) => c.id === focus.clientId)) return base;
   const record = focus.record;
   if (!record) return focus;
-  const owned = snapshot.invoices.some(
-    (i) => i.id === record.id && i.customerId === focus.clientId,
+  const records =
+    record.kind === 'invoice' ? snapshot.invoices : snapshot.payments;
+  const owned = records.some(
+    (r) => r.id === record.id && r.customerId === focus.clientId,
   );
-  return owned ? focus : { ...base, clientId: focus.clientId };
+  return owned
+    ? focus
+    : {
+        ...base,
+        clientId: focus.clientId,
+        ...(focus.scoped ? { scoped: true as const } : {}),
+      };
 }
 
 /** What the page tells the assistant it is looking at. */
@@ -154,4 +202,15 @@ export function assistantRunState(
       (entry): entry is [string, string] => typeof entry[1] === 'string',
     ),
   );
+}
+
+/** What the focus tells the assistant: its client, and the invoice or payment inside it. */
+export function focusSelection(focus: Focus): AssistantSelection {
+  return {
+    focusedClientId: focus.clientId,
+    focusedInvoiceId:
+      focus.record?.kind === 'invoice' ? focus.record.id : undefined,
+    selectedPaymentId:
+      focus.record?.kind === 'payment' ? focus.record.id : undefined,
+  };
 }
