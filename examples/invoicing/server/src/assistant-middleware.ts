@@ -188,7 +188,12 @@ export function createAssistantMiddleware(
       if (!ledger) return reject(422);
       if (
         (selection.selectedPaymentId !== undefined &&
-          !ledger.payments.some((p) => p.id === selection.selectedPaymentId)) ||
+          !ledger.payments.some(
+            (p) =>
+              p.id === selection.selectedPaymentId &&
+              (selection.focusedClientId === undefined ||
+                p.customerId === selection.focusedClientId),
+          )) ||
         (selection.focusedClientId !== undefined &&
           !ledger.customers.some((c) => c.id === selection.focusedClientId)) ||
         (selection.focusedInvoiceId !== undefined &&

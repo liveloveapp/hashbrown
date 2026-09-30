@@ -273,3 +273,39 @@ test('rejects focus the ledger does not hold or that crosses clients', async () 
     'continue',
   ]);
 });
+
+test("a payment sent with a focused client must be that client's payment", async () => {
+  const { request } = await setup();
+  const repositories = createMemoryRepositories();
+  const store = createSessionStore(repositories.sessions, createSampleLedger());
+  const session = await store.createSession();
+  const middleware = createAssistantMiddleware(store, repositories.threads);
+  const ledger = await store.snapshot(session);
+  const payment = ledger.payments.find((p) => p.unappliedCents > 0);
+  const other = ledger.customers.find((c) => c.id !== payment?.customerId);
+  if (!payment || !other)
+    throw new Error('the sample ledger has several clients');
+  const withState = (state: Record<string, unknown>) =>
+    middleware({
+      ...request,
+      headers: { cookie: `invoicing_session=${session}` },
+      body: { ...request.body, state },
+    });
+
+  const actions = [
+    (
+      await withState({
+        selectedPaymentId: payment.id,
+        focusedClientId: other.id,
+      })
+    ).action,
+    (
+      await withState({
+        selectedPaymentId: payment.id,
+        focusedClientId: payment.customerId,
+      })
+    ).action,
+  ];
+
+  expect(actions).toEqual(['reject', 'continue']);
+});
