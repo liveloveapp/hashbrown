@@ -27,7 +27,8 @@ export interface PaymentRow {
 /**
  * The page's suggestion for an unapplied payment, from the payer's open
  * invoices in the payment's currency. `invoiceIds` are in fill order (oldest
- * first); for `ambiguous` they are every tied candidate.
+ * first). For `ambiguous` they are the tied candidates found; the tie-out
+ * search stops after two sets, so they may be a sample of every tie.
  */
 export type MatchHint =
   | { readonly kind: 'advance' }
@@ -90,22 +91,30 @@ export function matchCandidates(
     );
 }
 
-/** Every `size`-invoice combination summing to `target`, stopping after two. */
+/**
+ * Every `size`-invoice combination summing to `target`, stopping after two.
+ * `invoices` must be sorted by outstanding balance ascending, so the search
+ * stops a branch as soon as the next invoice overshoots, or when even the
+ * largest balances cannot reach the target.
+ */
 function combinationsSumming(
   invoices: readonly Invoice[],
   size: number,
   target: number,
 ): Invoice[][] {
   const found: Invoice[][] = [];
+  const largest = invoices.at(-1)?.outstandingCents ?? 0;
   const walk = (start: number, chosen: Invoice[], total: number) => {
     if (found.length > 1) return;
     if (chosen.length === size) {
       if (total === target) found.push(chosen);
       return;
     }
+    if (total + largest * (size - chosen.length) < target) return;
     for (let i = start; i < invoices.length; i++) {
       const next = total + invoices[i].outstandingCents;
-      if (next <= target) walk(i + 1, [...chosen, invoices[i]], next);
+      if (next > target) break;
+      walk(i + 1, [...chosen, invoices[i]], next);
     }
   };
   walk(0, [], 0);
@@ -133,16 +142,17 @@ export function matchHint(
   const exact = candidates.filter((i) => i.outstandingCents === target);
   if (exact.length === 1) return { kind: 'exact', invoiceIds: ids(exact) };
   if (exact.length > 1) return { kind: 'ambiguous', invoiceIds: ids(exact) };
-  const smaller = candidates.filter((i) => i.outstandingCents < target);
+  const smaller = candidates
+    .filter((i) => i.outstandingCents < target)
+    .toSorted((a, b) => a.outstandingCents - b.outstandingCents);
+  const inFillOrder = (chosen: readonly Invoice[]) =>
+    candidates.filter((i) => chosen.includes(i));
   for (let size = 2; size <= MAX_TIE_OUT_INVOICES; size++) {
     const sets = combinationsSumming(smaller, size, target);
     if (sets.length === 1)
-      return { kind: 'ties-out', invoiceIds: ids(sets[0]) };
+      return { kind: 'ties-out', invoiceIds: ids(inFillOrder(sets[0])) };
     if (sets.length > 1)
-      return {
-        kind: 'ambiguous',
-        invoiceIds: [...new Set(sets.flatMap(ids))],
-      };
+      return { kind: 'ambiguous', invoiceIds: ids(inFillOrder(sets.flat())) };
   }
   const larger = candidates.filter((i) => i.outstandingCents > target);
   if (larger.length === 1) return { kind: 'partial', invoiceIds: ids(larger) };

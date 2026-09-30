@@ -138,6 +138,41 @@ test('matchHint calls two equally small tie-outs ambiguous', () => {
   });
 });
 
+test('matchHint lists ambiguous tie-out candidates oldest first', () => {
+  const snapshot = ledger(
+    [
+      invoice('a', 'c', 2000, '2026-09-01'),
+      invoice('b', 'c', 1500, '2026-09-02'),
+      invoice('d', 'c', 1000, '2026-09-03'),
+      invoice('e', 'c', 1500, '2026-09-04'),
+    ],
+    [payment('p', 'c', 3000)],
+  );
+
+  const hint = matchHint(snapshot, 'p');
+
+  expect(hint).toEqual({
+    kind: 'ambiguous',
+    invoiceIds: ['a', 'b', 'd', 'e'],
+  });
+});
+
+test('matchHint stays quick for a payer with many small open invoices', () => {
+  const snapshot = ledger(
+    Array.from({ length: 60 }, (_, i) =>
+      invoice(`i${String(i).padStart(2, '0')}`, 'c', 50, '2026-09-01'),
+    ),
+    [payment('p', 'c', 250)],
+  );
+
+  const start = performance.now();
+  const hint = matchHint(snapshot, 'p');
+  const elapsed = performance.now() - start;
+
+  expect(hint.kind).toBe('ambiguous');
+  expect(elapsed).toBeLessThan(200);
+});
+
 test('matchHint falls back to a single larger invoice as a partial, else none', () => {
   const partial = ledger(
     [invoice('big', 'c', 5000, '2026-09-01')],
