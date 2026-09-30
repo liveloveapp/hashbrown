@@ -26,19 +26,24 @@ Five incoming payments initially have unapplied cash totaling **$13,900**:
 The assistant accepts questions immediately, without selecting a payment, and
 an empty conversation offers starter questions. Selecting a row adds context:
 the assistant reads a payment through `selectedPayment` when you ask about
-"this payment", and a focused client or invoice through `focusedClient`. The
-most recent selection wins, so the rail shows either a payment or a client,
-never both. The assistant column stays in view while the page scrolls, with the
+"this payment", and a focused client or invoice through `focusedClient`. A
+payment focus carries its payer, so the rail shows the payment; picking a
+client instead shows the client. The assistant column stays in view while the page scrolls, with the
 message box pinned under the thread; Enter sends and Shift+Enter adds a line.
 
-**Match payment** opens a separately authorized allocation review, and so does
+Selecting a payment on the Payments or Unapplied tab turns the band's right half
+into **Match this payment**: the payer's open invoices in the payment's
+currency, each with a checkbox and the amount it would receive, and a running
+total that must tie out. The page's suggestion is checked to start with, except
+when it is ambiguous; invoices fill in the order they are checked.
+**Review match** opens a separately authorized allocation review, and so does
 the assistant's own offer: **Match to INV-…** when it names the invoice (or
 **Match to INV-… and INV-…** when one payment covers several), or
-**Review …** for an ambiguous payment, which selects it and focuses the invoice
-picker instead. **Approve and apply** records the simulated allocation,
+**Review …** for an ambiguous payment, which focuses it and brings its match
+panel to you instead. **Approve and apply** records the simulated allocation,
 refreshes the balances and leaves a confirmation in the thread saying what was
-applied and what stays unapplied; the grid marks such a payment **Partially
-matched**. With multiple open invoices, choose an invoice first. A combined
+applied and what stays unapplied; the Payments tab marks such a payment **Partly
+applied**. A combined
 payment is one proposal with a line per invoice and takes a single approval:
 the card lists each invoice's share and the total, and approving applies every
 line together or none of them. **Decline** leaves the ledger unchanged. Chat becomes available
@@ -66,13 +71,16 @@ produced no validated UI at all.
 
 The Dashboard opens on a KPI strip with a USD/EUR/GBP switcher, a
 fixed-height focus band (an invoiced vs received trend and aging for the chosen
-currency or the focused client) and Clients/Invoices grids grouped by
-currency. Selecting a row focuses the charts and the assistant; keys 1/2 switch
-tabs and Esc clears the focus, which is shareable through `?client=` and
-`?tab=` in the URL. Payments and matching live on the Payments page.
-Payments default to unmatched items; All payments includes historical receipts.
-A selected payment remains visible after matching to preserve context. There
-are no real transfers, collections workflows, or payment reminders.
+currency or the focused client) and Clients, Invoices, Payments and Unapplied
+grids grouped by currency. Payments lists all 446 receipts newest first;
+Unapplied lists the cash still to match, oldest first, with a match hint in
+words (exact, ties out, partial, ambiguous or advance). Selecting a row focuses
+the band and the assistant; picking a client narrows the other tabs to that
+client, while picking an invoice or payment leaves the list whole. Keys 1–4
+switch tabs and Esc clears the focus, which is shareable through `?tab=`,
+`?client=`, `?invoice=` and `?payment=` in the URL.
+A focused payment stays focused after matching, and its panel says it is fully
+matched. There are no real transfers, collections workflows, or payment reminders.
 
 The Pretable and B4 dependencies were explicitly requested and approved as part
 of this example's design; the root Zod 4 migration was separately approved.
@@ -100,7 +108,7 @@ The environment file must provide `OPENAI_API_KEY`; alternatively export the
 key in the server environment. Credentials are loaded only by the server.
 Both the root agent and nested structured UI generation use `gpt-5-mini`.
 Open <http://127.0.0.1:4326/>. Vite proxies API and agent requests to port 4325.
-Selection and chat survive Dashboard/Payments navigation. Matching is an
+Matching is an
 explicit action; selecting a record never initiates a financial proposal.
 
 The root lockfile includes the server workspace and registry integrity hashes.
@@ -304,7 +312,7 @@ Failure traces go to `work/invoicing-deterministic`.
 The server build type-checks; serve runs TypeScript directly. Existing warnings
 include the large minified Vite chunk and terminal color settings.
 
-V1 scope is complete for the local example: seeded Dashboard/Payments, real-model
+V1 scope is complete for the local example: seeded dashboard, real-model
 conversation, explicit simulated approvals, and operation-result verification.
 Per-session state is durable: the Postgres repositories commit each session and
 each thread by compare-and-swap, so a ledger outlives the process that created

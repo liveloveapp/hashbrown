@@ -144,16 +144,14 @@ export async function recordApp(
     'The assistant sees what you select',
     'Page state flows into the chat',
   );
-  await glide(
-    page,
-    page.getByRole('button', { name: 'Payments', exact: true }),
-  );
-  await page.getByRole('heading', { name: 'Payments', level: 1 }).waitFor();
+  await glide(page, page.getByRole('tab', { name: /^Unapplied/ }));
+  await page.getByRole('treegrid', { name: 'Unapplied payments' }).waitFor();
   await pause(600);
   await glide(
     page,
-    page.getByRole('button', { name: 'Review payment-harbor-combined' }),
+    page.locator('[data-pretable-row-id="payment-harbor-combined"]'),
   );
+  await page.getByRole('region', { name: 'Match this payment' }).waitFor();
   await pause(900);
   await caption(
     page,
@@ -209,8 +207,12 @@ export async function recordApp(
   await pause(2600);
   await zoom(page, null);
   await pause(600);
-  await caption(page, 'The grid agrees', 'Harbor’s payment now reads Matched');
-  await glide(page, page.locator('.payment-grid'), false);
+  await caption(
+    page,
+    'The dashboard agrees',
+    'Harbor’s payment now reads fully matched',
+  );
+  await glide(page, page.locator('.match-panel'), false);
   await pause(2200);
   await caption(page, '');
   await pause(500);

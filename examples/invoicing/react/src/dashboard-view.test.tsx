@@ -6,7 +6,7 @@ import {
   within,
 } from '@testing-library/react';
 import { useState } from 'react';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import type { LedgerSnapshot } from '@invoicing/contracts';
 import { DashboardView } from './dashboard-view';
 import { DEFAULT_FOCUS, type Focus, focusReducer } from './focus';
@@ -64,18 +64,49 @@ const snapshot: LedgerSnapshot = {
       version: 1,
     },
   ],
-  payments: [],
+  payments: [
+    {
+      id: 'pb',
+      customerId: 'birch',
+      reference: 'ACH BIRCH',
+      date: '2026-09-12',
+      currency: 'USD',
+      amountCents: 90000,
+      unappliedCents: 90000,
+      version: 1,
+    },
+    {
+      id: 'pa',
+      customerId: 'acme',
+      reference: 'ACH ACME',
+      date: '2026-09-13',
+      currency: 'USD',
+      amountCents: 10000,
+      unappliedCents: 10000,
+      version: 1,
+    },
+  ],
   allocations: [],
   activities: [],
 };
 
-function Harness({ initial = DEFAULT_FOCUS }: { readonly initial?: Focus }) {
+function Harness({
+  initial = DEFAULT_FOCUS,
+  onReview,
+}: {
+  readonly initial?: Focus;
+  readonly onReview?: (
+    paymentId: string,
+    invoiceIds: readonly string[],
+  ) => void;
+}) {
   const [focus, setFocus] = useState(initial);
   return (
     <DashboardView
       snapshot={snapshot}
       focus={focus}
       onFocus={(action) => setFocus((current) => focusReducer(current, action))}
+      match={{ onReview }}
       gridHeight={600}
     />
   );
@@ -124,7 +155,11 @@ test('Escape clears the focus', () => {
 
 test('key 2 opens Invoices, still scoped to the focused client', () => {
   cleanup();
-  render(<Harness initial={{ ...DEFAULT_FOCUS, clientId: 'thistle' }} />);
+  render(
+    <Harness
+      initial={{ ...DEFAULT_FOCUS, clientId: 'thistle', scoped: true }}
+    />,
+  );
 
   fireEvent.keyDown(screen.getByRole('treegrid', { name: 'Clients' }), {
     key: '2',
@@ -151,4 +186,38 @@ test('selecting an invoice focuses its client and outlines its age bucket', () =
     'data-outline-bucket',
     'days1to30',
   );
+});
+
+test('key 4 opens Unapplied with a hint, and a payment row opens the match panel', () => {
+  cleanup();
+  const onReview = vi.fn();
+  render(<Harness onReview={onReview} />);
+  fireEvent.keyDown(screen.getByRole('treegrid', { name: 'Clients' }), {
+    key: '4',
+  });
+  expect(screen.getByText('Exact: INV-B1')).toBeVisible();
+
+  fireEvent.click(screen.getByText('ACH BIRCH'));
+  fireEvent.click(screen.getByRole('button', { name: 'Review match' }));
+
+  expect(screen.getByRole('tab', { name: /Unapplied/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(screen.getByRole('heading', { name: 'Birch' })).toBeVisible();
+  expect(screen.getByText('ACH BIRCH · $900 unapplied')).toBeVisible();
+  expect(
+    screen.getByRole('checkbox', { name: 'Apply to INV-B1' }),
+  ).toBeChecked();
+  expect(onReview).toHaveBeenCalledWith('pb', ['b1']);
+});
+
+test('picking a payment from the full Unapplied list keeps the other payments listed', () => {
+  cleanup();
+  render(<Harness initial={{ ...DEFAULT_FOCUS, tab: 'unapplied' }} />);
+
+  fireEvent.click(screen.getByText('ACH BIRCH'));
+
+  expect(screen.getByText('ACH BIRCH · $900 unapplied')).toBeVisible();
+  expect(screen.getByText('ACH ACME')).toBeVisible();
 });

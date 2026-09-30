@@ -5,8 +5,10 @@ import {
   daysBetween,
   type InvoiceStatus,
   type LedgerSnapshot,
+  type MatchHint,
   monthAt,
   type PaymentProfile,
+  type PaymentStatus,
   type Proposal,
   TERMS_DAYS,
 } from '@invoicing/contracts';
@@ -309,5 +311,59 @@ export function invoiceStatusLabel(status: InvoiceStatus): {
         label: `Partly paid · ${status.days} day${status.days === 1 ? '' : 's'}`,
         tone: status.days > 0 ? lateTone(status.days) : 'neutral',
       };
+  }
+}
+
+/** Words and tone for how much of a payment has been applied. */
+export function paymentStatusLabel(status: PaymentStatus): {
+  readonly label: string;
+  readonly tone: StatusTone;
+} {
+  switch (status) {
+    case 'matched':
+      return { label: 'Matched', tone: 'good' };
+    case 'partly-applied':
+      return { label: 'Partly applied', tone: 'warning' };
+    case 'unmatched':
+      return { label: 'Unmatched', tone: 'neutral' };
+  }
+}
+
+/**
+ * A match hint in coarse words for the Unapplied grid, e.g. "Exact:
+ * INV-202609-NS-101" or "Partial: $2,000 of $5,000". `balances` maps invoice
+ * ids to their reference and open balance.
+ */
+export function hintLabel(
+  hint: MatchHint,
+  payment: { readonly unappliedCents: number; readonly currency: string },
+  balances: ReadonlyMap<
+    string,
+    { readonly reference: string; readonly outstandingCents: number }
+  >,
+): string {
+  const whole = (cents: number) => wholeMoney(cents, payment.currency);
+  switch (hint.kind) {
+    case 'advance':
+      return 'Advance: no open invoice';
+    case 'none':
+      return 'No clear match';
+    case 'exact':
+      return `Exact: ${balances.get(hint.invoiceIds[0])?.reference ?? 'invoice'}`;
+    case 'ties-out':
+      return `Ties out across ${hint.invoiceIds.length} invoices`;
+    case 'partial':
+      return `Partial: ${whole(payment.unappliedCents)} of ${whole(
+        balances.get(hint.invoiceIds[0])?.outstandingCents ?? 0,
+      )}`;
+    case 'ambiguous': {
+      const amounts = new Set(
+        hint.invoiceIds.map((id) => balances.get(id)?.outstandingCents),
+      );
+      const [only] = amounts;
+      return amounts.size === 1 && only !== undefined
+        ? `Ambiguous: ${hint.invoiceIds.length} invoices at ${whole(only)}`
+        : `Ambiguous: ${hint.invoiceIds.length} candidates`;
+    }
   }
 }

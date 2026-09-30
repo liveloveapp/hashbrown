@@ -154,3 +154,15 @@ export type {
   CustomerCardNode,
   ReviewPaymentNode,
 } from './assistant-ui';
+export {
+  fillInOrder,
+  type FillPlan,
+  MAX_TIE_OUT_INVOICES,
+  matchCandidates,
+  matchHint,
+  type MatchHint,
+  paymentRows,
+  type PaymentRow,
+  paymentStatus,
+  type PaymentStatus,
+} from './matching';

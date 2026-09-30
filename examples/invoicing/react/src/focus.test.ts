@@ -5,6 +5,7 @@ import {
   DEFAULT_FOCUS,
   focusFromSearch,
   focusReducer,
+  focusSelection,
   focusToSearch,
   sanitizeFocus,
 } from './focus';
@@ -55,12 +56,17 @@ test('selecting a client focuses it; selecting an invoice focuses its client and
     clientId: 'thistle',
   });
 
-  expect(client).toEqual({ ...DEFAULT_FOCUS, clientId: 'thistle' });
+  expect(client).toEqual({
+    ...DEFAULT_FOCUS,
+    clientId: 'thistle',
+    scoped: true,
+  });
   expect(reselected).toBe(client);
   expect(invoice).toEqual({
     ...DEFAULT_FOCUS,
     clientId: 'thistle',
     record: { kind: 'invoice', id: 'inv-t' },
+    scoped: true,
   });
 });
 
@@ -234,4 +240,115 @@ test('assistantRunState keeps only the selections that are set', () => {
     { focusedClientId: 'thistle' },
     { focusedClientId: 'thistle', focusedInvoiceId: 'inv-t' },
   ]);
+});
+
+const withPayment = {
+  ...snapshot,
+  payments: [
+    {
+      id: 'pay-t',
+      customerId: 'thistle',
+      currency: 'GBP',
+      amountCents: 1,
+      unappliedCents: 1,
+      version: 1,
+    },
+  ],
+} as LedgerSnapshot;
+
+test('selecting a payment focuses its client and marks the payment, once', () => {
+  const selected = focusReducer(DEFAULT_FOCUS, {
+    type: 'select-payment',
+    paymentId: 'pay-t',
+    clientId: 'thistle',
+  });
+
+  const again = focusReducer(selected, {
+    type: 'select-payment',
+    paymentId: 'pay-t',
+    clientId: 'thistle',
+  });
+
+  expect(selected).toEqual({
+    ...DEFAULT_FOCUS,
+    clientId: 'thistle',
+    record: { kind: 'payment', id: 'pay-t' },
+  });
+  expect(again).toBe(selected);
+});
+
+test('a payment focus round-trips through the URL and survives sanitising', () => {
+  const focus = {
+    tab: 'unapplied' as const,
+    currency: 'USD',
+    clientId: 'thistle',
+    record: { kind: 'payment' as const, id: 'pay-t' },
+  };
+
+  const search = focusToSearch(focus);
+  const read = focusFromSearch(search);
+  const kept = sanitizeFocus(focus, withPayment);
+  const dropped = sanitizeFocus(
+    { ...focus, record: { kind: 'payment', id: 'inv-t' } },
+    withPayment,
+  );
+
+  expect(search).toBe('?tab=unapplied&client=thistle&payment=pay-t');
+  expect(read).toEqual(focus);
+  expect(kept).toBe(focus);
+  expect(dropped).toEqual({
+    tab: 'unapplied',
+    currency: 'USD',
+    clientId: 'thistle',
+  });
+});
+
+test('focusSelection tells the assistant the client and the record inside it', () => {
+  const payment = {
+    ...DEFAULT_FOCUS,
+    clientId: 'thistle',
+    record: { kind: 'payment' as const, id: 'pay-t' },
+  };
+  const invoice = {
+    ...DEFAULT_FOCUS,
+    clientId: 'thistle',
+    record: { kind: 'invoice' as const, id: 'inv-t' },
+  };
+
+  const selections = [payment, invoice, DEFAULT_FOCUS].map((focus) =>
+    assistantRunState(focusSelection(focus)),
+  );
+
+  expect(selections).toEqual([
+    { focusedClientId: 'thistle', selectedPaymentId: 'pay-t' },
+    { focusedClientId: 'thistle', focusedInvoiceId: 'inv-t' },
+    {},
+  ]);
+});
+
+test('a record picked from a full list focuses its client without narrowing the lists', () => {
+  const full = { ...DEFAULT_FOCUS, tab: 'unapplied' as const };
+
+  const picked = focusReducer(full, {
+    type: 'select-payment',
+    paymentId: 'pay-t',
+    clientId: 'thistle',
+  });
+  const switched = focusReducer(picked, { type: 'set-tab', tab: 'invoices' });
+  const narrowed = focusReducer(
+    focusReducer(DEFAULT_FOCUS, { type: 'select-client', clientId: 'thistle' }),
+    { type: 'set-tab', tab: 'invoices' },
+  );
+
+  expect(picked.scoped).toBeUndefined();
+  expect(switched).toEqual({
+    tab: 'invoices',
+    currency: 'USD',
+    clientId: 'thistle',
+  });
+  expect(narrowed.scoped).toBe(true);
+  expect(focusFromSearch('?client=thistle').scoped).toBe(true);
+  expect(
+    focusFromSearch('?client=thistle&payment=pay-t').scoped,
+  ).toBeUndefined();
 });

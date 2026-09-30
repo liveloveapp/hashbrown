@@ -149,57 +149,6 @@ h2 {
   margin: 12px 0;
   font-variant-numeric: tabular-nums;
 }
-.section-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.payment-grid {
-  border: 1px solid #e4e6e5;
-  border-radius: 8px;
-  overflow: hidden;
-  min-width: 0;
-}
-.payment-link {
-  background: none;
-  border: 0;
-  padding: 5px 0;
-  text-align: left;
-  color: #293e34;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.invoice-context {
-  margin-top: 24px;
-  padding: 20px;
-  border: 1px solid #e4e6e5;
-  border-radius: 8px;
-}
-.invoice-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 0;
-  border-top: 1px solid #efefef;
-  font-size: 12px;
-}
-.invoice-row div:last-child {
-  text-align: right;
-}
-.invoice-row strong {
-  font-weight: 500;
-}
-.invoice-row small {
-  display: block;
-  color: #777d80;
-  margin-top: 6px;
-}
-.context-note {
-  font-size: 12px;
-  color: #73777c;
-  margin-bottom: 0;
-}
 .assistant {
   border-left: 1px solid #e7e7e7;
   display: flex;
@@ -460,51 +409,6 @@ h2 {
 .proposal-card p {
   margin: 4px 0 0;
   color: #73777c;
-}
-
-.payment-filters {
-  display: flex;
-  gap: 8px;
-  margin: 0 0 12px;
-}
-.payment-filters button,
-.match-controls button {
-  padding: 8px 12px;
-  border: 1px solid #d4ddd7;
-  border-radius: 6px;
-  background: #fff;
-  color: #253d32;
-}
-.payment-filters button[aria-pressed='true'],
-.match-controls button {
-  background: #edf3ef;
-}
-.match-controls button:disabled {
-  opacity: 0.5;
-}
-.match-controls {
-  display: grid;
-  justify-items: start;
-  gap: 12px;
-  margin-top: 18px;
-}
-.match-controls label {
-  display: grid;
-  gap: 8px;
-  font-size: 12px;
-}
-.match-controls select {
-  max-width: 100%;
-  padding: 8px;
-  font: inherit;
-  border: 1px solid #d4ddd7;
-  border-radius: 6px;
-}
-.invoice-context summary {
-  cursor: pointer;
-  padding: 12px 0;
-  color: #73777c;
-  font-size: 12px;
 }
 
 .assistant-body textarea {
@@ -857,4 +761,91 @@ h2 {
     animation: none;
     transition: none;
   }
+}
+
+/* Payments and matching (PR 2). */
+.payer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.payer-reference {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #73777c;
+  overflow-wrap: anywhere;
+}
+.match-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  outline: none;
+}
+.match-panel:focus-visible {
+  outline: 2px solid #3d745a;
+  outline-offset: 2px;
+}
+.match-panel h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.match-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.match-panel th,
+.match-panel td {
+  padding: 6px 4px;
+  border-bottom: 1px solid #efefef;
+  text-align: right;
+}
+.match-panel th:nth-child(-n + 3),
+.match-panel td:nth-child(-n + 3) {
+  text-align: left;
+}
+.match-panel th {
+  font-weight: 500;
+  color: #73777c;
+}
+.match-panel tr[data-checked] td {
+  background: var(--tint, #eef3f0);
+}
+.match-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.match-total {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.match-total[data-ties-out] {
+  color: #0b7a0b;
+}
+.match-footer button {
+  padding: 6px 12px;
+  border: 1px solid #253d32;
+  border-radius: 6px;
+  background: #253d32;
+  color: #fff;
+}
+.match-footer button:disabled {
+  background: #fff;
+  color: #73777c;
+  border-color: #d4ddd7;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

@@ -5,11 +5,13 @@ import {
   appliedSummary,
   customerSummary,
   HABITS,
+  hintLabel,
   invoiceStatusLabel,
   listJoin,
   money,
   monthLabel,
   monthlySeries,
+  paymentStatusLabel,
   resolveRecords,
   wholeMoney,
 } from './ledger-views';
@@ -359,5 +361,60 @@ test('invoiceStatusLabel words each status with a tone by how late it is', () =>
     { label: '32 days overdue', tone: 'serious' },
     { label: 'Partly paid · 305 days', tone: 'critical' },
     { label: 'Partly paid · 1 day', tone: 'warning' },
+  ]);
+});
+
+test('paymentStatusLabel words how much of a payment is applied', () => {
+  const statuses = ['matched', 'partly-applied', 'unmatched'] as const;
+
+  const labels = statuses.map(paymentStatusLabel);
+
+  expect(labels).toEqual([
+    { label: 'Matched', tone: 'good' },
+    { label: 'Partly applied', tone: 'warning' },
+    { label: 'Unmatched', tone: 'neutral' },
+  ]);
+});
+
+test('hintLabel words each match hint the way the Unapplied grid shows it', () => {
+  const balances = new Map([
+    ['ns', { reference: 'INV-202609-NS-101', outstandingCents: 240000 }],
+    ['ch', { reference: 'INV-202609-CH-102', outstandingCents: 500000 }],
+    ['a1', { reference: 'INV-A1', outstandingCents: 150000 }],
+    ['a2', { reference: 'INV-A2', outstandingCents: 150000 }],
+    ['b', { reference: 'INV-B', outstandingCents: 90000 }],
+  ]);
+  const usd = (unappliedCents: number) => ({ unappliedCents, currency: 'USD' });
+
+  const labels = [
+    hintLabel({ kind: 'exact', invoiceIds: ['ns'] }, usd(240000), balances),
+    hintLabel({ kind: 'partial', invoiceIds: ['ch'] }, usd(200000), balances),
+    hintLabel(
+      { kind: 'ties-out', invoiceIds: ['a1', 'b'] },
+      usd(240000),
+      balances,
+    ),
+    hintLabel(
+      { kind: 'ambiguous', invoiceIds: ['a1', 'a2'] },
+      usd(150000),
+      balances,
+    ),
+    hintLabel(
+      { kind: 'ambiguous', invoiceIds: ['a1', 'b'] },
+      usd(150000),
+      balances,
+    ),
+    hintLabel({ kind: 'advance' }, usd(300000), balances),
+    hintLabel({ kind: 'none' }, usd(100), balances),
+  ];
+
+  expect(labels).toEqual([
+    'Exact: INV-202609-NS-101',
+    'Partial: $2,000 of $5,000',
+    'Ties out across 2 invoices',
+    'Ambiguous: 2 invoices at $1,500',
+    'Ambiguous: 2 candidates',
+    'Advance: no open invoice',
+    'No clear match',
   ]);
 });

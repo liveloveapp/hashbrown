@@ -26,16 +26,11 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     page.getByRole('region', { name: 'Ledger conversation' }),
   ).toContainText('13,900');
   await expect(message).toBeEnabled();
-  await page.getByRole('button', { name: 'Payments', exact: true }).click();
+  await page.getByRole('tab', { name: /^Unapplied/ }).click();
   await page
-    .getByRole('button', {
-      name: 'Review payment-northstar-exact',
-      exact: true,
-    })
+    .locator('[data-pretable-row-id="payment-northstar-exact"]')
     .click();
-  await page
-    .getByRole('button', { name: 'Match payment', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Review match', exact: true }).click();
   await expect(message).toBeDisabled();
   await page
     .getByRole('button', { name: 'Approve and apply', exact: true })
@@ -52,12 +47,8 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     applied.payments.find((p) => p.id === 'payment-northstar-exact')
       ?.unappliedCents,
   ).toBe(0);
-  await page
-    .getByRole('button', { name: 'Review payment-cedar-partial', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Match payment', exact: true })
-    .click();
+  await page.locator('[data-pretable-row-id="payment-cedar-partial"]').click();
+  await page.getByRole('button', { name: 'Review match', exact: true }).click();
   await expect(
     page.getByRole('region', {
       name: 'Payment review chat',
@@ -83,9 +74,7 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     baseline.allocations.length + 1,
   );
 
-  await page
-    .getByRole('button', { name: 'Match payment', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Review match', exact: true }).click();
   await expect(
     page.getByRole('region', {
       name: 'Payment review chat',
