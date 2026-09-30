@@ -162,15 +162,16 @@ test('matchHint stays quick for a payer with many small open invoices', () => {
     Array.from({ length: 60 }, (_, i) =>
       invoice(`i${String(i).padStart(2, '0')}`, 'c', 50, '2026-09-01'),
     ),
-    [payment('p', 'c', 250)],
+    // No set of 50¢ invoices sums to 260¢: before pruning, proving that took ~200 ms.
+    [payment('p', 'c', 260)],
   );
 
   const start = performance.now();
   const hint = matchHint(snapshot, 'p');
   const elapsed = performance.now() - start;
 
-  expect(hint.kind).toBe('ambiguous');
-  expect(elapsed).toBeLessThan(200);
+  expect(hint.kind).toBe('none');
+  expect(elapsed).toBeLessThan(50);
 });
 
 test('matchHint falls back to a single larger invoice as a partial, else none', () => {
