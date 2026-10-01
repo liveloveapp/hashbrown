@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import type { TransportOrFactory } from '@hashbrownai/core';
+import { loadAssistantWorkspace } from './assistant-chunk';
 import { AssistantShell } from './assistant-shell';
 import { startersFor } from './assistant-starters';
 import type { AssistantWorkspaceHandle } from './assistant-workspace';
@@ -33,13 +34,15 @@ export interface AppProps {
 
 // The assistant (Hashbrown's React runtime, the AG-UI client, the review
 // chat) loads in its own chunk, so the dashboard paints without waiting for
-// it; the rail shows `AssistantShell` meanwhile.
-const AssistantWorkspace = lazy(() =>
-  import('./assistant-workspace').then((module) => ({
-    default: module.AssistantWorkspace,
-  })),
+// it; the rail shows `AssistantShell` meanwhile. The import starts as this
+// module loads, so the chunk downloads alongside /api/snapshot instead of
+// after it, and a failed load leaves a notice rather than a blank page.
+const assistantChunk = loadAssistantWorkspace(
+  () => import('./assistant-workspace'),
 );
+const AssistantWorkspace = lazy(() => assistantChunk);
 
+// Keep in step with the inline prefetch script in index.html.
 async function fetchSnapshot(): Promise<LedgerSnapshot> {
   const response = await fetch('/api/snapshot', { credentials: 'same-origin' });
   if (!response.ok)
@@ -49,6 +52,8 @@ async function fetchSnapshot(): Promise<LedgerSnapshot> {
 
 const BUSY_NOTICE =
   'Finish the current assistant request or approval before starting another match.';
+const CONNECTING_NOTICE =
+  'The assistant is still connecting. Try again in a moment.';
 
 /** Live ledger workspace: one dashboard whose focus the assistant shares. */
 export function App({
@@ -116,7 +121,11 @@ export function App({
   }
 
   function review(paymentId: string, invoiceIds: readonly string[]) {
-    const started = reviewRef.current?.beginReview(paymentId, invoiceIds);
+    if (!reviewRef.current) {
+      setReviewNotice(CONNECTING_NOTICE);
+      return;
+    }
+    const started = reviewRef.current.beginReview(paymentId, invoiceIds);
     setReviewNotice(started || !assistantBusy ? '' : BUSY_NOTICE);
   }
 
@@ -185,7 +194,10 @@ export function App({
               onFocus={dispatchFocus}
               match={{
                 onReview: enableAssistant ? review : undefined,
-                notice: reviewNotice && assistantBusy ? reviewNotice : '',
+                notice:
+                  reviewNotice === CONNECTING_NOTICE || assistantBusy
+                    ? reviewNotice
+                    : '',
               }}
             />
           )}

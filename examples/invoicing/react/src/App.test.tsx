@@ -513,3 +513,29 @@ test('focusing a client after a payment replaces the payment context', () => {
   ).toHaveTextContent('Client context');
   expect(window.location.search).toBe('?client=customer-001');
 });
+
+test('reviewing a match before the assistant has loaded says it is still connecting', async () => {
+  cleanup();
+  onTestFinished(() => {
+    vi.doUnmock('./assistant-workspace');
+    vi.resetModules();
+    window.history.replaceState(null, '', '/');
+  });
+  vi.resetModules();
+  vi.doMock('./assistant-workspace', () => new Promise(() => undefined));
+  const { App: FreshApp } = await import('./App');
+  render(<FreshApp initialSnapshot={snapshot} enableAssistant />);
+  fireEvent.click(screen.getByRole('tab', { name: /Unapplied/ }));
+  fireEvent.click(screen.getByText('payment-001'));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Review match' }));
+
+  expect(
+    within(
+      screen.getByRole('region', { name: 'Match this payment' }),
+    ).getByRole('status'),
+  ).toHaveTextContent(
+    'The assistant is still connecting. Try again in a moment.',
+  );
+  expect(screen.getByText('Connecting the assistant…')).toBeVisible();
+});

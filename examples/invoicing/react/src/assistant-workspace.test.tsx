@@ -7,7 +7,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { createRef } from 'react';
+import { createRef, StrictMode } from 'react';
 import { expect, test, vi } from 'vitest';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import type { Transport, TransportRequest } from '@hashbrownai/core';
@@ -898,12 +898,14 @@ test('an initial prompt from the loading shell is sent once on mount', async () 
   const { requests, transport } = controlled();
 
   render(
-    <AssistantWorkspace
-      snapshot={snapshot}
-      initialPrompt="What needs matching?"
-      onApplied={() => undefined}
-      transport={transport}
-    />,
+    <StrictMode>
+      <AssistantWorkspace
+        snapshot={snapshot}
+        initialPrompt="What needs matching?"
+        onApplied={() => undefined}
+        transport={transport}
+      />
+    </StrictMode>,
   );
 
   await screen.findByText('There is one unapplied payment.');

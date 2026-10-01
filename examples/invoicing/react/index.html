@@ -8,6 +8,7 @@
       // Start the ledger request now, before the app script downloads, so the
       // server's work overlaps it. main.tsx takes this promise over (see
       // snapshot-prefetch.ts); errors surface there, so mark them handled here.
+      // Keep in step with fetchSnapshot in src/App.tsx.
       window.__invoicingSnapshot = fetch('/api/snapshot', {
         credentials: 'same-origin',
       }).then((response) => {
