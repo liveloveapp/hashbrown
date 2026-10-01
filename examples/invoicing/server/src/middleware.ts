@@ -1,5 +1,6 @@
 import { allow, defineMiddleware, reject } from '@b4run/sdk';
 import { validatedUi } from './assistant-middleware';
+import { createRunTimer, runTimerOf, timeContext } from './run-timing';
 import { getServices } from './services';
 
 /** Errors the ownership guard raises about the request itself, rather than about storage. */
@@ -25,7 +26,13 @@ export default defineMiddleware({
         return reject(422, { error: 'invalid_thread' });
       throw error;
     }
-    return allow(result.context);
+    // Time every tool call of the run, so slow answers can be traced to a
+    // step or to the model turns between steps (see run-timing.ts).
+    const body = request.body as { readonly runId?: unknown } | undefined;
+    const runId = typeof body?.runId === 'string' ? body.runId : 'unknown';
+    return allow(
+      timeContext(result.context, createRunTimer(request.routeId, runId)),
+    );
   },
   /**
    * The assistant answers by calling `render`; the browser renders that call
@@ -47,6 +54,7 @@ export default defineMiddleware({
    * is a short paragraph that arrives in one piece instead of typing out.
    */
   after: (run) => {
+    runTimerOf(run.context)?.done();
     if (run.routeId !== '/assistant') return undefined;
     return validatedUi(run.context)
       ? { finalMessage: '' }
