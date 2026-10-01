@@ -1,6 +1,6 @@
 import { createServer, type RequestListener } from 'node:http';
 import { AddressInfo } from 'node:net';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { createInvoicingListener } from './http';
 import { createSessionStore } from './session-store';
 import { createReviewCoordinator } from './review-coordinator';
@@ -225,6 +225,49 @@ test('only the canonical POST review route reaches the agent runtime', async () 
     expect(alternate.status).toBe(404);
     expect(threads.status).toBe(404);
     expect(resume.status).toBe(404);
+  } finally {
+    await app.close();
+  }
+});
+
+test('a snapshot read reports its phases in Server-Timing and builds the snapshot once', async () => {
+  const app = await fixture();
+  try {
+    const first = await fetch(`${app.url}/api/snapshot`);
+    const cookie = (first.headers.get('set-cookie') ?? '').split(';')[0];
+    const builds = vi.spyOn(app.store, 'snapshot');
+
+    const second = await fetch(`${app.url}/api/snapshot`, {
+      headers: { cookie },
+    });
+
+    expect(first.headers.get('server-timing')).toMatch(
+      /^session;dur=\d+\.\d, snapshot;dur=\d+\.\d$/,
+    );
+    expect(second.headers.get('server-timing')).toMatch(
+      /^snapshot;dur=\d+\.\d$/,
+    );
+    expect(builds).toHaveBeenCalledOnce();
+    expect(await second.json()).toEqual(await first.json());
+  } finally {
+    await app.close();
+  }
+});
+
+test('other session reads report the session check in Server-Timing', async () => {
+  const app = await fixture();
+  try {
+    const first = await fetch(`${app.url}/api/snapshot`);
+    const cookie = (first.headers.get('set-cookie') ?? '').split(';')[0];
+
+    const missing = await fetch(`${app.url}/api/operations/nope`, {
+      headers: { cookie },
+    });
+
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get('server-timing')).toMatch(
+      /^session;dur=\d+\.\d$/,
+    );
   } finally {
     await app.close();
   }

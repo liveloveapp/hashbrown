@@ -4,6 +4,7 @@ import type {
   ServerResponse,
 } from 'node:http';
 import { createInvoicingListener } from './http';
+import { createServerTiming } from './server-timing';
 import { getServices } from './services';
 
 let listener: Promise<RequestListener> | undefined;
@@ -24,7 +25,12 @@ export default async function handler(
   response: ServerResponse,
 ) {
   try {
-    (await getListener())(request, response);
+    // `init` is the function's one-time setup (services, the Postgres pool):
+    // large on a cold start, near zero afterwards.
+    const timing = createServerTiming();
+    const listener = await timing.measure('init', getListener);
+    response.setHeader('server-timing', timing.header());
+    listener(request, response);
   } catch {
     if (!response.headersSent) {
       response.writeHead(500, {
