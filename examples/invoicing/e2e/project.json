@@ -108,6 +108,18 @@
       "options": {
         "command": "playwright test --config examples/invoicing/e2e/provider.playwright.config.ts"
       }
+    },
+    "perf-live": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "playwright test --config examples/invoicing/e2e/perf/perf.playwright.config.ts"
+      }
+    },
+    "test-perf": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config examples/invoicing/e2e/perf/vitest.config.mts"
+      }
     }
   },
   "implicitDependencies": [
