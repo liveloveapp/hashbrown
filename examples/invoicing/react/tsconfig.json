@@ -10,5 +10,11 @@
     "types": ["vite/client", "node"],
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.mts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "vite.config.mts",
+    "dev-proxy.ts",
+    "dev-proxy.test.ts"
+  ]
 }
