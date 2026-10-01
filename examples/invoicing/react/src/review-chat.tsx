@@ -9,7 +9,6 @@ import {
   type Proposal,
 } from '@invoicing/contracts';
 import {
-  Fragment,
   type Ref,
   useEffect,
   useImperativeHandle,
@@ -357,9 +356,7 @@ export function ReviewChat({
         }}
       >
         {chat.messages.map((message, index) =>
-          message.role === 'assistant' ? (
-            <Fragment key={index}>{message.ui}</Fragment>
-          ) : message.role === 'user' && showComposer ? (
+          message.role === 'user' && showComposer ? (
             // Embedded reviews start from a fixed kickoff message the user
             // never typed; only a review with its own composer shows them.
             <p key={index}>
@@ -367,7 +364,13 @@ export function ReviewChat({
             </p>
           ) : null,
         )}
+        {/* The card is the verified server proposal, rendered by the page. The
+            model streams no UI for it, and any it did stream is ignored. */}
+        {owned && <AllocationProposal proposalId={owned.proposal.proposalId} />}
       </AllocationProposalContext.Provider>
+      {isLoading && !pendingInterrupts && !attempt && !error && (
+        <p role="status">Preparing the proposal…</p>
+      )}
       {pendingInterrupts && !owned && !error && (
         <p role="status">Verifying proposal…</p>
       )}

@@ -49,6 +49,8 @@ function setup(
     immediate?: boolean;
     initialComplete?: boolean;
     resumeError?: boolean;
+    /** UI the model streams before the approval pause; the server sends none. */
+    modelUi?: unknown;
   } = {},
 ) {
   cleanup();
@@ -106,28 +108,22 @@ function setup(
             yield { type: EventType.RUN_FINISHED, ...identity };
             return;
           }
-          yield {
-            type: EventType.TEXT_MESSAGE_START,
-            messageId: 'proposal-message',
-            role: 'assistant',
-          };
-          yield {
-            type: EventType.TEXT_MESSAGE_CONTENT,
-            messageId: 'proposal-message',
-            delta: JSON.stringify({
-              ui: [
-                {
-                  AllocationProposal: {
-                    props: { proposalId: proposal.proposalId },
-                  },
-                },
-              ],
-            }),
-          };
-          yield {
-            type: EventType.TEXT_MESSAGE_END,
-            messageId: 'proposal-message',
-          };
+          if (options.modelUi) {
+            yield {
+              type: EventType.TEXT_MESSAGE_START,
+              messageId: 'proposal-message',
+              role: 'assistant',
+            };
+            yield {
+              type: EventType.TEXT_MESSAGE_CONTENT,
+              messageId: 'proposal-message',
+              delta: JSON.stringify({ ui: options.modelUi }),
+            };
+            yield {
+              type: EventType.TEXT_MESSAGE_END,
+              messageId: 'proposal-message',
+            };
+          }
           yield {
             type: EventType.RUN_FINISHED,
             ...identity,
@@ -401,4 +397,43 @@ test('releases the message claim after an immediately completed initial turn', a
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
   await waitFor(() => expect(subject.requests).toHaveLength(2));
+});
+
+test('the card comes from the verified proposal, never from UI the model streams', async () => {
+  const subject = setup({
+    modelUi: [{ AllocationProposal: { props: { proposalId: 'forged' } } }],
+  });
+
+  act(() => {
+    subject.start();
+  });
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Approve and apply' }),
+    ).toBeEnabled(),
+  );
+
+  expect(
+    screen.getAllByRole('region', { name: 'Allocation proposal' }),
+  ).toHaveLength(1);
+  expect(
+    screen.queryByText('Proposal unavailable for the selected payment.'),
+  ).not.toBeInTheDocument();
+});
+
+test('while the agent prepares, the review says so', async () => {
+  const subject = setup();
+
+  act(() => {
+    subject.start();
+  });
+
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'Preparing the proposal…',
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Approve and apply' }),
+    ).toBeEnabled(),
+  );
 });
