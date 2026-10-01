@@ -892,3 +892,24 @@ test('a focused client leads the starters and reaches the run state', async () =
   await screen.findByText('There is one unapplied payment.');
   await settle();
 });
+
+test('an initial prompt from the loading shell is sent once on mount', async () => {
+  cleanup();
+  const { requests, transport } = controlled();
+
+  render(
+    <AssistantWorkspace
+      snapshot={snapshot}
+      initialPrompt="What needs matching?"
+      onApplied={() => undefined}
+      transport={transport}
+    />,
+  );
+
+  await screen.findByText('There is one unapplied payment.');
+  expect(requests).toHaveLength(1);
+  expect(JSON.stringify(requests[0].input.messages)).toContain(
+    'What needs matching?',
+  );
+  await settle();
+});

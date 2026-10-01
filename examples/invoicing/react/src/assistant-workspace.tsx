@@ -16,6 +16,7 @@ import type { TransportOrFactory } from '@hashbrownai/core';
 import type { LedgerSnapshot, Proposal } from '@invoicing/contracts';
 import { findRenderCall, RenderDraft } from './assistant-draft';
 import { assistantKit } from './assistant-kit';
+import { startersFor } from './assistant-starters';
 import { assistantRunState } from './focus';
 import { appliedSummary, listJoin } from './ledger-views';
 import { ReviewChat, type ReviewChatHandle } from './review-chat';
@@ -68,13 +69,6 @@ function ReviewPayment({
 const components = assistantKit(ReviewPayment);
 const ASSISTANT_URL = '/agui/%2Fassistant%23agent';
 
-const STARTERS = [
-  'How much cash is still unapplied?',
-  'Which clients pay late?',
-  'How did invoicing trend over the last 6 months?',
-] as const;
-const SELECTED_STARTER = 'Which invoices does this payment cover?';
-
 /** Explicit matching entry point; false means an existing operation or invoice choice needs attention. */
 export interface AssistantWorkspaceHandle {
   beginReview(paymentId: string, invoiceIds?: readonly string[]): boolean;
@@ -87,6 +81,8 @@ export interface AssistantWorkspaceProps {
   readonly focusedClientId?: string;
   /** The invoice focused on the dashboard; always one of `focusedClientId`'s. */
   readonly focusedInvoiceId?: string;
+  /** A starter the user picked before the assistant loaded; sent on mount. */
+  readonly initialPrompt?: string;
   readonly snapshot: LedgerSnapshot;
   readonly onApplied: (snapshot: LedgerSnapshot) => void;
   /** Reports whether conversation or an unresolved review prevents matching. */
@@ -186,6 +182,7 @@ function Conversation({
   focusedClientId,
   focusedInvoiceId,
   focusedClientName,
+  initialPrompt,
   locked,
   onBusy,
   transport,
@@ -196,6 +193,8 @@ function Conversation({
   focusedInvoiceId?: string;
   /** Names the focused client in the first starter question. */
   focusedClientName?: string;
+  /** A question to send as soon as the conversation mounts. */
+  initialPrompt?: string;
   locked: boolean;
   onBusy: (busy: boolean) => void;
   transport?: TransportOrFactory;
@@ -242,14 +241,14 @@ function Conversation({
     setPrompt('');
   }
 
-  const starters = selectedPaymentId
-    ? [SELECTED_STARTER, ...STARTERS.slice(0, 2)]
-    : focusedClientName
-      ? [
-          `What does ${focusedClientName} owe, and how late is it?`,
-          ...STARTERS.slice(0, 2),
-        ]
-      : STARTERS;
+  const starters = startersFor({ selectedPaymentId, focusedClientName });
+  // A starter picked in the loading shell is sent once, as soon as this mounts.
+  const sentInitial = useRef(false);
+  useEffect(() => {
+    if (!initialPrompt || sentInitial.current) return;
+    sentInitial.current = true;
+    send(initialPrompt);
+  });
   return (
     <section className="conversation" aria-label="Ledger conversation">
       <div className="thread" ref={thread}>
@@ -348,6 +347,7 @@ export function AssistantWorkspace({
   selectedPaymentId,
   focusedClientId,
   focusedInvoiceId,
+  initialPrompt,
   snapshot,
   onApplied,
   onBusyChange,
@@ -426,6 +426,7 @@ export function AssistantWorkspace({
             focusedClientName={
               snapshot.customers.find((c) => c.id === focusedClientId)?.name
             }
+            initialPrompt={initialPrompt}
             locked={Boolean(active)}
             onBusy={setConversationBusy}
             transport={transport}
