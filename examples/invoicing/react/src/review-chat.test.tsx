@@ -436,4 +436,22 @@ test('while the agent prepares, the review says so', async () => {
       screen.getByRole('button', { name: 'Approve and apply' }),
     ).toBeEnabled(),
   );
+  expect(screen.queryByText('Preparing the proposal…')).not.toBeInTheDocument();
 });
+
+for (const choice of ['Approve and apply', 'Decline']) {
+  test(`the proposal card stays on the page after "${choice}"`, async () => {
+    const subject = setup();
+    subject.start();
+    const button = await screen.findByRole('button', { name: choice });
+    await waitFor(() => expect(button).toBeEnabled());
+
+    fireEvent.click(button);
+    await waitFor(() => expect(subject.requests).toHaveLength(2));
+    await subject.finish();
+
+    expect(
+      screen.getAllByRole('region', { name: 'Allocation proposal' }),
+    ).toHaveLength(1);
+  });
+}

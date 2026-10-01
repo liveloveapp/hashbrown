@@ -39,7 +39,6 @@ test('middleware supplies server-owned payment tools without financial writes', 
   expect(Object.keys(result.context).sort()).toEqual([
     'applyAllocation',
     'prepareAllocation',
-    'responseSchema',
   ]);
   await expect(
     result.context.applyAllocation({ proposalId: proposal.proposalId }),
@@ -123,13 +122,23 @@ async function twoInvoices() {
         version: 1,
       },
     ],
-    invoices: ['i1', 'i2'].map((id) => ({
-      id,
-      customerId: 'c',
-      currency: 'USD',
-      amountCents: 10000,
-      version: 1,
-    })),
+    invoices: [
+      ...['i1', 'i2'].map((id) => ({
+        id,
+        customerId: 'c',
+        currency: 'USD',
+        amountCents: 10000,
+        version: 1,
+      })),
+      // Open, but another customer's: never part of this payment's review.
+      {
+        id: 'other',
+        customerId: 'd',
+        currency: 'USD',
+        amountCents: 10000,
+        version: 1,
+      },
+    ],
     customers: [],
     allocations: [],
     activities: [],
@@ -187,5 +196,17 @@ test('a review bound to several invoices fills them in order from the payment', 
     { invoiceId: 'i1', amountCents: 5000, expectedInvoiceVersion: 1 },
   ]);
   expect(proposal.amountCents).toBe(15000);
+  expect((await store.snapshot(session)).allocations).toHaveLength(0);
+});
+
+test("an invoice of another customer's is not found, and nothing is prepared", async () => {
+  const { store, session, request } = await twoInvoices();
+  const foreign = await request('foreign', ['i1', 'other']);
+
+  const refused = await foreign
+    .prepareAllocation()
+    .catch((error: Error) => error);
+
+  expect((refused as Error).message).toBe('invoice_not_found');
   expect((await store.snapshot(session)).allocations).toHaveLength(0);
 });

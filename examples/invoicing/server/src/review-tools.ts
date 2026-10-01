@@ -14,7 +14,6 @@ export function reviewTools(context: unknown): ReviewTools {
     throw new Error('invalid_review_middleware');
   const middleware = context.middleware;
   if (
-    !record(middleware.responseSchema) ||
     typeof middleware.prepareAllocation !== 'function' ||
     typeof middleware.applyAllocation !== 'function'
   )

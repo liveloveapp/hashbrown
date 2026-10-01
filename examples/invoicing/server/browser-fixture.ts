@@ -105,7 +105,7 @@ async function main() {
           );
           if (!payment || invoices.length === 0 || !invoices.every(Boolean))
             throw new Error('missing_selection');
-          const proposal = await reviews.prepare(context, {
+          await reviews.prepare(context, {
             paymentId: payment.id,
             lines: fillLines(
               payment.unappliedCents,

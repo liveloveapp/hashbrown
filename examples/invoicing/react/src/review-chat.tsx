@@ -131,7 +131,7 @@ export function ReviewChat({
   const boundPaymentId = useRef<string | undefined>(undefined);
   const chat = useUiChat({
     system:
-      'Review the selected payment. Prepare a server proposal and show AllocationProposal before requesting applyAllocation approval.',
+      'Review the selected payment. Prepare a server proposal, then request applyAllocation approval. The page shows the proposal card itself.',
     components,
     transport,
     threadId,

@@ -2,10 +2,11 @@ import type { B4ToolContext } from '@b4run/sdk';
 import { reviewTools } from '../../../review-tools';
 
 /**
- * Ends the run when the allocation applies: the browser confirms the result
+ * Ends the run when the allocation applies or the user declines (B4 returns
+ * the denial as an ordinary tool result): the browser confirms the outcome
  * from the server (`/api/operations/:id`), so a closing model turn would only
- * add latency. A declined approval or a failed apply still returns to the
- * model, which ends with an empty answer.
+ * add latency. Only a failed apply (a thrown error) returns to the model,
+ * which then ends with an empty answer.
  */
 export const returnDirect = true;
 

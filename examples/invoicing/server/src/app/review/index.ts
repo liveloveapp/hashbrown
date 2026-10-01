@@ -11,6 +11,5 @@ export default agent({
 Call prepareAllocation({}) exactly once; it prepares the proposal for the invoices the user selected.
 Then call applyAllocation({proposalId}) with exactly the proposalId it returned. The runtime pauses that
 call for the user's approval and the page shows the proposal. Never ask for approval in prose. Never invent
-identifiers, amounts or tool results. Do not narrate or emit text before or between tool calls. If approval
-is cancelled or a tool fails, do not retry or prepare a second proposal; output exactly {"ui":[]}.`,
+identifiers, amounts or tool results. Do not narrate or emit text before or between tool calls. If a tool fails, do not retry or prepare a second proposal; output exactly {"ui":[]}.`,
 });

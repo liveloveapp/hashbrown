@@ -29,7 +29,7 @@ async function setup() {
   return { store, owner, middleware: result.context };
 }
 
-test('validates middleware functions and response schema before tool access', async () => {
+test('validates middleware functions before tool access', async () => {
   const { middleware } = await setup();
 
   const result = reviewTools({ middleware });
@@ -39,7 +39,6 @@ test('validates middleware functions and response schema before tool access', as
     undefined,
     {},
     { middleware: {} },
-    { middleware: { ...middleware, responseSchema: null } },
     { middleware: { ...middleware, applyAllocation: 'apply' } },
     { middleware: { ...middleware, prepareAllocation: undefined } },
   ]) {

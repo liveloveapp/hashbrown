@@ -59,7 +59,6 @@ export function createReviewMiddleware(
       return {
         action: 'continue' as const,
         context: Object.freeze({
-          responseSchema: context.responseSchema,
           // The selected invoices, in fill order; without a selection, the
           // payment's only open invoice. Two or more open invoices and no
           // selection is a choice only the user can make.
