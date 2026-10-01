@@ -485,7 +485,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 **Files:**
 - Modify: `examples/invoicing/server/src/app/review/tools/applyAllocation.ts`, `examples/invoicing/server/src/app/review/index.ts`
 
-`returnDirect = true` makes B4 end the run when `applyAllocation` succeeds (end-on-success, as the assistant's `render` tool does). That removes the closing `{"ui":[]}` turn. A declined approval or a failed apply still returns to the model, which outputs `{"ui":[]}` as before.
+`returnDirect = true` makes B4 end the run when `applyAllocation` succeeds (end-on-success, as the assistant's `render` tool does). That removes the closing `{"ui":[]}` turn. A declined approval also ends the run, because B4 returns the denial as an ordinary tool result rather than an error. Only a failed apply (a thrown error) returns to the model, which outputs `{"ui":[]}`. (Corrected after review; the patch below has the earlier wording, fixed in a later commit.)
 
 The prompt shrinks to two tool calls. `reasoning: { effort: 'minimal' }` reaches OpenAI as `reasoningEffort` (see `@b4run/langchain` `chat-model-factory.js`). `recursionLimit` drops from 12 to 8, since the run is now at most three model turns.
 

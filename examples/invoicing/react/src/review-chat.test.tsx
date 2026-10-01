@@ -439,8 +439,9 @@ test('while the agent prepares, the review says so', async () => {
   expect(screen.queryByText('Preparing the proposal…')).not.toBeInTheDocument();
 });
 
-for (const choice of ['Approve and apply', 'Decline']) {
-  test(`the proposal card stays on the page after "${choice}"`, async () => {
+test.each(['Approve and apply', 'Decline'])(
+  'the proposal card stays on the page after "%s"',
+  async (choice) => {
     const subject = setup();
     subject.start();
     const button = await screen.findByRole('button', { name: choice });
@@ -453,5 +454,5 @@ for (const choice of ['Approve and apply', 'Decline']) {
     expect(
       screen.getAllByRole('region', { name: 'Allocation proposal' }),
     ).toHaveLength(1);
-  });
-}
+  },
+);
