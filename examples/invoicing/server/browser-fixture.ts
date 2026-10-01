@@ -105,7 +105,7 @@ async function main() {
           );
           if (!payment || invoices.length === 0 || !invoices.every(Boolean))
             throw new Error('missing_selection');
-          const proposal = await reviews.prepare(context, {
+          await reviews.prepare(context, {
             paymentId: payment.id,
             lines: fillLines(
               payment.unappliedCents,
@@ -114,44 +114,25 @@ async function main() {
           });
           const interruptId = randomUUID();
           interrupts.set(body.threadId, interruptId);
-          events.push(
-            {
-              type: 'TEXT_MESSAGE_START',
-              messageId: proposal.proposalId,
-              role: 'assistant',
-            },
-            {
-              type: 'TEXT_MESSAGE_CONTENT',
-              messageId: proposal.proposalId,
-              delta: JSON.stringify({
-                ui: [
-                  {
-                    AllocationProposal: {
-                      props: { proposalId: proposal.proposalId },
-                    },
+          // Like the real review agent: tool calls only, no UI. The page
+          // draws the card from the verified proposal it fetches.
+          events.push({
+            type: 'RUN_FINISHED',
+            ...identity,
+            outcome: {
+              type: 'interrupt',
+              interrupts: [
+                {
+                  id: interruptId,
+                  reason: 'tool',
+                  metadata: {
+                    type: 'permission-request',
+                    detail: { toolName: 'applyAllocation' },
                   },
-                ],
-              }),
+                },
+              ],
             },
-            { type: 'TEXT_MESSAGE_END', messageId: proposal.proposalId },
-            {
-              type: 'RUN_FINISHED',
-              ...identity,
-              outcome: {
-                type: 'interrupt',
-                interrupts: [
-                  {
-                    id: interruptId,
-                    reason: 'tool',
-                    metadata: {
-                      type: 'permission-request',
-                      detail: { toolName: 'applyAllocation' },
-                    },
-                  },
-                ],
-              },
-            },
-          );
+          });
         }
         response.writeHead(200, { 'content-type': 'text/event-stream' });
         response.end(
