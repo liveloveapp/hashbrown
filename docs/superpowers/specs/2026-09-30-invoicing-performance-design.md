@@ -157,6 +157,27 @@ runs:
 A target missed after its PR's best effort is recorded with the measured
 number and the reason, not silently dropped.
 
+## Baseline
+
+Measured 2026-10-01 against production (`main` at 02ccaff3) with
+`PERF_BASE_URL=https://invoicing.hashbrown.dev PERF_RUNS=5 npx nx perf-live invoicing-e2e`;
+medians of five fresh sessions:
+
+| Moment                                                             | Baseline |
+| ------------------------------------------------------------------ | -------- |
+| Dashboard data                                                     | 0.51 s   |
+| First answer text: How much cash is still unapplied?               | 11.20 s  |
+| Settled answer: How much cash is still unapplied?                  | 13.00 s  |
+| First answer text: Which clients pay late?                         | 11.64 s  |
+| Settled answer: Which clients pay late?                            | 12.94 s  |
+| First answer text: How did invoicing trend over the last 6 months? | 9.16 s   |
+| Settled answer: How did invoicing trend over the last 6 months?    | 11.45 s  |
+| Approval card                                                      | 7.60 s   |
+| Approve to applied                                                 | 6.63 s   |
+
+The earlier figures in "Why" (approval card ~12 s, Approve ~9 s) came from
+walkthrough recordings; these replace them as the reference.
+
 ## Delivery
 
 1. **Measurement and first load.** Server-Timing, per-turn logging, the
