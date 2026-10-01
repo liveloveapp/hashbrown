@@ -97,6 +97,67 @@ export function validatedUi(
   return record(marker) && marker['ui'] === true;
 }
 
+/**
+ * The `render` input an answer written in the response schema stands for:
+ * AssistantText prose (joined) plus every other node, unwrapped from its
+ * `props`. Malformed nodes pass through for `validateUi` to reject.
+ */
+function renderInputOf(answer: unknown): AssistantRenderInput | undefined {
+  if (!record(answer) || !Array.isArray(answer.ui)) return undefined;
+  const texts: string[] = [];
+  const components: unknown[] = [];
+  const leaf = (node: unknown) => {
+    const [name, value] = record(node) ? (Object.entries(node)[0] ?? []) : [];
+    components.push(
+      name && record(value) && record(value.props)
+        ? { [name]: value.props }
+        : node,
+    );
+  };
+  for (const node of answer.ui) {
+    const text = record(node) ? node.AssistantText : undefined;
+    if (!record(text)) {
+      leaf(node);
+      continue;
+    }
+    if (record(text.props) && typeof text.props.text === 'string')
+      texts.push(text.props.text);
+    if (Array.isArray(text.children)) text.children.forEach(leaf);
+  }
+  return {
+    text: texts.join('\n\n'),
+    components: components as AssistantRenderInput['components'],
+  };
+}
+
+/**
+ * Validate an answer the model wrote as its final message instead of calling
+ * `render`. B4 binds the root model to the client's response schema, so on a
+ * follow-up it can answer from earlier tool results in that schema directly.
+ * The answer goes through the same `validateUi` as a render call, and the
+ * canonical tree comes back as the message to release; `undefined` when the
+ * message is not such an answer or the ledger rejects it.
+ */
+export async function validateFinalAnswer(
+  context: Readonly<Record<string, unknown>> | undefined,
+  finalMessage: string,
+): Promise<string | undefined> {
+  const validate = context?.['validateUi'];
+  if (typeof validate !== 'function') return undefined;
+  let input: AssistantRenderInput | undefined;
+  try {
+    input = renderInputOf(JSON.parse(finalMessage));
+  } catch {
+    return undefined;
+  }
+  if (!input) return undefined;
+  try {
+    return JSON.stringify(await validate(input));
+  } catch {
+    return undefined;
+  }
+}
+
 /** Read-only query and UI-validation capabilities scoped to a cookie, thread and generation. */
 export function createAssistantMiddleware(
   store: SessionStore,

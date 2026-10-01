@@ -1,5 +1,5 @@
 import { allow, defineMiddleware, reject } from '@b4run/sdk';
-import { validatedUi } from './assistant-middleware';
+import { validatedUi, validateFinalAnswer } from './assistant-middleware';
 import { createRunTimer, runTimerOf, timeContext } from './run-timing';
 import { getServices } from './services';
 
@@ -42,24 +42,34 @@ export default defineMiddleware({
    * root model's own final message is redundant. B4 applies the client's
    * `hashbrown.responseSchema` to that message in production, so left alone
    * it could carry real-looking components that never passed the ledger-ID
-   * checks in `validateUi`. Suppress it when the run validated UI, and end
-   * the run with a `RUN_ERROR` when it did not (the model skipped `render`,
-   * or gave up after it failed) so the client shows its "could not finish"
-   * alert rather than nothing at all. The review route has no final
+   * checks in `validateUi`. Suppress it when the run validated UI. When it
+   * did not, the model may still have answered in that schema directly (on a
+   * follow-up it can answer from earlier tool results without calling
+   * `render`): such an answer goes through `validateUi` like a render call
+   * and its canonical tree is released instead. Anything else ends the run
+   * with a `RUN_ERROR` (no answer at all, or `render` failed and the model
+   * gave up) so the client shows its "could not finish" alert rather than
+   * nothing at all. The review route has no final
    * message on apply or decline, because `returnDirect` ends the run; the
    * hook returns `undefined` for it.
    *
    * Defining this hook at all buffers every route's final assistant message
    * instead of streaming it token by token, because B4 binds `after` once per
    * middleware rather than per route. That costs nothing on either route
-   * here: the assistant's message is dropped, and the review run has no
+   * here: the assistant's message is dropped or released whole, and the review run has no
    * closing message to stream.
    */
-  after: (run) => {
+  after: async (run) => {
+    if (run.routeId !== '/assistant') {
+      runTimerOf(run.context)?.done();
+      return undefined;
+    }
+    const answer = validatedUi(run.context)
+      ? ''
+      : await validateFinalAnswer(run.context, run.finalMessage);
     runTimerOf(run.context)?.done();
-    if (run.routeId !== '/assistant') return undefined;
-    return validatedUi(run.context)
-      ? { finalMessage: '' }
-      : reject(502, { error: 'no_answer' });
+    return answer === undefined
+      ? reject(502, { error: 'no_answer' })
+      : { finalMessage: answer };
   },
 });

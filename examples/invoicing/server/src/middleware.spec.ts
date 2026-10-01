@@ -109,10 +109,11 @@ async function assistantContextForRun() {
 const afterRun = (
   routeId: string,
   context: Readonly<Record<string, unknown>> | undefined,
+  finalMessage = '{"ui":[]}',
 ): MiddlewareAfterRun => ({
   assistantId: `${routeId}#agent`,
   context,
-  finalMessage: '{"ui":[]}',
+  finalMessage,
   messages: [{ role: 'user', content: 'Which GBP client owes the most?' }],
   routeId,
   runId: 'turn',
@@ -124,7 +125,7 @@ test('a run that rendered UI closes with no assistant message of its own', async
   const context = await assistantContextForRun();
   await context.validateUi({ text: 'Thistle owes the most.', components: [] });
 
-  expect(middleware.after(afterRun('/assistant', context))).toEqual({
+  expect(await middleware.after(afterRun('/assistant', context))).toEqual({
     finalMessage: '',
   });
 });
@@ -133,7 +134,7 @@ test('a run that never rendered UI fails so the client shows its alert', async (
   const { middleware } = await setup(async () => undefined);
   const context = await assistantContextForRun();
 
-  expect(middleware.after(afterRun('/assistant', context))).toEqual({
+  expect(await middleware.after(afterRun('/assistant', context))).toEqual({
     action: 'reject',
     status: 502,
     body: { error: 'no_answer' },
@@ -150,15 +151,98 @@ test('a render the ledger rejected leaves the run without an answer', async () =
     }),
   ).rejects.toThrow(/invalid_ui/);
 
-  expect(middleware.after(afterRun('/assistant', context))).toMatchObject({
+  expect(await middleware.after(afterRun('/assistant', context))).toMatchObject(
+    {
+      action: 'reject',
+    },
+  );
+});
+
+/**
+ * What gpt-5-mini sent on 2026-10-01 for a follow-up question it could answer
+ * from the earlier turn's tool results: the production response schema,
+ * written as its final message instead of a `render` call.
+ */
+const structuredAnswer = (children: readonly unknown[]) =>
+  JSON.stringify({
+    ui: [
+      {
+        AssistantText: {
+          props: {
+            text: 'Clients that pay late: Juniper Studio (late-drifting), Pioneer Robotics (late-fixed), and Thistle Retail (late-drifting).',
+          },
+          children,
+        },
+      },
+    ],
+  });
+
+test('an answer given as the final message instead of a render call is validated and kept', async () => {
+  const { middleware } = await setup(async () => undefined);
+  const context = await assistantContextForRun();
+  const finalMessage = structuredAnswer([
+    { CustomerCard: { props: { customerId: 'juniper' } } },
+  ]);
+
+  const result = await middleware.after(
+    afterRun('/assistant', context, finalMessage),
+  );
+
+  expect(result).toEqual({
+    finalMessage: JSON.stringify({
+      ui: [
+        {
+          AssistantText: {
+            props: {
+              text: 'Clients that pay late: Juniper Studio (late-drifting), Pioneer Robotics (late-fixed), and Thistle Retail (late-drifting).',
+            },
+            children: [{ CustomerCard: { props: { customerId: 'juniper' } } }],
+          },
+        },
+      ],
+    }),
+  });
+});
+
+test('a final-message answer naming a record the ledger lacks still fails', async () => {
+  const { middleware } = await setup(async () => undefined);
+  const context = await assistantContextForRun();
+  const finalMessage = structuredAnswer([
+    { CustomerCard: { props: { customerId: 'nobody' } } },
+  ]);
+
+  const result = await middleware.after(
+    afterRun('/assistant', context, finalMessage),
+  );
+
+  expect(result).toEqual({
     action: 'reject',
+    status: 502,
+    body: { error: 'no_answer' },
+  });
+});
+
+test('a final message that is not the response schema still fails', async () => {
+  const { middleware } = await setup(async () => undefined);
+  const context = await assistantContextForRun();
+
+  const result = await middleware.after(
+    afterRun('/assistant', context, 'Juniper Studio pays late.'),
+  );
+
+  expect(result).toEqual({
+    action: 'reject',
+    status: 502,
+    body: { error: 'no_answer' },
   });
 });
 
 test('the review route keeps the final message it streamed', async () => {
   const { middleware } = await setup(async () => undefined);
 
-  expect(middleware.after(afterRun('/review', undefined))).toBeUndefined();
+  expect(
+    await middleware.after(afterRun('/review', undefined)),
+  ).toBeUndefined();
 });
 
 test('an allowed run is timed: each tool call and the run total are logged', async () => {
@@ -169,10 +253,12 @@ test('an allowed run is timed: each tool call and the run total are logged', asy
   if (result.action !== 'continue') throw new Error('expected continue');
   const context = result.context as Record<string, unknown> & {
     readonly ledgerSummary: () => Promise<unknown>;
+    readonly validateUi: (input: unknown) => Promise<unknown>;
   };
 
   await context.ledgerSummary();
-  middleware.after(afterRun('/assistant', context));
+  await context.validateUi({ text: 'Five payments.', components: [] });
+  await middleware.after(afterRun('/assistant', context));
 
   const lines = info.mock.calls.map(([line]) => JSON.parse(String(line)));
   expect(lines).toEqual([
@@ -183,6 +269,7 @@ test('an allowed run is timed: each tool call and the run total are logged', asy
       step: 'ledgerSummary',
       ok: true,
     }),
+    expect.objectContaining({ step: 'validateUi', ok: true }),
     expect.objectContaining({
       event: 'invoicing.run.done',
       route: '/assistant',
