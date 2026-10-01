@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest';
 import type { MiddlewareAfterRun, MiddlewareRequest } from '@b4run/sdk';
 import { assistantResponseSchema } from '@invoicing/contracts';
 import { createAssistantMiddleware } from './assistant-middleware';
@@ -164,6 +164,7 @@ test('the review route keeps the final message it streamed', async () => {
 test('an allowed run is timed: each tool call and the run total are logged', async () => {
   const { middleware, request } = await setup(async () => undefined);
   const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  onTestFinished(() => info.mockRestore());
   const result = await middleware.handle(request);
   if (result.action !== 'continue') throw new Error('expected continue');
   const context = result.context as Record<string, unknown> & {

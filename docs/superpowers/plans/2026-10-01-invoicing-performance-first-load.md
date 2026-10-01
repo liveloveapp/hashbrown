@@ -24,6 +24,7 @@
 
 - **Per-turn timing** is logged per tool call from inside our own context, not per model turn: B4 has no per-turn middleware hook, and its documented alternative (LangSmith tracing) needs an outside account. Model turns are the gaps between steps.
 - **Server-Timing covers `/api` only.** The `/agui` routes stream through B4's runtime, which owns their response headers; their timing comes from the run log instead.
+- **Server-Timing has no separate `db` phase.** On a first visit `session` is the session insert (Postgres) and `snapshot` is the load plus build; on a return visit the single `snapshot` phase covers both, because building once is worth more than splitting the measurement. A failed cookie check on the snapshot route appears as an extra `snapshot` entry before `session` (the perf script reads the last one).
 - **The cold-start fix is not in this PR.** It needs `Server-Timing` from the deployed function, which only exists after this PR ships; Task 8 says how to take that measurement.
 
 ### Task 1: A Server-Timing helper

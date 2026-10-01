@@ -21,11 +21,19 @@ export type RunTimingLine =
  * Times the tool calls of one agent run. B4 has no per-turn hook, so the
  * model's own turns show up as the gaps between steps: a step's `at` minus the
  * previous step's end is the model thinking.
+ *
+ * B4 skips the middleware `after` hook for runs parked on an approval
+ * interrupt and for errored or aborted runs, so those runs log their steps
+ * without a `done` line.
  */
 export interface RunTimer {
   /** Run `work` as the named step and log its offset and duration. */
   time<T>(step: string, work: () => Promise<T>): Promise<T>;
-  /** Log the run's total duration so far. */
+  /**
+   * Log the run's total duration so far. Called from the `after` hook, which
+   * B4 skips for runs parked on an approval interrupt and for errored or
+   * aborted runs; those runs have steps but no `done` line.
+   */
   done(): void;
 }
 

@@ -29,7 +29,9 @@ export default defineMiddleware({
     // Time every tool call of the run, so slow answers can be traced to a
     // step or to the model turns between steps (see run-timing.ts).
     const body = request.body as { readonly runId?: unknown } | undefined;
-    const runId = typeof body?.runId === 'string' ? body.runId : 'unknown';
+    // The run id is client-supplied: cap what reaches the logs.
+    const runId =
+      typeof body?.runId === 'string' ? body.runId.slice(0, 256) : 'unknown';
     return allow(
       timeContext(result.context, createRunTimer(request.routeId, runId)),
     );

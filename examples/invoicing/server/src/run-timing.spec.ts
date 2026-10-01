@@ -21,13 +21,14 @@ test('each step logs its offset from the run start, its duration and outcome', a
   );
 
   await timer.time('ledgerSummary', async () => 'ok');
-  await expect(
-    timer.time('aging', async () => {
+  const failure = await timer
+    .time('aging', async () => {
       throw new Error('bad_currency');
-    }),
-  ).rejects.toThrow('bad_currency');
+    })
+    .catch((error: unknown) => error);
   timer.done();
 
+  expect(failure).toEqual(new Error('bad_currency'));
   expect(lines).toEqual([
     {
       event: 'invoicing.run.step',
