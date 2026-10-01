@@ -1,4 +1,6 @@
 import type { RequestListener, ServerResponse } from 'node:http';
+import type { LedgerSnapshot } from '@invoicing/contracts';
+import { appendServerTiming, createServerTiming } from './server-timing';
 import { readSessionCookie, sessionCookie } from './session-cookie';
 import type { SessionStore } from './session-store';
 import type { ReviewCoordinator } from './review-coordinator';
@@ -23,6 +25,8 @@ export function createInvoicingListener(
   runReview?: RequestListener,
 ): RequestListener {
   return (request, response) => {
+    const earlier = response.getHeader('server-timing');
+    const earlierTiming = typeof earlier === 'string' ? earlier : undefined;
     void (async () => {
       let path: string;
       try {
@@ -63,16 +67,36 @@ export function createInvoicingListener(
         return;
       }
 
+      // Server-Timing splits the read so slow first visits can be diagnosed:
+      // `session` is the cookie check or the new session, `snapshot` the
+      // ledger build. The snapshot route builds its snapshot once, and that
+      // build doubles as the cookie check.
+      const timing = createServerTiming();
+      const reply = (status: number, body: unknown) => {
+        response.setHeader(
+          'server-timing',
+          appendServerTiming(earlierTiming, timing.header()),
+        );
+        respond(response, status, body);
+      };
       let sessionId = readSessionCookie(request.headers.cookie);
+      let snapshot: LedgerSnapshot | undefined;
       if (sessionId) {
+        const id = sessionId;
         try {
-          await store.snapshot(sessionId);
+          if (path === '/api/snapshot')
+            snapshot = await timing.measure('snapshot', () =>
+              store.snapshot(id),
+            );
+          else await timing.measure('session', () => store.generation(id));
         } catch {
           sessionId = undefined;
         }
       }
       if (!sessionId) {
-        sessionId = await store.createSession();
+        sessionId = await timing.measure('session', () =>
+          store.createSession(),
+        );
         const secure =
           request.headers['x-forwarded-proto'] === 'https' ||
           (request.socket as { encrypted?: boolean }).encrypted === true;
@@ -81,34 +105,31 @@ export function createInvoicingListener(
       if (threadId) {
         try {
           if (!reviews) throw new Error('review_not_found');
-          respond(
-            response,
-            200,
-            await reviews.getProposal(sessionId, threadId),
-          );
+          reply(200, await reviews.getProposal(sessionId, threadId));
         } catch {
-          respond(response, 404, { error: 'review_not_found' });
+          reply(404, { error: 'review_not_found' });
         }
         return;
       }
       if (proposalId) {
         try {
-          respond(response, 200, await store.proposal(sessionId, proposalId));
+          reply(200, await store.proposal(sessionId, proposalId));
         } catch {
-          respond(response, 404, { error: 'proposal_not_found' });
+          reply(404, { error: 'proposal_not_found' });
         }
         return;
       }
       if (operationId) {
         const result = await store.operationResult(sessionId, operationId);
-        respond(
-          response,
-          result ? 200 : 404,
-          result ?? { error: 'operation_not_found' },
-        );
+        reply(result ? 200 : 404, result ?? { error: 'operation_not_found' });
         return;
       }
-      respond(response, 200, await store.snapshot(sessionId));
+      const id = sessionId;
+      reply(
+        200,
+        snapshot ??
+          (await timing.measure('snapshot', () => store.snapshot(id))),
+      );
     })().catch(() => {
       if (!response.headersSent)
         respond(response, 500, { error: 'internal_error' });

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest';
 import type { MiddlewareAfterRun, MiddlewareRequest } from '@b4run/sdk';
 import { assistantResponseSchema } from '@invoicing/contracts';
 import { createAssistantMiddleware } from './assistant-middleware';
@@ -159,4 +159,34 @@ test('the review route keeps the final message it streamed', async () => {
   const { middleware } = await setup(async () => undefined);
 
   expect(middleware.after(afterRun('/review', undefined))).toBeUndefined();
+});
+
+test('an allowed run is timed: each tool call and the run total are logged', async () => {
+  const { middleware, request } = await setup(async () => undefined);
+  const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  onTestFinished(() => info.mockRestore());
+  const result = await middleware.handle(request);
+  if (result.action !== 'continue') throw new Error('expected continue');
+  const context = result.context as Record<string, unknown> & {
+    readonly ledgerSummary: () => Promise<unknown>;
+  };
+
+  await context.ledgerSummary();
+  middleware.after(afterRun('/assistant', context));
+
+  const lines = info.mock.calls.map(([line]) => JSON.parse(String(line)));
+  expect(lines).toEqual([
+    expect.objectContaining({
+      event: 'invoicing.run.step',
+      route: '/assistant',
+      runId: 'turn',
+      step: 'ledgerSummary',
+      ok: true,
+    }),
+    expect.objectContaining({
+      event: 'invoicing.run.done',
+      route: '/assistant',
+      runId: 'turn',
+    }),
+  ]);
 });

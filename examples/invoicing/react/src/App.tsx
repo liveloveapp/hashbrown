@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { TransportOrFactory } from '@hashbrownai/core';
 import {
-  AssistantWorkspace,
-  type AssistantWorkspaceHandle,
-} from './assistant-workspace';
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { TransportOrFactory } from '@hashbrownai/core';
+import { loadAssistantWorkspace } from './assistant-chunk';
+import { AssistantShell } from './assistant-shell';
+import { startersFor } from './assistant-starters';
+import type { AssistantWorkspaceHandle } from './assistant-workspace';
 import type { LedgerSnapshot } from '@invoicing/contracts';
 import { DashboardView } from './dashboard-view';
 import {
@@ -24,6 +32,17 @@ export interface AppProps {
   readonly loadSnapshot?: () => Promise<LedgerSnapshot>;
 }
 
+// The assistant (Hashbrown's React runtime, the AG-UI client, the review
+// chat) loads in its own chunk, so the dashboard paints without waiting for
+// it; the rail shows `AssistantShell` meanwhile. The import starts as this
+// module loads, so the chunk downloads alongside /api/snapshot instead of
+// after it, and a failed load leaves a notice rather than a blank page.
+const assistantChunk = loadAssistantWorkspace(
+  () => import('./assistant-workspace'),
+);
+const AssistantWorkspace = lazy(() => assistantChunk);
+
+// Keep in step with the inline prefetch script in index.html.
 async function fetchSnapshot(): Promise<LedgerSnapshot> {
   const response = await fetch('/api/snapshot', { credentials: 'same-origin' });
   if (!response.ok)
@@ -33,6 +52,8 @@ async function fetchSnapshot(): Promise<LedgerSnapshot> {
 
 const BUSY_NOTICE =
   'Finish the current assistant request or approval before starting another match.';
+const CONNECTING_NOTICE =
+  'The assistant is still connecting. Try again in a moment.';
 
 /** Live ledger workspace: one dashboard whose focus the assistant shares. */
 export function App({
@@ -47,6 +68,7 @@ export function App({
   const [reviewNotice, setReviewNotice] = useState('');
   const [assistantBusy, setAssistantBusy] = useState(false);
   const [matchRequest, setMatchRequest] = useState(0);
+  const [pendingPrompt, setPendingPrompt] = useState<string>();
   const handleBusyChange = useCallback((busy: boolean) => {
     setAssistantBusy(busy);
     if (!busy) setReviewNotice('');
@@ -99,7 +121,11 @@ export function App({
   }
 
   function review(paymentId: string, invoiceIds: readonly string[]) {
-    const started = reviewRef.current?.beginReview(paymentId, invoiceIds);
+    if (!reviewRef.current) {
+      setReviewNotice(CONNECTING_NOTICE);
+      return;
+    }
+    const started = reviewRef.current.beginReview(paymentId, invoiceIds);
     setReviewNotice(started || !assistantBusy ? '' : BUSY_NOTICE);
   }
 
@@ -168,7 +194,10 @@ export function App({
               onFocus={dispatchFocus}
               match={{
                 onReview: enableAssistant ? review : undefined,
-                notice: reviewNotice && assistantBusy ? reviewNotice : '',
+                notice:
+                  reviewNotice === CONNECTING_NOTICE || assistantBusy
+                    ? reviewNotice
+                    : '',
               }}
             />
           )}
@@ -212,17 +241,31 @@ export function App({
             </p>
           )}
           {enableAssistant && snapshot ? (
-            <AssistantWorkspace
-              ref={reviewRef}
-              snapshot={snapshot}
-              selectedPaymentId={selection.selectedPaymentId}
-              focusedClientId={selection.focusedClientId}
-              focusedInvoiceId={selection.focusedInvoiceId}
-              transport={transport}
-              onApplied={setSnapshot}
-              onBusyChange={handleBusyChange}
-              onChooseInvoice={chooseInvoice}
-            />
+            <Suspense
+              fallback={
+                <AssistantShell
+                  starters={startersFor({
+                    selectedPaymentId: selected?.id,
+                    focusedClientName: focusedClient?.name,
+                  })}
+                  pending={pendingPrompt}
+                  onStart={setPendingPrompt}
+                />
+              }
+            >
+              <AssistantWorkspace
+                ref={reviewRef}
+                initialPrompt={pendingPrompt}
+                snapshot={snapshot}
+                selectedPaymentId={selection.selectedPaymentId}
+                focusedClientId={selection.focusedClientId}
+                focusedInvoiceId={selection.focusedInvoiceId}
+                transport={transport}
+                onApplied={setSnapshot}
+                onBusyChange={handleBusyChange}
+                onChooseInvoice={chooseInvoice}
+              />
+            </Suspense>
           ) : (
             <p className="connection-notice">
               Assistant connection is not ready yet. Payment context is
@@ -250,11 +293,16 @@ export function App({
   );
 }
 
-/** Creates the initial snapshot loader for one application bootstrap. */
+/**
+ * Creates the initial snapshot loader for one application bootstrap. It
+ * resolves to the request `index.html` already started when there is one
+ * (see `snapshot-prefetch.ts`), and otherwise fetches once.
+ */
 export function createSnapshotLoader(
   request: () => Promise<LedgerSnapshot> = fetchSnapshot,
+  prefetched?: Promise<LedgerSnapshot>,
 ): () => Promise<LedgerSnapshot> {
-  let initialRequest: Promise<LedgerSnapshot> | undefined;
+  let initialRequest: Promise<LedgerSnapshot> | undefined = prefetched;
   return () => {
     initialRequest ??= request();
     return initialRequest;
