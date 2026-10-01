@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { TransportOrFactory } from '@hashbrownai/core';
 import {
-  AssistantWorkspace,
-  type AssistantWorkspaceHandle,
-} from './assistant-workspace';
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { TransportOrFactory } from '@hashbrownai/core';
+import { AssistantShell } from './assistant-shell';
+import { startersFor } from './assistant-starters';
+import type { AssistantWorkspaceHandle } from './assistant-workspace';
 import type { LedgerSnapshot } from '@invoicing/contracts';
 import { DashboardView } from './dashboard-view';
 import {
@@ -23,6 +30,15 @@ export interface AppProps {
   readonly transport?: TransportOrFactory;
   readonly loadSnapshot?: () => Promise<LedgerSnapshot>;
 }
+
+// The assistant (Hashbrown's React runtime, the AG-UI client, the review
+// chat) loads in its own chunk, so the dashboard paints without waiting for
+// it; the rail shows `AssistantShell` meanwhile.
+const AssistantWorkspace = lazy(() =>
+  import('./assistant-workspace').then((module) => ({
+    default: module.AssistantWorkspace,
+  })),
+);
 
 async function fetchSnapshot(): Promise<LedgerSnapshot> {
   const response = await fetch('/api/snapshot', { credentials: 'same-origin' });
@@ -47,6 +63,7 @@ export function App({
   const [reviewNotice, setReviewNotice] = useState('');
   const [assistantBusy, setAssistantBusy] = useState(false);
   const [matchRequest, setMatchRequest] = useState(0);
+  const [pendingPrompt, setPendingPrompt] = useState<string>();
   const handleBusyChange = useCallback((busy: boolean) => {
     setAssistantBusy(busy);
     if (!busy) setReviewNotice('');
@@ -212,17 +229,31 @@ export function App({
             </p>
           )}
           {enableAssistant && snapshot ? (
-            <AssistantWorkspace
-              ref={reviewRef}
-              snapshot={snapshot}
-              selectedPaymentId={selection.selectedPaymentId}
-              focusedClientId={selection.focusedClientId}
-              focusedInvoiceId={selection.focusedInvoiceId}
-              transport={transport}
-              onApplied={setSnapshot}
-              onBusyChange={handleBusyChange}
-              onChooseInvoice={chooseInvoice}
-            />
+            <Suspense
+              fallback={
+                <AssistantShell
+                  starters={startersFor({
+                    selectedPaymentId: selected?.id,
+                    focusedClientName: focusedClient?.name,
+                  })}
+                  pending={pendingPrompt}
+                  onStart={setPendingPrompt}
+                />
+              }
+            >
+              <AssistantWorkspace
+                ref={reviewRef}
+                initialPrompt={pendingPrompt}
+                snapshot={snapshot}
+                selectedPaymentId={selection.selectedPaymentId}
+                focusedClientId={selection.focusedClientId}
+                focusedInvoiceId={selection.focusedInvoiceId}
+                transport={transport}
+                onApplied={setSnapshot}
+                onBusyChange={handleBusyChange}
+                onChooseInvoice={chooseInvoice}
+              />
+            </Suspense>
           ) : (
             <p className="connection-notice">
               Assistant connection is not ready yet. Payment context is
@@ -250,11 +281,16 @@ export function App({
   );
 }
 
-/** Creates the initial snapshot loader for one application bootstrap. */
+/**
+ * Creates the initial snapshot loader for one application bootstrap. It
+ * resolves to the request `index.html` already started when there is one
+ * (see `snapshot-prefetch.ts`), and otherwise fetches once.
+ */
 export function createSnapshotLoader(
   request: () => Promise<LedgerSnapshot> = fetchSnapshot,
+  prefetched?: Promise<LedgerSnapshot>,
 ): () => Promise<LedgerSnapshot> {
-  let initialRequest: Promise<LedgerSnapshot> | undefined;
+  let initialRequest: Promise<LedgerSnapshot> | undefined = prefetched;
   return () => {
     initialRequest ??= request();
     return initialRequest;

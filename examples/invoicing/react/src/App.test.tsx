@@ -105,6 +105,17 @@ test('requests one initial snapshot for a StrictMode bootstrap', async () => {
   expect(request).toHaveBeenCalledTimes(1);
 });
 
+test('a bootstrap uses the request index.html already started instead of fetching again', async () => {
+  const request = vi.fn(async () => snapshot);
+  const prefetched = Promise.resolve(snapshot);
+  const loadSnapshot = createSnapshotLoader(request, prefetched);
+
+  const loaded = await loadSnapshot();
+
+  expect(loaded).toBe(snapshot);
+  expect(request).not.toHaveBeenCalled();
+});
+
 test('starts a fresh snapshot request for a new bootstrap', async () => {
   const request = vi.fn(async () => snapshot);
   const firstBootstrap = createSnapshotLoader(request);
@@ -240,6 +251,8 @@ test('matching from the band starts one real chat and approval refreshes the led
       />
     </StrictMode>,
   );
+  // The assistant loads in its own chunk; matching needs it.
+  await screen.findByRole('textbox', { name: 'Message assistant' });
   fireEvent.click(screen.getByRole('tab', { name: /Unapplied/ }));
   fireEvent.click(screen.getByText('payment-001'));
 
