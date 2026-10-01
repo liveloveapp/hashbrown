@@ -1,10 +1,13 @@
-import { isDeepStrictEqual } from 'node:util';
 import { fillLines } from './ledger';
 import type { SessionStore } from './session-store';
 import type { ReviewCoordinator } from './review-coordinator';
 import { readSessionCookie } from './session-cookie';
 
-/** Bind review tools to validated server state; B4 must validate the pending interrupt before invoking apply. */
+/**
+ * Bind review tools to validated server state; B4 must validate the pending
+ * interrupt before invoking apply. The invoices come from the authorised run
+ * state, never from the model: `prepareAllocation` takes no input.
+ */
 export function createReviewMiddleware(
   store: SessionStore,
   reviews: ReviewCoordinator,
@@ -57,22 +60,16 @@ export function createReviewMiddleware(
         action: 'continue' as const,
         context: Object.freeze({
           responseSchema: context.responseSchema,
-          readPayment,
-          prepareAllocation: async (input: {
-            readonly invoiceIds: readonly string[];
-          }) => {
+          // The selected invoices, in fill order; without a selection, the
+          // payment's only open invoice. Two or more open invoices and no
+          // selection is a choice only the user can make.
+          prepareAllocation: async () => {
             const { payment, invoices } = await readPayment();
-            const ids = input.invoiceIds;
-            if (!Array.isArray(ids)) throw new Error('invoice_not_found');
-            if (context.selectedInvoiceIds) {
-              if (!isDeepStrictEqual([...ids], [...context.selectedInvoiceIds]))
-                throw new Error('invoice_binding_conflict');
-            } else if (
-              ids.length !== 1 ||
-              invoices.filter((item) => item.outstandingCents > 0).length > 1
-            )
+            const open = invoices.filter((item) => item.outstandingCents > 0);
+            const ids = context.selectedInvoiceIds ?? [];
+            if (ids.length === 0 && open.length !== 1)
               throw new Error('invoice_choice_required');
-            const chosen = ids.map((id) => {
+            const chosen = (ids.length ? ids : [open[0].id]).map((id) => {
               const invoice = invoices.find((item) => item.id === id);
               if (!invoice) throw new Error('invoice_not_found');
               return invoice;

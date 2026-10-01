@@ -1,5 +1,3 @@
-import { isDeepStrictEqual } from 'node:util';
-import type { Proposal } from '@invoicing/contracts';
 import type { createReviewMiddleware } from './review-middleware';
 
 type ReviewTools = Extract<
@@ -17,30 +15,9 @@ export function reviewTools(context: unknown): ReviewTools {
   const middleware = context.middleware;
   if (
     !record(middleware.responseSchema) ||
-    typeof middleware.readPayment !== 'function' ||
     typeof middleware.prepareAllocation !== 'function' ||
     typeof middleware.applyAllocation !== 'function'
   )
     throw new Error('invalid_review_middleware');
   return middleware as ReviewTools;
-}
-
-/** Prepare a server-owned proposal and verify that generated UI preserves its identity. */
-export async function prepareAllocationUi(
-  middleware: ReviewTools,
-  input: { readonly invoiceIds: readonly string[] },
-  render: (schema: unknown, proposal: Proposal) => Promise<unknown>,
-): Promise<Proposal> {
-  const proposal = await middleware.prepareAllocation({
-    invoiceIds: input.invoiceIds,
-  });
-  const output = await render(middleware.responseSchema, proposal);
-  const expected = {
-    ui: [
-      { AllocationProposal: { props: { proposalId: proposal.proposalId } } },
-    ],
-  };
-  if (!isDeepStrictEqual(output, expected))
-    throw new Error('invalid_allocation_ui');
-  return proposal;
 }

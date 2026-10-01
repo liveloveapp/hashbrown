@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { createSessionStore } from './session-store';
 import { createReviewCoordinator } from './review-coordinator';
 import { createReviewMiddleware } from './review-middleware';
-import { prepareAllocationUi, reviewTools } from './review-tools';
+import { reviewTools } from './review-tools';
 import { createMemoryRepositories } from './persistence/memory';
 
 async function setup() {
@@ -41,81 +41,8 @@ test('validates middleware functions and response schema before tool access', as
     { middleware: {} },
     { middleware: { ...middleware, responseSchema: null } },
     { middleware: { ...middleware, applyAllocation: 'apply' } },
+    { middleware: { ...middleware, prepareAllocation: undefined } },
   ]) {
     expect(() => reviewTools(invalid)).toThrow('invalid_review_middleware');
   }
-});
-
-test('renders the exact server proposal through the supplied schema without applying it', async () => {
-  const { middleware, store, owner } = await setup();
-  let rendered = false;
-
-  const proposal = await prepareAllocationUi(
-    middleware,
-    { invoiceIds: ['invoice-001'] },
-    async (schema, expected) => {
-      expect(schema).toBe(middleware.responseSchema);
-      rendered = true;
-      return {
-        ui: [
-          {
-            AllocationProposal: { props: { proposalId: expected.proposalId } },
-          },
-        ],
-      };
-    },
-  );
-
-  expect(rendered).toBe(true);
-  expect(proposal.lines[0].invoiceId).toBe('invoice-001');
-  expect(proposal.amountCents).toBe(240000);
-  expect((await store.snapshot(owner)).allocations).toHaveLength(0);
-});
-
-test('rejects generated UI with missing, duplicated, or substituted proposal identity', async () => {
-  const { middleware } = await setup();
-
-  const proposal = await middleware.prepareAllocation({
-    invoiceIds: ['invoice-001'],
-  });
-  const component = {
-    AllocationProposal: { props: { proposalId: proposal.proposalId } },
-  };
-
-  for (const ui of [
-    [],
-    [component, component],
-    [{ AllocationProposal: { props: { proposalId: 'forged' } } }],
-    [
-      {
-        AllocationProposal: {
-          props: { proposalId: proposal.proposalId, amountCents: 1 },
-        },
-      },
-    ],
-  ]) {
-    await expect(
-      prepareAllocationUi(
-        middleware,
-        { invoiceIds: ['invoice-001'] },
-        async () => ({ ui }),
-      ),
-    ).rejects.toThrow('invalid_allocation_ui');
-  }
-});
-
-test('propagates model failure without applying an allocation', async () => {
-  const { middleware, store, owner } = await setup();
-
-  await expect(
-    prepareAllocationUi(
-      middleware,
-      { invoiceIds: ['invoice-001'] },
-      async () => {
-        throw new Error('model_unavailable');
-      },
-    ),
-  ).rejects.toThrow('model_unavailable');
-
-  expect((await store.snapshot(owner)).allocations).toHaveLength(0);
 });
