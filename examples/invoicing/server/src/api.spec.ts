@@ -61,3 +61,24 @@ test('a cold-start repository failure answers 500 and is retried on the next req
   expect(recovered.body).toMatchObject({ payments: expect.any(Array) });
   expect(repositoriesFromEnv).toHaveBeenCalledTimes(2);
 });
+
+// A fresh import of the whole server module graph can pass 5 s on a busy
+// machine, so this test allows 20 s.
+test('Server-Timing reports the function setup before the request phases', async () => {
+  const repositories = createMemoryRepositories();
+  vi.resetModules();
+  vi.doMock('./persistence/from-env', () => ({
+    repositoriesFromEnv: async () => repositories,
+  }));
+  const handler = (await import('./api')).default;
+
+  const timing = await serving(
+    handler as unknown as RequestListener,
+    async (origin) =>
+      (await fetch(`${origin}/api/snapshot`)).headers.get('server-timing'),
+  );
+
+  expect(timing).toMatch(
+    /^init;dur=\d+\.\d, session;dur=\d+\.\d, snapshot;dur=\d+\.\d$/,
+  );
+}, 20_000);

@@ -24,7 +24,8 @@ textarea {
 button {
   cursor: pointer;
 }
-button:disabled {
+button:disabled,
+button[aria-disabled='true'] {
   cursor: not-allowed;
 }
 button:focus-visible,
@@ -204,6 +205,11 @@ h2 {
 .assistant-body .starters button {
   text-align: left;
   background: #fff;
+}
+/* A starter held while the assistant loads stays focusable, so it is
+   aria-disabled rather than disabled; dim it the same way. */
+.assistant-body .starters button[aria-disabled='true'] {
+  opacity: 0.6;
 }
 .review-action {
   align-self: flex-start;

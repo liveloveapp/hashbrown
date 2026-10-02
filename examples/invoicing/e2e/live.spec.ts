@@ -27,7 +27,12 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
   ).toContainText('13,900');
   await expect(message).toBeEnabled();
   await page.getByRole('tab', { name: /^Unapplied/ }).click();
-  await page
+  // Scoped to the grid: the answer above can list the same payments.
+  const unapplied = page.getByRole('treegrid', {
+    name: 'Unapplied payments',
+    exact: true,
+  });
+  await unapplied
     .locator('[data-pretable-row-id="payment-northstar-exact"]')
     .click();
   await page.getByRole('button', { name: 'Review match', exact: true }).click();
@@ -47,7 +52,9 @@ test('seeded ledger supports questions, repeated approvals, cancellation and ses
     applied.payments.find((p) => p.id === 'payment-northstar-exact')
       ?.unappliedCents,
   ).toBe(0);
-  await page.locator('[data-pretable-row-id="payment-cedar-partial"]').click();
+  await unapplied
+    .locator('[data-pretable-row-id="payment-cedar-partial"]')
+    .click();
   await page.getByRole('button', { name: 'Review match', exact: true }).click();
   await expect(
     page.getByRole('region', {

@@ -7,7 +7,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { createRef } from 'react';
+import { createRef, StrictMode } from 'react';
 import { expect, test, vi } from 'vitest';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import type { Transport, TransportRequest } from '@hashbrownai/core';
@@ -890,5 +890,28 @@ test('a focused client leads the starters and reaches the run state', async () =
     focusedInvoiceId: 'i',
   });
   await screen.findByText('There is one unapplied payment.');
+  await settle();
+});
+
+test('an initial prompt from the loading shell is sent once on mount', async () => {
+  cleanup();
+  const { requests, transport } = controlled();
+
+  render(
+    <StrictMode>
+      <AssistantWorkspace
+        snapshot={snapshot}
+        initialPrompt="What needs matching?"
+        onApplied={() => undefined}
+        transport={transport}
+      />
+    </StrictMode>,
+  );
+
+  await screen.findByText('There is one unapplied payment.');
+  expect(requests).toHaveLength(1);
+  expect(JSON.stringify(requests[0].input.messages)).toContain(
+    'What needs matching?',
+  );
   await settle();
 });

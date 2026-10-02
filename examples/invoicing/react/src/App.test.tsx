@@ -105,6 +105,17 @@ test('requests one initial snapshot for a StrictMode bootstrap', async () => {
   expect(request).toHaveBeenCalledTimes(1);
 });
 
+test('a bootstrap uses the request index.html already started instead of fetching again', async () => {
+  const request = vi.fn(async () => snapshot);
+  const prefetched = Promise.resolve(snapshot);
+  const loadSnapshot = createSnapshotLoader(request, prefetched);
+
+  const loaded = await loadSnapshot();
+
+  expect(loaded).toBe(snapshot);
+  expect(request).not.toHaveBeenCalled();
+});
+
 test('starts a fresh snapshot request for a new bootstrap', async () => {
   const request = vi.fn(async () => snapshot);
   const firstBootstrap = createSnapshotLoader(request);
@@ -240,6 +251,8 @@ test('matching from the band starts one real chat and approval refreshes the led
       />
     </StrictMode>,
   );
+  // The assistant loads in its own chunk; matching needs it.
+  await screen.findByRole('textbox', { name: 'Message assistant' });
   fireEvent.click(screen.getByRole('tab', { name: /Unapplied/ }));
   fireEvent.click(screen.getByText('payment-001'));
 
@@ -499,4 +512,30 @@ test('focusing a client after a payment replaces the payment context', () => {
     screen.getByRole('complementary', { name: 'Assistant sidebar' }),
   ).toHaveTextContent('Client context');
   expect(window.location.search).toBe('?client=customer-001');
+});
+
+test('reviewing a match before the assistant has loaded says it is still connecting', async () => {
+  cleanup();
+  onTestFinished(() => {
+    vi.doUnmock('./assistant-workspace');
+    vi.resetModules();
+    window.history.replaceState(null, '', '/');
+  });
+  vi.resetModules();
+  vi.doMock('./assistant-workspace', () => new Promise(() => undefined));
+  const { App: FreshApp } = await import('./App');
+  render(<FreshApp initialSnapshot={snapshot} enableAssistant />);
+  fireEvent.click(screen.getByRole('tab', { name: /Unapplied/ }));
+  fireEvent.click(screen.getByText('payment-001'));
+
+  fireEvent.click(screen.getByRole('button', { name: 'Review match' }));
+
+  expect(
+    within(
+      screen.getByRole('region', { name: 'Match this payment' }),
+    ).getByRole('status'),
+  ).toHaveTextContent(
+    'The assistant is still connecting. Try again in a moment.',
+  );
+  expect(screen.getByText('Connecting the assistant…')).toBeVisible();
 });
