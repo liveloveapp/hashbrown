@@ -659,6 +659,68 @@ test('a render call the server rejected renders nothing and the run surfaces the
   await settle();
 });
 
+// A follow-up the model answered in the response schema instead of calling
+// `render`: the server validates that answer and releases its canonical tree
+// as the run's only assistant message, with no render call at all.
+test('an answer released as the final message renders like a render call', async () => {
+  const canonical = JSON.stringify({
+    ui: [
+      {
+        AssistantText: {
+          props: { text: 'Cedar Health has one open invoice.' },
+          children: [
+            {
+              LedgerTable: {
+                props: { title: 'Open invoices', recordIds: ['i'] },
+              },
+            },
+          ],
+        },
+      },
+    ],
+  });
+  const transport: Transport = {
+    name: 'final-message-test',
+    async send(request) {
+      const identity = {
+        threadId: request.input.threadId,
+        runId: request.input.runId,
+      };
+      return {
+        events: (async function* (): AsyncIterable<AGUIEvent> {
+          yield { type: EventType.RUN_STARTED, ...identity };
+          yield {
+            type: EventType.TEXT_MESSAGE_START,
+            messageId: 'answer',
+            role: 'assistant',
+          };
+          yield {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId: 'answer',
+            delta: canonical,
+          };
+          yield { type: EventType.TEXT_MESSAGE_END, messageId: 'answer' };
+          yield { type: EventType.RUN_FINISHED, ...identity };
+        })(),
+      };
+    },
+  };
+
+  await ask(transport, 'Which clients pay late?');
+
+  await waitFor(() =>
+    expect(screen.queryByText('Reading your ledger…')).not.toBeInTheDocument(),
+  );
+  expect(
+    screen.getByText('Cedar Health has one open invoice.').closest('div'),
+  ).toHaveClass('assistant-answer');
+  expect(
+    screen.getByRole('heading', { name: 'Open invoices' }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  await settle();
+});
+
 const twoInvoices: LedgerSnapshot = {
   ...snapshot,
   payments: [{ ...snapshot.payments[0], reference: 'PAY-1' }],
