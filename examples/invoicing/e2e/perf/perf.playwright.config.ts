@@ -1,5 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { resolve } from 'node:path';
+import { localServers } from '../local-servers';
 
 const repoRoot = resolve(__dirname, '../../../..');
 const remote = process.env.PERF_BASE_URL;
@@ -32,22 +33,5 @@ export default defineConfig({
     channel: 'chrome',
     headless: true,
   },
-  webServer: remote
-    ? undefined
-    : [
-        {
-          command: 'npx nx serve invoicing-server',
-          cwd: repoRoot,
-          url: 'http://127.0.0.1:4325/api/snapshot',
-          reuseExistingServer: true,
-          timeout: 30_000,
-        },
-        {
-          command: 'npx nx serve invoicing-react',
-          cwd: repoRoot,
-          url: 'http://127.0.0.1:4326',
-          reuseExistingServer: true,
-          timeout: 30_000,
-        },
-      ],
+  webServer: remote ? undefined : localServers(repoRoot),
 });

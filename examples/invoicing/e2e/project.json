@@ -120,6 +120,13 @@
       "options": {
         "command": "vitest run --config examples/invoicing/e2e/perf/vitest.config.mts"
       }
+    },
+    "test-servers": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "vitest run --config examples/invoicing/e2e/local-servers.vitest.config.mts"
+      }
     }
   },
   "implicitDependencies": [

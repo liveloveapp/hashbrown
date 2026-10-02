@@ -6,7 +6,10 @@ export default agent({
   reasoning: { effort: 'minimal' },
   tools: { approve: ['applyAllocation'] },
   retry: { maxAttempts: 1 },
-  recursionLimit: 8,
+  // k tool turns take 3k + 2 steps: the happy path (prepare, apply) is 8, so
+  // allow one more turn, such as the closing answer after a failed apply,
+  // to end on that failure rather than on a recursion error.
+  recursionLimit: 12,
   systemPrompt: `Review the selected payment using server-owned records.
 Call prepareAllocation({}) exactly once; it prepares the proposal for the invoices the user selected.
 Then call applyAllocation({proposalId}) with exactly the proposalId it returned. The runtime pauses that
