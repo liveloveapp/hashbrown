@@ -9,7 +9,6 @@ test('footer links match the Angular footer', () => {
   const html = renderToStaticMarkup(<Footer sdk="react" />);
 
   expect(hrefs(html)).toEqual([
-    'https://analogjs.org',
     '/docs/react/start/intro',
     '/api',
     '/samples',

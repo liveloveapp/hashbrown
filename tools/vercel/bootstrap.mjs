@@ -34,8 +34,7 @@ export const REPOSITORY = 'liveloveapp/hashbrown';
 export const DOMAIN = 'hashbrown.dev';
 export const NODE_VERSION = '24.x';
 /**
- * The site's public domains: the apex, and www redirecting to it. Shared by
- * the site's bootstrap target and `move-domains.mjs`, the rollback path.
+ * The site's public domains: the apex, and www redirecting to it.
  */
 export const SITE_DOMAINS = Object.freeze([
   Object.freeze({ name: DOMAIN }),
@@ -77,8 +76,6 @@ export const TARGETS = Object.freeze([
     project: 'hashbrown-www',
     secret: 'VERCEL_PROJECT_ID_WWW',
     domains: SITE_DOMAINS,
-    // To roll back, move the domains the other way with move-domains.mjs;
-    // re-adding an old target here can't, because it creates rather than moves.
     removedDomains: [`next.${DOMAIN}`],
     env: ['OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_BASE_URL'],
     requiredEnv: ['OPENAI_API_KEY'],

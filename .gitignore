@@ -50,7 +50,6 @@ Thumbs.db
 packages/angular/coverage
 
 # Nitro
-.nitro
 .vercel
 .b4/
 
@@ -75,7 +74,6 @@ www/content/reference/*
 llms.txt
 llms-full.txt
 .cursor/rules/nx-rules.mdc
-.github/instructions/nx.instructions.md
 
 .nx/polygraph
 .nx/self-healing
@@ -83,7 +81,6 @@ llms-full.txt
 .nx/migrate-runs
 
 # Local output from retired examples
-/samples/
 
 # Next.js build output
 .next
