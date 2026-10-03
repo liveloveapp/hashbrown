@@ -2,14 +2,12 @@
 /**
  * One-time, re-runnable provisioning for Hashbrown's Vercel deployment.
  *
- *   node tools/vercel/bootstrap.mjs --env-file /path/to/.env [--dns-records records.json] [--skip-workflow] [--teardown-cloudflare]
+ *   node tools/vercel/bootstrap.mjs --env-file /path/to/.env [--dns-records records.json] [--skip-workflow]
  *
  * Environment (from --env-file or the process):
  *   VERCEL_TOKEN or VERCEL_API_TOKEN   required
  *   OPENAI_API_KEY                     required; set on the project, never printed
  *   OPENAI_MODEL, OPENAI_BASE_URL      optional overrides
- *   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID  required only with --teardown-cloudflare,
- *     which deletes the Cloudflare Pages projects and their GitHub secrets
  *
  * --dns-records points at a JSON array of Vercel DNS records
  *   [{ "name": "", "type": "MX", "value": "mail.example.com.", "mxPriority": 10, "ttl": 3600 }]
@@ -29,7 +27,6 @@ import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
 export const VERCEL_API = 'https://api.vercel.com';
-export const CLOUDFLARE_API = 'https://api.cloudflare.com/client/v4';
 export const REPOSITORY = 'liveloveapp/hashbrown';
 export const DOMAIN = 'hashbrown.dev';
 export const NODE_VERSION = '24.x';
@@ -87,12 +84,6 @@ export const TARGETS = Object.freeze([
       installCommand: 'true',
     },
   }),
-]);
-export const CLOUDFLARE_PAGES_PROJECTS = Object.freeze([
-  'hashbrown-www',
-  'hashbrown-finance',
-  'hashbrown-fast-food',
-  'hashbrown-smart-home',
 ]);
 
 /**
@@ -448,40 +439,6 @@ export async function readDomainState(vercel, projectId) {
   };
 }
 
-export async function deleteCloudflarePagesProjects({
-  token,
-  accountId,
-  fetchImpl = fetch,
-}) {
-  const results = {};
-
-  for (const name of CLOUDFLARE_PAGES_PROJECTS) {
-    const response = await fetchImpl(
-      `${CLOUDFLARE_API}/accounts/${accountId}/pages/projects/${name}`,
-      { method: 'DELETE', headers: { authorization: `Bearer ${token}` } },
-    );
-    if (response.status === 404) {
-      results[name] = 'skipped';
-      continue;
-    }
-
-    const text = await response.text();
-    const body = text ? JSON.parse(text) : {};
-
-    if (response.ok && body.success === true) {
-      results[name] = 'deleted';
-    } else {
-      throw new Error(
-        `Cloudflare delete ${name} -> ${response.status}: ${
-          (body.errors ?? []).map((e) => e.code).join(', ') || 'success=false'
-        }`,
-      );
-    }
-  }
-
-  return results;
-}
-
 function run(command, args, { input } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -517,16 +474,6 @@ async function setSecret(name, value) {
   await gh(['secret', 'set', name, '--repo', REPOSITORY], value);
 }
 
-async function deleteSecret(name) {
-  try {
-    await gh(['secret', 'delete', name, '--repo', REPOSITORY]);
-    return 'deleted';
-  } catch (error) {
-    if (/not found/i.test(error.stderr ?? '')) return 'skipped';
-    throw error;
-  }
-}
-
 function log(step, outcome, detail = '') {
   console.log(`${step.padEnd(22)} ${outcome}${detail ? `  ${detail}` : ''}`);
 }
@@ -537,7 +484,6 @@ async function main() {
       'env-file': { type: 'string' },
       'dns-records': { type: 'string' },
       'skip-workflow': { type: 'boolean', default: false },
-      'teardown-cloudflare': { type: 'boolean', default: false },
     },
   });
 
@@ -662,39 +608,6 @@ async function main() {
   await setSecret('VERCEL_TOKEN', token);
   await setSecret('VERCEL_ORG_ID', teamId ?? user.id);
   log('secrets VERCEL_*', 'set');
-
-  if (values['teardown-cloudflare']) {
-    if (
-      !process.env.CLOUDFLARE_API_TOKEN ||
-      !process.env.CLOUDFLARE_ACCOUNT_ID
-    ) {
-      throw new Error(
-        '--teardown-cloudflare requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.',
-      );
-    }
-
-    const results = await deleteCloudflarePagesProjects({
-      token: process.env.CLOUDFLARE_API_TOKEN,
-      accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
-    });
-    for (const [name, outcome] of Object.entries(results)) {
-      log(`cloudflare ${name}`, outcome);
-    }
-    log(
-      'secret CLOUDFLARE_API_TOKEN',
-      await deleteSecret('CLOUDFLARE_API_TOKEN'),
-    );
-    log(
-      'secret CLOUDFLARE_ACCOUNT_ID',
-      await deleteSecret('CLOUDFLARE_ACCOUNT_ID'),
-    );
-  } else {
-    log(
-      'cloudflare teardown',
-      'skipped',
-      'pass --teardown-cloudflare after the domain is verified',
-    );
-  }
 
   if (!values['skip-workflow']) {
     await gh([

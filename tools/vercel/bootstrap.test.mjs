@@ -2,10 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  CLOUDFLARE_PAGES_PROJECTS,
   TARGETS,
   createVercelClient,
-  deleteCloudflarePagesProjects,
   ensureCertificate,
   ensureDnsZone,
   ensureBuildSettings,
@@ -519,50 +517,6 @@ test('ensureDomain patches an existing domain whose redirect differs', async () 
     redirect: 'hashbrown.dev',
     redirectStatusCode: 308,
   });
-});
-
-test('deleteCloudflarePagesProjects reports skipped for 404 and deleted for success', async () => {
-  let index = 0;
-  const fetchImpl = async () => {
-    const first = index === 0;
-    index += 1;
-    return first
-      ? new Response(JSON.stringify({ success: false }), { status: 404 })
-      : new Response(JSON.stringify({ success: true }), { status: 200 });
-  };
-
-  const results = await deleteCloudflarePagesProjects({
-    token: 'cf',
-    accountId: 'acct',
-    fetchImpl,
-  });
-
-  assert.deepEqual(results, {
-    [CLOUDFLARE_PAGES_PROJECTS[0]]: 'skipped',
-    ...Object.fromEntries(
-      CLOUDFLARE_PAGES_PROJECTS.slice(1).map((name) => [name, 'deleted']),
-    ),
-  });
-});
-
-test('deleteCloudflarePagesProjects throws when success is false', async () => {
-  const fetchImpl = async () =>
-    new Response(
-      JSON.stringify({ success: false, errors: [{ code: 10000 }] }),
-      {
-        status: 200,
-      },
-    );
-
-  await assert.rejects(
-    () =>
-      deleteCloudflarePagesProjects({
-        token: 'cf',
-        accountId: 'acct',
-        fetchImpl,
-      }),
-    /Cloudflare delete hashbrown-www -> 200: 10000/,
-  );
 });
 
 test('missingEnv reports keys absent from production', async () => {
