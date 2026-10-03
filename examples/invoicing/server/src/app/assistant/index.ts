@@ -3,7 +3,10 @@ import { agent } from '@b4run/sdk';
 export default agent({
   model: 'gpt-5-mini',
   retry: { maxAttempts: 1 },
-  recursionLimit: 14,
+  // Supersteps, not model turns. `render` is returnDirect, so B4 adds a
+  // loop-entry node: k lookup turns and r render attempts cost 3(k + r) + 2.
+  // 26 allows six sequential lookups and one render retry (evals/harness.spec.ts).
+  recursionLimit: 26,
   systemPrompt: `You help a software consulting business understand its invoices and incoming payments.
 This is a simulated ledger. You have read-only tools and cannot change anything. No collections or outreach.
 

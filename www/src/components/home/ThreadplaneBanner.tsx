@@ -11,26 +11,13 @@ export function ThreadplaneBanner() {
         target="_blank"
         rel="noopener"
       >
-        <div className={styles.text}>
-          <div className={styles.big}>
-            Your chat UI
-            <br />
-            <em>isn&apos;t done.</em>
-          </div>
-          <p>
-            threadplane is the full agent UI for React and Angular: threads,
-            approvals, and tool progress. Free and MIT, with enterprise support
-            from the team behind Hashbrown.
-          </p>
-          <span className={styles.cta}>Explore threadplane →</span>
-        </div>
-        <img
-          src="/image/landing-page/threadplane/brian-skeptical.webp"
-          alt="Brian Love"
-          loading="lazy"
-          width={840}
-          height={900}
-        />
+        <h2 className={styles.big}>Need enterprise chat UI for your agents?</h2>
+        <p>
+          threadplane is the full agent UI for React and Angular: threads,
+          approvals, and tool progress. Free and MIT, with enterprise support
+          from the team behind Hashbrown.
+        </p>
+        <span className={styles.cta}>Explore threadplane →</span>
       </a>
     </div>
   );

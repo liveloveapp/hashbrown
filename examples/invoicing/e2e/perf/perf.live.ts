@@ -36,7 +36,14 @@ async function ask(page: Page, question: string) {
   await message.fill(question);
   const start = Date.now();
   await page.getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(answers.nth(before).locator('p').first()).not.toBeEmpty();
+  const answer = answers.nth(before).locator('p').first();
+  // A failed run shows the alert at once; report it rather than wait out
+  // the expect timeout for an answer that will never come.
+  const alert = page.getByRole('alert');
+  await expect(answer.or(alert).first()).toBeVisible();
+  if (await alert.isVisible())
+    throw new Error(`The assistant could not finish "${question}".`);
+  await expect(answer).not.toBeEmpty();
   const firstText = Date.now() - start;
   await expect(message).toBeEnabled();
   return { question, firstText, settled: Date.now() - start };

@@ -26,8 +26,7 @@
       "@hashbrownai/ollama": ["packages/ollama/src/index.ts"],
       "@hashbrownai/openai": ["packages/openai/src/index.ts"],
       "@hashbrownai/react": ["packages/react/src/index.ts"],
-      "@hashbrownai/testing/aimock": ["tools/testing/aimock/index.ts"],
-      "tater-js": ["packages/streaming-json-parser/index.ts"]
+      "@hashbrownai/testing/aimock": ["tools/testing/aimock/index.ts"]
     },
     "noUncheckedSideEffectImports": false,
     "types": ["*"],

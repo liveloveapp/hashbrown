@@ -56,12 +56,6 @@ Open http://127.0.0.1:4326/. The example README documents additional setup and
 verification targets. Angular and React protocol coverage lives in its internal
 conformance hosts; they are test infrastructure rather than public examples.
 
-## Optional Dev Container
-
-Open the project in VSCode / Cursor and install the Dev Container extension.
-Then, open the command palette and select `Reopen in Container`.
-This will start the development environment inside a container.
-
 ## Running Tests
 
 To run the full test suite locally:

@@ -31,11 +31,7 @@ export function Footer({ sdk }: { sdk?: Sdk } = {}) {
               />
             </div>
             <small>
-              © LiveLoveApp, LLC {currentYear}. <br />
-              <a href="https://analogjs.org" {...external}>
-                Built with AnalogJS
-                <Arrow />
-              </a>
+              © LiveLoveApp, LLC {currentYear}.
             </small>
           </div>
           <div className={styles.docs}>

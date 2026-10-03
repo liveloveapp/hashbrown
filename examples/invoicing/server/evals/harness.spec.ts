@@ -170,3 +170,40 @@ test('sends the model the production response schema on every call', async () =>
     else process.env['OPENAI_API_KEY'] = previousKey;
   }
 }, 60_000);
+
+// Guards the assistant's step budget. `render` is returnDirect, so B4 adds a
+// loop-entry node and every model turn costs three supersteps against
+// `recursionLimit`: k lookup turns and r render attempts take 3(k + r) + 2.
+// A limit of 14 allowed only three sequential lookups before render, and
+// live runs that looked up four clients died on the render call itself.
+test('six sequential lookups and a render retry fit the step budget', async () => {
+  const fixtures = script()
+    .user('Six lookups')
+    .callsTool('ledgerSummary', {})
+    .callsTool('customerStatement', { customerId: 'juniper' })
+    .callsTool('customerStatement', { customerId: 'pioneer' })
+    .callsTool('customerStatement', { customerId: 'thistle' })
+    .callsTool('unappliedPayments', {})
+    .callsTool('aging', { currency: 'USD' })
+    .callsTool('render', {
+      text: 'x',
+      components: [{ CustomerCard: { customerId: 'nobody' } }],
+    })
+    .callsTool('render', { text: 'Fixed.', components: [] })
+    .build();
+
+  const run = await harness.run({ input: 'Six lookups', fixtures });
+
+  expect(run.toolCalls).toHaveLength(8);
+  expect(run.toolResults.map((r) => r.isError)).toEqual([
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+  ]);
+  expect(run.finalMessage).toBe('');
+}, 60_000);

@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
+import { agentProxy } from './dev-proxy';
 
 export default defineConfig({
   root: import.meta.dirname,
@@ -23,8 +24,8 @@ export default defineConfig({
     port: 4326,
     strictPort: true,
     proxy: {
-      '/api': 'http://127.0.0.1:4325',
-      '/agui': 'http://127.0.0.1:4325',
+      '/api': agentProxy('http://127.0.0.1:4325'),
+      '/agui': agentProxy('http://127.0.0.1:4325'),
     },
   },
   build: {
@@ -33,7 +34,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'dev-proxy.test.ts'],
     setupFiles: ['./src/test-setup.ts'],
   },
 });
