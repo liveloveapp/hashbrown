@@ -32,7 +32,7 @@ Here is what we built in 4 hours.
 ## Source Code
 
 This article describes a retired example. The source below is preserved at its
-historical revision. For the maintained example, see [Invoicing](/samples).
+historical revision. For the maintained example, see [Invoicing](/docs/react/start/sample).
 
 - [Archived source code on GitHub](https://github.com/liveloveapp/hashbrown/tree/43e40ba5/samples/spotify).
 

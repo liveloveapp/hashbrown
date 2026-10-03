@@ -11,7 +11,6 @@ test('footer links match the Angular footer', () => {
   expect(hrefs(html)).toEqual([
     '/docs/react/start/intro',
     '/api',
-    '/samples',
     '/llms.txt',
     '/llms-full.txt',
     '/blog',

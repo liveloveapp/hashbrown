@@ -7,6 +7,9 @@ meta:
 
 # Invoicing Example
 
+<www-walkthrough-video>
+</www-walkthrough-video>
+
 The maintained example uses React, Hashbrown, B4 and Pretable to explore a
 simulated ledger, answer questions with generated UI, and review payment
 allocations before applying them. All data and allocations are simulated.

@@ -90,21 +90,15 @@ const blogRoutes = [
 ];
 
 // The Analog site's other routes; its page files are gone since the cutover.
-const otherRoutes = [
-  '/',
-  '/api',
-  '/samples',
-  '/samples/fast-food',
-  '/samples/finance',
-  '/samples/smart-home',
-];
+// The /samples pages were retired for a redirect to the example app docs.
+const otherRoutes = ['/', '/api'];
 
 console.log('\nRoute parity (source → prerendered by Next):');
 for (const [label, routes] of [
   ['docs (llms.txt)', llmsDocs],
   ['api (api-report.min.json)', apiRoutes],
   ['blog (content files)', blogRoutes],
-  ['home, api index, samples', otherRoutes],
+  ['home, api index', otherRoutes],
 ] as const) {
   const missing = routes.filter((route) => !built.has(route));
   console.log(

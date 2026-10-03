@@ -24,7 +24,11 @@ export function Footer({ sdk }: { sdk?: Sdk } = {}) {
         <div className={styles.links}>
           <div className={styles.brand}>
             <div className={styles.title}>
-              <img src="/image/logo/word-mark.svg" alt="hashbrown" height={24} />
+              <img
+                src="/image/logo/word-mark.svg"
+                alt="hashbrown"
+                height={24}
+              />
             </div>
             <small>
               © LiveLoveApp, LLC {currentYear}.
@@ -41,11 +45,6 @@ export function Footer({ sdk }: { sdk?: Sdk } = {}) {
               <li>
                 <Link href="/api" className="underline">
                   API Reference
-                </Link>
-              </li>
-              <li>
-                <Link href="/samples" className="underline">
-                  Examples
                 </Link>
               </li>
               <li>
@@ -92,7 +91,11 @@ export function Footer({ sdk }: { sdk?: Sdk } = {}) {
                 </a>
               </li>
               <li>
-                <a href="https://pretable.ai" {...external} className="underline">
+                <a
+                  href="https://pretable.ai"
+                  {...external}
+                  className="underline"
+                >
                   pretable.ai
                   <Arrow />
                 </a>
