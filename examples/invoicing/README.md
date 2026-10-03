@@ -88,7 +88,7 @@ of this example's design; the root Zod 4 migration was separately approved.
 ## Run locally
 
 The server pins published `@b4run/cli`, `@b4run/langchain`, and `@b4run/sdk`
-packages at **0.12.0** in its private npm workspace. A separate B4 checkout or
+packages at **0.13.1** in its private npm workspace. A separate B4 checkout or
 local package-linking step is no longer required.
 
 From the repository root:
