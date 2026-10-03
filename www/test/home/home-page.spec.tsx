@@ -115,6 +115,14 @@ test('links the invoicing showcase and threadplane', async () => {
   expect(html).toContain('/image/landing-page/invoicing-mobile.webp');
 });
 
+test('pitches threadplane with a plain headline and no photo', async () => {
+  const html = await render();
+
+  expect(html).toContain('Need enterprise chat UI for your agents?');
+  expect(html).not.toContain('/image/landing-page/threadplane/');
+  expect(html).not.toContain('isn&#x27;t done.');
+});
+
 test('links the three newest blog posts', async () => {
   const newest = listBlogPosts().slice(0, 3);
 
