@@ -1,6 +1,6 @@
 import { initialInterruptsState } from '../reducers/interrupts.reducer';
 import { ɵselectInterrupts } from '../reducers';
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType, type ToolMessage } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { createChatRuntime } from '../chat-runtime';
 import { Chat } from '../models';
@@ -434,7 +434,7 @@ type ToolTranscriptEntry =
   | {
       readonly role: 'tool';
       readonly toolCallId: string;
-      readonly content: string;
+      readonly content: ToolMessage['content'];
     };
 
 function createToolRoundEvents(

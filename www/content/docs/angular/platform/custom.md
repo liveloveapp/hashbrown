@@ -56,11 +56,7 @@ The client does not choose a provider model. Bind a model to the endpoint, choos
 The exact SDK types differ by vendor, but the event lifecycle remains the same. This focused text example shows the required run and message events.
 
 ```ts
-import {
-  type AGUIEvent,
-  EventType,
-  type Message,
-} from '@ag-ui/core';
+import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { YourProviderSDK } from 'your-provider-sdk';
 
 function normalizeError(error: unknown): string {
@@ -131,7 +127,7 @@ export async function* text(
 }
 ```
 
-For tool calls, emit `TOOL_CALL_START` once the call ID and name are known, stream argument fragments with `TOOL_CALL_ARGS`, and finish with `TOOL_CALL_END`. Preserve the provider's call ID so later tool-result messages correlate correctly. Map provider reasoning to AG-UI reasoning events and use `RAW` for useful provider details that have no canonical event.
+For tool calls, emit `TOOL_CALL_START` once the call ID and name are known, stream argument fragments with `TOOL_CALL_ARGS`, and finish with `TOOL_CALL_END`. Preserve the provider's call ID so later tool-result messages correlate correctly. Tool-result messages, like user messages, can carry content parts instead of a string, so map them or reject them with a clear error, as the official providers do. Map provider reasoning to AG-UI reasoning events and use `RAW` for useful provider details that have no canonical event.
 
 If the provider supports native structured output, map `input.hashbrown?.responseSchema` to that capability. Hashbrown continues to incrementally parse the resulting assistant text; the provider integration should not add a second parser or validate the full output itself.
 
@@ -189,7 +185,7 @@ export const appConfig: ApplicationConfig = {
 
 Test event sequences rather than encoded bytes:
 
-- Parse every yielded value with `EventSchemas.parse(...)` from `@ag-ui/core`.
+- Parse every yielded value with `EventSchemas.parse(...)` from `@ag-ui/core/schemas`. AG-UI 1.0 moved its validators to that entry point, and they need `zod` installed.
 - Cover text, tool calls with fragmented arguments, reasoning, structured output, and provider errors.
 - Assert one `RUN_STARTED` and one terminal event for completed runs.
 - Assert cancellation stops the provider stream without emitting a synthetic error.

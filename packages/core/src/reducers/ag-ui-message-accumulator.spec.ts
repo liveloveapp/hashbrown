@@ -111,7 +111,7 @@ function encryptedValue(
   entityId: string,
   value: string,
   subtype: 'message' | 'tool-call' = 'message',
-): AGUIEvent {
+): Extract<AGUIEvent, { type: EventType.REASONING_ENCRYPTED_VALUE }> {
   return {
     type: EventType.REASONING_ENCRYPTED_VALUE,
     entityId,

@@ -557,3 +557,34 @@ test('does not mutate the input, messages, tool calls, schemas, or metadata', ()
   expect(result.tools?.[0]).not.toBe(input.tools[0]);
   expect(result.output_config?.format?.schema).not.toBe(responseSchema);
 });
+
+test('rejects structured tool result content', () => {
+  const input = createInput({
+    messages: [
+      { id: 'user-1', role: 'user', content: 'Look it up.' },
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        toolCalls: [
+          {
+            id: 'call-1',
+            type: 'function',
+            function: { name: 'lookup', arguments: '{}' },
+          },
+        ],
+      },
+      {
+        id: 'tool-1',
+        role: 'tool',
+        toolCallId: 'call-1',
+        content: [{ type: 'text', text: 'Structured result.' }],
+      },
+    ],
+  });
+
+  const act = () => createAnthropicRequestOptions(input, 'claude-test');
+
+  expect(act).toThrow(
+    'Anthropic provider currently requires text tool result content',
+  );
+});

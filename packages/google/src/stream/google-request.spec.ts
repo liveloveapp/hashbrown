@@ -149,3 +149,18 @@ test('maps AG-UI messages, tools, signatures, and structured output to Google', 
     },
   });
 });
+
+test('rejects structured tool result content', () => {
+  const input = createInput();
+  input.messages = input.messages.map((message) =>
+    message.role === 'tool'
+      ? { ...message, content: [{ type: 'text', text: 'Structured result.' }] }
+      : message,
+  );
+
+  const act = () => createGoogleRequestOptions(input, 'gemini-3-flash');
+
+  expect(act).toThrow(
+    'Google provider currently requires text tool result content',
+  );
+});

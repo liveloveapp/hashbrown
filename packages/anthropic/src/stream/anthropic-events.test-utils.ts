@@ -1,4 +1,5 @@
-import { type AGUIEvent, EventSchemas } from '@ag-ui/core';
+import type { AGUIEvent } from '@ag-ui/core';
+import { EventSchemas } from '@ag-ui/core/schemas';
 import Anthropic from '@anthropic-ai/sdk';
 import { mapAnthropicEvents } from './anthropic-events';
 

@@ -119,6 +119,12 @@ function mapAssistantMessage(
 function mapToolResult(
   message: Extract<Message, { role: 'tool' }>,
 ): BedrockMessage {
+  if (typeof message.content !== 'string') {
+    throw new Error(
+      'Bedrock provider currently requires text tool result content',
+    );
+  }
+
   const content: ToolResultContentBlock[] = [];
   if (message.error !== undefined) {
     content.push({ text: message.error });

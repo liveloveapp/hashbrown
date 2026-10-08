@@ -1,4 +1,5 @@
-import { type AGUIEvent, EventSchemas, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { EventSchemas } from '@ag-ui/core/schemas';
 import * as aimockRunner from './aimock-runner';
 import type { AimockHandle } from './aimock-runner';
 import * as providerE2E from './provider-e2e';
@@ -117,7 +118,7 @@ test('runProviderAGUIWithAimock lets an event hook abort after a parsed event', 
   const textMessageStart = {
     type: EventType.TEXT_MESSAGE_START,
     messageId: 'message-provider',
-  } as unknown as AGUIEvent;
+  } satisfies AGUIEvent;
   const runFinished = {
     type: EventType.RUN_FINISHED,
     threadId: 'thread-provider',
@@ -155,7 +156,7 @@ test('runProviderAGUIWithAimock lets an event hook abort after a parsed event', 
         await Promise.resolve();
         if (
           event.type === EventType.TEXT_MESSAGE_START &&
-          event.role === 'assistant'
+          (event.role ?? 'assistant') === 'assistant'
         ) {
           controls.abort();
           controls.abort();
@@ -163,7 +164,7 @@ test('runProviderAGUIWithAimock lets an event hook abort after a parsed event', 
       },
     });
 
-    expect(result).toEqual([{ ...textMessageStart, role: 'assistant' }]);
+    expect(result).toEqual([textMessageStart]);
     expect(receivedSignal?.aborted).toBe(true);
     expect(abortEventCount).toBe(1);
   } finally {

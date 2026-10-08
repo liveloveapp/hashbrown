@@ -360,36 +360,26 @@ export function applyCanonicalMessageEvent(
           )
         : messages;
     case EventType.REASONING_MESSAGE_START:
-    case EventType.THINKING_TEXT_MESSAGE_START:
       return upsertText(
         messages,
-        event.messageId as string,
+        event.messageId,
         'reasoning',
         '',
         event,
         false,
       );
     case EventType.REASONING_MESSAGE_CONTENT:
-    case EventType.THINKING_TEXT_MESSAGE_CONTENT:
       return upsertText(
         messages,
-        event.messageId as string,
+        event.messageId,
         'reasoning',
-        event.delta as string,
+        event.delta,
         event,
         true,
       );
     case EventType.REASONING_MESSAGE_END:
-    case EventType.THINKING_TEXT_MESSAGE_END:
       return messages.some((message) => message.id === event.messageId)
-        ? upsertText(
-            messages,
-            event.messageId as string,
-            'reasoning',
-            '',
-            event,
-            false,
-          )
+        ? upsertText(messages, event.messageId, 'reasoning', '', event, false)
         : messages;
     case EventType.REASONING_MESSAGE_CHUNK:
       return event.messageId
@@ -516,7 +506,9 @@ function nextLifecycle(
         ...inactiveLifecycle(),
         activeTextMessageId: event.messageId,
         activeAssistantMessageId:
-          event.role === 'assistant' ? event.messageId : undefined,
+          (event.role ?? 'assistant') === 'assistant'
+            ? event.messageId
+            : undefined,
       };
     case EventType.TEXT_MESSAGE_END:
       return event.messageId === state.activeTextMessageId
@@ -533,10 +525,8 @@ function nextLifecycle(
           }
         : {};
     case EventType.REASONING_MESSAGE_START:
-    case EventType.THINKING_TEXT_MESSAGE_START:
-      return { activeReasoningMessageId: event.messageId as string };
+      return { activeReasoningMessageId: event.messageId };
     case EventType.REASONING_MESSAGE_END:
-    case EventType.THINKING_TEXT_MESSAGE_END:
       return event.messageId === state.activeReasoningMessageId
         ? { activeReasoningMessageId: undefined }
         : {};

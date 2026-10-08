@@ -468,7 +468,7 @@ function startTextMessage(
   state: AgUiMessageAccumulatorState,
   event: Extract<AGUIEvent, { type: EventType.TEXT_MESSAGE_START }>,
 ): AgUiMessageAccumulatorState {
-  if (event.role !== 'assistant') {
+  if ((event.role ?? 'assistant') !== 'assistant') {
     return state;
   }
 

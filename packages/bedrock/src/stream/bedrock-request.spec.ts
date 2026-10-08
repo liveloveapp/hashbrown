@@ -206,3 +206,18 @@ test('does not mutate AG-UI input while constructing a Bedrock request', () => {
 
   expect(input).toEqual(before);
 });
+
+test('rejects structured tool result content', () => {
+  const input = createInput();
+  input.messages = input.messages.map((message) =>
+    message.role === 'tool'
+      ? { ...message, content: [{ type: 'text', text: 'Structured result.' }] }
+      : message,
+  );
+
+  const act = () => createBedrockRequestOptions(input, 'bedrock-model');
+
+  expect(act).toThrow(
+    'Bedrock provider currently requires text tool result content',
+  );
+});

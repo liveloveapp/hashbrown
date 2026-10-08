@@ -1816,7 +1816,7 @@ test('retains local tool values for idempotent replays until canonical sources c
       toolCallId: 'rejected-a',
       content: 'updated remote rejection',
       error: 'updated remote rejection',
-    }),
+    } as AGUIEvent),
   );
   const resultSuperseded = store.read((state) => state);
   store.dispatch(
@@ -3856,7 +3856,7 @@ test('settles fulfilled and rejected streamed tool results without a pending ove
       toolCallId: 'tool-1',
       content: 'failed',
       error: 'unavailable',
-    }),
+    } as AGUIEvent),
   );
 
   expect(fulfilled.toolCalls.entities['tool-1']).toMatchObject({
@@ -5906,4 +5906,46 @@ test('runtime keeps local tool-call values lossless through initialization and r
       Reflect.deleteProperty(globalThis, 'window');
     }
   }
+});
+
+test('treats a text message start without a role as an assistant message', () => {
+  const stream = (start: AGUIEvent) => {
+    const store = createStore({
+      reducers,
+      effects: [],
+      prepareAction: ɵprepareRootAction,
+    });
+    store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+    store.dispatch(internalActions.generationAttemptStarted());
+    store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+    const events: AGUIEvent[] = [
+      start,
+      {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId: 'assistant-1',
+        delta: 'Hello',
+      },
+    ];
+    for (const event of events) {
+      store.dispatch(apiActions.generateMessageEvent(event));
+    }
+    return store.read((state) => state);
+  };
+
+  const withRole = stream({
+    type: EventType.TEXT_MESSAGE_START,
+    messageId: 'assistant-1',
+    role: 'assistant',
+  });
+  const withoutRole = stream({
+    type: EventType.TEXT_MESSAGE_START,
+    messageId: 'assistant-1',
+  });
+
+  expect(withRole.messages.messages).toEqual([
+    expect.objectContaining({ role: 'assistant', content: 'Hello' }),
+  ]);
+  expect(withoutRole.messages).toEqual(withRole.messages);
+  expect(withoutRole.agUiMessages).toEqual(withRole.agUiMessages);
+  expect(withoutRole.streamingMessage).toEqual(withRole.streamingMessage);
 });

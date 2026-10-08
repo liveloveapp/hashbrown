@@ -155,6 +155,12 @@ function mapMessage(
     case 'assistant':
       return mapAssistantMessage(message);
     case 'tool':
+      if (typeof message.content !== 'string') {
+        throw new Error(
+          'Anthropic provider currently requires text tool result content',
+        );
+      }
+
       return {
         role: 'user',
         content: [

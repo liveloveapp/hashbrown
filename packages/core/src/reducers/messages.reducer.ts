@@ -243,10 +243,11 @@ export const reducer = createReducer(
     }
     if (
       action.payload.type === EventType.TEXT_MESSAGE_START &&
-      action.payload.role === 'assistant'
+      (action.payload.role ?? 'assistant') === 'assistant'
     ) {
+      const { messageId } = action.payload;
       const existing = state.draft.find(
-        (message) => 'id' in message && message.id === action.payload.messageId,
+        (message) => 'id' in message && message.id === messageId,
       );
       if (existing) {
         return existing.role !== 'assistant' ||
@@ -274,8 +275,9 @@ export const reducer = createReducer(
       action.payload.type === EventType.TEXT_MESSAGE_START &&
       action.payload.role === 'user'
     ) {
+      const { messageId } = action.payload;
       const existing = state.draft.find(
-        (message) => 'id' in message && message.id === action.payload.messageId,
+        (message) => 'id' in message && message.id === messageId,
       );
       if (existing) {
         return state;

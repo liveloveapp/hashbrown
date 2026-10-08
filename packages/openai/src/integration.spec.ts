@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
-import { type AGUIEvent, EventSchemas, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { EventSchemas } from '@ag-ui/core/schemas';
 import {
   runProviderAGUIWithAimock,
   startAimock,

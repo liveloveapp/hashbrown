@@ -1,4 +1,5 @@
-import { type Message, RunAgentInputSchema, type Tool } from '@ag-ui/core';
+import type { Message, Tool } from '@ag-ui/core';
+import { RunAgentInputSchema } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
 import { createCanonicalRunAgentInput } from './hashbrown-run-agent-input';
 
