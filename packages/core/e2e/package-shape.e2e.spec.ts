@@ -67,7 +67,7 @@ function createPackageSandbox(): string {
   return sandboxPath;
 }
 
-test('packed Core package includes generated chunks and supports ESM and CJS', () => {
+test('packed Core package includes every generated module and supports ESM and CJS', () => {
   const sandboxPath = createPackageSandbox();
 
   try {
@@ -75,9 +75,14 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
       sandboxPath,
       'node_modules/@hashbrownai/core',
     );
-    const generatedIndexFiles = readdirSync(coreDistPath).filter((file) =>
-      file.startsWith('index'),
-    );
+    const generatedFiles = readdirSync(coreDistPath, { recursive: true })
+      .map((file) => String(file))
+      .filter(
+        (file) =>
+          file.startsWith('index') ||
+          file.endsWith('.esm.js') ||
+          file.endsWith('.cjs.js'),
+      );
     const publicApiDeclarations = readFileSync(
       join(coreDistPath, 'src/public_api.d.ts'),
       'utf8',
@@ -308,7 +313,7 @@ test('packed Core package includes generated chunks and supports ESM and CJS', (
     );
 
     expect(
-      generatedIndexFiles.filter(
+      generatedFiles.filter(
         (file) => !existsSync(join(installedCorePath, file)),
       ),
     ).toEqual([]);
