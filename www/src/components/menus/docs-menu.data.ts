@@ -50,6 +50,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
     title: 'Migrations',
     ordered: false,
     entries: [
+      { text: 'Upgrade to v0.7', path: 'migrations/v0-7' },
       { text: 'Upgrade to v0.6', path: 'migrations/v0-6' },
       { text: 'Upgrade to v0.5', path: 'migrations/v0-5' },
     ],
