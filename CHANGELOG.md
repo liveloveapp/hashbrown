@@ -1,3 +1,36 @@
+## 0.7.0 (Unreleased)
+
+### 🧭 Migrating from 0.6
+
+0.7 moves Hashbrown to AG-UI 1.0. Upgrade your own `@ag-ui/*` packages to 1.x together with Hashbrown, import AG-UI validators from `@ag-ui/core/schemas`, and replace any `THINKING_*` events your server or custom transport emits with `REASONING_*`. Read the step-by-step guide for [React](https://hashbrown.dev/docs/react/migrations/v0-7) or [Angular](https://hashbrown.dev/docs/angular/migrations/v0-7).
+
+### ⚠️ Breaking Changes
+
+- move to AG-UI 1.0: `@ag-ui/core`, `@ag-ui/client` and `@ag-ui/encoder` go from 0.0.59 to 1.0.2, so the AG-UI types in Hashbrown's public API (`AGUIEvent`, `RunAgentInput` and others) resolve to AG-UI 1.0 ([#629](https://github.com/liveloveapp/hashbrown/pull/629))
+- `THINKING_*` events are no longer accepted; emit `REASONING_*` instead ([#629](https://github.com/liveloveapp/hashbrown/pull/629))
+- the OpenAI, Azure, Anthropic, Google, Bedrock and Ollama adapters reject tool results whose content is an array of content parts, which AG-UI 1.0 allows; send text tool results ([#629](https://github.com/liveloveapp/hashbrown/pull/629))
+
+### 🚀 Features
+
+- **core:** add `createUiJsonSchema` and `UiComponentDefinition` so an agent Hashbrown doesn't run (CopilotKit, LangGraph, your own server) can follow a UI kit's schema, built from the same component definitions as the browser's kit ([#626](https://github.com/liveloveapp/hashbrown/pull/626))
+
+### 🔥 Performance
+
+- **core:** publish one module per source file so bundlers can drop unused code; a renderer that only uses `useUiKit` and `useJsonParser` no longer pulls in the chat runtime, AG-UI or zod, and a CopilotKit renderer bundle falls from 244 KB to 117 KB minified ([#627](https://github.com/liveloveapp/hashbrown/pull/627))
+
+### 🩹 Fixes
+
+- a `TEXT_MESSAGE_START` event without a `role` is treated as an assistant message, as the AG-UI spec says; AG-UI 1.0 no longer fills the role in ([#629](https://github.com/liveloveapp/hashbrown/pull/629))
+
+### 📖 Documentation
+
+- rewrite the CopilotKit recipe, add a UI kit section on agents Hashbrown doesn't run, and document passing arrays, objects and numbers into `prompt` examples with `${}` ([#628](https://github.com/liveloveapp/hashbrown/pull/628))
+- align the package READMEs with the new website positioning ([#593](https://github.com/liveloveapp/hashbrown/pull/593))
+
+### ❤️ Thank You
+
+- Brian Love @blove
+
 ## 0.6.1 (2026-09-24)
 
 ### 🩹 Fixes
