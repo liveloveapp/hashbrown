@@ -95,6 +95,7 @@ test('rejects packages missing from the npm registry at the release version', as
   await assert.rejects(
     verifyNpmRelease({
       workspaceRoot,
+      sleep: async () => {},
       viewPackage: async ({ packageName, version }) => {
         if (packageName === '@hashbrownai/react') {
           throw new Error(`${packageName}@${version} was not found`);
@@ -119,6 +120,7 @@ test('rejects packages whose dist tag does not point at the release version', as
     verifyNpmRelease({
       workspaceRoot,
       tag: 'latest',
+      sleep: async () => {},
       viewPackage: async ({ version }) => ({
         version,
         'dist-tags': {
@@ -128,6 +130,81 @@ test('rejects packages whose dist tag does not point at the release version', as
     }),
     /expected latest to point at 0\.6\.0, found 0\.5\.0/,
   );
+});
+
+test('retries a package until the registry serves the release version', async () => {
+  const workspaceRoot = await createWorkspace();
+  const waits = [];
+  let reactViews = 0;
+
+  const result = await verifyNpmRelease({
+    workspaceRoot,
+    retryDelaysMs: [10, 20, 30],
+    sleep: async (ms) => {
+      waits.push(ms);
+    },
+    viewPackage: async ({ packageName, version }) => {
+      if (packageName === '@hashbrownai/react') {
+        reactViews += 1;
+        if (reactViews < 3) {
+          throw new Error(`${packageName}@${version} was not found`);
+        }
+      }
+
+      return { version, 'dist-tags': { latest: version } };
+    },
+  });
+
+  assert.equal(result.version, '0.6.0');
+  assert.equal(reactViews, 3);
+  assert.deepEqual(waits, [10, 20]);
+});
+
+test('retries while the dist tag still points at the previous version', async () => {
+  const workspaceRoot = await createWorkspace();
+  const waits = [];
+  let views = 0;
+
+  const result = await verifyNpmRelease({
+    workspaceRoot,
+    retryDelaysMs: [10, 20],
+    sleep: async (ms) => {
+      waits.push(ms);
+    },
+    viewPackage: async ({ version }) => {
+      views += 1;
+
+      return {
+        version,
+        'dist-tags': { latest: views === 1 ? '0.5.0' : version },
+      };
+    },
+  });
+
+  assert.equal(result.tag, 'latest');
+  assert.deepEqual(waits, [10]);
+});
+
+test('reports the last error once every retry is spent', async () => {
+  const workspaceRoot = await createWorkspace();
+  const waits = [];
+  let views = 0;
+
+  await assert.rejects(
+    verifyNpmRelease({
+      workspaceRoot,
+      retryDelaysMs: [10, 20],
+      sleep: async (ms) => {
+        waits.push(ms);
+      },
+      viewPackage: async ({ packageName, version }) => {
+        views += 1;
+        throw new Error(`${packageName}@${version} was not found (${views})`);
+      },
+    }),
+    /@hashbrownai\/core@0\.6\.0 was not found \(3\)/,
+  );
+  assert.deepEqual(waits, [10, 20]);
 });
 
 test('parses the tag and registry in both the spaced and the equals form', () => {
