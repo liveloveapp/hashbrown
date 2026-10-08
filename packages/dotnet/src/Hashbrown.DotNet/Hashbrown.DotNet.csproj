@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    
+    <!-- NuGet Package Metadata -->
+    <PackageId>Hashbrown.DotNet</PackageId>
+    <Version>0.5.0-beta.5</Version>
+    <Authors>Hashbrown Contributors</Authors>
+    <Company>LiveLoveApp, LLC</Company>
+    <Description>Microsoft Agents Framework adapter for Hashbrown - Build generative user interfaces with .NET and Azure OpenAI</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://hashbrown.dev</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/hashbrownai/hashbrown</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>hashbrown;dotnet;csharp;ai;generative-ui;azure-openai;agents;microsoft-agents-framework</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Microsoft Extensions AI -->
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.3.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.3.0" />
+    
+    <!-- Azure OpenAI -->
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+    <PackageReference Include="Azure.Identity" Version="1.13.1" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0-preview.260209.1" />
+
+    <!-- ASP.NET Core for endpoint mapping -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- Microsoft Agents Framework - only for .NET 9.0+ -->
+  <!--<ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0-preview.260209.1" />
+  </ItemGroup>-->
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>
