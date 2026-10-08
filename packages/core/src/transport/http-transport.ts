@@ -1,5 +1,6 @@
 import { parseSSEStream } from '@ag-ui/client';
-import { type AGUIEvent, EventSchemas } from '@ag-ui/core';
+import type { AGUIEvent } from '@ag-ui/core';
+import { EventSchemas } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
 import { observableToAsyncIterable } from './observable-to-async-iterable';
 import { raceTransportOperationWithAbort } from './race-transport-operation-with-abort';

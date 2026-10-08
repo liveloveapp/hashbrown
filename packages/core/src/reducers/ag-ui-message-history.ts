@@ -2,10 +2,10 @@ import {
   type AGUIEvent,
   EventType,
   type Message,
-  MessageSchema,
   type SystemMessage,
   type ToolMessage,
 } from '@ag-ui/core';
+import { MessageSchema } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { resolveWithSchema } from '../utils';

@@ -32,6 +32,12 @@ function mapMessage(
         })),
       };
     case 'tool':
+      if (typeof message.content !== 'string') {
+        throw new Error(
+          'Azure OpenAI provider currently requires text tool result content',
+        );
+      }
+
       return {
         role: 'tool',
         content: message.content,

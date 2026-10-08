@@ -176,8 +176,12 @@ test('rejects malformed pointers and operations with the correct operation index
       { op: 'add', path: '/valid', value: true },
       { op: 'add', path: '/bad~2', value: 1 },
     ],
-    [{ op: 'unsupported', path: '' }],
-    [{ op: 'copy', path: '/copy' }],
+    [{ op: 'unsupported', path: '' }] as unknown as Parameters<
+      typeof applyJsonPatch
+    >[1],
+    [{ op: 'copy', path: '/copy' }] as unknown as Parameters<
+      typeof applyJsonPatch
+    >[1],
     [{ op: 1, path: '' }] as unknown as Parameters<typeof applyJsonPatch>[1],
   ];
 
@@ -224,7 +228,7 @@ test('does not mutate the input document or patch and commits no partial result'
   const patch = [
     { op: 'replace', path: '/first', value: 2 },
     { op: 'remove', path: '/missing' },
-  ];
+  ] satisfies Parameters<typeof applyJsonPatch>[1];
   const patchBefore = JSON.parse(JSON.stringify(patch));
 
   expect(() => applyJsonPatch(document, patch)).toThrow();

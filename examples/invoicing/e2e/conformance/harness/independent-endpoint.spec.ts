@@ -1,4 +1,5 @@
-import { EventSchemas, EventType } from '@ag-ui/core';
+import { EventType } from '@ag-ui/core';
+import { EventSchemas } from '@ag-ui/core/schemas';
 import { startIndependentEndpoint } from './independent-endpoint';
 import { createEventGate } from './event-gate';
 

@@ -307,9 +307,9 @@ function requiresFreshAssistantBaseline(
   event: Parameters<typeof accumulateAgUiMessageEvent>[1],
 ): boolean {
   switch (event.type) {
-    case EventType.TEXT_MESSAGE_START:
     case EventType.TEXT_MESSAGE_CONTENT:
-      return event.role === undefined || event.role === 'assistant';
+      return true;
+    case EventType.TEXT_MESSAGE_START:
     case EventType.TEXT_MESSAGE_CHUNK:
       return event.role === undefined || event.role === 'assistant';
     case EventType.TOOL_CALL_START:
@@ -412,8 +412,9 @@ export const reducer = createReducer(
           decision,
         );
         const current = hydrated ?? state;
+        const { toolCallId } = action.payload;
         const toolCalls = current.toolCalls.filter(
-          (toolCall) => toolCall.id !== action.payload.toolCallId,
+          (toolCall) => toolCall.id !== toolCallId,
         );
         const next =
           toolCalls.length === current.toolCalls.length

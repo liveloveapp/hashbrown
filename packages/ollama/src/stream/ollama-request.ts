@@ -113,6 +113,12 @@ function mapMessage(
       };
     }
     case 'tool': {
+      if (typeof message.content !== 'string') {
+        throw new Error(
+          'Ollama provider currently requires text tool result content',
+        );
+      }
+
       const toolName = findToolCallName(
         messages.slice(0, index),
         message.toolCallId,

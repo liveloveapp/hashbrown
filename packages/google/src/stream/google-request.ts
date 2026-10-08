@@ -141,6 +141,12 @@ function mapMessage(
         mapPrecedingReasoning(messages, index),
       );
     case 'tool': {
+      if (typeof message.content !== 'string') {
+        throw new Error(
+          'Google provider currently requires text tool result content',
+        );
+      }
+
       const name = findToolCallName(
         messages.slice(0, index),
         message.toolCallId,

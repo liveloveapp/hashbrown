@@ -30,9 +30,9 @@
     ]
   },
   "dependencies": {
-    "@ag-ui/client": "0.0.59",
-    "@ag-ui/core": "0.0.59",
-    "@ag-ui/encoder": "0.0.59",
+    "@ag-ui/client": "1.0.2",
+    "@ag-ui/core": "1.0.2",
+    "@ag-ui/encoder": "1.0.2",
     "@angular/common": "22.1.1",
     "@angular/compiler": "22.1.1",
     "@angular/core": "22.1.1",

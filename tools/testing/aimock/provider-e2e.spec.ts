@@ -1,4 +1,5 @@
-import { type AGUIEvent, EventSchemas, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { EventSchemas } from '@ag-ui/core/schemas';
 import * as aimockRunner from './aimock-runner';
 import type { AimockHandle } from './aimock-runner';
 import * as providerE2E from './provider-e2e';

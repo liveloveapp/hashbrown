@@ -1,4 +1,5 @@
-import { type AGUIEvent, EventSchemas, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { EventSchemas } from '@ag-ui/core/schemas';
 import Anthropic from '@anthropic-ai/sdk';
 import { text } from './text.fn';
 import type {

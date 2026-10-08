@@ -1,23 +1,29 @@
-import {
-  type AGUIEvent,
-  EventSchemas,
-  EventType,
-  type RunAgentInput,
-  RunAgentInputSchema,
-} from '@ag-ui/core';
+import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
+import { EventSchemas, RunAgentInputSchema } from '@ag-ui/core/schemas';
 import { EventEncoder } from '@ag-ui/encoder';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { z } from 'zod';
 
-// Validate extensions separately from AG-UI's Zod 3 schema.
+// Validate extensions separately from AG-UI's own run input schema.
 const inputExtensionSchema = z.object({
   hashbrown: z.object({
     responseSchema: z.record(z.string(), z.unknown()),
     ui: z.boolean().optional(),
   }),
 });
+
+/**
+ * Parses a run input the way a standard AG-UI endpoint sees it: AG-UI 1.0's
+ * schema passes unknown keys through, so vendor fields are dropped here.
+ */
+function parseCanonicalRunAgentInput(payload: unknown): RunAgentInput {
+  const parsed = RunAgentInputSchema.parse(payload);
+  return Object.fromEntries(
+    Object.entries(parsed).filter(([key]) => key in RunAgentInputSchema.shape),
+  ) as RunAgentInput;
+}
 
 /** Canonical fixture input with an explicitly negotiated structured-output extension. */
 export type EndpointInput = RunAgentInput & {
@@ -65,7 +71,7 @@ export async function startIndependentEndpoint(options: {
       const payload: unknown = JSON.parse(
         Buffer.concat(chunks).toString('utf8'),
       );
-      const canonicalInput = RunAgentInputSchema.parse(payload);
+      const canonicalInput = parseCanonicalRunAgentInput(payload);
       input = options.extended
         ? { ...canonicalInput, ...inputExtensionSchema.parse(payload) }
         : canonicalInput;

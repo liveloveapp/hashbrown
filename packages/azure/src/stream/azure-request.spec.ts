@@ -134,3 +134,18 @@ test('maps AG-UI messages, tools, and structured output to Azure OpenAI', () => 
     },
   });
 });
+
+test('rejects structured tool result content', () => {
+  const input = createInput();
+  input.messages = input.messages.map((message) =>
+    message.role === 'tool'
+      ? { ...message, content: [{ type: 'text', text: 'Structured result.' }] }
+      : message,
+  );
+
+  const act = () => createAzureRequestOptions(input, 'gpt-4.1');
+
+  expect(act).toThrow(
+    'Azure OpenAI provider currently requires text tool result content',
+  );
+});

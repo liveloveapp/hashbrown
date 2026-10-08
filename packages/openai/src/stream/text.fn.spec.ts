@@ -1,4 +1,5 @@
-import { type AGUIEvent, EventSchemas, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { EventSchemas } from '@ag-ui/core/schemas';
 import OpenAI from 'openai';
 import {
   type OpenAIHashbrownRunAgentInput,
@@ -369,4 +370,45 @@ test('incomplete tool metadata produces one RUN_ERROR without synthetic ends', a
     },
   ]);
   expect(provider.abort).toHaveBeenCalledTimes(1);
+});
+
+test('maps structured tool result content to one RUN_ERROR', async () => {
+  const provider = mockProvider();
+  const input = createInput({
+    messages: [
+      { id: 'user-openai', role: 'user', content: 'Look it up.' },
+      {
+        id: 'assistant-openai',
+        role: 'assistant',
+        toolCalls: [
+          {
+            id: 'call-openai',
+            type: 'function',
+            function: { name: 'lookup', arguments: '{}' },
+          },
+        ],
+      },
+      {
+        id: 'tool-openai',
+        role: 'tool',
+        toolCallId: 'call-openai',
+        content: [{ type: 'text', text: 'Structured result.' }],
+      },
+    ],
+  });
+
+  const events = await collectEvents(createOptions({ input }));
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-openai',
+      runId: 'run-openai',
+    },
+    {
+      type: EventType.RUN_ERROR,
+      message: 'OpenAI provider currently requires text tool result content',
+    },
+  ]);
+  expect(provider.create).not.toHaveBeenCalled();
 });

@@ -1,9 +1,5 @@
-import {
-  type AGUIEvent,
-  EventSchemas,
-  EventType,
-  type RunAgentInput,
-} from '@ag-ui/core';
+import { type AGUIEvent, EventType, type RunAgentInput } from '@ag-ui/core';
+import { EventSchemas } from '@ag-ui/core/schemas';
 import { createHttpTransport, type TransportRequest } from '@hashbrownai/core';
 import { startAimock } from '@hashbrownai/testing/aimock';
 import { once } from 'node:events';

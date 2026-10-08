@@ -216,3 +216,18 @@ test('does not mutate input messages, tools, schemas, or parsed arguments', () =
 
   expect(input).toEqual(snapshot);
 });
+
+test('rejects structured tool result content', () => {
+  const input = createInput();
+  input.messages = input.messages.map((message) =>
+    message.role === 'tool'
+      ? { ...message, content: [{ type: 'text', text: 'Structured result.' }] }
+      : message,
+  );
+
+  const act = () => createOllamaRequestOptions(input, 'gpt-oss:20b');
+
+  expect(act).toThrow(
+    'Ollama provider currently requires text tool result content',
+  );
+});
