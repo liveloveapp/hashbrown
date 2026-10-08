@@ -21,33 +21,81 @@ async function defaultViewPackage({ packageName, version, registry }) {
   return JSON.parse(stdout);
 }
 
+/**
+ * How long to wait before each retry. The registry can take several minutes
+ * to serve a version (and move its dist tag) after `npm publish` returns, so
+ * the verification keeps checking for about ten minutes before it fails.
+ */
+export const DEFAULT_RETRY_DELAYS_MS = [
+  15_000, 30_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000, 60_000,
+  60_000,
+];
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function verifyPackage({
+  packageName,
+  version,
+  tag,
+  registry,
+  viewPackage,
+}) {
+  const packageInfo = await viewPackage({ packageName, version, registry });
+  const publishedVersion = packageInfo.version;
+  const taggedVersion = packageInfo['dist-tags']?.[tag];
+
+  if (publishedVersion !== version) {
+    throw new Error(
+      `${packageName}@${version} expected registry version ${version}, found ${publishedVersion}.`,
+    );
+  }
+
+  if (taggedVersion !== version) {
+    throw new Error(
+      `${packageName}@${version} expected ${tag} to point at ${version}, found ${taggedVersion}.`,
+    );
+  }
+}
+
+/**
+ * Verify every package in the release group is published at the release
+ * version with `tag` pointing at it, retrying while the registry catches up.
+ */
 export async function verifyNpmRelease({
   workspaceRoot = process.cwd(),
   tag = 'latest',
   registry = DEFAULT_REGISTRY,
   viewPackage = defaultViewPackage,
+  retryDelaysMs = DEFAULT_RETRY_DELAYS_MS,
+  sleep = wait,
+  log = (message) => console.warn(message),
 } = {}) {
   const release = await verifyReleaseVersions({ workspaceRoot });
 
   for (const packageName of release.packages) {
-    const packageInfo = await viewPackage({
-      packageName,
-      version: release.version,
-      registry,
-    });
-    const publishedVersion = packageInfo.version;
-    const taggedVersion = packageInfo['dist-tags']?.[tag];
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        await verifyPackage({
+          packageName,
+          version: release.version,
+          tag,
+          registry,
+          viewPackage,
+        });
+        break;
+      } catch (error) {
+        if (attempt >= retryDelaysMs.length) {
+          throw error;
+        }
 
-    if (publishedVersion !== release.version) {
-      throw new Error(
-        `${packageName}@${release.version} expected registry version ${release.version}, found ${publishedVersion}.`,
-      );
-    }
-
-    if (taggedVersion !== release.version) {
-      throw new Error(
-        `${packageName}@${release.version} expected ${tag} to point at ${release.version}, found ${taggedVersion}.`,
-      );
+        const delay = retryDelaysMs[attempt];
+        log(
+          `${error instanceof Error ? error.message : error} Retrying in ${delay / 1000}s (${attempt + 1}/${retryDelaysMs.length}).`,
+        );
+        await sleep(delay);
+      }
     }
   }
 
