@@ -349,6 +349,8 @@ The `prompt` tagged template literal will parse the content inside of the `<ui>`
 2. Validate that the component input values have been set correctly based on their schema definitions.
 3. Convert the example into Hashbrown's underlying JSON representation.
 
+Quoted attribute values are strings. To pass a number, boolean, array, or object, use `${}`, as in `<BarChart data=${[{ label: 'Oct', value: 350000 }]} />`. Hashbrown validates the value against the input's schema like any other attribute. See [Add Examples](/docs/angular/recipes/ui-kits#4.-add-examples).
+
 ---
 
 ## Next Steps

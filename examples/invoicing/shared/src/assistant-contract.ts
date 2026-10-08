@@ -1,4 +1,4 @@
-import { s, ɵcreateUiKit } from '@hashbrownai/core';
+import { createUiJsonSchema, s } from '@hashbrownai/core';
 
 const nullableCustomerId = () =>
   s.anyOf([s.string('A customer ID'), s.nullish()]);
@@ -115,23 +115,20 @@ export function createAssistantKit<C extends Record<AssistantKitName, object>>(
 /**
  * Canonical JSON response schema accepted by the invoicing server and React UI.
  *
- * The middleware compares this against the schema the client sent as JSON with
- * `isDeepStrictEqual`, and `s.nullish()` emits a `const: undefined` key that
- * JSON drops, so the canonical schema must itself be JSON-clean.
+ * Built from the same definitions as {@link createAssistantKit}, with the leaf
+ * definitions shared between the top level and AssistantText's children, so
+ * it equals the schema the React kit sends. It is plain JSON, which the
+ * middleware relies on when it compares it with `isDeepStrictEqual`.
  */
-export const assistantResponseSchema: Record<string, unknown> = JSON.parse(
-  JSON.stringify(
-    s.toJsonSchema(
-      ɵcreateUiKit({
-        components: createAssistantKit({
-          AssistantText: {},
-          LedgerTable: {},
-          TrendChart: {},
-          AgingSummary: {},
-          CustomerCard: {},
-          ReviewPayment: {},
-        }),
-      }).schema,
-    ),
-  ),
-);
+export const assistantResponseSchema: Record<string, unknown> = (() => {
+  const leaves = [
+    ledgerTableConfig,
+    trendChartConfig,
+    agingSummaryConfig,
+    customerCardConfig,
+    reviewPaymentConfig,
+  ];
+  return createUiJsonSchema({
+    components: [{ ...assistantTextConfig, children: leaves }, ...leaves],
+  });
+})();
