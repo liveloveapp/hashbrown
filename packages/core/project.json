@@ -24,6 +24,7 @@
         "outputFileName": "index",
         "outputFileExtensionForEsm": ".mjs",
         "outputFileExtensionForCjs": ".cjs",
+        "rollupConfig": "packages/core/package-output.config.cjs",
         "sourceMap": true,
         "assets": [
           {

@@ -7,11 +7,13 @@
   "files": [
     "src/**/*",
     "index*.*",
+    "**/*.esm.js",
+    "**/*.esm.js.map",
+    "**/*.cjs.js",
+    "**/*.cjs.js.map",
     "LICENSE",
     "package.json",
-    "README.md",
-    "emscripten-module.*",
-    "ffi.*"
+    "README.md"
   ],
   "publishConfig": {
     "access": "public"
