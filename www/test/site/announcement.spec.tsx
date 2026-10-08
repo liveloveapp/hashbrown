@@ -35,7 +35,7 @@ function mount() {
 
 const link = () =>
   document.querySelector<HTMLAnchorElement>(
-    'a[href="/blog/2026-09-23-hashbrown-v-0-6-0"]',
+    'a[href="/blog/2026-10-08-hashbrown-v-0-7-0"]',
   );
 
 test('shows when nothing has been dismissed', () => {
@@ -70,12 +70,12 @@ test('stays hidden when storage is unavailable', () => {
   expect(result).toBe(false);
 });
 
-test('announces the date the Angular site used', () => {
+test('announces the date of the current announcement', () => {
   const date = ANNOUNCEMENT_DATE;
 
   const iso = date.toISOString();
 
-  expect(iso).toBe('2026-09-23T18:00:00.000Z');
+  expect(iso).toBe('2026-10-08T18:00:00.000Z');
   expect(ANNOUNCEMENT_STORAGE_KEY).toBe('lastAnnouncementDateTime');
 });
 
@@ -92,9 +92,7 @@ test('renders the link in the browser when not yet dismissed', () => {
 
   mount();
 
-  expect(link()?.textContent).toBe(
-    'New: Hashbrown v0.6 speaks AG-UI end to end',
-  );
+  expect(link()?.textContent).toBe('New: Hashbrown v0.7 moves to AG-UI 1.0');
   expect(link()?.querySelector('strong')?.textContent).toBe('New:');
 });
 
@@ -123,7 +121,7 @@ test('dismissing stores the announcement date and hides it', () => {
   });
 
   expect(localStorage.getItem(ANNOUNCEMENT_STORAGE_KEY)).toBe(
-    '2026-09-23T18:00:00.000Z',
+    '2026-10-08T18:00:00.000Z',
   );
   expect(link()).toBeNull();
 });

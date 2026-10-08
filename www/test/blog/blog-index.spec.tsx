@@ -26,7 +26,7 @@ test('the blog index renders every post, newest first', () => {
   const html = renderToStaticMarkup(<BlogIndexPage />);
 
   expect(postHrefs(html)).toEqual(posts.map((p) => `/blog/${p.slug}`));
-  expect(postHrefs(html)[0]).toBe('/blog/2026-09-23-hashbrown-v-0-6-0');
+  expect(postHrefs(html)[0]).toBe('/blog/2026-10-08-hashbrown-v-0-7-0');
 });
 
 test('the blog index renders the filter buttons with all blogs selected', () => {

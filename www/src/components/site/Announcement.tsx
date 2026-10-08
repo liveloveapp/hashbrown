@@ -8,7 +8,7 @@ import styles from './Announcement.module.css';
 export const ANNOUNCEMENT_STORAGE_KEY = 'lastAnnouncementDateTime';
 
 /** When the current announcement went out. Bump it to show a new one. */
-export const ANNOUNCEMENT_DATE = new Date('2026-09-23T18:00:00Z');
+export const ANNOUNCEMENT_DATE = new Date('2026-10-08T18:00:00Z');
 
 /**
  * Whether to show the announcement, following the Angular `Announcement`:
@@ -91,8 +91,8 @@ export function Announcement() {
   return (
     <div className={styles.announcement}>
       <div className={styles.alert}>
-        <Link href="/blog/2026-09-23-hashbrown-v-0-6-0">
-          <strong>New:</strong> Hashbrown v0.6 speaks AG-UI end to end
+        <Link href="/blog/2026-10-08-hashbrown-v-0-7-0">
+          <strong>New:</strong> Hashbrown v0.7 moves to AG-UI 1.0
         </Link>
         <button
           type="button"
