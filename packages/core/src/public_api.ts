@@ -38,6 +38,11 @@ export type {
   UiWrapper,
 } from './ui/expose-component';
 export type { UiKit, UiKitInput, UiKitOptions } from './ui/ui-kit';
+export {
+  createUiJsonSchema,
+  type UiComponentDefinition,
+  type UiJsonSchemaOptions,
+} from './ui/ui-json-schema';
 export type {
   UiKit as ɵUiKit,
   UiKitInput as ɵUiKitInput,

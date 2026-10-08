@@ -1,6 +1,11 @@
 import { renderHook } from '@testing-library/react';
 import { createElement } from 'react';
-import { prompt, s } from '@hashbrownai/core';
+import {
+  createUiJsonSchema,
+  prompt,
+  s,
+  type UiComponentDefinition,
+} from '@hashbrownai/core';
 import { exposeComponent } from '../expose-component.fn';
 import { useUiKit } from './use-ui-kit';
 
@@ -103,4 +108,25 @@ test('useUiKit compiles examples into the wrapper schema description', () => {
 
   // Assert
   expect(jsonSchema.description ?? '').toContain('"label": "Save"');
+});
+
+test('useUiKit and createUiJsonSchema agree when they share component definitions', () => {
+  const metric = {
+    name: 'metric',
+    description: 'A KPI metric card',
+    props: {
+      label: s.string('The metric label'),
+      value: s.number('The metric value'),
+    },
+  } satisfies UiComponentDefinition;
+  const Metric = ({ label, value }: { label: string; value: number }) =>
+    createElement('div', null, label, value);
+  const examples = prompt`<ui><metric label="Revenue" value=${184302} /></ui>`;
+  const { result } = renderHook(() =>
+    useUiKit({ components: [exposeComponent(Metric, metric)], examples }),
+  );
+
+  const schema = createUiJsonSchema({ components: [metric], examples });
+
+  expect(schema).toEqual(JSON.parse(result.current.serializedSchema));
 });
