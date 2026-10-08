@@ -31,7 +31,9 @@ Each package must have an npm trusted publisher entry with:
 1. Start from current `main`.
 2. Generate the release version explicitly. Do not rely on semver keywords when
    old beta tags are not ancestors of `main`.
-3. Generate the changelog for the intended range.
+3. Generate the changelog for the intended range. If `CHANGELOG.md` already
+   has a curated `## X.Y.Z (Unreleased)` entry, check it against the range and
+   replace `Unreleased` with the release date (`YYYY-MM-DD`).
 4. Run local verification:
 
 ```sh
