@@ -39,8 +39,8 @@ credit. The site's own look does not change.
 | Surface | Route | Title | Subtitle |
 |---|---|---|---|
 | Default (home, blog index, API reference, anything without a card) | `www/src/app/opengraph-image.tsx` | "AI chat and agents for React and Angular." | "Open source generative UI framework · hashbrown.dev" |
-| Blog post | `www/src/app/blog/[slug]/opengraph-image.tsx` | Post title | "October 8, 2026 · hashbrown blog" |
-| Docs page | `www/src/app/docs/[sdk]/[...slug]/opengraph-image.tsx` | Doc title with the `: Hashbrown React Docs` / `: Hashbrown Angular Docs` suffix removed | Doc description (when present), then "React docs · hashbrown.dev" / "Angular docs · hashbrown.dev" |
+| Blog post | `www/src/app/blog/[slug]/opengraph-image.tsx` | Post title | "Oct 8, 2026 · hashbrown blog" (the blog's existing `formatPostDate`) |
+| Docs page | `www/src/app/og/docs/[sdk]/[...slug]/route.tsx`, a static route handler: Next rejects `opengraph-image` below a catch-all ("Catch-all must be the last part of the URL", verified on 16.3.6) | Doc title with the `: Hashbrown React Docs` / `: Hashbrown Angular Docs` suffix removed | Doc description (when present, cut at a word to 120 characters), then "React docs · hashbrown.dev" / "Angular docs · hashbrown.dev" |
 | GitHub preview, 1280x640 | `www/src/app/github-card/route.tsx` | Default title | "Generative UI, client-side tools and streaming structured output, from any model.", then a pill: `npm install @hashbrownai/react` in JetBrains Mono 24px on `#f7f7f8`, 1px `#e8e8e8` border, fully rounded |
 
 The GitHub card uses 80px vertical and 96px horizontal padding so a 1.905:1
@@ -57,14 +57,14 @@ Copy avoids em-dashes, per LiveLoveApp's design rules.
 - `fonts/`: `HankenGrotesk-Regular.ttf`, `HankenGrotesk-SemiBold.ttf` and
   `OFL.txt` copied from LiveLoveApp's `src/app/og-fonts/`, plus
   `JetBrainsMono-Regular.ttf`. Static instances, not variable fonts. A
-  `fonts.ts` loader reads each by literal filename so the Next file tracer
-  includes them.
-- `marks.tsx`: the hashbrown mark and wordmark (from
-  `www/public/image/logo/`) and the LiveLoveApp mark (`MARK_D` from
-  LiveLoveApp's `public/brand/lla-mark.svg`) as inline SVG elements.
+  Files are read via `repoRoot()` at build time; every card is prerendered.
+- `assets.ts`: the font loader, and the hashbrown mark and wordmark (from
+  `www/public/image/logo/`) and the LiveLoveApp mark (`lla-mark.svg`, copied
+  from LiveLoveApp's `public/brand/`) as SVG data URIs.
 - `card.tsx`: `<Card title subtitle={string[]} footer? width height />`, the
   one layout, plus `renderCard(...)` returning an `ImageResponse`.
-- `copy.ts`: `docsCardTitle(title)` (suffix removal) and the card strings.
+- `copy.ts`: `docsCardTitle(title)` (suffix removal), `truncateAtWord`, and
+  the card strings.
 
 The kit and card routes are allowed inline styles (Satori has no stylesheet);
 add them to any lint ignore that bans inline styles.
@@ -72,7 +72,8 @@ add them to any lint ignore that bans inline styles.
 ### Rendering
 
 All cards prerender at build time. Blog and docs card routes export
-`generateStaticParams` from the same lists their pages use. About 300 PNGs
+`generateStaticParams` from the same lists their pages use. Docs pages set
+their `og:image` to `/og/docs/<sdk>/<slug>` explicitly. About 300 PNGs
 are added to the build output; production deploys already upload one
 `--archive=tgz` archive, so the Vercel Hobby file-upload limit is not touched.
 
