@@ -63,9 +63,7 @@ test('blog index metadata matches the Angular routeMeta', () => {
   expect(meta.title).toBe('Home: Hashbrown Blog');
   expect(meta.description).toBe('Hashbrown Blog.');
   expect(og.title).toBe('Home: Hashbrown Blog');
-  expect(og.images).toEqual([
-    'https://hashbrown.dev/image/meta/og-default.png',
-  ]);
+  expect(og).not.toHaveProperty('images');
 });
 
 test('a post preview shows title, date, description, team and youtube icon', () => {

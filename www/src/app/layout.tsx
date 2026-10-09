@@ -19,7 +19,6 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     site: '@liveloveappdev',
     creator: '@liveloveappdev',
-    images: ['https://hashbrown.dev/image/meta/twitter-card.png'],
   },
   icons: {
     icon: ['/image/logo/favicon.png', '/image/meta/favicon.svg'],

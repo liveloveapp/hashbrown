@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { DEFAULT_OG_IMAGE, pageMetadata } from '../src/lib/site-metadata';
+import { pageMetadata } from '../src/lib/site-metadata';
 
 test('sets the title and Open Graph fields from one source', () => {
   const metadata = pageMetadata({
@@ -12,8 +12,8 @@ test('sets the title and Open Graph fields from one source', () => {
   expect(metadata.openGraph).toMatchObject({
     title: 'Home: Hashbrown Docs',
     description: 'Hashbrown Docs.',
-    images: [DEFAULT_OG_IMAGE],
   });
+  expect(metadata.openGraph).not.toHaveProperty('images');
 });
 
 test('uses a custom image and published time when given', () => {
