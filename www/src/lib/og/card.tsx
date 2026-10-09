@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { loadCardFonts, svgDataUri } from './assets';
-import { CARD_COLORS, GITHUB_SIZE, OG_SIZE, titleSize } from './tokens';
+import { CARD_COLORS, cardSize, titleSize } from './tokens';
 
 /** What a card says. */
 export interface CardContent {
@@ -20,7 +20,7 @@ export interface CardContent {
  * left, on white.
  */
 export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
-  const { width, height } = size === 'github' ? GITHUB_SIZE : OG_SIZE;
+  const { width, height } = cardSize(size);
   const padding = size === 'github' ? '80px 96px' : '72px';
   return (
     <div
@@ -36,12 +36,36 @@ export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
         fontFamily: 'Hanken Grotesk',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <img src={svgDataUri('hashbrown-mark')} width={68} height={64} alt="" />
-          <img src={svgDataUri('hashbrown-wordmark')} width={268} height={40} alt="" />
+          <img
+            src={svgDataUri('hashbrown-mark')}
+            width={68}
+            height={64}
+            alt=""
+          />
+          <img
+            src={svgDataUri('hashbrown-wordmark')}
+            width={268}
+            height={40}
+            alt=""
+          />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 22, color: CARD_COLORS.muted }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            fontSize: 22,
+            color: CARD_COLORS.muted,
+          }}
+        >
           by
           <img src={svgDataUri('lla-mark')} width={80} height={30} alt="" />
         </div>
@@ -58,9 +82,24 @@ export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
         >
           {title}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
-          {subtitle.map((line) => (
-            <div key={line} style={{ display: 'flex', fontSize: 26, color: CARD_COLORS.muted, maxWidth: 1000 }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            marginTop: 24,
+          }}
+        >
+          {subtitle.map((line, index) => (
+            <div
+              key={`${index}`}
+              style={{
+                display: 'flex',
+                fontSize: 26,
+                color: CARD_COLORS.muted,
+                maxWidth: 1000,
+              }}
+            >
               {line}
             </div>
           ))}
@@ -93,7 +132,7 @@ export function Card({ title, subtitle, code, size = 'og' }: CardContent) {
  * @param content - What the card says and which size to render.
  */
 export async function renderCard(content: CardContent): Promise<ImageResponse> {
-  const { width, height } = content.size === 'github' ? GITHUB_SIZE : OG_SIZE;
+  const { width, height } = cardSize(content.size);
   return new ImageResponse(<Card {...content} />, {
     width,
     height,

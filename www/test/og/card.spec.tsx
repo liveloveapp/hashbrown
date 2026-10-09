@@ -7,7 +7,10 @@ async function pngSize(response: Response) {
 }
 
 test('renders a 1200x630 PNG card', async () => {
-  const card = { title: 'Structured Output', subtitle: ['React docs · hashbrown.dev'] };
+  const card = {
+    title: 'Structured Output',
+    subtitle: ['React docs · hashbrown.dev'],
+  };
 
   const response = await renderCard(card);
 

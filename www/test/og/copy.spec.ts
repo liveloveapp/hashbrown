@@ -40,5 +40,28 @@ test('truncates long text at a word boundary with an ellipsis', () => {
   const short = truncateAtWord(text, 12);
 
   expect(short).toBe('one two…');
-  expect(truncateAtWord('short', 12)).toBe('short');
+});
+
+test('returns text that already fits unchanged', () => {
+  const text = 'short';
+
+  const result = truncateAtWord(text, 12);
+
+  expect(result).toBe('short');
+});
+
+test('keeps the last word when the cut lands exactly at a word end', () => {
+  const text = 'one two three';
+
+  const short = truncateAtWord(text, 8);
+
+  expect(short).toBe('one two…');
+});
+
+test('cuts mid-word when the text has no spaces', () => {
+  const text = 'abcdefghij';
+
+  const short = truncateAtWord(text, 5);
+
+  expect(short).toBe('abcd…');
 });

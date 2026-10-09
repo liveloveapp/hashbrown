@@ -34,6 +34,8 @@ export function truncateAtWord(text: string, max: number): string {
     return text;
   }
   const cut = text.slice(0, max - 1);
+  const atWordEnd = text[max - 1] === ' ';
   const lastSpace = cut.lastIndexOf(' ');
-  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).replace(/[\s,.;:]+$/, '')}…`;
+  const kept = atWordEnd || lastSpace <= 0 ? cut : cut.slice(0, lastSpace);
+  return `${kept.replace(/[\s,.;:]+$/, '')}…`;
 }

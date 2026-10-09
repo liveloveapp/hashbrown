@@ -30,3 +30,15 @@ export function titleSize(title: string): {
     ? { fontSize: 64, lineHeight: 1.08 }
     : { fontSize: 52, lineHeight: 1.1 };
 }
+
+/**
+ * The pixel size of a card.
+ *
+ * @param size - `og` (default) or `github`.
+ */
+export function cardSize(size: 'og' | 'github' = 'og'): {
+  width: number;
+  height: number;
+} {
+  return size === 'github' ? GITHUB_SIZE : OG_SIZE;
+}
