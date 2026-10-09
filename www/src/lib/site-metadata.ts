@@ -10,7 +10,7 @@ export const SITE_OPEN_GRAPH = {
 export interface PageMetadataInput {
   title: string;
   description?: string;
-  /** Absolute Open Graph image URL; omitted, Next uses the route's opengraph-image. */
+  /** Open Graph image URL (absolute, or relative to `metadataBase`); omitted, Next uses the route's opengraph-image. */
   image?: string;
   /** ISO date for articles (blog posts). */
   publishedTime?: string;
