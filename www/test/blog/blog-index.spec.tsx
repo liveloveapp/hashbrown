@@ -7,6 +7,7 @@ import {
   toPostSummary,
 } from '../../src/components/blog/PostPreview';
 import BlogIndexPage, { metadata } from '../../src/app/blog/page';
+import { DEFAULT_CARD_IMAGE } from '../../src/lib/site-metadata';
 import { listBlogPosts } from '../../src/lib/content';
 
 const findPost = (slug: string) => {
@@ -63,7 +64,7 @@ test('blog index metadata matches the Angular routeMeta', () => {
   expect(meta.title).toBe('Home: Hashbrown Blog');
   expect(meta.description).toBe('Hashbrown Blog.');
   expect(og.title).toBe('Home: Hashbrown Blog');
-  expect(og).not.toHaveProperty('images');
+  expect(og.images).toEqual([DEFAULT_CARD_IMAGE]);
 });
 
 test('a post preview shows title, date, description, team and youtube icon', () => {

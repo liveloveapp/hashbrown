@@ -6,7 +6,10 @@ import {
   listSymbolPages,
   loadReferenceData,
 } from '../../../../lib/api-reference';
-import { pageMetadata } from '../../../../lib/site-metadata';
+import {
+  DEFAULT_CARD_IMAGE,
+  pageMetadata,
+} from '../../../../lib/site-metadata';
 import styles from './page.module.css';
 
 type Params = { pkg: string; symbol: string };
@@ -31,6 +34,7 @@ export async function generateMetadata({
   return pageMetadata({
     title: `@hashbrownai/${pkg}.${symbol}: Hashbrown API`,
     description: 'Hashbrown API documentation.',
+    image: DEFAULT_CARD_IMAGE,
   });
 }
 

@@ -1,5 +1,11 @@
 import type { Metadata } from 'next';
 
+/**
+ * The root card route, for pages whose folder has no card of their own.
+ * Resolved against `metadataBase`.
+ */
+export const DEFAULT_CARD_IMAGE = '/opengraph-image';
+
 /** Site-wide Open Graph fields from the Analog `index.html`. */
 export const SITE_OPEN_GRAPH = {
   siteName: 'Hashbrown: The TypeScript Framework for Generative UI',
