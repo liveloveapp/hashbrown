@@ -86,3 +86,6 @@ llms-full.txt
 .next
 next-env.d.ts
 *.tsbuildinfo
+
+# Brainstorming companion mockups
+.superpowers/
