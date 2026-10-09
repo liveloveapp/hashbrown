@@ -1,5 +1,5 @@
 import { formatPostDate } from '../../../components/blog/post-date';
-import { renderCard, type CardContent } from '../../../lib/og/card';
+import { type CardContent, renderCard } from '../../../lib/og/card';
 import { OG_SIZE } from '../../../lib/og/tokens';
 import { listBlogPosts, readBlogPost } from '../../../lib/content';
 

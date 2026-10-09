@@ -1,6 +1,6 @@
-import { renderCard, type CardContent } from '../../../../../lib/og/card';
+import { type CardContent, renderCard } from '../../../../../lib/og/card';
 import { docsCardTitle, truncateAtWord } from '../../../../../lib/og/copy';
-import { listDocs, readDoc, SDKS, type Sdk } from '../../../../../lib/content';
+import { listDocs, readDoc, type Sdk, SDKS } from '../../../../../lib/content';
 
 type Params = { sdk: string; slug: string[] };
 
