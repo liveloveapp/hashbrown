@@ -4,11 +4,12 @@ import styles from '../../components/layout/SectionShell.module.css';
 import { ApiMenu } from '../../components/menus/ApiMenu';
 import { DocsMenu } from '../../components/menus/DocsMenu';
 import { Header } from '../../components/site/Header';
-import { pageMetadata } from '../../lib/site-metadata';
+import { DEFAULT_CARD_IMAGE, pageMetadata } from '../../lib/site-metadata';
 
 export const metadata: Metadata = pageMetadata({
   title: 'Home: Hashbrown API',
   description: 'Hashbrown API documentation.',
+  image: DEFAULT_CARD_IMAGE,
 });
 
 /** API reference shell: header, API menu, white panel (port of api.page.ts). */

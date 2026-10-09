@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 
-/** The Open Graph image every section of the Analog site defaulted to. */
-export const DEFAULT_OG_IMAGE =
-  'https://hashbrown.dev/image/meta/og-default.png';
+/**
+ * The root card route, for pages whose folder has no card of their own.
+ * Resolved against `metadataBase`.
+ */
+export const DEFAULT_CARD_IMAGE = '/opengraph-image';
 
 /** Site-wide Open Graph fields from the Analog `index.html`. */
 export const SITE_OPEN_GRAPH = {
@@ -14,7 +16,7 @@ export const SITE_OPEN_GRAPH = {
 export interface PageMetadataInput {
   title: string;
   description?: string;
-  /** Absolute Open Graph image URL; defaults to {@link DEFAULT_OG_IMAGE}. */
+  /** Open Graph image URL (absolute, or relative to `metadataBase`); omitted, Next uses the route's opengraph-image. */
   image?: string;
   /** ISO date for articles (blog posts). */
   publishedTime?: string;
@@ -28,7 +30,7 @@ export interface PageMetadataInput {
  * @param input - The page's title, description and optional image and date.
  */
 export function pageMetadata(input: PageMetadataInput): Metadata {
-  const images = [input.image ?? DEFAULT_OG_IMAGE];
+  const images = input.image ? { images: [input.image] } : {};
   return {
     title: input.title,
     description: input.description,
@@ -38,7 +40,7 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
           type: 'article',
           title: input.title,
           description: input.description,
-          images,
+          ...images,
           publishedTime: input.publishedTime,
         }
       : {
@@ -46,7 +48,7 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
           type: 'website',
           title: input.title,
           description: input.description,
-          images,
+          ...images,
         },
   };
 }

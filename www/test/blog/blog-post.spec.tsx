@@ -75,8 +75,7 @@ test('post metadata uses the post title, description, image and date', async () 
   expect(meta.title).toBe('Hashbrown v0.6 speaks AG-UI end to end');
   expect(og.type).toBe('article');
   expect(og.publishedTime).toBe('2026-09-23');
-  expect(og.images).toEqual([
-    readBlogPost(slug)?.ogImage ??
-      'https://hashbrown.dev/image/meta/og-default.png',
-  ]);
+  expect(og.images).toEqual(
+    readBlogPost(slug)?.ogImage ? [readBlogPost(slug)?.ogImage] : undefined,
+  );
 });

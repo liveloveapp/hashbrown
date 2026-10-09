@@ -25,7 +25,11 @@ export async function generateMetadata({
   const { sdk, slug } = await params;
   const doc = isSdk(sdk) ? readDoc(sdk, slug) : undefined;
   return doc
-    ? pageMetadata({ title: doc.title, description: doc.description })
+    ? pageMetadata({
+        title: doc.title,
+        description: doc.description,
+        image: `/og/docs/${sdk}/${slug.join('/')}`,
+      })
     : {};
 }
 
