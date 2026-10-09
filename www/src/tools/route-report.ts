@@ -93,12 +93,24 @@ const blogRoutes = [
 // The /samples pages were retired for a redirect to the example app docs.
 const otherRoutes = ['/', '/api'];
 
+// Share cards: the default, one per blog post, one per docs page, and the
+// GitHub preview. All prerender at build time.
+const cardRoutes = [
+  '/opengraph-image',
+  '/github-card',
+  ...blogRoutes
+    .filter((route) => route !== '/blog')
+    .map((route) => `${route}/opengraph-image`),
+  ...llmsDocs.map((route) => route.replace(/^\/docs\//, '/og/docs/')),
+];
+
 console.log('\nRoute parity (source → prerendered by Next):');
 for (const [label, routes] of [
   ['docs (llms.txt)', llmsDocs],
   ['api (api-report.min.json)', apiRoutes],
   ['blog (content files)', blogRoutes],
   ['home, api index', otherRoutes],
+  ['share cards', cardRoutes],
 ] as const) {
   const missing = routes.filter((route) => !built.has(route));
   console.log(
@@ -107,6 +119,27 @@ for (const [label, routes] of [
   missing.forEach((route) => console.log(`    missing ${route}`));
   failed ||= missing.length > 0;
 }
+
+// 3. Every prerendered page ships an og:image. In Next 16 a segment that sets
+//    `openGraph` without `images`, and has no `opengraph-image` in its own
+//    folder, ships none.
+const pages = htmlFiles(appDir).filter(
+  (file) =>
+    !/(^|\/)(_not-found|_global-error)(\.html|\/)/.test(
+      file.slice(appDir.length),
+    ),
+);
+const noImage = pages.filter(
+  (file) => !readFileSync(file, 'utf-8').includes('<meta property="og:image"'),
+);
+console.log(
+  `\nPages with og:image: ${pages.length - noImage.length}/${pages.length}`,
+);
+noImage.forEach((file) =>
+  console.log(`    missing og:image ${file.slice(appDir.length)}`),
+);
+failed ||= noImage.length > 0;
+
 const docsBuilt = [...built].filter((r) => r.startsWith('/docs/'));
 const extra = docsBuilt.filter((r) => !llmsDocs.includes(r));
 if (extra.length) {
