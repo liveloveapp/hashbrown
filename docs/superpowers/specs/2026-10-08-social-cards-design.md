@@ -1,7 +1,7 @@
 # Social cards in the LiveLoveApp house style
 
 Date: 2026-10-08
-Status: approved in conversation, ready for planning
+Status: implemented
 
 ## Problem
 
@@ -56,13 +56,13 @@ Copy avoids em-dashes, per LiveLoveApp's design rules.
   and `titleSize(title)`, the 64/52 step.
 - `fonts/`: `HankenGrotesk-Regular.ttf`, `HankenGrotesk-SemiBold.ttf` and
   `OFL.txt` copied from LiveLoveApp's `src/app/og-fonts/`, plus
-  `JetBrainsMono-Regular.ttf`. Static instances, not variable fonts. A
+  `JetBrainsMono-Regular.ttf`. Static instances, not variable fonts.
   Files are read via `repoRoot()` at build time; every card is prerendered.
 - `assets.ts`: the font loader, and the hashbrown mark and wordmark (from
   `www/public/image/logo/`) and the LiveLoveApp mark (`lla-mark.svg`, copied
   from LiveLoveApp's `public/brand/`) as SVG data URIs.
-- `card.tsx`: `<Card title subtitle={string[]} footer? width height />`, the
-  one layout, plus `renderCard(...)` returning an `ImageResponse`.
+- `card.tsx`: `<Card title subtitle={string[]} code? size={'og' | 'github'} />`,
+  the one layout, plus `renderCard(...)` returning an `ImageResponse`.
 - `copy.ts`: `docsCardTitle(title)` (suffix removal), `truncateAtWord`, and
   the card strings.
 
@@ -72,17 +72,21 @@ add them to any lint ignore that bans inline styles.
 ### Rendering
 
 All cards prerender at build time. Blog and docs card routes export
-`generateStaticParams` from the same lists their pages use. Docs pages set
-their `og:image` to `/og/docs/<sdk>/<slug>` explicitly. About 300 PNGs
-are added to the build output; production deploys already upload one
+`generateStaticParams` from the same lists their pages use, with
+`dynamicParams = false` so an unknown slug is a 404, never an on-demand render. Docs pages set
+their `og:image` to `/og/docs/<sdk>/<slug>` explicitly. 92 PNGs (1 default,
+11 blog, 79 docs, 1 GitHub) are added to the build output; production deploys already upload one
 `--archive=tgz` archive, so the Vercel Hobby file-upload limit is not touched.
 
 ### Metadata
 
 - `pageMetadata` no longer injects `DEFAULT_OG_IMAGE`; it passes `images`
-  only when a page supplies one. Next then uses the nearest
-  `opengraph-image` route. Blog posts with an `ogImage` in front matter keep
-  it.
+  only when a page supplies one. Next 16 only applies a file-based
+  `opengraph-image` from a segment's own folder once that segment sets
+  `openGraph`, so home and blog posts get theirs from their folders, docs
+  pages pass `/og/docs/...`, and the blog index and API pages pass
+  `DEFAULT_CARD_IMAGE` (`/opengraph-image`). Blog posts with an `ogImage` in
+  front matter keep it (verified: a page's own `images` wins over the file).
 - `layout.tsx` drops the hard-coded `twitter.images`; Next falls back to the
   Open Graph image for `twitter:image`. `twitter:card` stays
   `summary_large_image`.
@@ -108,8 +112,8 @@ Top-level `test()` with arrange/act/assert, written before the code:
   (card params equal page params).
 - `pageMetadata` without an image emits no `openGraph.images`.
 
-The www e2e route report asserts `/opengraph-image`, one blog card, one docs
-card and `/github-card` return 200 `image/png`. Rendered PNGs are reviewed by
+The www e2e route report asserts every card route is in the prerender
+manifest and fails if any prerendered page lacks `<meta property="og:image">`. Rendered PNGs are reviewed by
 a human before this is called done; tests constrain the card, they do not
 certify it.
 

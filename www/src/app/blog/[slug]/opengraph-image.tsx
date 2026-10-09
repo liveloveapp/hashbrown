@@ -8,6 +8,7 @@ type Params = { slug: string };
 export const size = OG_SIZE;
 export const contentType = 'image/png';
 export const alt = 'A hashbrown blog post';
+export const dynamicParams = false;
 
 /** One card per post, prerendered. */
 export function generateStaticParams(): Params[] {

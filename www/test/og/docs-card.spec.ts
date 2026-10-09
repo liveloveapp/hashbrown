@@ -31,7 +31,9 @@ test('a docs card shows the heading, description and SDK', () => {
 });
 
 test('long descriptions are cut to 120 characters', () => {
-  const longest = generateStaticParams()
+  const pages = generateStaticParams();
+
+  const longest = pages
     .map((params) => docsCardContent(params).subtitle[0])
     .sort((a, b) => b.length - a.length)[0];
 
