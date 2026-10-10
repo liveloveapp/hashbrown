@@ -21,10 +21,10 @@ import {
   RESUME_MS,
 } from './follow-pill';
 import {
-  lerpLatLon,
-  shouldTween,
-  tweenDurationMs,
-  tweenProgress,
+  type Motion,
+  motionPosition,
+  motionSettled,
+  nextMotion,
 } from './tween';
 
 /**
@@ -220,10 +220,11 @@ function prefersReducedMotion(): boolean {
  * Mounts a Leaflet map in `element` and keeps its markers in sync with the
  * store. Leaflet is imported lazily so server bundles never load it.
  *
- * When a new snapshot arrives, each known marker glides from where it is
- * drawn to its new position over the time since the previous snapshot, so
- * planes move continuously between updates. New markers, moves over 20 nm and
- * reduced-motion users jump instead. A followed plane is panned with its glide.
+ * Between snapshots each plane is dead-reckoned along its track at its
+ * ground speed (for up to 15 s past its latest fix), so traffic moves
+ * continuously although the feed updates every few seconds. A new fix eases
+ * away the gap from where the plane is drawn over a second; moves over 20 nm
+ * and reduced-motion users jump instead. A followed plane is panned with it.
  *
  * While a plane is followed a pill names it with a Stop button; a drag ends
  * follow mode and the pill offers to resume it for a few seconds.
@@ -288,12 +289,8 @@ export async function createAirspaceMap(options: {
   let zooming = false;
   let panning = false;
   let lastUpdatedAt: number | null = null;
-  let lastArrival: number | null = null;
-  let glide: {
-    readonly startedAt: number;
-    readonly durationMs: number;
-    readonly moves: ReadonlyMap<string, { from: LatLon; to: LatLon }>;
-  } | null = null;
+  /** How each plane moves until its next fix; empty under reduced motion. */
+  let motions = new Map<string, Motion>();
   let frame: number | null = null;
   /** The newest view request already applied (or dropped). */
   let appliedSeq: number | null = null;
@@ -663,47 +660,68 @@ export async function createAirspaceMap(options: {
     }).addTo(map);
     outline = { area: shown, layer };
   };
-  /** Last drawn pixel of each gliding marker, to skip sub-pixel moves. */
+  /** Last drawn pixel of each moving marker, to skip sub-pixel moves. */
   let drawnPixels = new Map<string, string>();
+  /** Draws every moving marker at `time`; true while any is still moving. */
+  const drawMotions = (time: number): boolean => {
+    let moving = false;
+    for (const [hex, motion] of motions) {
+      const settled = motionSettled(motion, time);
+      const { lat, lon } = motionPosition(motion, time);
+      const pixel = map.latLngToLayerPoint([lat, lon]).round().toString();
+      if (settled || drawnPixels.get(hex) !== pixel) {
+        drawnPixels.set(hex, pixel);
+        markers.get(hex)?.marker.setLatLng([lat, lon]);
+      }
+      moving ||= !settled;
+    }
+
+    return moving;
+  };
   const step = (time: number) => {
-    if (glide === null) {
+    frame = null;
+    if (zooming) {
+      frame = requestAnimationFrame(step);
       return;
     }
-    const t = tweenProgress(glide.startedAt, glide.durationMs, time);
-    if (!zooming) {
-      for (const [hex, { from, to }] of glide.moves) {
-        const { lat, lon } = lerpLatLon(from, to, t);
-        const pixel = map.latLngToLayerPoint([lat, lon]).round().toString();
-        if (t >= 1 || drawnPixels.get(hex) !== pixel) {
-          drawnPixels.set(hex, pixel);
-          markers.get(hex)?.marker.setLatLng([lat, lon]);
-        }
-      }
-      panToFollowed(false);
-      syncCard(store.getState());
+    const moving = drawMotions(time);
+    panToFollowed(false);
+    syncCard(store.getState());
+    if (moving) {
+      frame = requestAnimationFrame(step);
     }
-    frame = t < 1 ? requestAnimationFrame(step) : null;
   };
-  /** Starts gliding known markers to a new snapshot's positions. */
+  /**
+   * Takes a new snapshot's fixes: each plane keeps moving from where it is
+   * drawn ({@link nextMotion}); under reduced motion it jumps to its fix.
+   */
   const moveMarkers = (state: AtcState) => {
     const now = performance.now();
-    const durationMs = prefersReducedMotion()
-      ? 0
-      : tweenDurationMs(lastArrival, now);
-    lastArrival = now;
-    const moves = new Map<string, { from: LatLon; to: LatLon }>();
-    for (const aircraft of state.aircraft.values()) {
-      const from = drawnAt(aircraft.hex);
-      const to = { lat: aircraft.lat, lon: aircraft.lon };
-      if (from && durationMs > 0 && shouldTween(from, to)) {
-        moves.set(aircraft.hex, { from, to });
-      } else {
-        markers.get(aircraft.hex)?.marker.setLatLng([to.lat, to.lon]);
+    if (prefersReducedMotion()) {
+      motions = new Map();
+      for (const aircraft of state.aircraft.values()) {
+        markers
+          .get(aircraft.hex)
+          ?.marker.setLatLng([aircraft.lat, aircraft.lon]);
       }
+      return;
     }
-    glide = { startedAt: now, durationMs, moves };
+    const next = new Map<string, Motion>();
+    for (const aircraft of state.aircraft.values()) {
+      next.set(
+        aircraft.hex,
+        nextMotion(
+          motions.get(aircraft.hex),
+          aircraft,
+          drawnAt(aircraft.hex),
+          now,
+        ),
+      );
+    }
+    motions = next;
     drawnPixels = new Map();
-    if (frame === null && moves.size > 0) {
+    drawMotions(now);
+    if (frame === null && motions.size > 0) {
       frame = requestAnimationFrame(step);
     }
   };

@@ -84,30 +84,40 @@ async function mount() {
   };
 }
 
-test('markers glide to a new snapshot over the gap since the previous one', async () => {
+test('markers dead-reckon along their track between snapshots, up to a cap', async () => {
   const map = await mount();
   map.store.applySnapshot({ at: 1, aircraft: [plane] });
   const start = map.markerPosition();
-  map.setClock(3000);
-  map.store.applySnapshot({
-    at: 2,
-    aircraft: [{ ...plane, lon: -120.9 }],
-  });
-  const atArrival = map.markerPosition();
 
-  map.runFrames(4500);
-  const halfway = map.markerPosition();
-  map.runFrames(6000);
-  const end = map.markerPosition();
+  map.runFrames(5000);
+  const moving = map.markerPosition();
+  map.runFrames(15_000);
+  const capped = map.markerPosition();
+  map.runFrames(20_000);
 
-  expect(atArrival).toBe(start);
-  expect(halfway).not.toBe(start);
-  expect(end).not.toBe(halfway);
+  expect(moving).not.toBe(start);
+  expect(capped).not.toBe(moving);
+  expect(map.markerPosition()).toBe(capped);
   expect(map.frames.size).toBe(0);
   map.cleanup();
 });
 
-test('destroy cancels a running glide', async () => {
+test('a new snapshot eases from where the plane is drawn, without a jump', async () => {
+  const map = await mount();
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+  map.runFrames(3000);
+  const drawn = map.markerPosition();
+
+  map.store.applySnapshot({ at: 2, aircraft: [{ ...plane, lon: -120.9 }] });
+  const atArrival = map.markerPosition();
+  map.runFrames(3500);
+
+  expect(atArrival).toBe(drawn);
+  expect(map.markerPosition()).not.toBe(drawn);
+  map.cleanup();
+});
+
+test('destroy cancels the running animation', async () => {
   const map = await mount();
   map.store.applySnapshot({ at: 1, aircraft: [plane] });
   map.setClock(3000);
@@ -122,16 +132,24 @@ test('destroy cancels a running glide', async () => {
   vi.unstubAllGlobals();
 });
 
-test('moves over 20 nm jump without animating', async () => {
+test('moves over 20 nm jump at once', async () => {
   const map = await mount();
-  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+  map.store.applySnapshot({
+    at: 1,
+    aircraft: [{ ...plane, groundSpeedKt: 0 }],
+  });
   const start = map.markerPosition();
   map.setClock(3000);
 
-  map.store.applySnapshot({ at: 2, aircraft: [{ ...plane, lon: -118 }] });
+  map.store.applySnapshot({
+    at: 2,
+    aircraft: [{ ...plane, groundSpeedKt: 0, lon: -118 }],
+  });
+  const jumped = map.markerPosition();
+  map.runFrames(3016);
 
-  expect(map.markerPosition()).not.toBe(start);
-  expect(map.frames.size).toBe(0);
+  expect(jumped).not.toBe(start);
+  expect(map.markerPosition()).toBe(jumped);
   map.cleanup();
 });
 
@@ -151,7 +169,7 @@ test('reduced motion makes markers jump', async () => {
   map.cleanup();
 });
 
-test('the map keeps a followed plane centred while it glides', async () => {
+test('the map keeps a followed plane centred while it moves', async () => {
   const map = await mount();
   const centred = { ...plane, lat: AREAS.pnw.lat, lon: AREAS.pnw.lon };
   map.store.applySnapshot({ at: 1, aircraft: [centred] });
