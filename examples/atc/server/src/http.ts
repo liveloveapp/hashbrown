@@ -6,11 +6,24 @@ export type NodeHandler = (
   res: ServerResponse,
 ) => Promise<void>;
 
-/** Reads and parses a JSON request body. Throws on invalid JSON. */
-export async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+/** Thrown by `readJsonBody` when the request body exceeds the byte limit. */
+export class BodyTooLargeError extends Error {}
+
+/** Reads and parses a JSON request body. Throws `BodyTooLargeError` past `maxBytes`, and on invalid JSON. */
+export async function readJsonBody(
+  req: IncomingMessage,
+  maxBytes = 256 * 1024,
+): Promise<unknown> {
   const chunks: Buffer[] = [];
+  let size = 0;
   for await (const chunk of req) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    const buffer =
+      typeof chunk === 'string' ? Buffer.from(chunk) : (chunk as Buffer);
+    size += buffer.length;
+    if (size > maxBytes) {
+      throw new BodyTooLargeError('Request too large');
+    }
+    chunks.push(buffer);
   }
 
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));

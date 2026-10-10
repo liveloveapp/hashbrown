@@ -2,7 +2,12 @@ import type { RunAgentInput } from '@ag-ui/core';
 import { EventEncoder } from '@ag-ui/encoder';
 import { SYSTEM_PROMPT } from '@atc/shared';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
-import { type NodeHandler, readJsonBody, sendJson } from './http';
+import {
+  BodyTooLargeError,
+  type NodeHandler,
+  readJsonBody,
+  sendJson,
+} from './http';
 
 /** Model settings for `/api/run`. The client never chooses the model. */
 export interface RunHandlerOptions {
@@ -41,37 +46,66 @@ export function pinSystemPrompt(
   };
 }
 
+const MAX_MESSAGES = 100;
+
+function isRunInput(value: unknown): value is RunAgentInput {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Array.isArray((value as { messages?: unknown }).messages)
+  );
+}
+
 /** `/api/run`: streams the model's answer as AG-UI server-sent events. */
 export function createRunHandler(options: RunHandlerOptions): NodeHandler {
   return async (req, res) => {
     if (req.method !== 'POST') {
       return sendJson(res, 405, { error: 'Use POST' });
     }
-    let input: RunAgentInput;
+    let input: unknown;
     try {
-      input = (await readJsonBody(req)) as RunAgentInput;
-    } catch {
-      return sendJson(res, 400, { error: 'Invalid JSON' });
+      input = await readJsonBody(req);
+    } catch (error) {
+      return error instanceof BodyTooLargeError
+        ? sendJson(
+            res,
+            413,
+            { error: 'Request too large' },
+            { Connection: 'close' },
+          )
+        : sendJson(res, 400, { error: 'Invalid JSON' });
+    }
+    if (!isRunInput(input)) {
+      return sendJson(res, 400, { error: 'Invalid run input' });
+    }
+    if (input.messages.length > MAX_MESSAGES) {
+      return sendJson(res, 413, { error: 'Request too large' });
     }
     const abortController = new AbortController();
     res.once('close', () => abortController.abort());
-    const encoder = new EventEncoder();
-    const stream = HashbrownOpenAI.stream.text({
-      ...options,
-      input: pinSystemPrompt(input, SYSTEM_PROMPT),
-      signal: abortController.signal,
-      transformRequestOptions: (request) => ({
-        ...request,
-        reasoning_effort: 'low',
-      }),
-    });
-    res.writeHead(200, {
-      'Content-Type': encoder.getContentType(),
-      'Cache-Control': 'no-cache, no-store, must-revalidate, no-transform',
-      'X-Accel-Buffering': 'no',
-    });
-    for await (const event of stream) {
-      res.write(encoder.encodeSSE(event));
+    try {
+      const encoder = new EventEncoder();
+      const stream = HashbrownOpenAI.stream.text({
+        ...options,
+        input: pinSystemPrompt(input, SYSTEM_PROMPT),
+        signal: abortController.signal,
+        transformRequestOptions: (request) => ({
+          ...request,
+          reasoning_effort: 'low',
+        }),
+      });
+      res.writeHead(200, {
+        'Content-Type': encoder.getContentType(),
+        'Cache-Control': 'no-cache, no-store, must-revalidate, no-transform',
+        'X-Accel-Buffering': 'no',
+      });
+      for await (const event of stream) {
+        res.write(encoder.encodeSSE(event));
+      }
+    } catch {
+      if (!res.headersSent) {
+        sendJson(res, 500, { error: 'Run failed' });
+      }
     }
     if (!res.writableEnded) {
       res.end();

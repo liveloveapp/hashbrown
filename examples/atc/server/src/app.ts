@@ -15,8 +15,14 @@ export function createApp(options: {
   const app = express();
   const run = createRunHandler(options.run);
   const aircraft = createAircraftHandler(options.aircraft);
-  app.all('/api/run', (req, res) => void run(req, res));
-  app.all('/api/aircraft', (req, res) => void aircraft(req, res));
+  app.all(
+    '/api/run',
+    (req, res) => void run(req, res).catch(() => res.destroy()),
+  );
+  app.all(
+    '/api/aircraft',
+    (req, res) => void aircraft(req, res).catch(() => res.destroy()),
+  );
   for (const { path, dir } of options.statics ?? []) {
     app.use(path, express.static(dir));
     app.get(`${path}/*`, (_req, res) => res.sendFile(join(dir, 'index.html')));
