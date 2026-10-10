@@ -4,12 +4,11 @@ import type { Aircraft } from '../aircraft';
 import { KIND_PATHS } from '../kinds';
 import { applySnapshot, INITIAL_STATE } from '../store';
 import {
-  followPanOffset,
   markerClassName,
   planeIconHtml,
   planeTagText,
   updatePlane,
-} from './airspace-map';
+} from './plane-marker';
 
 const plane: Aircraft = {
   hex: 'aaaaaa',
@@ -56,18 +55,6 @@ test('planeIconHtml rotates the plane to its track and tags it with its ID', () 
   expect(html).toContain('data-hex="aaaaaa"');
   expect(html).toContain('data-label="UAL100"');
   expect(html).toContain('rotate(272deg)');
-});
-
-test('followPanOffset pans by whole pixels, only when at least 1 px off centre', () => {
-  const centre = { x: 200, y: 150 };
-
-  const offsets = [
-    followPanOffset({ x: 200.4, y: 150.6 }, centre),
-    followPanOffset({ x: 201.2, y: 150 }, centre),
-    followPanOffset({ x: 190.6, y: 160.4 }, centre),
-  ];
-
-  expect(offsets).toEqual([null, { x: 1, y: 0 }, { x: -9, y: 10 }]);
 });
 
 test('planeTagText tags hex-only aircraft by their label', () => {

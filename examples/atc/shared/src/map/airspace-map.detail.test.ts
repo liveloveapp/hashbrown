@@ -46,11 +46,12 @@ async function mount(sheetTop: { value: number } | null = null) {
   }));
   const store = createAtcStore();
   const workbench = document.createElement('main');
-  workbench.className = 'atc-workbench is-sheet';
+  workbench.className = 'atc-workbench';
   const element = document.createElement('div');
   workbench.append(element);
+  let panel: HTMLElement | null = null;
   if (sheetTop !== null) {
-    const panel = document.createElement('section');
+    panel = document.createElement('section');
     panel.className = 'atc-chat-panel';
     panel.getBoundingClientRect = () => rect(sheetTop.value, 300);
     workbench.append(panel);
@@ -58,7 +59,12 @@ async function mount(sheetTop: { value: number } | null = null) {
   document.body.append(workbench);
   Object.defineProperty(element, 'clientWidth', { value: 400 });
   Object.defineProperty(element, 'clientHeight', { value: 300 });
-  const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
+  const handle = await createAirspaceMap({
+    element,
+    store,
+    area: AREAS.pnw,
+    obstruction: () => panel,
+  });
   store.applySnapshot({ at: 1, aircraft: [cessna, jet] });
   const icon = (hex: string) =>
     element

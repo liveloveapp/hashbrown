@@ -33,3 +33,11 @@ export function addsUserMessage(record: MutationRecord): boolean {
 export function isEmptyChat(scroller: Element): boolean {
   return scroller.querySelector('.atc-empty') !== null;
 }
+
+/** True when the user asked the system to minimise motion. */
+export function prefersReducedMotion(): boolean {
+  return (
+    typeof matchMedia === 'function' &&
+    matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}

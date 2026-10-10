@@ -22,6 +22,7 @@ export function App() {
   // Where the phone bottom sheet rests; ignored on wide screens.
   const [sheet, move] = useReducer(nextSheet, INITIAL_SHEET);
   const workbench = useRef<HTMLElement>(null);
+  const chatSheet = useRef<HTMLElement>(null);
 
   useEffect(() => startAtcFeed({ store }), [store]);
   // The assistant moving the map, or a plane picked in the chat, lowers the sheet.
@@ -31,6 +32,7 @@ export function App() {
   return (
     <main ref={workbench} className="atc-workbench is-sheet">
       <section
+        ref={chatSheet}
         id="atc-chat-sheet"
         className="atc-panel atc-chat-panel"
         data-snap={sheet.snap}
@@ -47,7 +49,7 @@ export function App() {
         <Assistant onSend={() => move({ type: 'send' })} />
       </section>
       <section className="atc-panel atc-map-panel" aria-label="Map">
-        <AirspaceMap />
+        <AirspaceMap obstruction={chatSheet} />
       </section>
     </main>
   );

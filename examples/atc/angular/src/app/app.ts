@@ -38,6 +38,7 @@ import { ATC_STORE } from './store';
   template: `
     <main class="atc-workbench is-sheet" atcKeyboardInset>
       <section
+        #chatSheet
         id="atc-chat-sheet"
         class="atc-panel atc-chat-panel"
         aria-label="Chat"
@@ -50,7 +51,7 @@ import { ATC_STORE } from './store';
         <atc-assistant (sent)="move({ type: 'send' })" />
       </section>
       <section class="atc-panel atc-map-panel" aria-label="Map">
-        <atc-airspace-map />
+        <atc-airspace-map [obstruction]="chatSheet" />
       </section>
     </main>
   `,

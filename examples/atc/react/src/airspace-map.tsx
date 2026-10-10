@@ -1,10 +1,17 @@
 import { AREAS } from '@atc/shared';
 import { type AirspaceMapHandle, createAirspaceMap } from '@atc/shared/map';
-import { useEffect, useRef } from 'react';
+import { type RefObject, useEffect, useRef } from 'react';
 import { useAtcStore } from './store';
 
-/** The live Leaflet map. */
-export function AirspaceMap() {
+/**
+ * The live Leaflet map. `obstruction` is the element that covers the map's
+ * lower part on phones (the chat's bottom sheet).
+ */
+export function AirspaceMap({
+  obstruction,
+}: {
+  obstruction?: RefObject<HTMLElement | null>;
+}) {
   const store = useAtcStore();
   const element = useRef<HTMLDivElement>(null);
 
@@ -16,6 +23,7 @@ export function AirspaceMap() {
         element: element.current,
         store,
         area: AREAS.pnw,
+        obstruction: () => obstruction?.current ?? null,
         signal: controller.signal,
       }).then((created) => {
         if (controller.signal.aborted) {
@@ -30,7 +38,7 @@ export function AirspaceMap() {
       controller.abort();
       handle?.destroy();
     };
-  }, [store]);
+  }, [store, obstruction]);
 
   return <div ref={element} className="atc-map" data-testid="airspace-map" />;
 }

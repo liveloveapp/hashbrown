@@ -7,10 +7,14 @@ import {
   DestroyRef,
   ElementRef,
   inject,
+  input,
 } from '@angular/core';
 import { ATC_STORE } from './store';
 
-/** The live Leaflet map. */
+/**
+ * The live Leaflet map. `obstruction` is the element that covers the map's
+ * lower part on phones (the chat's bottom sheet).
+ */
 @Component({
   selector: 'atc-airspace-map',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -18,6 +22,8 @@ import { ATC_STORE } from './store';
   template: '',
 })
 export class AirspaceMapComponent {
+  readonly obstruction = input<HTMLElement | null>(null);
+
   constructor() {
     const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     const store = inject(ATC_STORE);
@@ -28,6 +34,7 @@ export class AirspaceMapComponent {
         element,
         store,
         area: AREAS.pnw,
+        obstruction: () => this.obstruction(),
         signal: controller.signal,
       }).then((created) => {
         if (controller.signal.aborted) {

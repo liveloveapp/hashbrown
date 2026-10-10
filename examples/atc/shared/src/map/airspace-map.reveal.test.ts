@@ -44,8 +44,9 @@ async function mount(sheetTop?: number) {
   Object.defineProperty(element, 'clientHeight', { value: 300 });
   element.getBoundingClientRect = () =>
     ({ left: 0, top: 0, right: 400, bottom: 300 }) as DOMRect;
+  let panel: HTMLElement | null = null;
   if (sheetTop !== undefined) {
-    const panel = document.createElement('section');
+    panel = document.createElement('section');
     panel.className = 'atc-chat-panel';
     panel.getBoundingClientRect = () =>
       ({ left: 0, top: sheetTop, right: 400, bottom: 300 }) as DOMRect;
@@ -53,7 +54,12 @@ async function mount(sheetTop?: number) {
   }
   workbench.append(element);
   document.body.append(workbench);
-  const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
+  const handle = await createAirspaceMap({
+    element,
+    store,
+    area: AREAS.pnw,
+    obstruction: () => panel,
+  });
   const px = (value: string | undefined) => parseFloat(value ?? '0') || 0;
   const pane = () => element.querySelector<HTMLElement>('.leaflet-map-pane');
   const pixel = (hex: string) => {
