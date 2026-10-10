@@ -39,6 +39,7 @@ function showAreaOnce(store: AtcStore, area: ShownArea): void {
 /** What the tools need from the app. */
 export interface AtcToolContext {
   readonly store: AtcStore;
+  /** Resolves null when no route is published; rejects when the lookup fails. */
   readonly fetchRoute: (callsign: string) => Promise<Route | null>;
 }
 
@@ -217,15 +218,27 @@ export function createAtcTools(context: AtcToolContext) {
           };
         }
         const cached = store.getState().routes;
-        const route = cached.has(key)
-          ? (cached.get(key) ?? null)
-          : await context.fetchRoute(key);
-        if (!cached.has(key)) {
+        let route: Route | null;
+        if (cached.has(key)) {
+          route = cached.get(key) ?? null;
+        } else {
+          try {
+            route = await context.fetchRoute(key);
+          } catch {
+            // Not cached, so asking again retries.
+            return {
+              found: false,
+              reason: 'The route lookup failed. Try again.',
+            };
+          }
           store.setRoute(key, route);
         }
 
         return route === null
-          ? { found: false }
+          ? {
+              found: false,
+              reason: `No scheduled route is published for ${key}.`,
+            }
           : { found: true, kind: 'scheduled route', stops: route.stops };
       },
     },
@@ -240,11 +253,12 @@ export function createAtcTools(context: AtcToolContext) {
       }),
       handler: async ({ hexes }: { hexes: string[] }) => {
         store.highlight(hexes);
-        const unknown = hexes
-          .map(normalizeHex)
-          .filter((hex) => !store.getState().aircraft.has(hex));
+        const asked = [...new Set(hexes.map(normalizeHex))];
+        const unknown = asked.filter(
+          (hex) => !store.getState().aircraft.has(hex),
+        );
 
-        return { highlighted: hexes.length - unknown.length, unknown };
+        return { highlighted: asked.length - unknown.length, unknown };
       },
     },
     clearHighlight: {
@@ -265,7 +279,10 @@ export function createAtcTools(context: AtcToolContext) {
       }),
       handler: async ({ hex }: { hex: string }) => {
         if (!store.getState().aircraft.has(normalizeHex(hex))) {
-          return { following: false, reason: 'Unknown aircraft' };
+          return {
+            following: false,
+            reason: `No aircraft with hex ${normalizeHex(hex)} is on the map.`,
+          };
         }
         store.follow(hex);
 

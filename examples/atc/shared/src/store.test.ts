@@ -7,6 +7,7 @@ import {
   applySnapshot,
   cancelViewRequest,
   createAtcStore,
+  DEPARTED_TTL_MS,
   INITIAL_STATE,
   lookupAircraft,
   requestAircraft,
@@ -285,4 +286,39 @@ test('the store reveals aircraft', () => {
 
   expect(store.getState().selectedHex).toBe('aaaaaa');
   expect(store.getState().viewRequest?.kind).toBe('aircraft');
+});
+
+test('applySnapshot forgets aircraft that left more than DEPARTED_TTL_MS ago', () => {
+  const plane = (hex: string): Aircraft => ({
+    hex,
+    label: hex.toUpperCase(),
+    callsign: null,
+    registration: null,
+    typeCode: null,
+    category: null,
+    kind: 'jet',
+    lat: 44,
+    lon: -121,
+    altitudeFt: 10000,
+    onGround: false,
+    groundSpeedKt: 300,
+    trackDeg: 90,
+    verticalRateFpm: 0,
+  });
+  const left = applySnapshot(
+    applySnapshot(INITIAL_STATE, { at: 1000, aircraft: [plane('aaaaaa')] }),
+    { at: 2000, aircraft: [] },
+  );
+
+  const soon = applySnapshot(left, {
+    at: 1000 + DEPARTED_TTL_MS,
+    aircraft: [],
+  });
+  const later = applySnapshot(left, {
+    at: 1001 + DEPARTED_TTL_MS,
+    aircraft: [],
+  });
+
+  expect(soon.departed.has('aaaaaa')).toBe(true);
+  expect(later.departed.has('aaaaaa')).toBe(false);
 });

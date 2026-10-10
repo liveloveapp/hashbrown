@@ -1,7 +1,10 @@
 import { isRecord } from './json';
 import type { Route, RouteAirport } from './store';
 
-/** The adsb.lol route file URL for a callsign. These files allow browser requests. */
+// Fetched by the browser straight from adsb.lol (CORS allowed), so route
+// lookups do not touch our server; the user's IP is visible to adsb.lol.
+
+/** The adsb.lol route file URL for a callsign. */
 export function routeUrl(callsign: string): string {
   const key = callsign.trim().toUpperCase();
 
@@ -40,16 +43,22 @@ export function parseRoute(payload: unknown): Route | null {
   return stops.length < 2 ? null : { stops };
 }
 
-/** Fetches a callsign's scheduled route. Misses and network errors return null. */
+/**
+ * Fetches a callsign's scheduled route; null when none is published (a 404 or
+ * an unusable file). Throws when the lookup itself fails (offline, a server
+ * error), so callers can retry instead of remembering a miss.
+ */
 export async function fetchRoute(
   callsign: string,
   fetchFn: typeof fetch = fetch,
 ): Promise<Route | null> {
-  try {
-    const response = await fetchFn(routeUrl(callsign));
-
-    return response.ok ? parseRoute(await response.json()) : null;
-  } catch {
+  const response = await fetchFn(routeUrl(callsign));
+  if (response.status === 404) {
     return null;
   }
+  if (!response.ok) {
+    throw new Error(`Route lookup failed with ${response.status}`);
+  }
+
+  return parseRoute(await response.json().catch(() => null));
 }

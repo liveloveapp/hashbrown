@@ -36,20 +36,19 @@ test('parseRoute keeps every stop and rejects incomplete routes', () => {
   expect(parseRoute('nope')).toBeNull();
 });
 
-test('fetchRoute returns null for misses and network errors', async () => {
+test('fetchRoute returns null for misses and throws when the lookup fails', async () => {
   const notFound = vi.fn(async () => new Response('', { status: 404 }));
+  const busy = vi.fn(async () => new Response('', { status: 503 }));
   const broken = vi.fn(async () => {
     throw new TypeError('offline');
   });
   const ok = vi.fn(async () => Response.json(payload));
 
-  const results = await Promise.all([
-    fetchRoute('UAL1372', notFound),
-    fetchRoute('UAL1372', broken),
-    fetchRoute('UAL1372', ok),
-  ]);
+  const miss = await fetchRoute('UAL1372', notFound);
+  const found = await fetchRoute('UAL1372', ok);
 
-  expect(results[0]).toBeNull();
-  expect(results[1]).toBeNull();
-  expect(results[2]?.stops).toHaveLength(3);
+  expect(miss).toBeNull();
+  expect(found?.stops).toHaveLength(3);
+  await expect(fetchRoute('UAL1372', busy)).rejects.toThrow();
+  await expect(fetchRoute('UAL1372', broken)).rejects.toThrow('offline');
 });

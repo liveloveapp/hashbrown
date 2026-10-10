@@ -216,9 +216,32 @@ test('lookupRoute caches routes, including misses', async () => {
   const first = await tools.lookupRoute.handler({ callsign: 'ual100' });
   await tools.lookupRoute.handler({ callsign: 'UAL100' });
 
-  expect(first).toEqual({ found: false });
+  expect(first).toEqual({
+    found: false,
+    reason: 'No scheduled route is published for UAL100.',
+  });
   expect(fetchRoute).toHaveBeenCalledTimes(1);
   expect(store.getState().routes.get('UAL100')).toBeNull();
+});
+
+test('lookupRoute does not cache a failed lookup, so the next call retries', async () => {
+  const store = createAtcStore();
+  const fetchRoute = vi
+    .fn<(callsign: string) => Promise<null>>()
+    .mockRejectedValueOnce(new TypeError('offline'))
+    .mockResolvedValueOnce(null);
+  const tools = createAtcTools({ store, fetchRoute });
+
+  const failed = await tools.lookupRoute.handler({ callsign: 'UAL100' });
+  const cachedAfterFailure = store.getState().routes.has('UAL100');
+  await tools.lookupRoute.handler({ callsign: 'UAL100' });
+
+  expect(failed).toEqual({
+    found: false,
+    reason: 'The route lookup failed. Try again.',
+  });
+  expect(cachedAfterFailure).toBe(false);
+  expect(fetchRoute).toHaveBeenCalledTimes(2);
 });
 
 test('map tools update the store and report unknown aircraft', async () => {
@@ -227,14 +250,17 @@ test('map tools update the store and report unknown aircraft', async () => {
   const tools = createAtcTools({ store, fetchRoute: async () => null });
 
   const highlighted = await tools.highlightAircraft.handler({
-    hexes: ['AAAAAA', 'ffffff'],
+    hexes: ['AAAAAA', 'aaaaaa', 'ffffff'],
   });
   const followed = await tools.followAircraft.handler({ hex: 'ffffff' });
   const following = await tools.followAircraft.handler({ hex: 'aaaaaa' });
   await tools.clearHighlight.handler();
 
   expect(highlighted).toEqual({ highlighted: 1, unknown: ['ffffff'] });
-  expect(followed).toEqual({ following: false, reason: 'Unknown aircraft' });
+  expect(followed).toEqual({
+    following: false,
+    reason: 'No aircraft with hex ffffff is on the map.',
+  });
   expect(following).toEqual({ following: true });
   expect(store.getState().followingHex).toBe('aaaaaa');
   expect(store.getState().highlighted.size).toBe(0);

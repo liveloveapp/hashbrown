@@ -40,9 +40,16 @@ export type ViewRequest =
   | { readonly seq: number; readonly kind: 'reset' }
   | { readonly seq: number; readonly kind: 'aircraft'; readonly hex: string };
 
+/**
+ * How long a departed aircraft is remembered, so cards in the transcript can
+ * still show it as out of range: 30 minutes.
+ */
+export const DEPARTED_TTL_MS = 30 * 60 * 1000;
+
 /** Everything the map, tools and components read. Treat as immutable. */
 export interface AtcState {
   readonly aircraft: ReadonlyMap<string, Aircraft>;
+  /** Aircraft that left the area in the last {@link DEPARTED_TTL_MS}. */
   readonly departed: ReadonlyMap<string, DepartedAircraft>;
   readonly routes: ReadonlyMap<string, Route | null>;
   readonly selectedHex: string | null;
@@ -82,7 +89,8 @@ export function normalizeHex(hex: string): string {
 
 /**
  * Returns the state after a new snapshot. Aircraft missing from the snapshot
- * move to `departed` with the time they were last seen. A snapshot no newer
+ * move to `departed` with the time they were last seen, and are forgotten
+ * after {@link DEPARTED_TTL_MS}. A snapshot no newer
  * than the current one (a cached repeat, or an older copy from another server
  * instance) returns `state` unchanged, so planes never move backwards.
  */
@@ -96,10 +104,12 @@ export function applySnapshot(
   const aircraft = new Map(
     snapshot.aircraft.map((entry) => [entry.hex, entry] as const),
   );
-  const departed = new Map(state.departed);
-  for (const hex of aircraft.keys()) {
-    departed.delete(hex);
-  }
+  const departed = new Map(
+    [...state.departed].filter(
+      ([hex, gone]) =>
+        !aircraft.has(hex) && gone.lastSeenAt >= snapshot.at - DEPARTED_TTL_MS,
+    ),
+  );
   for (const [hex, previous] of state.aircraft) {
     if (!aircraft.has(hex)) {
       departed.set(hex, {
