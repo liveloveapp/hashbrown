@@ -1,5 +1,6 @@
 import type * as Leaflet from 'leaflet';
-import type { LatLng, Map as LeafletMap } from 'leaflet';
+import type { Map as LeafletMap } from 'leaflet';
+import type { LatLon } from '../places';
 import type { AtcStore } from '../store';
 import {
   createFollowPill,
@@ -7,6 +8,7 @@ import {
   type FollowResume,
   RESUME_MS,
 } from './follow-pill';
+import { exactLayerPoint } from './motion-loop';
 
 /** A point in map container pixels. */
 export interface PixelPoint {
@@ -55,11 +57,11 @@ export function createFollowController(options: {
   map: LeafletMap;
   element: HTMLElement;
   store: AtcStore;
-  /** Where a plane's marker is drawn, if it has one. */
-  positionOf: (hex: string) => LatLng | undefined;
+  /** Where a plane is drawn now, if it is. */
+  drawnAt: (hex: string) => LatLon | null;
   isZooming: () => boolean;
 }): FollowController {
-  const { map, element, store, positionOf, isZooming } = options;
+  const { map, element, store, drawnAt, isZooming } = options;
   let panning = false;
   /** A plane the user dragged away from, offered back for a few seconds. */
   let resume: FollowResume | null = null;
@@ -76,13 +78,12 @@ export function createFollowController(options: {
   return {
     panToFollowed(animate) {
       const { followingHex } = store.getState();
-      const position =
-        followingHex === null ? undefined : positionOf(followingHex);
+      const position = followingHex === null ? null : drawnAt(followingHex);
       if (!position || isZooming() || panning) {
         return;
       }
       const offset = followPanOffset(
-        map.latLngToContainerPoint(position),
+        map.layerPointToContainerPoint(exactLayerPoint(map, position)),
         map.getSize().divideBy(2),
       );
       if (offset === null) {

@@ -58,6 +58,11 @@ export interface Motion {
   } | null;
   readonly offset: LatLon;
   readonly offsetAt: number;
+  /** The track to draw the plane at once its turn has eased away, in degrees. */
+  readonly headingDeg: number;
+  /** Degrees still to turn at `turnAt` (signed, the short way round). */
+  readonly turnDeg: number;
+  readonly turnAt: number;
 }
 
 /** The parts of an aircraft a {@link Motion} reads. */
@@ -67,11 +72,20 @@ export interface Fix extends LatLon {
   readonly onGround: boolean;
 }
 
+/** The signed turn from `from` to `to` the short way round, in (-180, 180]. */
+function shortestTurn(from: number, to: number): number {
+  const turn = ((((to - from) % 360) + 540) % 360) - 180;
+
+  return turn === -180 ? 180 : turn;
+}
+
 /**
  * The motion after a snapshot. The same fix as before keeps the previous
  * motion, so a repeated (cached) snapshot neither restarts nor jumps it. A
  * new fix restarts dead reckoning from the reported position and eases away
- * the gap from where the plane is `drawn`, unless that gap is over 20 nm.
+ * the gap from where the plane is `drawn`, unless that gap is over 20 nm. Its
+ * heading turns from the one drawn to the new track (the short way round)
+ * over the same time; a fix without a track keeps the drawn heading.
  */
 export function nextMotion(
   previous: Motion | undefined,
@@ -84,7 +98,9 @@ export function nextMotion(
     previous.base.lat === fix.lat &&
     previous.base.lon === fix.lon
   ) {
-    return previous;
+    return fix.trackDeg === null || fix.trackDeg === previous.headingDeg
+      ? previous
+      : { ...previous, ...turn(previous, fix.trackDeg, now) };
   }
   const base = { lat: fix.lat, lon: fix.lon };
   const velocity =
@@ -92,6 +108,8 @@ export function nextMotion(
       ? null
       : { trackDeg: fix.trackDeg, speedKt: fix.groundSpeedKt };
   const eases = drawn !== null && shouldTween(drawn, base);
+  const headingDeg =
+    fix.trackDeg ?? (previous === undefined ? 0 : motionHeading(previous, now));
 
   return {
     base,
@@ -101,12 +119,26 @@ export function nextMotion(
       ? { lat: drawn.lat - base.lat, lon: drawn.lon - base.lon }
       : { lat: 0, lon: 0 },
     offsetAt: now,
+    ...(previous === undefined
+      ? { headingDeg, turnDeg: 0, turnAt: now }
+      : turn(previous, headingDeg, now)),
   };
 }
 
-/** How much of the correction offset remains: 1 at the fix, easing to 0. */
-function remaining(motion: Motion, now: number): number {
-  const t = clamp((now - motion.offsetAt) / CORRECTION_MS, 0, 1);
+/** A turn from where `previous` is heading at `now` to `headingDeg`. */
+function turn(
+  previous: Motion,
+  headingDeg: number,
+  now: number,
+): Pick<Motion, 'headingDeg' | 'turnDeg' | 'turnAt'> {
+  const drawn = motionHeading(previous, now);
+
+  return { headingDeg, turnDeg: -shortestTurn(drawn, headingDeg), turnAt: now };
+}
+
+/** How much of a correction started at `since` remains: 1, easing to 0. */
+function remaining(since: number, now: number): number {
+  const t = clamp((now - since) / CORRECTION_MS, 0, 1);
 
   return (1 - t) ** 3;
 }
@@ -119,7 +151,7 @@ export function motionPosition(motion: Motion, now: number): LatLon {
     velocity === null
       ? base
       : deadReckon(base, velocity.trackDeg, velocity.speedKt, seconds);
-  const k = remaining(motion, now);
+  const k = remaining(motion.offsetAt, now);
 
   return {
     lat: reckoned.lat + offset.lat * k,
@@ -127,15 +159,24 @@ export function motionPosition(motion: Motion, now: number): LatLon {
   };
 }
 
+/** The heading to draw the plane at `now`, in degrees from 0 up to 360. */
+export function motionHeading(motion: Motion, now: number): number {
+  const heading =
+    motion.headingDeg + motion.turnDeg * remaining(motion.turnAt, now);
+
+  return ((heading % 360) + 360) % 360;
+}
+
 /** True once the plane has stopped moving on screen until the next fix. */
 export function motionSettled(motion: Motion, now: number): boolean {
   const corrected =
     (motion.offset.lat === 0 && motion.offset.lon === 0) ||
     now - motion.offsetAt >= CORRECTION_MS;
+  const turned = motion.turnDeg === 0 || now - motion.turnAt >= CORRECTION_MS;
   const reckoned =
     motion.velocity === null ||
     motion.velocity.speedKt === 0 ||
     now - motion.baseAt >= MAX_DEAD_RECKON_S * 1000;
 
-  return corrected && reckoned;
+  return corrected && turned && reckoned;
 }

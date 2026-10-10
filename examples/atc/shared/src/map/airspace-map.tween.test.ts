@@ -79,6 +79,8 @@ async function mount() {
     frames,
     markerPosition,
     planeElement: () => element.querySelector('.atc-plane'),
+    rotation: () =>
+      element.querySelector<HTMLElement>('.atc-plane-body')?.style.transform,
     runFrames,
     setClock: (time: number) => (clock = time),
   };
@@ -217,12 +219,43 @@ test('a track-only change keeps the marker element and rotates it in place', asy
   map.setClock(3000);
 
   map.store.applySnapshot({ at: 2, aircraft: [{ ...plane, trackDeg: 120 }] });
+  const atArrival = map.rotation();
+  map.runFrames(3500);
+  const turning = map.rotation();
+  map.runFrames(4000);
 
   expect(map.planeElement()).toBe(first);
-  expect(
-    map.planeElement()?.querySelector<HTMLElement>('.atc-plane-body')?.style
-      .transform,
-  ).toBe('rotate(120deg)');
+  expect(atArrival).toBe('rotate(90deg)');
+  expect(turning).toMatch(/^rotate\((9\d|1[01]\d)(\.\d+)?deg\)$/);
+  expect(map.rotation()).toBe('rotate(120deg)');
+  map.cleanup();
+});
+
+test('every frame draws each moving plane at its exact, unrounded position', async () => {
+  const map = await mount();
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+
+  const positions = [1000, 1016, 1033, 1050].map((time) => {
+    map.runFrames(time);
+    return map.markerPosition();
+  });
+
+  expect(new Set(positions).size).toBe(4);
+  expect(positions.some((position) => /\d\.\d/.test(position))).toBe(true);
+  map.cleanup();
+});
+
+test('reduced motion turns markers to their new track at once', async () => {
+  const map = await mount();
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query === '(prefers-reduced-motion: reduce)',
+  }));
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+  map.setClock(3000);
+
+  map.store.applySnapshot({ at: 2, aircraft: [{ ...plane, trackDeg: 120 }] });
+
+  expect(map.rotation()).toBe('rotate(120deg)');
   map.cleanup();
 });
 
@@ -239,5 +272,21 @@ test('a class-only change keeps the marker element and toggles the class', async
   expect(first?.classList.contains('is-pulsing')).toBe(true);
   map.store.select(null);
   expect(first?.classList.contains('is-selected')).toBe(false);
+  map.cleanup();
+});
+
+test('a fix that lands between a frame starting and drawing does not freeze the planes', async () => {
+  const map = await mount();
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+  for (let time = 16; time <= 2992; time += 16) {
+    map.runFrames(time);
+  }
+  map.setClock(3010);
+
+  map.store.applySnapshot({ at: 2, aircraft: [{ ...plane, lon: -120.99 }] });
+  const atArrival = map.markerPosition();
+  map.runFrames(3008);
+
+  expect(map.markerPosition()).not.toBe(atArrival);
   map.cleanup();
 });

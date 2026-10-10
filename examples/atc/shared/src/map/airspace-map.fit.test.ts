@@ -129,8 +129,10 @@ test('a user zoom after a fit is not overridden by later snapshots', async () =>
 
   map.store.applySnapshot({ at: 2, aircraft: planes });
   map.store.applySnapshot({ at: 3, aircraft: planes });
+  const later = map.pixel('aaaaaa');
 
-  expect(map.pixel('aaaaaa')).toEqual(after);
+  // Under a pixel: Leaflet rounds after the zoom, the motion loop does not.
+  expect(Math.hypot(later.x - after.x, later.y - after.y)).toBeLessThan(1);
   map.cleanup();
 });
 

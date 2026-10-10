@@ -69,9 +69,18 @@ function silhouetteSvg(kind: AircraftKind): string {
 }
 
 /**
- * Updates an existing marker in place: state classes, rotation, label and
- * tag text (via `textContent`), so the marker is never rebuilt and its pulse
- * and hover survive live track and altitude jitter. Writes only what changed.
+ * The body's rotation for a heading, to a hundredth of a degree, so a turn
+ * eases smoothly: `rotate(272deg)`, `rotate(91.25deg)`.
+ */
+export function planeRotation(headingDeg: number): string {
+  return `rotate(${Math.round(headingDeg * 100) / 100}deg)`;
+}
+
+/**
+ * Updates an existing marker in place: state classes, label and tag text
+ * (via `textContent`), so the marker is never rebuilt and its pulse and
+ * hover survive live track and altitude jitter. Writes only what changed.
+ * Rotation is not set here: the motion loop turns the body smoothly.
  * Never rebuild a marker's HTML on update: `setIcon()` would restart the
  * pulse animation and drop `:hover` under the cursor every 3 s.
  */
@@ -95,10 +104,6 @@ export function updatePlane(
   if (body && body.getAttribute('data-kind') !== aircraft.kind) {
     body.setAttribute('data-kind', aircraft.kind);
     body.innerHTML = silhouetteSvg(aircraft.kind);
-  }
-  const transform = `rotate(${Math.round(aircraft.trackDeg ?? 0)}deg)`;
-  if (body && body.style.transform !== transform) {
-    body.style.transform = transform;
   }
   const tag = plane.querySelector('.atc-plane-tag');
   const alt = tag?.querySelector('.atc-plane-alt');
@@ -134,7 +139,7 @@ function tag(aircraft: Aircraft): string {
  * interpolate.
  */
 export function planeIconHtml(aircraft: Aircraft, className: string): string {
-  const rotation = Math.round(aircraft.trackDeg ?? 0);
+  const rotation = planeRotation(aircraft.trackDeg ?? 0);
 
-  return `<div class="${className}" data-hex="${aircraft.hex}" data-label="${aircraft.label}"><div class="atc-plane-body" data-kind="${aircraft.kind}" style="transform: rotate(${rotation}deg)">${silhouetteSvg(aircraft.kind)}</div><span class="atc-plane-tag">${tag(aircraft)}</span></div>`;
+  return `<div class="${className}" data-hex="${aircraft.hex}" data-label="${aircraft.label}"><div class="atc-plane-body" data-kind="${aircraft.kind}" style="transform: ${rotation}">${silhouetteSvg(aircraft.kind)}</div><span class="atc-plane-tag">${tag(aircraft)}</span></div>`;
 }
