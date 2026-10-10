@@ -10,7 +10,10 @@ export interface FlightCardProps {
   readonly hex: string;
 }
 
-/** One aircraft. Reads live data from the store, so it keeps updating after the answer ends. */
+/**
+ * One aircraft. Reads live data from the store, so it keeps updating after
+ * the answer ends. Its header shows the plane on the map.
+ */
 export function FlightCard({ note, hex }: FlightCardProps) {
   const store = useAtcStore();
   const view = flightCardView(useAtcState(), hex);
@@ -38,10 +41,17 @@ export function FlightCard({ note, hex }: FlightCardProps) {
       data-status={view.status}
     >
       <header>
-        <strong className="atc-callsign">{view.label}</strong>
-        {view.subtitle ? (
-          <span className="atc-card-muted">{view.subtitle}</span>
-        ) : null}
+        <button
+          type="button"
+          className={`atc-pick${view.selected ? ' is-selected' : ''}`}
+          disabled={view.status !== 'live'}
+          onClick={() => store.revealAircraft(view.hex)}
+        >
+          <strong className="atc-callsign">{view.label}</strong>
+          {view.subtitle ? (
+            <span className="atc-card-muted">{view.subtitle}</span>
+          ) : null}
+        </button>
       </header>
       <p className="atc-card-muted">
         {view.aircraftType}

@@ -1,6 +1,6 @@
 import { flightCardView, plainLabel } from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
-import { useAtcState } from '../store';
+import { useAtcState, useAtcStore } from '../store';
 import { CardSkeleton } from './card-skeleton';
 
 /** Props the model provides. `hexes` arrives whole; `takeaway` streams. */
@@ -9,8 +9,9 @@ export interface AircraftCompareProps {
   readonly hexes: string[];
 }
 
-/** Two or three aircraft side by side, live. */
+/** Two or three aircraft side by side, live; each shows its plane on the map. */
 export function AircraftCompare({ takeaway, hexes }: AircraftCompareProps) {
+  const store = useAtcStore();
   const state = useAtcState();
 
   return (
@@ -24,16 +25,19 @@ export function AircraftCompare({ takeaway, hexes }: AircraftCompareProps) {
               <p className="atc-card-muted">Unknown aircraft</p>
             </div>
           ) : (
-            <div
+            <button
               key={`${index}-${hex}`}
-              className="atc-compare-item"
+              type="button"
+              className={`atc-compare-item atc-pick${view.selected ? ' is-selected' : ''}`}
               data-hex={view.hex}
+              disabled={view.status !== 'live'}
+              onClick={() => store.revealAircraft(view.hex)}
             >
               <strong className="atc-callsign">{view.label}</strong>
-              <p className="atc-card-muted">{view.aircraftType}</p>
-              <p className="atc-figure">{view.altitude}</p>
-              <p className="atc-figure">{view.speed}</p>
-            </div>
+              <span className="atc-card-muted">{view.aircraftType}</span>
+              <span className="atc-figure">{view.altitude}</span>
+              <span className="atc-figure">{view.speed}</span>
+            </button>
           );
         })}
       </div>

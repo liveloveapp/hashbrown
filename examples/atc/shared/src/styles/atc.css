@@ -736,7 +736,7 @@ input {
 .atc-card table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 13px;
   font-family: var(--atc-mono);
   font-variant-numeric: tabular-nums;
 }
@@ -746,13 +746,6 @@ input {
   padding: 6px 4px;
   border-top: 1px solid var(--atc-border);
   white-space: nowrap;
-}
-.atc-board {
-  table-layout: fixed;
-}
-.atc-board td {
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .atc-board th {
   border-top: 0;
@@ -764,32 +757,84 @@ input {
 }
 .atc-board :is(th, td):first-child {
   padding-left: 0;
-  width: 21%;
+  width: 100%;
+  white-space: normal;
 }
-.atc-board :is(th, td):nth-child(n + 3) {
+.atc-board :is(th, td):nth-child(n + 2) {
   text-align: right;
-}
-.atc-board :is(th, td):nth-child(3) {
-  width: 22%;
-}
-.atc-board :is(th, td):nth-child(4) {
-  width: 14%;
+  padding-left: 10px;
 }
 .atc-board :is(th, td):last-child {
   padding-right: 0;
-  width: 13%;
 }
-.atc-board td.atc-callsign {
+.atc-board td {
+  vertical-align: top;
+}
+.atc-board td.atc-board-flight {
+  font-family: var(--atc-font);
+}
+.atc-board .atc-callsign {
+  display: block;
   font-family: var(--atc-mono);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0;
 }
 .atc-board-type {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: block;
+  font-size: 12px;
   color: var(--atc-muted);
-  font-family: var(--atc-font);
+}
+.atc-board tr.is-selectable {
+  cursor: pointer;
+}
+.atc-board tr.is-selectable:hover td {
+  background: var(--atc-canvas);
+}
+.atc-board tr.is-selected .atc-callsign {
+  color: var(--atc-accent);
+}
+
+/* A plane's name in a card, row or comparison: picking it shows the plane on the map. */
+.atc-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.atc-pick:disabled {
+  cursor: default;
+}
+.atc-pick:not(:disabled):hover .atc-callsign {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.atc-pick.is-selected .atc-callsign {
+  color: var(--atc-accent);
+}
+.atc-board .atc-pick {
+  display: block;
+  width: 100%;
+}
+/* Touch: every pick is at least 44px tall. */
+@media (pointer: coarse) {
+  .atc-pick {
+    min-height: 44px;
+  }
+  .atc-board td {
+    padding-block: 4px;
+  }
 }
 .atc-compare {
   display: grid;
@@ -801,6 +846,17 @@ input {
   padding: 8px 10px;
   border: 1px solid var(--atc-border);
   border-radius: var(--atc-radius-row);
+}
+.atc-compare-item.atc-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid var(--atc-border);
+  border-radius: var(--atc-radius-row);
+  padding: 8px 10px;
+}
+.atc-compare-item.atc-pick:not(:disabled):hover {
+  background: var(--atc-canvas);
 }
 .atc-compare-item .atc-figure {
   margin-top: 4px;

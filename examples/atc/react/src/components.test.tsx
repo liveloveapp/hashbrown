@@ -174,8 +174,8 @@ test('the arrivals board hides ETA unless an aircraft is approaching its airport
   });
 
   expect(views).toEqual([
-    { headers: ['Flight', 'Type', 'Alt', 'Dist', 'ETA'], cells: 5 },
-    { headers: ['Flight', 'Type', 'Alt', 'Dist'], cells: 4 },
+    { headers: ['Flight', 'Alt (ft)', 'Dist (nm)', 'ETA (min)'], cells: 4 },
+    { headers: ['Flight', 'Alt (ft)', 'Dist (nm)'], cells: 3 },
   ]);
 });
 
@@ -234,4 +234,51 @@ test('the compare card waits for its IDs, then shows each aircraft', () => {
   expect(screen.getByTestId('aircraft-compare')).toHaveTextContent(
     'Unknown aircraft',
   );
+});
+
+test('the arrivals board puts the type under the label and picks a live row to show it on the map', () => {
+  const store = setup();
+  render(
+    <AtcStoreProvider store={store}>
+      <ArrivalsBoard
+        title="Arriving"
+        airport="KSEA"
+        hexes={['aaaaaa', 'bbbbbb']}
+      />
+    </AtcStoreProvider>,
+  );
+  const rows = screen.getAllByTestId('arrivals-row');
+
+  const picks = rows.map((row) => row.querySelector('button'));
+  act(() => picks[0]?.click());
+
+  expect(
+    rows[0]?.querySelector('td')?.textContent?.replace(/\s+/g, ' ').trim(),
+  ).toBe('UAL100 Boeing 737 MAX 9');
+  expect(picks[1]).toBeNull();
+  expect(store.getState().selectedHex).toBe('aaaaaa');
+  expect(store.getState().viewRequest?.kind).toBe('aircraft');
+  expect(rows[0]?.classList.contains('is-selected')).toBe(true);
+});
+
+test('a flight card header and a compare item are buttons that show the plane on the map', () => {
+  const store = setup();
+  const { container } = render(
+    <AtcStoreProvider store={store}>
+      <FlightCard note="Inbound." hex="aaaaaa" />
+      <AircraftCompare takeaway="Same jet." hexes={['aaaaaa', 'ffffff']} />
+    </AtcStoreProvider>,
+  );
+  const [cardButton, compareButton, ...rest] = [
+    ...container.querySelectorAll('button'),
+  ];
+
+  act(() => cardButton?.click());
+  const fromCard = store.getState().selectedHex;
+  act(() => store.select(null));
+  act(() => compareButton?.click());
+
+  expect(fromCard).toBe('aaaaaa');
+  expect(store.getState().selectedHex).toBe('aaaaaa');
+  expect(rest).toEqual([]);
 });

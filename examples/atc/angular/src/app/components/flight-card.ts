@@ -11,7 +11,10 @@ import type { JsonResolvedValue } from '@hashbrownai/core';
 import { ATC_STORE, injectAtcState } from '../store';
 import { CardSkeletonComponent } from './card-skeleton';
 
-/** One aircraft. Reads live data from the store, so it keeps updating after the answer ends. */
+/**
+ * One aircraft. Reads live data from the store, so it keeps updating after
+ * the answer ends. Its header shows the plane on the map.
+ */
 @Component({
   selector: 'atc-flight-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,10 +38,18 @@ import { CardSkeletonComponent } from './card-skeleton';
         [attr.data-status]="card.status"
       >
         <header>
-          <strong class="atc-callsign">{{ card.label }}</strong>
-          @if (card.subtitle) {
-            <span class="atc-card-muted">{{ card.subtitle }}</span>
-          }
+          <button
+            type="button"
+            class="atc-pick"
+            [class.is-selected]="card.selected"
+            [disabled]="card.status !== 'live'"
+            (click)="store.revealAircraft(card.hex)"
+          >
+            <strong class="atc-callsign">{{ card.label }}</strong>
+            @if (card.subtitle) {
+              <span class="atc-card-muted">{{ card.subtitle }}</span>
+            }
+          </button>
         </header>
         <p class="atc-card-muted">
           {{ card.aircraftType }}
@@ -73,7 +84,7 @@ import { CardSkeletonComponent } from './card-skeleton';
 export class FlightCardComponent implements OnInit {
   readonly note = input.required<string>();
   readonly hex = input.required<string>();
-  private readonly store = inject(ATC_STORE);
+  protected readonly store = inject(ATC_STORE);
   private readonly state = injectAtcState();
   protected readonly view = computed(() =>
     flightCardView(this.state(), this.hex()),

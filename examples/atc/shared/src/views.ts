@@ -35,6 +35,8 @@ export type FlightCardView =
       readonly heading: string;
       readonly route: string | null;
       readonly lastSeen: string | null;
+      /** True when this is the plane selected on the map. */
+      readonly selected: boolean;
     };
 
 /** Route label: null when never looked up, "Route unavailable" when missing. */
@@ -97,18 +99,42 @@ export function flightCardView(
       found.status === 'out-of-range'
         ? formatClock(found.lastSeenAt, timeZone)
         : null,
+    selected: state.selectedHex === aircraft.hex,
   };
 }
 
-/** One row of an ArrivalsBoard. */
+/**
+ * One row of an ArrivalsBoard. Figures are bare ("4,200", "12", "9"); the
+ * column headers carry the units.
+ */
 export interface ArrivalsRow {
   readonly hex: string;
   readonly status: 'live' | 'out-of-range' | 'unknown';
   readonly label: string;
   readonly aircraftType: string;
+  /** Feet, "GND" on the ground, or "n/a". */
   readonly altitude: string;
+  /** Nautical miles to the airport, or "n/a". */
   readonly distance: string;
+  /** Minutes to the airport, or "n/a". */
   readonly eta: string;
+  /** True when the plane is on the map, so picking the row can show it. */
+  readonly selectable: boolean;
+  /** True when this is the plane selected on the map. */
+  readonly selected: boolean;
+}
+
+/** Feet without the unit, "GND" on the ground, or "n/a". */
+function altitudeFigure(
+  aircraft: Pick<Aircraft, 'altitudeFt' | 'onGround'>,
+): string {
+  if (aircraft.onGround) {
+    return 'GND';
+  }
+
+  return aircraft.altitudeFt === null
+    ? 'n/a'
+    : aircraft.altitudeFt.toLocaleString('en-US');
 }
 
 /** Builds ArrivalsBoard rows, in the order the model gave them. */
@@ -128,6 +154,8 @@ export function arrivalsRows(
         altitude: 'n/a',
         distance: 'n/a',
         eta: 'n/a',
+        selectable: false,
+        selected: false,
       };
     }
     const { aircraft } = found;
@@ -140,9 +168,11 @@ export function arrivalsRows(
       status: found.status,
       label: aircraft.label,
       aircraftType: aircraftTypeName(aircraft.typeCode),
-      altitude: formatAltitude(aircraft),
-      distance: live ? `${Math.round(distance)} nm` : 'n/a',
-      eta: live ? (eta === null ? 'n/a' : `${eta} min`) : 'Out of range',
+      altitude: altitudeFigure(aircraft),
+      distance: live ? String(Math.round(distance)) : 'n/a',
+      eta: live && eta !== null ? String(eta) : 'n/a',
+      selectable: live,
+      selected: state.selectedHex === aircraft.hex,
     };
   });
 }

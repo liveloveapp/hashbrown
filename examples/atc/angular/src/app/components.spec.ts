@@ -208,8 +208,8 @@ test('the arrivals board hides ETA unless an aircraft is approaching its airport
   }));
 
   expect(views).toEqual([
-    { headers: ['Flight', 'Type', 'Alt', 'Dist', 'ETA'], cells: 5 },
-    { headers: ['Flight', 'Type', 'Alt', 'Dist'], cells: 4 },
+    { headers: ['Flight', 'Alt (ft)', 'Dist (nm)', 'ETA (min)'], cells: 4 },
+    { headers: ['Flight', 'Alt (ft)', 'Dist (nm)'], cells: 3 },
   ]);
 });
 
@@ -255,4 +255,52 @@ test('the compare card shows each aircraft and unknown IDs', () => {
   )?.textContent;
   expect(text).toContain('UAL100');
   expect(text).toContain('Unknown aircraft');
+});
+
+test('the arrivals board puts the type under the label and picks a live row to show it on the map', () => {
+  const store = setup();
+  const fixture = TestBed.createComponent(ArrivalsBoardComponent);
+  fixture.componentRef.setInput('title', 'Arriving');
+  fixture.componentRef.setInput('airport', 'KSEA');
+  fixture.componentRef.setInput('hexes', ['aaaaaa', 'bbbbbb']);
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  const rows = [
+    ...element.querySelectorAll<HTMLElement>('[data-testid="arrivals-row"]'),
+  ];
+
+  const picks = rows.map((row) => row.querySelector('button'));
+  picks[0]?.click();
+  fixture.detectChanges();
+
+  expect(
+    rows[0]?.querySelector('td')?.textContent?.replace(/\s+/g, ' ').trim(),
+  ).toBe('UAL100 Boeing 737 MAX 9');
+  expect(picks[1]).toBeNull();
+  expect(store.getState().selectedHex).toBe('aaaaaa');
+  expect(store.getState().viewRequest?.kind).toBe('aircraft');
+  expect(rows[0]?.classList.contains('is-selected')).toBe(true);
+});
+
+test('a flight card header and a compare item are buttons that show the plane on the map', () => {
+  const store = setup();
+  const card = TestBed.createComponent(FlightCardComponent);
+  card.componentRef.setInput('note', 'Inbound.');
+  card.componentRef.setInput('hex', 'aaaaaa');
+  card.detectChanges();
+  const compare = TestBed.createComponent(AircraftCompareComponent);
+  compare.componentRef.setInput('takeaway', 'Same jet.');
+  compare.componentRef.setInput('hexes', ['aaaaaa', 'ffffff']);
+  compare.detectChanges();
+
+  (card.nativeElement as HTMLElement).querySelector('button')?.click();
+  const fromCard = store.getState().selectedHex;
+  store.select(null);
+  (compare.nativeElement as HTMLElement).querySelector('button')?.click();
+
+  expect(fromCard).toBe('aaaaaa');
+  expect(store.getState().selectedHex).toBe('aaaaaa');
+  expect(
+    (compare.nativeElement as HTMLElement).querySelectorAll('button').length,
+  ).toBe(1);
 });

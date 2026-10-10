@@ -45,7 +45,17 @@ test('flightCardView describes a live aircraft', () => {
     heading: '180°',
     route: null,
     lastSeen: null,
+    selected: false,
   });
+});
+
+test('flightCardView marks the selected aircraft', () => {
+  const state = applySnapshot(
+    { ...INITIAL_STATE, selectedHex: 'aaaaaa' },
+    { at: 1, aircraft: [plane] },
+  );
+
+  expect(flightCardView(state, 'aaaaaa')).toMatchObject({ selected: true });
 });
 
 test('flightCardView shows private aircraft by label with no airline line', () => {
@@ -153,10 +163,13 @@ test('routeText distinguishes not looked up, missing and found', () => {
   ]);
 });
 
-test('arrivalsRows computes distance and ETA to the airport', () => {
-  const state = applySnapshot(INITIAL_STATE, { at: 1, aircraft: [plane] });
+test('arrivalsRows computes distance and ETA to the airport as bare figures, units in the headers', () => {
+  const state = applySnapshot(
+    { ...INITIAL_STATE, selectedHex: 'aaaaaa' },
+    { at: 1, aircraft: [plane, { ...plane, hex: 'cccccc', onGround: true }] },
+  );
 
-  const rows = arrivalsRows(state, 'KSEA', ['aaaaaa', 'bbbbbb']);
+  const rows = arrivalsRows(state, 'KSEA', ['aaaaaa', 'bbbbbb', 'cccccc']);
 
   expect(rows).toEqual([
     {
@@ -164,9 +177,11 @@ test('arrivalsRows computes distance and ETA to the airport', () => {
       status: 'live',
       label: 'UAL100',
       aircraftType: 'Boeing 737 MAX 9',
-      altitude: '5,000 ft',
-      distance: '7 nm',
-      eta: '2 min',
+      altitude: '5,000',
+      distance: '7',
+      eta: '2',
+      selectable: true,
+      selected: true,
     },
     {
       hex: 'bbbbbb',
@@ -176,8 +191,26 @@ test('arrivalsRows computes distance and ETA to the airport', () => {
       altitude: 'n/a',
       distance: 'n/a',
       eta: 'n/a',
+      selectable: false,
+      selected: false,
     },
+    expect.objectContaining({ hex: 'cccccc', altitude: 'GND' }),
   ]);
+});
+
+test('arrivalsRows keeps a departed aircraft, not selectable, with no live figures', () => {
+  const seen = applySnapshot(INITIAL_STATE, { at: 1, aircraft: [plane] });
+  const gone = applySnapshot(seen, { at: 2, aircraft: [] });
+
+  const [row] = arrivalsRows(gone, 'KSEA', ['aaaaaa']);
+
+  expect(row).toMatchObject({
+    status: 'out-of-range',
+    altitude: '5,000',
+    distance: 'n/a',
+    eta: 'n/a',
+    selectable: false,
+  });
 });
 
 test('boardShowsEta is true only when a listed aircraft is approaching the airport', () => {

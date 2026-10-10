@@ -3,13 +3,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  inject,
   input,
 } from '@angular/core';
 import type { JsonResolvedValue } from '@hashbrownai/core';
-import { injectAtcState } from '../store';
+import { ATC_STORE, injectAtcState } from '../store';
 import { CardSkeletonComponent } from './card-skeleton';
 
-/** Two or three aircraft side by side, live. */
+/** Two or three aircraft side by side, live; each shows its plane on the map. */
 @Component({
   selector: 'atc-aircraft-compare',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,12 +23,19 @@ import { CardSkeletonComponent } from './card-skeleton';
               <p class="atc-card-muted">Unknown aircraft</p>
             </div>
           } @else {
-            <div class="atc-compare-item" [attr.data-hex]="card.hex">
+            <button
+              type="button"
+              class="atc-compare-item atc-pick"
+              [class.is-selected]="card.selected"
+              [attr.data-hex]="card.hex"
+              [disabled]="card.status !== 'live'"
+              (click)="store.revealAircraft(card.hex)"
+            >
               <strong class="atc-callsign">{{ card.label }}</strong>
-              <p class="atc-card-muted">{{ card.aircraftType }}</p>
-              <p class="atc-figure">{{ card.altitude }}</p>
-              <p class="atc-figure">{{ card.speed }}</p>
-            </div>
+              <span class="atc-card-muted">{{ card.aircraftType }}</span>
+              <span class="atc-figure">{{ card.altitude }}</span>
+              <span class="atc-figure">{{ card.speed }}</span>
+            </button>
           }
         }
       </div>
@@ -38,6 +46,7 @@ import { CardSkeletonComponent } from './card-skeleton';
 export class AircraftCompareComponent {
   readonly takeaway = input.required<string>();
   readonly hexes = input.required<string[]>();
+  protected readonly store = inject(ATC_STORE);
   private readonly state = injectAtcState();
   protected readonly note = computed(() => plainLabel(this.takeaway()));
   protected readonly cards = computed(() =>
