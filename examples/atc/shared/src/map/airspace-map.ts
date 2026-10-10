@@ -3,6 +3,8 @@ import type { Aircraft } from '../aircraft';
 import { type AircraftKind, KIND_PATHS } from '../kinds';
 import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore } from '../store';
+import { aircraftDetailView } from '../views';
+import { createDetailCard } from './detail-card';
 import { fitTarget } from './fit';
 import {
   lerpLatLon,
@@ -199,6 +201,11 @@ function prefersReducedMotion(): boolean {
  * planes move continuously between updates. New markers, moves over 20 nm and
  * reduced-motion users jump instead. A followed plane is panned with its glide.
  *
+ * Hovering a plane, or selecting it, opens one floating detail card beside
+ * it that follows its glide and updates in place on each snapshot. Leaving
+ * the plane hides the card unless it is selected; Escape or a click on the
+ * empty map clears the selection.
+ *
  * Pass `signal` to cancel before the import settles: when it is already
  * aborted by then, no map is created and the handle's `destroy` is a no-op.
  * The map re-measures itself whenever `element` changes size.
@@ -253,12 +260,75 @@ export async function createAirspaceMap(options: {
   let frame: number | null = null;
   /** The highlighted set the map was last fitted for (or skipped). */
   let fittedFor: ReadonlySet<string> = new Set();
+  const card = createDetailCard(element.ownerDocument);
+  element.append(card.element);
+  /** The plane under the pointer, and the plane the card is showing. */
+  let hoveredHex: string | null = null;
+  let detailedHex: string | null = null;
   map.on('dragstart', () => store.follow(null));
-  map.on('zoomstart', () => (zooming = true));
+  map.on('zoomstart', () => {
+    zooming = true;
+    card.element.classList.add('is-zooming');
+  });
   map.on('zoomend', () => {
     zooming = false;
+    card.element.classList.remove('is-zooming');
+    placeCard();
     panToFollowed(true);
   });
+  map.on('move', () => placeCard());
+  map.on('click', () => {
+    if (store.getState().selectedHex !== null) {
+      store.select(null);
+    }
+  });
+  const onKeydown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && store.getState().selectedHex !== null) {
+      store.select(null);
+    }
+  };
+  element.ownerDocument.addEventListener('keydown', onKeydown);
+
+  const planeElement = (hex: string | null) =>
+    hex === null
+      ? null
+      : markers.get(hex)?.marker.getElement()?.querySelector('.atc-plane');
+  /** Moves the card beside its plane; skipped while a zoom animates. */
+  const placeCard = () => {
+    const position =
+      detailedHex === null
+        ? undefined
+        : markers.get(detailedHex)?.marker.getLatLng();
+    if (!position || zooming) {
+      return;
+    }
+    const size = map.getSize();
+    card.place(map.latLngToContainerPoint(position), {
+      width: size.x,
+      height: size.y,
+    });
+  };
+  /**
+   * Shows the card for the hovered plane, else the selected one, or hides it.
+   * The plane it describes drops its own tag, which the card repeats.
+   */
+  const syncCard = (state: AtcState) => {
+    const hex = hoveredHex ?? state.selectedHex;
+    const view =
+      hex !== null && markers.has(hex) ? aircraftDetailView(state, hex) : null;
+    const next = view?.hex ?? null;
+    if (next !== detailedHex) {
+      planeElement(detailedHex)?.classList.remove('is-detailed');
+      planeElement(next)?.classList.add('is-detailed');
+      detailedHex = next;
+    }
+    if (view === null) {
+      card.hide();
+      return;
+    }
+    card.show(view);
+    placeCard();
+  };
 
   const drawnAt = (hex: string): LatLon | null => {
     const position = markers.get(hex)?.marker.getLatLng();
@@ -368,6 +438,7 @@ export async function createAirspaceMap(options: {
         }
       }
       panToFollowed(false);
+      placeCard();
     }
     frame = t < 1 ? requestAnimationFrame(step) : null;
   };
@@ -400,6 +471,7 @@ export async function createAirspaceMap(options: {
       if (!state.aircraft.has(hex)) {
         entry.marker.remove();
         markers.delete(hex);
+        hoveredHex = hoveredHex === hex ? null : hoveredHex;
       }
     }
     if (state.updatedAt !== lastUpdatedAt) {
@@ -417,10 +489,19 @@ export async function createAirspaceMap(options: {
           keyboard: false,
         })
           .on('click', () => store.select(aircraft.hex))
+          .on('mouseover', () => {
+            hoveredHex = aircraft.hex;
+            syncCard(store.getState());
+          })
+          .on('mouseout', () => {
+            hoveredHex = hoveredHex === aircraft.hex ? null : hoveredHex;
+            syncCard(store.getState());
+          })
           .addTo(map);
         markers.set(aircraft.hex, { marker });
       }
     }
+    syncCard(state);
     fitHighlighted(state);
     panToFollowed(true);
     if (state.pulse !== null && state.pulse.at !== lastPulseAt) {
@@ -449,6 +530,8 @@ export async function createAirspaceMap(options: {
     destroy() {
       resizeObserver?.disconnect();
       unsubscribe();
+      element.ownerDocument.removeEventListener('keydown', onKeydown);
+      card.element.remove();
       if (frame !== null) {
         cancelAnimationFrame(frame);
       }

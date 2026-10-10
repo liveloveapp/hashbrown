@@ -1,6 +1,7 @@
 import {
   type Aircraft,
   aircraftKind,
+  type AircraftReadings,
   type AircraftSnapshot,
   AIRPORTS,
   applySnapshot,
@@ -37,6 +38,7 @@ function track(
   typeCode: string | null,
   at: { lat: number; lon: number; altitudeFt: number; speedKt: number },
   motion: { dLat: number; dLon: number; dAltFt: number; trackDeg: number },
+  readings: AircraftReadings = {},
 ): Track {
   const { hex, callsign = null, registration = null } = ident;
 
@@ -56,6 +58,7 @@ function track(
       groundSpeedKt: at.speedKt,
       trackDeg: motion.trackDeg,
       verticalRateFpm: Math.sign(motion.dAltFt) * 1000,
+      ...readings,
     },
     dLat: motion.dLat,
     dLon: motion.dLon,
@@ -140,6 +143,7 @@ const TRACKS: readonly Track[] = [
     'C172',
     { lat: 44.12, lon: -123.21, altitudeFt: 4_500, speedKt: 110 },
     { dLat: 0.001, dLon: -0.001, dAltFt: 10, trackDeg: 300 },
+    { squawk: '1200', qnhHpa: 1016.4, year: '1978', seenS: 0.6 },
   ),
   track(
     { hex: 'a1c00a', registration: 'N911LF' },

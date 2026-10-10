@@ -1,8 +1,52 @@
 import { isRecord, numberOrNull } from './json';
 import { aircraftKind, type AircraftKind, isCategory } from './kinds';
 
+/** adsb.lol's emergency states, a closed set. */
+export const EMERGENCIES = [
+  'none',
+  'general',
+  'lifeguard',
+  'minfuel',
+  'nordo',
+  'unlawful',
+  'downed',
+  'reserved',
+] as const;
+
+/** An emergency state from {@link EMERGENCIES}. */
+export type Emergency = (typeof EMERGENCIES)[number];
+
+/**
+ * Extra readings shown only in the map's detail card. Each one is present
+ * only when adsb.lol broadcast a value that passed its check.
+ */
+export interface AircraftReadings {
+  /** The type description such as `BOEING 737 MAX 9`. */
+  readonly description?: string;
+  /** The model year, four digits. */
+  readonly year?: string;
+  /** The transponder code, four octal digits. */
+  readonly squawk?: string;
+  readonly emergency?: Emergency;
+  readonly geometricAltitudeFt?: number;
+  /** The altitude selected on the autopilot (MCP or FCU). */
+  readonly selectedAltitudeFt?: number;
+  readonly selectedHeadingDeg?: number;
+  /** The altimeter setting (QNH) in hectopascals. */
+  readonly qnhHpa?: number;
+  readonly indicatedAirspeedKt?: number;
+  readonly trueAirspeedKt?: number;
+  readonly mach?: number;
+  readonly magneticHeadingDeg?: number;
+  readonly windDirectionDeg?: number;
+  readonly windSpeedKt?: number;
+  readonly outsideAirTempC?: number;
+  /** Seconds between the last message and the snapshot. */
+  readonly seenS?: number;
+}
+
 /** One aircraft on the map, normalized from ADS-B data. */
-export interface Aircraft {
+export interface Aircraft extends AircraftReadings {
   readonly hex: string;
   /**
    * The name shown on the map and in answers: the airline callsign, else the
@@ -46,6 +90,98 @@ const REGISTRATION = /^[A-Z0-9](?:[A-Z0-9-]{0,8}[A-Z0-9])?$/;
  */
 export function isAirlineCallsign(callsign: string): boolean {
   return AIRLINE_CALLSIGN.test(callsign);
+}
+
+const SQUAWK = /^[0-7]{4}$/;
+const YEAR = /^\d{4}$/;
+const DESCRIPTION = /^[A-Za-z0-9 .,/()&'+-]{1,40}$/;
+
+/** True for a finite number. */
+function isFiniteNumber(value: unknown): value is number {
+  return numberOrNull(value) !== null;
+}
+
+/** A check for a string matching `pattern`. */
+function matches(pattern: RegExp): (value: unknown) => value is string {
+  return (value): value is string =>
+    typeof value === 'string' && pattern.test(value);
+}
+
+/**
+ * Every extra reading: its adsb.lol field, the check a value must pass, and
+ * whether to round it to whole feet.
+ */
+const READINGS: ReadonlyArray<{
+  readonly key: keyof AircraftReadings;
+  readonly source: string;
+  readonly check: (value: unknown) => boolean;
+  readonly round?: true;
+}> = [
+  { key: 'description', source: 'desc', check: matches(DESCRIPTION) },
+  { key: 'year', source: 'year', check: matches(YEAR) },
+  { key: 'squawk', source: 'squawk', check: matches(SQUAWK) },
+  {
+    key: 'emergency',
+    source: 'emergency',
+    check: (value) => (EMERGENCIES as readonly unknown[]).includes(value),
+  },
+  {
+    key: 'geometricAltitudeFt',
+    source: 'alt_geom',
+    check: isFiniteNumber,
+    round: true,
+  },
+  {
+    key: 'selectedAltitudeFt',
+    source: 'nav_altitude_mcp',
+    check: isFiniteNumber,
+    round: true,
+  },
+  { key: 'selectedHeadingDeg', source: 'nav_heading', check: isFiniteNumber },
+  { key: 'qnhHpa', source: 'nav_qnh', check: isFiniteNumber },
+  { key: 'indicatedAirspeedKt', source: 'ias', check: isFiniteNumber },
+  { key: 'trueAirspeedKt', source: 'tas', check: isFiniteNumber },
+  { key: 'mach', source: 'mach', check: isFiniteNumber },
+  { key: 'magneticHeadingDeg', source: 'mag_heading', check: isFiniteNumber },
+  { key: 'windDirectionDeg', source: 'wd', check: isFiniteNumber },
+  { key: 'windSpeedKt', source: 'ws', check: isFiniteNumber },
+  { key: 'outsideAirTempC', source: 'oat', check: isFiniteNumber },
+  {
+    key: 'seenS',
+    source: 'seen',
+    check: (value) => isFiniteNumber(value) && value >= 0,
+  },
+];
+
+/** The readings in an adsb.lol entry that pass their checks. */
+function adsbReadings(entry: Record<string, unknown>): AircraftReadings {
+  return Object.fromEntries(
+    READINGS.flatMap(({ key, source, check, round }) => {
+      const value = entry[source];
+      if (!check(value)) {
+        return [];
+      }
+
+      return [[key, round ? Math.round(value as number) : value]];
+    }),
+  );
+}
+
+/**
+ * The readings of an aircraft received over the network, or null when any
+ * present reading fails its check.
+ */
+function parseReadings(
+  value: Record<string, unknown>,
+): AircraftReadings | null {
+  const entries = READINGS.flatMap(({ key }) =>
+    value[key] === undefined ? [] : [[key, value[key]] as const],
+  );
+  const valid = entries.every(([key, reading]) =>
+    READINGS.some((spec) => spec.key === key && spec.check(reading)),
+  );
+
+  return valid ? Object.fromEntries(entries) : null;
 }
 
 /** True for a value safe to show as a label: 1 to 8 capital letters or digits. */
@@ -139,6 +275,7 @@ function normalizeEntry(entry: unknown): Aircraft | null {
     trackDeg: numberOrNull(entry['track']),
     verticalRateFpm:
       numberOrNull(entry['baro_rate']) ?? numberOrNull(entry['geom_rate']),
+    ...adsbReadings(entry),
   };
 }
 
@@ -183,7 +320,8 @@ function parseAircraft(value: unknown): Aircraft | null {
     isNullableNumber(groundSpeedKt) &&
     isNullableNumber(trackDeg) &&
     isNullableNumber(verticalRateFpm);
-  if (!valid) {
+  const readings = parseReadings(value);
+  if (!valid || readings === null) {
     return null;
   }
 
@@ -202,6 +340,7 @@ function parseAircraft(value: unknown): Aircraft | null {
     groundSpeedKt,
     trackDeg,
     verticalRateFpm,
+    ...readings,
   };
 }
 

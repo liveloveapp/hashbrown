@@ -350,3 +350,94 @@ test('parseSnapshot rejects an invalid category and recomputes the kind', () => 
   expect(parsed.aircraft[0].kind).toBe('jet');
   expect(() => parseSnapshot(tampered('<b>', 'jet'))).toThrow();
 });
+
+const readings = {
+  alt_geom: 35612.4,
+  nav_altitude_mcp: 36000,
+  nav_heading: 95.2,
+  nav_qnh: 1013.6,
+  ias: 271,
+  tas: 468,
+  mach: 0.792,
+  mag_heading: 80.5,
+  wd: 262,
+  ws: 41,
+  oat: -48,
+  squawk: '2316',
+  emergency: 'none',
+  year: '2019',
+  desc: 'BOEING 737 MAX 9',
+  seen: 0.4,
+};
+
+test('normalizeAdsbLol keeps the extra readings the detail card shows', () => {
+  const payload = { ac: [{ ...united, ...readings }] };
+
+  const [aircraft] = normalizeAdsbLol(payload, 1000).aircraft;
+
+  expect(aircraft).toMatchObject({
+    geometricAltitudeFt: 35612,
+    selectedAltitudeFt: 36000,
+    selectedHeadingDeg: 95.2,
+    qnhHpa: 1013.6,
+    indicatedAirspeedKt: 271,
+    trueAirspeedKt: 468,
+    mach: 0.792,
+    magneticHeadingDeg: 80.5,
+    windDirectionDeg: 262,
+    windSpeedKt: 41,
+    outsideAirTempC: -48,
+    squawk: '2316',
+    emergency: 'none',
+    year: '2019',
+    description: 'BOEING 737 MAX 9',
+    seenS: 0.4,
+  });
+  expect(aircraft).not.toHaveProperty('ownOp');
+});
+
+test('normalizeAdsbLol drops extra readings that fail their checks', () => {
+  const bad = {
+    alt_geom: 'high',
+    nav_qnh: Number.NaN,
+    mach: '0.8',
+    seen: -1,
+    squawk: '7A00',
+    emergency: 'panic',
+    year: '19',
+    desc: '<img src=x>',
+  };
+  const payload = { ac: [{ ...united, ...bad }] };
+
+  const [aircraft] = normalizeAdsbLol(payload, 1000).aircraft;
+
+  for (const key of [
+    'geometricAltitudeFt',
+    'qnhHpa',
+    'mach',
+    'seenS',
+    'squawk',
+    'emergency',
+    'year',
+    'description',
+  ]) {
+    expect(aircraft).not.toHaveProperty(key);
+  }
+});
+
+test('parseSnapshot keeps valid extra readings and rejects invalid ones', () => {
+  const snapshot = normalizeAdsbLol({ ac: [{ ...united, ...readings }] }, 1);
+  const tampered = (extra: Record<string, unknown>) => ({
+    ...snapshot,
+    aircraft: [{ ...snapshot.aircraft[0], ...extra }],
+  });
+
+  const parsed = parseSnapshot(snapshot);
+
+  expect(parsed).toEqual(snapshot);
+  expect(() => parseSnapshot(tampered({ squawk: '7A00' }))).toThrow();
+  expect(() => parseSnapshot(tampered({ emergency: 'panic' }))).toThrow();
+  expect(() => parseSnapshot(tampered({ year: 'old' }))).toThrow();
+  expect(() => parseSnapshot(tampered({ mach: '0.8' }))).toThrow();
+  expect(() => parseSnapshot(tampered({ description: '<b>x</b>' }))).toThrow();
+});
