@@ -11,7 +11,6 @@
   --atc-muted: #52525b;
   --atc-map: #e8e8e8;
   --atc-accent: #002fa7;
-  --atc-error: #b42318;
   --atc-radius: 14px;
   --atc-radius-row: 10px;
   --atc-gutter: 12px;
@@ -95,12 +94,12 @@ button, input { font: inherit; color: inherit; }
 .atc-starters button:hover { border-color: var(--atc-muted); }
 .atc-composer { display: flex; gap: 8px; padding: var(--atc-gutter); border-top: 1px solid var(--atc-border); }
 .atc-composer input { flex: 1; padding: 8px 12px; border: 1px solid var(--atc-border); border-radius: var(--atc-radius-row); background: var(--atc-surface); }
-.atc-composer input:focus-visible { outline: 2px solid var(--atc-accent); outline-offset: 0; border-color: var(--atc-accent); }
+.atc-composer input:focus-visible { outline: 2px solid var(--atc-accent); outline-offset: 2px; border-color: var(--atc-accent); }
 .atc-composer button {
   border: 1px solid var(--atc-ink); background: var(--atc-ink); color: var(--atc-surface);
   border-radius: 999px; padding: 6px 14px; cursor: pointer;
 }
-.atc-error { margin: 0 var(--atc-gutter); color: var(--atc-error); }
+.atc-error { margin: 0 var(--atc-gutter); color: var(--atc-muted); }
 
 .atc-card { border: 1px solid var(--atc-border); border-radius: var(--atc-radius-row); padding: 10px 12px; background: var(--atc-surface); }
 .atc-card header { display: flex; gap: 8px; align-items: baseline; }
@@ -124,6 +123,8 @@ button, input { font: inherit; color: inherit; }
 @keyframes atc-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .atc-plane.is-pulsing, .atc-skeleton { animation: none; }
-  .atc-plane, .atc-toggle, .atc-starters button, .atc-map .leaflet-tile { transition: none; }
+  .atc-shell, .atc-shell *, .atc-shell *::before, .atc-shell *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

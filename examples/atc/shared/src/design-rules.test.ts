@@ -29,7 +29,7 @@ function walk(dir: string, pattern: RegExp, out: string[] = []): string[] {
 function stripComments(source: string): string {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:"'`\\])\/\/.*$/gm, '$1');
+    .replace(/(^|[\s;{}])\/\/.*$/gm, '$1');
 }
 
 const files = ROOTS.flatMap(({ dir, pattern }) => walk(dir, pattern)).map(
@@ -39,8 +39,120 @@ const files = ROOTS.flatMap(({ dir, pattern }) => walk(dir, pattern)).map(
   }),
 );
 
-const offenders = (pattern: RegExp): string[] =>
-  files.filter(({ source }) => pattern.test(source)).map(({ file }) => file);
+const ALLOWED_FONTS = new Set([
+  'hanken grotesk',
+  'jetbrains mono',
+  'sans-serif',
+  'serif',
+  'monospace',
+  'system-ui',
+  'ui-monospace',
+  'inherit',
+]);
+
+/** Font names in a comma separated stack that are not on the allowed list. */
+function badFonts(stack: string): string[] {
+  return stack
+    .split(',')
+    .map((name) =>
+      name
+        .replace(/!important/, '')
+        .trim()
+        .replace(/^['"]|['"]$/g, '')
+        .toLowerCase(),
+    )
+    .filter(
+      (name) => name && !name.startsWith('var(') && !ALLOWED_FONTS.has(name),
+    );
+}
+
+/** Every `letter-spacing` value in the source that is positive. */
+function positiveSpacing(source: string): string[] {
+  return [...source.matchAll(/letter-spacing\s*:\s*([^;}]+)/g)]
+    .map((match) => (match[1] ?? '').trim())
+    .filter(
+      (value) => /^\+?(\d+\.?\d*|\.\d+)/.test(value) && parseFloat(value) > 0,
+    );
+}
+
+/** Font families named by stylesheet, custom property, shorthand or inline style. */
+function fontNames(source: string): string[] {
+  const stacks = [
+    ...[...source.matchAll(/font-family\s*:\s*([^;}]+)/g)].map(
+      (m) => m[1] ?? '',
+    ),
+    ...[...source.matchAll(/--[\w-]*(?:font|mono)[\w-]*\s*:\s*([^;}]+)/g)].map(
+      (m) => m[1] ?? '',
+    ),
+    ...[...source.matchAll(/\bfont\s*:\s*([^;}]+)/g)].map((m) =>
+      // shorthand: the family follows the size, e.g. `14px/1.4 Inter, sans-serif`
+      (m[1] ?? '').replace(
+        /^.*?\d+(?:\.\d+)?(?:px|rem|em|%|pt)(?:\/[\w.]+)?\s*/,
+        '',
+      ),
+    ),
+    ...[...source.matchAll(/\bfontFamily\s*:\s*(['"`])(.*?)\1/g)].map(
+      (m) => m[2] ?? '',
+    ),
+  ];
+  return stacks.flatMap(badFonts);
+}
+
+/** The rules, each returning the offending fragments found in a source. */
+const RULES: Record<string, (source: string) => unknown[]> = {
+  uppercase: (s) =>
+    s.match(/\buppercase\b|text-transform\s*:\s*uppercase/g) ?? [],
+  'positive letter-spacing': (s) => [
+    ...positiveSpacing(s),
+    ...(s.match(/tracking-(?:wide|wider|widest)\b/g) ?? []),
+  ],
+  'gradients, shadows and glass': (s) =>
+    s.match(
+      /gradient\s*\(|box-shadow|text-shadow|drop-shadow|backdrop-filter/g,
+    ) ?? [],
+  'dark scheme': (s) =>
+    s.match(/prefers-color-scheme\s*:\s*dark|color-scheme\s*:\s*dark/g) ?? [],
+  fonts: fontNames,
+};
+
+const BAD: Record<string, string[]> = {
+  uppercase: ['text-transform: uppercase', "className='uppercase'"],
+  'positive letter-spacing': [
+    'letter-spacing: 0.1em',
+    'letter-spacing: 0.05em',
+    'letter-spacing: 0.5px',
+    'letter-spacing: .5px',
+    'letter-spacing: 1px',
+  ],
+  'gradients, shadows and glass': [
+    'box-shadow: 0 1px 2px #000',
+    'background: linear-gradient(red, blue)',
+    'filter: drop-shadow(0 0 2px red)',
+    'backdrop-filter: blur(4px)',
+  ],
+  'dark scheme': [
+    '@media (prefers-color-scheme : dark) {}',
+    '@media (prefers-color-scheme: dark) {}',
+  ],
+  fonts: [
+    'font-family: Inter',
+    "font-family: 'Segoe UI', sans-serif",
+    '--atc-font: Inter, sans-serif;',
+    '--atc-mono: Menlo, monospace;',
+    'font: 14px/1.4 Inter, sans-serif;',
+    "style={{ fontFamily: 'Arial' }}",
+  ],
+};
+
+const GOOD = [
+  'letter-spacing: 0',
+  'letter-spacing: -0.01em',
+  "font-family: 'Hanken Grotesk', system-ui, sans-serif;",
+  "--atc-mono: 'JetBrains Mono', ui-monospace, monospace;",
+  'font-family: var(--atc-font);',
+  "font: 500 14px/1.4 'Hanken Grotesk', sans-serif;",
+  'font: inherit;',
+];
 
 test('scans the stylesheet and both apps', () => {
   const names = files.map(({ file }) => file);
@@ -50,56 +162,41 @@ test('scans the stylesheet and both apps', () => {
   expect(names.some((name) => name.startsWith('react/'))).toBe(true);
 });
 
-test('uses no uppercase text', () => {
-  expect(offenders(/\buppercase\b|text-transform:\s*uppercase/)).toEqual([]);
+test('the comment stripper keeps url(//...) and drops line comments', () => {
+  const source = 'a { background: url(//x.test/a.png); } // box-shadow: none';
+
+  const result = stripComments(source);
+
+  expect(result).toContain('url(//x.test/a.png)');
+  expect(result).not.toContain('box-shadow');
 });
 
-test('uses no positive letter-spacing', () => {
-  expect(
-    offenders(
-      /letter-spacing:\s*(?!-)\.?\d*[1-9]|tracking-(wide|wider|widest)\b/,
-    ),
-  ).toEqual([]);
-});
+for (const [rule, snippets] of Object.entries(BAD)) {
+  test(`the ${rule} rule catches known-bad snippets`, () => {
+    const check = RULES[rule]!;
 
-test('uses no gradients, shadows or glass', () => {
-  expect(
-    offenders(/gradient\(|box-shadow|text-shadow|drop-shadow|backdrop-filter/),
-  ).toEqual([]);
-});
+    const missed = snippets.filter((snippet) => check(snippet).length === 0);
 
-test('has no dark scheme', () => {
-  expect(
-    offenders(/prefers-color-scheme:\s*dark|color-scheme:\s*dark/),
-  ).toEqual([]);
-});
+    expect(missed).toEqual([]);
+  });
+}
 
-test('names only Hanken Grotesk, JetBrains Mono and generic font families', () => {
-  const allowed = new Set([
-    'hanken grotesk',
-    'jetbrains mono',
-    'sans-serif',
-    'serif',
-    'monospace',
-    'system-ui',
-    'inherit',
-  ]);
-  const used = files.flatMap(({ file, source }) =>
-    [...source.matchAll(/font-family:\s*([^;}]+)/g)].flatMap((match) =>
-      (match[1] ?? '')
-        .split(',')
-        .map((name) =>
-          name
-            .trim()
-            .replace(/^['"]|['"]$/g, '')
-            .toLowerCase(),
-        )
-        .filter(
-          (name) => name && !name.startsWith('var(') && !allowed.has(name),
-        )
-        .map((name) => `${file}: ${name}`),
+test('the rules accept known-good snippets', () => {
+  const found = GOOD.flatMap((snippet) =>
+    Object.entries(RULES).flatMap(([rule, check]) =>
+      check(snippet).length > 0 ? [`${rule}: ${snippet}`] : [],
     ),
   );
 
-  expect(used).toEqual([]);
+  expect(found).toEqual([]);
 });
+
+for (const [rule, check] of Object.entries(RULES)) {
+  test(`the source has no ${rule}`, () => {
+    const offenders = files.flatMap(({ file, source }) =>
+      check(source).map((hit) => `${file}: ${String(hit)}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+}
