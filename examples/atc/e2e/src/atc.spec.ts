@@ -200,11 +200,23 @@ async function open(page: Page, framework: string): Promise<void> {
   );
 }
 
-/** Presses the map's zoom-out button `steps` times, waiting for each zoom. */
+/**
+ * Presses the map's zoom-out button `steps` times, waiting for each zoom to
+ * finish. Leaflet starts the animation on the next frame (adding
+ * `leaflet-zoom-anim`) and removes the class when it ends, so wait two frames
+ * and then for the class to go. Under reduced motion there is no animation and
+ * the class never appears.
+ */
 async function zoomOut(page: Page, steps: number): Promise<void> {
   for (let step = 0; step < steps; step++) {
     await page.locator('.leaflet-control-zoom-out').click();
-    await page.waitForTimeout(400);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    await expect(page.locator('.leaflet-zoom-anim')).toHaveCount(0);
   }
 }
 
