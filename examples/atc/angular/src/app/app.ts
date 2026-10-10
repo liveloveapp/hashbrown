@@ -1,4 +1,4 @@
-import { startAtcFeed } from '@atc/shared';
+import { focusOpensSheet, startAtcFeed } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -10,7 +10,7 @@ import { AirspaceMapComponent } from './airspace-map';
 import { Assistant } from './assistant';
 import { KeyboardInsetDirective } from './keyboard-inset';
 import { PanelHeaderComponent } from './panel-header';
-import { focusOpensSheet, SheetHandleComponent } from './sheet-handle';
+import { SheetHandleComponent } from './sheet-handle';
 import { ATC_STORE } from './store';
 
 /** The page: a two-panel workbench, chat on the left and the live map on the right.

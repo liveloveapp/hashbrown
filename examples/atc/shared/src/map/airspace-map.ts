@@ -36,20 +36,34 @@ export function markerClassName(state: AtcState, hex: string): string {
 }
 
 /**
- * Text of a plane's data tag: callsign and altitude in feet, such as
- * "ASA123 · 4,200", "GND" on the ground or "—" when unknown. Built only from
+ * The parts of a plane's data tag: the callsign, and the altitude in feet
+ * ("4,200"), "GND" on the ground, or null when unknown (the tag then shows the
+ * callsign alone).
+ */
+function planeTagParts(
+  aircraft: Pick<Aircraft, 'callsign' | 'altitudeFt' | 'onGround'>,
+): { callsign: string; altitude: string | null } {
+  const altitude = aircraft.onGround
+    ? 'GND'
+    : aircraft.altitudeFt === null
+      ? null
+      : aircraft.altitudeFt.toLocaleString('en-US');
+
+  return { callsign: aircraft.callsign, altitude };
+}
+
+/**
+ * Text of a plane's data tag, exactly as rendered: callsign and altitude in
+ * feet separated by a space, such as "ASA123 4,200", "ASA123 GND" on the
+ * ground, or just "ASA123" when the altitude is unknown. Built only from
  * validated fields.
  */
 export function planeTagText(
   aircraft: Pick<Aircraft, 'callsign' | 'altitudeFt' | 'onGround'>,
 ): string {
-  const altitude = aircraft.onGround
-    ? 'GND'
-    : aircraft.altitudeFt === null
-      ? '—'
-      : aircraft.altitudeFt.toLocaleString('en-US');
+  const { callsign, altitude } = planeTagParts(aircraft);
 
-  return `${aircraft.callsign} · ${altitude}`;
+  return altitude === null ? callsign : `${callsign} ${altitude}`;
 }
 
 /** Classes the store drives; toggled in place, leaving others (is-pulsing). */
@@ -61,11 +75,11 @@ const STATE_CLASSES = [
 ];
 
 /**
- * Updates an existing marker in place: state classes, rotation and tag text
- * (via `textContent`), so the marker is never rebuilt and its pulse and hover
- * survive live track and altitude jitter.
+ * Updates an existing marker in place: state classes, rotation, callsign and
+ * tag text (via `textContent`), so the marker is never rebuilt and its pulse
+ * and hover survive live track and altitude jitter. Writes only what changed.
  */
-function updatePlane(
+export function updatePlane(
   element: HTMLElement | undefined,
   aircraft: Aircraft,
   className: string,
@@ -78,6 +92,9 @@ function updatePlane(
   for (const name of STATE_CLASSES) {
     plane.classList.toggle(name, wanted.includes(name));
   }
+  if (plane.getAttribute('data-callsign') !== aircraft.callsign) {
+    plane.setAttribute('data-callsign', aircraft.callsign);
+  }
   const body = plane.querySelector<HTMLElement>('.atc-plane-body');
   const transform = `rotate(${Math.round(aircraft.trackDeg ?? 0)}deg)`;
   if (body && body.style.transform !== transform) {
@@ -85,21 +102,28 @@ function updatePlane(
   }
   const tag = plane.querySelector('.atc-plane-tag');
   const alt = tag?.querySelector('.atc-plane-alt');
-  const [callsign, altitude] = planeTagText(aircraft).split(' · ');
   if (!tag || !alt) {
     return;
   }
-  if (tag.firstChild && tag.firstChild !== alt) {
+  const { callsign, altitude } = planeTagParts(aircraft);
+  const altText = altitude === null ? '' : ` ${altitude}`;
+  if (
+    tag.firstChild &&
+    tag.firstChild !== alt &&
+    tag.firstChild.textContent !== callsign
+  ) {
     tag.firstChild.textContent = callsign;
   }
-  alt.textContent = ` ${altitude}`;
+  if (alt.textContent !== altText) {
+    alt.textContent = altText;
+  }
 }
 
 /** Tag markup: the callsign, then the altitude in a muted monospace span. */
 function tag(aircraft: Aircraft): string {
-  const [callsign, altitude] = planeTagText(aircraft).split(' · ');
+  const { callsign, altitude } = planeTagParts(aircraft);
 
-  return `${callsign}<span class="atc-plane-alt"> ${altitude}</span>`;
+  return `${callsign}<span class="atc-plane-alt">${altitude === null ? '' : ` ${altitude}`}</span>`;
 }
 
 /**
@@ -181,10 +205,13 @@ export async function createAirspaceMap(options: {
   }
   const L =
     (module as unknown as { default?: typeof module }).default ?? module;
-  const map: LeafletMap = L.map(element, { zoomControl: false }).setView(
-    [area.lat, area.lon],
-    area.zoom,
-  );
+  const reduced = prefersReducedMotion();
+  const map: LeafletMap = L.map(element, {
+    zoomControl: false,
+    zoomAnimation: !reduced,
+    fadeAnimation: !reduced,
+    markerZoomAnimation: !reduced,
+  }).setView([area.lat, area.lon], area.zoom);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   L.tileLayer(TILE_LAYER.url, {
     attribution: TILE_LAYER.attribution,
@@ -311,7 +338,6 @@ export async function createAirspaceMap(options: {
         const marker = L.marker([aircraft.lat, aircraft.lon], {
           icon: icon(planeIconHtml(aircraft, className)),
           keyboard: false,
-          title: aircraft.callsign,
         })
           .on('click', () => store.select(aircraft.hex))
           .addTo(map);

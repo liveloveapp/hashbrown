@@ -75,7 +75,7 @@ const components = [
     TranscriptComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'atc-chat', role: 'region', 'aria-label': 'Assistant' },
+  host: { class: 'atc-chat' },
   template: `
     <div class="atc-chat-body" atcAutoScroll>
       @if (messages().length === 0 && !chat.error()) {
@@ -83,15 +83,15 @@ const components = [
       }
       <atc-transcript [items]="items()" [busy]="chat.isLoading()" />
       @if (chat.error()) {
-        <p class="atc-error" role="alert">
-          Something went wrong.
+        <div class="atc-card atc-error" role="alert">
+          <span>Something went wrong.</span>
           <button
             type="button"
             (click)="chat.reload() || chat.resendMessages()"
           >
             Retry
           </button>
-        </p>
+        </div>
       }
     </div>
     <atc-composer [busy]="chat.isLoading()" (send)="send($event)" />

@@ -1,6 +1,6 @@
 import type { Aircraft } from './aircraft';
 
-/** "35,000 ft", "On ground" or "—". */
+/** "35,000 ft", "On ground" or "n/a". */
 export function formatAltitude(
   aircraft: Pick<Aircraft, 'altitudeFt' | 'onGround'>,
 ): string {
@@ -9,19 +9,19 @@ export function formatAltitude(
   }
 
   return aircraft.altitudeFt === null
-    ? '—'
+    ? 'n/a'
     : `${aircraft.altitudeFt.toLocaleString('en-US')} ft`;
 }
 
-/** "492 kt" or "—". */
+/** "492 kt" or "n/a". */
 export function formatSpeed(kt: number | null): string {
-  return kt === null ? '—' : `${Math.round(kt)} kt`;
+  return kt === null ? 'n/a' : `${Math.round(kt)} kt`;
 }
 
-/** A three-digit heading such as "005°", or "—". */
+/** A three-digit heading such as "005°", or "n/a". */
 export function formatHeading(deg: number | null): string {
   return deg === null
-    ? '—'
+    ? 'n/a'
     : `${String(Math.round(deg) % 360).padStart(3, '0')}°`;
 }
 

@@ -63,11 +63,12 @@ test('the status chip counts live aircraft and shows a dot only when live', () =
     aircraft: [plane, { ...plane, hex: 'bbbbbb' }],
   });
   fixture.detectChanges();
-  const chip = (fixture.nativeElement as HTMLElement).querySelector(
-    '[role="status"]',
-  );
+  const element = fixture.nativeElement as HTMLElement;
+  const chip = element.querySelector('.atc-chip');
+  const status = element.querySelector('[role="status"]');
 
   expect(text(chip)).toBe('Live · 2 aircraft');
+  expect(text(status)).toBe('Live');
   expect(chip?.querySelector('.atc-chip-dot')).not.toBeNull();
 });
 

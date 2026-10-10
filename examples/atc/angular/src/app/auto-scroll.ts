@@ -1,4 +1,4 @@
-import { isNearBottom } from '@atc/shared';
+import { addsUserMessage, isNearBottom } from '@atc/shared';
 import { DestroyRef, Directive, ElementRef, inject } from '@angular/core';
 
 /**
@@ -17,7 +17,7 @@ export class AutoScrollDirective {
 
   constructor() {
     const observer = new MutationObserver((records) => {
-      if (records.some((record) => this.addsUserMessage(record))) {
+      if (records.some((record) => addsUserMessage(record))) {
         this.pinned = true;
       }
       if (this.pinned) {
@@ -34,13 +34,5 @@ export class AutoScrollDirective {
 
   protected track(): void {
     this.pinned = isNearBottom(this.element);
-  }
-
-  private addsUserMessage(record: MutationRecord): boolean {
-    return [...record.addedNodes].some(
-      (node) =>
-        node instanceof Element &&
-        (node.matches('.atc-user') || node.querySelector('.atc-user') !== null),
-    );
   }
 }

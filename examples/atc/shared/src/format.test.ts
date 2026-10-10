@@ -14,7 +14,7 @@ test('formatAltitude handles flight levels, the ground and missing data', () => 
     formatAltitude({ altitudeFt: null, onGround: false }),
   ];
 
-  expect(values).toEqual(['35,000 ft', 'On ground', '—']);
+  expect(values).toEqual(['35,000 ft', 'On ground', 'n/a']);
 });
 
 test('formatSpeed, formatHeading and formatClock produce short labels', () => {
@@ -27,7 +27,7 @@ test('formatSpeed, formatHeading and formatClock produce short labels', () => {
     formatClock(Date.UTC(2026, 9, 9, 0, 5), 'UTC'),
   ];
 
-  expect(labels).toEqual(['492 kt', '—', '005°', '000°', '—', '00:05']);
+  expect(labels).toEqual(['492 kt', 'n/a', '005°', '000°', 'n/a', '00:05']);
 });
 
 test('names fall back to the raw code', () => {

@@ -2,17 +2,6 @@ import { sheetAfterDrag } from '@atc/shared';
 import { ChangeDetectionStrategy, Component, model } from '@angular/core';
 
 /**
- * Whether focus landing on `target` should open the sheet: anything inside it
- * except the handle, whose own click toggles (a pointer press focuses the
- * button first, which would otherwise open and immediately close the sheet).
- */
-export function focusOpensSheet(target: EventTarget | null): boolean {
-  return !(
-    target instanceof Element && target.closest('.atc-sheet-handle') !== null
-  );
-}
-
-/**
  * The drag handle of the phone bottom sheet. It is a real button: Enter or
  * Space toggles it, and dragging it up or down opens or closes the sheet.
  * Hidden on wide screens, where the chat is a plain side panel.

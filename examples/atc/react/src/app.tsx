@@ -1,10 +1,10 @@
-import { startAtcFeed } from '@atc/shared';
+import { focusOpensSheet, startAtcFeed } from '@atc/shared';
 import { useEffect, useRef, useState } from 'react';
 import { AirspaceMap } from './airspace-map';
 import { Assistant } from './assistant';
 import { useKeyboardInset } from './dom-hooks';
 import { PanelHeader } from './panel-header';
-import { focusOpensSheet, SheetHandle } from './sheet-handle';
+import { SheetHandle } from './sheet-handle';
 import { useAtcStore } from './store';
 
 /** The page: a two-panel workbench, chat on the left and the live map on the right.

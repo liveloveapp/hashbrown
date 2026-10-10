@@ -82,7 +82,7 @@ export function Assistant() {
   const send = (content: string) => chat.sendMessage({ role: 'user', content });
 
   return (
-    <div className="atc-chat" role="region" aria-label="Assistant">
+    <div className="atc-chat">
       <div className="atc-chat-body" {...scroller}>
         {chat.messages.length === 0 && !chat.error ? (
           <EmptyState onPick={send} />
@@ -92,12 +92,12 @@ export function Assistant() {
           busy={chat.isLoading}
         />
         {chat.error ? (
-          <p className="atc-error" role="alert">
-            Something went wrong.{' '}
+          <div className="atc-card atc-error" role="alert">
+            <span>Something went wrong.</span>
             <button type="button" onClick={() => chat.resendMessages()}>
               Retry
             </button>
-          </p>
+          </div>
         ) : null}
       </div>
       <Composer busy={chat.isLoading} onSend={send} />

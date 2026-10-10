@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { expect, test } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { applySnapshot, INITIAL_STATE } from '../store';
@@ -6,6 +7,7 @@ import {
   markerClassName,
   planeIconHtml,
   planeTagText,
+  updatePlane,
 } from './airspace-map';
 
 const plane: Aircraft = {
@@ -73,12 +75,42 @@ test('planeTagText shows callsign and altitude with a thousands separator', () =
   ];
 
   expect(texts).toEqual([
-    'UAL100 · 30,000',
-    'UAL100 · 4,200',
-    'UAL100 · 0',
-    'UAL100 · —',
-    'UAL100 · GND',
+    'UAL100 30,000',
+    'UAL100 4,200',
+    'UAL100 0',
+    'UAL100',
+    'UAL100 GND',
   ]);
+});
+
+test('planeIconHtml leaves out the marker title and an unknown altitude', () => {
+  const html = planeIconHtml({ ...plane, altitudeFt: null }, 'atc-plane');
+
+  expect(html).toContain(
+    '<span class="atc-plane-tag">UAL100<span class="atc-plane-alt"></span></span>',
+  );
+});
+
+test('updatePlane keeps callsign, data-callsign and tag current, writing only changes', () => {
+  const host = document.createElement('div');
+  host.innerHTML = planeIconHtml(plane, 'atc-plane');
+  const tagNode = host.querySelector('.atc-plane-tag') as HTMLElement;
+  const writes: string[] = [];
+  new MutationObserver((records) =>
+    records.forEach((r) => writes.push(r.type)),
+  ).observe(tagNode, { childList: true, subtree: true, characterData: true });
+
+  updatePlane(host, plane, 'atc-plane');
+  updatePlane(
+    host,
+    { ...plane, callsign: 'DAL9', altitudeFt: 4200 },
+    'atc-plane',
+  );
+
+  expect(host.querySelector('.atc-plane')?.getAttribute('data-callsign')).toBe(
+    'DAL9',
+  );
+  expect(tagNode.textContent).toBe('DAL9 4,200');
 });
 
 test('planeIconHtml carries the tag outside the rotated silhouette', () => {

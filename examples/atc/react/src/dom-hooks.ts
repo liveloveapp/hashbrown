@@ -1,13 +1,5 @@
-import { isNearBottom } from '@atc/shared';
+import { addsUserMessage, isNearBottom } from '@atc/shared';
 import { type RefObject, useEffect, useRef } from 'react';
-
-function addsUserMessage(record: MutationRecord): boolean {
-  return [...record.addedNodes].some(
-    (node) =>
-      node instanceof Element &&
-      (node.matches('.atc-user') || node.querySelector('.atc-user') !== null),
-  );
-}
 
 /**
  * Keeps a scroller pinned to its newest content while an answer streams. When

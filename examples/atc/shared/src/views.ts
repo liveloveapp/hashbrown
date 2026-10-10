@@ -98,11 +98,11 @@ export function arrivalsRows(
       return {
         hex,
         status: 'unknown',
-        callsign: '—',
+        callsign: 'n/a',
         aircraftType: 'Unknown aircraft',
-        altitude: '—',
-        distance: '—',
-        eta: '—',
+        altitude: 'n/a',
+        distance: 'n/a',
+        eta: 'n/a',
       };
     }
     const { aircraft } = found;
@@ -116,15 +116,18 @@ export function arrivalsRows(
       callsign: aircraft.callsign,
       aircraftType: aircraftTypeName(aircraft.typeCode),
       altitude: formatAltitude(aircraft),
-      distance: live ? `${Math.round(distance)} nm` : '—',
-      eta: live ? (eta === null ? '—' : `${eta} min`) : 'Out of range',
+      distance: live ? `${Math.round(distance)} nm` : 'n/a',
+      eta: live ? (eta === null ? 'n/a' : `${eta} min`) : 'Out of range',
     };
   });
 }
 
 /** What the feed badge shows. */
 export interface FeedBadgeView {
+  /** The state word: "Live", "Data delayed" or "Connecting…". */
   readonly label: string;
+  /** The aircraft count such as "312 aircraft", only while live. */
+  readonly count: string | null;
   /** True when the feed is live; the chip then shows a dot. */
   readonly live: boolean;
 }
@@ -135,17 +138,18 @@ const OTHER_BADGES: Record<Exclude<FeedStatus, 'live'>, string> = {
   stalled: 'Data delayed',
 };
 
-/** The badge for a feed status, e.g. "Live · 312 aircraft". */
+/** The badge for a feed status: "Live" with a "312 aircraft" count, say. */
 export function feedBadgeView(
   status: FeedStatus,
   aircraftCount: number,
 ): FeedBadgeView {
   return status === 'live'
     ? {
-        label: `Live · ${aircraftCount.toLocaleString('en-US')} aircraft`,
+        label: 'Live',
+        count: `${aircraftCount.toLocaleString('en-US')} aircraft`,
         live: true,
       }
-    : { label: OTHER_BADGES[status], live: false };
+    : { label: OTHER_BADGES[status], count: null, live: false };
 }
 
 const MAX_ARG = 24;

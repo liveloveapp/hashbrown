@@ -113,11 +113,11 @@ test('arrivalsRows computes distance and ETA to the airport', () => {
     {
       hex: 'bbbbbb',
       status: 'unknown',
-      callsign: '—',
+      callsign: 'n/a',
       aircraftType: 'Unknown aircraft',
-      altitude: '—',
-      distance: '—',
-      eta: '—',
+      altitude: 'n/a',
+      distance: 'n/a',
+      eta: 'n/a',
     },
   ]);
 });
@@ -128,19 +128,19 @@ test('feedBadgeView labels each feed status with the aircraft count when live', 
   const views = statuses.map((status) => feedBadgeView(status, 312));
 
   expect(views).toEqual([
-    { label: 'Connecting…', live: false },
-    { label: 'Live · 312 aircraft', live: true },
-    { label: 'Data delayed', live: false },
-    { label: 'Data delayed', live: false },
+    { label: 'Connecting…', count: null, live: false },
+    { label: 'Live', count: '312 aircraft', live: true },
+    { label: 'Data delayed', count: null, live: false },
+    { label: 'Data delayed', count: null, live: false },
   ]);
 });
 
 test('feedBadgeView formats large counts and a single aircraft', () => {
   const counts = [1, 1234];
 
-  const labels = counts.map((count) => feedBadgeView('live', count).label);
+  const labels = counts.map((count) => feedBadgeView('live', count).count);
 
-  expect(labels).toEqual(['Live · 1 aircraft', 'Live · 1,234 aircraft']);
+  expect(labels).toEqual(['1 aircraft', '1,234 aircraft']);
 });
 
 test('toolCallLabel summarises findAircraft filters', () => {

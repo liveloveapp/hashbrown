@@ -27,12 +27,6 @@ npx nx serve atc-react
 Open http://127.0.0.1:4341/angular/ or http://127.0.0.1:4342/react/. The two apps run on
 different ports and have no switcher between them.
 
-## Hosting
-
-Only the Angular app is hosted, at https://atc.hashbrown.dev/angular/ (the root redirects
-there). The React app is built and tested in this repository but runs locally for now;
-`HOSTED_APPS` in `tools/build-vercel-output.mts` is the one line to change to host it.
-
 ## Swap the model provider
 
 `server/src/run-handler.ts` uses `HashbrownOpenAI`. To use another provider, install its
@@ -58,6 +52,10 @@ serves the last good snapshot (marked `X-Atc-Stale: 1`) for up to 60 s when adsb
 fails. The e2e tests stub `/api/aircraft` with synthetic frames.
 
 ## Hosting
+
+Only the Angular app is hosted, at https://atc.hashbrown.dev/angular/ (the root redirects
+there). The React app is built and tested in this repository but runs locally for now;
+`HOSTED_APPS` in `tools/build-vercel-output.mts` is the one line to change to host it.
 
 `npx nx build atc` writes `.vercel/output`. The hosted project (`hashbrown-atc`) needs:
 

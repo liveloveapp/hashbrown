@@ -7,9 +7,16 @@ export function FeedBadge() {
   const view = feedBadgeView(state.feedStatus, state.aircraft.size);
 
   return (
-    <span className="atc-chip" role="status">
+    <span className="atc-chip">
       {view.live ? <span className="atc-chip-dot" aria-hidden="true" /> : null}
-      {view.label}
+      {/* Only the state word is live; the count changes every poll. */}
+      <span role="status">{view.label}</span>
+      {view.count ? (
+        <span>
+          {' · '}
+          {view.count}
+        </span>
+      ) : null}
     </span>
   );
 }

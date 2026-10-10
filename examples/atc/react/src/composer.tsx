@@ -1,13 +1,5 @@
-import { SOURCE_URLS } from '@atc/shared';
+import { isTyping, SOURCE_URLS } from '@atc/shared';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-
-const EDITABLE =
-  'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
-
-/** Whether a key event started somewhere the user is typing. */
-function isTyping(target: EventTarget | null): boolean {
-  return target instanceof Element && target.closest(EDITABLE) !== null;
-}
 
 /**
  * The message pill and the core-file footnote. `/` focuses the pill from

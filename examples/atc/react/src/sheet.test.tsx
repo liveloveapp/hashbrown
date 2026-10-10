@@ -1,8 +1,9 @@
+import { focusOpensSheet } from '@atc/shared';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { useState } from 'react';
 import { expect, test } from 'vitest';
 import { useAutoScroll } from './dom-hooks';
-import { focusOpensSheet, SheetHandle } from './sheet-handle';
+import { SheetHandle } from './sheet-handle';
 
 /** A sheet section like the app's: focus inside opens it, the handle toggles. */
 function Sheet({ initial = false }: { initial?: boolean }) {

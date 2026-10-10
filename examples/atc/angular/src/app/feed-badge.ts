@@ -6,11 +6,16 @@ import { injectAtcState } from './store';
 @Component({
   selector: 'atc-feed-badge',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="atc-chip" role="status">
+  // Only the state word is a live region; the count changes every poll and
+  // would be announced constantly.
+  template: `<span class="atc-chip">
     @if (view().live) {
       <span class="atc-chip-dot" aria-hidden="true"></span>
     }
-    {{ view().label }}
+    <span role="status">{{ view().label }}</span>
+    @if (view().count; as count) {
+      <span> · {{ count }}</span>
+    }
   </span>`,
 })
 export class FeedBadgeComponent {

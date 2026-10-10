@@ -1,7 +1,8 @@
+import { focusOpensSheet } from '@atc/shared';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AutoScrollDirective } from './auto-scroll';
-import { focusOpensSheet, SheetHandleComponent } from './sheet-handle';
+import { SheetHandleComponent } from './sheet-handle';
 
 function pointer(type: string, clientY: number): Event {
   const event = new Event(type, { bubbles: true });
