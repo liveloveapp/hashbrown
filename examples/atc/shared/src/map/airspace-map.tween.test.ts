@@ -187,3 +187,35 @@ test('an altitude-only change updates the tag text in place without rebuilding t
   );
   map.cleanup();
 });
+
+test('a track-only change keeps the marker element and rotates it in place', async () => {
+  const map = await mount();
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+  const first = map.planeElement();
+  map.setClock(3000);
+
+  map.store.applySnapshot({ at: 2, aircraft: [{ ...plane, trackDeg: 120 }] });
+
+  expect(map.planeElement()).toBe(first);
+  expect(
+    map.planeElement()?.querySelector<HTMLElement>('.atc-plane-body')?.style
+      .transform,
+  ).toBe('rotate(120deg)');
+  map.cleanup();
+});
+
+test('a class-only change keeps the marker element and toggles the class', async () => {
+  const map = await mount();
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+  const first = map.planeElement();
+  first?.classList.add('is-pulsing');
+
+  map.store.select('aaaaaa');
+
+  expect(map.planeElement()).toBe(first);
+  expect(first?.classList.contains('is-selected')).toBe(true);
+  expect(first?.classList.contains('is-pulsing')).toBe(true);
+  map.store.select(null);
+  expect(first?.classList.contains('is-selected')).toBe(false);
+  map.cleanup();
+});

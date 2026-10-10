@@ -52,15 +52,40 @@ export function planeTagText(
   return `${aircraft.callsign} · ${altitude}`;
 }
 
+/** Classes the store drives; toggled in place, leaving others (is-pulsing). */
+const STATE_CLASSES = [
+  'is-selected',
+  'is-followed',
+  'is-highlighted',
+  'is-dimmed',
+];
+
 /**
- * Updates an existing marker's tag text in place with `textContent`, so the
- * marker is not rebuilt (and its pulse and hover survive) when only altitude
- * changes.
+ * Updates an existing marker in place: state classes, rotation and tag text
+ * (via `textContent`), so the marker is never rebuilt and its pulse and hover
+ * survive live track and altitude jitter.
  */
-function updatePlaneTag(element: HTMLElement | undefined, aircraft: Aircraft) {
-  const tag = element?.querySelector('.atc-plane-tag');
-  const [callsign, altitude] = planeTagText(aircraft).split(' · ');
+function updatePlane(
+  element: HTMLElement | undefined,
+  aircraft: Aircraft,
+  className: string,
+) {
+  const plane = element?.querySelector('.atc-plane');
+  if (!plane) {
+    return;
+  }
+  const wanted = className.split(' ');
+  for (const name of STATE_CLASSES) {
+    plane.classList.toggle(name, wanted.includes(name));
+  }
+  const body = plane.querySelector<HTMLElement>('.atc-plane-body');
+  const transform = `rotate(${Math.round(aircraft.trackDeg ?? 0)}deg)`;
+  if (body && body.style.transform !== transform) {
+    body.style.transform = transform;
+  }
+  const tag = plane.querySelector('.atc-plane-tag');
   const alt = tag?.querySelector('.atc-plane-alt');
+  const [callsign, altitude] = planeTagText(aircraft).split(' · ');
   if (!tag || !alt) {
     return;
   }
@@ -171,8 +196,7 @@ export async function createAirspaceMap(options: {
       iconSize: [22, 22],
       iconAnchor: [11, 11],
     });
-  /** `shape` is the class and rotation; the tag text updates in place. */
-  const markers = new Map<string, { marker: Marker; shape: string }>();
+  const markers = new Map<string, { marker: Marker }>();
   let lastPulseAt: number | null = null;
   let zooming = false;
   let panning = false;
@@ -279,25 +303,18 @@ export async function createAirspaceMap(options: {
     }
     for (const aircraft of state.aircraft.values()) {
       const className = markerClassName(state, aircraft.hex);
-      const shape = `${className}|${Math.round(aircraft.trackDeg ?? 0)}`;
-      const html = planeIconHtml(aircraft, className);
       const existing = markers.get(aircraft.hex);
       if (existing) {
-        if (existing.shape !== shape) {
-          existing.marker.setIcon(icon(html));
-          markers.set(aircraft.hex, { marker: existing.marker, shape });
-        } else {
-          updatePlaneTag(existing.marker.getElement(), aircraft);
-        }
+        updatePlane(existing.marker.getElement(), aircraft, className);
       } else {
         const marker = L.marker([aircraft.lat, aircraft.lon], {
-          icon: icon(html),
+          icon: icon(planeIconHtml(aircraft, className)),
           keyboard: false,
           title: aircraft.callsign,
         })
           .on('click', () => store.select(aircraft.hex))
           .addTo(map);
-        markers.set(aircraft.hex, { marker, shape });
+        markers.set(aircraft.hex, { marker });
       }
     }
     panToFollowed(true);
