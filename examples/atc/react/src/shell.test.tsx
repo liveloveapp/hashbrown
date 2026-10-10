@@ -92,7 +92,7 @@ test('the empty state asks a question and offers every starter prompt', () => {
 test('tool chips spin while running, then settle as done or failed', () => {
   const find = {
     name: 'findAircraft',
-    args: { approaching: 'SEA', sortBy: 'distance' },
+    args: { approaching: 'KSEA', sortBy: 'distance' },
     status: 'pending' as const,
   };
   const highlight = {
@@ -124,7 +124,7 @@ test('tool chips spin while running, then settle as done or failed', () => {
   expect(running).toEqual([
     {
       state: 'running',
-      text: 'findAircraft · approaching SEA',
+      text: 'findAircraft · approaching KSEA',
       spinner: true,
     },
     {

@@ -232,7 +232,7 @@ export function createAtcTools(context: AtcToolContext) {
     lookupPlace: {
       name: 'lookupPlace' as const,
       description:
-        'Find a Pacific Northwest airport by ICAO or IATA code, name or city. Returns its ICAO code, or found false.',
+        'Find a Pacific Northwest airport by ICAO, IATA or FAA code, name or city. Returns its ICAO code, or found false.',
       schema: s.object('Place lookup', {
         query: s.string('What the user called the place, such as Bend or KBDN'),
       }),
@@ -244,7 +244,7 @@ export function createAtcTools(context: AtcToolContext) {
           : {
               found: true as const,
               code: airport.code,
-              iata: airport.iata,
+              faa: airport.faa,
               name: airport.name,
               city: `${airport.city}, ${airport.state}`,
             };
@@ -292,12 +292,15 @@ export function createAtcTools(context: AtcToolContext) {
         'Zoom the map back out to the whole Pacific Northwest and remove any area outline.',
       schema: noInput,
       handler: async (_input: Record<string, never>) => {
+        // The outline always goes; while following, the map stays on the plane.
         store.resetView();
         const followed = followedLabel(store.getState());
 
-        return followed === null
-          ? { reset: true }
-          : { reset: false, reason: followingReason(followed) };
+        return {
+          reset: true as const,
+          moved: followed === null,
+          ...(followed === null ? {} : { reason: followingReason(followed) }),
+        };
       },
     },
     getSelectedAircraft: {

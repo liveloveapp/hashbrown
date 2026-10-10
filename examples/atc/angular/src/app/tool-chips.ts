@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 
 /**
- * One chip per tool call, e.g. `findAircraft · approaching SEA`. A chip only
+ * One chip per tool call, e.g. `findAircraft · approaching KSEA`. A chip only
  * spins while its call is pending and the chat is busy, so it always settles.
  */
 @Component({

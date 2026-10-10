@@ -297,6 +297,7 @@ export async function createAirspaceMap(options: {
   /** The part of the map not under the phone's bottom sheet. */
   let cardArea: CardSize = { width: 0, height: 0 };
   map.on('dragstart', () => {
+    programmatic = false;
     store.follow(null);
     store.cancelViewRequest();
   });
@@ -425,14 +426,16 @@ export async function createAirspaceMap(options: {
     }
     map.panBy([offset.x, offset.y], { animate });
   };
-  /** Runs a map move this controller makes, so it is not taken for the user's. */
+  /**
+   * Runs a map move this controller makes, so it is not taken for the user's.
+   * The flag holds until the move ends: Leaflet starts an animated zoom (and
+   * fires its zoomstart) a frame later, after `move` has returned. A move with
+   * nothing to animate ends at once; a user drag clears the flag too.
+   */
   const moveMap = (move: () => void) => {
     programmatic = true;
-    try {
-      move();
-    } finally {
-      programmatic = false;
-    }
+    map.once('moveend', () => (programmatic = false));
+    move();
   };
   /** Moves the map so highlighted planes and their tags are legible. */
   const fitHighlight = (target: FitTarget, animate: boolean) => {

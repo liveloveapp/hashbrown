@@ -58,8 +58,11 @@ export type AirportCode = (typeof AIRPORT_CODES)[number];
 export interface Airport extends LatLon {
   /** ICAO code, such as KBDN. */
   readonly code: AirportCode;
-  /** IATA code, such as BDN. */
-  readonly iata: string;
+  /**
+   * FAA location identifier, such as BDN: the ICAO code without its K. For
+   * airline airports it is also the IATA code; for others it may not be.
+   */
+  readonly faa: string;
   readonly name: string;
   readonly city: string;
   /** Two-letter state, such as OR. */
@@ -77,7 +80,7 @@ function airport(
   lon: number,
   aliases: readonly string[] = [],
 ): Airport {
-  return { code, iata: code.slice(1), name, city, state, lat, lon, aliases };
+  return { code, faa: code.slice(1), name, city, state, lat, lon, aliases };
 }
 
 const TABLE: readonly Airport[] = [
@@ -275,7 +278,7 @@ function words(text: string): string {
 
 /**
  * Resolves a place the user named to an airport in the table: an ICAO or
- * IATA code, an airport name or alias, or a city, ignoring case,
+ * FAA code (the IATA code at airline airports), an airport name or alias, or a city, ignoring case,
  * punctuation and words such as "airport" or "Oregon". Exact matches win;
  * otherwise a name or city that starts with the query (three letters or
  * more). Returns null for places outside the table, such as Tokyo or KJFK.
@@ -286,7 +289,7 @@ export function lookupPlace(query: string): Airport | null {
     return null;
   }
   const exact = TABLE.find((entry) =>
-    [entry.code, entry.iata, entry.name, entry.city, ...entry.aliases].some(
+    [entry.code, entry.faa, entry.name, entry.city, ...entry.aliases].some(
       (candidate) => words(candidate) === wanted,
     ),
   );

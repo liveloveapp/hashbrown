@@ -270,7 +270,7 @@ const SUMMARIES: Record<
 };
 
 /**
- * A short label for a tool call, such as `findAircraft · approaching SEA`.
+ * A short label for a tool call, such as `findAircraft · approaching KSEA`.
  * Arguments may be partial while they stream, so anything unexpected falls
  * back to the tool name.
  */

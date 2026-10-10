@@ -327,7 +327,7 @@ test('lookupPlace resolves a place or tells the model it is unknown', async () =
   expect(bend).toEqual({
     found: true,
     code: 'KBDN',
-    iata: 'BDN',
+    faa: 'BDN',
     name: 'Bend Municipal',
     city: 'Bend, OR',
   });
@@ -389,7 +389,7 @@ test('showArea refuses unknown places and leaves the map alone', async () => {
   expect(store.getState()).toBe(INITIAL_STATE);
 });
 
-test('while following, showArea and resetMap report that the map stays on the plane', async () => {
+test('while following, showArea and resetMap change the outline but report that the map stays on the plane', async () => {
   const store = createAtcStore();
   store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });
   store.follow('aaaaaa');
@@ -407,9 +407,11 @@ test('while following, showArea and resetMap report that the map stays on the pl
     reason: 'Following UAL100. Call stopFollowing first to move the map.',
   });
   expect(reset).toEqual({
-    reset: false,
+    reset: true,
+    moved: false,
     reason: 'Following UAL100. Call stopFollowing first to move the map.',
   });
+  expect(store.getState().shownArea).toBeNull();
 });
 
 test('resetMap returns to the regional view', async () => {
@@ -419,7 +421,7 @@ test('resetMap returns to the regional view', async () => {
 
   const result = await tools.resetMap.handler({});
 
-  expect(result).toEqual({ reset: true });
+  expect(result).toEqual({ reset: true, moved: true });
   expect(store.getState().shownArea).toBeNull();
   expect(store.getState().viewRequest?.kind).toBe('reset');
 });
