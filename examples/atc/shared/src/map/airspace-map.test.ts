@@ -1,7 +1,11 @@
 import { expect, test } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { applySnapshot, INITIAL_STATE } from '../store';
-import { markerClassName, planeIconHtml } from './airspace-map';
+import {
+  followPanTarget,
+  markerClassName,
+  planeIconHtml,
+} from './airspace-map';
 
 const plane: Aircraft = {
   hex: 'aaaaaa',
@@ -44,4 +48,14 @@ test('planeIconHtml rotates the plane to its track and tags it with its ID', () 
   expect(html).toContain('data-hex="aaaaaa"');
   expect(html).toContain('data-callsign="UAL100"');
   expect(html).toContain('rotate(272deg)');
+});
+
+test('followPanTarget pans only when the followed position changed', () => {
+  const here = { lat: 41.9, lon: -87.9 };
+
+  const first = followPanTarget(null, here);
+  const unchanged = followPanTarget(here, { ...here });
+  const moved = followPanTarget(here, { lat: 42, lon: -87.9 });
+
+  expect([first, unchanged, moved]).toEqual([true, false, true]);
 });

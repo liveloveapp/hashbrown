@@ -39,6 +39,18 @@ export function planeIconHtml(aircraft: Aircraft, className: string): string {
   return `<div class="${className}" data-hex="${aircraft.hex}" data-callsign="${aircraft.callsign}" style="transform: rotate(${rotation}deg)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2l1.6 6.4L21 13v2l-7.3-2.2-.7 5.4 2.5 1.8V21L12 20l-3.5 1v-1l2.5-1.8-.7-5.4L3 15v-2l7.4-4.6z"/></svg></div>`;
 }
 
+/**
+ * Whether the map should pan to a followed aircraft: only when its position
+ * differs from where the map last panned, so unrelated store updates (or a
+ * user drag) do not pull the view back.
+ */
+export function followPanTarget(
+  last: { lat: number; lon: number } | null,
+  next: { lat: number; lon: number },
+): boolean {
+  return last === null || last.lat !== next.lat || last.lon !== next.lon;
+}
+
 /** A mounted map. */
 export interface AirspaceMapHandle {
   /** Stops syncing with the store and removes the map. */
@@ -87,6 +99,8 @@ export async function createAirspaceMap(options: {
     });
   const markers = new Map<string, { marker: Marker; html: string }>();
   let lastPulseAt: number | null = null;
+  let lastPan: { lat: number; lon: number } | null = null;
+  map.on('dragstart', () => store.follow(null));
 
   const render = (state: AtcState) => {
     for (const [hex, entry] of markers) {
@@ -122,9 +136,11 @@ export async function createAirspaceMap(options: {
       state.followingHex === null
         ? undefined
         : state.aircraft.get(state.followingHex);
-    if (followed) {
-      map.panTo([followed.lat, followed.lon], { animate: true });
+    const target = followed ? { lat: followed.lat, lon: followed.lon } : null;
+    if (target && followPanTarget(lastPan, target)) {
+      map.panTo([target.lat, target.lon], { animate: true });
     }
+    lastPan = target;
     if (state.pulse !== null && state.pulse.at !== lastPulseAt) {
       lastPulseAt = state.pulse.at;
       const plane = markers
