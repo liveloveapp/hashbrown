@@ -5,3 +5,5 @@ export * from './geo';
 export * from './names';
 export * from './places';
 export * from './store';
+export * from './feed';
+export * from './routes';
