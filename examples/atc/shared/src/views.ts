@@ -125,18 +125,115 @@ export function arrivalsRows(
 /** What the feed badge shows. */
 export interface FeedBadgeView {
   readonly label: string;
+  /** True when the feed is live; the chip then shows a dot. */
+  readonly live: boolean;
 }
 
-const BADGES: Record<FeedStatus, FeedBadgeView> = {
-  connecting: { label: 'Connecting…' },
-  live: { label: 'Live · adsb.lol' },
-  delayed: { label: 'Data delayed' },
-  stalled: { label: 'Data delayed' },
+const OTHER_BADGES: Record<Exclude<FeedStatus, 'live'>, string> = {
+  connecting: 'Connecting…',
+  delayed: 'Data delayed',
+  stalled: 'Data delayed',
 };
 
-/** The badge for a feed status. */
-export function feedBadgeView(status: FeedStatus): FeedBadgeView {
-  return BADGES[status];
+/** The badge for a feed status, e.g. "Live · 312 aircraft". */
+export function feedBadgeView(
+  status: FeedStatus,
+  aircraftCount: number,
+): FeedBadgeView {
+  return status === 'live'
+    ? {
+        label: `Live · ${aircraftCount.toLocaleString('en-US')} aircraft`,
+        live: true,
+      }
+    : { label: OTHER_BADGES[status], live: false };
+}
+
+const MAX_ARG = 24;
+
+function record(args: unknown): Record<string, unknown> {
+  return typeof args === 'object' && args !== null
+    ? (args as Record<string, unknown>)
+    : {};
+}
+
+function shortText(value: unknown): string | null {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (text === '') return null;
+
+  return text.length > MAX_ARG ? `${text.slice(0, MAX_ARG - 1)}…` : text;
+}
+
+function feet(value: unknown, prefix: string): string | null {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? `${prefix} ${Math.round(value).toLocaleString('en-US')} ft`
+    : null;
+}
+
+function findSummary(args: Record<string, unknown>): string | null {
+  const approaching = shortText(args['approaching']);
+  const filters = [
+    shortText(args['airline']),
+    shortText(args['typeCode']),
+    feet(args['minAltitudeFt'], 'above'),
+    feet(args['maxAltitudeFt'], 'below'),
+    approaching === null ? null : `approaching ${approaching}`,
+  ].filter((part): part is string => part !== null);
+  if (filters.length > 0) return filters.join(', ');
+  const sortBy = shortText(args['sortBy']);
+
+  return sortBy === null ? null : `sorted by ${sortBy}`;
+}
+
+const SUMMARIES: Record<
+  string,
+  (args: Record<string, unknown>) => string | null
+> = {
+  findAircraft: findSummary,
+  lookupRoute: (args) => shortText(args['callsign'])?.toUpperCase() ?? null,
+  highlightAircraft: (args) =>
+    Array.isArray(args['hexes']) ? `${args['hexes'].length} aircraft` : null,
+  followAircraft: (args) => shortText(args['hex'])?.toLowerCase() ?? null,
+};
+
+/**
+ * A short label for a tool call, such as `findAircraft · approaching SEA`.
+ * Arguments may be partial while they stream, so anything unexpected falls
+ * back to the tool name.
+ */
+export function toolCallLabel(name: string, args: unknown): string {
+  const summary = SUMMARIES[name]?.(record(args)) ?? null;
+
+  return summary === null ? name : `${name} · ${summary}`;
+}
+
+/** The parts of a Hashbrown tool call that the tool chip reads. */
+export interface ToolCallLike {
+  readonly name: string;
+  readonly args: unknown;
+  readonly status: 'pending' | 'done';
+  readonly result?: { readonly status: 'fulfilled' | 'rejected' };
+}
+
+/** What a tool chip shows. Only `running` animates. */
+export interface ToolChipView {
+  readonly label: string;
+  readonly state: 'running' | 'done' | 'failed' | 'stopped';
+}
+
+/**
+ * The chip for one tool call. A pending call only spins while the chat is
+ * busy, so a run that errors or stops never leaves a chip spinning.
+ */
+export function toolChipView(call: ToolCallLike, busy: boolean): ToolChipView {
+  const label = toolCallLabel(call.name, call.args);
+  if (call.status === 'pending') {
+    return { label, state: busy ? 'running' : 'stopped' };
+  }
+
+  return {
+    label,
+    state: call.result?.status === 'rejected' ? 'failed' : 'done',
+  };
 }
 
 /** A user message's text, or an empty string for non-text content. */

@@ -7,6 +7,8 @@ import {
   flightCardView,
   messageText,
   routeText,
+  toolCallLabel,
+  toolChipView,
 } from './views';
 
 const plane: Aircraft = {
@@ -120,17 +122,136 @@ test('arrivalsRows computes distance and ETA to the airport', () => {
   ]);
 });
 
-test('feedBadgeView labels each feed status', () => {
-  const views = (['connecting', 'live', 'delayed', 'stalled'] as const).map(
-    feedBadgeView,
-  );
+test('feedBadgeView labels each feed status with the aircraft count when live', () => {
+  const statuses = ['connecting', 'live', 'delayed', 'stalled'] as const;
+
+  const views = statuses.map((status) => feedBadgeView(status, 312));
 
   expect(views).toEqual([
-    { label: 'Connecting…' },
-    { label: 'Live · adsb.lol' },
-    { label: 'Data delayed' },
-    { label: 'Data delayed' },
+    { label: 'Connecting…', live: false },
+    { label: 'Live · 312 aircraft', live: true },
+    { label: 'Data delayed', live: false },
+    { label: 'Data delayed', live: false },
   ]);
+});
+
+test('feedBadgeView formats large counts and a single aircraft', () => {
+  const counts = [1, 1234];
+
+  const labels = counts.map((count) => feedBadgeView('live', count).label);
+
+  expect(labels).toEqual(['Live · 1 aircraft', 'Live · 1,234 aircraft']);
+});
+
+test('toolCallLabel summarises findAircraft filters', () => {
+  const base = {
+    airline: null,
+    typeCode: null,
+    minAltitudeFt: null,
+    maxAltitudeFt: null,
+    approaching: null,
+    sortBy: 'distance',
+    limit: 10,
+  };
+
+  const labels = [
+    toolCallLabel('findAircraft', { ...base, approaching: 'SEA' }),
+    toolCallLabel('findAircraft', { ...base, sortBy: 'altitude' }),
+    toolCallLabel('findAircraft', {
+      ...base,
+      airline: 'UAL',
+      typeCode: '737',
+      minAltitudeFt: 10000,
+      maxAltitudeFt: 30000,
+    }),
+  ];
+
+  expect(labels).toEqual([
+    'findAircraft · approaching SEA',
+    'findAircraft · sorted by altitude',
+    'findAircraft · UAL, 737, above 10,000 ft, below 30,000 ft',
+  ]);
+});
+
+test('toolCallLabel summarises the other tools by their main argument', () => {
+  const calls: [string, unknown][] = [
+    ['lookupRoute', { callsign: ' ual1372 ' }],
+    ['highlightAircraft', { hexes: ['a', 'b', 'c'] }],
+    ['highlightAircraft', { hexes: ['a'] }],
+    ['followAircraft', { hex: 'A1B2C3' }],
+    ['getSelectedAircraft', {}],
+    ['clearHighlight', {}],
+  ];
+
+  const labels = calls.map(([name, args]) => toolCallLabel(name, args));
+
+  expect(labels).toEqual([
+    'lookupRoute · UAL1372',
+    'highlightAircraft · 3 aircraft',
+    'highlightAircraft · 1 aircraft',
+    'followAircraft · a1b2c3',
+    'getSelectedAircraft',
+    'clearHighlight',
+  ]);
+});
+
+test('toolCallLabel falls back to the name for partial or odd arguments', () => {
+  const calls: [string, unknown][] = [
+    ['findAircraft', undefined],
+    ['findAircraft', { approaching: null }],
+    ['lookupRoute', { callsign: 42 }],
+    ['highlightAircraft', { hexes: 'nope' }],
+    ['followAircraft', null],
+  ];
+
+  const labels = calls.map(([name, args]) => toolCallLabel(name, args));
+
+  expect(labels).toEqual([
+    'findAircraft',
+    'findAircraft',
+    'lookupRoute',
+    'highlightAircraft',
+    'followAircraft',
+  ]);
+});
+
+test('toolCallLabel shortens long free-text arguments', () => {
+  const airline = 'x'.repeat(60);
+
+  const label = toolCallLabel('findAircraft', { airline, sortBy: 'distance' });
+
+  expect(label).toBe(`findAircraft · ${'x'.repeat(23)}…`);
+});
+
+test('toolChipView spins only while the call is pending and the chat is busy', () => {
+  const args = { hexes: ['a', 'b'] };
+  const pending = {
+    name: 'highlightAircraft',
+    args,
+    status: 'pending' as const,
+  };
+  const done = {
+    ...pending,
+    status: 'done' as const,
+    result: { status: 'fulfilled' as const },
+  };
+  const failed = {
+    ...pending,
+    status: 'done' as const,
+    result: { status: 'rejected' as const },
+  };
+
+  const states = [
+    toolChipView(pending, true).state,
+    toolChipView(pending, false).state,
+    toolChipView(done, true).state,
+    toolChipView(failed, true).state,
+  ];
+
+  expect(states).toEqual(['running', 'stopped', 'done', 'failed']);
+  expect(toolChipView(pending, true).label).toBe(
+    'highlightAircraft · 2 aircraft',
+  );
 });
 
 test('messageText reads string content and ignores anything else', () => {

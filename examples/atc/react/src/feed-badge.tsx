@@ -3,7 +3,8 @@ import { useAtcState } from './store';
 
 /** Shows how fresh the aircraft data is. */
 export function FeedBadge() {
-  const view = feedBadgeView(useAtcState().feedStatus);
+  const state = useAtcState();
+  const view = feedBadgeView(state.feedStatus, state.aircraft.size);
 
   return (
     <span className="atc-badge" role="status">
