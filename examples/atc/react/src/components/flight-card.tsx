@@ -2,6 +2,7 @@ import { flightCardView } from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
 import { useEffect } from 'react';
 import { useAtcState, useAtcStore } from '../store';
+import { CardSkeleton } from './card-skeleton';
 
 /** Props the model provides. `hex` arrives whole; `note` streams. */
 export interface FlightCardProps {
@@ -17,21 +18,33 @@ export function FlightCard({ note, hex }: FlightCardProps) {
 
   if (view.status === 'unknown') {
     return (
-      <article className="atc-card" data-testid="flight-card" data-hex={view.hex} data-status="unknown">
-        <p>Unknown aircraft</p>
+      <article
+        className="atc-card"
+        data-testid="flight-card"
+        data-hex={view.hex}
+        data-status="unknown"
+      >
+        <p className="atc-card-title">Unknown aircraft</p>
         <p className="atc-card-note">{note}</p>
       </article>
     );
   }
 
   return (
-    <article className="atc-card" data-testid="flight-card" data-hex={view.hex} data-status={view.status}>
+    <article
+      className="atc-card"
+      data-testid="flight-card"
+      data-hex={view.hex}
+      data-status={view.status}
+    >
       <header>
-        <strong>{view.callsign}</strong>
-        <span>{view.airline}</span>
+        <strong className="atc-callsign">{view.callsign}</strong>
+        <span className="atc-card-muted">{view.airline}</span>
       </header>
-      <p className="atc-card-type">{view.aircraftType}</p>
-      {view.route ? <p className="atc-card-route">{view.route}</p> : null}
+      <p className="atc-card-muted">
+        {view.aircraftType}
+        {view.route ? ` · ${view.route}` : null}
+      </p>
       <dl>
         <div>
           <dt>Altitude</dt>
@@ -46,7 +59,11 @@ export function FlightCard({ note, hex }: FlightCardProps) {
           <dd>{view.heading}</dd>
         </div>
       </dl>
-      {view.lastSeen ? <p className="atc-card-status">Out of range · last seen {view.lastSeen}</p> : null}
+      {view.lastSeen ? (
+        <p className="atc-card-muted">
+          Out of range · last seen {view.lastSeen}
+        </p>
+      ) : null}
       <p className="atc-card-note">{note}</p>
     </article>
   );
@@ -58,8 +75,10 @@ export function FlightCardFallback({ partialProps }: ComponentFallbackProps) {
 
   return (
     <article className="atc-card" data-testid="flight-card-fallback">
-      <div className="atc-skeleton" aria-label="Identifying aircraft" />
-      <p className="atc-card-note">{typeof note === 'string' ? note : ''}</p>
+      <CardSkeleton />
+      {typeof note === 'string' && note ? (
+        <p className="atc-card-note">{note}</p>
+      ) : null}
     </article>
   );
 }

@@ -23,7 +23,10 @@ function isTyping(target: EventTarget | null): boolean {
 @Component({
   selector: 'atc-composer',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(document:keydown)': 'focusOnSlash($event)' },
+  host: {
+    class: 'atc-composer',
+    '(document:keydown)': 'focusOnSlash($event)',
+  },
   template: `
     <form class="atc-composer-pill" (submit)="submit(); (false)">
       <input

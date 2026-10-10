@@ -1,6 +1,7 @@
 import { flightCardView } from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
 import { useAtcState } from '../store';
+import { CardSkeleton } from './card-skeleton';
 
 /** Props the model provides. `hexes` arrives whole; `takeaway` streams. */
 export interface AircraftCompareProps {
@@ -19,13 +20,19 @@ export function AircraftCompare({ takeaway, hexes }: AircraftCompareProps) {
           const view = flightCardView(state, hex);
 
           return view.status === 'unknown' ? (
-            <div key={`${index}-${hex}`}>Unknown aircraft</div>
+            <div key={`${index}-${hex}`} className="atc-compare-item">
+              <p className="atc-card-muted">Unknown aircraft</p>
+            </div>
           ) : (
-            <div key={`${index}-${hex}`} data-hex={view.hex}>
-              <strong>{view.callsign}</strong>
-              <p className="atc-card-type">{view.aircraftType}</p>
-              <p>{view.altitude}</p>
-              <p>{view.speed}</p>
+            <div
+              key={`${index}-${hex}`}
+              className="atc-compare-item"
+              data-hex={view.hex}
+            >
+              <strong className="atc-callsign">{view.callsign}</strong>
+              <p className="atc-card-muted">{view.aircraftType}</p>
+              <p className="atc-figure">{view.altitude}</p>
+              <p className="atc-figure">{view.speed}</p>
             </div>
           );
         })}
@@ -43,10 +50,10 @@ export function AircraftCompareFallback({
 
   return (
     <section className="atc-card" data-testid="aircraft-compare-fallback">
-      <div className="atc-skeleton" aria-label="Identifying aircraft" />
-      <p className="atc-card-note">
-        {typeof takeaway === 'string' ? takeaway : ''}
-      </p>
+      <CardSkeleton />
+      {typeof takeaway === 'string' && takeaway ? (
+        <p className="atc-card-note">{takeaway}</p>
+      ) : null}
     </section>
   );
 }

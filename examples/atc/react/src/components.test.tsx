@@ -43,6 +43,7 @@ test('the fallback shows the streaming note while the ID is incomplete', () => {
   expect(screen.getByTestId('flight-card-fallback')).toHaveTextContent(
     'Climbing out of',
   );
+  expect(screen.getByText('Identifying aircraft…')).toBeVisible();
   expect(screen.queryByTestId('flight-card')).toBeNull();
 });
 

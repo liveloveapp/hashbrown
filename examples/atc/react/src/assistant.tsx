@@ -4,8 +4,7 @@ import {
   createAtcTools,
   fetchRoute,
   flightCardContract,
-  messageText,
-  STARTER_PROMPTS,
+  transcriptItems,
 } from '@atc/shared';
 import {
   exposeComponent,
@@ -13,7 +12,7 @@ import {
   useTool,
   useUiChat,
 } from '@hashbrownai/react';
-import { type FormEvent, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   AircraftCompare,
   AircraftCompareFallback,
@@ -23,12 +22,16 @@ import {
   ArrivalsBoardFallback,
 } from './components/arrivals-board';
 import { FlightCard, FlightCardFallback } from './components/flight-card';
+import { Composer } from './composer';
+import { useAutoScroll } from './dom-hooks';
+import { EmptyState } from './empty-state';
 import { useAtcStore } from './store';
+import { Transcript } from './transcript';
 
 // 1. Expose your components. The model can only render these, and Skillet
 //    validates every prop. IDs never stream, so a card never shows the wrong plane.
 const components = [
-  exposeMarkdown(),
+  exposeMarkdown({ className: 'atc-prose' }),
   exposeComponent(FlightCard, {
     name: flightCardContract.name,
     description: flightCardContract.description,
@@ -52,7 +55,7 @@ const components = [
   }),
 ];
 
-/** The overlay chat: components, browser-side tools and the streaming answer. */
+/** The chat panel: components, browser-side tools and the streaming answer. */
 export function Assistant() {
   const store = useAtcStore();
   const atc = useMemo(() => createAtcTools({ store, fetchRoute }), [store]);
@@ -75,63 +78,29 @@ export function Assistant() {
     components,
     tools,
   });
-  const [draft, setDraft] = useState('');
-
-  const send = (text: string) => {
-    const content = text.trim();
-    if (content) {
-      chat.sendMessage({ role: 'user', content });
-      setDraft('');
-    }
-  };
-  const onSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    send(draft);
-  };
+  const scroller = useAutoScroll<HTMLDivElement>();
+  const send = (content: string) => chat.sendMessage({ role: 'user', content });
 
   return (
-    <section className="atc-assistant" aria-label="Assistant">
-      <ol className="atc-transcript">
-        {chat.messages.map((message, index) =>
-          message.role === 'user' ? (
-            <li key={index} className="atc-user">
-              {messageText(message.content)}
-            </li>
-          ) : message.role === 'assistant' &&
-            message.ui &&
-            message.ui.length > 0 ? (
-            <li key={index}>{message.ui}</li>
-          ) : null,
-        )}
-      </ol>
-      {chat.error ? (
-        <p className="atc-error" role="alert">
-          Something went wrong.{' '}
-          <button type="button" onClick={() => chat.resendMessages()}>
-            Retry
-          </button>
-        </p>
-      ) : null}
-      {chat.messages.length === 0 ? (
-        <div className="atc-starters">
-          {STARTER_PROMPTS.map((prompt) => (
-            <button key={prompt} type="button" onClick={() => send(prompt)}>
-              {prompt}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <form className="atc-composer" onSubmit={onSubmit}>
-        <input
-          aria-label="Message"
-          placeholder="Ask about the planes on the map"
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+    <div className="atc-chat" role="region" aria-label="Assistant">
+      <div className="atc-chat-body" {...scroller}>
+        {chat.messages.length === 0 && !chat.error ? (
+          <EmptyState onPick={send} />
+        ) : null}
+        <Transcript
+          items={transcriptItems(chat.messages)}
+          busy={chat.isLoading}
         />
-        <button type="submit" disabled={chat.isLoading}>
-          Send
-        </button>
-      </form>
-    </section>
+        {chat.error ? (
+          <p className="atc-error" role="alert">
+            Something went wrong.{' '}
+            <button type="button" onClick={() => chat.resendMessages()}>
+              Retry
+            </button>
+          </p>
+        ) : null}
+      </div>
+      <Composer busy={chat.isLoading} onSend={send} />
+    </div>
   );
 }

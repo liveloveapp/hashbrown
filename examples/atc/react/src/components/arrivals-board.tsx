@@ -1,6 +1,7 @@
 import { type AirportCode, arrivalsRows } from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
 import { useAtcState } from '../store';
+import { CardSkeleton } from './card-skeleton';
 
 /** Props the model provides. Rows stream in; each ID arrives whole. */
 export interface ArrivalsBoardProps {
@@ -15,15 +16,15 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
 
   return (
     <section className="atc-card" data-testid="arrivals-board">
-      <h3>{title}</h3>
-      <table>
+      <h3 className="atc-card-title">{title}</h3>
+      <table className="atc-board">
         <thead>
           <tr>
-            <th>Flight</th>
-            <th>Type</th>
-            <th>Altitude</th>
-            <th>Distance</th>
-            <th>ETA</th>
+            <th scope="col">Flight</th>
+            <th scope="col">Type</th>
+            <th scope="col">Alt</th>
+            <th scope="col">Dist</th>
+            <th scope="col">ETA</th>
           </tr>
         </thead>
         <tbody>
@@ -34,8 +35,10 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
               data-hex={row.hex}
               data-status={row.status}
             >
-              <td>{row.callsign}</td>
-              <td>{row.aircraftType}</td>
+              <td className="atc-callsign">{row.callsign}</td>
+              <td className="atc-board-type" title={row.aircraftType}>
+                {row.aircraftType}
+              </td>
               <td>{row.altitude}</td>
               <td>{row.distance}</td>
               <td>{row.eta}</td>
@@ -55,8 +58,10 @@ export function ArrivalsBoardFallback({
 
   return (
     <section className="atc-card" data-testid="arrivals-board-fallback">
-      <h3>{typeof title === 'string' ? title : ''}</h3>
-      <div className="atc-skeleton" />
+      {typeof title === 'string' && title ? (
+        <h3 className="atc-card-title">{title}</h3>
+      ) : null}
+      <CardSkeleton />
     </section>
   );
 }

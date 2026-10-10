@@ -92,13 +92,6 @@ button, input { font: inherit; color: inherit; }
   transition: border-color var(--atc-fast) var(--atc-ease);
 }
 .atc-starters button:hover { border-color: var(--atc-muted); }
-.atc-composer { display: flex; gap: 8px; padding: var(--atc-gutter); border-top: 1px solid var(--atc-border); }
-.atc-composer input { flex: 1; padding: 8px 12px; border: 1px solid var(--atc-border); border-radius: var(--atc-radius-row); background: var(--atc-surface); }
-.atc-composer input:focus-visible { outline: 2px solid var(--atc-accent); outline-offset: 2px; border-color: var(--atc-accent); }
-.atc-composer button {
-  border: 1px solid var(--atc-ink); background: var(--atc-ink); color: var(--atc-surface);
-  border-radius: 999px; padding: 6px 14px; cursor: pointer;
-}
 .atc-error { margin: 0 var(--atc-gutter); color: var(--atc-muted); }
 
 /* Workbench: chat panel left, map panel right, on the canvas. The window never scrolls. */
@@ -160,7 +153,7 @@ button, input { font: inherit; color: inherit; }
 .atc-tool-chip[data-state='running'] { color: var(--atc-ink); }
 @keyframes atc-spin { to { transform: rotate(360deg); } }
 
-atc-composer { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 0 16px 12px; }
+.atc-composer { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 0 16px 12px; }
 .atc-footnote { align-self: center; font-size: 12px; color: var(--atc-muted); text-decoration: none; }
 .atc-footnote:hover { color: var(--atc-ink); text-decoration: underline; }
 .atc-composer-pill {
@@ -207,7 +200,7 @@ atc-composer { flex: none; display: flex; flex-direction: column; gap: 8px; padd
   }
   .atc-workbench.is-sheet .atc-chat-panel.is-expanded { height: min(86dvh, calc(100dvh - 48px - var(--atc-kb, 0px))); }
   .atc-workbench.is-sheet .atc-chat-panel:not(.is-expanded) .atc-chat-body { visibility: hidden; }
-  .atc-workbench.is-sheet atc-composer { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .atc-workbench.is-sheet .atc-composer { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   /* The map's own controls clear the peeking sheet. */
   .atc-workbench.is-sheet .atc-map .leaflet-bottom { bottom: calc(var(--atc-peek) + 4px); }
 
