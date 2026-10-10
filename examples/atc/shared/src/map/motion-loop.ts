@@ -85,6 +85,20 @@ export function createMotionLoop(options: {
    */
   let lastFrameAt: number | null = null;
 
+  /**
+   * Each marker element's rotating body, found once. Keyed by the element, so
+   * a marker whose element is replaced (rebuilt, or a new icon) is looked up
+   * again, and a removed one is forgotten with it.
+   */
+  const bodies = new WeakMap<HTMLElement, HTMLElement | null>();
+  const bodyOf = (icon: HTMLElement): HTMLElement | null => {
+    if (!bodies.has(icon)) {
+      bodies.set(icon, icon.querySelector<HTMLElement>('.atc-plane-body'));
+    }
+
+    return bodies.get(icon) ?? null;
+  };
+
   /** Writes one plane's position and heading; transforms only, no reads. */
   const draw = (hex: string, position: LatLon, heading: number | null) => {
     drawn.set(hex, position);
@@ -93,7 +107,7 @@ export function createMotionLoop(options: {
       return;
     }
     L.DomUtil.setPosition(icon, exactLayerPoint(map, position));
-    const body = icon.querySelector<HTMLElement>('.atc-plane-body');
+    const body = bodyOf(icon);
     const rotation = heading === null ? null : planeRotation(heading);
     if (body && rotation !== null && body.style.transform !== rotation) {
       body.style.transform = rotation;

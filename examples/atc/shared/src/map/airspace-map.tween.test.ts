@@ -321,3 +321,18 @@ test('a fix that lands after seconds without frames (a hidden tab) starts from i
   expect(map.frames.size).toBe(1);
   map.cleanup();
 });
+
+test('frames reuse each plane body instead of querying the DOM again', async () => {
+  const map = await mount();
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+  map.runFrames(16);
+  const icon = map.element.querySelector<HTMLElement>('.atc-plane-icon');
+  const query = vi.spyOn(icon as HTMLElement, 'querySelector');
+
+  for (let time = 32; time <= 1000; time += 16) {
+    map.runFrames(time);
+  }
+
+  expect(query).not.toHaveBeenCalled();
+  map.cleanup();
+});
