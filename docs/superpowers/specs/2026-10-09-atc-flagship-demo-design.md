@@ -33,8 +33,8 @@ and drops the cockpit vocabulary.
 
 ## 2. What atc is
 
-A full-window live map of real aircraft around Chicago O'Hare, from public ADS-B
-data, with a floating chat panel. Visitors ask about what they see. Answers
+A full-window live map of real aircraft over the Pacific Northwest, centred on
+Bend Municipal (KBDN), from public ADS-B data, with a floating chat panel. Visitors ask about what they see. Answers
 render as the app's own components inside the chat, the assistant can
 highlight and follow aircraft on the map, and the cards it renders keep
 updating after the answer finishes.
@@ -60,7 +60,7 @@ with a toggle to React.
 1. **"What's that plane?"** after clicking an aircraft. `getSelectedAircraft`
    reads the selection, `lookupRoute` fetches its scheduled route, and the
    model renders a `FlightCard`.
-2. **"Show me everything landing at O'Hare."** `findAircraft` filters the
+2. **"Show me everything landing at Seattle."** `findAircraft` filters the
    aircraft already in the browser, `highlightAircraft` dims the rest of the
    map, and the model composes an `ArrivalsBoard`.
 3. **"What's the highest plane right now? And the fastest?"** The model chooses
@@ -71,8 +71,8 @@ with a toggle to React.
 ## 3. Scope
 
 **In v1:** the live map and overlay chat in Angular and React, the four starter
-scenarios, live cards, the ID hold-back, replay mode, a provider swap shown in
-code, the hosted deployment, and the docs and homepage changes in §10.
+scenarios, live cards, the ID hold-back, tweened plane motion, a provider swap
+shown in code, the hosted deployment, and the docs and homepage changes in §10.
 
 **Not in v1** (each gets its own spec later):
 
@@ -89,11 +89,11 @@ code, the hosted deployment, and the docs and homepage changes in §10.
 ```
 examples/atc/
   shared/    framework-free TypeScript: feed client, aircraft store, tool
-             handlers, Skillet component schemas, lookup tables, replay
+             handlers, Skillet component schemas, lookup tables, map
   angular/   Angular 22 app: core file, components, Leaflet wrapper
   react/     Vite React app: core file, components, Leaflet wrapper
   server/    /run and /aircraft route handlers, Express for local dev
-  e2e/       Playwright, replay mode, both frameworks
+  e2e/       Playwright, synthetic stubbed feed frames, both frameworks
 ```
 
 `shared/` is plain TypeScript so that readers can see what is framework-specific
@@ -101,16 +101,25 @@ and nothing is written twice. Both apps import it through a path alias.
 
 ### Data flow
 
-1. The browser polls `GET /aircraft?area=ord` every 5 seconds.
+1. The browser polls `GET /aircraft?area=pnw` every 3 seconds
+   (`FEED_INTERVAL_MS`). The `pnw` area is centred on KBDN (44.0946,
+   -121.2002) with adsb.lol's maximum 250 nm radius, shown at zoom 6.
 2. `/aircraft` fetches `https://api.adsb.lol/v2/point/{lat}/{lon}/{radius}` for
    the area, strips owner and operator fields, and responds with
-   `Cache-Control: s-maxage=5, stale-while-revalidate=30`. On Vercel, the CDN
-   cache means all visitors share one upstream call every 5 seconds.
-3. The aircraft store keeps the latest state keyed by ICAO hex code, plus a
+   `Cache-Control: s-maxage=3, stale-while-revalidate=30`. Each server
+   instance also caches per area: concurrent requests share one in-flight
+   upstream call, a snapshot is reused for 3 s, and when adsb.lol fails the
+   last snapshot up to 60 s old is served with `X-Atc-Stale: 1` (otherwise
+   502). After a 429 the instance leaves adsb.lol alone for 15 s. With the
+   CDN in front, all visitors share about one upstream call every 3 seconds.
+3. Between polls the map glides each plane from where it is drawn to its new
+   position over the time since the previous snapshot (clamped to 250 ms to
+   10 s). New planes, moves over 20 nm and `prefers-reduced-motion` jump.
+4. The aircraft store keeps the latest state keyed by ICAO hex code, plus a
    route cache keyed by callsign. By default it keeps only airline callsigns
    (three-letter ICAO prefix followed by a digit).
-4. The map, the tools and the live components all read from the store.
-5. `/run` is the only route that talks to the model.
+5. The map, the tools and the live components all read from the store.
+6. `/run` is the only route that talks to the model.
 
 ### Why a server route for aircraft data
 
@@ -177,8 +186,8 @@ computed in tool code.
 | `stopFollowing` | none | Releases the map |
 
 Bundled tables in `shared/` turn codes into names: about 50 aircraft types
-(`B39M` → "Boeing 737 MAX 9") and about 50 airlines, covering the traffic
-seen at ORD.
+(`B39M` → "Boeing 737 MAX 9") and about 50 airlines. `approaching` accepts
+SEA, PDX, BOI, GEG and RDM.
 
 The system prompt is about 15 lines and pinned on the server. It tells the model
 to answer with components, to use tools for every fact and number, and never to
@@ -209,15 +218,15 @@ and as Vercel functions in production.
   are set on the server. A one-line swap to `HashbrownAnthropic` or
   `HashbrownGoogle` is documented in the README.
 - **`/aircraft`:** the adsb.lol proxy described in §4. `area` comes from a fixed
-  allowlist (`ord` in v1) so the route cannot be used as an open proxy.
+  allowlist (`pnw`) so the route cannot be used as an open proxy.
 
-### Replay mode
+### No replay mode
 
-`?replay=1`, and always in e2e, swaps the live feed for a recorded 10-minute
-snapshot of ORD airspace and the model for aimock fixtures
-(`@copilotkit/aimock` is already a root dependency). The recording script lives
-in `shared/` and is run by hand to refresh the snapshot. Replay also backs the
-"switch to replay" offer when the feed fails, and produces the demo video.
+Replay mode (`?replay=1` and a recorded snapshot) was removed on 2026-10-09:
+the server cache and CDN make the live feed dependable enough on its own. e2e
+stubs `/api/aircraft` with small synthetic frames built in `e2e/src/fixtures.ts`
+and the model with aimock fixtures (`@copilotkit/aimock` is already a root
+dependency).
 
 ## 9. Hosting and dependencies
 
@@ -252,7 +261,7 @@ retirement follow-up.
 
 | Failure | Behaviour |
 | --- | --- |
-| Feed down or slow | Keep the last positions. Show "data delayed" after 15 s; offer "switch to replay" after 60 s. |
+| Feed down or slow | The server serves its last snapshot (≤60 s old) marked stale. The browser keeps the last positions and shows "data delayed" after 15 s without fresh data. |
 | Aircraft leaves the area | Its live card freezes with "Out of range · last seen HH:MM". |
 | Route lookup misses | The card shows "Route unavailable"; the tool returns `null` and the prompt forbids guessing. |
 | `/run` error or rate limit | Inline error in the chat with a retry button; the map keeps working. |
@@ -265,10 +274,11 @@ retirement follow-up.
   `findAircraft` filters and sorting, route caching, owner-field stripping.
 - **Component tests per framework:** the fallback while an ID streams, live
   updates after a store change, the out-of-range state, unknown IDs.
-- **Playwright e2e in replay mode, both frameworks:** the four starter
-  scenarios. Assertions cover the hold-back (no card shows an aircraft before
+- **Playwright e2e on synthetic frames, both frameworks:** `/api/aircraft` is
+  stubbed with one synthetic frame per request. The four starter scenarios
+  plus Retry. Assertions cover the hold-back (no card shows an aircraft before
   its ID is complete), highlighting, following, and live cards changing on the
-  next replay tick.
+  next frame.
 - Tests use top-level `test(...)` in arrange/act/assert style, per AGENTS.md.
 - Each project gets build, test, lint and (where relevant) e2e Nx targets.
 
@@ -278,15 +288,15 @@ retirement follow-up.
 | --- | --- |
 | Core file, per framework | ≤150 |
 | Each framework app, including the core file | ≤1,000 |
-| `shared/` (excluding lookup tables and the replay snapshot) | ≤600 |
+| `shared/` (excluding lookup tables) | ≤600 |
 | `server/` | ≤120 |
 
 For comparison, invoicing is about 15,100 non-test lines and navlog about 9,000.
 
 ## 14. Risks
 
-- **Live data varies.** Mitigated by replay mode for tests and video, and
-  because the starter prompts work in any reasonably busy airspace.
+- **Live data varies.** Mitigated by synthetic frames in e2e, and because
+  the starter prompts work in any reasonably busy airspace.
 - **Upstream feed availability or terms change.** The feed is behind one
   server route, so swapping to another ADS-B source touches one file.
 - **Model quality varies by provider.** Only providers that pass the e2e
