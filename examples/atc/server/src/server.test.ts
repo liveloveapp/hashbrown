@@ -134,7 +134,7 @@ test('the aircraft handler proxies adsb.lol, strips owner data and sets CDN cach
 
   expect(response.status).toBe(200);
   expect(response.headers.get('cache-control')).toBe(
-    'public, s-maxage=5, stale-while-revalidate=30',
+    'public, s-maxage=3, stale-while-revalidate=30',
   );
   expect(String(fetchFn.mock.calls[0][0])).toBe(
     'https://api.adsb.lol/v2/point/41.9786/-87.9048/60',
