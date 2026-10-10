@@ -123,11 +123,13 @@ function fontNames(source: string): string[] {
  * The one allowed gradient: a `linear-gradient` inside the rule for exactly
  * `.atc-shimmer`, the loading shimmer on the assistant's working text. The
  * user asked for a shimmer (2026-10-10), and a sweep across text needs a
- * gradient clipped to it. Only that rule's gradient is exempt; any other
- * selector, or a shadow inside that rule, still fails.
+ * gradient clipped to it. Only a rule whose whole selector is `.atc-shimmer`
+ * (at the start of the source or after another rule or block opens) is
+ * exempt; a selector list or descendant selector that includes it, any other
+ * selector, or a shadow inside that rule still fails.
  */
 function allowShimmerGradient(source: string): string {
-  return source.replace(/(^|[\s}])\.atc-shimmer\s*\{[^}]*\}/g, (rule) =>
+  return source.replace(/(^|[{}])\s*\.atc-shimmer\s*\{[^}]*\}/g, (rule) =>
     rule.replace(/linear-gradient\s*\(/g, 'shimmer-sweep('),
   );
 }
@@ -171,6 +173,8 @@ const BAD: Record<string, string[]> = {
     '.atc-shimmer-wide { background: linear-gradient(red, blue); }',
     '.atc-shimmer { box-shadow: 0 0 2px red; }',
     '.atc-shimmer:hover { background: linear-gradient(red, blue); }',
+    '.atc-card, .atc-shimmer { background: linear-gradient(red, blue); }',
+    '.foo .atc-shimmer { background: linear-gradient(red, blue); }',
     "style={{ boxShadow: '0 1px 2px #000' }}",
     "style={{ textShadow: '0 0 2px red' }}",
     "style={{ backdropFilter: 'blur(4px)' }}",
