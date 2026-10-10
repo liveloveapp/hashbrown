@@ -10,8 +10,8 @@ import {
 import {
   ChangeDetectionStrategy,
   Component,
-  computed,
   inject,
+  linkedSignal,
   signal,
 } from '@angular/core';
 import {
@@ -19,6 +19,7 @@ import {
   exposeComponent,
   exposeMarkdown,
   RenderMessageComponent,
+  type UiChatMessage,
   uiChatResource,
 } from '@hashbrownai/angular';
 import {
@@ -73,17 +74,19 @@ const components = [
       @for (message of messages(); track $index) {
         @if (message.role === 'user') {
           <li class="atc-user">{{ text(message.content) }}</li>
-        } @else if (message.role === 'assistant') {
-          @if (message.content?.ui?.length) {
-            <li><hb-render-message [message]="message" /></li>
-          }
+        } @else if (
+          message.role === 'assistant' && message.content?.ui?.length
+        ) {
+          <li><hb-render-message [message]="message" /></li>
         }
       }
     </ol>
     @if (chat.error()) {
       <p class="atc-error" role="alert">
         Something went wrong.
-        <button type="button" (click)="chat.reload()">Retry</button>
+        <button type="button" (click)="chat.reload() || chat.resendMessages()">
+          Retry
+        </button>
       </p>
     } @else if (messages().length === 0) {
       <div class="atc-starters">
@@ -92,12 +95,12 @@ const components = [
         }
       </div>
     }
-    <form class="atc-composer" (submit)="onSubmit($event)">
+    <form class="atc-composer" (submit)="send(draft()); (false)">
       <input
         aria-label="Message"
         placeholder="Ask about the planes on the map"
         [value]="draft()"
-        (input)="onInput($event)"
+        (input)="draft.set($any($event.target).value)"
       />
       <button type="submit" [disabled]="chat.isLoading()">Send</button>
     </form>
@@ -126,9 +129,11 @@ export class Assistant {
     ],
   });
 
-  protected readonly messages = computed(() =>
-    this.chat.status() === 'error' ? [] : this.chat.value(),
-  );
+  // Keep the last good transcript while the chat is in error, so Retry has context.
+  protected readonly messages = linkedSignal({
+    source: () => (this.chat.status() === 'error' ? null : this.chat.value()),
+    computation: (value, prev): UiChatMessage[] => value ?? prev?.value ?? [],
+  });
   protected readonly draft = signal('');
   protected readonly starters = STARTER_PROMPTS;
   protected readonly text = messageText;
@@ -139,14 +144,5 @@ export class Assistant {
       this.chat.sendMessage({ role: 'user', content });
       this.draft.set('');
     }
-  }
-
-  protected onSubmit(event: Event): void {
-    event.preventDefault();
-    this.send(this.draft());
-  }
-
-  protected onInput(event: Event): void {
-    this.draft.set((event.target as HTMLInputElement).value);
   }
 }

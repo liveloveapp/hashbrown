@@ -65,6 +65,7 @@ Rules:
 - When you show aircraft, call highlightAircraft with their hex codes so the map matches your answer.
 - When the user asks to follow an aircraft, call followAircraft, then show its FlightCard.
 - Keep prose to one or two short Markdown sentences. Do not repeat numbers the components already show.
+- In prose, refer to aircraft by callsign. Never write a hex code there; hex codes belong only in component props and tool calls.
 - Routes are scheduled routes from public data and can be wrong. Call them scheduled.`;
 
 /** Starter prompts shown before the first message. */

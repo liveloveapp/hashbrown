@@ -43,6 +43,7 @@
       "options": {
         "buildTarget": "atc-angular:build:development",
         "port": 4341,
+        "host": "127.0.0.1",
         "proxyConfig": "examples/atc/angular/proxy.conf.json"
       },
       "configurations": {
