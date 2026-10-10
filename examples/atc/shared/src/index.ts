@@ -11,3 +11,4 @@ export * from './contracts';
 export * from './tools';
 export * from './views';
 export * from './brand/atc-mark';
+export * from './transcript';
