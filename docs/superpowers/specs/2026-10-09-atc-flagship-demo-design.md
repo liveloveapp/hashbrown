@@ -65,8 +65,8 @@ with a toggle to React.
    map, and the model composes an `ArrivalsBoard`.
 3. **"What's the highest plane right now? And the fastest?"** The model chooses
    a `FlightCard` or an `AircraftCompare`, depending on the question.
-4. **"Follow UAL1372."** `followAircraft` keeps the map centred on the plane
-   while its card updates live.
+4. **"Follow the fastest airliner."** `followAircraft` keeps the map centred on
+   the plane while its card updates live.
 
 ## 3. Scope
 
@@ -131,11 +131,16 @@ implements the component and exposes it with that schema.
 
 | Component | Props from the model | Read live from the store |
 | --- | --- | --- |
-| `FlightCard` | `hex`: `s.string` (held until complete); `note`: `s.streaming.string` | position, altitude, ground speed, heading, type, airline, cached route |
+| `FlightCard` | `note`: `s.streaming.string`; `hex`: `s.string` (held until complete) | position, altitude, ground speed, heading, type, airline, cached route |
 | `ArrivalsBoard` | `title`: `s.streaming.string`; `hexes`: `s.streaming.array(s.string)` (rows stream, each ID arrives whole) | one live row per aircraft: altitude, distance to the airport, ETA |
-| `AircraftCompare` | `hexes`: `s.array(s.string)` of 2 to 3 IDs (held); `takeaway`: `s.streaming.string` | live stats side by side |
+| `AircraftCompare` | `takeaway`: `s.streaming.string`; `hexes`: `s.array(s.string)` of 2 to 3 IDs (held) | live stats side by side |
 
 Prose answers use Magic Text.
+
+Streaming fields come before held fields in each schema. Structured output
+writes properties in schema order, so the note streams into the fallback first
+and the card resolves when the ID completes; with the ID first, the hold-back
+would be over before anyone could see it.
 
 ### The ID hold-back
 
@@ -171,8 +176,9 @@ computed in tool code.
 | `followAircraft` | `hex` | Keeps the map centred on that aircraft |
 | `stopFollowing` | none | Releases the map |
 
-Bundled tables in `shared/` turn codes into names: about 100 aircraft types
-(`B39M` → "Boeing 737 MAX 9") and about 60 airlines.
+Bundled tables in `shared/` turn codes into names: about 50 aircraft types
+(`B39M` → "Boeing 737 MAX 9") and about 50 airlines, covering the traffic
+seen at ORD.
 
 The system prompt is about 15 lines and pinned on the server. It tells the model
 to answer with components, to use tools for every fact and number, and never to
@@ -180,8 +186,9 @@ guess an aircraft ID.
 
 ## 7. The core file
 
-Each framework has one core file of at most 150 lines. It is what the code tab
-shows and what the homepage hero quotes. It is organised as the three homepage
+Each framework has one core file of at most 150 lines. The app's top bar links
+to it on GitHub ("View the core file"), and the homepage hero quotes a
+condensed excerpt of it. It is organised as the three homepage
 steps:
 
 1. **Expose components:** three `exposeComponent` calls using the shared
