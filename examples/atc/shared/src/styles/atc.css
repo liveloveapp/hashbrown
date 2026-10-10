@@ -11,6 +11,8 @@
   --atc-muted: #52525b;
   --atc-map: #e8e8e8;
   --atc-accent: #002fa7;
+  /* Planes outside a highlight: solid, so stacked markers stay light. */
+  --atc-dimmed: #c4c4c8;
   --atc-radius: 14px;
   --atc-radius-row: 10px;
   --atc-gutter: 12px;
@@ -228,7 +230,6 @@ input {
 .atc-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   white-space: nowrap;
   border: 1px solid var(--atc-border);
   border-radius: 999px;
@@ -239,10 +240,18 @@ input {
   font-variant-numeric: tabular-nums;
 }
 .atc-chip-dot {
+  flex: none;
   width: 6px;
   height: 6px;
+  margin-right: 6px;
+  box-sizing: border-box;
   border-radius: 50%;
   background: var(--atc-ink);
+}
+/* Connecting or delayed: the same dot, hollow. */
+.atc-chip-dot.is-hollow {
+  background: none;
+  border: 1.5px solid var(--atc-muted);
 }
 
 .atc-chat {
@@ -371,14 +380,16 @@ input {
   background: var(--atc-surface);
   transition: border-color var(--atc-fast) var(--atc-ease);
 }
+/* One 2px ring where the border is: the accent border plus a 1px inset outline. */
 .atc-composer-pill:focus-within {
   border-color: var(--atc-accent);
-  outline: 2px solid var(--atc-accent);
-  outline-offset: 2px;
+  outline: 1px solid var(--atc-accent);
+  outline-offset: -2px;
 }
 .atc-composer-pill input:focus-visible {
   outline: none;
 }
+/* 16px everywhere: below that, iOS Safari zooms the page on focus. */
 .atc-composer-pill input {
   flex: 1;
   min-width: 0;
@@ -386,6 +397,7 @@ input {
   padding: 6px 0;
   background: transparent;
   outline: none;
+  font-size: 16px;
 }
 .atc-composer-pill input::placeholder {
   color: var(--atc-muted);
@@ -401,6 +413,12 @@ input {
 }
 .atc-composer-pill:focus-within .atc-kbd {
   display: none;
+}
+/* Touch screens have no "/" key to press. */
+@media (hover: none) {
+  .atc-kbd {
+    display: none;
+  }
 }
 .atc-send {
   flex: none;
@@ -426,8 +444,12 @@ input {
   display: none;
 }
 
-/* Phones: the map fills the screen and the chat is a bottom sheet with a peek. */
-@media (max-width: 767px) {
+/*
+ * Phones and tablets held upright (and very narrow windows): the map fills
+ * the screen and the chat is a bottom sheet. Landscape phones keep the two
+ * panels, with a narrower chat column (below).
+ */
+@media (max-width: 1023px) and (orientation: portrait), (max-width: 559px) {
   html,
   body {
     overflow: hidden;
@@ -465,6 +487,12 @@ input {
   }
   .atc-workbench.is-sheet .atc-composer {
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  /* A compact attribution: a rounded box, clear of the zoom control. */
+  .atc-workbench.is-sheet .atc-map.leaflet-container .leaflet-control-attribution {
+    border-radius: 8px;
+    max-width: calc(100vw - 72px);
+    margin-left: 8px;
   }
   /* The map's own controls clear the peeking sheet. */
   .atc-workbench.is-sheet .atc-map .leaflet-bottom {
@@ -515,7 +543,6 @@ input {
   }
   .atc-composer-pill input {
     min-height: 44px;
-    font-size: 16px;
   }
   .atc-credit,
   .atc-footnote {
@@ -535,6 +562,29 @@ input {
     width: 44px;
     height: 44px;
     line-height: 42px;
+  }
+}
+
+/* Notched phones in landscape: keep the panels clear of the sensor housing. */
+.atc-workbench {
+  padding-left: max(var(--atc-gutter), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--atc-gutter), env(safe-area-inset-right, 0px));
+}
+
+/* Landscape phones: a narrower chat column, a shorter header, no headline. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .atc-workbench {
+    grid-template-columns: 320px minmax(0, 1fr);
+  }
+  .atc-panel-header {
+    height: 40px;
+  }
+  .atc-empty-title,
+  .atc-footnote {
+    display: none;
+  }
+  .atc-empty {
+    padding-top: 12px;
   }
 }
 
@@ -742,7 +792,7 @@ input {
   width: 22px;
   height: 22px;
   color: var(--atc-ink);
-  transition: opacity var(--atc-motion) var(--atc-ease);
+  transition: color var(--atc-motion) var(--atc-ease);
   cursor: pointer;
 }
 .atc-plane-body {
@@ -792,13 +842,17 @@ input {
   z-index: 10000 !important;
 }
 .atc-plane.is-dimmed:hover {
-  opacity: 1;
+  color: var(--atc-ink);
 }
 .atc-plane.is-highlighted {
   color: var(--atc-accent);
 }
 .atc-plane.is-dimmed {
-  opacity: 0.2;
+  color: var(--atc-dimmed);
+}
+/* Regional zoom: smaller silhouettes, so metro clusters stay readable. */
+.atc-map[data-zoom-low] .atc-plane svg {
+  transform: scale(0.75);
 }
 .atc-plane.is-selected,
 .atc-plane.is-followed {

@@ -148,3 +148,12 @@ test('a user who scrolled up is not yanked down, until they send a message', asy
   expect(stayed).toBe(100);
   expect(element.scrollTop).toBe(1000);
 });
+
+test('an empty chat is not scrolled, so the headline and starters stay in view', async () => {
+  const element = scroller();
+  element.scrollTop = 0;
+
+  await append(element, row('atc-empty'));
+
+  expect(element.scrollTop).toBe(0);
+});

@@ -1,4 +1,4 @@
-import { addsUserMessage, isNearBottom } from '@atc/shared';
+import { addsUserMessage, isEmptyChat, isNearBottom } from '@atc/shared';
 import { type RefObject, useEffect, useRef } from 'react';
 
 /**
@@ -22,7 +22,7 @@ export function useAutoScroll<T extends HTMLElement>(): {
       if (records.some(addsUserMessage)) {
         pinned.current = true;
       }
-      if (pinned.current) {
+      if (pinned.current && !isEmptyChat(element)) {
         element.scrollTop = element.scrollHeight;
       }
     });

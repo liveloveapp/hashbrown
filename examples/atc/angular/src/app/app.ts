@@ -14,7 +14,8 @@ import { SheetHandleComponent } from './sheet-handle';
 import { ATC_STORE } from './store';
 
 /** The page: a two-panel workbench, chat on the left and the live map on the right.
- * Below 768px the map fills the screen and the chat is a bottom sheet. */
+ * On phones and upright tablets the map fills the screen and the chat is a
+ * bottom sheet. */
 @Component({
   selector: 'atc-root',
   imports: [

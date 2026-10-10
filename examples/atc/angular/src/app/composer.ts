@@ -24,7 +24,7 @@ import {
       <input
         #field
         aria-label="Message"
-        placeholder="Ask about the planes on the map"
+        placeholder="Ask about the planes"
         autocomplete="off"
       />
       <kbd class="atc-kbd" aria-hidden="true">/</kbd>

@@ -169,7 +169,7 @@ export interface FeedBadgeView {
   readonly label: string;
   /** The aircraft count such as "312 aircraft", only while live. */
   readonly count: string | null;
-  /** True when the feed is live; the chip then shows a dot. */
+  /** True when the feed is live; the chip's dot is solid then, else hollow. */
   readonly live: boolean;
 }
 

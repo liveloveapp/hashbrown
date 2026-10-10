@@ -1,4 +1,4 @@
-import { addsUserMessage, isNearBottom } from '@atc/shared';
+import { addsUserMessage, isEmptyChat, isNearBottom } from '@atc/shared';
 import { DestroyRef, Directive, ElementRef, inject } from '@angular/core';
 
 /**
@@ -20,7 +20,7 @@ export class AutoScrollDirective {
       if (records.some((record) => addsUserMessage(record))) {
         this.pinned = true;
       }
-      if (this.pinned) {
+      if (this.pinned && !isEmptyChat(this.element)) {
         this.element.scrollTop = this.element.scrollHeight;
       }
     });

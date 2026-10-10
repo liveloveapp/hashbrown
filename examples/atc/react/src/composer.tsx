@@ -50,7 +50,7 @@ export function Composer({
         <input
           ref={field}
           aria-label="Message"
-          placeholder="Ask about the planes on the map"
+          placeholder="Ask about the planes"
           autoComplete="off"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}

@@ -96,7 +96,7 @@ export function Assistant() {
         />
         {chat.error ? (
           <div className="atc-card atc-error" role="alert">
-            <span>Something went wrong.</span>
+            <span>The assistant didn&apos;t answer. Try again.</span>
             <button type="button" onClick={() => chat.resendMessages()}>
               Retry
             </button>

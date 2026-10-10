@@ -84,7 +84,7 @@ const components = [
       <atc-transcript [items]="items()" [busy]="chat.isLoading()" />
       @if (chat.error()) {
         <div class="atc-card atc-error" role="alert">
-          <span>Something went wrong.</span>
+          <span>The assistant didn't answer. Try again.</span>
           <button
             type="button"
             (click)="chat.reload() || chat.resendMessages()"

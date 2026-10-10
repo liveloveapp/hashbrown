@@ -181,6 +181,8 @@ export function followPanOffset(
     : { x: Math.round(x) || 0, y: Math.round(y) || 0 };
 }
 
+/** At this zoom and below, markers are drawn smaller. */
+const LOW_ZOOM = 6;
 /** Furthest out, and furthest in, that fitting highlighted planes will zoom. */
 const MIN_FIT_ZOOM = 5;
 const MAX_FIT_ZOOM = 10;
@@ -256,6 +258,8 @@ export async function createAirspaceMap(options: {
     markerZoomAnimation: !reduced,
   }).setView([area.lat, area.lon], area.zoom);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
+  // Leaflet's own credit is optional; dropping it keeps the phone line short.
+  map.attributionControl.setPrefix(false);
   L.tileLayer(TILE_LAYER.url, {
     attribution: TILE_LAYER.attribution,
     maxZoom: 18,
@@ -308,8 +312,13 @@ export async function createAirspaceMap(options: {
     }
     syncCard(store.getState());
   });
+  /** Marks regional zooms, where the CSS draws smaller silhouettes. */
+  const markZoom = () =>
+    element.toggleAttribute('data-zoom-low', map.getZoom() <= LOW_ZOOM);
+  markZoom();
   map.on('zoomend', () => {
     zooming = false;
+    markZoom();
     syncCard(store.getState());
     panToFollowed(true);
   });

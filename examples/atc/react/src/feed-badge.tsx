@@ -8,12 +8,15 @@ export function FeedBadge() {
 
   return (
     <span className="atc-chip">
-      {view.live ? <span className="atc-chip-dot" aria-hidden="true" /> : null}
+      <span
+        className={`atc-chip-dot${view.live ? '' : ' is-hollow'}`}
+        aria-hidden="true"
+      />
       {/* Only the state word is live; the count changes every poll. */}
       <span role="status">{view.label}</span>
       {view.count ? (
         <span>
-          {' · '}
+          {'\u00a0· '}
           {view.count}
         </span>
       ) : null}

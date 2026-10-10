@@ -25,3 +25,12 @@ export function addsUserMessage(record: MutationRecord): boolean {
       (node.matches('.atc-user') || node.querySelector('.atc-user') !== null),
   );
 }
+
+/**
+ * Whether a chat scroller still shows the empty state. It is never scrolled
+ * then, so the headline and starters stay at the top (a short landscape
+ * panel would otherwise start scrolled to the bottom).
+ */
+export function isEmptyChat(scroller: Element): boolean {
+  return scroller.querySelector('.atc-empty') !== null;
+}

@@ -9,12 +9,14 @@ import { injectAtcState } from './store';
   // Only the state word is a live region; the count changes every poll and
   // would be announced constantly.
   template: `<span class="atc-chip">
-    @if (view().live) {
-      <span class="atc-chip-dot" aria-hidden="true"></span>
-    }
+    <span
+      class="atc-chip-dot"
+      [class.is-hollow]="!view().live"
+      aria-hidden="true"
+    ></span>
     <span role="status">{{ view().label }}</span>
     @if (view().count; as count) {
-      <span> · {{ count }}</span>
+      <span>&nbsp;· {{ count }}</span>
     }
   </span>`,
 })

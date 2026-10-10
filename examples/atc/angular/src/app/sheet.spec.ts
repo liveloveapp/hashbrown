@@ -142,3 +142,12 @@ test('a user message nested in an added node still re-pins the scroller', async 
 
   expect(element.scrollTop).toBe(1000);
 });
+
+test('an empty chat is not scrolled, so the headline and starters stay in view', async () => {
+  const element = scroller();
+  element.scrollTop = 0;
+
+  await append(element, 'atc-empty');
+
+  expect(element.scrollTop).toBe(0);
+});

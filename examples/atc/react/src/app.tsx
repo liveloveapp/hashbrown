@@ -8,7 +8,8 @@ import { SheetHandle } from './sheet-handle';
 import { useAtcStore } from './store';
 
 /** The page: a two-panel workbench, chat on the left and the live map on the right.
- * Below 768px the map fills the screen and the chat is a bottom sheet. */
+ * On phones and upright tablets the map fills the screen and the chat is a
+ * bottom sheet. */
 export function App() {
   const store = useAtcStore();
   // Whether the phone bottom sheet is open; ignored on wide screens.

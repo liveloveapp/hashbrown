@@ -57,7 +57,7 @@ test('the header shows the mark, the Hashbrown credit and a connecting chip', ()
   expect(text(element.querySelector('[role="status"]'))).toBe('Connecting…');
 });
 
-test('the status chip counts live aircraft and shows a dot only when live', () => {
+test('the status chip counts live aircraft beside a solid dot', () => {
   const store = setup();
   const fixture = TestBed.createComponent(FeedBadgeComponent);
 
@@ -73,7 +73,22 @@ test('the status chip counts live aircraft and shows a dot only when live', () =
 
   expect(text(chip)).toBe('Live · 2 aircraft');
   expect(text(status)).toBe('Live');
-  expect(chip?.querySelector('.atc-chip-dot')).not.toBeNull();
+  expect(chip?.querySelector('.atc-chip-dot:not(.is-hollow)')).not.toBeNull();
+});
+
+test('the status chip shows a hollow dot while connecting or delayed', () => {
+  const store = setup();
+  const fixture = TestBed.createComponent(FeedBadgeComponent);
+
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  const connecting = element.querySelector('.atc-chip-dot.is-hollow');
+  store.setFeedStatus('delayed');
+  fixture.detectChanges();
+
+  expect(connecting).not.toBeNull();
+  expect(text(element.querySelector('.atc-chip'))).toBe('Data delayed');
+  expect(element.querySelector('.atc-chip-dot.is-hollow')).not.toBeNull();
 });
 
 test('the empty state asks a question and offers every starter prompt', () => {
