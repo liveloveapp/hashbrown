@@ -64,6 +64,15 @@ export const TARGETS = Object.freeze([
     // covers any function published without one of its own.
     resources: { fluid: true, functionDefaultTimeout: 300 },
   }),
+  Object.freeze({
+    key: 'atc',
+    project: 'hashbrown-atc',
+    secret: 'VERCEL_PROJECT_ID_ATC',
+    domains: [{ name: `atc.${DOMAIN}` }],
+    env: ['OPENAI_API_KEY', 'OPENAI_MODEL'],
+    requiredEnv: ['OPENAI_API_KEY'],
+    resources: { fluid: true, functionDefaultTimeout: 60 },
+  }),
   // The site (Next.js in www/). CI builds it with `vercel pull` + `vercel
   // build`; the project's build settings mirror what CI writes. It took over
   // the domains of the retired Analog project, which has since been deleted;
