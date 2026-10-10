@@ -244,7 +244,9 @@ dependency).
   provider on a free tier (Stadia Maps or MapTiler, chosen in the
   implementation plan). OpenStreetMap's own tile servers are not used because
   their policy rules out heavy production traffic. The map shows the tile
-  provider's attribution and adsb.lol's ODbL attribution.
+  provider's attribution and adsb.lol's ODbL attribution. (Superseded: atc
+  now uses OpenStreetMap's standard tiles for light use, with a note on
+  switching providers for heavy traffic; see `examples/atc/README.md`.)
 - **New dependencies needing approval:** `leaflet` and `@types/leaflet`.
   Everything else (Express, Vite, `@angular/build`, Vitest, Playwright, aimock)
   is already in the repo.

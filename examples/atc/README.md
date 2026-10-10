@@ -43,13 +43,24 @@ npx nx run-many -t test,lint -p atc-shared atc-server atc-react atc-angular atc-
 npx nx e2e atc-e2e
 ```
 
-## Data
+## Data and attribution
 
-Aircraft data comes from [adsb.lol](https://adsb.lol) under the ODbL. Map tiles are from
-Stadia Maps, which authenticates by domain. The browser polls `/api/aircraft` every 3 s;
-the server shares one adsb.lol call per area across requests, reuses it for 10 s, and
-serves the last good snapshot (marked `X-Atc-Stale: 1`) for up to 60 s when adsb.lol
-fails. The e2e tests stub `/api/aircraft` with synthetic frames.
+- **Aircraft:** [adsb.lol](https://adsb.lol), under the
+  [ODbL](https://opendatacommons.org/licenses/odbl/). The browser polls `/api/aircraft`
+  every 3 s; the server shares one adsb.lol call per area across requests, reuses it for
+  10 s, and serves the last good snapshot (marked `X-Atc-Stale: 1`) for up to 60 s when
+  adsb.lol fails. Owner and operator fields are dropped on the server.
+- **Routes:** scheduled routes come from
+  [vrs-standing-data.adsb.lol](https://vrs-standing-data.adsb.lol). The browser fetches
+  them directly, so adsb.lol sees the user's IP address for route lookups.
+- **Map tiles:** [OpenStreetMap](https://www.openstreetmap.org/copyright) standard tiles,
+  shown in grey. They are free for light use under the
+  [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/); a
+  deployment with heavy traffic should point `TILE_LAYER` in `shared/src/map/tiles.ts` at
+  a commercial tile provider.
+
+The map credits all three in its attribution line. The e2e tests stub `/api/aircraft`
+with synthetic frames and block tiles and routes.
 
 ## Hosting
 
@@ -61,4 +72,3 @@ there). The React app is built and tested in this repository but runs locally fo
 
 - `OPENAI_API_KEY`: a dedicated OpenAI project key with a hard monthly budget.
 - A Vercel Firewall rate-limit rule on `/api/run` (for example 20 requests per minute per IP).
-- `atc.hashbrown.dev` registered as an allowed domain in the Stadia Maps dashboard.

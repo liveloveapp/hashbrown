@@ -170,7 +170,9 @@ test.afterAll(async () => {
 });
 
 async function open(page: Page, framework: string): Promise<void> {
-  await page.route('https://tiles.stadiamaps.com/**', (route) => route.abort());
+  await page.route('https://tile.openstreetmap.org/**', (route) =>
+    route.abort(),
+  );
   await page.route('https://vrs-standing-data.adsb.lol/**', (route) =>
     route.fulfill({ status: 404, body: '' }),
   );

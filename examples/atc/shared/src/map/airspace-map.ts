@@ -26,16 +26,7 @@ import {
   motionSettled,
   nextMotion,
 } from './tween';
-
-/**
- * Raster tiles from Stadia Maps. Stadia authenticates by domain, so no key
- * ships in the page; localhost works without registration.
- */
-export const TILE_LAYER = {
-  url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png',
-  attribution:
-    '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Aircraft data <a href="https://adsb.lol">adsb.lol</a> (ODbL)',
-};
+import { TILE_LAYER } from './tiles';
 
 /** CSS classes for one aircraft marker. */
 export function markerClassName(state: AtcState, hex: string): string {
@@ -275,7 +266,7 @@ export async function createAirspaceMap(options: {
   map.attributionControl.setPrefix(false);
   L.tileLayer(TILE_LAYER.url, {
     attribution: TILE_LAYER.attribution,
-    maxZoom: 18,
+    maxZoom: TILE_LAYER.maxZoom,
   }).addTo(map);
   const icon = (html: string) =>
     L.divIcon({

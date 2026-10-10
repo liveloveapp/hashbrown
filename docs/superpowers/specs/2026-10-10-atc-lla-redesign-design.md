@@ -15,9 +15,9 @@ design rules.
 
 ## Brand source
 
-The LLA revision-3 brand (`~/repos/liveloveapp/.claude/worktrees/lla-brand-website-redesign-5ce9b0`,
-`docs/design-rules.md`) and B4 navlog's LLA shell (`dawn` `examples/navlog/web/app/theme.css`),
-which applied the same brand to a Leaflet map app.
+The LiveLoveApp brand (revision 3) with its design rules, and B4 navlog's LLA shell
+(`dawn` `examples/navlog/web/app/theme.css`), which applied the same brand to a Leaflet
+map app.
 
 ## Decisions
 
