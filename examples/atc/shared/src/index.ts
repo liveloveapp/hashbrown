@@ -7,3 +7,6 @@ export * from './places';
 export * from './store';
 export * from './feed';
 export * from './routes';
+export * from './contracts';
+export * from './tools';
+export * from './views';
