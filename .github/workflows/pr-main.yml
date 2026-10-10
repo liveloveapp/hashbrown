@@ -77,6 +77,8 @@ jobs:
             playwright-report/examples
             test-results/invoicing
             playwright-report/invoicing
+            test-results/atc
+            playwright-report/atc
           retention-days: 7
           if-no-files-found: ignore
 
