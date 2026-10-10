@@ -12,7 +12,9 @@ import {
 
 const plane: Aircraft = {
   hex: 'aaaaaa',
+  label: 'UAL100',
   callsign: 'UAL100',
+  registration: null,
   typeCode: 'B738',
   lat: 42,
   lon: -88,
@@ -49,7 +51,7 @@ test('planeIconHtml rotates the plane to its track and tags it with its ID', () 
   const html = planeIconHtml(plane, 'atc-plane');
 
   expect(html).toContain('data-hex="aaaaaa"');
-  expect(html).toContain('data-callsign="UAL100"');
+  expect(html).toContain('data-label="UAL100"');
   expect(html).toContain('rotate(272deg)');
 });
 
@@ -65,7 +67,15 @@ test('followPanOffset pans by whole pixels, only when at least 1 px off centre',
   expect(offsets).toEqual([null, { x: 1, y: 0 }, { x: -9, y: 10 }]);
 });
 
-test('planeTagText shows callsign and altitude with a thousands separator', () => {
+test('planeTagText tags hex-only aircraft by their label', () => {
+  const unidentified = { ...plane, label: 'AAAAAA', callsign: null };
+
+  const text = planeTagText(unidentified);
+
+  expect(text).toBe('AAAAAA 30,000');
+});
+
+test('planeTagText shows label and altitude with a thousands separator', () => {
   const texts = [
     planeTagText(plane),
     planeTagText({ ...plane, altitudeFt: 4200 }),
@@ -91,7 +101,7 @@ test('planeIconHtml leaves out the marker title and an unknown altitude', () => 
   );
 });
 
-test('updatePlane keeps callsign, data-callsign and tag current, writing only changes', () => {
+test('updatePlane keeps label, data-label and tag current, writing only changes', () => {
   const host = document.createElement('div');
   host.innerHTML = planeIconHtml(plane, 'atc-plane');
   const tagNode = host.querySelector('.atc-plane-tag') as HTMLElement;
@@ -103,14 +113,14 @@ test('updatePlane keeps callsign, data-callsign and tag current, writing only ch
   updatePlane(host, plane, 'atc-plane');
   updatePlane(
     host,
-    { ...plane, callsign: 'DAL9', altitudeFt: 4200 },
+    { ...plane, label: 'N352LL', callsign: null, altitudeFt: 4200 },
     'atc-plane',
   );
 
-  expect(host.querySelector('.atc-plane')?.getAttribute('data-callsign')).toBe(
-    'DAL9',
+  expect(host.querySelector('.atc-plane')?.getAttribute('data-label')).toBe(
+    'N352LL',
   );
-  expect(tagNode.textContent).toBe('DAL9 4,200');
+  expect(tagNode.textContent).toBe('N352LL 4,200');
 });
 
 test('planeIconHtml carries the tag outside the rotated silhouette', () => {

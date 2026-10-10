@@ -1,3 +1,5 @@
+import { isAirlineCallsign } from './aircraft';
+
 const AIRLINES: Readonly<Record<string, string>> = {
   AAL: 'American Airlines',
   UAL: 'United Airlines',
@@ -110,6 +112,16 @@ export function airlineName(callsign: string): string {
   const code = callsign.slice(0, 3).toUpperCase();
 
   return AIRLINES[code] ?? code;
+}
+
+/**
+ * The airline's name when `callsign` is an airline callsign (`UAL1372`), or
+ * null for private callsigns, registrations and missing callsigns.
+ */
+export function airlineFor(callsign: string | null): string | null {
+  return callsign !== null && isAirlineCallsign(callsign)
+    ? airlineName(callsign)
+    : null;
 }
 
 /** A readable aircraft type, the raw ICAO type code, or "Unknown type". */

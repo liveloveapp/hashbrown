@@ -35,7 +35,7 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
               data-hex={row.hex}
               data-status={row.status}
             >
-              <td className="atc-callsign">{row.callsign}</td>
+              <td className="atc-callsign">{row.label}</td>
               <td className="atc-board-type" title={row.aircraftType}>
                 {row.aircraftType}
               </td>

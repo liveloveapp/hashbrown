@@ -6,7 +6,9 @@ import { createAtcTools, findAircraft, type FindAircraftInput } from './tools';
 function plane(hex: string, overrides: Partial<Aircraft> = {}): Aircraft {
   return {
     hex,
+    label: 'UAL100',
     callsign: 'UAL100',
+    registration: null,
     typeCode: 'B738',
     lat: 44.0946,
     lon: -121.2002,
@@ -34,7 +36,9 @@ const state = applySnapshot(INITIAL_STATE, {
   aircraft: [
     plane('aaaaaa', { altitudeFt: 38000, groundSpeedKt: 480 }),
     plane('bbbbbb', {
+      label: 'DAL200',
       callsign: 'DAL200',
+      registration: null,
       typeCode: 'A321',
       altitudeFt: 5000,
       groundSpeedKt: 200,
@@ -42,7 +46,9 @@ const state = applySnapshot(INITIAL_STATE, {
       lat: 44.2,
     }),
     plane('cccccc', {
+      label: 'SWA300',
       callsign: 'SWA300',
+      registration: null,
       typeCode: 'B38M',
       altitudeFt: 12000,
       groundSpeedKt: 520,
@@ -104,13 +110,85 @@ test('findAircraft rows carry readable names and rounded distance', () => {
 
   expect(row).toEqual({
     hex: 'aaaaaa',
+    label: 'UAL100',
     callsign: 'UAL100',
+    registration: null,
     airline: 'United Airlines',
     aircraftType: 'Boeing 737-800',
     altitudeFt: 38000,
     groundSpeedKt: 480,
     trackDeg: 90,
     distanceNm: 0,
+  });
+});
+
+test('findAircraft lists private traffic with no airline and skips it for airline filters', () => {
+  const mixed = applySnapshot(INITIAL_STATE, {
+    at: 1,
+    aircraft: [
+      plane('aaaaaa'),
+      plane('dddddd', {
+        label: 'UAL1PVT',
+        callsign: 'UAL1PVT',
+        registration: null,
+      }),
+      plane('eeeeee', {
+        label: 'N352LL',
+        callsign: 'N352LL',
+        registration: 'N352LL',
+        typeCode: 'C172',
+        altitudeFt: 4500,
+      }),
+      plane('ffffff', {
+        label: 'FFFFFF',
+        callsign: null,
+        registration: null,
+        typeCode: null,
+        altitudeFt: 1000,
+      }),
+    ],
+  });
+
+  const all = findAircraft(mixed, any).map((row) => [row.label, row.airline]);
+  const united = findAircraft(mixed, { ...any, airline: 'united' }).map(
+    (row) => row.hex,
+  );
+  const byCode = findAircraft(mixed, { ...any, airline: 'n35' }).length;
+
+  expect(all).toEqual([
+    ['UAL100', 'United Airlines'],
+    ['UAL1PVT', 'United Airlines'],
+    ['N352LL', null],
+    ['FFFFFF', null],
+  ]);
+  expect(united).toEqual(['aaaaaa', 'dddddd']);
+  expect(byCode).toBe(0);
+});
+
+test('getSelectedAircraft returns a row for a hex-only aircraft', async () => {
+  const store = createAtcStore();
+  store.applySnapshot({
+    at: 1,
+    aircraft: [
+      plane('ffffff', {
+        label: 'FFFFFF',
+        callsign: null,
+        registration: null,
+        typeCode: null,
+      }),
+    ],
+  });
+  store.select('ffffff');
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const row = await tools.getSelectedAircraft.handler({});
+
+  expect(row).toMatchObject({
+    label: 'FFFFFF',
+    callsign: null,
+    registration: null,
+    airline: null,
+    aircraftType: 'Unknown type',
   });
 });
 

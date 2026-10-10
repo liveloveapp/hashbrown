@@ -4,6 +4,7 @@ import {
   AIRPORTS,
   applySnapshot,
   AREAS,
+  displayLabel,
   findAircraft,
   type FindAircraftInput,
   INITIAL_STATE,
@@ -15,7 +16,7 @@ const START = Date.UTC(2026, 9, 9, 18, 0, 0);
 const { SEA } = AIRPORTS;
 const centre = AREAS.pnw;
 
-/** One synthetic airliner: where it is at frame 0 and how it moves per frame. */
+/** One synthetic aircraft: where it is at frame 0 and how it moves per frame. */
 interface Track {
   readonly aircraft: Aircraft;
   readonly dLat: number;
@@ -23,17 +24,27 @@ interface Track {
   readonly dAltFt: number;
 }
 
+/** Who an aircraft is: a hex, plus a callsign and registration when it has them. */
+interface Ident {
+  readonly hex: string;
+  readonly callsign?: string;
+  readonly registration?: string;
+}
+
 function track(
-  hex: string,
-  callsign: string,
-  typeCode: string,
+  ident: Ident,
+  typeCode: string | null,
   at: { lat: number; lon: number; altitudeFt: number; speedKt: number },
   motion: { dLat: number; dLon: number; dAltFt: number; trackDeg: number },
 ): Track {
+  const { hex, callsign = null, registration = null } = ident;
+
   return {
     aircraft: {
       hex,
+      label: displayLabel({ hex, callsign, registration }),
       callsign,
+      registration,
       typeCode,
       lat: at.lat,
       lon: at.lon,
@@ -52,20 +63,20 @@ function track(
 /**
  * The synthetic traffic: three airliners descending into SEA from the north,
  * one climbing out right next to Bend (the nearest to the map centre), one
- * cruising highest, one flying fastest and two fillers. Every aircraft moves
- * and changes altitude each frame.
+ * cruising highest, one flying fastest and two fillers, plus private traffic
+ * labelled by registration (a Cessna and a helicopter) and one aircraft that
+ * broadcasts neither callsign nor registration, so only its hex labels it.
+ * Every aircraft moves and changes altitude each frame.
  */
 const TRACKS: readonly Track[] = [
   track(
-    'a1c001',
-    'ASA301',
+    { hex: 'a1c001', callsign: 'ASA301' },
     'B39M',
     { lat: SEA.lat + 0.35, lon: SEA.lon, altitudeFt: 11_000, speedKt: 250 },
     { dLat: -0.004, dLon: 0, dAltFt: -100, trackDeg: 180 },
   ),
   track(
-    'a1c002',
-    'DAL1820',
+    { hex: 'a1c002', callsign: 'DAL1820' },
     'A321',
     {
       lat: SEA.lat + 0.45,
@@ -76,8 +87,7 @@ const TRACKS: readonly Track[] = [
     { dLat: -0.004, dLon: 0, dAltFt: -100, trackDeg: 185 },
   ),
   track(
-    'a1c003',
-    'UAL2244',
+    { hex: 'a1c003', callsign: 'UAL2244' },
     'B738',
     {
       lat: SEA.lat + 0.55,
@@ -88,8 +98,7 @@ const TRACKS: readonly Track[] = [
     { dLat: -0.004, dLon: 0, dAltFt: -100, trackDeg: 175 },
   ),
   track(
-    'a1c004',
-    'SKW3410',
+    { hex: 'a1c004', callsign: 'SKW3410' },
     'E75L',
     {
       lat: centre.lat + 0.05,
@@ -100,32 +109,46 @@ const TRACKS: readonly Track[] = [
     { dLat: 0.003, dLon: 0.003, dAltFt: 300, trackDeg: 45 },
   ),
   track(
-    'a1c005',
-    'AAL2711',
+    { hex: 'a1c005', callsign: 'AAL2711' },
     'A21N',
     { lat: 45.2, lon: -119.8, altitudeFt: 41_000, speedKt: 470 },
     { dLat: 0.002, dLon: 0.006, dAltFt: 10, trackDeg: 70 },
   ),
   track(
-    'a1c006',
-    'FDX1234',
+    { hex: 'a1c006', callsign: 'FDX1234' },
     'B77L',
     { lat: 43.1, lon: -122.9, altitudeFt: 33_000, speedKt: 560 },
     { dLat: 0.005, dLon: 0.003, dAltFt: -10, trackDeg: 30 },
   ),
   track(
-    'a1c007',
-    'SWA1458',
+    { hex: 'a1c007', callsign: 'SWA1458' },
     'B38M',
     { lat: 44.9, lon: -123.4, altitudeFt: 24_000, speedKt: 420 },
     { dLat: -0.003, dLon: 0.002, dAltFt: -50, trackDeg: 150 },
   ),
   track(
-    'a1c008',
-    'QXE2045',
+    { hex: 'a1c008', callsign: 'QXE2045' },
     'DH8D',
     { lat: 42.4, lon: -120.1, altitudeFt: 17_000, speedKt: 300 },
     { dLat: 0.003, dLon: -0.002, dAltFt: 50, trackDeg: 330 },
+  ),
+  track(
+    { hex: 'a1c009', callsign: 'N352LL', registration: 'N352LL' },
+    'C172',
+    { lat: 44.12, lon: -123.21, altitudeFt: 4_500, speedKt: 110 },
+    { dLat: 0.001, dLon: -0.001, dAltFt: 10, trackDeg: 300 },
+  ),
+  track(
+    { hex: 'a1c00a', registration: 'N911LF' },
+    'EC35',
+    { lat: 45.55, lon: -122.6, altitudeFt: 1_500, speedKt: 120 },
+    { dLat: -0.001, dLon: 0.001, dAltFt: 10, trackDeg: 140 },
+  ),
+  track(
+    { hex: 'a1c00b' },
+    null,
+    { lat: 43.56, lon: -116.22, altitudeFt: 8_000, speedKt: 150 },
+    { dLat: 0.001, dLon: 0.001, dAltFt: -10, trackDeg: 45 },
   ),
 ];
 

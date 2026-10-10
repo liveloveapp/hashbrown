@@ -35,8 +35,10 @@ import { CardSkeletonComponent } from './card-skeleton';
         [attr.data-status]="card.status"
       >
         <header>
-          <strong class="atc-callsign">{{ card.callsign }}</strong>
-          <span class="atc-card-muted">{{ card.airline }}</span>
+          <strong class="atc-callsign">{{ card.label }}</strong>
+          @if (card.subtitle) {
+            <span class="atc-card-muted">{{ card.subtitle }}</span>
+          }
         </header>
         <p class="atc-card-muted">
           {{ card.aircraftType }}

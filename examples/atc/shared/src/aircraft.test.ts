@@ -1,5 +1,10 @@
 import { expect, test } from 'vitest';
-import { isAirlineCallsign, normalizeAdsbLol, parseSnapshot } from './aircraft';
+import {
+  displayLabel,
+  isAirlineCallsign,
+  normalizeAdsbLol,
+  parseSnapshot,
+} from './aircraft';
 
 const united = {
   hex: 'AA7F28',
@@ -41,7 +46,9 @@ test('normalizeAdsbLol keeps only whitelisted fields of airline aircraft', () =>
     aircraft: [
       {
         hex: 'aa7f28',
+        label: 'UAL1372',
         callsign: 'UAL1372',
+        registration: 'N77585',
         typeCode: 'B39M',
         lat: 44.406372,
         lon: -94.1,
@@ -55,11 +62,10 @@ test('normalizeAdsbLol keeps only whitelisted fields of airline aircraft', () =>
   });
 });
 
-test('normalizeAdsbLol drops non-ICAO hex, private aircraft and missing positions', () => {
+test('normalizeAdsbLol drops non-ICAO hex and missing positions', () => {
   const payload = {
     ac: [
       { ...united, hex: '~aa7f28' },
-      { ...united, flight: 'N352LL  ' },
       { ...united, lat: undefined },
       'not an object',
     ],
@@ -68,6 +74,97 @@ test('normalizeAdsbLol drops non-ICAO hex, private aircraft and missing position
   const snapshot = normalizeAdsbLol(payload, 1000);
 
   expect(snapshot.aircraft).toEqual([]);
+});
+
+test('normalizeAdsbLol keeps private, rotor and unidentified aircraft', () => {
+  const payload = {
+    ac: [
+      { ...united, hex: 'a3f001', flight: 'N352LL  ', r: 'N352LL', t: 'C172' },
+      { ...united, hex: 'a3f002', flight: undefined, r: 'N911LF', t: 'EC35' },
+      {
+        ...united,
+        hex: 'a3f003',
+        flight: undefined,
+        r: undefined,
+        t: undefined,
+      },
+    ],
+  };
+
+  const snapshot = normalizeAdsbLol(payload, 1000);
+
+  expect(
+    snapshot.aircraft.map(
+      ({ hex, label, callsign, registration, typeCode }) => ({
+        hex,
+        label,
+        callsign,
+        registration,
+        typeCode,
+      }),
+    ),
+  ).toEqual([
+    {
+      hex: 'a3f001',
+      label: 'N352LL',
+      callsign: 'N352LL',
+      registration: 'N352LL',
+      typeCode: 'C172',
+    },
+    {
+      hex: 'a3f002',
+      label: 'N911LF',
+      callsign: null,
+      registration: 'N911LF',
+      typeCode: 'EC35',
+    },
+    {
+      hex: 'a3f003',
+      label: 'A3F003',
+      callsign: null,
+      registration: null,
+      typeCode: null,
+    },
+  ]);
+  expect(JSON.stringify(snapshot)).not.toContain('BANK OF UTAH');
+});
+
+test('displayLabel prefers airline callsign, then registration, then callsign, then hex', () => {
+  const cases = [
+    { hex: 'aa7f28', callsign: 'UAL1372', registration: 'N77585' },
+    { hex: 'aa7f28', callsign: 'N352LL', registration: 'N12345' },
+    { hex: 'aa7f28', callsign: 'LIFEGRD1', registration: null },
+    { hex: 'aa7f28', callsign: null, registration: 'C-GABC' },
+    { hex: 'aa7f28', callsign: null, registration: null },
+  ];
+
+  const labels = cases.map(displayLabel);
+
+  expect(labels).toEqual(['UAL1372', 'N12345', 'LIFEGRD1', 'CGABC', 'AA7F28']);
+});
+
+test('normalizeAdsbLol skips invalid label sources and falls through', () => {
+  const payload = {
+    ac: [
+      { ...united, hex: 'a3f001', flight: 'N1<b>', r: 'N352LL' },
+      { ...united, hex: 'a3f002', flight: 'TOOLONGCALL', r: '"><img src=x>' },
+      { ...united, hex: 'a3f003', flight: 42, r: 'N 1 2' },
+    ],
+  };
+
+  const snapshot = normalizeAdsbLol(payload, 1000);
+
+  expect(
+    snapshot.aircraft.map(({ label, callsign, registration }) => ({
+      label,
+      callsign,
+      registration,
+    })),
+  ).toEqual([
+    { label: 'N352LL', callsign: null, registration: 'N352LL' },
+    { label: 'A3F002', callsign: null, registration: null },
+    { label: 'A3F003', callsign: null, registration: null },
+  ]);
 });
 
 test('normalizeAdsbLol marks aircraft on the ground', () => {
@@ -144,6 +241,45 @@ test('parseSnapshot rejects a non-finite lat', () => {
   expect(act).toThrow('Invalid aircraft snapshot');
 });
 
+test('parseSnapshot rejects an unsafe or missing label', () => {
+  const snapshot = normalizeAdsbLol({ ac: [united] }, 1000);
+  const labels = ['<b>', 'ual1372', '', null, 'ABCDEFGHI'];
+
+  const acts = labels.map(
+    (label) => () =>
+      parseSnapshot({
+        ...snapshot,
+        aircraft: [{ ...snapshot.aircraft[0], label }],
+      }),
+  );
+
+  for (const act of acts) {
+    expect(act).toThrow('Invalid aircraft snapshot');
+  }
+});
+
+test('parseSnapshot rejects an invalid callsign or registration', () => {
+  const snapshot = normalizeAdsbLol({ ac: [united] }, 1000);
+  const invalid = [
+    { callsign: '<b>' },
+    { callsign: 42 },
+    { registration: 'N1 <b>' },
+    { registration: undefined },
+  ];
+
+  const acts = invalid.map(
+    (fields) => () =>
+      parseSnapshot({
+        ...snapshot,
+        aircraft: [{ ...snapshot.aircraft[0], ...fields }],
+      }),
+  );
+
+  for (const act of acts) {
+    expect(act).toThrow('Invalid aircraft snapshot');
+  }
+});
+
 test('parseSnapshot accepts null nullable fields', () => {
   const snapshot = normalizeAdsbLol({ ac: [united] }, 1000);
   const nulled = {
@@ -151,6 +287,8 @@ test('parseSnapshot accepts null nullable fields', () => {
     aircraft: [
       {
         ...snapshot.aircraft[0],
+        callsign: null,
+        registration: null,
         typeCode: null,
         altitudeFt: null,
         groundSpeedKt: null,

@@ -23,7 +23,7 @@ import { CardSkeletonComponent } from './card-skeleton';
             </div>
           } @else {
             <div class="atc-compare-item" [attr.data-hex]="card.hex">
-              <strong class="atc-callsign">{{ card.callsign }}</strong>
+              <strong class="atc-callsign">{{ card.label }}</strong>
               <p class="atc-card-muted">{{ card.aircraftType }}</p>
               <p class="atc-figure">{{ card.altitude }}</p>
               <p class="atc-figure">{{ card.speed }}</p>

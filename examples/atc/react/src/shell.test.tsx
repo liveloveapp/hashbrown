@@ -18,7 +18,9 @@ import { Transcript } from './transcript';
 
 const plane: Aircraft = {
   hex: 'aaaaaa',
+  label: 'UAL100',
   callsign: 'UAL100',
+  registration: null,
   typeCode: 'B39M',
   lat: 47.5716,
   lon: -122.3088,

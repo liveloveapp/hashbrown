@@ -13,7 +13,9 @@ import {
 
 const plane: Aircraft = {
   hex: 'aaaaaa',
+  label: 'UAL100',
   callsign: 'UAL100',
+  registration: null,
   typeCode: 'B39M',
   lat: 47.5716,
   lon: -122.3088,
@@ -32,8 +34,8 @@ test('flightCardView describes a live aircraft', () => {
   expect(view).toEqual({
     status: 'live',
     hex: 'aaaaaa',
-    callsign: 'UAL100',
-    airline: 'United Airlines',
+    label: 'UAL100',
+    subtitle: 'United Airlines',
     aircraftType: 'Boeing 737 MAX 9',
     altitude: '5,000 ft',
     speed: '240 kt',
@@ -41,6 +43,53 @@ test('flightCardView describes a live aircraft', () => {
     route: null,
     lastSeen: null,
   });
+});
+
+test('flightCardView shows private aircraft by label with no airline line', () => {
+  const state = applySnapshot(INITIAL_STATE, {
+    at: 1,
+    aircraft: [
+      {
+        ...plane,
+        hex: 'a00001',
+        label: 'N352LL',
+        callsign: 'N352LL',
+        registration: 'N352LL',
+        typeCode: 'C172',
+      },
+      {
+        ...plane,
+        hex: 'a00002',
+        label: 'LIFEGRD1',
+        callsign: 'LIFEGRD1',
+        registration: 'N911LF',
+        typeCode: 'EC35',
+      },
+      {
+        ...plane,
+        hex: 'a00003',
+        label: 'A00003',
+        callsign: null,
+        registration: null,
+        typeCode: null,
+      },
+    ],
+  });
+
+  const views = ['a00001', 'a00002', 'a00003'].map((hex) =>
+    flightCardView(state, hex),
+  );
+
+  expect(views).toMatchObject([
+    { label: 'N352LL', subtitle: null, route: null },
+    { label: 'LIFEGRD1', subtitle: 'N911LF', route: null },
+    {
+      label: 'A00003',
+      subtitle: null,
+      aircraftType: 'Unknown type',
+      route: null,
+    },
+  ]);
 });
 
 test('flightCardView freezes departed aircraft and reports unknown IDs', () => {
@@ -104,7 +153,7 @@ test('arrivalsRows computes distance and ETA to the airport', () => {
     {
       hex: 'aaaaaa',
       status: 'live',
-      callsign: 'UAL100',
+      label: 'UAL100',
       aircraftType: 'Boeing 737 MAX 9',
       altitude: '5,000 ft',
       distance: '7 nm',
@@ -113,7 +162,7 @@ test('arrivalsRows computes distance and ETA to the airport', () => {
     {
       hex: 'bbbbbb',
       status: 'unknown',
-      callsign: 'n/a',
+      label: 'n/a',
       aircraftType: 'Unknown aircraft',
       altitude: 'n/a',
       distance: 'n/a',

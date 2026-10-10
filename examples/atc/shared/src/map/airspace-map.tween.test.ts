@@ -7,7 +7,9 @@ import { createAirspaceMap } from './airspace-map';
 
 const plane: Aircraft = {
   hex: 'aaaaaa',
+  label: 'UAL100',
   callsign: 'UAL100',
+  registration: null,
   typeCode: 'B738',
   lat: 44,
   lon: -121,

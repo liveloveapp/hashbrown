@@ -11,7 +11,9 @@ import { AtcStoreProvider } from './store';
 
 const plane: Aircraft = {
   hex: 'aaaaaa',
+  label: 'UAL100',
   callsign: 'UAL100',
+  registration: null,
   typeCode: 'B39M',
   lat: 47.5716,
   lon: -122.3088,
@@ -68,6 +70,45 @@ test('a flight card updates live and freezes when the aircraft leaves', () => {
   );
   expect(screen.getByText(/Out of range · last seen/)).toBeVisible();
   expect(store.getState().pulse?.hex).toBe('aaaaaa');
+});
+
+test('a flight card for private or unidentified traffic shows the label and no airline line', () => {
+  const store = setup();
+  store.applySnapshot({
+    at: 2,
+    aircraft: [
+      {
+        ...plane,
+        hex: 'bbbbbb',
+        label: 'N352LL',
+        callsign: 'N352LL',
+        registration: 'N352LL',
+        typeCode: 'C172',
+      },
+      {
+        ...plane,
+        hex: 'cccccc',
+        label: 'CCCCCC',
+        callsign: null,
+        registration: null,
+        typeCode: null,
+      },
+    ],
+  });
+
+  render(
+    <AtcStoreProvider store={store}>
+      <FlightCard note="Light single." hex="bbbbbb" />
+      <FlightCard note="Unidentified." hex="cccccc" />
+    </AtcStoreProvider>,
+  );
+
+  const [privateCard, hexCard] = screen.getAllByTestId('flight-card');
+  expect(privateCard.querySelector('header')).toHaveTextContent(/^N352LL$/);
+  expect(privateCard).toHaveTextContent('C172');
+  expect(hexCard.querySelector('header')).toHaveTextContent(/^CCCCCC$/);
+  expect(hexCard).toHaveTextContent('Unknown type');
+  expect(screen.queryByText('Route unavailable')).toBeNull();
 });
 
 test('a flight card for an unknown ID says so instead of crashing', () => {

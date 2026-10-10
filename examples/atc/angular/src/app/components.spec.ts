@@ -16,7 +16,9 @@ import { ATC_STORE } from './store';
 
 const plane: Aircraft = {
   hex: 'aaaaaa',
+  label: 'UAL100',
   callsign: 'UAL100',
+  registration: null,
   typeCode: 'B39M',
   lat: 47.5716,
   lon: -122.3088,
@@ -99,6 +101,48 @@ test('a flight card updates live and freezes when the aircraft leaves', () => {
   ).toBe('out-of-range');
   expect(element.textContent).toContain('Out of range · last seen');
   expect(store.getState().pulse?.hex).toBe('aaaaaa');
+});
+
+test('a flight card for private or unidentified traffic shows the label and no airline line', () => {
+  const store = setup();
+  store.applySnapshot({
+    at: 2,
+    aircraft: [
+      {
+        ...plane,
+        hex: 'bbbbbb',
+        label: 'N352LL',
+        callsign: 'N352LL',
+        registration: 'N352LL',
+        typeCode: 'C172',
+      },
+      {
+        ...plane,
+        hex: 'cccccc',
+        label: 'CCCCCC',
+        callsign: null,
+        registration: null,
+        typeCode: null,
+      },
+    ],
+  });
+
+  const cards = ['bbbbbb', 'cccccc'].map((hex) => {
+    const fixture = TestBed.createComponent(FlightCardComponent);
+    fixture.componentRef.setInput('note', 'Note.');
+    fixture.componentRef.setInput('hex', hex);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  });
+
+  const [privateCard, hexCard] = cards;
+  expect(privateCard.querySelector('header')?.textContent?.trim()).toBe(
+    'N352LL',
+  );
+  expect(privateCard.textContent).toContain('C172');
+  expect(hexCard.querySelector('header')?.textContent?.trim()).toBe('CCCCCC');
+  expect(hexCard.textContent).toContain('Unknown type');
+  expect(privateCard.textContent).not.toContain('Route unavailable');
 });
 
 test('a flight card for an unknown ID says so instead of crashing', () => {

@@ -109,7 +109,7 @@ test('the run handler rejects invalid JSON and other methods', async () => {
   server.close();
 });
 
-test('the aircraft handler proxies adsb.lol, strips owner data and sets CDN caching', async () => {
+test('the aircraft handler proxies adsb.lol, keeps all traffic, strips owner data and sets CDN caching', async () => {
   const fetchFn = vi.fn<typeof fetch>(async () =>
     Response.json({
       ac: [
@@ -122,6 +122,17 @@ test('the aircraft handler proxies adsb.lol, strips owner data and sets CDN cach
           lon: -88,
           alt_baro: 35000,
         },
+        {
+          hex: 'a3f001',
+          flight: 'N352LL',
+          r: 'N352LL',
+          t: 'C172',
+          ownOp: 'Private Owner LLC',
+          lat: 44,
+          lon: -121,
+          alt_baro: 4500,
+        },
+        { hex: 'a3f002', lat: 44.1, lon: -121.1 },
       ],
     }),
   );
@@ -140,6 +151,11 @@ test('the aircraft handler proxies adsb.lol, strips owner data and sets CDN cach
     'https://api.adsb.lol/v2/point/44.0946/-121.2002/250',
   );
   expect(body.at).toBe(7);
+  expect(body.aircraft.map((a: { label: string }) => a.label)).toEqual([
+    'UAL1372',
+    'N352LL',
+    'A3F002',
+  ]);
   expect(JSON.stringify(body)).not.toContain('Owner');
   server.close();
 });

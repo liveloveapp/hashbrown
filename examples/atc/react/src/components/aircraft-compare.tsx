@@ -29,7 +29,7 @@ export function AircraftCompare({ takeaway, hexes }: AircraftCompareProps) {
               className="atc-compare-item"
               data-hex={view.hex}
             >
-              <strong className="atc-callsign">{view.callsign}</strong>
+              <strong className="atc-callsign">{view.label}</strong>
               <p className="atc-card-muted">{view.aircraftType}</p>
               <p className="atc-figure">{view.altitude}</p>
               <p className="atc-figure">{view.speed}</p>

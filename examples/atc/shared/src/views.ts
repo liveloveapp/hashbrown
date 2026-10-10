@@ -4,8 +4,9 @@ import {
   formatHeading,
   formatSpeed,
 } from './format';
+import type { Aircraft } from './aircraft';
 import { distanceNm, etaMinutes } from './geo';
-import { aircraftTypeName, airlineName } from './names';
+import { aircraftTypeName, airlineFor } from './names';
 import { type AirportCode, AIRPORTS } from './places';
 import {
   type AtcState,
@@ -21,8 +22,13 @@ export type FlightCardView =
   | {
       readonly status: 'live' | 'out-of-range';
       readonly hex: string;
-      readonly callsign: string;
-      readonly airline: string;
+      /** The display label: airline callsign, registration, callsign or hex. */
+      readonly label: string;
+      /**
+       * The line beside the label: the airline for airline callsigns, else the
+       * registration when the label is not already it, else null.
+       */
+      readonly subtitle: string | null;
       readonly aircraftType: string;
       readonly altitude: string;
       readonly speed: string;
@@ -46,6 +52,18 @@ export function routeText(
     : 'Route unavailable';
 }
 
+function subtitle(aircraft: Aircraft): string | null {
+  const airline = airlineFor(aircraft.callsign);
+  if (airline !== null) {
+    return airline;
+  }
+  const { registration, label } = aircraft;
+
+  return registration === null || registration.replaceAll('-', '') === label
+    ? null
+    : registration;
+}
+
 /** Builds the FlightCard view for a hex code. */
 export function flightCardView(
   state: AtcState,
@@ -61,13 +79,16 @@ export function flightCardView(
   return {
     status: found.status,
     hex: normalizeHex(hex),
-    callsign: aircraft.callsign,
-    airline: airlineName(aircraft.callsign),
+    label: aircraft.label,
+    subtitle: subtitle(aircraft),
     aircraftType: aircraftTypeName(aircraft.typeCode),
     altitude: formatAltitude(aircraft),
     speed: formatSpeed(aircraft.groundSpeedKt),
     heading: formatHeading(aircraft.trackDeg),
-    route: routeText(state.routes, aircraft.callsign),
+    route:
+      aircraft.callsign === null
+        ? null
+        : routeText(state.routes, aircraft.callsign),
     lastSeen:
       found.status === 'out-of-range'
         ? formatClock(found.lastSeenAt, timeZone)
@@ -79,7 +100,7 @@ export function flightCardView(
 export interface ArrivalsRow {
   readonly hex: string;
   readonly status: 'live' | 'out-of-range' | 'unknown';
-  readonly callsign: string;
+  readonly label: string;
   readonly aircraftType: string;
   readonly altitude: string;
   readonly distance: string;
@@ -98,7 +119,7 @@ export function arrivalsRows(
       return {
         hex,
         status: 'unknown',
-        callsign: 'n/a',
+        label: 'n/a',
         aircraftType: 'Unknown aircraft',
         altitude: 'n/a',
         distance: 'n/a',
@@ -113,7 +134,7 @@ export function arrivalsRows(
     return {
       hex: aircraft.hex,
       status: found.status,
-      callsign: aircraft.callsign,
+      label: aircraft.label,
       aircraftType: aircraftTypeName(aircraft.typeCode),
       altitude: formatAltitude(aircraft),
       distance: live ? `${Math.round(distance)} nm` : 'n/a',

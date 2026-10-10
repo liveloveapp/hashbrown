@@ -10,7 +10,9 @@ import {
 function aircraft(hex: string, altitudeFt = 30000): Aircraft {
   return {
     hex,
+    label: 'UAL1',
     callsign: 'UAL1',
+    registration: null,
     typeCode: 'B738',
     lat: 42,
     lon: -88,

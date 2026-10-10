@@ -38,8 +38,10 @@ export function FlightCard({ note, hex }: FlightCardProps) {
       data-status={view.status}
     >
       <header>
-        <strong className="atc-callsign">{view.callsign}</strong>
-        <span className="atc-card-muted">{view.airline}</span>
+        <strong className="atc-callsign">{view.label}</strong>
+        {view.subtitle ? (
+          <span className="atc-card-muted">{view.subtitle}</span>
+        ) : null}
       </header>
       <p className="atc-card-muted">
         {view.aircraftType}

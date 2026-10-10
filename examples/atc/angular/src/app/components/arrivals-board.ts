@@ -33,7 +33,7 @@ import { CardSkeletonComponent } from './card-skeleton';
               [attr.data-hex]="row.hex"
               [attr.data-status]="row.status"
             >
-              <td class="atc-callsign">{{ row.callsign }}</td>
+              <td class="atc-callsign">{{ row.label }}</td>
               <td class="atc-board-type" [title]="row.aircraftType">
                 {{ row.aircraftType }}
               </td>

@@ -1,6 +1,6 @@
 # atc
 
-A live map of airline traffic over the Pacific Northwest with an assistant that
+A live map of air traffic over the Pacific Northwest with an assistant that
 answers in your own components. Hashbrown's flagship example, in Angular and React.
 
 - `shared/` is plain TypeScript: the aircraft store, the tools, the component contracts and the map.

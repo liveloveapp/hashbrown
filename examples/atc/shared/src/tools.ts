@@ -2,7 +2,7 @@
 import { s } from '@hashbrownai/core';
 import type { Aircraft } from './aircraft';
 import { distanceNm, isApproaching } from './geo';
-import { aircraftTypeName, airlineName } from './names';
+import { aircraftTypeName, airlineFor } from './names';
 import {
   AIRPORT_CODES,
   AIRPORTS,
@@ -48,8 +48,12 @@ export type FindAircraftInput = s.Infer<typeof findAircraftInput>;
 /** A compact aircraft row returned to the model. */
 export interface AircraftRow {
   readonly hex: string;
-  readonly callsign: string;
-  readonly airline: string;
+  /** How to name the aircraft: airline callsign, registration, callsign or hex. */
+  readonly label: string;
+  readonly callsign: string | null;
+  readonly registration: string | null;
+  /** The airline for airline callsigns; null for private and other traffic. */
+  readonly airline: string | null;
   readonly aircraftType: string;
   readonly altitudeFt: number | null;
   readonly groundSpeedKt: number | null;
@@ -60,8 +64,10 @@ export interface AircraftRow {
 function toRow(aircraft: Aircraft, from: LatLon): AircraftRow {
   return {
     hex: aircraft.hex,
+    label: aircraft.label,
     callsign: aircraft.callsign,
-    airline: airlineName(aircraft.callsign),
+    registration: aircraft.registration,
+    airline: airlineFor(aircraft.callsign),
     aircraftType: aircraftTypeName(aircraft.typeCode),
     altitudeFt: aircraft.altitudeFt,
     groundSpeedKt: aircraft.groundSpeedKt,
@@ -74,6 +80,17 @@ function text(value: string | null): string | null {
   const trimmed = value?.trim().toLowerCase() ?? '';
 
   return trimmed === '' ? null : trimmed;
+}
+
+/** True when an airliner's ICAO code or airline name matches `query`. */
+function matchesAirline(aircraft: Aircraft, query: string): boolean {
+  const name = airlineFor(aircraft.callsign);
+
+  return (
+    name !== null &&
+    (aircraft.callsign?.slice(0, 3).toLowerCase() === query ||
+      name.toLowerCase().includes(query))
+  );
 }
 
 const SORTS: Record<
@@ -102,12 +119,7 @@ export function findAircraft(
   const limit = Math.min(20, Math.max(1, Math.round(input.limit)));
 
   return [...state.aircraft.values()]
-    .filter(
-      (a) =>
-        airline === null ||
-        a.callsign.slice(0, 3).toLowerCase() === airline ||
-        airlineName(a.callsign).toLowerCase().includes(airline),
-    )
+    .filter((a) => airline === null || matchesAirline(a, airline))
     .filter(
       (a) =>
         type === null ||

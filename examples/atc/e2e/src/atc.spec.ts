@@ -160,6 +160,25 @@ async function expectOnlyCompleteIds(page: Page): Promise<void> {
   }
 }
 
+test('tags private and unidentified traffic by label', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+
+  const tags = [
+    ['a1c009', 'N352LL'],
+    ['a1c00a', 'N911LF'],
+    ['a1c00b', 'A1C00B'],
+  ].map(([hex, label]) => ({
+    tag: page.locator(`.atc-plane[data-hex="${hex}"] .atc-plane-tag`),
+    label,
+  }));
+
+  for (const { tag, label } of tags) {
+    await expect(tag).toContainText(label);
+  }
+});
+
 test('renders the selected aircraft as a live card', async ({
   page,
 }, testInfo) => {
@@ -208,8 +227,8 @@ test('compares the highest and the fastest aircraft', async ({
   await page.getByRole('button', { name: STARTER_PROMPTS[2] }).click();
 
   const compare = page.getByTestId('aircraft-compare');
-  await expect(compare).toContainText(highest.callsign);
-  await expect(compare).toContainText(fastest.callsign);
+  await expect(compare).toContainText(highest.label);
+  await expect(compare).toContainText(fastest.label);
   await expectOnlyCompleteIds(page);
 });
 
@@ -301,7 +320,7 @@ test('recovers from a failed send with Retry', async ({ page }, testInfo) => {
   await alert.getByRole('button', { name: 'Retry' }).click();
 
   await expect(page.getByTestId('aircraft-compare')).toContainText(
-    highest.callsign,
+    highest.label,
   );
   await expect(alert).toHaveCount(0);
 });

@@ -5,7 +5,9 @@ import { AIRPORTS } from './places';
 
 const base: Aircraft = {
   hex: 'a1b2c3',
+  label: 'UAL1',
   callsign: 'UAL1',
+  registration: null,
   typeCode: 'B738',
   lat: 47.5716,
   lon: -122.3088,
