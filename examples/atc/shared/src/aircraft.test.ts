@@ -127,3 +127,73 @@ test('parseReplayFile requires at least one frame', () => {
     parseReplayFile({ area: 'ord', recordedAt: 1000, frames: [] }),
   ).toThrow('Invalid replay file');
 });
+
+test('parseSnapshot rejects a non-boolean onGround', () => {
+  const snapshot = normalizeAdsbLol({ ac: [united] }, 1000);
+  const invalid = {
+    ...snapshot,
+    aircraft: [{ ...snapshot.aircraft[0], onGround: 'no' }],
+  };
+
+  const act = () => parseSnapshot(invalid);
+
+  expect(act).toThrow('Invalid aircraft snapshot');
+});
+
+test('parseSnapshot rejects a string altitudeFt', () => {
+  const snapshot = normalizeAdsbLol({ ac: [united] }, 1000);
+  const invalid = {
+    ...snapshot,
+    aircraft: [{ ...snapshot.aircraft[0], altitudeFt: '35000' }],
+  };
+
+  const act = () => parseSnapshot(invalid);
+
+  expect(act).toThrow('Invalid aircraft snapshot');
+});
+
+test('parseSnapshot rejects a non-finite lat', () => {
+  const snapshot = normalizeAdsbLol({ ac: [united] }, 1000);
+  const invalid = {
+    ...snapshot,
+    aircraft: [{ ...snapshot.aircraft[0], lat: Number.POSITIVE_INFINITY }],
+  };
+
+  const act = () => parseSnapshot(invalid);
+
+  expect(act).toThrow('Invalid aircraft snapshot');
+});
+
+test('parseSnapshot accepts null nullable fields', () => {
+  const snapshot = normalizeAdsbLol({ ac: [united] }, 1000);
+  const nulled = {
+    ...snapshot,
+    aircraft: [
+      {
+        ...snapshot.aircraft[0],
+        typeCode: null,
+        altitudeFt: null,
+        groundSpeedKt: null,
+        trackDeg: null,
+        verticalRateFpm: null,
+      },
+    ],
+  };
+
+  const parsed = parseSnapshot(nulled);
+
+  expect(parsed).toEqual(nulled);
+});
+
+test('parseSnapshot strips fields outside the Aircraft shape', () => {
+  const snapshot = normalizeAdsbLol({ ac: [united] }, 1000);
+  const withOwner = {
+    ...snapshot,
+    aircraft: [{ ...snapshot.aircraft[0], ownOp: 'BANK OF UTAH TRUSTEE' }],
+  };
+
+  const parsed = parseSnapshot(withOwner);
+
+  expect(parsed).toEqual(snapshot);
+  expect(parsed.aircraft[0]).not.toHaveProperty('ownOp');
+});

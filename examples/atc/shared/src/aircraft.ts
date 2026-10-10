@@ -96,31 +96,79 @@ function normalizeEntry(entry: unknown): Aircraft | null {
   };
 }
 
-function isAircraft(value: unknown): value is Aircraft {
-  return (
-    isRecord(value) &&
-    typeof value['hex'] === 'string' &&
-    HEX.test(value['hex']) &&
-    typeof value['callsign'] === 'string' &&
-    isAirlineCallsign(value['callsign']) &&
-    typeof value['lat'] === 'number' &&
-    typeof value['lon'] === 'number' &&
-    typeof value['onGround'] === 'boolean'
-  );
+/** True for `null` or a finite number: the shape of every nullable numeric field. */
+function isNullableNumber(value: unknown): value is number | null {
+  return value === null || numberOrNull(value) !== null;
 }
 
-/** Validates a snapshot received over the network or from a replay file. */
+/**
+ * Validates one aircraft against every field of the `Aircraft` shape and
+ * rebuilds it from those fields only. Returns `null` when any field is invalid.
+ */
+function parseAircraft(value: unknown): Aircraft | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const hex = value['hex'];
+  const callsign = value['callsign'];
+  const typeCode = value['typeCode'];
+  const lat = numberOrNull(value['lat']);
+  const lon = numberOrNull(value['lon']);
+  const altitudeFt = value['altitudeFt'];
+  const onGround = value['onGround'];
+  const groundSpeedKt = value['groundSpeedKt'];
+  const trackDeg = value['trackDeg'];
+  const verticalRateFpm = value['verticalRateFpm'];
+  const valid =
+    typeof hex === 'string' &&
+    HEX.test(hex) &&
+    typeof callsign === 'string' &&
+    isAirlineCallsign(callsign) &&
+    (typeCode === null || typeof typeCode === 'string') &&
+    lat !== null &&
+    lon !== null &&
+    isNullableNumber(altitudeFt) &&
+    typeof onGround === 'boolean' &&
+    isNullableNumber(groundSpeedKt) &&
+    isNullableNumber(trackDeg) &&
+    isNullableNumber(verticalRateFpm);
+  if (!valid) {
+    return null;
+  }
+
+  return {
+    hex,
+    callsign,
+    typeCode,
+    lat,
+    lon,
+    altitudeFt,
+    onGround,
+    groundSpeedKt,
+    trackDeg,
+    verticalRateFpm,
+  };
+}
+
+/**
+ * Validates a snapshot received over the network or from a replay file.
+ * Returns a rebuilt snapshot whose aircraft carry only the `Aircraft` fields.
+ */
 export function parseSnapshot(value: unknown): AircraftSnapshot {
   if (
     !isRecord(value) ||
     typeof value['at'] !== 'number' ||
-    !Array.isArray(value['aircraft']) ||
-    !value['aircraft'].every(isAircraft)
+    !Array.isArray(value['aircraft'])
   ) {
     throw new Error('Invalid aircraft snapshot');
   }
+  const parsed = value['aircraft'].map(parseAircraft);
+  const aircraft = parsed.filter((item): item is Aircraft => item !== null);
+  if (aircraft.length !== parsed.length) {
+    throw new Error('Invalid aircraft snapshot');
+  }
 
-  return { at: value['at'], aircraft: value['aircraft'] };
+  return { at: value['at'], aircraft };
 }
 
 /** Validates a replay file; it must contain at least one valid frame. */
