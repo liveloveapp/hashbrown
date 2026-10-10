@@ -1,0 +1,22 @@
+{
+  "name": "atc-e2e",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "implicitDependencies": ["atc-angular", "atc-react", "atc-server"],
+  "targets": {
+    "e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        { "projects": ["atc-angular", "atc-react"], "target": "build" }
+      ],
+      "options": {
+        "command": "playwright test --config examples/atc/e2e/playwright.config.ts"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "eslint examples/atc/e2e" }
+    }
+  }
+}

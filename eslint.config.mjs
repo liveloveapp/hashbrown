@@ -24,6 +24,8 @@ export default [
           allow: [
             '^.*/eslint(\\.base)?\\.config\\.[cm]?js$',
             '^@hashbrownai/testing/aimock$',
+            // The ATC e2e starts the real server in-process; it is an app, not a library.
+            '^@atc/server$',
             // The e2e recorder reuses the fixture server's tape helpers directly;
             // there is no separate library boundary between the two.
             '^\\.\\./server/src/fixture-tape$',
