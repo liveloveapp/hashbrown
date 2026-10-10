@@ -48,14 +48,25 @@ export interface AirspaceMapHandle {
 /**
  * Mounts a Leaflet map in `element` and keeps its markers in sync with the
  * store. Leaflet is imported lazily so server bundles never load it.
+ *
+ * Pass `signal` to cancel before the import settles: when it is already
+ * aborted by then, no map is created and the handle's `destroy` is a no-op.
  */
 export async function createAirspaceMap(options: {
   element: HTMLElement;
   store: AtcStore;
   area: Area;
+  signal?: AbortSignal;
 }): Promise<AirspaceMapHandle> {
-  const { element, store, area } = options;
+  const { element, store, area, signal } = options;
   const module = await import('leaflet');
+  if (signal?.aborted) {
+    return {
+      destroy() {
+        // Nothing was created.
+      },
+    };
+  }
   const L =
     (module as unknown as { default?: typeof module }).default ?? module;
   const map: LeafletMap = L.map(element, { zoomControl: false }).setView(

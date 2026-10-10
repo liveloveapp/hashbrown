@@ -13,7 +13,7 @@ import {
   useTool,
   useUiChat,
 } from '@hashbrownai/react';
-import { type FormEvent, Fragment, useMemo, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 import {
   AircraftCompare,
   AircraftCompareFallback,
@@ -97,10 +97,10 @@ export function Assistant() {
             <li key={index} className="atc-user">
               {messageText(message.content)}
             </li>
-          ) : message.role === 'assistant' ? (
-            <li key={index}>
-              <Fragment>{message.ui}</Fragment>
-            </li>
+          ) : message.role === 'assistant' &&
+            message.ui &&
+            message.ui.length > 0 ? (
+            <li key={index}>{message.ui}</li>
           ) : null,
         )}
       </ol>

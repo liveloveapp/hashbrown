@@ -9,15 +9,16 @@ export function AirspaceMap() {
   const element = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
     let handle: AirspaceMapHandle | undefined;
-    let cancelled = false;
     if (element.current) {
       void createAirspaceMap({
         element: element.current,
         store,
         area: AREAS.ord,
+        signal: controller.signal,
       }).then((created) => {
-        if (cancelled) {
+        if (controller.signal.aborted) {
           created.destroy();
         } else {
           handle = created;
@@ -26,7 +27,7 @@ export function AirspaceMap() {
     }
 
     return () => {
-      cancelled = true;
+      controller.abort();
       handle?.destroy();
     };
   }, [store]);
