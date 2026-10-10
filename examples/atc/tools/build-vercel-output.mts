@@ -1,4 +1,3 @@
-import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
 import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { build } from 'vite';
@@ -34,7 +33,8 @@ for (const { name, maxDuration } of functions) {
     root: repo,
     publicDir: false,
     logLevel: 'warn',
-    plugins: [nxViteTsPaths()],
+    // Resolve @atc/* and @hashbrownai/* from tsconfig paths to their source.
+    resolve: { tsconfigPaths: true },
     ssr: { noExternal: true, target: 'node' },
     build: {
       ssr: resolve(root, `server/src/vercel/${name}.ts`),
