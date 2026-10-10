@@ -22,6 +22,8 @@ The JavaScript runtime opens up a lot of capabilities and opportunities.
 
 We use [QuickJS](https://bellard.org/quickjs/), a small and embeddable JavaScript engine, compiled to a WebAssembly module using emscripten. This enables you to safely execute code in a sandbox environment.
 
+QuickJS ships inside `@hashbrownai/core` and loads lazily the first time a runtime runs code, so there is nothing extra to install.
+
 1. Define a runtime.
 2. Provide async functions using the @hashbrownai/angular!createRuntimeFunction:function function that the model can execute in order to follow instructions and respond to a prompt.
 3. Hashbrown generates instructions and TypeScript definitions for each function to inform the model of the function signature.

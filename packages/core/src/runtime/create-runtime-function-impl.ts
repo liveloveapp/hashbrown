@@ -1,10 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { s } from '../schema';
-import type {
-  QuickJSAsyncContext,
-  QuickJSHandle,
-} from 'quickjs-emscripten-core';
-import { RuntimeTransport } from './transport';
 
 /**
  * A reference to a function in the runtime.
@@ -100,39 +95,4 @@ export function createRuntimeFunctionImpl(
     result: cfg.result,
     handler: cfg.handler as any,
   };
-}
-
-export function attachFunctionToContext(
-  context: QuickJSAsyncContext,
-  transport: RuntimeTransport,
-  definition: RuntimeFunctionRef<any, Promise<any>>,
-  attachTo: QuickJSHandle,
-  abortSignal: AbortSignal,
-) {
-  const { name, args: argsSchema, result: resultSchema, handler } = definition;
-
-  const fnHandle = context.newAsyncifiedFunction(name, (...args) => {
-    if (argsSchema === undefined && resultSchema === undefined) {
-      return handler(null, abortSignal).then(() => context.undefined);
-    }
-
-    if (argsSchema === undefined) {
-      return handler(null, abortSignal).then((result) =>
-        transport.sendObject(result),
-      );
-    }
-
-    if (resultSchema === undefined) {
-      const resolvedArgs = transport.receiveObject(args[0]);
-      return handler(resolvedArgs, abortSignal).then(() => context.undefined);
-    }
-
-    const resolvedArgs = transport.receiveObject(args[0]);
-    return handler(resolvedArgs, abortSignal).then((result) =>
-      transport.sendObject(result),
-    );
-  });
-
-  context.setProp(attachTo, name, fnHandle);
-  return fnHandle;
 }

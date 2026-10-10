@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  attachFunctionToContext,
-  RuntimeFunctionRef,
-} from './create-runtime-function-impl';
+import { attachFunctionToContext } from './attach-function-to-context';
+import { RuntimeFunctionRef } from './create-runtime-function-impl';
 import { RuntimeTransport } from './transport';
 import { installIntl } from './proxies/intl';
 
