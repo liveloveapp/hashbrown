@@ -1,9 +1,15 @@
+const WIDTH = 250;
+const HEIGHT = 80;
+
 /**
  * Stroke geometry for the ATC lettermark. Render each path with
- * `fill="none"`, `stroke="currentColor"`, round caps and round joins.
+ * `fill="none"`, `stroke="currentColor"`, round caps and round joins. Size it
+ * with `width / height` so the mark keeps its aspect ratio.
  */
 export const ATC_MARK = {
-  viewBox: '0 0 250 80',
+  width: WIDTH,
+  height: HEIGHT,
+  viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
   strokeWidth: 10,
   paths: [
     'M8 72 L40 8 L72 72',

@@ -2,17 +2,21 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { expect, test } from 'vitest';
 
-/**
+/*
  * LiveLoveApp's design rules, the subset a source scan can check. Comments are
  * stripped first so prose explaining a rule never trips it.
  */
+
+/** The atc example root. */
 const ATC = join(import.meta.dirname, '..', '..');
+/** Where the scanned sources live: the stylesheet and both apps. */
 const ROOTS = [
   { dir: join(ATC, 'shared', 'src', 'styles'), pattern: /\.css$/ },
   { dir: join(ATC, 'angular', 'src'), pattern: /\.ts$/ },
   { dir: join(ATC, 'react', 'src'), pattern: /\.tsx$/ },
 ];
 
+/** Every file under `dir` matching `pattern`, skipping tests. */
 function walk(dir: string, pattern: RegExp, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
@@ -26,12 +30,14 @@ function walk(dir: string, pattern: RegExp, out: string[] = []): string[] {
   return out;
 }
 
+/** The source without block or line comments. */
 function stripComments(source: string): string {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[\s;{}])\/\/.*$/gm, '$1');
 }
 
+/** Every scanned file with comments stripped. */
 const files = ROOTS.flatMap(({ dir, pattern }) => walk(dir, pattern)).map(
   (path) => ({
     file: relative(ATC, path),
@@ -39,6 +45,7 @@ const files = ROOTS.flatMap(({ dir, pattern }) => walk(dir, pattern)).map(
   }),
 );
 
+/** Font names the rules allow, lowercased. */
 const ALLOWED_FONTS = new Set([
   'hanken grotesk',
   'jetbrains mono',
@@ -66,9 +73,15 @@ function badFonts(stack: string): string[] {
     );
 }
 
-/** Every `letter-spacing` value in the source that is positive. */
+/**
+ * Every positive letter-spacing value in the source, from CSS
+ * (`letter-spacing: 1px`) or a React inline style (`letterSpacing: '1px'`).
+ */
 function positiveSpacing(source: string): string[] {
-  return [...source.matchAll(/letter-spacing\s*:\s*([^;}]+)/g)]
+  return [
+    ...source.matchAll(/letter-spacing\s*:\s*([^;}]+)/g),
+    ...source.matchAll(/\bletterSpacing\s*:\s*['"`]?([^'"`,}]+)/g),
+  ]
     .map((match) => (match[1] ?? '').trim())
     .filter(
       (value) => /^\+?(\d+\.?\d*|\.\d+)/.test(value) && parseFloat(value) > 0,
@@ -108,13 +121,14 @@ const RULES: Record<string, (source: string) => unknown[]> = {
   ],
   'gradients, shadows and glass': (s) =>
     s.match(
-      /gradient\s*\(|box-shadow|text-shadow|drop-shadow|backdrop-filter/g,
+      /gradient\s*\(|box-?shadow|text-?shadow|drop-?shadow|backdrop-?filter/gi,
     ) ?? [],
   'dark scheme': (s) =>
     s.match(/prefers-color-scheme\s*:\s*dark|color-scheme\s*:\s*dark/g) ?? [],
   fonts: fontNames,
 };
 
+/** Snippets each rule must catch. */
 const BAD: Record<string, string[]> = {
   uppercase: ['text-transform: uppercase', "className='uppercase'"],
   'positive letter-spacing': [
@@ -123,12 +137,18 @@ const BAD: Record<string, string[]> = {
     'letter-spacing: 0.5px',
     'letter-spacing: .5px',
     'letter-spacing: 1px',
+    "style={{ letterSpacing: '0.1em' }}",
+    'style={{ letterSpacing: 2 }}',
   ],
   'gradients, shadows and glass': [
     'box-shadow: 0 1px 2px #000',
     'background: linear-gradient(red, blue)',
     'filter: drop-shadow(0 0 2px red)',
     'backdrop-filter: blur(4px)',
+    "style={{ boxShadow: '0 1px 2px #000' }}",
+    "style={{ textShadow: '0 0 2px red' }}",
+    "style={{ backdropFilter: 'blur(4px)' }}",
+    "style={{ WebkitBackdropFilter: 'blur(4px)' }}",
   ],
   'dark scheme': [
     '@media (prefers-color-scheme : dark) {}',
@@ -144,9 +164,14 @@ const BAD: Record<string, string[]> = {
   ],
 };
 
+/** Snippets every rule must accept. */
 const GOOD = [
   'letter-spacing: 0',
   'letter-spacing: -0.01em',
+  "style={{ letterSpacing: '-0.01em' }}",
+  'style={{ letterSpacing: 0 }}',
+  "style={{ filter: 'grayscale(1)' }}",
+  "style={{ border: '1px solid var(--atc-border)' }}",
   "font-family: 'Hanken Grotesk', system-ui, sans-serif;",
   "--atc-mono: 'JetBrains Mono', ui-monospace, monospace;",
   'font-family: var(--atc-font);',
@@ -171,12 +196,13 @@ test('the comment stripper keeps url(//...) and drops line comments', () => {
   expect(result).not.toContain('box-shadow');
 });
 
-for (const [rule, snippets] of Object.entries(BAD)) {
+for (const [rule, check] of Object.entries(RULES)) {
   test(`the ${rule} rule catches known-bad snippets`, () => {
-    const check = RULES[rule]!;
+    const snippets = BAD[rule] ?? [];
 
     const missed = snippets.filter((snippet) => check(snippet).length === 0);
 
+    expect(snippets.length).toBeGreaterThan(0);
     expect(missed).toEqual([]);
   });
 }

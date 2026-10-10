@@ -9,6 +9,8 @@ test('the logo renders the three letter strokes with an ATC label', () => {
   const svg = screen.getByRole('img', { name: 'ATC' });
 
   expect(svg.getAttribute('height')).toBe('18');
+  expect(svg.getAttribute('width')).toBe('56.25');
+  expect(svg.getAttribute('stroke')).toBe('currentColor');
   expect(svg.querySelectorAll('path')).toHaveLength(3);
 });
 

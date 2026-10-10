@@ -5,12 +5,13 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 @Component({
   selector: 'atc-logo',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'atc-logo' },
   template: `<svg
     role="img"
     aria-label="ATC"
     [attr.viewBox]="mark.viewBox"
     [attr.height]="height()"
-    [attr.width]="height() * 3.125"
+    [attr.width]="(height() * mark.width) / mark.height"
     fill="none"
     stroke="currentColor"
     [attr.stroke-width]="mark.strokeWidth"
