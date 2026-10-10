@@ -43,7 +43,9 @@ async function mountAnimated() {
 
   return {
     store,
-    cleanup: () => {
+    /** Lets Leaflet's 250 ms zoom transition end before the map is removed. */
+    cleanup: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 400));
       handle.destroy();
       (L.Browser as { any3d: boolean }).any3d = any3d;
       vi.unstubAllGlobals();
@@ -63,5 +65,21 @@ test("an animated area zoom does not cancel a newer request when Leaflet's zooms
   await frame();
 
   expect(map.store.getState().viewRequest?.kind).toBe('highlight');
-  map.cleanup();
+  await map.cleanup();
+});
+
+test('a move that interrupts another keeps the guard until its own animation ends', async () => {
+  const map = await mountAnimated();
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+  map.store.showArea({ airport: 'KBDN', radiusNm: 10 });
+  await frame();
+  map.store.showArea({ airport: 'KSEA', radiusNm: 10 });
+  map.store.highlight(['bbbbbb']);
+
+  for (let i = 0; i < 8; i++) {
+    await frame();
+  }
+
+  expect(map.store.getState().viewRequest?.kind).toBe('highlight');
+  await map.cleanup();
 });

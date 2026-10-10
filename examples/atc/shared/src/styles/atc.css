@@ -1077,9 +1077,17 @@ input {
   visibility: visible;
   transition: opacity var(--atc-fast) var(--atc-ease);
 }
-/* The selected plane's card can be closed, and scrolled when docked. */
-.atc-detail.is-pinned {
+/*
+ * The selected plane's card: its buttons take taps, and a docked card can be
+ * scrolled. A floating card stays see-through to the pointer, so the planes
+ * under it can still be hovered and picked.
+ */
+.atc-detail.is-pinned button,
+.atc-detail.is-pinned.is-docked {
   pointer-events: auto;
+}
+.atc-detail [hidden] {
+  display: none;
 }
 /* Narrow maps: the card docks at the top, full width. */
 .atc-detail.is-docked {
@@ -1201,9 +1209,10 @@ input {
     height: 44px;
     margin: -14px -12px -14px auto;
   }
+  /* 44px to tap, without leaving a gap under it: it eats the card's padding. */
   .atc-detail-more {
     min-height: 44px;
-    margin: 0;
+    margin: -2px 0 -10px;
   }
 }
 

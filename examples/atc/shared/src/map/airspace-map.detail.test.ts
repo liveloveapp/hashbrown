@@ -241,3 +241,25 @@ test('More opens every reading in the docked card and keeps the plane selected',
   expect(map.card()?.textContent).toContain('Squawk1200');
   map.cleanup();
 });
+
+test('the focused close button stays focused through the age ticker and new snapshots', async () => {
+  const map = await mount();
+  map.store.select('a1c009');
+  const close = map.card()?.querySelector<HTMLElement>('.atc-detail-close');
+  close?.focus();
+
+  map.store.applySnapshot({
+    at: 2,
+    aircraft: [{ ...cessna, altitudeFt: 4600, seenS: 1 }, jet],
+  });
+  await new Promise((resolve) => setTimeout(resolve, 1100));
+  map.store.applySnapshot({
+    at: 3,
+    aircraft: [{ ...cessna, altitudeFt: 4700, seenS: 2 }, jet],
+  });
+
+  expect(close?.isConnected).toBe(true);
+  expect(document.activeElement).toBe(close);
+  expect(map.card()?.textContent).toContain('4,700 ft');
+  map.cleanup();
+});

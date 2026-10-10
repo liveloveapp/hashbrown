@@ -118,3 +118,20 @@ test('a highlight fit keeps every plane above the sheet', async () => {
   expect(Math.min(...ys)).toBeGreaterThan(0);
   map.cleanup();
 });
+
+test('a revealed plane lands between a docked detail card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: planes });
+  const card = document.querySelector<HTMLElement>(
+    '[data-testid="aircraft-detail"]',
+  );
+  Object.defineProperty(card, 'offsetHeight', { get: () => 60 });
+
+  map.store.revealAircraft('cccccc');
+  await settle();
+
+  // The card covers 8 + 60 + 8 px at the top; the sheet starts at 180.
+  const { x, y } = map.pixel('cccccc');
+  expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});

@@ -134,7 +134,9 @@ export interface DetailCard {
   readonly element: HTMLElement;
   /**
    * Shows the fullest trim of `view` no taller than `maxHeight`, rebuilding
-   * the content only when the view, the room or the mode changed. Returns
+   * the readings only when the view (apart from the message age, updated in
+   * place), the room or the mode changed. The header and buttons are never
+   * rebuilt. Returns
    * false, and hides the card, when even the smallest trim does not fit. A
    * docked card with every reading open scrolls instead of trimming.
    */
@@ -147,6 +149,11 @@ export interface DetailCard {
   hide(): void;
   /** Places the card beside a plane drawn at `point` inside `area`, or docks it. */
   place(point: CardPoint, area: CardSize): void;
+  /**
+   * The pixels the card covers at the top of the map while it is open and
+   * docked (with its margins), else 0.
+   */
+  dockedInset(): number;
 }
 
 /** Builds an element with a class and, optionally, text (as a text node). */
@@ -205,54 +212,104 @@ function rows(
   return list;
 }
 
+/** The label of the one reading that changes every second. */
+const AGE_LABEL = 'Last message';
+
+/** The view without its message age, which is updated in place instead. */
+function withoutAge(view: AircraftDetailView): AircraftDetailView {
+  return {
+    ...view,
+    groups: view.groups.map((group) => ({
+      ...group,
+      rows: group.rows.map((row) =>
+        row.label === AGE_LABEL ? { ...row, value: '' } : row,
+      ),
+    })),
+  };
+}
+
+/** The message age in a view, or null. */
+function ageOf(view: AircraftDetailView): string | null {
+  for (const group of view.groups) {
+    const row = group.rows.find((r) => r.label === AGE_LABEL);
+    if (row) {
+      return row.value;
+    }
+  }
+
+  return null;
+}
+
+/** Sets an element's text only when it changed. */
+function setText(node: Element, text: string): void {
+  if (node.textContent !== text) {
+    node.textContent = text;
+  }
+}
+
 /**
- * The card's content for `view`, built from text nodes only: the header
- * (with a close button when pinned), the summary, then the reading groups,
- * which a docked card keeps behind a More button until `more`.
+ * The card's parts. The header, the close button and the More button are
+ * built once and only updated, so keyboard focus and a tap in progress
+ * survive every snapshot and every tick of the message age.
  */
-function content(
+interface CardParts {
+  readonly label: HTMLElement;
+  readonly subtitle: HTMLElement;
+  readonly close: HTMLElement;
+  readonly summary: HTMLElement;
+  readonly more: HTMLElement;
+  readonly body: HTMLElement;
+}
+
+function buildParts(doc: Document, element: HTMLElement): CardParts {
+  const header = el(doc, 'div', 'atc-detail-header');
+  const label = el(doc, 'span', 'atc-detail-label');
+  const subtitle = el(doc, 'span', 'atc-detail-subtitle');
+  const close = el(doc, 'button', 'atc-detail-close');
+  close.setAttribute('type', 'button');
+  close.append(closeIcon(doc));
+  header.append(label, subtitle, close);
+  const summary = el(doc, 'div', 'atc-detail-summary');
+  const more = el(doc, 'button', 'atc-detail-more');
+  more.setAttribute('type', 'button');
+  const body = el(doc, 'div', 'atc-detail-body');
+  element.append(header, summary, more, body);
+
+  return { label, subtitle, close, summary, more, body };
+}
+
+/**
+ * Fills the card's parts for `view`, from text nodes only: the header (with
+ * a close button when pinned), the summary, then the reading groups, which a
+ * docked card keeps behind the More button until `more`. The summary and the
+ * groups are rebuilt; the header and buttons are updated in place.
+ */
+function fill(
   doc: Document,
+  parts: CardParts,
   view: AircraftDetailView,
   mode: DetailCardMode,
   more: boolean,
-): HTMLElement[] {
-  const header = el(doc, 'div', 'atc-detail-header');
-  header.append(el(doc, 'span', 'atc-detail-label', view.label));
-  if (view.subtitle !== null) {
-    header.append(el(doc, 'span', 'atc-detail-subtitle', view.subtitle));
-  }
-  if (mode.pinned) {
-    const close = el(doc, 'button', 'atc-detail-close');
-    close.setAttribute('type', 'button');
-    close.setAttribute('aria-label', `Close details for ${view.label}`);
-    close.append(closeIcon(doc));
-    header.append(close);
-  }
+): void {
+  setText(parts.label, view.label);
+  setText(parts.subtitle, view.subtitle ?? '');
+  parts.subtitle.hidden = view.subtitle === null;
+  parts.close.hidden = !mode.pinned;
+  parts.close.setAttribute('aria-label', `Close details for ${view.label}`);
   const { type, route, figures } = view.summary;
   const line = [type, route].filter((part) => part !== null).join(' · ');
-  const summary = [
+  parts.summary.replaceChildren(
     ...(line === '' ? [] : [el(doc, 'p', 'atc-detail-line', line)]),
     ...(figures.length === 0
       ? []
       : [rows(doc, 'atc-detail-figures', 'atc-detail-figure', figures)]),
-  ];
-  const toggle =
-    mode.docked && view.groups.length > 0
-      ? [
-          el(
-            doc,
-            'button',
-            'atc-detail-more',
-            more ? 'Fewer readings' : 'More readings',
-          ),
-        ]
-      : [];
-  for (const button of toggle) {
-    button.setAttribute('type', 'button');
-    button.setAttribute('aria-expanded', String(more));
-  }
+  );
+  parts.more.hidden = !(mode.docked && view.groups.length > 0);
+  setText(parts.more, more ? 'Fewer readings' : 'More readings');
+  parts.more.setAttribute('aria-expanded', String(more));
   if (mode.docked && !more) {
-    return [header, ...summary, ...toggle];
+    parts.body.replaceChildren();
+    return;
   }
   const groups = view.groups.map((group) => {
     const section = el(doc, 'div', 'atc-detail-group');
@@ -275,10 +332,20 @@ function content(
             `${hiddenRows} ${hiddenRows === 1 ? 'reading' : 'readings'} hidden to fit`,
           ),
         ];
-
-  return [header, ...summary, ...toggle, ...groups, ...note];
+  parts.body.replaceChildren(...groups, ...note);
 }
 
+/** Writes the message age into the drawn readings, in place. */
+function fillAge(parts: CardParts, age: string | null): void {
+  for (const item of parts.body.querySelectorAll('.atc-detail-row')) {
+    if (item.querySelector('dt')?.textContent === AGE_LABEL) {
+      const value = item.querySelector('dd');
+      if (value && age !== null) {
+        setText(value, age);
+      }
+    }
+  }
+}
 /**
  * Creates the detail card element (`data-testid="aircraft-detail"`), hidden
  * until shown. Content is text nodes only, so no reading can inject markup.
@@ -297,9 +364,9 @@ export function createDetailCard(
   let mode = HOVER;
   let more = false;
   let hex: string | null = null;
+  const parts = buildParts(doc, element);
   element.addEventListener('click', (event) => {
-    // Handled here: the map below must not take it for a click on empty map
-    // (the button is rebuilt before the event would reach the map).
+    // Handled here: the map below must not take it for a click on empty map.
     event.stopPropagation();
     const target = event.target instanceof Element ? event.target : null;
     if (target?.closest('.atc-detail-close')) {
@@ -311,7 +378,7 @@ export function createDetailCard(
   });
   const render = (view: AircraftDetailView) => {
     element.setAttribute('data-hex', view.hex);
-    element.replaceChildren(...content(doc, view, mode, more));
+    fill(doc, parts, view, mode, more);
   };
   const hide = () => {
     if (element.classList.contains('is-open')) {
@@ -335,7 +402,8 @@ export function createDetailCard(
       element.classList.toggle('is-docked', mode.docked);
       element.classList.toggle('is-more', mode.docked && more);
       const scrolls = mode.docked && more;
-      const key = `${Math.floor(maxHeight)} ${mode.pinned} ${mode.docked} ${more} ${JSON.stringify(view)}`;
+      // The message age ticks every second; it is written in place below.
+      const key = `${Math.floor(maxHeight)} ${mode.pinned} ${mode.docked} ${more} ${JSON.stringify(withoutAge(view))}`;
       if (key !== shown) {
         shown = key;
         size = null;
@@ -358,6 +426,7 @@ export function createDetailCard(
         hide();
         return false;
       }
+      fillAge(parts, ageOf(view));
       if (!element.classList.contains('is-open')) {
         element.classList.add('is-open');
         element.setAttribute('aria-hidden', 'false');
@@ -365,6 +434,13 @@ export function createDetailCard(
       return true;
     },
     hide,
+    dockedInset() {
+      const height = element.offsetHeight;
+
+      return mode.docked && element.classList.contains('is-open') && height > 0
+        ? height + 2 * CARD_MARGIN
+        : 0;
+    },
     place(point, area) {
       size ??= { width: element.offsetWidth, height: element.offsetHeight };
       const { x, y } = mode.docked

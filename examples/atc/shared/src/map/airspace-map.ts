@@ -330,6 +330,7 @@ export async function createAirspaceMap(options: {
   const syncPill = () =>
     pill.show(followPillView(store.getState(), resume, performance.now()));
   map.on('dragstart', () => {
+    endMove?.();
     programmatic = false;
     const { followingHex } = store.getState();
     if (followingHex !== null) {
@@ -477,16 +478,57 @@ export async function createAirspaceMap(options: {
     }
     map.panBy([offset.x, offset.y], { animate });
   };
+  /** Ends the guard of the move in flight, if any (see {@link moveMap}). */
+  let endMove: (() => void) | null = null;
   /**
    * Runs a map move this controller makes, so it is not taken for the user's.
-   * The flag holds until the move ends: Leaflet starts an animated zoom (and
-   * fires its zoomstart) a frame later, after `move` has returned. A move with
-   * nothing to animate ends at once; a user drag clears the flag too.
+   * The flag holds until this move ends: Leaflet starts an animated zoom (and
+   * fires its zoomstart) a frame later, after `move` has returned. Only one
+   * move is tracked; a newer move replaces the older one's handlers, and a
+   * moveend fired while `move` runs (the interrupted animation stopping, or
+   * a move with nothing to animate) ends the guard only if no animation
+   * starts in the next two frames. A user drag clears the flag too.
    */
   const moveMap = (move: () => void) => {
+    endMove?.();
     programmatic = true;
-    map.once('moveend', () => (programmatic = false));
+    let running = true;
+    let endedInside = false;
+    let started = false;
+    const onStart = () => {
+      if (!running) {
+        started = true;
+      }
+    };
+    const finish = () => {
+      map.off('moveend', onEnd);
+      map.off('movestart', onStart);
+      if (endMove === finish) {
+        endMove = null;
+        programmatic = false;
+      }
+    };
+    const onEnd = () => {
+      if (running) {
+        endedInside = true;
+      } else {
+        finish();
+      }
+    };
+    endMove = finish;
+    map.on('moveend', onEnd);
+    map.on('movestart', onStart);
     move();
+    running = false;
+    if (endedInside) {
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (!started) {
+            finish();
+          }
+        }),
+      );
+    }
   };
   /**
    * Pixels at the bottom of the map hidden by a phone's bottom sheet, when
@@ -494,12 +536,15 @@ export async function createAirspaceMap(options: {
    */
   const sheetInset = () =>
     cardArea.height > 160 ? map.getSize().y - cardArea.height : 0;
-  /** The centre that puts `position` mid-way down the map above the sheet. */
-  const centreAbove = (position: LatLon, zoom: number) =>
+  /**
+   * The centre that puts `position` mid-way down the map left between `top`
+   * (pixels covered at the top, such as a docked card) and the sheet.
+   */
+  const centreAbove = (position: LatLon, zoom: number, top = 0) =>
     map.unproject(
       map
         .project([position.lat, position.lon], zoom)
-        .add([0, sheetInset() / 2]),
+        .add([0, (sheetInset() - top) / 2]),
       zoom,
     );
   /** Moves the map so highlighted planes and their tags are legible. */
@@ -594,7 +639,9 @@ export async function createAirspaceMap(options: {
       appliedSeq = request.seq;
       const zoom = Math.max(map.getZoom(), REVEAL_ZOOM);
       moveMap(() =>
-        map.setView(centreAbove(position, zoom), zoom, { animate }),
+        map.setView(centreAbove(position, zoom, card.dockedInset()), zoom, {
+          animate,
+        }),
       );
       return;
     }

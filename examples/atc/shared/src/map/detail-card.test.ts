@@ -84,18 +84,19 @@ test('createDetailCard shows the view as text, never as markup', () => {
   expect(card.element.textContent).toContain('Vertical rate+500 fpm');
 });
 
-test('createDetailCard rebuilds only when the view changes', () => {
+test('createDetailCard rebuilds its readings only when the view changes, and never its header', () => {
   const card = createDetailCard(document);
   card.show(view, 1000);
   const header = card.element.firstChild;
+  const group = card.element.querySelector('.atc-detail-group');
 
   card.show({ ...view }, 1000);
-  const same = card.element.firstChild;
-  card.show({ ...view, label: 'N352LM' }, 1000);
+  const same = card.element.querySelector('.atc-detail-group');
+  card.show({ ...view, hiddenRows: 1 }, 1000);
 
-  expect(same).toBe(header);
-  expect(card.element.firstChild).not.toBe(header);
-  expect(card.element.textContent).toContain('N352LM');
+  expect(same).toBe(group);
+  expect(card.element.querySelector('.atc-detail-group')).not.toBe(group);
+  expect(card.element.firstChild).toBe(header);
 });
 
 test('createDetailCard hides and places itself with a transform', () => {
@@ -216,11 +217,12 @@ test('a pinned card has a close button; a hovered one does not', () => {
   });
 
   card.show(view, 1000);
-  const hovered = card.element.querySelector('.atc-detail-close');
+  const hovered =
+    card.element.querySelector<HTMLElement>('.atc-detail-close')?.hidden;
   card.show(view, 1000, { pinned: true, docked: false });
   card.element.querySelector<HTMLElement>('.atc-detail-close')?.click();
 
-  expect(hovered).toBeNull();
+  expect(hovered).toBe(true);
   expect(
     card.element.querySelector('.atc-detail-close')?.getAttribute('aria-label'),
   ).toBe('Close details for N352LL');
@@ -256,4 +258,55 @@ test('a docked card sits at the top, shows only the summary, and opens the rest 
       ?.getAttribute('aria-expanded'),
   ).toBe('true');
   expect(card.element.style.maxHeight).toBe('30px');
+});
+
+/** `view` with a Position group whose message age reads `age`. */
+function aged(age: string, altitude = '4,500 ft'): AircraftDetailView {
+  return {
+    ...view,
+    summary: {
+      ...view.summary,
+      figures: [{ label: 'Altitude', value: altitude }],
+    },
+    groups: [
+      ...view.groups,
+      {
+        title: 'Position',
+        rows: [{ label: 'Last message', value: age }],
+      },
+    ],
+  };
+}
+
+test('the close and More buttons survive every update, so focus and taps are kept', () => {
+  const card = createDetailCard(document);
+  document.body.append(card.element);
+  const pinned = { pinned: true, docked: true };
+  card.show(aged('3s ago'), 1000, pinned);
+  const close = card.element.querySelector<HTMLElement>('.atc-detail-close');
+  const more = card.element.querySelector<HTMLElement>('.atc-detail-more');
+  close?.focus();
+
+  card.show(aged('4s ago'), 1000, pinned);
+  card.show(aged('5s ago', '4,600 ft'), 1000, pinned);
+  more?.click();
+  card.show(aged('6s ago', '4,700 ft'), 1000, pinned);
+
+  expect(card.element.querySelector('.atc-detail-close')).toBe(close);
+  expect(card.element.querySelector('.atc-detail-more')).toBe(more);
+  expect(close?.isConnected).toBe(true);
+  expect(document.activeElement).toBe(close);
+  expect(card.element.textContent).toContain('Altitude4,700 ft');
+  card.element.remove();
+});
+
+test('a new message age updates in place without rebuilding the readings', () => {
+  const card = createDetailCard(document);
+  card.show(aged('3s ago'), 1000);
+  const group = card.element.querySelector('.atc-detail-group');
+
+  card.show(aged('4s ago'), 1000);
+
+  expect(card.element.querySelector('.atc-detail-group')).toBe(group);
+  expect(card.element.textContent).toContain('Last message4s ago');
 });
