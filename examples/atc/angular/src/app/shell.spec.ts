@@ -1,15 +1,14 @@
 import {
   type Aircraft,
+  ATC_SOURCE_URL,
   createAtcStore,
   SELECTED_PROMPT,
-  SOURCE_URLS,
   STARTER_PROMPTS,
   transcriptItems,
 } from '@atc/shared';
 import { TestBed } from '@angular/core/testing';
 import { Composer } from './composer';
 import { EmptyState } from './empty-state';
-import { FeedBadge } from './feed-badge';
 import { PanelHeader } from './panel-header';
 import { ToolChips } from './tool-chips';
 import { Transcript } from './transcript';
@@ -46,50 +45,40 @@ function text(element: Element | null | undefined): string {
   return (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
 }
 
-test('the header shows the mark, the Hashbrown credit and a connecting chip', () => {
+test('the header shows the mark, the credit, a quiet connecting notice and the GitHub link', () => {
   setup();
 
   const fixture = TestBed.createComponent(PanelHeader);
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
+  const link = element.querySelector('a[aria-label="atc source on GitHub"]');
 
   expect(element.querySelector('[aria-label="ATC"]')).not.toBeNull();
   expect(text(element)).toContain('built with Hashbrown');
-  expect(text(element.querySelector('[role="status"]'))).toBe('Connecting…');
+  expect(text(element.querySelector('[role="status"]'))).toBe(
+    'Connecting to live traffic…',
+  );
+  expect(link?.getAttribute('href')).toBe(ATC_SOURCE_URL);
+  expect(link?.querySelector('svg path')).not.toBeNull();
 });
 
-test('the status chip counts live aircraft beside a solid dot', () => {
+test('the feed notice is silent while live and quiet while delayed', () => {
   const store = setup();
-  const fixture = TestBed.createComponent(FeedBadge);
+  const fixture = TestBed.createComponent(PanelHeader);
+  const element = fixture.nativeElement as HTMLElement;
 
   store.setFeedStatus('live');
-  store.applySnapshot({
-    at: 1,
-    aircraft: [plane, { ...plane, hex: 'bbbbbb' }],
-  });
+  store.applySnapshot({ at: 1, aircraft: [plane] });
   fixture.detectChanges();
-  const element = fixture.nativeElement as HTMLElement;
-  const chip = element.querySelector('.atc-chip');
-  const status = element.querySelector('[role="status"]');
-
-  expect(text(chip)).toBe('Live · 2 aircraft');
-  expect(text(status)).toBe('Live');
-  expect(chip?.querySelector('.atc-chip-dot:not(.is-hollow)')).not.toBeNull();
-});
-
-test('the status chip shows a hollow dot while connecting or delayed', () => {
-  const store = setup();
-  const fixture = TestBed.createComponent(FeedBadge);
-
-  fixture.detectChanges();
-  const element = fixture.nativeElement as HTMLElement;
-  const connecting = element.querySelector('.atc-chip-dot.is-hollow');
+  const live = element.querySelector('[role="status"]');
   store.setFeedStatus('delayed');
   fixture.detectChanges();
 
-  expect(connecting).not.toBeNull();
-  expect(text(element.querySelector('.atc-chip'))).toBe('Data delayed');
-  expect(element.querySelector('.atc-chip-dot.is-hollow')).not.toBeNull();
+  expect(live).toBeNull();
+  expect(text(element)).not.toContain('Live');
+  expect(text(element.querySelector('[role="status"]'))).toBe(
+    'Traffic data delayed',
+  );
 });
 
 test('the empty state asks a question and offers every starter prompt', () => {
@@ -125,7 +114,7 @@ test('the empty state offers the selected-plane question first while a plane is 
   ]);
 });
 
-test('tool calls run live, then fold into one summary that expands to every step', () => {
+test('a running step shows as one shimmering line, then folds into a summary that expands to every step', () => {
   setup();
   const fixture = TestBed.createComponent(ToolChips);
   const element = fixture.nativeElement as HTMLElement;
@@ -140,10 +129,13 @@ test('tool calls run live, then fold into one summary that expands to every step
     status: 'pending' as const,
   };
   const live = () =>
-    [...element.querySelectorAll('[data-testid="tool-chip"]')].map((chip) => ({
-      text: text(chip),
-      spinner: chip.querySelector('.atc-tool-spinner') !== null,
-    }));
+    [...element.querySelectorAll('[data-testid="tool-current"]')].map(
+      (line) => ({
+        text: text(line),
+        spinner: line.querySelector('.atc-tool-spinner') !== null,
+        shimmer: line.querySelector('.atc-shimmer') !== null,
+      }),
+    );
   const summary = () =>
     element.querySelector<HTMLButtonElement>('[data-testid="tool-summary"]');
 
@@ -166,17 +158,16 @@ test('tool calls run live, then fold into one summary that expands to every step
   );
 
   expect(running).toEqual([
-    { text: 'Finding aircraft · approaching KSEA', spinner: true },
-    { text: 'Highlighting 3 aircraft', spinner: true },
+    { text: 'Highlighting 3 aircraft…', spinner: true, shimmer: true },
   ]);
   expect(before).toBeNull();
   expect(live()).toEqual([]);
-  expect(text(summary())).toBe('Searched traffic, 1 failed');
+  expect(text(summary())).toBe('Searched traffic, 1 failed · 2 steps');
   expect(collapsed).toBe('false');
   expect(summary()?.getAttribute('aria-expanded')).toBe('true');
   expect(steps).toEqual([
-    ['done', 'Finding aircraft · approaching KSEA'],
-    ['failed', 'Highlighting 3 aircraft · failed'],
+    ['done', 'Finding aircraft approaching Seattle'],
+    ['failed', 'Highlighting 3 aircraft (failed)'],
   ]);
 });
 
@@ -256,7 +247,7 @@ test('Enter sends the trimmed draft, clears the input and keeps focus', () => {
   fixture.destroy();
 });
 
-test('consecutive tool calls fold into one row in a polite live region', () => {
+test('consecutive tool calls fold into one activity line in a polite live region', () => {
   setup();
   const fixture = TestBed.createComponent(Transcript);
   const items = transcriptItems([
@@ -280,24 +271,40 @@ test('consecutive tool calls fold into one row in a polite live region', () => {
   const list = element.querySelector('ol');
 
   expect(element.querySelectorAll('atc-tool-chips')).toHaveLength(1);
-  expect(text(element.querySelector('[data-testid="tool-summary"]'))).toBe(
-    'Searched traffic',
+  expect(element.querySelector('[data-testid="tool-summary"]')).toBeNull();
+  expect(text(element.querySelector('[data-testid="tool-current"]'))).toBe(
+    'Clearing the highlight…',
   );
-  expect(
-    [...element.querySelectorAll('[data-testid="tool-chip"]')].map((chip) =>
-      text(chip),
-    ),
-  ).toEqual(['Clearing the highlight']);
+  expect(element.querySelector('[data-testid="thinking"]')).toBeNull();
   expect(list?.getAttribute('aria-live')).toBe('polite');
   expect(list?.getAttribute('aria-busy')).toBe('true');
 });
 
-test('the composer keeps a footnote link to the core file', () => {
+test('the composer has no footnote under it', () => {
   const { fixture } = composer();
 
   const link = (fixture.nativeElement as HTMLElement).querySelector('a');
 
-  expect(text(link)).toBe('View the core file');
-  expect(link?.getAttribute('href')).toBe(SOURCE_URLS.angular);
+  expect(link).toBeNull();
   fixture.destroy();
+});
+
+test('a thinking line shimmers after the question until something else shows work', () => {
+  setup();
+  const fixture = TestBed.createComponent(Transcript);
+  const element = fixture.nativeElement as HTMLElement;
+  fixture.componentRef.setInput(
+    'items',
+    transcriptItems([{ role: 'user', content: 'Seattle?' }]),
+  );
+  fixture.componentRef.setInput('busy', true);
+
+  fixture.detectChanges();
+  const thinking = element.querySelector('[data-testid="thinking"]');
+  fixture.componentRef.setInput('busy', false);
+  fixture.detectChanges();
+
+  expect(text(thinking)).toBe('Thinking…');
+  expect(thinking?.querySelector('.atc-shimmer')).not.toBeNull();
+  expect(element.querySelector('[data-testid="thinking"]')).toBeNull();
 });

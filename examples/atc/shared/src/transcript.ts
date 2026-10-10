@@ -60,3 +60,22 @@ export function transcriptItems<M extends TranscriptMessageLike>(
       : withCalls;
   }, []);
 }
+
+/**
+ * The line that says the assistant is working when nothing else does: after
+ * the user's message and after a turn's tools finish, until the answer starts
+ * streaming. Null while a tool runs (its own line says what it is doing),
+ * once the answer streams, and when the chat is idle.
+ */
+export function thinkingStatus<M extends TranscriptMessageLike>(
+  items: readonly TranscriptItem<M>[],
+  busy: boolean,
+): string | null {
+  const last = items.at(-1);
+  if (!busy || last === undefined || last.kind === 'answer') return null;
+  if (last.kind === 'tools' && last.calls.some((c) => c.status === 'pending')) {
+    return null;
+  }
+
+  return 'Thinking…';
+}

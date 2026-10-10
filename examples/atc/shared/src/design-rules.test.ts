@@ -119,6 +119,19 @@ function fontNames(source: string): string[] {
   return stacks.flatMap(badFonts);
 }
 
+/**
+ * The one allowed gradient: a `linear-gradient` inside the rule for exactly
+ * `.atc-shimmer`, the loading shimmer on the assistant's working text. The
+ * user asked for a shimmer (2026-10-10), and a sweep across text needs a
+ * gradient clipped to it. Only that rule's gradient is exempt; any other
+ * selector, or a shadow inside that rule, still fails.
+ */
+function allowShimmerGradient(source: string): string {
+  return source.replace(/(^|[\s}])\.atc-shimmer\s*\{[^}]*\}/g, (rule) =>
+    rule.replace(/linear-gradient\s*\(/g, 'shimmer-sweep('),
+  );
+}
+
 /** The rules, each returning the offending fragments found in a source. */
 const RULES: Record<string, (source: string) => unknown[]> = {
   uppercase: (s) =>
@@ -128,7 +141,7 @@ const RULES: Record<string, (source: string) => unknown[]> = {
     ...(s.match(/tracking-(?:wide|wider|widest)\b/g) ?? []),
   ],
   'gradients, shadows and glass': (s) =>
-    s.match(
+    allowShimmerGradient(s).match(
       /gradient\s*\(|box-?shadow|text-?shadow|drop-?shadow|backdrop-?filter/gi,
     ) ?? [],
   'dark scheme': (s) =>
@@ -154,6 +167,10 @@ const BAD: Record<string, string[]> = {
     'background: linear-gradient(red, blue)',
     'filter: drop-shadow(0 0 2px red)',
     'backdrop-filter: blur(4px)',
+    '.atc-card { background: linear-gradient(red, blue); }',
+    '.atc-shimmer-wide { background: linear-gradient(red, blue); }',
+    '.atc-shimmer { box-shadow: 0 0 2px red; }',
+    '.atc-shimmer:hover { background: linear-gradient(red, blue); }',
     "style={{ boxShadow: '0 1px 2px #000' }}",
     "style={{ textShadow: '0 0 2px red' }}",
     "style={{ backdropFilter: 'blur(4px)' }}",
@@ -188,6 +205,7 @@ const GOOD = [
   "font: 500 14px/1.4 'Hanken Grotesk', sans-serif;",
   'font: inherit;',
   "title: 'Seattle-Tacoma and F-16'",
+  '.atc-shimmer { background: linear-gradient(90deg, #52525b, #0d0d0d); }',
 ];
 
 test('scans the stylesheet and both apps', () => {

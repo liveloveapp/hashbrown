@@ -194,34 +194,20 @@ export function boardShowsEta(
   });
 }
 
-/** What the feed badge shows. */
-export interface FeedBadgeView {
-  /** The state word: "Live", "Data delayed" or "Connecting…". */
-  readonly label: string;
-  /** The aircraft count such as "312 aircraft", only while live. */
-  readonly count: string | null;
-  /** True when the feed is live; the chip's dot is solid then, else hollow. */
-  readonly live: boolean;
-}
-
-const OTHER_BADGES: Record<Exclude<FeedStatus, 'live'>, string> = {
-  connecting: 'Connecting…',
-  delayed: 'Data delayed',
-  stalled: 'Data delayed',
-};
-
-/** The badge for a feed status: "Live" with a "312 aircraft" count, say. */
-export function feedBadgeView(
-  status: FeedStatus,
-  aircraftCount: number,
-): FeedBadgeView {
-  return status === 'live'
-    ? {
-        label: 'Live',
-        count: `${aircraftCount.toLocaleString('en-US')} aircraft`,
-        live: true,
-      }
-    : { label: OTHER_BADGES[status], count: null, live: false };
+/**
+ * The quiet notice for a feed that is not live: "Connecting to live
+ * traffic…" before the first snapshot, "Traffic data delayed" when snapshots
+ * are late or stale. Null while live, when the map says enough.
+ */
+export function feedNotice(status: FeedStatus): string | null {
+  switch (status) {
+    case 'live':
+      return null;
+    case 'connecting':
+      return 'Connecting to live traffic…';
+    default:
+      return 'Traffic data delayed';
+  }
 }
 
 /** A user message's text, or an empty string for non-text content. */

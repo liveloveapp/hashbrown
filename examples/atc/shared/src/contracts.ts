@@ -105,10 +105,6 @@ export function starterPrompts(selected: boolean): readonly string[] {
   return selected ? [SELECTED_PROMPT, ...STARTER_PROMPTS] : STARTER_PROMPTS;
 }
 
-/** Links to each framework's core file. */
-export const SOURCE_URLS = {
-  angular:
-    'https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/angular/src/app/assistant.ts',
-  react:
-    'https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/react/src/assistant.tsx',
-} as const;
+/** The atc example's source on GitHub, linked from the chat header. */
+export const ATC_SOURCE_URL =
+  'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc';

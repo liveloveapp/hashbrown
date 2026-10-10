@@ -199,6 +199,8 @@ export async function createAirspaceMap(options: {
       lastUpdatedAt = state.updatedAt;
       motion.onSnapshot(state);
     }
+    // A stable hook for tests and tools: the first snapshot is on the map.
+    element.toggleAttribute('data-ready', state.updatedAt !== null);
     for (const aircraft of state.aircraft.values()) {
       const className = markerClassName(state, aircraft.hex);
       const existing = markers.get(aircraft.hex);

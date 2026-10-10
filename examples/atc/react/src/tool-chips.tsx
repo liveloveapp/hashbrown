@@ -1,13 +1,14 @@
 import { labelForHex, type ToolCallLike, toolRunView } from '@atc/shared';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useAtcState } from './store';
 
 /**
- * One assistant turn's tool calls. Finished calls fold into one summary line
- * ("Searched traffic, looked up 6 routes") that expands to every step; a
- * running call shows live with a spinner, such as "Finding aircraft ·
- * approaching KSEA". A call only spins while the chat is busy, so it always
- * settles.
+ * One assistant turn's tool activity, as one quiet line. While a step runs,
+ * the line says what it is doing ("Finding aircraft approaching Seattle…")
+ * with a spinner and a shimmer, in a polite live region. Once the steps
+ * finish it becomes a button with a check, what they did and how many there
+ * were ("Searched traffic · 2 steps"), which expands to every step. A call
+ * only runs while the chat is busy, so the line always settles.
  */
 export function ToolChips({
   calls,
@@ -17,20 +18,47 @@ export function ToolChips({
   busy?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const stepsId = useId();
   const run = toolRunView(calls, busy, labelForHex(useAtcState()));
 
   return (
     <div className="atc-tool-run">
-      {run.summary ? (
+      {run.current ? (
+        <p
+          className="atc-activity"
+          data-testid="tool-current"
+          aria-live="polite"
+        >
+          <span className="atc-tool-spinner" aria-hidden="true" />
+          <span className="atc-activity-text atc-shimmer">{run.current}</span>
+        </p>
+      ) : run.summary ? (
         <button
           type="button"
-          className="atc-tool-summary"
+          className="atc-activity atc-activity-toggle"
           data-testid="tool-summary"
           aria-expanded={open}
+          aria-controls={stepsId}
           onClick={() => setOpen(!open)}
         >
-          <span className="atc-tool-dot" aria-hidden="true" />
-          <span className="atc-tool-summary-text">{run.summary}</span>
+          <svg
+            className="atc-activity-icon"
+            viewBox="0 0 12 12"
+            width="12"
+            height="12"
+            aria-hidden="true"
+          >
+            <path
+              d="M2.5 6.2 5 8.5l4.5-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span className="atc-activity-text">{run.summary}</span>
+          <span className="atc-activity-count">{` · ${run.steps}`}</span>
           <svg
             className="atc-tool-chevron"
             viewBox="0 0 12 12"
@@ -49,34 +77,23 @@ export function ToolChips({
           </svg>
         </button>
       ) : null}
-      {open ? (
-        <ol className="atc-tool-steps">
+      {open && !run.current ? (
+        <ol className="atc-tool-steps" id={stepsId}>
           {run.chips.map((chip, index) => (
             <li
               key={index}
-              className="atc-tool-chip"
+              className="atc-tool-step"
               data-testid="tool-step"
               data-state={chip.state}
             >
               {chip.label}
               {chip.state === 'failed' || chip.state === 'stopped' ? (
-                <span className="atc-tool-note"> · {chip.state}</span>
+                <span> ({chip.state})</span>
               ) : null}
             </li>
           ))}
         </ol>
       ) : null}
-      {run.live.map((chip, index) => (
-        <span
-          key={index}
-          className="atc-tool-chip"
-          data-testid="tool-chip"
-          data-state="running"
-        >
-          <span className="atc-tool-spinner" aria-hidden="true" />
-          {chip.label}
-        </span>
-      ))}
     </div>
   );
 }

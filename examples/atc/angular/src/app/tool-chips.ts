@@ -8,12 +8,15 @@ import {
 } from '@angular/core';
 import { injectAtcState } from './store';
 
+let nextId = 0;
+
 /**
- * One assistant turn's tool calls. Finished calls fold into one summary line
- * ("Searched traffic, looked up 6 routes") that expands to every step; a
- * running call shows live with a spinner, such as "Finding aircraft ·
- * approaching KSEA". A call only spins while the chat is busy, so it always
- * settles.
+ * One assistant turn's tool activity, as one quiet line. While a step runs,
+ * the line says what it is doing ("Finding aircraft approaching Seattle…")
+ * with a spinner and a shimmer, in a polite live region. Once the steps
+ * finish it becomes a button with a check, what they did and how many there
+ * were ("Searched traffic · 2 steps"), which expands to every step. A call
+ * only runs while the chat is busy, so the line always settles.
  */
 @Component({
   selector: 'atc-tool-chips',
@@ -21,16 +24,38 @@ import { injectAtcState } from './store';
   host: { class: 'atc-tool-run' },
   template: `
     @let run = view();
-    @if (run.summary) {
+    @if (run.current) {
+      <p class="atc-activity" data-testid="tool-current" aria-live="polite">
+        <span class="atc-tool-spinner" aria-hidden="true"></span>
+        <span class="atc-activity-text atc-shimmer">{{ run.current }}</span>
+      </p>
+    } @else if (run.summary) {
       <button
         type="button"
-        class="atc-tool-summary"
+        class="atc-activity atc-activity-toggle"
         data-testid="tool-summary"
         [attr.aria-expanded]="open()"
+        [attr.aria-controls]="stepsId"
         (click)="open.set(!open())"
       >
-        <span class="atc-tool-dot" aria-hidden="true"></span>
-        <span class="atc-tool-summary-text">{{ run.summary }}</span>
+        <svg
+          class="atc-activity-icon"
+          viewBox="0 0 12 12"
+          width="12"
+          height="12"
+          aria-hidden="true"
+        >
+          <path
+            d="M2.5 6.2 5 8.5l4.5-5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <span class="atc-activity-text">{{ run.summary }}</span>
+        <span class="atc-activity-count">{{ ' · ' + run.steps }}</span>
         <svg
           class="atc-tool-chevron"
           viewBox="0 0 12 12"
@@ -49,30 +74,21 @@ import { injectAtcState } from './store';
         </svg>
       </button>
     }
-    @if (open()) {
-      <ol class="atc-tool-steps">
+    @if (open() && !run.current) {
+      <ol class="atc-tool-steps" [id]="stepsId">
         @for (chip of run.chips; track $index) {
           <li
-            class="atc-tool-chip"
+            class="atc-tool-step"
             data-testid="tool-step"
             [attr.data-state]="chip.state"
           >
             {{ chip.label }}
-            @if (chip.state === 'failed') {
-              <span class="atc-tool-note">· failed</span>
-            }
-            @if (chip.state === 'stopped') {
-              <span class="atc-tool-note">· stopped</span>
+            @if (chip.state === 'failed' || chip.state === 'stopped') {
+              <span>({{ chip.state }})</span>
             }
           </li>
         }
       </ol>
-    }
-    @for (chip of run.live; track $index) {
-      <span class="atc-tool-chip" data-testid="tool-chip" data-state="running">
-        <span class="atc-tool-spinner" aria-hidden="true"></span>
-        {{ chip.label }}
-      </span>
     }
   `,
 })
@@ -83,6 +99,7 @@ export class ToolChips {
   readonly busy = input(false);
   /** Whether the summary is expanded to every step. */
   protected readonly open = signal(false);
+  protected readonly stepsId = `atc-tool-steps-${nextId++}`;
   private readonly state = injectAtcState();
   protected readonly view = computed(() =>
     toolRunView(this.calls(), this.busy(), labelForHex(this.state())),

@@ -70,6 +70,7 @@ async function mount() {
 
   return {
     store,
+    element,
     handle,
     offsetFromCentre,
     cleanup: () => {
@@ -289,5 +290,16 @@ test('a fix that lands between a frame starting and drawing does not freeze the 
   map.runFrames(3008);
 
   expect(map.markerPosition()).not.toBe(atArrival);
+  map.cleanup();
+});
+
+test('the map marks itself ready once the first snapshot is drawn', async () => {
+  const map = await mount();
+  const before = map.element.hasAttribute('data-ready');
+
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+
+  expect(before).toBe(false);
+  expect(map.element.hasAttribute('data-ready')).toBe(true);
   map.cleanup();
 });
