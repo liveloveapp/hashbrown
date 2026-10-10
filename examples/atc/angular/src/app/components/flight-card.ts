@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import type { JsonResolvedValue } from '@hashbrownai/core';
 import { ATC_STORE, injectAtcState } from '../store';
-import { CardSkeletonComponent } from './card-skeleton';
+import { CardSkeleton } from './card-skeleton';
 
 /**
  * One aircraft. Reads live data from the store, so it keeps updating after
@@ -81,7 +81,7 @@ import { CardSkeletonComponent } from './card-skeleton';
     }
   `,
 })
-export class FlightCardComponent implements OnInit {
+export class FlightCard implements OnInit {
   readonly note = input.required<string>();
   readonly hex = input.required<string>();
   protected readonly store = inject(ATC_STORE);
@@ -98,7 +98,7 @@ export class FlightCardComponent implements OnInit {
 /** Shown until the full aircraft ID has arrived. */
 @Component({
   selector: 'atc-flight-card-fallback',
-  imports: [CardSkeletonComponent],
+  imports: [CardSkeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="atc-card" data-testid="flight-card-fallback">
@@ -109,7 +109,7 @@ export class FlightCardComponent implements OnInit {
     </article>
   `,
 })
-export class FlightCardFallbackComponent {
+export class FlightCardFallback {
   readonly partialProps = input<Record<string, JsonResolvedValue>>({});
   protected readonly note = computed(() => {
     const note = this.partialProps()['note'];

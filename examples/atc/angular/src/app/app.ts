@@ -15,11 +15,11 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { AirspaceMapComponent } from './airspace-map';
+import { AirspaceMap } from './airspace-map';
 import { Assistant } from './assistant';
-import { KeyboardInsetDirective } from './keyboard-inset';
-import { PanelHeaderComponent } from './panel-header';
-import { SheetHandleComponent } from './sheet-handle';
+import { KeyboardInset } from './keyboard-inset';
+import { PanelHeader } from './panel-header';
+import { SheetHandle } from './sheet-handle';
 import { ATC_STORE } from './store';
 
 /** The page: a two-panel workbench, chat on the left and the live map on the right.
@@ -27,13 +27,7 @@ import { ATC_STORE } from './store';
  * bottom sheet. */
 @Component({
   selector: 'atc-root',
-  imports: [
-    AirspaceMapComponent,
-    Assistant,
-    PanelHeaderComponent,
-    SheetHandleComponent,
-    KeyboardInsetDirective,
-  ],
+  imports: [AirspaceMap, Assistant, PanelHeader, SheetHandle, KeyboardInset],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="atc-workbench is-sheet" atcKeyboardInset>

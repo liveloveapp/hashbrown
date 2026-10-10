@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { AtcLogoComponent } from './atc-logo';
+import { AtcLogo } from './atc-logo';
 
 test('the logo renders the three letter strokes with an ATC label', () => {
   TestBed.resetTestingModule();
-  const fixture = TestBed.createComponent(AtcLogoComponent);
+  const fixture = TestBed.createComponent(AtcLogo);
 
   fixture.detectChanges();
   const svg = fixture.nativeElement.querySelector('svg') as SVGElement;
@@ -18,7 +18,7 @@ test('the logo renders the three letter strokes with an ATC label', () => {
 
 test('the logo height follows its input', () => {
   TestBed.resetTestingModule();
-  const fixture = TestBed.createComponent(AtcLogoComponent);
+  const fixture = TestBed.createComponent(AtcLogo);
 
   fixture.componentRef.setInput('height', 32);
   fixture.detectChanges();
@@ -30,7 +30,7 @@ test('the logo height follows its input', () => {
 
 test('the logo host is a flex box so the mark sits on the header line', () => {
   TestBed.resetTestingModule();
-  const fixture = TestBed.createComponent(AtcLogoComponent);
+  const fixture = TestBed.createComponent(AtcLogo);
 
   fixture.detectChanges();
 

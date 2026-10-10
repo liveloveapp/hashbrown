@@ -76,7 +76,7 @@ import { injectAtcState } from './store';
     }
   `,
 })
-export class ToolChipsComponent {
+export class ToolChips {
   /** The assistant message's tool calls, in the order the model made them. */
   readonly calls = input.required<readonly ToolCallLike[]>();
   /** Whether the chat is still running. */

@@ -7,12 +7,12 @@ import {
   transcriptItems,
 } from '@atc/shared';
 import { TestBed } from '@angular/core/testing';
-import { ComposerComponent } from './composer';
-import { EmptyStateComponent } from './empty-state';
-import { FeedBadgeComponent } from './feed-badge';
-import { PanelHeaderComponent } from './panel-header';
-import { ToolChipsComponent } from './tool-chips';
-import { TranscriptComponent } from './transcript';
+import { Composer } from './composer';
+import { EmptyState } from './empty-state';
+import { FeedBadge } from './feed-badge';
+import { PanelHeader } from './panel-header';
+import { ToolChips } from './tool-chips';
+import { Transcript } from './transcript';
 import { ATC_STORE } from './store';
 
 const plane: Aircraft = {
@@ -49,7 +49,7 @@ function text(element: Element | null | undefined): string {
 test('the header shows the mark, the Hashbrown credit and a connecting chip', () => {
   setup();
 
-  const fixture = TestBed.createComponent(PanelHeaderComponent);
+  const fixture = TestBed.createComponent(PanelHeader);
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
 
@@ -60,7 +60,7 @@ test('the header shows the mark, the Hashbrown credit and a connecting chip', ()
 
 test('the status chip counts live aircraft beside a solid dot', () => {
   const store = setup();
-  const fixture = TestBed.createComponent(FeedBadgeComponent);
+  const fixture = TestBed.createComponent(FeedBadge);
 
   store.setFeedStatus('live');
   store.applySnapshot({
@@ -79,7 +79,7 @@ test('the status chip counts live aircraft beside a solid dot', () => {
 
 test('the status chip shows a hollow dot while connecting or delayed', () => {
   const store = setup();
-  const fixture = TestBed.createComponent(FeedBadgeComponent);
+  const fixture = TestBed.createComponent(FeedBadge);
 
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
@@ -94,7 +94,7 @@ test('the status chip shows a hollow dot while connecting or delayed', () => {
 
 test('the empty state asks a question and offers every starter prompt', () => {
   setup();
-  const fixture = TestBed.createComponent(EmptyStateComponent);
+  const fixture = TestBed.createComponent(EmptyState);
   const picked: string[] = [];
   fixture.componentInstance.pick.subscribe((prompt) => picked.push(prompt));
 
@@ -112,7 +112,7 @@ test('the empty state asks a question and offers every starter prompt', () => {
 
 test('the empty state offers the selected-plane question first while a plane is selected', () => {
   const store = setup();
-  const fixture = TestBed.createComponent(EmptyStateComponent);
+  const fixture = TestBed.createComponent(EmptyState);
 
   store.select('aaaaaa');
   fixture.detectChanges();
@@ -127,7 +127,7 @@ test('the empty state offers the selected-plane question first while a plane is 
 
 test('tool calls run live, then fold into one summary that expands to every step', () => {
   setup();
-  const fixture = TestBed.createComponent(ToolChipsComponent);
+  const fixture = TestBed.createComponent(ToolChips);
   const element = fixture.nativeElement as HTMLElement;
   const find = {
     name: 'findAircraft',
@@ -182,7 +182,7 @@ test('tool calls run live, then fold into one summary that expands to every step
 
 function composer() {
   setup();
-  const fixture = TestBed.createComponent(ComposerComponent);
+  const fixture = TestBed.createComponent(Composer);
   const sent: string[] = [];
   fixture.componentInstance.send.subscribe((message) => sent.push(message));
   fixture.detectChanges();
@@ -258,7 +258,7 @@ test('Enter sends the trimmed draft, clears the input and keeps focus', () => {
 
 test('consecutive tool calls fold into one row in a polite live region', () => {
   setup();
-  const fixture = TestBed.createComponent(TranscriptComponent);
+  const fixture = TestBed.createComponent(Transcript);
   const items = transcriptItems([
     { role: 'user' as const, content: 'Seattle?' },
     {

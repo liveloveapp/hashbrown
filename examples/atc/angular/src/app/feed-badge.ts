@@ -20,7 +20,7 @@ import { injectAtcState } from './store';
     }
   </span>`,
 })
-export class FeedBadgeComponent {
+export class FeedBadge {
   private readonly state = injectAtcState();
   protected readonly view = computed(() =>
     feedBadgeView(this.state().feedStatus, this.state().aircraft.size),

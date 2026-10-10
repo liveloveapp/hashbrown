@@ -10,7 +10,9 @@ import {
 
 /**
  * The message pill and the core-file footnote. `/` focuses the pill from
- * anywhere outside another field.
+ * anywhere outside another field. The field is uncontrolled (read on submit)
+ * because nothing else needs the draft; React's composer keeps it in state,
+ * the idiomatic choice there.
  */
 @Component({
   selector: 'atc-composer',
@@ -20,7 +22,10 @@ import {
     '(document:keydown)': 'focusOnSlash($event)',
   },
   template: `
-    <form class="atc-composer-pill" (submit)="submit(); (false)">
+    <form
+      class="atc-composer-pill"
+      (submit)="$event.preventDefault(); submit()"
+    >
       <input
         #field
         aria-label="Message"
@@ -51,7 +56,7 @@ import {
     >
   `,
 })
-export class ComposerComponent {
+export class Composer {
   /** Disables sending while the assistant is answering. */
   readonly busy = input(false);
   /** Emits the trimmed message text. */

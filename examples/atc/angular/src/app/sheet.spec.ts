@@ -7,8 +7,8 @@ import {
 } from '@atc/shared';
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AutoScrollDirective } from './auto-scroll';
-import { SheetHandleComponent } from './sheet-handle';
+import { AutoScroll } from './auto-scroll';
+import { SheetHandle } from './sheet-handle';
 
 function pointer(type: string, clientY: number): Event {
   const event = new Event(type, { bubbles: true });
@@ -18,7 +18,7 @@ function pointer(type: string, clientY: number): Event {
 
 /** A sheet like the app's: the handle and a text field drive `nextSheet`. */
 @Component({
-  imports: [SheetHandleComponent],
+  imports: [SheetHandle],
   template: `
     <section [attr.data-snap]="sheet().snap" (focusin)="focus($event)">
       <atc-sheet-handle [expanded]="expanded()" (moved)="move($event)" />
@@ -100,7 +100,7 @@ test('dragging the handle down lowers an open sheet one snap', () => {
 });
 
 @Component({
-  imports: [AutoScrollDirective],
+  imports: [AutoScroll],
   template: '<div atcAutoScroll class="scroller"></div>',
 })
 class Host {}

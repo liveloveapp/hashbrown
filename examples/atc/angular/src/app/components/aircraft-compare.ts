@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import type { JsonResolvedValue } from '@hashbrownai/core';
 import { ATC_STORE, injectAtcState } from '../store';
-import { CardSkeletonComponent } from './card-skeleton';
+import { CardSkeleton } from './card-skeleton';
 
 /** Two or three aircraft side by side, live; each shows its plane on the map. */
 @Component({
@@ -43,7 +43,7 @@ import { CardSkeletonComponent } from './card-skeleton';
     </section>
   `,
 })
-export class AircraftCompareComponent {
+export class AircraftCompare {
   readonly takeaway = input.required<string>();
   readonly hexes = input.required<string[]>();
   protected readonly store = inject(ATC_STORE);
@@ -57,7 +57,7 @@ export class AircraftCompareComponent {
 /** Shown until every aircraft ID has arrived. */
 @Component({
   selector: 'atc-aircraft-compare-fallback',
-  imports: [CardSkeletonComponent],
+  imports: [CardSkeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="atc-card" data-testid="aircraft-compare-fallback">
@@ -68,7 +68,7 @@ export class AircraftCompareComponent {
     </section>
   `,
 })
-export class AircraftCompareFallbackComponent {
+export class AircraftCompareFallback {
   readonly partialProps = input<Record<string, JsonResolvedValue>>({});
   protected readonly takeaway = computed(() => {
     const takeaway = this.partialProps()['takeaway'];

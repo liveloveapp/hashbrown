@@ -1,17 +1,15 @@
 import { type Aircraft, createAtcStore } from '@atc/shared';
+import type { Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
-  AircraftCompareComponent,
-  AircraftCompareFallbackComponent,
+  AircraftCompare,
+  AircraftCompareFallback,
 } from './components/aircraft-compare';
 import {
-  ArrivalsBoardComponent,
-  ArrivalsBoardFallbackComponent,
+  ArrivalsBoard,
+  ArrivalsBoardFallback,
 } from './components/arrivals-board';
-import {
-  FlightCardComponent,
-  FlightCardFallbackComponent,
-} from './components/flight-card';
+import { FlightCard, FlightCardFallback } from './components/flight-card';
 import { ATC_STORE } from './store';
 
 const plane: Aircraft = {
@@ -44,7 +42,7 @@ function setup() {
 
 test('the fallback shows the streaming note while the ID is incomplete', () => {
   setup();
-  const fixture = TestBed.createComponent(FlightCardFallbackComponent);
+  const fixture = TestBed.createComponent(FlightCardFallback);
 
   fixture.componentRef.setInput('partialProps', { note: 'Climbing out of' });
   fixture.detectChanges();
@@ -57,11 +55,12 @@ test('the fallback shows the streaming note while the ID is incomplete', () => {
 
 test('every fallback shows a quiet identifying line and two skeleton bars', () => {
   setup();
-  const fallbacks = [
-    FlightCardFallbackComponent,
-    ArrivalsBoardFallbackComponent,
-    AircraftCompareFallbackComponent,
-  ].map((type) => {
+  const types: Type<unknown>[] = [
+    FlightCardFallback,
+    ArrivalsBoardFallback,
+    AircraftCompareFallback,
+  ];
+  const fallbacks = types.map((type) => {
     const fixture = TestBed.createComponent(type);
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
@@ -81,7 +80,7 @@ test('every fallback shows a quiet identifying line and two skeleton bars', () =
 
 test('a flight card updates live and freezes when the aircraft leaves', () => {
   const store = setup();
-  const fixture = TestBed.createComponent(FlightCardComponent);
+  const fixture = TestBed.createComponent(FlightCard);
   fixture.componentRef.setInput('note', 'Inbound.');
   fixture.componentRef.setInput('hex', 'AAAAAA');
   fixture.detectChanges();
@@ -134,7 +133,7 @@ test('a flight card for private or unidentified traffic shows the label and no a
   });
 
   const cards = ['bbbbbb', 'cccccc'].map((hex) => {
-    const fixture = TestBed.createComponent(FlightCardComponent);
+    const fixture = TestBed.createComponent(FlightCard);
     fixture.componentRef.setInput('note', 'Note.');
     fixture.componentRef.setInput('hex', hex);
     fixture.detectChanges();
@@ -153,7 +152,7 @@ test('a flight card for private or unidentified traffic shows the label and no a
 
 test('a flight card for an unknown ID says so instead of crashing', () => {
   setup();
-  const fixture = TestBed.createComponent(FlightCardComponent);
+  const fixture = TestBed.createComponent(FlightCard);
 
   fixture.componentRef.setInput('note', 'Hmm.');
   fixture.componentRef.setInput('hex', 'ffffff');
@@ -170,7 +169,7 @@ test('a flight card for an unknown ID says so instead of crashing', () => {
 
 test('the arrivals board renders one row per complete ID', () => {
   setup();
-  const fixture = TestBed.createComponent(ArrivalsBoardComponent);
+  const fixture = TestBed.createComponent(ArrivalsBoard);
 
   fixture.componentRef.setInput('title', 'Arriving');
   fixture.componentRef.setInput('airport', 'KSEA');
@@ -193,7 +192,7 @@ test('the arrivals board renders one row per complete ID', () => {
 test('the arrivals board hides ETA unless an aircraft is approaching its airport', () => {
   setup();
   const boards = (['KSEA', 'KBDN'] as const).map((airport) => {
-    const fixture = TestBed.createComponent(ArrivalsBoardComponent);
+    const fixture = TestBed.createComponent(ArrivalsBoard);
     fixture.componentRef.setInput('title', 'Traffic');
     fixture.componentRef.setInput('airport', airport);
     fixture.componentRef.setInput('hexes', ['aaaaaa']);
@@ -215,7 +214,7 @@ test('the arrivals board hides ETA unless an aircraft is approaching its airport
 
 test('the arrivals board title has no dashes', () => {
   setup();
-  const fixture = TestBed.createComponent(ArrivalsBoardComponent);
+  const fixture = TestBed.createComponent(ArrivalsBoard);
 
   fixture.componentRef.setInput('title', 'Arrivals at Seattle — nearest first');
   fixture.componentRef.setInput('airport', 'KSEA');
@@ -230,7 +229,7 @@ test('the arrivals board title has no dashes', () => {
 
 test('the compare takeaway has no dashes', () => {
   setup();
-  const fixture = TestBed.createComponent(AircraftCompareComponent);
+  const fixture = TestBed.createComponent(AircraftCompare);
 
   fixture.componentRef.setInput('takeaway', 'Same jet — different speeds');
   fixture.componentRef.setInput('hexes', ['aaaaaa', 'ffffff']);
@@ -244,7 +243,7 @@ test('the compare takeaway has no dashes', () => {
 
 test('the compare card shows each aircraft and unknown IDs', () => {
   setup();
-  const fixture = TestBed.createComponent(AircraftCompareComponent);
+  const fixture = TestBed.createComponent(AircraftCompare);
 
   fixture.componentRef.setInput('takeaway', 'Same jet.');
   fixture.componentRef.setInput('hexes', ['aaaaaa', 'ffffff']);
@@ -259,7 +258,7 @@ test('the compare card shows each aircraft and unknown IDs', () => {
 
 test('the arrivals board puts the type under the label and picks a live row to show it on the map', () => {
   const store = setup();
-  const fixture = TestBed.createComponent(ArrivalsBoardComponent);
+  const fixture = TestBed.createComponent(ArrivalsBoard);
   fixture.componentRef.setInput('title', 'Arriving');
   fixture.componentRef.setInput('airport', 'KSEA');
   fixture.componentRef.setInput('hexes', ['aaaaaa', 'bbbbbb']);
@@ -284,11 +283,11 @@ test('the arrivals board puts the type under the label and picks a live row to s
 
 test('a flight card header and a compare item are buttons that show the plane on the map', () => {
   const store = setup();
-  const card = TestBed.createComponent(FlightCardComponent);
+  const card = TestBed.createComponent(FlightCard);
   card.componentRef.setInput('note', 'Inbound.');
   card.componentRef.setInput('hex', 'aaaaaa');
   card.detectChanges();
-  const compare = TestBed.createComponent(AircraftCompareComponent);
+  const compare = TestBed.createComponent(AircraftCompare);
   compare.componentRef.setInput('takeaway', 'Same jet.');
   compare.componentRef.setInput('hexes', ['aaaaaa', 'ffffff']);
   compare.detectChanges();

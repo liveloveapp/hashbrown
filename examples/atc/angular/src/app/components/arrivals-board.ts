@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import type { JsonResolvedValue } from '@hashbrownai/core';
 import { ATC_STORE, injectAtcState } from '../store';
-import { CardSkeletonComponent } from './card-skeleton';
+import { CardSkeleton } from './card-skeleton';
 
 /**
  * A live table of aircraft approaching or near an airport. The type sits
@@ -78,7 +78,7 @@ import { CardSkeletonComponent } from './card-skeleton';
     </section>
   `,
 })
-export class ArrivalsBoardComponent {
+export class ArrivalsBoard {
   readonly title = input.required<string>();
   readonly airport = input.required<AirportCode>();
   readonly hexes = input.required<string[]>();
@@ -103,7 +103,7 @@ export class ArrivalsBoardComponent {
 /** Shown until the airport is known. */
 @Component({
   selector: 'atc-arrivals-board-fallback',
-  imports: [CardSkeletonComponent],
+  imports: [CardSkeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="atc-card" data-testid="arrivals-board-fallback">
@@ -114,7 +114,7 @@ export class ArrivalsBoardComponent {
     </section>
   `,
 })
-export class ArrivalsBoardFallbackComponent {
+export class ArrivalsBoardFallback {
   readonly partialProps = input<Record<string, JsonResolvedValue>>({});
   protected readonly title = computed(() => {
     const title = this.partialProps()['title'];

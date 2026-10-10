@@ -4,7 +4,7 @@ import {
   RenderMessageComponent,
   type UiChatMessage,
 } from '@hashbrownai/angular';
-import { ToolChipsComponent } from './tool-chips';
+import { ToolChips } from './tool-chips';
 
 /**
  * The conversation: user bubbles, folded tool chip rows and rendered answers.
@@ -13,7 +13,7 @@ import { ToolChipsComponent } from './tool-chips';
  */
 @Component({
   selector: 'atc-transcript',
-  imports: [RenderMessageComponent, ToolChipsComponent],
+  imports: [RenderMessageComponent, ToolChips],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ol
@@ -40,7 +40,7 @@ import { ToolChipsComponent } from './tool-chips';
     </ol>
   `,
 })
-export class TranscriptComponent {
+export class Transcript {
   /** Rows from `transcriptItems`. */
   readonly items = input.required<readonly TranscriptItem<UiChatMessage>[]>();
   /** Whether the chat is still running. */

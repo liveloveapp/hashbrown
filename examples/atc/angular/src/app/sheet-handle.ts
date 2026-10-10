@@ -32,7 +32,7 @@ import {
     </button>
   `,
 })
-export class SheetHandleComponent {
+export class SheetHandle {
   /** Whether the sheet is fully open. */
   readonly expanded = input(false);
   /** Emits each drag, or a tap as a drag of 0. */

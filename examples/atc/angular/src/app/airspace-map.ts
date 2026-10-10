@@ -21,7 +21,7 @@ import { ATC_STORE } from './store';
   host: { class: 'atc-map', 'data-testid': 'airspace-map' },
   template: '',
 })
-export class AirspaceMapComponent {
+export class AirspaceMap {
   readonly obstruction = input<HTMLElement | null>(null);
 
   constructor() {

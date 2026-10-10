@@ -11,4 +11,4 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
     <div class="atc-skeleton-bar is-short" aria-hidden="true"></div>
   `,
 })
-export class CardSkeletonComponent {}
+export class CardSkeleton {}

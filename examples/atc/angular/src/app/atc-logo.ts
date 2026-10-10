@@ -23,7 +23,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     }
   </svg>`,
 })
-export class AtcLogoComponent {
+export class AtcLogo {
   /** Rendered height in pixels; width follows the mark's aspect ratio. */
   readonly height = input(18);
   protected readonly mark = ATC_MARK;

@@ -26,7 +26,7 @@ import { injectAtcState } from './store';
     </div>
   `,
 })
-export class EmptyStateComponent {
+export class EmptyState {
   /** Emits the starter prompt the user picked. */
   readonly pick = output<string>();
   private readonly state = injectAtcState();

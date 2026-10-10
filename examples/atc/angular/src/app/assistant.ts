@@ -22,46 +22,43 @@ import {
   uiChatResource,
 } from '@hashbrownai/angular';
 import {
-  AircraftCompareComponent,
-  AircraftCompareFallbackComponent,
+  AircraftCompare,
+  AircraftCompareFallback,
 } from './components/aircraft-compare';
 import {
-  ArrivalsBoardComponent,
-  ArrivalsBoardFallbackComponent,
+  ArrivalsBoard,
+  ArrivalsBoardFallback,
 } from './components/arrivals-board';
-import {
-  FlightCardComponent,
-  FlightCardFallbackComponent,
-} from './components/flight-card';
-import { AutoScrollDirective } from './auto-scroll';
-import { ComposerComponent } from './composer';
-import { EmptyStateComponent } from './empty-state';
+import { FlightCard, FlightCardFallback } from './components/flight-card';
+import { AutoScroll } from './auto-scroll';
+import { Composer } from './composer';
+import { EmptyState } from './empty-state';
 import { ATC_STORE } from './store';
-import { TranscriptComponent } from './transcript';
+import { Transcript } from './transcript';
 
 // 1. Expose your components. The model can only render these, and Skillet
 //    validates every input. IDs never stream, so a card never shows the wrong plane.
 const components = [
   exposeMarkdown({ className: 'atc-prose' }),
-  exposeComponent(FlightCardComponent, {
+  exposeComponent(FlightCard, {
     name: flightCardContract.name,
     description: flightCardContract.description,
     input: flightCardContract.props,
-    fallback: FlightCardFallbackComponent,
+    fallback: FlightCardFallback,
     children: false,
   }),
-  exposeComponent(ArrivalsBoardComponent, {
+  exposeComponent(ArrivalsBoard, {
     name: arrivalsBoardContract.name,
     description: arrivalsBoardContract.description,
     input: arrivalsBoardContract.props,
-    fallback: ArrivalsBoardFallbackComponent,
+    fallback: ArrivalsBoardFallback,
     children: false,
   }),
-  exposeComponent(AircraftCompareComponent, {
+  exposeComponent(AircraftCompare, {
     name: aircraftCompareContract.name,
     description: aircraftCompareContract.description,
     input: aircraftCompareContract.props,
-    fallback: AircraftCompareFallbackComponent,
+    fallback: AircraftCompareFallback,
     children: false,
   }),
 ];
@@ -69,12 +66,7 @@ const components = [
 /** The chat panel: components, browser-side tools and the streaming answer. */
 @Component({
   selector: 'atc-assistant',
-  imports: [
-    AutoScrollDirective,
-    ComposerComponent,
-    EmptyStateComponent,
-    TranscriptComponent,
-  ],
+  imports: [AutoScroll, Composer, EmptyState, Transcript],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'atc-chat' },
   template: `
@@ -86,12 +78,7 @@ const components = [
       @if (chat.error()) {
         <div class="atc-card atc-error" role="alert">
           <span>The assistant didn't answer. Try again.</span>
-          <button
-            type="button"
-            (click)="chat.reload() || chat.resendMessages()"
-          >
-            Retry
-          </button>
+          <button type="button" (click)="retry()">Retry</button>
         </div>
       }
     </div>
@@ -108,25 +95,30 @@ export class Assistant {
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
   //    already on the map; no plane list goes to the server.
-  // 3. Render the stream. The system prompt is pinned on the server.
+  private readonly tools = [
+    createTool(this.atc.findAircraft),
+    createTool(this.atc.getSelectedAircraft),
+    createTool(this.atc.lookupRoute),
+    createTool(this.atc.highlightAircraft),
+    createTool(this.atc.clearHighlight),
+    createTool(this.atc.followAircraft),
+    createTool(this.atc.stopFollowing),
+    createTool(this.atc.lookupPlace),
+    createTool(this.atc.showArea),
+    createTool(this.atc.resetMap),
+  ];
+
+  // 3. Render the stream.
   protected readonly chat = uiChatResource({
+    // Required by Hashbrown; the server replaces it with SYSTEM_PROMPT
+    // (server/src/run-handler.ts), so the browser cannot change the rules.
     system: 'Provided by the server.',
     components,
-    tools: [
-      createTool(this.atc.findAircraft),
-      createTool(this.atc.getSelectedAircraft),
-      createTool(this.atc.lookupRoute),
-      createTool(this.atc.highlightAircraft),
-      createTool(this.atc.clearHighlight),
-      createTool(this.atc.followAircraft),
-      createTool(this.atc.stopFollowing),
-      createTool(this.atc.lookupPlace),
-      createTool(this.atc.showArea),
-      createTool(this.atc.resetMap),
-    ],
+    tools: this.tools,
   });
 
-  // Keep the last good transcript while the chat is in error, so Retry has context.
+  // An Angular resource's value() throws while it is in error; keep the last
+  // transcript on screen so the user sees what Retry will resend.
   protected readonly messages = linkedSignal({
     source: () => (this.chat.status() === 'error' ? null : this.chat.value()),
     computation: (value, prev): UiChatMessage[] => value ?? prev?.value ?? [],
@@ -136,5 +128,12 @@ export class Assistant {
   protected send(content: string): void {
     this.chat.sendMessage({ role: 'user', content });
     this.sent.emit();
+  }
+
+  /** Retries the last answer, or resends the first message when it never got one. */
+  protected retry(): void {
+    if (!this.chat.reload()) {
+      this.chat.resendMessages();
+    }
   }
 }

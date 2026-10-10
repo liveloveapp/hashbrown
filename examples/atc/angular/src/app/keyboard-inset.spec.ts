@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { KeyboardInsetDirective } from './keyboard-inset';
+import { KeyboardInset } from './keyboard-inset';
 
 @Component({
-  imports: [KeyboardInsetDirective],
+  imports: [KeyboardInset],
   template: `<div atcKeyboardInset></div>`,
 })
 class Host {}

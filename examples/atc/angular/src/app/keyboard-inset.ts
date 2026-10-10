@@ -9,7 +9,7 @@ import { DestroyRef, Directive, inject, signal } from '@angular/core';
   selector: '[atcKeyboardInset]',
   host: { '[style.--atc-kb]': 'inset()' },
 })
-export class KeyboardInsetDirective {
+export class KeyboardInset {
   protected readonly inset = signal('0px');
 
   constructor() {

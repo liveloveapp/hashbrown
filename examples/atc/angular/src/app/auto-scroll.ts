@@ -10,7 +10,7 @@ import { DestroyRef, Directive, ElementRef, inject } from '@angular/core';
   selector: '[atcAutoScroll]',
   host: { '(scroll)': 'track()' },
 })
-export class AutoScrollDirective {
+export class AutoScroll {
   private readonly element =
     inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private pinned = true;
