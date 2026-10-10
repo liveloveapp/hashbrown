@@ -1,0 +1,62 @@
+:root {
+  --atc-ink: #10233f;
+  --atc-muted: #5b6b82;
+  --atc-panel: rgba(255, 255, 255, 0.94);
+  --atc-accent: #e8590c;
+  --atc-line: #d9e0ea;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--atc-ink);
+}
+
+html, body { margin: 0; height: 100%; }
+
+.atc-shell { position: fixed; inset: 0; }
+.atc-map { position: absolute; inset: 0; }
+
+.atc-topbar {
+  position: absolute; top: 16px; left: 16px; right: 16px; z-index: 1000;
+  display: flex; gap: 12px; align-items: center; pointer-events: none;
+}
+.atc-topbar > * { pointer-events: auto; }
+.atc-brand { font-weight: 700; background: var(--atc-panel); padding: 6px 10px; border-radius: 8px; }
+.atc-toggle, .atc-badge, .atc-source { background: var(--atc-panel); padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+.atc-badge button { margin-left: 8px; }
+
+.atc-assistant {
+  position: absolute; z-index: 1000; left: 16px; bottom: 16px; top: 64px;
+  width: min(420px, calc(100vw - 32px)); display: flex; flex-direction: column;
+  background: var(--atc-panel); border: 1px solid var(--atc-line); border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(16, 35, 63, 0.16);
+}
+.atc-transcript { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.atc-user { align-self: flex-end; background: var(--atc-ink); color: white; padding: 8px 12px; border-radius: 12px; max-width: 85%; }
+.atc-starters { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 12px 12px; }
+.atc-starters button { border: 1px solid var(--atc-line); background: white; border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.atc-composer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--atc-line); }
+.atc-composer input { flex: 1; padding: 8px 10px; border: 1px solid var(--atc-line); border-radius: 8px; }
+.atc-error { margin: 0 12px; color: #b42318; }
+
+.atc-card { border: 1px solid var(--atc-line); border-radius: 10px; padding: 10px 12px; background: white; }
+.atc-card header { display: flex; gap: 8px; align-items: baseline; }
+.atc-card dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+.atc-card dt { font-size: 11px; color: var(--atc-muted); text-transform: uppercase; }
+.atc-card dd { margin: 0; font-variant-numeric: tabular-nums; }
+.atc-card-note { margin: 6px 0 0; }
+.atc-card-route, .atc-card-type, .atc-card-status { margin: 2px 0; color: var(--atc-muted); font-size: 13px; }
+.atc-card table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.atc-card th, .atc-card td { text-align: left; padding: 4px; border-bottom: 1px solid var(--atc-line); }
+.atc-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.atc-skeleton { height: 48px; border-radius: 8px; background: linear-gradient(90deg, #eef2f7, #f8fafc, #eef2f7); background-size: 200% 100%; animation: atc-shimmer 1.2s infinite; }
+@keyframes atc-shimmer { to { background-position: -200% 0; } }
+
+.atc-plane-icon { background: none; border: none; }
+.atc-plane { width: 22px; height: 22px; color: var(--atc-ink); transition: opacity 0.3s; cursor: pointer; }
+.atc-plane svg { fill: currentColor; }
+.atc-plane.is-dimmed { opacity: 0.2; }
+.atc-plane.is-selected, .atc-plane.is-followed { color: var(--atc-accent); }
+.atc-plane.is-pulsing { animation: atc-pulse 1.2s ease-out; }
+@keyframes atc-pulse { 0% { filter: drop-shadow(0 0 0 var(--atc-accent)); } 50% { filter: drop-shadow(0 0 8px var(--atc-accent)); } 100% { filter: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .atc-plane.is-pulsing, .atc-skeleton { animation: none; }
+}
