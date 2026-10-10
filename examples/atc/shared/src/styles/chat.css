@@ -180,6 +180,18 @@
     background-position: 0% 0;
   }
 }
+/* Read by screen readers only: the chat's status region. */
+.atc-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 /* Touch: a 44px hit area around the 24px line. */
 @media (pointer: coarse) {
   .atc-activity-toggle {

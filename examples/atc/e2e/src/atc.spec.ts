@@ -428,7 +428,9 @@ test('the header links to the source on GitHub and says nothing about a live fee
     'href',
     'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc',
   );
-  await expect(page.getByRole('status')).toHaveCount(0);
+  await expect(
+    page.locator('.atc-panel-header').getByRole('status'),
+  ).toHaveCount(0);
   await expect(page.locator('.atc-panel-header')).not.toContainText('Live');
   await expect(page.getByText('View the core file')).toHaveCount(0);
 });

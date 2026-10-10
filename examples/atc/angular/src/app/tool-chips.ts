@@ -13,7 +13,8 @@ let nextId = 0;
 /**
  * One assistant turn's tool activity, as one quiet line. While a step runs,
  * the line says what it is doing ("Finding aircraft approaching Seattle…")
- * with a spinner and a shimmer, in a polite live region. Once the steps
+ * with a spinner and a shimmer (the transcript's status region announces
+ * it, since this line sits in a busy list). Once the steps
  * finish it becomes a button with a check, what they did and how many there
  * were ("Searched traffic · 2 steps"), which expands to every step. A call
  * only runs while the chat is busy, so the line always settles.
@@ -25,7 +26,7 @@ let nextId = 0;
   template: `
     @let run = view();
     @if (run.current) {
-      <p class="atc-activity" data-testid="tool-current" aria-live="polite">
+      <p class="atc-activity" data-testid="tool-current">
         <span class="atc-tool-spinner" aria-hidden="true"></span>
         <span class="atc-activity-text atc-shimmer">{{ run.current }}</span>
       </p>

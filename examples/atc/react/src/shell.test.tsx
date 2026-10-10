@@ -263,15 +263,20 @@ test('consecutive tool calls fold into one activity line in a polite live region
 
   const { element } = setup(<Transcript items={items} busy />);
   const list = element.querySelector('ol');
+  const current = element.querySelector('[data-testid="tool-current"]');
+  const status = element.querySelector('[data-testid="chat-status"]');
 
   expect(element.querySelectorAll('.atc-tool-run')).toHaveLength(1);
   expect(element.querySelector('[data-testid="tool-summary"]')).toBeNull();
-  expect(text(element.querySelector('[data-testid="tool-current"]'))).toBe(
-    'Clearing the highlight…',
-  );
+  expect(text(current)).toBe('Clearing the highlight…');
+  expect(current?.hasAttribute('aria-live')).toBe(false);
   expect(element.querySelector('[data-testid="thinking"]')).toBeNull();
   expect(list?.getAttribute('aria-live')).toBe('polite');
   expect(list?.getAttribute('aria-busy')).toBe('true');
+  expect(status?.getAttribute('role')).toBe('status');
+  expect(status?.closest('[aria-busy]')).toBeNull();
+  expect(status?.classList.contains('atc-visually-hidden')).toBe(true);
+  expect(text(status)).toBe('Clearing the highlight…');
 });
 
 test('the composer has no footnote under it', () => {
@@ -289,6 +294,8 @@ test('a thinking line shimmers after the question until something else shows wor
   const thinking = element.querySelector('[data-testid="thinking"]');
   const shimmer = thinking?.querySelector('.atc-shimmer');
   const label = text(thinking);
+  const status = element.querySelector('[data-testid="chat-status"]');
+  const announced = text(status);
   rerender(
     <AtcStoreProvider store={store}>
       <Transcript items={items} busy={false} />
@@ -299,4 +306,7 @@ test('a thinking line shimmers after the question until something else shows wor
   expect(shimmer).not.toBeUndefined();
   expect(shimmer).not.toBeNull();
   expect(element.querySelector('[data-testid="thinking"]')).toBeNull();
+  expect(announced).toBe('Thinking…');
+  expect(element.querySelector('[data-testid="chat-status"]')).toBe(status);
+  expect(text(status)).toBe('');
 });

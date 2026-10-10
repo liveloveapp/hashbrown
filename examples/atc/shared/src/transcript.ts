@@ -1,4 +1,4 @@
-import type { ToolCallLike } from './tool-chips';
+import { type HexLabel, type ToolCallLike, toolRunView } from './tool-chips';
 import { messageText } from './views';
 
 /** The parts of a Hashbrown chat message that the transcript reads. */
@@ -78,4 +78,24 @@ export function thinkingStatus<M extends TranscriptMessageLike>(
   }
 
   return 'Thinking…';
+}
+
+/**
+ * What the assistant is doing now, for one persistent polite status region
+ * outside the busy transcript: the running step ("Following UAL1802…", planes
+ * named by `labelFor`), else {@link thinkingStatus}. Null when the chat is
+ * idle or the answer is streaming.
+ */
+export function chatStatus<M extends TranscriptMessageLike>(
+  items: readonly TranscriptItem<M>[],
+  busy: boolean,
+  labelFor?: HexLabel,
+): string | null {
+  const last = items.at(-1);
+  const step =
+    busy && last?.kind === 'tools'
+      ? toolRunView(last.calls, busy, labelFor).current
+      : null;
+
+  return step ?? thinkingStatus(items, busy);
 }
