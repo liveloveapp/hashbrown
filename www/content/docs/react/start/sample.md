@@ -12,7 +12,8 @@ see, and the answer renders as the app's own components: flight cards, an arriva
 and side-by-side comparisons. The cards keep updating after the answer finishes, and the
 assistant can highlight and follow aircraft on the map.
 
-[Try the app](https://atc.hashbrown.dev/react/) or
+The hosted app at [atc.hashbrown.dev](https://atc.hashbrown.dev/angular/) is the Angular
+version. The React version runs locally for now; see [Run locally](#run-locally), or
 [read the source](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/README.md).
 
 ## What to look for

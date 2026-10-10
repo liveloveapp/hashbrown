@@ -24,8 +24,14 @@ npx nx serve atc-angular
 npx nx serve atc-react
 ```
 
-Open http://127.0.0.1:4341/angular/ or http://127.0.0.1:4342/react/. In development the
-Angular/React toggle does not work because the apps run on different ports.
+Open http://127.0.0.1:4341/angular/ or http://127.0.0.1:4342/react/. The two apps run on
+different ports and have no switcher between them.
+
+## Hosting
+
+Only the Angular app is hosted, at https://atc.hashbrown.dev/angular/ (the root redirects
+there). The React app is built and tested in this repository but runs locally for now;
+`HOSTED_APPS` in `tools/build-vercel-output.mts` is the one line to change to host it.
 
 ## Swap the model provider
 

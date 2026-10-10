@@ -213,6 +213,42 @@ test('compares the highest and the fastest aircraft', async ({
   await expectOnlyCompleteIds(page);
 });
 
+test('has no framework switcher', async ({ page }, testInfo) => {
+  await open(page, testInfo.project.name);
+
+  const links = page.locator(
+    'a[href^="/angular"], a[href^="/react"], a[href*="atc.hashbrown.dev"]',
+  );
+  const named = page.getByRole('link', { name: /^(angular|react)$/i });
+
+  await expect(links).toHaveCount(0);
+  await expect(named).toHaveCount(0);
+});
+
+test('pressing / focuses the composer', async ({ page }, testInfo) => {
+  await open(page, testInfo.project.name);
+  const input = page.getByRole('textbox', { name: 'Message' });
+  await page.locator('body').click({ position: { x: 1, y: 1 } });
+  await expect(input).not.toBeFocused();
+
+  await page.keyboard.press('/');
+
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue('');
+});
+
+test('shows a tool chip when the assistant calls a tool', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+
+  await page.getByRole('button', { name: STARTER_PROMPTS[2] }).click();
+
+  const chip = page.getByTestId('tool-chip').first();
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText('findAircraft');
+});
+
 test('follows an aircraft on the map', async ({ page }, testInfo) => {
   await open(page, testInfo.project.name);
 

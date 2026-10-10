@@ -6,6 +6,16 @@ import { build } from 'vite';
 const root = resolve(import.meta.dirname, '..');
 const repo = resolve(root, '../..');
 const output = resolve(root, '.vercel/output');
+/**
+ * The apps this deploy hosts. Only Angular ships for now; React still builds
+ * and is tested in the repo. To host it, change this to
+ * `['angular', 'react'] as const`.
+ */
+const HOSTED_APPS = ['angular'] as const;
+const sources = {
+  angular: resolve(repo, 'dist/examples/atc/angular/browser'),
+  react: resolve(repo, 'dist/examples/atc/react'),
+};
 const functions = [
   { name: 'run', maxDuration: 60 },
   { name: 'aircraft', maxDuration: 10 },
@@ -13,16 +23,9 @@ const functions = [
 
 rmSync(output, { recursive: true, force: true });
 mkdirSync(resolve(output, 'static'), { recursive: true });
-cpSync(
-  resolve(repo, 'dist/examples/atc/angular/browser'),
-  resolve(output, 'static/angular'),
-  { recursive: true },
-);
-cpSync(
-  resolve(repo, 'dist/examples/atc/react'),
-  resolve(output, 'static/react'),
-  { recursive: true },
-);
+for (const app of HOSTED_APPS) {
+  cpSync(sources[app], resolve(output, `static/${app}`), { recursive: true });
+}
 
 for (const { name, maxDuration } of functions) {
   const dir = resolve(output, `functions/api/${name}.func`);
@@ -65,11 +68,14 @@ writeFileSync(
     version: 3,
     routes: [
       { src: '^/$', status: 307, headers: { Location: '/angular/' } },
-      { src: '^/angular$', status: 308, headers: { Location: '/angular/' } },
-      { src: '^/react$', status: 308, headers: { Location: '/react/' } },
+      ...HOSTED_APPS.flatMap((app) => [
+        { src: `^/${app}$`, status: 308, headers: { Location: `/${app}/` } },
+      ]),
       { handle: 'filesystem' },
-      { src: '^/angular(?:/.*)?$', dest: '/angular/index.html' },
-      { src: '^/react(?:/.*)?$', dest: '/react/index.html' },
+      ...HOSTED_APPS.map((app) => ({
+        src: `^/${app}(?:/.*)?$`,
+        dest: `/${app}/index.html`,
+      })),
     ],
   }),
 );
