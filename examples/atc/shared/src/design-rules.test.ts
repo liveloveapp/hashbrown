@@ -45,6 +45,14 @@ const files = ROOTS.flatMap(({ dir, pattern }) => walk(dir, pattern)).map(
   }),
 );
 
+/** Shared source files (not tests, not styles), comments stripped. */
+const sharedSources = walk(join(ATC, 'shared', 'src'), /\.ts$/)
+  .filter((path) => !path.includes(`${join('shared', 'src', 'styles')}`))
+  .map((path) => ({
+    file: relative(ATC, path),
+    source: stripComments(readFileSync(path, 'utf8')),
+  }));
+
 /** Font names the rules allow, lowercased. */
 const ALLOWED_FONTS = new Set([
   'hanken grotesk',
@@ -179,6 +187,7 @@ const GOOD = [
   'font-family: var(--atc-font);',
   "font: 500 14px/1.4 'Hanken Grotesk', sans-serif;",
   'font: inherit;',
+  "title: 'Seattle-Tacoma and F-16'",
 ];
 
 test('scans the stylesheet and both apps', () => {
@@ -196,6 +205,14 @@ test('the comment stripper keeps url(//...) and drops line comments', () => {
 
   expect(result).toContain('url(//x.test/a.png)');
   expect(result).not.toContain('box-shadow');
+});
+
+test('the shared sources have no em or en dashes', () => {
+  const offenders = sharedSources.flatMap(({ file, source }) =>
+    (source.match(/[—–]/g) ?? []).map(() => file),
+  );
+
+  expect(offenders).toEqual([]);
 });
 
 for (const [rule, check] of Object.entries(RULES)) {

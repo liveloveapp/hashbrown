@@ -49,18 +49,50 @@ test('names fall back to the raw code', () => {
   ]);
 });
 
-test('plainLabel swaps dashes for commas and tidies spaces', () => {
+test('plainLabel turns spaced dashes into commas', () => {
   const labels = [
     plainLabel('Arrivals at Seattle — nearest first'),
     plainLabel('Arrivals – Seattle'),
-    plainLabel('Seattle—Portland'),
+    plainLabel('Arrivals - Seattle'),
     plainLabel('  Nearest   first '),
   ];
 
   expect(labels).toEqual([
     'Arrivals at Seattle, nearest first',
     'Arrivals, Seattle',
-    'Seattle, Portland',
+    'Arrivals, Seattle',
     'Nearest first',
+  ]);
+});
+
+test('plainLabel makes unspaced dashes between words hyphens and keeps hyphens', () => {
+  const labels = [
+    plainLabel('Seattle–Tacoma'),
+    plainLabel('Climb 5–10 minutes'),
+    plainLabel('Seattle—Portland'),
+    plainLabel('F-16 and Seattle-Tacoma'),
+  ];
+
+  expect(labels).toEqual([
+    'Seattle-Tacoma',
+    'Climb 5-10 minutes',
+    'Seattle-Portland',
+    'F-16 and Seattle-Tacoma',
+  ]);
+});
+
+test('plainLabel strips leading and trailing dashes and commas', () => {
+  const labels = [
+    plainLabel('— Arrivals'),
+    plainLabel('Arrivals —'),
+    plainLabel(', Arrivals at Seattle,'),
+    plainLabel('- Arrivals -'),
+  ];
+
+  expect(labels).toEqual([
+    'Arrivals',
+    'Arrivals',
+    'Arrivals at Seattle',
+    'Arrivals',
   ]);
 });

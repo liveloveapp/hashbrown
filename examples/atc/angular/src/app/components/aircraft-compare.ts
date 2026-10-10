@@ -1,4 +1,4 @@
-import { flightCardView } from '@atc/shared';
+import { flightCardView, plainLabel } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -31,7 +31,7 @@ import { CardSkeletonComponent } from './card-skeleton';
           }
         }
       </div>
-      <p class="atc-card-note">{{ takeaway() }}</p>
+      <p class="atc-card-note">{{ note() }}</p>
     </section>
   `,
 })
@@ -39,6 +39,7 @@ export class AircraftCompareComponent {
   readonly takeaway = input.required<string>();
   readonly hexes = input.required<string[]>();
   private readonly state = injectAtcState();
+  protected readonly note = computed(() => plainLabel(this.takeaway()));
   protected readonly cards = computed(() =>
     this.hexes().map((hex) => flightCardView(this.state(), hex)),
   );
@@ -63,6 +64,6 @@ export class AircraftCompareFallbackComponent {
   protected readonly takeaway = computed(() => {
     const takeaway = this.partialProps()['takeaway'];
 
-    return typeof takeaway === 'string' ? takeaway : '';
+    return typeof takeaway === 'string' ? plainLabel(takeaway) : '';
   });
 }

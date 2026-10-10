@@ -36,13 +36,16 @@ export function formatClock(ms: number, timeZone?: string): string {
 }
 
 /**
- * Cleans a short model-written label: em and en dashes (with surrounding
- * spaces) become ", ", and runs of whitespace collapse. For labels such as a
- * board title, never streamed prose.
+ * Cleans a short model-written label, never streamed prose. A spaced dash
+ * (en, em or hyphen) becomes ", "; an en or em dash joining two words with no
+ * spaces ("5-10", "Seattle-Tacoma") becomes a hyphen; plain hyphens stay.
+ * Whitespace collapses, and leading or trailing dashes and commas are removed.
  */
 export function plainLabel(text: string): string {
   return text
-    .replace(/\s*[—–]\s*/g, ', ')
+    .replace(/\s+[\u2013\u2014-]\s+/g, ', ')
+    .replace(/(?<=\w)[\u2013\u2014](?=\w)/g, '-')
+    .replace(/\s*[\u2013\u2014]\s*/g, ', ')
     .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/^[\s,\u2013\u2014-]+|[\s,\u2013\u2014-]+$/g, '');
 }

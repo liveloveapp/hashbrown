@@ -123,6 +123,23 @@ test('the arrivals board title has no dashes', () => {
   );
 });
 
+test('the compare takeaway has no dashes', () => {
+  const store = setup();
+
+  render(
+    <AtcStoreProvider store={store}>
+      <AircraftCompare
+        takeaway="Same jet — different speeds"
+        hexes={['aaaaaa', 'ffffff']}
+      />
+    </AtcStoreProvider>,
+  );
+
+  expect(screen.getByTestId('aircraft-compare')).toHaveTextContent(
+    'Same jet, different speeds',
+  );
+});
+
 test('the compare card waits for its IDs, then shows each aircraft', () => {
   const store = setup();
 

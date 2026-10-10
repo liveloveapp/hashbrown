@@ -155,6 +155,20 @@ test('the arrivals board title has no dashes', () => {
   );
 });
 
+test('the compare takeaway has no dashes', () => {
+  setup();
+  const fixture = TestBed.createComponent(AircraftCompareComponent);
+
+  fixture.componentRef.setInput('takeaway', 'Same jet — different speeds');
+  fixture.componentRef.setInput('hexes', ['aaaaaa', 'ffffff']);
+  fixture.detectChanges();
+
+  const note = (fixture.nativeElement as HTMLElement).querySelector(
+    '.atc-card-note',
+  );
+  expect(note?.textContent).toBe('Same jet, different speeds');
+});
+
 test('the compare card shows each aircraft and unknown IDs', () => {
   setup();
   const fixture = TestBed.createComponent(AircraftCompareComponent);
