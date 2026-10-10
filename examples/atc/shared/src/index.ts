@@ -9,6 +9,7 @@ export * from './store';
 export * from './feed';
 export * from './routes';
 export * from './contracts';
+export * from './find-aircraft';
 export * from './tools';
 export * from './views';
 export * from './tool-chips';

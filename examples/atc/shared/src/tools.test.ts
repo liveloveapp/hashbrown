@@ -1,12 +1,8 @@
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from './aircraft';
 import { applySnapshot, createAtcStore, INITIAL_STATE } from './store';
-import {
-  ATC_TOOL_NAMES,
-  createAtcTools,
-  findAircraft,
-  type FindAircraftInput,
-} from './tools';
+import { findAircraft, type FindAircraftInput } from './find-aircraft';
+import { ATC_TOOL_NAMES, createAtcTools } from './tools';
 
 function plane(hex: string, overrides: Partial<Aircraft> = {}): Aircraft {
   return {
@@ -201,7 +197,7 @@ test('getSelectedAircraft returns a row for a hex-only aircraft', async () => {
   store.select('ffffff');
   const tools = createAtcTools({ store, fetchRoute: async () => null });
 
-  const row = await tools.getSelectedAircraft.handler({});
+  const row = await tools.getSelectedAircraft.handler();
 
   expect(row).toMatchObject({
     label: 'FFFFFF',
@@ -235,7 +231,7 @@ test('map tools update the store and report unknown aircraft', async () => {
   });
   const followed = await tools.followAircraft.handler({ hex: 'ffffff' });
   const following = await tools.followAircraft.handler({ hex: 'aaaaaa' });
-  await tools.clearHighlight.handler({});
+  await tools.clearHighlight.handler();
 
   expect(highlighted).toEqual({ highlighted: 1, unknown: ['ffffff'] });
   expect(followed).toEqual({ following: false, reason: 'Unknown aircraft' });
@@ -249,9 +245,9 @@ test('getSelectedAircraft returns the selected row or null', async () => {
   store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });
   const tools = createAtcTools({ store, fetchRoute: async () => null });
 
-  const before = await tools.getSelectedAircraft.handler({});
+  const before = await tools.getSelectedAircraft.handler();
   store.select('aaaaaa');
-  const after = await tools.getSelectedAircraft.handler({});
+  const after = await tools.getSelectedAircraft.handler();
 
   expect(before).toBeNull();
   expect(after?.hex).toBe('aaaaaa');
@@ -404,7 +400,7 @@ test('while following, showArea and resetMap change the outline but report that 
     airport: 'KBDN',
     radiusNm: 10,
   });
-  const reset = await tools.resetMap.handler({});
+  const reset = await tools.resetMap.handler();
 
   expect(shown).toMatchObject({
     shown: true,
@@ -424,7 +420,7 @@ test('resetMap returns to the regional view', async () => {
   const tools = createAtcTools({ store, fetchRoute: async () => null });
   await tools.showArea.handler({ airport: 'KBDN', radiusNm: 25 });
 
-  const result = await tools.resetMap.handler({});
+  const result = await tools.resetMap.handler();
 
   expect(result).toEqual({ reset: true, moved: true });
   expect(store.getState().shownArea).toBeNull();

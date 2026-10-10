@@ -607,7 +607,9 @@ input {
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
   /* A compact attribution: a rounded box, clear of the zoom control. */
-  .atc-workbench.is-sheet .atc-map.leaflet-container .leaflet-control-attribution {
+  .atc-workbench.is-sheet
+    .atc-map.leaflet-container
+    .leaflet-control-attribution {
     border-radius: 8px;
     max-width: calc(100vw - 72px);
     margin-left: 8px;

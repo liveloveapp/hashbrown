@@ -1,4 +1,5 @@
 import { type AtcState, normalizeHex } from './store';
+import type { AtcToolName } from './tools';
 
 /** The parts of a Hashbrown tool call that the tool chips read. */
 export interface ToolCallLike {
@@ -96,9 +97,12 @@ function planeName(
     : (labelFor(normalizeHex(hex)) ?? hex.toUpperCase());
 }
 
-/** What a running call is doing, in sentence case. */
+/**
+ * What a running call is doing, in sentence case. Keyed by every tool name,
+ * so a new tool does not compile until it has a label here and in DONE.
+ */
 const RUNNING: Record<
-  string,
+  AtcToolName,
   (args: Record<string, unknown>, labelFor: HexLabel) => string
 > = {
   findAircraft: (args) => {
@@ -149,6 +153,14 @@ const RUNNING: Record<
 
 const noLabels: HexLabel = () => null;
 
+/** The entry for a tool the model named, or undefined for an unknown name. */
+function entryFor<T>(
+  table: Record<AtcToolName, T>,
+  name: string,
+): T | undefined {
+  return Object.hasOwn(table, name) ? table[name as AtcToolName] : undefined;
+}
+
 /**
  * What a tool call is doing, such as "Finding aircraft · approaching KSEA"
  * or "Following UAL1802" (planes named by `labelFor`, else their hex).
@@ -160,7 +172,7 @@ export function toolCallLabel(
   args: unknown,
   labelFor: HexLabel = noLabels,
 ): string {
-  return RUNNING[name]?.(record(args), labelFor) ?? name;
+  return entryFor(RUNNING, name)?.(record(args), labelFor) ?? name;
 }
 
 /**
@@ -189,7 +201,7 @@ function plural(count: number, one: string, many: string): string {
 
 /** What finished calls of one tool did, in the past tense. */
 const DONE: Record<
-  string,
+  AtcToolName,
   (calls: readonly Record<string, unknown>[], labelFor: HexLabel) => string
 > = {
   findAircraft: (calls) =>
@@ -263,7 +275,9 @@ export function toolRunView(
   const failed = count('failed');
   const stopped = count('stopped');
   const parts = [
-    ...[...groups].map(([name, args]) => DONE[name]?.(args, labelFor) ?? name),
+    ...[...groups].map(
+      ([name, args]) => entryFor(DONE, name)?.(args, labelFor) ?? name,
+    ),
     ...(failed > 0 ? [`${failed} failed`] : []),
     ...(stopped > 0 ? [`${stopped} stopped`] : []),
   ];

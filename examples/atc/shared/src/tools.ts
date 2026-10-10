@@ -1,18 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unused-vars -- no-input handlers keep an unused parameter so every tool has the same shape */
 import { s } from '@hashbrownai/core';
-import type { Aircraft } from './aircraft';
-import { type AircraftKind, KINDS } from './kinds';
-import { distanceNm, isApproaching } from './geo';
-import { aircraftTypeName, airlineFor } from './names';
 import {
-  type Airport,
-  AIRPORT_CODES,
-  AIRPORTS,
-  type Area,
-  AREAS,
-  type LatLon,
-  lookupPlace,
-} from './places';
+  areaRadiusNm,
+  findAircraft,
+  type FindAircraftInput,
+  findAircraftInput,
+  toRow,
+} from './find-aircraft';
+import { distanceNm } from './geo';
+import { airlineFor } from './names';
+import { AREAS, lookupPlace } from './places';
 import {
   type AtcState,
   type AtcStore,
@@ -20,16 +16,6 @@ import {
   type Route,
   type ShownArea,
 } from './store';
-
-/** Radius used when the model asks for an area without one. */
-export const DEFAULT_AREA_RADIUS_NM = 25;
-
-/** Clamps an area radius to 5 to 150 nm; null or non-finite gives the default. */
-export function areaRadiusNm(radiusNm: number | null): number {
-  return radiusNm === null || !Number.isFinite(radiusNm)
-    ? DEFAULT_AREA_RADIUS_NM
-    : Math.min(150, Math.max(5, Math.round(radiusNm)));
-}
 
 /** What the model is told when a place is not in the airport table. */
 export function unknownPlace(query: string): {
@@ -40,157 +26,6 @@ export function unknownPlace(query: string): {
     found: false,
     reason: `No airport matches "${query.trim()}". atc covers airports in the Pacific Northwest only.`,
   };
-}
-
-/** Input schema for `findAircraft`. Every field is required; null means "any". */
-export const findAircraftInput = s.object(
-  'Filters for aircraft currently on the map',
-  {
-    airline: s.anyOf([
-      s.string('Airline ICAO code such as UAL, or a name such as United'),
-      s.nullish(),
-    ]),
-    typeCode: s.anyOf([
-      s.string('ICAO type code such as B738, or a family such as 737'),
-      s.nullish(),
-    ]),
-    kind: s.anyOf([
-      s.enumeration(
-        'Only this kind of aircraft: jet, twin (twin-engine prop), single (single-engine prop) or rotor (helicopter)',
-        [...KINDS],
-      ),
-      s.nullish(),
-    ]),
-    minAltitudeFt: s.anyOf([s.number('Minimum altitude in feet'), s.nullish()]),
-    maxAltitudeFt: s.anyOf([s.number('Maximum altitude in feet'), s.nullish()]),
-    approaching: s.anyOf([
-      s.enumeration('Only aircraft on approach to this airport (ICAO code)', [
-        ...AIRPORT_CODES,
-      ]),
-      s.nullish(),
-    ]),
-    near: s.anyOf([
-      s.object('Only aircraft within radiusNm of an airport', {
-        airport: s.string('ICAO code from lookupPlace, such as KBDN'),
-        radiusNm: s.number('Radius in nautical miles, 5 to 150'),
-      }),
-      s.nullish(),
-    ]),
-    sortBy: s.enumeration('Sort order', ['altitude', 'speed', 'distance']),
-    limit: s.integer('Maximum rows, 1 to 20'),
-  },
-);
-
-/** The parsed input of `findAircraft`. */
-export type FindAircraftInput = s.Infer<typeof findAircraftInput>;
-
-/** A compact aircraft row returned to the model. */
-export interface AircraftRow {
-  readonly hex: string;
-  /** How to name the aircraft: airline callsign, registration, callsign or hex. */
-  readonly label: string;
-  readonly callsign: string | null;
-  readonly registration: string | null;
-  /** The airline for airline callsigns; null for private and other traffic. */
-  readonly airline: string | null;
-  readonly aircraftType: string;
-  /** The silhouette drawn on the map. */
-  readonly kind: AircraftKind;
-  readonly altitudeFt: number | null;
-  readonly groundSpeedKt: number | null;
-  readonly trackDeg: number | null;
-  readonly distanceNm: number;
-}
-
-function toRow(aircraft: Aircraft, from: LatLon): AircraftRow {
-  return {
-    hex: aircraft.hex,
-    label: aircraft.label,
-    callsign: aircraft.callsign,
-    registration: aircraft.registration,
-    airline: airlineFor(aircraft.callsign),
-    aircraftType: aircraftTypeName(aircraft.typeCode),
-    kind: aircraft.kind,
-    altitudeFt: aircraft.altitudeFt,
-    groundSpeedKt: aircraft.groundSpeedKt,
-    trackDeg: aircraft.trackDeg,
-    distanceNm: Math.round(distanceNm(aircraft, from) * 10) / 10,
-  };
-}
-
-function text(value: string | null): string | null {
-  const trimmed = value?.trim().toLowerCase() ?? '';
-
-  return trimmed === '' ? null : trimmed;
-}
-
-/** True when an airliner's ICAO code or airline name matches `query`. */
-function matchesAirline(aircraft: Aircraft, query: string): boolean {
-  const name = airlineFor(aircraft.callsign);
-
-  return (
-    name !== null &&
-    (aircraft.callsign?.slice(0, 3).toLowerCase() === query ||
-      name.toLowerCase().includes(query))
-  );
-}
-
-const SORTS: Record<
-  FindAircraftInput['sortBy'],
-  (a: AircraftRow, b: AircraftRow) => number
-> = {
-  altitude: (a, b) => (b.altitudeFt ?? -Infinity) - (a.altitudeFt ?? -Infinity),
-  speed: (a, b) =>
-    (b.groundSpeedKt ?? -Infinity) - (a.groundSpeedKt ?? -Infinity),
-  distance: (a, b) => a.distanceNm - b.distanceNm,
-};
-
-/**
- * Filters and sorts the aircraft on the map. Distances are measured from the
- * airport in `near`, else the one in `approaching`, else the area centre.
- * A `near` airport outside the table matches nothing.
- */
-export function findAircraft(
-  state: AtcState,
-  input: FindAircraftInput,
-  area: Area = AREAS.pnw,
-): AircraftRow[] {
-  const airline = text(input.airline);
-  const type = text(input.typeCode);
-  const airport = input.approaching ? AIRPORTS[input.approaching] : null;
-  const near = input.near ?? null;
-  const centre: Airport | null =
-    near === null ? null : lookupPlace(near.airport);
-  if (near !== null && centre === null) {
-    return [];
-  }
-  const radius = near === null ? Infinity : areaRadiusNm(near.radiusNm);
-  const limit = Math.min(20, Math.max(1, Math.round(input.limit)));
-
-  return [...state.aircraft.values()]
-    .filter((a) => airline === null || matchesAirline(a, airline))
-    .filter(
-      (a) =>
-        type === null ||
-        (a.typeCode ?? '').toLowerCase() === type ||
-        aircraftTypeName(a.typeCode).toLowerCase().includes(type),
-    )
-    .filter((a) => !input.kind || a.kind === input.kind)
-    .filter(
-      (a) =>
-        input.minAltitudeFt === null ||
-        (a.altitudeFt !== null && a.altitudeFt >= input.minAltitudeFt),
-    )
-    .filter(
-      (a) =>
-        input.maxAltitudeFt === null ||
-        (a.altitudeFt !== null && a.altitudeFt <= input.maxAltitudeFt),
-    )
-    .filter((a) => airport === null || isApproaching(a, airport))
-    .filter((a) => centre === null || distanceNm(a, centre) <= radius)
-    .map((a) => toRow(a, centre ?? airport ?? area))
-    .sort(SORTS[input.sortBy])
-    .slice(0, limit);
 }
 
 /** Shows `area` unless the map already outlines exactly that area. */
@@ -242,7 +77,15 @@ export type AtcToolName = keyof ReturnType<typeof createAtcTools>;
 
 /**
  * The atc tools as framework-neutral definitions. Wrap each with Angular's
- * `createTool` or React's `useTool`.
+ * `createTool` or React's `useTool`. Handlers run in the browser against the
+ * store; return small JSON, never whole state. A refusal is
+ * `{ <verb>: false, reason: '<sentence>' }`.
+ *
+ * To add a tool: (1) add it here and to `ATC_TOOL_NAMES`; (2) register it in
+ * `angular/src/app/assistant.ts` and `react/src/assistant.tsx`; (3) add its
+ * RUNNING and DONE labels in `tool-chips.ts` (the compiler asks for them);
+ * (4) tell the model when to use it in `SYSTEM_PROMPT` (`contracts.ts`);
+ * (5) script it in `e2e/src/atc.spec.ts`.
  */
 export function createAtcTools(context: AtcToolContext) {
   const { store } = context;
@@ -331,7 +174,7 @@ export function createAtcTools(context: AtcToolContext) {
       description:
         'Zoom the map back out to the whole Pacific Northwest and remove any area outline.',
       schema: noInput,
-      handler: async (_input: Record<string, never>) => {
+      handler: async () => {
         // The outline always goes; while following, the map stays on the plane.
         store.resetView();
         const followed = followedLabel(store.getState());
@@ -348,7 +191,7 @@ export function createAtcTools(context: AtcToolContext) {
       description:
         'Get the aircraft the user clicked on the map, or null if none is selected.',
       schema: noInput,
-      handler: async (_input: Record<string, never>) => {
+      handler: async () => {
         const { selectedHex } = store.getState();
         const selected =
           selectedHex === null
@@ -408,7 +251,7 @@ export function createAtcTools(context: AtcToolContext) {
       name: 'clearHighlight' as const,
       description: 'Show every aircraft on the map again.',
       schema: noInput,
-      handler: async (_input: Record<string, never>) => {
+      handler: async () => {
         store.clearHighlight();
 
         return { cleared: true };
@@ -433,7 +276,7 @@ export function createAtcTools(context: AtcToolContext) {
       name: 'stopFollowing' as const,
       description: 'Stop following an aircraft.',
       schema: noInput,
-      handler: async (_input: Record<string, never>) => {
+      handler: async () => {
         store.follow(null);
 
         return { following: false };
