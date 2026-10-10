@@ -2,6 +2,7 @@ import type { Map as LeafletMap, Marker } from 'leaflet';
 import type { Aircraft } from '../aircraft';
 import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore } from '../store';
+import { fitTarget } from './fit';
 import {
   lerpLatLon,
   shouldTween,
@@ -161,6 +162,10 @@ export function followPanOffset(
     : { x: Math.round(x) || 0, y: Math.round(y) || 0 };
 }
 
+/** Furthest out, and furthest in, that fitting highlighted planes will zoom. */
+const MIN_FIT_ZOOM = 5;
+const MAX_FIT_ZOOM = 10;
+
 /** A mounted map. */
 export interface AirspaceMapHandle {
   /** Stops syncing with the store and removes the map. */
@@ -236,6 +241,8 @@ export async function createAirspaceMap(options: {
     readonly moves: ReadonlyMap<string, { from: LatLon; to: LatLon }>;
   } | null = null;
   let frame: number | null = null;
+  /** The highlighted set the map was last fitted for (or skipped). */
+  let fittedFor: ReadonlySet<string> = new Set();
   map.on('dragstart', () => store.follow(null));
   map.on('zoomstart', () => (zooming = true));
   map.on('zoomend', () => {
@@ -273,6 +280,66 @@ export async function createAirspaceMap(options: {
       map.once('moveend', () => (panning = false));
     }
     map.panBy([offset.x, offset.y], { animate });
+  };
+  /**
+   * When the highlighted set changes, moves the map so those planes and their
+   * tags are legible. Follow mode owns the view, so it is skipped then. Later
+   * user pans and zooms stand until the set changes again.
+   */
+  const fitHighlighted = (state: AtcState) => {
+    const positions = new Map<string, LatLon>();
+    for (const hex of state.highlighted) {
+      const position = markers.get(hex)?.marker.getLatLng();
+      if (position) {
+        positions.set(hex, { lat: position.lat, lon: position.lng });
+      }
+    }
+    const following = state.followingHex !== null;
+    const target = fitTarget(
+      fittedFor,
+      state.highlighted,
+      positions,
+      following,
+    );
+    if (target === null) {
+      if (following || state.highlighted.size === 0) {
+        fittedFor = state.highlighted;
+      }
+      return;
+    }
+    fittedFor = state.highlighted;
+    const animate = !prefersReducedMotion();
+    if (target.kind === 'point') {
+      map.setView([target.lat, target.lon], target.zoom, { animate });
+      return;
+    }
+    const bounds: [[number, number], [number, number]] = [
+      [target.south, target.west],
+      [target.north, target.east],
+    ];
+    // Extra room on the right for the data tags.
+    const paddingTopLeft: [number, number] = [48, 48];
+    const paddingBottomRight: [number, number] = [140, 48];
+    const zoom = map.getBoundsZoom(
+      bounds,
+      false,
+      L.point(
+        paddingTopLeft[0] + paddingBottomRight[0],
+        paddingTopLeft[1] + paddingBottomRight[1],
+      ),
+    );
+    if (zoom < MIN_FIT_ZOOM) {
+      map.setView(L.latLngBounds(bounds).getCenter(), MIN_FIT_ZOOM, {
+        animate,
+      });
+      return;
+    }
+    map.fitBounds(bounds, {
+      paddingTopLeft,
+      paddingBottomRight,
+      maxZoom: MAX_FIT_ZOOM,
+      animate,
+    });
   };
   /** Last drawn pixel of each gliding marker, to skip sub-pixel moves. */
   let drawnPixels = new Map<string, string>();
@@ -344,6 +411,7 @@ export async function createAirspaceMap(options: {
         markers.set(aircraft.hex, { marker });
       }
     }
+    fitHighlighted(state);
     panToFollowed(true);
     if (state.pulse !== null && state.pulse.at !== lastPulseAt) {
       lastPulseAt = state.pulse.at;
