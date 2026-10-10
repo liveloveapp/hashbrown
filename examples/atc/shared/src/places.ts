@@ -5,7 +5,7 @@ export interface LatLon {
 }
 
 /** Airports the assistant can ask about. */
-export type AirportCode = 'SEA' | 'PDX' | 'BOI' | 'GEG' | 'RDM';
+export type AirportCode = 'SEA' | 'PDX' | 'BOI' | 'RDM';
 
 /** An airport with its reference point. */
 export interface Airport extends LatLon {
@@ -18,7 +18,6 @@ export const AIRPORT_CODES: readonly AirportCode[] = [
   'SEA',
   'PDX',
   'BOI',
-  'GEG',
   'RDM',
 ];
 
@@ -27,7 +26,6 @@ export const AIRPORTS: Readonly<Record<AirportCode, Airport>> = {
   SEA: { code: 'SEA', name: 'Seattle–Tacoma', lat: 47.4502, lon: -122.3088 },
   PDX: { code: 'PDX', name: 'Portland', lat: 45.5887, lon: -122.5975 },
   BOI: { code: 'BOI', name: 'Boise', lat: 43.5644, lon: -116.2228 },
-  GEG: { code: 'GEG', name: 'Spokane', lat: 47.6199, lon: -117.5338 },
   RDM: { code: 'RDM', name: 'Redmond/Bend', lat: 44.2541, lon: -121.15 },
 };
 

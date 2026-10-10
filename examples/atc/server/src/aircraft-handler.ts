@@ -7,8 +7,13 @@ import {
 } from '@atc/shared';
 import { type NodeHandler, sendJson } from './http';
 
-/** How long a fetched snapshot is served without calling adsb.lol again. */
-const FRESH_MS = 3000;
+/**
+ * How long a fetched snapshot is served without calling adsb.lol again.
+ * adsb.lol answers 429 to a 250 nm query every 3-5 s from one IP; every 10 s
+ * is sustainable. Browsers still poll every 3 s, so they see a new snapshot
+ * within about 3 s of the server fetching it.
+ */
+const FRESH_MS = 10_000;
 /** How old a snapshot may be and still stand in when adsb.lol fails. */
 const STALE_LIMIT_MS = 60_000;
 /** How long to leave adsb.lol alone after it answers 429. */
@@ -37,7 +42,7 @@ const EMPTY: AreaCache = { last: null, inFlight: null, coolUntil: 0 };
 /**
  * `/api/aircraft?area=pnw`: proxies adsb.lol. Each instance keeps a per-area
  * cache: concurrent requests share one upstream call, a snapshot is reused for
- * 3 s, and when adsb.lol fails (or asked us to back off with a 429, which
+ * 10 s, and when adsb.lol fails (or asked us to back off with a 429, which
  * pauses calls for 15 s) the last snapshot up to 60 s old is served with
  * `X-Atc-Stale: 1`. The CDN then shares each response for 3 s.
  */

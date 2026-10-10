@@ -29,7 +29,6 @@ export const arrivalsBoardContract = {
       'SEA',
       'PDX',
       'BOI',
-      'GEG',
       'RDM',
     ]),
     hexes: s.streaming.array(

@@ -5,6 +5,12 @@ import type { AtcStore } from './store';
 /** How often the browser asks `/api/aircraft` for fresh positions. */
 export const FEED_INTERVAL_MS = 3000;
 
+/** One poll's result: the snapshot, and whether the server marked it stale. */
+export interface FeedSnapshot {
+  readonly snapshot: AircraftSnapshot;
+  readonly stale: boolean;
+}
+
 /** A running data feed. */
 export interface Feed {
   start(): void;
@@ -12,13 +18,14 @@ export interface Feed {
 }
 
 /**
- * Polls `load` every `intervalMs`, one request at a time. On failure it keeps
- * the last positions and reports `delayed` after 15 s and `stalled` after 60 s
- * without fresh data.
+ * Polls `load` every `intervalMs`, one request at a time. A stale snapshot is
+ * applied but reports `delayed`; the next fresh one reports `live` again. On
+ * failure it keeps the last positions and reports `delayed` after 15 s and
+ * `stalled` after 60 s without fresh data.
  */
 export function createPollingFeed(options: {
   store: AtcStore;
-  load: () => Promise<AircraftSnapshot>;
+  load: () => Promise<FeedSnapshot>;
   intervalMs: number;
   now?: () => number;
   delayedAfterMs?: number;
@@ -39,13 +46,15 @@ export function createPollingFeed(options: {
 
   const tick = async () => {
     try {
-      const snapshot = await load();
+      const { snapshot, stale } = await load();
       if (stopped) {
         return;
       }
       store.applySnapshot(snapshot);
-      lastSuccessAt = now();
-      store.setFeedStatus('live');
+      if (!stale) {
+        lastSuccessAt = now();
+      }
+      store.setFeedStatus(stale ? 'delayed' : 'live');
     } catch {
       if (stopped) {
         return;
@@ -71,18 +80,25 @@ export function createPollingFeed(options: {
   };
 }
 
-/** Loads the latest snapshot for an area from `/api/aircraft`. */
+/**
+ * Loads the latest snapshot for an area from `/api/aircraft`. A response with
+ * `X-Atc-Stale: 1` (the server's last good snapshot while adsb.lol is failing)
+ * is reported as stale.
+ */
 export function createLiveLoader(
   area: AreaId,
   fetchFn: typeof fetch = fetch,
-): () => Promise<AircraftSnapshot> {
+): () => Promise<FeedSnapshot> {
   return async () => {
     const response = await fetchFn(`/api/aircraft?area=${area}`);
     if (!response.ok) {
       throw new Error(`Aircraft feed returned ${response.status}`);
     }
 
-    return parseSnapshot(await response.json());
+    return {
+      snapshot: parseSnapshot(await response.json()),
+      stale: response.headers.get('X-Atc-Stale') === '1',
+    };
   };
 }
 

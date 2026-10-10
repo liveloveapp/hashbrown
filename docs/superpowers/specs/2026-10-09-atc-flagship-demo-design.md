@@ -108,10 +108,12 @@ and nothing is written twice. Both apps import it through a path alias.
    the area, strips owner and operator fields, and responds with
    `Cache-Control: s-maxage=3, stale-while-revalidate=30`. Each server
    instance also caches per area: concurrent requests share one in-flight
-   upstream call, a snapshot is reused for 3 s, and when adsb.lol fails the
-   last snapshot up to 60 s old is served with `X-Atc-Stale: 1` (otherwise
-   502). After a 429 the instance leaves adsb.lol alone for 15 s. With the
-   CDN in front, all visitors share about one upstream call every 3 seconds.
+   upstream call, a snapshot is reused for 10 s (adsb.lol answers 429 to a
+   3-5 s cadence), and when adsb.lol fails the last snapshot up to 60 s old is
+   served with `X-Atc-Stale: 1` (otherwise 502). After a 429 the instance
+   leaves adsb.lol alone for 15 s. Upstream every 10 s, clients every 3 s:
+   the 3 s CDN cache and poll mean browsers see a new snapshot within about
+   3 s of the server fetching it, and stale snapshots show "Data delayed".
 3. Between polls the map glides each plane from where it is drawn to its new
    position over the time since the previous snapshot (clamped to 250 ms to
    10 s). New planes, moves over 20 nm and `prefers-reduced-motion` jump.
@@ -187,7 +189,7 @@ computed in tool code.
 
 Bundled tables in `shared/` turn codes into names: about 50 aircraft types
 (`B39M` → "Boeing 737 MAX 9") and about 50 airlines. `approaching` accepts
-SEA, PDX, BOI, GEG and RDM.
+SEA, PDX, BOI and RDM (Spokane is outside the 250 nm radius).
 
 The system prompt is about 15 lines and pinned on the server. It tells the model
 to answer with components, to use tools for every fact and number, and never to
@@ -261,7 +263,7 @@ retirement follow-up.
 
 | Failure | Behaviour |
 | --- | --- |
-| Feed down or slow | The server serves its last snapshot (≤60 s old) marked stale. The browser keeps the last positions and shows "data delayed" after 15 s without fresh data. |
+| Feed down or slow | The server serves its last snapshot (≤60 s old) marked stale, and the badge shows "data delayed" until a fresh one arrives. On outright failures the browser keeps the last positions and shows "data delayed" after 15 s without fresh data. |
 | Aircraft leaves the area | Its live card freezes with "Out of range · last seen HH:MM". |
 | Route lookup misses | The card shows "Route unavailable"; the tool returns `null` and the prompt forbids guessing. |
 | `/run` error or rate limit | Inline error in the chat with a retry button; the map keeps working. |

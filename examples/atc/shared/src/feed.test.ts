@@ -13,7 +13,7 @@ const snapshot: AircraftSnapshot = { at: 1, aircraft: [] };
 test('the polling feed marks live data and keeps polling', async () => {
   vi.useFakeTimers();
   const store = createAtcStore();
-  const load = vi.fn(async () => snapshot);
+  const load = vi.fn(async () => ({ snapshot, stale: false }));
   const feed = createPollingFeed({
     store,
     load,
@@ -38,7 +38,7 @@ test('failures keep the last positions and escalate from delayed to stalled', as
     if (clock > 0) {
       throw new Error('upstream down');
     }
-    return { at: 1, aircraft: [] };
+    return { snapshot: { at: 1, aircraft: [] }, stale: false };
   });
   const feed = createPollingFeed({
     store,
@@ -76,7 +76,7 @@ test('the live loader requests the area and validates the response', async () =>
 
   const loaded = await createLiveLoader('pnw', fetchFn)();
 
-  expect(loaded).toEqual(snapshot);
+  expect(loaded).toEqual({ snapshot, stale: false });
   expect(String(fetchFn.mock.calls[0][0])).toBe('/api/aircraft?area=pnw');
   await expect(createLiveLoader('pnw', failing)()).rejects.toThrow(
     'Aircraft feed returned 502',
@@ -101,5 +101,42 @@ test('startAtcFeed polls the Pacific Northwest every 3 s until stopped', async (
     '/api/aircraft?area=pnw',
   ]);
   expect(store.getState().feedStatus).toBe('live');
+  vi.useRealTimers();
+});
+
+test('the live loader reports snapshots marked X-Atc-Stale as stale', async () => {
+  const fetchFn = vi.fn<typeof fetch>(async () =>
+    Response.json(snapshot, { headers: { 'X-Atc-Stale': '1' } }),
+  );
+
+  const loaded = await createLiveLoader('pnw', fetchFn)();
+
+  expect(loaded).toEqual({ snapshot, stale: true });
+});
+
+test('stale snapshots report delayed until the next fresh one', async () => {
+  vi.useFakeTimers();
+  const store = createAtcStore();
+  const results = [
+    { snapshot: { at: 1, aircraft: [] }, stale: false },
+    { snapshot: { at: 1, aircraft: [] }, stale: true },
+    { snapshot: { at: 2, aircraft: [] }, stale: false },
+  ];
+  let call = 0;
+  const load = vi.fn(async () => results[Math.min(call++, 2)]);
+  const feed = createPollingFeed({ store, load, intervalMs: 3000 });
+  const statuses: string[] = [];
+
+  feed.start();
+  await vi.advanceTimersByTimeAsync(0);
+  statuses.push(store.getState().feedStatus);
+  await vi.advanceTimersByTimeAsync(3000);
+  statuses.push(store.getState().feedStatus);
+  await vi.advanceTimersByTimeAsync(3000);
+  statuses.push(store.getState().feedStatus);
+  feed.stop();
+
+  expect(statuses).toEqual(['live', 'delayed', 'live']);
+  expect(store.getState().updatedAt).toBe(2);
   vi.useRealTimers();
 });

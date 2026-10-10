@@ -47,7 +47,7 @@ npx nx e2e atc-e2e
 
 Aircraft data comes from [adsb.lol](https://adsb.lol) under the ODbL. Map tiles are from
 Stadia Maps, which authenticates by domain. The browser polls `/api/aircraft` every 3 s;
-the server shares one adsb.lol call per area across requests, reuses it for 3 s, and
+the server shares one adsb.lol call per area across requests, reuses it for 10 s, and
 serves the last good snapshot (marked `X-Atc-Stale: 1`) for up to 60 s when adsb.lol
 fails. The e2e tests stub `/api/aircraft` with synthetic frames.
 
