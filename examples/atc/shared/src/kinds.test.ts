@@ -77,3 +77,15 @@ test('every kind has a distinct silhouette path in the 24 by 24 box', () => {
     expect(path).toMatch(/^[AaMmLlHhVvCcSsZz0-9 .,-]+$/);
   }
 });
+
+test('the single-engine prop is a short, thin bar, about a fifth of the wingspan', () => {
+  const path = KIND_PATHS.single;
+  const prop = path.slice(path.lastIndexOf('M'));
+
+  const [, width, height] =
+    /^M[\d.]+ [\d.]+h([\d.]+)v([\d.]+)h-[\d.]+z$/.exec(prop) ?? [];
+
+  expect(Number(width)).toBeGreaterThan(0);
+  expect(Number(width)).toBeLessThanOrEqual(4);
+  expect(Number(height)).toBeLessThanOrEqual(1);
+});
