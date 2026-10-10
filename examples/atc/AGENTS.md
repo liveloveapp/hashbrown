@@ -16,40 +16,41 @@ dependencies); this file covers atc.
 
 ## File map
 
-| Path                                            | What it holds                                                     |
-| ----------------------------------------------- | ----------------------------------------------------------------- |
-| `shared/src/aircraft.ts`                        | adsb.lol to `Aircraft`: validation and the privacy whitelist      |
-| `shared/src/store.ts`, `feed.ts`                | State, reducers, view requests; polling `/api/aircraft`           |
-| `shared/src/tools.ts`, `find-aircraft.ts`       | Tool definitions; the pure aircraft query                         |
-| `shared/src/contracts.ts`                       | Component contracts (Skillet) and `SYSTEM_PROMPT`                 |
-| `shared/src/views.ts`, `detail-view.ts`         | Pure view models for cards and the map's detail card              |
-| `shared/src/tool-chips.ts`, `transcript.ts`     | Tool call labels and transcript rows                              |
-| `shared/src/map/airspace-map.ts`                | `createAirspaceMap`: composes the modules below                   |
-| `shared/src/map/plane-marker.ts`                | Marker HTML, updated in place                                     |
-| `shared/src/map/motion-loop.ts`, `tween.ts`     | Dead reckoning between snapshots                                  |
-| `shared/src/map/view-controller.ts`, `fit.ts`   | Applying view requests (fits, areas, reveals)                     |
-| `shared/src/map/card-sync.ts`, `detail-card.ts` | The floating detail card                                          |
-| `shared/src/map/follow.ts`, `follow-pill.ts`    | Follow mode and its pill                                          |
-| `shared/src/map/tiles.ts`                       | Tile URL and attribution                                          |
-| `shared/src/styles/atc.css`                     | Index of the stylesheet partials, in cascade order                |
-| `angular/src/app/`, `react/src/`                | Thin framework shells that mirror each other                      |
-| `server/src/run-handler.ts`                     | `/api/run`: pins the system prompt, allowlists tools, caps output |
-| `server/src/aircraft-handler.ts`                | `/api/aircraft`: cached, stripped adsb.lol                        |
-| `e2e/src/`                                      | Playwright for both apps with a mocked model and synthetic frames |
+| Path                                            | What it holds                                                        |
+| ----------------------------------------------- | -------------------------------------------------------------------- |
+| `shared/src/aircraft.ts`                        | adsb.lol to `Aircraft`: validation and the privacy whitelist         |
+| `shared/src/store.ts`, `feed.ts`                | State, reducers, view requests; polling `/api/aircraft`              |
+| `shared/src/tools.ts`, `find-aircraft.ts`       | Tool definitions; the pure aircraft query                            |
+| `shared/src/contracts.ts`                       | Component contracts (Skillet) and `SYSTEM_PROMPT`                    |
+| `shared/src/views.ts`, `detail-view.ts`         | Pure view models for cards and the map's detail card                 |
+| `shared/src/tool-chips.ts`, `transcript.ts`     | Tool call labels and transcript rows                                 |
+| `shared/src/map/airspace-map.ts`                | `createAirspaceMap`: composes the modules below                      |
+| `shared/src/map/plane-marker.ts`                | Marker HTML, updated in place                                        |
+| `shared/src/map/motion-loop.ts`, `tween.ts`     | Dead reckoning between snapshots                                     |
+| `shared/src/map/view-controller.ts`, `fit.ts`   | Applying view requests (fits, areas, reveals)                        |
+| `shared/src/map/card-sync.ts`, `detail-card.ts` | The floating detail card                                             |
+| `shared/src/map/follow.ts`, `follow-pill.ts`    | Follow mode and its pill                                             |
+| `shared/src/map/tiles.ts`                       | Tile URL and attribution                                             |
+| `shared/src/styles/atc.css`                     | Index of the stylesheet partials, in cascade order                   |
+| `angular/src/app/`, `react/src/`                | Thin framework shells that mirror each other                         |
+| `server/src/run-handler.ts`                     | `/api/run`: pins the system prompt and tool definitions, caps output |
+| `server/src/aircraft-handler.ts`                | `/api/aircraft`: cached, stripped adsb.lol                           |
+| `e2e/src/`                                      | Playwright for both apps with a mocked model and synthetic frames    |
 
 ## Add a component or a tool
 
 - Component: README, "Add a component".
-- Tool: the comment on `createAtcTools` in `shared/src/tools.ts`. Add the name to
-  `ATC_TOOL_NAMES` too, or the server drops it.
+- Tool: the comment on `createAtcTools` in `shared/src/tools.ts`. Its name,
+  description and schema go in `ATC_TOOL_DEFINITIONS`, which the server sends to the
+  model; a tool missing there is dropped.
 
 ## Invariants not to break
 
 - Only fields validated in `shared/src/aircraft.ts` (hex, label, kind, numbers) go into
   marker HTML. Everything else is rendered as text.
 - `normalizeAdsbLol` copies whitelisted fields only; never spread adsb.lol entries.
-- The system prompt, the tool list and the output cap are fixed on the server; clients
-  cannot change them.
+- The system prompt, the tool definitions and the output cap are fixed on the server;
+  clients cannot change them. (The UI response schema still comes from the client.)
 - The map moves only through store view requests: the newest wins, follow mode wins over
   all, a user drag or zoom cancels.
 - Markers update in place (`updatePlane`); never rebuild them on a snapshot.

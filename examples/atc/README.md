@@ -9,7 +9,7 @@ the stream. Everything else is ordinary app code reading one store.
 
 ## Run locally
 
-Needs Node 20.12 or later. Put `OPENAI_API_KEY=...` in the repository's `.env`, then run
+Needs Node 20.19 or later (Vite 8 needs `^20.19.0` or `>=22.12.0`). Put `OPENAI_API_KEY=...` in the repository's `.env`, then run
 each in its own terminal:
 
 ```bash
@@ -61,8 +61,10 @@ Data flow: `shared/src/feed.ts` polls `/api/aircraft`, `store.applySnapshot` tak
 snapshot, and the map and components re-render. The model's tools read the same store in
 the browser, so the server never sees the plane list.
 
-`/api/run` is public, so the server fixes everything but the conversation: it replaces
-the system prompt, forwards only the atc tools, and caps the answer's length.
+`/api/run` is public, so the server replaces the system prompt and the tool definitions
+(with its own copies from `shared/src/tools.ts`), drops unknown tools, and caps the
+answer's length and each message's size. The UI response schema still comes from the
+client, bounded by that cap.
 
 The map is pointer-only (planes are not keyboard-focusable); every map action is also
 available from the chat.

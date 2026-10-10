@@ -57,24 +57,94 @@ function followingReason(label: string): string {
 }
 
 /**
- * The name of every atc tool. The server forwards only these to the model, so
+ * Each atc tool's name, description and input schema, without its handler.
+ * The browser adds handlers in {@link createAtcTools}; the server sends these
+ * definitions to the model in place of whatever the client sent, so
  * `/api/run` cannot be used as a general-purpose proxy.
  */
-export const ATC_TOOL_NAMES = [
-  'findAircraft',
-  'lookupPlace',
-  'showArea',
-  'resetMap',
-  'getSelectedAircraft',
-  'lookupRoute',
-  'highlightAircraft',
-  'clearHighlight',
-  'followAircraft',
-  'stopFollowing',
-] as const satisfies readonly AtcToolName[];
+export const ATC_TOOL_DEFINITIONS = {
+  findAircraft: {
+    name: 'findAircraft' as const,
+    description:
+      'Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport. With near, the map also shows and outlines that area. Returns compact rows.',
+    schema: findAircraftInput,
+  },
+  lookupPlace: {
+    name: 'lookupPlace' as const,
+    description:
+      'Find a Pacific Northwest airport by ICAO, IATA or FAA code, name or city. Returns its ICAO code, or found false.',
+    schema: s.object('Place lookup', {
+      query: s.string('What the user called the place, such as Bend or KBDN'),
+    }),
+  },
+  showArea: {
+    name: 'showArea' as const,
+    description:
+      'Move the map to a circle around an airport and outline it. Returns how many aircraft are inside.',
+    schema: s.object('Area to show', {
+      airport: s.string('ICAO code from lookupPlace, such as KBDN'),
+      radiusNm: s.anyOf([
+        s.number('Radius in nautical miles, 5 to 150; 25 if null'),
+        s.nullish(),
+      ]),
+    }),
+  },
+  resetMap: {
+    name: 'resetMap' as const,
+    description:
+      'Zoom the map back out to the whole Pacific Northwest and remove any area outline.',
+    schema: noInput,
+  },
+  getSelectedAircraft: {
+    name: 'getSelectedAircraft' as const,
+    description:
+      'Get the aircraft the user clicked on the map, or null if none is selected.',
+    schema: noInput,
+  },
+  lookupRoute: {
+    name: 'lookupRoute' as const,
+    description:
+      "Look up an airline flight's scheduled route by its airline callsign. Routes come from public data and can be wrong.",
+    schema: s.object('Route lookup', {
+      callsign: s.string('The callsign, such as UAL1372'),
+    }),
+  },
+  highlightAircraft: {
+    name: 'highlightAircraft' as const,
+    description: 'Highlight these aircraft on the map and dim the rest.',
+    schema: s.object('Aircraft to highlight', {
+      hexes: s.array(
+        'Aircraft hex codes from tool results',
+        s.string('Aircraft hex code'),
+      ),
+    }),
+  },
+  clearHighlight: {
+    name: 'clearHighlight' as const,
+    description: 'Show every aircraft on the map again.',
+    schema: noInput,
+  },
+  followAircraft: {
+    name: 'followAircraft' as const,
+    description: 'Keep the map centred on one aircraft.',
+    schema: s.object('Aircraft to follow', {
+      hex: s.string('Aircraft hex code from a tool result'),
+    }),
+  },
+  stopFollowing: {
+    name: 'stopFollowing' as const,
+    description: 'Stop following an aircraft.',
+    schema: noInput,
+  },
+};
 
-/** The name of one atc tool; a key of `createAtcTools`'s result. */
-export type AtcToolName = keyof ReturnType<typeof createAtcTools>;
+/** The name of one atc tool. */
+export type AtcToolName = keyof typeof ATC_TOOL_DEFINITIONS;
+
+/** The name of every atc tool. */
+export const ATC_TOOL_NAMES = Object.keys(
+  ATC_TOOL_DEFINITIONS,
+) as readonly AtcToolName[];
 
 /**
  * The atc tools as framework-neutral definitions. Wrap each with Angular's
@@ -82,7 +152,8 @@ export type AtcToolName = keyof ReturnType<typeof createAtcTools>;
  * store; return small JSON, never whole state. A refusal is
  * `{ <verb>: false, reason: '<sentence>' }`.
  *
- * To add a tool: (1) add it here and to `ATC_TOOL_NAMES`; (2) register it in
+ * To add a tool: (1) add its definition to `ATC_TOOL_DEFINITIONS` and its
+ * handler here; (2) register it in
  * `angular/src/app/assistant.ts` and `react/src/assistant.tsx`; (3) add its
  * RUNNING and DONE labels in `tool-chips.ts` (the compiler asks for them);
  * (4) tell the model when to use it in `SYSTEM_PROMPT` (`contracts.ts`);
@@ -93,10 +164,7 @@ export function createAtcTools(context: AtcToolContext) {
 
   return {
     findAircraft: {
-      name: 'findAircraft' as const,
-      description:
-        'Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport. With near, the map also shows and outlines that area. Returns compact rows.',
-      schema: findAircraftInput,
+      ...ATC_TOOL_DEFINITIONS.findAircraft,
       handler: async (input: FindAircraftInput) => {
         if (input.near) {
           const centre = lookupPlace(input.near.airport);
@@ -114,12 +182,7 @@ export function createAtcTools(context: AtcToolContext) {
       },
     },
     lookupPlace: {
-      name: 'lookupPlace' as const,
-      description:
-        'Find a Pacific Northwest airport by ICAO, IATA or FAA code, name or city. Returns its ICAO code, or found false.',
-      schema: s.object('Place lookup', {
-        query: s.string('What the user called the place, such as Bend or KBDN'),
-      }),
+      ...ATC_TOOL_DEFINITIONS.lookupPlace,
       handler: async ({ query }: { query: string }) => {
         const airport = lookupPlace(query);
 
@@ -135,16 +198,7 @@ export function createAtcTools(context: AtcToolContext) {
       },
     },
     showArea: {
-      name: 'showArea' as const,
-      description:
-        'Move the map to a circle around an airport and outline it. Returns how many aircraft are inside.',
-      schema: s.object('Area to show', {
-        airport: s.string('ICAO code from lookupPlace, such as KBDN'),
-        radiusNm: s.anyOf([
-          s.number('Radius in nautical miles, 5 to 150; 25 if null'),
-          s.nullish(),
-        ]),
-      }),
+      ...ATC_TOOL_DEFINITIONS.showArea,
       handler: async (input: { airport: string; radiusNm: number | null }) => {
         const airport = lookupPlace(input.airport);
         if (airport === null) {
@@ -171,10 +225,7 @@ export function createAtcTools(context: AtcToolContext) {
       },
     },
     resetMap: {
-      name: 'resetMap' as const,
-      description:
-        'Zoom the map back out to the whole Pacific Northwest and remove any area outline.',
-      schema: noInput,
+      ...ATC_TOOL_DEFINITIONS.resetMap,
       handler: async () => {
         // The outline always goes; while following, the map stays on the plane.
         store.resetView();
@@ -188,10 +239,7 @@ export function createAtcTools(context: AtcToolContext) {
       },
     },
     getSelectedAircraft: {
-      name: 'getSelectedAircraft' as const,
-      description:
-        'Get the aircraft the user clicked on the map, or null if none is selected.',
-      schema: noInput,
+      ...ATC_TOOL_DEFINITIONS.getSelectedAircraft,
       handler: async () => {
         const { selectedHex } = store.getState();
         const selected =
@@ -203,12 +251,7 @@ export function createAtcTools(context: AtcToolContext) {
       },
     },
     lookupRoute: {
-      name: 'lookupRoute' as const,
-      description:
-        "Look up an airline flight's scheduled route by its airline callsign. Routes come from public data and can be wrong.",
-      schema: s.object('Route lookup', {
-        callsign: s.string('The callsign, such as UAL1372'),
-      }),
+      ...ATC_TOOL_DEFINITIONS.lookupRoute,
       handler: async ({ callsign }: { callsign: string }) => {
         const key = callsign.trim().toUpperCase();
         if (airlineFor(key) === null) {
@@ -243,14 +286,7 @@ export function createAtcTools(context: AtcToolContext) {
       },
     },
     highlightAircraft: {
-      name: 'highlightAircraft' as const,
-      description: 'Highlight these aircraft on the map and dim the rest.',
-      schema: s.object('Aircraft to highlight', {
-        hexes: s.array(
-          'Aircraft hex codes from tool results',
-          s.string('Aircraft hex code'),
-        ),
-      }),
+      ...ATC_TOOL_DEFINITIONS.highlightAircraft,
       handler: async ({ hexes }: { hexes: string[] }) => {
         store.highlight(hexes);
         const asked = [...new Set(hexes.map(normalizeHex))];
@@ -262,9 +298,7 @@ export function createAtcTools(context: AtcToolContext) {
       },
     },
     clearHighlight: {
-      name: 'clearHighlight' as const,
-      description: 'Show every aircraft on the map again.',
-      schema: noInput,
+      ...ATC_TOOL_DEFINITIONS.clearHighlight,
       handler: async () => {
         store.clearHighlight();
 
@@ -272,11 +306,7 @@ export function createAtcTools(context: AtcToolContext) {
       },
     },
     followAircraft: {
-      name: 'followAircraft' as const,
-      description: 'Keep the map centred on one aircraft.',
-      schema: s.object('Aircraft to follow', {
-        hex: s.string('Aircraft hex code from a tool result'),
-      }),
+      ...ATC_TOOL_DEFINITIONS.followAircraft,
       handler: async ({ hex }: { hex: string }) => {
         if (!store.getState().aircraft.has(normalizeHex(hex))) {
           return {
@@ -290,14 +320,12 @@ export function createAtcTools(context: AtcToolContext) {
       },
     },
     stopFollowing: {
-      name: 'stopFollowing' as const,
-      description: 'Stop following an aircraft.',
-      schema: noInput,
+      ...ATC_TOOL_DEFINITIONS.stopFollowing,
       handler: async () => {
         store.follow(null);
 
         return { following: false };
       },
     },
-  };
+  } satisfies Record<AtcToolName, unknown>;
 }

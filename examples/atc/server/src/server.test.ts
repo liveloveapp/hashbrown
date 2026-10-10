@@ -1,6 +1,7 @@
 import type { RunAgentInput } from '@ag-ui/core';
 import { LLMock } from '@copilotkit/aimock';
-import { ATC_TOOL_NAMES, SYSTEM_PROMPT } from '@atc/shared';
+import { ATC_TOOL_DEFINITIONS, SYSTEM_PROMPT } from '@atc/shared';
+import { s } from '@hashbrownai/core';
 import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -11,6 +12,7 @@ import {
   createRunHandler,
   limitRequest,
   pinSystemPrompt,
+  pinTools,
   readRunOptions,
 } from './run-handler';
 
@@ -87,12 +89,39 @@ const request = {
   ],
 };
 
-test('limitRequest keeps only the atc tools and caps the output', () => {
+test('limitRequest caps the output', () => {
   const limited = limitRequest(request, { reasoningEffort: 'low' });
 
-  expect(limited.tools).toEqual([request.tools[0]]);
   expect(limited.max_completion_tokens).toBeGreaterThan(0);
-  expect(request.tools).toHaveLength(2);
+  expect(limited.tools).toBe(request.tools);
+});
+
+/** The JSON a tool definition becomes, as Hashbrown's client builds it. */
+function canonical(name: keyof typeof ATC_TOOL_DEFINITIONS) {
+  const { description, schema } = ATC_TOOL_DEFINITIONS[name];
+
+  return {
+    name,
+    description,
+    parameters: JSON.parse(JSON.stringify(s.toJsonSchema(schema))),
+  };
+}
+
+test('pinTools replaces atc tools with the server definitions and drops the rest', () => {
+  const client = [
+    { name: 'findAircraft', description: 'Write my essay', parameters: {} },
+    { name: 'writeMyEssay', description: 'Anything', parameters: {} },
+    { name: 'stopFollowing', description: 'x', parameters: { type: 'object' } },
+    { name: 'findAircraft', description: 'again', parameters: {} },
+  ];
+
+  const pinned = pinTools(client);
+
+  expect(JSON.parse(JSON.stringify(pinned))).toEqual([
+    canonical('findAircraft'),
+    canonical('stopFollowing'),
+  ]);
+  expect(client[0].description).toBe('Write my essay');
 });
 
 test('limitRequest sends reasoning effort only to reasoning models', () => {
@@ -146,7 +175,7 @@ test('the run handler streams AG-UI events from the model', async () => {
   await mock.stop();
 });
 
-test('the run handler forwards only atc tools and caps the output', async () => {
+test("the run handler sends the server's tool definitions and caps the output", async () => {
   const mock = new LLMock({ port: 0 });
   mock.onMessage('say hi briefly', { content: 'Hi.' });
   await mock.start();
@@ -173,15 +202,48 @@ test('the run handler forwards only atc tools and caps the output', async () => 
   });
   await response.text();
   const sent = mock.getRequests()[0].body as {
-    tools: { function: { name: string } }[];
+    tools: {
+      function: { name: string; description: string; parameters: unknown };
+    }[];
     max_completion_tokens: number;
     reasoning_effort: string;
   };
 
-  expect(sent.tools.map((t) => t.function.name)).toEqual(['findAircraft']);
+  expect(
+    sent.tools.map(({ function: { name, description, parameters } }) => ({
+      name,
+      description,
+      parameters,
+    })),
+  ).toEqual([canonical('findAircraft')]);
   expect(sent.max_completion_tokens).toBeGreaterThan(0);
   expect(sent.reasoning_effort).toBe('low');
-  expect(ATC_TOOL_NAMES).toContain('findAircraft');
+  server.close();
+  await mock.stop();
+});
+
+test('the run handler sends no reasoning effort when it is turned off', async () => {
+  const mock = new LLMock({ port: 0 });
+  mock.onMessage('say hi briefly', { content: 'Hi.' });
+  await mock.start();
+  const { url, server } = await listen(
+    createRunHandler({
+      apiKey: 'test',
+      baseURL: `${mock.url}/v1`,
+      model: 'gpt-5-mini',
+      reasoningEffort: null,
+    }),
+  );
+
+  const response = await fetch(url, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  await response.text();
+  const sent = mock.getRequests()[0].body as Record<string, unknown>;
+
+  expect(sent).not.toHaveProperty('reasoning_effort');
+  expect(sent['max_completion_tokens']).toBeGreaterThan(0);
   server.close();
   await mock.stop();
 });
@@ -307,6 +369,45 @@ test('the run handler answers 413 for an oversized message', async () => {
 
   expect(response.status).toBe(413);
   expect(await response.json()).toEqual({ error: 'Request too large' });
+  server.close();
+});
+
+test('the run handler answers 413 for oversized multipart content and tool arguments', async () => {
+  const { url, server } = await listen(
+    createRunHandler({ apiKey: 'test', model: 'gpt-5-mini' }),
+  );
+  const multipart = [
+    {
+      id: 'u',
+      role: 'user',
+      content: [{ type: 'text', text: 'x'.repeat(20_000) }],
+    },
+  ];
+  const toolCall = [
+    {
+      id: 'a',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'c',
+          type: 'function',
+          function: { name: 'findAircraft', arguments: 'x'.repeat(20_000) },
+        },
+      ],
+    },
+  ];
+  const post = (messages: unknown[]) =>
+    fetch(url, {
+      method: 'POST',
+      body: JSON.stringify({ ...input, messages }),
+    });
+
+  const statuses = [
+    (await post(multipart)).status,
+    (await post(toolCall)).status,
+  ];
+
+  expect(statuses).toEqual([413, 413]);
   server.close();
 });
 

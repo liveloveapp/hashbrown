@@ -1,6 +1,11 @@
-import type { RunAgentInput } from '@ag-ui/core';
+import type { RunAgentInput, Tool } from '@ag-ui/core';
 import { EventEncoder } from '@ag-ui/encoder';
-import { ATC_TOOL_NAMES, SYSTEM_PROMPT } from '@atc/shared';
+import {
+  ATC_TOOL_DEFINITIONS,
+  type AtcToolName,
+  SYSTEM_PROMPT,
+} from '@atc/shared';
+import { s } from '@hashbrownai/core';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import type OpenAI from 'openai';
 import {
@@ -50,28 +55,48 @@ export function readRunOptions(env: NodeJS.ProcessEnv): RunHandlerOptions {
 /** Enough for the longest answer atc gives, reasoning included. */
 const MAX_OUTPUT_TOKENS = 4096;
 
-const TOOL_NAMES: ReadonlySet<string> = new Set(ATC_TOOL_NAMES);
+/** Each atc tool as the model sees it, built from the shared definitions. */
+const PINNED_TOOLS: ReadonlyMap<string, Tool> = new Map(
+  Object.values(ATC_TOOL_DEFINITIONS).map(
+    ({ name, description, schema }): [AtcToolName, Tool] => [
+      name,
+      // The same conversion Hashbrown's client applies to a tool's schema.
+      { name, description, parameters: s.toJsonSchema(schema) },
+    ],
+  ),
+);
+
+/**
+ * The tools the client asked for, each replaced with the server's own
+ * definition (description and JSON Schema). Unknown tools and repeats are
+ * dropped, so the model only ever sees atc's tools as atc wrote them.
+ */
+export function pinTools(tools: readonly Tool[]): Tool[] {
+  const names = new Set(tools.map((tool) => tool.name));
+
+  return [...names].flatMap((name) => {
+    const pinned = PINNED_TOOLS.get(name);
+
+    return pinned === undefined ? [] : [pinned];
+  });
+}
 
 /** gpt-5 and the o-series accept `reasoning_effort`; other models reject it with a 400. */
 const REASONING_MODEL = /^(gpt-5|o\d)/;
 
 /**
- * Narrows the OpenAI request to atc: only the atc tools, a capped output
- * length, and a reasoning effort for models that accept one. Low effort
- * roughly halves the time to the first token for this tool-heavy prompt.
+ * Caps the OpenAI request's output length and adds a reasoning effort for
+ * models that accept one. Low effort roughly halves the time to the first
+ * token for this tool-heavy prompt.
  */
 export function limitRequest(
   request: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
   options: Pick<RunHandlerOptions, 'reasoningEffort'>,
 ): OpenAI.Chat.ChatCompletionCreateParamsStreaming {
-  const tools = request.tools?.filter(
-    (tool) => tool.type === 'function' && TOOL_NAMES.has(tool.function.name),
-  );
   const effort = options.reasoningEffort ?? null;
 
   return {
     ...request,
-    tools: tools?.length ? tools : undefined,
     max_completion_tokens: MAX_OUTPUT_TOKENS,
     ...(effort !== null && REASONING_MODEL.test(request.model)
       ? { reasoning_effort: effort }
@@ -101,7 +126,10 @@ export function pinSystemPrompt(
 
 const MAX_MESSAGES = 100;
 
-/** Per message; the longest tool result (20 aircraft rows) is about 6 kB. */
+/**
+ * Per message, counting everything in it (text or multipart content, tool
+ * call arguments); the longest tool result (20 aircraft rows) is about 6 kB.
+ */
 const MAX_MESSAGE_CHARS = 16_000;
 
 function isRunInput(value: unknown): value is RunAgentInput {
@@ -116,9 +144,7 @@ function isTooLarge(input: RunAgentInput): boolean {
   return (
     input.messages.length > MAX_MESSAGES ||
     input.messages.some(
-      (message) =>
-        typeof message.content === 'string' &&
-        message.content.length > MAX_MESSAGE_CHARS,
+      (message) => JSON.stringify(message).length > MAX_MESSAGE_CHARS,
     )
   );
 }
@@ -126,8 +152,10 @@ function isTooLarge(input: RunAgentInput): boolean {
 /**
  * `/api/run`: streams the model's answer as AG-UI server-sent events.
  *
- * A public endpoint: the system prompt, the tool list and the output length
- * are fixed here, so the route can only run atc.
+ * A public endpoint: the system prompt, the tool definitions and the output
+ * length are fixed here, so the route can only run atc. The UI response
+ * schema still comes from the client: its Markdown component is defined
+ * inside the framework packages, so the server cannot rebuild it.
  */
 export function createRunHandler(options: RunHandlerOptions): NodeHandler {
   return async (req, res) => {
@@ -162,13 +190,17 @@ export function createRunHandler(options: RunHandlerOptions): NodeHandler {
         baseURL: options.baseURL,
         model: options.model,
         input: pinSystemPrompt(
-          { ...input, tools: input.tools ?? [] },
+          { ...input, tools: pinTools(input.tools ?? []) },
           SYSTEM_PROMPT,
         ),
         signal: abortController.signal,
         transformRequestOptions: (request) =>
           limitRequest(request, {
-            reasoningEffort: options.reasoningEffort ?? 'low',
+            // Undefined means the default; null means none.
+            reasoningEffort:
+              options.reasoningEffort === undefined
+                ? 'low'
+                : options.reasoningEffort,
           }),
       });
       res.writeHead(200, {
