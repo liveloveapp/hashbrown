@@ -194,7 +194,30 @@ async function open(page: Page, framework: string): Promise<void> {
     }).observe(document, { subtree: true, childList: true, attributes: true });
   });
   await page.goto(`${origin}/${framework}/`);
-  await expect(page.getByRole('status')).toContainText('Live');
+  await expect(page.getByTestId('airspace-map')).toHaveAttribute(
+    'data-ready',
+    '',
+  );
+}
+
+/**
+ * Presses the map's zoom-out button `steps` times, waiting for each zoom to
+ * finish. Leaflet starts the animation on the next frame (adding
+ * `leaflet-zoom-anim`) and removes the class when it ends, so wait two frames
+ * and then for the class to go. Under reduced motion there is no animation and
+ * the class never appears.
+ */
+async function zoomOut(page: Page, steps: number): Promise<void> {
+  for (let step = 0; step < steps; step++) {
+    await page.locator('.leaflet-control-zoom-out').click();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    await expect(page.locator('.leaflet-zoom-anim')).toHaveCount(0);
+  }
 }
 
 async function expectOnlyCompleteIds(page: Page): Promise<void> {
@@ -231,6 +254,8 @@ test('tags private and unidentified traffic by label', async ({
 
 test('hovering a plane shows its detail card', async ({ page }, testInfo) => {
   await open(page, testInfo.project.name);
+  // The home view frames central Oregon; zoom out to bring Eugene on screen.
+  await zoomOut(page, 2);
   const card = page.getByTestId('aircraft-detail');
   await expect(card).toBeHidden();
 
@@ -248,6 +273,37 @@ test('hovering a plane shows its detail card', async ({ page }, testInfo) => {
   await page.locator('.atc-plane[data-hex="a1c009"]').dispatchEvent('mouseout');
 
   await expect(card).toBeHidden();
+});
+
+test('the hovered plane stacks above the selected one and every other marker', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+  const icon = (hex: string) =>
+    page.locator('.atc-plane-icon').filter({
+      has: page.locator(`.atc-plane[data-hex="${hex}"]`),
+    });
+  const zIndex = (hex: string) =>
+    icon(hex).evaluate((node) => Number(getComputedStyle(node).zIndex));
+  await page
+    .locator(`.atc-plane[data-hex="${selected.hex}"]`)
+    .dispatchEvent('click');
+
+  // N4417B, near Bend: on screen in the home view, like the selected plane.
+  // force: planes glide every frame, so they never count as stable.
+  await icon('a1c00c').hover({ force: true });
+
+  const others = await page
+    .locator('.atc-plane-icon')
+    .evaluateAll((nodes) =>
+      nodes
+        .filter((node) => !node.matches(':hover, :has(.is-selected)'))
+        .map((node) => Number(getComputedStyle(node).zIndex)),
+    );
+  const hovered = await zIndex('a1c00c');
+  const chosen = await zIndex(selected.hex);
+  expect(hovered).toBeGreaterThan(chosen);
+  expect(chosen).toBeGreaterThan(Math.max(...others));
 });
 
 test('renders the selected aircraft as a live card', async ({
@@ -373,6 +429,24 @@ test('each app stands alone, with no links to the other framework', async ({
   await expect(named).toHaveCount(0);
 });
 
+test('the header links to the source on GitHub and says nothing about a live feed', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+
+  const link = page.getByRole('link', { name: 'atc source on GitHub' });
+
+  await expect(link).toHaveAttribute(
+    'href',
+    'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc',
+  );
+  await expect(
+    page.locator('.atc-panel-header').getByRole('status'),
+  ).toHaveCount(0);
+  await expect(page.locator('.atc-panel-header')).not.toContainText('Live');
+  await expect(page.getByText('View the core file')).toHaveCount(0);
+});
+
 test('pressing / focuses the composer', async ({ page }, testInfo) => {
   await open(page, testInfo.project.name);
   const input = page.getByRole('textbox', { name: 'Message' });
@@ -385,7 +459,7 @@ test('pressing / focuses the composer', async ({ page }, testInfo) => {
   await expect(input).toHaveValue('');
 });
 
-test('folds tool calls into a summary that expands to every step', async ({
+test('folds tool calls into one activity line that expands to every step', async ({
   page,
 }, testInfo) => {
   await open(page, testInfo.project.name);
@@ -393,10 +467,12 @@ test('folds tool calls into a summary that expands to every step', async ({
   await page.getByRole('button', { name: STARTER_PROMPTS[2] }).click();
 
   const summary = page.getByTestId('tool-summary');
-  await expect(summary).toHaveText('Searched traffic');
+  await expect(summary).toHaveText('Searched traffic · 1 step');
+  await expect(summary).toHaveAttribute('aria-expanded', 'false');
   await summary.click();
+  await expect(summary).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByTestId('tool-step')).toHaveText([
-    'Finding aircraft · sorted by altitude',
+    'Finding aircraft sorted by altitude',
   ]);
 });
 

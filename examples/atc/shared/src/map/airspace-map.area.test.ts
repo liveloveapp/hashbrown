@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
-import { AIRPORTS, AREAS } from '../places';
+import { AIRPORTS, type Area, AREAS } from '../places';
 import { createAtcStore } from '../store';
 import { createAirspaceMap } from './airspace-map';
 
@@ -28,8 +28,11 @@ const planes: Aircraft[] = [
   { ...base, hex: 'bbbbbb', lon: KBDN.lon + 20 / (60 * Math.cos(0.7696)) },
 ];
 
-/** Mounts a 400x300 map with reduced motion so moves are immediate. */
-async function mount() {
+/**
+ * Mounts a 400x300 map with reduced motion so moves are immediate, on the
+ * real home view unless `area` says otherwise.
+ */
+async function mount(area: Area = AREAS.pnw) {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query === '(prefers-reduced-motion: reduce)',
   }));
@@ -37,7 +40,7 @@ async function mount() {
   const element = document.createElement('div');
   Object.defineProperty(element, 'clientWidth', { value: 400 });
   Object.defineProperty(element, 'clientHeight', { value: 300 });
-  const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
+  const handle = await createAirspaceMap({ element, store, area });
   const px = (value: string | undefined) => parseFloat(value ?? '0') || 0;
   const pane = () => element.querySelector<HTMLElement>('.leaflet-map-pane');
   const pixel = (hex: string) => {
@@ -69,7 +72,10 @@ async function mount() {
 }
 
 test('showing an area centres it, zooms in and draws a faint outline', async () => {
-  const map = await mount();
+  const map = await mount({
+    ...AREAS.pnw,
+    view: { lat: AREAS.pnw.lat, lon: AREAS.pnw.lon, zoom: 6 },
+  });
   map.store.applySnapshot({ at: 1, aircraft: planes });
   const before = map.spread();
 
@@ -83,7 +89,7 @@ test('showing an area centres it, zooms in and draws a faint outline', async () 
   map.cleanup();
 });
 
-test('resetting returns to the regional view and removes the outline', async () => {
+test('resetting returns to the home view and removes the outline', async () => {
   const map = await mount();
   map.store.applySnapshot({ at: 1, aircraft: planes });
   const regional = map.spread();
@@ -91,6 +97,11 @@ test('resetting returns to the regional view and removes the outline', async () 
 
   map.store.resetView();
 
+  // Zoom 9: a degree of longitude is 256 * 2^9 / 360 pixels.
+  expect(regional).toBeCloseTo(
+    (20 * 256 * 2 ** 9) / 360 / 60 / Math.cos(0.7696),
+    -1,
+  );
   expect(map.spread()).toBeCloseTo(regional, 0);
   expect(map.outline()).toBeNull();
   map.cleanup();
@@ -122,10 +133,13 @@ test('highlighting planes inside the shown area keeps the area view', async () =
 });
 
 test('a user zoom cancels a fit still waiting for its planes', async () => {
-  const map = await mount();
+  const map = await mount({
+    ...AREAS.pnw,
+    view: { lat: AREAS.pnw.lat, lon: AREAS.pnw.lon, zoom: 6 },
+  });
   map.store.highlight(['aaaaaa', 'bbbbbb']);
   map.zoomIn();
-  const zoomed = (2 * 20 * (256 * 64)) / 360 / 60 / Math.cos(0.7696);
+  const zoomed = (20 * 256 * 2 ** 7) / 360 / 60 / Math.cos(0.7696);
 
   map.store.applySnapshot({ at: 1, aircraft: planes });
 

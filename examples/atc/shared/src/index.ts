@@ -15,6 +15,7 @@ export * from './views';
 export * from './tool-chips';
 export * from './detail-view';
 export * from './brand/atc-mark';
+export * from './brand/github-mark';
 export * from './transcript';
 export * from './sheet';
 export * from './dom';

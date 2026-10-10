@@ -309,17 +309,19 @@ export function lookupPlace(query: string): Airport | null {
 /** Areas the server may fetch. */
 export type AreaId = 'pnw';
 
-/** A map area: its centre, fetch radius and initial zoom. */
+/** A map area: the centre and radius of its feed, and the map's home view. */
 export interface Area extends LatLon {
   readonly id: AreaId;
   readonly label: string;
   readonly radiusNm: number;
-  readonly zoom: number;
+  /** Where the map opens and where `resetMap` returns it. */
+  readonly view: LatLon & { readonly zoom: number };
 }
 
 /**
- * The allowlisted areas. `pnw` is centred on Bend Municipal (KBDN) with
- * adsb.lol's maximum radius, 250 nm.
+ * The allowlisted areas. `pnw` fetches adsb.lol's maximum radius, 250 nm,
+ * around Bend Municipal (KBDN); the map opens zoomed in on central Oregon,
+ * framing Bend, Redmond, Sisters and Prineville.
  */
 export const AREAS: Readonly<Record<AreaId, Area>> = {
   pnw: {
@@ -328,7 +330,7 @@ export const AREAS: Readonly<Record<AreaId, Area>> = {
     lat: 44.0946,
     lon: -121.2002,
     radiusNm: 250,
-    zoom: 6,
+    view: { lat: 44.2, lon: -121.2, zoom: 9 },
   },
 };
 

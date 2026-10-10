@@ -441,7 +441,7 @@ test('while following, showArea and resetMap change the outline but report that 
   expect(store.getState().shownArea).toBeNull();
 });
 
-test('resetMap returns to the regional view', async () => {
+test('resetMap returns to the home view', async () => {
   const store = createAtcStore();
   const tools = createAtcTools({ store, fetchRoute: async () => null });
   await tools.showArea.handler({ airport: 'KBDN', radiusNm: 25 });

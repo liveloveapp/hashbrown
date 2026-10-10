@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
-import { AREAS } from '../places';
+import { type Area, AREAS } from '../places';
 import { createAtcStore } from '../store';
 import { createAirspaceMap } from './airspace-map';
+
+/** The whole region at zoom 6, so every test plane is on the 400 by 300 map. */
+const REGIONAL = {
+  ...AREAS.pnw,
+  view: { lat: AREAS.pnw.lat, lon: AREAS.pnw.lon, zoom: 6 },
+};
 
 const base: Aircraft = {
   hex: 'aaaaaa',
@@ -32,7 +38,7 @@ const planes: Aircraft[] = [
  * a workbench whose chat panel covers the map from that y down, like the
  * phone bottom sheet.
  */
-async function mount(sheetTop?: number) {
+async function mount(sheetTop?: number, area: Area = REGIONAL) {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query === '(prefers-reduced-motion: reduce)',
   }));
@@ -57,7 +63,7 @@ async function mount(sheetTop?: number) {
   const handle = await createAirspaceMap({
     element,
     store,
-    area: AREAS.pnw,
+    area,
     obstruction: () => panel,
   });
   const px = (value: string | undefined) => parseFloat(value ?? '0') || 0;
@@ -127,17 +133,51 @@ test('a highlight fit keeps every plane above the sheet', async () => {
 
 test('a revealed plane lands between a docked detail card and the sheet', async () => {
   const map = await mount(180);
-  map.store.applySnapshot({ at: 1, aircraft: planes });
+  // On screen above the sheet, so its card docks as the map moves.
+  const visible = { ...base, hex: 'dddddd', lat: 44.4, lon: -121.6 };
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, visible] });
   const card = document.querySelector<HTMLElement>(
     '[data-testid="aircraft-detail"]',
   );
   Object.defineProperty(card, 'offsetHeight', { get: () => 60 });
 
-  map.store.revealAircraft('cccccc');
+  map.store.revealAircraft('dddddd');
   await settle();
 
   // The card covers 8 + 60 + 8 px at the top; the sheet starts at 180.
-  const { x, y } = map.pixel('cccccc');
+  const { x, y } = map.pixel('dddddd');
   expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('the map opens on its home view, centred in the map left above the sheet', async () => {
+  const { view } = AREAS.pnw;
+  const map = await mount(180, AREAS.pnw);
+
+  map.store.applySnapshot({
+    at: 1,
+    aircraft: [{ ...base, lat: view.lat, lon: view.lon, groundSpeedKt: 0 }],
+  });
+
+  const { x, y } = map.pixel('aaaaaa');
+  expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('resetting on a phone returns to the home view above the sheet', async () => {
+  const { view } = AREAS.pnw;
+  const map = await mount(180, AREAS.pnw);
+  map.store.applySnapshot({
+    at: 1,
+    aircraft: [{ ...base, lat: view.lat, lon: view.lon, groundSpeedKt: 0 }],
+  });
+  map.store.showArea({ airport: 'KSEA', radiusNm: 10 });
+  await settle();
+
+  map.store.resetView();
+  await settle();
+
+  const { x, y } = map.pixel('aaaaaa');
+  expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
   map.cleanup();
 });

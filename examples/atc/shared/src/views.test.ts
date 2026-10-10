@@ -4,7 +4,7 @@ import { applySnapshot, INITIAL_STATE } from './store';
 import {
   arrivalsRows,
   boardShowsEta,
-  feedBadgeView,
+  feedNotice,
   flightCardView,
   messageText,
   routeText,
@@ -229,25 +229,17 @@ test('boardShowsEta is true only when a listed aircraft is approaching the airpo
   expect(results).toEqual([true, false, false, false, false]);
 });
 
-test('feedBadgeView labels each feed status with the aircraft count when live', () => {
+test('feedNotice is silent while live and names a connecting or delayed feed', () => {
   const statuses = ['connecting', 'live', 'delayed', 'stalled'] as const;
 
-  const views = statuses.map((status) => feedBadgeView(status, 312));
+  const notices = statuses.map((status) => feedNotice(status));
 
-  expect(views).toEqual([
-    { label: 'Connecting…', count: null, live: false },
-    { label: 'Live', count: '312 aircraft', live: true },
-    { label: 'Data delayed', count: null, live: false },
-    { label: 'Data delayed', count: null, live: false },
+  expect(notices).toEqual([
+    'Connecting to live traffic…',
+    null,
+    'Traffic data delayed',
+    'Traffic data delayed',
   ]);
-});
-
-test('feedBadgeView formats large counts and a single aircraft', () => {
-  const counts = [1, 1234];
-
-  const labels = counts.map((count) => feedBadgeView('live', count).count);
-
-  expect(labels).toEqual(['1 aircraft', '1,234 aircraft']);
 });
 
 test('messageText reads string content and ignores anything else', () => {

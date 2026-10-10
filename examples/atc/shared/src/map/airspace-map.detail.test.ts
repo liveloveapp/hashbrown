@@ -5,6 +5,12 @@ import { AREAS } from '../places';
 import { createAtcStore } from '../store';
 import { createAirspaceMap } from './airspace-map';
 
+/** The whole region at zoom 6, so every test plane is on the 400 by 300 map. */
+const REGIONAL = {
+  ...AREAS.pnw,
+  view: { lat: AREAS.pnw.lat, lon: AREAS.pnw.lon, zoom: 6 },
+};
+
 const cessna: Aircraft = {
   hex: 'a1c009',
   label: 'N352LL',
@@ -62,7 +68,7 @@ async function mount(sheetTop: { value: number } | null = null) {
   const handle = await createAirspaceMap({
     element,
     store,
-    area: AREAS.pnw,
+    area: REGIONAL,
     obstruction: () => panel,
   });
   store.applySnapshot({ at: 1, aircraft: [cessna, jet] });

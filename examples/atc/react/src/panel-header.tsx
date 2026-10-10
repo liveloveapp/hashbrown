@@ -1,7 +1,11 @@
+import { ATC_SOURCE_URL, GITHUB_MARK_PATH } from '@atc/shared';
 import { AtcLogo } from './atc-logo';
-import { FeedBadge } from './feed-badge';
+import { FeedNotice } from './feed-notice';
 
-/** The chat panel's header: lettermark, Hashbrown credit and status chip. */
+/**
+ * The chat panel's header: lettermark, Hashbrown credit, a quiet notice
+ * while the feed is degraded, and the GitHub link to atc's source.
+ */
 export function PanelHeader() {
   return (
     <div className="atc-panel-header">
@@ -16,9 +20,18 @@ export function PanelHeader() {
       >
         built with Hashbrown
       </a>
-      <span className="atc-panel-header-status">
-        <FeedBadge />
-      </span>
+      <FeedNotice />
+      <a
+        className="atc-source-link"
+        href={ATC_SOURCE_URL}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="atc source on GitHub"
+      >
+        <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true">
+          <path fill="currentColor" d={GITHUB_MARK_PATH} />
+        </svg>
+      </a>
     </div>
   );
 }

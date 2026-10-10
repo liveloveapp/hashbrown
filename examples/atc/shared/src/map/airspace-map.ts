@@ -27,7 +27,9 @@ export interface AirspaceMapHandle {
  *
  * - `plane-marker.ts`: marker HTML, updated in place on every snapshot.
  * - `motion-loop.ts`: between snapshots each plane is dead-reckoned along its
- *   track, and a new fix eases away the gap; reduced motion jumps instead.
+ *   track, and a new fix eases away the gap and the turn; reduced motion
+ *   jumps instead. One frame loop draws every plane at its exact sub-pixel
+ *   position, so they all glide together instead of hopping a pixel at a time.
  * - `follow.ts`: a followed plane stays centred, and a pill names it with a
  *   Stop button; a drag ends follow mode and offers Resume for a few seconds.
  * - `card-sync.ts`: hovering or selecting a plane opens one detail card
@@ -72,7 +74,7 @@ export async function createAirspaceMap(options: {
     zoomAnimation: !reduced,
     fadeAnimation: !reduced,
     markerZoomAnimation: !reduced,
-  }).setView([area.lat, area.lon], area.zoom);
+  }).setView([area.view.lat, area.view.lon], area.view.zoom);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   // Leaflet's own credit is optional; dropping it keeps the phone line short.
   map.attributionControl.setPrefix(false);
@@ -84,26 +86,26 @@ export async function createAirspaceMap(options: {
   const markers = new Map<string, Marker>();
   let zooming = false;
   const isZooming = () => zooming;
-  const drawnAt = (hex: string): LatLon | null => {
-    const position = markers.get(hex)?.getLatLng();
-
-    return position ? { lat: position.lat, lon: position.lng } : null;
-  };
   const shared = { L, map, element, store, markers, isZooming, obstruction };
-  const cards = createCardSync(shared);
-  const follow = createFollowController({
-    ...shared,
-    positionOf: (hex) => markers.get(hex)?.getLatLng(),
-  });
-  const view = createViewController({ ...shared, area, drawnAt, cards });
   const motion = createMotionLoop({
     ...shared,
-    drawnAt,
     onFrame: () => {
       follow.panToFollowed(false);
       cards.sync(store.getState());
     },
   });
+  /** Where a plane is drawn: the motion loop's position, else its marker's. */
+  const drawnAt = (hex: string): LatLon | null => {
+    const position = markers.get(hex)?.getLatLng();
+
+    return (
+      motion.positionOf(hex) ??
+      (position ? { lat: position.lat, lon: position.lng } : null)
+    );
+  };
+  const cards = createCardSync({ ...shared, drawnAt });
+  const follow = createFollowController({ ...shared, drawnAt });
+  const view = createViewController({ ...shared, area, drawnAt, cards });
 
   map.on('dragstart', () => {
     view.cancelMove();
@@ -111,8 +113,11 @@ export async function createAirspaceMap(options: {
     store.cancelViewRequest();
     follow.syncPill();
   });
+  // Leaflet repositions markers from their own (rounded) positions here.
+  map.on('viewreset', () => motion.syncMarkers());
   map.on('zoomstart', () => {
     zooming = true;
+    motion.syncMarkers();
     if (!view.isMoving()) {
       store.cancelViewRequest();
     }
@@ -194,6 +199,8 @@ export async function createAirspaceMap(options: {
       lastUpdatedAt = state.updatedAt;
       motion.onSnapshot(state);
     }
+    // A stable hook for tests and tools: the first snapshot is on the map.
+    element.toggleAttribute('data-ready', state.updatedAt !== null);
     for (const aircraft of state.aircraft.values()) {
       const className = markerClassName(state, aircraft.hex);
       const existing = markers.get(aircraft.hex);
@@ -230,6 +237,7 @@ export async function createAirspaceMap(options: {
   };
 
   cards.measureArea();
+  view.showHome();
   render(store.getState());
   const unsubscribe = store.subscribe(() => render(store.getState()));
   // Leaflet only re-measures on window resize; rotation and layout changes

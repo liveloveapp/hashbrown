@@ -181,7 +181,7 @@ test('an area request draws the area and asks the map to move, newest first', ()
   expect(second.viewRequest?.seq).toBe(2);
 });
 
-test('a reset clears the area and asks for the regional view', () => {
+test('a reset clears the area and asks for the home view', () => {
   const shown = requestArea(twoPlanes, bend);
 
   const reset = requestReset(shown);

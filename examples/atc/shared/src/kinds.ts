@@ -99,14 +99,15 @@ export function aircraftKind(aircraft: {
 /**
  * SVG path data (24 by 24 box, nose up, filled with the current colour) for
  * each kind. The jet has swept wings; the twin has straight wings with two
- * engine pods; the single has a straight wing and a nose prop; the rotor has
- * a fuselage with a rotor disc and tail boom.
+ * engine pods; the single has a straight wing and a short, thin nose prop
+ * (about a fifth of the span, as on a Cessna); the rotor has a fuselage with
+ * a rotor disc and tail boom.
  */
 export const KIND_PATHS: Readonly<Record<AircraftKind, string>> = {
   jet: 'M12 2l1.6 6.4L21 13v2l-7.3-2.2-.7 5.4 2.5 1.8V21L12 20l-3.5 1v-1l2.5-1.8-.7-5.4L3 15v-2l7.4-4.6z',
   twin: 'M12 2c.9 0 1.4 1.1 1.4 2.8V9.2H22v2H13.4v5.3l2.4 1.5v2.2L12 19.4 8.2 21.2V19l2.4-1.5v-5.3H2v-2h8.6V4.8C10.6 3.1 11.1 2 12 2zM5.6 6.4c.7 0 1.2.5 1.2 1.2v6.2c0 .7-.5 1.2-1.2 1.2s-1.2-.5-1.2-1.2V7.6c0-.7.5-1.2 1.2-1.2zm12.8 0c.7 0 1.2.5 1.2 1.2v6.2c0 .7-.5 1.2-1.2 1.2s-1.2-.5-1.2-1.2V7.6c0-.7.5-1.2 1.2-1.2z',
   single:
-    'M12 4c.9 0 1.4 1 1.4 2.4v3.4H22v2.2h-8.6v5l2.6 1.4V21l-4-.7-4 .7v-1.6l2.6-1.4v-5H2V9.8h8.6V6.4C10.6 5 11.1 4 12 4zM8 2h8v1.5H8z',
+    'M12 4c.9 0 1.4 1 1.4 2.4v3.4H22v2.2h-8.6v5l2.6 1.4V21l-4-.7-4 .7v-1.6l2.6-1.4v-5H2V9.8h8.6V6.4C10.6 5 11.1 4 12 4zM10.2 2.9h3.6v.9h-3.6z',
   rotor:
     'M12 6.8c1.9 0 3.1 1.4 3.1 3.3v2.6c0 1.6-1 2.8-2.3 3.2l.4 5.1h-2.4l.4-5.1c-1.3-.4-2.3-1.6-2.3-3.2v-2.6c0-1.9 1.2-3.3 3.1-3.3zM3.06 5.75l.88-1.1 17 13.6-.88 1.1zM20.06 4.65l.88 1.1-17 13.6-.88-1.1zM9 21.4h6V22.6H9z',
 };

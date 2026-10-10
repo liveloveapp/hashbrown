@@ -1,8 +1,11 @@
+import { AIRPORTS } from './places';
 import { type AtcState, normalizeHex } from './store';
 import type { AtcToolName } from './tools';
 
 /** The parts of a Hashbrown tool call that the tool chips read. */
 export interface ToolCallLike {
+  /** Hashbrown's id for the call, stable while it streams and runs. */
+  readonly toolCallId?: string;
   readonly name: string;
   readonly args: unknown;
   readonly status: 'pending' | 'done';
@@ -13,6 +16,15 @@ export interface ToolCallLike {
 export interface ToolChipView {
   readonly label: string;
   readonly state: 'running' | 'done' | 'failed' | 'stopped';
+}
+
+/**
+ * One step in a turn's list of tool calls: its chip plus a `key` that stays
+ * the same while the call streams, runs and finishes (the tool call id, or
+ * its position when there is none), for keyed lists.
+ */
+export interface ToolStepView extends ToolChipView {
+  readonly key: string;
 }
 
 /** Names an aircraft by hex for a chip, or null when it is not known. */
@@ -42,6 +54,24 @@ function code(value: unknown): string | null {
   return shortText(value)?.toUpperCase() ?? null;
 }
 
+/** An airport by its city ("KSEA" is "Seattle"), else its code. */
+function place(value: unknown): string | null {
+  const id = code(value);
+  if (id === null) return null;
+
+  return Object.hasOwn(AIRPORTS, id)
+    ? AIRPORTS[id as keyof typeof AIRPORTS].city
+    : id;
+}
+
+/** How a kind reads before "aircraft". */
+const KIND_WORDS: Record<string, string> = {
+  single: 'single-engine',
+  twin: 'twin-engine',
+  jet: 'jet',
+  rotor: 'helicopter',
+};
+
 function feet(value: unknown, prefix: string): string | null {
   return typeof value === 'number' && Number.isFinite(value)
     ? `${prefix} ${Math.round(value).toLocaleString('en-US')} ft`
@@ -55,31 +85,44 @@ function miles(value: unknown): string | null {
     : null;
 }
 
-/** "within 25 nm of KBDN", or "near KBDN" while the radius streams. */
+/** "within 25 nm of Bend", or "near Bend" while the radius streams. */
 function nearSummary(value: unknown): string | null {
   const near = record(value);
-  const airport = code(near['airport']);
+  const airport = place(near['airport']);
   const radius = miles(near['radiusNm']);
   if (airport === null) return null;
 
   return radius === null ? `near ${airport}` : `within ${radius} of ${airport}`;
 }
 
-function findSummary(args: Record<string, unknown>): string | null {
-  const approaching = shortText(args['approaching']);
-  const filters = [
+/**
+ * What findAircraft is looking for, in plain words: "UAL 737 aircraft above
+ * 10,000 ft", "aircraft approaching Seattle", "aircraft sorted by altitude".
+ */
+function findSummary(args: Record<string, unknown>): string {
+  const kind = shortText(args['kind']);
+  const approaching = place(args['approaching']);
+  const before = [
     shortText(args['airline']),
     shortText(args['typeCode']),
-    shortText(args['kind']),
+    kind === null ? null : (KIND_WORDS[kind] ?? kind),
+  ].filter((part): part is string => part !== null);
+  const after = [
     feet(args['minAltitudeFt'], 'above'),
     feet(args['maxAltitudeFt'], 'below'),
     approaching === null ? null : `approaching ${approaching}`,
     nearSummary(args['near']),
   ].filter((part): part is string => part !== null);
-  if (filters.length > 0) return filters.join(', ');
   const sortBy = shortText(args['sortBy']);
+  const filtered = before.length > 0 || after.length > 0;
+  const tail =
+    after.length > 0
+      ? ` ${after.join(', ')}`
+      : !filtered && sortBy !== null
+        ? ` sorted by ${sortBy}`
+        : '';
 
-  return sortBy === null ? null : `sorted by ${sortBy}`;
+  return `${[...before, 'aircraft'].join(' ')}${tail}`;
 }
 
 function hexCount(args: Record<string, unknown>): number | null {
@@ -105,13 +148,7 @@ const RUNNING: Record<
   AtcToolName,
   (args: Record<string, unknown>, labelFor: HexLabel) => string
 > = {
-  findAircraft: (args) => {
-    const summary = findSummary(args);
-
-    return summary === null
-      ? 'Finding aircraft'
-      : `Finding aircraft · ${summary}`;
-  },
+  findAircraft: (args) => `Finding ${findSummary(args)}`,
   lookupRoute: (args) => {
     const callsign = code(args['callsign']);
 
@@ -140,7 +177,7 @@ const RUNNING: Record<
     return query === null ? 'Looking up a place' : `Looking up ${query}`;
   },
   showArea: (args) => {
-    const airport = code(args['airport']);
+    const airport = place(args['airport']);
     const radius = miles(args['radiusNm']);
     if (airport === null) return 'Showing an area';
 
@@ -148,7 +185,7 @@ const RUNNING: Record<
       ? `Showing ${airport}`
       : `Showing ${radius} around ${airport}`;
   },
-  resetMap: () => 'Zooming out',
+  resetMap: () => 'Returning to central Oregon',
 };
 
 const noLabels: HexLabel = () => null;
@@ -162,7 +199,7 @@ function entryFor<T>(
 }
 
 /**
- * What a tool call is doing, such as "Finding aircraft · approaching KSEA"
+ * What a tool call is doing, such as "Finding aircraft approaching Seattle"
  * or "Following UAL1802" (planes named by `labelFor`, else their hex).
  * Arguments may be partial while they stream, so anything unexpected falls
  * back to a plain phrase, and an unknown tool to its name.
@@ -233,11 +270,11 @@ const DONE: Record<
       : `looked up ${query}`;
   },
   showArea: (calls) => {
-    const airport = code(calls.at(-1)?.['airport']);
+    const airport = place(calls.at(-1)?.['airport']);
 
     return airport === null ? 'showed an area' : `showed ${airport}`;
   },
-  resetMap: () => 'zoomed out',
+  resetMap: () => 'returned to central Oregon',
 };
 
 /** One assistant turn's tool calls: a summary of the finished ones, and the live ones. */
@@ -245,9 +282,13 @@ export interface ToolRunView {
   /** What the finished calls did, such as "Searched traffic, looked up 6 routes", or null. */
   readonly summary: string | null;
   /** The calls still running, shown live with a spinner. */
-  readonly live: readonly ToolChipView[];
+  readonly live: readonly ToolStepView[];
   /** Every call, in order, for the expanded list. */
-  readonly chips: readonly ToolChipView[];
+  readonly chips: readonly ToolStepView[];
+  /** The step running now, such as "Finding aircraft approaching Seattle…", or null. */
+  readonly current: string | null;
+  /** How many steps the turn took: "1 step", "4 steps". */
+  readonly steps: string;
 }
 
 /**
@@ -260,7 +301,10 @@ export function toolRunView(
   busy: boolean,
   labelFor: HexLabel = noLabels,
 ): ToolRunView {
-  const chips = calls.map((call) => toolChipView(call, busy, labelFor));
+  const chips = calls.map((call, index): ToolStepView => ({
+    key: call.toolCallId ?? `step-${index}`,
+    ...toolChipView(call, busy, labelFor),
+  }));
   const groups = new Map<string, Record<string, unknown>[]>();
   calls.forEach((call, index) => {
     if (chips[index]?.state === 'done') {
@@ -282,11 +326,14 @@ export function toolRunView(
     ...(stopped > 0 ? [`${stopped} stopped`] : []),
   ];
   const text = parts.join(', ');
+  const running = chips.findLast((chip) => chip.state === 'running');
 
   return {
     summary:
       text === '' ? null : `${text.charAt(0).toUpperCase()}${text.slice(1)}`,
     live: chips.filter((chip) => chip.state === 'running'),
     chips,
+    current: running === undefined ? null : `${running.label}…`,
+    steps: plural(chips.length, 'step', 'steps'),
   };
 }

@@ -92,7 +92,7 @@ export const ATC_TOOL_DEFINITIONS = {
   resetMap: {
     name: 'resetMap' as const,
     description:
-      'Zoom the map back out to the whole Pacific Northwest and remove any area outline.',
+      'Return the map to its home view over central Oregon (Bend, Redmond, Sisters, Prineville) and remove any area outline.',
     schema: noInput,
   },
   getSelectedAircraft: {

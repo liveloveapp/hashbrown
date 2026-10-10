@@ -1,6 +1,7 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap, Marker } from 'leaflet';
 import { aircraftDetailView } from '../detail-view';
+import type { LatLon } from '../places';
 import type { AtcState, AtcStore } from '../store';
 import {
   CARD_MARGIN,
@@ -10,6 +11,7 @@ import {
   isInsideArea,
   visibleMapArea,
 } from './detail-card';
+import { exactLayerPoint } from './motion-loop';
 
 /** Keeps the map's one detail card on the hovered or selected plane. */
 export interface CardSync {
@@ -47,10 +49,13 @@ export function createCardSync(options: {
   store: AtcStore;
   markers: ReadonlyMap<string, Marker>;
   isZooming: () => boolean;
+  /** Where a plane is drawn now, if it is. */
+  drawnAt: (hex: string) => LatLon | null;
   /** What covers the map's lower part on phones (the chat sheet), if anything. */
   obstruction: () => HTMLElement | null;
 }): CardSync {
-  const { L, map, element, store, markers, isZooming, obstruction } = options;
+  const { L, map, element, store, markers, isZooming, drawnAt, obstruction } =
+    options;
   let hoveredHex: string | null = null;
   /** The plane the card is showing. */
   let detailedHex: string | null = null;
@@ -80,9 +85,11 @@ export function createCardSync(options: {
   };
   const sync = (state: AtcState, force = false) => {
     const hex = hoveredHex ?? state.selectedHex;
-    const position = hex === null ? undefined : markers.get(hex)?.getLatLng();
+    const position = hex === null ? null : drawnAt(hex);
     const point =
-      position && !isZooming() ? map.latLngToContainerPoint(position) : null;
+      position && !isZooming()
+        ? map.layerPointToContainerPoint(exactLayerPoint(map, position))
+        : null;
     const pinned = hex !== null && hex === state.selectedHex;
     const docked = pinned && detailCardDocked(cardArea);
     const maxHeight = cardArea.height - 2 * CARD_MARGIN;

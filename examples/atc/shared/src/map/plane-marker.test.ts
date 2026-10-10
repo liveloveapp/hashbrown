@@ -54,7 +54,7 @@ test('planeIconHtml rotates the plane to its track and tags it with its ID', () 
 
   expect(html).toContain('data-hex="aaaaaa"');
   expect(html).toContain('data-label="UAL100"');
-  expect(html).toContain('rotate(272deg)');
+  expect(html).toContain('rotate(271.6deg)');
 });
 
 test('planeTagText tags hex-only aircraft by their label', () => {
@@ -119,9 +119,9 @@ test('planeIconHtml carries the tag outside the rotated silhouette', () => {
   expect(html).toContain(
     '<span class="atc-plane-tag">UAL100<span class="atc-plane-alt"> 30,000</span></span>',
   );
-  expect(html.indexOf('rotate(272deg)')).toBeLessThan(html.indexOf('<svg'));
+  expect(html.indexOf('rotate(271.6deg)')).toBeLessThan(html.indexOf('<svg'));
   expect(html).toMatch(
-    /<div class="atc-plane-body" data-kind="jet" style="transform: rotate\(272deg\)">/,
+    /<div class="atc-plane-body" data-kind="jet" style="transform: rotate\(271.6deg\)">/,
   );
 });
 
@@ -157,5 +157,5 @@ test('updatePlane swaps the silhouette when the kind changes, leaving the marker
   expect(host.querySelector('.atc-plane-body')).toBe(body);
   expect(body.getAttribute('data-kind')).toBe('rotor');
   expect(body.querySelector('path')?.getAttribute('d')).toBe(KIND_PATHS.rotor);
-  expect(body.style.transform).toBe('rotate(272deg)');
+  expect(body.style.transform).toBe('rotate(271.6deg)');
 });

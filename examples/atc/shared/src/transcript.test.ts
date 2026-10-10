@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { transcriptItems } from './transcript';
+import { chatStatus, thinkingStatus, transcriptItems } from './transcript';
 
 const call = (name: string, status: 'pending' | 'done' = 'done') => ({
   name,
@@ -82,4 +82,64 @@ test('transcriptItems does not mutate the messages', () => {
   transcriptItems(messages);
 
   expect(first.toolCalls).toEqual([call('a')]);
+});
+
+test('thinkingStatus shows while the assistant works with nothing else on screen saying so', () => {
+  const asked = transcriptItems([{ role: 'user', content: 'Seattle?' }]);
+  const running = transcriptItems([
+    { role: 'user', content: 'Seattle?' },
+    { role: 'assistant', toolCalls: [call('findAircraft', 'pending')] },
+  ]);
+  const ranTools = transcriptItems([
+    { role: 'user', content: 'Seattle?' },
+    { role: 'assistant', toolCalls: [call('findAircraft')] },
+  ]);
+  const answering = transcriptItems([
+    { role: 'user', content: 'Seattle?' },
+    { role: 'assistant', content: ui },
+  ]);
+
+  const statuses = [
+    thinkingStatus(asked, true),
+    thinkingStatus(running, true),
+    thinkingStatus(ranTools, true),
+    thinkingStatus(answering, true),
+    thinkingStatus(asked, false),
+  ];
+
+  expect(statuses).toEqual(['Thinking…', null, 'Thinking…', null, null]);
+});
+
+test('chatStatus says what the assistant is doing now: the running step, else thinking', () => {
+  const asked = transcriptItems([{ role: 'user', content: 'Seattle?' }]);
+  const following = transcriptItems([
+    { role: 'user', content: 'Follow it' },
+    {
+      role: 'assistant',
+      toolCalls: [
+        { name: 'followAircraft', args: { hex: 'a1b2c3' }, status: 'pending' },
+      ],
+    },
+  ]);
+  const ranTools = transcriptItems([
+    { role: 'user', content: 'Seattle?' },
+    { role: 'assistant', toolCalls: [call('findAircraft')] },
+  ]);
+  const labelFor = () => 'UAL1802';
+
+  const statuses = [
+    chatStatus(asked, true, labelFor),
+    chatStatus(following, true, labelFor),
+    chatStatus(ranTools, true, labelFor),
+    chatStatus(following, false, labelFor),
+    chatStatus([], true),
+  ];
+
+  expect(statuses).toEqual([
+    'Thinking…',
+    'Following UAL1802…',
+    'Thinking…',
+    null,
+    null,
+  ]);
 });

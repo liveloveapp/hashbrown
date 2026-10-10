@@ -1,8 +1,8 @@
 import {
   type Aircraft,
+  ATC_SOURCE_URL,
   createAtcStore,
   SELECTED_PROMPT,
-  SOURCE_URLS,
   STARTER_PROMPTS,
   transcriptItems,
 } from '@atc/shared';
@@ -13,7 +13,6 @@ import type { ReactElement } from 'react';
 import { expect, test } from 'vitest';
 import { Composer } from './composer';
 import { EmptyState } from './empty-state';
-import { FeedBadge } from './feed-badge';
 import { PanelHeader } from './panel-header';
 import { AtcStoreProvider } from './store';
 import { ToolChips } from './tool-chips';
@@ -48,43 +47,34 @@ function text(element: Element | null | undefined): string {
   return (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
 }
 
-test('the header shows the mark, the Hashbrown credit and a connecting chip', () => {
+test('the header shows the mark, the credit, a quiet connecting notice and the GitHub link', () => {
   const { element } = setup(<PanelHeader />);
 
   const status = element.querySelector('[role="status"]');
+  const link = element.querySelector('a[aria-label="atc source on GitHub"]');
 
   expect(element.querySelector('[aria-label="ATC"]')).not.toBeNull();
   expect(text(element)).toContain('built with Hashbrown');
-  expect(text(status)).toBe('Connecting…');
+  expect(text(status)).toBe('Connecting to live traffic…');
+  expect(link?.getAttribute('href')).toBe(ATC_SOURCE_URL);
+  expect(link?.querySelector('svg path')).not.toBeNull();
 });
 
-test('the status chip counts live aircraft beside a solid dot', () => {
-  const { store, element } = setup(<FeedBadge />);
+test('the feed notice is silent while live and quiet while delayed', () => {
+  const { store, element } = setup(<PanelHeader />);
 
   act(() => {
     store.setFeedStatus('live');
-    store.applySnapshot({
-      at: 1,
-      aircraft: [plane, { ...plane, hex: 'bbbbbb' }],
-    });
+    store.applySnapshot({ at: 1, aircraft: [plane] });
   });
-  const chip = element.querySelector('.atc-chip');
-  const status = element.querySelector('[role="status"]');
-
-  expect(text(chip)).toBe('Live · 2 aircraft');
-  expect(text(status)).toBe('Live');
-  expect(chip?.querySelector('.atc-chip-dot:not(.is-hollow)')).not.toBeNull();
-});
-
-test('the status chip shows a hollow dot while connecting or delayed', () => {
-  const { store, element } = setup(<FeedBadge />);
-
-  const connecting = element.querySelector('.atc-chip-dot.is-hollow');
+  const live = element.querySelector('[role="status"]');
   act(() => store.setFeedStatus('delayed'));
 
-  expect(connecting).not.toBeNull();
-  expect(text(element.querySelector('.atc-chip'))).toBe('Data delayed');
-  expect(element.querySelector('.atc-chip-dot.is-hollow')).not.toBeNull();
+  expect(live).toBeNull();
+  expect(text(element)).not.toContain('Live');
+  expect(text(element.querySelector('[role="status"]'))).toBe(
+    'Traffic data delayed',
+  );
 });
 
 test('the empty state asks a question and offers every starter prompt', () => {
@@ -115,7 +105,7 @@ test('the empty state offers the selected-plane question first while a plane is 
   ]);
 });
 
-test('tool calls run live, then fold into one summary that expands to every step', () => {
+test('a running step shows as one shimmering line, then folds into a summary that expands to every step', () => {
   const find = {
     name: 'findAircraft',
     args: { approaching: 'KSEA', sortBy: 'distance' },
@@ -130,10 +120,13 @@ test('tool calls run live, then fold into one summary that expands to every step
     <ToolChips calls={[find, highlight]} busy />,
   );
   const live = () =>
-    [...element.querySelectorAll('[data-testid="tool-chip"]')].map((chip) => ({
-      text: text(chip),
-      spinner: chip.querySelector('.atc-tool-spinner') !== null,
-    }));
+    [...element.querySelectorAll('[data-testid="tool-current"]')].map(
+      (line) => ({
+        text: text(line),
+        spinner: line.querySelector('.atc-tool-spinner') !== null,
+        shimmer: line.querySelector('.atc-shimmer') !== null,
+      }),
+    );
   const summary = () =>
     element.querySelector<HTMLButtonElement>('[data-testid="tool-summary"]');
 
@@ -152,22 +145,21 @@ test('tool calls run live, then fold into one summary that expands to every step
   );
   const collapsed = summary()?.getAttribute('aria-expanded');
   act(() => summary()?.click());
-  const steps = [
-    ...element.querySelectorAll('[data-testid="tool-step"]'),
-  ].map((step) => [step.getAttribute('data-state'), text(step)]);
+  const steps = [...element.querySelectorAll('[data-testid="tool-step"]')].map(
+    (step) => [step.getAttribute('data-state'), text(step)],
+  );
 
   expect(running).toEqual([
-    { text: 'Finding aircraft · approaching KSEA', spinner: true },
-    { text: 'Highlighting 3 aircraft', spinner: true },
+    { text: 'Highlighting 3 aircraft…', spinner: true, shimmer: true },
   ]);
   expect(before).toBeNull();
   expect(live()).toEqual([]);
-  expect(text(summary())).toBe('Searched traffic, 1 failed');
+  expect(text(summary())).toBe('Searched traffic, 1 failed · 2 steps');
   expect(collapsed).toBe('false');
   expect(summary()?.getAttribute('aria-expanded')).toBe('true');
   expect(steps).toEqual([
-    ['done', 'Finding aircraft · approaching KSEA'],
-    ['failed', 'Highlighting 3 aircraft · failed'],
+    ['done', 'Finding aircraft approaching Seattle'],
+    ['failed', 'Highlighting 3 aircraft (failed)'],
   ]);
 });
 
@@ -236,7 +228,7 @@ test('Enter sends the trimmed draft, clears the input and keeps focus', () => {
   expect(document.activeElement).toBe(input);
 });
 
-test('consecutive tool calls fold into one row in a polite live region', () => {
+test('consecutive tool calls fold into one activity line in a polite live region', () => {
   const messages: UiChatMessage<Chat.AnyTool>[] = [
     { role: 'user', content: 'Seattle?' },
     {
@@ -271,25 +263,50 @@ test('consecutive tool calls fold into one row in a polite live region', () => {
 
   const { element } = setup(<Transcript items={items} busy />);
   const list = element.querySelector('ol');
+  const current = element.querySelector('[data-testid="tool-current"]');
+  const status = element.querySelector('[data-testid="chat-status"]');
 
   expect(element.querySelectorAll('.atc-tool-run')).toHaveLength(1);
-  expect(text(element.querySelector('[data-testid="tool-summary"]'))).toBe(
-    'Searched traffic',
-  );
-  expect(
-    [...element.querySelectorAll('[data-testid="tool-chip"]')].map((chip) =>
-      text(chip),
-    ),
-  ).toEqual(['Clearing the highlight']);
+  expect(element.querySelector('[data-testid="tool-summary"]')).toBeNull();
+  expect(text(current)).toBe('Clearing the highlight…');
+  expect(current?.hasAttribute('aria-live')).toBe(false);
+  expect(element.querySelector('[data-testid="thinking"]')).toBeNull();
   expect(list?.getAttribute('aria-live')).toBe('polite');
   expect(list?.getAttribute('aria-busy')).toBe('true');
+  expect(status?.getAttribute('role')).toBe('status');
+  expect(status?.closest('[aria-busy]')).toBeNull();
+  expect(status?.classList.contains('atc-visually-hidden')).toBe(true);
+  expect(text(status)).toBe('Clearing the highlight…');
 });
 
-test('the composer keeps a footnote link to the React core file', () => {
+test('the composer has no footnote under it', () => {
   const { element } = composer();
 
   const link = element.querySelector('a');
 
-  expect(text(link)).toBe('View the core file');
-  expect(link?.getAttribute('href')).toBe(SOURCE_URLS.react);
+  expect(link).toBeNull();
+});
+
+test('a thinking line shimmers after the question until something else shows work', () => {
+  const items = transcriptItems([{ role: 'user', content: 'Seattle?' }]);
+  const { store, element, rerender } = setup(<Transcript items={items} busy />);
+
+  const thinking = element.querySelector('[data-testid="thinking"]');
+  const shimmer = thinking?.querySelector('.atc-shimmer');
+  const label = text(thinking);
+  const status = element.querySelector('[data-testid="chat-status"]');
+  const announced = text(status);
+  rerender(
+    <AtcStoreProvider store={store}>
+      <Transcript items={items} busy={false} />
+    </AtcStoreProvider>,
+  );
+
+  expect(label).toBe('Thinking…');
+  expect(shimmer).not.toBeUndefined();
+  expect(shimmer).not.toBeNull();
+  expect(element.querySelector('[data-testid="thinking"]')).toBeNull();
+  expect(announced).toBe('Thinking…');
+  expect(element.querySelector('[data-testid="chat-status"]')).toBe(status);
+  expect(text(status)).toBe('');
 });
