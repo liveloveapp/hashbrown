@@ -5,6 +5,7 @@ import {
   followPanOffset,
   markerClassName,
   planeIconHtml,
+  planeTagText,
 } from './airspace-map';
 
 const plane: Aircraft = {
@@ -38,7 +39,7 @@ test('markerClassName reflects selection, follow and highlight', () => {
     'atc-plane',
     'atc-plane is-selected is-followed',
     'atc-plane is-dimmed',
-    'atc-plane',
+    'atc-plane is-highlighted',
   ]);
 });
 
@@ -60,4 +61,34 @@ test('followPanOffset pans by whole pixels, only when at least 1 px off centre',
   ];
 
   expect(offsets).toEqual([null, { x: 1, y: 0 }, { x: -9, y: 10 }]);
+});
+
+test('planeTagText shows callsign and altitude with a thousands separator', () => {
+  const texts = [
+    planeTagText(plane),
+    planeTagText({ ...plane, altitudeFt: 4200 }),
+    planeTagText({ ...plane, altitudeFt: 0 }),
+    planeTagText({ ...plane, altitudeFt: null }),
+    planeTagText({ ...plane, altitudeFt: null, onGround: true }),
+  ];
+
+  expect(texts).toEqual([
+    'UAL100 · 30,000',
+    'UAL100 · 4,200',
+    'UAL100 · 0',
+    'UAL100 · —',
+    'UAL100 · GND',
+  ]);
+});
+
+test('planeIconHtml carries the tag outside the rotated silhouette', () => {
+  const html = planeIconHtml(plane, 'atc-plane is-highlighted');
+
+  expect(html).toContain(
+    '<span class="atc-plane-tag">UAL100<span class="atc-plane-alt"> 30,000</span></span>',
+  );
+  expect(html.indexOf('rotate(272deg)')).toBeLessThan(html.indexOf('<svg'));
+  expect(html).toMatch(
+    /<div class="atc-plane-body" style="transform: rotate\(272deg\)">/,
+  );
 });

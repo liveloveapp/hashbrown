@@ -28,21 +28,47 @@ export function markerClassName(state: AtcState, hex: string): string {
   if (state.followingHex === hex) {
     classes.push('is-followed');
   }
-  if (state.highlighted.size > 0 && !state.highlighted.has(hex)) {
-    classes.push('is-dimmed');
+  if (state.highlighted.size > 0) {
+    classes.push(state.highlighted.has(hex) ? 'is-highlighted' : 'is-dimmed');
   }
 
   return classes.join(' ');
 }
 
 /**
- * Marker HTML. Hex codes and callsigns are validated by the aircraft model
- * (hex digits; letters and digits), so they are safe to interpolate.
+ * Text of a plane's data tag: callsign and altitude in feet, such as
+ * "ASA123 · 4,200", "GND" on the ground or "—" when unknown. Built only from
+ * validated fields.
+ */
+export function planeTagText(
+  aircraft: Pick<Aircraft, 'callsign' | 'altitudeFt' | 'onGround'>,
+): string {
+  const altitude = aircraft.onGround
+    ? 'GND'
+    : aircraft.altitudeFt === null
+      ? '—'
+      : aircraft.altitudeFt.toLocaleString('en-US');
+
+  return `${aircraft.callsign} · ${altitude}`;
+}
+
+/** Tag markup: the callsign, then the altitude in a muted monospace span. */
+function tag(aircraft: Aircraft): string {
+  const [callsign, altitude] = planeTagText(aircraft).split(' · ');
+
+  return `${callsign}<span class="atc-plane-alt"> ${altitude}</span>`;
+}
+
+/**
+ * Marker HTML: the silhouette (rotated to the track) and a data tag that stays
+ * upright beside it. Hex codes and callsigns are validated by the aircraft
+ * model (hex digits; letters and digits) and altitude is a number, so they are
+ * safe to interpolate.
  */
 export function planeIconHtml(aircraft: Aircraft, className: string): string {
   const rotation = Math.round(aircraft.trackDeg ?? 0);
 
-  return `<div class="${className}" data-hex="${aircraft.hex}" data-callsign="${aircraft.callsign}" style="transform: rotate(${rotation}deg)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2l1.6 6.4L21 13v2l-7.3-2.2-.7 5.4 2.5 1.8V21L12 20l-3.5 1v-1l2.5-1.8-.7-5.4L3 15v-2l7.4-4.6z"/></svg></div>`;
+  return `<div class="${className}" data-hex="${aircraft.hex}" data-callsign="${aircraft.callsign}"><div class="atc-plane-body" style="transform: rotate(${rotation}deg)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2l1.6 6.4L21 13v2l-7.3-2.2-.7 5.4 2.5 1.8V21L12 20l-3.5 1v-1l2.5-1.8-.7-5.4L3 15v-2l7.4-4.6z"/></svg></div><span class="atc-plane-tag">${tag(aircraft)}</span></div>`;
 }
 
 /** A point in map container pixels. */
