@@ -41,8 +41,6 @@
     "@cacheplane/partial-json": "0.3.0",
     "@cacheplane/partial-markdown": "0.5.12",
     "@jitl/quickjs-singlefile-browser-debug-asyncify": "0.31.0",
-    "@pretable/react": "0.20.2",
-    "@pretable/ui": "0.20.2",
     "arktype": "^2.2.2",
     "express": "^4.22.2",
     "front-matter": "^4.0.2",
@@ -136,7 +134,6 @@
     "nx": "23.1.1",
     "openai": "^6.45.0",
     "prettier": "^3.9.4",
-    "sharp": "0.34.5",
     "shiki": "^1.29.2",
     "ts-jest": "^29.4.11",
     "ts-node": "10.9.1",
@@ -158,8 +155,5 @@
   },
   "nx": {
     "includedScripts": []
-  },
-  "workspaces": [
-    "examples/invoicing/server"
-  ]
+  }
 }

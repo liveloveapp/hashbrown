@@ -16,7 +16,6 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@invoicing/contracts": ["examples/invoicing/shared/src/index.ts"],
       "@atc/server": ["examples/atc/server/src/index.ts"],
       "@atc/shared": ["examples/atc/shared/src/index.ts"],
       "@atc/shared/map": ["examples/atc/shared/src/map/index.ts"],
