@@ -1,16 +1,7 @@
-import type { ToolCallLike, TranscriptItem } from '@atc/shared';
-import type { ReactNode } from 'react';
+import type { TranscriptItem } from '@atc/shared';
+import type { Chat } from '@hashbrownai/core';
+import type { UiChatMessage } from '@hashbrownai/react';
 import { ToolChips } from './tool-chips';
-
-/** The parts of a chat message the transcript renders. */
-export type TranscriptMessage =
-  | {
-      readonly role: 'assistant';
-      readonly content?: unknown;
-      readonly toolCalls?: readonly ToolCallLike[];
-      readonly ui: ReactNode;
-    }
-  | { readonly role: 'user' | 'error'; readonly content?: unknown };
 
 /**
  * The conversation: user bubbles, folded tool chip rows and rendered answers.
@@ -21,7 +12,7 @@ export function Transcript({
   items,
   busy = false,
 }: {
-  items: readonly TranscriptItem<TranscriptMessage>[];
+  items: readonly TranscriptItem<UiChatMessage<Chat.AnyTool>>[];
   busy?: boolean;
 }) {
   return (

@@ -78,8 +78,10 @@ export function Assistant({ onSend }: { onSend?: () => void }) {
     useTool({ ...atc.resetMap, deps: [atc] }),
   ];
 
-  // 3. Render the stream. The system prompt is pinned on the server.
+  // 3. Render the stream.
   const chat = useUiChat({
+    // Required by Hashbrown; the server replaces it with SYSTEM_PROMPT
+    // (server/src/run-handler.ts), so the browser cannot change the rules.
     system: 'Provided by the server.',
     components,
     tools,
@@ -89,6 +91,11 @@ export function Assistant({ onSend }: { onSend?: () => void }) {
     chat.sendMessage({ role: 'user', content });
     onSend?.();
   };
+  // Retries the last answer, or resends the first message when it never got one.
+  const retry = () =>
+    chat.messages.at(-1)?.role === 'assistant'
+      ? chat.reload()
+      : chat.resendMessages();
 
   return (
     <div className="atc-chat">
@@ -103,7 +110,7 @@ export function Assistant({ onSend }: { onSend?: () => void }) {
         {chat.error ? (
           <div className="atc-card atc-error" role="alert">
             <span>The assistant didn&apos;t answer. Try again.</span>
-            <button type="button" onClick={() => chat.resendMessages()}>
+            <button type="button" onClick={retry}>
               Retry
             </button>
           </div>

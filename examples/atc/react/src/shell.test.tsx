@@ -6,6 +6,8 @@ import {
   STARTER_PROMPTS,
   transcriptItems,
 } from '@atc/shared';
+import type { Chat } from '@hashbrownai/core';
+import type { UiChatMessage } from '@hashbrownai/react';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { expect, test } from 'vitest';
@@ -235,21 +237,37 @@ test('Enter sends the trimmed draft, clears the input and keeps focus', () => {
 });
 
 test('consecutive tool calls fold into one row in a polite live region', () => {
-  const items = transcriptItems([
-    { role: 'user' as const, content: 'Seattle?' },
+  const messages: UiChatMessage<Chat.AnyTool>[] = [
+    { role: 'user', content: 'Seattle?' },
     {
-      role: 'assistant' as const,
-      toolCalls: [{ name: 'findAircraft', args: {}, status: 'done' as const }],
-      ui: null,
-    },
-    {
-      role: 'assistant' as const,
+      role: 'assistant',
       toolCalls: [
-        { name: 'clearHighlight', args: {}, status: 'pending' as const },
+        {
+          role: 'tool',
+          toolCallId: 't1',
+          name: 'findAircraft',
+          args: {},
+          status: 'done',
+          result: { status: 'fulfilled', value: [] },
+        },
       ],
       ui: null,
     },
-  ]);
+    {
+      role: 'assistant',
+      toolCalls: [
+        {
+          role: 'tool',
+          toolCallId: 't2',
+          name: 'clearHighlight',
+          args: {},
+          status: 'pending',
+        },
+      ],
+      ui: null,
+    },
+  ];
+  const items = transcriptItems(messages);
 
   const { element } = setup(<Transcript items={items} busy />);
   const list = element.querySelector('ol');
