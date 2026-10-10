@@ -26,6 +26,11 @@ export interface ViewController {
    * the sheet. Without a chat panel (tests) it applies at once.
    */
   applyWhenSettled(state: AtcState): void;
+  /**
+   * Shows the area's home view without animating, its centre mid-way down
+   * the map left above a phone's sheet. The map calls it once it is mounted.
+   */
+  showHome(): void;
   /** True while this controller is moving the map. */
   isMoving(): boolean;
   /** A user drag: the move in flight, if any, is no longer ours. */
@@ -135,6 +140,11 @@ export function createViewController(options: {
         .add([0, (sheetInset() - top) / 2]),
       zoom,
     );
+  /** The home view, centred in the map left above the sheet. */
+  const home = (animate: boolean) =>
+    map.setView(centreAbove(area.view, area.view.zoom), area.view.zoom, {
+      animate,
+    });
   /** Moves the map so highlighted planes and their tags are legible. */
   const fitHighlight = (target: FitTarget, animate: boolean) => {
     if (target.kind === 'point') {
@@ -237,13 +247,12 @@ export function createViewController(options: {
     }
     appliedSeq = request.seq;
     moveMap(() =>
-      request.kind === 'area'
-        ? fitArea(request.area, animate)
-        : map.setView([area.lat, area.lon], area.zoom, { animate }),
+      request.kind === 'area' ? fitArea(request.area, animate) : home(animate),
     );
   };
 
   return {
+    showHome: () => home(false),
     applyWhenSettled(state) {
       if (state.viewRequest === null || state.viewRequest.seq === appliedSeq) {
         return;

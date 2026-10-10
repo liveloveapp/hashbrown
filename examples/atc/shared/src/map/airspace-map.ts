@@ -74,7 +74,7 @@ export async function createAirspaceMap(options: {
     zoomAnimation: !reduced,
     fadeAnimation: !reduced,
     markerZoomAnimation: !reduced,
-  }).setView([area.lat, area.lon], area.zoom);
+  }).setView([area.view.lat, area.view.lon], area.view.zoom);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   // Leaflet's own credit is optional; dropping it keeps the phone line short.
   map.attributionControl.setPrefix(false);
@@ -235,6 +235,7 @@ export async function createAirspaceMap(options: {
   };
 
   cards.measureArea();
+  view.showHome();
   render(store.getState());
   const unsubscribe = store.subscribe(() => render(store.getState()));
   // Leaflet only re-measures on window resize; rotation and layout changes

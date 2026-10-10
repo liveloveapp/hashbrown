@@ -84,7 +84,7 @@ test('toolCallLabel names the other tools by what they do, with labels for plane
     'Looking up Bend',
     'Showing 25 nm around KBDN',
     'Showing KBDN',
-    'Zooming out',
+    'Returning to central Oregon',
   ]);
 });
 
@@ -198,7 +198,7 @@ test('toolRunView counts failed and stopped calls, and has no summary before any
   expect(settled.summary).toBe('Looked up Bend, 1 failed, 1 stopped');
   expect(settled.live).toEqual([]);
   expect(places.summary).toBe(
-    'Looked up 2 places, showed KBDN, followed A1B2C3, stopped following, cleared the highlight, zoomed out',
+    'Looked up 2 places, showed KBDN, followed A1B2C3, stopped following, cleared the highlight, returned to central Oregon',
   );
 });
 

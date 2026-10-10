@@ -148,7 +148,7 @@ const RUNNING: Record<
       ? `Showing ${airport}`
       : `Showing ${radius} around ${airport}`;
   },
-  resetMap: () => 'Zooming out',
+  resetMap: () => 'Returning to central Oregon',
 };
 
 const noLabels: HexLabel = () => null;
@@ -237,7 +237,7 @@ const DONE: Record<
 
     return airport === null ? 'showed an area' : `showed ${airport}`;
   },
-  resetMap: () => 'zoomed out',
+  resetMap: () => 'returned to central Oregon',
 };
 
 /** One assistant turn's tool calls: a summary of the finished ones, and the live ones. */

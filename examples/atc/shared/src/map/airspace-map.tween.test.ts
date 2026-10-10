@@ -173,7 +173,8 @@ test('reduced motion makes markers jump', async () => {
 
 test('the map keeps a followed plane centred while it moves', async () => {
   const map = await mount();
-  const centred = { ...plane, lat: AREAS.pnw.lat, lon: AREAS.pnw.lon };
+  const { view } = AREAS.pnw;
+  const centred = { ...plane, lat: view.lat, lon: view.lon };
   map.store.applySnapshot({ at: 1, aircraft: [centred] });
   map.store.follow(centred.hex);
   map.setClock(3000);

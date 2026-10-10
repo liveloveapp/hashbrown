@@ -36,7 +36,14 @@ async function mount() {
   const element = document.createElement('div');
   Object.defineProperty(element, 'clientWidth', { value: 400 });
   Object.defineProperty(element, 'clientHeight', { value: 300 });
-  const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
+  const handle = await createAirspaceMap({
+    element,
+    store,
+    area: {
+      ...AREAS.pnw,
+      view: { lat: AREAS.pnw.lat, lon: AREAS.pnw.lon, zoom: 6 },
+    },
+  });
   const px = (value: string | undefined) => parseFloat(value ?? '0') || 0;
   const pane = () => element.querySelector<HTMLElement>('.leaflet-map-pane');
   /** Pixel position of a plane relative to the map's top-left. */
