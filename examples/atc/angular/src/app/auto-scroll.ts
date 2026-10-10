@@ -38,7 +38,9 @@ export class AutoScrollDirective {
 
   private addsUserMessage(record: MutationRecord): boolean {
     return [...record.addedNodes].some(
-      (node) => node instanceof Element && node.matches('.atc-user'),
+      (node) =>
+        node instanceof Element &&
+        (node.matches('.atc-user') || node.querySelector('.atc-user') !== null),
     );
   }
 }

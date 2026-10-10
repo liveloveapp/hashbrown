@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AutoScrollDirective } from './auto-scroll';
-import { SheetHandleComponent } from './sheet-handle';
+import { focusOpensSheet, SheetHandleComponent } from './sheet-handle';
 
 function pointer(type: string, clientY: number): Event {
   const event = new Event(type, { bubbles: true });
@@ -106,5 +106,38 @@ test('a user who scrolled up is not yanked down, until they send a message', asy
   await append(element, 'atc-user');
 
   expect(stayed).toBe(100);
+  expect(element.scrollTop).toBe(1000);
+});
+
+test('focusing the handle does not open the sheet, so one tap opens and the next closes', () => {
+  const { fixture, button } = handle();
+  document.body.append(fixture.nativeElement as HTMLElement);
+  const opened: boolean[] = [];
+
+  const tap = () => {
+    button.focus();
+    if (focusOpensSheet(button)) {
+      fixture.componentInstance.expanded.set(true);
+    }
+    button.click();
+    opened.push(fixture.componentInstance.expanded());
+  };
+  tap();
+  tap();
+
+  expect(opened).toEqual([true, false]);
+  expect(focusOpensSheet(document.createElement('input'))).toBe(true);
+});
+
+test('a user message nested in an added node still re-pins the scroller', async () => {
+  const element = scroller();
+  element.scrollTop = 100;
+  element.dispatchEvent(new Event('scroll'));
+  const li = document.createElement('li');
+  li.innerHTML = '<p class="atc-user">hi</p>';
+
+  element.append(li);
+  await new Promise((resolve) => setTimeout(resolve));
+
   expect(element.scrollTop).toBe(1000);
 });

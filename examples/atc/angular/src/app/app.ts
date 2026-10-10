@@ -8,8 +8,9 @@ import {
 } from '@angular/core';
 import { AirspaceMapComponent } from './airspace-map';
 import { Assistant } from './assistant';
+import { KeyboardInsetDirective } from './keyboard-inset';
 import { PanelHeaderComponent } from './panel-header';
-import { SheetHandleComponent } from './sheet-handle';
+import { focusOpensSheet, SheetHandleComponent } from './sheet-handle';
 import { ATC_STORE } from './store';
 
 /** The page: a two-panel workbench, chat on the left and the live map on the right.
@@ -21,16 +22,17 @@ import { ATC_STORE } from './store';
     Assistant,
     PanelHeaderComponent,
     SheetHandleComponent,
+    KeyboardInsetDirective,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="atc-workbench is-sheet">
+    <main class="atc-workbench is-sheet" atcKeyboardInset>
       <section
         id="atc-chat-sheet"
         class="atc-panel atc-chat-panel"
         aria-label="Chat"
         [class.is-expanded]="expanded()"
-        (focusin)="expanded.set(true)"
+        (focusin)="openOnFocus($event)"
         (keydown.escape)="expanded.set(false)"
       >
         <atc-sheet-handle [(expanded)]="expanded" />
@@ -46,6 +48,12 @@ import { ATC_STORE } from './store';
 export class App {
   /** Whether the phone bottom sheet is open; ignored on wide screens. */
   protected readonly expanded = signal(false);
+
+  protected openOnFocus(event: FocusEvent): void {
+    if (focusOpensSheet(event.target)) {
+      this.expanded.set(true);
+    }
+  }
 
   constructor() {
     const stop = startAtcFeed({ store: inject(ATC_STORE) });

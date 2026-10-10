@@ -196,16 +196,16 @@ atc-composer { flex: none; display: flex; flex-direction: column; gap: 8px; padd
 /* Phones: the map fills the screen and the chat is a bottom sheet with a peek. */
 @media (max-width: 767px) {
   html, body { overflow: hidden; overscroll-behavior: none; }
-  .atc-workbench.is-sheet { display: block; padding: 0; --atc-peek: calc(188px + env(safe-area-inset-bottom, 0px)); }
+  .atc-workbench.is-sheet { display: block; padding: 0; --atc-peek: calc(208px + env(safe-area-inset-bottom, 0px)); }
   .atc-workbench.is-sheet .atc-map-panel {
     position: absolute; inset: 0; border: 0; border-radius: 0; isolation: isolate;
   }
   .atc-workbench.is-sheet .atc-chat-panel {
-    position: absolute; z-index: 2000; left: 0; right: 0; bottom: 0; box-sizing: border-box;
+    position: absolute; z-index: 2000; left: 0; right: 0; bottom: var(--atc-kb, 0px); box-sizing: border-box;
     height: var(--atc-peek); border-radius: var(--atc-radius) var(--atc-radius) 0 0; border-bottom: 0;
     transition: height var(--atc-motion) var(--atc-ease);
   }
-  .atc-workbench.is-sheet .atc-chat-panel.is-expanded { height: min(86dvh, calc(100dvh - 48px)); }
+  .atc-workbench.is-sheet .atc-chat-panel.is-expanded { height: min(86dvh, calc(100dvh - 48px - var(--atc-kb, 0px))); }
   .atc-workbench.is-sheet .atc-chat-panel:not(.is-expanded) .atc-chat-body { visibility: hidden; }
   .atc-workbench.is-sheet atc-composer { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   /* The map's own controls clear the peeking sheet. */
@@ -213,7 +213,7 @@ atc-composer { flex: none; display: flex; flex-direction: column; gap: 8px; padd
 
   .atc-sheet-handle-host { display: block; flex: none; }
   .atc-sheet-handle {
-    display: grid; place-items: center; width: 100%; height: 24px; padding: 0; border: 0; background: none;
+    display: grid; place-items: center; width: 100%; height: 44px; padding: 0; border: 0; background: none;
     cursor: grab; touch-action: none; color: var(--atc-border);
   }
   .atc-sheet-handle:focus-visible { outline-offset: -2px; }
