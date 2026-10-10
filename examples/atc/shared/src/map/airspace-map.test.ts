@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { expect, test } from 'vitest';
 import type { Aircraft } from '../aircraft';
+import { KIND_PATHS } from '../kinds';
 import { applySnapshot, INITIAL_STATE } from '../store';
 import {
   followPanOffset,
@@ -16,6 +17,8 @@ const plane: Aircraft = {
   callsign: 'UAL100',
   registration: null,
   typeCode: 'B738',
+  category: null,
+  kind: 'jet',
   lat: 42,
   lon: -88,
   altitudeFt: 30000,
@@ -131,6 +134,41 @@ test('planeIconHtml carries the tag outside the rotated silhouette', () => {
   );
   expect(html.indexOf('rotate(272deg)')).toBeLessThan(html.indexOf('<svg'));
   expect(html).toMatch(
-    /<div class="atc-plane-body" style="transform: rotate\(272deg\)">/,
+    /<div class="atc-plane-body" data-kind="jet" style="transform: rotate\(272deg\)">/,
   );
+});
+
+test('planeIconHtml draws the silhouette for the aircraft kind', () => {
+  const kinds = ['jet', 'twin', 'single', 'rotor'] as const;
+
+  const html = kinds.map((kind) =>
+    planeIconHtml({ ...plane, kind }, 'atc-plane'),
+  );
+
+  kinds.forEach((kind, i) => {
+    expect(html[i]).toContain(`data-kind="${kind}"`);
+    expect(html[i]).toContain(`<path d="${KIND_PATHS[kind]}"/>`);
+  });
+  expect(new Set(html.map((h) => h.match(/<path d="[^"]+"/)?.[0])).size).toBe(
+    4,
+  );
+});
+
+test('updatePlane swaps the silhouette when the kind changes, leaving the marker in place', () => {
+  const host = document.createElement('div');
+  host.innerHTML = planeIconHtml(plane, 'atc-plane');
+  const markerNode = host.querySelector('.atc-plane');
+  const body = host.querySelector('.atc-plane-body') as HTMLElement;
+  const svgBefore = body.querySelector('svg');
+
+  updatePlane(host, plane, 'atc-plane');
+  const svgSame = body.querySelector('svg');
+  updatePlane(host, { ...plane, kind: 'rotor' }, 'atc-plane');
+
+  expect(svgSame).toBe(svgBefore);
+  expect(host.querySelector('.atc-plane')).toBe(markerNode);
+  expect(host.querySelector('.atc-plane-body')).toBe(body);
+  expect(body.getAttribute('data-kind')).toBe('rotor');
+  expect(body.querySelector('path')?.getAttribute('d')).toBe(KIND_PATHS.rotor);
+  expect(body.style.transform).toBe('rotate(272deg)');
 });

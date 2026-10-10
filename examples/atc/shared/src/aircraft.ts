@@ -1,4 +1,5 @@
 import { isRecord, numberOrNull } from './json';
+import { aircraftKind, type AircraftKind, isCategory } from './kinds';
 
 /** One aircraft on the map, normalized from ADS-B data. */
 export interface Aircraft {
@@ -14,6 +15,10 @@ export interface Aircraft {
   /** The registration such as `N352LL` or `C-GABC`, or null when unknown. */
   readonly registration: string | null;
   readonly typeCode: string | null;
+  /** The ADS-B emitter category such as `A3`, or null when not broadcast. */
+  readonly category: string | null;
+  /** The silhouette to draw, from the type code, else the category, else jet. */
+  readonly kind: AircraftKind;
   readonly lat: number;
   readonly lon: number;
   readonly altitudeFt: number | null;
@@ -114,13 +119,18 @@ function normalizeEntry(entry: unknown): Aircraft | null {
     return null;
   }
   const altitude = entry['alt_baro'];
+  const typeCode =
+    typeof entry['t'] === 'string' ? entry['t'].toUpperCase() : null;
+  const category = isCategory(entry['category']) ? entry['category'] : null;
 
   return {
     hex,
     label: displayLabel({ hex, callsign, registration }),
     callsign,
     registration,
-    typeCode: typeof entry['t'] === 'string' ? entry['t'].toUpperCase() : null,
+    typeCode,
+    category,
+    kind: aircraftKind({ typeCode, category }),
     lat,
     lon,
     altitudeFt: typeof altitude === 'number' ? Math.round(altitude) : null,
@@ -150,6 +160,7 @@ function parseAircraft(value: unknown): Aircraft | null {
   const callsign = value['callsign'];
   const registration = value['registration'];
   const typeCode = value['typeCode'];
+  const category = value['category'] ?? null;
   const lat = numberOrNull(value['lat']);
   const lon = numberOrNull(value['lon']);
   const altitudeFt = value['altitudeFt'];
@@ -164,6 +175,7 @@ function parseAircraft(value: unknown): Aircraft | null {
     (callsign === null || isLabel(callsign)) &&
     (registration === null || isRegistration(registration)) &&
     (typeCode === null || typeof typeCode === 'string') &&
+    (category === null || isCategory(category)) &&
     lat !== null &&
     lon !== null &&
     isNullableNumber(altitudeFt) &&
@@ -181,6 +193,8 @@ function parseAircraft(value: unknown): Aircraft | null {
     callsign,
     registration,
     typeCode,
+    category,
+    kind: aircraftKind({ typeCode, category }),
     lat,
     lon,
     altitudeFt,

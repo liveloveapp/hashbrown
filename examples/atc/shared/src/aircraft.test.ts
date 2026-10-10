@@ -50,6 +50,8 @@ test('normalizeAdsbLol keeps only whitelisted fields of airline aircraft', () =>
         callsign: 'UAL1372',
         registration: 'N77585',
         typeCode: 'B39M',
+        category: null,
+        kind: 'jet',
         lat: 44.406372,
         lon: -94.1,
         altitudeFt: 35000,
@@ -314,4 +316,37 @@ test('parseSnapshot strips fields outside the Aircraft shape', () => {
 
   expect(parsed).toEqual(snapshot);
   expect(parsed.aircraft[0]).not.toHaveProperty('ownOp');
+});
+
+test('normalizeAdsbLol keeps a valid category and derives the kind', () => {
+  const payload = {
+    ac: [
+      { hex: 'a3f010', lat: 44, lon: -121, t: 'ZZZZ', category: 'A7' },
+      { hex: 'a3f011', lat: 44, lon: -121, t: 'C172', category: 'A1' },
+      { hex: 'a3f012', lat: 44, lon: -121, category: '<script>' },
+      { hex: 'a3f013', lat: 44, lon: -121 },
+    ],
+  };
+
+  const aircraft = normalizeAdsbLol(payload, 1).aircraft;
+
+  expect(aircraft.map((a) => [a.category, a.kind])).toEqual([
+    ['A7', 'rotor'],
+    ['A1', 'single'],
+    [null, 'jet'],
+    [null, 'jet'],
+  ]);
+});
+
+test('parseSnapshot rejects an invalid category and recomputes the kind', () => {
+  const snapshot = normalizeAdsbLol({ ac: [united] }, 1000);
+  const tampered = (category: string, kind: string) => ({
+    ...snapshot,
+    aircraft: [{ ...snapshot.aircraft[0], category, kind }],
+  });
+
+  const parsed = parseSnapshot(tampered('A7', 'jet'));
+
+  expect(parsed.aircraft[0].kind).toBe('jet');
+  expect(() => parseSnapshot(tampered('<b>', 'jet'))).toThrow();
 });

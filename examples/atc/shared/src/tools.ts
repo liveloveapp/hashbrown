@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars -- no-input handlers keep an unused parameter so every tool has the same shape */
 import { s } from '@hashbrownai/core';
 import type { Aircraft } from './aircraft';
+import { type AircraftKind, KINDS } from './kinds';
 import { distanceNm, isApproaching } from './geo';
 import { aircraftTypeName, airlineFor } from './names';
 import {
@@ -29,6 +30,13 @@ export const findAircraftInput = s.object(
       s.string('ICAO type code such as B738, or a family such as 737'),
       s.nullish(),
     ]),
+    kind: s.anyOf([
+      s.enumeration(
+        'Only this kind of aircraft: jet, twin (twin-engine prop), single (single-engine prop) or rotor (helicopter)',
+        [...KINDS],
+      ),
+      s.nullish(),
+    ]),
     minAltitudeFt: s.anyOf([s.number('Minimum altitude in feet'), s.nullish()]),
     maxAltitudeFt: s.anyOf([s.number('Maximum altitude in feet'), s.nullish()]),
     approaching: s.anyOf([
@@ -55,6 +63,8 @@ export interface AircraftRow {
   /** The airline for airline callsigns; null for private and other traffic. */
   readonly airline: string | null;
   readonly aircraftType: string;
+  /** The silhouette drawn on the map. */
+  readonly kind: AircraftKind;
   readonly altitudeFt: number | null;
   readonly groundSpeedKt: number | null;
   readonly trackDeg: number | null;
@@ -69,6 +79,7 @@ function toRow(aircraft: Aircraft, from: LatLon): AircraftRow {
     registration: aircraft.registration,
     airline: airlineFor(aircraft.callsign),
     aircraftType: aircraftTypeName(aircraft.typeCode),
+    kind: aircraft.kind,
     altitudeFt: aircraft.altitudeFt,
     groundSpeedKt: aircraft.groundSpeedKt,
     trackDeg: aircraft.trackDeg,
@@ -126,6 +137,7 @@ export function findAircraft(
         (a.typeCode ?? '').toLowerCase() === type ||
         aircraftTypeName(a.typeCode).toLowerCase().includes(type),
     )
+    .filter((a) => input.kind === null || a.kind === input.kind)
     .filter(
       (a) =>
         input.minAltitudeFt === null ||

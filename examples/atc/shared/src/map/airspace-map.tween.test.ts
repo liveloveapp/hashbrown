@@ -11,6 +11,8 @@ const plane: Aircraft = {
   callsign: 'UAL100',
   registration: null,
   typeCode: 'B738',
+  category: null,
+  kind: 'jet',
   lat: 44,
   lon: -121,
   altitudeFt: 30000,

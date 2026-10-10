@@ -10,6 +10,8 @@ function plane(hex: string, overrides: Partial<Aircraft> = {}): Aircraft {
     callsign: 'UAL100',
     registration: null,
     typeCode: 'B738',
+    category: null,
+    kind: 'jet',
     lat: 44.0946,
     lon: -121.2002,
     altitudeFt: 30000,
@@ -24,6 +26,7 @@ function plane(hex: string, overrides: Partial<Aircraft> = {}): Aircraft {
 const any: FindAircraftInput = {
   airline: null,
   typeCode: null,
+  kind: null,
   minAltitudeFt: null,
   maxAltitudeFt: null,
   approaching: null,
@@ -40,6 +43,8 @@ const state = applySnapshot(INITIAL_STATE, {
       callsign: 'DAL200',
       registration: null,
       typeCode: 'A321',
+      category: null,
+      kind: 'jet',
       altitudeFt: 5000,
       groundSpeedKt: 200,
       verticalRateFpm: -900,
@@ -50,6 +55,8 @@ const state = applySnapshot(INITIAL_STATE, {
       callsign: 'SWA300',
       registration: null,
       typeCode: 'B38M',
+      category: null,
+      kind: 'jet',
       altitudeFt: 12000,
       groundSpeedKt: 520,
     }),
@@ -115,6 +122,7 @@ test('findAircraft rows carry readable names and rounded distance', () => {
     registration: null,
     airline: 'United Airlines',
     aircraftType: 'Boeing 737-800',
+    kind: 'jet',
     altitudeFt: 38000,
     groundSpeedKt: 480,
     trackDeg: 90,
@@ -137,6 +145,8 @@ test('findAircraft lists private traffic with no airline and skips it for airlin
         callsign: 'N352LL',
         registration: 'N352LL',
         typeCode: 'C172',
+        category: null,
+        kind: 'single',
         altitudeFt: 4500,
       }),
       plane('ffffff', {
@@ -144,6 +154,8 @@ test('findAircraft lists private traffic with no airline and skips it for airlin
         callsign: null,
         registration: null,
         typeCode: null,
+        category: null,
+        kind: 'jet',
         altitudeFt: 1000,
       }),
     ],
@@ -175,6 +187,8 @@ test('getSelectedAircraft returns a row for a hex-only aircraft', async () => {
         callsign: null,
         registration: null,
         typeCode: null,
+        category: null,
+        kind: 'jet',
       }),
     ],
   });
@@ -235,4 +249,23 @@ test('getSelectedAircraft returns the selected row or null', async () => {
 
   expect(before).toBeNull();
   expect(after?.hex).toBe('aaaaaa');
+});
+
+test('findAircraft filters by kind and rows carry the kind', () => {
+  const mixed = applySnapshot(INITIAL_STATE, {
+    at: 1,
+    aircraft: [
+      plane('aaaaaa'),
+      plane('bbbbbb', { typeCode: 'R44', kind: 'rotor' }),
+      plane('cccccc', { typeCode: 'C172', kind: 'single' }),
+    ],
+  });
+
+  const rotors = findAircraft(mixed, { ...any, kind: 'rotor' });
+  const all = findAircraft(mixed, any);
+
+  expect(rotors.map((row) => [row.hex, row.kind, row.aircraftType])).toEqual([
+    ['bbbbbb', 'rotor', 'Robinson R44'],
+  ]);
+  expect(all.map((row) => row.kind).sort()).toEqual(['jet', 'rotor', 'single']);
 });

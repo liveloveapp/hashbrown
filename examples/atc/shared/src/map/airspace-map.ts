@@ -1,5 +1,6 @@
 import type { Map as LeafletMap, Marker } from 'leaflet';
 import type { Aircraft } from '../aircraft';
+import { type AircraftKind, KIND_PATHS } from '../kinds';
 import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore } from '../store';
 import { fitTarget } from './fit';
@@ -75,6 +76,11 @@ const STATE_CLASSES = [
   'is-dimmed',
 ];
 
+/** The silhouette SVG for a kind; the path comes from a closed table. */
+function silhouetteSvg(kind: AircraftKind): string {
+  return `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${KIND_PATHS[kind]}"/></svg>`;
+}
+
 /**
  * Updates an existing marker in place: state classes, rotation, label and
  * tag text (via `textContent`), so the marker is never rebuilt and its pulse
@@ -97,6 +103,10 @@ export function updatePlane(
     plane.setAttribute('data-label', aircraft.label);
   }
   const body = plane.querySelector<HTMLElement>('.atc-plane-body');
+  if (body && body.getAttribute('data-kind') !== aircraft.kind) {
+    body.setAttribute('data-kind', aircraft.kind);
+    body.innerHTML = silhouetteSvg(aircraft.kind);
+  }
   const transform = `rotate(${Math.round(aircraft.trackDeg ?? 0)}deg)`;
   if (body && body.style.transform !== transform) {
     body.style.transform = transform;
@@ -128,15 +138,15 @@ function tag(aircraft: Aircraft): string {
 }
 
 /**
- * Marker HTML: the silhouette (rotated to the track) and a data tag that stays
+ * Marker HTML: the silhouette for the aircraft's kind (rotated to the track) and a data tag that stays
  * upright beside it. Hex codes and labels are validated by the aircraft
- * model (`^[0-9a-f]{6}$`; `^[A-Z0-9]{1,8}$`) and altitude is a number, so they
+ * model (`^[0-9a-f]{6}$`; `^[A-Z0-9]{1,8}$`), the kind is from a closed set, and altitude is a number, so they
  * are safe to interpolate.
  */
 export function planeIconHtml(aircraft: Aircraft, className: string): string {
   const rotation = Math.round(aircraft.trackDeg ?? 0);
 
-  return `<div class="${className}" data-hex="${aircraft.hex}" data-label="${aircraft.label}"><div class="atc-plane-body" style="transform: rotate(${rotation}deg)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2l1.6 6.4L21 13v2l-7.3-2.2-.7 5.4 2.5 1.8V21L12 20l-3.5 1v-1l2.5-1.8-.7-5.4L3 15v-2l7.4-4.6z"/></svg></div><span class="atc-plane-tag">${tag(aircraft)}</span></div>`;
+  return `<div class="${className}" data-hex="${aircraft.hex}" data-label="${aircraft.label}"><div class="atc-plane-body" data-kind="${aircraft.kind}" style="transform: rotate(${rotation}deg)">${silhouetteSvg(aircraft.kind)}</div><span class="atc-plane-tag">${tag(aircraft)}</span></div>`;
 }
 
 /** A point in map container pixels. */

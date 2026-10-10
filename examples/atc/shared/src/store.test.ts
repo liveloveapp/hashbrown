@@ -14,6 +14,8 @@ function aircraft(hex: string, altitudeFt = 30000): Aircraft {
     callsign: 'UAL1',
     registration: null,
     typeCode: 'B738',
+    category: null,
+    kind: 'jet',
     lat: 42,
     lon: -88,
     altitudeFt,

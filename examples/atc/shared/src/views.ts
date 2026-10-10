@@ -199,6 +199,7 @@ function findSummary(args: Record<string, unknown>): string | null {
   const filters = [
     shortText(args['airline']),
     shortText(args['typeCode']),
+    shortText(args['kind']),
     feet(args['minAltitudeFt'], 'above'),
     feet(args['maxAltitudeFt'], 'below'),
     approaching === null ? null : `approaching ${approaching}`,

@@ -17,6 +17,8 @@ const plane: Aircraft = {
   callsign: 'UAL100',
   registration: null,
   typeCode: 'B39M',
+  category: null,
+  kind: 'jet',
   lat: 47.5716,
   lon: -122.3088,
   altitudeFt: 5000,
@@ -56,6 +58,8 @@ test('flightCardView shows private aircraft by label with no airline line', () =
         callsign: 'N352LL',
         registration: 'N352LL',
         typeCode: 'C172',
+        category: null,
+        kind: 'single',
       },
       {
         ...plane,
@@ -64,6 +68,8 @@ test('flightCardView shows private aircraft by label with no airline line', () =
         callsign: 'LIFEGRD1',
         registration: 'N911LF',
         typeCode: 'EC35',
+        category: null,
+        kind: 'rotor',
       },
       {
         ...plane,
@@ -72,6 +78,8 @@ test('flightCardView shows private aircraft by label with no airline line', () =
         callsign: null,
         registration: null,
         typeCode: null,
+        category: null,
+        kind: 'jet',
       },
     ],
   });
@@ -196,6 +204,7 @@ test('toolCallLabel summarises findAircraft filters', () => {
   const base = {
     airline: null,
     typeCode: null,
+    kind: null,
     minAltitudeFt: null,
     maxAltitudeFt: null,
     approaching: null,

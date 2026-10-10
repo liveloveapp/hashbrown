@@ -1,5 +1,6 @@
 import {
   type Aircraft,
+  aircraftKind,
   type AircraftSnapshot,
   AIRPORTS,
   applySnapshot,
@@ -46,6 +47,8 @@ function track(
       callsign,
       registration,
       typeCode,
+      category: null,
+      kind: aircraftKind({ typeCode, category: null }),
       lat: at.lat,
       lon: at.lon,
       altitudeFt: at.altitudeFt,
@@ -180,6 +183,7 @@ export const SYNTHETIC_HEXES: ReadonlySet<string> = new Set(
 const ANY: FindAircraftInput = {
   airline: null,
   typeCode: null,
+  kind: null,
   minAltitudeFt: null,
   maxAltitudeFt: null,
   approaching: null,

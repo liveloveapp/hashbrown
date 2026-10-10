@@ -20,6 +20,8 @@ const plane: Aircraft = {
   callsign: 'UAL100',
   registration: null,
   typeCode: 'B39M',
+  category: null,
+  kind: 'jet',
   lat: 47.5716,
   lon: -122.3088,
   altitudeFt: 5000,
@@ -115,6 +117,8 @@ test('a flight card for private or unidentified traffic shows the label and no a
         callsign: 'N352LL',
         registration: 'N352LL',
         typeCode: 'C172',
+        category: null,
+        kind: 'single',
       },
       {
         ...plane,
@@ -123,6 +127,8 @@ test('a flight card for private or unidentified traffic shows the label and no a
         callsign: null,
         registration: null,
         typeCode: null,
+        category: null,
+        kind: 'jet',
       },
     ],
   });
@@ -139,7 +145,7 @@ test('a flight card for private or unidentified traffic shows the label and no a
   expect(privateCard.querySelector('header')?.textContent?.trim()).toBe(
     'N352LL',
   );
-  expect(privateCard.textContent).toContain('C172');
+  expect(privateCard.textContent).toContain('Cessna 172');
   expect(hexCard.querySelector('header')?.textContent?.trim()).toBe('CCCCCC');
   expect(hexCard.textContent).toContain('Unknown type');
   expect(privateCard.textContent).not.toContain('Route unavailable');
