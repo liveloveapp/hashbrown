@@ -1,9 +1,9 @@
-import { INVOICING_LINKS } from './home.content';
+import { ATC_LINKS } from './home.content';
 import styles from './RealApp.module.css';
 
-/** The invoicing showcase: what it's built with, links, and a screenshot. */
+/** The atc example showcase: what it shows, links, and a screenshot. */
 export function RealApp() {
-  const links = INVOICING_LINKS;
+  const links = ATC_LINKS;
 
   return (
     <div className={styles.section}>
@@ -11,32 +11,23 @@ export function RealApp() {
         <div>
           <h2>See it in a real app</h2>
           <p>
-            An invoicing assistant that answers with the app&apos;s own tables
-            and charts. The data is simulated.
+            atc is a live map of the planes over the Pacific Northwest. Ask
+            about them, and the assistant answers with the app&apos;s own flight
+            cards and arrivals boards.
           </p>
           <div className={styles.built}>
             <div className={styles.tile}>
-              <strong>hashbrown</strong>
-              <span>Chat and generative UI</span>
+              <strong>Your components</strong>
+              <span>The model picks the cards and boards</span>
             </div>
-            <a
-              className={styles.tile}
-              href={links.b4}
-              target="_blank"
-              rel="noopener"
-            >
-              <strong>b4.run ↗</strong>
-              <span>Agent backend</span>
-            </a>
-            <a
-              className={styles.tile}
-              href={links.pretable}
-              target="_blank"
-              rel="noopener"
-            >
-              <strong>pretable.ai ↗</strong>
-              <span>Data grid</span>
-            </a>
+            <div className={styles.tile}>
+              <strong>Tools in the browser</strong>
+              <span>Search, highlight and follow planes on the map</span>
+            </div>
+            <div className={styles.tile}>
+              <strong>Angular and React</strong>
+              <span>The same app, built in both</span>
+            </div>
           </div>
           <div className={styles.actions}>
             <a
@@ -66,16 +57,16 @@ export function RealApp() {
           <picture>
             <source
               media="(max-width: 767px)"
-              srcSet="/image/landing-page/invoicing-mobile.webp"
+              srcSet="/image/landing-page/atc-mobile.webp"
               width={585}
-              height={1100}
+              height={1266}
             />
             <img
-              src="/image/landing-page/invoicing.webp"
-              alt="The invoicing example answering which USD customers are more than 60 days overdue with a ledger table, an aging chart, and a customer card"
+              src="/image/landing-page/atc.webp"
+              alt="The atc example answering which planes are the highest and fastest right now, with two flight cards beside a map that highlights both planes"
               loading="lazy"
-              width={1400}
-              height={1200}
+              width={1440}
+              height={900}
             />
           </picture>
         </a>

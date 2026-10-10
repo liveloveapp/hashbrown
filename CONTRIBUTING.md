@@ -37,24 +37,31 @@ Thank you for your interest in contributing to hashbrown.
 
 ## Running the example
 
-The maintained example is [Invoicing](examples/invoicing/README.md), built with
-React, Hashbrown, B4 and Pretable. It uses simulated data and allocations.
+The maintained example is [atc](examples/atc/README.md), a live map of air
+traffic over the Pacific Northwest built in Angular and React.
 
-Start the server with an environment file containing `OPENAI_API_KEY`:
-
-```sh
-INVOICING_ENV_FILE=/path/to/.env npx nx serve invoicing-server
-```
-
-In another terminal, start the frontend:
+Put `OPENAI_API_KEY=...` in the repository's `.env`, then run each in its own
+terminal:
 
 ```sh
-npx nx serve invoicing-react
+npx nx serve atc-server
 ```
 
-Open http://127.0.0.1:4326/. The example README documents additional setup and
-verification targets. Angular and React protocol coverage lives in its internal
-conformance hosts; they are test infrastructure rather than public examples.
+```sh
+npx nx serve atc-angular
+```
+
+```sh
+npx nx serve atc-react
+```
+
+Open http://127.0.0.1:4341/angular/ or http://127.0.0.1:4342/react/. The API
+server runs on http://127.0.0.1:4340. The example README covers the
+architecture and tests.
+
+The Angular and React conformance suites live in
+[tools/conformance](tools/conformance/README.md). They are test infrastructure
+for the published packages, not examples, and need no model key.
 
 ## Running Tests
 

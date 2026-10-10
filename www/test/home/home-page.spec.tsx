@@ -97,22 +97,20 @@ test('lists the model providers it works with', async () => {
   ]);
 });
 
-test('links the invoicing showcase and threadplane', async () => {
+test('links the atc showcase and threadplane', async () => {
   const html = await render();
 
   const links = hrefs(html);
 
-  expect(links).toContain('https://invoicing.hashbrown.dev');
+  expect(links).toContain('https://atc.hashbrown.dev');
   expect(links).toContain(
-    'https://github.com/liveloveapp/hashbrown/tree/main/examples/invoicing',
+    'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc',
   );
-  expect(links).toContain('https://b4.run');
-  expect(links).toContain('https://pretable.ai');
   expect(links.some((href) => href.startsWith('https://threadplane.ai/'))).toBe(
     true,
   );
-  expect(html).toContain('/image/landing-page/invoicing.webp');
-  expect(html).toContain('/image/landing-page/invoicing-mobile.webp');
+  expect(html).toContain('/image/landing-page/atc.webp');
+  expect(html).toContain('/image/landing-page/atc-mobile.webp');
 });
 
 test('pitches threadplane with a plain headline and no photo', async () => {

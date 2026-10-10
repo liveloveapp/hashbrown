@@ -272,10 +272,6 @@ Open http://127.0.0.1:4342/react/. Use `atc-angular` and port 4341 for the
 Angular app. See the [example README](examples/atc/README.md) for the
 architecture and tests.
 
-For a larger app with tables, charts and an agent backend, see the advanced
-[Invoicing](examples/invoicing/README.md) example
-([try it](https://invoicing.hashbrown.dev)).
-
 ## Need a Complete Chat UI?
 
 Hashbrown is headless. [threadplane](https://threadplane.ai) is the full agent

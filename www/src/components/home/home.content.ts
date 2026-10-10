@@ -242,14 +242,11 @@ export const THREADPLANE_URL =
   'https://threadplane.ai/?utm_source=hashbrown&utm_medium=homepage&utm_campaign=headful_banner';
 
 /**
- * External links for the invoicing showcase.
+ * External links for the atc example showcase.
  */
-export const INVOICING_LINKS = {
-  app: 'https://invoicing.hashbrown.dev',
-  source:
-    'https://github.com/liveloveapp/hashbrown/tree/main/examples/invoicing',
-  b4: 'https://b4.run',
-  pretable: 'https://pretable.ai',
+export const ATC_LINKS = {
+  app: 'https://atc.hashbrown.dev',
+  source: 'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc',
 } as const;
 
 /**

@@ -4,7 +4,6 @@ import { CodeExample } from './CodeExample';
 import { BackendCodeExample } from './elements/BackendCodeExample';
 import { Carousel } from './elements/Carousel';
 import { MagicTextDemo } from './elements/MagicTextDemo';
-import { WalkthroughVideo } from './elements/WalkthroughVideo';
 import { Expander } from './Expander';
 import {
   BoltIcon,
@@ -53,6 +52,5 @@ export function docsComponents(
     'hb-database-cog': () => <DatabaseCogIcon />,
     'hb-message': () => <MessageIcon />,
     'hb-bolt': () => <BoltIcon />,
-    'www-walkthrough-video': WalkthroughVideo,
   };
 }
