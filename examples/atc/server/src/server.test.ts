@@ -145,6 +145,9 @@ test('the aircraft handler proxies adsb.lol, strips owner data and sets CDN cach
 });
 
 test('the aircraft handler rejects unknown areas and reports upstream failures as 502', async () => {
+  const silenced = vi
+    .spyOn(console, 'error')
+    .mockImplementation(() => undefined);
   const down = vi.fn(async () => new Response('busy', { status: 503 }));
   const garbage = vi.fn(async () => new Response('<html>', { status: 200 }));
   const a = await listen(createAircraftHandler({ fetchFn: down }));
@@ -157,6 +160,8 @@ test('the aircraft handler rejects unknown areas and reports upstream failures a
   expect(unknown.status).toBe(400);
   expect([failed.status, malformed.status]).toEqual([502, 502]);
   expect(await failed.json()).toEqual({ error: 'Aircraft feed unavailable' });
+  expect(silenced).toHaveBeenCalledTimes(2);
+  silenced.mockRestore();
   a.server.close();
   b.server.close();
 });

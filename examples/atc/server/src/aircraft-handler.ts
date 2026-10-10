@@ -36,7 +36,8 @@ export function createAircraftHandler(
       sendJson(res, 200, snapshot, {
         'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=30',
       });
-    } catch {
+    } catch (error) {
+      console.error('[atc] aircraft feed failed', error);
       sendJson(res, 502, { error: 'Aircraft feed unavailable' });
     }
   };

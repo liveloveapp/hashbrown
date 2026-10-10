@@ -102,7 +102,8 @@ export function createRunHandler(options: RunHandlerOptions): NodeHandler {
       for await (const event of stream) {
         res.write(encoder.encodeSSE(event));
       }
-    } catch {
+    } catch (error) {
+      console.error('[atc] run failed', error);
       if (!res.headersSent) {
         sendJson(res, 500, { error: 'Run failed' });
       }
