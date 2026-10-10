@@ -26,7 +26,7 @@ test('the walkthrough plays on demand from Vercel Blob, with a poster and captio
 });
 
 test.each(['react', 'angular'])(
-  'the %s example app page opens with the walkthrough, not wrapped in a paragraph',
+  'the %s example app page describes atc and has no walkthrough video',
   async (sdk) => {
     const source = readFileSync(
       join(__dirname, `../../content/docs/${sdk}/start/sample.md`),
@@ -36,9 +36,7 @@ test.each(['react', 'angular'])(
     const rendered = await renderMarkdown(source, docsComponents(sdk));
     const html = renderToStaticMarkup(rendered.content);
 
-    expect(html).toMatch(
-      /^<h1[^>]*>Invoicing Example<\/h1>\s*<figure[^>]*><video [^>]*invoicing-walkthrough-[0-9a-f]{12}\.mp4/,
-    );
-    expect(html).not.toMatch(/<p>\s*<figure/);
+    expect(html).toMatch(/^<h1[^>]*>atc Example<\/h1>/);
+    expect(html).not.toContain('<video');
   },
 );

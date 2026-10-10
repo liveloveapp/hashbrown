@@ -55,39 +55,49 @@ export interface CodeSample {
  */
 export const HERO_CODE: Record<Sdk, CodeSample> = {
   react: {
-    file: 'Assistant.tsx',
+    file: 'assistant.tsx',
     lang: 'tsx',
-    code: `const invoiceKit = useUiKit({
-  components: [
-    exposeComponent(InvoiceCard, {
-      description: 'Show one invoice',
-      props: { id: s.string('Invoice id') },
-    }),
-    exposeComponent(AgingChart, { /* … */ }),
-  ],
-});
+    code: `const components = [
+  exposeComponent(FlightCard, {
+    name: 'FlightCard',
+    description: 'One aircraft on the map, with live altitude and speed.',
+    props: {
+      note: s.streaming.string('A sentence or two about this flight'),
+      hex: s.string('The aircraft hex code from a tool result.'),
+    },
+    fallback: FlightCardFallback,
+    children: false,
+  }),
+];
+
+const tools = [useTool({ ...atc.findAircraft, deps: [atc] })];
 
 const chat = useUiChat({
-  system: 'Help users understand invoices.',
-  components: [invoiceKit],
+  system: 'Provided by the server.',
+  components,
+  tools,
 });`,
   },
   angular: {
-    file: 'assistant.component.ts',
+    file: 'assistant.ts',
     lang: 'typescript',
-    code: `export const invoiceKit = createUiKit({
-  components: [
-    exposeComponent(InvoiceCard, {
-      description: 'Show one invoice',
-      input: { id: s.string('Invoice id') },
-    }),
-    exposeComponent(AgingChart, { /* … */ }),
-  ],
-});
+    code: `const components = [
+  exposeComponent(FlightCardComponent, {
+    name: 'FlightCard',
+    description: 'One aircraft on the map, with live altitude and speed.',
+    input: {
+      note: s.streaming.string('A sentence or two about this flight'),
+      hex: s.string('The aircraft hex code from a tool result.'),
+    },
+    fallback: FlightCardFallbackComponent,
+    children: false,
+  }),
+];
 
 chat = uiChatResource({
-  system: 'Help users understand invoices.',
-  components: [invoiceKit],
+  system: 'Provided by the server.',
+  components,
+  tools: [createTool(this.atc.findAircraft)],
 });`,
   },
 };

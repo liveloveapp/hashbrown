@@ -105,8 +105,35 @@ This file defines how agents should work in this repository. Keep changes aligne
 
 ### Example application and test hosts
 
-The maintained public example is `examples/invoicing` (React, B4 and Pretable;
-simulated ledger and allocations). Conformance hosts are internal test infrastructure.
+The flagship public example is `examples/atc` (Angular and React; live ADS-B traffic,
+browser-side tools, live components). `examples/invoicing` (React, B4 and Pretable) is
+the advanced example until it is retired. Conformance hosts are internal test infrastructure.
+
+- `atc`
+  - `npx nx build atc`
+  - `npx nx record-replay atc`
+- `atc-shared`
+  - `npx nx build atc-shared`
+  - `npx nx test atc-shared`
+  - `npx nx lint atc-shared`
+- `atc-server`
+  - `npx nx build atc-server`
+  - `npx nx test atc-server`
+  - `npx nx lint atc-server`
+  - `npx nx serve atc-server`
+- `atc-angular`
+  - `npx nx build atc-angular`
+  - `npx nx test atc-angular`
+  - `npx nx lint atc-angular`
+  - `npx nx serve atc-angular`
+- `atc-react`
+  - `npx nx build atc-react`
+  - `npx nx test atc-react`
+  - `npx nx lint atc-react`
+  - `npx nx serve atc-react`
+- `atc-e2e`
+  - `npx nx e2e atc-e2e`
+  - `npx nx lint atc-e2e`
 
 - `invoicing`
   - `npx nx build invoicing`

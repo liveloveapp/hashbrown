@@ -2,24 +2,34 @@
 title: 'Example App: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Explore the maintained invoicing example with React, B4 and Pretable.'
+    content: 'atc: a live map of airline traffic with an assistant that answers in your own React components.'
 ---
 
-# Invoicing Example
+# atc Example
 
-<www-walkthrough-video>
-</www-walkthrough-video>
+atc is a live map of airline traffic around Chicago O'Hare. Ask about the planes you
+see, and the answer renders as the app's own components: flight cards, an arrivals board
+and side-by-side comparisons. The cards keep updating after the answer finishes, and the
+assistant can highlight and follow aircraft on the map.
 
-The maintained example uses React, Hashbrown, B4 and Pretable to explore a
-simulated ledger, answer questions with generated UI, and review payment
-allocations before applying them. All data and allocations are simulated.
+[Try the app](https://atc.hashbrown.dev/react/) or
+[read the source](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/README.md).
 
-[Try the app](https://invoicing.hashbrown.dev) or
-[read the source and setup guide](https://github.com/liveloveapp/hashbrown/tree/main/examples/invoicing).
+## What to look for
+
+- **Your components, not generated HTML.** `exposeComponent` lists every component the
+  model may use, with a Skillet schema for each of its props.
+- **Tools run in the browser.** `useTool` wraps functions that search the aircraft
+  already on the map. The plane list never goes to the server.
+- **Fields that must arrive whole do.** A card's aircraft ID is `s.string`, so the card
+  never shows a half-written ID. Its note is `s.streaming.string` and streams in.
+- **A thin server.** One route streams the model's answer; the system prompt and model are
+  pinned there.
+
+The core file is
+[`examples/atc/react/src/assistant.tsx`](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/react/src/assistant.tsx).
 
 ## Run locally
-
-Clone the repository and install its dependencies:
 
 ```bash
 git clone https://github.com/liveloveapp/hashbrown.git
@@ -28,27 +38,14 @@ nvm use
 npm ci
 ```
 
-Create an environment file containing `OPENAI_API_KEY`, then start the server:
+Add `OPENAI_API_KEY=...` to `.env`, then start the server and the app in two terminals:
 
 ```bash
-INVOICING_ENV_FILE=/path/to/.env npx nx serve invoicing-server
+npx nx serve atc-server
 ```
-
-In another terminal, start the React frontend:
 
 ```bash
-npx nx serve invoicing-react
+npx nx serve atc-react
 ```
 
-Open http://127.0.0.1:4326/. Credentials are loaded only by the server.
-
-## Framework guidance
-
-The public example is a React application. Angular and React protocol coverage
-lives in internal conformance hosts within the example's end-to-end suite.
-For framework integration, follow the
-[Angular quickstart](/docs/angular/start/quick) or
-[React quickstart](/docs/react/start/quick). The standalone
-[UI chatbot recipe](/docs/react/recipes/ui-chatbot) remains available.
-
-The former Smart Home example has been retired.
+Open http://127.0.0.1:4342/react/. Add `?replay=1` to use recorded traffic.

@@ -35,9 +35,9 @@ test('renders the hero copy and actions', async () => {
 test('shows the Angular variant before a preference is read', async () => {
   const html = await render();
 
-  expect(html).toContain('assistant.component.ts');
-  expect(html).toContain('createUiKit');
-  expect(html).not.toContain('useUiKit');
+  expect(html).toContain('assistant.ts');
+  expect(html).toContain('createTool');
+  expect(html).not.toContain('useTool');
   expect(html).not.toContain('/docs/react/');
   expect(hrefs(html)).toContain('/docs/angular/start/quick');
 });
