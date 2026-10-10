@@ -1,5 +1,5 @@
+/* eslint-disable @nx/enforce-module-boundaries -- the stylesheet is shared with the Angular app, so it is imported by relative path */
 import 'leaflet/dist/leaflet.css';
-// eslint-disable-next-line @nx/enforce-module-boundaries -- stylesheet shared with the Angular app
 import '../../shared/src/styles/atc.css';
 import { createAtcStore } from '@atc/shared';
 import { HashbrownProvider } from '@hashbrownai/react';

@@ -26,7 +26,7 @@ import { injectAtcState } from '../store';
           </tr>
         </thead>
         <tbody>
-          @for (row of rows(); track row.hex) {
+          @for (row of rows(); track $index) {
             <tr
               data-testid="arrivals-row"
               [attr.data-hex]="row.hex"

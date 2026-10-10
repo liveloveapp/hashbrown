@@ -27,8 +27,13 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.hex} data-testid="arrivals-row" data-hex={row.hex} data-status={row.status}>
+          {rows.map((row, index) => (
+            <tr
+              key={`${index}-${row.hex}`}
+              data-testid="arrivals-row"
+              data-hex={row.hex}
+              data-status={row.status}
+            >
               <td>{row.callsign}</td>
               <td>{row.aircraftType}</td>
               <td>{row.altitude}</td>
@@ -43,7 +48,9 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
 }
 
 /** Shown until the airport is known. */
-export function ArrivalsBoardFallback({ partialProps }: ComponentFallbackProps) {
+export function ArrivalsBoardFallback({
+  partialProps,
+}: ComponentFallbackProps) {
   const title = partialProps?.['title'];
 
   return (

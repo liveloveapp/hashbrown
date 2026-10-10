@@ -15,13 +15,13 @@ export function AircraftCompare({ takeaway, hexes }: AircraftCompareProps) {
   return (
     <section className="atc-card" data-testid="aircraft-compare">
       <div className="atc-compare">
-        {hexes.map((hex) => {
+        {hexes.map((hex, index) => {
           const view = flightCardView(state, hex);
 
           return view.status === 'unknown' ? (
-            <div key={hex}>Unknown aircraft</div>
+            <div key={`${index}-${hex}`}>Unknown aircraft</div>
           ) : (
-            <div key={hex} data-hex={view.hex}>
+            <div key={`${index}-${hex}`} data-hex={view.hex}>
               <strong>{view.callsign}</strong>
               <p className="atc-card-type">{view.aircraftType}</p>
               <p>{view.altitude}</p>
@@ -36,13 +36,17 @@ export function AircraftCompare({ takeaway, hexes }: AircraftCompareProps) {
 }
 
 /** Shown until every aircraft ID has arrived. */
-export function AircraftCompareFallback({ partialProps }: ComponentFallbackProps) {
+export function AircraftCompareFallback({
+  partialProps,
+}: ComponentFallbackProps) {
   const takeaway = partialProps?.['takeaway'];
 
   return (
     <section className="atc-card" data-testid="aircraft-compare-fallback">
       <div className="atc-skeleton" aria-label="Identifying aircraft" />
-      <p className="atc-card-note">{typeof takeaway === 'string' ? takeaway : ''}</p>
+      <p className="atc-card-note">
+        {typeof takeaway === 'string' ? takeaway : ''}
+      </p>
     </section>
   );
 }
