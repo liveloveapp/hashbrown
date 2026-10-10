@@ -1,4 +1,5 @@
-import { messageText, type ToolCallLike } from './views';
+import type { ToolCallLike } from './tool-chips';
+import { messageText } from './views';
 
 /** The parts of a Hashbrown chat message that the transcript reads. */
 export interface TranscriptMessageLike {

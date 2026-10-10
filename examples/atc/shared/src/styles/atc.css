@@ -311,10 +311,54 @@ input {
   text-align: left;
 }
 
-.atc-tool-chips {
+.atc-tool-run {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+}
+/* What the finished calls did, in one quiet line that expands to every step. */
+.atc-tool-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 8px 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--atc-canvas);
+  color: var(--atc-muted);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.atc-tool-summary:hover {
+  color: var(--atc-ink);
+}
+.atc-tool-summary-text {
+  min-width: 0;
+}
+.atc-tool-chevron {
+  flex: none;
+  transition: transform var(--atc-fast) var(--atc-ease);
+}
+.atc-tool-summary[aria-expanded='true'] .atc-tool-chevron {
+  transform: rotate(180deg);
+}
+.atc-tool-steps {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 0 0 0 10px;
+  list-style: none;
+}
+.atc-tool-steps .atc-tool-chip {
+  background: none;
+  padding: 0;
 }
 .atc-tool-chip {
   display: inline-flex;
@@ -346,6 +390,30 @@ input {
 }
 .atc-tool-chip[data-state='running'] {
   color: var(--atc-ink);
+}
+.atc-tool-chip[data-state='failed'] {
+  color: var(--atc-ink);
+}
+/* Touch: a 44px hit area around the 32px pill. */
+@media (pointer: coarse) {
+  .atc-tool-summary {
+    position: relative;
+    min-height: 32px;
+  }
+  .atc-tool-summary::after {
+    content: '';
+    position: absolute;
+    inset: -6px 0;
+  }
+}
+
+/* One answer's parts (prose and cards) sit 8px apart. */
+.atc-answer,
+.atc-answer > hb-render-message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
 @keyframes atc-spin {
   to {

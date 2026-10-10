@@ -31,7 +31,9 @@ import { ToolChipsComponent } from './tool-chips';
             <li><atc-tool-chips [calls]="item.calls" [busy]="busy()" /></li>
           }
           @case ('answer') {
-            <li><hb-render-message [message]="item.message" /></li>
+            <li class="atc-answer">
+              <hb-render-message [message]="item.message" />
+            </li>
           }
         }
       }

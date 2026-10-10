@@ -41,7 +41,9 @@ export function Transcript({
             <ToolChips calls={item.calls} busy={busy} />
           </li>
         ) : (
-          <li key={index}>{item.message.ui}</li>
+          <li key={index} className="atc-answer">
+            {item.message.ui}
+          </li>
         ),
       )}
     </ol>

@@ -113,7 +113,7 @@ test('the empty state offers the selected-plane question first while a plane is 
   ]);
 });
 
-test('tool chips spin while running, then settle as done or failed', () => {
+test('tool calls run live, then fold into one summary that expands to every step', () => {
   const find = {
     name: 'findAircraft',
     args: { approaching: 'KSEA', sortBy: 'distance' },
@@ -124,44 +124,48 @@ test('tool chips spin while running, then settle as done or failed', () => {
     args: { hexes: ['a', 'b', 'c'] },
     status: 'pending' as const,
   };
-  const { element, rerender } = setup(
+  const { store, element, rerender } = setup(
     <ToolChips calls={[find, highlight]} busy />,
   );
-  const chips = () =>
+  const live = () =>
     [...element.querySelectorAll('[data-testid="tool-chip"]')].map((chip) => ({
-      state: chip.getAttribute('data-state'),
       text: text(chip),
       spinner: chip.querySelector('.atc-tool-spinner') !== null,
     }));
-  const failed = {
-    ...highlight,
-    status: 'done' as const,
-    result: { status: 'rejected' as const },
-  };
+  const summary = () =>
+    element.querySelector<HTMLButtonElement>('[data-testid="tool-summary"]');
 
-  const running = chips();
-  rerender(<ToolChips calls={[find, failed]} busy />);
-  const outOfOrder = chips();
-  rerender(<ToolChips calls={[find, failed]} busy={false} />);
-  const settled = chips();
+  const running = live();
+  const before = summary();
+  rerender(
+    <AtcStoreProvider store={store}>
+      <ToolChips
+        calls={[
+          { ...find, status: 'done', result: { status: 'fulfilled' } },
+          { ...highlight, status: 'done', result: { status: 'rejected' } },
+        ]}
+        busy={false}
+      />
+    </AtcStoreProvider>,
+  );
+  const collapsed = summary()?.getAttribute('aria-expanded');
+  act(() => summary()?.click());
+  const steps = [
+    ...element.querySelectorAll('[data-testid="tool-step"]'),
+  ].map((step) => [step.getAttribute('data-state'), text(step)]);
 
   expect(running).toEqual([
-    {
-      state: 'running',
-      text: 'findAircraft · approaching KSEA',
-      spinner: true,
-    },
-    {
-      state: 'running',
-      text: 'highlightAircraft · 3 aircraft',
-      spinner: true,
-    },
+    { text: 'Finding aircraft · approaching KSEA', spinner: true },
+    { text: 'Highlighting 3 aircraft', spinner: true },
   ]);
-  expect(outOfOrder.map((chip) => chip.state)).toEqual(['running', 'failed']);
-  expect(outOfOrder[1]?.spinner).toBe(false);
-  expect(settled.map((chip) => [chip.state, chip.spinner])).toEqual([
-    ['stopped', false],
-    ['failed', false],
+  expect(before).toBeNull();
+  expect(live()).toEqual([]);
+  expect(text(summary())).toBe('Searched traffic, 1 failed');
+  expect(collapsed).toBe('false');
+  expect(summary()?.getAttribute('aria-expanded')).toBe('true');
+  expect(steps).toEqual([
+    ['done', 'Finding aircraft · approaching KSEA'],
+    ['failed', 'Highlighting 3 aircraft · failed'],
   ]);
 });
 
@@ -230,7 +234,7 @@ test('Enter sends the trimmed draft, clears the input and keeps focus', () => {
   expect(document.activeElement).toBe(input);
 });
 
-test('consecutive tool calls render as one chip row in a polite live region', () => {
+test('consecutive tool calls fold into one row in a polite live region', () => {
   const items = transcriptItems([
     { role: 'user' as const, content: 'Seattle?' },
     {
@@ -250,12 +254,15 @@ test('consecutive tool calls render as one chip row in a polite live region', ()
   const { element } = setup(<Transcript items={items} busy />);
   const list = element.querySelector('ol');
 
-  expect(element.querySelectorAll('.atc-tool-chips')).toHaveLength(1);
+  expect(element.querySelectorAll('.atc-tool-run')).toHaveLength(1);
+  expect(text(element.querySelector('[data-testid="tool-summary"]'))).toBe(
+    'Searched traffic',
+  );
   expect(
     [...element.querySelectorAll('[data-testid="tool-chip"]')].map((chip) =>
-      chip.getAttribute('data-state'),
+      text(chip),
     ),
-  ).toEqual(['done', 'running']);
+  ).toEqual(['Clearing the highlight']);
   expect(list?.getAttribute('aria-live')).toBe('polite');
   expect(list?.getAttribute('aria-busy')).toBe('true');
 });

@@ -125,9 +125,10 @@ test('the empty state offers the selected-plane question first while a plane is 
   ]);
 });
 
-test('tool chips spin while running, then settle as done or failed', () => {
+test('tool calls run live, then fold into one summary that expands to every step', () => {
   setup();
   const fixture = TestBed.createComponent(ToolChipsComponent);
+  const element = fixture.nativeElement as HTMLElement;
   const find = {
     name: 'findAircraft',
     args: { approaching: 'KSEA', sortBy: 'distance' },
@@ -138,48 +139,44 @@ test('tool chips spin while running, then settle as done or failed', () => {
     args: { hexes: ['a', 'b', 'c'] },
     status: 'pending' as const,
   };
-  const chips = () =>
-    [
-      ...(fixture.nativeElement as HTMLElement).querySelectorAll(
-        '[data-testid="tool-chip"]',
-      ),
-    ].map((chip) => ({
-      state: chip.getAttribute('data-state'),
+  const live = () =>
+    [...element.querySelectorAll('[data-testid="tool-chip"]')].map((chip) => ({
       text: text(chip),
       spinner: chip.querySelector('.atc-tool-spinner') !== null,
     }));
+  const summary = () =>
+    element.querySelector<HTMLButtonElement>('[data-testid="tool-summary"]');
 
   fixture.componentRef.setInput('calls', [find, highlight]);
   fixture.componentRef.setInput('busy', true);
   fixture.detectChanges();
-  const running = chips();
+  const running = live();
+  const before = summary();
   fixture.componentRef.setInput('calls', [
-    find,
+    { ...find, status: 'done', result: { status: 'fulfilled' } },
     { ...highlight, status: 'done', result: { status: 'rejected' } },
   ]);
-  fixture.detectChanges();
-  const outOfOrder = chips();
   fixture.componentRef.setInput('busy', false);
   fixture.detectChanges();
-  const settled = chips();
+  const collapsed = summary()?.getAttribute('aria-expanded');
+  summary()?.click();
+  fixture.detectChanges();
+  const steps = [...element.querySelectorAll('[data-testid="tool-step"]')].map(
+    (step) => [step.getAttribute('data-state'), text(step)],
+  );
 
   expect(running).toEqual([
-    {
-      state: 'running',
-      text: 'findAircraft · approaching KSEA',
-      spinner: true,
-    },
-    {
-      state: 'running',
-      text: 'highlightAircraft · 3 aircraft',
-      spinner: true,
-    },
+    { text: 'Finding aircraft · approaching KSEA', spinner: true },
+    { text: 'Highlighting 3 aircraft', spinner: true },
   ]);
-  expect(outOfOrder.map((chip) => chip.state)).toEqual(['running', 'failed']);
-  expect(outOfOrder[1]?.spinner).toBe(false);
-  expect(settled.map((chip) => [chip.state, chip.spinner])).toEqual([
-    ['stopped', false],
-    ['failed', false],
+  expect(before).toBeNull();
+  expect(live()).toEqual([]);
+  expect(text(summary())).toBe('Searched traffic, 1 failed');
+  expect(collapsed).toBe('false');
+  expect(summary()?.getAttribute('aria-expanded')).toBe('true');
+  expect(steps).toEqual([
+    ['done', 'Finding aircraft · approaching KSEA'],
+    ['failed', 'Highlighting 3 aircraft · failed'],
   ]);
 });
 
@@ -259,7 +256,7 @@ test('Enter sends the trimmed draft, clears the input and keeps focus', () => {
   fixture.destroy();
 });
 
-test('consecutive tool calls render as one chip row in a polite live region', () => {
+test('consecutive tool calls fold into one row in a polite live region', () => {
   setup();
   const fixture = TestBed.createComponent(TranscriptComponent);
   const items = transcriptItems([
@@ -283,11 +280,14 @@ test('consecutive tool calls render as one chip row in a polite live region', ()
   const list = element.querySelector('ol');
 
   expect(element.querySelectorAll('atc-tool-chips')).toHaveLength(1);
+  expect(text(element.querySelector('[data-testid="tool-summary"]'))).toBe(
+    'Searched traffic',
+  );
   expect(
     [...element.querySelectorAll('[data-testid="tool-chip"]')].map((chip) =>
-      chip.getAttribute('data-state'),
+      text(chip),
     ),
-  ).toEqual(['done', 'running']);
+  ).toEqual(['Clearing the highlight']);
   expect(list?.getAttribute('aria-live')).toBe('polite');
   expect(list?.getAttribute('aria-busy')).toBe('true');
 });

@@ -327,16 +327,19 @@ test('pressing / focuses the composer', async ({ page }, testInfo) => {
   await expect(input).toHaveValue('');
 });
 
-test('shows a tool chip when the assistant calls a tool', async ({
+test('folds tool calls into a summary that expands to every step', async ({
   page,
 }, testInfo) => {
   await open(page, testInfo.project.name);
 
   await page.getByRole('button', { name: STARTER_PROMPTS[2] }).click();
 
-  const chip = page.getByTestId('tool-chip').first();
-  await expect(chip).toBeVisible();
-  await expect(chip).toContainText('findAircraft');
+  const summary = page.getByTestId('tool-summary');
+  await expect(summary).toHaveText('Searched traffic');
+  await summary.click();
+  await expect(page.getByTestId('tool-step')).toHaveText([
+    'Finding aircraft · sorted by altitude',
+  ]);
 });
 
 test('follows an aircraft on the map', async ({ page }, testInfo) => {
