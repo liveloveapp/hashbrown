@@ -116,8 +116,11 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  server.close();
-  await mock.stop();
+  server?.closeAllConnections();
+  await new Promise((resolve) =>
+    server ? server.close(resolve) : resolve(undefined),
+  );
+  await mock?.stop();
 });
 
 async function open(page: Page, framework: string): Promise<void> {
@@ -130,7 +133,7 @@ async function open(page: Page, framework: string): Promise<void> {
     (window as unknown as { __atcCardHexes: string[] }).__atcCardHexes = seen;
     new MutationObserver(() => {
       for (const card of document.querySelectorAll(
-        '[data-testid="flight-card"],[data-testid="aircraft-compare"] [data-hex]',
+        '[data-testid="flight-card"],[data-testid="arrivals-row"],[data-testid="aircraft-compare"] [data-hex]',
       )) {
         seen.push(card.getAttribute('data-hex') ?? '');
       }
@@ -190,6 +193,7 @@ test("shows O'Hare arrivals and highlights them on the map", async ({
       page.locator(`.atc-plane[data-hex="${row.hex}"]`),
     ).not.toHaveClass(/is-dimmed/);
   }
+  await expectOnlyCompleteIds(page);
 });
 
 test('compares the highest and the fastest aircraft', async ({
