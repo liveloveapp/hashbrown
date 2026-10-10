@@ -129,7 +129,7 @@ test('the aircraft handler proxies adsb.lol, strips owner data and sets CDN cach
     createAircraftHandler({ fetchFn, now: () => 7 }),
   );
 
-  const response = await fetch(`${url}/api/aircraft?area=ord`);
+  const response = await fetch(`${url}/api/aircraft?area=pnw`);
   const body = await response.json();
 
   expect(response.status).toBe(200);
@@ -137,7 +137,7 @@ test('the aircraft handler proxies adsb.lol, strips owner data and sets CDN cach
     'public, s-maxage=3, stale-while-revalidate=30',
   );
   expect(String(fetchFn.mock.calls[0][0])).toBe(
-    'https://api.adsb.lol/v2/point/41.9786/-87.9048/60',
+    'https://api.adsb.lol/v2/point/44.0946/-121.2002/250',
   );
   expect(body.at).toBe(7);
   expect(JSON.stringify(body)).not.toContain('Owner');
@@ -154,8 +154,8 @@ test('the aircraft handler rejects unknown areas and reports upstream failures a
   const b = await listen(createAircraftHandler({ fetchFn: garbage }));
 
   const unknown = await fetch(`${a.url}/api/aircraft?area=lax`);
-  const failed = await fetch(`${a.url}/api/aircraft?area=ord`);
-  const malformed = await fetch(`${b.url}/api/aircraft?area=ord`);
+  const failed = await fetch(`${a.url}/api/aircraft?area=pnw`);
+  const malformed = await fetch(`${b.url}/api/aircraft?area=pnw`);
 
   expect(unknown.status).toBe(400);
   expect([failed.status, malformed.status]).toEqual([502, 502]);

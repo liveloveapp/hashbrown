@@ -104,11 +104,11 @@ test('the live loader requests the area and validates the response', async () =>
     Response.json({ error: 'x' }, { status: 502 }),
   );
 
-  const loaded = await createLiveLoader('ord', fetchFn)();
+  const loaded = await createLiveLoader('pnw', fetchFn)();
 
   expect(loaded).toEqual(snapshot);
-  expect(String(fetchFn.mock.calls[0][0])).toBe('/api/aircraft?area=ord');
-  await expect(createLiveLoader('ord', failing)()).rejects.toThrow(
+  expect(String(fetchFn.mock.calls[0][0])).toBe('/api/aircraft?area=pnw');
+  await expect(createLiveLoader('pnw', failing)()).rejects.toThrow(
     'Aircraft feed returned 502',
   );
 });

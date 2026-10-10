@@ -7,7 +7,7 @@ meta:
 
 # atc Example
 
-atc is a live map of airline traffic around Chicago O'Hare. Ask about the planes you
+atc is a live map of airline traffic over the Pacific Northwest. Ask about the planes you
 see, and the answer renders as the app's own components: flight cards, an arrivals board
 and side-by-side comparisons. The cards keep updating after the answer finishes, and the
 assistant can highlight and follow aircraft on the map.

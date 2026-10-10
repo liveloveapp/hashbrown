@@ -11,7 +11,7 @@ interface Sent {
 /** Calls the handler with a fake GET request and collects the response. */
 async function get(
   handler: ReturnType<typeof createAircraftHandler>,
-  area = 'ord',
+  area = 'pnw',
 ): Promise<Sent> {
   const sent: Partial<Sent> = {};
   const res = {

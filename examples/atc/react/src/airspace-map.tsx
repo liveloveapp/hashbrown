@@ -15,7 +15,7 @@ export function AirspaceMap() {
       void createAirspaceMap({
         element: element.current,
         store,
-        area: AREAS.ord,
+        area: AREAS.pnw,
         signal: controller.signal,
       }).then((created) => {
         if (controller.signal.aborted) {

@@ -156,7 +156,7 @@ export function startAtcFeed(options: {
   } else {
     feed = createPollingFeed({
       store,
-      load: createLiveLoader('ord', fetchFn),
+      load: createLiveLoader('pnw', fetchFn),
       intervalMs: tickMs,
       mode: 'live',
     });

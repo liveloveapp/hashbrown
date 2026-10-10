@@ -8,8 +8,8 @@ function plane(hex: string, overrides: Partial<Aircraft> = {}): Aircraft {
     hex,
     callsign: 'UAL100',
     typeCode: 'B738',
-    lat: 41.9786,
-    lon: -87.9048,
+    lat: 44.0946,
+    lon: -121.2002,
     altitudeFt: 30000,
     onGround: false,
     groundSpeedKt: 450,
@@ -39,7 +39,7 @@ const state = applySnapshot(INITIAL_STATE, {
       altitudeFt: 5000,
       groundSpeedKt: 200,
       verticalRateFpm: -900,
-      lat: 42.1,
+      lat: 44.2,
     }),
     plane('cccccc', {
       callsign: 'SWA300',
@@ -88,7 +88,7 @@ test('findAircraft filters by altitude band and approach, and clamps the limit',
     minAltitudeFt: 10000,
     maxAltitudeFt: 20000,
   }).map((row) => row.hex);
-  const approaching = findAircraft(state, { ...any, approaching: 'ORD' }).map(
+  const approaching = findAircraft(state, { ...any, approaching: 'RDM' }).map(
     (row) => row.hex,
   );
   const none = findAircraft(state, { ...any, limit: 0 }).length;

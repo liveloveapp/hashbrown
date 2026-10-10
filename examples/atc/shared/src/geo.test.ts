@@ -7,8 +7,8 @@ const base: Aircraft = {
   hex: 'a1b2c3',
   callsign: 'UAL1',
   typeCode: 'B738',
-  lat: 42.1,
-  lon: -87.9,
+  lat: 47.5716,
+  lon: -122.3088,
   altitudeFt: 6000,
   onGround: false,
   groundSpeedKt: 240,
@@ -17,12 +17,12 @@ const base: Aircraft = {
 };
 
 test('distanceNm measures great-circle distance in nautical miles', () => {
-  const ord = AIRPORTS.ORD;
-  const mdw = AIRPORTS.MDW;
+  const sea = AIRPORTS.SEA;
+  const pdx = AIRPORTS.PDX;
 
-  const distance = distanceNm(ord, mdw);
+  const distance = distanceNm(sea, pdx);
 
-  expect(distance).toBeCloseTo(13.4, 0);
+  expect(distance).toBeCloseTo(112.4, 0);
 });
 
 test('etaMinutes rounds up and needs a positive ground speed', () => {
@@ -32,15 +32,15 @@ test('etaMinutes rounds up and needs a positive ground speed', () => {
 });
 
 test('isApproaching requires near, descending, low and airborne', () => {
-  const ord = AIRPORTS.ORD;
+  const sea = AIRPORTS.SEA;
 
   const results = [
-    isApproaching(base, ord),
-    isApproaching({ ...base, verticalRateFpm: 0 }, ord),
-    isApproaching({ ...base, verticalRateFpm: null }, ord),
-    isApproaching({ ...base, altitudeFt: 15000 }, ord),
-    isApproaching({ ...base, lat: 43.5 }, ord),
-    isApproaching({ ...base, onGround: true }, ord),
+    isApproaching(base, sea),
+    isApproaching({ ...base, verticalRateFpm: 0 }, sea),
+    isApproaching({ ...base, verticalRateFpm: null }, sea),
+    isApproaching({ ...base, altitudeFt: 15000 }, sea),
+    isApproaching({ ...base, lat: 48.5 }, sea),
+    isApproaching({ ...base, onGround: true }, sea),
   ];
 
   expect(results).toEqual([true, false, false, false, false, false]);

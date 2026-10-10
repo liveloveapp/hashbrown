@@ -26,8 +26,11 @@ export const arrivalsBoardContract = {
   props: {
     title: s.streaming.string('A short title for the board'),
     airport: s.enumeration('The airport the aircraft are approaching', [
-      'ORD',
-      'MDW',
+      'SEA',
+      'PDX',
+      'BOI',
+      'GEG',
+      'RDM',
     ]),
     hexes: s.streaming.array(
       'Aircraft hex codes from findAircraft, nearest first',
@@ -54,7 +57,7 @@ export const aircraftCompareContract = {
 };
 
 /** The system prompt. The server pins it; clients cannot change it. */
-export const SYSTEM_PROMPT = `You are the assistant in atc, a live map of airline traffic around Chicago O'Hare. Answer questions about the aircraft on the map.
+export const SYSTEM_PROMPT = `You are the assistant in atc, a live map of airline traffic over the Pacific Northwest. Answer questions about the aircraft on the map.
 
 Rules:
 - Use tools for every fact and number. Never estimate altitudes, speeds, distances or times yourself.
@@ -71,7 +74,7 @@ Rules:
 /** Starter prompts shown before the first message. */
 export const STARTER_PROMPTS: readonly string[] = [
   "What's the plane I selected?",
-  "Show me everything landing at O'Hare.",
+  'Show me everything landing at Seattle.',
   "What's the highest plane right now? And the fastest?",
   'Follow the fastest airliner.',
 ];

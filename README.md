@@ -248,10 +248,10 @@ generative UI and tool calling.
 
 ## See It in a Real App
 
-[atc](examples/atc/README.md) is a live map of airline traffic around Chicago
-O'Hare with an assistant that answers in your own components: flight cards,
-arrivals boards and aircraft comparisons. It is built twice, in Angular and
-React, from one framework-free core. The aircraft data is real, from
+[atc](examples/atc/README.md) is a live map of airline traffic over the
+Pacific Northwest with an assistant that answers in your own components:
+flight cards, arrivals boards and aircraft comparisons. It is built twice, in
+Angular and React, from one framework-free core. The aircraft data is real, from
 [adsb.lol](https://adsb.lol).
 
 [Try the app](https://atc.hashbrown.dev) or run it locally. Put

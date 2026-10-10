@@ -13,8 +13,8 @@ const plane: Aircraft = {
   hex: 'aaaaaa',
   callsign: 'UAL100',
   typeCode: 'B39M',
-  lat: 42.1,
-  lon: -87.9048,
+  lat: 47.5716,
+  lon: -122.3088,
   altitudeFt: 5000,
   onGround: false,
   groundSpeedKt: 240,
@@ -70,9 +70,9 @@ test('routeText distinguishes not looked up, missing and found', () => {
       city: 'San Francisco',
     },
     {
-      iata: 'ORD',
-      name: "Chicago O'Hare International Airport",
-      city: 'Chicago',
+      iata: 'SEA',
+      name: 'Seattle–Tacoma International Airport',
+      city: 'Seattle',
     },
   ];
   const routes = new Map([
@@ -87,7 +87,7 @@ test('routeText distinguishes not looked up, missing and found', () => {
   ];
 
   expect(texts).toEqual([
-    'SFO → ORD · scheduled route',
+    'SFO → SEA · scheduled route',
     'Route unavailable',
     null,
   ]);
@@ -96,7 +96,7 @@ test('routeText distinguishes not looked up, missing and found', () => {
 test('arrivalsRows computes distance and ETA to the airport', () => {
   const state = applySnapshot(INITIAL_STATE, { at: 1, aircraft: [plane] });
 
-  const rows = arrivalsRows(state, 'ORD', ['aaaaaa', 'bbbbbb']);
+  const rows = arrivalsRows(state, 'SEA', ['aaaaaa', 'bbbbbb']);
 
   expect(rows).toEqual([
     {

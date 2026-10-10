@@ -12,7 +12,7 @@ test('an aborted signal resolves to a no-op handle and creates no map', async ()
   const handle = await createAirspaceMap({
     element,
     store: createAtcStore(),
-    area: AREAS.ord,
+    area: AREAS.pnw,
     signal: controller.signal,
   });
   handle.destroy();

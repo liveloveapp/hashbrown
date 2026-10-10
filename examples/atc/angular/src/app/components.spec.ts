@@ -12,8 +12,8 @@ const plane: Aircraft = {
   hex: 'aaaaaa',
   callsign: 'UAL100',
   typeCode: 'B39M',
-  lat: 42.1,
-  lon: -87.9048,
+  lat: 47.5716,
+  lon: -122.3088,
   altitudeFt: 5000,
   onGround: false,
   groundSpeedKt: 240,
@@ -93,7 +93,7 @@ test('the arrivals board renders one row per complete ID', () => {
   const fixture = TestBed.createComponent(ArrivalsBoardComponent);
 
   fixture.componentRef.setInput('title', 'Arriving');
-  fixture.componentRef.setInput('airport', 'ORD');
+  fixture.componentRef.setInput('airport', 'SEA');
   fixture.componentRef.setInput('hexes', ['aaaaaa', 'bbbbbb']);
   fixture.detectChanges();
 

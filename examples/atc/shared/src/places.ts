@@ -5,7 +5,7 @@ export interface LatLon {
 }
 
 /** Airports the assistant can ask about. */
-export type AirportCode = 'ORD' | 'MDW';
+export type AirportCode = 'SEA' | 'PDX' | 'BOI' | 'GEG' | 'RDM';
 
 /** An airport with its reference point. */
 export interface Airport extends LatLon {
@@ -14,16 +14,25 @@ export interface Airport extends LatLon {
 }
 
 /** The airport codes, in display order. */
-export const AIRPORT_CODES: readonly AirportCode[] = ['ORD', 'MDW'];
+export const AIRPORT_CODES: readonly AirportCode[] = [
+  'SEA',
+  'PDX',
+  'BOI',
+  'GEG',
+  'RDM',
+];
 
 /** Airport reference points. */
 export const AIRPORTS: Readonly<Record<AirportCode, Airport>> = {
-  ORD: { code: 'ORD', name: "Chicago O'Hare", lat: 41.9786, lon: -87.9048 },
-  MDW: { code: 'MDW', name: 'Chicago Midway', lat: 41.7868, lon: -87.7522 },
+  SEA: { code: 'SEA', name: 'Seattle–Tacoma', lat: 47.4502, lon: -122.3088 },
+  PDX: { code: 'PDX', name: 'Portland', lat: 45.5887, lon: -122.5975 },
+  BOI: { code: 'BOI', name: 'Boise', lat: 43.5644, lon: -116.2228 },
+  GEG: { code: 'GEG', name: 'Spokane', lat: 47.6199, lon: -117.5338 },
+  RDM: { code: 'RDM', name: 'Redmond/Bend', lat: 44.2541, lon: -121.15 },
 };
 
 /** Areas the server may fetch. */
-export type AreaId = 'ord';
+export type AreaId = 'pnw';
 
 /** A map area: its centre, fetch radius and initial zoom. */
 export interface Area extends LatLon {
@@ -33,15 +42,18 @@ export interface Area extends LatLon {
   readonly zoom: number;
 }
 
-/** The allowlisted areas. */
+/**
+ * The allowlisted areas. `pnw` is centred on Bend Municipal (KBDN) with
+ * adsb.lol's maximum radius, 250 nm.
+ */
 export const AREAS: Readonly<Record<AreaId, Area>> = {
-  ord: {
-    id: 'ord',
-    label: "Chicago O'Hare",
-    lat: 41.9786,
-    lon: -87.9048,
-    radiusNm: 60,
-    zoom: 9,
+  pnw: {
+    id: 'pnw',
+    label: 'Pacific Northwest',
+    lat: 44.0946,
+    lon: -121.2002,
+    radiusNm: 250,
+    zoom: 6,
   },
 };
 

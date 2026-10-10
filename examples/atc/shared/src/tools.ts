@@ -93,7 +93,7 @@ const SORTS: Record<
 export function findAircraft(
   state: AtcState,
   input: FindAircraftInput,
-  area: Area = AREAS.ord,
+  area: Area = AREAS.pnw,
 ): AircraftRow[] {
   const airline = text(input.airline);
   const type = text(input.typeCode);
@@ -166,7 +166,7 @@ export function createAtcTools(context: AtcToolContext) {
             ? undefined
             : store.getState().aircraft.get(selectedHex);
 
-        return selected === undefined ? null : toRow(selected, AREAS.ord);
+        return selected === undefined ? null : toRow(selected, AREAS.pnw);
       },
     },
     lookupRoute: {
