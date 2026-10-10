@@ -40,6 +40,13 @@ export function exactLayerPoint(map: LeafletMap, position: LatLon): Point {
 }
 
 /**
+ * How old the last frame may be, in ms, for a new fix to start from its
+ * timestamp rather than the clock. A few frames at 60 Hz; any longer gap means
+ * frames stopped (a hidden tab), not that one is mid-draw.
+ */
+const RECENT_FRAME_MS = 100;
+
+/**
  * Creates the animation loop. Between snapshots each plane is dead-reckoned
  * along its track and turned towards it ({@link nextMotion}); under reduced
  * motion it jumps to its fix instead. One `requestAnimationFrame` loop draws
@@ -50,7 +57,8 @@ export function exactLayerPoint(map: LeafletMap, position: LatLon): Point {
  * ({@link MotionLoop.syncMarkers}). `onFrame` runs after markers are drawn
  * on each frame (the map uses it to keep a followed plane centred and the
  * detail card beside its plane). Frames pause while a zoom animates, and the
- * browser pauses them in a hidden tab; motion is computed from the clock, so
+ * browser pauses them in a hidden tab; motion is computed from the clock, and
+ * a fix that arrives while frames are paused starts from the clock, so
  * planes resume where they should be.
  */
 export function createMotionLoop(options: {
@@ -70,7 +78,10 @@ export function createMotionLoop(options: {
    * The last frame's timestamp while the loop runs. A fix often lands after
    * a frame began but before it drew; easing from `performance.now()` would
    * then put the plane's start after that frame's timestamp, and it would
-   * stand still for a frame. Easing from the last frame keeps it moving.
+   * stand still for a frame. Easing from the last frame keeps it moving, but
+   * only while that frame is recent ({@link RECENT_FRAME_MS}): in a hidden
+   * tab frames stop while fixes keep arriving, and a stale frame time would
+   * date every fix seconds in the past.
    */
   let lastFrameAt: number | null = null;
 
@@ -116,10 +127,13 @@ export function createMotionLoop(options: {
 
   return {
     onSnapshot(state) {
+      const clock = performance.now();
       const now =
-        frame !== null && lastFrameAt !== null
+        frame !== null &&
+        lastFrameAt !== null &&
+        clock - lastFrameAt < RECENT_FRAME_MS
           ? lastFrameAt
-          : performance.now();
+          : clock;
       const reduced = prefersReducedMotion();
       const next = new Map<string, Motion>();
       for (const aircraft of state.aircraft.values()) {

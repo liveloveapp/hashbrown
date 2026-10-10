@@ -303,3 +303,21 @@ test('the map marks itself ready once the first snapshot is drawn', async () => 
   expect(map.element.hasAttribute('data-ready')).toBe(true);
   map.cleanup();
 });
+
+test('a fix that lands after seconds without frames (a hidden tab) starts from its own time', async () => {
+  const map = await mount();
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+  for (let time = 16; time <= 2992; time += 16) {
+    map.runFrames(time);
+  }
+  map.setClock(45_000);
+
+  map.store.applySnapshot({ at: 2, aircraft: [{ ...plane, lon: -118 }] });
+  map.runFrames(46_000);
+  const oneSecondOn = map.markerPosition();
+  map.runFrames(50_000);
+
+  expect(map.markerPosition()).not.toBe(oneSecondOn);
+  expect(map.frames.size).toBe(1);
+  map.cleanup();
+});
