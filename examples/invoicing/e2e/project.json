@@ -7,11 +7,7 @@
       "executor": "nx:run-commands",
       "options": {
         "parallel": false,
-        "commands": [
-          "tsc --noEmit -p examples/invoicing/e2e/tsconfig.json",
-          "tsc --noEmit -p examples/invoicing/e2e/conformance/tsconfig.playwright.json",
-          "tsc --noEmit -p examples/invoicing/e2e/conformance/tsconfig.spec.json"
-        ]
+        "commands": ["tsc --noEmit -p examples/invoicing/e2e/tsconfig.json"]
       }
     },
     "lint": {
@@ -60,55 +56,6 @@
       },
       "cache": false
     },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": [
-        "{workspaceRoot}/coverage/examples/invoicing/e2e/conformance"
-      ],
-      "options": {
-        "jestConfig": "examples/invoicing/e2e/conformance/jest.config.ts",
-        "passWithNoTests": false
-      }
-    },
-    "conformance-e2e": {
-      "executor": "nx:run-commands",
-      "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
-          "target": "build"
-        }
-      ],
-      "options": {
-        "command": "playwright test --config examples/invoicing/e2e/conformance.playwright.config.ts"
-      }
-    },
-    "example-e2e": {
-      "executor": "nx:run-commands",
-      "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
-          "target": "build"
-        }
-      ],
-      "options": {
-        "command": "playwright test --config examples/invoicing/e2e/all.playwright.config.ts"
-      }
-    },
-    "provider-e2e": {
-      "executor": "nx:run-commands",
-      "cache": false,
-      "dependsOn": [
-        {
-          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
-          "target": "build"
-        }
-      ],
-      "options": {
-        "command": "playwright test --config examples/invoicing/e2e/provider.playwright.config.ts"
-      }
-    },
     "perf-live": {
       "executor": "nx:run-commands",
       "options": {
@@ -129,13 +76,5 @@
       }
     }
   },
-  "implicitDependencies": [
-    "core",
-    "angular",
-    "react",
-    "testing",
-    "runtime-smoke-angular",
-    "runtime-smoke-react",
-    "openai"
-  ]
+  "implicitDependencies": ["core", "angular", "react", "testing", "openai"]
 }

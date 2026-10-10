@@ -1,5 +1,5 @@
 {
-  "extends": "../../../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
     "noEmit": true,
@@ -9,11 +9,12 @@
     "ignoreDeprecations": "6.0"
   },
   "include": [
-    "../conformance.playwright.config.ts",
+    "all.playwright.config.ts",
+    "conformance.playwright.config.ts",
+    "provider.playwright.config.ts",
     "harness/**/*.ts",
     "specs/**/*.ts",
-    "../provider.playwright.config.ts",
-    "../provider/native-ui.spec.ts"
+    "provider/native-ui.spec.ts"
   ],
   "exclude": ["harness/**/*.spec.ts"]
 }

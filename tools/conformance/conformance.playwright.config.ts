@@ -1,12 +1,12 @@
 import { defineConfig } from '@playwright/test';
 import { resolve } from 'node:path';
 
-const repoRoot = resolve(__dirname, '../../..');
+const repoRoot = resolve(__dirname, '../..');
 const angularPort = Number(process.env['RUNTIME_SMOKE_ANGULAR_PORT'] ?? 4411);
 const reactPort = Number(process.env['RUNTIME_SMOKE_REACT_PORT'] ?? 4412);
 
 export default defineConfig({
-  testDir: resolve(__dirname, 'conformance/specs'),
+  testDir: resolve(__dirname, 'specs'),
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -14,7 +14,7 @@ export default defineConfig({
   expect: {
     timeout: 5_000,
   },
-  outputDir: resolve(repoRoot, 'test-results/invoicing/conformance'),
+  outputDir: resolve(repoRoot, 'test-results/conformance/conformance'),
   reporter: [
     ['list'],
     [
@@ -22,7 +22,7 @@ export default defineConfig({
       {
         outputFolder: resolve(
           repoRoot,
-          'playwright-report/invoicing/conformance',
+          'playwright-report/conformance/conformance',
         ),
         open: 'never',
       },

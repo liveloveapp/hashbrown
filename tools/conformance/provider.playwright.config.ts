@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 import { resolve } from 'node:path';
 
-const repoRoot = resolve(__dirname, '../../..');
+const repoRoot = resolve(__dirname, '../..');
 const angularPort = Number(process.env['NATIVE_PROVIDER_ANGULAR_PORT'] ?? 4421);
 const reactPort = Number(process.env['NATIVE_PROVIDER_REACT_PORT'] ?? 4422);
 
@@ -15,13 +15,16 @@ export default defineConfig({
   expect: {
     timeout: 5_000,
   },
-  outputDir: resolve(repoRoot, 'test-results/invoicing/provider'),
+  outputDir: resolve(repoRoot, 'test-results/conformance/provider'),
   reporter: [
     ['list'],
     [
       'html',
       {
-        outputFolder: resolve(repoRoot, 'playwright-report/invoicing/provider'),
+        outputFolder: resolve(
+          repoRoot,
+          'playwright-report/conformance/provider',
+        ),
         open: 'never',
       },
     ],

@@ -1,14 +1,14 @@
 {
   "name": "runtime-smoke-react",
-  "$schema": "../../../../../node_modules/nx/schemas/project-schema.json",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "sourceRoot": "examples/invoicing/e2e/hosts/react/src",
+  "sourceRoot": "tools/conformance/hosts/react/src",
   "implicitDependencies": ["core", "react"],
   "targets": {
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "examples/invoicing/e2e/hosts/react",
+        "cwd": "tools/conformance/hosts/react",
         "command": "eslint ."
       }
     },
@@ -17,8 +17,8 @@
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
-        "configFile": "examples/invoicing/e2e/hosts/react/vite.config.ts",
-        "outputPath": "dist/examples/invoicing/e2e/hosts/react"
+        "configFile": "tools/conformance/hosts/react/vite.config.ts",
+        "outputPath": "dist/tools/conformance/hosts/react"
       },
       "configurations": {
         "production": {
@@ -30,7 +30,7 @@
       "executor": "@nx/web:file-server",
       "options": {
         "buildTarget": "runtime-smoke-react:build:production",
-        "staticFilePath": "dist/examples/invoicing/e2e/hosts/react",
+        "staticFilePath": "dist/tools/conformance/hosts/react",
         "host": "127.0.0.1",
         "port": 4312,
         "spa": true
@@ -39,7 +39,7 @@
     "serve-built": {
       "executor": "@nx/web:file-server",
       "options": {
-        "staticFilePath": "dist/examples/invoicing/e2e/hosts/react",
+        "staticFilePath": "dist/tools/conformance/hosts/react",
         "watch": false,
         "host": "127.0.0.1",
         "port": 4312,

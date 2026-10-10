@@ -4,10 +4,10 @@ import { once } from 'node:events';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createApi } from './fixtures/node-route';
-import type { HashbrownRunInput } from '../conformance/harness/agui';
+import type { HashbrownRunInput } from '../harness/agui';
 
 for (const toolRound of [false, true]) {
-  test(`${toolRound ? 'selects a payment and continues' : 'renders trusted UI'} through the canonical native-provider server and OpenAI adapter`, async ({
+  test(`${toolRound ? 'selects an item and continues' : 'renders trusted UI'} through the canonical native-provider server and OpenAI adapter`, async ({
     page,
   }, testInfo) => {
     const angular = testInfo.project.name === 'angular';
@@ -37,8 +37,8 @@ for (const toolRound of [false, true]) {
         toolCalls: [
           {
             id: 'sample-control',
-            name: 'selectPayment',
-            arguments: { paymentId: 'payment-northstar-exact' },
+            name: 'selectItem',
+            arguments: { itemId: 'item-fixture-1' },
           },
         ],
       });
@@ -84,8 +84,8 @@ for (const toolRound of [false, true]) {
       const response = await responsePromise;
       if (toolRound) {
         await expect.poll(() => requests.length).toBe(2);
-        await expect(page.getByTestId('selected-payment')).toHaveText(
-          'payment-northstar-exact',
+        await expect(page.getByTestId('selected-item')).toHaveText(
+          'item-fixture-1',
         );
         await expect(page.getByTestId('tool-count')).toHaveText('1');
         await expect(page.getByTestId('status-card')).toHaveCount(0);

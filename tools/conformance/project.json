@@ -1,0 +1,80 @@
+{
+  "name": "conformance",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "tools/conformance",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "parallel": false,
+        "commands": [
+          "tsc --noEmit -p tools/conformance/tsconfig.playwright.json",
+          "tsc --noEmit -p tools/conformance/tsconfig.spec.json"
+        ]
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint tools/conformance --ignore-pattern 'tools/conformance/hosts/**'"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/tools/conformance"],
+      "options": {
+        "jestConfig": "tools/conformance/jest.config.ts",
+        "passWithNoTests": false
+      }
+    },
+    "conformance-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/conformance.playwright.config.ts"
+      }
+    },
+    "provider-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/provider.playwright.config.ts"
+      }
+    },
+    "example-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/all.playwright.config.ts"
+      }
+    }
+  },
+  "implicitDependencies": [
+    "core",
+    "angular",
+    "react",
+    "testing",
+    "openai",
+    "runtime-smoke-angular",
+    "runtime-smoke-react"
+  ]
+}

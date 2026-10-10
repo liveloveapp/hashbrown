@@ -84,7 +84,7 @@ const components = [
       <div data-testid="tool-count">{{ toolCount() }}</div>
       @if (native) {
         <div data-testid="selection-grid" style="display: grid">
-          <span data-testid="selected-payment">{{ selectedPayment() }}</span>
+          <span data-testid="selected-item">{{ selectedItem() }}</span>
         </div>
         @if (chat.isLoading()) {
           <progress data-testid="native-loading"></progress>
@@ -98,26 +98,26 @@ const components = [
 export class UiSmoke {
   protected readonly prompt = signal('');
   protected readonly submitted = signal('');
-  protected readonly selectedPayment = signal('');
+  protected readonly selectedItem = signal('');
   protected readonly toolCount = signal(0);
   protected readonly native =
     new URL(globalThis.location.href).searchParams.get('native') === 'true';
-  private readonly selectPayment = createTool({
-    name: 'selectPayment',
-    description: 'Select a simulated payment without allocating it.',
-    schema: s.object('Payment selection', {
-      paymentId: s.string('Payment ID'),
+  private readonly selectItem = createTool({
+    name: 'selectItem',
+    description: 'Select a fixture item.',
+    schema: s.object('Item selection', {
+      itemId: s.string('Item ID'),
     }),
-    handler: async ({ paymentId }) => {
-      this.selectedPayment.set(paymentId);
+    handler: async ({ itemId }) => {
+      this.selectedItem.set(itemId);
       this.toolCount.update((count) => count + 1);
-      return { paymentId };
+      return { itemId };
     },
   });
   protected readonly chat = uiChatResource({
     system: 'Runtime smoke system prompt.',
     components,
-    tools: this.native ? [this.selectPayment] : [],
+    tools: this.native ? [this.selectItem] : [],
   });
   protected readonly assistantMessages = computed(() =>
     this.chat.status() === 'error'

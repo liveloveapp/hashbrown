@@ -9,7 +9,7 @@ export default defineConfig({
   build: {
     outDir: resolve(
       __dirname,
-      '../../../../../dist/examples/invoicing/e2e/hosts/react',
+      '../../../../dist/tools/conformance/hosts/react',
     ),
     emptyOutDir: true,
   },

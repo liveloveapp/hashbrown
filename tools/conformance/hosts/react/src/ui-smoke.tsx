@@ -52,20 +52,20 @@ function errorText(error: unknown): string {
 export function UiSmoke() {
   const [prompt, setPrompt] = useState('');
   const [submitted, setSubmitted] = useState('');
-  const [selectedPayment, setSelectedPayment] = useState('');
+  const [selectedItem, setSelectedItem] = useState('');
   const [toolCount, setToolCount] = useState(0);
   const native =
     new URL(globalThis.location.href).searchParams.get('native') === 'true';
-  const selectPayment = useTool({
-    name: 'selectPayment',
-    description: 'Select a simulated payment without allocating it.',
-    schema: s.object('Payment selection', {
-      paymentId: s.string('Payment ID'),
+  const selectItem = useTool({
+    name: 'selectItem',
+    description: 'Select a fixture item.',
+    schema: s.object('Item selection', {
+      itemId: s.string('Item ID'),
     }),
-    handler: async ({ paymentId }) => {
-      setSelectedPayment(paymentId);
+    handler: async ({ itemId }) => {
+      setSelectedItem(itemId);
       setToolCount((count) => count + 1);
-      return { paymentId };
+      return { itemId };
     },
     deps: [],
   });
@@ -80,7 +80,7 @@ export function UiSmoke() {
   } = useUiChat({
     system: 'Runtime smoke system prompt.',
     components,
-    tools: native ? [selectPayment] : [],
+    tools: native ? [selectItem] : [],
   });
 
   function send() {
@@ -115,7 +115,7 @@ export function UiSmoke() {
       <div data-testid="tool-count">{toolCount}</div>
       {native && (
         <div data-testid="selection-grid" style={{ display: 'grid' }}>
-          <span data-testid="selected-payment">{selectedPayment}</span>
+          <span data-testid="selected-item">{selectedItem}</span>
         </div>
       )}
       <div data-testid="structured-answer"></div>
