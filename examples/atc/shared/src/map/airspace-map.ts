@@ -15,6 +15,12 @@ import {
 } from './detail-card';
 import { circleBounds, type FitTarget, fitTarget } from './fit';
 import {
+  createFollowPill,
+  followPillView,
+  type FollowResume,
+  RESUME_MS,
+} from './follow-pill';
+import {
   lerpLatLon,
   shouldTween,
   tweenDurationMs,
@@ -219,6 +225,9 @@ function prefersReducedMotion(): boolean {
  * planes move continuously between updates. New markers, moves over 20 nm and
  * reduced-motion users jump instead. A followed plane is panned with its glide.
  *
+ * While a plane is followed a pill names it with a Stop button; a drag ends
+ * follow mode and the pill offers to resume it for a few seconds.
+ *
  * Hovering a plane, or selecting it, opens one floating detail card beside
  * it that follows its glide and updates in place on each snapshot. Leaving
  * the plane hides the card unless it is selected; Escape (outside text
@@ -312,10 +321,28 @@ export async function createAirspaceMap(options: {
   let detailedHex: string | null = null;
   /** The part of the map not under the phone's bottom sheet. */
   let cardArea: CardSize = { width: 0, height: 0 };
+  /** A plane the user dragged away from, offered back for a few seconds. */
+  let resume: FollowResume | null = null;
+  let resumeTimer: ReturnType<typeof setTimeout> | undefined;
+  const pill = createFollowPill(doc, (view) => {
+    resume = null;
+    store.follow(view.action === 'resume' ? view.hex : null);
+  });
+  element.append(pill.element);
+  L.DomEvent.disableClickPropagation(pill.element);
+  const syncPill = () =>
+    pill.show(followPillView(store.getState(), resume, performance.now()));
   map.on('dragstart', () => {
     programmatic = false;
+    const { followingHex } = store.getState();
+    if (followingHex !== null) {
+      resume = { hex: followingHex, until: performance.now() + RESUME_MS };
+      clearTimeout(resumeTimer);
+      resumeTimer = setTimeout(syncPill, RESUME_MS);
+    }
     store.follow(null);
     store.cancelViewRequest();
+    syncPill();
   });
   map.on('zoomstart', () => {
     zooming = true;
@@ -717,6 +744,7 @@ export async function createAirspaceMap(options: {
       }
     }
     syncCard(state);
+    syncPill();
     syncOutline(state.shownArea);
     if (state.viewRequest !== null && state.viewRequest.seq !== appliedSeq) {
       applyWhenSettled(state);
@@ -770,7 +798,9 @@ export async function createAirspaceMap(options: {
       view?.removeEventListener('resize', onResize);
       view?.visualViewport?.removeEventListener('resize', onResize);
       clearInterval(ticker);
+      clearTimeout(resumeTimer);
       card.element.remove();
+      pill.element.remove();
       if (frame !== null) {
         cancelAnimationFrame(frame);
       }

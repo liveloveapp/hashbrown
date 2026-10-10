@@ -1207,6 +1207,62 @@ input {
   }
 }
 
+/* Follow mode: a pill at the top of the map naming the plane, with Stop. */
+.atc-follow {
+  position: absolute;
+  z-index: 1050;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  padding: 4px 4px 4px 14px;
+  background: var(--atc-surface);
+  border: 1px solid var(--atc-border);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.atc-follow.is-open {
+  display: inline-flex;
+}
+.atc-follow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.atc-follow button {
+  flex: none;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--atc-border);
+  border-radius: 999px;
+  background: var(--atc-surface);
+  color: var(--atc-ink);
+  font-weight: 500;
+  cursor: pointer;
+}
+.atc-follow button:hover {
+  border-color: var(--atc-muted);
+}
+/* A docked detail card takes the top of the map; the pill waits until it closes. */
+.atc-map:has(.atc-detail.is-docked.is-open) .atc-follow {
+  display: none;
+}
+@media (pointer: coarse) {
+  .atc-follow {
+    padding-block: 0;
+  }
+  .atc-follow button {
+    min-height: 44px;
+    margin-block: -1px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .atc-detail,
   .atc-detail.is-open {
