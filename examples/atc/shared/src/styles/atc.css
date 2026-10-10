@@ -101,8 +101,99 @@ button, input { font: inherit; color: inherit; }
 }
 .atc-error { margin: 0 var(--atc-gutter); color: var(--atc-muted); }
 
+/* Workbench: chat panel left, map panel right, on the canvas. The window never scrolls. */
+.atc-workbench {
+  position: fixed; inset: 0; display: grid; gap: var(--atc-gutter); padding: var(--atc-gutter);
+  grid-template-columns: minmax(360px, 400px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr);
+  background: var(--atc-canvas);
+}
+.atc-panel {
+  position: relative; min-width: 0; min-height: 0; overflow: hidden;
+  background: var(--atc-surface); border: 1px solid var(--atc-border); border-radius: var(--atc-radius);
+}
+.atc-chat-panel { display: flex; flex-direction: column; }
+.atc-map-panel { background: var(--atc-map); }
+
+.atc-logo { display: inline-flex; align-items: center; flex: none; color: var(--atc-ink); }
+.atc-logo svg { display: block; }
+.atc-panel-header {
+  flex: none; height: 56px; box-sizing: border-box; display: flex; align-items: center; gap: 10px;
+  padding: 0 16px; border-bottom: 1px solid var(--atc-border);
+}
+.atc-credit { font-size: 12px; color: var(--atc-muted); text-decoration: none; white-space: nowrap; }
+.atc-credit:hover { color: var(--atc-ink); }
+.atc-panel-header-status { margin-left: auto; display: flex; }
+.atc-chip {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  border: 1px solid var(--atc-border); border-radius: 999px; padding: 3px 9px;
+  font-size: 12px; font-weight: 500; color: var(--atc-muted); font-variant-numeric: tabular-nums;
+}
+.atc-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--atc-ink); }
+
+.atc-chat { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.atc-chat-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.atc-chat .atc-transcript { overflow: visible; padding: 16px; gap: 12px; }
+.atc-chat .atc-transcript:empty { display: none; }
+.atc-chat .atc-user { border-radius: 14px 14px 4px 14px; max-width: 80%; }
+.atc-chat .atc-error { margin: 0 16px 16px; }
+.atc-error button, .atc-source {
+  border: 1px solid var(--atc-border); background: var(--atc-surface); border-radius: 999px;
+  padding: 4px 12px; margin-left: 6px; cursor: pointer; color: var(--atc-ink);
+}
+
+.atc-empty { display: flex; flex-direction: column; gap: 16px; padding: 24px 16px 16px; }
+.atc-empty-title { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.3; letter-spacing: -0.02em; }
+.atc-empty .atc-starters { padding: 0; }
+.atc-empty .atc-starters button { font-size: 13px; text-align: left; }
+.atc-empty .atc-source { align-self: flex-start; margin: 0; font-size: 12px; color: var(--atc-muted); text-decoration: none; }
+
+.atc-tool-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.atc-tool-chip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  background: var(--atc-canvas); border-radius: 999px; padding: 4px 10px; font-size: 12px; color: var(--atc-muted);
+}
+.atc-tool-spinner {
+  flex: none; width: 10px; height: 10px; box-sizing: border-box; border-radius: 50%;
+  border: 2px solid var(--atc-border); border-top-color: var(--atc-ink);
+  animation: atc-spin 0.8s linear infinite;
+}
+.atc-tool-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--atc-muted); }
+.atc-tool-chip[data-state='running'] { color: var(--atc-ink); }
+/* Consecutive tool steps read as one list. */
+.atc-chat .atc-transcript > li:has(> atc-tool-chips) + li:has(> atc-tool-chips) { margin-top: -6px; }
+@keyframes atc-spin { to { transform: rotate(360deg); } }
+
+atc-composer { flex: none; display: block; padding: 0 16px 16px; }
+.atc-composer-pill {
+  display: flex; align-items: center; gap: 8px; padding: 5px 5px 5px 16px;
+  border: 1px solid var(--atc-border); border-radius: 999px; background: var(--atc-surface);
+  transition: border-color var(--atc-fast) var(--atc-ease);
+}
+.atc-composer-pill:focus-within { border-color: var(--atc-accent); }
+.atc-composer-pill input { flex: 1; min-width: 0; border: 0; padding: 6px 0; background: transparent; outline: none; }
+.atc-composer-pill input::placeholder { color: var(--atc-muted); }
+.atc-kbd {
+  font-family: var(--atc-mono); font-size: 11px; line-height: 16px; color: var(--atc-muted);
+  border: 1px solid var(--atc-border); border-radius: 6px; padding: 0 5px;
+}
+.atc-composer-pill:focus-within .atc-kbd { display: none; }
+.atc-send {
+  flex: none; width: 32px; height: 32px; display: grid; place-items: center; padding: 0; cursor: pointer;
+  border: 0; border-radius: 50%; background: var(--atc-ink); color: var(--atc-surface);
+  transition: opacity var(--atc-fast) var(--atc-ease);
+}
+.atc-send:disabled { opacity: 0.35; cursor: default; }
+
+/* Until the phone sheet lands, stack chat under the map on narrow screens. */
+@media (max-width: 767px) {
+  .atc-workbench { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 2fr) minmax(0, 3fr); }
+  .atc-chat-panel { order: 2; }
+}
+
 .atc-card { border: 1px solid var(--atc-border); border-radius: var(--atc-radius-row); padding: 10px 12px; background: var(--atc-surface); }
 .atc-card header { display: flex; gap: 8px; align-items: baseline; }
+.atc-card header strong { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.atc-card header span { color: var(--atc-muted); font-size: 13px; }
 .atc-card dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
 .atc-card dt { font-size: 12px; color: var(--atc-muted); }
 .atc-card dd { margin: 0; font-family: var(--atc-mono); font-variant-numeric: tabular-nums; }
@@ -138,7 +229,8 @@ button, input { font: inherit; color: inherit; }
 @keyframes atc-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .atc-shell, .atc-shell *, .atc-shell *::before, .atc-shell *::after {
+  .atc-shell, .atc-shell *, .atc-shell *::before, .atc-shell *::after,
+  .atc-workbench, .atc-workbench *, .atc-workbench *::before, .atc-workbench *::after {
     animation: none !important;
     transition: none !important;
   }

@@ -5,14 +5,12 @@ import {
   fetchRoute,
   flightCardContract,
   messageText,
-  STARTER_PROMPTS,
 } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
   inject,
   linkedSignal,
-  signal,
 } from '@angular/core';
 import {
   createTool,
@@ -34,7 +32,10 @@ import {
   FlightCardComponent,
   FlightCardFallbackComponent,
 } from './components/flight-card';
+import { ComposerComponent } from './composer';
+import { EmptyStateComponent } from './empty-state';
 import { ATC_STORE } from './store';
+import { ToolChipsComponent } from './tool-chips';
 
 // 1. Expose your components. The model can only render these, and Skillet
 //    validates every input. IDs never stream, so a card never shows the wrong plane.
@@ -63,47 +64,54 @@ const components = [
   }),
 ];
 
-/** The overlay chat: components, browser-side tools and the streaming answer. */
+/** The chat panel: components, browser-side tools and the streaming answer. */
 @Component({
   selector: 'atc-assistant',
-  imports: [RenderMessageComponent],
+  imports: [
+    ComposerComponent,
+    EmptyStateComponent,
+    RenderMessageComponent,
+    ToolChipsComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'atc-assistant', role: 'region', 'aria-label': 'Assistant' },
+  host: { class: 'atc-chat', role: 'region', 'aria-label': 'Assistant' },
   template: `
-    <ol class="atc-transcript">
-      @for (message of messages(); track $index) {
-        @if (message.role === 'user') {
-          <li class="atc-user">{{ text(message.content) }}</li>
-        } @else if (
-          message.role === 'assistant' && message.content?.ui?.length
-        ) {
-          <li><hb-render-message [message]="message" /></li>
-        }
+    <div class="atc-chat-body">
+      @if (messages().length === 0 && !chat.error()) {
+        <atc-empty-state (pick)="send($event)" />
       }
-    </ol>
-    @if (chat.error()) {
-      <p class="atc-error" role="alert">
-        Something went wrong.
-        <button type="button" (click)="chat.reload() || chat.resendMessages()">
-          Retry
-        </button>
-      </p>
-    } @else if (messages().length === 0) {
-      <div class="atc-starters">
-        @for (prompt of starters; track prompt) {
-          <button type="button" (click)="send(prompt)">{{ prompt }}</button>
+      <ol class="atc-transcript">
+        @for (message of messages(); track $index) {
+          @if (message.role === 'user') {
+            <li class="atc-user">{{ text(message.content) }}</li>
+          } @else if (message.role === 'assistant') {
+            @if (message.toolCalls.length) {
+              <li>
+                <atc-tool-chips
+                  [calls]="message.toolCalls"
+                  [busy]="chat.isLoading()"
+                />
+              </li>
+            }
+            @if (message.content?.ui?.length) {
+              <li><hb-render-message [message]="message" /></li>
+            }
+          }
         }
-      </div>
-    }
-    <form class="atc-composer" (submit)="send(draft()); (false)">
-      <input
-        aria-label="Message"
-        placeholder="Ask about the planes on the map"
-        [value]="draft()"
-        (input)="draft.set($any($event.target).value)"
-      />
-      <button type="submit" [disabled]="chat.isLoading()">Send</button>
-    </form>
+      </ol>
+      @if (chat.error()) {
+        <p class="atc-error" role="alert">
+          Something went wrong.
+          <button
+            type="button"
+            (click)="chat.reload() || chat.resendMessages()"
+          >
+            Retry
+          </button>
+        </p>
+      }
+    </div>
+    <atc-composer [busy]="chat.isLoading()" (send)="send($event)" />
   `,
 })
 export class Assistant {
@@ -134,15 +142,9 @@ export class Assistant {
     source: () => (this.chat.status() === 'error' ? null : this.chat.value()),
     computation: (value, prev): UiChatMessage[] => value ?? prev?.value ?? [],
   });
-  protected readonly draft = signal('');
-  protected readonly starters = STARTER_PROMPTS;
   protected readonly text = messageText;
 
-  protected send(text: string): void {
-    const content = text.trim();
-    if (content) {
-      this.chat.sendMessage({ role: 'user', content });
-      this.draft.set('');
-    }
+  protected send(content: string): void {
+    this.chat.sendMessage({ role: 'user', content });
   }
 }

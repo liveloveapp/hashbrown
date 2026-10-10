@@ -1,4 +1,4 @@
-import { SOURCE_URLS, startAtcFeed } from '@atc/shared';
+import { startAtcFeed } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,36 +7,27 @@ import {
 } from '@angular/core';
 import { AirspaceMapComponent } from './airspace-map';
 import { Assistant } from './assistant';
-import { FeedBadgeComponent } from './feed-badge';
+import { PanelHeaderComponent } from './panel-header';
 import { ATC_STORE } from './store';
 
-/** The page: live map, top bar and the overlay chat. */
+/** The page: a two-panel workbench, chat on the left and the live map on the right. */
 @Component({
   selector: 'atc-root',
-  imports: [AirspaceMapComponent, Assistant, FeedBadgeComponent],
+  imports: [AirspaceMapComponent, Assistant, PanelHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="atc-shell">
-      <atc-airspace-map />
-      <header class="atc-topbar">
-        <span class="atc-brand">atc</span>
-        <span class="atc-toggle">Angular · <a href="../react/">React</a></span>
-        <atc-feed-badge />
-        <a
-          class="atc-source"
-          [href]="sourceUrl"
-          target="_blank"
-          rel="noreferrer"
-          >View the core file</a
-        >
-      </header>
-      <atc-assistant />
+    <main class="atc-workbench">
+      <section class="atc-panel atc-chat-panel" aria-label="Chat">
+        <atc-panel-header />
+        <atc-assistant />
+      </section>
+      <section class="atc-panel atc-map-panel" aria-label="Map">
+        <atc-airspace-map />
+      </section>
     </main>
   `,
 })
 export class App {
-  protected readonly sourceUrl = SOURCE_URLS.angular;
-
   constructor() {
     const stop = startAtcFeed({ store: inject(ATC_STORE) });
     inject(DestroyRef).onDestroy(stop);
