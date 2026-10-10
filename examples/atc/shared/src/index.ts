@@ -4,3 +4,4 @@ export * from './format';
 export * from './geo';
 export * from './names';
 export * from './places';
+export * from './store';
