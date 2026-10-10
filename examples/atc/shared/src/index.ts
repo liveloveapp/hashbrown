@@ -10,3 +10,4 @@ export * from './routes';
 export * from './contracts';
 export * from './tools';
 export * from './views';
+export * from './brand/atc-mark';

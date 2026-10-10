@@ -15,6 +15,13 @@
         "index": "examples/atc/angular/src/index.html",
         "tsConfig": "examples/atc/angular/tsconfig.app.json",
         "baseHref": "/angular/",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "examples/atc/shared/public/brand",
+            "output": "brand"
+          }
+        ],
         "styles": [
           "node_modules/leaflet/dist/leaflet.css",
           "examples/atc/shared/src/styles/atc.css"
