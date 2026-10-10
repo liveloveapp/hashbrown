@@ -81,27 +81,33 @@ The model only renders components you register. Skillet validates their props.
 Angular:
 
 ```ts
-export const invoiceKit = createUiKit({
-  components: [
-    exposeComponent(InvoiceCard, {
-      description: 'Show one invoice',
-      input: { id: s.string('Invoice id') },
-    }),
-  ],
-});
+const components = [
+  exposeComponent(FlightCardComponent, {
+    name: 'FlightCard',
+    description: 'One aircraft on the map, with live altitude and speed.',
+    input: {
+      note: s.streaming.string('A sentence or two about this flight'),
+      hex: s.string('The aircraft hex code from a tool result.'),
+    },
+    children: false,
+  }),
+];
 ```
 
 React:
 
 ```tsx
-const invoiceKit = useUiKit({
-  components: [
-    exposeComponent(InvoiceCard, {
-      description: 'Show one invoice',
-      props: { id: s.string('Invoice id') },
-    }),
-  ],
-});
+const components = [
+  exposeComponent(FlightCard, {
+    name: 'FlightCard',
+    description: 'One aircraft on the map, with live altitude and speed.',
+    props: {
+      note: s.streaming.string('A sentence or two about this flight'),
+      hex: s.string('The aircraft hex code from a tool result.'),
+    },
+    children: false,
+  }),
+];
 ```
 
 ### 2. Give it tools
@@ -112,33 +118,24 @@ Angular:
 
 ```ts
 chat = uiChatResource({
-  system: 'Help users understand invoices.',
-  components: [invoiceKit],
-  tools: [
-    createTool({
-      name: 'getInvoices',
-      description: 'List the invoices',
-      handler: () => inject(InvoiceApi).list(),
-    }),
-  ],
+  system: 'Help users understand the planes on the map.',
+  components,
+  tools: [createTool(this.atc.findAircraft)],
 });
 ```
 
 React:
 
 ```tsx
-export function InvoiceChat({ api }: { api: InvoiceApi }) {
-  const getInvoices = useTool({
-    name: 'getInvoices',
-    description: 'List the invoices',
-    handler: () => api.list(),
-    deps: [api],
-  });
+export function Assistant() {
+  const store = useAtcStore();
+  const atc = useMemo(() => createAtcTools({ store, fetchRoute }), [store]);
+  const findAircraft = useTool({ ...atc.findAircraft, deps: [atc] });
 
   const chat = useUiChat({
-    system: 'Help users understand invoices.',
-    components: [invoiceKit],
-    tools: [getInvoices],
+    system: 'Help users understand the planes on the map.',
+    components,
+    tools: [findAircraft],
   });
 
   // Render the stream (step 3).
@@ -158,7 +155,7 @@ Angular:
 }
 ```
 
-React, at the end of `InvoiceChat`:
+React, at the end of `Assistant`:
 
 ```tsx
 return chat.messages.map((message) =>
@@ -172,14 +169,14 @@ Angular:
 
 ```ts
 export const appConfig: ApplicationConfig = {
-  providers: [provideHashbrown({ baseUrl: '/run' })],
+  providers: [provideHashbrown({ baseUrl: '/api/run' })],
 };
 ```
 
 React:
 
 ```tsx
-<HashbrownProvider url="/run">{children}</HashbrownProvider>
+<HashbrownProvider url="/api/run">{children}</HashbrownProvider>
 ```
 
 ## Features
@@ -251,29 +248,33 @@ generative UI and tool calling.
 
 ## See It in a Real App
 
-[Invoicing](examples/invoicing/README.md) is an invoicing assistant that answers
-with the app's own tables and charts. It pairs Hashbrown (chat and generative
-UI) with [b4.run](https://b4.run) (agent backend) and
-[pretable.ai](https://pretable.ai) (data grid). The data is simulated.
+[atc](examples/atc/README.md) is a live map of airline traffic around Chicago
+O'Hare with an assistant that answers in your own components: flight cards,
+arrivals boards and aircraft comparisons. It is built twice, in Angular and
+React, from one framework-free core. The aircraft data is real, from
+[adsb.lol](https://adsb.lol).
 
-[Try the app](https://invoicing.hashbrown.dev) or run it locally:
+[Try the app](https://atc.hashbrown.dev) or run it locally. Put
+`OPENAI_API_KEY=...` in the repository's `.env`, then run each in its own
+terminal:
 
 ```shell
 nvm use
 npm ci
-INVOICING_ENV_FILE=/path/to/.env npx nx serve invoicing-server
+npx nx serve atc-server
 ```
-
-The environment file must contain `OPENAI_API_KEY`. In another terminal:
 
 ```shell
-npx nx serve invoicing-react
+npx nx serve atc-react
 ```
 
-Open http://127.0.0.1:4326/. See the [example README](examples/invoicing/README.md)
-for architecture, verification and deployment details. Angular integration
-remains covered by the [Angular documentation](https://hashbrown.dev/docs/angular/start/quick)
-and the example's internal conformance hosts.
+Open http://127.0.0.1:4342/react/. Use `atc-angular` and port 4341 for the
+Angular app. See the [example README](examples/atc/README.md) for the
+architecture and tests.
+
+For a larger app with tables, charts and an agent backend, see the advanced
+[Invoicing](examples/invoicing/README.md) example
+([try it](https://invoicing.hashbrown.dev)).
 
 ## Need a Complete Chat UI?
 

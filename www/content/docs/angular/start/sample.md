@@ -23,8 +23,8 @@ assistant can highlight and follow aircraft on the map.
   already on the map. The plane list never goes to the server.
 - **Fields that must arrive whole do.** A card's aircraft ID is `s.string`, so the card
   never shows a half-written ID. Its note is `s.streaming.string` and streams in.
-- **A thin server.** One route streams the model's answer; the system prompt and model are
-  pinned there.
+- **A thin server.** One route (`/api/run`) streams the model's answer and another (`/api/aircraft`)
+  proxies the aircraft feed; the system prompt and model are pinned on the server.
 
 The core file is
 [`examples/atc/angular/src/app/assistant.ts`](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/angular/src/app/assistant.ts).

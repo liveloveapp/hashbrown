@@ -70,13 +70,16 @@ export const HERO_CODE: Record<Sdk, CodeSample> = {
   }),
 ];
 
-const tools = [useTool({ ...atc.findAircraft, deps: [atc] })];
+function Assistant() {
+  const findAircraft = useTool({ ...atc.findAircraft, deps: [atc] });
 
-const chat = useUiChat({
-  system: 'Provided by the server.',
-  components,
-  tools,
-});`,
+  const chat = useUiChat({
+    system: 'Provided by the server.',
+    components,
+    tools: [findAircraft],
+  });
+  // ...
+}`,
   },
   angular: {
     file: 'assistant.ts',
