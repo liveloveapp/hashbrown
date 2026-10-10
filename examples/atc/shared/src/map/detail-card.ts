@@ -200,8 +200,11 @@ function rows(
   items: AircraftDetailView['summary']['figures'],
 ): HTMLElement {
   const list = el(doc, 'dl', className);
-  for (const { label, value, wide, text } of items) {
+  for (const { id, label, value, wide, text } of items) {
     const item = el(doc, 'div', wide ? `${itemClass} is-wide` : itemClass);
+    if (id !== undefined) {
+      item.setAttribute('data-row', id);
+    }
     item.append(
       el(doc, 'dt', '', label),
       el(doc, 'dd', text ? 'is-text' : '', value),
@@ -212,9 +215,6 @@ function rows(
   return list;
 }
 
-/** The label of the one reading that changes every second. */
-const AGE_LABEL = 'Last message';
-
 /** The view without its message age, which is updated in place instead. */
 function withoutAge(view: AircraftDetailView): AircraftDetailView {
   return {
@@ -222,7 +222,7 @@ function withoutAge(view: AircraftDetailView): AircraftDetailView {
     groups: view.groups.map((group) => ({
       ...group,
       rows: group.rows.map((row) =>
-        row.label === AGE_LABEL ? { ...row, value: '' } : row,
+        row.id === 'age' ? { ...row, value: '' } : row,
       ),
     })),
   };
@@ -231,7 +231,7 @@ function withoutAge(view: AircraftDetailView): AircraftDetailView {
 /** The message age in a view, or null. */
 function ageOf(view: AircraftDetailView): string | null {
   for (const group of view.groups) {
-    const row = group.rows.find((r) => r.label === AGE_LABEL);
+    const row = group.rows.find((r) => r.id === 'age');
     if (row) {
       return row.value;
     }
@@ -337,13 +337,9 @@ function fill(
 
 /** Writes the message age into the drawn readings, in place. */
 function fillAge(parts: CardParts, age: string | null): void {
-  for (const item of parts.body.querySelectorAll('.atc-detail-row')) {
-    if (item.querySelector('dt')?.textContent === AGE_LABEL) {
-      const value = item.querySelector('dd');
-      if (value && age !== null) {
-        setText(value, age);
-      }
-    }
+  const value = parts.body.querySelector('[data-row="age"] dd');
+  if (value && age !== null) {
+    setText(value, age);
   }
 }
 /**
@@ -402,7 +398,9 @@ export function createDetailCard(
       element.classList.toggle('is-docked', mode.docked);
       element.classList.toggle('is-more', mode.docked && more);
       const scrolls = mode.docked && more;
-      // The message age ticks every second; it is written in place below.
+      // Rebuild only when something but the message age changed; the age
+      // ticks every second and is written in place, so focus on Close or
+      // More survives.
       const key = `${Math.floor(maxHeight)} ${mode.pinned} ${mode.docked} ${more} ${JSON.stringify(withoutAge(view))}`;
       if (key !== shown) {
         shown = key;

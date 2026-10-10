@@ -123,22 +123,23 @@ test('aircraftDetailView leads with a summary and groups every other reading wit
         ],
       },
       {
+        id: 'speed',
         title: 'Speed and direction',
         rows: [
-          { label: 'Indicated airspeed', value: '231 kt' },
-          { label: 'True airspeed', value: '248 kt' },
-          { label: 'Mach', value: '0.385' },
-          { label: 'Magnetic heading', value: '165°' },
-          { label: 'Selected heading', value: '170°' },
-          { label: 'Wind', value: '262° at 18 kt' },
-          { label: 'Outside air', value: '4 °C' },
+          { id: 'ias', label: 'Indicated airspeed', value: '231 kt' },
+          { id: 'tas', label: 'True airspeed', value: '248 kt' },
+          { id: 'mach', label: 'Mach', value: '0.385' },
+          { id: 'magnetic-heading', label: 'Magnetic heading', value: '165°' },
+          { id: 'selected-heading', label: 'Selected heading', value: '170°' },
+          { id: 'wind', label: 'Wind', value: '262° at 18 kt' },
+          { id: 'outside-air', label: 'Outside air', value: '4 °C' },
         ],
       },
       {
         title: 'Position',
         rows: [
           { label: 'Position', value: '47.5716, -122.3088', wide: true },
-          { label: 'Last message', value: '3s ago' },
+          { id: 'age', label: 'Last message', value: '3s ago' },
         ],
       },
     ],
@@ -150,7 +151,7 @@ test('aircraftDetailView counts the message age up from the snapshot time', () =
     (view) =>
       view?.groups
         .flatMap((group) => group.rows)
-        .find((row) => row.label === 'Last message')?.value,
+        .find((row) => row.id === 'age')?.value,
   );
 
   expect(ages).toEqual(['3s ago', '7s ago', '66s ago']);
@@ -254,4 +255,31 @@ test('fitDetailView keeps the fullest view that fits, or none', () => {
   expect(roomy?.hiddenRows).toBe(0);
   expect(tight?.hiddenRows).toBe(5);
   expect(tiny).toBeNull();
+});
+
+test('trimDetailView trims by row id, so relabelled rows still trim', () => {
+  const view: AircraftDetailView = {
+    hex: 'aaaaaa',
+    label: 'UAL100',
+    subtitle: null,
+    summary: { type: null, route: null, figures: [] },
+    groups: [
+      {
+        id: 'speed',
+        title: 'Speed',
+        rows: [
+          { id: 'wind', label: 'Weather', value: '262° at 18 kt' },
+          { label: 'Ground speed', value: '110 kt' },
+        ],
+      },
+    ],
+    hiddenRows: 0,
+  };
+
+  const trimmed = trimDetailView(view, 1);
+
+  expect(trimmed.groups[0]?.rows.map((row) => row.label)).toEqual([
+    'Ground speed',
+  ]);
+  expect(trimmed.hiddenRows).toBe(1);
 });

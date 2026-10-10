@@ -31,10 +31,11 @@ const view: AircraftDetailView = {
       rows: [{ label: 'Vertical rate', value: '+500 fpm' }],
     },
     {
+      id: 'speed',
       title: 'Speed and direction',
       rows: [
         { label: 'Ground speed', value: '110 kt' },
-        { label: 'Wind', value: '262° at 18 kt' },
+        { id: 'wind', label: 'Wind', value: '262° at 18 kt' },
       ],
     },
   ],
@@ -272,7 +273,7 @@ function aged(age: string, altitude = '4,500 ft'): AircraftDetailView {
       ...view.groups,
       {
         title: 'Position',
-        rows: [{ label: 'Last message', value: age }],
+        rows: [{ id: 'age', label: 'Last message', value: age }],
       },
     ],
   };

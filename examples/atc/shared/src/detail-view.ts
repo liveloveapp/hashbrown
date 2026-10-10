@@ -5,8 +5,24 @@ import { aircraftTypeName } from './names';
 import { type AtcState, normalizeHex } from './store';
 import { aircraftSubtitle, routeText } from './views';
 
+/**
+ * Rows the card treats specially, by id rather than by their label: the
+ * trimmable speed and weather readings, and the message age that ticks.
+ */
+export type DetailRowId =
+  | 'ias'
+  | 'tas'
+  | 'mach'
+  | 'magnetic-heading'
+  | 'selected-heading'
+  | 'wind'
+  | 'outside-air'
+  | 'age';
+
 /** One label and value in the detail card, such as "Ground speed", "240 kt". */
 export interface DetailRow {
+  /** Set on rows the card trims or updates in place. */
+  readonly id?: DetailRowId;
   readonly label: string;
   readonly value: string;
   /** True for long values that take a whole line of the card's grid. */
@@ -27,6 +43,8 @@ export interface DetailSummary {
 
 /** A titled group of detail rows; groups with no rows are left out. */
 export interface DetailGroup {
+  /** Set on the group the card trims to fit. */
+  readonly id?: 'speed';
   readonly title: string;
   readonly rows: readonly DetailRow[];
 }
@@ -94,8 +112,9 @@ function fpm(value: number): string {
   return `${rounded > 0 ? '+' : ''}${rounded.toLocaleString('en-US')} fpm`;
 }
 
-/** How a row is laid out: a whole line, and in the text face. */
+/** A row's id, and how it is laid out: a whole line, and in the text face. */
 interface RowStyle {
+  readonly id?: DetailRowId;
   readonly wide?: true;
   readonly text?: true;
 }
@@ -111,7 +130,16 @@ function row<T>(
     return [];
   }
 
-  return [{ label, value: format(value), ...style }];
+  const { id, ...layout } = style;
+
+  return [
+    {
+      ...(id === undefined ? {} : { id }),
+      label,
+      value: format(value),
+      ...layout,
+    },
+  ];
 }
 
 const text = (value: string) => value;
@@ -194,16 +222,25 @@ function speedRows(aircraft: Aircraft): DetailRow[] {
       : `${formatHeading(windDirectionDeg)} at ${Math.round(windSpeedKt)} kt`;
 
   return [
-    ...row('Indicated airspeed', aircraft.indicatedAirspeedKt, formatSpeed),
-    ...row('True airspeed', aircraft.trueAirspeedKt, formatSpeed),
-    ...row('Mach', aircraft.mach, (mach) => mach.toFixed(3)),
-    ...row('Magnetic heading', aircraft.magneticHeadingDeg, formatHeading),
-    ...row('Selected heading', aircraft.selectedHeadingDeg, formatHeading),
-    ...row('Wind', wind, text),
+    ...row('Indicated airspeed', aircraft.indicatedAirspeedKt, formatSpeed, {
+      id: 'ias',
+    }),
+    ...row('True airspeed', aircraft.trueAirspeedKt, formatSpeed, {
+      id: 'tas',
+    }),
+    ...row('Mach', aircraft.mach, (mach) => mach.toFixed(3), { id: 'mach' }),
+    ...row('Magnetic heading', aircraft.magneticHeadingDeg, formatHeading, {
+      id: 'magnetic-heading',
+    }),
+    ...row('Selected heading', aircraft.selectedHeadingDeg, formatHeading, {
+      id: 'selected-heading',
+    }),
+    ...row('Wind', wind, text, { id: 'wind' }),
     ...row(
       'Outside air',
       aircraft.outsideAirTempC,
       (c) => `${Math.round(c)} °C`,
+      { id: 'outside-air' },
     ),
   ];
 }
@@ -228,6 +265,7 @@ function positionRows(
       'Last message',
       aircraft.seenS,
       (s) => `${Math.round(s + sinceSnapshot)}s ago`,
+      { id: 'age' },
     ),
   ];
 }
@@ -252,7 +290,7 @@ export function aircraftDetailView(
   const groups: DetailGroup[] = [
     { title: 'Identity', rows: identityRows(aircraft) },
     { title: 'Altitude', rows: altitudeRows(aircraft) },
-    { title: 'Speed and direction', rows: speedRows(aircraft) },
+    { id: 'speed', title: 'Speed and direction', rows: speedRows(aircraft) },
     { title: 'Position', rows: positionRows(state, aircraft, now) },
   ];
 
@@ -271,10 +309,10 @@ export function aircraftDetailView(
  * weather, then speed details, then the extra headings, which empties the
  * group. The summary, identity, altitude and position always stay.
  */
-const TRIM_STEPS: readonly ((label: string) => boolean)[] = [
-  (label) => label === 'Wind' || label === 'Outside air',
-  (label) => ['Indicated airspeed', 'True airspeed', 'Mach'].includes(label),
-  (label) => label === 'Magnetic heading' || label === 'Selected heading',
+const TRIM_STEPS: readonly (readonly DetailRowId[])[] = [
+  ['wind', 'outside-air'],
+  ['ias', 'tas', 'mach'],
+  ['magnetic-heading', 'selected-heading'],
 ];
 
 /** How many trim levels {@link trimDetailView} has beyond the full view. */
@@ -288,14 +326,15 @@ export function trimDetailView(
   view: AircraftDetailView,
   level: number,
 ): AircraftDetailView {
-  const steps = TRIM_STEPS.slice(0, level);
-  const drop = (label: string) => steps.some((step) => step(label));
+  const dropped = new Set(TRIM_STEPS.slice(0, level).flat());
+  const drop = (id: DetailRowId | undefined) =>
+    id !== undefined && dropped.has(id);
   let hiddenRows = view.hiddenRows;
   const groups = view.groups.flatMap((group) => {
-    if (group.title !== 'Speed and direction') {
+    if (group.id !== 'speed') {
       return [group];
     }
-    const rows = group.rows.filter((r) => !drop(r.label));
+    const rows = group.rows.filter((r) => !drop(r.id));
     hiddenRows += group.rows.length - rows.length;
 
     return rows.length > 0 ? [{ ...group, rows }] : [];
