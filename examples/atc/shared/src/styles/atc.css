@@ -71,6 +71,14 @@ input {
   transition: opacity var(--atc-motion) var(--atc-ease);
 }
 
+/* The area the assistant is showing: a faint ink ring, no fill. */
+.atc-map .atc-area {
+  fill: none;
+  stroke: var(--atc-ink);
+  stroke-opacity: 0.28;
+  stroke-width: 1px;
+}
+
 /* Zoom and attribution as pills. */
 .atc-map.leaflet-container .leaflet-control-zoom {
   border: 1px solid var(--atc-border);

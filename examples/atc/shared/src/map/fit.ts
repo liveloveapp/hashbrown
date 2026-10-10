@@ -66,3 +66,28 @@ export function fitTarget(
     east: Math.max(...lons),
   };
 }
+
+/** The bounding box of a circle, as south, west, north and east degrees. */
+export interface Bounds {
+  readonly south: number;
+  readonly west: number;
+  readonly north: number;
+  readonly east: number;
+}
+
+/**
+ * The box around a circle of `radiusNm` nautical miles centred on `centre`.
+ * A minute of latitude is one nautical mile; longitude shrinks with the
+ * cosine of the latitude.
+ */
+export function circleBounds(centre: LatLon, radiusNm: number): Bounds {
+  const dLat = radiusNm / 60;
+  const dLon = radiusNm / (60 * Math.cos((centre.lat * Math.PI) / 180));
+
+  return {
+    south: centre.lat - dLat,
+    west: centre.lon - dLon,
+    north: centre.lat + dLat,
+    east: centre.lon + dLon,
+  };
+}

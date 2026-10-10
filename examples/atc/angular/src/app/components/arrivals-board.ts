@@ -1,4 +1,9 @@
-import { type AirportCode, arrivalsRows, plainLabel } from '@atc/shared';
+import {
+  type AirportCode,
+  arrivalsRows,
+  boardShowsEta,
+  plainLabel,
+} from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,7 +14,10 @@ import type { JsonResolvedValue } from '@hashbrownai/core';
 import { injectAtcState } from '../store';
 import { CardSkeletonComponent } from './card-skeleton';
 
-/** A live table of aircraft approaching an airport. */
+/**
+ * A live table of aircraft approaching or near an airport. The ETA column
+ * shows only when one of them is approaching it.
+ */
 @Component({
   selector: 'atc-arrivals-board',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,7 +31,9 @@ import { CardSkeletonComponent } from './card-skeleton';
             <th scope="col">Type</th>
             <th scope="col">Alt</th>
             <th scope="col">Dist</th>
-            <th scope="col">ETA</th>
+            @if (showEta()) {
+              <th scope="col">ETA</th>
+            }
           </tr>
         </thead>
         <tbody>
@@ -39,7 +49,9 @@ import { CardSkeletonComponent } from './card-skeleton';
               </td>
               <td>{{ row.altitude }}</td>
               <td>{{ row.distance }}</td>
-              <td>{{ row.eta }}</td>
+              @if (showEta()) {
+                <td>{{ row.eta }}</td>
+              }
             </tr>
           }
         </tbody>
@@ -55,6 +67,9 @@ export class ArrivalsBoardComponent {
   protected readonly label = computed(() => plainLabel(this.title()));
   protected readonly rows = computed(() =>
     arrivalsRows(this.state(), this.airport(), this.hexes()),
+  );
+  protected readonly showEta = computed(() =>
+    boardShowsEta(this.state(), this.airport(), this.hexes()),
   );
 }
 

@@ -140,7 +140,7 @@ test('the arrivals board renders one row per complete ID', () => {
     <AtcStoreProvider store={store}>
       <ArrivalsBoard
         title="Arriving"
-        airport="SEA"
+        airport="KSEA"
         hexes={['aaaaaa', 'bbbbbb']}
       />
     </AtcStoreProvider>,
@@ -152,6 +152,33 @@ test('the arrivals board renders one row per complete ID', () => {
   expect(screen.getByText('Unknown aircraft')).toBeVisible();
 });
 
+test('the arrivals board hides ETA unless an aircraft is approaching its airport', () => {
+  const store = setup();
+
+  const views = (['KSEA', 'KBDN'] as const).map((airport) => {
+    const { container, unmount } = render(
+      <AtcStoreProvider store={store}>
+        <ArrivalsBoard title="Traffic" airport={airport} hexes={['aaaaaa']} />
+      </AtcStoreProvider>,
+    );
+    const view = {
+      headers: [...container.querySelectorAll('th')].map(
+        (th) => th.textContent,
+      ),
+      cells: container.querySelectorAll('[data-testid="arrivals-row"] td')
+        .length,
+    };
+    unmount();
+
+    return view;
+  });
+
+  expect(views).toEqual([
+    { headers: ['Flight', 'Type', 'Alt', 'Dist', 'ETA'], cells: 5 },
+    { headers: ['Flight', 'Type', 'Alt', 'Dist'], cells: 4 },
+  ]);
+});
+
 test('the arrivals board title has no dashes', () => {
   const store = setup();
 
@@ -159,7 +186,7 @@ test('the arrivals board title has no dashes', () => {
     <AtcStoreProvider store={store}>
       <ArrivalsBoard
         title="Arrivals at Seattle — nearest first"
-        airport="SEA"
+        airport="KSEA"
         hexes={[]}
       />
     </AtcStoreProvider>,

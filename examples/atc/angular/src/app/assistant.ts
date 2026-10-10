@@ -117,6 +117,9 @@ export class Assistant {
       createTool(this.atc.clearHighlight),
       createTool(this.atc.followAircraft),
       createTool(this.atc.stopFollowing),
+      createTool(this.atc.lookupPlace),
+      createTool(this.atc.showArea),
+      createTool(this.atc.resetMap),
     ],
   });
 

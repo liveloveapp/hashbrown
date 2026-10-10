@@ -1,4 +1,5 @@
 import { s } from '@hashbrownai/core';
+import { AIRPORT_CODES } from './places';
 
 /**
  * FlightCard: one aircraft. `note` streams first; `hex` is never streamed, so
@@ -18,21 +19,22 @@ export const flightCardContract = {
   },
 };
 
-/** ArrivalsBoard: aircraft approaching an airport. Rows stream; each ID arrives whole. */
+/**
+ * ArrivalsBoard: aircraft approaching or near an airport. Rows stream; each
+ * ID arrives whole. The ETA column shows only when an aircraft is approaching.
+ */
 export const arrivalsBoardContract = {
   name: 'ArrivalsBoard',
   description:
-    'A live table of aircraft approaching an airport, nearest first.',
+    'A live table of aircraft approaching or near an airport, nearest first.',
   props: {
     title: s.streaming.string(
-      'A short label with no dashes, such as "Arrivals at Seattle"',
+      'A short label with no dashes, such as "Arrivals at Seattle" or "Near Bend"',
     ),
-    airport: s.enumeration('The airport the aircraft are approaching', [
-      'SEA',
-      'PDX',
-      'BOI',
-      'RDM',
-    ]),
+    airport: s.enumeration(
+      'ICAO code of the airport the aircraft are approaching or near',
+      [...AIRPORT_CODES],
+    ),
     hexes: s.streaming.array(
       'Aircraft hex codes from findAircraft, nearest first',
       s.string('Aircraft hex code'),
@@ -64,12 +66,15 @@ Rules:
 - Use tools for every fact and number. Never estimate altitudes, speeds, distances or times yourself.
 - Only use aircraft hex codes that appear in a tool result. Never invent or shorten one.
 - For "this plane" or "the selected plane", call getSelectedAircraft. If it returns null, ask the user to click a plane.
-- Before showing one aircraft whose row has an airline, call lookupRoute with its callsign, then show a FlightCard. For other aircraft, show the FlightCard without a route.
-- For a list of aircraft, show an ArrivalsBoard. For two or three aircraft side by side, show an AircraftCompare.
+- Show a FlightCard only when the user asks about one aircraft. Before showing one whose row has an airline, call lookupRoute with its callsign. Call lookupRoute only for rows with an airline; other aircraft have no scheduled route.
+- For a list of aircraft, show one ArrivalsBoard and no FlightCards. For two or three aircraft side by side, show an AircraftCompare.
+- When the user names a place, call lookupPlace first and use the code it returns. If it returns found false, say atc only covers airports in the Pacific Northwest and do not move the map.
+- For what is flying near a place, call showArea with its code, then findAircraft with near set to the same airport and radius, then highlightAircraft, then show one ArrivalsBoard for that airport.
+- When the user asks to zoom out or reset the map, call resetMap.
 - When you show aircraft, call highlightAircraft with their hex codes so the map matches your answer.
 - When the user asks to follow an aircraft, call followAircraft, then show its FlightCard.
 - Keep prose to one or two short Markdown sentences. Do not repeat numbers the components already show.
-- In prose, refer to aircraft by their label. Registrations such as N352LL are fine for private aircraft. Never write the hex field there; hex codes belong only in component props and tool calls.
+- In prose, refer to aircraft by their label. Registrations such as N352LL are fine for private aircraft, and so is a label of six hex characters such as A1C00B when an aircraft has nothing else. Never write the hex field there; hex codes belong only in component props and tool calls.
 - Start with the answer. No lead-ins such as "Here are", "Here's", "Sure" or "Let me". No exclamation marks, emoji, em-dashes or en-dashes; use a comma, colon or full stop.
 - Routes are scheduled routes from public data and can be wrong. Call them scheduled.`;
 

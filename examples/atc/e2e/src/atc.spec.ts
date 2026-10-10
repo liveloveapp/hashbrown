@@ -6,10 +6,21 @@ import { once } from 'node:events';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
-import { frame, scenario, SYNTHETIC_HEXES, ui } from './fixtures';
+import { frame, NEAR_BEND, scenario, SYNTHETIC_HEXES, ui } from './fixtures';
 
 const dist = resolve(__dirname, '../../../../dist/examples/atc');
-const { selected, highest, fastest, arrivals } = scenario;
+const { selected, highest, fastest, arrivals, nearby } = scenario;
+const NEAR_PROMPT = "What's flying near KBDN?";
+/** findAircraft arguments with every filter off. */
+const ANY = {
+  airline: null,
+  typeCode: null,
+  kind: null,
+  minAltitudeFt: null,
+  maxAltitudeFt: null,
+  approaching: null,
+  near: null,
+};
 let mock: LLMock;
 let server: Server;
 let origin: string;
@@ -23,10 +34,37 @@ test.beforeAll(async () => {
     ArrivalsBoard: {
       props: {
         title: 'Arriving at Seattle',
-        airport: 'SEA',
+        airport: 'KSEA',
         hexes: arrivals.map((r) => r.hex),
       },
     },
+  });
+  const nearBoard = ui({
+    ArrivalsBoard: {
+      props: {
+        title: 'Near Bend',
+        airport: NEAR_BEND.airport,
+        hexes: nearby.map((r) => r.hex),
+      },
+    },
+  });
+  for (const id of ['near-area', 'near-find', 'near-highlight']) {
+    mock.onToolResult(id, async () => ({ content: nearBoard }));
+  }
+  mock.onMessage(NEAR_PROMPT, {
+    toolCalls: [
+      { id: 'near-area', name: 'showArea', arguments: NEAR_BEND },
+      {
+        id: 'near-find',
+        name: 'findAircraft',
+        arguments: { ...ANY, near: NEAR_BEND, sortBy: 'distance', limit: 20 },
+      },
+      {
+        id: 'near-highlight',
+        name: 'highlightAircraft',
+        arguments: { hexes: nearby.map((r) => r.hex) },
+      },
+    ],
   });
   mock.onToolResult('selected-1', async () => ({
     content: ui(card('This is the plane you selected.', selected.hex)),
@@ -57,11 +95,8 @@ test.beforeAll(async () => {
         id: 'arrivals-find',
         name: 'findAircraft',
         arguments: {
-          airline: null,
-          typeCode: null,
-          minAltitudeFt: null,
-          maxAltitudeFt: null,
-          approaching: 'SEA',
+          ...ANY,
+          approaching: 'KSEA',
           sortBy: 'distance',
           limit: 10,
         },
@@ -78,15 +113,7 @@ test.beforeAll(async () => {
       {
         id: 'compare-find',
         name: 'findAircraft',
-        arguments: {
-          airline: null,
-          typeCode: null,
-          minAltitudeFt: null,
-          maxAltitudeFt: null,
-          approaching: null,
-          sortBy: 'altitude',
-          limit: 3,
-        },
+        arguments: { ...ANY, sortBy: 'altitude', limit: 3 },
       },
     ],
   });
@@ -236,6 +263,29 @@ test('shows Seattle arrivals and highlights them on the map', async ({
     await expect(
       page.locator(`.atc-plane[data-hex="${row.hex}"]`),
     ).not.toHaveClass(/is-dimmed/);
+  }
+  await expectOnlyCompleteIds(page);
+});
+
+test("shows what's flying near KBDN in an outlined area", async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+  const input = page.getByRole('textbox', { name: 'Message' });
+
+  await input.fill(NEAR_PROMPT);
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  const board = page.getByTestId('arrivals-board');
+  await expect(page.locator('.atc-area')).toBeAttached();
+  await expect(board.getByTestId('arrivals-row')).toHaveCount(nearby.length);
+  await expect(board).toContainText('N4417B');
+  await expect(board).toContainText('N44RH');
+  await expect(board.getByRole('columnheader', { name: 'ETA' })).toHaveCount(0);
+  for (const row of nearby) {
+    await expect(page.locator(`.atc-plane[data-hex="${row.hex}"]`)).toHaveClass(
+      /is-highlighted/,
+    );
   }
   await expectOnlyCompleteIds(page);
 });

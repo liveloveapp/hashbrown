@@ -1,8 +1,8 @@
-import type { Map as LeafletMap, Marker } from 'leaflet';
+import type { Circle, Map as LeafletMap, Marker } from 'leaflet';
 import type { Aircraft } from '../aircraft';
 import { type AircraftKind, KIND_PATHS } from '../kinds';
-import type { Area, LatLon } from '../places';
-import type { AtcState, AtcStore } from '../store';
+import { AIRPORTS, type Area, type LatLon } from '../places';
+import type { AtcState, AtcStore, ShownArea } from '../store';
 import { aircraftDetailView } from '../detail-view';
 import { isTyping } from '../dom';
 import {
@@ -12,7 +12,7 @@ import {
   isInsideArea,
   visibleMapArea,
 } from './detail-card';
-import { fitTarget } from './fit';
+import { circleBounds, type FitTarget, fitTarget } from './fit';
 import {
   lerpLatLon,
   shouldTween,
@@ -184,6 +184,12 @@ export function followPanOffset(
 /** Furthest out, and furthest in, that fitting highlighted planes will zoom. */
 const MIN_FIT_ZOOM = 5;
 const MAX_FIT_ZOOM = 10;
+/** Furthest in that showing an area will zoom. */
+const MAX_AREA_ZOOM = 12;
+/** Space kept around a shown area, in pixels. */
+const AREA_PADDING = 24;
+/** Metres in a nautical mile, for Leaflet's circle radius. */
+const METRES_PER_NM = 1852;
 
 /** A mounted map. */
 export interface AirspaceMapHandle {
@@ -214,6 +220,12 @@ function prefersReducedMotion(): boolean {
  * fields) or a click on the empty map clears the selection. On phones the
  * card stays above the bottom sheet, and it hides when the plane is off
  * screen or there is no room.
+ *
+ * The map moves only for view requests in the store (see `requestArea`):
+ * fitting a new highlighted set, showing an area (with a faint outline) or
+ * resetting to `area`. The newest request wins; follow mode wins over all
+ * of them; a user drag or zoom cancels one still waiting (a highlight whose
+ * planes have no markers yet). Moves animate unless reduced motion is set.
  *
  * Pass `signal` to cancel before the import settles: when it is already
  * aborted by then, no map is created and the handle's `destroy` is a no-op.
@@ -267,8 +279,15 @@ export async function createAirspaceMap(options: {
     readonly moves: ReadonlyMap<string, { from: LatLon; to: LatLon }>;
   } | null = null;
   let frame: number | null = null;
-  /** The highlighted set the map was last fitted for (or skipped). */
-  let fittedFor: ReadonlySet<string> = new Set();
+  /** The newest view request already applied (or dropped). */
+  let appliedSeq: number | null = null;
+  /** True while this controller moves the map, so its zooms do not cancel. */
+  let programmatic = false;
+  /** The drawn area outline. */
+  let outline: { readonly area: ShownArea; readonly layer: Circle } | null =
+    null;
+  // The class, not `L.svg()`, which returns null where SVG is not detected.
+  const outlineRenderer = new L.SVG({ padding: 0.5 });
   const doc = element.ownerDocument;
   const card = createDetailCard(doc);
   element.append(card.element);
@@ -277,9 +296,15 @@ export async function createAirspaceMap(options: {
   let detailedHex: string | null = null;
   /** The part of the map not under the phone's bottom sheet. */
   let cardArea: CardSize = { width: 0, height: 0 };
-  map.on('dragstart', () => store.follow(null));
+  map.on('dragstart', () => {
+    store.follow(null);
+    store.cancelViewRequest();
+  });
   map.on('zoomstart', () => {
     zooming = true;
+    if (!programmatic) {
+      store.cancelViewRequest();
+    }
     syncCard(store.getState());
   });
   map.on('zoomend', () => {
@@ -400,34 +425,17 @@ export async function createAirspaceMap(options: {
     }
     map.panBy([offset.x, offset.y], { animate });
   };
-  /**
-   * When the highlighted set changes, moves the map so those planes and their
-   * tags are legible. Follow mode owns the view, so it is skipped then. Later
-   * user pans and zooms stand until the set changes again.
-   */
-  const fitHighlighted = (state: AtcState) => {
-    const positions = new Map<string, LatLon>();
-    for (const hex of state.highlighted) {
-      const position = markers.get(hex)?.marker.getLatLng();
-      if (position) {
-        positions.set(hex, { lat: position.lat, lon: position.lng });
-      }
+  /** Runs a map move this controller makes, so it is not taken for the user's. */
+  const moveMap = (move: () => void) => {
+    programmatic = true;
+    try {
+      move();
+    } finally {
+      programmatic = false;
     }
-    const following = state.followingHex !== null;
-    const target = fitTarget(
-      fittedFor,
-      state.highlighted,
-      positions,
-      following,
-    );
-    if (target === null) {
-      if (following || state.highlighted.size === 0) {
-        fittedFor = state.highlighted;
-      }
-      return;
-    }
-    fittedFor = state.highlighted;
-    const animate = !prefersReducedMotion();
+  };
+  /** Moves the map so highlighted planes and their tags are legible. */
+  const fitHighlight = (target: FitTarget, animate: boolean) => {
     if (target.kind === 'point') {
       map.setView([target.lat, target.lon], target.zoom, { animate });
       return;
@@ -459,6 +467,82 @@ export async function createAirspaceMap(options: {
       maxZoom: MAX_FIT_ZOOM,
       animate,
     });
+  };
+  /** Fits a circle around an airport, keeping it above a phone's sheet. */
+  const fitArea = (shown: ShownArea, animate: boolean) => {
+    const box = circleBounds(AIRPORTS[shown.airport], shown.radiusNm);
+    const hidden = map.getSize().y - cardArea.height;
+    const bottom = cardArea.height > 160 ? hidden : 0;
+    map.fitBounds(
+      [
+        [box.south, box.west],
+        [box.north, box.east],
+      ],
+      {
+        paddingTopLeft: [AREA_PADDING, AREA_PADDING],
+        paddingBottomRight: [AREA_PADDING, AREA_PADDING + bottom],
+        maxZoom: MAX_AREA_ZOOM,
+        animate,
+      },
+    );
+  };
+  /**
+   * Applies the newest view request once. Follow mode drops it. A highlight
+   * fit waits until at least one of its planes has a marker.
+   */
+  const applyView = (state: AtcState) => {
+    const request = state.viewRequest;
+    if (request === null || request.seq === appliedSeq) {
+      return;
+    }
+    if (state.followingHex !== null) {
+      appliedSeq = request.seq;
+      return;
+    }
+    const animate = !prefersReducedMotion();
+    if (request.kind === 'highlight') {
+      const positions = new Map<string, LatLon>();
+      for (const hex of state.highlighted) {
+        const position = drawnAt(hex);
+        if (position) {
+          positions.set(hex, position);
+        }
+      }
+      const target = fitTarget(new Set(), state.highlighted, positions, false);
+      if (target === null) {
+        return;
+      }
+      appliedSeq = request.seq;
+      moveMap(() => fitHighlight(target, animate));
+      return;
+    }
+    appliedSeq = request.seq;
+    moveMap(() =>
+      request.kind === 'area'
+        ? fitArea(request.area, animate)
+        : map.setView([area.lat, area.lon], area.zoom, { animate }),
+    );
+  };
+  /** Draws the shown area's outline, or removes it. */
+  const syncOutline = (shown: ShownArea | null) => {
+    if (outline?.area === shown) {
+      return;
+    }
+    outline?.layer.remove();
+    outline = null;
+    if (shown === null) {
+      return;
+    }
+    const centre = AIRPORTS[shown.airport];
+    const layer = L.circle([centre.lat, centre.lon], {
+      radius: shown.radiusNm * METRES_PER_NM,
+      className: 'atc-area',
+      renderer: outlineRenderer,
+      fill: false,
+      weight: 1,
+      interactive: false,
+    }).addTo(map);
+    outline = { area: shown, layer };
   };
   /** Last drawn pixel of each gliding marker, to skip sub-pixel moves. */
   let drawnPixels = new Map<string, string>();
@@ -541,7 +625,8 @@ export async function createAirspaceMap(options: {
       }
     }
     syncCard(state);
-    fitHighlighted(state);
+    syncOutline(state.shownArea);
+    applyView(state);
     panToFollowed(true);
     if (state.pulse !== null && state.pulse.at !== lastPulseAt) {
       lastPulseAt = state.pulse.at;

@@ -30,6 +30,7 @@ const any: FindAircraftInput = {
   minAltitudeFt: null,
   maxAltitudeFt: null,
   approaching: null,
+  near: null,
   sortBy: 'altitude',
   limit: 20,
 };
@@ -101,7 +102,7 @@ test('findAircraft filters by altitude band and approach, and clamps the limit',
     minAltitudeFt: 10000,
     maxAltitudeFt: 20000,
   }).map((row) => row.hex);
-  const approaching = findAircraft(state, { ...any, approaching: 'RDM' }).map(
+  const approaching = findAircraft(state, { ...any, approaching: 'KRDM' }).map(
     (row) => row.hex,
   );
   const none = findAircraft(state, { ...any, limit: 0 }).length;
@@ -268,4 +269,174 @@ test('findAircraft filters by kind and rows carry the kind', () => {
     ['bbbbbb', 'rotor', 'Robinson R44'],
   ]);
   expect(all.map((row) => row.kind).sort()).toEqual(['jet', 'rotor', 'single']);
+});
+
+test('findAircraft filters to a circle around an airport and measures from it', () => {
+  const traffic = applySnapshot(INITIAL_STATE, {
+    at: 1,
+    aircraft: [
+      plane('aaaaaa', { lat: 44.0946, lon: -121.2002 }),
+      plane('bbbbbb', { lat: 44.3, lon: -121.2002 }),
+      plane('cccccc', { lat: 47.45, lon: -122.31 }),
+    ],
+  });
+
+  const near = findAircraft(traffic, {
+    ...any,
+    near: { airport: 'kbdn', radiusNm: 25 },
+    sortBy: 'distance',
+  });
+  const tight = findAircraft(traffic, {
+    ...any,
+    near: { airport: 'KBDN', radiusNm: 5 },
+  });
+
+  expect(near.map((row) => [row.hex, row.distanceNm])).toEqual([
+    ['aaaaaa', 0],
+    ['bbbbbb', 12.3],
+  ]);
+  expect(tight.map((row) => row.hex)).toEqual(['aaaaaa']);
+});
+
+test('findAircraft refuses an airport outside the table', async () => {
+  const store = createAtcStore();
+  store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.findAircraft.handler({
+    ...any,
+    near: { airport: 'KJFK', radiusNm: 25 },
+  });
+
+  expect(result).toEqual({
+    found: false,
+    reason:
+      'No airport matches "KJFK". atc covers airports in the Pacific Northwest only.',
+  });
+});
+
+test('lookupPlace resolves a place or tells the model it is unknown', async () => {
+  const tools = createAtcTools({
+    store: createAtcStore(),
+    fetchRoute: async () => null,
+  });
+
+  const bend = await tools.lookupPlace.handler({ query: 'Bend' });
+  const tokyo = await tools.lookupPlace.handler({ query: 'Tokyo' });
+
+  expect(bend).toEqual({
+    found: true,
+    code: 'KBDN',
+    iata: 'BDN',
+    name: 'Bend Municipal',
+    city: 'Bend, OR',
+  });
+  expect(tokyo).toEqual({
+    found: false,
+    reason:
+      'No airport matches "Tokyo". atc covers airports in the Pacific Northwest only.',
+  });
+});
+
+test('showArea draws the area, moves the map and counts the aircraft inside', async () => {
+  const store = createAtcStore();
+  store.applySnapshot({
+    at: 1,
+    aircraft: [
+      plane('aaaaaa', { lat: 44.0946, lon: -121.2002 }),
+      plane('bbbbbb', { lat: 47.45, lon: -122.31 }),
+    ],
+  });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const shown = await tools.showArea.handler({
+    airport: 'bend',
+    radiusNm: null,
+  });
+  const clamped = await tools.showArea.handler({
+    airport: 'KSEA',
+    radiusNm: 900,
+  });
+
+  expect(shown).toEqual({
+    shown: true,
+    airport: 'KBDN',
+    radiusNm: 25,
+    aircraftInside: 1,
+    moved: true,
+  });
+  expect(clamped).toMatchObject({ airport: 'KSEA', radiusNm: 150 });
+  expect(store.getState().shownArea).toEqual({
+    airport: 'KSEA',
+    radiusNm: 150,
+  });
+});
+
+test('showArea refuses unknown places and leaves the map alone', async () => {
+  const store = createAtcStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showArea.handler({
+    airport: 'Tokyo',
+    radiusNm: 25,
+  });
+
+  expect(result).toEqual({
+    shown: false,
+    reason:
+      'No airport matches "Tokyo". atc covers airports in the Pacific Northwest only.',
+  });
+  expect(store.getState()).toBe(INITIAL_STATE);
+});
+
+test('while following, showArea and resetMap report that the map stays on the plane', async () => {
+  const store = createAtcStore();
+  store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });
+  store.follow('aaaaaa');
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const shown = await tools.showArea.handler({
+    airport: 'KBDN',
+    radiusNm: 10,
+  });
+  const reset = await tools.resetMap.handler({});
+
+  expect(shown).toMatchObject({
+    shown: true,
+    moved: false,
+    reason: 'Following UAL100. Call stopFollowing first to move the map.',
+  });
+  expect(reset).toEqual({
+    reset: false,
+    reason: 'Following UAL100. Call stopFollowing first to move the map.',
+  });
+});
+
+test('resetMap returns to the regional view', async () => {
+  const store = createAtcStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  await tools.showArea.handler({ airport: 'KBDN', radiusNm: 25 });
+
+  const result = await tools.resetMap.handler({});
+
+  expect(result).toEqual({ reset: true });
+  expect(store.getState().shownArea).toBeNull();
+  expect(store.getState().viewRequest?.kind).toBe('reset');
+});
+
+test('lookupRoute skips callsigns that are not airline flights', async () => {
+  const store = createAtcStore();
+  const fetchRoute = vi.fn(async () => null);
+  const tools = createAtcTools({ store, fetchRoute });
+
+  const results = [
+    await tools.lookupRoute.handler({ callsign: 'N352LL' }),
+    await tools.lookupRoute.handler({ callsign: 'a1c00b' }),
+  ];
+
+  expect(results).toEqual([
+    { found: false, reason: 'Routes exist only for airline callsigns.' },
+    { found: false, reason: 'Routes exist only for airline callsigns.' },
+  ]);
+  expect(fetchRoute).not.toHaveBeenCalled();
 });

@@ -70,6 +70,9 @@ export function Assistant() {
     useTool({ ...atc.clearHighlight, deps: [atc] }),
     useTool({ ...atc.followAircraft, deps: [atc] }),
     useTool({ ...atc.stopFollowing, deps: [atc] }),
+    useTool({ ...atc.lookupPlace, deps: [atc] }),
+    useTool({ ...atc.showArea, deps: [atc] }),
+    useTool({ ...atc.resetMap, deps: [atc] }),
   ];
 
   // 3. Render the stream. The system prompt is pinned on the server.

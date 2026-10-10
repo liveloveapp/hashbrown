@@ -173,7 +173,7 @@ test('the arrivals board renders one row per complete ID', () => {
   const fixture = TestBed.createComponent(ArrivalsBoardComponent);
 
   fixture.componentRef.setInput('title', 'Arriving');
-  fixture.componentRef.setInput('airport', 'SEA');
+  fixture.componentRef.setInput('airport', 'KSEA');
   fixture.componentRef.setInput('hexes', ['aaaaaa', 'bbbbbb']);
   fixture.detectChanges();
 
@@ -190,12 +190,35 @@ test('the arrivals board renders one row per complete ID', () => {
   ]);
 });
 
+test('the arrivals board hides ETA unless an aircraft is approaching its airport', () => {
+  setup();
+  const boards = (['KSEA', 'KBDN'] as const).map((airport) => {
+    const fixture = TestBed.createComponent(ArrivalsBoardComponent);
+    fixture.componentRef.setInput('title', 'Traffic');
+    fixture.componentRef.setInput('airport', airport);
+    fixture.componentRef.setInput('hexes', ['aaaaaa']);
+    fixture.detectChanges();
+
+    return fixture.nativeElement as HTMLElement;
+  });
+
+  const views = boards.map((element) => ({
+    headers: [...element.querySelectorAll('th')].map((th) => th.textContent),
+    cells: element.querySelectorAll('[data-testid="arrivals-row"] td').length,
+  }));
+
+  expect(views).toEqual([
+    { headers: ['Flight', 'Type', 'Alt', 'Dist', 'ETA'], cells: 5 },
+    { headers: ['Flight', 'Type', 'Alt', 'Dist'], cells: 4 },
+  ]);
+});
+
 test('the arrivals board title has no dashes', () => {
   setup();
   const fixture = TestBed.createComponent(ArrivalsBoardComponent);
 
   fixture.componentRef.setInput('title', 'Arrivals at Seattle — nearest first');
-  fixture.componentRef.setInput('airport', 'SEA');
+  fixture.componentRef.setInput('airport', 'KSEA');
   fixture.componentRef.setInput('hexes', []);
   fixture.detectChanges();
 

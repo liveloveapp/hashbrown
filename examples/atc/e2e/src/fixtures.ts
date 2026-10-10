@@ -15,7 +15,7 @@ import {
 /** How many frames the synthetic traffic moves for (3 minutes at 3 s a frame). */
 const FRAME_COUNT = 60;
 const START = Date.UTC(2026, 9, 9, 18, 0, 0);
-const { SEA } = AIRPORTS;
+const { KSEA: SEA } = AIRPORTS;
 const centre = AREAS.pnw;
 
 /** One synthetic aircraft: where it is at frame 0 and how it moves per frame. */
@@ -72,7 +72,9 @@ function track(
  * cruising highest, one flying fastest and two fillers, plus private traffic
  * labelled by registration (a Cessna and a helicopter) and one aircraft that
  * broadcasts neither callsign nor registration, so only its hex labels it.
- * Every aircraft moves and changes altitude each frame.
+ * A Cessna 182 and a Robinson R44 fly slowly near Bend, climbing, so with
+ * the regional jet they are the traffic within 25 nm of KBDN and none is
+ * approaching it. Every aircraft moves and changes altitude each frame.
  */
 const TRACKS: readonly Track[] = [
   track(
@@ -152,6 +154,28 @@ const TRACKS: readonly Track[] = [
     { dLat: -0.001, dLon: 0.001, dAltFt: 10, trackDeg: 140 },
   ),
   track(
+    { hex: 'a1c00c', registration: 'N4417B' },
+    'C182',
+    {
+      lat: centre.lat - 0.12,
+      lon: centre.lon - 0.1,
+      altitudeFt: 5_500,
+      speedKt: 115,
+    },
+    { dLat: 0.0005, dLon: 0.0005, dAltFt: 10, trackDeg: 45 },
+  ),
+  track(
+    { hex: 'a1c00d', registration: 'N44RH' },
+    'R44',
+    {
+      lat: centre.lat + 0.1,
+      lon: centre.lon - 0.18,
+      altitudeFt: 2_000,
+      speedKt: 90,
+    },
+    { dLat: -0.0005, dLon: 0.0005, dAltFt: 10, trackDeg: 135 },
+  ),
+  track(
     { hex: 'a1c00b' },
     null,
     { lat: 43.56, lon: -116.22, altitudeFt: 8_000, speedKt: 150 },
@@ -191,9 +215,13 @@ const ANY: FindAircraftInput = {
   minAltitudeFt: null,
   maxAltitudeFt: null,
   approaching: null,
+  near: null,
   sortBy: 'altitude',
   limit: 20,
 };
+
+/** The area the "near KBDN" scenario shows and searches. */
+export const NEAR_BEND = { airport: 'KBDN', radiusNm: 25 } as const;
 
 /** The scenario aircraft, found with the app's own search over frame 0. */
 export const scenario = (() => {
@@ -205,7 +233,7 @@ export const scenario = (() => {
   );
   const arrivals = findAircraft(state, {
     ...ANY,
-    approaching: 'SEA',
+    approaching: 'KSEA',
     sortBy: 'distance',
     limit: 10,
   });
@@ -214,20 +242,38 @@ export const scenario = (() => {
     (_, n) =>
       findAircraft(applySnapshot(INITIAL_STATE, frame(n)), {
         ...ANY,
-        approaching: 'SEA',
+        approaching: 'KSEA',
       }).length,
   ).every((count) => count === arrivals.length);
+  const nearBend = { ...ANY, near: NEAR_BEND, sortBy: 'distance' } as const;
+  const nearby = findAircraft(state, nearBend);
+  const nearbyEveryFrame = Array.from({ length: FRAME_COUNT }, (_, n) =>
+    findAircraft(applySnapshot(INITIAL_STATE, frame(n)), nearBend)
+      .map((row) => row.hex)
+      .sort()
+      .join(),
+  ).every(
+    (hexes) =>
+      hexes ===
+      nearby
+        .map((row) => row.hex)
+        .sort()
+        .join(),
+  );
+  const nearbyKinds = new Set(nearby.map((row) => row.kind));
   if (
     !selected ||
     !highest ||
     !fastest ||
     arrivals.length < 3 ||
-    !approachingEveryFrame
+    !approachingEveryFrame ||
+    !nearbyEveryFrame ||
+    !['jet', 'single', 'rotor'].every((kind) => nearbyKinds.has(kind))
   ) {
     throw new Error('The synthetic frames lack a scenario aircraft.');
   }
 
-  return { selected, highest, fastest, arrivals };
+  return { selected, highest, fastest, arrivals, nearby };
 })();
 
 /** The JSON a UI chat answer contains. */

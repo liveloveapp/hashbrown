@@ -5,7 +5,7 @@ import {
   formatSpeed,
 } from './format';
 import type { Aircraft } from './aircraft';
-import { distanceNm, etaMinutes } from './geo';
+import { distanceNm, etaMinutes, isApproaching } from './geo';
 import { aircraftTypeName, airlineFor } from './names';
 import { type AirportCode, AIRPORTS } from './places';
 import {
@@ -147,6 +147,22 @@ export function arrivalsRows(
   });
 }
 
+/**
+ * True when at least one live aircraft on the board is approaching its
+ * airport. A board of nearby traffic hides its ETA column otherwise.
+ */
+export function boardShowsEta(
+  state: AtcState,
+  airport: AirportCode,
+  hexes: readonly string[],
+): boolean {
+  return hexes.some((hex) => {
+    const aircraft = state.aircraft.get(normalizeHex(hex));
+
+    return aircraft !== undefined && isApproaching(aircraft, AIRPORTS[airport]);
+  });
+}
+
 /** What the feed badge shows. */
 export interface FeedBadgeView {
   /** The state word: "Live", "Data delayed" or "Connecting…". */
@@ -198,6 +214,31 @@ function feet(value: unknown, prefix: string): string | null {
     : null;
 }
 
+/** "25 nm" for a finite number, else null. */
+function miles(value: unknown): string | null {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? `${Math.round(value)} nm`
+    : null;
+}
+
+/** "within 25 nm of KBDN", or "near KBDN" while the radius streams. */
+function nearSummary(value: unknown): string | null {
+  const near = record(value);
+  const airport = shortText(near['airport'])?.toUpperCase() ?? null;
+  const radius = miles(near['radiusNm']);
+  if (airport === null) return null;
+
+  return radius === null ? `near ${airport}` : `within ${radius} of ${airport}`;
+}
+
+function areaSummary(args: Record<string, unknown>): string | null {
+  const airport = shortText(args['airport'])?.toUpperCase() ?? null;
+  const radius = miles(args['radiusNm']);
+  if (airport === null) return null;
+
+  return radius === null ? airport : `${airport}, ${radius}`;
+}
+
 function findSummary(args: Record<string, unknown>): string | null {
   const approaching = shortText(args['approaching']);
   const filters = [
@@ -207,6 +248,7 @@ function findSummary(args: Record<string, unknown>): string | null {
     feet(args['minAltitudeFt'], 'above'),
     feet(args['maxAltitudeFt'], 'below'),
     approaching === null ? null : `approaching ${approaching}`,
+    nearSummary(args['near']),
   ].filter((part): part is string => part !== null);
   if (filters.length > 0) return filters.join(', ');
   const sortBy = shortText(args['sortBy']);
@@ -223,6 +265,8 @@ const SUMMARIES: Record<
   highlightAircraft: (args) =>
     Array.isArray(args['hexes']) ? `${args['hexes'].length} aircraft` : null,
   followAircraft: (args) => shortText(args['hex'])?.toLowerCase() ?? null,
+  lookupPlace: (args) => shortText(args['query']),
+  showArea: areaSummary,
 };
 
 /**

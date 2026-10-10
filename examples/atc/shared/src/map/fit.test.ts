@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { fitTarget } from './fit';
+import { circleBounds, fitTarget } from './fit';
 
 const positions = new Map([
   ['a', { lat: 47, lon: -122 }],
@@ -41,4 +41,14 @@ test('hexes without a known position are ignored, and none known gives null', ()
 
   expect(partial).toEqual({ kind: 'point', lat: 47, lon: -122, zoom: 9 });
   expect(unknown).toBeNull();
+});
+
+test('circleBounds spans the radius north, south, east and west', () => {
+  const bounds = circleBounds({ lat: 60, lon: -120 }, 30);
+
+  expect(bounds.south).toBeCloseTo(59.5, 6);
+  expect(bounds.north).toBeCloseTo(60.5, 6);
+  // At 60 degrees north a degree of longitude is half as long.
+  expect(bounds.west).toBeCloseTo(-121, 6);
+  expect(bounds.east).toBeCloseTo(-119, 6);
 });

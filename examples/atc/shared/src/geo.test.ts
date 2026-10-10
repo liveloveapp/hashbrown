@@ -21,8 +21,8 @@ const base: Aircraft = {
 };
 
 test('distanceNm measures great-circle distance in nautical miles', () => {
-  const sea = AIRPORTS.SEA;
-  const pdx = AIRPORTS.PDX;
+  const sea = AIRPORTS.KSEA;
+  const pdx = AIRPORTS.KPDX;
 
   const distance = distanceNm(sea, pdx);
 
@@ -36,7 +36,7 @@ test('etaMinutes rounds up and needs a positive ground speed', () => {
 });
 
 test('isApproaching requires near, descending, low and airborne', () => {
-  const sea = AIRPORTS.SEA;
+  const sea = AIRPORTS.KSEA;
 
   const results = [
     isApproaching(base, sea),

@@ -3,6 +3,7 @@ import type { Aircraft } from './aircraft';
 import { applySnapshot, INITIAL_STATE } from './store';
 import {
   arrivalsRows,
+  boardShowsEta,
   feedBadgeView,
   flightCardView,
   messageText,
@@ -155,7 +156,7 @@ test('routeText distinguishes not looked up, missing and found', () => {
 test('arrivalsRows computes distance and ETA to the airport', () => {
   const state = applySnapshot(INITIAL_STATE, { at: 1, aircraft: [plane] });
 
-  const rows = arrivalsRows(state, 'SEA', ['aaaaaa', 'bbbbbb']);
+  const rows = arrivalsRows(state, 'KSEA', ['aaaaaa', 'bbbbbb']);
 
   expect(rows).toEqual([
     {
@@ -177,6 +178,24 @@ test('arrivalsRows computes distance and ETA to the airport', () => {
       eta: 'n/a',
     },
   ]);
+});
+
+test('boardShowsEta is true only when a listed aircraft is approaching the airport', () => {
+  const level = { ...plane, hex: 'bbbbbb', verticalRateFpm: 0 };
+  const state = applySnapshot(INITIAL_STATE, {
+    at: 1,
+    aircraft: [plane, level],
+  });
+
+  const results = [
+    boardShowsEta(state, 'KSEA', ['aaaaaa', 'bbbbbb']),
+    boardShowsEta(state, 'KSEA', ['bbbbbb']),
+    boardShowsEta(state, 'KBDN', ['aaaaaa']),
+    boardShowsEta(state, 'KSEA', ['ffffff']),
+    boardShowsEta(state, 'KSEA', []),
+  ];
+
+  expect(results).toEqual([true, false, false, false, false]);
 });
 
 test('feedBadgeView labels each feed status with the aircraft count when live', () => {
@@ -208,12 +227,18 @@ test('toolCallLabel summarises findAircraft filters', () => {
     minAltitudeFt: null,
     maxAltitudeFt: null,
     approaching: null,
+    near: null,
     sortBy: 'distance',
     limit: 10,
   };
 
   const labels = [
-    toolCallLabel('findAircraft', { ...base, approaching: 'SEA' }),
+    toolCallLabel('findAircraft', { ...base, approaching: 'KSEA' }),
+    toolCallLabel('findAircraft', {
+      ...base,
+      kind: 'single',
+      near: { airport: 'kbdn', radiusNm: 25 },
+    }),
     toolCallLabel('findAircraft', { ...base, sortBy: 'altitude' }),
     toolCallLabel('findAircraft', {
       ...base,
@@ -225,7 +250,8 @@ test('toolCallLabel summarises findAircraft filters', () => {
   ];
 
   expect(labels).toEqual([
-    'findAircraft · approaching SEA',
+    'findAircraft · approaching KSEA',
+    'findAircraft · single, within 25 nm of KBDN',
     'findAircraft · sorted by altitude',
     'findAircraft · UAL, 737, above 10,000 ft, below 30,000 ft',
   ]);
@@ -239,6 +265,10 @@ test('toolCallLabel summarises the other tools by their main argument', () => {
     ['followAircraft', { hex: 'A1B2C3' }],
     ['getSelectedAircraft', {}],
     ['clearHighlight', {}],
+    ['lookupPlace', { query: 'Bend' }],
+    ['showArea', { airport: 'kbdn', radiusNm: 25 }],
+    ['showArea', { airport: 'KBDN', radiusNm: null }],
+    ['resetMap', {}],
   ];
 
   const labels = calls.map(([name, args]) => toolCallLabel(name, args));
@@ -250,6 +280,10 @@ test('toolCallLabel summarises the other tools by their main argument', () => {
     'followAircraft · a1b2c3',
     'getSelectedAircraft',
     'clearHighlight',
+    'lookupPlace · Bend',
+    'showArea · KBDN, 25 nm',
+    'showArea · KBDN',
+    'resetMap',
   ]);
 });
 

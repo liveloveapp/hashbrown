@@ -1,4 +1,9 @@
-import { type AirportCode, arrivalsRows, plainLabel } from '@atc/shared';
+import {
+  type AirportCode,
+  arrivalsRows,
+  boardShowsEta,
+  plainLabel,
+} from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
 import { useAtcState } from '../store';
 import { CardSkeleton } from './card-skeleton';
@@ -10,9 +15,14 @@ export interface ArrivalsBoardProps {
   readonly hexes: string[];
 }
 
-/** A live table of aircraft approaching an airport. */
+/**
+ * A live table of aircraft approaching or near an airport. The ETA column
+ * shows only when one of them is approaching it.
+ */
 export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
-  const rows = arrivalsRows(useAtcState(), airport, hexes);
+  const state = useAtcState();
+  const rows = arrivalsRows(state, airport, hexes);
+  const showEta = boardShowsEta(state, airport, hexes);
 
   return (
     <section className="atc-card" data-testid="arrivals-board">
@@ -24,7 +34,7 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
             <th scope="col">Type</th>
             <th scope="col">Alt</th>
             <th scope="col">Dist</th>
-            <th scope="col">ETA</th>
+            {showEta ? <th scope="col">ETA</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -41,7 +51,7 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
               </td>
               <td>{row.altitude}</td>
               <td>{row.distance}</td>
-              <td>{row.eta}</td>
+              {showEta ? <td>{row.eta}</td> : null}
             </tr>
           ))}
         </tbody>
