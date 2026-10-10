@@ -1,3 +1,4 @@
+import { chromium } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
@@ -7,6 +8,8 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -343,3 +346,119 @@ test('packed Core package includes every generated module and supports ESM and C
     rmSync(sandboxPath, { recursive: true, force: true });
   }
 });
+
+test('packed Core declarations type-check without skipLibCheck', () => {
+  const sandboxPath = createPackageSandbox();
+
+  try {
+    writeFileSync(
+      join(sandboxPath, 'consumer.ts'),
+      `
+        import {
+          createChatRuntime,
+          ɵcreateRuntimeFunctionImpl,
+          ɵcreateRuntimeImpl,
+        } from '@hashbrownai/core';
+
+        void [createChatRuntime, ɵcreateRuntimeFunctionImpl, ɵcreateRuntimeImpl];
+      `,
+    );
+
+    const compileResult = run(
+      process.execPath,
+      [
+        typescriptPath,
+        '--noEmit',
+        '--strict',
+        '--skipLibCheck',
+        'false',
+        '--target',
+        'ES2022',
+        '--module',
+        'Node16',
+        '--moduleResolution',
+        'Node16',
+        '--lib',
+        'ES2022,DOM',
+        'consumer.ts',
+      ],
+      sandboxPath,
+    );
+
+    expect({
+      status: compileResult.status,
+      stdout: compileResult.stdout,
+    }).toEqual({
+      status: 0,
+      stdout: '',
+    });
+  } finally {
+    rmSync(sandboxPath, { recursive: true, force: true });
+  }
+});
+
+test('packed Core runs code in its bundled JavaScript runtime in a browser', async () => {
+  const sandboxPath = createPackageSandbox();
+  const installedCorePath = join(sandboxPath, 'node_modules/@hashbrownai/core');
+  const server = createServer((request, response) => {
+    const filePath = join(
+      installedCorePath,
+      decodeURIComponent(new URL(request.url ?? '/', 'http://x').pathname),
+    );
+
+    if (!filePath.startsWith(installedCorePath) || !existsSync(filePath)) {
+      response.writeHead(404).end();
+      return;
+    }
+
+    response
+      .writeHead(200, {
+        'content-type': filePath.endsWith('.js')
+          ? 'text/javascript'
+          : 'text/html',
+      })
+      .end(readFileSync(filePath));
+  });
+  await new Promise<void>((resolveListen) =>
+    server.listen(0, '127.0.0.1', resolveListen),
+  );
+  const { port } = server.address() as AddressInfo;
+  const browser = await chromium.launch();
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${port}/package.json`);
+
+    // Passed as a string so the e2e CommonJS transpile cannot rewrite the
+    // dynamic imports into require() calls before the browser sees them.
+    const output = await page.evaluate(`(async () => {
+      const { object, number } = await import('/schema/public_api.esm.js');
+      const { createRuntimeFunctionImpl } = await import(
+        '/runtime/create-runtime-function-impl.esm.js'
+      );
+      const { createRuntimeImpl } = await import(
+        '/runtime/create-runtime-impl.esm.js'
+      );
+      const double = createRuntimeFunctionImpl({
+        name: 'double',
+        description: 'Doubles a number',
+        args: object('args', { value: number('value') }),
+        result: object('result', { value: number('value') }),
+        handler: async ({ value }) => ({ value: value * 2 }),
+      });
+      const runtime = createRuntimeImpl({ timeout: 10000, functions: [double] });
+
+      return runtime.run(
+        'double({ value: 21 }).value + 0.5',
+        AbortSignal.timeout(10000),
+      );
+    })()`);
+
+    expect(output).toEqual({ result: 42.5 });
+  } finally {
+    await browser.close();
+    server.close();
+    rmSync(sandboxPath, { recursive: true, force: true });
+  }
+  // Packing, installing and launching Chromium outlast Jest's 5s default on CI.
+}, 60_000);
