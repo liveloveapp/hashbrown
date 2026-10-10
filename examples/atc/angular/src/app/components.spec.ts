@@ -1,7 +1,13 @@
 import { type Aircraft, createAtcStore } from '@atc/shared';
 import { TestBed } from '@angular/core/testing';
-import { AircraftCompareComponent } from './components/aircraft-compare';
-import { ArrivalsBoardComponent } from './components/arrivals-board';
+import {
+  AircraftCompareComponent,
+  AircraftCompareFallbackComponent,
+} from './components/aircraft-compare';
+import {
+  ArrivalsBoardComponent,
+  ArrivalsBoardFallbackComponent,
+} from './components/arrivals-board';
 import {
   FlightCardComponent,
   FlightCardFallbackComponent,
@@ -43,6 +49,30 @@ test('the fallback shows the streaming note while the ID is incomplete', () => {
   expect(
     element.querySelector('[data-testid="flight-card-fallback"]')?.textContent,
   ).toContain('Climbing out of');
+});
+
+test('every fallback shows a quiet identifying line and two skeleton bars', () => {
+  setup();
+  const fallbacks = [
+    FlightCardFallbackComponent,
+    ArrivalsBoardFallbackComponent,
+    AircraftCompareFallbackComponent,
+  ].map((type) => {
+    const fixture = TestBed.createComponent(type);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  });
+
+  const views = fallbacks.map((element) => ({
+    line: element.querySelector('.atc-card-muted')?.textContent?.trim(),
+    bars: element.querySelectorAll('.atc-skeleton-bar').length,
+  }));
+
+  expect(views).toEqual([
+    { line: 'Identifying aircraft…', bars: 2 },
+    { line: 'Identifying aircraft…', bars: 2 },
+    { line: 'Identifying aircraft…', bars: 2 },
+  ]);
 });
 
 test('a flight card updates live and freezes when the aircraft leaves', () => {
@@ -99,6 +129,10 @@ test('the arrivals board renders one row per complete ID', () => {
 
   const rows = (fixture.nativeElement as HTMLElement).querySelectorAll(
     '[data-testid="arrivals-row"]',
+  );
+  const element = fixture.nativeElement as HTMLElement;
+  expect(element.querySelector('.atc-card-title')?.textContent).toBe(
+    'Arriving',
   );
   expect([...rows].map((row) => row.getAttribute('data-hex'))).toEqual([
     'aaaaaa',

@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import type { JsonResolvedValue } from '@hashbrownai/core';
 import { injectAtcState } from '../store';
+import { CardSkeletonComponent } from './card-skeleton';
 
 /** A live table of aircraft approaching an airport. */
 @Component({
@@ -14,15 +15,15 @@ import { injectAtcState } from '../store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="atc-card" data-testid="arrivals-board">
-      <h3>{{ title() }}</h3>
-      <table>
+      <h3 class="atc-card-title">{{ title() }}</h3>
+      <table class="atc-board">
         <thead>
           <tr>
-            <th>Flight</th>
-            <th>Type</th>
-            <th>Altitude</th>
-            <th>Distance</th>
-            <th>ETA</th>
+            <th scope="col">Flight</th>
+            <th scope="col">Type</th>
+            <th scope="col">Alt</th>
+            <th scope="col">Dist</th>
+            <th scope="col">ETA</th>
           </tr>
         </thead>
         <tbody>
@@ -32,8 +33,10 @@ import { injectAtcState } from '../store';
               [attr.data-hex]="row.hex"
               [attr.data-status]="row.status"
             >
-              <td>{{ row.callsign }}</td>
-              <td>{{ row.aircraftType }}</td>
+              <td class="atc-callsign">{{ row.callsign }}</td>
+              <td class="atc-board-type" [title]="row.aircraftType">
+                {{ row.aircraftType }}
+              </td>
               <td>{{ row.altitude }}</td>
               <td>{{ row.distance }}</td>
               <td>{{ row.eta }}</td>
@@ -57,11 +60,14 @@ export class ArrivalsBoardComponent {
 /** Shown until the airport is known. */
 @Component({
   selector: 'atc-arrivals-board-fallback',
+  imports: [CardSkeletonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="atc-card" data-testid="arrivals-board-fallback">
-      <h3>{{ title() }}</h3>
-      <div class="atc-skeleton"></div>
+      @if (title()) {
+        <h3 class="atc-card-title">{{ title() }}</h3>
+      }
+      <atc-card-skeleton />
     </section>
   `,
 })

@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import type { JsonResolvedValue } from '@hashbrownai/core';
 import { injectAtcState } from '../store';
+import { CardSkeletonComponent } from './card-skeleton';
 
 /** Two or three aircraft side by side, live. */
 @Component({
@@ -17,13 +18,15 @@ import { injectAtcState } from '../store';
       <div class="atc-compare">
         @for (card of cards(); track $index) {
           @if (card.status === 'unknown') {
-            <div>Unknown aircraft</div>
+            <div class="atc-compare-item">
+              <p class="atc-card-muted">Unknown aircraft</p>
+            </div>
           } @else {
-            <div [attr.data-hex]="card.hex">
-              <strong>{{ card.callsign }}</strong>
-              <p class="atc-card-type">{{ card.aircraftType }}</p>
-              <p>{{ card.altitude }}</p>
-              <p>{{ card.speed }}</p>
+            <div class="atc-compare-item" [attr.data-hex]="card.hex">
+              <strong class="atc-callsign">{{ card.callsign }}</strong>
+              <p class="atc-card-muted">{{ card.aircraftType }}</p>
+              <p class="atc-figure">{{ card.altitude }}</p>
+              <p class="atc-figure">{{ card.speed }}</p>
             </div>
           }
         }
@@ -44,11 +47,14 @@ export class AircraftCompareComponent {
 /** Shown until every aircraft ID has arrived. */
 @Component({
   selector: 'atc-aircraft-compare-fallback',
+  imports: [CardSkeletonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="atc-card" data-testid="aircraft-compare-fallback">
-      <div class="atc-skeleton" aria-label="Identifying aircraft"></div>
-      <p class="atc-card-note">{{ takeaway() }}</p>
+      <atc-card-skeleton />
+      @if (takeaway()) {
+        <p class="atc-card-note">{{ takeaway() }}</p>
+      }
     </section>
   `,
 })

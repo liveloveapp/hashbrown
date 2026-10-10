@@ -1,4 +1,4 @@
-import { SOURCE_URLS, STARTER_PROMPTS } from '@atc/shared';
+import { STARTER_PROMPTS } from '@atc/shared';
 import { ChangeDetectionStrategy, Component, output } from '@angular/core';
 
 /** What the chat shows before the first message: a question and starter pills. */
@@ -15,14 +15,10 @@ import { ChangeDetectionStrategy, Component, output } from '@angular/core';
         <button type="button" (click)="pick.emit(prompt)">{{ prompt }}</button>
       }
     </div>
-    <a class="atc-source" [href]="sourceUrl" target="_blank" rel="noreferrer"
-      >View the core file</a
-    >
   `,
 })
 export class EmptyStateComponent {
   /** Emits the starter prompt the user picked. */
   readonly pick = output<string>();
   protected readonly starters = STARTER_PROMPTS;
-  protected readonly sourceUrl = SOURCE_URLS.angular;
 }

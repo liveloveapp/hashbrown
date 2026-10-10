@@ -145,7 +145,6 @@ button, input { font: inherit; color: inherit; }
 .atc-empty-title { margin: 0; font-size: 20px; font-weight: 600; line-height: 1.3; letter-spacing: -0.02em; }
 .atc-empty .atc-starters { padding: 0; }
 .atc-empty .atc-starters button { font-size: 13px; text-align: left; }
-.atc-empty .atc-source { align-self: flex-start; margin: 0; font-size: 12px; color: var(--atc-muted); text-decoration: none; }
 
 .atc-tool-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .atc-tool-chip {
@@ -159,17 +158,18 @@ button, input { font: inherit; color: inherit; }
 }
 .atc-tool-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--atc-muted); }
 .atc-tool-chip[data-state='running'] { color: var(--atc-ink); }
-/* Consecutive tool steps read as one list. */
-.atc-chat .atc-transcript > li:has(> atc-tool-chips) + li:has(> atc-tool-chips) { margin-top: -6px; }
 @keyframes atc-spin { to { transform: rotate(360deg); } }
 
-atc-composer { flex: none; display: block; padding: 0 16px 16px; }
+atc-composer { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 0 16px 12px; }
+.atc-footnote { align-self: center; font-size: 12px; color: var(--atc-muted); text-decoration: none; }
+.atc-footnote:hover { color: var(--atc-ink); text-decoration: underline; }
 .atc-composer-pill {
   display: flex; align-items: center; gap: 8px; padding: 5px 5px 5px 16px;
   border: 1px solid var(--atc-border); border-radius: 999px; background: var(--atc-surface);
   transition: border-color var(--atc-fast) var(--atc-ease);
 }
-.atc-composer-pill:focus-within { border-color: var(--atc-accent); }
+.atc-composer-pill:focus-within { border-color: var(--atc-accent); outline: 2px solid var(--atc-accent); outline-offset: 2px; }
+.atc-composer-pill input:focus-visible { outline: none; }
 .atc-composer-pill input { flex: 1; min-width: 0; border: 0; padding: 6px 0; background: transparent; outline: none; }
 .atc-composer-pill input::placeholder { color: var(--atc-muted); }
 .atc-kbd {
@@ -190,19 +190,59 @@ atc-composer { flex: none; display: block; padding: 0 16px 16px; }
   .atc-chat-panel { order: 2; }
 }
 
-.atc-card { border: 1px solid var(--atc-border); border-radius: var(--atc-radius-row); padding: 10px 12px; background: var(--atc-surface); }
-.atc-card header { display: flex; gap: 8px; align-items: baseline; }
-.atc-card header strong { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
-.atc-card header span { color: var(--atc-muted); font-size: 13px; }
-.atc-card dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+/* Streaming prose (Hashbrown Magic Text) and its caret. */
+.atc-prose { font-size: 15px; line-height: 1.55; color: var(--atc-ink); overflow-wrap: anywhere; }
+.atc-prose :is(p, ul, ol) { margin: 0 0 8px; }
+.atc-prose > :last-child { margin-bottom: 0; }
+.atc-prose :is(h1, h2, h3, h4) { margin: 12px 0 6px; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.atc-prose code { font-family: var(--atc-mono); font-size: 13px; }
+.atc-prose a { color: var(--atc-ink); }
+.atc-chat .atc-prose .hb-magic-text-caret {
+  width: 0.5em; height: 0.5em; background-color: var(--atc-ink); opacity: 1;
+  animation: atc-fade 0.9s var(--atc-ease) infinite alternate;
+}
+
+/* Cards: FlightCard, ArrivalsBoard, AircraftCompare. */
+.atc-card { border: 1px solid var(--atc-border); border-radius: var(--atc-radius-row); padding: 12px; background: var(--atc-surface); }
+.atc-card p { margin: 0; }
+.atc-card header { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.atc-card header strong, .atc-callsign, .atc-card-title, .atc-card h3 {
+  font-size: 15px; font-weight: 650; letter-spacing: -0.01em; color: var(--atc-ink);
+}
+.atc-card-title, .atc-card h3 { margin: 0 0 8px; line-height: 1.3; }
+.atc-card header span, .atc-card .atc-card-muted, .atc-card-type, .atc-card-route, .atc-card-status {
+  margin: 2px 0 0; color: var(--atc-muted); font-size: 13px;
+}
+.atc-card dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 0; }
 .atc-card dt { font-size: 12px; color: var(--atc-muted); }
-.atc-card dd { margin: 0; font-family: var(--atc-mono); font-variant-numeric: tabular-nums; }
-.atc-card-note { margin: 6px 0 0; }
-.atc-card-route, .atc-card-type, .atc-card-status { margin: 2px 0; color: var(--atc-muted); font-size: 13px; }
-.atc-card table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: var(--atc-mono); font-variant-numeric: tabular-nums; }
-.atc-card th, .atc-card td { text-align: left; padding: 4px; border-bottom: 1px solid var(--atc-border); }
-.atc-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
-.atc-skeleton { height: 48px; border-radius: var(--atc-radius-row); background: var(--atc-canvas); animation: atc-fade 1.2s var(--atc-ease) infinite alternate; }
+.atc-card dd, .atc-figure { margin: 0; font-family: var(--atc-mono); font-variant-numeric: tabular-nums; font-size: 13px; }
+.atc-card .atc-card-note { margin: 10px 0 0; line-height: 1.55; }
+.atc-card header + .atc-card-muted { margin: 2px 0 0; }
+.atc-card table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-family: var(--atc-mono); font-variant-numeric: tabular-nums; }
+.atc-card th, .atc-card td { text-align: left; padding: 6px 4px; border-top: 1px solid var(--atc-border); white-space: nowrap; }
+.atc-board { table-layout: fixed; }
+.atc-board td { overflow: hidden; text-overflow: ellipsis; }
+.atc-board th { border-top: 0; padding-top: 0; font-family: var(--atc-font); font-size: 12px; font-weight: 500; color: var(--atc-muted); }
+.atc-board :is(th, td):first-child { padding-left: 0; width: 21%; }
+.atc-board :is(th, td):nth-child(n + 3) { text-align: right; }
+.atc-board :is(th, td):nth-child(3) { width: 22%; }
+.atc-board :is(th, td):nth-child(4) { width: 14%; }
+.atc-board :is(th, td):last-child { padding-right: 0; width: 13%; }
+.atc-board td.atc-callsign { font-family: var(--atc-mono); font-size: 12.5px; font-weight: 600; letter-spacing: 0; }
+.atc-board-type { overflow: hidden; text-overflow: ellipsis; color: var(--atc-muted); font-family: var(--atc-font); }
+.atc-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+.atc-compare-item { min-width: 0; padding: 8px 10px; border: 1px solid var(--atc-border); border-radius: var(--atc-radius-row); }
+.atc-compare-item .atc-figure { margin-top: 4px; }
+.atc-card-skeleton .atc-card-muted { margin: 0 0 2px; }
+
+/* Hold-back fallback: a quiet line and two bars; static under reduced motion. */
+.atc-card-skeleton { display: flex; flex-direction: column; gap: 6px; }
+.atc-skeleton-bar, .atc-skeleton {
+  height: 12px; width: 70%; border-radius: 6px; background: var(--atc-canvas);
+  animation: atc-fade 1.2s var(--atc-ease) infinite alternate;
+}
+.atc-skeleton { height: 48px; width: auto; border-radius: var(--atc-radius-row); }
+.atc-skeleton-bar.is-short { width: 45%; }
 @keyframes atc-fade { from { opacity: 1; } to { opacity: 0.5; } }
 
 .atc-plane-icon { background: none; border: none; }

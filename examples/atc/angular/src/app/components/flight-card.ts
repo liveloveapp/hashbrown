@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import type { JsonResolvedValue } from '@hashbrownai/core';
 import { ATC_STORE, injectAtcState } from '../store';
+import { CardSkeletonComponent } from './card-skeleton';
 
 /** One aircraft. Reads live data from the store, so it keeps updating after the answer ends. */
 @Component({
@@ -23,7 +24,7 @@ import { ATC_STORE, injectAtcState } from '../store';
         [attr.data-hex]="card.hex"
         data-status="unknown"
       >
-        <p>Unknown aircraft</p>
+        <p class="atc-card-title">Unknown aircraft</p>
         <p class="atc-card-note">{{ note() }}</p>
       </article>
     } @else {
@@ -34,13 +35,15 @@ import { ATC_STORE, injectAtcState } from '../store';
         [attr.data-status]="card.status"
       >
         <header>
-          <strong>{{ card.callsign }}</strong>
-          <span>{{ card.airline }}</span>
+          <strong class="atc-callsign">{{ card.callsign }}</strong>
+          <span class="atc-card-muted">{{ card.airline }}</span>
         </header>
-        <p class="atc-card-type">{{ card.aircraftType }}</p>
-        @if (card.route) {
-          <p class="atc-card-route">{{ card.route }}</p>
-        }
+        <p class="atc-card-muted">
+          {{ card.aircraftType }}
+          @if (card.route) {
+            · {{ card.route }}
+          }
+        </p>
         <dl>
           <div>
             <dt>Altitude</dt>
@@ -56,7 +59,7 @@ import { ATC_STORE, injectAtcState } from '../store';
           </div>
         </dl>
         @if (card.lastSeen) {
-          <p class="atc-card-status">
+          <p class="atc-card-muted">
             Out of range · last seen {{ card.lastSeen }}
           </p>
         }
@@ -82,11 +85,14 @@ export class FlightCardComponent implements OnInit {
 /** Shown until the full aircraft ID has arrived. */
 @Component({
   selector: 'atc-flight-card-fallback',
+  imports: [CardSkeletonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article class="atc-card" data-testid="flight-card-fallback">
-      <div class="atc-skeleton" aria-label="Identifying aircraft"></div>
-      <p class="atc-card-note">{{ note() }}</p>
+      <atc-card-skeleton />
+      @if (note()) {
+        <p class="atc-card-note">{{ note() }}</p>
+      }
     </article>
   `,
 })

@@ -1,10 +1,17 @@
-import { type Aircraft, createAtcStore, STARTER_PROMPTS } from '@atc/shared';
+import {
+  type Aircraft,
+  createAtcStore,
+  SOURCE_URLS,
+  STARTER_PROMPTS,
+  transcriptItems,
+} from '@atc/shared';
 import { TestBed } from '@angular/core/testing';
 import { ComposerComponent } from './composer';
 import { EmptyStateComponent } from './empty-state';
 import { FeedBadgeComponent } from './feed-badge';
 import { PanelHeaderComponent } from './panel-header';
 import { ToolChipsComponent } from './tool-chips';
+import { TranscriptComponent } from './transcript';
 import { ATC_STORE } from './store';
 
 const plane: Aircraft = {
@@ -213,5 +220,48 @@ test('Enter sends the trimmed draft, clears the input and keeps focus', () => {
   expect(sent).toEqual(['Show me Seattle']);
   expect(input.value).toBe('');
   expect(document.activeElement).toBe(input);
+  fixture.destroy();
+});
+
+test('consecutive tool calls render as one chip row in a polite live region', () => {
+  setup();
+  const fixture = TestBed.createComponent(TranscriptComponent);
+  const items = transcriptItems([
+    { role: 'user' as const, content: 'Seattle?' },
+    {
+      role: 'assistant' as const,
+      toolCalls: [{ name: 'findAircraft', args: {}, status: 'done' as const }],
+    },
+    {
+      role: 'assistant' as const,
+      toolCalls: [
+        { name: 'clearHighlight', args: {}, status: 'pending' as const },
+      ],
+    },
+  ]);
+
+  fixture.componentRef.setInput('items', items);
+  fixture.componentRef.setInput('busy', true);
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  const list = element.querySelector('ol');
+
+  expect(element.querySelectorAll('atc-tool-chips')).toHaveLength(1);
+  expect(
+    [...element.querySelectorAll('[data-testid="tool-chip"]')].map((chip) =>
+      chip.getAttribute('data-state'),
+    ),
+  ).toEqual(['done', 'running']);
+  expect(list?.getAttribute('aria-live')).toBe('polite');
+  expect(list?.getAttribute('aria-busy')).toBe('true');
+});
+
+test('the composer keeps a footnote link to the core file', () => {
+  const { fixture } = composer();
+
+  const link = (fixture.nativeElement as HTMLElement).querySelector('a');
+
+  expect(text(link)).toBe('View the core file');
+  expect(link?.getAttribute('href')).toBe(SOURCE_URLS.angular);
   fixture.destroy();
 });

@@ -1,3 +1,4 @@
+import { SOURCE_URLS } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -15,7 +16,10 @@ function isTyping(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(EDITABLE) !== null;
 }
 
-/** The message pill. `/` focuses it from anywhere outside another field. */
+/**
+ * The message pill and the core-file footnote. `/` focuses the pill from
+ * anywhere outside another field.
+ */
 @Component({
   selector: 'atc-composer',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +51,9 @@ function isTyping(target: EventTarget | null): boolean {
         </svg>
       </button>
     </form>
+    <a class="atc-footnote" [href]="sourceUrl" target="_blank" rel="noreferrer"
+      >View the core file</a
+    >
   `,
 })
 export class ComposerComponent {
@@ -54,6 +61,7 @@ export class ComposerComponent {
   readonly busy = input(false);
   /** Emits the trimmed message text. */
   readonly send = output<string>();
+  protected readonly sourceUrl = SOURCE_URLS.angular;
   private readonly field =
     viewChild.required<ElementRef<HTMLInputElement>>('field');
 
