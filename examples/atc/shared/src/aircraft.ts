@@ -78,6 +78,9 @@ export interface AircraftSnapshot {
   readonly aircraft: readonly Aircraft[];
 }
 
+// SECURITY INVARIANT: hex codes, labels and kinds are interpolated into
+// marker innerHTML (map/plane-marker.ts planeIconHtml). Widening HEX or LABEL,
+// or interpolating typeCode, description or registration there, is an XSS bug.
 const HEX = /^[0-9a-f]{6}$/;
 const AIRLINE_CALLSIGN = /^[A-Z]{3}\d[A-Z0-9]{0,4}$/;
 const LABEL = /^[A-Z0-9]{1,8}$/;
@@ -242,7 +245,8 @@ export function displayLabel(
 /**
  * Normalizes an adsb.lol `/v2/point` payload. Keeps every aircraft with an
  * ICAO hex code and a position, and copies only whitelisted fields, so owner
- * and operator data never leave the server.
+ * and operator data never leave the server. Privacy: build each Aircraft
+ * field by field; never spread the raw entry.
  */
 export function normalizeAdsbLol(
   payload: unknown,
@@ -367,6 +371,9 @@ function parseAircraft(value: unknown): Aircraft | null {
 /**
  * Validates a snapshot received over the network.
  * Returns a rebuilt snapshot whose aircraft carry only the `Aircraft` fields.
+ * The browser re-validates even its own server's JSON (a CDN, a proxy or an
+ * old deploy can serve anything); one bad aircraft rejects the snapshot, so
+ * the feed keeps the last good one.
  */
 export function parseSnapshot(value: unknown): AircraftSnapshot {
   if (

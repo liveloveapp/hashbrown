@@ -2,7 +2,12 @@ import { type AircraftSnapshot, parseSnapshot } from './aircraft';
 import type { AreaId } from './places';
 import type { AtcStore } from './store';
 
-/** How often the browser asks `/api/aircraft` for fresh positions. */
+/**
+ * How often the browser asks `/api/aircraft` for fresh positions. Cadence:
+ * browsers poll every 3 s; the CDN shares a response for 3 s; the server
+ * calls adsb.lol at most every 10 s per area (`FRESH_MS` in
+ * server/src/aircraft-handler.ts). Polling faster only hits the CDN.
+ */
 export const FEED_INTERVAL_MS = 3000;
 
 /** One poll's result: the snapshot, and whether the server marked it stale. */

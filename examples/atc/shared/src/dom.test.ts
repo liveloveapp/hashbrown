@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { expect, test } from 'vitest';
-import { addsUserMessage, focusOpensSheet, isEmptyChat, isTyping } from './dom';
+import {
+  addsUserMessage,
+  focusOpensSheet,
+  isEmptyChat,
+  isNearBottom,
+  isTyping,
+} from './dom';
 
 test('isTyping is true inside inputs, textareas, selects and editable regions', () => {
   document.body.innerHTML =
@@ -53,4 +59,22 @@ test('isEmptyChat is true only while the empty state is shown', () => {
   );
 
   expect(results).toEqual([true, false]);
+});
+
+test('a scroller at the end follows new content', () => {
+  const metrics = { scrollTop: 500, scrollHeight: 1000, clientHeight: 500 };
+
+  expect(isNearBottom(metrics)).toBe(true);
+});
+
+test('a scroller within the threshold still follows', () => {
+  const metrics = { scrollTop: 460, scrollHeight: 1000, clientHeight: 500 };
+
+  expect(isNearBottom(metrics)).toBe(true);
+});
+
+test('a user who scrolled up is left alone', () => {
+  const metrics = { scrollTop: 100, scrollHeight: 1000, clientHeight: 500 };
+
+  expect(isNearBottom(metrics)).toBe(false);
 });

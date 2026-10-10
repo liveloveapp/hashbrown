@@ -2,31 +2,12 @@ import { expect, test } from 'vitest';
 import { createAtcStore, INITIAL_STATE } from './store';
 import {
   INITIAL_SHEET,
-  isNearBottom,
   nextSheet,
   sheetEventFor,
   sheetExpanded,
   type SheetState,
   watchSheetEvents,
 } from './sheet';
-
-test('a scroller at the end follows new content', () => {
-  const metrics = { scrollTop: 500, scrollHeight: 1000, clientHeight: 500 };
-
-  expect(isNearBottom(metrics)).toBe(true);
-});
-
-test('a scroller within the threshold still follows', () => {
-  const metrics = { scrollTop: 460, scrollHeight: 1000, clientHeight: 500 };
-
-  expect(isNearBottom(metrics)).toBe(true);
-});
-
-test('a user who scrolled up is left alone', () => {
-  const metrics = { scrollTop: 100, scrollHeight: 1000, clientHeight: 500 };
-
-  expect(isNearBottom(metrics)).toBe(false);
-});
 
 const peek: SheetState = { snap: 'peek', held: false };
 const half: SheetState = { snap: 'half', held: false };

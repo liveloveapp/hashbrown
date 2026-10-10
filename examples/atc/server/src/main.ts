@@ -7,10 +7,12 @@ try {
   // No .env file; rely on the environment.
 }
 
+const port = Number(process.env['PORT'] ?? 4340);
+
 createApp({ run: readRunOptions(process.env) }).listen(
-  4340,
+  port,
   '127.0.0.1',
   () => {
-    console.log('atc server on http://127.0.0.1:4340');
+    console.log(`atc server on http://127.0.0.1:${port}`);
   },
 );

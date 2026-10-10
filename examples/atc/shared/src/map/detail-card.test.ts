@@ -311,3 +311,19 @@ test('a new message age updates in place without rebuilding the readings', () =>
   expect(card.element.querySelector('.atc-detail-group')).toBe(group);
   expect(card.element.textContent).toContain('Last message4s ago');
 });
+
+test('a pinned card announces its summary politely; a hovered one stays quiet', () => {
+  const card = createDetailCard(document);
+
+  card.show(view, 1000, { pinned: true, docked: false });
+  const pinnedLive = card.element
+    .querySelector('.atc-detail-summary')
+    ?.getAttribute('aria-live');
+  card.show(view, 1000);
+  const hoverLive = card.element
+    .querySelector('.atc-detail-summary')
+    ?.getAttribute('aria-live');
+
+  expect(pinnedLive).toBe('polite');
+  expect(hoverLive).toBe('off');
+});

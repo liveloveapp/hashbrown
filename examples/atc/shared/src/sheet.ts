@@ -1,24 +1,5 @@
 import type { AtcStore } from './store';
 
-/** Scroll metrics of an element, as read from the DOM. */
-export interface ScrollMetrics {
-  scrollTop: number;
-  scrollHeight: number;
-  clientHeight: number;
-}
-
-/**
- * Whether a scroller sits at (or within `threshold` px of) its end, so
- * newly streamed content should keep it pinned to the bottom. Once the user
- * scrolls further up than the threshold this returns false and the view is
- * left alone.
- */
-export function isNearBottom(metrics: ScrollMetrics, threshold = 48): boolean {
-  return (
-    metrics.scrollHeight - metrics.scrollTop - metrics.clientHeight <= threshold
-  );
-}
-
 /** Where the phone bottom sheet rests: a peek, half the screen, or full. */
 export type SheetSnap = 'peek' | 'half' | 'full';
 
@@ -63,7 +44,9 @@ function at(snap: SheetSnap): SheetState {
  * goes all the way) and a tap opens it fully or closes it from full. Sending
  * lowers it to half so the map shows above the answer; a map move does too,
  * unless the user is holding it at full; picking a plane from the chat
- * always does. Escape closes it to its peek.
+ * always does. Escape closes it to its peek. "Held" means the user put the
+ * sheet at full themselves: automatic events (map, reveal, send) never pull a
+ * held sheet down, only the user's drag or Escape does.
  */
 export function nextSheet(state: SheetState, event: SheetEvent): SheetState {
   switch (event.type) {

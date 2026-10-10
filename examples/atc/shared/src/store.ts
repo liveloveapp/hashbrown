@@ -30,9 +30,11 @@ export interface ShownArea {
 }
 
 /**
- * A pending map move. Only the newest one counts: a highlight fit, an area,
- * a reset to the regional view, or bringing one aircraft into view. `seq` tells the map whether it has
- * already applied this one.
+ * A pending map move: a highlight fit, an area, a reset to the regional view,
+ * or bringing one aircraft into view. Precedence: (1) follow mode always wins
+ * and drops requests; (2) the newest request (highest `seq`) wins; (3) a user
+ * drag or zoom cancels a pending one; (4) highlight and aircraft requests
+ * wait for their markers to be drawn. The map applies each `seq` once.
  */
 export type ViewRequest =
   | { readonly seq: number; readonly kind: 'highlight' }

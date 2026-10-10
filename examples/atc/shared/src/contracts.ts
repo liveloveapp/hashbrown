@@ -1,6 +1,11 @@
 import { s } from '@hashbrownai/core';
 import { AIRPORT_CODES } from './places';
 
+// Hold-back: streamed props (s.streaming.*) render as they arrive; plain
+// props (hex, airport) appear only once complete, and Hashbrown shows the
+// fallback until then. Keep IDs non-streaming so a half-streamed "a1c" never
+// resolves to another plane.
+
 /**
  * FlightCard: one aircraft. `note` streams first; `hex` is never streamed, so
  * the card only resolves to a plane once its full ID has arrived.
@@ -35,6 +40,8 @@ export const arrivalsBoardContract = {
       'ICAO code of the airport the aircraft are approaching or near',
       [...AIRPORT_CODES],
     ),
+    // The array streams row by row, but each s.string item is held back until
+    // whole, so a row never points at a partial hex.
     hexes: s.streaming.array(
       'Aircraft hex codes from findAircraft, nearest first',
       s.string('Aircraft hex code'),

@@ -16,6 +16,25 @@ export function focusOpensSheet(target: EventTarget | null): boolean {
   return isTyping(target);
 }
 
+/** Scroll metrics of an element, as read from the DOM. */
+export interface ScrollMetrics {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
+/**
+ * Whether a scroller sits at (or within `threshold` px of) its end, so
+ * newly streamed content should keep it pinned to the bottom. Once the user
+ * scrolls further up than the threshold this returns false and the view is
+ * left alone.
+ */
+export function isNearBottom(metrics: ScrollMetrics, threshold = 48): boolean {
+  return (
+    metrics.scrollHeight - metrics.scrollTop - metrics.clientHeight <= threshold
+  );
+}
+
 /** Whether a mutation record added a user message to the transcript. */
 export function addsUserMessage(record: MutationRecord): boolean {
   return [...record.addedNodes].some(

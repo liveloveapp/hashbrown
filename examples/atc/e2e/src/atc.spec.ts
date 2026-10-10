@@ -25,6 +25,8 @@ let mock: LLMock;
 let server: Server;
 let origin: string;
 
+// One server and one model mock for the whole file, for speed: every test
+// opens a fresh page, and the mock answers by the user's message.
 test.beforeAll(async () => {
   mock = new LLMock({ port: 0, chunkSize: 8 });
   const card = (note: string, hex: string) => ({
@@ -357,7 +359,9 @@ test('compares the highest and the fastest aircraft', async ({
   await expectOnlyCompleteIds(page);
 });
 
-test('has no framework switcher', async ({ page }, testInfo) => {
+test('each app stands alone, with no links to the other framework', async ({
+  page,
+}, testInfo) => {
   await open(page, testInfo.project.name);
 
   const links = page.locator(

@@ -391,8 +391,11 @@ export function createDetailCard(
         more = false;
       }
       mode = next;
-      // A hovered card is a tooltip; a pinned one is a small dialog-like panel.
+      // A hovered card is a tooltip; a pinned one is a small dialog-like panel
+      // whose summary (not the ticking age) is announced when a plane is
+      // selected. Its buttons are hidden, so out of the tree, while hovered.
       element.setAttribute('role', mode.pinned ? 'group' : 'tooltip');
+      parts.summary.setAttribute('aria-live', mode.pinned ? 'polite' : 'off');
       element.setAttribute('aria-label', `Details for ${view.label}`);
       element.classList.toggle('is-pinned', mode.pinned);
       element.classList.toggle('is-docked', mode.docked);
