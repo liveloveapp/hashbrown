@@ -460,4 +460,5 @@ test('packed Core runs code in its bundled JavaScript runtime in a browser', asy
     server.close();
     rmSync(sandboxPath, { recursive: true, force: true });
   }
-});
+  // Packing, installing and launching Chromium outlast Jest's 5s default on CI.
+}, 60_000);
