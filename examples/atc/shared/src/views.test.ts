@@ -120,17 +120,16 @@ test('arrivalsRows computes distance and ETA to the airport', () => {
   ]);
 });
 
-test('feedBadgeView offers replay only when stalled', () => {
-  const views = (
-    ['connecting', 'live', 'delayed', 'stalled', 'replay'] as const
-  ).map(feedBadgeView);
+test('feedBadgeView labels each feed status', () => {
+  const views = (['connecting', 'live', 'delayed', 'stalled'] as const).map(
+    feedBadgeView,
+  );
 
   expect(views).toEqual([
-    { label: 'Connecting…', offerReplay: false },
-    { label: 'Live · adsb.lol', offerReplay: false },
-    { label: 'Data delayed', offerReplay: false },
-    { label: 'Data delayed', offerReplay: true },
-    { label: 'Replay · recorded traffic', offerReplay: false },
+    { label: 'Connecting…' },
+    { label: 'Live · adsb.lol' },
+    { label: 'Data delayed' },
+    { label: 'Data delayed' },
   ]);
 });
 

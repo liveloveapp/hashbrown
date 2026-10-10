@@ -9,15 +9,7 @@ import { useAtcStore } from './store';
 export function App() {
   const store = useAtcStore();
 
-  useEffect(
-    () =>
-      startAtcFeed({
-        store,
-        search: window.location.search,
-        baseUri: document.baseURI,
-      }),
-    [store],
-  );
+  useEffect(() => startAtcFeed({ store }), [store]);
 
   return (
     <main className="atc-shell">
@@ -25,7 +17,7 @@ export function App() {
       <header className="atc-topbar">
         <span className="atc-brand">atc</span>
         <span className="atc-toggle">
-          React · <a href={`../angular/${window.location.search}`}>Angular</a>
+          React · <a href="../angular/">Angular</a>
         </span>
         <FeedBadge />
         <a

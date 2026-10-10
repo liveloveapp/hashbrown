@@ -20,13 +20,6 @@ export interface AircraftSnapshot {
   readonly aircraft: readonly Aircraft[];
 }
 
-/** A recorded sequence of snapshots used by replay mode. */
-export interface ReplayFile {
-  readonly area: string;
-  readonly recordedAt: number;
-  readonly frames: readonly AircraftSnapshot[];
-}
-
 const HEX = /^[0-9a-f]{6}$/;
 const AIRLINE_CALLSIGN = /^[A-Z]{3}\d[A-Z0-9]{0,4}$/;
 
@@ -151,7 +144,7 @@ function parseAircraft(value: unknown): Aircraft | null {
 }
 
 /**
- * Validates a snapshot received over the network or from a replay file.
+ * Validates a snapshot received over the network.
  * Returns a rebuilt snapshot whose aircraft carry only the `Aircraft` fields.
  */
 export function parseSnapshot(value: unknown): AircraftSnapshot {
@@ -169,23 +162,4 @@ export function parseSnapshot(value: unknown): AircraftSnapshot {
   }
 
   return { at: value['at'], aircraft };
-}
-
-/** Validates a replay file; it must contain at least one valid frame. */
-export function parseReplayFile(value: unknown): ReplayFile {
-  if (
-    !isRecord(value) ||
-    typeof value['area'] !== 'string' ||
-    typeof value['recordedAt'] !== 'number' ||
-    !Array.isArray(value['frames']) ||
-    value['frames'].length === 0
-  ) {
-    throw new Error('Invalid replay file');
-  }
-
-  return {
-    area: value['area'],
-    recordedAt: value['recordedAt'],
-    frames: value['frames'].map(parseSnapshot),
-  };
 }

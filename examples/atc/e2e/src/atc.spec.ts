@@ -6,7 +6,7 @@ import { once } from 'node:events';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
-import { RECORDED_HEXES, scenario, ui } from './fixtures';
+import { frame, scenario, SYNTHETIC_HEXES, ui } from './fixtures';
 
 const dist = resolve(__dirname, '../../../../dist/examples/atc');
 const { selected, highest, fastest, arrivals } = scenario;
@@ -22,8 +22,8 @@ test.beforeAll(async () => {
   const board = ui({
     ArrivalsBoard: {
       props: {
-        title: "Arriving at O'Hare",
-        airport: 'ORD',
+        title: 'Arriving at Seattle',
+        airport: 'SEA',
         hexes: arrivals.map((r) => r.hex),
       },
     },
@@ -61,7 +61,7 @@ test.beforeAll(async () => {
           typeCode: null,
           minAltitudeFt: null,
           maxAltitudeFt: null,
-          approaching: 'ORD',
+          approaching: 'SEA',
           sortBy: 'distance',
           limit: 10,
         },
@@ -128,6 +128,10 @@ async function open(page: Page, framework: string): Promise<void> {
   await page.route('https://vrs-standing-data.adsb.lol/**', (route) =>
     route.fulfill({ status: 404, body: '' }),
   );
+  let next = 0;
+  await page.route('**/api/aircraft**', (route) =>
+    route.fulfill({ json: frame(next++) }),
+  );
   await page.addInitScript(() => {
     const seen: string[] = [];
     (window as unknown as { __atcCardHexes: string[] }).__atcCardHexes = seen;
@@ -139,8 +143,8 @@ async function open(page: Page, framework: string): Promise<void> {
       }
     }).observe(document, { subtree: true, childList: true, attributes: true });
   });
-  await page.goto(`${origin}/${framework}/?replay=1&tick=1000`);
-  await expect(page.getByRole('status')).toContainText('Replay');
+  await page.goto(`${origin}/${framework}/`);
+  await expect(page.getByRole('status')).toContainText('Live');
 }
 
 async function expectOnlyCompleteIds(page: Page): Promise<void> {
@@ -150,7 +154,7 @@ async function expectOnlyCompleteIds(page: Page): Promise<void> {
   expect(hexes.length).toBeGreaterThan(0);
   for (const hex of hexes) {
     expect(
-      RECORDED_HEXES.has(hex),
+      SYNTHETIC_HEXES.has(hex),
       `card rendered with incomplete or unknown ID "${hex}"`,
     ).toBe(true);
   }
@@ -179,7 +183,7 @@ test('renders the selected aircraft as a live card', async ({
   await expectOnlyCompleteIds(page);
 });
 
-test("shows O'Hare arrivals and highlights them on the map", async ({
+test('shows Seattle arrivals and highlights them on the map', async ({
   page,
 }, testInfo) => {
   await open(page, testInfo.project.name);

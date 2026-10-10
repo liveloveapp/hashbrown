@@ -125,15 +125,13 @@ export function arrivalsRows(
 /** What the feed badge shows. */
 export interface FeedBadgeView {
   readonly label: string;
-  readonly offerReplay: boolean;
 }
 
 const BADGES: Record<FeedStatus, FeedBadgeView> = {
-  connecting: { label: 'Connecting…', offerReplay: false },
-  live: { label: 'Live · adsb.lol', offerReplay: false },
-  delayed: { label: 'Data delayed', offerReplay: false },
-  stalled: { label: 'Data delayed', offerReplay: true },
-  replay: { label: 'Replay · recorded traffic', offerReplay: false },
+  connecting: { label: 'Connecting…' },
+  live: { label: 'Live · adsb.lol' },
+  delayed: { label: 'Data delayed' },
+  stalled: { label: 'Data delayed' },
 };
 
 /** The badge for a feed status. */

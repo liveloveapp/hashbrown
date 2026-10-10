@@ -3,28 +3,12 @@ import type { AircraftSnapshot } from './aircraft';
 import {
   createLiveLoader,
   createPollingFeed,
-  createReplayLoader,
-  readAtcOptions,
+  FEED_INTERVAL_MS,
+  startAtcFeed,
 } from './feed';
 import { createAtcStore } from './store';
 
 const snapshot: AircraftSnapshot = { at: 1, aircraft: [] };
-
-test('readAtcOptions reads replay and clamps the tick', () => {
-  const options = [
-    readAtcOptions(''),
-    readAtcOptions('?replay=1&tick=1000'),
-    readAtcOptions('?replay=1&tick=5'),
-    readAtcOptions('?tick=abc'),
-  ];
-
-  expect(options).toEqual([
-    { replay: false, tickMs: 5000 },
-    { replay: true, tickMs: 1000 },
-    { replay: true, tickMs: 250 },
-    { replay: false, tickMs: 5000 },
-  ]);
-});
 
 test('the polling feed marks live data and keeps polling', async () => {
   vi.useFakeTimers();
@@ -34,7 +18,6 @@ test('the polling feed marks live data and keeps polling', async () => {
     store,
     load,
     intervalMs: 5000,
-    mode: 'live',
   });
 
   feed.start();
@@ -61,7 +44,6 @@ test('failures keep the last positions and escalate from delayed to stalled', as
     store,
     load,
     intervalMs: 5000,
-    mode: 'live',
     now: () => clock,
   });
   feed.start();
@@ -86,18 +68,6 @@ test('failures keep the last positions and escalate from delayed to stalled', as
   vi.useRealTimers();
 });
 
-test('replay mode reports replay and cycles through frames', async () => {
-  const frames: AircraftSnapshot[] = [
-    { at: 1, aircraft: [] },
-    { at: 2, aircraft: [] },
-  ];
-  const load = createReplayLoader(frames);
-
-  const ats = [(await load()).at, (await load()).at, (await load()).at];
-
-  expect(ats).toEqual([1, 2, 1]);
-});
-
 test('the live loader requests the area and validates the response', async () => {
   const fetchFn = vi.fn<typeof fetch>(async () => Response.json(snapshot));
   const failing = vi.fn(async () =>
@@ -111,4 +81,25 @@ test('the live loader requests the area and validates the response', async () =>
   await expect(createLiveLoader('pnw', failing)()).rejects.toThrow(
     'Aircraft feed returned 502',
   );
+});
+
+test('startAtcFeed polls the Pacific Northwest every 3 s until stopped', async () => {
+  vi.useFakeTimers();
+  const store = createAtcStore();
+  const fetchFn = vi.fn<typeof fetch>(async () => Response.json(snapshot));
+
+  const stop = startAtcFeed({ store, fetchFn });
+  await vi.advanceTimersByTimeAsync(2 * FEED_INTERVAL_MS);
+  stop();
+  await vi.advanceTimersByTimeAsync(5 * FEED_INTERVAL_MS);
+
+  expect(FEED_INTERVAL_MS).toBe(3000);
+  expect(fetchFn).toHaveBeenCalledTimes(3);
+  expect(fetchFn.mock.calls.map(([url]) => String(url))).toEqual([
+    '/api/aircraft?area=pnw',
+    '/api/aircraft?area=pnw',
+    '/api/aircraft?area=pnw',
+  ]);
+  expect(store.getState().feedStatus).toBe('live');
+  vi.useRealTimers();
 });

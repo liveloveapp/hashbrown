@@ -16,13 +16,6 @@
       ],
       "outputs": ["{projectRoot}/.vercel/output"],
       "options": { "command": "tsx examples/atc/tools/build-vercel-output.mts" }
-    },
-    "record-replay": {
-      "executor": "nx:run-commands",
-      "cache": false,
-      "options": {
-        "command": "tsx --tsconfig examples/atc/shared/tsconfig.json examples/atc/tools/record-replay.mts"
-      }
     }
   }
 }

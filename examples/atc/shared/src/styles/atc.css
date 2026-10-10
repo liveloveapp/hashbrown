@@ -20,7 +20,6 @@ html, body { margin: 0; height: 100%; }
 .atc-topbar > * { pointer-events: auto; }
 .atc-brand { font-weight: 700; background: var(--atc-panel); padding: 6px 10px; border-radius: 8px; }
 .atc-toggle, .atc-badge, .atc-source { background: var(--atc-panel); padding: 6px 10px; border-radius: 8px; font-size: 13px; }
-.atc-badge button { margin-left: 8px; }
 
 .atc-assistant {
   position: absolute; z-index: 1000; left: 16px; bottom: 16px; top: 64px;

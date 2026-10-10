@@ -27,8 +27,6 @@ npx nx serve atc-react
 Open http://127.0.0.1:4341/angular/ or http://127.0.0.1:4342/react/. In development the
 Angular/React toggle does not work because the apps run on different ports.
 
-Add `?replay=1` to use recorded traffic instead of the live feed; `&tick=1000` speeds it up.
-
 ## Swap the model provider
 
 `server/src/run-handler.ts` uses `HashbrownOpenAI`. To use another provider, install its
@@ -48,8 +46,10 @@ npx nx e2e atc-e2e
 ## Data
 
 Aircraft data comes from [adsb.lol](https://adsb.lol) under the ODbL. Map tiles are from
-Stadia Maps, which authenticates by domain. Run `npx nx record-replay atc` to refresh the
-recorded traffic in `shared/public/replay/ord.json`.
+Stadia Maps, which authenticates by domain. The browser polls `/api/aircraft` every 3 s;
+the server shares one adsb.lol call per area across requests, reuses it for 3 s, and
+serves the last good snapshot (marked `X-Atc-Stale: 1`) for up to 60 s when adsb.lol
+fails. The e2e tests stub `/api/aircraft` with synthetic frames.
 
 ## Hosting
 

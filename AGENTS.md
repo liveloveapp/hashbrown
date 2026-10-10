@@ -111,7 +111,6 @@ the advanced example until it is retired. Conformance hosts are internal test in
 
 - `atc`
   - `npx nx build atc`
-  - `npx nx record-replay atc`
 - `atc-shared`
   - `npx nx build atc-shared`
   - `npx nx test atc-shared`

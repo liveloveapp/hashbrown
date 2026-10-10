@@ -48,4 +48,4 @@ npx nx serve atc-server
 npx nx serve atc-angular
 ```
 
-Open http://127.0.0.1:4341/angular/. Add `?replay=1` to use recorded traffic.
+Open http://127.0.0.1:4341/angular/.

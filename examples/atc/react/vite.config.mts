@@ -5,7 +5,6 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   root: import.meta.dirname,
   base: '/react/',
-  publicDir: '../shared/public',
   plugins: [react(), nxViteTsPaths()],
   server: {
     host: '127.0.0.1',

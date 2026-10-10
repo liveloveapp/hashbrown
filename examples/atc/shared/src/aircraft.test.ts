@@ -1,10 +1,5 @@
 import { expect, test } from 'vitest';
-import {
-  isAirlineCallsign,
-  normalizeAdsbLol,
-  parseReplayFile,
-  parseSnapshot,
-} from './aircraft';
+import { isAirlineCallsign, normalizeAdsbLol, parseSnapshot } from './aircraft';
 
 const united = {
   hex: 'AA7F28',
@@ -111,21 +106,6 @@ test('parseSnapshot accepts a normalized snapshot and rejects anything else', ()
   expect(() => parseSnapshot({ at: 1, aircraft: [{ hex: 'zz' }] })).toThrow(
     'Invalid aircraft snapshot',
   );
-});
-
-test('parseReplayFile requires at least one frame', () => {
-  const frame = normalizeAdsbLol({ ac: [united] }, 1000);
-
-  const replay = parseReplayFile({
-    area: 'ord',
-    recordedAt: 1000,
-    frames: [frame],
-  });
-
-  expect(replay.frames).toHaveLength(1);
-  expect(() =>
-    parseReplayFile({ area: 'ord', recordedAt: 1000, frames: [] }),
-  ).toThrow('Invalid replay file');
 });
 
 test('parseSnapshot rejects a non-boolean onGround', () => {

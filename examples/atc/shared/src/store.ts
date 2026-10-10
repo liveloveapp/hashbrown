@@ -13,8 +13,7 @@ export interface Route {
 }
 
 /** How fresh the aircraft data is. */
-export type FeedStatus =
-  'connecting' | 'live' | 'delayed' | 'stalled' | 'replay';
+export type FeedStatus = 'connecting' | 'live' | 'delayed' | 'stalled';
 
 /** An aircraft that has left the area, frozen at its last values. */
 export interface DepartedAircraft {

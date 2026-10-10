@@ -20,7 +20,7 @@ import { ATC_STORE } from './store';
       <atc-airspace-map />
       <header class="atc-topbar">
         <span class="atc-brand">atc</span>
-        <span class="atc-toggle">Angular · <a [href]="reactUrl">React</a></span>
+        <span class="atc-toggle">Angular · <a href="../react/">React</a></span>
         <atc-feed-badge />
         <a
           class="atc-source"
@@ -35,15 +35,10 @@ import { ATC_STORE } from './store';
   `,
 })
 export class App {
-  protected readonly reactUrl = `../react/${window.location.search}`;
   protected readonly sourceUrl = SOURCE_URLS.angular;
 
   constructor() {
-    const stop = startAtcFeed({
-      store: inject(ATC_STORE),
-      search: window.location.search,
-      baseUri: document.baseURI,
-    });
+    const stop = startAtcFeed({ store: inject(ATC_STORE) });
     inject(DestroyRef).onDestroy(stop);
   }
 }
