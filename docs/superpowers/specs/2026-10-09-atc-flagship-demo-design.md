@@ -106,14 +106,16 @@ and nothing is written twice. Both apps import it through a path alias.
    -121.2002) with adsb.lol's maximum 250 nm radius, shown at zoom 6.
 2. `/aircraft` fetches `https://api.adsb.lol/v2/point/{lat}/{lon}/{radius}` for
    the area, strips owner and operator fields, and responds with
-   `Cache-Control: s-maxage=3, stale-while-revalidate=30`. Each server
+   `Cache-Control: s-maxage=3, stale-while-revalidate=5`. Each server
    instance also caches per area: concurrent requests share one in-flight
-   upstream call, a snapshot is reused for 10 s (adsb.lol answers 429 to a
-   3-5 s cadence), and when adsb.lol fails the last snapshot up to 60 s old is
-   served with `X-Atc-Stale: 1` (otherwise 502). After a 429 the instance
-   leaves adsb.lol alone for 15 s. Upstream every 10 s, clients every 3 s:
-   the 3 s CDN cache and poll mean browsers see a new snapshot within about
-   3 s of the server fetching it, and stale snapshots show "Data delayed".
+   upstream call (8 s timeout), a snapshot is reused for 10 s (adsb.lol
+   answers 429 to a 3-5 s cadence), and when adsb.lol fails the last snapshot
+   up to 60 s old is served with `X-Atc-Stale: 1` (otherwise 502). After a 429
+   the instance leaves adsb.lol alone for 15 s. Upstream every 10 s, clients
+   every 3 s: a response the CDN hands out is at most 8 s old (3 s cache plus
+   5 s while revalidating), so browsers see a new snapshot a few seconds after
+   the server fetches it. Stale snapshots show "Data delayed", and snapshots
+   no newer than the one the browser holds are ignored.
 3. Between polls the map glides each plane from where it is drawn to its new
    position over the time since the previous snapshot (clamped to 250 ms to
    10 s). New planes, moves over 20 nm and `prefers-reduced-motion` jump.

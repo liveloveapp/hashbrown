@@ -140,3 +140,29 @@ test('stale snapshots report delayed until the next fresh one', async () => {
   expect(store.getState().updatedAt).toBe(2);
   vi.useRealTimers();
 });
+
+test('a fresh repeat of the current snapshot stays live; a stale one is delayed', async () => {
+  vi.useFakeTimers();
+  const store = createAtcStore();
+  const results = [
+    { snapshot: { at: 5, aircraft: [] }, stale: false },
+    { snapshot: { at: 5, aircraft: [] }, stale: false },
+    { snapshot: { at: 4, aircraft: [] }, stale: false },
+    { snapshot: { at: 5, aircraft: [] }, stale: true },
+  ];
+  let call = 0;
+  const load = vi.fn(async () => results[Math.min(call++, 3)]);
+  const feed = createPollingFeed({ store, load, intervalMs: 3000 });
+  const statuses: string[] = [];
+
+  feed.start();
+  for (let i = 0; i < 4; i += 1) {
+    await vi.advanceTimersByTimeAsync(i === 0 ? 0 : 3000);
+    const { feedStatus, updatedAt } = store.getState();
+    statuses.push(`${feedStatus}@${updatedAt}`);
+  }
+  feed.stop();
+
+  expect(statuses).toEqual(['live@5', 'live@5', 'live@5', 'delayed@5']);
+  vi.useRealTimers();
+});

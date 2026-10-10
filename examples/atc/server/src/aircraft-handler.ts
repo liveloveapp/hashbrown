@@ -10,15 +10,18 @@ import { type NodeHandler, sendJson } from './http';
 /**
  * How long a fetched snapshot is served without calling adsb.lol again.
  * adsb.lol answers 429 to a 250 nm query every 3-5 s from one IP; every 10 s
- * is sustainable. Browsers still poll every 3 s, so they see a new snapshot
- * within about 3 s of the server fetching it.
+ * is sustainable. Browsers still poll every 3 s and the CDN caches for 3 s
+ * (plus 5 s while revalidating), so they see a new snapshot a few seconds
+ * after the server fetches it.
  */
 const FRESH_MS = 10_000;
 /** How old a snapshot may be and still stand in when adsb.lol fails. */
 const STALE_LIMIT_MS = 60_000;
 /** How long to leave adsb.lol alone after it answers 429. */
 const COOLDOWN_MS = 15_000;
-const CACHE_CONTROL = 'public, s-maxage=3, stale-while-revalidate=30';
+/** How long an upstream call may take before it counts as a failure. */
+const UPSTREAM_TIMEOUT_MS = 8000;
+const CACHE_CONTROL = 'public, s-maxage=3, stale-while-revalidate=5';
 
 /** Thrown for a non-ok upstream response, so a 429 can start the cooldown. */
 class UpstreamError extends Error {
@@ -42,14 +45,23 @@ const EMPTY: AreaCache = { last: null, inFlight: null, coolUntil: 0 };
 /**
  * `/api/aircraft?area=pnw`: proxies adsb.lol. Each instance keeps a per-area
  * cache: concurrent requests share one upstream call, a snapshot is reused for
- * 10 s, and when adsb.lol fails (or asked us to back off with a 429, which
- * pauses calls for 15 s) the last snapshot up to 60 s old is served with
- * `X-Atc-Stale: 1`. The CDN then shares each response for 3 s.
+ * 10 s, and when adsb.lol fails (an error, a call over 8 s, or a 429, which
+ * also pauses calls for 15 s) the last snapshot up to 60 s old is served with
+ * `X-Atc-Stale: 1`. The CDN shares each response for 3 s, plus up to 5 s
+ * while it revalidates.
  */
 export function createAircraftHandler(
-  options: { fetchFn?: typeof fetch; now?: () => number } = {},
+  options: {
+    fetchFn?: typeof fetch;
+    now?: () => number;
+    timeoutMs?: number;
+  } = {},
 ): NodeHandler {
-  const { fetchFn = fetch, now = Date.now } = options;
+  const {
+    fetchFn = fetch,
+    now = Date.now,
+    timeoutMs = UPSTREAM_TIMEOUT_MS,
+  } = options;
   const caches = new Map<AreaId, AreaCache>();
   const cacheFor = (area: AreaId) => caches.get(area) ?? EMPTY;
   const update = (area: AreaId, patch: Partial<AreaCache>) =>
@@ -60,6 +72,9 @@ export function createAircraftHandler(
     const upstream = await fetchFn(
       `https://api.adsb.lol/v2/point/${lat}/${lon}/${radiusNm}`,
       {
+        // A hung call would hold every waiting request; a timeout is an
+        // ordinary failure (stale data, no cooldown), unlike a 429.
+        signal: AbortSignal.timeout(timeoutMs),
         // adsb.lol rejects generic user agents.
         headers: {
           accept: 'application/json',

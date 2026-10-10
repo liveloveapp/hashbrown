@@ -9,7 +9,7 @@ import {
   INITIAL_STATE,
 } from '@atc/shared';
 
-/** How many synthetic frames exist before the sequence starts again. */
+/** How many frames the synthetic traffic moves for (3 minutes at 3 s a frame). */
 const FRAME_COUNT = 60;
 const START = Date.UTC(2026, 9, 9, 18, 0, 0);
 const { SEA } = AIRPORTS;
@@ -129,9 +129,13 @@ const TRACKS: readonly Track[] = [
   ),
 ];
 
-/** Frame `n` of the synthetic traffic, wrapping after {@link FRAME_COUNT}. */
+/**
+ * Frame `n` of the synthetic traffic. `at` always increases; positions advance
+ * for {@link FRAME_COUNT} frames and then hold, so nothing ever moves backwards
+ * (the store ignores snapshots that are not newer than the one it holds).
+ */
 export function frame(n: number): AircraftSnapshot {
-  const i = n % FRAME_COUNT;
+  const i = Math.min(n, FRAME_COUNT - 1);
 
   return {
     at: START + n * 3000,

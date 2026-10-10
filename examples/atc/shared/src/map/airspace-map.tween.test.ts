@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { AREAS } from '../places';
 import { createAtcStore } from '../store';
@@ -18,9 +18,11 @@ const plane: Aircraft = {
   verticalRateFpm: 0,
 };
 
-afterEach(() => vi.unstubAllGlobals());
-
-/** Mounts a map with a fake clock and a manual animation-frame queue. */
+/**
+ * Mounts a 400×300 map with a fake clock and a manual animation-frame queue.
+ * Call `cleanup()` at the end of the test: it destroys the map and restores
+ * the stubbed globals.
+ */
 async function mount() {
   let clock = 0;
   const frames = new Map<number, FrameRequestCallback>();
@@ -33,6 +35,8 @@ async function mount() {
   vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
   const store = createAtcStore();
   const element = document.createElement('div');
+  Object.defineProperty(element, 'clientWidth', { value: 400 });
+  Object.defineProperty(element, 'clientHeight', { value: 300 });
   const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
   const markerPosition = () => {
     const style = element.querySelector<HTMLElement>('.atc-plane-icon')?.style;
@@ -48,9 +52,26 @@ async function mount() {
     }
   };
 
+  /** Where the first plane sits relative to the map's centre, in pixels. */
+  const offsetFromCentre = () => {
+    const icon = element.querySelector<HTMLElement>('.atc-plane-icon');
+    const pane = element.querySelector<HTMLElement>('.leaflet-map-pane');
+    const px = (value: string | undefined) => parseFloat(value ?? '0') || 0;
+
+    return {
+      x: px(icon?.style.left) + px(pane?.style.left) - 200,
+      y: px(icon?.style.top) + px(pane?.style.top) - 150,
+    };
+  };
+
   return {
     store,
     handle,
+    offsetFromCentre,
+    cleanup: () => {
+      handle.destroy();
+      vi.unstubAllGlobals();
+    },
     frames,
     markerPosition,
     runFrames,
@@ -78,7 +99,7 @@ test('markers glide to a new snapshot over the gap since the previous one', asyn
   expect(halfway).not.toBe(start);
   expect(end).not.toBe(halfway);
   expect(map.frames.size).toBe(0);
-  map.handle.destroy();
+  map.cleanup();
 });
 
 test('destroy cancels a running glide', async () => {
@@ -93,6 +114,7 @@ test('destroy cancels a running glide', async () => {
   map.handle.destroy();
 
   expect(map.frames.size).toBe(0);
+  vi.unstubAllGlobals();
 });
 
 test('moves over 20 nm jump without animating', async () => {
@@ -105,7 +127,7 @@ test('moves over 20 nm jump without animating', async () => {
 
   expect(map.markerPosition()).not.toBe(start);
   expect(map.frames.size).toBe(0);
-  map.handle.destroy();
+  map.cleanup();
 });
 
 test('reduced motion makes markers jump', async () => {
@@ -121,5 +143,28 @@ test('reduced motion makes markers jump', async () => {
 
   expect(map.markerPosition()).not.toBe(start);
   expect(map.frames.size).toBe(0);
-  map.handle.destroy();
+  map.cleanup();
+});
+
+test('the map keeps a followed plane centred while it glides', async () => {
+  const map = await mount();
+  const centred = { ...plane, lat: AREAS.pnw.lat, lon: AREAS.pnw.lon };
+  map.store.applySnapshot({ at: 1, aircraft: [centred] });
+  map.store.follow(centred.hex);
+  map.setClock(3000);
+  map.store.applySnapshot({
+    at: 2,
+    aircraft: [{ ...centred, lat: centred.lat + 0.15, lon: centred.lon + 0.2 }],
+  });
+
+  const offsets = [];
+  for (let time = 3000; time <= 6000; time += 16) {
+    map.runFrames(time);
+    offsets.push(map.offsetFromCentre());
+  }
+
+  const worst = Math.max(...offsets.map((o) => Math.hypot(o.x, o.y)));
+  expect(worst).toBeLessThan(1.5);
+  expect(map.store.getState().followingHex).toBe(centred.hex);
+  map.cleanup();
 });

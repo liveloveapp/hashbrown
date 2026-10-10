@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { applySnapshot, INITIAL_STATE } from '../store';
 import {
-  followPanTarget,
+  followPanOffset,
   markerClassName,
   planeIconHtml,
 } from './airspace-map';
@@ -50,12 +50,14 @@ test('planeIconHtml rotates the plane to its track and tags it with its ID', () 
   expect(html).toContain('rotate(272deg)');
 });
 
-test('followPanTarget pans only when the followed position changed', () => {
-  const here = { lat: 41.9, lon: -87.9 };
+test('followPanOffset pans by whole pixels, only when at least 1 px off centre', () => {
+  const centre = { x: 200, y: 150 };
 
-  const first = followPanTarget(null, here);
-  const unchanged = followPanTarget(here, { ...here });
-  const moved = followPanTarget(here, { lat: 42, lon: -87.9 });
+  const offsets = [
+    followPanOffset({ x: 200.4, y: 150.6 }, centre),
+    followPanOffset({ x: 201.2, y: 150 }, centre),
+    followPanOffset({ x: 190.6, y: 160.4 }, centre),
+  ];
 
-  expect([first, unchanged, moved]).toEqual([true, false, true]);
+  expect(offsets).toEqual([null, { x: 1, y: 0 }, { x: -9, y: 10 }]);
 });

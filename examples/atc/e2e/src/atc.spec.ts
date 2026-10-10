@@ -221,10 +221,33 @@ test('follows an aircraft on the map', async ({ page }, testInfo) => {
   await expect(
     page.locator(`[data-testid="flight-card"][data-hex="${fastest.hex}"]`),
   ).toBeVisible();
-  await expect(
-    page.locator(`.atc-plane[data-hex="${fastest.hex}"]`),
-  ).toHaveClass(/is-followed/);
+  const plane = page.locator(`.atc-plane[data-hex="${fastest.hex}"]`);
+  await expect(plane).toHaveClass(/is-followed/);
   await expectOnlyCompleteIds(page);
+
+  const offCentre = async () => {
+    const map = await page.getByTestId('airspace-map').boundingBox();
+    const box = await plane.boundingBox();
+    if (!map || !box) return Infinity;
+    return Math.hypot(
+      box.x + box.width / 2 - (map.x + map.width / 2),
+      box.y + box.height / 2 - (map.y + map.height / 2),
+    );
+  };
+  const startedAt = await page.evaluate(() => performance.now());
+  await expect.poll(offCentre).toBeLessThan(3);
+  await expect
+    .poll(
+      async () => {
+        const elapsed = await page.evaluate(
+          (t) => performance.now() - t,
+          startedAt,
+        );
+        return elapsed > 7000 ? offCentre() : Infinity;
+      },
+      { timeout: 15_000 },
+    )
+    .toBeLessThan(3);
 });
 
 test('recovers from a failed send with Retry', async ({ page }, testInfo) => {

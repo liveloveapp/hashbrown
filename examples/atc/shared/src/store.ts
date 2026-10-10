@@ -54,12 +54,17 @@ export function normalizeHex(hex: string): string {
 
 /**
  * Returns the state after a new snapshot. Aircraft missing from the snapshot
- * move to `departed` with the time they were last seen.
+ * move to `departed` with the time they were last seen. A snapshot no newer
+ * than the current one (a cached repeat, or an older copy from another server
+ * instance) returns `state` unchanged, so planes never move backwards.
  */
 export function applySnapshot(
   state: AtcState,
   snapshot: AircraftSnapshot,
 ): AtcState {
+  if (state.updatedAt !== null && snapshot.at <= state.updatedAt) {
+    return state;
+  }
   const aircraft = new Map(
     snapshot.aircraft.map((entry) => [entry.hex, entry] as const),
   );

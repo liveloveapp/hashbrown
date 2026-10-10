@@ -116,3 +116,34 @@ test('setFeedStatus does not notify when the status is unchanged', () => {
 
   expect(listener).toHaveBeenCalledTimes(1);
 });
+
+test('applySnapshot ignores snapshots no newer than the current state', () => {
+  const current = applySnapshot(INITIAL_STATE, {
+    at: 2000,
+    aircraft: [aircraft('aaaaaa', 31000)],
+  });
+
+  const older = applySnapshot(current, {
+    at: 1000,
+    aircraft: [aircraft('aaaaaa', 30000)],
+  });
+  const same = applySnapshot(current, {
+    at: 2000,
+    aircraft: [aircraft('aaaaaa', 30000)],
+  });
+
+  expect(older).toBe(current);
+  expect(same).toBe(current);
+});
+
+test('the store does not notify listeners for an old snapshot', () => {
+  const store = createAtcStore();
+  store.applySnapshot({ at: 2000, aircraft: [aircraft('aaaaaa')] });
+  const listener = vi.fn();
+  store.subscribe(listener);
+
+  store.applySnapshot({ at: 2000, aircraft: [aircraft('aaaaaa')] });
+  store.applySnapshot({ at: 1000, aircraft: [aircraft('aaaaaa')] });
+
+  expect(listener).not.toHaveBeenCalled();
+});

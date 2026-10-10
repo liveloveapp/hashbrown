@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { createAircraftHandler } from './aircraft-handler';
 
 interface Sent {
@@ -38,12 +38,9 @@ const upstreamOk = () =>
     ac: [{ hex: 'aa7f28', flight: 'UAL1372', lat: 44, lon: -121 }],
   });
 
-let silenced: ReturnType<typeof vi.spyOn> | undefined;
-afterEach(() => silenced?.mockRestore());
-const silenceErrors = () => {
-  silenced = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  return silenced;
-};
+/** Silences console.error; call `mockRestore()` on the result at the end of the test. */
+const silenceErrors = () =>
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
 test('concurrent requests share one upstream fetch', async () => {
   let release: (response: Response) => void = () => undefined;
@@ -78,7 +75,7 @@ test('a snapshot is reused for 10 s, then fetched again', async () => {
     0, 0, 10_000,
   ]);
   expect(first.headers['Cache-Control']).toBe(
-    'public, s-maxage=3, stale-while-revalidate=30',
+    'public, s-maxage=3, stale-while-revalidate=5',
   );
   expect(first.headers['X-Atc-Stale']).toBeUndefined();
 });
@@ -123,10 +120,11 @@ test('after a 429 it serves the last snapshot as stale and cools down for 15 s',
   expect(cooling.headers['X-Atc-Stale']).toBe('1');
   expect(recovered.headers['X-Atc-Stale']).toBeUndefined();
   expect(errors).toHaveBeenCalledTimes(1);
+  errors.mockRestore();
 });
 
 test('upstream failures serve stale data for up to 60 s, then 502', async () => {
-  silenceErrors();
+  const errors = silenceErrors();
   let clock = 0;
   let down = false;
   const fetchFn = vi.fn<typeof fetch>(async () => {
@@ -147,10 +145,11 @@ test('upstream failures serve stale data for up to 60 s, then 502', async () => 
   expect([stale.status, failed.status]).toEqual([200, 502]);
   expect(stale.headers['X-Atc-Stale']).toBe('1');
   expect(failed.body).toEqual({ error: 'Aircraft feed unavailable' });
+  errors.mockRestore();
 });
 
 test('a 429 with nothing cached answers 502 and skips upstream during the cooldown', async () => {
-  silenceErrors();
+  const errors = silenceErrors();
   let clock = 0;
   const fetchFn = vi.fn<typeof fetch>(
     async () => new Response('slow down', { status: 429 }),
@@ -163,4 +162,81 @@ test('a 429 with nothing cached answers 502 and skips upstream during the cooldo
 
   expect([first.status, cooling.status]).toEqual([502, 502]);
   expect(fetchFn).toHaveBeenCalledTimes(1);
+  errors.mockRestore();
+});
+
+test('concurrent requests share a failed upstream fetch and log it once', async () => {
+  const errors = silenceErrors();
+  let clock = 0;
+  let fail: (error: Error) => void = () => undefined;
+  const fetchFn = vi.fn<typeof fetch>(async () => upstreamOk());
+  const handler = createAircraftHandler({ fetchFn, now: () => clock });
+  await get(handler);
+  fetchFn.mockImplementation(
+    () => new Promise<Response>((_, reject) => (fail = reject)),
+  );
+  clock = 10_000;
+
+  const pending = [get(handler), get(handler), get(handler)];
+  await Promise.resolve();
+  fail(new Error('network down'));
+  const responses = await Promise.all(pending);
+
+  expect(fetchFn).toHaveBeenCalledTimes(2);
+  expect(responses.map((r) => [r.status, r.headers['X-Atc-Stale']])).toEqual([
+    [200, '1'],
+    [200, '1'],
+    [200, '1'],
+  ]);
+  expect(errors).toHaveBeenCalledTimes(1);
+  errors.mockRestore();
+});
+
+test('concurrent requests answer 502 when a shared fetch fails with nothing cached', async () => {
+  const errors = silenceErrors();
+  let fail: (error: Error) => void = () => undefined;
+  const fetchFn = vi.fn<typeof fetch>(
+    () => new Promise<Response>((_, reject) => (fail = reject)),
+  );
+  const handler = createAircraftHandler({ fetchFn, now: () => 0 });
+
+  const pending = [get(handler), get(handler)];
+  await Promise.resolve();
+  fail(new Error('network down'));
+  const responses = await Promise.all(pending);
+
+  expect(fetchFn).toHaveBeenCalledTimes(1);
+  expect(responses.map((r) => r.status)).toEqual([502, 502]);
+  expect(errors).toHaveBeenCalledTimes(1);
+  errors.mockRestore();
+});
+
+test('a hanging upstream call times out, serves stale data and starts no cooldown', async () => {
+  const errors = silenceErrors();
+  let clock = 0;
+  const fetchFn = vi.fn<typeof fetch>(async () => upstreamOk());
+  const handler = createAircraftHandler({
+    fetchFn,
+    now: () => clock,
+    timeoutMs: 20,
+  });
+  await get(handler);
+  fetchFn.mockImplementation(
+    (_url, init) =>
+      new Promise<Response>((_, reject) =>
+        init?.signal?.addEventListener('abort', () =>
+          reject(init.signal?.reason),
+        ),
+      ),
+  );
+  clock = 10_000;
+
+  const timedOut = await get(handler);
+  clock = 10_001;
+  await get(handler);
+
+  expect(timedOut.status).toBe(200);
+  expect(timedOut.headers['X-Atc-Stale']).toBe('1');
+  expect(fetchFn).toHaveBeenCalledTimes(3);
+  errors.mockRestore();
 });

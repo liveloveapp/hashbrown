@@ -45,16 +45,27 @@ export function planeIconHtml(aircraft: Aircraft, className: string): string {
   return `<div class="${className}" data-hex="${aircraft.hex}" data-callsign="${aircraft.callsign}" style="transform: rotate(${rotation}deg)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2l1.6 6.4L21 13v2l-7.3-2.2-.7 5.4 2.5 1.8V21L12 20l-3.5 1v-1l2.5-1.8-.7-5.4L3 15v-2l7.4-4.6z"/></svg></div>`;
 }
 
+/** A point in map container pixels. */
+export interface PixelPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
 /**
- * Whether the map should pan to a followed aircraft: only when its position
- * differs from where the map last panned, so unrelated store updates (or a
- * user drag) do not pull the view back.
+ * How far to pan, in whole pixels, to put a followed plane drawn at `point`
+ * back in the map's `centre`, or null when it is less than 1 px away. Leaflet
+ * pans by whole pixels, so smaller offsets would be dropped.
  */
-export function followPanTarget(
-  last: { lat: number; lon: number } | null,
-  next: { lat: number; lon: number },
-): boolean {
-  return last === null || last.lat !== next.lat || last.lon !== next.lon;
+export function followPanOffset(
+  point: PixelPoint,
+  centre: PixelPoint,
+): PixelPoint | null {
+  const x = point.x - centre.x;
+  const y = point.y - centre.y;
+
+  return Math.hypot(x, y) < 1
+    ? null
+    : { x: Math.round(x) || 0, y: Math.round(y) || 0 };
 }
 
 /** A mounted map. */
@@ -118,7 +129,8 @@ export async function createAirspaceMap(options: {
     });
   const markers = new Map<string, { marker: Marker; html: string }>();
   let lastPulseAt: number | null = null;
-  let lastPan: LatLon | null = null;
+  let zooming = false;
+  let panning = false;
   let lastUpdatedAt: number | null = null;
   let lastArrival: number | null = null;
   let glide: {
@@ -128,30 +140,61 @@ export async function createAirspaceMap(options: {
   } | null = null;
   let frame: number | null = null;
   map.on('dragstart', () => store.follow(null));
+  map.on('zoomstart', () => (zooming = true));
+  map.on('zoomend', () => {
+    zooming = false;
+    panToFollowed(true);
+  });
 
   const drawnAt = (hex: string): LatLon | null => {
     const position = markers.get(hex)?.marker.getLatLng();
 
     return position ? { lat: position.lat, lon: position.lng } : null;
   };
+  /**
+   * Pans so the followed plane is back in the centre, unless it already is
+   * (within 1 px) or a zoom or an animated pan is still running.
+   */
   const panToFollowed = (animate: boolean) => {
     const { followingHex } = store.getState();
-    const target = followingHex === null ? null : drawnAt(followingHex);
-    if (target && followPanTarget(lastPan, target)) {
-      map.panTo([target.lat, target.lon], { animate });
+    const position =
+      followingHex === null
+        ? undefined
+        : markers.get(followingHex)?.marker.getLatLng();
+    if (!position || zooming || panning) {
+      return;
     }
-    lastPan = target;
+    const offset = followPanOffset(
+      map.latLngToContainerPoint(position),
+      map.getSize().divideBy(2),
+    );
+    if (offset === null) {
+      return;
+    }
+    if (animate) {
+      panning = true;
+      map.once('moveend', () => (panning = false));
+    }
+    map.panBy([offset.x, offset.y], { animate });
   };
+  /** Last drawn pixel of each gliding marker, to skip sub-pixel moves. */
+  let drawnPixels = new Map<string, string>();
   const step = (time: number) => {
     if (glide === null) {
       return;
     }
     const t = tweenProgress(glide.startedAt, glide.durationMs, time);
-    for (const [hex, { from, to }] of glide.moves) {
-      const { lat, lon } = lerpLatLon(from, to, t);
-      markers.get(hex)?.marker.setLatLng([lat, lon]);
+    if (!zooming) {
+      for (const [hex, { from, to }] of glide.moves) {
+        const { lat, lon } = lerpLatLon(from, to, t);
+        const pixel = map.latLngToLayerPoint([lat, lon]).round().toString();
+        if (t >= 1 || drawnPixels.get(hex) !== pixel) {
+          drawnPixels.set(hex, pixel);
+          markers.get(hex)?.marker.setLatLng([lat, lon]);
+        }
+      }
+      panToFollowed(false);
     }
-    panToFollowed(false);
     frame = t < 1 ? requestAnimationFrame(step) : null;
   };
   /** Starts gliding known markers to a new snapshot's positions. */
@@ -172,6 +215,7 @@ export async function createAirspaceMap(options: {
       }
     }
     glide = { startedAt: now, durationMs, moves };
+    drawnPixels = new Map();
     if (frame === null && moves.size > 0) {
       frame = requestAnimationFrame(step);
     }
