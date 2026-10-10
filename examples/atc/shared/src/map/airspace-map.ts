@@ -162,6 +162,7 @@ function prefersReducedMotion(): boolean {
  *
  * Pass `signal` to cancel before the import settles: when it is already
  * aborted by then, no map is created and the handle's `destroy` is a no-op.
+ * The map re-measures itself whenever `element` changes size.
  */
 export async function createAirspaceMap(options: {
   element: HTMLElement;
@@ -332,9 +333,17 @@ export async function createAirspaceMap(options: {
 
   render(store.getState());
   const unsubscribe = store.subscribe(() => render(store.getState()));
+  // Leaflet only re-measures on window resize; rotation and layout changes
+  // (a bottom sheet, a panel) resize the container without one.
+  const resizeObserver =
+    typeof ResizeObserver === 'function'
+      ? new ResizeObserver(() => map.invalidateSize())
+      : null;
+  resizeObserver?.observe(element);
 
   return {
     destroy() {
+      resizeObserver?.disconnect();
       unsubscribe();
       if (frame !== null) {
         cancelAnimationFrame(frame);

@@ -32,6 +32,7 @@ import {
   FlightCardComponent,
   FlightCardFallbackComponent,
 } from './components/flight-card';
+import { AutoScrollDirective } from './auto-scroll';
 import { ComposerComponent } from './composer';
 import { EmptyStateComponent } from './empty-state';
 import { ATC_STORE } from './store';
@@ -67,11 +68,16 @@ const components = [
 /** The chat panel: components, browser-side tools and the streaming answer. */
 @Component({
   selector: 'atc-assistant',
-  imports: [ComposerComponent, EmptyStateComponent, TranscriptComponent],
+  imports: [
+    AutoScrollDirective,
+    ComposerComponent,
+    EmptyStateComponent,
+    TranscriptComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'atc-chat', role: 'region', 'aria-label': 'Assistant' },
   template: `
-    <div class="atc-chat-body">
+    <div class="atc-chat-body" atcAutoScroll>
       @if (messages().length === 0 && !chat.error()) {
         <atc-empty-state (pick)="send($event)" />
       }
