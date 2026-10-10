@@ -192,7 +192,8 @@ test('hovering a plane shows its detail card', async ({ page }, testInfo) => {
   await expect(card).toContainText('RegistrationN352LL');
   await expect(card).toContainText(/Pressure altitude[45],\d{3} ft/);
   await expect(card).toContainText('Squawk1200');
-  await expect(card).toContainText('1016.4 hPa, 30.01 inHg');
+  await expect(card).toContainText('QNH1016.4 hPa');
+  await expect(card).toContainText('Altimeter30.01 inHg');
 
   await page.locator('.atc-plane[data-hex="a1c009"]').dispatchEvent('mouseout');
 

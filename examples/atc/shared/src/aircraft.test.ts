@@ -441,3 +441,80 @@ test('parseSnapshot keeps valid extra readings and rejects invalid ones', () => 
   expect(() => parseSnapshot(tampered({ mach: '0.8' }))).toThrow();
   expect(() => parseSnapshot(tampered({ description: '<b>x</b>' }))).toThrow();
 });
+
+test('normalizeAdsbLol drops readings outside their physical range', () => {
+  const wild = {
+    track: 361,
+    gs: 2400,
+    nav_heading: -1,
+    mag_heading: 400,
+    wd: 360.5,
+    ws: -3,
+    ias: 2000,
+    tas: -1,
+    mach: 5.1,
+    nav_qnh: 1200,
+    oat: -101,
+  };
+  const edge = {
+    track: 360,
+    gs: 0,
+    nav_heading: 0,
+    mach: 5,
+    nav_qnh: 800,
+    oat: 60,
+    ws: 1999,
+  };
+  const payload = {
+    ac: [
+      { ...united, ...wild },
+      { ...united, hex: 'aa7f29', ...edge },
+    ],
+  };
+
+  const [dropped, kept] = normalizeAdsbLol(payload, 1000).aircraft;
+
+  expect(dropped).toMatchObject({ trackDeg: null, groundSpeedKt: null });
+  for (const key of [
+    'selectedHeadingDeg',
+    'magneticHeadingDeg',
+    'windDirectionDeg',
+    'windSpeedKt',
+    'indicatedAirspeedKt',
+    'trueAirspeedKt',
+    'mach',
+    'qnhHpa',
+    'outsideAirTempC',
+  ]) {
+    expect(dropped).not.toHaveProperty(key);
+  }
+  expect(kept).toMatchObject({
+    trackDeg: 360,
+    groundSpeedKt: 0,
+    selectedHeadingDeg: 0,
+    mach: 5,
+    qnhHpa: 800,
+    outsideAirTempC: 60,
+    windSpeedKt: 1999,
+  });
+});
+
+test('parseSnapshot rejects readings outside their physical range', () => {
+  const snapshot = normalizeAdsbLol({ ac: [{ ...united, ...readings }] }, 1);
+  const tampered = (extra: Record<string, unknown>) => ({
+    ...snapshot,
+    aircraft: [{ ...snapshot.aircraft[0], ...extra }],
+  });
+
+  const results = [
+    { trackDeg: 720 },
+    { groundSpeedKt: -5 },
+    { qnhHpa: 500 },
+    { mach: 9 },
+    { outsideAirTempC: 80 },
+  ].map((extra) => () => parseSnapshot(tampered(extra)));
+
+  for (const parse of results) {
+    expect(parse).toThrow();
+  }
+});

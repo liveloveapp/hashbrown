@@ -817,17 +817,17 @@ input {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 700;
-  width: 248px;
-  max-height: calc(100% - 16px);
-  overflow: hidden;
-  padding: 10px 12px;
+  /* Above Leaflet's controls (1000), which it may pass over. */
+  z-index: 1100;
+  box-sizing: border-box;
+  width: min(296px, calc(100% - 16px));
+  padding: 8px 10px;
   background: var(--atc-surface);
   border: 1px solid var(--atc-border);
   border-radius: var(--atc-radius-row);
   color: var(--atc-ink);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 11.5px;
+  line-height: 1.3;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
@@ -839,9 +839,6 @@ input {
   opacity: 1;
   visibility: visible;
   transition: opacity var(--atc-fast) var(--atc-ease);
-}
-.atc-detail.is-zooming {
-  visibility: hidden;
 }
 .atc-detail-header {
   display: flex;
@@ -861,34 +858,41 @@ input {
   color: var(--atc-muted);
 }
 .atc-detail-group {
-  margin-top: 8px;
-  padding-top: 6px;
+  margin-top: 6px;
+  padding-top: 5px;
   border-top: 1px solid var(--atc-border);
 }
 .atc-detail-title {
-  margin: 0 0 2px;
+  margin: 0 0 3px;
   color: var(--atc-muted);
   font-weight: 600;
 }
+/* Short values sit three to a line, label above value; long ones span. */
 .atc-detail-rows {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 8px;
   margin: 0;
 }
 .atc-detail-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  min-width: 0;
+}
+.atc-detail-row.is-wide {
+  grid-column: 1 / -1;
 }
 .atc-detail-row dt {
-  flex: none;
   color: var(--atc-muted);
+  font-size: 10.5px;
 }
 .atc-detail-row dd {
   margin: 0;
-  min-width: 0;
-  text-align: right;
   overflow-wrap: anywhere;
   font-family: var(--atc-mono);
   font-variant-numeric: tabular-nums;
+}
+.atc-detail-note {
+  margin: 6px 0 0;
+  color: var(--atc-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

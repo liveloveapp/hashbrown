@@ -101,6 +101,26 @@ function isFiniteNumber(value: unknown): value is number {
   return numberOrNull(value) !== null;
 }
 
+/** A check for a finite number from `min` to `max`, both inclusive. */
+function within(min: number, max: number): (value: unknown) => value is number {
+  return (value): value is number =>
+    isFiniteNumber(value) && value >= min && value <= max;
+}
+
+/** Headings and tracks in degrees. */
+const isDegrees = within(0, 360);
+/** Speeds in knots: not negative and below 2000. */
+const isSpeed = (value: unknown): value is number =>
+  isFiniteNumber(value) && value >= 0 && value < 2000;
+
+/** A finite number passing `check`, else null. */
+function numberWhere(
+  value: unknown,
+  check: (value: unknown) => value is number,
+): number | null {
+  return check(value) ? value : null;
+}
+
 /** A check for a string matching `pattern`. */
 function matches(pattern: RegExp): (value: unknown) => value is string {
   return (value): value is string =>
@@ -137,15 +157,15 @@ const READINGS: ReadonlyArray<{
     check: isFiniteNumber,
     round: true,
   },
-  { key: 'selectedHeadingDeg', source: 'nav_heading', check: isFiniteNumber },
-  { key: 'qnhHpa', source: 'nav_qnh', check: isFiniteNumber },
-  { key: 'indicatedAirspeedKt', source: 'ias', check: isFiniteNumber },
-  { key: 'trueAirspeedKt', source: 'tas', check: isFiniteNumber },
-  { key: 'mach', source: 'mach', check: isFiniteNumber },
-  { key: 'magneticHeadingDeg', source: 'mag_heading', check: isFiniteNumber },
-  { key: 'windDirectionDeg', source: 'wd', check: isFiniteNumber },
-  { key: 'windSpeedKt', source: 'ws', check: isFiniteNumber },
-  { key: 'outsideAirTempC', source: 'oat', check: isFiniteNumber },
+  { key: 'selectedHeadingDeg', source: 'nav_heading', check: isDegrees },
+  { key: 'qnhHpa', source: 'nav_qnh', check: within(800, 1100) },
+  { key: 'indicatedAirspeedKt', source: 'ias', check: isSpeed },
+  { key: 'trueAirspeedKt', source: 'tas', check: isSpeed },
+  { key: 'mach', source: 'mach', check: within(0, 5) },
+  { key: 'magneticHeadingDeg', source: 'mag_heading', check: isDegrees },
+  { key: 'windDirectionDeg', source: 'wd', check: isDegrees },
+  { key: 'windSpeedKt', source: 'ws', check: isSpeed },
+  { key: 'outsideAirTempC', source: 'oat', check: within(-100, 60) },
   {
     key: 'seenS',
     source: 'seen',
@@ -271,8 +291,8 @@ function normalizeEntry(entry: unknown): Aircraft | null {
     lon,
     altitudeFt: typeof altitude === 'number' ? Math.round(altitude) : null,
     onGround: altitude === 'ground',
-    groundSpeedKt: numberOrNull(entry['gs']),
-    trackDeg: numberOrNull(entry['track']),
+    groundSpeedKt: numberWhere(entry['gs'], isSpeed),
+    trackDeg: numberWhere(entry['track'], isDegrees),
     verticalRateFpm:
       numberOrNull(entry['baro_rate']) ?? numberOrNull(entry['geom_rate']),
     ...adsbReadings(entry),
@@ -317,8 +337,8 @@ function parseAircraft(value: unknown): Aircraft | null {
     lon !== null &&
     isNullableNumber(altitudeFt) &&
     typeof onGround === 'boolean' &&
-    isNullableNumber(groundSpeedKt) &&
-    isNullableNumber(trackDeg) &&
+    (groundSpeedKt === null || isSpeed(groundSpeedKt)) &&
+    (trackDeg === null || isDegrees(trackDeg)) &&
     isNullableNumber(verticalRateFpm);
   const readings = parseReadings(value);
   if (!valid || readings === null) {

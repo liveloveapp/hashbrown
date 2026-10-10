@@ -4,8 +4,7 @@ import {
   formatHeading,
   formatSpeed,
 } from './format';
-import type { Aircraft, Emergency } from './aircraft';
-import type { AircraftKind } from './kinds';
+import type { Aircraft } from './aircraft';
 import { distanceNm, etaMinutes } from './geo';
 import { aircraftTypeName, airlineFor } from './names';
 import { type AirportCode, AIRPORTS } from './places';
@@ -53,7 +52,11 @@ export function routeText(
     : 'Route unavailable';
 }
 
-function subtitle(aircraft: Aircraft): string | null {
+/**
+ * The line beside an aircraft's label: its airline for airline callsigns,
+ * else its registration when the label is not already it, else null.
+ */
+export function aircraftSubtitle(aircraft: Aircraft): string | null {
   const airline = airlineFor(aircraft.callsign);
   if (airline !== null) {
     return airline;
@@ -81,7 +84,7 @@ export function flightCardView(
     status: found.status,
     hex: normalizeHex(hex),
     label: aircraft.label,
-    subtitle: subtitle(aircraft),
+    subtitle: aircraftSubtitle(aircraft),
     aircraftType: aircraftTypeName(aircraft.typeCode),
     altitude: formatAltitude(aircraft),
     speed: formatSpeed(aircraft.groundSpeedKt),
@@ -94,206 +97,6 @@ export function flightCardView(
       found.status === 'out-of-range'
         ? formatClock(found.lastSeenAt, timeZone)
         : null,
-  };
-}
-
-/** One label and value in the detail card, such as "Ground speed", "240 kt". */
-export interface DetailRow {
-  readonly label: string;
-  readonly value: string;
-}
-
-/** A titled group of detail rows; groups with no rows are left out. */
-export interface DetailGroup {
-  readonly title: string;
-  readonly rows: readonly DetailRow[];
-}
-
-/** What the map's floating detail card shows for one live aircraft. */
-export interface AircraftDetailView {
-  readonly hex: string;
-  readonly label: string;
-  /** The airline, or the registration when the label is not already it. */
-  readonly subtitle: string | null;
-  readonly groups: readonly DetailGroup[];
-}
-
-const KIND_NAMES: Record<AircraftKind, string> = {
-  jet: 'Jet',
-  twin: 'Twin-engine prop',
-  single: 'Single-engine prop',
-  rotor: 'Helicopter',
-};
-
-const EMERGENCY_NAMES: Record<Exclude<Emergency, 'none'>, string> = {
-  general: 'General emergency',
-  lifeguard: 'Lifeguard (medical)',
-  minfuel: 'Minimum fuel',
-  nordo: 'No radio',
-  unlawful: 'Unlawful interference',
-  downed: 'Downed aircraft',
-  reserved: 'Reserved',
-};
-
-/** What each ADS-B emitter category means. */
-const CATEGORY_NAMES: Readonly<Record<string, string>> = {
-  A1: 'light',
-  A2: 'small',
-  A3: 'large',
-  A4: 'high vortex large',
-  A5: 'heavy',
-  A6: 'high performance',
-  A7: 'rotorcraft',
-  B1: 'glider',
-  B2: 'lighter than air',
-  B3: 'parachutist',
-  B4: 'ultralight',
-  B6: 'drone',
-  B7: 'space vehicle',
-  C1: 'emergency vehicle',
-  C2: 'service vehicle',
-  C3: 'obstacle',
-};
-
-/** Inches of mercury per hectopascal. */
-const INHG_PER_HPA = 0.02953;
-
-function ft(value: number): string {
-  return `${Math.round(value).toLocaleString('en-US')} ft`;
-}
-
-function fpm(value: number): string {
-  const rounded = Math.round(value);
-
-  return `${rounded > 0 ? '+' : ''}${rounded.toLocaleString('en-US')} fpm`;
-}
-
-/** A row, or nothing when the value is missing. */
-function row<T>(
-  label: string,
-  value: T | null | undefined,
-  format: (value: T) => string,
-): DetailRow[] {
-  return value === null || value === undefined
-    ? []
-    : [{ label, value: format(value) }];
-}
-
-const text = (value: string) => value;
-
-function identityRows(aircraft: Aircraft): DetailRow[] {
-  const { typeCode, description, emergency, category } = aircraft;
-  const typeName = aircraftTypeName(typeCode);
-  const readable =
-    typeCode !== null && typeName !== typeCode
-      ? typeName
-      : (description ?? null);
-
-  return [
-    ...row('Registration', aircraft.registration, text),
-    ...row('Type', readable, text),
-    ...row('ICAO type', typeCode, text),
-    ...row('Kind', aircraft.kind, (kind) => KIND_NAMES[kind]),
-    ...row('Model year', aircraft.year, text),
-    ...row('Callsign', aircraft.callsign, text),
-    ...row('Squawk', aircraft.squawk, text),
-    ...row(
-      'Emergency',
-      emergency === 'none' ? null : emergency,
-      (state) => EMERGENCY_NAMES[state],
-    ),
-    ...row('Category', category, (code) =>
-      CATEGORY_NAMES[code] ? `${code}, ${CATEGORY_NAMES[code]}` : code,
-    ),
-    { label: 'Hex', value: aircraft.hex.toUpperCase() },
-  ];
-}
-
-function altitudeRows(aircraft: Aircraft): DetailRow[] {
-  return [
-    ...row(
-      'Pressure altitude',
-      aircraft.onGround ? 'On ground' : aircraft.altitudeFt,
-      (value) => (typeof value === 'string' ? value : ft(value)),
-    ),
-    ...row('Geometric altitude', aircraft.geometricAltitudeFt, ft),
-    ...row('Selected altitude', aircraft.selectedAltitudeFt, ft),
-    ...row(
-      'Altimeter',
-      aircraft.qnhHpa,
-      (hpa) => `${hpa.toFixed(1)} hPa, ${(hpa * INHG_PER_HPA).toFixed(2)} inHg`,
-    ),
-    ...row('Vertical rate', aircraft.verticalRateFpm, fpm),
-  ];
-}
-
-function speedRows(aircraft: Aircraft): DetailRow[] {
-  const { windDirectionDeg, windSpeedKt } = aircraft;
-  const wind =
-    windDirectionDeg === undefined || windSpeedKt === undefined
-      ? null
-      : `${formatHeading(windDirectionDeg)} at ${Math.round(windSpeedKt)} kt`;
-
-  return [
-    ...row('Ground speed', aircraft.groundSpeedKt, formatSpeed),
-    ...row('Indicated airspeed', aircraft.indicatedAirspeedKt, formatSpeed),
-    ...row('True airspeed', aircraft.trueAirspeedKt, formatSpeed),
-    ...row('Mach', aircraft.mach, (mach) => mach.toFixed(3)),
-    ...row('Track', aircraft.trackDeg, formatHeading),
-    ...row('Magnetic heading', aircraft.magneticHeadingDeg, formatHeading),
-    ...row('Selected heading', aircraft.selectedHeadingDeg, formatHeading),
-    ...row('Wind', wind, text),
-    ...row(
-      'Outside air',
-      aircraft.outsideAirTempC,
-      (c) => `${Math.round(c)} °C`,
-    ),
-  ];
-}
-
-function positionRows(state: AtcState, aircraft: Aircraft): DetailRow[] {
-  return [
-    {
-      label: 'Position',
-      value: `${aircraft.lat.toFixed(4)}, ${aircraft.lon.toFixed(4)}`,
-    },
-    ...row('Last message', aircraft.seenS, (s) => `${Math.round(s)}s ago`),
-    ...row(
-      'Route',
-      aircraft.callsign === null
-        ? null
-        : routeText(state.routes, aircraft.callsign),
-      text,
-    ),
-  ];
-}
-
-/**
- * Builds the map's detail card for a live aircraft: identity, altitude, speed
- * and direction, and position groups, each row formatted with its unit.
- * Missing values leave their row out rather than showing a placeholder.
- * Returns null when the aircraft is not live.
- */
-export function aircraftDetailView(
-  state: AtcState,
-  hex: string,
-): AircraftDetailView | null {
-  const aircraft = state.aircraft.get(normalizeHex(hex));
-  if (!aircraft) {
-    return null;
-  }
-  const groups: DetailGroup[] = [
-    { title: 'Identity', rows: identityRows(aircraft) },
-    { title: 'Altitude', rows: altitudeRows(aircraft) },
-    { title: 'Speed and direction', rows: speedRows(aircraft) },
-    { title: 'Position', rows: positionRows(state, aircraft) },
-  ];
-
-  return {
-    hex: aircraft.hex,
-    label: aircraft.label,
-    subtitle: subtitle(aircraft),
-    groups: groups.filter((group) => group.rows.length > 0),
   };
 }
 

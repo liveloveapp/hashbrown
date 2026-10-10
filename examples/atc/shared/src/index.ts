@@ -11,6 +11,7 @@ export * from './routes';
 export * from './contracts';
 export * from './tools';
 export * from './views';
+export * from './detail-view';
 export * from './brand/atc-mark';
 export * from './transcript';
 export * from './sheet';

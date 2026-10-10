@@ -3,8 +3,15 @@ import type { Aircraft } from '../aircraft';
 import { type AircraftKind, KIND_PATHS } from '../kinds';
 import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore } from '../store';
-import { aircraftDetailView } from '../views';
-import { createDetailCard } from './detail-card';
+import { aircraftDetailView } from '../detail-view';
+import { isTyping } from '../dom';
+import {
+  CARD_MARGIN,
+  type CardSize,
+  createDetailCard,
+  isInsideArea,
+  visibleMapArea,
+} from './detail-card';
 import { fitTarget } from './fit';
 import {
   lerpLatLon,
@@ -203,8 +210,10 @@ function prefersReducedMotion(): boolean {
  *
  * Hovering a plane, or selecting it, opens one floating detail card beside
  * it that follows its glide and updates in place on each snapshot. Leaving
- * the plane hides the card unless it is selected; Escape or a click on the
- * empty map clears the selection.
+ * the plane hides the card unless it is selected; Escape (outside text
+ * fields) or a click on the empty map clears the selection. On phones the
+ * card stays above the bottom sheet, and it hides when the plane is off
+ * screen or there is no room.
  *
  * Pass `signal` to cancel before the import settles: when it is already
  * aborted by then, no map is created and the handle's `destroy` is a no-op.
@@ -260,75 +269,105 @@ export async function createAirspaceMap(options: {
   let frame: number | null = null;
   /** The highlighted set the map was last fitted for (or skipped). */
   let fittedFor: ReadonlySet<string> = new Set();
-  const card = createDetailCard(element.ownerDocument);
+  const doc = element.ownerDocument;
+  const card = createDetailCard(doc);
   element.append(card.element);
   /** The plane under the pointer, and the plane the card is showing. */
   let hoveredHex: string | null = null;
   let detailedHex: string | null = null;
+  /** The part of the map not under the phone's bottom sheet. */
+  let cardArea: CardSize = { width: 0, height: 0 };
   map.on('dragstart', () => store.follow(null));
   map.on('zoomstart', () => {
     zooming = true;
-    card.element.classList.add('is-zooming');
+    syncCard(store.getState());
   });
   map.on('zoomend', () => {
     zooming = false;
-    card.element.classList.remove('is-zooming');
-    placeCard();
+    syncCard(store.getState());
     panToFollowed(true);
   });
-  map.on('move', () => placeCard());
+  map.on('move', () => syncCard(store.getState()));
   map.on('click', () => {
     if (store.getState().selectedHex !== null) {
       store.select(null);
     }
   });
   const onKeydown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && store.getState().selectedHex !== null) {
+    if (
+      event.key === 'Escape' &&
+      !event.defaultPrevented &&
+      !isTyping(event.target) &&
+      store.getState().selectedHex !== null
+    ) {
       store.select(null);
     }
   };
-  element.ownerDocument.addEventListener('keydown', onKeydown);
+  doc.addEventListener('keydown', onKeydown);
 
+  /** The chat panel, which is a bottom sheet over the map on phones. */
+  const sheet = () =>
+    element.closest('.atc-workbench')?.querySelector('.atc-chat-panel') ?? null;
+  /**
+   * Re-measures the area the card may use. Called on resize and whenever
+   * the sheet changes size, never per frame.
+   */
+  const measureArea = () => {
+    const size = map.getSize();
+    const box = element.getBoundingClientRect();
+    const panel = sheet()?.getBoundingClientRect();
+    cardArea = visibleMapArea(
+      { left: 0, top: 0, right: size.x, bottom: size.y },
+      panel
+        ? {
+            left: panel.left - box.left,
+            top: panel.top - box.top,
+            right: panel.right - box.left,
+            bottom: panel.bottom - box.top,
+          }
+        : null,
+    );
+  };
   const planeElement = (hex: string | null) =>
     hex === null
       ? null
       : markers.get(hex)?.marker.getElement()?.querySelector('.atc-plane');
-  /** Moves the card beside its plane; skipped while a zoom animates. */
-  const placeCard = () => {
-    const position =
-      detailedHex === null
-        ? undefined
-        : markers.get(detailedHex)?.marker.getLatLng();
-    if (!position || zooming) {
-      return;
-    }
-    const size = map.getSize();
-    card.place(map.latLngToContainerPoint(position), {
-      width: size.x,
-      height: size.y,
-    });
-  };
   /**
-   * Shows the card for the hovered plane, else the selected one, or hides it.
-   * The plane it describes drops its own tag, which the card repeats.
+   * Shows the card beside the hovered plane, else the selected one, and
+   * hides it when there is none, the plane is off screen or under the sheet,
+   * a zoom is animating, or the card does not fit. The plane it describes
+   * drops its own tag, which the card repeats.
    */
   const syncCard = (state: AtcState) => {
     const hex = hoveredHex ?? state.selectedHex;
+    const position =
+      hex === null ? undefined : markers.get(hex)?.marker.getLatLng();
+    const point =
+      position && !zooming ? map.latLngToContainerPoint(position) : null;
     const view =
-      hex !== null && markers.has(hex) ? aircraftDetailView(state, hex) : null;
-    const next = view?.hex ?? null;
+      hex !== null && point !== null && isInsideArea(point, cardArea)
+        ? aircraftDetailView(state, hex, Date.now())
+        : null;
+    const shown =
+      view !== null && card.show(view, cardArea.height - 2 * CARD_MARGIN);
+    const next = shown ? view.hex : null;
     if (next !== detailedHex) {
       planeElement(detailedHex)?.classList.remove('is-detailed');
       planeElement(next)?.classList.add('is-detailed');
       detailedHex = next;
     }
-    if (view === null) {
+    if (!shown || point === null) {
       card.hide();
       return;
     }
-    card.show(view);
-    placeCard();
+    card.place(point, cardArea);
   };
+  // Counts the card's message age up between snapshots.
+  const ticker = setInterval(() => {
+    if (detailedHex !== null) {
+      syncCard(store.getState());
+    }
+  }, 1000);
 
   const drawnAt = (hex: string): LatLon | null => {
     const position = markers.get(hex)?.marker.getLatLng();
@@ -438,7 +477,7 @@ export async function createAirspaceMap(options: {
         }
       }
       panToFollowed(false);
-      placeCard();
+      syncCard(store.getState());
     }
     frame = t < 1 ? requestAnimationFrame(step) : null;
   };
@@ -516,21 +555,41 @@ export async function createAirspaceMap(options: {
     }
   };
 
+  measureArea();
   render(store.getState());
   const unsubscribe = store.subscribe(() => render(store.getState()));
   // Leaflet only re-measures on window resize; rotation and layout changes
   // (a bottom sheet, a panel) resize the container without one.
   const resizeObserver =
     typeof ResizeObserver === 'function'
-      ? new ResizeObserver(() => map.invalidateSize())
+      ? new ResizeObserver(() => {
+          map.invalidateSize();
+          measureArea();
+          syncCard(store.getState());
+        })
       : null;
   resizeObserver?.observe(element);
+  // The sheet's height (peek or expanded) decides how much map is visible.
+  const panel = sheet();
+  if (panel) {
+    resizeObserver?.observe(panel);
+  }
+  const onResize = () => {
+    measureArea();
+    syncCard(store.getState());
+  };
+  const view = doc.defaultView;
+  view?.addEventListener('resize', onResize);
+  view?.visualViewport?.addEventListener('resize', onResize);
 
   return {
     destroy() {
       resizeObserver?.disconnect();
       unsubscribe();
-      element.ownerDocument.removeEventListener('keydown', onKeydown);
+      doc.removeEventListener('keydown', onKeydown);
+      view?.removeEventListener('resize', onResize);
+      view?.visualViewport?.removeEventListener('resize', onResize);
+      clearInterval(ticker);
       card.element.remove();
       if (frame !== null) {
         cancelAnimationFrame(frame);

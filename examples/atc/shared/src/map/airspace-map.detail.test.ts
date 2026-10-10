@@ -31,14 +31,31 @@ const jet: Aircraft = {
   lat: 44.2,
 };
 
-/** Mounts a map with reduced motion and one Cessna and one jet. */
-async function mount() {
+/** A rect stub with these edges. */
+function rect(top: number, bottom: number): DOMRect {
+  return { left: 0, right: 400, top, bottom } as DOMRect;
+}
+
+/**
+ * Mounts a 400x300 map with reduced motion and one Cessna and one jet,
+ * inside a workbench whose chat panel starts its sheet at `sheetTop`.
+ */
+async function mount(sheetTop: { value: number } | null = null) {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query === '(prefers-reduced-motion: reduce)',
   }));
   const store = createAtcStore();
+  const workbench = document.createElement('main');
+  workbench.className = 'atc-workbench is-sheet';
   const element = document.createElement('div');
-  document.body.append(element);
+  workbench.append(element);
+  if (sheetTop !== null) {
+    const panel = document.createElement('section');
+    panel.className = 'atc-chat-panel';
+    panel.getBoundingClientRect = () => rect(sheetTop.value, 300);
+    workbench.append(panel);
+  }
+  document.body.append(workbench);
   Object.defineProperty(element, 'clientWidth', { value: 400 });
   Object.defineProperty(element, 'clientHeight', { value: 300 });
   const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
@@ -63,7 +80,7 @@ async function mount() {
       element.querySelector<HTMLElement>(`.atc-plane[data-hex="${hex}"]`),
     cleanup: () => {
       handle.destroy();
-      element.remove();
+      workbench.remove();
       vi.unstubAllGlobals();
     },
   };
@@ -135,6 +152,55 @@ test('the card hides when its plane leaves the map', async () => {
   map.mouse('a1c009', 'mouseover');
 
   map.store.applySnapshot({ at: 2, aircraft: [jet] });
+
+  expect(map.open()).toBe(false);
+  map.cleanup();
+});
+
+test('Escape while typing in a field keeps the selection', async () => {
+  const map = await mount();
+  const input = document.createElement('textarea');
+  document.body.append(input);
+  map.store.select('a1c009');
+
+  input.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+  );
+  const prevented = new KeyboardEvent('keydown', {
+    key: 'Escape',
+    cancelable: true,
+  });
+  prevented.preventDefault();
+  document.dispatchEvent(prevented);
+
+  expect(map.store.getState().selectedHex).toBe('a1c009');
+  expect(map.open()).toBe(true);
+  input.remove();
+  map.cleanup();
+});
+
+test('the card hides under an expanded sheet and returns when it shrinks', async () => {
+  const sheetTop = { value: 0 };
+  const map = await mount(sheetTop);
+  map.mouse('a1c009', 'mouseover');
+  const underSheet = map.open();
+
+  sheetTop.value = 300;
+  window.dispatchEvent(new Event('resize'));
+
+  expect(underSheet).toBe(false);
+  expect(map.open()).toBe(true);
+  map.cleanup();
+});
+
+test('the card hides when its plane moves off screen', async () => {
+  const map = await mount();
+  map.store.select('a1c009');
+
+  map.store.applySnapshot({
+    at: 2,
+    aircraft: [{ ...cessna, lat: 30, lon: -100 }, jet],
+  });
 
   expect(map.open()).toBe(false);
   map.cleanup();
