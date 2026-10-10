@@ -65,6 +65,8 @@ writeFileSync(
     version: 3,
     routes: [
       { src: '^/$', status: 307, headers: { Location: '/angular/' } },
+      { src: '^/angular$', status: 308, headers: { Location: '/angular/' } },
+      { src: '^/react$', status: 308, headers: { Location: '/react/' } },
       { handle: 'filesystem' },
       { src: '^/angular(?:/.*)?$', dest: '/angular/index.html' },
       { src: '^/react(?:/.*)?$', dest: '/react/index.html' },
