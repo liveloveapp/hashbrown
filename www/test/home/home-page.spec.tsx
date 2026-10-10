@@ -113,6 +113,21 @@ test('links the atc showcase and threadplane', async () => {
   expect(html).toContain('/image/landing-page/atc-mobile.webp');
 });
 
+test('the atc showcase has no b4 or pretable tiles', async () => {
+  const html = await render();
+
+  const section = html.slice(
+    html.indexOf('See it in a real app'),
+    html.indexOf('/image/landing-page/atc-mobile.webp'),
+  );
+
+  expect(section).toContain('Tools in the browser');
+  expect(section).not.toContain('b4.run');
+  expect(section).not.toContain('pretable.ai');
+  expect(section).not.toContain('Agent backend');
+  expect(section).not.toContain('Data grid');
+});
+
 test('pitches threadplane with a plain headline and no photo', async () => {
   const html = await render();
 

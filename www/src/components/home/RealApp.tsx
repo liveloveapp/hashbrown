@@ -54,21 +54,24 @@ export function RealApp() {
           target="_blank"
           rel="noopener"
         >
-          <picture>
-            <source
-              media="(max-width: 767px)"
-              srcSet="/image/landing-page/atc-mobile.webp"
-              width={585}
-              height={1266}
-            />
-            <img
-              src="/image/landing-page/atc.webp"
-              alt="The atc example answering which planes are the highest and fastest right now, with two flight cards beside a map that highlights both planes"
-              loading="lazy"
-              width={1440}
-              height={900}
-            />
-          </picture>
+          {/* Two images rather than <picture>, so each crop has its own alt text.
+              The hidden one is display: none, so lazy loading skips it. */}
+          <img
+            className={styles.desktop}
+            src="/image/landing-page/atc.webp"
+            alt="The atc example answering what is landing at Seattle with a flight card and an arrivals board, beside a map of the Seattle area that highlights the arriving plane"
+            loading="lazy"
+            width={1440}
+            height={900}
+          />
+          <img
+            className={styles.phone}
+            src="/image/landing-page/atc-mobile.webp"
+            alt="The atc example on a phone answering which planes are the highest and fastest, with a flight card under a map of the Pacific Northwest that labels both planes"
+            loading="lazy"
+            width={585}
+            height={1266}
+          />
         </a>
       </div>
     </div>
