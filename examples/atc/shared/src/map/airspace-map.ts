@@ -1,7 +1,13 @@
 import type { Map as LeafletMap, Marker } from 'leaflet';
 import type { Aircraft } from '../aircraft';
-import type { Area } from '../places';
+import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore } from '../store';
+import {
+  lerpLatLon,
+  shouldTween,
+  tweenDurationMs,
+  tweenProgress,
+} from './tween';
 
 /**
  * Raster tiles from Stadia Maps. Stadia authenticates by domain, so no key
@@ -57,9 +63,22 @@ export interface AirspaceMapHandle {
   destroy(): void;
 }
 
+/** True when the user asked the system to minimise motion. */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof matchMedia === 'function' &&
+    matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
 /**
  * Mounts a Leaflet map in `element` and keeps its markers in sync with the
  * store. Leaflet is imported lazily so server bundles never load it.
+ *
+ * When a new snapshot arrives, each known marker glides from where it is
+ * drawn to its new position over the time since the previous snapshot, so
+ * planes move continuously between updates. New markers, moves over 20 nm and
+ * reduced-motion users jump instead. A followed plane is panned with its glide.
  *
  * Pass `signal` to cancel before the import settles: when it is already
  * aborted by then, no map is created and the handle's `destroy` is a no-op.
@@ -99,8 +118,64 @@ export async function createAirspaceMap(options: {
     });
   const markers = new Map<string, { marker: Marker; html: string }>();
   let lastPulseAt: number | null = null;
-  let lastPan: { lat: number; lon: number } | null = null;
+  let lastPan: LatLon | null = null;
+  let lastUpdatedAt: number | null = null;
+  let lastArrival: number | null = null;
+  let glide: {
+    readonly startedAt: number;
+    readonly durationMs: number;
+    readonly moves: ReadonlyMap<string, { from: LatLon; to: LatLon }>;
+  } | null = null;
+  let frame: number | null = null;
   map.on('dragstart', () => store.follow(null));
+
+  const drawnAt = (hex: string): LatLon | null => {
+    const position = markers.get(hex)?.marker.getLatLng();
+
+    return position ? { lat: position.lat, lon: position.lng } : null;
+  };
+  const panToFollowed = (animate: boolean) => {
+    const { followingHex } = store.getState();
+    const target = followingHex === null ? null : drawnAt(followingHex);
+    if (target && followPanTarget(lastPan, target)) {
+      map.panTo([target.lat, target.lon], { animate });
+    }
+    lastPan = target;
+  };
+  const step = (time: number) => {
+    if (glide === null) {
+      return;
+    }
+    const t = tweenProgress(glide.startedAt, glide.durationMs, time);
+    for (const [hex, { from, to }] of glide.moves) {
+      const { lat, lon } = lerpLatLon(from, to, t);
+      markers.get(hex)?.marker.setLatLng([lat, lon]);
+    }
+    panToFollowed(false);
+    frame = t < 1 ? requestAnimationFrame(step) : null;
+  };
+  /** Starts gliding known markers to a new snapshot's positions. */
+  const moveMarkers = (state: AtcState) => {
+    const now = performance.now();
+    const durationMs = prefersReducedMotion()
+      ? 0
+      : tweenDurationMs(lastArrival, now);
+    lastArrival = now;
+    const moves = new Map<string, { from: LatLon; to: LatLon }>();
+    for (const aircraft of state.aircraft.values()) {
+      const from = drawnAt(aircraft.hex);
+      const to = { lat: aircraft.lat, lon: aircraft.lon };
+      if (from && durationMs > 0 && shouldTween(from, to)) {
+        moves.set(aircraft.hex, { from, to });
+      } else {
+        markers.get(aircraft.hex)?.marker.setLatLng([to.lat, to.lon]);
+      }
+    }
+    glide = { startedAt: now, durationMs, moves };
+    if (frame === null && moves.size > 0) {
+      frame = requestAnimationFrame(step);
+    }
+  };
 
   const render = (state: AtcState) => {
     for (const [hex, entry] of markers) {
@@ -109,6 +184,10 @@ export async function createAirspaceMap(options: {
         markers.delete(hex);
       }
     }
+    if (state.updatedAt !== lastUpdatedAt) {
+      lastUpdatedAt = state.updatedAt;
+      moveMarkers(state);
+    }
     for (const aircraft of state.aircraft.values()) {
       const html = planeIconHtml(
         aircraft,
@@ -116,7 +195,6 @@ export async function createAirspaceMap(options: {
       );
       const existing = markers.get(aircraft.hex);
       if (existing) {
-        existing.marker.setLatLng([aircraft.lat, aircraft.lon]);
         if (existing.html !== html) {
           existing.marker.setIcon(icon(html));
           markers.set(aircraft.hex, { marker: existing.marker, html });
@@ -132,15 +210,7 @@ export async function createAirspaceMap(options: {
         markers.set(aircraft.hex, { marker, html });
       }
     }
-    const followed =
-      state.followingHex === null
-        ? undefined
-        : state.aircraft.get(state.followingHex);
-    const target = followed ? { lat: followed.lat, lon: followed.lon } : null;
-    if (target && followPanTarget(lastPan, target)) {
-      map.panTo([target.lat, target.lon], { animate: true });
-    }
-    lastPan = target;
+    panToFollowed(true);
     if (state.pulse !== null && state.pulse.at !== lastPulseAt) {
       lastPulseAt = state.pulse.at;
       const plane = markers
@@ -159,6 +229,9 @@ export async function createAirspaceMap(options: {
   return {
     destroy() {
       unsubscribe();
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
       map.remove();
     },
   };
