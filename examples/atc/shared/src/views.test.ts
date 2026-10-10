@@ -73,7 +73,7 @@ test('routeText distinguishes not looked up, missing and found', () => {
     },
     {
       iata: 'SEA',
-      name: 'Seattle–Tacoma International Airport',
+      name: 'Seattle-Tacoma International Airport',
       city: 'Seattle',
     },
   ];

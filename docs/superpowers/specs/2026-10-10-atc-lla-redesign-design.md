@@ -41,7 +41,7 @@ Tokens as CSS custom properties:
   Fonts with `display=swap`. Sentence case only; negative tracking only.
 - Shape: panel radius 14px, row/card radius 10px, pills 999px, 1px borders, no
   shadows, gradients, glass or glows.
-- Motion: `--atc-ease: cubic-bezier(0.22, 1, 0.36, 1)`, 150–200ms. Complete
+- Motion: `--atc-ease: cubic-bezier(0.22, 1, 0.36, 1)`, 150 to 200ms. Complete
   static state under `prefers-reduced-motion`.
 - Focus: `outline: 2px solid var(--atc-accent); outline-offset: 2px`.
 - Map: `.leaflet-tile-pane { filter: grayscale(1) contrast(0.92) brightness(1.04) }`,

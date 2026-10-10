@@ -23,7 +23,7 @@ export const AIRPORT_CODES: readonly AirportCode[] = [
 
 /** Airport reference points. */
 export const AIRPORTS: Readonly<Record<AirportCode, Airport>> = {
-  SEA: { code: 'SEA', name: 'Seattle–Tacoma', lat: 47.4502, lon: -122.3088 },
+  SEA: { code: 'SEA', name: 'Seattle-Tacoma', lat: 47.4502, lon: -122.3088 },
   PDX: { code: 'PDX', name: 'Portland', lat: 45.5887, lon: -122.5975 },
   BOI: { code: 'BOI', name: 'Boise', lat: 43.5644, lon: -116.2228 },
   RDM: { code: 'RDM', name: 'Redmond/Bend', lat: 44.2541, lon: -121.15 },

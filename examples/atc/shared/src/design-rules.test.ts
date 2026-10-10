@@ -126,6 +126,7 @@ const RULES: Record<string, (source: string) => unknown[]> = {
   'dark scheme': (s) =>
     s.match(/prefers-color-scheme\s*:\s*dark|color-scheme\s*:\s*dark/g) ?? [],
   fonts: fontNames,
+  'em or en dashes': (s) => s.match(/[—–]/g) ?? [],
 };
 
 /** Snippets each rule must catch. */
@@ -162,6 +163,7 @@ const BAD: Record<string, string[]> = {
     'font: 14px/1.4 Inter, sans-serif;',
     "style={{ fontFamily: 'Arial' }}",
   ],
+  'em or en dashes': ['<h3>Arrivals — Seattle</h3>', "'Seattle–Tacoma'"],
 };
 
 /** Snippets every rule must accept. */
