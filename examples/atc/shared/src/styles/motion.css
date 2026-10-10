@@ -1,0 +1,17 @@
+/* Reduced motion. Kept last so it overrides every animation above. */
+@media (prefers-reduced-motion: reduce) {
+  .atc-detail,
+  .atc-detail.is-open {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atc-workbench,
+  .atc-workbench *,
+  .atc-workbench *::before,
+  .atc-workbench *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

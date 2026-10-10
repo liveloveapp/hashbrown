@@ -1,0 +1,33 @@
+/* Streaming prose (Hashbrown Magic Text) and its caret. */
+.atc-prose {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--atc-ink);
+  overflow-wrap: anywhere;
+}
+.atc-prose :is(p, ul, ol) {
+  margin: 0 0 8px;
+}
+.atc-prose > :last-child {
+  margin-bottom: 0;
+}
+.atc-prose :is(h1, h2, h3, h4) {
+  margin: 12px 0 6px;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.atc-prose code {
+  font-family: var(--atc-mono);
+  font-size: 13px;
+}
+.atc-prose a {
+  color: var(--atc-ink);
+}
+.atc-chat .atc-prose .hb-magic-text-caret {
+  width: 0.5em;
+  height: 0.5em;
+  background-color: var(--atc-ink);
+  opacity: 1;
+  animation: atc-fade 0.9s var(--atc-ease) infinite alternate;
+}

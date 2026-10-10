@@ -1,0 +1,63 @@
+/*
+ * atc visual system, following the design rules of LiveLoveApp (the team
+ * behind Hashbrown); shared/src/design-rules.test.ts enforces the subset a
+ * source scan can check. Flat, light, one accent.
+ * Colours are canvas, surface, border, ink, muted, map and one cobalt accent
+ * used only for highlight, selection and focus.
+ */
+:root {
+  --atc-canvas: #f4f4f5;
+  --atc-surface: #ffffff;
+  --atc-border: #e4e4e7;
+  --atc-ink: #0d0d0d;
+  --atc-muted: #52525b;
+  --atc-map: #e8e8e8;
+  --atc-accent: #002fa7;
+  /* Planes outside a highlight: solid, so stacked markers stay light. */
+  --atc-dimmed: #c4c4c8;
+  --atc-radius: 14px;
+  --atc-radius-row: 10px;
+  --atc-gutter: 12px;
+  --atc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --atc-fast: 150ms;
+  --atc-motion: 200ms;
+  --atc-font: 'Hanken Grotesk', system-ui, sans-serif;
+  --atc-mono: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: var(--atc-font);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--atc-ink);
+  background: var(--atc-canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+body {
+  background: var(--atc-canvas);
+}
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--atc-accent);
+  outline-offset: 2px;
+}
+
+/* Numbers in mono with tabular figures. */
+.atc-mono {
+  font-family: var(--atc-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.atc-map {
+  position: absolute;
+  inset: 0;
+}

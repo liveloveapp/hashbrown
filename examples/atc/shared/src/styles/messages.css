@@ -1,0 +1,44 @@
+/* The transcript: user messages, starter prompts and the error line. */
+.atc-transcript {
+  flex: 1;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: var(--atc-gutter);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.atc-user {
+  align-self: flex-end;
+  background: var(--atc-ink);
+  color: var(--atc-surface);
+  padding: 8px 12px;
+  border-radius: var(--atc-radius-row);
+  max-width: 85%;
+}
+.atc-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 var(--atc-gutter) var(--atc-gutter);
+}
+.atc-starters button {
+  border: 1px solid var(--atc-border);
+  background: var(--atc-surface);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: border-color var(--atc-fast) var(--atc-ease);
+}
+.atc-starters button:hover {
+  border-color: var(--atc-muted);
+}
+.atc-error {
+  margin: 0 var(--atc-gutter);
+  color: var(--atc-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}

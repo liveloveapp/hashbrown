@@ -1,0 +1,91 @@
+/* Plane markers on the map: silhouette, data tag, states and the pulse. */
+.atc-plane-icon {
+  background: none;
+  border: none;
+}
+.atc-plane {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  color: var(--atc-ink);
+  transition: color var(--atc-motion) var(--atc-ease);
+  cursor: pointer;
+}
+.atc-plane-body {
+  width: 22px;
+  height: 22px;
+}
+.atc-plane svg {
+  fill: currentColor;
+}
+.atc-plane-tag {
+  display: none;
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+  padding: 1px 7px;
+  background: var(--atc-surface);
+  border: 1px solid var(--atc-border);
+  border-radius: 999px;
+  color: var(--atc-ink);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.atc-plane.is-highlighted .atc-plane-tag,
+.atc-plane.is-selected .atc-plane-tag,
+.atc-plane.is-followed .atc-plane-tag,
+.atc-plane:hover .atc-plane-tag {
+  display: block;
+}
+/* The plane the detail card describes drops its tag; the card repeats it. */
+.atc-plane.is-detailed .atc-plane-tag {
+  display: none;
+}
+.atc-plane-alt {
+  margin-left: 4px;
+  font-family: var(--atc-mono);
+  font-weight: 400;
+  color: var(--atc-muted);
+}
+/* !important beats the inline z-index Leaflet sets on each marker. */
+.atc-plane-icon:hover,
+.atc-plane-icon:has(.is-selected, .is-followed) {
+  z-index: 10000 !important;
+}
+.atc-plane.is-dimmed:hover {
+  color: var(--atc-ink);
+}
+.atc-plane.is-highlighted {
+  color: var(--atc-accent);
+}
+.atc-plane.is-dimmed {
+  color: var(--atc-dimmed);
+}
+/* Regional zoom: smaller silhouettes, so metro clusters stay readable. */
+.atc-map[data-zoom-low] .atc-plane svg {
+  transform: scale(0.75);
+}
+.atc-plane.is-selected,
+.atc-plane.is-followed {
+  color: var(--atc-accent);
+}
+.atc-plane.is-pulsing .atc-plane-body {
+  animation: atc-pulse 1.2s var(--atc-ease);
+}
+/* `scale` composes with the body's inline rotate; the tag is not scaled. */
+@keyframes atc-pulse {
+  0% {
+    scale: 1;
+  }
+  40% {
+    scale: 1.35;
+  }
+  100% {
+    scale: 1;
+  }
+}

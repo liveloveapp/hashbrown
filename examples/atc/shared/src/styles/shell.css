@@ -1,0 +1,87 @@
+/* The workbench: panels, header, logo and the feed status chip. */
+/* Workbench: chat panel left, map panel right, on the canvas. The window never scrolls. */
+.atc-workbench {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  gap: var(--atc-gutter);
+  padding: var(--atc-gutter);
+  grid-template-columns: minmax(360px, 400px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  background: var(--atc-canvas);
+}
+.atc-panel {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--atc-surface);
+  border: 1px solid var(--atc-border);
+  border-radius: var(--atc-radius);
+}
+.atc-chat-panel {
+  display: flex;
+  flex-direction: column;
+}
+.atc-map-panel {
+  background: var(--atc-map);
+}
+
+.atc-logo {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--atc-ink);
+}
+.atc-logo svg {
+  display: block;
+}
+.atc-panel-header {
+  flex: none;
+  height: 56px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--atc-border);
+}
+.atc-credit {
+  font-size: 12px;
+  color: var(--atc-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.atc-credit:hover {
+  color: var(--atc-ink);
+}
+.atc-panel-header-status {
+  margin-left: auto;
+  display: flex;
+}
+.atc-chip {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  border: 1px solid var(--atc-border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--atc-muted);
+  font-variant-numeric: tabular-nums;
+}
+.atc-chip-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--atc-ink);
+}
+/* Connecting or delayed: the same dot, hollow. */
+.atc-chip-dot.is-hollow {
+  background: none;
+  border: 1.5px solid var(--atc-muted);
+}
