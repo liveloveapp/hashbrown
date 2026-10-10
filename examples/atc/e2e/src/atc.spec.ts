@@ -250,6 +250,35 @@ test('hovering a plane shows its detail card', async ({ page }, testInfo) => {
   await expect(card).toBeHidden();
 });
 
+test('the hovered plane stacks above the selected one and every other marker', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+  const icon = (hex: string) =>
+    page.locator('.atc-plane-icon').filter({
+      has: page.locator(`.atc-plane[data-hex="${hex}"]`),
+    });
+  const zIndex = (hex: string) =>
+    icon(hex).evaluate((node) => Number(getComputedStyle(node).zIndex));
+  await page
+    .locator(`.atc-plane[data-hex="${selected.hex}"]`)
+    .dispatchEvent('click');
+
+  await icon(fastest.hex).hover({ force: true });
+
+  const others = await page
+    .locator('.atc-plane-icon')
+    .evaluateAll((nodes) =>
+      nodes
+        .filter((node) => !node.matches(':hover, :has(.is-selected)'))
+        .map((node) => Number(getComputedStyle(node).zIndex)),
+    );
+  const hovered = await zIndex(fastest.hex);
+  const chosen = await zIndex(selected.hex);
+  expect(hovered).toBeGreaterThan(chosen);
+  expect(chosen).toBeGreaterThan(Math.max(...others));
+});
+
 test('renders the selected aircraft as a live card', async ({
   page,
 }, testInfo) => {
