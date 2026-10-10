@@ -140,6 +140,21 @@ test('the arrivals board renders one row per complete ID', () => {
   ]);
 });
 
+test('the arrivals board title has no dashes', () => {
+  setup();
+  const fixture = TestBed.createComponent(ArrivalsBoardComponent);
+
+  fixture.componentRef.setInput('title', 'Arrivals at Seattle — nearest first');
+  fixture.componentRef.setInput('airport', 'SEA');
+  fixture.componentRef.setInput('hexes', []);
+  fixture.detectChanges();
+
+  const element = fixture.nativeElement as HTMLElement;
+  expect(element.querySelector('.atc-card-title')?.textContent).toBe(
+    'Arrivals at Seattle, nearest first',
+  );
+});
+
 test('the compare card shows each aircraft and unknown IDs', () => {
   setup();
   const fixture = TestBed.createComponent(AircraftCompareComponent);

@@ -1,4 +1,4 @@
-import { type AirportCode, arrivalsRows } from '@atc/shared';
+import { type AirportCode, arrivalsRows, plainLabel } from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
 import { useAtcState } from '../store';
 import { CardSkeleton } from './card-skeleton';
@@ -16,7 +16,7 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
 
   return (
     <section className="atc-card" data-testid="arrivals-board">
-      <h3 className="atc-card-title">{title}</h3>
+      <h3 className="atc-card-title">{plainLabel(title)}</h3>
       <table className="atc-board">
         <thead>
           <tr>
@@ -59,7 +59,7 @@ export function ArrivalsBoardFallback({
   return (
     <section className="atc-card" data-testid="arrivals-board-fallback">
       {typeof title === 'string' && title ? (
-        <h3 className="atc-card-title">{title}</h3>
+        <h3 className="atc-card-title">{plainLabel(title)}</h3>
       ) : null}
       <CardSkeleton />
     </section>

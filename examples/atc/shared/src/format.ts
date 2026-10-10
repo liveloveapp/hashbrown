@@ -34,3 +34,15 @@ export function formatClock(ms: number, timeZone?: string): string {
     timeZone,
   });
 }
+
+/**
+ * Cleans a short model-written label: em and en dashes (with surrounding
+ * spaces) become ", ", and runs of whitespace collapse. For labels such as a
+ * board title, never streamed prose.
+ */
+export function plainLabel(text: string): string {
+  return text
+    .replace(/\s*[—–]\s*/g, ', ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

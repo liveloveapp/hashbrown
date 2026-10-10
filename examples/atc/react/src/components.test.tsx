@@ -105,6 +105,24 @@ test('the arrivals board renders one row per complete ID', () => {
   expect(screen.getByText('Unknown aircraft')).toBeVisible();
 });
 
+test('the arrivals board title has no dashes', () => {
+  const store = setup();
+
+  render(
+    <AtcStoreProvider store={store}>
+      <ArrivalsBoard
+        title="Arrivals at Seattle — nearest first"
+        airport="SEA"
+        hexes={[]}
+      />
+    </AtcStoreProvider>,
+  );
+
+  expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(
+    'Arrivals at Seattle, nearest first',
+  );
+});
+
 test('the compare card waits for its IDs, then shows each aircraft', () => {
   const store = setup();
 

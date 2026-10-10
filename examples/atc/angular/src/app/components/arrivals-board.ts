@@ -1,4 +1,4 @@
-import { type AirportCode, arrivalsRows } from '@atc/shared';
+import { type AirportCode, arrivalsRows, plainLabel } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -15,7 +15,7 @@ import { CardSkeletonComponent } from './card-skeleton';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="atc-card" data-testid="arrivals-board">
-      <h3 class="atc-card-title">{{ title() }}</h3>
+      <h3 class="atc-card-title">{{ label() }}</h3>
       <table class="atc-board">
         <thead>
           <tr>
@@ -52,6 +52,7 @@ export class ArrivalsBoardComponent {
   readonly airport = input.required<AirportCode>();
   readonly hexes = input.required<string[]>();
   private readonly state = injectAtcState();
+  protected readonly label = computed(() => plainLabel(this.title()));
   protected readonly rows = computed(() =>
     arrivalsRows(this.state(), this.airport(), this.hexes()),
   );
@@ -76,6 +77,6 @@ export class ArrivalsBoardFallbackComponent {
   protected readonly title = computed(() => {
     const title = this.partialProps()['title'];
 
-    return typeof title === 'string' ? title : '';
+    return typeof title === 'string' ? plainLabel(title) : '';
   });
 }

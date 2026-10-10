@@ -4,6 +4,7 @@ import {
   formatClock,
   formatHeading,
   formatSpeed,
+  plainLabel,
 } from './format';
 import { aircraftTypeName, airlineName } from './names';
 
@@ -45,5 +46,21 @@ test('names fall back to the raw code', () => {
     'Boeing 737 MAX 9',
     'ZZ99',
     'Unknown type',
+  ]);
+});
+
+test('plainLabel swaps dashes for commas and tidies spaces', () => {
+  const labels = [
+    plainLabel('Arrivals at Seattle — nearest first'),
+    plainLabel('Arrivals – Seattle'),
+    plainLabel('Seattle—Portland'),
+    plainLabel('  Nearest   first '),
+  ];
+
+  expect(labels).toEqual([
+    'Arrivals at Seattle, nearest first',
+    'Arrivals, Seattle',
+    'Seattle, Portland',
+    'Nearest first',
   ]);
 });
