@@ -1,7 +1,16 @@
-import { focusOpensSheet, startAtcFeed } from '@atc/shared';
+import {
+  focusOpensSheet,
+  INITIAL_SHEET,
+  nextSheet,
+  type SheetEvent,
+  sheetExpanded,
+  startAtcFeed,
+  watchSheetEvents,
+} from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   inject,
   signal,
@@ -32,13 +41,13 @@ import { ATC_STORE } from './store';
         id="atc-chat-sheet"
         class="atc-panel atc-chat-panel"
         aria-label="Chat"
-        [class.is-expanded]="expanded()"
+        [attr.data-snap]="sheet().snap"
         (focusin)="openOnFocus($event)"
-        (keydown.escape)="expanded.set(false)"
+        (keydown.escape)="move({ type: 'escape' })"
       >
-        <atc-sheet-handle [(expanded)]="expanded" />
+        <atc-sheet-handle [expanded]="expanded()" (moved)="move($event)" />
         <atc-panel-header />
-        <atc-assistant />
+        <atc-assistant (sent)="move({ type: 'send' })" />
       </section>
       <section class="atc-panel atc-map-panel" aria-label="Map">
         <atc-airspace-map />
@@ -47,17 +56,28 @@ import { ATC_STORE } from './store';
   `,
 })
 export class App {
-  /** Whether the phone bottom sheet is open; ignored on wide screens. */
-  protected readonly expanded = signal(false);
+  /** Where the phone bottom sheet rests; ignored on wide screens. */
+  protected readonly sheet = signal(INITIAL_SHEET);
+  protected readonly expanded = computed(() => sheetExpanded(this.sheet()));
+
+  protected move(event: SheetEvent): void {
+    this.sheet.update((sheet) => nextSheet(sheet, event));
+  }
 
   protected openOnFocus(event: FocusEvent): void {
     if (focusOpensSheet(event.target)) {
-      this.expanded.set(true);
+      this.move({ type: 'focus' });
     }
   }
 
   constructor() {
-    const stop = startAtcFeed({ store: inject(ATC_STORE) });
-    inject(DestroyRef).onDestroy(stop);
+    const store = inject(ATC_STORE);
+    const stopFeed = startAtcFeed({ store });
+    // The assistant moving the map, or a plane picked in the chat, lowers the sheet.
+    const stopWatching = watchSheetEvents(store, (event) => this.move(event));
+    inject(DestroyRef).onDestroy(() => {
+      stopFeed();
+      stopWatching();
+    });
   }
 }

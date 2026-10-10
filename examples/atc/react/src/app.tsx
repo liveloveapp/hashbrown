@@ -1,5 +1,12 @@
-import { focusOpensSheet, startAtcFeed } from '@atc/shared';
-import { useEffect, useRef, useState } from 'react';
+import {
+  focusOpensSheet,
+  INITIAL_SHEET,
+  nextSheet,
+  sheetExpanded,
+  startAtcFeed,
+  watchSheetEvents,
+} from '@atc/shared';
+import { useEffect, useReducer, useRef } from 'react';
 import { AirspaceMap } from './airspace-map';
 import { Assistant } from './assistant';
 import { useKeyboardInset } from './dom-hooks';
@@ -12,29 +19,32 @@ import { useAtcStore } from './store';
  * bottom sheet. */
 export function App() {
   const store = useAtcStore();
-  // Whether the phone bottom sheet is open; ignored on wide screens.
-  const [expanded, setExpanded] = useState(false);
+  // Where the phone bottom sheet rests; ignored on wide screens.
+  const [sheet, move] = useReducer(nextSheet, INITIAL_SHEET);
   const workbench = useRef<HTMLElement>(null);
 
   useEffect(() => startAtcFeed({ store }), [store]);
+  // The assistant moving the map, or a plane picked in the chat, lowers the sheet.
+  useEffect(() => watchSheetEvents(store, move), [store]);
   useKeyboardInset(workbench);
 
   return (
     <main ref={workbench} className="atc-workbench is-sheet">
       <section
         id="atc-chat-sheet"
-        className={`atc-panel atc-chat-panel${expanded ? ' is-expanded' : ''}`}
+        className="atc-panel atc-chat-panel"
+        data-snap={sheet.snap}
         aria-label="Chat"
         onFocus={(event) => {
-          if (focusOpensSheet(event.target)) setExpanded(true);
+          if (focusOpensSheet(event.target)) move({ type: 'focus' });
         }}
         onKeyDown={(event) => {
-          if (event.key === 'Escape') setExpanded(false);
+          if (event.key === 'Escape') move({ type: 'escape' });
         }}
       >
-        <SheetHandle expanded={expanded} onExpandedChange={setExpanded} />
+        <SheetHandle expanded={sheetExpanded(sheet)} onMove={move} />
         <PanelHeader />
-        <Assistant />
+        <Assistant onSend={() => move({ type: 'send' })} />
       </section>
       <section className="atc-panel atc-map-panel" aria-label="Map">
         <AirspaceMap />

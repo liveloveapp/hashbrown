@@ -31,13 +31,14 @@ export interface ShownArea {
 
 /**
  * A pending map move. Only the newest one counts: a highlight fit, an area,
- * or a reset to the regional view. `seq` tells the map whether it has
+ * a reset to the regional view, or bringing one aircraft into view. `seq` tells the map whether it has
  * already applied this one.
  */
 export type ViewRequest =
   | { readonly seq: number; readonly kind: 'highlight' }
   | { readonly seq: number; readonly kind: 'area'; readonly area: ShownArea }
-  | { readonly seq: number; readonly kind: 'reset' };
+  | { readonly seq: number; readonly kind: 'reset' }
+  | { readonly seq: number; readonly kind: 'aircraft'; readonly hex: string };
 
 /** Everything the map, tools and components read. Treat as immutable. */
 export interface AtcState {
@@ -149,7 +150,8 @@ function requestView(
   request:
     | { readonly kind: 'highlight' }
     | { readonly kind: 'area'; readonly area: ShownArea }
-    | { readonly kind: 'reset' },
+    | { readonly kind: 'reset' }
+    | { readonly kind: 'aircraft'; readonly hex: string },
 ): AtcState {
   if (state.followingHex !== null) {
     return { ...state, viewRequest: null };
@@ -171,6 +173,19 @@ export function requestArea(state: AtcState, area: ShownArea): AtcState {
 /** Clears the area outline and asks for the regional view. */
 export function requestReset(state: AtcState): AtcState {
   return requestView({ ...state, shownArea: null }, { kind: 'reset' });
+}
+
+/**
+ * Selects an aircraft the user picked from a card or row and asks the map to
+ * bring it into view (not while following another plane).
+ */
+export function requestAircraft(state: AtcState, hex: string): AtcState {
+  const key = normalizeHex(hex);
+
+  return requestView(
+    { ...state, selectedHex: key },
+    { kind: 'aircraft', hex: key },
+  );
 }
 
 /** Drops the pending map move, as after a user drag or zoom. */
@@ -247,6 +262,8 @@ export interface AtcStore {
   resetView(): void;
   /** Drops a pending map move ({@link cancelViewRequest}). */
   cancelViewRequest(): void;
+  /** Selects an aircraft and brings it into view ({@link requestAircraft}). */
+  revealAircraft(hex: string): void;
   pulse(hex: string): void;
   setFeedStatus(status: FeedStatus): void;
 }
@@ -292,6 +309,7 @@ export function createAtcStore(options: { now?: () => number } = {}): AtcStore {
     showArea: (area) => update(requestArea(state, area)),
     resetView: () => update(requestReset(state)),
     cancelViewRequest: () => update(cancelViewRequest(state)),
+    revealAircraft: (hex) => update(requestAircraft(state, hex)),
     pulse: (hex) =>
       update({ ...state, pulse: { hex: normalizeHex(hex), at: now() } }),
     setFeedStatus: (feedStatus) =>

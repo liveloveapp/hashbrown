@@ -1,17 +1,20 @@
-import { sheetAfterDrag } from '@atc/shared';
+import { SHEET_DRAG_THRESHOLD, type SheetEvent } from '@atc/shared';
 import { type PointerEvent, useRef } from 'react';
 
 /**
  * The drag handle of the phone bottom sheet. It is a real button: Enter or
- * Space toggles it, and dragging it up or down opens or closes the sheet.
- * Hidden on wide screens, where the chat is a plain side panel.
+ * Space taps it (open fully, or close from full), and dragging it moves the
+ * sheet between its peek, half and full snaps. Hidden on wide screens, where
+ * the chat is a plain side panel.
  */
 export function SheetHandle({
   expanded,
-  onExpandedChange,
+  onMove,
 }: {
+  /** Whether the sheet is fully open. */
   expanded: boolean;
-  onExpandedChange: (expanded: boolean) => void;
+  /** Called with each drag, or a tap as a drag of 0. */
+  onMove: (event: SheetEvent) => void;
 }) {
   const startY = useRef<number | null>(null);
   const dragged = useRef(false);
@@ -28,9 +31,9 @@ export function SheetHandle({
     const deltaY = event.clientY - startY.current;
     startY.current = null;
     // A real drag settles here; a tap falls through to the click handler.
-    dragged.current = Math.abs(deltaY) >= 24;
+    dragged.current = Math.abs(deltaY) >= SHEET_DRAG_THRESHOLD;
     if (dragged.current) {
-      onExpandedChange(sheetAfterDrag(expanded, deltaY));
+      onMove({ type: 'drag', deltaY });
     }
   };
   const click = () => {
@@ -38,7 +41,7 @@ export function SheetHandle({
       dragged.current = false;
       return;
     }
-    onExpandedChange(!expanded);
+    onMove({ type: 'drag', deltaY: 0 });
   };
 
   return (

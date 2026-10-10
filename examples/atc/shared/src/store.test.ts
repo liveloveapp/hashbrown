@@ -9,6 +9,7 @@ import {
   createAtcStore,
   INITIAL_STATE,
   lookupAircraft,
+  requestAircraft,
   requestArea,
   requestReset,
 } from './store';
@@ -260,4 +261,28 @@ test('the store exposes the view requests', () => {
   expect(cancelled).toBeNull();
   expect(store.getState().viewRequest?.kind).toBe('reset');
   expect(store.getState().shownArea).toBeNull();
+});
+
+test('revealing an aircraft selects it and asks the map to bring it into view', () => {
+  const revealed = requestAircraft(twoPlanes, 'BBBBBB');
+
+  const following = requestAircraft(applyFollow(twoPlanes, 'aaaaaa'), 'bbbbbb');
+
+  expect(revealed.selectedHex).toBe('bbbbbb');
+  expect(revealed.viewRequest).toEqual({
+    seq: 1,
+    kind: 'aircraft',
+    hex: 'bbbbbb',
+  });
+  expect(following.selectedHex).toBe('bbbbbb');
+  expect(following.viewRequest).toBeNull();
+});
+
+test('the store reveals aircraft', () => {
+  const store = createAtcStore();
+
+  store.revealAircraft('aaaaaa');
+
+  expect(store.getState().selectedHex).toBe('aaaaaa');
+  expect(store.getState().viewRequest?.kind).toBe('aircraft');
 });

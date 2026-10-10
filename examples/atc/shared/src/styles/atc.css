@@ -459,6 +459,16 @@ input {
     display: block;
     padding: 0;
     --atc-peek: calc(208px + env(safe-area-inset-bottom, 0px));
+    --atc-half: max(var(--atc-peek), min(50dvh, 460px));
+    /* The sheet's resting height, which the map's controls clear. */
+    --atc-sheet: var(--atc-peek);
+  }
+  /* Before the first message the peek also shows a row of starters. */
+  .atc-workbench.is-sheet:has(.atc-empty) {
+    --atc-peek: calc(260px + env(safe-area-inset-bottom, 0px));
+  }
+  .atc-workbench.is-sheet:has(.atc-chat-panel[data-snap='half']) {
+    --atc-sheet: var(--atc-half);
   }
   .atc-workbench.is-sheet .atc-map-panel {
     position: absolute;
@@ -474,16 +484,56 @@ input {
     right: 0;
     bottom: var(--atc-kb, 0px);
     box-sizing: border-box;
-    height: var(--atc-peek);
+    height: var(--atc-sheet);
     border-radius: var(--atc-radius) var(--atc-radius) 0 0;
     border-bottom: 0;
     transition: height var(--atc-motion) var(--atc-ease);
   }
-  .atc-workbench.is-sheet .atc-chat-panel.is-expanded {
+  .atc-workbench.is-sheet .atc-chat-panel[data-snap='full'] {
     height: min(86dvh, calc(100dvh - 48px - var(--atc-kb, 0px)));
   }
-  .atc-workbench.is-sheet .atc-chat-panel:not(.is-expanded) .atc-chat-body {
+  /* The peek shows the conversation's composer only... */
+  .atc-workbench.is-sheet
+    .atc-chat-panel[data-snap='peek']
+    .atc-chat-body:not(:has(.atc-empty)) {
     visibility: hidden;
+  }
+  /* ...or, before the first message, one scrolling row of starters. */
+  .atc-workbench.is-sheet .atc-chat-panel[data-snap='peek'] .atc-chat-body {
+    overflow: hidden;
+  }
+  .atc-workbench.is-sheet .atc-chat-panel[data-snap='peek'] .atc-empty {
+    padding: 4px 0 8px;
+  }
+  .atc-workbench.is-sheet
+    .atc-chat-panel[data-snap='peek']
+    .atc-empty
+    > :not(.atc-starters) {
+    display: none;
+  }
+  .atc-workbench.is-sheet
+    .atc-chat-panel[data-snap='peek']
+    .atc-empty
+    .atc-starters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+    padding-inline: 16px;
+  }
+  .atc-workbench.is-sheet
+    .atc-chat-panel[data-snap='peek']
+    .atc-starters::-webkit-scrollbar {
+    display: none;
+  }
+  .atc-workbench.is-sheet
+    .atc-chat-panel[data-snap='peek']
+    .atc-starters
+    button {
+    flex: none;
+    white-space: nowrap;
+    scroll-snap-align: start;
   }
   .atc-workbench.is-sheet .atc-composer {
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
@@ -494,9 +544,10 @@ input {
     max-width: calc(100vw - 72px);
     margin-left: 8px;
   }
-  /* The map's own controls clear the peeking sheet. */
+  /* The map's own controls clear the sheet at its peek or half snap. */
   .atc-workbench.is-sheet .atc-map .leaflet-bottom {
-    bottom: calc(var(--atc-peek) + 4px);
+    bottom: calc(var(--atc-sheet) + 4px);
+    transition: bottom var(--atc-motion) var(--atc-ease);
   }
 
   .atc-sheet-handle-host {

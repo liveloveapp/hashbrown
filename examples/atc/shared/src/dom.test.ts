@@ -14,17 +14,18 @@ test('isTyping is true inside inputs, textareas, selects and editable regions', 
   expect(isTyping(null)).toBe(false);
 });
 
-test('focusOpensSheet is false only for the handle', () => {
+test('focusOpensSheet is true only for a text field, so tapping a starter or the handle does not open it', () => {
   document.body.innerHTML =
-    '<button class="atc-sheet-handle"><span id="grip"></span></button><input id="field">';
+    '<button class="atc-sheet-handle"><span id="grip"></span></button><input id="field"><button id="starter"></button>';
 
   const results = [
     focusOpensSheet(document.getElementById('grip')),
     focusOpensSheet(document.getElementById('field')),
+    focusOpensSheet(document.getElementById('starter')),
     focusOpensSheet(null),
   ];
 
-  expect(results).toEqual([false, true, true]);
+  expect(results).toEqual([false, true, false, false]);
 });
 
 test('addsUserMessage sees a user message added directly or nested', () => {

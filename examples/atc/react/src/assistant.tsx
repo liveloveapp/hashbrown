@@ -55,8 +55,11 @@ const components = [
   }),
 ];
 
-/** The chat panel: components, browser-side tools and the streaming answer. */
-export function Assistant() {
+/**
+ * The chat panel: components, browser-side tools and the streaming answer.
+ * `onSend` is called when the user sends a message.
+ */
+export function Assistant({ onSend }: { onSend?: () => void }) {
   const store = useAtcStore();
   const atc = useMemo(() => createAtcTools({ store, fetchRoute }), [store]);
 
@@ -82,7 +85,10 @@ export function Assistant() {
     tools,
   });
   const scroller = useAutoScroll<HTMLDivElement>();
-  const send = (content: string) => chat.sendMessage({ role: 'user', content });
+  const send = (content: string) => {
+    chat.sendMessage({ role: 'user', content });
+    onSend?.();
+  };
 
   return (
     <div className="atc-chat">

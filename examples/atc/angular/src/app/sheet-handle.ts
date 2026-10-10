@@ -1,10 +1,16 @@
-import { sheetAfterDrag } from '@atc/shared';
-import { ChangeDetectionStrategy, Component, model } from '@angular/core';
+import { SHEET_DRAG_THRESHOLD, type SheetEvent } from '@atc/shared';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  input,
+  output,
+} from '@angular/core';
 
 /**
  * The drag handle of the phone bottom sheet. It is a real button: Enter or
- * Space toggles it, and dragging it up or down opens or closes the sheet.
- * Hidden on wide screens, where the chat is a plain side panel.
+ * Space taps it (open fully, or close from full), and dragging it moves the
+ * sheet between its peek, half and full snaps. Hidden on wide screens, where
+ * the chat is a plain side panel.
  */
 @Component({
   selector: 'atc-sheet-handle',
@@ -27,8 +33,10 @@ import { ChangeDetectionStrategy, Component, model } from '@angular/core';
   `,
 })
 export class SheetHandleComponent {
-  /** Whether the sheet is open; two-way bindable. */
-  readonly expanded = model(false);
+  /** Whether the sheet is fully open. */
+  readonly expanded = input(false);
+  /** Emits each drag, or a tap as a drag of 0. */
+  readonly moved = output<SheetEvent>();
   private startY: number | null = null;
   private dragged = false;
 
@@ -45,9 +53,9 @@ export class SheetHandleComponent {
     const deltaY = event.clientY - this.startY;
     this.startY = null;
     // A real drag settles here; a tap falls through to the click handler.
-    this.dragged = Math.abs(deltaY) >= 24;
+    this.dragged = Math.abs(deltaY) >= SHEET_DRAG_THRESHOLD;
     if (this.dragged) {
-      this.expanded.set(sheetAfterDrag(this.expanded(), deltaY));
+      this.moved.emit({ type: 'drag', deltaY });
     }
   }
 
@@ -60,6 +68,6 @@ export class SheetHandleComponent {
       this.dragged = false;
       return;
     }
-    this.expanded.update((open) => !open);
+    this.moved.emit({ type: 'drag', deltaY: 0 });
   }
 }

@@ -186,6 +186,8 @@ const LOW_ZOOM = 6;
 /** Furthest out, and furthest in, that fitting highlighted planes will zoom. */
 const MIN_FIT_ZOOM = 5;
 const MAX_FIT_ZOOM = 10;
+/** The least zoom a plane picked in the chat is shown at. */
+const REVEAL_ZOOM = 8;
 /** Furthest in that showing an area will zoom. */
 const MAX_AREA_ZOOM = 12;
 /** Space kept around a shown area, in pixels. */
@@ -446,19 +448,33 @@ export async function createAirspaceMap(options: {
     map.once('moveend', () => (programmatic = false));
     move();
   };
+  /**
+   * Pixels at the bottom of the map hidden by a phone's bottom sheet, when
+   * enough map shows above it to fit into; else 0.
+   */
+  const sheetInset = () =>
+    cardArea.height > 160 ? map.getSize().y - cardArea.height : 0;
+  /** The centre that puts `position` mid-way down the map above the sheet. */
+  const centreAbove = (position: LatLon, zoom: number) =>
+    map.unproject(
+      map
+        .project([position.lat, position.lon], zoom)
+        .add([0, sheetInset() / 2]),
+      zoom,
+    );
   /** Moves the map so highlighted planes and their tags are legible. */
   const fitHighlight = (target: FitTarget, animate: boolean) => {
     if (target.kind === 'point') {
-      map.setView([target.lat, target.lon], target.zoom, { animate });
+      map.setView(centreAbove(target, target.zoom), target.zoom, { animate });
       return;
     }
     const bounds: [[number, number], [number, number]] = [
       [target.south, target.west],
       [target.north, target.east],
     ];
-    // Extra room on the right for the data tags.
+    // Extra room on the right for the data tags, and under them for a sheet.
     const paddingTopLeft: [number, number] = [48, 48];
-    const paddingBottomRight: [number, number] = [140, 48];
+    const paddingBottomRight: [number, number] = [140, 48 + sheetInset()];
     const zoom = map.getBoundsZoom(
       bounds,
       false,
@@ -468,9 +484,12 @@ export async function createAirspaceMap(options: {
       ),
     );
     if (zoom < MIN_FIT_ZOOM) {
-      map.setView(L.latLngBounds(bounds).getCenter(), MIN_FIT_ZOOM, {
-        animate,
-      });
+      const centre = L.latLngBounds(bounds).getCenter();
+      map.setView(
+        centreAbove({ lat: centre.lat, lon: centre.lng }, MIN_FIT_ZOOM),
+        MIN_FIT_ZOOM,
+        { animate },
+      );
       return;
     }
     map.fitBounds(bounds, {
@@ -483,8 +502,7 @@ export async function createAirspaceMap(options: {
   /** Fits a circle around an airport, keeping it above a phone's sheet. */
   const fitArea = (shown: ShownArea, animate: boolean) => {
     const box = circleBounds(AIRPORTS[shown.airport], shown.radiusNm);
-    const hidden = map.getSize().y - cardArea.height;
-    const bottom = cardArea.height > 160 ? hidden : 0;
+    const bottom = sheetInset();
     map.fitBounds(
       [
         [box.south, box.west],
@@ -500,7 +518,7 @@ export async function createAirspaceMap(options: {
   };
   /**
    * Applies the newest view request once. Follow mode drops it. A highlight
-   * fit waits until at least one of its planes has a marker.
+   * fit, or a plane picked in the chat, waits until a marker is drawn.
    */
   const applyView = (state: AtcState) => {
     const request = state.viewRequest;
@@ -528,11 +546,57 @@ export async function createAirspaceMap(options: {
       moveMap(() => fitHighlight(target, animate));
       return;
     }
+    if (request.kind === 'aircraft') {
+      const position = drawnAt(request.hex);
+      if (position === null) {
+        return;
+      }
+      appliedSeq = request.seq;
+      const zoom = Math.max(map.getZoom(), REVEAL_ZOOM);
+      moveMap(() =>
+        map.setView(centreAbove(position, zoom), zoom, { animate }),
+      );
+      return;
+    }
     appliedSeq = request.seq;
     moveMap(() =>
       request.kind === 'area'
         ? fitArea(request.area, animate)
         : map.setView([area.lat, area.lon], area.zoom, { animate }),
+    );
+  };
+  let destroyed = false;
+  let settling = false;
+  /**
+   * Applies a new view request once the chat panel has settled. The request
+   * and the sheet snap it causes arrive together, but the framework moves the
+   * sheet a frame or two later and then animates its height, so this waits
+   * two frames and for that transition before measuring the map left above
+   * the sheet. Without a chat panel (tests) it applies at once.
+   */
+  const applyWhenSettled = (state: AtcState) => {
+    const panel = sheet();
+    if (panel === null) {
+      applyView(state);
+      return;
+    }
+    if (settling) {
+      return;
+    }
+    settling = true;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const running = panel.getAnimations?.() ?? [];
+        void Promise.all(
+          running.map((animation) => animation.finished.catch(() => null)),
+        ).then(() => {
+          settling = false;
+          if (!destroyed) {
+            measureArea();
+            applyView(store.getState());
+          }
+        });
+      }),
     );
   };
   /** Draws the shown area's outline, or removes it. */
@@ -638,7 +702,9 @@ export async function createAirspaceMap(options: {
     }
     syncCard(state);
     syncOutline(state.shownArea);
-    applyView(state);
+    if (state.viewRequest !== null && state.viewRequest.seq !== appliedSeq) {
+      applyWhenSettled(state);
+    }
     panToFollowed(true);
     if (state.pulse !== null && state.pulse.at !== lastPulseAt) {
       lastPulseAt = state.pulse.at;
@@ -681,6 +747,7 @@ export async function createAirspaceMap(options: {
 
   return {
     destroy() {
+      destroyed = true;
       resizeObserver?.disconnect();
       unsubscribe();
       doc.removeEventListener('keydown', onKeydown);

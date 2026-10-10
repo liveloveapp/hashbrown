@@ -7,14 +7,13 @@ export function isTyping(target: EventTarget | null): boolean {
 }
 
 /**
- * Whether focus landing on `target` should open the sheet: anything inside it
- * except the handle, whose own click toggles (a pointer press focuses the
- * button first, which would otherwise open and immediately close the sheet).
+ * Whether focus landing on `target` should open the sheet fully: only a text
+ * field, where the user is about to type. Buttons such as the starters and
+ * the handle act on their own click (a pointer press focuses them first,
+ * which would otherwise open the sheet and then move it again).
  */
 export function focusOpensSheet(target: EventTarget | null): boolean {
-  return !(
-    target instanceof Element && target.closest('.atc-sheet-handle') !== null
-  );
+  return isTyping(target);
 }
 
 /** Whether a mutation record added a user message to the transcript. */

@@ -1,28 +1,40 @@
-import { focusOpensSheet } from '@atc/shared';
+import {
+  focusOpensSheet,
+  INITIAL_SHEET,
+  nextSheet,
+  sheetExpanded,
+} from '@atc/shared';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
-import { useState } from 'react';
+import { useReducer } from 'react';
 import { expect, test } from 'vitest';
 import { useAutoScroll } from './dom-hooks';
 import { SheetHandle } from './sheet-handle';
 
-/** A sheet section like the app's: focus inside opens it, the handle toggles. */
-function Sheet({ initial = false }: { initial?: boolean }) {
-  const [expanded, setExpanded] = useState(initial);
+/** A sheet section like the app's: the handle and a text field drive `nextSheet`. */
+function Sheet({ initial = INITIAL_SHEET }: { initial?: typeof INITIAL_SHEET }) {
+  const [sheet, move] = useReducer(nextSheet, initial);
 
   return (
     <section
-      data-expanded={expanded}
+      data-snap={sheet.snap}
       onFocus={(event) => {
-        if (focusOpensSheet(event.target)) setExpanded(true);
+        if (focusOpensSheet(event.target)) move({ type: 'focus' });
       }}
     >
-      <SheetHandle expanded={expanded} onExpandedChange={setExpanded} />
+      <SheetHandle expanded={sheetExpanded(sheet)} onMove={move} />
       <input aria-label="Message" />
     </section>
   );
 }
 
-function sheet(initial = false) {
+/** A pointer event with a position (jsdom has no PointerEvent constructor). */
+function pointer(button: HTMLElement, type: string, clientY: number) {
+  const event = new Event(type, { bubbles: true });
+  Object.assign(event, { clientY, pointerId: 1 });
+  fireEvent(button, event);
+}
+
+function sheet(initial = INITIAL_SHEET) {
   cleanup();
   const { container } = render(<Sheet initial={initial} />);
   const section = container.querySelector('section') as HTMLElement;
@@ -31,7 +43,8 @@ function sheet(initial = false) {
   return {
     button,
     input: container.querySelector('input') as HTMLInputElement,
-    expanded: () => section.dataset['expanded'] === 'true',
+    snap: () => section.dataset['snap'],
+    expanded: () => section.dataset['snap'] === 'full',
   };
 }
 
@@ -53,25 +66,30 @@ test('the sheet handle is a button that reports and toggles aria-expanded', () =
   expect(button.getAttribute('aria-controls')).toBe('atc-chat-sheet');
 });
 
-test('dragging the handle up opens the sheet without a second toggle from the click', () => {
-  const { button, expanded } = sheet();
+test('dragging the handle up moves the sheet one snap, without a second toggle from the click', () => {
+  const { button, snap } = sheet();
 
-  fireEvent.pointerDown(button, { clientY: 700, pointerId: 1 });
-  fireEvent.pointerUp(button, { clientY: 600, pointerId: 1 });
-  act(() => button.click());
+  const drag = () => {
+    pointer(button, 'pointerdown', 700);
+    pointer(button, 'pointerup', 600);
+    act(() => button.click());
+    return snap();
+  };
+  const first = drag();
+  const second = drag();
 
-  expect(expanded()).toBe(true);
+  expect([first, second]).toEqual(['half', 'full']);
   expect(button.getAttribute('aria-expanded')).toBe('true');
 });
 
-test('dragging the handle down closes an open sheet', () => {
-  const { button, expanded } = sheet(true);
+test('dragging the handle down lowers an open sheet one snap', () => {
+  const { button, snap } = sheet({ snap: 'full', held: true });
 
-  fireEvent.pointerDown(button, { clientY: 300, pointerId: 1 });
-  fireEvent.pointerUp(button, { clientY: 420, pointerId: 1 });
+  pointer(button, 'pointerdown', 300);
+  pointer(button, 'pointerup', 420);
   act(() => button.click());
 
-  expect(expanded()).toBe(false);
+  expect(snap()).toBe('half');
 });
 
 test('focusing the handle does not open the sheet, so one tap opens and the next closes', () => {

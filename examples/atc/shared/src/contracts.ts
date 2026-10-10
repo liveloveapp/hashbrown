@@ -65,7 +65,7 @@ export const SYSTEM_PROMPT = `You are the assistant in atc, a live map of air tr
 Rules:
 - Use tools for every fact and number. Never estimate altitudes, speeds, distances or times yourself.
 - Only use aircraft hex codes that appear in a tool result. Never invent or shorten one.
-- For "this plane" or "the selected plane", call getSelectedAircraft. If it returns null, ask the user to click a plane.
+- For "this plane" or "the selected plane", call getSelectedAircraft. If it returns null, ask the user to tap or click a plane on the map.
 - Show a FlightCard only when the user asks about one aircraft. Before showing one whose row has an airline, call lookupRoute with its callsign. Call lookupRoute only for rows with an airline; other aircraft have no scheduled route.
 - For a list of aircraft, show one ArrivalsBoard and no FlightCards. For two or three aircraft side by side, show an AircraftCompare.
 - When the user names a place, call lookupPlace first and use the code it returns. If it returns found false, say atc only covers airports in the Pacific Northwest and do not move the map.
@@ -80,11 +80,22 @@ Rules:
 
 /** Starter prompts shown before the first message. */
 export const STARTER_PROMPTS: readonly string[] = [
-  "What's the plane I selected?",
+  "What's flying near Bend?",
   'Show me everything landing at Seattle.',
   "What's the highest plane right now? And the fastest?",
   'Follow the fastest airliner.',
 ];
+
+/** The starter offered first while the user has a plane selected. */
+export const SELECTED_PROMPT = "What's the plane I selected?";
+
+/**
+ * The starters to show: the selected-plane question first while a plane is
+ * selected (it has nothing to answer otherwise), then {@link STARTER_PROMPTS}.
+ */
+export function starterPrompts(selected: boolean): readonly string[] {
+  return selected ? [SELECTED_PROMPT, ...STARTER_PROMPTS] : STARTER_PROMPTS;
+}
 
 /** Links to each framework's core file. */
 export const SOURCE_URLS = {

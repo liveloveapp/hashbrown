@@ -1,6 +1,7 @@
 import {
   type Aircraft,
   createAtcStore,
+  SELECTED_PROMPT,
   SOURCE_URLS,
   STARTER_PROMPTS,
   transcriptItems,
@@ -107,6 +108,21 @@ test('the empty state asks a question and offers every starter prompt', () => {
   );
   expect(buttons.map((button) => text(button))).toEqual([...STARTER_PROMPTS]);
   expect(picked).toEqual([STARTER_PROMPTS[1]]);
+});
+
+test('the empty state offers the selected-plane question first while a plane is selected', () => {
+  const store = setup();
+  const fixture = TestBed.createComponent(EmptyStateComponent);
+
+  store.select('aaaaaa');
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  const buttons = [...element.querySelectorAll('button')];
+
+  expect(buttons.map((button) => text(button))).toEqual([
+    SELECTED_PROMPT,
+    ...STARTER_PROMPTS,
+  ]);
 });
 
 test('tool chips spin while running, then settle as done or failed', () => {

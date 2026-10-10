@@ -12,6 +12,7 @@ import {
   computed,
   inject,
   linkedSignal,
+  output,
 } from '@angular/core';
 import {
   createTool,
@@ -98,6 +99,8 @@ const components = [
   `,
 })
 export class Assistant {
+  /** Emits when the user sends a message. */
+  readonly sent = output();
   private readonly atc = createAtcTools({
     store: inject(ATC_STORE),
     fetchRoute,
@@ -132,5 +135,6 @@ export class Assistant {
 
   protected send(content: string): void {
     this.chat.sendMessage({ role: 'user', content });
+    this.sent.emit();
   }
 }
