@@ -13,6 +13,14 @@ const view: AircraftDetailView = {
   label: 'N352LL',
   subtitle: null,
   hiddenRows: 0,
+  summary: {
+    type: 'Cessna 172',
+    route: null,
+    figures: [
+      { label: 'Altitude', value: '4,500 ft' },
+      { label: 'Speed', value: '110 kt' },
+    ],
+  },
   groups: [
     {
       title: 'Identity',
@@ -20,7 +28,7 @@ const view: AircraftDetailView = {
     },
     {
       title: 'Altitude',
-      rows: [{ label: 'Pressure altitude', value: '4,500 ft' }],
+      rows: [{ label: 'Vertical rate', value: '+500 fpm' }],
     },
     {
       title: 'Speed and direction',
@@ -73,7 +81,7 @@ test('createDetailCard shows the view as text, never as markup', () => {
   expect(card.element.classList.contains('is-open')).toBe(true);
   expect(card.element.querySelector('img')).toBeNull();
   expect(card.element.textContent).toContain('<img src=x onerror=alert(1)>');
-  expect(card.element.textContent).toContain('Pressure altitude4,500 ft');
+  expect(card.element.textContent).toContain('Vertical rate+500 fpm');
 });
 
 test('createDetailCard rebuilds only when the view changes', () => {
@@ -171,4 +179,81 @@ test('detailCardPosition goes above or below the plane when neither side fits', 
     { x: 52, y: 118 },
     { x: 8, y: 50 },
   ]);
+});
+
+test('createDetailCard leads with the type line and the figures in the text face where they are words', () => {
+  const card = createDetailCard(document);
+
+  card.show(
+    {
+      ...view,
+      summary: { ...view.summary, route: 'SFO → SEA · scheduled route' },
+      groups: [
+        {
+          title: 'Identity',
+          rows: [{ label: 'Kind', value: 'Single-engine prop', text: true }],
+        },
+      ],
+    },
+    1000,
+  );
+
+  const line = card.element.querySelector('.atc-detail-line')?.textContent;
+  const figures = [...card.element.querySelectorAll('.atc-detail-figure')].map(
+    (figure) => figure.textContent,
+  );
+  expect(line).toBe('Cessna 172 · SFO → SEA · scheduled route');
+  expect(figures).toEqual(['Altitude4,500 ft', 'Speed110 kt']);
+  expect(card.element.querySelector('dd.is-text')?.textContent).toBe(
+    'Single-engine prop',
+  );
+});
+
+test('a pinned card has a close button; a hovered one does not', () => {
+  const closed: string[] = [];
+  const card = createDetailCard(document, {
+    onClose: () => closed.push('closed'),
+  });
+
+  card.show(view, 1000);
+  const hovered = card.element.querySelector('.atc-detail-close');
+  card.show(view, 1000, { pinned: true, docked: false });
+  card.element.querySelector<HTMLElement>('.atc-detail-close')?.click();
+
+  expect(hovered).toBeNull();
+  expect(
+    card.element.querySelector('.atc-detail-close')?.getAttribute('aria-label'),
+  ).toBe('Close details for N352LL');
+  expect(card.element.classList.contains('is-pinned')).toBe(true);
+  expect(closed).toEqual(['closed']);
+});
+
+test('a docked card sits at the top, shows only the summary, and opens the rest with More', () => {
+  const toggled: string[] = [];
+  const card = createDetailCard(document, {
+    onToggle: () => toggled.push('toggled'),
+  });
+  measureByRows(card.element);
+
+  card.show(view, 30, { pinned: true, docked: true });
+  card.place({ x: 300, y: 200 }, { width: 375, height: 500 });
+  const compact = card.element.querySelectorAll('.atc-detail-row').length;
+  const more = card.element.querySelector<HTMLElement>('.atc-detail-more');
+  const before = more?.getAttribute('aria-expanded');
+  more?.click();
+  const fits = card.show(view, 30, { pinned: true, docked: true });
+
+  expect(card.element.classList.contains('is-docked')).toBe(true);
+  expect(card.element.style.transform).toBe('translate(8px, 8px)');
+  expect(compact).toBe(0);
+  expect(before).toBe('false');
+  expect(toggled).toEqual(['toggled']);
+  expect(fits).toBe(true);
+  expect(card.element.querySelectorAll('.atc-detail-row')).toHaveLength(4);
+  expect(
+    card.element
+      .querySelector('.atc-detail-more')
+      ?.getAttribute('aria-expanded'),
+  ).toBe('true');
+  expect(card.element.style.maxHeight).toBe('30px');
 });

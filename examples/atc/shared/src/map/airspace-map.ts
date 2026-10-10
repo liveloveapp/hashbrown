@@ -9,6 +9,7 @@ import {
   CARD_MARGIN,
   type CardSize,
   createDetailCard,
+  detailCardDocked,
   isInsideArea,
   visibleMapArea,
 } from './detail-card';
@@ -295,10 +296,19 @@ export async function createAirspaceMap(options: {
   // The class, not `L.svg()`, which returns null where SVG is not detected.
   const outlineRenderer = new L.SVG({ padding: 0.5 });
   const doc = element.ownerDocument;
-  const card = createDetailCard(doc);
-  element.append(card.element);
   /** The plane under the pointer, and the plane the card is showing. */
   let hoveredHex: string | null = null;
+  const card = createDetailCard(doc, {
+    onClose: () => {
+      hoveredHex = null;
+      store.select(null);
+    },
+    onToggle: () => syncCard(store.getState()),
+  });
+  element.append(card.element);
+  // Clicks and scrolls in the card stay in it, not on the map below.
+  L.DomEvent.disableClickPropagation(card.element);
+  L.DomEvent.disableScrollPropagation(card.element);
   let detailedHex: string | null = null;
   /** The part of the map not under the phone's bottom sheet. */
   let cardArea: CardSize = { width: 0, height: 0 };
@@ -372,8 +382,9 @@ export async function createAirspaceMap(options: {
   /**
    * Shows the card beside the hovered plane, else the selected one, and
    * hides it when there is none, the plane is off screen or under the sheet,
-   * a zoom is animating, or the card does not fit. The plane it describes
-   * drops its own tag, which the card repeats.
+   * a zoom is animating, or the card does not fit. The selected plane's card
+   * is pinned (it can be closed); on a narrow map it docks at the top. The
+   * plane it describes drops its own tag, which the card repeats.
    */
   const syncCard = (state: AtcState) => {
     const hex = hoveredHex ?? state.selectedHex;
@@ -385,8 +396,13 @@ export async function createAirspaceMap(options: {
       hex !== null && point !== null && isInsideArea(point, cardArea)
         ? aircraftDetailView(state, hex, Date.now())
         : null;
+    const pinned = hex !== null && hex === state.selectedHex;
     const shown =
-      view !== null && card.show(view, cardArea.height - 2 * CARD_MARGIN);
+      view !== null &&
+      card.show(view, cardArea.height - 2 * CARD_MARGIN, {
+        pinned,
+        docked: pinned && detailCardDocked(cardArea),
+      });
     const next = shown ? view.hex : null;
     if (next !== detailedHex) {
       planeElement(detailedHex)?.classList.remove('is-detailed');

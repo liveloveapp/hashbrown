@@ -990,13 +990,13 @@ input {
   z-index: 1100;
   box-sizing: border-box;
   width: min(296px, calc(100% - 16px));
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: var(--atc-surface);
   border: 1px solid var(--atc-border);
   border-radius: var(--atc-radius-row);
   color: var(--atc-ink);
-  font-size: 11.5px;
-  line-height: 1.3;
+  font-size: 13px;
+  line-height: 1.35;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
@@ -1009,6 +1009,16 @@ input {
   visibility: visible;
   transition: opacity var(--atc-fast) var(--atc-ease);
 }
+/* The selected plane's card can be closed, and scrolled when docked. */
+.atc-detail.is-pinned {
+  pointer-events: auto;
+}
+/* Narrow maps: the card docks at the top, full width. */
+.atc-detail.is-docked {
+  width: calc(100% - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .atc-detail-header {
   display: flex;
   align-items: baseline;
@@ -1016,31 +1026,93 @@ input {
   min-width: 0;
 }
 .atc-detail-label {
-  font-family: var(--atc-mono);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 .atc-detail-subtitle {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--atc-muted);
 }
+.atc-detail-close {
+  flex: none;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -6px -6px -6px auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--atc-muted);
+  cursor: pointer;
+}
+.atc-detail-close:hover {
+  background: var(--atc-canvas);
+  color: var(--atc-ink);
+}
+.atc-detail-line {
+  margin: 2px 0 0;
+  color: var(--atc-muted);
+}
+/* Altitude, speed and heading: three to a line, like a FlightCard. */
+.atc-detail-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+}
+.atc-detail-figure dt,
+.atc-detail-row dt {
+  color: var(--atc-muted);
+  font-size: 12px;
+}
+.atc-detail-figure dd,
+.atc-detail-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--atc-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+/* Words (kind, category, emergency) in the text face; figures and codes in mono. */
+.atc-detail-row dd.is-text {
+  font-family: var(--atc-font);
+}
+.atc-detail-more {
+  display: block;
+  margin: 8px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--atc-ink);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
 .atc-detail-group {
-  margin-top: 6px;
-  padding-top: 5px;
+  margin-top: 8px;
+  padding-top: 6px;
   border-top: 1px solid var(--atc-border);
 }
 .atc-detail-title {
-  margin: 0 0 3px;
+  margin: 0 0 4px;
   color: var(--atc-muted);
+  font-size: 12px;
   font-weight: 600;
 }
 /* Short values sit three to a line, label above value; long ones span. */
 .atc-detail-rows {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px 8px;
+  gap: 6px 8px;
   margin: 0;
 }
 .atc-detail-row {
@@ -1049,19 +1121,22 @@ input {
 .atc-detail-row.is-wide {
   grid-column: 1 / -1;
 }
-.atc-detail-row dt {
-  color: var(--atc-muted);
-  font-size: 10.5px;
-}
-.atc-detail-row dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-  font-family: var(--atc-mono);
-  font-variant-numeric: tabular-nums;
-}
 .atc-detail-note {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   color: var(--atc-muted);
+  font-size: 12px;
+}
+/* Touch: 44px targets for close and More. */
+@media (pointer: coarse) {
+  .atc-detail-close {
+    width: 44px;
+    height: 44px;
+    margin: -14px -12px -14px auto;
+  }
+  .atc-detail-more {
+    min-height: 44px;
+    margin: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -94,7 +94,7 @@ test('hovering a plane opens one detail card with its readings', async () => {
   expect(map.element.querySelectorAll('.atc-detail')).toHaveLength(1);
   expect(map.open()).toBe(true);
   expect(map.card()?.textContent).toContain('RegistrationN352LL');
-  expect(map.card()?.textContent).toContain('Pressure altitude4,500 ft');
+  expect(map.card()?.textContent).toContain('Altitude4,500 ft');
   expect(map.card()?.textContent).toContain('Squawk1200');
   expect(map.plane('a1c009')?.classList.contains('is-detailed')).toBe(true);
   map.cleanup();
@@ -132,7 +132,7 @@ test('a new snapshot updates the open card in place', async () => {
   });
 
   expect(map.card()).toBe(card);
-  expect(card?.textContent).toContain('Pressure altitude4,600 ft');
+  expect(card?.textContent).toContain('Altitude4,600 ft');
   map.cleanup();
 });
 
@@ -203,5 +203,41 @@ test('the card hides when its plane moves off screen', async () => {
   });
 
   expect(map.open()).toBe(false);
+  map.cleanup();
+});
+
+test('a selected plane gets a pinned card whose close button clears the selection', async () => {
+  const map = await mount();
+  map.mouse('a1c009', 'mouseover');
+  map.store.select('a1c009');
+
+  map.card()?.querySelector<HTMLElement>('.atc-detail-close')?.click();
+
+  expect(map.store.getState().selectedHex).toBeNull();
+  expect(map.open()).toBe(false);
+  map.cleanup();
+});
+
+test('on a narrow map the card docks at the top with its summary only', async () => {
+  const map = await mount();
+
+  map.store.select('a1c009');
+
+  expect(map.card()?.classList.contains('is-docked')).toBe(true);
+  expect(map.card()?.style.transform).toBe('translate(8px, 8px)');
+  expect(map.card()?.textContent).toContain('More readings');
+  expect(map.card()?.textContent).not.toContain('Squawk');
+  map.cleanup();
+});
+
+test('More opens every reading in the docked card and keeps the plane selected', async () => {
+  const map = await mount();
+  map.store.select('a1c009');
+
+  map.card()?.querySelector<HTMLElement>('.atc-detail-more')?.click();
+
+  expect(map.store.getState().selectedHex).toBe('a1c009');
+  expect(map.open()).toBe(true);
+  expect(map.card()?.textContent).toContain('Squawk1200');
   map.cleanup();
 });

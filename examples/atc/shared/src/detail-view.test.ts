@@ -75,7 +75,7 @@ function labels(view: AircraftDetailView | null): string[] {
   );
 }
 
-test('aircraftDetailView groups every reading with units', () => {
+test('aircraftDetailView leads with a summary and groups every other reading with units', () => {
   const view = fullView();
 
   expect(view).toEqual({
@@ -83,26 +83,38 @@ test('aircraftDetailView groups every reading with units', () => {
     label: 'UAL100',
     subtitle: 'United Airlines',
     hiddenRows: 0,
+    summary: {
+      type: 'Boeing 737 MAX 9',
+      route: 'SFO → SEA · scheduled route',
+      figures: [
+        { label: 'Altitude', value: '5,000 ft' },
+        { label: 'Speed', value: '240 kt' },
+        { label: 'Heading', value: '180°' },
+      ],
+    },
     groups: [
       {
         title: 'Identity',
         rows: [
-          { label: 'Type', value: 'Boeing 737 MAX 9', wide: true },
-          { label: 'Emergency', value: 'General emergency', wide: true },
+          {
+            label: 'Emergency',
+            value: 'General emergency',
+            wide: true,
+            text: true,
+          },
           { label: 'Registration', value: 'N37502' },
           { label: 'ICAO type', value: 'B39M' },
-          { label: 'Kind', value: 'Jet' },
+          { label: 'Kind', value: 'Jet', text: true },
           { label: 'Model year', value: '2019' },
           { label: 'Callsign', value: 'UAL100' },
           { label: 'Squawk', value: '7700' },
-          { label: 'Category', value: 'A3, large' },
+          { label: 'Category', value: 'A3, large', text: true },
           { label: 'Hex', value: 'AAAAAA' },
         ],
       },
       {
         title: 'Altitude',
         rows: [
-          { label: 'Pressure altitude', value: '5,000 ft' },
           { label: 'Geometric altitude', value: '5,125 ft' },
           { label: 'Selected altitude', value: '4,000 ft' },
           { label: 'Vertical rate', value: '-800 fpm' },
@@ -113,11 +125,9 @@ test('aircraftDetailView groups every reading with units', () => {
       {
         title: 'Speed and direction',
         rows: [
-          { label: 'Ground speed', value: '240 kt' },
           { label: 'Indicated airspeed', value: '231 kt' },
           { label: 'True airspeed', value: '248 kt' },
           { label: 'Mach', value: '0.385' },
-          { label: 'Track', value: '180°' },
           { label: 'Magnetic heading', value: '165°' },
           { label: 'Selected heading', value: '170°' },
           { label: 'Wind', value: '262° at 18 kt' },
@@ -129,7 +139,6 @@ test('aircraftDetailView groups every reading with units', () => {
         rows: [
           { label: 'Position', value: '47.5716, -122.3088', wide: true },
           { label: 'Last message', value: '3s ago' },
-          { label: 'Route', value: 'SFO → SEA · scheduled route', wide: true },
         ],
       },
     ],
@@ -167,11 +176,12 @@ test('aircraftDetailView omits rows with no value and handles hex-only aircraft'
     label: 'AAAAAA',
     subtitle: null,
     hiddenRows: 0,
+    summary: { type: null, route: null, figures: [] },
     groups: [
       {
         title: 'Identity',
         rows: [
-          { label: 'Kind', value: 'Jet' },
+          { label: 'Kind', value: 'Jet', text: true },
           { label: 'Hex', value: 'AAAAAA' },
         ],
       },
@@ -200,8 +210,8 @@ test('aircraftDetailView shows ground, climbs and unknown aircraft', () => {
   const climb = aircraftDetailView(state, 'bbbbbb');
   const unknown = aircraftDetailView(state, 'cccccc');
 
-  expect(ground?.groups[1]?.rows[0]).toEqual({
-    label: 'Pressure altitude',
+  expect(ground?.summary.figures[0]).toEqual({
+    label: 'Altitude',
     value: 'On ground',
   });
   expect(climb?.groups[1]?.rows.at(-1)).toEqual({
@@ -219,13 +229,11 @@ test('trimDetailView drops weather, then speed details, then the speed group', (
     trimDetailView(view, level),
   );
 
-  expect(levels.map((v) => v.hiddenRows)).toEqual([0, 2, 5, 7, 9]);
+  expect(levels.map((v) => v.hiddenRows)).toEqual([0, 2, 5, 7]);
   expect(labels(levels[1])).not.toContain('Wind');
-  expect(labels(levels[2])).toContain('Ground speed');
+  expect(labels(levels[2])).toContain('Magnetic heading');
   expect(labels(levels[2])).not.toContain('Mach');
-  expect(labels(levels[3])).toContain('Track');
-  expect(labels(levels[3])).not.toContain('Magnetic heading');
-  expect(levels[4]?.groups.map((group) => group.title)).toEqual([
+  expect(levels[3]?.groups.map((group) => group.title)).toEqual([
     'Identity',
     'Altitude',
     'Position',
@@ -240,7 +248,7 @@ test('fitDetailView keeps the fullest view that fits, or none', () => {
   const measure = (v: AircraftDetailView) => rows(v) * 10;
 
   const roomy = fitDetailView(view, 1000, measure);
-  const tight = fitDetailView(view, 250, measure);
+  const tight = fitDetailView(view, 200, measure);
   const tiny = fitDetailView(view, 100, measure);
 
   expect(roomy?.hiddenRows).toBe(0);

@@ -1,5 +1,5 @@
 import { createApp } from '@atc/server';
-import { STARTER_PROMPTS } from '@atc/shared';
+import { SELECTED_PROMPT, STARTER_PROMPTS } from '@atc/shared';
 import { LLMock } from '@copilotkit/aimock';
 import { expect, type Page, test } from '@playwright/test';
 import { once } from 'node:events';
@@ -84,7 +84,7 @@ test.beforeAll(async () => {
   mock.onToolResult('follow-1', async () => ({
     content: ui(card('Following this flight.', fastest.hex)),
   }));
-  mock.onMessage(STARTER_PROMPTS[0], {
+  mock.onMessage(SELECTED_PROMPT, {
     toolCalls: [
       { id: 'selected-1', name: 'getSelectedAircraft', arguments: {} },
     ],
@@ -217,7 +217,7 @@ test('hovering a plane shows its detail card', async ({ page }, testInfo) => {
 
   await expect(card).toBeVisible();
   await expect(card).toContainText('RegistrationN352LL');
-  await expect(card).toContainText(/Pressure altitude[45],\d{3} ft/);
+  await expect(card).toContainText(/Altitude[45],\d{3} ft/);
   await expect(card).toContainText('Squawk1200');
   await expect(card).toContainText('QNH1016.4 hPa');
   await expect(card).toContainText('Altimeter30.01 inHg');
@@ -235,7 +235,7 @@ test('renders the selected aircraft as a live card', async ({
     .locator(`.atc-plane[data-hex="${selected.hex}"]`)
     .dispatchEvent('click');
 
-  await page.getByRole('button', { name: STARTER_PROMPTS[0] }).click();
+  await page.getByRole('button', { name: SELECTED_PROMPT }).click();
   const card = page.locator(
     `[data-testid="flight-card"][data-hex="${selected.hex}"]`,
   );

@@ -1,5 +1,5 @@
 import type { Aircraft, Emergency } from './aircraft';
-import { formatHeading, formatSpeed } from './format';
+import { formatAltitude, formatHeading, formatSpeed } from './format';
 import type { AircraftKind } from './kinds';
 import { aircraftTypeName } from './names';
 import { type AtcState, normalizeHex } from './store';
@@ -11,6 +11,18 @@ export interface DetailRow {
   readonly value: string;
   /** True for long values that take a whole line of the card's grid. */
   readonly wide?: true;
+  /** True for words rather than figures or codes; shown in the text face. */
+  readonly text?: true;
+}
+
+/**
+ * The glance the card leads with: the readable type, the scheduled route
+ * when looked up, and altitude, speed and heading when known.
+ */
+export interface DetailSummary {
+  readonly type: string | null;
+  readonly route: string | null;
+  readonly figures: readonly DetailRow[];
 }
 
 /** A titled group of detail rows; groups with no rows are left out. */
@@ -25,6 +37,8 @@ export interface AircraftDetailView {
   readonly label: string;
   /** The airline, or the registration when the label is not already it. */
   readonly subtitle: string | null;
+  readonly summary: DetailSummary;
+  /** Every other reading, in titled groups. */
   readonly groups: readonly DetailGroup[];
   /** How many rows {@link trimDetailView} left out to fit the map. */
   readonly hiddenRows: number;
@@ -80,50 +94,79 @@ function fpm(value: number): string {
   return `${rounded > 0 ? '+' : ''}${rounded.toLocaleString('en-US')} fpm`;
 }
 
+/** How a row is laid out: a whole line, and in the text face. */
+interface RowStyle {
+  readonly wide?: true;
+  readonly text?: true;
+}
+
 /** A row, or nothing when the value is missing. */
 function row<T>(
   label: string,
   value: T | null | undefined,
   format: (value: T) => string,
-  wide?: true,
+  style: RowStyle = {},
 ): DetailRow[] {
   if (value === null || value === undefined) {
     return [];
   }
 
-  return [
-    wide
-      ? { label, value: format(value), wide }
-      : { label, value: format(value) },
-  ];
+  return [{ label, value: format(value), ...style }];
 }
 
 const text = (value: string) => value;
 
-function identityRows(aircraft: Aircraft): DetailRow[] {
-  const { typeCode, description, emergency, category } = aircraft;
+/** The readable type name, else adsb.lol's description, else null. */
+function readableType(aircraft: Aircraft): string | null {
+  const { typeCode, description } = aircraft;
   const typeName = aircraftTypeName(typeCode);
-  const readable =
-    typeCode !== null && typeName !== typeCode
-      ? typeName
-      : (description ?? null);
+
+  return typeCode !== null && typeName !== typeCode
+    ? typeName
+    : (description ?? null);
+}
+
+function summary(state: AtcState, aircraft: Aircraft): DetailSummary {
+  return {
+    type: readableType(aircraft),
+    route:
+      aircraft.callsign === null
+        ? null
+        : routeText(state.routes, aircraft.callsign),
+    figures: [
+      ...row(
+        'Altitude',
+        aircraft.onGround || aircraft.altitudeFt !== null ? aircraft : null,
+        formatAltitude,
+      ),
+      ...row('Speed', aircraft.groundSpeedKt, formatSpeed),
+      ...row('Heading', aircraft.trackDeg, formatHeading),
+    ],
+  };
+}
+
+function identityRows(aircraft: Aircraft): DetailRow[] {
+  const { typeCode, emergency, category } = aircraft;
 
   return [
-    ...row('Type', readable, text, true),
     ...row(
       'Emergency',
       emergency === 'none' ? null : emergency,
       (state) => EMERGENCY_NAMES[state],
-      true,
+      { wide: true, text: true },
     ),
     ...row('Registration', aircraft.registration, text),
     ...row('ICAO type', typeCode, text),
-    ...row('Kind', aircraft.kind, (kind) => KIND_NAMES[kind]),
+    ...row('Kind', aircraft.kind, (kind) => KIND_NAMES[kind], { text: true }),
     ...row('Model year', aircraft.year, text),
     ...row('Callsign', aircraft.callsign, text),
     ...row('Squawk', aircraft.squawk, text),
-    ...row('Category', category, (code) =>
-      CATEGORY_NAMES[code] ? `${code}, ${CATEGORY_NAMES[code]}` : code,
+    ...row(
+      'Category',
+      category,
+      (code) =>
+        CATEGORY_NAMES[code] ? `${code}, ${CATEGORY_NAMES[code]}` : code,
+      { text: true },
     ),
     { label: 'Hex', value: aircraft.hex.toUpperCase() },
   ];
@@ -131,11 +174,6 @@ function identityRows(aircraft: Aircraft): DetailRow[] {
 
 function altitudeRows(aircraft: Aircraft): DetailRow[] {
   return [
-    ...row(
-      'Pressure altitude',
-      aircraft.onGround ? 'On ground' : aircraft.altitudeFt,
-      (value) => (typeof value === 'string' ? value : ft(value)),
-    ),
     ...row('Geometric altitude', aircraft.geometricAltitudeFt, ft),
     ...row('Selected altitude', aircraft.selectedAltitudeFt, ft),
     ...row('Vertical rate', aircraft.verticalRateFpm, fpm),
@@ -156,11 +194,9 @@ function speedRows(aircraft: Aircraft): DetailRow[] {
       : `${formatHeading(windDirectionDeg)} at ${Math.round(windSpeedKt)} kt`;
 
   return [
-    ...row('Ground speed', aircraft.groundSpeedKt, formatSpeed),
     ...row('Indicated airspeed', aircraft.indicatedAirspeedKt, formatSpeed),
     ...row('True airspeed', aircraft.trueAirspeedKt, formatSpeed),
     ...row('Mach', aircraft.mach, (mach) => mach.toFixed(3)),
-    ...row('Track', aircraft.trackDeg, formatHeading),
     ...row('Magnetic heading', aircraft.magneticHeadingDeg, formatHeading),
     ...row('Selected heading', aircraft.selectedHeadingDeg, formatHeading),
     ...row('Wind', wind, text),
@@ -193,20 +229,13 @@ function positionRows(
       aircraft.seenS,
       (s) => `${Math.round(s + sinceSnapshot)}s ago`,
     ),
-    ...row(
-      'Route',
-      aircraft.callsign === null
-        ? null
-        : routeText(state.routes, aircraft.callsign),
-      text,
-      true,
-    ),
   ];
 }
 
 /**
- * Builds the map's detail card for a live aircraft: identity, altitude, speed
- * and direction, and position groups, each row formatted with its unit.
+ * Builds the map's detail card for a live aircraft: a summary (type, route,
+ * altitude, speed and heading), then identity, altitude, speed and direction,
+ * and position groups, each row formatted with its unit.
  * Missing values leave their row out rather than showing a placeholder. With
  * `now` (epoch ms), the last message age counts up from the snapshot time.
  * Returns null when the aircraft is not live.
@@ -231,6 +260,7 @@ export function aircraftDetailView(
     hex: aircraft.hex,
     label: aircraft.label,
     subtitle: aircraftSubtitle(aircraft),
+    summary: summary(state, aircraft),
     groups: groups.filter((group) => group.rows.length > 0),
     hiddenRows: 0,
   };
@@ -238,14 +268,13 @@ export function aircraftDetailView(
 
 /**
  * What each trim level removes from the speed group, least important first:
- * weather, then speed details, then extra headings, then the whole group.
- * Identity, altitude and position always stay.
+ * weather, then speed details, then the extra headings, which empties the
+ * group. The summary, identity, altitude and position always stay.
  */
 const TRIM_STEPS: readonly ((label: string) => boolean)[] = [
   (label) => label === 'Wind' || label === 'Outside air',
   (label) => ['Indicated airspeed', 'True airspeed', 'Mach'].includes(label),
   (label) => label === 'Magnetic heading' || label === 'Selected heading',
-  () => true,
 ];
 
 /** How many trim levels {@link trimDetailView} has beyond the full view. */
