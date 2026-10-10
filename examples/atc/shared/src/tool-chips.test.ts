@@ -158,7 +158,9 @@ test('toolRunView folds finished calls into one summary line and keeps running o
   expect(view.summary).toBe(
     'Checked the selected plane, searched traffic, looked up 3 routes, highlighted 3 aircraft',
   );
-  expect(view.live).toEqual([{ label: 'Following UAL1802', state: 'running' }]);
+  expect(view.live).toEqual([
+    { key: 'step-7', label: 'Following UAL1802', state: 'running' },
+  ]);
   expect(view.chips).toHaveLength(8);
 });
 
@@ -234,4 +236,15 @@ test('toolRunView names the current step and counts the steps for the summary', 
   expect(finished.current).toBeNull();
   expect(finished.steps).toBe('3 steps');
   expect(one.steps).toBe('1 step');
+});
+
+test('toolRunView keys each step by its tool call id, else by its position', () => {
+  const calls: ToolCallLike[] = [
+    { ...done('lookupPlace', { query: 'Bend' }), toolCallId: 'call-1' },
+    done('showArea', { airport: 'KBDN' }),
+  ];
+
+  const view = toolRunView(calls, false);
+
+  expect(view.chips.map((chip) => chip.key)).toEqual(['call-1', 'step-1']);
 });

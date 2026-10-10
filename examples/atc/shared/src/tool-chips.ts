@@ -4,6 +4,8 @@ import type { AtcToolName } from './tools';
 
 /** The parts of a Hashbrown tool call that the tool chips read. */
 export interface ToolCallLike {
+  /** Hashbrown's id for the call, stable while it streams and runs. */
+  readonly toolCallId?: string;
   readonly name: string;
   readonly args: unknown;
   readonly status: 'pending' | 'done';
@@ -14,6 +16,15 @@ export interface ToolCallLike {
 export interface ToolChipView {
   readonly label: string;
   readonly state: 'running' | 'done' | 'failed' | 'stopped';
+}
+
+/**
+ * One step in a turn's list of tool calls: its chip plus a `key` that stays
+ * the same while the call streams, runs and finishes (the tool call id, or
+ * its position when there is none), for keyed lists.
+ */
+export interface ToolStepView extends ToolChipView {
+  readonly key: string;
 }
 
 /** Names an aircraft by hex for a chip, or null when it is not known. */
@@ -271,9 +282,9 @@ export interface ToolRunView {
   /** What the finished calls did, such as "Searched traffic, looked up 6 routes", or null. */
   readonly summary: string | null;
   /** The calls still running, shown live with a spinner. */
-  readonly live: readonly ToolChipView[];
+  readonly live: readonly ToolStepView[];
   /** Every call, in order, for the expanded list. */
-  readonly chips: readonly ToolChipView[];
+  readonly chips: readonly ToolStepView[];
   /** The step running now, such as "Finding aircraft approaching Seattle…", or null. */
   readonly current: string | null;
   /** How many steps the turn took: "1 step", "4 steps". */
@@ -290,7 +301,10 @@ export function toolRunView(
   busy: boolean,
   labelFor: HexLabel = noLabels,
 ): ToolRunView {
-  const chips = calls.map((call) => toolChipView(call, busy, labelFor));
+  const chips = calls.map((call, index): ToolStepView => ({
+    key: call.toolCallId ?? `step-${index}`,
+    ...toolChipView(call, busy, labelFor),
+  }));
   const groups = new Map<string, Record<string, unknown>[]>();
   calls.forEach((call, index) => {
     if (chips[index]?.state === 'done') {

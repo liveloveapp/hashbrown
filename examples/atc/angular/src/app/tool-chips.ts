@@ -76,7 +76,7 @@ let nextId = 0;
     }
     @if (open() && !run.current) {
       <ol class="atc-tool-steps" [id]="stepsId">
-        @for (chip of run.chips; track $index) {
+        @for (chip of run.chips; track chip.key) {
           <li
             class="atc-tool-step"
             data-testid="tool-step"

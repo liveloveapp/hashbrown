@@ -79,9 +79,9 @@ export function ToolChips({
       ) : null}
       {open && !run.current ? (
         <ol className="atc-tool-steps" id={stepsId}>
-          {run.chips.map((chip, index) => (
+          {run.chips.map((chip) => (
             <li
-              key={index}
+              key={chip.key}
               className="atc-tool-step"
               data-testid="tool-step"
               data-state={chip.state}
