@@ -107,7 +107,7 @@ export function Assistant() {
       {chat.error ? (
         <p className="atc-error" role="alert">
           Something went wrong.{' '}
-          <button type="button" onClick={() => chat.reload()}>
+          <button type="button" onClick={() => chat.resendMessages()}>
             Retry
           </button>
         </p>

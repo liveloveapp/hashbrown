@@ -222,3 +222,23 @@ test('follows an aircraft on the map', async ({ page }, testInfo) => {
   ).toHaveClass(/is-followed/);
   await expectOnlyCompleteIds(page);
 });
+
+test('recovers from a failed send with Retry', async ({ page }, testInfo) => {
+  let failed = false;
+  await page.route('**/api/run', (route) => {
+    if (failed) return route.continue();
+    failed = true;
+    return route.fulfill({ status: 500, body: 'boom' });
+  });
+  await open(page, testInfo.project.name);
+
+  await page.getByRole('button', { name: STARTER_PROMPTS[2] }).click();
+  const alert = page.getByRole('alert');
+  await expect(alert).toBeVisible();
+  await alert.getByRole('button', { name: 'Retry' }).click();
+
+  await expect(page.getByTestId('aircraft-compare')).toContainText(
+    highest.callsign,
+  );
+  await expect(alert).toHaveCount(0);
+});
