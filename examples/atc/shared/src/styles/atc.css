@@ -37,7 +37,6 @@ button, input { font: inherit; color: inherit; }
 /* Numbers in mono with tabular figures. */
 .atc-mono { font-family: var(--atc-mono); font-variant-numeric: tabular-nums; }
 
-.atc-shell { position: fixed; inset: 0; }
 .atc-map { position: absolute; inset: 0; }
 
 /* The OpenStreetMap tiles in grey, so planes and the accent carry the map. */
@@ -65,25 +64,6 @@ button, input { font: inherit; color: inherit; }
 }
 .atc-map.leaflet-container .leaflet-control-attribution a { color: inherit; }
 
-.atc-topbar {
-  position: absolute; top: var(--atc-gutter); left: var(--atc-gutter); right: var(--atc-gutter); z-index: 1000;
-  display: flex; gap: var(--atc-gutter); align-items: center; pointer-events: none;
-}
-.atc-topbar > * { pointer-events: auto; }
-.atc-brand { font-weight: 700; }
-.atc-brand, .atc-toggle, .atc-badge, .atc-source {
-  background: var(--atc-surface); border: 1px solid var(--atc-border); padding: 6px 12px;
-  border-radius: 999px; font-size: 13px; color: var(--atc-ink);
-}
-.atc-muted { color: var(--atc-muted); }
-.atc-toggle { cursor: pointer; transition: border-color var(--atc-fast) var(--atc-ease); }
-.atc-toggle:hover { border-color: var(--atc-muted); }
-
-.atc-assistant {
-  position: absolute; z-index: 1000; left: var(--atc-gutter); bottom: var(--atc-gutter); top: 60px;
-  width: min(420px, calc(100vw - 2 * var(--atc-gutter))); display: flex; flex-direction: column;
-  background: var(--atc-surface); border: 1px solid var(--atc-border); border-radius: var(--atc-radius);
-}
 .atc-transcript { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: var(--atc-gutter); display: flex; flex-direction: column; gap: 10px; }
 .atc-user { align-self: flex-end; background: var(--atc-ink); color: var(--atc-surface); padding: 8px 12px; border-radius: var(--atc-radius-row); max-width: 85%; }
 .atc-starters { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 var(--atc-gutter) var(--atc-gutter); }
@@ -129,7 +109,7 @@ button, input { font: inherit; color: inherit; }
 .atc-chat .atc-transcript:empty { display: none; }
 .atc-chat .atc-user { border-radius: 14px 14px 4px 14px; max-width: 80%; }
 .atc-chat .atc-error { margin: 0 16px 16px; }
-.atc-error button, .atc-source {
+.atc-error button {
   border: 1px solid var(--atc-border); background: var(--atc-surface); border-radius: 999px;
   padding: 4px 12px; margin-left: 6px; cursor: pointer; color: var(--atc-ink);
 }
@@ -176,12 +156,6 @@ button, input { font: inherit; color: inherit; }
   transition: opacity var(--atc-fast) var(--atc-ease);
 }
 .atc-send:disabled { opacity: 0.35; cursor: default; }
-
-/* The React app has no sheet yet: stack chat under the map on narrow screens. */
-@media (max-width: 767px) {
-  .atc-workbench:not(.is-sheet) { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 2fr) minmax(0, 3fr); }
-  .atc-workbench:not(.is-sheet) .atc-chat-panel { order: 2; }
-}
 
 /* Wide screens have no sheet handle. */
 .atc-sheet-handle-host { display: none; }
@@ -246,7 +220,7 @@ button, input { font: inherit; color: inherit; }
   font-size: 15px; font-weight: 650; letter-spacing: -0.01em; color: var(--atc-ink);
 }
 .atc-card-title, .atc-card h3 { margin: 0 0 8px; line-height: 1.3; }
-.atc-card header span, .atc-card .atc-card-muted, .atc-card-type, .atc-card-route, .atc-card-status {
+.atc-card header span, .atc-card .atc-card-muted {
   margin: 2px 0 0; color: var(--atc-muted); font-size: 13px;
 }
 .atc-card dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 0; }
@@ -273,11 +247,10 @@ button, input { font: inherit; color: inherit; }
 
 /* Hold-back fallback: a quiet line and two bars; static under reduced motion. */
 .atc-card-skeleton { display: flex; flex-direction: column; gap: 6px; }
-.atc-skeleton-bar, .atc-skeleton {
+.atc-skeleton-bar {
   height: 12px; width: 70%; border-radius: 6px; background: var(--atc-canvas);
   animation: atc-fade 1.2s var(--atc-ease) infinite alternate;
 }
-.atc-skeleton { height: 48px; width: auto; border-radius: var(--atc-radius-row); }
 .atc-skeleton-bar.is-short { width: 45%; }
 @keyframes atc-fade { from { opacity: 1; } to { opacity: 0.5; } }
 
@@ -305,7 +278,6 @@ button, input { font: inherit; color: inherit; }
 @keyframes atc-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .atc-shell, .atc-shell *, .atc-shell *::before, .atc-shell *::after,
   .atc-workbench, .atc-workbench *, .atc-workbench *::before, .atc-workbench *::after {
     animation: none !important;
     transition: none !important;
