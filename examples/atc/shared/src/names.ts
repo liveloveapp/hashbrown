@@ -13,6 +13,11 @@ const AIRLINES: Readonly<Record<string, string>> = {
   SCX: 'Sun Country Airlines',
   HAL: 'Hawaiian Airlines',
   SKW: 'SkyWest Airlines',
+  QXE: 'Horizon Air',
+  CPZ: 'Compass Airlines',
+  AMF: 'Ameriflight',
+  CFS: 'Empire Airlines',
+  AIP: 'Alpine Air Express',
   RPA: 'Republic Airways',
   ENY: 'Envoy Air',
   EDV: 'Endeavor Air',
@@ -167,6 +172,35 @@ const AIRCRAFT_TYPES: Readonly<Record<string, string>> = {
   A109: 'Leonardo AW109',
   H60: 'Sikorsky UH-60 Black Hawk',
   CH47: 'Boeing CH-47 Chinook',
+  S22T: 'Cirrus SR22T',
+  AT72: 'ATR 72',
+  AT45: 'ATR 42-500',
+  DH8A: 'De Havilland Dash 8-100',
+  DH8B: 'De Havilland Dash 8-200',
+  DH8C: 'De Havilland Dash 8-300',
+  DA62: 'Diamond DA62',
+  DA20: 'Diamond DA20',
+  BE55: 'Beechcraft Baron 55',
+  BE99: 'Beechcraft 99',
+  C162: 'Cessna 162 Skycatcher',
+  C175: 'Cessna 175 Skylark',
+  C180: 'Cessna 180 Skywagon',
+  C185: 'Cessna 185 Skywagon',
+  C340: 'Cessna 340',
+  C421: 'Cessna 421 Golden Eagle',
+  C441: 'Cessna Conquest II',
+  PA18: 'Piper Super Cub',
+  PA31: 'Piper Navajo',
+  M20T: 'Mooney M20 Turbo',
+  RV7: "Van's RV-7",
+  RV8: "Van's RV-8",
+  RV10: "Van's RV-10",
+  SW4: 'Fairchild Metro',
+  H130: 'Airbus H130',
+  H135: 'Airbus H135',
+  H145: 'Airbus H145',
+  A139: 'Leonardo AW139',
+  UH1: 'Bell UH-1',
 };
 
 /** The airline's name for a callsign, or its three-letter code when unknown. */
@@ -183,6 +217,16 @@ export function airlineName(callsign: string): string {
 export function airlineFor(callsign: string | null): string | null {
   return callsign !== null && isAirlineCallsign(callsign)
     ? airlineName(callsign)
+    : null;
+}
+
+/**
+ * The airline's name for an airline callsign whose code is in the table, or
+ * null (unknown codes, private callsigns, registrations, no callsign).
+ */
+export function knownAirlineFor(callsign: string | null): string | null {
+  return callsign !== null && isAirlineCallsign(callsign)
+    ? (AIRLINES[callsign.slice(0, 3).toUpperCase()] ?? null)
     : null;
 }
 

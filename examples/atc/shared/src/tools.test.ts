@@ -442,3 +442,17 @@ test('lookupRoute skips callsigns that are not airline flights', async () => {
   ]);
   expect(fetchRoute).not.toHaveBeenCalled();
 });
+
+test('the findAircraft tool with near shows and outlines that area, once', async () => {
+  const store = createAtcStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const near = { airport: 'kbdn', radiusNm: 30 };
+
+  await tools.findAircraft.handler({ ...any, near });
+  const first = store.getState();
+  await tools.findAircraft.handler({ ...any, near, kind: 'single' });
+
+  expect(first.shownArea).toEqual({ airport: 'KBDN', radiusNm: 30 });
+  expect(first.viewRequest?.kind).toBe('area');
+  expect(store.getState().viewSeq).toBe(first.viewSeq);
+});

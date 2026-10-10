@@ -6,7 +6,7 @@ import {
 } from './format';
 import type { Aircraft } from './aircraft';
 import { distanceNm, etaMinutes, isApproaching } from './geo';
-import { aircraftTypeName, airlineFor } from './names';
+import { aircraftTypeName, knownAirlineFor } from './names';
 import { type AirportCode, AIRPORTS } from './places';
 import {
   type AtcState,
@@ -55,11 +55,12 @@ export function routeText(
 }
 
 /**
- * The line beside an aircraft's label: its airline for airline callsigns,
- * else its registration when the label is not already it, else null.
+ * The line beside an aircraft's label: its airline for airline callsigns
+ * with a known name, else its registration when the label is not already
+ * it, else null (a bare airline code would only repeat the label).
  */
 export function aircraftSubtitle(aircraft: Aircraft): string | null {
-  const airline = airlineFor(aircraft.callsign);
+  const airline = knownAirlineFor(aircraft.callsign);
   if (airline !== null) {
     return airline;
   }

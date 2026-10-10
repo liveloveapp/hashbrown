@@ -116,13 +116,14 @@ test('store changes that move or mark the map, or pick a plane, become sheet eve
   const followed = { ...INITIAL_STATE, followingHex: 'aaaaaa' };
   const highlighted = { ...INITIAL_STATE, highlighted: new Set(['aaaaaa']) };
   const selected = { ...INITIAL_STATE, selectedHex: 'aaaaaa' };
+  const updated = { ...INITIAL_STATE, updatedAt: 5 };
 
   const results = [
     sheetEventFor(INITIAL_STATE, moved),
     sheetEventFor(INITIAL_STATE, followed),
     sheetEventFor(INITIAL_STATE, highlighted),
     sheetEventFor(INITIAL_STATE, selected),
-    sheetEventFor(INITIAL_STATE, { ...INITIAL_STATE, updatedAt: 5 }),
+    sheetEventFor(INITIAL_STATE, updated),
     sheetEventFor(highlighted, { ...INITIAL_STATE }),
     sheetEventFor(selected, { ...INITIAL_STATE }),
   ];

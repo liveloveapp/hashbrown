@@ -66,6 +66,25 @@ test.beforeAll(async () => {
       },
     ],
   });
+  // The near-Bend starter: the model lists nearby traffic without calling
+  // showArea; findAircraft draws the ring itself.
+  for (const id of ['bend-find', 'bend-highlight']) {
+    mock.onToolResult(id, async () => ({ content: nearBoard }));
+  }
+  mock.onMessage(STARTER_PROMPTS[0], {
+    toolCalls: [
+      {
+        id: 'bend-find',
+        name: 'findAircraft',
+        arguments: { ...ANY, near: NEAR_BEND, sortBy: 'distance', limit: 20 },
+      },
+      {
+        id: 'bend-highlight',
+        name: 'highlightAircraft',
+        arguments: { hexes: nearby.map((r) => r.hex) },
+      },
+    ],
+  });
   mock.onToolResult('selected-1', async () => ({
     content: ui(card('This is the plane you selected.', selected.hex)),
   }));
@@ -288,6 +307,39 @@ test("shows what's flying near KBDN in an outlined area", async ({
     );
   }
   await expectOnlyCompleteIds(page);
+});
+
+test('on a phone, the starters show in the peek, a pick lowers the sheet to half, and a row shows its plane', async ({
+  browser,
+}, testInfo) => {
+  const context = await browser.newContext({
+    viewport: { width: 375, height: 812 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  await open(page, testInfo.project.name);
+  const sheet = page.locator('#atc-chat-sheet');
+  const starter = page.getByRole('button', { name: STARTER_PROMPTS[0] });
+  await expect(sheet).toHaveAttribute('data-snap', 'peek');
+  await expect(starter).toBeInViewport();
+
+  await starter.tap();
+
+  await expect(sheet).toHaveAttribute('data-snap', 'half');
+  await expect(page.locator('.atc-area')).toBeAttached();
+  const row = page.getByTestId('arrivals-row').first();
+  await expect(row).toBeVisible();
+  const hex = await row.getAttribute('data-hex');
+  await row.getByRole('button').tap();
+  await expect(page.locator(`.atc-plane[data-hex="${hex}"]`)).toHaveClass(
+    /is-selected/,
+  );
+  const card = page.getByTestId('aircraft-detail');
+  await expect(card).toHaveClass(/is-docked/);
+  await card.getByRole('button', { name: /^Close details/ }).tap();
+  await expect(card).toBeHidden();
+  await context.close();
 });
 
 test('compares the highest and the fastest aircraft', async ({

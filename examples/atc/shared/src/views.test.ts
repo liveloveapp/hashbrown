@@ -259,3 +259,26 @@ test('messageText reads string content and ignores anything else', () => {
 
   expect(texts).toEqual(['hello', '', '']);
 });
+
+test('an airline callsign with an unknown code shows no airline beside the label', () => {
+  const state = applySnapshot(INITIAL_STATE, {
+    at: 1,
+    aircraft: [
+      { ...plane, label: 'XYZ123', callsign: 'XYZ123', registration: null },
+      {
+        ...plane,
+        hex: 'bbbbbb',
+        label: 'XYZ124',
+        callsign: 'XYZ124',
+        registration: 'N123AB',
+      },
+    ],
+  });
+
+  const subtitles = ['aaaaaa', 'bbbbbb'].map((hex) => {
+    const view = flightCardView(state, hex);
+    return view.status === 'unknown' ? undefined : view.subtitle;
+  });
+
+  expect(subtitles).toEqual([null, 'N123AB']);
+});

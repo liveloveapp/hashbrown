@@ -18,6 +18,7 @@ import {
   type AtcStore,
   normalizeHex,
   type Route,
+  type ShownArea,
 } from './store';
 
 /** Radius used when the model asks for an area without one. */
@@ -192,6 +193,14 @@ export function findAircraft(
     .slice(0, limit);
 }
 
+/** Shows `area` unless the map already outlines exactly that area. */
+function showAreaOnce(store: AtcStore, area: ShownArea): void {
+  const shown = store.getState().shownArea;
+  if (shown?.airport !== area.airport || shown.radiusNm !== area.radiusNm) {
+    store.showArea(area);
+  }
+}
+
 /** What the tools need from the app. */
 export interface AtcToolContext {
   readonly store: AtcStore;
@@ -222,12 +231,23 @@ export function createAtcTools(context: AtcToolContext) {
     findAircraft: {
       name: 'findAircraft' as const,
       description:
-        'Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport. Returns compact rows.',
+        'Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport. With near, the map also shows and outlines that area. Returns compact rows.',
       schema: findAircraftInput,
-      handler: async (input: FindAircraftInput) =>
-        input.near && lookupPlace(input.near.airport) === null
-          ? unknownPlace(input.near.airport)
-          : findAircraft(store.getState(), input),
+      handler: async (input: FindAircraftInput) => {
+        if (input.near) {
+          const centre = lookupPlace(input.near.airport);
+          if (centre === null) {
+            return unknownPlace(input.near.airport);
+          }
+          // The ring and the fit happen whether or not the model calls showArea.
+          showAreaOnce(store, {
+            airport: centre.code,
+            radiusNm: areaRadiusNm(input.near.radiusNm),
+          });
+        }
+
+        return findAircraft(store.getState(), input);
+      },
     },
     lookupPlace: {
       name: 'lookupPlace' as const,
