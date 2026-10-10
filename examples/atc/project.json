@@ -1,0 +1,20 @@
+{
+  "name": "atc",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "implicitDependencies": [
+    "atc-angular",
+    "atc-react",
+    "atc-server",
+    "atc-shared"
+  ],
+  "targets": {
+    "record-replay": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx --tsconfig examples/atc/shared/tsconfig.json examples/atc/tools/record-replay.mts"
+      }
+    }
+  }
+}

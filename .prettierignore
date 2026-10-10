@@ -8,3 +8,4 @@
 .angular
 
 .nx/self-healing
+examples/atc/shared/public/replay/ord.json
