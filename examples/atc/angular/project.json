@@ -44,6 +44,9 @@
         "buildTarget": "atc-angular:build:development",
         "port": 4341,
         "proxyConfig": "examples/atc/angular/proxy.conf.json"
+      },
+      "configurations": {
+        "development": { "buildTarget": "atc-angular:build:development" }
       }
     },
     "test": {
