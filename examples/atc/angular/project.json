@@ -1,0 +1,61 @@
+{
+  "name": "atc-angular",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "examples/atc/angular/src",
+  "implicitDependencies": ["core", "angular", "atc-shared"],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/examples/atc/angular",
+        "browser": "examples/atc/angular/src/main.ts",
+        "index": "examples/atc/angular/src/index.html",
+        "tsConfig": "examples/atc/angular/tsconfig.app.json",
+        "baseHref": "/angular/",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "examples/atc/shared/public/brand",
+            "output": "brand"
+          }
+        ],
+        "styles": [
+          "node_modules/leaflet/dist/leaflet.css",
+          "examples/atc/shared/src/styles/atc.css"
+        ]
+      },
+      "configurations": {
+        "production": { "outputHashing": "all" },
+        "development": {
+          "optimization": false,
+          "sourceMap": true,
+          "extractLicenses": false
+        }
+      }
+    },
+    "serve": {
+      "executor": "@angular/build:dev-server",
+      "continuous": true,
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "atc-angular:build:development",
+        "port": 4341,
+        "host": "127.0.0.1",
+        "proxyConfig": "examples/atc/angular/proxy.conf.json"
+      },
+      "configurations": {
+        "development": { "buildTarget": "atc-angular:build:development" }
+      }
+    },
+    "test": {
+      "executor": "@analogjs/vitest-angular:test"
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "eslint examples/atc/angular" }
+    }
+  }
+}

@@ -19,8 +19,8 @@ const nextConfig: NextConfig = {
         destination: `/docs/${sdk}/migrations/v0-6`,
         statusCode: 301 as const,
       })),
-      // The /samples pages were retired; the example app's docs page (React,
-      // the example's own framework) carries its walkthrough video now.
+      // The /samples pages were retired; the example app's docs page
+      // describes atc now.
       ...['/samples', '/samples/:path*'].map((source) => ({
         source,
         destination: '/docs/react/start/sample',

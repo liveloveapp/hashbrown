@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "types": ["node"],
+    "ignoreDeprecations": "6.0"
+  },
+  "include": [
+    "all.playwright.config.ts",
+    "conformance.playwright.config.ts",
+    "provider.playwright.config.ts",
+    "harness/**/*.ts",
+    "specs/**/*.ts",
+    "provider/native-ui.spec.ts"
+  ],
+  "exclude": ["harness/**/*.spec.ts"]
+}

@@ -1,0 +1,63 @@
+/* The map: grey tiles, the area ring and Leaflet's controls. */
+/* The OpenStreetMap tiles in grey, so planes and the accent carry the map. */
+.atc-map .leaflet-tile-pane {
+  filter: grayscale(1) contrast(0.92) brightness(1.04);
+}
+.atc-map,
+.atc-map.leaflet-container {
+  background: var(--atc-map);
+  font: inherit;
+}
+.atc-map .leaflet-tile {
+  transition: opacity var(--atc-motion) var(--atc-ease);
+}
+
+/* The area the assistant is showing: a faint ink ring, no fill. */
+.atc-map .atc-area {
+  fill: none;
+  stroke: var(--atc-ink);
+  stroke-opacity: 0.28;
+  stroke-width: 1px;
+}
+
+/* Zoom and attribution as pills. */
+.atc-map.leaflet-container .leaflet-control-zoom {
+  border: 1px solid var(--atc-border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--atc-surface);
+}
+.atc-map.leaflet-container
+  :is(.leaflet-control-zoom-in, .leaflet-control-zoom-out) {
+  width: 34px;
+  height: 34px;
+  line-height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--atc-ink);
+  font-weight: 500;
+  transition: background var(--atc-fast) var(--atc-ease);
+}
+.atc-map.leaflet-container .leaflet-control-zoom-out {
+  border-top: 1px solid var(--atc-border);
+}
+.atc-map.leaflet-container
+  :is(.leaflet-control-zoom-in, .leaflet-control-zoom-out):hover {
+  background: var(--atc-canvas);
+}
+.atc-map.leaflet-container
+  :is(.leaflet-control-zoom-in, .leaflet-control-zoom-out):focus-visible {
+  outline: 2px solid var(--atc-accent);
+  outline-offset: -2px;
+}
+.atc-map.leaflet-container .leaflet-control-attribution {
+  border: 1px solid var(--atc-border);
+  border-radius: 999px;
+  background: var(--atc-surface);
+  padding: 1px 8px;
+  font-size: 10.5px;
+  color: var(--atc-muted);
+}
+.atc-map.leaflet-container .leaflet-control-attribution a {
+  color: inherit;
+}

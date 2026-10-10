@@ -1,0 +1,166 @@
+/* One floating detail card per map, beside the hovered or selected plane. */
+.atc-detail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Above Leaflet's controls (1000), which it may pass over. */
+  z-index: 1100;
+  box-sizing: border-box;
+  width: min(296px, calc(100% - 16px));
+  padding: 10px 12px;
+  background: var(--atc-surface);
+  border: 1px solid var(--atc-border);
+  border-radius: var(--atc-radius-row);
+  color: var(--atc-ink);
+  font-size: 13px;
+  line-height: 1.35;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--atc-fast) var(--atc-ease),
+    visibility 0s linear var(--atc-fast);
+}
+.atc-detail.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--atc-fast) var(--atc-ease);
+}
+/*
+ * The selected plane's card: its buttons take taps, and a docked card can be
+ * scrolled. A floating card stays see-through to the pointer, so the planes
+ * under it can still be hovered and picked.
+ */
+.atc-detail.is-pinned button,
+.atc-detail.is-pinned.is-docked {
+  pointer-events: auto;
+}
+.atc-detail [hidden] {
+  display: none;
+}
+/* Narrow maps: the card docks at the top, full width. */
+.atc-detail.is-docked {
+  width: calc(100% - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.atc-detail-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.atc-detail-label {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.atc-detail-subtitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--atc-muted);
+}
+.atc-detail-close {
+  flex: none;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -6px -6px -6px auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--atc-muted);
+  cursor: pointer;
+}
+.atc-detail-close:hover {
+  background: var(--atc-canvas);
+  color: var(--atc-ink);
+}
+.atc-detail-line {
+  margin: 2px 0 0;
+  color: var(--atc-muted);
+}
+/* Altitude, speed and heading: three to a line, like a FlightCard. */
+.atc-detail-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+}
+.atc-detail-figure dt,
+.atc-detail-row dt {
+  color: var(--atc-muted);
+  font-size: 12px;
+}
+.atc-detail-figure dd,
+.atc-detail-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--atc-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+/* Words (kind, category, emergency) in the text face; figures and codes in mono. */
+.atc-detail-row dd.is-text {
+  font-family: var(--atc-font);
+}
+.atc-detail-more {
+  display: block;
+  margin: 8px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--atc-ink);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.atc-detail-group {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--atc-border);
+}
+.atc-detail-title {
+  margin: 0 0 4px;
+  color: var(--atc-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Short values sit three to a line, label above value; long ones span. */
+.atc-detail-rows {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 8px;
+  margin: 0;
+}
+.atc-detail-row {
+  min-width: 0;
+}
+.atc-detail-row.is-wide {
+  grid-column: 1 / -1;
+}
+.atc-detail-note {
+  margin: 8px 0 0;
+  color: var(--atc-muted);
+  font-size: 12px;
+}
+/* Touch: 44px targets for close and More. */
+@media (pointer: coarse) {
+  .atc-detail-close {
+    width: 44px;
+    height: 44px;
+    margin: -14px -12px -14px auto;
+  }
+  /* 44px to tap, without leaving a gap under it: it eats the card's padding. */
+  .atc-detail-more {
+    min-height: 44px;
+    margin: -2px 0 -10px;
+  }
+}

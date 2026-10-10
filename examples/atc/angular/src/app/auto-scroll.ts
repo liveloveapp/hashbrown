@@ -1,0 +1,38 @@
+import { addsUserMessage, isEmptyChat, isNearBottom } from '@atc/shared';
+import { DestroyRef, Directive, ElementRef, inject } from '@angular/core';
+
+/**
+ * Keeps a scroller pinned to its newest content while an answer streams. When
+ * the user scrolls up it stops following, so they are never yanked back; their
+ * own new message pins it again.
+ */
+@Directive({
+  selector: '[atcAutoScroll]',
+  host: { '(scroll)': 'track()' },
+})
+export class AutoScroll {
+  private readonly element =
+    inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private pinned = true;
+
+  constructor() {
+    const observer = new MutationObserver((records) => {
+      if (records.some((record) => addsUserMessage(record))) {
+        this.pinned = true;
+      }
+      if (this.pinned && !isEmptyChat(this.element)) {
+        this.element.scrollTop = this.element.scrollHeight;
+      }
+    });
+    observer.observe(this.element, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    inject(DestroyRef).onDestroy(() => observer.disconnect());
+  }
+
+  protected track(): void {
+    this.pinned = isNearBottom(this.element);
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "runtime-smoke-angular",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "tools/conformance/hosts/angular/src",
+  "implicitDependencies": ["core", "angular"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "tools/conformance/hosts/angular",
+        "command": "eslint ."
+      }
+    },
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/tools/conformance/hosts/angular",
+        "browser": "tools/conformance/hosts/angular/src/main.ts",
+        "tsConfig": "tools/conformance/hosts/angular/tsconfig.app.json",
+        "styles": ["tools/conformance/hosts/angular/src/styles.css"]
+      },
+      "configurations": {
+        "production": {
+          "outputHashing": "none"
+        }
+      }
+    },
+    "serve-static": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "runtime-smoke-angular:build:production",
+        "staticFilePath": "dist/tools/conformance/hosts/angular/browser",
+        "host": "127.0.0.1",
+        "port": 4311,
+        "spa": true
+      }
+    },
+    "serve-built": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "staticFilePath": "dist/tools/conformance/hosts/angular/browser",
+        "watch": false,
+        "host": "127.0.0.1",
+        "port": 4311,
+        "spa": true
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "atc",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "implicitDependencies": [
+    "atc-angular",
+    "atc-react",
+    "atc-server",
+    "atc-shared"
+  ],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        { "projects": ["atc-angular", "atc-react"], "target": "build" }
+      ],
+      "outputs": ["{projectRoot}/.vercel/output"],
+      "options": { "command": "tsx examples/atc/tools/build-vercel-output.mts" }
+    }
+  }
+}

@@ -55,39 +55,52 @@ export interface CodeSample {
  */
 export const HERO_CODE: Record<Sdk, CodeSample> = {
   react: {
-    file: 'Assistant.tsx',
+    file: 'assistant.tsx',
     lang: 'tsx',
-    code: `const invoiceKit = useUiKit({
-  components: [
-    exposeComponent(InvoiceCard, {
-      description: 'Show one invoice',
-      props: { id: s.string('Invoice id') },
-    }),
-    exposeComponent(AgingChart, { /* … */ }),
-  ],
-});
+    code: `const components = [
+  exposeComponent(FlightCard, {
+    name: 'FlightCard',
+    description: 'One aircraft on the map, with live altitude and speed.',
+    props: {
+      note: s.streaming.string('A sentence or two about this flight'),
+      hex: s.string('The aircraft hex code from a tool result.'),
+    },
+    fallback: FlightCardFallback,
+    children: false,
+  }),
+];
 
-const chat = useUiChat({
-  system: 'Help users understand invoices.',
-  components: [invoiceKit],
-});`,
+function Assistant() {
+  const findAircraft = useTool({ ...atc.findAircraft, deps: [atc] });
+
+  const chat = useUiChat({
+    system: 'Provided by the server.',
+    components,
+    tools: [findAircraft],
+  });
+  // ...
+}`,
   },
   angular: {
-    file: 'assistant.component.ts',
+    file: 'assistant.ts',
     lang: 'typescript',
-    code: `export const invoiceKit = createUiKit({
-  components: [
-    exposeComponent(InvoiceCard, {
-      description: 'Show one invoice',
-      input: { id: s.string('Invoice id') },
-    }),
-    exposeComponent(AgingChart, { /* … */ }),
-  ],
-});
+    code: `const components = [
+  exposeComponent(FlightCardComponent, {
+    name: 'FlightCard',
+    description: 'One aircraft on the map, with live altitude and speed.',
+    input: {
+      note: s.streaming.string('A sentence or two about this flight'),
+      hex: s.string('The aircraft hex code from a tool result.'),
+    },
+    fallback: FlightCardFallbackComponent,
+    children: false,
+  }),
+];
 
 chat = uiChatResource({
-  system: 'Help users understand invoices.',
-  components: [invoiceKit],
+  system: 'Provided by the server.',
+  components,
+  tools: [createTool(this.atc.findAircraft)],
 });`,
   },
 };
@@ -229,14 +242,11 @@ export const THREADPLANE_URL =
   'https://threadplane.ai/?utm_source=hashbrown&utm_medium=homepage&utm_campaign=headful_banner';
 
 /**
- * External links for the invoicing showcase.
+ * External links for the atc example showcase.
  */
-export const INVOICING_LINKS = {
-  app: 'https://invoicing.hashbrown.dev',
-  source:
-    'https://github.com/liveloveapp/hashbrown/tree/main/examples/invoicing',
-  b4: 'https://b4.run',
-  pretable: 'https://pretable.ai',
+export const ATC_LINKS = {
+  app: 'https://atc.hashbrown.dev',
+  source: 'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc',
 } as const;
 
 /**

@@ -35,9 +35,9 @@ test('renders the hero copy and actions', async () => {
 test('shows the Angular variant before a preference is read', async () => {
   const html = await render();
 
-  expect(html).toContain('assistant.component.ts');
-  expect(html).toContain('createUiKit');
-  expect(html).not.toContain('useUiKit');
+  expect(html).toContain('assistant.ts');
+  expect(html).toContain('createTool');
+  expect(html).not.toContain('useTool');
   expect(html).not.toContain('/docs/react/');
   expect(hrefs(html)).toContain('/docs/angular/start/quick');
 });
@@ -97,22 +97,35 @@ test('lists the model providers it works with', async () => {
   ]);
 });
 
-test('links the invoicing showcase and threadplane', async () => {
+test('links the atc showcase and threadplane', async () => {
   const html = await render();
 
   const links = hrefs(html);
 
-  expect(links).toContain('https://invoicing.hashbrown.dev');
+  expect(links).toContain('https://atc.hashbrown.dev');
   expect(links).toContain(
-    'https://github.com/liveloveapp/hashbrown/tree/main/examples/invoicing',
+    'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc',
   );
-  expect(links).toContain('https://b4.run');
-  expect(links).toContain('https://pretable.ai');
   expect(links.some((href) => href.startsWith('https://threadplane.ai/'))).toBe(
     true,
   );
-  expect(html).toContain('/image/landing-page/invoicing.webp');
-  expect(html).toContain('/image/landing-page/invoicing-mobile.webp');
+  expect(html).toContain('/image/landing-page/atc.webp');
+  expect(html).toContain('/image/landing-page/atc-mobile.webp');
+});
+
+test('the atc showcase has no b4 or pretable tiles', async () => {
+  const html = await render();
+
+  const section = html.slice(
+    html.indexOf('See it in a real app'),
+    html.indexOf('/image/landing-page/atc-mobile.webp'),
+  );
+
+  expect(section).toContain('Tools in the browser');
+  expect(section).not.toContain('b4.run');
+  expect(section).not.toContain('pretable.ai');
+  expect(section).not.toContain('Agent backend');
+  expect(section).not.toContain('Data grid');
 });
 
 test('pitches threadplane with a plain headline and no photo', async () => {

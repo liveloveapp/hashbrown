@@ -105,39 +105,43 @@ This file defines how agents should work in this repository. Keep changes aligne
 
 ### Example application and test hosts
 
-The maintained public example is `examples/invoicing` (React, B4 and Pretable;
-simulated ledger and allocations). Conformance hosts are internal test infrastructure.
+The public example is `examples/atc` (Angular and React; live ADS-B traffic,
+browser-side tools, live components). The cross-framework conformance suites and their
+runtime smoke hosts live in `tools/conformance`; they are internal test infrastructure
+that protects the published packages, not examples.
 
-- `invoicing`
-  - `npx nx build invoicing`
-  - `npx nx e2e invoicing`
-- `invoicing-e2e`
-  - `npx nx build invoicing-e2e`
-  - `npx nx lint invoicing-e2e`
-  - `npx nx live-model invoicing-e2e`
-  - `npx nx application-e2e invoicing-e2e`
-  - `npx nx test invoicing-e2e`
-  - `npx nx conformance-e2e invoicing-e2e`
-  - `npx nx example-e2e invoicing-e2e`
-  - `npx nx provider-e2e invoicing-e2e`
-  - `npx nx test-walkthrough invoicing-e2e`
-  - `npx nx test-servers invoicing-e2e` (starts the local servers as Playwright does and checks its teardown stops them; skipped while 4325/4326 are in use)
-  - `npx nx walkthrough invoicing-e2e` (records the hashbrown.dev/samples video; needs ffmpeg and a live model key)
-- `invoicing-react`
-  - `npx nx build invoicing-react`
-  - `npx nx test invoicing-react`
-  - `npx nx lint invoicing-react`
-  - `npx nx serve invoicing-react`
-- `invoicing-server`
-  - `npx nx build invoicing-server`
-  - `npx nx test invoicing-server`
-  - `npx nx lint invoicing-server`
-  - `npx nx eval invoicing-server`
-  - `npx nx serve invoicing-server`
-- `invoicing-contracts`
-  - `npx nx build invoicing-contracts`
-  - `npx nx test invoicing-contracts`
-  - `npx nx lint invoicing-contracts`
+- `atc`
+  - `npx nx build atc`
+- `atc-shared`
+  - `npx nx build atc-shared`
+  - `npx nx test atc-shared`
+  - `npx nx lint atc-shared`
+- `atc-server`
+  - `npx nx build atc-server`
+  - `npx nx test atc-server`
+  - `npx nx lint atc-server`
+  - `npx nx serve atc-server`
+- `atc-angular`
+  - `npx nx build atc-angular`
+  - `npx nx test atc-angular`
+  - `npx nx lint atc-angular`
+  - `npx nx serve atc-angular`
+- `atc-react`
+  - `npx nx build atc-react`
+  - `npx nx test atc-react`
+  - `npx nx lint atc-react`
+  - `npx nx serve atc-react`
+- `atc-e2e`
+  - `npx nx e2e atc-e2e`
+  - `npx nx lint atc-e2e`
+
+- `conformance` (`tools/conformance`; no model key needed)
+  - `npx nx build conformance`
+  - `npx nx lint conformance`
+  - `npx nx test conformance`
+  - `npx nx conformance-e2e conformance`
+  - `npx nx provider-e2e conformance`
+  - `npx nx example-e2e conformance` (both suites; CI runs it through `nx affected`)
 - `runtime-smoke-angular`
   - `npx nx lint runtime-smoke-angular`
   - `npx nx build runtime-smoke-angular`

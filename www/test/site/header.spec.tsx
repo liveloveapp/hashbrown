@@ -19,7 +19,7 @@ test('header links match the Angular header for react', () => {
     '/',
     '/docs/react/start/intro',
     '/api',
-    'https://invoicing.hashbrown.dev',
+    'https://atc.hashbrown.dev',
     '/blog',
     'https://github.com/liveloveapp/hashbrown',
     '/docs/react/start/quick',
@@ -52,12 +52,12 @@ test('the header renders the nav labels and logo', () => {
   expect(html).toContain('on GitHub');
 });
 
-test('the demo link opens the invoicing app in a new tab and says so', () => {
+test('the demo link opens the atc app in a new tab and says so', () => {
   const html = renderToStaticMarkup(<Header sdk="react" />);
 
   const demo =
     html.match(
-      /<a [^>]*href="https:\/\/invoicing\.hashbrown\.dev"[^>]*>demo<\/a>/,
+      /<a [^>]*href="https:\/\/atc\.hashbrown\.dev"[^>]*>demo<\/a>/,
     )?.[0] ?? '';
 
   expect(demo).toContain('target="_blank"');
@@ -104,7 +104,7 @@ test('the mobile menu panel links to the demo, blog and quick start', () => {
   expect(html).toMatch(/<button[^>]*aria-label="Close menu"/);
   expect(html).not.toContain('href="/samples"');
   expect(html).toMatch(
-    /<a [^>]*href="https:\/\/invoicing\.hashbrown\.dev"[^>]*target="_blank"[^>]*>demo<\/a>/,
+    /<a [^>]*href="https:\/\/atc\.hashbrown\.dev"[^>]*target="_blank"[^>]*>demo<\/a>/,
   );
   expect(html).toContain('href="/blog"');
   expect(html).toContain('href="/docs/react/start/quick"');

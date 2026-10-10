@@ -1,0 +1,202 @@
+/* The phone bottom sheet, and landscape phones. */
+/* Wide screens have no sheet handle. */
+.atc-sheet-handle-host {
+  display: none;
+}
+
+/*
+ * Phones and tablets held upright (and very narrow windows): the map fills
+ * the screen and the chat is a bottom sheet. Landscape phones keep the two
+ * panels, with a narrower chat column (below).
+ */
+@media (max-width: 1023px) and (orientation: portrait), (max-width: 559px) {
+  html,
+  body {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  .atc-workbench.is-sheet {
+    display: block;
+    padding: 0;
+    --atc-peek: calc(208px + env(safe-area-inset-bottom, 0px));
+    --atc-half: max(var(--atc-peek), min(50dvh, 460px));
+    /* The sheet's resting height, which the map's controls clear. */
+    --atc-sheet: var(--atc-peek);
+  }
+  /* Before the first message the peek also shows a row of starters. */
+  .atc-workbench.is-sheet:has(.atc-empty) {
+    --atc-peek: calc(260px + env(safe-area-inset-bottom, 0px));
+  }
+  .atc-workbench.is-sheet:has(.atc-chat-panel[data-snap='half']) {
+    --atc-sheet: var(--atc-half);
+  }
+  .atc-workbench.is-sheet .atc-map-panel {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+    isolation: isolate;
+  }
+  .atc-workbench.is-sheet .atc-chat-panel {
+    position: absolute;
+    z-index: 2000;
+    left: 0;
+    right: 0;
+    bottom: var(--atc-kb, 0px);
+    box-sizing: border-box;
+    height: var(--atc-sheet);
+    border-radius: var(--atc-radius) var(--atc-radius) 0 0;
+    border-bottom: 0;
+    transition: height var(--atc-motion) var(--atc-ease);
+  }
+  .atc-workbench.is-sheet .atc-chat-panel[data-snap='full'] {
+    height: min(86dvh, calc(100dvh - 48px - var(--atc-kb, 0px)));
+  }
+  /* The peek shows the conversation's composer only... */
+  .atc-workbench.is-sheet
+    .atc-chat-panel[data-snap='peek']
+    .atc-chat-body:not(:has(.atc-empty)) {
+    visibility: hidden;
+  }
+  /* ...or, before the first message, one scrolling row of starters. */
+  .atc-workbench.is-sheet .atc-chat-panel[data-snap='peek'] .atc-chat-body {
+    overflow: hidden;
+  }
+  .atc-workbench.is-sheet .atc-chat-panel[data-snap='peek'] .atc-empty {
+    padding: 4px 0 8px;
+  }
+  .atc-workbench.is-sheet
+    .atc-chat-panel[data-snap='peek']
+    .atc-empty
+    > :not(.atc-starters) {
+    display: none;
+  }
+  .atc-workbench.is-sheet
+    .atc-chat-panel[data-snap='peek']
+    .atc-empty
+    .atc-starters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+    padding-inline: 16px;
+  }
+  .atc-workbench.is-sheet
+    .atc-chat-panel[data-snap='peek']
+    .atc-starters::-webkit-scrollbar {
+    display: none;
+  }
+  .atc-workbench.is-sheet
+    .atc-chat-panel[data-snap='peek']
+    .atc-starters
+    button {
+    flex: none;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+  .atc-workbench.is-sheet .atc-composer {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  /* A compact attribution: a rounded box, clear of the zoom control. */
+  .atc-workbench.is-sheet
+    .atc-map.leaflet-container
+    .leaflet-control-attribution {
+    border-radius: 8px;
+    max-width: calc(100vw - 72px);
+    margin-left: 8px;
+  }
+  /* The map's own controls clear the sheet at its peek or half snap. */
+  .atc-workbench.is-sheet .atc-map .leaflet-bottom {
+    bottom: calc(var(--atc-sheet) + 4px);
+    transition: bottom var(--atc-motion) var(--atc-ease);
+  }
+
+  .atc-sheet-handle-host {
+    display: block;
+    flex: none;
+  }
+  .atc-sheet-handle {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: grab;
+    touch-action: none;
+    color: var(--atc-border);
+  }
+  .atc-sheet-handle:focus-visible {
+    outline-offset: -2px;
+  }
+  .atc-sheet-grip {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--atc-border);
+  }
+  .atc-sheet-handle:is(:hover, :focus-visible) .atc-sheet-grip {
+    background: var(--atc-muted);
+  }
+
+  /* 44px tap targets. */
+  .atc-starters button,
+  .atc-error button {
+    min-height: 44px;
+    padding-inline: 16px;
+  }
+  .atc-send {
+    width: 44px;
+    height: 44px;
+  }
+  .atc-composer-pill {
+    padding-block: 5px;
+  }
+  .atc-composer-pill input {
+    min-height: 44px;
+  }
+  .atc-credit,
+  .atc-footnote {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .atc-footnote {
+    margin-block: -12px;
+  }
+  .atc-panel-header {
+    height: 48px;
+  }
+  .atc-workbench.is-sheet
+    .atc-map.leaflet-container
+    :is(.leaflet-control-zoom-in, .leaflet-control-zoom-out) {
+    width: 44px;
+    height: 44px;
+    line-height: 42px;
+  }
+}
+
+/* Notched phones in landscape: keep the panels clear of the sensor housing. */
+.atc-workbench {
+  padding-left: max(var(--atc-gutter), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--atc-gutter), env(safe-area-inset-right, 0px));
+}
+
+/* Landscape phones: a narrower chat column, a shorter header, no headline. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .atc-workbench {
+    grid-template-columns: 320px minmax(0, 1fr);
+  }
+  .atc-panel-header {
+    height: 40px;
+  }
+  .atc-empty-title,
+  .atc-footnote {
+    display: none;
+  }
+  .atc-empty {
+    padding-top: 12px;
+  }
+}

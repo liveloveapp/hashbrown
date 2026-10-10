@@ -7,8 +7,8 @@ test('highlights hero code for both frameworks', async () => {
   const result = [html.hero.react, html.hero.angular];
 
   expect(result[0]).toContain('shiki hashbrown');
-  expect(result[0]).toContain('useUiKit');
-  expect(result[1]).toContain('createUiKit');
+  expect(result[0]).toContain('useTool');
+  expect(result[1]).toContain('createTool');
 });
 
 test('highlights three steps for each framework', async () => {

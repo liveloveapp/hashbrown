@@ -36,13 +36,15 @@ test('links quick start to the selected framework', () => {
   expect(result).toBe('/docs/react/start/quick');
 });
 
-test('uses the UI kit APIs in the hero code', () => {
+test('uses the exposeComponent and chat APIs in the hero code', () => {
   const react = HERO_CODE.react.code;
   const angular = HERO_CODE.angular.code;
 
-  expect(react).toContain('useUiKit(');
+  expect(react).toContain('exposeComponent(');
+  expect(react).toContain('useTool(');
   expect(react).toContain('useUiChat(');
-  expect(angular).toContain('createUiKit(');
+  expect(angular).toContain('exposeComponent(');
+  expect(angular).toContain('createTool(');
   expect(angular).toContain('uiChatResource(');
 });
 

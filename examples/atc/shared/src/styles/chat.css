@@ -1,0 +1,253 @@
+/* The chat panel: body, empty state, tool calls and the composer. */
+.atc-chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.atc-chat-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.atc-chat .atc-transcript {
+  overflow: visible;
+  padding: 16px;
+  gap: 12px;
+}
+.atc-chat .atc-transcript:empty {
+  display: none;
+}
+.atc-chat .atc-user {
+  border-radius: 14px 14px 4px 14px;
+  max-width: 80%;
+}
+.atc-chat .atc-error {
+  margin: 0 16px 16px;
+}
+.atc-error button {
+  border: 1px solid var(--atc-border);
+  background: var(--atc-surface);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+  color: var(--atc-ink);
+}
+
+.atc-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 16px 16px;
+}
+.atc-empty-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.atc-empty .atc-starters {
+  padding: 0;
+}
+.atc-empty .atc-starters button {
+  font-size: 13px;
+  text-align: left;
+}
+
+.atc-tool-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+/* What the finished calls did, in one quiet line that expands to every step. */
+.atc-tool-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px 8px 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--atc-canvas);
+  color: var(--atc-muted);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.atc-tool-summary:hover {
+  color: var(--atc-ink);
+}
+.atc-tool-summary-text {
+  min-width: 0;
+}
+.atc-tool-chevron {
+  flex: none;
+  transition: transform var(--atc-fast) var(--atc-ease);
+}
+.atc-tool-summary[aria-expanded='true'] .atc-tool-chevron {
+  transform: rotate(180deg);
+}
+.atc-tool-steps {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 0 0 0 10px;
+  list-style: none;
+}
+.atc-tool-steps .atc-tool-chip {
+  background: none;
+  padding: 0;
+}
+.atc-tool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  background: var(--atc-canvas);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--atc-muted);
+}
+.atc-tool-spinner {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--atc-border);
+  border-top-color: var(--atc-ink);
+  animation: atc-spin 0.8s linear infinite;
+}
+.atc-tool-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--atc-muted);
+}
+.atc-tool-chip[data-state='running'] {
+  color: var(--atc-ink);
+}
+.atc-tool-chip[data-state='failed'] {
+  color: var(--atc-ink);
+}
+/* Touch: a 44px hit area around the 32px pill. */
+@media (pointer: coarse) {
+  .atc-tool-summary {
+    position: relative;
+    min-height: 32px;
+  }
+  .atc-tool-summary::after {
+    content: '';
+    position: absolute;
+    inset: -6px 0;
+  }
+}
+
+/* One answer's parts (prose and cards) sit 8px apart. */
+.atc-answer,
+.atc-answer > hb-render-message {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+@keyframes atc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.atc-composer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+.atc-footnote {
+  align-self: center;
+  font-size: 12px;
+  color: var(--atc-muted);
+  text-decoration: none;
+}
+.atc-footnote:hover {
+  color: var(--atc-ink);
+  text-decoration: underline;
+}
+.atc-composer-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 5px 5px 16px;
+  border: 1px solid var(--atc-border);
+  border-radius: 999px;
+  background: var(--atc-surface);
+  transition: border-color var(--atc-fast) var(--atc-ease);
+}
+/* One 2px ring where the border is: the accent border plus a 1px inset outline. */
+.atc-composer-pill:focus-within {
+  border-color: var(--atc-accent);
+  outline: 1px solid var(--atc-accent);
+  outline-offset: -2px;
+}
+.atc-composer-pill input:focus-visible {
+  outline: none;
+}
+/* 16px everywhere: below that, iOS Safari zooms the page on focus. */
+.atc-composer-pill input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 6px 0;
+  background: transparent;
+  outline: none;
+  font-size: 16px;
+}
+.atc-composer-pill input::placeholder {
+  color: var(--atc-muted);
+}
+.atc-kbd {
+  font-family: var(--atc-mono);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--atc-muted);
+  border: 1px solid var(--atc-border);
+  border-radius: 6px;
+  padding: 0 5px;
+}
+.atc-composer-pill:focus-within .atc-kbd {
+  display: none;
+}
+/* Touch screens have no "/" key to press. */
+@media (hover: none) {
+  .atc-kbd {
+    display: none;
+  }
+}
+.atc-send {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  border: 0;
+  border-radius: 50%;
+  background: var(--atc-ink);
+  color: var(--atc-surface);
+  transition: opacity var(--atc-fast) var(--atc-ease);
+}
+.atc-send:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

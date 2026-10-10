@@ -23,7 +23,7 @@ env:
   # project_id_secret = repository secret holding that target's Vercel project ID.
   # builder "vercel" = build the Next.js app in `root` with `vercel build`;
   # optional = skip while the project secret is unset (see deploy.yml).
-  DEPLOY_TARGETS: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW","builder":"vercel","root":"www"},{"key":"invoicing","dir":"examples/invoicing","project_id_secret":"VERCEL_PROJECT_ID_INVOICING"}]'
+  DEPLOY_TARGETS: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW","builder":"vercel","root":"www"},{"key":"atc","dir":"examples/atc","project_id_secret":"VERCEL_PROJECT_ID_ATC"}]'
 
 jobs:
   ci:
@@ -64,7 +64,7 @@ jobs:
       - name: Validate affected projects
         run: npx nx affected -t lint,test,typecheck,build,e2e --parallel=3
 
-      - name: Verify affected real examples
+      - name: Run affected conformance suites
         run: npx nx affected -t example-e2e --parallel=1
 
       - name: Upload runtime smoke diagnostics
@@ -75,8 +75,10 @@ jobs:
           path: |
             test-results/examples
             playwright-report/examples
-            test-results/invoicing
-            playwright-report/invoicing
+            test-results/conformance
+            playwright-report/conformance
+            test-results/atc
+            playwright-report/atc
           retention-days: 7
           if-no-files-found: ignore
 

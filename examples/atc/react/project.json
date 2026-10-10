@@ -1,0 +1,37 @@
+{
+  "name": "atc-react",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "examples/atc/react/src",
+  "implicitDependencies": ["core", "react", "atc-shared"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/examples/atc/react"],
+      "options": {
+        "commands": [
+          "tsc --noEmit -p examples/atc/react/tsconfig.json",
+          "vite build --config examples/atc/react/vite.config.mts"
+        ],
+        "parallel": false
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config examples/atc/react/vite.config.mts"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "eslint examples/atc/react" }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "vite --config examples/atc/react/vite.config.mts"
+      }
+    }
+  }
+}

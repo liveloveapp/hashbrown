@@ -16,10 +16,8 @@
  * TARGETS lists every Vercel project this script provisions; each entry
  * carries the domains to attach, the env vars upserted from process.env
  * (`env`), and the env vars required in Production (`requiredEnv`). A
- * required key that isn't in `env` can't be set by this script — e.g. the
- * `invoicing` target's DATABASE_URL, which the Vercel Marketplace Neon
- * integration injects once a store is connected in the dashboard; this
- * script only checks for it and prints instructions when it's missing.
+ * required key that isn't in `env` can't be set by this script; it only
+ * checks for it and prints instructions when it's missing.
  */
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
@@ -46,23 +44,18 @@ export const SITE_DOMAINS = Object.freeze([
  * the project ID, the domains to attach, the env vars to upsert from
  * process.env (`env`), and the subset that must be present in Production
  * before the deployment can work (`requiredEnv`). A `requiredEnv` key absent
- * from `env` (e.g. `DATABASE_URL`) cannot be set by this script — it is only
- * checked and, if missing, reported with instructions.
+ * from `env` cannot be set by this script; it is only checked and, if
+ * missing, reported with instructions.
  */
 export const TARGETS = Object.freeze([
   Object.freeze({
-    key: 'invoicing',
-    project: 'hashbrown-invoicing',
-    secret: 'VERCEL_PROJECT_ID_INVOICING',
-    domains: [{ name: `invoicing.${DOMAIN}` }],
-    env: ['OPENAI_API_KEY'],
-    // DATABASE_URL is injected by the Vercel Marketplace Neon integration
-    // once a store is connected in the dashboard; it cannot be set via API.
-    requiredEnv: ['OPENAI_API_KEY', 'DATABASE_URL'],
-    // Fluid compute is what allows a function to run for 300s at all, so the
-    // ceiling b4.config.ts asks for only holds with it on. The default timeout
-    // covers any function published without one of its own.
-    resources: { fluid: true, functionDefaultTimeout: 300 },
+    key: 'atc',
+    project: 'hashbrown-atc',
+    secret: 'VERCEL_PROJECT_ID_ATC',
+    domains: [{ name: `atc.${DOMAIN}` }],
+    env: ['OPENAI_API_KEY', 'OPENAI_MODEL'],
+    requiredEnv: ['OPENAI_API_KEY'],
+    resources: { fluid: true, functionDefaultTimeout: 60 },
   }),
   // The site (Next.js in www/). CI builds it with `vercel pull` + `vercel
   // build`; the project's build settings mirror what CI writes. It took over
@@ -231,9 +224,9 @@ export async function upsertEnv(vercel, projectId, variables) {
 
 /**
  * Reports which of `keys` have no Production env var set on the project.
- * Some env vars (e.g. `DATABASE_URL` from the Vercel Marketplace Neon
- * integration) cannot be set through this API and must be connected by hand
- * in the dashboard; this lets the caller check and report rather than fail.
+ * Some env vars cannot be set from this script's environment and must be
+ * added by hand in the dashboard; this lets the caller check and report
+ * rather than fail.
  */
 export async function missingEnv(vercel, projectId, keys) {
   const { envs = [] } = await vercel('GET', `/v9/projects/${projectId}/env`);
@@ -560,11 +553,11 @@ async function main() {
       project.id,
       target.requiredEnv,
     )) {
-      const hint =
-        key === 'DATABASE_URL'
-          ? `connect a Neon store to ${target.project} in the Vercel dashboard (Storage → Neon); it injects DATABASE_URL into Production and Preview`
-          : `set ${key} on ${target.project} in the Vercel dashboard`;
-      log(`env ${key}`, 'missing', hint);
+      log(
+        `env ${key}`,
+        'missing',
+        `set ${key} on ${target.project} in the Vercel dashboard`,
+      );
     }
 
     if (target.domains.some((domain) => domain.name === DOMAIN)) {

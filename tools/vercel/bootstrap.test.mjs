@@ -525,7 +525,7 @@ test('missingEnv reports keys absent from production', async () => {
       body: {
         envs: [
           { key: 'OPENAI_API_KEY', target: ['production', 'preview'] },
-          { key: 'DATABASE_URL', target: ['preview'] },
+          { key: 'OPENAI_MODEL', target: ['preview'] },
         ],
       },
     },
@@ -533,8 +533,8 @@ test('missingEnv reports keys absent from production', async () => {
   const vercel = createVercelClient('tok', fetchImpl);
 
   assert.deepEqual(
-    await missingEnv(vercel, 'prj_1', ['OPENAI_API_KEY', 'DATABASE_URL']),
-    ['DATABASE_URL'],
+    await missingEnv(vercel, 'prj_1', ['OPENAI_API_KEY', 'OPENAI_MODEL']),
+    ['OPENAI_MODEL'],
   );
 });
 

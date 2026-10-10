@@ -1,0 +1,17 @@
+/*
+ * atc's one stylesheet for both apps, in cascade order: later files may
+ * override earlier ones, so keep this order when adding rules. Each app loads
+ * only this file (Angular through project.json styles, React from main.tsx).
+ */
+@import './tokens.css';
+@import './map.css';
+@import './messages.css';
+@import './shell.css';
+@import './chat.css';
+@import './sheet.css';
+@import './prose.css';
+@import './cards.css';
+@import './markers.css';
+@import './detail-card.css';
+@import './follow-pill.css';
+@import './motion.css';

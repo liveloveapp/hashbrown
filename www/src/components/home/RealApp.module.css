@@ -73,6 +73,21 @@
   border-radius: 16px;
 }
 
+/* Matches the breakpoint the old <picture> source used. */
+.shot .desktop {
+  display: none;
+}
+
+@media screen and (min-width: 768px) {
+  .shot .desktop {
+    display: block;
+  }
+
+  .shot .phone {
+    display: none;
+  }
+}
+
 @media screen and (min-width: 1024px) {
   .card {
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
