@@ -7,7 +7,6 @@
     "target": "ES2022",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "strict": true,
-    "noPropertyAccessFromIndexSignature": true,
     "allowSyntheticDefaultImports": true,
     "types": ["vite/client", "node", "@testing-library/jest-dom"],
     "noEmit": true,

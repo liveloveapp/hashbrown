@@ -1,5 +1,4 @@
 import { s } from '@hashbrownai/core';
-import { AIRPORT_CODES } from './places';
 
 /**
  * FlightCard: one aircraft. `note` streams first; `hex` is never streamed, so
@@ -27,7 +26,8 @@ export const arrivalsBoardContract = {
   props: {
     title: s.streaming.string('A short title for the board'),
     airport: s.enumeration('The airport the aircraft are approaching', [
-      ...AIRPORT_CODES,
+      'ORD',
+      'MDW',
     ]),
     hexes: s.streaming.array(
       'Aircraft hex codes from findAircraft, nearest first',
