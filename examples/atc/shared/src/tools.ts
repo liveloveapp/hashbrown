@@ -221,6 +221,26 @@ function followingReason(label: string): string {
 }
 
 /**
+ * The name of every atc tool. The server forwards only these to the model, so
+ * `/api/run` cannot be used as a general-purpose proxy.
+ */
+export const ATC_TOOL_NAMES = [
+  'findAircraft',
+  'lookupPlace',
+  'showArea',
+  'resetMap',
+  'getSelectedAircraft',
+  'lookupRoute',
+  'highlightAircraft',
+  'clearHighlight',
+  'followAircraft',
+  'stopFollowing',
+] as const satisfies readonly AtcToolName[];
+
+/** The name of one atc tool; a key of `createAtcTools`'s result. */
+export type AtcToolName = keyof ReturnType<typeof createAtcTools>;
+
+/**
  * The atc tools as framework-neutral definitions. Wrap each with Angular's
  * `createTool` or React's `useTool`.
  */

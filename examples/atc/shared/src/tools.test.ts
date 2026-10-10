@@ -1,7 +1,12 @@
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from './aircraft';
 import { applySnapshot, createAtcStore, INITIAL_STATE } from './store';
-import { createAtcTools, findAircraft, type FindAircraftInput } from './tools';
+import {
+  ATC_TOOL_NAMES,
+  createAtcTools,
+  findAircraft,
+  type FindAircraftInput,
+} from './tools';
 
 function plane(hex: string, overrides: Partial<Aircraft> = {}): Aircraft {
   return {
@@ -455,4 +460,16 @@ test('the findAircraft tool with near shows and outlines that area, once', async
   expect(first.shownArea).toEqual({ airport: 'KBDN', radiusNm: 30 });
   expect(first.viewRequest?.kind).toBe('area');
   expect(store.getState().viewSeq).toBe(first.viewSeq);
+});
+
+test('ATC_TOOL_NAMES lists every tool createAtcTools makes, by its name', () => {
+  const tools = createAtcTools({
+    store: createAtcStore(),
+    fetchRoute: async () => null,
+  });
+
+  const names = Object.values(tools).map((tool) => tool.name);
+
+  expect([...ATC_TOOL_NAMES].sort()).toEqual(names.sort());
+  expect(Object.keys(tools).sort()).toEqual(names.sort());
 });
