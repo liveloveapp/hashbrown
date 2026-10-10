@@ -3,8 +3,12 @@ import type { LatLon } from '../places';
 
 /** Moves longer than this jump instead of easing (data gaps, bad fixes). */
 const MAX_TWEEN_NM = 20;
-/** How far past a fix a plane is extrapolated, at most, in seconds. */
-export const MAX_DEAD_RECKON_S = 15;
+/**
+ * How far past a fix a plane is extrapolated, at most, in seconds: past two
+ * server refreshes (10 s each) and a poll, so a late adsb.lol answer never
+ * freezes every plane at once.
+ */
+export const MAX_DEAD_RECKON_S = 30;
 /** How long a new fix takes to absorb the gap from where the plane is drawn. */
 export const CORRECTION_MS = 1000;
 

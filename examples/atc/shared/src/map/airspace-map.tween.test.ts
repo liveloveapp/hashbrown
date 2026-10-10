@@ -94,9 +94,9 @@ test('markers dead-reckon along their track between snapshots, up to a cap', asy
 
   map.runFrames(5000);
   const moving = map.markerPosition();
-  map.runFrames(15_000);
+  map.runFrames(31_000);
   const capped = map.markerPosition();
-  map.runFrames(20_000);
+  map.runFrames(40_000);
 
   expect(moving).not.toBe(start);
   expect(capped).not.toBe(moving);

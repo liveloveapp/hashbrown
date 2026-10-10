@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { FEED_INTERVAL_MS } from '../feed';
 import {
   CORRECTION_MS,
   deadReckon,
@@ -163,4 +164,16 @@ test('a repeated position with a new track turns the plane without moving it bac
   expect(close(motionPosition(next, 3000), drawn)).toBe(true);
   expect(motionHeading(next, 3000)).toBeCloseTo(90, 9);
   expect(motionHeading(next, 3000 + CORRECTION_MS)).toBeCloseTo(120, 9);
+});
+
+test('dead reckoning outlasts a late server refresh, so planes never stall between fixes', () => {
+  // The server reuses one adsb.lol call for 10 s and the browser polls every
+  // 3 s, so a fix can be 13 s old before a newer one arrives, plus the
+  // adsb.lol round trip. Allow two refreshes.
+  const worstGapS = (2 * 10_000 + FEED_INTERVAL_MS) / 1000;
+
+  const motion = nextMotion(undefined, fix, null, 0);
+
+  expect(MAX_DEAD_RECKON_S).toBeGreaterThanOrEqual(worstGapS);
+  expect(motionSettled(motion, worstGapS * 1000 - 1)).toBe(false);
 });
