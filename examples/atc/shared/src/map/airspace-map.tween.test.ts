@@ -74,6 +74,7 @@ async function mount() {
     },
     frames,
     markerPosition,
+    planeElement: () => element.querySelector('.atc-plane'),
     runFrames,
     setClock: (time: number) => (clock = time),
   };
@@ -166,5 +167,23 @@ test('the map keeps a followed plane centred while it glides', async () => {
   const worst = Math.max(...offsets.map((o) => Math.hypot(o.x, o.y)));
   expect(worst).toBeLessThan(1.5);
   expect(map.store.getState().followingHex).toBe(centred.hex);
+  map.cleanup();
+});
+
+test('an altitude-only change updates the tag text in place without rebuilding the marker', async () => {
+  const map = await mount();
+  map.store.applySnapshot({ at: 1, aircraft: [plane] });
+  const first = map.planeElement();
+  map.setClock(3000);
+
+  map.store.applySnapshot({
+    at: 2,
+    aircraft: [{ ...plane, altitudeFt: 31000 }],
+  });
+
+  expect(map.planeElement()).toBe(first);
+  expect(map.planeElement()?.querySelector('.atc-plane-tag')?.textContent).toBe(
+    'UAL100 31,000',
+  );
   map.cleanup();
 });

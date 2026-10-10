@@ -115,8 +115,7 @@ button, input { font: inherit; color: inherit; }
 @keyframes atc-fade { from { opacity: 1; } to { opacity: 0.5; } }
 
 .atc-plane-icon { background: none; border: none; }
-.atc-plane { width: 22px; height: 22px; color: var(--atc-ink); transition: opacity var(--atc-motion) var(--atc-ease); cursor: pointer; }
-.atc-plane { position: relative; }
+.atc-plane { position: relative; width: 22px; height: 22px; color: var(--atc-ink); transition: opacity var(--atc-motion) var(--atc-ease); cursor: pointer; }
 .atc-plane-body { width: 22px; height: 22px; }
 .atc-plane svg { fill: currentColor; }
 .atc-plane-tag {
@@ -129,7 +128,9 @@ button, input { font: inherit; color: inherit; }
 .atc-plane.is-highlighted .atc-plane-tag, .atc-plane.is-selected .atc-plane-tag,
 .atc-plane.is-followed .atc-plane-tag, .atc-plane:hover .atc-plane-tag { display: block; }
 .atc-plane-alt { margin-left: 4px; font-family: var(--atc-mono); font-weight: 400; color: var(--atc-muted); }
+/* !important beats the inline z-index Leaflet sets on each marker. */
 .atc-plane-icon:hover, .atc-plane-icon:has(.is-selected, .is-followed) { z-index: 10000 !important; }
+.atc-plane.is-dimmed:hover { opacity: 1; }
 .atc-plane.is-highlighted { color: var(--atc-accent); }
 .atc-plane.is-dimmed { opacity: 0.2; }
 .atc-plane.is-selected, .atc-plane.is-followed { color: var(--atc-accent); }

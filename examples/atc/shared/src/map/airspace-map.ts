@@ -52,6 +52,24 @@ export function planeTagText(
   return `${aircraft.callsign} · ${altitude}`;
 }
 
+/**
+ * Updates an existing marker's tag text in place with `textContent`, so the
+ * marker is not rebuilt (and its pulse and hover survive) when only altitude
+ * changes.
+ */
+function updatePlaneTag(element: HTMLElement | undefined, aircraft: Aircraft) {
+  const tag = element?.querySelector('.atc-plane-tag');
+  const [callsign, altitude] = planeTagText(aircraft).split(' · ');
+  const alt = tag?.querySelector('.atc-plane-alt');
+  if (!tag || !alt) {
+    return;
+  }
+  if (tag.firstChild && tag.firstChild !== alt) {
+    tag.firstChild.textContent = callsign;
+  }
+  alt.textContent = ` ${altitude}`;
+}
+
 /** Tag markup: the callsign, then the altitude in a muted monospace span. */
 function tag(aircraft: Aircraft): string {
   const [callsign, altitude] = planeTagText(aircraft).split(' · ');
@@ -153,7 +171,8 @@ export async function createAirspaceMap(options: {
       iconSize: [22, 22],
       iconAnchor: [11, 11],
     });
-  const markers = new Map<string, { marker: Marker; html: string }>();
+  /** `shape` is the class and rotation; the tag text updates in place. */
+  const markers = new Map<string, { marker: Marker; shape: string }>();
   let lastPulseAt: number | null = null;
   let zooming = false;
   let panning = false;
@@ -259,15 +278,16 @@ export async function createAirspaceMap(options: {
       moveMarkers(state);
     }
     for (const aircraft of state.aircraft.values()) {
-      const html = planeIconHtml(
-        aircraft,
-        markerClassName(state, aircraft.hex),
-      );
+      const className = markerClassName(state, aircraft.hex);
+      const shape = `${className}|${Math.round(aircraft.trackDeg ?? 0)}`;
+      const html = planeIconHtml(aircraft, className);
       const existing = markers.get(aircraft.hex);
       if (existing) {
-        if (existing.html !== html) {
+        if (existing.shape !== shape) {
           existing.marker.setIcon(icon(html));
-          markers.set(aircraft.hex, { marker: existing.marker, html });
+          markers.set(aircraft.hex, { marker: existing.marker, shape });
+        } else {
+          updatePlaneTag(existing.marker.getElement(), aircraft);
         }
       } else {
         const marker = L.marker([aircraft.lat, aircraft.lon], {
@@ -277,7 +297,7 @@ export async function createAirspaceMap(options: {
         })
           .on('click', () => store.select(aircraft.hex))
           .addTo(map);
-        markers.set(aircraft.hex, { marker, html });
+        markers.set(aircraft.hex, { marker, shape });
       }
     }
     panToFollowed(true);
