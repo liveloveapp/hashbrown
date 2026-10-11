@@ -1,4 +1,4 @@
-import type { LatLon } from '@atc/shared';
+import { AREAS, type LatLon } from '@atc/shared';
 import { readZipEntries } from './zip';
 import type { NasrFiles } from './nasr';
 
@@ -188,4 +188,51 @@ export async function fetchOsmAeroways(
   }
 
   return body;
+}
+
+const AIRSPACE_PAGE = 1000;
+
+/**
+ * Fetches the FAA Class B, C, D and E surface airspace features (GeoJSON) in
+ * the bounding box of the `pnw` area, paging while a page is full. Aborts with
+ * `signal`; throws on any failed page.
+ */
+export async function fetchClassAirspace(
+  fetchFn: typeof fetch,
+  signal: AbortSignal,
+): Promise<unknown[]> {
+  const { lat, lon, radiusNm } = AREAS.pnw;
+  const dLat = radiusNm / 60;
+  const dLon = radiusNm / (60 * Math.cos((lat * Math.PI) / 180));
+  const geometry = [lon - dLon, lat - dLat, lon + dLon, lat + dLat].join(',');
+  const features: unknown[] = [];
+
+  for (let offset = 0; ; offset += AIRSPACE_PAGE) {
+    const query = new URLSearchParams({
+      where:
+        "CLASS IN ('B','C','D') OR LOCAL_TYPE IN ('CLASS_E2','CLASS_E3','CLASS_E4')",
+      geometry,
+      geometryType: 'esriGeometryEnvelope',
+      inSR: '4326',
+      outSR: '4326',
+      outFields:
+        'NAME,IDENT,ICAO_ID,CLASS,LOCAL_TYPE,LOWER_VAL,LOWER_CODE,UPPER_VAL,UPPER_CODE,UPPER_DESC,WKHR_CODE',
+      maxAllowableOffset: '0.0005',
+      geometryPrecision: '5',
+      resultRecordCount: String(AIRSPACE_PAGE),
+      resultOffset: String(offset),
+      f: 'geojson',
+    });
+    const json = await getJson(
+      fetchFn,
+      `${ARCGIS_BASE}/Class_Airspace/FeatureServer/0/query?${query}`,
+      signal,
+    );
+    const page = (json as { features?: unknown }).features;
+    if (!Array.isArray(page)) {
+      throw new Error('Class_Airspace returned no features array');
+    }
+    features.push(...page);
+    if (page.length !== AIRSPACE_PAGE) return features;
+  }
 }
