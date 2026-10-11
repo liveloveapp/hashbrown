@@ -19,3 +19,5 @@ export * from './brand/github-mark';
 export * from './transcript';
 export * from './sheet';
 export * from './dom';
+// Pure math, no Leaflet: the demo recorder flies its synthetic traffic with it.
+export { deadReckon } from './map/tween';

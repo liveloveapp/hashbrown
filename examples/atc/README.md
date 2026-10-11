@@ -108,6 +108,22 @@ npx nx e2e atc-e2e
 
 `atc-e2e` has only `lint` and `e2e` targets; `run-many` skips the rest.
 
+## Demo video
+
+`npx nx demo atc-e2e` records the demo video (about 45 s of code and app, used on the
+blog) and the home page loop into `dist/examples/atc/demo/`, with a contact sheet for
+review. It is deterministic and keyless, like the e2e suite: aimock answers every
+question and synthetic traffic stands in for adsb.lol, with extra aircraft from
+`e2e/demo/traffic.ts`. It needs ffmpeg and runs Chromium headed, off screen, because
+headless screencasts ignore the 2x device scale that keeps text crisp.
+
+The storyboard (headlines, code panes and their marked lines, camera framings) is in
+`e2e/demo/storyboard.ts`; `npx nx test atc-e2e` checks that every marked line still
+exists. After a recording, `npx nx demo-publish atc-e2e` copies the posters into
+`www/public` and points `www/src/components/elements/atc-media.ts` at content-hashed
+Vercel Blob URLs; add `-- --upload` with `BLOB_READ_WRITE_TOKEN` and `VERCEL_TOKEN`
+set to upload the videos, or run the commands it prints.
+
 ## Data and attribution
 
 - **Aircraft:** [adsb.lol](https://adsb.lol), under the
