@@ -600,7 +600,7 @@ test('shows Redmond airport as a diagram with its card', async ({
     page.locator('.atc-diagram-label.is-runway > span').first(),
   ).toBeVisible();
   await expect(page.getByTestId('tool-summary')).toHaveText(
-    'Looked up Redmond, showed KRDM',
+    'Looked up Redmond, showed KRDM · 2 steps',
   );
 });
 
