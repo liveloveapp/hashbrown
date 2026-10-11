@@ -332,7 +332,9 @@ export function createDiagramLayer(options: {
     const missing = onScreen.filter((a) => !state.surfaces.has(a.code));
     if (missing.length === 0) return;
     // Each load marks its airport `loading` in the store at once; that
-    // changes nothing drawn, so those notifications are not redrawn.
+    // changes nothing drawn, so those notifications are not redrawn, and the
+    // surfaces they leave are recorded as synced so a later notification
+    // (an aircraft snapshot) does not take them for a change.
     loading = true;
     try {
       for (const airport of missing) {
@@ -340,6 +342,9 @@ export function createDiagramLayer(options: {
       }
     } finally {
       loading = false;
+    }
+    if (synced !== null) {
+      synced = { ...synced, surfaces: store.getState().surfaces };
     }
   };
 

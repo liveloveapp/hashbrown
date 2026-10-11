@@ -206,3 +206,35 @@ test('at zoom 11 a smaller airport draws nothing', () => {
 
   expect(polygon).not.toHaveBeenCalled();
 });
+
+test('an aircraft snapshot after surface loads start never redraws', () => {
+  const view = mount(13);
+  view.chart();
+  const polygon = vi.spyOn(L, 'polygon');
+  onTestFinished(() => polygon.mockRestore());
+
+  view.store.applySnapshot({
+    at: 1,
+    aircraft: [
+      {
+        hex: 'aaaaaa',
+        label: 'N352LL',
+        callsign: null,
+        registration: 'N352LL',
+        typeCode: 'C172',
+        category: null,
+        kind: 'single',
+        lat: 44.25,
+        lon: -121.15,
+        altitudeFt: 5000,
+        onGround: false,
+        groundSpeedKt: 110,
+        trackDeg: 90,
+        verticalRateFpm: 0,
+      },
+    ],
+  });
+
+  expect(view.fetchFn).toHaveBeenCalledTimes(1);
+  expect(polygon).not.toHaveBeenCalled();
+});
