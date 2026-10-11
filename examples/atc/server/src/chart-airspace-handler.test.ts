@@ -108,6 +108,28 @@ test('pages while a page returns exactly 1000 features', async () => {
   expect(response.body.shelves).toHaveLength(1002);
 });
 
+test('pages in a stable order', async () => {
+  const fetchFn = vi.fn<typeof fetch>(async () => page(3));
+  const handler = createChartAirspaceHandler({ fetchFn, now: () => NOW });
+
+  await call(handler);
+
+  expect(String(fetchFn.mock.calls[0][0])).toContain('orderByFields=OBJECTID');
+});
+
+test('a full first page followed by an empty one yields 1000 shelves', async () => {
+  const fetchFn = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(page(1000))
+    .mockResolvedValueOnce(page(0));
+  const handler = createChartAirspaceHandler({ fetchFn, now: () => NOW });
+
+  const response = await call(handler);
+
+  expect(fetchFn).toHaveBeenCalledTimes(2);
+  expect(response.body.shelves).toHaveLength(1000);
+});
+
 test('POST returns 405', async () => {
   const handler = createChartAirspaceHandler({
     fetchFn: upstreamOk(),
