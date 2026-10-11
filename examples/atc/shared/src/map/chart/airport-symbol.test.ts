@@ -114,3 +114,11 @@ test('markup never includes upstream text', () => {
   expect(symbol.html).not.toContain('ROBERTS');
   expect(symbol.html).not.toContain('RDM');
 });
+
+test('a military field with fuel is a double ring and is never ticked', () => {
+  const symbol = airportSymbol({ ...base, military: true, fuel: true });
+
+  expect(count(symbol.html, 'rect')).toBe(0);
+  expect(count(symbol.html, 'circle')).toBe(2);
+  expect(symbol.size).toBe(18);
+});

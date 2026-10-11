@@ -65,7 +65,7 @@ export function airportSymbol(airport: ChartAirport | Airport): {
   const longestHard = hardLengths.length > 0 ? Math.max(...hardLengths) : 0;
   const isDisc =
     airport.kind === 'airport' && !airport.military && longestHard >= 1500;
-  const size = airport.fuel || isDisc ? 24 : 18;
+  const size = (airport.fuel && !airport.military) || isDisc ? 24 : 18;
   const c = size / 2;
 
   let shape: string;
@@ -78,7 +78,7 @@ export function airportSymbol(airport: ChartAirport | Airport): {
   } else if (!isDisc) {
     shape = ring(c, 5, 1.5);
   } else {
-    shape = `<circle cx="${c}" cy="${c}" r="6" fill="${COLOR}" stroke="${COLOR}"/>${airport.runways
+    shape = `<circle cx="${c}" cy="${c}" r="6" fill="${COLOR}" stroke="none"/>${airport.runways
       .filter((r) => r.hard && r.bearingDeg !== null)
       .map((r) => bar(c, r))
       .join('')}`;
@@ -87,7 +87,7 @@ export function airportSymbol(airport: ChartAirport | Airport): {
   return {
     className: `atc-apt ${tone}`,
     html: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${shape}${
-      airport.fuel ? ticks(c) : ''
+      airport.fuel && !airport.military ? ticks(c) : ''
     }</svg>`,
     size,
   };
