@@ -187,7 +187,7 @@ export const ATC_TOOL_DEFINITIONS = {
   findAircraft: {
     name: 'findAircraft' as const,
     description:
-      "Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport, or keep only aircraft inside an airport's airspace (optionally of one class). With near, the map also shows and outlines that area; with inAirspace, it highlights that airspace. Returns compact rows.",
+      "Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport, or keep only aircraft inside an airport's airspace (optionally of one class). With near, the map also shows and outlines that area; with inAirspace, it highlights that airspace; with both, the airspace highlight is shown. Returns compact rows.",
     schema: findAircraftInput,
   },
   lookupPlace: {
@@ -325,6 +325,23 @@ export function createAtcTools(context: AtcToolContext) {
         if (input.near || input.approaching || input.inAirspace) {
           await chartSettled();
         }
+        // Validate everything first: a refusal must not touch the map.
+        let nearArea: { airport: string; radiusNm: number } | null = null;
+        if (input.near) {
+          const centre = lookupPlace(
+            input.near.airport,
+            airportDirectory(store.getState()),
+          );
+          if (centre === null) {
+            return unknownPlace(input.near.airport);
+          }
+          nearArea = {
+            airport: centre.code,
+            radiusNm: areaRadiusNm(input.near.radiusNm),
+          };
+        }
+
+        let airspaceCode: string | null = null;
         if (input.inAirspace) {
           await airspaceSettled();
           const centre = lookupPlace(
@@ -348,21 +365,14 @@ export function createAtcTools(context: AtcToolContext) {
               reason: noAirspaceReason(centre.code, cls),
             };
           }
-          store.showAirspace(centre.code);
+          airspaceCode = centre.code;
         }
-        if (input.near) {
-          const centre = lookupPlace(
-            input.near.airport,
-            airportDirectory(store.getState()),
-          );
-          if (centre === null) {
-            return unknownPlace(input.near.airport);
-          }
-          // The ring and the fit happen whether or not the model calls showArea.
-          showAreaOnce(store, {
-            airport: centre.code,
-            radiusNm: areaRadiusNm(input.near.radiusNm),
-          });
+
+        // Exactly one view change; the airspace view wins over the ring.
+        if (airspaceCode !== null) {
+          store.showAirspace(airspaceCode);
+        } else if (nearArea !== null) {
+          showAreaOnce(store, nearArea);
         }
 
         return findAircraft(store.getState(), input);

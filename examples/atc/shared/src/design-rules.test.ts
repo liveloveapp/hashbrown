@@ -358,3 +358,58 @@ test('a marker with a visible tag stacks above untagged markers and below the ho
   expect(zIndex).toBeGreaterThan(0);
   expect(zIndex).toBeLessThan(10001);
 });
+
+/** The declarations of the chart.css rule with exactly this selector list. */
+function chartRule(selectors: string): string {
+  const css = readFileSync(
+    new URL('./styles/chart.css', import.meta.url),
+    'utf8',
+  );
+  const escaped = selectors
+    .replace(/[.[\]()]/g, '\\$&')
+    .replace(/,\s*/g, ',\\s*');
+  return (
+    new RegExp(`(?:^|\\})\\s*${escaped}\\s*\\{([^}]*)\\}`, 'm').exec(
+      css,
+    )?.[1] ?? ''
+  );
+}
+
+const DASHED = [
+  '.atc-map .atc-as-casing.is-d',
+  '.atc-map .atc-as-casing.is-e2',
+  '.atc-map .atc-as-casing.is-e3',
+  '.atc-map .atc-as-casing.is-e4',
+].join(',\n');
+const DASHED_OVERVIEW = [
+  '.atc-map[data-zoom-overview] .atc-as-casing.is-d',
+  '.atc-map[data-zoom-overview] .atc-as-casing.is-e2',
+  '.atc-map[data-zoom-overview] .atc-as-casing.is-e3',
+  '.atc-map[data-zoom-overview] .atc-as-casing.is-e4',
+].join(',\n');
+
+test('the highlight casing is cobalt at 0.45 and butt-capped', () => {
+  const rule = chartRule('.atc-map .atc-as-casing');
+
+  expect(rule).toMatch(/stroke:\s*var\(--atc-accent\)/);
+  expect(rule).toMatch(/stroke-opacity:\s*0\.45;/);
+  expect(rule).toMatch(/stroke-linecap:\s*butt/);
+});
+
+test('the casing is 2 px wider than its shelf and keeps the shelf dashes', () => {
+  const bc = chartRule(
+    '.atc-map .atc-as-casing.is-b,\n.atc-map .atc-as-casing.is-c',
+  );
+  const de = chartRule(DASHED);
+  const deOverview = chartRule(DASHED_OVERVIEW);
+  const bcOverview = chartRule(
+    '.atc-map[data-zoom-overview] .atc-as-casing.is-b,\n.atc-map[data-zoom-overview] .atc-as-casing.is-c',
+  );
+
+  expect(bc).toMatch(/stroke-width:\s*7px/);
+  expect(bcOverview).toMatch(/stroke-width:\s*5px/);
+  expect(de).toMatch(/stroke-width:\s*4px/);
+  expect(de).toMatch(/stroke-dasharray:\s*8 2\.2;/);
+  expect(deOverview).toMatch(/stroke-width:\s*3\.5px/);
+  expect(deOverview).toMatch(/stroke-dasharray:\s*6 1\.65;/);
+});

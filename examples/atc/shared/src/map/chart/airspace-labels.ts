@@ -21,8 +21,10 @@ const hundreds = (ft: number): string => String(Math.round(ft / 100));
 /**
  * The altitude label for a shelf, in hundreds of feet MSL. Class B and C
  * stack the ceiling over the floor (`SFC` for a surface floor); Class D is
- * its ceiling in a box (the layer labels only each airport's largest D
- * shelf); Class E surface areas, and any shelf with no ceiling, have none.
+ * its ceiling in a box, with the chart's leading minus when the ceiling is
+ * exclusive (up to but not including; the FAA's TNI). The layer labels only
+ * each airport's largest D shelf. Class E surface areas, and any shelf with
+ * no ceiling, have none.
  * The text is built from validated numbers and fixed literals only.
  */
 export function shelfLabel(shelf: AirspaceShelf): ShelfLabel | null {
@@ -37,7 +39,10 @@ export function shelfLabel(shelf: AirspaceShelf): ShelfLabel | null {
         bottom: shelf.floor.ref === 'SFC' ? 'SFC' : hundreds(shelf.floor.ft),
       };
     case 'D':
-      return { kind: 'box', text: top };
+      return {
+        kind: 'box',
+        text: shelf.ceiling.exclusive ? `-${top}` : top,
+      };
     default:
       return null;
   }

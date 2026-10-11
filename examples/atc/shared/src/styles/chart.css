@@ -62,33 +62,38 @@
 .atc-map .atc-as.is-dimmed {
   opacity: 0.3;
 }
-/* A highlighted airport's casing: cobalt, 4 px wider than its shelf. */
+/*
+ * A highlighted airport's casing: cobalt, 2 px wider than its shelf, and
+ * drawn with the shelf's own dashes so a dashed class never reads as solid.
+ */
 .atc-map .atc-as-casing {
   fill: none;
   stroke: var(--atc-accent);
-  stroke-opacity: 0.6;
+  stroke-opacity: 0.45;
   stroke-linecap: butt;
   stroke-dasharray: none;
 }
 .atc-map .atc-as-casing.is-b,
 .atc-map .atc-as-casing.is-c {
-  stroke-width: 9px;
+  stroke-width: 7px;
 }
 .atc-map .atc-as-casing.is-d,
 .atc-map .atc-as-casing.is-e2,
 .atc-map .atc-as-casing.is-e3,
 .atc-map .atc-as-casing.is-e4 {
-  stroke-width: 6px;
+  stroke-width: 4px;
+  stroke-dasharray: 8 2.2;
 }
 .atc-map[data-zoom-overview] .atc-as-casing.is-b,
 .atc-map[data-zoom-overview] .atc-as-casing.is-c {
-  stroke-width: 7px;
+  stroke-width: 5px;
 }
 .atc-map[data-zoom-overview] .atc-as-casing.is-d,
 .atc-map[data-zoom-overview] .atc-as-casing.is-e2,
 .atc-map[data-zoom-overview] .atc-as-casing.is-e3,
 .atc-map[data-zoom-overview] .atc-as-casing.is-e4 {
-  stroke-width: 5.5px;
+  stroke-width: 3.5px;
+  stroke-dasharray: 6 1.65;
 }
 
 /*

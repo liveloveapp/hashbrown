@@ -2,10 +2,12 @@
 import * as module from 'leaflet';
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from '../../aircraft';
-import type { ChartAirport, Runway } from '../../chart';
+import type { ChartAirport, Runway, RunwayEnd } from '../../chart';
 import { FALLBACK_AIRPORTS } from '../../places';
 import { createAtcStore } from '../../store';
+import { intersects } from '../tag-obstacles';
 import { createAirportLayer } from './airport-layer';
+import { placeChartLabels } from './chart-labels';
 
 const L = (module as unknown as { default?: typeof module }).default ?? module;
 
@@ -84,8 +86,11 @@ const plane: Aircraft = {
   verticalRateFpm: 0,
 };
 
-/** A 400x300 Leaflet map over Bend with the airport layer synced to a store. */
-function mount(zoom = 6) {
+/**
+ * A 400x300 Leaflet map over Bend (or `centre`) with the airport layer synced
+ * to a store and its labels placed by the chart coordinator.
+ */
+function mount(zoom = 6, centre: [number, number] = [44.0946, -121.2002]) {
   const store = createAtcStore();
   const element = document.createElement('div');
   element.className = 'atc-map';
@@ -95,11 +100,23 @@ function mount(zoom = 6) {
     zoomAnimation: false,
     fadeAnimation: false,
     markerZoomAnimation: false,
-  }).setView([44.0946, -121.2002], zoom);
+  }).setView(centre, zoom);
   map.createPane('atc-airports');
   const layer = createAirportLayer({ L, map, store, pane: 'atc-airports' });
-  const unsubscribe = store.subscribe(() => layer.sync(store.getState()));
-  layer.sync(store.getState());
+  const place = () =>
+    placeChartLabels({
+      sources: [layer],
+      runwayBoxes: layer.runwayBoxes,
+    });
+  const sync = () => {
+    if (layer.sync(store.getState())) place();
+  };
+  const unsubscribe = store.subscribe(sync);
+  sync();
+  map.on('zoomend moveend', () => {
+    layer.redraw();
+    place();
+  });
   const count = (selector: string) => element.querySelectorAll(selector).length;
 
   return {
@@ -132,7 +149,6 @@ test('zooming to 10 adds the turf field', () => {
   view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
 
   view.map.setZoom(10);
-  view.layer.redraw();
 
   expect(view.count('.atc-apt')).toBe(3);
   expect(view.count('.atc-apt-block')).toBeGreaterThan(0);
@@ -196,7 +212,7 @@ const surveyed = (lengthFt: number): Runway => {
 };
 
 test('at zoom 10 KRDM with surveyed corners has no ring', () => {
-  const view = mount(10);
+  const view = mount(10, [base.lat, base.lon]);
   const krdm = (runways: Runway[]) => [{ ...base, runways }];
   view.store.setChart({
     cycle: '2610',
@@ -289,4 +305,130 @@ test('the ident style applies at zoom 9 and not at zoom 14', () => {
   expect(close.count('.atc-apt-block')).toBeGreaterThan(0);
   expect(close.count('.is-ident')).toBe(0);
   close.cleanup();
+});
+
+test('at zoom 13 KRDM labels outside its crossing runways', () => {
+  const view = mount(13, [44.2541, -121.15]);
+  const end = (id: string, lat: number, lon: number) => ({ id, lat, lon });
+  const crossing = (a: RunwayEnd, b: RunwayEnd, id: string): Runway => ({
+    ...runway(7000, true),
+    id,
+    ends: [a, b],
+    corners: [a, b, b, a],
+  });
+  const runways = [
+    crossing(end('05', 44.2475, -121.165), end('23', 44.26, -121.135), '05/23'),
+    crossing(end('11', 44.258, -121.168), end('29', 44.25, -121.135), '11/29'),
+  ];
+  const corners = runways.flatMap((r) => r.corners ?? []);
+  const points = corners.map((c) =>
+    view.map.latLngToContainerPoint([c.lat, c.lon]),
+  );
+  const extent = {
+    left: Math.min(...points.map((p) => p.x)),
+    top: Math.min(...points.map((p) => p.y)),
+    right: Math.max(...points.map((p) => p.x)),
+    bottom: Math.max(...points.map((p) => p.y)),
+  };
+
+  view.store.setChart({
+    cycle: '2610',
+    effective: '2026-09-03',
+    airports: [{ ...base, runways }],
+  });
+
+  const block = view.element.querySelector<HTMLElement>('.atc-apt-block');
+  const icon = block?.parentElement;
+  const reference = view.map.latLngToContainerPoint([base.lat, base.lon]);
+  const left = reference.x + parseFloat(icon?.style.marginLeft ?? 'NaN');
+  const top = reference.y + parseFloat(icon?.style.marginTop ?? 'NaN');
+  const request = view.layer.labelRequests().find((r) => r.id === 'apt:KRDM');
+  const box = request?.candidates.find(
+    (c) => Math.abs(c.left - left) < 1 && Math.abs(c.top - top) < 1,
+  );
+  expect(block).not.toBeNull();
+  expect(box).toBeDefined();
+  expect(box && intersects(box, extent)).toBe(false);
+  view.cleanup();
+});
+
+test('at zoom 9 neither of two close airports labels over the other', () => {
+  const view = mount(9);
+  const near = (code: string, lon: number, rank: number): ChartAirport => ({
+    ...base,
+    code,
+    faa: code,
+    towered: false,
+    lat: 44.0946,
+    lon,
+    rank,
+  });
+  const pair = [near('AAA', -121.23, 0), near('BBB', -121.17, 1)];
+
+  view.store.setChart({
+    cycle: '2610',
+    effective: '2026-09-03',
+    airports: pair,
+  });
+
+  const requests = view.layer.labelRequests();
+  const boxes = view.layer.runwayBoxes();
+  const placed = pair.map((airport) => {
+    const point = view.map.latLngToContainerPoint([airport.lat, airport.lon]);
+    const block = [...view.element.querySelectorAll('.atc-apt-block')].find(
+      (b) => b.textContent === airport.faa,
+    );
+    const icon = block?.parentElement;
+    const left = point.x + parseFloat(icon?.style.marginLeft ?? 'NaN');
+    const top = point.y + parseFloat(icon?.style.marginTop ?? 'NaN');
+    return requests
+      .find((r) => r.id === `apt:${airport.code}`)
+      ?.candidates.find(
+        (c) => Math.abs(c.left - left) < 1 && Math.abs(c.top - top) < 1,
+      );
+  });
+  expect(boxes).toHaveLength(2);
+  expect(placed.every(Boolean)).toBe(true);
+  const [aLabel, bLabel] = placed;
+  const [aBox, bBox] = boxes;
+  expect(aLabel && bBox && intersects(aLabel, bBox)).toBe(false);
+  expect(bLabel && aBox && intersects(bLabel, aBox)).toBe(false);
+  view.cleanup();
+});
+
+test('runwayBoxes reuses the boxes projected for the label requests', () => {
+  const view = mount(9);
+  view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
+  view.layer.labelRequests();
+  const project = vi.spyOn(view.map, 'latLngToContainerPoint');
+
+  const boxes = view.layer.runwayBoxes();
+
+  expect(boxes.length).toBeGreaterThan(0);
+  expect(project).not.toHaveBeenCalled();
+  view.cleanup();
+});
+
+test('an airport just outside the view is an obstacle but gets no label request', () => {
+  const view = mount(9);
+  const east = view.map.getBounds().getEast();
+  const outside: ChartAirport = {
+    ...base,
+    code: 'OUT',
+    faa: 'OUT',
+    lat: 44.0946,
+    lon: east + 0.01,
+    rank: 0,
+  };
+
+  view.store.setChart({
+    cycle: '2610',
+    effective: '2026-09-03',
+    airports: [outside],
+  });
+
+  const requests = view.layer.labelRequests();
+  expect(requests.map((r) => r.id)).not.toContain('apt:OUT');
+  expect(view.layer.runwayBoxes()).toHaveLength(1);
+  view.cleanup();
 });

@@ -1,5 +1,5 @@
 import type * as Leaflet from 'leaflet';
-import type { Map as LeafletMap, Marker, Polygon, SVG } from 'leaflet';
+import type { Map as LeafletMap, Marker, Point, Polygon, SVG } from 'leaflet';
 import { airspaceOf, type AirspaceShelf } from '../../chart';
 import type { LatLon } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
@@ -8,7 +8,13 @@ import {
   shelfLabel,
   shelfLabelAnchor,
 } from './airspace-labels';
-import { placeBlocks } from './declutter';
+import type { TagRect } from '../tag-obstacles';
+import type { LabelSource } from './chart-labels';
+import {
+  estimateLabelSize,
+  LABEL_PRIORITY,
+  type LabelRequest,
+} from './label-placer';
 
 /** How far beyond the view (as a fraction of it) shelves are still drawn. */
 const NEAR_PAD = 0.5;
@@ -20,6 +26,17 @@ const LABEL_ZOOM = 9;
  * chart.
  */
 const PAINT_ORDER: Record<string, number> = { B: 1, C: 1, D: 2 };
+/**
+ * Where a label may sit, best first, as pixel offsets from its anchor
+ * point: centred on it, then below, above, right and left.
+ */
+const LABEL_OFFSETS: readonly (readonly [number, number])[] = [
+  [0, 0],
+  [0, 16],
+  [0, -16],
+  [24, 0],
+  [-24, 0],
+];
 /** Label priority: B over C over D. */
 const LABEL_ORDER: Record<string, number> = { B: 0, C: 1, D: 2 };
 /**
@@ -41,12 +58,24 @@ interface Entry {
   readonly labelAt: LatLon;
   /** The label marker, built on first use. */
   marker: Marker | null;
+  /** The index in {@link LABEL_OFFSETS} the marker's icon is drawn at. */
+  offset: number;
+}
+
+/** A label that wants placing: its shelf, its text and its candidates. */
+interface Pending {
+  readonly entry: Entry;
+  readonly label: ShelfLabel;
+  readonly candidates: readonly TagRect[];
 }
 
 /** A mounted airspace layer. */
-export interface AirspaceLayer {
-  /** Redraws when the airspace, its layer switch or the highlight changed. */
-  sync(state: AtcState): void;
+export interface AirspaceLayer extends LabelSource {
+  /**
+   * Redraws when the airspace, its layer switch or the highlight changed;
+   * true when it did, so the labels need placing again.
+   */
+  sync(state: AtcState): boolean;
   /** Redraws for the current view; call on `zoomend` and `moveend`. */
   redraw(): void;
   /** Removes every shelf, casing and label. */
@@ -67,6 +96,24 @@ const bboxArea = ({ bbox: [w, s, e, n] }: AirspaceShelf): number =>
 const labelLines = (label: ShelfLabel): string[] =>
   label.kind === 'stack' ? [label.top, label.bottom] : [label.text];
 
+/** The label id of a shelf, unique among every chart layer's labels. */
+const labelId = (shelf: AirspaceShelf) => `as:${shelf.id}`;
+
+/**
+ * A label's candidate boxes around its anchor `point`, one per
+ * {@link LABEL_OFFSETS} entry, each centred as the CSS draws the text.
+ */
+function labelCandidates(point: Point, label: ShelfLabel): TagRect[] {
+  const { width, height } = estimateLabelSize(labelLines(label));
+
+  return LABEL_OFFSETS.map(([dx, dy]) => ({
+    left: point.x + dx - width / 2,
+    top: point.y + dy - height / 2,
+    right: point.x + dx + width / 2,
+    bottom: point.y + dy + height / 2,
+  }));
+}
+
 /**
  * Draws Class B, C, D and E surface-area shelves in `pane`, as unfilled SVG
  * outlines whose colour, width and dashes come from `chart.css` through
@@ -81,10 +128,12 @@ const labelLines = (label: ShelfLabel): string[] =>
  * path underneath (`atc-as-casing`); every other shelf, and its label, gets
  * `is-dimmed`.
  * From zoom 9, B and C shelves carry a stacked ceiling-over-floor label and
- * each airport's largest D shelf a bracketed ceiling, at
- * `shelfLabelAnchor` (clear of the airport), placed by
- * `placeBlocks` so labels never overlap. Label text goes in through
- * `textContent`; the marker HTML holds only fixed literals.
+ * each airport's largest D shelf a bracketed ceiling, near
+ * `shelfLabelAnchor` (clear of the airport). The chart's shared label
+ * placer (`placeChartLabels`) picks the spot: `labelRequests` offers the
+ * anchor and four nudges around it, and `applyLabels` shows the placed
+ * labels and removes the rest. Label text goes in through `textContent`;
+ * the marker HTML holds only fixed literals.
  */
 export function createAirspaceLayer(options: {
   L: typeof Leaflet;
@@ -97,6 +146,12 @@ export function createAirspaceLayer(options: {
   let renderer: SVG | null = null;
   let entries: Entry[] = [];
   let source: readonly AirspaceShelf[] | null = null;
+  /** The labels the last redraw wants shown, in priority order. */
+  let wantedNow: readonly { entry: Entry; label: ShelfLabel }[] = [];
+  /** The shelves of the highlighted airport at the last redraw. */
+  let litNow: ReadonlySet<AirspaceShelf> = new Set();
+  /** The last requests' labels and candidates, by label id. */
+  let pending = new Map<string, Pending>();
   let synced: {
     readonly airspace: AtcState['airspace'];
     readonly on: boolean;
@@ -109,6 +164,8 @@ export function createAirspaceLayer(options: {
       entry.casing?.remove();
       entry.marker?.remove();
     }
+    wantedNow = [];
+    pending = new Map();
   };
 
   const build = (shelves: readonly AirspaceShelf[]) => {
@@ -129,6 +186,7 @@ export function createAirspaceLayer(options: {
       label: shelfLabel(shelf),
       labelAt: shelfLabelAnchor(shelf),
       marker: null,
+      offset: 0,
     }));
     source = shelves;
   };
@@ -144,21 +202,37 @@ export function createAirspaceLayer(options: {
     return entry.casing;
   };
 
-  /** A label's marker, built once; its text is filled when shown. */
-  const markerOf = (entry: Entry): Marker => {
-    if (entry.marker) return entry.marker;
+  /** A label's icon, drawn `LABEL_OFFSETS[offset]` from its anchor. */
+  const labelIcon = (entry: Entry, offset: number) => {
+    const [dx, dy] = LABEL_OFFSETS[offset] ?? [0, 0];
+    return L.divIcon({
+      html: '',
+      className: `atc-as-label is-${entry.shelf.type.toLowerCase()}`,
+      iconSize: [0, 0],
+      iconAnchor: [-dx, -dy],
+    });
+  };
+
+  /**
+   * A label's marker, built once and given a new icon only when its offset
+   * changes; its text is filled when shown.
+   */
+  const markerOf = (entry: Entry, offset: number): Marker => {
+    if (entry.marker) {
+      if (entry.offset !== offset) {
+        entry.marker.setIcon(labelIcon(entry, offset));
+        entry.offset = offset;
+      }
+      return entry.marker;
+    }
     const marker = L.marker([entry.labelAt.lat, entry.labelAt.lon], {
-      icon: L.divIcon({
-        html: '',
-        className: `atc-as-label is-${entry.shelf.type.toLowerCase()}`,
-        iconSize: [0, 0],
-        iconAnchor: [0, 0],
-      }),
+      icon: labelIcon(entry, offset),
       interactive: false,
       keyboard: false,
       pane,
     });
     entry.marker = marker;
+    entry.offset = offset;
     return marker;
   };
 
@@ -181,48 +255,55 @@ export function createAirspaceLayer(options: {
     element.append(text);
   };
 
+  const labelRequests = (): LabelRequest[] => {
+    // Only labels anchored inside the view compete for spots.
+    const view = map.getBounds();
+    pending = new Map(
+      wantedNow
+        .filter(({ entry }) =>
+          view.contains([entry.labelAt.lat, entry.labelAt.lon]),
+        )
+        .map(({ entry, label }): [string, Pending] => [
+          labelId(entry.shelf),
+          {
+            entry,
+            label,
+            candidates: labelCandidates(
+              map.latLngToContainerPoint([
+                entry.labelAt.lat,
+                entry.labelAt.lon,
+              ]),
+              label,
+            ),
+          },
+        ]),
+    );
+
+    return [...pending].map(([id, { candidates }], index) => ({
+      id,
+      priority: LABEL_PRIORITY.airspace + index / (pending.size + 1),
+      candidates,
+    }));
+  };
+
   /**
-   * Shows the labels that fit. While an airport is highlighted (`lit` holds
-   * its shelves), every other shelf's label is dimmed like its outline.
+   * Shows the placed labels at their chosen offsets and removes the rest.
+   * While an airport is highlighted, every other shelf's label is dimmed
+   * like its outline.
    */
-  const placeLabels = (
-    drawn: readonly Entry[],
-    zoom: number,
-    lit: ReadonlySet<AirspaceShelf>,
-  ) => {
-    const wanted =
-      zoom >= LABEL_ZOOM
-        ? labelled(drawn)
-        : ([] as { entry: Entry; label: ShelfLabel }[]);
-    const items = wanted.map(({ entry, label }) => {
-      const lines = labelLines(label);
-      const point = map.latLngToContainerPoint([
-        entry.labelAt.lat,
-        entry.labelAt.lon,
-      ]);
-      const width = Math.max(...lines.map((l) => l.length)) * 6.4 + 6;
-      const height = lines.length * 12 + 2;
-      // placeBlocks puts a block's top-left at (x + 14, y - 10); shift so
-      // the box is centred on the label point, as the CSS draws it.
-      return {
-        code: entry.shelf.id,
-        x: point.x - width / 2 - 14,
-        y: point.y - height / 2 + 10,
-        lines,
-      };
-    });
-    const placed = placeBlocks(items, 0);
+  const applyLabels = (placed: ReadonlyMap<string, number | null>) => {
     const shown = new Set<Entry>();
-    for (const { entry, label } of wanted) {
-      if (!placed.has(entry.shelf.id)) continue;
-      const marker = markerOf(entry);
+    for (const [id, { entry, label }] of pending) {
+      const offset = placed.get(id);
+      if (offset === null || offset === undefined) continue;
+      const marker = markerOf(entry, offset);
       if (!map.hasLayer(marker)) marker.addTo(map);
       const element = marker.getElement();
       if (element) {
         fillLabel(element, label);
         element.classList.toggle(
           'is-dimmed',
-          lit.size > 0 && !lit.has(entry.shelf),
+          litNow.size > 0 && !litNow.has(entry.shelf),
         );
       }
       shown.add(entry);
@@ -311,7 +392,8 @@ export function createAirspaceLayer(options: {
     if (added) {
       for (const entry of drawn) entry.polygon.bringToFront();
     }
-    placeLabels(drawn, map.getZoom(), lit);
+    wantedNow = map.getZoom() >= LABEL_ZOOM ? labelled(drawn) : [];
+    litNow = lit;
   };
 
   return {
@@ -322,7 +404,7 @@ export function createAirspaceLayer(options: {
         synced.on === state.layers.airspace &&
         synced.highlighted === state.highlightedAirspace
       ) {
-        return;
+        return false;
       }
       synced = {
         airspace: state.airspace,
@@ -330,8 +412,11 @@ export function createAirspaceLayer(options: {
         highlighted: state.highlightedAirspace,
       };
       redraw();
+      return true;
     },
     redraw,
+    labelRequests,
+    applyLabels,
     destroy() {
       removeAll();
       renderer?.remove();

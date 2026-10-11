@@ -59,3 +59,14 @@ test('promising that a tap follows a plane is reported, but Tap Stop is fine', (
     },
   ]);
 });
+
+test('a tool field name in the prose is reported as an internal name', () => {
+  const prose = [
+    'All listed aircraft are inside the Portland Class C.',
+    'Aircraft with partTime airspace may not be controlled right now.',
+  ];
+
+  const issues = proseIssues(prose).map((issue) => issue.kind);
+
+  expect(issues).toEqual(['internal-name']);
+});

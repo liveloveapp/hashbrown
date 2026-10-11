@@ -221,6 +221,7 @@ export async function fetchClassAirspace(
       geometryPrecision: '5',
       resultRecordCount: String(AIRSPACE_PAGE),
       resultOffset: String(offset),
+      orderByFields: 'OBJECTID',
       f: 'geojson',
     });
     const json = await getJson(

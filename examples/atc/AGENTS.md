@@ -33,7 +33,7 @@ dependencies); this file covers atc.
 | `shared/src/map/view-controller.ts`, `fit.ts`   | Applying view requests (fits, areas, reveals)                        |
 | `shared/src/map/card-sync.ts`, `detail-card.ts` | The floating detail card                                             |
 | `shared/src/map/follow.ts`, `follow-pill.ts`    | Follow mode and its pill                                             |
-| `shared/src/map/chart/`                         | Ink airports (rings, labels), declutter, diagrams, Layers control    |
+| `shared/src/map/chart/`                         | Ink airports, the shared label placer, diagrams, Layers control      |
 | `shared/src/chart/airspace-query.ts`            | Pure airspace queries: `shelvesAt`, `altitudeMslFt`, `airspaceTypes` |
 | `shared/src/map/chart/airspace-layer.ts`        | Class B, C, D and E shelves on the map, with highlight and labels    |
 | `shared/src/map/chart/airspace-labels.ts`       | Shelf altitude labels and their anchors                              |

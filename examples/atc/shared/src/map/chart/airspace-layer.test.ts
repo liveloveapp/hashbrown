@@ -5,6 +5,7 @@ import type { Aircraft } from '../../aircraft';
 import type { AirspaceShelf } from '../../chart';
 import { createAtcStore } from '../../store';
 import { createAirspaceLayer } from './airspace-layer';
+import { placeChartLabels } from './chart-labels';
 
 const L = (module as unknown as { default?: typeof module }).default ?? module;
 
@@ -100,9 +101,20 @@ function mount(zoom = 10) {
   }).setView([44.2541, -121.15], zoom);
   map.createPane('atc-airspace');
   const layer = createAirspaceLayer({ L, map, store, pane: 'atc-airspace' });
-  const unsubscribe = store.subscribe(() => layer.sync(store.getState()));
-  layer.sync(store.getState());
-  map.on('zoomend moveend', () => layer.redraw());
+  const place = () =>
+    placeChartLabels({
+      sources: [layer],
+      runwayBoxes: () => [],
+    });
+  const sync = () => {
+    if (layer.sync(store.getState())) place();
+  };
+  const unsubscribe = store.subscribe(sync);
+  sync();
+  map.on('zoomend moveend', () => {
+    layer.redraw();
+    place();
+  });
   onTestFinished(() => {
     unsubscribe();
     layer.destroy();
@@ -196,6 +208,10 @@ test('showing KRDM highlights its shelves, casings them and dims the rest', () =
   expect(view.all('path.atc-as.is-dimmed')).toHaveLength(2);
   expect(view.all('path.atc-as-casing')).toHaveLength(3);
   expect(view.all('path.atc-as-casing.is-d')).toHaveLength(2);
+  for (const casing of view.all('path.atc-as-casing')) {
+    const type = [...casing.classList].find((c) => /^is-(b|c|d|e\d)$/.test(c));
+    expect(type).toBeDefined();
+  }
   expect(view.all('path.atc-as.is-highlighted.is-dimmed')).toHaveLength(0);
   // Each casing sits underneath: every casing comes before every shelf it cases.
   const paths = view.all('path');
@@ -307,4 +323,25 @@ test('paint order holds after a shelf is culled and re-added', () => {
     ...view.all('path.atc-as.is-d').map((p) => paths.indexOf(p)),
   );
   expect(lastE).toBeLessThan(firstD);
+});
+
+test('a shelf whose label anchor is outside the view gets no label request', () => {
+  const view = mount();
+  const east = view.map.getBounds().getEast();
+  const outside = shelf(
+    'KOUT-C-0',
+    { class: 'C', type: 'C', ceiling: { ft: 4000, exclusive: false } },
+    0.01,
+    east + 0.03,
+    44.2541,
+  );
+
+  view.store.setAirspace({
+    cycle: '2610',
+    effective: '2026-10-08',
+    shelves: [outside],
+  });
+
+  expect(view.all('path.atc-as')).toHaveLength(1);
+  expect(view.layer.labelRequests()).toHaveLength(0);
 });
