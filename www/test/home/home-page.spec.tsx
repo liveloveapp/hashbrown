@@ -109,8 +109,25 @@ test('links the atc showcase and threadplane', async () => {
   expect(links.some((href) => href.startsWith('https://threadplane.ai/'))).toBe(
     true,
   );
-  expect(html).toContain('/image/landing-page/atc.webp');
   expect(html).toContain('/image/landing-page/atc-mobile.webp');
+});
+
+test('the atc showcase plays a muted loop that starts from script', async () => {
+  const html = await render();
+
+  const video = html.match(/<video [^>]*>/)?.[0] ?? '';
+  const sources = [...html.matchAll(/<source [^>]*>/g)].map((m) => m[0]);
+
+  expect(video).toContain('poster="/image/landing-page/atc-loop-poster.webp"');
+  expect(video).toContain('muted=""');
+  expect(video).toContain('loop=""');
+  expect(video).toContain('playsInline=""');
+  expect(video).toContain('preload="none"');
+  // Started by script when in view, and never under reduced motion.
+  expect(video).not.toContain('autoPlay');
+  expect(video).not.toContain('controls');
+  expect(sources[0]).toMatch(/\/video\/atc-loop-[0-9a-f]{12}\.webm"/);
+  expect(sources[1]).toMatch(/\/video\/atc-loop-[0-9a-f]{12}\.mp4"/);
 });
 
 test('the atc showcase has no b4 or pretable tiles', async () => {

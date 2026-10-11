@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 840" width="960" height="840" role="img" aria-labelledby="t d">
+  <title id="t">atc architecture</title>
+  <desc id="d">Three lanes. In the browser: Angular and React shells over a framework-free shared core (store, map, tools) and Hashbrown. On the server: /api/aircraft and /api/run. Out in the world: adsb.lol, OpenStreetMap, adsb.lol routes and OpenAI.</desc>
+  <defs>
+    <!-- 24px grid, like the lat/lon ticks on a sectional chart -->
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="1" fill="#E9E1CF"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#774625"/>
+    </marker>
+    <marker id="arrow-sky" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64AFB5"/>
+    </marker>
+    <style>
+      .sans { font-family: 'Inter Tight', Inter, 'Helvetica Neue', Arial, sans-serif; }
+      .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; }
+      .h1 { font-size: 26px; font-weight: 700; fill: #774625; }
+      .lede { font-size: 15px; fill: #5E5C5A; }
+      .lane { font-size: 13px; font-weight: 700; letter-spacing: 1.5px; fill: #AD907C; }
+      .group { font-size: 14px; fill: #774625; }
+      .title { font-size: 16px; font-weight: 600; fill: #774625; }
+      .shell { font-size: 17px; font-weight: 600; fill: #3D3C3A; }
+      .body { font-size: 15px; fill: #3D3C3A; }
+      .code { font-size: 14px; fill: #5E5C5A; }
+      .edge { font-size: 13px; fill: #774625; paint-order: stroke; stroke: #FFFFFF; stroke-width: 6px; stroke-linejoin: round; }
+      .edge-out { font-size: 14px; fill: #774625; paint-order: stroke; stroke: #FAF9F0; stroke-width: 6px; stroke-linejoin: round; }
+      .legend { font-size: 14px; fill: #5E5C5A; }
+    </style>
+  </defs>
+
+  <rect width="960" height="840" rx="16" fill="#FAF9F0"/>
+  <rect width="960" height="840" rx="16" fill="url(#grid)"/>
+
+  <text x="32" y="56" class="sans h1">atc: how the pieces fit</text>
+  <text x="32" y="84" class="sans lede">One store in the browser. Two routes on the server. Four open sources out in the world.</text>
+
+  <!-- Lane 1: browser (y 112, h 288) -->
+  <rect x="32" y="112" width="896" height="288" rx="12" fill="#FFFFFF" stroke="#E7DCCB" stroke-width="1.5"/>
+  <text x="56" y="140" class="sans lane">IN THE BROWSER</text>
+
+  <rect x="56" y="160" width="412" height="64" rx="10" fill="#FAF9F0" stroke="#D9C9B6" stroke-width="1.5"/>
+  <text x="76" y="188" class="sans shell">Angular 22 shell</text>
+  <text x="76" y="208" class="mono code">uiChatResource · createTool · signals</text>
+
+  <rect x="492" y="160" width="412" height="64" rx="10" fill="#FAF9F0" stroke="#D9C9B6" stroke-width="1.5"/>
+  <text x="512" y="188" class="sans shell">React 19 shell</text>
+  <text x="512" y="208" class="mono code">useUiChat · useTool · useSyncExternalStore</text>
+
+  <text x="56" y="256" class="mono group">@atc/shared · framework-free TypeScript</text>
+  <path d="M56 266 H686 M56 262 V270 M686 262 V270" stroke="#AD907C" stroke-width="1.5" fill="none"/>
+  <text x="710" y="256" class="mono group">@hashbrownai/*</text>
+  <path d="M710 266 H904 M710 262 V270 M904 262 V270" stroke="#E8A23D" stroke-width="1.5" fill="none"/>
+
+  <rect x="56" y="280" width="194" height="96" rx="10" fill="#FFFFFF" stroke="#AD907C" stroke-width="1.5"/>
+  <text x="72" y="314" class="mono title">store.ts</text>
+  <text x="72" y="340" class="sans body">one AtcState,</text>
+  <text x="72" y="360" class="sans body">pure reducers</text>
+
+  <rect x="274" y="280" width="194" height="96" rx="10" fill="#FFFFFF" stroke="#AD907C" stroke-width="1.5"/>
+  <text x="290" y="314" class="mono title">map/</text>
+  <text x="290" y="340" class="sans body">Leaflet markers,</text>
+  <text x="290" y="360" class="sans body">a rAF motion loop</text>
+
+  <rect x="492" y="280" width="194" height="96" rx="10" fill="#FFFFFF" stroke="#AD907C" stroke-width="1.5"/>
+  <text x="508" y="314" class="mono title">tools.ts</text>
+  <text x="508" y="340" class="sans body">10 tools the model</text>
+  <text x="508" y="360" class="sans body">calls in the browser</text>
+
+  <rect x="710" y="280" width="194" height="96" rx="10" fill="#FDE4BA" stroke="#E8A23D" stroke-width="1.5"/>
+  <text x="726" y="314" class="sans title">Hashbrown</text>
+  <text x="726" y="340" class="sans body">Skillet, streaming</text>
+  <text x="726" y="360" class="sans body">parser, AG-UI client</text>
+
+  <!-- Lane 2: server (y 448, h 136) -->
+  <rect x="32" y="448" width="896" height="136" rx="12" fill="#FFFFFF" stroke="#E7DCCB" stroke-width="1.5"/>
+  <text x="56" y="476" class="sans lane">ON THE SERVER · NODE ON VERCEL FUNCTIONS</text>
+
+  <rect x="56" y="496" width="194" height="64" rx="10" fill="#EEF0E6" stroke="#616F36" stroke-width="1.5"/>
+  <text x="72" y="524" class="mono title">/api/aircraft</text>
+  <text x="72" y="544" class="sans body">cached adsb.lol proxy</text>
+
+  <rect x="710" y="496" width="194" height="64" rx="10" fill="#EEF0E6" stroke="#616F36" stroke-width="1.5"/>
+  <text x="726" y="524" class="mono title">/api/run</text>
+  <text x="726" y="544" class="sans body">@hashbrownai/openai</text>
+
+  <!-- Lane 3: the world (y 632, h 136) -->
+  <rect x="32" y="632" width="896" height="136" rx="12" fill="#FFFFFF" stroke="#E7DCCB" stroke-width="1.5"/>
+  <text x="56" y="660" class="sans lane">OUT IN THE WORLD · OPEN DATA AND THE MODEL</text>
+
+  <rect x="56" y="680" width="194" height="64" rx="10" fill="#D8ECEF" stroke="#64AFB5" stroke-width="1.5"/>
+  <text x="72" y="708" class="sans title">adsb.lol</text>
+  <text x="72" y="728" class="sans body">live ADS-B, ODbL</text>
+
+  <rect x="274" y="680" width="194" height="64" rx="10" fill="#D8ECEF" stroke="#64AFB5" stroke-width="1.5"/>
+  <text x="290" y="708" class="sans title">OpenStreetMap</text>
+  <text x="290" y="728" class="sans body">map tiles</text>
+
+  <rect x="492" y="680" width="194" height="64" rx="10" fill="#D8ECEF" stroke="#64AFB5" stroke-width="1.5"/>
+  <text x="508" y="708" class="sans title">adsb.lol routes</text>
+  <text x="508" y="728" class="mono code">vrs-standing-data</text>
+
+  <rect x="710" y="680" width="194" height="64" rx="10" fill="#D8ECEF" stroke="#64AFB5" stroke-width="1.5"/>
+  <text x="726" y="708" class="sans title">OpenAI</text>
+  <text x="726" y="728" class="mono code">gpt-5-mini</text>
+
+  <!-- Edges: caller to callee -->
+  <path d="M153 376 V492" stroke="#774625" stroke-width="1.75" marker-end="url(#arrow)"/>
+  <text x="165" y="429" class="sans edge-out">polls every 3 s</text>
+  <path d="M153 560 V676" stroke="#774625" stroke-width="1.75" marker-end="url(#arrow)"/>
+  <text x="165" y="613" class="sans edge-out">1 call per 10 s</text>
+
+  <path d="M807 376 V492" stroke="#774625" stroke-width="1.75" marker-end="url(#arrow)"/>
+  <text x="795" y="429" text-anchor="end" class="sans edge-out">POST · AG-UI over SSE</text>
+  <path d="M807 560 V676" stroke="#774625" stroke-width="1.75" marker-end="url(#arrow)"/>
+  <text x="795" y="613" text-anchor="end" class="sans edge-out">pinned prompt and tools</text>
+
+  <path d="M371 376 V676" stroke="#64AFB5" stroke-width="1.75" stroke-dasharray="6 6" marker-end="url(#arrow-sky)"/>
+  <text x="383" y="613" class="sans edge-out">tiles</text>
+  <path d="M589 376 V676" stroke="#64AFB5" stroke-width="1.75" stroke-dasharray="6 6" marker-end="url(#arrow-sky)"/>
+  <text x="601" y="613" class="sans edge-out">routes</text>
+
+  <!-- Legend (y 808) -->
+  <path d="M32 804 H72" stroke="#774625" stroke-width="1.75" marker-end="url(#arrow)"/>
+  <text x="84" y="808" class="sans legend">through atc's server</text>
+  <path d="M264 804 H304" stroke="#64AFB5" stroke-width="1.75" stroke-dasharray="6 6" marker-end="url(#arrow-sky)"/>
+  <text x="316" y="808" class="sans legend">straight from the browser</text>
+  <rect x="528" y="796" width="16" height="16" rx="4" fill="#FDE4BA" stroke="#E8A23D" stroke-width="1.5"/>
+  <text x="552" y="808" class="sans legend">Hashbrown</text>
+  <rect x="664" y="796" width="16" height="16" rx="4" fill="#D8ECEF" stroke="#64AFB5" stroke-width="1.5"/>
+  <text x="688" y="808" class="sans legend">services we build on</text>
+</svg>

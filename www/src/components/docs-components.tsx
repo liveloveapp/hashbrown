@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { MarkdownComponents } from '../lib/markdown';
 import { CodeExample } from './CodeExample';
+import { AtcDemoVideo } from './elements/AtcDemoVideo';
 import { BackendCodeExample } from './elements/BackendCodeExample';
 import { Carousel } from './elements/Carousel';
 import { MagicTextDemo } from './elements/MagicTextDemo';
@@ -40,6 +41,7 @@ export function docsComponents(
     'hb-code-example': CodeExample,
     'hb-backend-code-example': BackendCodeExample,
     'hb-carousel': Carousel,
+    'www-atc-demo-video': AtcDemoVideo,
     'hb-magic-text-demo': MagicTextDemo,
     'hb-next-steps': NextSteps,
     'hb-next-step': DocsNextStep,

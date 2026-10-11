@@ -10,5 +10,5 @@
     "noEmit": true,
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*.ts", "playwright.config.ts"]
+  "include": ["src/**/*.ts", "demo/**/*.ts", "playwright.config.ts"]
 }
