@@ -110,7 +110,8 @@ structure all stay.
 
 ### Data and the server route
 
-A live FAA query on 2026-10-11 found 154 shelves in the area:
+A live FAA query on 2026-10-11 found 154 shelves in the area's bounding box;
+after the 250 nm filter the server keeps 130 (the table below counts the 154):
 
 | Class         | Shelves |
 | ------------- | ------- |
@@ -123,8 +124,8 @@ A live FAA query on 2026-10-11 found 154 shelves in the area:
 | No local type | 7       |
 
 The 7 shelves with no local type are classed by `CLASS`. All are plain
-polygons. Simplified to about 50 m, the set is 142 KB of JSON and 34 KB
-gzipped.
+polygons. After the 250 nm filter and simplification to about 50 m, the 130
+shelves are about 105 KB of JSON.
 
 **`GET /api/chart/airspace`**
 
@@ -205,13 +206,15 @@ planes.
   - Overview widths apply through a `data-zoom-overview` attribute on the map
     element, set when zoom is 8 or below. `airspace-map.ts` toggles it on
     `zoomend`, as it already does for `data-zoom-low`.
-  - Shelves sharing an edge simply overlap.
+  - Shelves sharing an edge simply overlap. Class D paints above Class E, so
+    the D ring stays blue where it shares an outline with an E2 shelf.
 
 - **Labels** (zoom 9 and above, placed by the same greedy declutter as the
   airport labels):
-  - **Class B and C shelves** get a stacked label in mono bold in the shelf's
-    colour: the ceiling in hundreds of feet, a 1 px rule, then the floor in
-    hundreds or `SFC`. For example, `40` over `11` for Portland's 1,100 to
+  - **Class B and C shelves** get a stacked label in mono bold in the solid
+    chart blue (B) or magenta (C), as the printed chart does, not the screened
+    band colour: the ceiling in hundreds of feet, a 1 px rule, then the floor in
+    hundreds or `SFC`. A B or C shelf with a null ceiling has no label. For example, `40` over `11` for Portland's 1,100 to
     4,000 ft shelf.
   - **Class D** gets one label per airport, at the label point of its largest
     D shelf: the ceiling in hundreds (`56`) inside the chart's corner-bracket
@@ -219,7 +222,10 @@ planes.
   - **Class E** has no labels, as on the chart.
   - **Label point:** the centre of the shelf's bounding box when it lies
     inside the shelf, else the average of its outer ring's vertices. This is
-    computed once per shelf.
+    computed once per shelf. Labels are anchored off the ring centre: when the
+    label point is the bounding-box centre of a core shelf (the airport
+    itself), the label moves halfway to the box's south edge when that point
+    is still inside the shelf.
 - **Highlight.**
   - The store gains `highlightedAirspace: string | null`, the airport code.
   - The highlighted airport's shelves get a cobalt casing: a second path
@@ -244,26 +250,28 @@ A new `shared/src/chart/airspace-query.ts` holds the pure query functions.
 
 - `pointInShelf(shelf, point): boolean`. A bounding-box prefilter, then ray
   casting with even-odd holes.
-- `altitudeMslFt(aircraft): number | null`. Rules, in order:
-  1. `onGround` gives 0, so the aircraft is in surface areas.
+- `altitudeMslFt(aircraft): { ft: number; source: 'ground' | 'gnss' | 'baro' } | null`.
+  Rules, in order:
+  1. `onGround` gives 0 feet from source `ground`, so an on-ground aircraft is
+     inside surface shelves.
   2. Otherwise use `geometricAltitudeFt` (GNSS, within about 100 ft of MSL in
      the area) when present.
   3. Otherwise use the barometric `altitudeFt`.
   4. Otherwise `null`.
-- `shelvesAt(shelves, point, altitudeFt): AirspaceShelf[]`. A shelf contains
-  the aircraft when all of these hold:
+- `shelvesAt(shelves, aircraft): AirspaceShelf[]`. The altitude comes from
+  `altitudeMslFt`. A shelf contains the aircraft when all of these hold:
   - the point is laterally inside the shelf;
   - the altitude is at or above the floor;
   - the altitude is below the ceiling (or at it, when the ceiling is not
     exclusive);
   - a `null` ceiling counts as 18,000 ft, exclusive.
 
-  An aircraft with no altitude is never inside a shelf whose floor is above
-  the surface. It counts inside a surface shelf only when its altitude is
-  known.
+  An aircraft with no altitude is inside no shelf.
 
 - `airspaceOf(shelves, airport): AirspaceShelf[]`, matched on the ICAO code or
   the FAA ident.
+- `airspaceTypes(shelves): AirspaceType[]`, the distinct shelf types in chart
+  order (B, C, D, E2, E3, E4), which the AirportCard line reads.
 
 ### Assistant: tools, components and prompt
 
