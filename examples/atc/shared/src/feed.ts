@@ -1,4 +1,5 @@
 import { type AircraftSnapshot, parseSnapshot } from './aircraft';
+import { startChartFeed } from './chart/chart-feed';
 import type { AreaId } from './places';
 import type { AtcStore } from './store';
 
@@ -109,7 +110,8 @@ export function createLiveLoader(
 
 /**
  * Starts polling live data for the Pacific Northwest every
- * {@link FEED_INTERVAL_MS}. Returns a function that stops it.
+ * {@link FEED_INTERVAL_MS} and loads the chart airports. Returns a function
+ * that stops both.
  */
 export function startAtcFeed(options: {
   store: AtcStore;
@@ -122,6 +124,10 @@ export function startAtcFeed(options: {
     intervalMs: FEED_INTERVAL_MS,
   });
   feed.start();
+  const stopChart = startChartFeed({ store, fetchFn });
 
-  return () => feed.stop();
+  return () => {
+    feed.stop();
+    stopChart();
+  };
 }

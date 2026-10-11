@@ -94,8 +94,11 @@ test('startAtcFeed polls the Pacific Northwest every 3 s until stopped', async (
   await vi.advanceTimersByTimeAsync(5 * FEED_INTERVAL_MS);
 
   expect(FEED_INTERVAL_MS).toBe(3000);
-  expect(fetchFn).toHaveBeenCalledTimes(3);
-  expect(fetchFn.mock.calls.map(([url]) => String(url))).toEqual([
+  const aircraftUrls = fetchFn.mock.calls
+    .map(([url]) => String(url))
+    .filter((url) => !url.startsWith('/api/chart/'));
+  expect(aircraftUrls).toHaveLength(3);
+  expect(aircraftUrls).toEqual([
     '/api/aircraft?area=pnw',
     '/api/aircraft?area=pnw',
     '/api/aircraft?area=pnw',
