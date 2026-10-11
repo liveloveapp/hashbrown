@@ -8,16 +8,18 @@ import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 import {
   CHART_AIRPORTS,
+  CHART_AIRSPACE,
   chartSurfaces,
   frame,
   NEAR_BEND,
+  PORTLAND_CLASS_C,
   scenario,
   SYNTHETIC_HEXES,
   ui,
 } from './fixtures';
 
 const dist = resolve(__dirname, '../../../../dist/examples/atc');
-const { selected, highest, fastest, arrivals, nearby } = scenario;
+const { selected, highest, fastest, arrivals, nearby, portland } = scenario;
 const NEAR_PROMPT = "What's flying near KBDN?";
 /** findAircraft arguments with every filter off. */
 const ANY = {
@@ -28,6 +30,7 @@ const ANY = {
   maxAltitudeFt: null,
   approaching: null,
   near: null,
+  inAirspace: null,
 };
 let mock: LLMock;
 let server: Server;
@@ -177,6 +180,56 @@ test.beforeAll(async () => {
       },
     ],
   });
+  const portlandBoard = ui({
+    ArrivalsBoard: {
+      props: {
+        title: 'Inside the Portland Class C',
+        airport: 'KPDX',
+        hexes: portland.map((r) => r.hex),
+      },
+    },
+  });
+  for (const id of ['portland-lookup', 'portland-find', 'portland-highlight']) {
+    mock.onToolResult(id, async () => ({ content: portlandBoard }));
+  }
+  mock.onMessage(STARTER_PROMPTS[5], {
+    toolCalls: [
+      {
+        id: 'portland-lookup',
+        name: 'lookupPlace',
+        arguments: { query: 'Portland' },
+      },
+      {
+        id: 'portland-find',
+        name: 'findAircraft',
+        arguments: {
+          ...ANY,
+          inAirspace: PORTLAND_CLASS_C,
+          sortBy: 'distance',
+          limit: 20,
+        },
+      },
+      {
+        id: 'portland-highlight',
+        name: 'highlightAircraft',
+        arguments: { hexes: portland.map((r) => r.hex) },
+      },
+    ],
+  });
+  mock.onToolResult('redmond-airspace', async () => ({
+    content: ui({
+      Markdown: { props: { children: 'Redmond has a part-time Class D.' } },
+    }),
+  }));
+  mock.onMessage('Show the Redmond airspace.', {
+    toolCalls: [
+      {
+        id: 'redmond-airspace',
+        name: 'showAirspace',
+        arguments: { airport: 'KRDM' },
+      },
+    ],
+  });
   mock.onToolResult('hide-airports', async () => ({
     content: 'Airports are hidden.',
   }));
@@ -185,7 +238,7 @@ test.beforeAll(async () => {
       {
         id: 'hide-airports',
         name: 'setLayers',
-        arguments: { airports: false },
+        arguments: { airports: false, airspace: null },
       },
     ],
   });
@@ -229,6 +282,9 @@ async function open(page: Page, framework: string): Promise<void> {
         new URL(route.request().url()).searchParams.get('airport') ?? '',
       ),
     }),
+  );
+  await page.route('**/api/chart/airspace', (route) =>
+    route.fulfill({ json: CHART_AIRSPACE }),
   );
   let next = 0;
   await page.route('**/api/aircraft**', (route) =>
@@ -636,4 +692,49 @@ test('the Layers control works from the keyboard', async ({
   await expect(page.locator('.atc-apt-block')).toHaveCount(0);
   await expect(toggle).toBeFocused();
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('lists the aircraft inside the Portland Class C and lights its shelf', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+
+  await page.getByRole('button', { name: STARTER_PROMPTS[5] }).click();
+
+  await expect(page.getByTestId('arrivals-row').first()).toBeVisible();
+  await expect(page.locator('.atc-as.is-c.is-highlighted')).toHaveCount(1);
+  await expect(page.getByTestId('tool-summary')).toHaveText(
+    'Looked up Portland, searched traffic, highlighted 1 aircraft · 3 steps',
+  );
+});
+
+test('shows the Redmond airspace with its ceiling label', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+
+  await page
+    .getByRole('textbox', { name: 'Message' })
+    .fill('Show the Redmond airspace.');
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  await expect(
+    page.locator('.atc-as-label .atc-as-text', { hasText: '56' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Redmond has a part-time Class D.'),
+  ).toBeVisible();
+  await expect(page.getByTestId('tool-summary')).toHaveText(
+    'Showed KRDM airspace · 1 step',
+  );
+});
+
+test('the Layers control hides the airspace', async ({ page }, testInfo) => {
+  await open(page, testInfo.project.name);
+  await expect(page.locator('.atc-as').first()).toBeAttached();
+
+  await page.getByRole('button', { name: 'Layers' }).click();
+  await page.getByRole('checkbox', { name: 'Airspace' }).uncheck();
+
+  await expect(page.locator('.atc-as')).toHaveCount(0);
 });

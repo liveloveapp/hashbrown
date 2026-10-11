@@ -406,9 +406,9 @@ test('an airport card shows its airspace line only when it has airspace', () => 
   fixture.detectChanges();
 
   expect(before).toBeNull();
-  expect(element.querySelector('.atc-airport-airspace')?.textContent).toBe(
-    'Airspace: Class D (part-time)',
-  );
+  expect(
+    element.querySelector('.atc-airport-airspace')?.textContent?.trim(),
+  ).toBe('Airspace: Class D (part-time)');
 });
 
 test('the airport card head shows the airport on the map', () => {
