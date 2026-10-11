@@ -327,3 +327,25 @@ test('a pinned card announces its summary politely; a hovered one stays quiet', 
   expect(pinnedLive).toBe('polite');
   expect(hoverLive).toBe('off');
 });
+
+test('a docked card reports its inset from the size measured when placed, so reading it forces no layout', () => {
+  const card = createDetailCard(document);
+  let reads = 0;
+  Object.defineProperty(card.element, 'offsetHeight', {
+    get: () => {
+      reads++;
+      return 60;
+    },
+  });
+  card.show(view, 400, { pinned: true, docked: true });
+  card.place({ x: 300, y: 200 }, { width: 375, height: 500 });
+  const before = reads;
+
+  const insets = [card.dockedInset(), card.dockedInset()];
+  card.hide();
+  const hidden = card.dockedInset();
+
+  expect(insets).toEqual([76, 76]);
+  expect(reads).toBe(before);
+  expect(hidden).toBe(0);
+});

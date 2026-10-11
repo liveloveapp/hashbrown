@@ -107,13 +107,16 @@ function createTextMeasure(element: HTMLElement) {
   };
 }
 
+/** Formats feet as `toLocaleString('en-US')` does, without a new formatter each call. */
+const FEET = new Intl.NumberFormat('en-US');
+
 /** The altitude text a tag shows, as `planeTagText` writes it. */
 function altText(aircraft: Aircraft): string {
   return aircraft.onGround
     ? 'GND'
     : aircraft.altitudeFt === null
       ? ''
-      : aircraft.altitudeFt.toLocaleString('en-US');
+      : FEET.format(aircraft.altitudeFt);
 }
 
 /**

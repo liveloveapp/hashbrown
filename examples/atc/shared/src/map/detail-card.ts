@@ -151,7 +151,8 @@ export interface DetailCard {
   place(point: CardPoint, area: CardSize): void;
   /**
    * The pixels the card covers at the top of the map while it is open and
-   * docked (with its margins), else 0.
+   * docked (with its margins), else 0. Reuses the size measured when it was
+   * placed, until its content changes.
    */
   dockedInset(): number;
 }
@@ -436,11 +437,14 @@ export function createDetailCard(
     },
     hide,
     dockedInset() {
-      const height = element.offsetHeight;
+      if (!mode.docked || !element.classList.contains('is-open')) {
+        return 0;
+      }
+      // The size measured when the card was last placed, so a caller on a
+      // timer (the tag layout) does not force a layout; else measured now.
+      const height = size?.height ?? element.offsetHeight;
 
-      return mode.docked && element.classList.contains('is-open') && height > 0
-        ? height + 2 * CARD_MARGIN
-        : 0;
+      return height > 0 ? height + 2 * CARD_MARGIN : 0;
     },
     place(point, area) {
       size ??= { width: element.offsetWidth, height: element.offsetHeight };
