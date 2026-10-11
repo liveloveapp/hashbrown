@@ -1,13 +1,31 @@
 import type * as Leaflet from 'leaflet';
-import type { Map as LeafletMap, Marker } from 'leaflet';
+import type { Map as LeafletMap, Marker, Point } from 'leaflet';
 import type { ChartAirport } from '../../chart';
 import { type Airport, FALLBACK_AIRPORTS } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
+import type { TagRect } from '../tag-obstacles';
 import { airportRing, RING_BOX } from './airport-ring';
+import type { LabelSource } from './chart-labels';
 import { dataBlockLines, renderDataBlock } from './data-block';
-import { placeBlocks, visibleAirports } from './declutter';
+import { visibleAirports } from './declutter';
+import { LABEL_PRIORITY, type LabelRequest } from './label-placer';
+
 /** How far beyond the view (as a fraction of it) airports are still drawn. */
 const NEAR_PAD = 0.5;
+/**
+ * Estimated advance per character of block text, in pixels. An estimate
+ * rather than a canvas measure, so placement is the same in jsdom and the
+ * browser and does not shift when the web fonts finish loading.
+ */
+const CHAR_PX = 6.4;
+/** A block line's height (`line-height` in chart.css), in pixels. */
+const LINE_PX = 12;
+/** The block's horizontal padding, both sides, in pixels. */
+const BLOCK_PAD_X = 6;
+/** The block's vertical padding, both sides, in pixels. */
+const BLOCK_PAD_Y = 2;
+/** Space between an airport's box and its label, in pixels. */
+const LABEL_GAP = 4;
 
 type Tone = 'ink' | 'fallback';
 
@@ -30,15 +48,75 @@ interface Block {
   filled: HTMLElement | null;
 }
 
+/** A label request's airport, where it is drawn and its candidates. */
+interface Pending {
+  readonly drawn: Drawn;
+  readonly point: Point;
+  readonly candidates: readonly TagRect[];
+}
+
 /** A mounted airport layer. */
-export interface AirportLayer {
-  /** Redraws when the chart or the layers changed. */
-  sync(state: AtcState): void;
+export interface AirportLayer extends LabelSource {
+  /**
+   * Redraws when the chart or the layers changed; true when it did, so the
+   * labels need placing again.
+   */
+  sync(state: AtcState): boolean;
   /** Redraws for the current view; call on `zoomend` and `moveend`. */
   redraw(): void;
+  /**
+   * Each drawn chart airport's runway extent in container pixels (its ring
+   * box when it has a ring), for keeping every label off the runways.
+   */
+  runwayBoxes(): TagRect[];
   /** Removes every marker. */
   destroy(): void;
 }
+
+/** A square box of `size` pixels centred on `point`. */
+const boxAround = (point: Point, size: number): TagRect => ({
+  left: point.x - size / 2,
+  top: point.y - size / 2,
+  right: point.x + size / 2,
+  bottom: point.y + size / 2,
+});
+
+/**
+ * Where an airport's label may go around its `box`, best first: right of it
+ * (vertically centred), left, above and below (centred), each
+ * {@link LABEL_GAP} pixels clear. A block is `width` by `height` pixels.
+ */
+export function labelCandidates(
+  box: TagRect,
+  width: number,
+  height: number,
+): TagRect[] {
+  const midX = (box.left + box.right) / 2 - width / 2;
+  const midY = (box.top + box.bottom) / 2 - height / 2;
+  const at = (left: number, top: number): TagRect => ({
+    left,
+    top,
+    right: left + width,
+    bottom: top + height,
+  });
+
+  return [
+    at(box.right + LABEL_GAP, midY),
+    at(box.left - LABEL_GAP - width, midY),
+    at(midX, box.top - LABEL_GAP - height),
+    at(midX, box.bottom + LABEL_GAP),
+  ];
+}
+
+/** A block's estimated size in pixels: the longest line by the line count. */
+const blockSize = (lines: readonly string[]) => ({
+  width:
+    Math.max(0, ...lines.map((line) => line.length)) * CHAR_PX + BLOCK_PAD_X,
+  height: lines.length * LINE_PX + BLOCK_PAD_Y,
+});
+
+/** The label id of an airport, unique among every chart layer's labels. */
+const labelId = (code: string) => `apt:${code}`;
 
 /**
  * Whether a chart airport draws a ring instead of runways: heliports and
@@ -48,6 +126,44 @@ export interface AirportLayer {
 function drawsRing(airport: ChartAirport): boolean {
   if (airport.kind === 'heliport' || airport.kind === 'seaplane') return true;
   return airport.runways.every((runway) => runway.corners === null);
+}
+
+/**
+ * An airport's box in container pixels: the bounding box of every drawn
+ * runway's corners and ends at the current zoom, grown to cover at least the
+ * {@link RING_BOX} square around the reference point; just that square for
+ * an airport drawn as a ring.
+ */
+function anchorBox(
+  drawn: Drawn,
+  project: (lat: number, lon: number) => Point,
+): TagRect {
+  const { airport } = drawn;
+  const reference = boxAround(project(airport.lat, airport.lon), RING_BOX);
+  if (drawn.ring || !('runways' in airport)) return reference;
+  const points = airport.runways
+    .filter((runway) => runway.corners !== null)
+    .flatMap((runway) => [...(runway.corners ?? []), ...(runway.ends ?? [])])
+    .map(({ lat, lon }) => project(lat, lon));
+
+  return {
+    left: Math.min(reference.left, ...points.map((p) => p.x)),
+    top: Math.min(reference.top, ...points.map((p) => p.y)),
+    right: Math.max(reference.right, ...points.map((p) => p.x)),
+    bottom: Math.max(reference.bottom, ...points.map((p) => p.y)),
+  };
+}
+
+/** A drawn airport's label priority, ordered by rank within its tier. */
+function priorityOf(drawn: Drawn, index: number, count: number): number {
+  const tier =
+    drawn.tone === 'fallback'
+      ? LABEL_PRIORITY.fallback
+      : 'towered' in drawn.airport && drawn.airport.towered
+        ? LABEL_PRIORITY.towered
+        : LABEL_PRIORITY.airport;
+
+  return tier + index / (count + 1);
 }
 
 /** The airports to draw: the FAA chart when ready, otherwise the fallback table. */
@@ -77,8 +193,11 @@ function drawnAirports(state: AtcState, zoom: number): Drawn[] {
  * until the FAA chart is ready. One ring marker per airport is created once
  * per airports array and then only added or removed; aircraft snapshots
  * never reach it, because `sync` acts only when `state.chart` or
- * `state.layers` changed. Data blocks are placed in rank order around the
- * airports by `placeBlocks`, and their text goes in through `renderDataBlock`.
+ * `state.layers` changed. Data blocks are placed by the chart's shared
+ * label placer (`placeChartLabels`): `labelRequests` offers each block
+ * beside its runways (see {@link labelCandidates}), towered fields first,
+ * and `applyLabels` shows the placed ones. Text goes in through
+ * `renderDataBlock`, never as HTML.
  */
 export function createAirportLayer(options: {
   L: typeof Leaflet;
@@ -90,6 +209,10 @@ export function createAirportLayer(options: {
   const doc = map.getContainer().ownerDocument;
   const rings = new Map<string, Marker>();
   const blocks = new Map<string, Block>();
+  /** The airports drawn by the last redraw, in rank order. */
+  let drawnNow: readonly Drawn[] = [];
+  /** The last requests' airports and candidates, by label id. */
+  let pending = new Map<string, Pending>();
   let source: readonly (ChartAirport | Airport)[] | null = null;
   let synced: Pick<AtcState, 'chart' | 'layers'> | null = null;
 
@@ -98,7 +221,12 @@ export function createAirportLayer(options: {
     for (const { marker } of blocks.values()) marker.remove();
     rings.clear();
     blocks.clear();
+    drawnNow = [];
+    pending = new Map();
   };
+
+  const project = (lat: number, lon: number) =>
+    map.latLngToContainerPoint([lat, lon]);
 
   const ringMarker = (airport: ChartAirport | Airport): Marker => {
     const existing = rings.get(airport.code);
@@ -191,32 +319,58 @@ export function createAirportLayer(options: {
       if (marker && !map.hasLayer(marker)) marker.addTo(map);
     }
 
-    const points = new Map(
-      drawn.map(({ airport }) => [
-        airport.code,
-        map.latLngToContainerPoint([airport.lat, airport.lon]),
-      ]),
-    );
-    const placed = placeBlocks(
-      drawn.map(({ airport, lines }) => {
-        const point = points.get(airport.code) ?? { x: 0, y: 0 };
-        return { code: airport.code, x: point.x, y: point.y, lines };
+    drawnNow = drawn;
+  };
+
+  const labelRequests = (): LabelRequest[] => {
+    pending = new Map(
+      drawnNow.map((drawn): [string, Pending] => {
+        const { width, height } = blockSize(drawn.lines);
+        return [
+          labelId(drawn.airport.code),
+          {
+            drawn,
+            point: project(drawn.airport.lat, drawn.airport.lon),
+            candidates: labelCandidates(
+              anchorBox(drawn, project),
+              width,
+              height,
+            ),
+          },
+        ];
       }),
     );
-    for (const [code, { marker }] of blocks) {
-      if (!placed.has(code)) marker.remove();
+
+    return [...pending].map(([id, { drawn, candidates }], index) => ({
+      id,
+      priority: priorityOf(drawn, index, pending.size),
+      candidates,
+    }));
+  };
+
+  const applyLabels = (placed: ReadonlyMap<string, number | null>) => {
+    const shown = new Set<string>();
+    for (const [id, { drawn, point, candidates }] of pending) {
+      const index = placed.get(id);
+      const at =
+        index === null || index === undefined ? null : candidates[index];
+      if (!at) continue;
+      const { airport, lines, tone, ident } = drawn;
+      showBlock(airport, lines, tone, ident, [
+        point.x - at.left,
+        point.y - at.top,
+      ]);
+      shown.add(airport.code);
     }
-    for (const { airport, lines, tone, ident } of drawn) {
-      const at = placed.get(airport.code);
-      const point = points.get(airport.code);
-      if (at && point) {
-        showBlock(airport, lines, tone, ident, [
-          point.x - at.x,
-          point.y - at.y,
-        ]);
-      }
+    for (const [code, { marker }] of blocks) {
+      if (!shown.has(code)) marker.remove();
     }
   };
+
+  const runwayBoxes = (): TagRect[] =>
+    drawnNow
+      .filter((drawn) => drawn.tone === 'ink')
+      .map((drawn) => anchorBox(drawn, project));
 
   return {
     sync(state) {
@@ -225,12 +379,16 @@ export function createAirportLayer(options: {
         synced.chart === state.chart &&
         synced.layers === state.layers
       ) {
-        return;
+        return false;
       }
       synced = { chart: state.chart, layers: state.layers };
       redraw();
+      return true;
     },
     redraw,
+    labelRequests,
+    applyLabels,
+    runwayBoxes,
     destroy() {
       clear();
       source = null;

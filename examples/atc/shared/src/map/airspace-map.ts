@@ -6,6 +6,7 @@ import type { AtcState, AtcStore, ShownArea } from '../store';
 import { createCardSync } from './card-sync';
 import { createAirportLayer } from './chart/airport-layer';
 import { createAirspaceLayer } from './chart/airspace-layer';
+import { placeChartLabels } from './chart/chart-labels';
 import { createDiagramLayer } from './chart/diagram-layer';
 import { createLayersControl } from './chart/layers-control';
 import { createFollowController } from './follow';
@@ -120,6 +121,30 @@ export async function createAirspaceMap(options: {
     pane: 'atc-diagram',
     element,
   });
+  /**
+   * The chart layers as one: airport and airspace labels are placed together
+   * (`placeChartLabels`) after the layers redraw for a settled view, or after
+   * a sync that changed them; aircraft snapshots never place them.
+   */
+  const placeChart = () =>
+    placeChartLabels({
+      zoom: map.getZoom(),
+      sources: [airspace, airports],
+      runwayBoxes: airports.runwayBoxes,
+    });
+  const chart = {
+    sync(state: AtcState) {
+      const changed = [airspace.sync(state), airports.sync(state)];
+      diagrams.sync(state);
+      if (changed.some(Boolean)) placeChart();
+    },
+    redraw() {
+      airspace.redraw();
+      airports.redraw();
+      diagrams.redraw();
+      placeChart();
+    },
+  };
   // Added after the zoom control, so it stacks above it.
   const layersControl = createLayersControl({ L, map, store });
 
@@ -193,15 +218,11 @@ export async function createAirspaceMap(options: {
     cards.sync(store.getState());
     follow.panToFollowed(true);
     tags.layout();
-    airspace.redraw();
-    airports.redraw();
-    diagrams.redraw();
+    chart.redraw();
   });
   map.on('moveend', () => {
     tags.layout();
-    airspace.redraw();
-    airports.redraw();
-    diagrams.redraw();
+    chart.redraw();
   });
   map.on('move', () => cards.sync(store.getState()));
   map.on('click', () => {
@@ -297,9 +318,7 @@ export async function createAirspaceMap(options: {
         markers.set(aircraft.hex, marker);
       }
     }
-    airspace.sync(state);
-    airports.sync(state);
-    diagrams.sync(state);
+    chart.sync(state);
     cards.sync(state);
     follow.syncPill();
     syncOutline(state.shownArea);

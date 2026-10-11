@@ -5,6 +5,7 @@ import type { Aircraft } from '../../aircraft';
 import type { AirspaceShelf } from '../../chart';
 import { createAtcStore } from '../../store';
 import { createAirspaceLayer } from './airspace-layer';
+import { placeChartLabels } from './chart-labels';
 
 const L = (module as unknown as { default?: typeof module }).default ?? module;
 
@@ -100,9 +101,21 @@ function mount(zoom = 10) {
   }).setView([44.2541, -121.15], zoom);
   map.createPane('atc-airspace');
   const layer = createAirspaceLayer({ L, map, store, pane: 'atc-airspace' });
-  const unsubscribe = store.subscribe(() => layer.sync(store.getState()));
-  layer.sync(store.getState());
-  map.on('zoomend moveend', () => layer.redraw());
+  const place = () =>
+    placeChartLabels({
+      zoom: map.getZoom(),
+      sources: [layer],
+      runwayBoxes: () => [],
+    });
+  const sync = () => {
+    if (layer.sync(store.getState())) place();
+  };
+  const unsubscribe = store.subscribe(sync);
+  sync();
+  map.on('zoomend moveend', () => {
+    layer.redraw();
+    place();
+  });
   onTestFinished(() => {
     unsubscribe();
     layer.destroy();

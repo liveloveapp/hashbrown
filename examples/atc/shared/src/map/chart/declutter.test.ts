@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { ChartAirport } from '../../chart';
-import { placeBlocks, visibleAirports } from './declutter';
+import { visibleAirports } from './declutter';
 
 function field(
   code: string,
@@ -68,39 +68,4 @@ test('at zoom 10 every field shows, turf included', () => {
   const result = visibleAirports(airports, 10);
 
   expect(codes(result)).toEqual(['TURF', 'TWR', 'MID', 'LONG']);
-});
-
-test('two blocks at the same pixel place only the first', () => {
-  const items = [
-    { code: 'A', x: 100, y: 100, lines: ['ONE'] },
-    { code: 'B', x: 100, y: 100, lines: ['TWO'] },
-  ];
-
-  const placed = placeBlocks(items);
-
-  expect([...placed.keys()]).toEqual(['A']);
-  expect(placed.get('A')).toEqual({ x: 114, y: 90 });
-});
-
-test('blocks 300 px apart both place', () => {
-  const items = [
-    { code: 'A', x: 100, y: 100, lines: ['ONE'] },
-    { code: 'B', x: 400, y: 100, lines: ['TWO'] },
-  ];
-
-  const placed = placeBlocks(items);
-
-  expect([...placed.keys()]).toEqual(['A', 'B']);
-});
-
-test('a block that would cover another airport symbol is skipped', () => {
-  const items = [
-    { code: 'A', x: 100, y: 100, lines: ['ONE LINE OF TEXT'] },
-    { code: 'B', x: 160, y: 100, lines: ['X'] },
-  ];
-
-  const placed = placeBlocks(items);
-
-  expect(placed.has('A')).toBe(false);
-  expect(placed.has('B')).toBe(true);
 });

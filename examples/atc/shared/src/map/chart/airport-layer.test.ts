@@ -2,10 +2,12 @@
 import * as module from 'leaflet';
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from '../../aircraft';
-import type { ChartAirport, Runway } from '../../chart';
+import type { ChartAirport, Runway, RunwayEnd } from '../../chart';
 import { FALLBACK_AIRPORTS } from '../../places';
 import { createAtcStore } from '../../store';
+import { intersects } from '../tag-obstacles';
 import { createAirportLayer } from './airport-layer';
+import { placeChartLabels } from './chart-labels';
 
 const L = (module as unknown as { default?: typeof module }).default ?? module;
 
@@ -84,8 +86,11 @@ const plane: Aircraft = {
   verticalRateFpm: 0,
 };
 
-/** A 400x300 Leaflet map over Bend with the airport layer synced to a store. */
-function mount(zoom = 6) {
+/**
+ * A 400x300 Leaflet map over Bend (or `centre`) with the airport layer synced
+ * to a store and its labels placed by the chart coordinator.
+ */
+function mount(zoom = 6, centre: [number, number] = [44.0946, -121.2002]) {
   const store = createAtcStore();
   const element = document.createElement('div');
   element.className = 'atc-map';
@@ -95,11 +100,24 @@ function mount(zoom = 6) {
     zoomAnimation: false,
     fadeAnimation: false,
     markerZoomAnimation: false,
-  }).setView([44.0946, -121.2002], zoom);
+  }).setView(centre, zoom);
   map.createPane('atc-airports');
   const layer = createAirportLayer({ L, map, store, pane: 'atc-airports' });
-  const unsubscribe = store.subscribe(() => layer.sync(store.getState()));
-  layer.sync(store.getState());
+  const place = () =>
+    placeChartLabels({
+      zoom: map.getZoom(),
+      sources: [layer],
+      runwayBoxes: layer.runwayBoxes,
+    });
+  const sync = () => {
+    if (layer.sync(store.getState())) place();
+  };
+  const unsubscribe = store.subscribe(sync);
+  sync();
+  map.on('zoomend moveend', () => {
+    layer.redraw();
+    place();
+  });
   const count = (selector: string) => element.querySelectorAll(selector).length;
 
   return {
@@ -132,7 +150,6 @@ test('zooming to 10 adds the turf field', () => {
   view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
 
   view.map.setZoom(10);
-  view.layer.redraw();
 
   expect(view.count('.atc-apt')).toBe(3);
   expect(view.count('.atc-apt-block')).toBeGreaterThan(0);
@@ -289,4 +306,49 @@ test('the ident style applies at zoom 9 and not at zoom 14', () => {
   expect(close.count('.atc-apt-block')).toBeGreaterThan(0);
   expect(close.count('.is-ident')).toBe(0);
   close.cleanup();
+});
+
+test('at zoom 13 KRDM labels outside its crossing runways', () => {
+  const view = mount(13, [44.2541, -121.15]);
+  const end = (id: string, lat: number, lon: number) => ({ id, lat, lon });
+  const crossing = (a: RunwayEnd, b: RunwayEnd, id: string): Runway => ({
+    ...runway(7000, true),
+    id,
+    ends: [a, b],
+    corners: [a, b, b, a],
+  });
+  const runways = [
+    crossing(end('05', 44.2475, -121.165), end('23', 44.26, -121.135), '05/23'),
+    crossing(end('11', 44.258, -121.168), end('29', 44.25, -121.135), '11/29'),
+  ];
+  const corners = runways.flatMap((r) => r.corners ?? []);
+  const points = corners.map((c) =>
+    view.map.latLngToContainerPoint([c.lat, c.lon]),
+  );
+  const extent = {
+    left: Math.min(...points.map((p) => p.x)),
+    top: Math.min(...points.map((p) => p.y)),
+    right: Math.max(...points.map((p) => p.x)),
+    bottom: Math.max(...points.map((p) => p.y)),
+  };
+
+  view.store.setChart({
+    cycle: '2610',
+    effective: '2026-09-03',
+    airports: [{ ...base, runways }],
+  });
+
+  const block = view.element.querySelector<HTMLElement>('.atc-apt-block');
+  const icon = block?.parentElement;
+  const reference = view.map.latLngToContainerPoint([base.lat, base.lon]);
+  const left = reference.x + parseFloat(icon?.style.marginLeft ?? 'NaN');
+  const top = reference.y + parseFloat(icon?.style.marginTop ?? 'NaN');
+  const request = view.layer.labelRequests().find((r) => r.id === 'apt:KRDM');
+  const box = request?.candidates.find(
+    (c) => Math.abs(c.left - left) < 1 && Math.abs(c.top - top) < 1,
+  );
+  expect(block).not.toBeNull();
+  expect(box).toBeDefined();
+  expect(box && intersects(box, extent)).toBe(false);
+  view.cleanup();
 });
