@@ -1,5 +1,6 @@
 /*
- * Chart overlays: ink airports (runways, rings) and airport diagrams. The only
+ * Chart overlays: airspace, ink airports (runways, rings) and airport
+ * diagrams. The only
  * place chart colours are defined (design-rules.test.ts enforces this).
  * Values measured from the 3 Sep 2026 sectional GeoTIFFs and the FAA airport
  * diagram legend; see docs/superpowers/research/atc-overlays/.
@@ -7,8 +8,135 @@
 :root {
   --atc-chart-blue: #086ca8;
   --atc-chart-magenta: #76334f;
+  /* The screened bands of Class B and Class C boundaries. */
+  --atc-chart-blue-band: #3288b5;
+  --atc-chart-magenta-band: #a6768e;
   --atc-diagram-pavement: #cfcfcf;
   --atc-diagram-hotspot: #955101;
+}
+
+/*
+ * Airspace shelves (airspace-layer.ts). Leaflet sets stroke attributes on each
+ * path; these properties override them. B and C are solid bands; D and the
+ * Class E surface areas are dashed. Zoom 8 and below (data-zoom-overview)
+ * draws thinner lines and shorter dashes.
+ */
+.atc-map .atc-as {
+  fill: none;
+  stroke-linecap: butt;
+  stroke-opacity: 1;
+}
+.atc-map .atc-as.is-b {
+  stroke: var(--atc-chart-blue-band);
+  stroke-width: 5px;
+  stroke-dasharray: none;
+}
+.atc-map .atc-as.is-c {
+  stroke: var(--atc-chart-magenta-band);
+  stroke-width: 5px;
+  stroke-dasharray: none;
+}
+.atc-map .atc-as.is-d {
+  stroke: var(--atc-chart-blue);
+  stroke-width: 2px;
+  stroke-dasharray: 8 2.2;
+}
+.atc-map .atc-as.is-e2,
+.atc-map .atc-as.is-e3,
+.atc-map .atc-as.is-e4 {
+  stroke: var(--atc-chart-magenta);
+  stroke-width: 2px;
+  stroke-dasharray: 8 2.2;
+}
+.atc-map[data-zoom-overview] .atc-as.is-b,
+.atc-map[data-zoom-overview] .atc-as.is-c {
+  stroke-width: 3px;
+}
+.atc-map[data-zoom-overview] .atc-as.is-d,
+.atc-map[data-zoom-overview] .atc-as.is-e2,
+.atc-map[data-zoom-overview] .atc-as.is-e3,
+.atc-map[data-zoom-overview] .atc-as.is-e4 {
+  stroke-width: 1.5px;
+  stroke-dasharray: 6 1.65;
+}
+.atc-map .atc-as.is-dimmed {
+  opacity: 0.3;
+}
+/* A highlighted airport's casing: cobalt, 4 px wider than its shelf. */
+.atc-map .atc-as-casing {
+  fill: none;
+  stroke: var(--atc-accent);
+  stroke-opacity: 0.6;
+  stroke-linecap: butt;
+  stroke-dasharray: none;
+}
+.atc-map .atc-as-casing.is-b,
+.atc-map .atc-as-casing.is-c {
+  stroke-width: 9px;
+}
+.atc-map .atc-as-casing.is-d,
+.atc-map .atc-as-casing.is-e2,
+.atc-map .atc-as-casing.is-e3,
+.atc-map .atc-as-casing.is-e4 {
+  stroke-width: 6px;
+}
+.atc-map[data-zoom-overview] .atc-as-casing.is-b,
+.atc-map[data-zoom-overview] .atc-as-casing.is-c {
+  stroke-width: 7px;
+}
+.atc-map[data-zoom-overview] .atc-as-casing.is-d,
+.atc-map[data-zoom-overview] .atc-as-casing.is-e2,
+.atc-map[data-zoom-overview] .atc-as-casing.is-e3,
+.atc-map[data-zoom-overview] .atc-as-casing.is-e4 {
+  stroke-width: 5.5px;
+}
+
+/*
+ * Airspace altitude labels, centred on their point. Figures are the solid
+ * inks, not the screened bands, as on the chart: B and D blue, C magenta.
+ */
+.atc-map .atc-as-label {
+  font-family: var(--atc-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 10px;
+  line-height: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.atc-map .atc-as-label.is-b,
+.atc-map .atc-as-label.is-d {
+  color: var(--atc-chart-blue);
+}
+.atc-map .atc-as-label.is-c {
+  color: var(--atc-chart-magenta);
+}
+.atc-map .atc-as-text {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+}
+.atc-map .atc-as-text.is-stack > hr {
+  margin: 1px 0;
+  border: 0;
+  border-top: 1px solid currentColor;
+}
+.atc-map .atc-as-text.is-box {
+  padding: 2px 4px;
+}
+.atc-map .atc-as-brackets {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1px;
+  stroke-linecap: butt;
 }
 
 .atc-map .atc-apt {

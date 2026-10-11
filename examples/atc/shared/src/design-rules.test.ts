@@ -270,7 +270,7 @@ for (const [rule, check] of Object.entries(RULES)) {
 
 /** Chart colours and tokens, allowed only where chart features are drawn. */
 const CHART_COLOUR =
-  /#086ca8|#76334f|#cfcfcf|#955101|--atc-chart-|--atc-diagram-/i;
+  /#086ca8|#76334f|#3288b5|#a6768e|#cfcfcf|#955101|--atc-chart-|--atc-diagram-/i;
 /** Where chart colours may appear: chart.css and the chart modules. */
 const CHART_ALLOWED = ['shared/src/styles/chart.css', 'shared/src/map/chart/'];
 
@@ -286,14 +286,40 @@ test('chart colours stay on the map', () => {
   expect(offenders.map(({ file }) => file)).toEqual([]);
 });
 
-test('chart hexes are defined only in chart.css', () => {
-  const hex = /#086ca8|#76334f|#cfcfcf|#955101/i;
+/** The chart hexes: the two inks, the two airspace bands and the diagram. */
+const CHART_HEX = /#086ca8|#76334f|#3288b5|#a6768e|#cfcfcf|#955101/i;
 
-  const offenders = [...files, ...sharedSources]
+/** Files other than chart.css that use a chart hex. */
+function chartHexOffenders(
+  sources: readonly { file: string; source: string }[],
+): string[] {
+  return sources
     .filter(({ file }) => file !== 'shared/src/styles/chart.css')
-    .filter(({ source }) => hex.test(source));
+    .filter(({ source }) => CHART_HEX.test(source))
+    .map(({ file }) => file);
+}
 
-  expect(offenders.map(({ file }) => file)).toEqual([]);
+test('chart hexes are defined only in chart.css', () => {
+  const sources = [...files, ...sharedSources];
+
+  const offenders = chartHexOffenders(sources);
+
+  expect(offenders).toEqual([]);
+});
+
+test('an airspace band hex outside chart.css fails the hex rule', () => {
+  const sources = [
+    { file: 'shared/src/styles/chart.css', source: ':root { --a: #3288b5; }' },
+    { file: 'shared/src/styles/map.css', source: '.x { stroke: #3288B5; }' },
+    { file: 'shared/src/styles/cards.css', source: '.y { color: #A6768E; }' },
+  ];
+
+  const offenders = chartHexOffenders(sources);
+
+  expect(offenders).toEqual([
+    'shared/src/styles/map.css',
+    'shared/src/styles/cards.css',
+  ]);
 });
 
 test('the ink data block has a flat surface background and no depth', () => {

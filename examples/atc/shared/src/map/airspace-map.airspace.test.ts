@@ -54,7 +54,15 @@ const shelf: AirspaceShelf = {
   floor: { ft: 0, ref: 'SFC' },
   ceiling: { ft: 4000, exclusive: false },
   partTime: false,
-  rings: [],
+  rings: [
+    [
+      [-122.9, 45.4],
+      [-122.3, 45.4],
+      [-122.3, 45.8],
+      [-122.9, 45.8],
+      [-122.9, 45.4],
+    ],
+  ],
   bbox: [-122.9, 45.4, -122.3, 45.8],
 };
 const plane: Aircraft = {
@@ -156,4 +164,26 @@ test('while following a plane, showing airspace leaves the map alone', async () 
 
   expect(map.getCenter()).toEqual(centre);
   expect(map.getZoom()).toBe(zoom);
+});
+
+test('the map marks overview zooms at 8 and below', async () => {
+  const { map } = await mount();
+  const element = map.getContainer();
+
+  map.setZoom(8);
+  const atEight = element.hasAttribute('data-zoom-overview');
+  map.setZoom(9);
+  const atNine = element.hasAttribute('data-zoom-overview');
+
+  expect(atEight).toBe(true);
+  expect(atNine).toBe(false);
+});
+
+test('the airspace layer draws shelves in the atc-airspace pane', async () => {
+  const { map } = await mount();
+  map.setView([45.6, -122.6], 9);
+
+  const pane = map.getPane('atc-airspace');
+
+  expect(pane?.querySelectorAll('path.atc-as.is-c')).toHaveLength(1);
 });

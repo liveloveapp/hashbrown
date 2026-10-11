@@ -29,6 +29,7 @@ function mount() {
     toggle: () => find<HTMLButtonElement>('button.atc-layers-toggle'),
     panel: () => find<HTMLElement>('.atc-layers-panel'),
     airports: () => find<HTMLInputElement>('input[name=airports]'),
+    airspace: () => find<HTMLInputElement>('input[name=airspace]'),
   };
 }
 
@@ -86,4 +87,41 @@ test('the checkbox follows the store and the cycle shows once known', () => {
 
   expect(view.airports().checked).toBe(false);
   expect(view.panel().textContent).toContain('FAA cycle 2610');
+});
+
+test('the panel has an Airspace checkbox beside Airports', () => {
+  const view = mount();
+
+  view.toggle().click();
+
+  expect(view.airspace().checked).toBe(true);
+  expect(view.airspace().nextElementSibling?.textContent).toBe('Airspace');
+});
+
+test('unchecking Airspace turns the airspace layer off', () => {
+  const view = mount();
+  view.toggle().click();
+
+  view.airspace().click();
+
+  expect(view.store.getState().layers.airspace).toBe(false);
+  expect(view.store.getState().layers.airports).toBe(true);
+});
+
+test('failed airspace reads unavailable beside Airspace', () => {
+  const view = mount();
+
+  view.store.setAirspaceFailed();
+
+  expect(view.airspace().nextElementSibling?.textContent).toBe(
+    'Airspace · unavailable',
+  );
+});
+
+test('the Airspace checkbox follows the store', () => {
+  const view = mount();
+
+  view.store.setLayers({ airspace: false });
+
+  expect(view.airspace().checked).toBe(false);
 });
