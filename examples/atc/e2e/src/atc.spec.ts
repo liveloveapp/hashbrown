@@ -506,6 +506,7 @@ test('shows the Redmond airspace with its ceiling label', async ({
   await expect(
     page.locator('.atc-as-label .atc-as-text', { hasText: '56' }),
   ).toBeVisible();
+  await expect(page.locator('.atc-as.is-d.is-highlighted')).toHaveCount(1);
   await expect(
     page.getByText('Redmond has a part-time Class D.'),
   ).toBeVisible();
