@@ -121,6 +121,8 @@ async function mountPhone() {
       return px(icon?.style.top) + px(pane?.style.top);
     },
     motionOn: () => (reduced = false),
+    /** Animation frames waiting to run. */
+    pendingFrames: () => frames.size,
     setCardHeight: (height: number) => (cardHeight = height),
     runFrames(time: number) {
       clock = time;
@@ -160,5 +162,16 @@ test('when the docked card grows while following, the plane eases to the new mid
   expect(Math.abs(before - (76 + 180) / 2)).toBeLessThan(2);
   expect(nextFrame - before).toBeLessThan(10);
   expect(Math.abs(map.y() - (136 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('following under reduced motion schedules no frame loop of its own', async () => {
+  const map = await mountPhone();
+
+  for (let time = 16; time <= 160; time += 16) {
+    map.runFrames(time);
+  }
+
+  expect(map.pendingFrames()).toBe(0);
   map.cleanup();
 });

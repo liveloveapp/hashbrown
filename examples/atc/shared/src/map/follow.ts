@@ -131,7 +131,14 @@ export function createFollowController(options: {
     }
     const now = performance.now();
     const y = centreY(now);
-    if (centre !== null && now - centre.at < CENTRE_EASE_MS) {
+    // Only a real ease needs frames: under reduced motion, or with the
+    // middle already where it is going, the plane frames (if any) suffice.
+    if (
+      centre !== null &&
+      centre.from !== centre.to &&
+      now - centre.at < CENTRE_EASE_MS &&
+      !prefersReducedMotion()
+    ) {
       easeFrame ??= requestAnimationFrame(() => {
         easeFrame = null;
         panToFollowed(false);
