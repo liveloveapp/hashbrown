@@ -40,23 +40,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
 Expose your components and give the model tools. The model only renders components you register, and Skillet validates their props. Tools run in the browser, with your app's state and services.
 
 ```tsx
-export function InvoiceChat({ api }: { api: InvoiceApi }) {
-  const getInvoices = useTool({
-    name: 'getInvoices',
-    description: 'List the invoices',
+export function FlightChat({ api }: { api: AircraftApi }) {
+  const getAircraft = useTool({
+    name: 'getAircraft',
+    description: 'List the aircraft on the map',
     handler: () => api.list(),
     deps: [api],
   });
 
   const chat = useUiChat({
-    system: 'Help users understand invoices.',
+    system: 'Help users understand the air traffic on the map.',
     components: [
-      exposeComponent(InvoiceCard, {
-        description: 'Show one invoice',
-        props: { id: s.string('Invoice id') },
+      exposeComponent(FlightCard, {
+        description: 'Show one aircraft',
+        props: { hex: s.string('Aircraft hex code') },
       }),
     ],
-    tools: [getInvoices],
+    tools: [getAircraft],
   });
 
   // Components render while the response streams in.

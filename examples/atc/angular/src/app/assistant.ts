@@ -1,8 +1,8 @@
 import {
   aircraftCompareContract,
+  airportCardContract,
   arrivalsBoardContract,
-  createAtcTools,
-  fetchRoute,
+  createBrowserAtcTools,
   flightCardContract,
   transcriptItems,
 } from '@atc/shared';
@@ -25,6 +25,7 @@ import {
   AircraftCompare,
   AircraftCompareFallback,
 } from './components/aircraft-compare';
+import { AirportCard, AirportCardFallback } from './components/airport-card';
 import {
   ArrivalsBoard,
   ArrivalsBoardFallback,
@@ -61,6 +62,13 @@ const components = [
     fallback: AircraftCompareFallback,
     children: false,
   }),
+  exposeComponent(AirportCard, {
+    name: airportCardContract.name,
+    description: airportCardContract.description,
+    input: airportCardContract.props,
+    fallback: AirportCardFallback,
+    children: false,
+  }),
 ];
 
 /** The chat panel: components, browser-side tools and the streaming answer. */
@@ -88,10 +96,7 @@ const components = [
 export class Assistant {
   /** Emits when the user sends a message. */
   readonly sent = output();
-  private readonly atc = createAtcTools({
-    store: inject(ATC_STORE),
-    fetchRoute,
-  });
+  private readonly atc = createBrowserAtcTools(inject(ATC_STORE));
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
   //    already on the map; no plane list goes to the server.
@@ -106,6 +111,8 @@ export class Assistant {
     createTool(this.atc.lookupPlace),
     createTool(this.atc.showArea),
     createTool(this.atc.resetMap),
+    createTool(this.atc.showAirport),
+    createTool(this.atc.setLayers),
   ];
 
   // 3. Render the stream.

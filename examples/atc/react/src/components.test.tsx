@@ -1,4 +1,4 @@
-import { type Aircraft, createAtcStore } from '@atc/shared';
+import { type Aircraft, type ChartAirport, createAtcStore } from '@atc/shared';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import {
@@ -6,6 +6,7 @@ import {
   AircraftCompareFallback,
 } from './components/aircraft-compare';
 import { ArrivalsBoard } from './components/arrivals-board';
+import { AirportCard, AirportCardFallback } from './components/airport-card';
 import { FlightCard, FlightCardFallback } from './components/flight-card';
 import { AtcStoreProvider } from './store';
 
@@ -24,6 +25,54 @@ const plane: Aircraft = {
   groundSpeedKt: 240,
   trackDeg: 180,
   verticalRateFpm: -800,
+};
+
+const krdm: ChartAirport = {
+  code: 'KRDM',
+  faa: 'RDM',
+  name: 'Roberts Field',
+  city: 'Redmond',
+  state: 'OR',
+  aliases: [],
+  lat: 44.2541,
+  lon: -121.15,
+  elevationFt: 3082,
+  kind: 'airport',
+  towered: true,
+  towerPartTime: true,
+  frequencies: {
+    tower: '124.5',
+    atis: '119.025',
+    ctaf: '124.5',
+    unicom: '122.95',
+  },
+  weather: null,
+  lighting: 'full',
+  fuel: true,
+  military: false,
+  runways: [
+    {
+      id: '05/23',
+      lengthFt: 7038,
+      widthFt: 150,
+      surface: 'ASPH',
+      hard: true,
+      ends: null,
+      corners: null,
+      bearingDeg: null,
+    },
+    {
+      id: '11/29',
+      lengthFt: 7006,
+      widthFt: 100,
+      surface: 'ASPH',
+      hard: true,
+      ends: null,
+      corners: null,
+      bearingDeg: null,
+    },
+  ],
+  rank: 0,
 };
 
 function setup() {
@@ -281,4 +330,59 @@ test('a flight card header and a compare item are buttons that show the plane on
   expect(fromCard).toBe('aaaaaa');
   expect(store.getState().selectedHex).toBe('aaaaaa');
   expect(rest).toEqual([]);
+});
+
+test('an airport card shows the title, badge, tower frequency and runway', () => {
+  const store = setup();
+  store.setChart({ cycle: '2610', effective: '2026-10-01', airports: [krdm] });
+
+  const { container } = render(
+    <AtcStoreProvider store={store}>
+      <AirportCard note="x" airport="KRDM" />
+    </AtcStoreProvider>,
+  );
+
+  const badge = container.querySelector('.atc-airport-badge');
+  expect(screen.getByText('Roberts Field (RDM)')).toBeVisible();
+  expect(badge).toHaveTextContent('Towered');
+  expect(badge?.classList.contains('is-towered')).toBe(true);
+  expect(container.querySelector('dd')?.textContent).toBe('124.5★');
+  expect(container.querySelector('.atc-airport-runways li')?.textContent).toBe(
+    '05/23 · 7,038 × 150 ft · asphalt',
+  );
+});
+
+test('the airport card head shows the airport on the map', () => {
+  const store = setup();
+  store.setChart({ cycle: '2610', effective: '2026-10-01', airports: [krdm] });
+  const { container } = render(
+    <AtcStoreProvider store={store}>
+      <AirportCard note="x" airport="KRDM" />
+    </AtcStoreProvider>,
+  );
+
+  act(() => container.querySelector('button')?.click());
+
+  expect(store.getState().viewRequest?.kind).toBe('airport');
+});
+
+test('an airport card for an unknown code says so', () => {
+  const store = setup();
+  store.setChart({ cycle: '2610', effective: '2026-10-01', airports: [krdm] });
+
+  render(
+    <AtcStoreProvider store={store}>
+      <AirportCard note="x" airport="KJFK" />
+    </AtcStoreProvider>,
+  );
+
+  expect(screen.getByText('Unknown airport')).toBeVisible();
+});
+
+test('the airport fallback identifies the airport', () => {
+  cleanup();
+
+  render(<AirportCardFallback tag="AirportCard" partialProps={{}} />);
+
+  expect(screen.getByText('Identifying airport…')).toBeVisible();
 });

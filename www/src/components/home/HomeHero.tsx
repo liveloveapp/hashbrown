@@ -53,16 +53,14 @@ export function HomeHero({ codeHtml }: { codeHtml: Record<Sdk, string> }) {
           ))}
         />
         <div className={styles.result} aria-hidden="true">
-          <div className={styles.bubble}>
-            Show me Acme&apos;s overdue invoice
-          </div>
-          <div className={styles.invoice}>
-            <strong>INV-1042 · Acme Corp</strong>
-            <span className={styles.tag}>62 days overdue</span>
-            <span>$12,480.00 · due Jul 22</span>
+          <div className={styles.bubble}>What&apos;s flying near Bend?</div>
+          <div className={styles.card}>
+            <strong>ASA1290 · Alaska Airlines</strong>
+            <span className={styles.tag}>34,000 ft</span>
+            <span>Boeing 737-900 · scheduled SEA → SFO</span>
           </div>
           <div className={styles.streaming}>
-            &lt;InvoiceCard&gt; streaming <span className={styles.caret}></span>
+            &lt;FlightCard&gt; streaming <span className={styles.caret}></span>
           </div>
         </div>
       </div>

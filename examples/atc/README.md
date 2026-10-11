@@ -49,10 +49,13 @@ atc/
     src/find-aircraft.ts The query behind the findAircraft tool
     src/contracts.ts     Component contracts (Skillet schemas) and the system prompt
     src/views.ts, detail-view.ts, tool-chips.ts   Pure view models for the UI
+    src/chart/           Chart types, cycle, browser chart feed
     src/map/             Leaflet map, detail card, follow pill (no framework)
+    src/map/chart/       Airport symbols, data blocks, diagrams, Layers control
     src/styles/atc.css   One stylesheet for both apps, as ordered partials
   angular/  react/       Thin shells: components and the core file
   server/                /api/run (model and system prompt pinned) and /api/aircraft (cached adsb.lol)
+                         /api/chart/airports and /api/chart/surfaces (cached FAA and OSM data)
   e2e/                   Playwright against both apps with a mocked model
   tools/                 Vercel build output
 ```
@@ -140,8 +143,23 @@ set to upload the videos, or run the commands it prints.
   deployment with heavy traffic should point `TILE_LAYER` in `shared/src/map/tiles.ts` at
   a commercial tile provider.
 
-The map credits all three in its attribution line. The e2e tests stub `/api/aircraft`
-with synthetic frames and block tiles and routes.
+- **Airports:** FAA NASR 28-day subscription (airports, runways, frequencies, tower
+  hours) and FAA ADDS airport-mapping layers, both public domain. The server fetches
+  them, caches them per AIRAC cycle and shares them through the CDN for a day.
+- **Airport diagrams:** at airports without FAA mapping, taxiways, aprons and hold
+  lines come from [OpenStreetMap](https://www.openstreetmap.org/copyright) through
+  the Overpass API, under the
+  [ODbL](https://opendatacommons.org/licenses/odbl/). `/api/chart/surfaces` serves
+  that derived data under the same licence. The query is in
+  `server/src/chart/upstream.ts`.
+- **Not for navigation.** The chart is drawn like a VFR sectional, but it is not one.
+  Do not use it to plan or fly a flight.
+
+The `/api/chart/*` routes need no key. Each has its own Vercel function (see
+"Hosting").
+
+The map credits all of these in its attribution line. The e2e tests stub
+`/api/aircraft` and `/api/chart/*` with synthetic data and block tiles and routes.
 
 ## Hosting
 
@@ -149,7 +167,8 @@ Only the Angular app is hosted, at https://atc.hashbrown.dev/angular/ (the root 
 there). The React app is built and tested in this repository but runs locally for now;
 `HOSTED_APPS` in `tools/build-vercel-output.mts` is the one line to change to host it.
 
-`npx nx build atc` writes `.vercel/output`. The hosted project (`hashbrown-atc`) needs:
+`npx nx build atc` writes `.vercel/output`, with functions for `/api/run`,
+`/api/aircraft`, `/api/chart/airports` and `/api/chart/surfaces`. The hosted project (`hashbrown-atc`) needs:
 
 - `OPENAI_API_KEY`: a dedicated OpenAI project key with a hard monthly budget.
 - A Vercel Firewall rate-limit rule on `/api/run` (for example 20 requests per minute per IP).

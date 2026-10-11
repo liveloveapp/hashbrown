@@ -172,3 +172,14 @@ test('ends with the get started call to action', async () => {
   expect(html).toContain('Star on GitHub');
   expect(html.match(/role="radiogroup"/g)).toHaveLength(2);
 });
+
+test('the hero and steps show atc, not the retired invoicing example', async () => {
+  const html = await render();
+
+  const lower = html.toLowerCase();
+
+  expect(html).toContain('&lt;FlightCard&gt; streaming');
+  expect(lower).not.toContain('invoice');
+  expect(html).not.toContain('AgingChart');
+  expect(html).not.toContain('Acme');
+});

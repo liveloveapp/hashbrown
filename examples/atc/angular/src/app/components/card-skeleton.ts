@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /** The quiet hold-back line shown while a card's aircraft IDs stream in. */
 @Component({
@@ -6,9 +6,12 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'atc-card-skeleton' },
   template: `
-    <p class="atc-card-muted">Identifying aircraft…</p>
+    <p class="atc-card-muted">{{ label() }}</p>
     <div class="atc-skeleton-bar" aria-hidden="true"></div>
     <div class="atc-skeleton-bar is-short" aria-hidden="true"></div>
   `,
 })
-export class CardSkeleton {}
+export class CardSkeleton {
+  /** The hold-back line. */
+  readonly label = input('Identifying aircraft…');
+}

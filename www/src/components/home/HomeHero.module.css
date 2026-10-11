@@ -108,7 +108,7 @@
   background: var(--sunshine-yellow-light);
 }
 
-.invoice {
+.card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 12px;
@@ -118,7 +118,7 @@
   background: #fff;
 }
 
-.invoice strong {
+.card strong {
   font: 700 15px/1.3 var(--font-heading);
 }
 

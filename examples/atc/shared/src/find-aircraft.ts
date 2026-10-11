@@ -5,13 +5,12 @@ import { type AircraftKind, KINDS } from './kinds';
 import { aircraftTypeName, airlineFor } from './names';
 import {
   type Airport,
-  AIRPORT_CODES,
-  AIRPORTS,
   type Area,
   AREAS,
   type LatLon,
   lookupPlace,
 } from './places';
+import { airportDirectory } from './directory';
 import type { AtcState } from './store';
 
 // The pure query behind the findAircraft tool: filters and sorts the
@@ -49,9 +48,9 @@ export const findAircraftInput = s.object(
     minAltitudeFt: s.anyOf([s.number('Minimum altitude in feet'), s.nullish()]),
     maxAltitudeFt: s.anyOf([s.number('Maximum altitude in feet'), s.nullish()]),
     approaching: s.anyOf([
-      s.enumeration('Only aircraft on approach to this airport (ICAO code)', [
-        ...AIRPORT_CODES,
-      ]),
+      s.string(
+        'Only aircraft on approach to this airport: ICAO code from lookupPlace',
+      ),
       s.nullish(),
     ]),
     near: s.anyOf([
@@ -134,7 +133,7 @@ const SORTS: Record<
 /**
  * Filters and sorts the aircraft on the map. Distances are measured from the
  * airport in `near`, else the one in `approaching`, else the area centre.
- * A `near` airport outside the table matches nothing.
+ * A `near` or `approaching` airport outside the directory matches nothing.
  */
 export function findAircraft(
   state: AtcState,
@@ -143,10 +142,16 @@ export function findAircraft(
 ): AircraftRow[] {
   const airline = text(input.airline);
   const type = text(input.typeCode);
-  const airport = input.approaching ? AIRPORTS[input.approaching] : null;
+  const directory = airportDirectory(state);
+  const airport = input.approaching
+    ? lookupPlace(input.approaching, directory)
+    : null;
+  if (input.approaching && airport === null) {
+    return [];
+  }
   const near = input.near ?? null;
   const centre: Airport | null =
-    near === null ? null : lookupPlace(near.airport);
+    near === null ? null : lookupPlace(near.airport, directory);
   if (near !== null && centre === null) {
     return [];
   }

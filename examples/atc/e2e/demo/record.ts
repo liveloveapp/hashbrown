@@ -11,7 +11,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join, resolve } from 'node:path';
-import { scenario } from '../src/fixtures';
+import { CHART_AIRPORTS, chartSurfaces, scenario } from '../src/fixtures';
 import { scriptAtcModel } from '../src/model';
 import { renderDirector, STAGE } from './director';
 import {
@@ -114,8 +114,21 @@ async function capture(
   };
 }
 
-/** Serves synthetic traffic, blocks route lookups, and leaves map tiles live. */
+/**
+ * Serves synthetic traffic and the e2e chart fixtures, blocks route lookups,
+ * and leaves map tiles live.
+ */
 async function stubFeeds(context: BrowserContext): Promise<void> {
+  await context.route('**/api/chart/airports', (route) =>
+    route.fulfill({ json: CHART_AIRPORTS }),
+  );
+  await context.route('**/api/chart/surfaces**', (route) =>
+    route.fulfill({
+      json: chartSurfaces(
+        new URL(route.request().url()).searchParams.get('airport') ?? '',
+      ),
+    }),
+  );
   let next = 0;
   await context.route('**/api/aircraft**', (route) =>
     route.fulfill({ json: demoFrame(next++) }),

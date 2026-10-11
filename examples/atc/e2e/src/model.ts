@@ -143,4 +143,38 @@ export function scriptAtcModel(mock: LLMock): void {
       },
     ],
   });
+  const airportCard = ui({
+    AirportCard: {
+      props: { note: 'Redmond has a part-time tower.', airport: 'KRDM' },
+    },
+  });
+  for (const id of ['airport-lookup', 'airport-show']) {
+    mock.onToolResult(id, async () => ({ content: airportCard }));
+  }
+  mock.onMessage(STARTER_PROMPTS[4], {
+    toolCalls: [
+      {
+        id: 'airport-lookup',
+        name: 'lookupPlace',
+        arguments: { query: 'Redmond' },
+      },
+      {
+        id: 'airport-show',
+        name: 'showAirport',
+        arguments: { airport: 'KRDM' },
+      },
+    ],
+  });
+  mock.onToolResult('hide-airports', async () => ({
+    content: 'Airports are hidden.',
+  }));
+  mock.onMessage('Hide the airports.', {
+    toolCalls: [
+      {
+        id: 'hide-airports',
+        name: 'setLayers',
+        arguments: { airports: false },
+      },
+    ],
+  });
 }
