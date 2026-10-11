@@ -294,6 +294,7 @@ All new tools are added to `ATC_TOOL_DEFINITIONS`, and the server pins them.
     - `classes` is a list, for example `['D', 'E2']`.
     - `shelves` is a list of `{ type, floor, ceiling }` text, for example
       `{ type: 'C', floor: '1,100 MSL', ceiling: '4,000 MSL' }`.
+      An exclusive ceiling reads `below 3,000 MSL`.
     - `aircraftInside` counts aircraft in any of the airport's shelves.
   - While following a plane, it returns `moved: false` with the existing
     follow reason.

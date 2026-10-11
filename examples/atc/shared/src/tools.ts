@@ -127,7 +127,10 @@ export interface AtcToolContext {
    * waits up to {@link SURFACES_WAIT_MS} for it so `diagram` is accurate.
    */
   readonly loadSurfaces?: (code: string) => Promise<void>;
-  /** How long chart tools wait for a loading chart; {@link CHART_WAIT_MS} if unset. */
+  /**
+   * How long chart and airspace tools wait for a loading chart or airspace;
+   * {@link CHART_WAIT_MS} if unset.
+   */
   readonly chartWaitMs?: number;
 }
 
@@ -158,7 +161,10 @@ function shelfFeet(ft: number, sfc: boolean): string {
   return sfc ? 'SFC' : `${ft.toLocaleString('en-US')} MSL`;
 }
 
-/** One shelf as the model reads it. */
+/**
+ * One shelf as the model reads it. An exclusive ceiling reads "below 3,000
+ * MSL"; an inclusive one reads "3,000 MSL".
+ */
 function shelfText(shelf: AirspaceShelf) {
   return {
     type: shelf.type,
@@ -166,7 +172,7 @@ function shelfText(shelf: AirspaceShelf) {
     ceiling:
       shelf.ceiling === null
         ? 'up to overlying airspace'
-        : shelfFeet(shelf.ceiling.ft, false),
+        : `${shelf.ceiling.exclusive ? 'below ' : ''}${shelfFeet(shelf.ceiling.ft, false)}`,
     partTime: shelf.partTime,
   };
 }
@@ -181,7 +187,7 @@ export const ATC_TOOL_DEFINITIONS = {
   findAircraft: {
     name: 'findAircraft' as const,
     description:
-      'Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport. With near, the map also shows and outlines that area. Returns compact rows.',
+      "Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport, or keep only aircraft inside an airport's airspace (optionally of one class). With near, the map also shows and outlines that area; with inAirspace, it highlights that airspace. Returns compact rows.",
     schema: findAircraftInput,
   },
   lookupPlace: {
@@ -310,7 +316,7 @@ export const ATC_TOOL_NAMES = Object.keys(
 export function createAtcTools(context: AtcToolContext) {
   const { store, chartWaitMs = CHART_WAIT_MS } = context;
   const chartSettled = () => whenChartSettled(store, chartWaitMs);
-  const airspaceSettled = () => whenAirspaceSettled(store, CHART_WAIT_MS);
+  const airspaceSettled = () => whenAirspaceSettled(store, chartWaitMs);
 
   return {
     findAircraft: {

@@ -4,6 +4,7 @@ import type { AirspaceShelf, ChartAirport } from './chart';
 import { applySnapshot, createAtcStore, INITIAL_STATE } from './store';
 import { findAircraft, type FindAircraftInput } from './find-aircraft';
 import {
+  ATC_TOOL_DEFINITIONS,
   ATC_TOOL_NAMES,
   createAtcTools,
   whenAirspaceSettled,
@@ -1149,6 +1150,53 @@ test('setLayers applies the airspace layer', async () => {
   });
 
   expect(result).toEqual({ layers: { airports: true, airspace: false } });
+});
+
+test('showAirspace reads an exclusive ceiling as below it', async () => {
+  const seattleD: AirspaceShelf = {
+    ...rdmShelf,
+    partTime: false,
+    ceiling: { ft: 3000, exclusive: true },
+  };
+  const store = airspaceStore([seattleD]);
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirspace.handler({ airport: 'KRDM' });
+
+  expect(result).toMatchObject({
+    shown: true,
+    shelves: [
+      { type: 'D', floor: 'SFC', ceiling: 'below 3,000 MSL', partTime: false },
+    ],
+  });
+});
+
+test('the findAircraft description mentions the airspace filter', () => {
+  const description = ATC_TOOL_DEFINITIONS.findAircraft.description;
+
+  const mentions = description.includes("inside an airport's airspace");
+
+  expect(mentions).toBe(true);
+});
+
+test('the airspace tools wait only chartWaitMs for loading airspace', async () => {
+  const store = readyStore();
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    chartWaitMs: 0,
+  });
+  const late = new Promise((resolve) => setTimeout(resolve, 500, 'late'));
+
+  const result = await Promise.race([
+    tools.airspaceAt.handler({ hex: 'aaaaaa' }),
+    late,
+  ]);
+
+  expect(result).toEqual({
+    found: false,
+    reason: 'Airspace data is unavailable right now.',
+  });
 });
 
 test('whenAirspaceSettled resolves once airspace is no longer loading', async () => {
