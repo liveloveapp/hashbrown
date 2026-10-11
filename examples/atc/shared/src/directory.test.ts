@@ -124,3 +124,17 @@ test('chartAirportByCode is null while only the fallback is loaded', () => {
   expect(result).toBeNull();
   expect(airportByCode(INITIAL_STATE, 'KRDM')?.code).toBe('KRDM');
 });
+
+test('fallback airports beyond the chart radius still resolve once it is ready', () => {
+  const directory = airportDirectory(ready);
+
+  const spokane = airportByCode(ready, 'KGEG');
+  const sunValley = lookupPlace('Sun Valley', directory);
+  const chartOnly = chartAirportByCode(ready, 'KGEG');
+
+  expect(spokane?.code).toBe('KGEG');
+  expect(lookupPlace('Spokane', directory)?.code).toBe('KGEG');
+  expect(sunValley?.code).toBe('KSUN');
+  expect(chartOnly).toBeNull();
+  expect(directory.filter((a) => a.code === 'KRDM')).toHaveLength(1);
+});

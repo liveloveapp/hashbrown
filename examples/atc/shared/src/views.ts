@@ -268,6 +268,19 @@ const SURFACE_WORDS: Readonly<Record<string, string>> = {
   WATER: 'water',
 };
 
+/**
+ * Words for a NASR surface code. Compound codes name each part
+ * (`ASPH-CONC` is "asphalt/concrete"), the grooved suffix `G` is dropped and
+ * unknown parts are lower-cased.
+ */
+function surfaceWords(code: string): string {
+  return code
+    .split('-')
+    .filter((part) => part !== '' && part !== 'G')
+    .map((part) => SURFACE_WORDS[part] ?? part.toLowerCase())
+    .join('/');
+}
+
 /** Builds the AirportCard view for an ICAO or FAA code. */
 export function airportCardView(
   state: AtcState,
@@ -313,10 +326,7 @@ export function airportCardView(
     ),
     elevation: `${chart.elevationFt.toLocaleString('en-US')} ft`,
     runways: chart.runways.map((r) => {
-      const surface =
-        r.surface === null
-          ? null
-          : (SURFACE_WORDS[r.surface] ?? r.surface.toLowerCase());
+      const surface = r.surface === null ? null : surfaceWords(r.surface);
       const size = `${r.lengthFt.toLocaleString('en-US')} × ${r.widthFt.toLocaleString('en-US')} ft`;
 
       return [r.id, size, ...(surface === null ? [] : [surface])].join(' · ');

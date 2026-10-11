@@ -386,6 +386,34 @@ test('airportCardView skips null frequencies and names other surfaces', () => {
   });
 });
 
+test('airportCardView names each part of a compound surface code', () => {
+  const state = {
+    ...chartState,
+    chart: {
+      ...chartState.chart,
+      airports: [
+        krdm({
+          runways: [
+            { ...krdm().runways[0], id: '05/23', surface: 'ASPH-G' },
+            { ...krdm().runways[0], id: '11/29', surface: 'ASPH-CONC' },
+            { ...krdm().runways[0], id: '16/34', surface: 'TURF-WXYZ' },
+          ],
+        }),
+      ],
+    },
+  };
+
+  const view = airportCardView(state, 'KRDM');
+
+  expect(view).toMatchObject({
+    runways: [
+      '05/23 · 7,038 × 150 ft · asphalt',
+      '11/29 · 7,038 × 150 ft · asphalt/concrete',
+      '16/34 · 7,038 × 150 ft · turf/wxyz',
+    ],
+  });
+});
+
 test('airportCardView gives unknown for a code nobody knows', () => {
   const view = airportCardView(chartState, 'ZZZZ');
 

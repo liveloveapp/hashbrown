@@ -37,11 +37,67 @@ function showAreaOnce(store: AtcStore, area: ShownArea): void {
   }
 }
 
+/** How long chart tools wait for a loading chart before using what is loaded. */
+export const CHART_WAIT_MS = 5000;
+
+/** How long `showAirport` waits for an airport's surfaces to load. */
+export const SURFACES_WAIT_MS = 3000;
+
+/**
+ * Resolves once `chart.status` is no longer `loading` (the chart is `ready` or
+ * `limited`), or after `timeoutMs`, whichever comes first. Resolves at once
+ * when the chart has already settled. Always unsubscribes from the store.
+ */
+export function whenChartSettled(
+  store: AtcStore,
+  timeoutMs = CHART_WAIT_MS,
+): Promise<void> {
+  if (store.getState().chart.status !== 'loading') {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      unsubscribe();
+      resolve();
+    };
+    const timer = setTimeout(done, timeoutMs);
+    const unsubscribe = store.subscribe(() => {
+      if (store.getState().chart.status !== 'loading') {
+        done();
+      }
+    });
+  });
+}
+
+/** Waits for `promise` for up to `ms`, ignoring its result and any rejection. */
+function settleWithin(promise: Promise<unknown>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  return Promise.race([
+    promise.then(
+      () => undefined,
+      () => undefined,
+    ),
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 /** What the tools need from the app. */
 export interface AtcToolContext {
   readonly store: AtcStore;
   /** Resolves null when no route is published; rejects when the lookup fails. */
   readonly fetchRoute: (callsign: string) => Promise<Route | null>;
+  /**
+   * Loads one airport's surfaces into the store. When given, `showAirport`
+   * waits up to {@link SURFACES_WAIT_MS} for it so `diagram` is accurate.
+   */
+  readonly loadSurfaces?: (code: string) => Promise<void>;
+  /** How long chart tools wait for a loading chart; {@link CHART_WAIT_MS} if unset. */
+  readonly chartWaitMs?: number;
 }
 
 const noInput = s.object('No input', {});
@@ -177,12 +233,16 @@ export const ATC_TOOL_NAMES = Object.keys(
  * (5) script it in `e2e/src/atc.spec.ts`.
  */
 export function createAtcTools(context: AtcToolContext) {
-  const { store } = context;
+  const { store, chartWaitMs = CHART_WAIT_MS } = context;
+  const chartSettled = () => whenChartSettled(store, chartWaitMs);
 
   return {
     findAircraft: {
       ...ATC_TOOL_DEFINITIONS.findAircraft,
       handler: async (input: FindAircraftInput) => {
+        if (input.near || input.approaching) {
+          await chartSettled();
+        }
         if (input.near) {
           const centre = lookupPlace(
             input.near.airport,
@@ -204,6 +264,7 @@ export function createAtcTools(context: AtcToolContext) {
     lookupPlace: {
       ...ATC_TOOL_DEFINITIONS.lookupPlace,
       handler: async ({ query }: { query: string }) => {
+        await chartSettled();
         const airport = lookupPlace(query, airportDirectory(store.getState()));
 
         return airport === null
@@ -223,6 +284,7 @@ export function createAtcTools(context: AtcToolContext) {
     showArea: {
       ...ATC_TOOL_DEFINITIONS.showArea,
       handler: async (input: { airport: string; radiusNm: number | null }) => {
+        await chartSettled();
         const airport = lookupPlace(
           input.airport,
           airportDirectory(store.getState()),
@@ -253,6 +315,7 @@ export function createAtcTools(context: AtcToolContext) {
     showAirport: {
       ...ATC_TOOL_DEFINITIONS.showAirport,
       handler: async (input: { airport: string }) => {
+        await chartSettled();
         const found = lookupPlace(
           input.airport,
           airportDirectory(store.getState()),
@@ -263,10 +326,18 @@ export function createAtcTools(context: AtcToolContext) {
           return { shown: false as const, reason };
         }
         store.showAirport(found.code);
+        if (
+          context.loadSurfaces &&
+          chartAirportByCode(store.getState(), found.code) !== null
+        ) {
+          await settleWithin(
+            context.loadSurfaces(found.code),
+            SURFACES_WAIT_MS,
+          );
+        }
         const state = store.getState();
         const chart = chartAirportByCode(state, found.code);
         const loaded = state.surfaces.get(found.code);
-        const surfaces = typeof loaded === 'object' ? loaded : undefined;
         const followed = followedLabel(state);
 
         return {
@@ -284,7 +355,13 @@ export function createAtcTools(context: AtcToolContext) {
               widthFt: r.widthFt,
               surface: r.surface,
             })) ?? [],
-          diagram: surfaces?.source ?? 'runways-only',
+          // 'loading' when the surfaces did not arrive within SURFACES_WAIT_MS.
+          diagram:
+            typeof loaded === 'object'
+              ? loaded.source
+              : loaded === 'loading'
+                ? ('loading' as const)
+                : ('runways-only' as const),
           aircraftWithin3Nm: [...state.aircraft.values()].filter(
             (a) => distanceNm(a, found) <= 3,
           ).length,

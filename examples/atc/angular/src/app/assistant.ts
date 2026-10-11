@@ -2,8 +2,7 @@ import {
   aircraftCompareContract,
   airportCardContract,
   arrivalsBoardContract,
-  createAtcTools,
-  fetchRoute,
+  createBrowserAtcTools,
   flightCardContract,
   transcriptItems,
 } from '@atc/shared';
@@ -97,10 +96,7 @@ const components = [
 export class Assistant {
   /** Emits when the user sends a message. */
   readonly sent = output();
-  private readonly atc = createAtcTools({
-    store: inject(ATC_STORE),
-    fetchRoute,
-  });
+  private readonly atc = createBrowserAtcTools(inject(ATC_STORE));
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
   //    already on the map; no plane list goes to the server.

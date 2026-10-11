@@ -21,6 +21,7 @@ dependencies); this file covers atc.
 | `shared/src/aircraft.ts`                        | adsb.lol to `Aircraft`: validation and the privacy whitelist         |
 | `shared/src/store.ts`, `feed.ts`                | State, reducers, view requests; polling `/api/aircraft`              |
 | `shared/src/tools.ts`, `find-aircraft.ts`       | Tool definitions; the pure aircraft query                            |
+| `shared/src/browser-tools.ts`                   | The tools wired to the app's routes and surfaces, for both apps      |
 | `shared/src/contracts.ts`                       | Component contracts (Skillet) and `SYSTEM_PROMPT`                    |
 | `shared/src/views.ts`, `detail-view.ts`         | Pure view models for cards and the map's detail card                 |
 | `shared/src/tool-chips.ts`, `transcript.ts`     | Tool call labels and transcript rows                                 |

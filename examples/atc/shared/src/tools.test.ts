@@ -3,7 +3,7 @@ import type { Aircraft } from './aircraft';
 import type { ChartAirport } from './chart';
 import { applySnapshot, createAtcStore, INITIAL_STATE } from './store';
 import { findAircraft, type FindAircraftInput } from './find-aircraft';
-import { ATC_TOOL_NAMES, createAtcTools } from './tools';
+import { ATC_TOOL_NAMES, createAtcTools, whenChartSettled } from './tools';
 
 function plane(hex: string, overrides: Partial<Aircraft> = {}): Aircraft {
   return {
@@ -329,7 +329,12 @@ test('findAircraft filters to a circle around an airport and measures from it', 
 test('findAircraft refuses an airport outside the table', async () => {
   const store = createAtcStore();
   store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });
-  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    // A loading chart would make the tool wait; the fallback table is enough.
+    chartWaitMs: 0,
+  });
 
   const result = await tools.findAircraft.handler({
     ...any,
@@ -347,6 +352,7 @@ test('lookupPlace resolves a place or tells the model it is unknown', async () =
   const tools = createAtcTools({
     store: createAtcStore(),
     fetchRoute: async () => null,
+    chartWaitMs: 0,
   });
 
   const bend = await tools.lookupPlace.handler({ query: 'Bend' });
@@ -376,7 +382,11 @@ test('showArea draws the area, moves the map and counts the aircraft inside', as
       plane('bbbbbb', { lat: 47.45, lon: -122.31 }),
     ],
   });
-  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    chartWaitMs: 0,
+  });
 
   const shown = await tools.showArea.handler({
     airport: 'bend',
@@ -403,7 +413,11 @@ test('showArea draws the area, moves the map and counts the aircraft inside', as
 
 test('showArea refuses unknown places and leaves the map alone', async () => {
   const store = createAtcStore();
-  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    chartWaitMs: 0,
+  });
 
   const result = await tools.showArea.handler({
     airport: 'Tokyo',
@@ -422,7 +436,11 @@ test('while following, showArea and resetMap change the outline but report that 
   const store = createAtcStore();
   store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });
   store.follow('aaaaaa');
-  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    chartWaitMs: 0,
+  });
 
   const shown = await tools.showArea.handler({
     airport: 'KBDN',
@@ -445,7 +463,11 @@ test('while following, showArea and resetMap change the outline but report that 
 
 test('resetMap returns to the regional view', async () => {
   const store = createAtcStore();
-  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    chartWaitMs: 0,
+  });
   await tools.showArea.handler({ airport: 'KBDN', radiusNm: 25 });
 
   const result = await tools.resetMap.handler();
@@ -474,7 +496,11 @@ test('lookupRoute skips callsigns that are not airline flights', async () => {
 
 test('the findAircraft tool with near shows and outlines that area, once', async () => {
   const store = createAtcStore();
-  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    chartWaitMs: 0,
+  });
   const near = { airport: 'kbdn', radiusNm: 30 };
 
   await tools.findAircraft.handler({ ...any, near });
@@ -501,7 +527,11 @@ test('ATC_TOOL_NAMES lists every tool createAtcTools makes, by its name', () => 
 test('findAircraft with an unknown approaching airport finds nothing', async () => {
   const store = createAtcStore();
   store.applySnapshot({ at: 1, aircraft: [plane('a1')] });
-  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    chartWaitMs: 0,
+  });
 
   const rows = await tools.findAircraft.handler({
     ...any,
@@ -616,7 +646,11 @@ test('while following, showAirport reports that the map stays on the plane', asy
 
 test('showAirport refuses unknown airports', async () => {
   const store = createAtcStore();
-  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    chartWaitMs: 0,
+  });
 
   const result = await tools.showAirport.handler({ airport: 'Tokyo' });
 
@@ -650,4 +684,142 @@ test('lookupPlace reports whether the airport has a tower', async () => {
   const result = await tools.lookupPlace.handler({ query: 'Redmond' });
 
   expect(result).toMatchObject({ found: true, code: 'KRDM', towered: true });
+});
+
+const sisters = krdm({
+  code: '6K5',
+  faa: '6K5',
+  name: 'SISTERS EAGLE AIR',
+  city: 'SISTERS',
+  aliases: [],
+  lat: 44.288,
+  lon: -121.54,
+  towered: false,
+  rank: 40,
+});
+
+test('chart tools wait for a chart that loads within 5 s and use it', async () => {
+  vi.useFakeTimers();
+  const store = createAtcStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  setTimeout(
+    () =>
+      store.setChart({
+        cycle: '2610',
+        effective: '2026-10-08',
+        airports: [sisters],
+      }),
+    1000,
+  );
+
+  const pending = Promise.all([
+    tools.lookupPlace.handler({ query: '6K5' }),
+    tools.findAircraft.handler({
+      ...any,
+      near: { airport: '6K5', radiusNm: 10 },
+    }),
+    tools.showArea.handler({ airport: '6K5', radiusNm: null }),
+    tools.showAirport.handler({ airport: '6K5' }),
+  ]);
+  await vi.advanceTimersByTimeAsync(1000);
+  const [place, found, area, airport] = await pending;
+  vi.useRealTimers();
+
+  expect(place).toMatchObject({ found: true, code: '6K5', towered: false });
+  expect(found).toEqual([]);
+  expect(area).toMatchObject({ shown: true, airport: '6K5' });
+  expect(airport).toMatchObject({ shown: true, code: '6K5' });
+});
+
+test('lookupPlace gives up waiting after 5 s and uses the fallback table', async () => {
+  vi.useFakeTimers();
+  const store = createAtcStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  let settled = false;
+
+  const pending = tools.lookupPlace.handler({ query: 'Bend' }).then((r) => {
+    settled = true;
+    return r;
+  });
+  await vi.advanceTimersByTimeAsync(4999);
+  const settledEarly = settled;
+  await vi.advanceTimersByTimeAsync(1);
+  const result = await pending;
+  vi.useRealTimers();
+
+  expect(settledEarly).toBe(false);
+  expect(result).toMatchObject({ found: true, code: 'KBDN', towered: null });
+  expect(store.getState().chart.status).toBe('loading');
+});
+
+test('whenChartSettled always unsubscribes, whether the chart settles or time runs out', async () => {
+  vi.useFakeTimers();
+  const store = createAtcStore();
+  const unsubscribes: ReturnType<typeof vi.fn>[] = [];
+  const watched = {
+    ...store,
+    subscribe: (listener: () => void) => {
+      const off = store.subscribe(listener);
+      const spy = vi.fn(off);
+      unsubscribes.push(spy);
+      return spy;
+    },
+  };
+
+  const timedOut = whenChartSettled(watched, 100);
+  await vi.advanceTimersByTimeAsync(100);
+  await timedOut;
+  const settled = whenChartSettled(watched, 100);
+  store.setChartLimited();
+  await settled;
+  const ready = await whenChartSettled(watched, 100);
+  vi.useRealTimers();
+
+  expect(unsubscribes).toHaveLength(2);
+  expect(unsubscribes.map((spy) => spy.mock.calls.length)).toEqual([1, 1]);
+  expect(ready).toBeUndefined();
+});
+
+test('showAirport waits for loadSurfaces and reports the loaded diagram', async () => {
+  const store = readyStore();
+  const loadSurfaces = vi.fn(async (code: string) => {
+    store.setSurfaces(code, { code, source: 'faa', features: [] });
+  });
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    loadSurfaces,
+  });
+
+  const result = await tools.showAirport.handler({ airport: 'KRDM' });
+
+  expect(loadSurfaces).toHaveBeenCalledWith('KRDM');
+  expect(result).toMatchObject({ diagram: 'faa' });
+});
+
+test('showAirport reports loading when surfaces take longer than 3 s', async () => {
+  vi.useFakeTimers();
+  const store = readyStore();
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    loadSurfaces: (code) => {
+      store.setSurfaces(code, 'loading');
+      return new Promise(() => undefined);
+    },
+  });
+  let settled = false;
+
+  const pending = tools.showAirport.handler({ airport: 'KRDM' }).then((r) => {
+    settled = true;
+    return r;
+  });
+  await vi.advanceTimersByTimeAsync(2999);
+  const settledEarly = settled;
+  await vi.advanceTimersByTimeAsync(1);
+  const result = await pending;
+  vi.useRealTimers();
+
+  expect(settledEarly).toBe(false);
+  expect(result).toMatchObject({ shown: true, diagram: 'loading' });
 });

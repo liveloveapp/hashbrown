@@ -13,6 +13,7 @@ export * from './routes';
 export * from './contracts';
 export * from './find-aircraft';
 export * from './tools';
+export * from './browser-tools';
 export * from './views';
 export * from './tool-chips';
 export * from './detail-view';

@@ -2,26 +2,47 @@ import type { ChartAirport } from './chart';
 import { type Airport, AIRPORT_CODES, FALLBACK_AIRPORTS } from './places';
 import type { AtcState } from './store';
 
-const cache = new WeakMap<readonly ChartAirport[], readonly ChartAirport[]>();
+interface Ordered {
+  /** Chart airports with fallback aliases, in lookup priority order. */
+  readonly chart: readonly ChartAirport[];
+  /** `chart` plus the fallback airports it lacks, in lookup priority order. */
+  readonly all: readonly Airport[];
+}
+
+const cache = new WeakMap<readonly ChartAirport[], Ordered>();
 const PRIORITY = new Map<string, number>(
   AIRPORT_CODES.map((code, index) => [code, index]),
 );
 const ALIASES = new Map(FALLBACK_AIRPORTS.map((a) => [a.code, a.aliases]));
 
-/** Chart airports with fallback aliases merged, in lookup priority order. */
-function ordered(airports: readonly ChartAirport[]): readonly ChartAirport[] {
+const rankOf = (airport: Airport): number =>
+  'rank' in airport ? (airport as ChartAirport).rank : 0;
+
+/** Fallback table order first, then chart rank. */
+const byPriority = (a: Airport, b: Airport): number =>
+  (PRIORITY.get(a.code) ?? Infinity) - (PRIORITY.get(b.code) ?? Infinity) ||
+  rankOf(a) - rankOf(b);
+
+/**
+ * Chart airports with fallback aliases merged, in lookup priority order, and
+ * the same list with the fallback airports the chart lacks (those beyond its
+ * radius, such as KGEG and KSUN) added in their priority place.
+ */
+function ordered(airports: readonly ChartAirport[]): Ordered {
   const hit = cache.get(airports);
   if (hit) return hit;
-  const result = airports
+  const chart = airports
     .map((a) => ({
       ...a,
       aliases: [...a.aliases, ...(ALIASES.get(a.code) ?? [])],
     }))
-    .sort(
-      (a, b) =>
-        (PRIORITY.get(a.code) ?? Infinity) -
-          (PRIORITY.get(b.code) ?? Infinity) || a.rank - b.rank,
-    );
+    .sort(byPriority);
+  const codes = new Set(chart.map((a) => a.code));
+  const all = [
+    ...chart,
+    ...FALLBACK_AIRPORTS.filter((a) => !codes.has(a.code)),
+  ].sort(byPriority);
+  const result = { chart, all };
   cache.set(airports, result);
 
   return result;
@@ -29,11 +50,12 @@ function ordered(airports: readonly ChartAirport[]): readonly ChartAirport[] {
 
 /**
  * The airports the assistant and map know: FAA chart airports once loaded,
- * else the 40-airport fallback table. Cached per airports array.
+ * plus the fallback airports the chart lacks, else the 40-airport fallback
+ * table. Cached per airports array.
  */
 export function airportDirectory(state: AtcState): readonly Airport[] {
   return state.chart.status === 'ready'
-    ? ordered(state.chart.airports)
+    ? ordered(state.chart.airports).all
     : FALLBACK_AIRPORTS;
 }
 
@@ -57,7 +79,7 @@ export function chartAirportByCode(
   const wanted = code.trim().toUpperCase();
 
   return (
-    ordered(state.chart.airports).find(
+    ordered(state.chart.airports).chart.find(
       (a) => a.code === wanted || a.faa === wanted,
     ) ?? null
   );
