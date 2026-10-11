@@ -130,3 +130,25 @@ test('the URL uses the NASR date of the current cycle', async () => {
     'https://nfdc.faa.gov/webContent/28DaySub/extra/01_Oct_2026_FRQ_CSV.zip',
   ]);
 });
+
+test('a failing new cycle serves the previous cycle as stale', async () => {
+  const errors = silenceErrors();
+  let clock = NOW;
+  let fail = false;
+  const ok = upstreamOk();
+  const handler = createChartAirportsHandler({
+    fetchFn: async (input, init) =>
+      fail ? new Response('no', { status: 404 }) : ok(input, init),
+    now: () => clock,
+  });
+
+  await call(handler);
+  fail = true;
+  clock = Date.UTC(2026, 9, 30);
+  const response = await call(handler);
+
+  expect(response.status).toBe(200);
+  expect(response.body.cycle).toBe('2610');
+  expect(response.headers['X-Atc-Stale']).toBe('1');
+  errors.mockRestore();
+});
