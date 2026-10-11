@@ -51,7 +51,7 @@ atc/
     src/views.ts, detail-view.ts, tool-chips.ts   Pure view models for the UI
     src/chart/           Chart types, cycle, browser chart feed
     src/map/             Leaflet map, detail card, follow pill (no framework)
-    src/map/chart/       Airport symbols, data blocks, diagrams, Layers control
+    src/map/chart/       Ink airports (runways, rings, labels), diagrams, Layers control
     src/styles/atc.css   One stylesheet for both apps, as ordered partials
   angular/  react/       Thin shells: components and the core file
   server/                /api/run (model and system prompt pinned) and /api/aircraft (cached adsb.lol)
@@ -136,7 +136,7 @@ npx nx e2e atc-e2e
   [ODbL](https://opendatacommons.org/licenses/odbl/). `/api/chart/surfaces` serves
   that derived data under the same licence. The query is in
   `server/src/chart/upstream.ts`.
-- **Not for navigation.** The chart is drawn like a VFR sectional, but it is not one.
+- **Not for navigation.** The chart is drawn in the style of a VFR sectional, in ink, but it is not one.
   Do not use it to plan or fly a flight.
 
 The `/api/chart/*` routes need no key. Each has its own Vercel function (see

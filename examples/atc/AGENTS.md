@@ -32,7 +32,7 @@ dependencies); this file covers atc.
 | `shared/src/map/view-controller.ts`, `fit.ts`   | Applying view requests (fits, areas, reveals)                        |
 | `shared/src/map/card-sync.ts`, `detail-card.ts` | The floating detail card                                             |
 | `shared/src/map/follow.ts`, `follow-pill.ts`    | Follow mode and its pill                                             |
-| `shared/src/map/chart/`                         | Airport symbols, data blocks, declutter, diagrams, Layers control    |
+| `shared/src/map/chart/`                         | Ink airports (rings, labels), declutter, diagrams, Layers control    |
 | `shared/src/map/tiles.ts`                       | Tile URL and attribution                                             |
 | `shared/src/styles/atc.css`                     | Index of the stylesheet partials, in cascade order                   |
 | `angular/src/app/`, `react/src/`                | Thin framework shells that mirror each other                         |
@@ -64,11 +64,13 @@ dependencies); this file covers atc.
   `setLatLng` rounds to whole pixels, so call it only to sync markers before a zoom.
 - Component IDs (`hex`, `airport`) never stream, so a card never resolves a partial ID.
 - Shared code stays framework-free; the two apps stay thin and mirror each other.
-- Chart colours are defined only in `styles/chart.css` and used only on the map and
-  the AirportCard badge (`design-rules.test.ts`).
+- Chart colours are defined only in `styles/chart.css` and used only on the map
+  (`design-rules.test.ts`). Airports are ink: true-size runways, a ring only where
+  runways cannot be drawn, and ink data blocks; the AirportCard badge is an ink
+  outline.
 - Chart layers redraw on zoom, move and chart, surfaces or layers changes, never on
   aircraft snapshots.
-- Chart symbols are never filled cobalt; selection stays on planes.
+- Chart features are never filled cobalt; selection stays on planes.
 - Airport codes are runtime strings validated by `lookupPlace` and `airportByCode`,
   never a Skillet enum.
 - Stylesheet partials load in the order `atc.css` lists; later files override earlier
