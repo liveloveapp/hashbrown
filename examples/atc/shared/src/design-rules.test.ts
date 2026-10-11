@@ -333,3 +333,15 @@ test('the ink data block has a flat surface background and no depth', () => {
   expect(rule).toMatch(/background:\s*var\(--atc-surface\)/);
   expect(rule).not.toMatch(/shadow|border(?!-radius)|blur/);
 });
+
+test('a dimmed airspace label fades to 0.3, like its shelf', () => {
+  const css = readFileSync(
+    new URL('./styles/chart.css', import.meta.url),
+    'utf8',
+  );
+
+  const rule =
+    /\.atc-map \.atc-as-label\.is-dimmed \{([^}]*)\}/.exec(css)?.[1] ?? '';
+
+  expect(rule).toMatch(/opacity:\s*0\.3;/);
+});

@@ -218,6 +218,22 @@ test('clearing the highlight removes casings and dimming', () => {
   expect(view.all('path.atc-as.is-highlighted')).toHaveLength(0);
 });
 
+test("a highlight dims other airports' labels and clearing it restores them", () => {
+  const view = mount(10);
+  load(view.store);
+
+  view.store.showAirspace('KRDM');
+  const dimmed = view.all('.atc-as-label.is-dimmed');
+  const lit = view.all('.atc-as-label.is-d.is-dimmed');
+  view.store.clearHighlight();
+
+  expect(dimmed).toHaveLength(2);
+  expect(dimmed.map((label) => label.textContent)).toEqual(['100SFC', '4011']);
+  expect(lit).toHaveLength(0);
+  expect(view.all('.atc-as-label')).toHaveLength(3);
+  expect(view.all('.atc-as-label.is-dimmed')).toHaveLength(0);
+});
+
 test('an aircraft snapshot never rebuilds polygons', () => {
   const view = mount();
   load(view.store);

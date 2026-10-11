@@ -111,6 +111,9 @@
 .atc-map .atc-as-label.is-c {
   color: var(--atc-chart-magenta);
 }
+.atc-map .atc-as-label.is-dimmed {
+  opacity: 0.3;
+}
 .atc-map .atc-as-text {
   position: absolute;
   transform: translate(-50%, -50%);

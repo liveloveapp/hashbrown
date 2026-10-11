@@ -234,7 +234,7 @@ planes.
   - The highlighted airport's shelves get a cobalt casing: a second path
     underneath with `stroke: var(--atc-accent)`, stroke width equal to the
     shelf's width plus 4 px, and opacity 0.6.
-  - Every other shelf dims to opacity 0.3.
+  - Every other shelf, and its label, dims to opacity 0.3.
   - `clearHighlight`, `resetMap`, and area and airport requests clear it. An
     empty aircraft highlight does not, so a search that finds no aircraft
     keeps the airspace it searched.

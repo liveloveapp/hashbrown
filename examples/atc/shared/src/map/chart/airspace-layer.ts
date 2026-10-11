@@ -78,7 +78,8 @@ const labelLines = (label: ShelfLabel): string[] =>
  * first, then B and C, then D on top.
  *
  * A highlighted airport's shelves get `is-highlighted` and a cobalt casing
- * path underneath (`atc-as-casing`); every other shelf gets `is-dimmed`.
+ * path underneath (`atc-as-casing`); every other shelf, and its label, gets
+ * `is-dimmed`.
  * From zoom 9, B and C shelves carry a stacked ceiling-over-floor label and
  * each airport's largest D shelf a bracketed ceiling, at
  * `shelfLabelAnchor` (clear of the airport), placed by
@@ -180,7 +181,15 @@ export function createAirspaceLayer(options: {
     element.append(text);
   };
 
-  const placeLabels = (drawn: readonly Entry[], zoom: number) => {
+  /**
+   * Shows the labels that fit. While an airport is highlighted (`lit` holds
+   * its shelves), every other shelf's label is dimmed like its outline.
+   */
+  const placeLabels = (
+    drawn: readonly Entry[],
+    zoom: number,
+    lit: ReadonlySet<AirspaceShelf>,
+  ) => {
     const wanted =
       zoom >= LABEL_ZOOM
         ? labelled(drawn)
@@ -209,7 +218,13 @@ export function createAirspaceLayer(options: {
       const marker = markerOf(entry);
       if (!map.hasLayer(marker)) marker.addTo(map);
       const element = marker.getElement();
-      if (element) fillLabel(element, label);
+      if (element) {
+        fillLabel(element, label);
+        element.classList.toggle(
+          'is-dimmed',
+          lit.size > 0 && !lit.has(entry.shelf),
+        );
+      }
       shown.add(entry);
     }
     for (const entry of entries) {
@@ -296,7 +311,7 @@ export function createAirspaceLayer(options: {
     if (added) {
       for (const entry of drawn) entry.polygon.bringToFront();
     }
-    placeLabels(drawn, map.getZoom());
+    placeLabels(drawn, map.getZoom(), lit);
   };
 
   return {
