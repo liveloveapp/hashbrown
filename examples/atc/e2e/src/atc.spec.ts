@@ -137,6 +137,76 @@ async function visibleTags(page: Page) {
   );
 }
 
+/**
+ * Problems between visible tags and plane icons, once no tag is changing
+ * sides: tags over the icon of a plane that is tagged, highlighted, selected
+ * or followed (with its 2 px margin), and tags over an untagged plane's icon
+ * whose marker is not stacked below the tag's marker.
+ */
+async function tagIconProblems(page: Page) {
+  await expect(page.locator('.atc-plane.is-tag-fading')).toHaveCount(0);
+  return page.evaluate(() => {
+    const hits = (
+      a: DOMRect,
+      b: { left: number; top: number; right: number; bottom: number },
+    ) =>
+      a.left < b.right &&
+      b.left < a.right &&
+      a.top < b.bottom &&
+      b.top < a.bottom;
+    const zOf = (plane: Element) =>
+      Number(
+        getComputedStyle(plane.closest('.atc-plane-icon') as Element).zIndex,
+      );
+    const planes = [...document.querySelectorAll('.atc-plane')];
+    const isHard = (plane: Element) =>
+      plane.matches('.is-highlighted, .is-selected, .is-followed, .is-tagged');
+    const problems: string[] = [];
+    for (const owner of planes) {
+      const tag = owner.querySelector('.atc-plane-tag');
+      if (
+        !tag ||
+        getComputedStyle(tag).display === 'none' ||
+        owner.getAttribute('data-tag') === 'hidden'
+      ) {
+        continue;
+      }
+      const box = tag.getBoundingClientRect();
+      for (const other of planes) {
+        if (other === owner) continue;
+        const icon = other.getBoundingClientRect();
+        const label = `${owner.getAttribute('data-label')} over ${other.getAttribute('data-label')}`;
+        if (isHard(other)) {
+          const margin = 2;
+          if (
+            hits(box, {
+              left: icon.left - margin,
+              top: icon.top - margin,
+              right: icon.right + margin,
+              bottom: icon.bottom + margin,
+            })
+          ) {
+            problems.push(`${label} (tagged icon)`);
+          }
+        } else if (hits(box, icon) && zOf(owner) <= zOf(other)) {
+          problems.push(`${label} (drawn under it)`);
+        }
+      }
+    }
+    // Whether or not a tag sits over one now, every untagged marker stacks
+    // below every marker with a visible tag.
+    const tagged = planes.filter((plane) => plane.matches('.is-tagged'));
+    const untagged = planes.filter((plane) => !isHard(plane));
+    const lowestTagged = Math.min(...tagged.map(zOf));
+    for (const plane of untagged) {
+      if (zOf(plane) >= lowestTagged) {
+        problems.push(`${plane.getAttribute('data-label')} stacks above a tag`);
+      }
+    }
+    return problems;
+  });
+}
+
 /** How many pairs of boxes overlap. */
 function overlappingPairs(
   boxes: { left: number; top: number; right: number; bottom: number }[],
@@ -339,7 +409,7 @@ test('on a phone, the starters show in the peek, a pick lowers the sheet to half
   await context.close();
 });
 
-test('the data tags of a tight block of highlighted planes never overlap', async ({
+test('the data tags of a tight block of highlighted planes overlap no tag and no tagged icon, and sit above untagged icons', async ({
   page,
 }, testInfo) => {
   await open(page, testInfo.project.name);
@@ -370,6 +440,7 @@ test('the data tags of a tight block of highlighted planes never overlap', async
   // second; check across several fixes.
   for (let check = 0; check < 12; check++) {
     expect(overlappingPairs(await visibleTags(page))).toBe(0);
+    expect(await tagIconProblems(page)).toEqual([]);
     await page.waitForTimeout(500);
   }
 });

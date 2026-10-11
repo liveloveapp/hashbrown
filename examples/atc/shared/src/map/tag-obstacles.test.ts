@@ -13,12 +13,29 @@ test('a rect covering another plane icon is blocked; its own plane is not', () =
   expect(results).toEqual([true, false]);
 });
 
-test('icons just clear of a rect do not block it', () => {
-  const covers = createObstacleGrid([{ hex: 'b', x: 185, y: 100 }]);
+test('an icon blocks a rect within its 2 px margin, and not beyond', () => {
+  const rect = { left: 113, top: 90, right: 173, bottom: 110 };
+  // Icon boxes are 22 px; with the margin they reach 13 px from the centre.
+  const near = createObstacleGrid([{ hex: 'b', x: 185, y: 100 }]);
+  const clear = createObstacleGrid([{ hex: 'b', x: 187, y: 100 }]);
 
-  const result = covers({ left: 113, top: 90, right: 173, bottom: 110 }, 'a');
+  const results = [near(rect, 'a'), clear(rect, 'a')];
 
-  expect(result).toBe(false);
+  expect(results).toEqual([true, false]);
+});
+
+test('asked for hard icons only, a rect over an untagged plane is not blocked', () => {
+  const covers = createObstacleGrid([
+    { hex: 'soft', x: 150, y: 100 },
+    { hex: 'hard', x: 150, y: 200, hard: true },
+  ]);
+
+  const results = [
+    covers({ left: 113, top: 90, right: 173, bottom: 110 }, 'a', true),
+    covers({ left: 113, top: 190, right: 173, bottom: 210 }, 'a', true),
+  ];
+
+  expect(results).toEqual([false, true]);
 });
 
 test('a question only looks at the planes near the rect, not at every plane', () => {

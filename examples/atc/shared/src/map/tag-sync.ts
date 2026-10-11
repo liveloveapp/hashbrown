@@ -93,6 +93,11 @@ export function createTagSync(options: {
   };
   /** Moves a tag, fading it out first when it was showing. */
   const apply = (hex: string, plane: HTMLElement, next: TagPlacement) => {
+    // Lifts the marker above untagged ones (styles/markers.css), so a tag
+    // over an untagged plane's icon is drawn on top of it.
+    if (plane.classList.contains('is-tagged') !== (next !== 'hidden')) {
+      plane.classList.toggle('is-tagged', next !== 'hidden');
+    }
     const pending = fading.get(hex);
     if (pending) {
       pending.target = next;
@@ -133,8 +138,17 @@ export function createTagSync(options: {
     };
     const { hovered, detailed } = focus();
     lastFocus = `${hovered} ${detailed}`;
+    const order = tagOrder(state, { hovered, detailed });
+    // Planes no tag may cover: tagged, highlighted, selected or followed.
+    const hard = new Set([
+      ...order,
+      ...state.highlighted,
+      ...[state.selectedHex, state.followingHex, detailed].filter(
+        (hex): hex is string => hex !== null,
+      ),
+    ]);
     const items: TagItem[] = [];
-    for (const hex of tagOrder(state, { hovered, detailed })) {
+    for (const hex of order) {
       const aircraft = state.aircraft.get(hex);
       const plane = planeOf(hex);
       const point = pointOf(hex);
@@ -159,7 +173,7 @@ export function createTagSync(options: {
         point.x < size.x + OBSTACLE_MARGIN &&
         point.y < size.y + OBSTACLE_MARGIN
       ) {
-        planes.push({ hex, x: point.x, y: point.y });
+        planes.push({ hex, x: point.x, y: point.y, hard: hard.has(hex) });
       }
     }
     const placements = layoutTags({ items, planes, bounds, blocked });
@@ -168,7 +182,7 @@ export function createTagSync(options: {
       if (!placements.has(hex) && plane) {
         clearTimeout(fading.get(hex)?.timer);
         fading.delete(hex);
-        plane.classList.remove('is-tag-fading');
+        plane.classList.remove('is-tag-fading', 'is-tagged');
         write(plane, 'right');
       }
     }

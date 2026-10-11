@@ -88,6 +88,14 @@
   color: var(--atc-muted);
 }
 /*
+ * A marker with a visible tag (is-tagged, set by the tag layout) stacks above
+ * untagged markers, so a tag that sits over an untagged plane is drawn on
+ * top of its icon. Tagged icons never meet tags: the layout keeps them apart.
+ */
+.atc-plane-icon:has(.is-tagged) {
+  z-index: 10000 !important;
+}
+/*
  * Stacking above the other markers and their tags: the hovered plane (or the
  * card's plane while the card is hovered) on top, then the selected, followed
  * or described plane. !important beats the inline z-index Leaflet sets on

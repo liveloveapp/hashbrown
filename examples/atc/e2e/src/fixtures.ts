@@ -85,7 +85,7 @@ function track(
  * approaching it. Every aircraft moves and changes altitude each frame.
  * Six turboprops fly north in a tight block near Klamath Falls
  * ({@link CLUSTER}), so close that their data tags must move aside, and
- * spreading apart frame by frame.
+ * spreading apart frame by frame; two Cessnas fly among them.
  */
 const TRACKS: readonly Track[] = [
   track(
@@ -210,6 +210,19 @@ const TRACKS: readonly Track[] = [
         dAltFt: 0,
         trackDeg: [350, 0, 10][i % 3] ?? 0,
       },
+    ),
+  ),
+  // Two Cessnas flying with the block, never highlighted: their icons sit
+  // where the block's tags go, so tags must be drawn above them.
+  ...[
+    { hex: 'a1c016', registration: 'N7316K', lat: 42.904, lon: -121.97 },
+    { hex: 'a1c017', registration: 'N2284Q', lat: 42.912, lon: -122.03 },
+  ].map(({ lat, lon, ...ident }) =>
+    track(
+      ident,
+      'C172',
+      { lat, lon, altitudeFt: 7_500, speedKt: 110 },
+      { dLat: 0.003, dLon: 0, dAltFt: 0, trackDeg: 0 },
     ),
   ),
 ];

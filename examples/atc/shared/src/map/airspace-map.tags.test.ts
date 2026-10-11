@@ -129,3 +129,29 @@ test('a tag that is no longer shown returns to the default side', async () => {
   expect(map.tag('bbbbbb')).toBe('right');
   map.cleanup();
 });
+
+test('planes with a visible tag are marked is-tagged, so they stack above untagged planes', async () => {
+  const map = await mount();
+  const crowd = Array.from({ length: 8 }, (_, i) => ({
+    ...base,
+    hex: `c0000${i}`,
+    label: `QXE${i}`,
+    lat: base.lat + i * 0.0002,
+  }));
+  map.store.applySnapshot({ at: 1, aircraft: [...crowd, apart[1]] });
+
+  map.store.highlight(crowd.map((plane) => plane.hex));
+  const tagged = (hex: string) =>
+    document
+      .querySelector(`.atc-plane[data-hex="${hex}"]`)
+      ?.classList.contains('is-tagged');
+  const states = crowd.map((plane) => [map.tag(plane.hex), tagged(plane.hex)]);
+  const untagged = tagged('bbbbbb');
+  map.store.clearHighlight();
+
+  expect(states.every(([tag, on]) => (tag === 'hidden') === !on)).toBe(true);
+  expect(states.some(([tag]) => tag === 'hidden')).toBe(true);
+  expect(untagged).toBe(false);
+  expect(tagged('c00000')).toBe(false);
+  map.cleanup();
+});

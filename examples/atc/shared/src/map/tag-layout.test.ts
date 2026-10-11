@@ -250,3 +250,56 @@ test('tag order drops the plane the detail card describes, which has no tag', ()
 
   expect(order).toEqual(['dddddd']);
 });
+
+/**
+ * A tag for `b` at (100, 128) whose only side inside the open map is
+ * above-left (51 to 111 across, 95 to 115 down), across the icon of a plane
+ * at (100, 100): blocked rects close the right and the lower left.
+ */
+const onlyAboveLeft = {
+  items: [item('b', 100, 128)],
+  bounds,
+  blocked: [
+    { left: 112, top: 0, right: 400, bottom: 300 },
+    { left: 0, top: 116, right: 112, bottom: 300 },
+  ],
+};
+
+test('a tag whose only free side crosses a highlighted plane icon is hidden', () => {
+  const planes = [{ hex: 'a', x: 100, y: 100, hard: true }];
+
+  const placements = layoutTags({ ...onlyAboveLeft, planes });
+
+  expect(placements.get('b')).toBe('hidden');
+});
+
+test('an untagged plane icon can be covered, but only when no side is clear of it', () => {
+  const planes = [{ hex: 'a', x: 100, y: 100 }];
+
+  const placements = layoutTags({ ...onlyAboveLeft, planes });
+
+  expect(placements.get('b')).toBe('above-left');
+});
+
+test('a hovered tag (always) is hidden rather than cross a highlighted plane icon', () => {
+  const planes = [{ hex: 'a', x: 100, y: 100, hard: true }];
+  const items = [item('b', 100, 128, { always: true })];
+
+  const placements = layoutTags({ ...onlyAboveLeft, items, planes });
+
+  expect(placements.get('b')).toBe('hidden');
+});
+
+test('a tag keeps 2 px clear of a highlighted plane icon', () => {
+  // The right tag spans y 90 to 110. The icon's 22 px box starts at y 111,
+  // clear of it; with the 2 px margin it starts at 109 and touches it.
+  const planes = [{ hex: 'z', x: 140, y: 122, hard: true }];
+
+  const placements = layoutTags({
+    items: [item('a', 100, 100)],
+    planes,
+    bounds,
+  });
+
+  expect(placements.get('a')).not.toBe('right');
+});

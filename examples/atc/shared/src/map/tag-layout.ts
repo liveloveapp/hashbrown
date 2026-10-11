@@ -99,12 +99,15 @@ function inside(rect: TagRect, bounds: TagRect): boolean {
 /**
  * Places data tags so no two overlap. `items` come in priority order (see
  * {@link tagOrder}); each takes the first side, in {@link TAG_PLACEMENTS}
- * order, that stays inside `bounds`, clear of `blocked` rectangles and of
- * the tags already placed, preferring one that covers no other plane icon.
+ * order, that stays inside `bounds`, clear of `blocked` rectangles, of the
+ * tags already placed and of every `hard` plane icon (tagged, highlighted,
+ * selected or followed), preferring one that covers no other plane icon
+ * either. Icons count with a 2 px margin.
  * A placement the tag already has is kept while it is as good as the best
  * free one, so tags do not flip back and forth as planes move. A tag with no
  * free side is `hidden` (its plane still opens the detail card on hover or
- * tap), unless it is `always` shown. Planes are bucketed in a grid
+ * tap). An `always` tag may overlap other tags (it is drawn above them) but
+ * never a hard icon. Planes are bucketed in a grid
  * (`createObstacleGrid`), so hundreds of obstacles cost little.
  *
  * A plane outside `bounds` (under a docked card, past an edge) keeps the
@@ -139,15 +142,22 @@ export function layoutTags(input: {
     if (outside(item)) {
       continue;
     }
-    const free = (placement: TagPlacement) => {
+    /** Inside the map, off the controls and clear of every tagged icon. */
+    const open = (placement: TagPlacement) => {
       const rect = tagRect(item, placement);
 
       return (
         inside(rect, bounds) &&
         !blocked.some((block) => intersects(rect, block)) &&
-        !placed.some((other) => intersects(rect, other, TAG_GAP))
+        !coversPlane(rect, item.hex, true)
       );
     };
+    /** Open and clear of the tags already placed. */
+    const free = (placement: TagPlacement) =>
+      open(placement) &&
+      !placed.some((other) =>
+        intersects(tagRect(item, placement), other, TAG_GAP),
+      );
     const clear = (placement: TagPlacement) =>
       free(placement) && !coversPlane(tagRect(item, placement), item.hex);
     const previous =
@@ -159,7 +169,11 @@ export function layoutTags(input: {
       TAG_PLACEMENTS.find(clear) ??
       (previous !== null && free(previous) ? previous : null) ??
       TAG_PLACEMENTS.find(free) ??
-      (item.always ? (previous ?? 'right') : 'hidden');
+      (item.always
+        ? ((previous !== null && open(previous) ? previous : null) ??
+          TAG_PLACEMENTS.find(open) ??
+          'hidden')
+        : 'hidden');
     result.set(item.hex, best);
     if (best !== 'hidden') {
       placed.push(tagRect(item, best));
