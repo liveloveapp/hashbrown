@@ -664,7 +664,7 @@ test('setLayers applies a layer and returns the layers', async () => {
 
   const result = await tools.setLayers.handler({ airports: false });
 
-  expect(result).toEqual({ layers: { airports: false } });
+  expect(result).toEqual({ layers: { airports: false, airspace: true } });
 });
 
 test('setLayers with null leaves the layers as they are', async () => {
@@ -673,7 +673,7 @@ test('setLayers with null leaves the layers as they are', async () => {
 
   const result = await tools.setLayers.handler({ airports: null });
 
-  expect(result).toEqual({ layers: { airports: true } });
+  expect(result).toEqual({ layers: { airports: true, airspace: true } });
   expect(store.getState()).toBe(INITIAL_STATE);
 });
 

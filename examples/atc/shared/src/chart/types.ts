@@ -104,6 +104,7 @@ export interface Surfaces {
 /** Which overlays the map draws. Later parts add keys. */
 export interface Layers {
   readonly airports: boolean;
+  readonly airspace: boolean;
 }
 
 /** The chart data in the store. */
@@ -139,6 +140,14 @@ export interface AirspaceShelf {
   readonly rings: readonly (readonly (readonly [number, number])[])[];
   /** `[west, south, east, north]`. */
   readonly bbox: readonly [number, number, number, number];
+}
+
+/** The airspace data in the store. */
+export interface AirspaceState {
+  /** loading: first fetch pending; ready: FAA data; failed: unavailable. */
+  readonly status: 'loading' | 'ready' | 'failed';
+  readonly cycle: string | null;
+  readonly shelves: readonly AirspaceShelf[];
 }
 
 /** The `/api/chart/airspace` payload. */

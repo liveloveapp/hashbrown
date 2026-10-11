@@ -21,11 +21,24 @@ function fakeScheduler() {
   };
 }
 
+const airspacePayload = { cycle: '2610', effective: '2026-10-08', shelves: [] };
+
+/** Answers each URL with its own handler; airspace succeeds by default. */
+function route(
+  airports: () => Response | Promise<Response>,
+  airspace: () => Response | Promise<Response> = () =>
+    Response.json(airspacePayload),
+) {
+  return vi.fn<typeof fetch>(async (input) =>
+    String(input) === '/api/chart/airspace' ? airspace() : airports(),
+  );
+}
+
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 test('a successful fetch makes the chart ready', async () => {
   const store = createAtcStore();
-  const fetchFn = vi.fn<typeof fetch>(async () => Response.json(payload));
+  const fetchFn = route(() => Response.json(payload));
 
   startChartFeed({ store, fetchFn, schedule: fakeScheduler().schedule });
   await flush();
@@ -36,9 +49,7 @@ test('a successful fetch makes the chart ready', async () => {
 
 test('failures go limited and retry at 30 s, 2 min, then every 10 min', async () => {
   const store = createAtcStore();
-  const fetchFn = vi.fn<typeof fetch>(
-    async () => new Response('no', { status: 500 }),
-  );
+  const fetchFn = route(() => new Response('no', { status: 500 }));
   const scheduler = fakeScheduler();
 
   startChartFeed({ store, fetchFn, schedule: scheduler.schedule });
@@ -54,10 +65,12 @@ test('failures go limited and retry at 30 s, 2 min, then every 10 min', async ()
 
 test('a retry that succeeds makes the chart ready', async () => {
   const store = createAtcStore();
-  const fetchFn = vi
-    .fn<typeof fetch>()
-    .mockResolvedValueOnce(new Response('no', { status: 503 }))
-    .mockResolvedValueOnce(Response.json(payload));
+  let calls = 0;
+  const fetchFn = route(() =>
+    calls++ === 0
+      ? new Response('no', { status: 503 })
+      : Response.json(payload),
+  );
   const scheduler = fakeScheduler();
 
   startChartFeed({ store, fetchFn, schedule: scheduler.schedule });
@@ -66,6 +79,67 @@ test('a retry that succeeds makes the chart ready', async () => {
   await scheduler.runNext();
 
   expect(store.getState().chart.status).toBe('ready');
+  expect(scheduler.delays).toEqual([30000]);
+});
+
+test('a successful airspace fetch makes airspace ready', async () => {
+  const store = createAtcStore();
+  const fetchFn = route(() => Response.json(payload));
+
+  startChartFeed({ store, fetchFn, schedule: fakeScheduler().schedule });
+  await flush();
+
+  expect(fetchFn.mock.calls.map(([url]) => url)).toContain(
+    '/api/chart/airspace',
+  );
+  expect(store.getState().airspace.status).toBe('ready');
+});
+
+test('an airspace 500 fails airspace and schedules a retry', async () => {
+  const store = createAtcStore();
+  const fetchFn = route(
+    () => Response.json(payload),
+    () => new Response('no', { status: 500 }),
+  );
+  const scheduler = fakeScheduler();
+
+  startChartFeed({ store, fetchFn, schedule: scheduler.schedule });
+  await flush();
+
+  expect(store.getState().airspace.status).toBe('failed');
+  expect(store.getState().chart.status).toBe('ready');
+  expect(scheduler.delays).toEqual([30000]);
+});
+
+test('a retry that succeeds makes airspace ready', async () => {
+  const store = createAtcStore();
+  let calls = 0;
+  const fetchFn = route(
+    () => Response.json(payload),
+    () =>
+      calls++ === 0
+        ? new Response('no', { status: 503 })
+        : Response.json(airspacePayload),
+  );
+  const scheduler = fakeScheduler();
+
+  startChartFeed({ store, fetchFn, schedule: scheduler.schedule });
+  await flush();
+  await scheduler.runNext();
+
+  expect(store.getState().airspace.status).toBe('ready');
+});
+
+test('airports and airspace fail independently', async () => {
+  const store = createAtcStore();
+  const fetchFn = route(() => new Response('no', { status: 500 }));
+  const scheduler = fakeScheduler();
+
+  startChartFeed({ store, fetchFn, schedule: scheduler.schedule });
+  await flush();
+
+  expect(store.getState().chart.status).toBe('limited');
+  expect(store.getState().airspace.status).toBe('ready');
   expect(scheduler.delays).toEqual([30000]);
 });
 

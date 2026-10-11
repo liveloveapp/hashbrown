@@ -1,6 +1,13 @@
 import type { Aircraft, AircraftSnapshot } from './aircraft';
 import { distanceNm } from './geo';
-import type { ChartAirports, ChartState, Layers, Surfaces } from './chart';
+import type {
+  AirspacePayload,
+  AirspaceState,
+  ChartAirports,
+  ChartState,
+  Layers,
+  Surfaces,
+} from './chart';
 import { airportByCode } from './directory';
 
 /** One stop on a scheduled route. */
@@ -47,6 +54,11 @@ export type ViewRequest =
       readonly seq: number;
       readonly kind: 'airport';
       readonly airport: string;
+    }
+  | {
+      readonly seq: number;
+      readonly kind: 'airspace';
+      readonly airport: string;
     };
 
 /**
@@ -61,6 +73,10 @@ export interface AtcState {
   readonly chart: ChartState;
   /** Runway and taxiway surfaces per airport code, with load status. */
   readonly surfaces: ReadonlyMap<string, Surfaces | 'loading' | 'failed'>;
+  /** The FAA airspace shelves, once loaded. */
+  readonly airspace: AirspaceState;
+  /** The airport whose airspace is highlighted on the map, or null. */
+  readonly highlightedAirspace: string | null;
   /** Which chart layers are drawn. */
   readonly layers: Layers;
   readonly aircraft: ReadonlyMap<string, Aircraft>;
@@ -85,7 +101,9 @@ export interface AtcState {
 export const INITIAL_STATE: AtcState = {
   chart: { status: 'loading', cycle: null, airports: [] },
   surfaces: new Map(),
-  layers: { airports: true },
+  airspace: { status: 'loading', cycle: null, shelves: [] },
+  highlightedAirspace: null,
+  layers: { airports: true, airspace: true },
   aircraft: new Map(),
   departed: new Map(),
   routes: new Map(),
@@ -180,7 +198,8 @@ function requestView(
     | { readonly kind: 'area'; readonly area: ShownArea }
     | { readonly kind: 'reset' }
     | { readonly kind: 'aircraft'; readonly hex: string }
-    | { readonly kind: 'airport'; readonly airport: string },
+    | { readonly kind: 'airport'; readonly airport: string }
+    | { readonly kind: 'airspace'; readonly airport: string },
 ): AtcState {
   if (state.followingHex !== null) {
     return { ...state, viewRequest: null };
@@ -201,7 +220,10 @@ export function requestArea(state: AtcState, area: ShownArea): AtcState {
 
 /** Clears the area outline and asks for the home view (`Area.view`). */
 export function requestReset(state: AtcState): AtcState {
-  return requestView({ ...state, shownArea: null }, { kind: 'reset' });
+  return requestView(
+    { ...state, shownArea: null, highlightedAirspace: null },
+    { kind: 'reset' },
+  );
 }
 
 /**
@@ -267,6 +289,44 @@ export function requestAirport(state: AtcState, code: string): AtcState {
   );
 }
 
+/** Marks airspace ready with the shelves in `payload`. */
+export function applyAirspace(
+  state: AtcState,
+  payload: AirspacePayload,
+): AtcState {
+  return {
+    ...state,
+    airspace: {
+      status: 'ready',
+      cycle: payload.cycle,
+      shelves: payload.shelves,
+    },
+  };
+}
+
+/** Marks airspace failed, but only while it is still loading. */
+export function applyAirspaceFailed(state: AtcState): AtcState {
+  return state.airspace.status === 'loading'
+    ? { ...state, airspace: { status: 'failed', cycle: null, shelves: [] } }
+    : state;
+}
+
+/**
+ * Highlights the airspace of the airport `code`, turns the airspace layer on,
+ * clears the area outline and asks the map to fit it. While following, the
+ * move is dropped.
+ */
+export function requestAirspace(state: AtcState, code: string): AtcState {
+  return requestView(
+    {
+      ...applyLayers(state, { airspace: true }),
+      highlightedAirspace: code,
+      shownArea: null,
+    },
+    { kind: 'airspace', airport: code },
+  );
+}
+
 /** Drops the pending map move, as after a user drag or zoom. */
 export function cancelViewRequest(state: AtcState): AtcState {
   return state.viewRequest === null ? state : { ...state, viewRequest: null };
@@ -308,13 +368,18 @@ export function applyHighlight(
   hexes: readonly string[],
 ): AtcState {
   const highlighted: ReadonlySet<string> = new Set(hexes.map(normalizeHex));
+  // An empty set also drops the highlighted airspace.
+  const base =
+    highlighted.size === 0 && state.highlightedAirspace !== null
+      ? { ...state, highlightedAirspace: null }
+      : state;
   if (
     highlighted.size === state.highlighted.size &&
     [...highlighted].every((hex) => state.highlighted.has(hex))
   ) {
-    return state;
+    return base;
   }
-  const next = { ...state, highlighted };
+  const next = { ...base, highlighted };
   if (highlighted.size === 0) {
     return next.viewRequest?.kind === 'highlight'
       ? { ...next, viewRequest: null }
@@ -355,6 +420,12 @@ export interface AtcStore {
   setLayers(patch: Partial<Layers>): void;
   /** Turns airports on and shows one ({@link requestAirport}). */
   showAirport(code: string): void;
+  /** Stores the airspace shelves ({@link applyAirspace}). */
+  setAirspace(payload: AirspacePayload): void;
+  /** Marks airspace failed ({@link applyAirspaceFailed}). */
+  setAirspaceFailed(): void;
+  /** Highlights and shows an airport's airspace ({@link requestAirspace}). */
+  showAirspace(code: string): void;
   pulse(hex: string): void;
   setFeedStatus(status: FeedStatus): void;
 }
@@ -406,6 +477,9 @@ export function createAtcStore(options: { now?: () => number } = {}): AtcStore {
     setSurfaces: (code, value) => update(applySurfaces(state, code, value)),
     setLayers: (patch) => update(applyLayers(state, patch)),
     showAirport: (code) => update(requestAirport(state, code)),
+    setAirspace: (payload) => update(applyAirspace(state, payload)),
+    setAirspaceFailed: () => update(applyAirspaceFailed(state)),
+    showAirspace: (code) => update(requestAirspace(state, code)),
     pulse: (hex) =>
       update({ ...state, pulse: { hex: normalizeHex(hex), at: now() } }),
     setFeedStatus: (feedStatus) =>
