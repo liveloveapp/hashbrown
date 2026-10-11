@@ -132,3 +132,30 @@ test('osmToSurfaces reports runways-only for an empty payload', () => {
     features: [],
   });
 });
+
+test('osmToSurfaces strips Taxiway and TWY prefixes and keeps the first of several refs', () => {
+  const taxiway = (ref: string) => ({
+    type: 'way',
+    tags: { aeroway: 'taxiway', ref },
+    geometry: [pt(1, 2), pt(1.5, 2.5)],
+  });
+  const overpass = {
+    elements: [
+      taxiway('Taxiway A'),
+      taxiway('twy b2'),
+      taxiway('A;B'),
+      taxiway(' c '),
+      taxiway('Taxiway '),
+    ],
+  };
+
+  const result = osmToSurfaces('KBDN', overpass);
+
+  expect(result.features.map((f) => f.ref)).toEqual([
+    'A',
+    'B2',
+    'A',
+    'C',
+    null,
+  ]);
+});

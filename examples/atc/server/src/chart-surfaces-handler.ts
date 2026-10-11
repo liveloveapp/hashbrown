@@ -10,12 +10,36 @@ import { type NodeHandler, sendJson } from './http';
 
 const FRESH_MS = 24 * 60 * 60 * 1000;
 const STALE_LIMIT_MS = 30 * FRESH_MS;
-/** Overpass can take up to 20 s of its own query time. */
-const UPSTREAM_TIMEOUT_MS = 18_000;
+/**
+ * One deadline for the whole load (ADDS lookup, Airport Mapping, Overpass), so
+ * it ends inside the 20 s Vercel function limit. Overpass is asked for 12 s.
+ */
+const LOAD_DEADLINE_MS = 17_000;
 const CACHE_CONTROL = 'public, s-maxage=86400, stale-while-revalidate=604800';
 const CODE = /^[A-Z0-9]{2,4}$/;
 /** Cached for well-formed codes the FAA does not know, so they are not refetched. */
 const UNKNOWN = 'UNKNOWN';
+
+/** The Airport Mapping surfaces, or null when there are none or a layer fails. */
+async function loadAm(
+  fetchFn: typeof fetch,
+  code: string,
+  faa: string,
+  signal: AbortSignal,
+): Promise<Surfaces | null> {
+  try {
+    const [taxiways, aprons, hotspots] = await Promise.all([
+      fetchAmLayer(fetchFn, 'AM_Taxiway', faa, signal),
+      fetchAmLayer(fetchFn, 'AM_Apron', faa, signal),
+      fetchAmLayer(fetchFn, 'AM_Hotspot', faa, signal),
+    ]);
+
+    return amToSurfaces(code, { taxiways, aprons, hotspots });
+  } catch {
+    // Treated as "no FAA data", so OpenStreetMap can still draw the airport.
+    return null;
+  }
+}
 
 /**
  * `/api/chart/surfaces?airport=CODE`: taxiways, aprons and hot spots for one
@@ -23,38 +47,37 @@ const UNKNOWN = 'UNKNOWN';
  * OpenStreetMap through Overpass. Results are cached per code for 24 h and a
  * result up to 30 days old stands in (`X-Atc-Stale: 1`) when upstream fails.
  * Codes the FAA does not know return 400, and are cached so they are not
- * refetched.
+ * refetched. An Airport Mapping failure counts as no FAA data; a failed
+ * airport lookup or Overpass fetch fails the load. The whole load shares one
+ * `deadlineMs` (17 s by default).
  */
 export function createChartSurfacesHandler(
   options: {
     fetchFn?: typeof fetch;
     now?: () => number;
-    timeoutMs?: number;
+    deadlineMs?: number;
   } = {},
 ): NodeHandler {
   const {
     fetchFn = fetch,
     now = Date.now,
-    timeoutMs = UPSTREAM_TIMEOUT_MS,
+    deadlineMs = LOAD_DEADLINE_MS,
   } = options;
   const load = createCachedLoader<Surfaces | typeof UNKNOWN>({
     freshMs: FRESH_MS,
     staleLimitMs: STALE_LIMIT_MS,
     now,
     load: async (code) => {
-      const airport = await fetchAddsAirport(fetchFn, code, timeoutMs);
+      const signal = AbortSignal.timeout(deadlineMs);
+      const airport = await fetchAddsAirport(fetchFn, code, signal);
       if (airport === null) {
         return UNKNOWN;
       }
-      const [taxiways, aprons, hotspots] = await Promise.all([
-        fetchAmLayer(fetchFn, 'AM_Taxiway', airport.faa, timeoutMs),
-        fetchAmLayer(fetchFn, 'AM_Apron', airport.faa, timeoutMs),
-        fetchAmLayer(fetchFn, 'AM_Hotspot', airport.faa, timeoutMs),
-      ]);
+      const faa = await loadAm(fetchFn, code, airport.faa, signal);
 
       return (
-        amToSurfaces(code, { taxiways, aprons, hotspots }) ??
-        osmToSurfaces(code, await fetchOsmAeroways(fetchFn, airport, timeoutMs))
+        faa ??
+        osmToSurfaces(code, await fetchOsmAeroways(fetchFn, airport, signal))
       );
     },
   });

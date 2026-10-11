@@ -111,6 +111,21 @@ export function amToSurfaces(
   };
 }
 
+/**
+ * An OSM taxiway ref as a bare designator: the first of `;`-separated values,
+ * without a leading "Taxiway " or "TWY ", trimmed and upper-cased, or null.
+ */
+function taxiwayRef(value: unknown): string | null {
+  const first = text(value)?.split(';')[0] ?? '';
+  const ref = first
+    .trim()
+    .replace(/^(taxiway|twy)\s+/i, '')
+    .trim()
+    .toUpperCase();
+
+  return ref === '' || /^(TAXIWAY|TWY)$/.test(ref) ? null : ref;
+}
+
 /** One Overpass way to a feature, or null when it is not drawn. */
 function wayToFeature(way: unknown): SurfaceFeature | null {
   if (!isRecord(way) || way['type'] !== 'way' || !isRecord(way['tags'])) {
@@ -155,7 +170,7 @@ function wayToFeature(way: unknown): SurfaceFeature | null {
       kind: 'taxiway',
       shape: 'line',
       points,
-      ref: text(tags['ref']),
+      ref: taxiwayRef(tags['ref']),
       widthFt: Number.isFinite(metres) ? metres / 0.3048 : null,
     };
   }

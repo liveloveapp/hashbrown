@@ -58,14 +58,14 @@ export async function fetchNasr(
   };
 }
 
-/** GETs a URL and parses JSON. Throws on a non-ok response or a timeout. */
+/** GETs a URL and parses JSON. Throws on a non-ok response or an abort. */
 async function getJson(
   fetchFn: typeof fetch,
   url: string,
-  timeoutMs: number,
+  signal: AbortSignal,
 ): Promise<unknown> {
   const response = await fetchFn(url, {
-    signal: AbortSignal.timeout(timeoutMs),
+    signal,
     headers: { 'user-agent': USER_AGENT },
   });
   if (!response.ok) {
@@ -84,12 +84,13 @@ async function getJson(
 /**
  * Looks up a public-use airport in the FAA ADDS US_Airport layer by ident or
  * ICAO code. The code must already match `^[A-Z0-9]{2,4}$`. Returns the FAA
- * ident and position of the first match, or null when there is none.
+ * ident and position of the first match, or null when there is none. Aborts
+ * with `signal`.
  */
 export async function fetchAddsAirport(
   fetchFn: typeof fetch,
   code: string,
-  timeoutMs: number,
+  signal: AbortSignal,
 ): Promise<{ faa: string; lat: number; lon: number } | null> {
   const query = new URLSearchParams({
     where: `(IDENT='${code}' OR ICAO_ID='${code}') AND PRIVATEUSE=0`,
@@ -100,7 +101,7 @@ export async function fetchAddsAirport(
   const json = await getJson(
     fetchFn,
     `${ARCGIS_BASE}/US_Airport/FeatureServer/0/query?${query}`,
-    timeoutMs,
+    signal,
   );
   const features = (json as { features?: unknown }).features;
   const first: unknown = Array.isArray(features) ? features[0] : undefined;
@@ -127,12 +128,13 @@ export async function fetchAddsAirport(
 /**
  * Fetches one FAA Airport Mapping layer for an airport as GeoJSON in WGS84,
  * with coordinates at 6 decimals. `faa` must come from `fetchAddsAirport`.
+ * Aborts with `signal`.
  */
 export function fetchAmLayer(
   fetchFn: typeof fetch,
   layer: 'AM_Taxiway' | 'AM_Apron' | 'AM_Hotspot',
   faa: string,
-  timeoutMs: number,
+  signal: AbortSignal,
 ): Promise<unknown> {
   const query = new URLSearchParams({
     where: `FAA_ID='${faa}'`,
@@ -146,23 +148,25 @@ export function fetchAmLayer(
   return getJson(
     fetchFn,
     `${ARCGIS_BASE}/${layer}/FeatureServer/0/query?${query}`,
-    timeoutMs,
+    signal,
   );
 }
 
 /**
  * Fetches taxiways, aprons and holding positions within 3 km of a point from
- * OpenStreetMap through Overpass, with geometry. Throws on a non-ok response.
+ * OpenStreetMap through Overpass, with geometry. Aborts with `signal`. Throws
+ * on a non-ok response, and on a 200 whose body carries a `remark`, which is
+ * how Overpass reports a timeout or overload (with partial or no elements).
  */
 export async function fetchOsmAeroways(
   fetchFn: typeof fetch,
   at: LatLon,
-  timeoutMs: number,
+  signal: AbortSignal,
 ): Promise<unknown> {
-  const ql = `[out:json][timeout:20];way(around:3000,${at.lat},${at.lon})["aeroway"~"^(taxiway|taxilane|apron|holding_position)$"];out geom tags;`;
+  const ql = `[out:json][timeout:12];way(around:3000,${at.lat},${at.lon})["aeroway"~"^(taxiway|taxilane|apron|holding_position)$"];out geom tags;`;
   const response = await fetchFn(OVERPASS_URL, {
     method: 'POST',
-    signal: AbortSignal.timeout(timeoutMs),
+    signal,
     headers: {
       'user-agent': USER_AGENT,
       'content-type': 'application/x-www-form-urlencoded',
@@ -173,5 +177,15 @@ export async function fetchOsmAeroways(
     throw new Error(`Overpass returned ${response.status}`);
   }
 
-  return response.json();
+  const body: unknown = await response.json();
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'remark' in body &&
+    typeof body.remark === 'string'
+  ) {
+    throw new Error(`Overpass error: ${body.remark}`);
+  }
+
+  return body;
 }

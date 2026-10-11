@@ -156,7 +156,7 @@ test('upstream down with an empty cache returns 502', async () => {
   errors.mockRestore();
 });
 
-test('an ArcGIS error body counts as a failure, not as no data', async () => {
+test('an ArcGIS error body on an Airport Mapping layer counts as no FAA data', async () => {
   const errors = silenceErrors();
   const fetchFn = upstream({
     airport: airportHit('SEA'),
@@ -166,9 +166,98 @@ test('an ArcGIS error body counts as a failure, not as no data', async () => {
 
   const response = await call(handler, 'airport=KSEA');
 
+  expect(response.status).toBe(200);
+  expect(response.body.source).toBe('osm');
+  errors.mockRestore();
+});
+
+test('an Airport Mapping layer that returns 500 falls back to OSM', async () => {
+  const fetchFn = vi.fn<typeof fetch>(async (input) => {
+    const url = String(input);
+    if (url.includes('US_Airport')) return json(airportHit('BDN'));
+    if (url.includes('overpass-api.de')) return json(overpass);
+    return new Response('down', { status: 500 });
+  });
+  const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
+
+  const response = await call(handler, 'airport=KBDN');
+
+  expect(response.status).toBe(200);
+  expect(response.body.source).toBe('osm');
+});
+
+test('the US_Airport lookup failing still fails the load', async () => {
+  const errors = silenceErrors();
+  const fetchFn = vi.fn<typeof fetch>(async (input) => {
+    const url = String(input);
+    if (url.includes('overpass-api.de')) return json(overpass);
+    if (url.includes('US_Airport'))
+      return new Response('down', { status: 500 });
+    return json(empty);
+  });
+  const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
+
+  const response = await call(handler, 'airport=KBDN');
+
   expect(response.status).toBe(502);
-  expect(
-    fetchFn.mock.calls.some(([url]) => String(url).includes('overpass')),
-  ).toBe(false);
+  errors.mockRestore();
+});
+
+test('an Overpass error remark sent as 200 is a failure, not runways-only', async () => {
+  const errors = silenceErrors();
+  const fetchFn = vi.fn<typeof fetch>(async (input) => {
+    const url = String(input);
+    if (url.includes('US_Airport')) return json(airportHit('BDN'));
+    if (url.includes('overpass-api.de'))
+      return json({
+        elements: [],
+        remark: 'runtime error: Query timed out in "query" at line 1',
+      });
+    return json(empty);
+  });
+  const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
+
+  const response = await call(handler, 'airport=KBDN');
+
+  expect(response.status).toBe(502);
+  errors.mockRestore();
+});
+
+test('the Overpass query asks for at most 12 s of server time', async () => {
+  const fetchFn = upstream({ airport: airportHit('RDM'), taxiways: empty });
+  const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
+
+  await call(handler, 'airport=KRDM');
+
+  const body = fetchFn.mock.calls.find(([url]) =>
+    String(url).includes('overpass'),
+  )?.[1]?.body;
+  expect(decodeURIComponent(String(body))).toContain('[timeout:12]');
+});
+
+test('the whole load shares one deadline, so slow upstream steps add up to a 502', async () => {
+  const errors = silenceErrors();
+  const routed = upstream({ airport: airportHit('RDM'), taxiways: empty });
+  const fetchFn = vi.fn<typeof fetch>(
+    (input, init) =>
+      new Promise((resolve, reject) => {
+        // Like fetch: an already aborted signal rejects at once.
+        if (init?.signal?.aborted) return reject(init.signal.reason);
+        const timer = setTimeout(() => resolve(routed(input, init)), 30);
+        init?.signal?.addEventListener('abort', () => {
+          clearTimeout(timer);
+          reject(init.signal?.reason);
+        });
+      }),
+  );
+  const handler = createChartSurfacesHandler({
+    fetchFn,
+    now: () => NOW,
+    deadlineMs: 50,
+  });
+
+  const response = await call(handler, 'airport=KRDM');
+
+  expect(response.status).toBe(502);
   errors.mockRestore();
 });
