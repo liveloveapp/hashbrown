@@ -324,3 +324,24 @@ test('paint order holds after a shelf is culled and re-added', () => {
   );
   expect(lastE).toBeLessThan(firstD);
 });
+
+test('a shelf whose label anchor is outside the view gets no label request', () => {
+  const view = mount();
+  const east = view.map.getBounds().getEast();
+  const outside = shelf(
+    'KOUT-C-0',
+    { class: 'C', type: 'C', ceiling: { ft: 4000, exclusive: false } },
+    0.01,
+    east + 0.03,
+    44.2541,
+  );
+
+  view.store.setAirspace({
+    cycle: '2610',
+    effective: '2026-10-08',
+    shelves: [outside],
+  });
+
+  expect(view.all('path.atc-as')).toHaveLength(1);
+  expect(view.layer.labelRequests()).toHaveLength(0);
+});

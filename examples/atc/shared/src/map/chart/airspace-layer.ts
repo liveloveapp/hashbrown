@@ -256,18 +256,27 @@ export function createAirspaceLayer(options: {
   };
 
   const labelRequests = (): LabelRequest[] => {
+    // Only labels anchored inside the view compete for spots.
+    const view = map.getBounds();
     pending = new Map(
-      wantedNow.map(({ entry, label }): [string, Pending] => [
-        labelId(entry.shelf),
-        {
-          entry,
-          label,
-          candidates: labelCandidates(
-            map.latLngToContainerPoint([entry.labelAt.lat, entry.labelAt.lon]),
+      wantedNow
+        .filter(({ entry }) =>
+          view.contains([entry.labelAt.lat, entry.labelAt.lon]),
+        )
+        .map(({ entry, label }): [string, Pending] => [
+          labelId(entry.shelf),
+          {
+            entry,
             label,
-          ),
-        },
-      ]),
+            candidates: labelCandidates(
+              map.latLngToContainerPoint([
+                entry.labelAt.lat,
+                entry.labelAt.lon,
+              ]),
+              label,
+            ),
+          },
+        ]),
     );
 
     return [...pending].map(([id, { candidates }], index) => ({

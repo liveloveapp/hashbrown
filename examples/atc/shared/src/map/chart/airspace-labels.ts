@@ -23,7 +23,8 @@ const hundreds = (ft: number): string => String(Math.round(ft / 100));
  * stack the ceiling over the floor (`SFC` for a surface floor); Class D is
  * its ceiling in a box, with the chart's leading minus when the ceiling is
  * exclusive (up to but not including; the FAA's TNI). The layer labels only
- * each airport's largest D shelf. Class E surface areas, and any shelf with no ceiling, have none.
+ * each airport's largest D shelf. Class E surface areas, and any shelf with
+ * no ceiling, have none.
  * The text is built from validated numbers and fixed literals only.
  */
 export function shelfLabel(shelf: AirspaceShelf): ShelfLabel | null {
