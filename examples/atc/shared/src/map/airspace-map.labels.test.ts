@@ -172,3 +172,13 @@ test('a chart change places the labels again', async () => {
   expect(vi.mocked(placeLabels)).toHaveBeenCalledTimes(1);
   expect(map.getContainer().querySelectorAll('.atc-apt-block')).toHaveLength(0);
 });
+
+test('one zoom places the labels once', async () => {
+  const { map } = await mount();
+  map.setView([44.2541, -121.15], 11, { animate: false });
+  vi.mocked(placeLabels).mockClear();
+
+  map.setZoom(12, { animate: false });
+
+  expect(vi.mocked(placeLabels)).toHaveBeenCalledTimes(1);
+});

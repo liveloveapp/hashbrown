@@ -217,7 +217,7 @@ export async function createAirspaceMap(options: {
     cards.sync(store.getState());
     follow.panToFollowed(true);
     tags.layout();
-    chart.redraw();
+    // Leaflet fires moveend right after zoomend; the chart redraws there.
   });
   map.on('moveend', () => {
     tags.layout();
