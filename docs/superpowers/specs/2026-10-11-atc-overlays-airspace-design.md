@@ -235,7 +235,9 @@ planes.
     underneath with `stroke: var(--atc-accent)`, stroke width equal to the
     shelf's width plus 4 px, and opacity 0.6.
   - Every other shelf dims to opacity 0.3.
-  - `clearHighlight` and `resetMap` clear it.
+  - `clearHighlight`, `resetMap`, and area and airport requests clear it. An
+    empty aircraft highlight does not, so a search that finds no aircraft
+    keeps the airspace it searched.
   - A new `ViewRequest` kind `'airspace'` fits the map to the union of the
     airport's shelf bounding boxes, under the existing rules: follow mode
     wins, the newest request wins, and a drag cancels.
@@ -313,7 +315,9 @@ All new tools are added to `ATC_TOOL_DEFINITIONS`, and the server pins them.
     `'airspace'` view.
   - Rows are measured from that airport.
 - **`setLayers`** gains `airspace: boolean | null`.
-- **`clearHighlight`** and **`resetMap`** also clear `highlightedAirspace`.
+- **`clearHighlight`**, **`resetMap`**, **`showArea`** and **`showAirport`**
+  also clear `highlightedAirspace`; **`highlightAircraft`** with an empty list
+  does not.
 
 **Components**
 

@@ -474,8 +474,9 @@ export interface AirspacePayload {
     - Clears `shownArea`.
     - Then `requestView({ kind: 'airspace', airport: code })`, whose
       following-a-plane rule drops the move.
-  - `applyHighlight` with an empty set, and `requestReset`, also clear
-    `highlightedAirspace`.
+  - The store's `clearHighlight`, `requestReset`, `requestArea` and
+    `requestAirport` also clear `highlightedAirspace`. `applyHighlight` never
+    touches it, so an empty set keeps the airspace a search highlighted.
   - Store methods: `setAirspace(payload)`, `setAirspaceFailed()` and
     `showAirspace(code)`.
 - **Chart feed:**

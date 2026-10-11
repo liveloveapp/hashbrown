@@ -215,7 +215,10 @@ function requestView(
  * drag or zoom cancels a pending one ({@link cancelViewRequest}).
  */
 export function requestArea(state: AtcState, area: ShownArea): AtcState {
-  return requestView({ ...state, shownArea: area }, { kind: 'area', area });
+  return requestView(
+    { ...state, shownArea: area, highlightedAirspace: null },
+    { kind: 'area', area },
+  );
 }
 
 /** Clears the area outline and asks for the home view (`Area.view`). */
@@ -279,12 +282,17 @@ export function applyLayers(state: AtcState, patch: Partial<Layers>): AtcState {
 }
 
 /**
- * Turns the airports layer on, clears the area outline and asks the map to
- * show the airport `code`. While following, the move is dropped.
+ * Turns the airports layer on, clears the area outline and the airspace
+ * highlight, and asks the map to show the airport `code`. While following,
+ * the move is dropped.
  */
 export function requestAirport(state: AtcState, code: string): AtcState {
   return requestView(
-    { ...applyLayers(state, { airports: true }), shownArea: null },
+    {
+      ...applyLayers(state, { airports: true }),
+      shownArea: null,
+      highlightedAirspace: null,
+    },
     { kind: 'airport', airport: code },
   );
 }
@@ -361,25 +369,21 @@ function allInside(
  * Highlights aircraft. A new, non-empty set asks the map to fit it, unless
  * every plane is inside the shown area, whose view already shows them. A fit
  * elsewhere clears the area outline. The same set returns `state` unchanged;
- * an empty set drops a pending highlight fit.
+ * an empty set drops a pending highlight fit. The airspace highlight is left
+ * alone: a search that finds no aircraft keeps the airspace it searched.
  */
 export function applyHighlight(
   state: AtcState,
   hexes: readonly string[],
 ): AtcState {
   const highlighted: ReadonlySet<string> = new Set(hexes.map(normalizeHex));
-  // An empty set also drops the highlighted airspace.
-  const base =
-    highlighted.size === 0 && state.highlightedAirspace !== null
-      ? { ...state, highlightedAirspace: null }
-      : state;
   if (
     highlighted.size === state.highlighted.size &&
     [...highlighted].every((hex) => state.highlighted.has(hex))
   ) {
-    return base;
+    return state;
   }
-  const next = { ...base, highlighted };
+  const next = { ...state, highlighted };
   if (highlighted.size === 0) {
     return next.viewRequest?.kind === 'highlight'
       ? { ...next, viewRequest: null }
@@ -392,6 +396,13 @@ export function applyHighlight(
   return requestView({ ...next, shownArea: null }, { kind: 'highlight' });
 }
 
+/** Drops the airspace highlight; returns the same state when there is none. */
+function clearAirspaceHighlight(state: AtcState): AtcState {
+  return state.highlightedAirspace === null
+    ? state
+    : { ...state, highlightedAirspace: null };
+}
+
 /** A tiny observable store shared by the map, the tools and the components. */
 export interface AtcStore {
   getState(): AtcState;
@@ -400,6 +411,7 @@ export interface AtcStore {
   setRoute(callsign: string, route: Route | null): void;
   select(hex: string | null): void;
   highlight(hexes: readonly string[]): void;
+  /** Clears the aircraft highlight and the airspace highlight. */
   clearHighlight(): void;
   follow(hex: string | null): void;
   /** Outlines an area and fits the map to it ({@link requestArea}). */
@@ -466,7 +478,8 @@ export function createAtcStore(options: { now?: () => number } = {}): AtcStore {
         selectedHex: hex === null ? null : normalizeHex(hex),
       }),
     highlight: (hexes) => update(applyHighlight(state, hexes)),
-    clearHighlight: () => update(applyHighlight(state, [])),
+    clearHighlight: () =>
+      update(clearAirspaceHighlight(applyHighlight(state, []))),
     follow: (hex) => update(applyFollow(state, hex)),
     showArea: (area) => update(requestArea(state, area)),
     resetView: () => update(requestReset(state)),

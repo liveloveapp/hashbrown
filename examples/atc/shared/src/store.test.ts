@@ -481,6 +481,33 @@ test('clearing the highlight and resetting the view clear the airspace highlight
   expect(store.getState().highlightedAirspace).toBeNull();
 });
 
+test('an empty aircraft highlight keeps the highlighted airspace', () => {
+  const shown = requestAirspace(INITIAL_STATE, 'KPDX');
+
+  const next = applyHighlight(shown, []);
+
+  expect(next.highlightedAirspace).toBe('KPDX');
+});
+
+test('the store keeps the airspace highlight when highlighting no aircraft', () => {
+  const store = createAtcStore();
+  store.showAirspace('KPDX');
+
+  store.highlight([]);
+
+  expect(store.getState().highlightedAirspace).toBe('KPDX');
+});
+
+test('area and airport requests clear the airspace highlight', () => {
+  const shown = requestAirspace(INITIAL_STATE, 'KPDX');
+
+  const area = requestArea(shown, { airport: 'KSEA', radiusNm: 25 });
+  const airport = requestAirport(shown, 'KSEA');
+
+  expect(area.highlightedAirspace).toBeNull();
+  expect(airport.highlightedAirspace).toBeNull();
+});
+
 test('the store applies airspace and its failure', () => {
   const store = createAtcStore();
 
