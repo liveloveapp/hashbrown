@@ -1,7 +1,7 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
 import { prefersReducedMotion } from '../dom';
-import { airportByCode } from '../directory';
+import { airportByCode, chartAirportByCode } from '../directory';
 import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore, ShownArea } from '../store';
 import type { CardSize } from './detail-card';
@@ -16,6 +16,12 @@ const REVEAL_ZOOM = 8;
 const MAX_AREA_ZOOM = 12;
 /** Space kept around a shown area, in pixels. */
 const AREA_PADDING = 24;
+/** Showing an airport zooms to at least this, where its diagram draws. */
+const MIN_AIRPORT_ZOOM = 13;
+/** Furthest in that showing an airport will zoom. */
+const MAX_AIRPORT_ZOOM = 15;
+/** Half the box around an airport without runway corners, in degrees. */
+const AIRPORT_BOX_DEG = 0.02;
 
 /** Applies the store's view requests to the map. */
 export interface ViewController {
@@ -36,8 +42,8 @@ export interface ViewController {
 
 /**
  * Creates the controller that moves the map for view requests: fitting
- * highlighted planes, showing an area, revealing one plane or resetting to
- * `area`. Each request applies once (by `seq`), and every move leaves room
+ * highlighted planes, showing an area or an airport, revealing one plane or
+ * resetting to `area`. Each request applies once (by `seq`), and every move leaves room
  * for a phone's bottom sheet and a docked detail card.
  */
 export function createViewController(options: {
@@ -195,6 +201,47 @@ export function createViewController(options: {
     );
   };
   /**
+   * Shows one airport's diagram: fits its runway corners (or a small box
+   * around it) at zoom 13 to 15, above a phone's sheet, in one move.
+   */
+  const showAirport = (code: string, animate: boolean) => {
+    const state = store.getState();
+    const airport = airportByCode(state, code);
+    if (airport === null) {
+      return;
+    }
+    const corners =
+      chartAirportByCode(state, code)?.runways.flatMap(
+        (runway) => runway.corners ?? [],
+      ) ?? [];
+    const bounds =
+      corners.length > 0
+        ? L.latLngBounds(corners.map(({ lat, lon }) => [lat, lon]))
+        : L.latLngBounds(
+            [airport.lat - AIRPORT_BOX_DEG, airport.lon - AIRPORT_BOX_DEG],
+            [airport.lat + AIRPORT_BOX_DEG, airport.lon + AIRPORT_BOX_DEG],
+          );
+    const zoom = Math.min(
+      MAX_AIRPORT_ZOOM,
+      Math.max(
+        MIN_AIRPORT_ZOOM,
+        map.getBoundsZoom(
+          bounds,
+          false,
+          L.point(2 * AREA_PADDING, 2 * AREA_PADDING + sheetInset()),
+        ),
+      ),
+    );
+    const centre = bounds.getCenter();
+    moveMap(() =>
+      map.setView(
+        centreAbove({ lat: centre.lat, lon: centre.lng }, zoom),
+        zoom,
+        { animate },
+      ),
+    );
+  };
+  /**
    * Applies the newest view request once. Follow mode drops it. A highlight
    * fit, or a plane picked in the chat, waits until a marker is drawn.
    */
@@ -241,8 +288,8 @@ export function createViewController(options: {
       return;
     }
     if (request.kind === 'airport') {
-      // A later task draws the airport view; until then, consume the request.
       appliedSeq = request.seq;
+      showAirport(request.airport, animate);
       return;
     }
     appliedSeq = request.seq;

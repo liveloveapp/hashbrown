@@ -212,3 +212,31 @@ test('below zoom 12 loaded surfaces leave the symbol alone', () => {
   expect(view.count('.atc-apt')).toBe(drawn);
   view.cleanup();
 });
+
+test('at zoom 11 a large airport with runway outlines hides its symbol', () => {
+  const view = mount(11);
+  const a = { id: '05', lat: 44.09, lon: -121.21 };
+  const b = { id: '23', lat: 44.1, lon: -121.19 };
+  const long: Runway = {
+    ...runway(8070, true),
+    ends: [a, b],
+    corners: [a, b, b, a],
+  };
+  const large = airports.map((airport) =>
+    airport.code === 'KBDN' ? { ...airport, runways: [long] } : airport,
+  );
+  view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
+  const drawn = view.count('.atc-apt');
+
+  view.store.setChart({
+    cycle: '2610',
+    effective: '2026-09-03',
+    airports: large,
+  });
+
+  expect(view.count('.atc-apt')).toBe(drawn - 1);
+  view.map.setZoom(12);
+  view.layer.redraw();
+  expect(view.count('.atc-apt')).toBe(drawn);
+  view.cleanup();
+});

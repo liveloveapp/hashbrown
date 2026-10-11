@@ -69,3 +69,84 @@
   color: var(--atc-diagram-hotspot);
   font-family: var(--atc-font);
 }
+.atc-map .atc-diagram-label > span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  line-height: 1;
+}
+/* Runway numbers sit on a small ink tab, legible over a runway of any width. */
+.atc-map .atc-diagram-label.is-runway > span {
+  padding: 1px 2px;
+  border-radius: 2px;
+  background: var(--atc-ink);
+}
+/* A hot spot's name sits to the right of its ring (radius 9). */
+.atc-map .atc-diagram-label.is-hotspot > span {
+  transform: translate(12px, -50%);
+}
+
+/* The Layers pill and its panel, stacked above the zoom control. */
+.atc-map.leaflet-container .atc-layers {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 6px;
+}
+.atc-map.leaflet-container .atc-layers-toggle,
+.atc-map.leaflet-container .atc-layers-panel {
+  border: 1px solid var(--atc-border);
+  background: var(--atc-surface);
+  color: var(--atc-ink);
+  font-family: var(--atc-font);
+  font-weight: 500;
+  font-size: 13px;
+}
+.atc-map.leaflet-container .atc-layers-toggle {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--atc-fast) var(--atc-ease);
+}
+.atc-map.leaflet-container .atc-layers-toggle:hover {
+  background: var(--atc-canvas);
+}
+.atc-map.leaflet-container .atc-layers-panel {
+  padding: 4px 12px 8px;
+  border-radius: var(--atc-radius-row);
+}
+.atc-map.leaflet-container .atc-layers-panel[hidden] {
+  display: none;
+}
+.atc-map.leaflet-container .atc-layers-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  cursor: pointer;
+}
+.atc-map.leaflet-container .atc-layers-row input {
+  margin: 0;
+}
+.atc-map.leaflet-container .atc-layers-cycle {
+  margin: 0;
+  color: var(--atc-muted);
+  font-size: 12px;
+}
+.atc-map.leaflet-container .atc-layers-cycle[hidden] {
+  display: none;
+}
+.atc-map.leaflet-container .atc-layers-toggle:focus-visible {
+  outline: 2px solid var(--atc-accent);
+  outline-offset: -2px;
+}
+.atc-map.leaflet-container .atc-layers-row input:focus-visible {
+  outline: 2px solid var(--atc-accent);
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  .atc-map.leaflet-container .atc-layers-toggle,
+  .atc-map.leaflet-container .atc-layers-row {
+    min-height: 44px;
+  }
+}

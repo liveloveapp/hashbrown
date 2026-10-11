@@ -5,6 +5,8 @@ import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore, ShownArea } from '../store';
 import { createCardSync } from './card-sync';
 import { createAirportLayer } from './chart/airport-layer';
+import { createDiagramLayer } from './chart/diagram-layer';
+import { createLayersControl } from './chart/layers-control';
 import { createFollowController } from './follow';
 import { createMotionLoop } from './motion-loop';
 import { markerClassName, planeIconHtml, updatePlane } from './plane-marker';
@@ -44,9 +46,10 @@ export interface AirspaceMapHandle {
  * - `view-controller.ts`: the map moves only for view requests in the store
  *   (see `requestArea`). The newest request wins; follow mode wins over all
  *   of them; a user drag or zoom cancels one still waiting.
- * - `chart/`: FAA sectional airport symbols and data blocks in their own
- *   panes below the planes, redrawn only when the chart, the layers or the
- *   surfaces change, or the view settles.
+ * - `chart/`: FAA sectional airport symbols and data blocks, and from zoom
+ *   12 airport diagrams, in their own panes below the planes, redrawn only
+ *   when the chart, the layers or the surfaces change, or the view settles.
+ *   The Layers pill above the zoom control turns airports on and off.
  *
  * Planes are not keyboard-focusable (`keyboard: false`): every map action is
  * also available from the chat, which is the accessible path.
@@ -96,6 +99,15 @@ export async function createAirspaceMap(options: {
     map.createPane(name).style.zIndex = String(zIndex);
   }
   const airports = createAirportLayer({ L, map, store, pane: 'atc-airports' });
+  const diagrams = createDiagramLayer({
+    L,
+    map,
+    store,
+    pane: 'atc-diagram',
+    element,
+  });
+  // Added after the zoom control, so it stacks above it.
+  const layersControl = createLayersControl({ L, map, store });
 
   const markers = new Map<string, Marker>();
   let zooming = false;
@@ -144,8 +156,12 @@ export async function createAirspaceMap(options: {
     cards.sync(store.getState());
     follow.panToFollowed(true);
     airports.redraw();
+    diagrams.redraw();
   });
-  map.on('moveend', () => airports.redraw());
+  map.on('moveend', () => {
+    airports.redraw();
+    diagrams.redraw();
+  });
   map.on('move', () => cards.sync(store.getState()));
   map.on('click', () => {
     if (store.getState().selectedHex !== null) {
@@ -233,6 +249,7 @@ export async function createAirspaceMap(options: {
       }
     }
     airports.sync(state);
+    diagrams.sync(state);
     cards.sync(state);
     follow.syncPill();
     syncOutline(state.shownArea);
@@ -289,6 +306,8 @@ export async function createAirspaceMap(options: {
       follow.destroy();
       motion.destroy();
       airports.destroy();
+      diagrams.destroy();
+      layersControl.destroy();
       map.remove();
     },
   };

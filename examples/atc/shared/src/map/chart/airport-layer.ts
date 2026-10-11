@@ -6,9 +6,7 @@ import type { AtcState, AtcStore } from '../../store';
 import { airportSymbol } from './airport-symbol';
 import { dataBlockLines, renderDataBlock } from './data-block';
 import { blockZoomRule, placeBlocks, visibleAirports } from './declutter';
-
-/** From this zoom a loaded airport diagram replaces the symbol. */
-const DIAGRAM_ZOOM = 12;
+import { DIAGRAM_ZOOM, drawsLargeOutline } from './diagram-layer';
 /** How far beyond the view (as a fraction of it) airports are still drawn. */
 const NEAR_PAD = 0.5;
 
@@ -41,9 +39,10 @@ export interface AirportLayer {
 }
 
 /**
- * Whether an airport's symbol shows at `zoom`. From zoom 12 a loaded diagram
- * (a `Surfaces` object) replaces it; while surfaces load or after they fail,
- * the symbol stays.
+ * Whether an airport's symbol shows at `zoom`. At zoom 11 a large airport's
+ * runway outlines replace it (`drawsLargeOutline`). From zoom 12 a loaded
+ * diagram (a `Surfaces` object) replaces it; while surfaces load or after
+ * they fail, the symbol stays.
  */
 function drawsSymbol(
   airport: ChartAirport,
@@ -53,7 +52,7 @@ function drawsSymbol(
   if (zoom >= DIAGRAM_ZOOM) {
     return !isLoaded(surfaces.get(airport.code));
   }
-  return true;
+  return !drawsLargeOutline(airport, zoom);
 }
 
 function isLoaded(value: Surfaces | 'loading' | 'failed' | undefined) {
