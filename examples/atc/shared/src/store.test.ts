@@ -2,15 +2,20 @@ import { expect, test, vi } from 'vitest';
 import type { Aircraft } from './aircraft';
 import { AIRPORTS } from './places';
 import {
+  applyChart,
+  applyChartLimited,
   applyFollow,
   applyHighlight,
+  applyLayers,
   applySnapshot,
+  applySurfaces,
   cancelViewRequest,
   createAtcStore,
   DEPARTED_TTL_MS,
   INITIAL_STATE,
   lookupAircraft,
   requestAircraft,
+  requestAirport,
   requestArea,
   requestReset,
 } from './store';
@@ -321,4 +326,60 @@ test('applySnapshot forgets aircraft that left more than DEPARTED_TTL_MS ago', (
 
   expect(soon.departed.has('aaaaaa')).toBe(true);
   expect(later.departed.has('aaaaaa')).toBe(false);
+});
+
+test('showing an airport turns the airports layer on and requests its view', () => {
+  const hidden = applyLayers(INITIAL_STATE, { airports: false });
+
+  const next = requestAirport(hidden, 'KRDM');
+
+  expect(next.layers.airports).toBe(true);
+  expect(next.viewRequest).toEqual({
+    seq: 1,
+    kind: 'airport',
+    airport: 'KRDM',
+  });
+  expect(next.shownArea).toBeNull();
+});
+
+test('showing an airport while following drops the request', () => {
+  const following = applyFollow(INITIAL_STATE, 'a1');
+
+  const next = requestAirport(following, 'KRDM');
+
+  expect(next.viewRequest).toBeNull();
+  expect(next.layers.airports).toBe(true);
+});
+
+test('setting layers to their current values returns the same state', () => {
+  const next = applyLayers(INITIAL_STATE, { airports: true });
+
+  expect(next).toBe(INITIAL_STATE);
+});
+
+test('a chart payload makes the chart ready', () => {
+  const next = applyChart(INITIAL_STATE, {
+    cycle: '2610',
+    effective: '2026-10-01',
+    airports: [],
+  });
+
+  expect(next.chart).toEqual({ status: 'ready', cycle: '2610', airports: [] });
+});
+
+test('limited chart status keeps no airports', () => {
+  const next = applyChartLimited(INITIAL_STATE);
+
+  expect(next.chart.status).toBe('limited');
+  expect(next.chart.airports).toEqual([]);
+});
+
+test('surfaces are stored per airport without touching others', () => {
+  const loading = applySurfaces(INITIAL_STATE, 'KRDM', 'loading');
+
+  const next = applySurfaces(loading, 'KBDN', 'failed');
+
+  expect(next.surfaces.get('KRDM')).toBe('loading');
+  expect(next.surfaces.get('KBDN')).toBe('failed');
+  expect(loading.surfaces.has('KBDN')).toBe(false);
 });

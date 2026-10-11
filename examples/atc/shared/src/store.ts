@@ -1,6 +1,6 @@
 import type { Aircraft, AircraftSnapshot } from './aircraft';
 import { distanceNm } from './geo';
-import type { ChartState } from './chart';
+import type { ChartAirports, ChartState, Layers, Surfaces } from './chart';
 import { airportByCode } from './directory';
 
 /** One stop on a scheduled route. */
@@ -32,7 +32,7 @@ export interface ShownArea {
 
 /**
  * A pending map move: a highlight fit, an area, a reset to the regional view,
- * or bringing one aircraft into view. Precedence: (1) follow mode always wins
+ * bringing one aircraft into view, or showing one airport. Precedence: (1) follow mode always wins
  * and drops requests; (2) the newest request (highest `seq`) wins; (3) a user
  * drag or zoom cancels a pending one; (4) highlight and aircraft requests
  * wait for their markers to be drawn. The map applies each `seq` once.
@@ -41,7 +41,12 @@ export type ViewRequest =
   | { readonly seq: number; readonly kind: 'highlight' }
   | { readonly seq: number; readonly kind: 'area'; readonly area: ShownArea }
   | { readonly seq: number; readonly kind: 'reset' }
-  | { readonly seq: number; readonly kind: 'aircraft'; readonly hex: string };
+  | { readonly seq: number; readonly kind: 'aircraft'; readonly hex: string }
+  | {
+      readonly seq: number;
+      readonly kind: 'airport';
+      readonly airport: string;
+    };
 
 /**
  * How long a departed aircraft is remembered, so cards in the transcript can
@@ -53,6 +58,10 @@ export const DEPARTED_TTL_MS = 30 * 60 * 1000;
 export interface AtcState {
   /** The FAA chart airports, once loaded. */
   readonly chart: ChartState;
+  /** Runway and taxiway surfaces per airport code, with load status. */
+  readonly surfaces: ReadonlyMap<string, Surfaces | 'loading' | 'failed'>;
+  /** Which chart layers are drawn. */
+  readonly layers: Layers;
   readonly aircraft: ReadonlyMap<string, Aircraft>;
   /** Aircraft that left the area in the last {@link DEPARTED_TTL_MS}. */
   readonly departed: ReadonlyMap<string, DepartedAircraft>;
@@ -74,6 +83,8 @@ export interface AtcState {
 /** The state before any data arrives. */
 export const INITIAL_STATE: AtcState = {
   chart: { status: 'loading', cycle: null, airports: [] },
+  surfaces: new Map(),
+  layers: { airports: true },
   aircraft: new Map(),
   departed: new Map(),
   routes: new Map(),
@@ -167,7 +178,8 @@ function requestView(
     | { readonly kind: 'highlight' }
     | { readonly kind: 'area'; readonly area: ShownArea }
     | { readonly kind: 'reset' }
-    | { readonly kind: 'aircraft'; readonly hex: string },
+    | { readonly kind: 'aircraft'; readonly hex: string }
+    | { readonly kind: 'airport'; readonly airport: string },
 ): AtcState {
   if (state.followingHex !== null) {
     return { ...state, viewRequest: null };
@@ -201,6 +213,56 @@ export function requestAircraft(state: AtcState, hex: string): AtcState {
   return requestView(
     { ...state, selectedHex: key },
     { kind: 'aircraft', hex: key },
+  );
+}
+
+/** Marks the chart ready with the airports in `payload`. */
+export function applyChart(state: AtcState, payload: ChartAirports): AtcState {
+  return {
+    ...state,
+    chart: {
+      status: 'ready',
+      cycle: payload.cycle,
+      airports: payload.airports,
+    },
+  };
+}
+
+/** Marks the chart limited: the airport data is unavailable. */
+export function applyChartLimited(state: AtcState): AtcState {
+  return {
+    ...state,
+    chart: { status: 'limited', cycle: null, airports: [] },
+  };
+}
+
+/** Stores the surfaces (or load status) for one airport, leaving others alone. */
+export function applySurfaces(
+  state: AtcState,
+  code: string,
+  value: Surfaces | 'loading' | 'failed',
+): AtcState {
+  return { ...state, surfaces: new Map(state.surfaces).set(code, value) };
+}
+
+/** Merges `patch` into the layers; returns the same state when nothing changes. */
+export function applyLayers(state: AtcState, patch: Partial<Layers>): AtcState {
+  const layers = { ...state.layers, ...patch };
+  const changed = (Object.keys(layers) as (keyof Layers)[]).some(
+    (key) => layers[key] !== state.layers[key],
+  );
+
+  return changed ? { ...state, layers } : state;
+}
+
+/**
+ * Turns the airports layer on, clears the area outline and asks the map to
+ * show the airport `code`. While following, the move is dropped.
+ */
+export function requestAirport(state: AtcState, code: string): AtcState {
+  return requestView(
+    { ...applyLayers(state, { airports: true }), shownArea: null },
+    { kind: 'airport', airport: code },
   );
 }
 
@@ -282,6 +344,16 @@ export interface AtcStore {
   cancelViewRequest(): void;
   /** Selects an aircraft and brings it into view ({@link requestAircraft}). */
   revealAircraft(hex: string): void;
+  /** Stores the chart airports ({@link applyChart}). */
+  setChart(payload: ChartAirports): void;
+  /** Marks the chart limited ({@link applyChartLimited}). */
+  setChartLimited(): void;
+  /** Stores one airport's surfaces or status ({@link applySurfaces}). */
+  setSurfaces(code: string, value: Surfaces | 'loading' | 'failed'): void;
+  /** Patches the layers ({@link applyLayers}). */
+  setLayers(patch: Partial<Layers>): void;
+  /** Turns airports on and shows one ({@link requestAirport}). */
+  showAirport(code: string): void;
   pulse(hex: string): void;
   setFeedStatus(status: FeedStatus): void;
 }
@@ -328,6 +400,11 @@ export function createAtcStore(options: { now?: () => number } = {}): AtcStore {
     resetView: () => update(requestReset(state)),
     cancelViewRequest: () => update(cancelViewRequest(state)),
     revealAircraft: (hex) => update(requestAircraft(state, hex)),
+    setChart: (payload) => update(applyChart(state, payload)),
+    setChartLimited: () => update(applyChartLimited(state)),
+    setSurfaces: (code, value) => update(applySurfaces(state, code, value)),
+    setLayers: (patch) => update(applyLayers(state, patch)),
+    showAirport: (code) => update(requestAirport(state, code)),
     pulse: (hex) =>
       update({ ...state, pulse: { hex: normalizeHex(hex), at: now() } }),
     setFeedStatus: (feedStatus) =>

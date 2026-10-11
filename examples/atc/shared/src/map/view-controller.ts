@@ -240,6 +240,11 @@ export function createViewController(options: {
       );
       return;
     }
+    if (request.kind === 'airport') {
+      // A later task draws the airport view; until then, consume the request.
+      appliedSeq = request.seq;
+      return;
+    }
     appliedSeq = request.seq;
     moveMap(() =>
       request.kind === 'area'
