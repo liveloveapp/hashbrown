@@ -1,5 +1,6 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
+import { prefersReducedMotion } from '../dom';
 import type { LatLon } from '../places';
 import type { AtcStore } from '../store';
 import {
@@ -36,8 +37,10 @@ export function followPanOffset(
 /** Follow mode on the map: keeping the plane centred, and the pill. */
 export interface FollowController {
   /**
-   * Pans so the followed plane is back in the centre, unless it already is
-   * (within 1 px) or a zoom or an animated pan is still running.
+   * Pans so the followed plane is back in the centre of the visible band
+   * (between a docked card and a phone's sheet), unless it already is
+   * (within 1 px) or a zoom or an animated pan is still running. Under
+   * reduced motion it never animates.
    */
   panToFollowed(animate: boolean): void;
   /** Shows the pill for the current state. */
@@ -60,8 +63,10 @@ export function createFollowController(options: {
   /** Where a plane is drawn now, if it is. */
   drawnAt: (hex: string) => LatLon | null;
   isZooming: () => boolean;
+  /** The strip of map left visible between a docked card and the sheet. */
+  band: () => { top: number; bottom: number };
 }): FollowController {
-  const { map, element, store, drawnAt, isZooming } = options;
+  const { map, element, store, drawnAt, isZooming, band } = options;
   let panning = false;
   /** A plane the user dragged away from, offered back for a few seconds. */
   let resume: FollowResume | null = null;
@@ -76,15 +81,18 @@ export function createFollowController(options: {
     pill.show(followPillView(store.getState(), resume, performance.now()));
 
   return {
-    panToFollowed(animate) {
+    panToFollowed(wanted) {
+      // Read per pan, like the view controller's moves.
+      const animate = wanted && !prefersReducedMotion();
       const { followingHex } = store.getState();
       const position = followingHex === null ? null : drawnAt(followingHex);
       if (!position || isZooming() || panning) {
         return;
       }
+      const { top, bottom } = band();
       const offset = followPanOffset(
         map.layerPointToContainerPoint(exactLayerPoint(map, position)),
-        map.getSize().divideBy(2),
+        { x: map.getSize().x / 2, y: (top + bottom) / 2 },
       );
       if (offset === null) {
         return;

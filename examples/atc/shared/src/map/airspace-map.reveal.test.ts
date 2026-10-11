@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
-import { type Area, AREAS } from '../places';
+import { AIRPORTS, type Area, AREAS } from '../places';
 import { createAtcStore } from '../store';
 import { createAirspaceMap } from './airspace-map';
 
@@ -179,5 +179,124 @@ test('resetting on a phone returns to the home view above the sheet', async () =
 
   const { x, y } = map.pixel('aaaaaa');
   expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
+  map.cleanup();
+});
+
+/** Gives the detail card a height, as layout would; jsdom has none. */
+function cardHeight(height: number) {
+  const card = [
+    ...document.querySelectorAll<HTMLElement>(
+      '[data-testid="aircraft-detail"]',
+    ),
+  ].at(-1);
+  Object.defineProperty(card, 'offsetHeight', {
+    get: () => height,
+    configurable: true,
+  });
+}
+
+/** A plane on screen above the sheet in the regional view. */
+const visible: Aircraft = { ...base, hex: 'dddddd', lat: 44.4, lon: -121.6 };
+/** A plane over Bend, the centre of the shown areas below. */
+const overBend: Aircraft = {
+  ...base,
+  hex: 'eeeeee',
+  lat: AIRPORTS.KBDN.lat,
+  lon: AIRPORTS.KBDN.lon,
+  groundSpeedKt: 0,
+};
+
+test('a plane revealed from off screen lands between the card it docks and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: planes });
+  cardHeight(100);
+
+  map.store.revealAircraft('cccccc');
+  await settle();
+
+  // The card will cover 8 + 100 + 8 px at the top; the sheet starts at 180.
+  const { x, y } = map.pixel('cccccc');
+  expect(Math.hypot(x - 200, y - (116 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('a highlight fit keeps every plane between a docked card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, visible] });
+  cardHeight(60);
+  map.store.select('dddddd');
+
+  map.store.highlight(['dddddd', 'aaaaaa', 'bbbbbb']);
+  await settle();
+
+  const ys = ['dddddd', 'aaaaaa', 'bbbbbb'].map((hex) => map.pixel(hex).y);
+  expect(Math.min(...ys)).toBeGreaterThan(76);
+  expect(Math.max(...ys)).toBeLessThan(180);
+  map.cleanup();
+});
+
+test('highlighting one plane centres it between a docked card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, visible] });
+  cardHeight(60);
+  map.store.select('dddddd');
+
+  map.store.highlight(['dddddd']);
+  await settle();
+
+  const { x, y } = map.pixel('dddddd');
+  expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('a followed plane stays mid-way down the map left above the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: planes });
+
+  map.store.follow('cccccc');
+
+  const { x, y } = map.pixel('cccccc');
+  expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('a followed plane stays between its docked card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, visible] });
+  cardHeight(60);
+  map.store.select('dddddd');
+
+  map.store.follow('dddddd');
+
+  const { x, y } = map.pixel('dddddd');
+  expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('showing an area centres it between a docked card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, overBend] });
+  cardHeight(60);
+  map.store.select('eeeeee');
+
+  map.store.showArea({ airport: 'KBDN', radiusNm: 5 });
+  await settle();
+
+  const { x, y } = map.pixel('eeeeee');
+  expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('showing an airport centres it between a docked card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, overBend] });
+  cardHeight(60);
+  map.store.select('eeeeee');
+
+  map.store.showAirport('KBDN');
+  await settle();
+
+  const { x, y } = map.pixel('eeeeee');
+  expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
   map.cleanup();
 });

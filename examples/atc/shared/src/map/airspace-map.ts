@@ -44,7 +44,8 @@ export interface AirspaceMapHandle {
  *   track, and a new fix eases away the gap and the turn; reduced motion
  *   jumps instead. One frame loop draws every plane at its exact sub-pixel
  *   position, so they all glide together instead of hopping a pixel at a time.
- * - `follow.ts`: a followed plane stays centred, and a pill names it with a
+ * - `follow.ts`: a followed plane stays centred in the map left between a
+ *   docked card and a phone's sheet, and a pill names it with a
  *   Stop button; a drag ends follow mode and offers Resume for a few seconds.
  * - `card-sync.ts`: hovering or selecting a plane opens one detail card
  *   beside it. Escape (outside text fields) or a click on the empty map
@@ -144,7 +145,11 @@ export async function createAirspaceMap(options: {
     );
   };
   const cards = createCardSync({ ...shared, drawnAt });
-  const follow = createFollowController({ ...shared, drawnAt });
+  const follow = createFollowController({
+    ...shared,
+    drawnAt,
+    band: cards.band,
+  });
   const view = createViewController({ ...shared, area, drawnAt, cards });
   const tags = createTagSync({
     ...shared,

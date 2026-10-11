@@ -30,10 +30,13 @@ export interface CardSync {
   sync(state: AtcState, force?: boolean): void;
   /** Re-measures the area the card may use; on resize, never per frame. */
   measureArea(): void;
-  /** The part of the map not under the phone's bottom sheet. */
-  area(): CardSize;
-  /** Pixels a docked card covers at the top of the map, else 0. */
-  dockedInset(): number;
+  /**
+   * Pixels the card will cover at the top of the map once it shows the
+   * selected plane docked, else 0. When the card is not docked yet (the
+   * plane is off screen), it is laid out for that plane, measured and synced
+   * back, so a reveal can leave room for it before the plane comes on screen.
+   */
+  dockedInsetFor(state: AtcState): number;
   /**
    * The strip of map left visible, in container pixels: below a docked card
    * and above a phone's sheet (when enough map shows above it to use).
@@ -157,8 +160,28 @@ export function createCardSync(options: {
           : null,
       );
     },
-    area: () => cardArea,
-    dockedInset: () => card.dockedInset(),
+    dockedInsetFor(state) {
+      const shown = card.dockedInset();
+      const hex = state.selectedHex;
+      if (
+        shown > 0 ||
+        hex === null ||
+        hoveredHex !== null ||
+        !detailCardDocked(cardArea)
+      ) {
+        return shown;
+      }
+      const view = aircraftDetailView(state, hex, Date.now());
+      const docked = { pinned: true, docked: true };
+      const inset =
+        view !== null &&
+        card.show(view, cardArea.height - 2 * CARD_MARGIN, docked)
+          ? card.dockedInset()
+          : 0;
+      sync(state, true);
+
+      return inset;
+    },
     band: () => ({
       top: card.dockedInset(),
       bottom:

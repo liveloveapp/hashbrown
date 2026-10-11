@@ -368,6 +368,44 @@ test('the data tags of a tight block of highlighted planes never overlap', async
   }
 });
 
+test('on a phone, a plane picked off screen lands mid-way between the docked card and the sheet', async ({
+  browser,
+}, testInfo) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  await open(page, testInfo.project.name);
+  await page.getByRole('button', { name: STARTER_PROMPTS[2] }).tap();
+  const pick = page.locator(
+    `[data-testid="aircraft-compare"] [data-hex="${highest.hex}"]`,
+  );
+  const plane = page.locator(`.atc-plane[data-hex="${highest.hex}"]`);
+  await expect(pick).toBeEnabled();
+  await expect(plane).not.toBeInViewport();
+
+  await pick.tap();
+
+  const card = page.getByTestId('aircraft-detail');
+  await expect(card).toHaveClass(/is-docked/);
+  await expect(card).toHaveClass(/is-open/);
+  const sheet = page.locator('#atc-chat-sheet');
+  /** Pixels from the plane to the middle of the band it should land in. */
+  const offMiddle = async () => {
+    const icon = await plane.boundingBox();
+    const top = await card.boundingBox();
+    const bottom = await sheet.boundingBox();
+    if (!icon || !top || !bottom) return Infinity;
+    const band = { top: top.y + top.height, bottom: bottom.y };
+    return Math.abs(icon.y + icon.height / 2 - (band.top + band.bottom) / 2);
+  };
+  // The band starts 8 px below the card; the slack covers that.
+  await expect.poll(offMiddle, { timeout: 15_000 }).toBeLessThan(12);
+  await context.close();
+});
+
 test('compares the highest and the fastest aircraft', async ({
   page,
 }, testInfo) => {
