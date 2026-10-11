@@ -1,5 +1,6 @@
 import { airportCardView } from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
+import { Fragment } from 'react';
 import { useAtcState, useAtcStore } from '../store';
 import { CardSkeleton } from './card-skeleton';
 
@@ -55,10 +56,10 @@ export function AirportCard({ note, airport }: AirportCardProps) {
       <p className="atc-card-note">{note}</p>
       <dl className="atc-airport-freqs atc-mono">
         {view.frequencies.map((freq) => (
-          <div key={freq.label} style={{ display: 'contents' }}>
+          <Fragment key={freq.label}>
             <dt>{freq.label}</dt>
             <dd>{freq.value}</dd>
-          </div>
+          </Fragment>
         ))}
       </dl>
       {view.elevation ? (
