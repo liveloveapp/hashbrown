@@ -1095,6 +1095,42 @@ test('findAircraft with near and inAirspace leaves the airspace highlighted', as
   expect(store.getState().viewRequest?.kind).toBe('airspace');
 });
 
+test('findAircraft with a valid near and a refused inAirspace leaves the map alone', async () => {
+  const store = airspaceStore([...pdxShelves, rdmShelf]);
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const before = store.getState();
+
+  const result = await tools.findAircraft.handler({
+    ...any,
+    near: { airport: 'KRDM', radiusNm: 25 },
+    inAirspace: { airport: 'KRDM', class: 'C' },
+  });
+
+  const after = store.getState();
+  expect(result).toEqual({
+    found: false,
+    reason: 'KRDM has no Class C airspace.',
+  });
+  expect(after.shownArea).toBe(before.shownArea);
+  expect(after.highlightedAirspace).toBe(before.highlightedAirspace);
+  expect(after.viewRequest).toBe(before.viewRequest);
+});
+
+test('findAircraft with near and inAirspace makes exactly one view request', async () => {
+  const store = airspaceStore([...pdxShelves, rdmShelf]);
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const before = store.getState().viewSeq;
+
+  await tools.findAircraft.handler({
+    ...any,
+    near: { airport: 'KRDM', radiusNm: 25 },
+    inAirspace: { airport: 'KRDM', class: 'D' },
+  });
+
+  expect(store.getState().viewSeq).toBe(before + 1);
+  expect(store.getState().viewRequest?.kind).toBe('airspace');
+});
+
 test('findAircraft with inAirspace refuses while airspace is unavailable', async () => {
   const store = readyStore();
   store.setAirspaceFailed();

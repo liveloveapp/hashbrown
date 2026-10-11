@@ -325,6 +325,8 @@ export function createAtcTools(context: AtcToolContext) {
         if (input.near || input.approaching || input.inAirspace) {
           await chartSettled();
         }
+        // Validate everything first: a refusal must not touch the map.
+        let nearArea: { airport: string; radiusNm: number } | null = null;
         if (input.near) {
           const centre = lookupPlace(
             input.near.airport,
@@ -333,13 +335,13 @@ export function createAtcTools(context: AtcToolContext) {
           if (centre === null) {
             return unknownPlace(input.near.airport);
           }
-          // The ring and the fit happen whether or not the model calls showArea.
-          showAreaOnce(store, {
+          nearArea = {
             airport: centre.code,
             radiusNm: areaRadiusNm(input.near.radiusNm),
-          });
+          };
         }
 
+        let airspaceCode: string | null = null;
         if (input.inAirspace) {
           await airspaceSettled();
           const centre = lookupPlace(
@@ -363,8 +365,14 @@ export function createAtcTools(context: AtcToolContext) {
               reason: noAirspaceReason(centre.code, cls),
             };
           }
-          // Applied last: the stricter filter's highlight and view request win.
-          store.showAirspace(centre.code);
+          airspaceCode = centre.code;
+        }
+
+        // Exactly one view change; the airspace view wins over the ring.
+        if (airspaceCode !== null) {
+          store.showAirspace(airspaceCode);
+        } else if (nearArea !== null) {
+          showAreaOnce(store, nearArea);
         }
 
         return findAircraft(store.getState(), input);
