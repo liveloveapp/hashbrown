@@ -208,6 +208,10 @@ test('showing KRDM highlights its shelves, casings them and dims the rest', () =
   expect(view.all('path.atc-as.is-dimmed')).toHaveLength(2);
   expect(view.all('path.atc-as-casing')).toHaveLength(3);
   expect(view.all('path.atc-as-casing.is-d')).toHaveLength(2);
+  for (const casing of view.all('path.atc-as-casing')) {
+    const type = [...casing.classList].find((c) => /^is-(b|c|d|e\d)$/.test(c));
+    expect(type).toBeDefined();
+  }
   expect(view.all('path.atc-as.is-highlighted.is-dimmed')).toHaveLength(0);
   // Each casing sits underneath: every casing comes before every shelf it cases.
   const paths = view.all('path');
