@@ -7,6 +7,7 @@ import {
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { useReducer } from 'react';
 import { expect, test } from 'vitest';
+import { Composer } from './composer';
 import { useAutoScroll } from './dom-hooks';
 import { SheetHandle } from './sheet-handle';
 
@@ -178,4 +179,38 @@ test('an empty chat is not scrolled, so the headline and starters stay in view',
   await append(element, row('atc-empty'));
 
   expect(element.scrollTop).toBe(0);
+});
+
+/** The app's sheet around the real composer: focus opens it, sending lowers it. */
+function ComposerSheet() {
+  const [sheet, move] = useReducer(nextSheet, INITIAL_SHEET);
+
+  return (
+    <section
+      data-snap={sheet.snap}
+      onFocus={(event) => {
+        if (focusOpensSheet(event.target)) move({ type: 'focus' });
+      }}
+    >
+      <Composer onSend={() => move({ type: 'send' })} />
+    </section>
+  );
+}
+
+test('tapping Send lowers the sheet to half, though the composer takes focus back', () => {
+  const { container } = render(<ComposerSheet />);
+  const field = container.querySelector('input') as HTMLInputElement;
+  const send = container.querySelector('.atc-send') as HTMLButtonElement;
+  act(() => field.focus());
+  fireEvent.change(field, { target: { value: "What's flying near Seattle?" } });
+  // A tap moves focus to the Send button before it submits.
+  act(() => send.focus());
+
+  fireEvent.click(send);
+
+  expect(container.querySelector('section')?.getAttribute('data-snap')).toBe(
+    'half',
+  );
+  expect(document.activeElement).toBe(field);
+  cleanup();
 });

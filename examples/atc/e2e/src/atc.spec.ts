@@ -10,11 +10,12 @@ import {
   CHART_AIRPORTS,
   CHART_AIRSPACE,
   chartSurfaces,
+  CLUSTER,
   frame,
   scenario,
   SYNTHETIC_HEXES,
 } from './fixtures';
-import { NEAR_PROMPT, scriptAtcModel } from './model';
+import { CLUSTER_PROMPT, NEAR_PROMPT, scriptAtcModel } from './model';
 
 const dist = resolve(__dirname, '../../../../dist/examples/atc');
 const { selected, highest, fastest, arrivals, nearby } = scenario;
@@ -111,6 +112,119 @@ async function zoomOut(page: Page, steps: number): Promise<void> {
     );
     await expect(page.locator('.leaflet-zoom-anim')).toHaveCount(0);
   }
+}
+
+/**
+ * The boxes of the data tags on screen, once no tag is changing sides:
+ * every tag shown and not hidden by the layout, including tags still fading
+ * back in.
+ */
+async function visibleTags(page: Page) {
+  await expect(page.locator('.atc-plane.is-tag-fading')).toHaveCount(0);
+  return page.locator('.atc-plane-tag').evaluateAll((tags) =>
+    tags
+      .filter((tag) => {
+        const plane = tag.closest('.atc-plane');
+        return (
+          getComputedStyle(tag).display !== 'none' &&
+          plane?.getAttribute('data-tag') !== 'hidden'
+        );
+      })
+      .map((tag) => {
+        const { left, top, right, bottom } = tag.getBoundingClientRect();
+        return { left, top, right, bottom };
+      }),
+  );
+}
+
+/**
+ * Problems between visible tags and plane icons, once no tag is changing
+ * sides: tags over the icon of a plane that is tagged, highlighted, selected
+ * or followed (with its 2 px margin), and tags over an untagged plane's icon
+ * whose marker is not stacked below the tag's marker.
+ */
+async function tagIconProblems(page: Page) {
+  await expect(page.locator('.atc-plane.is-tag-fading')).toHaveCount(0);
+  return page.evaluate(() => {
+    const hits = (
+      a: DOMRect,
+      b: { left: number; top: number; right: number; bottom: number },
+    ) =>
+      a.left < b.right &&
+      b.left < a.right &&
+      a.top < b.bottom &&
+      b.top < a.bottom;
+    const zOf = (plane: Element) =>
+      Number(
+        getComputedStyle(plane.closest('.atc-plane-icon') as Element).zIndex,
+      );
+    const planes = [...document.querySelectorAll('.atc-plane')];
+    const isHard = (plane: Element) =>
+      plane.matches('.is-highlighted, .is-selected, .is-followed, .is-tagged');
+    const problems: string[] = [];
+    for (const owner of planes) {
+      const tag = owner.querySelector('.atc-plane-tag');
+      if (
+        !tag ||
+        getComputedStyle(tag).display === 'none' ||
+        owner.getAttribute('data-tag') === 'hidden'
+      ) {
+        continue;
+      }
+      const box = tag.getBoundingClientRect();
+      for (const other of planes) {
+        if (other === owner) continue;
+        const icon = other.getBoundingClientRect();
+        const label = `${owner.getAttribute('data-label')} over ${other.getAttribute('data-label')}`;
+        if (isHard(other)) {
+          const margin = 2;
+          if (
+            hits(box, {
+              left: icon.left - margin,
+              top: icon.top - margin,
+              right: icon.right + margin,
+              bottom: icon.bottom + margin,
+            })
+          ) {
+            problems.push(`${label} (tagged icon)`);
+          }
+        } else if (hits(box, icon) && zOf(owner) <= zOf(other)) {
+          problems.push(`${label} (drawn under it)`);
+        }
+      }
+    }
+    // Whether or not a tag sits over one now, every untagged marker stacks
+    // below every marker with a visible tag.
+    const tagged = planes.filter((plane) => plane.matches('.is-tagged'));
+    const untagged = planes.filter((plane) => !isHard(plane));
+    const lowestTagged = Math.min(...tagged.map(zOf));
+    for (const plane of untagged) {
+      if (zOf(plane) >= lowestTagged) {
+        problems.push(`${plane.getAttribute('data-label')} stacks above a tag`);
+      }
+    }
+    return problems;
+  });
+}
+
+/** How many pairs of boxes overlap. */
+function overlappingPairs(
+  boxes: { left: number; top: number; right: number; bottom: number }[],
+): number {
+  let pairs = 0;
+  boxes.forEach((a, i) => {
+    for (const b of boxes.slice(i + 1)) {
+      if (
+        a.left < b.right &&
+        b.left < a.right &&
+        a.top < b.bottom &&
+        b.top < a.bottom
+      ) {
+        pairs++;
+      }
+    }
+  });
+  return pairs;
 }
 
 async function expectOnlyCompleteIds(page: Page): Promise<void> {
@@ -292,6 +406,114 @@ test('on a phone, the starters show in the peek, a pick lowers the sheet to half
   await expect(card).toHaveClass(/is-docked/);
   await card.getByRole('button', { name: /^Close details/ }).tap();
   await expect(card).toBeHidden();
+  await context.close();
+});
+
+test('the data tags of a tight block of highlighted planes overlap no tag and no tagged icon, and sit above untagged icons', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+  const input = page.getByRole('textbox', { name: 'Message' });
+
+  await input.fill(CLUSTER_PROMPT);
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  await expect(page.locator('.atc-plane.is-highlighted')).toHaveCount(
+    CLUSTER.length,
+  );
+  // Wait for the fit to settle: the block is mid-map and no zoom animates.
+  const map = page.getByTestId('airspace-map');
+  const block = page.locator(`.atc-plane[data-hex="${CLUSTER[0]}"]`);
+  await expect
+    .poll(async () => {
+      const outer = await map.boundingBox();
+      const plane = await block.boundingBox();
+      if (!outer || !plane) return Infinity;
+      return Math.abs(plane.y - (outer.y + outer.height / 2));
+    })
+    .toBeLessThan(40);
+  await expect(page.locator('.leaflet-zoom-anim')).toHaveCount(0);
+  await expect
+    .poll(async () => (await visibleTags(page)).length)
+    .toBeGreaterThanOrEqual(3);
+  // The block spreads with every fix, and tags are laid out again twice a
+  // second; check across several fixes.
+  for (let check = 0; check < 12; check++) {
+    expect(overlappingPairs(await visibleTags(page))).toBe(0);
+    expect(await tagIconProblems(page)).toEqual([]);
+    await page.waitForTimeout(500);
+  }
+});
+
+test('on a phone, a plane picked off screen lands mid-way between the docked card and the sheet', async ({
+  browser,
+}, testInfo) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  await open(page, testInfo.project.name);
+  await page.getByRole('button', { name: STARTER_PROMPTS[2] }).tap();
+  const pick = page.locator(
+    `[data-testid="aircraft-compare"] [data-hex="${highest.hex}"]`,
+  );
+  const plane = page.locator(`.atc-plane[data-hex="${highest.hex}"]`);
+  await expect(pick).toBeEnabled();
+  await expect(plane).not.toBeInViewport();
+
+  await pick.tap();
+
+  const card = page.getByTestId('aircraft-detail');
+  await expect(card).toHaveClass(/is-docked/);
+  await expect(card).toHaveClass(/is-open/);
+  const sheet = page.locator('#atc-chat-sheet');
+  /** Pixels from the plane to the middle of the band it should land in. */
+  const offMiddle = async () => {
+    const icon = await plane.boundingBox();
+    const top = await card.boundingBox();
+    const bottom = await sheet.boundingBox();
+    if (!icon || !top || !bottom) return Infinity;
+    const band = { top: top.y + top.height, bottom: bottom.y };
+    return Math.abs(icon.y + icon.height / 2 - (band.top + band.bottom) / 2);
+  };
+  // The band starts 8 px below the card; the slack covers that.
+  await expect.poll(offMiddle, { timeout: 15_000 }).toBeLessThan(12);
+  await context.close();
+});
+
+test('on a phone, a typed question sent with the Send button lowers the sheet, and the fit lands above it', async ({
+  browser,
+}, testInfo) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  await open(page, testInfo.project.name);
+  const sheet = page.locator('#atc-chat-sheet');
+  const input = page.getByRole('textbox', { name: 'Message' });
+  await input.tap();
+  await expect(sheet).toHaveAttribute('data-snap', 'full');
+  await input.fill(STARTER_PROMPTS[1]);
+
+  await page.getByRole('button', { name: 'Send' }).tap();
+
+  await expect(sheet).toHaveAttribute('data-snap', 'half');
+  await expect(page.getByTestId('arrivals-row')).toHaveCount(arrivals.length);
+  /** The lowest highlighted plane's bottom, minus the sheet's top edge. */
+  const belowSheet = async () => {
+    const top = (await sheet.boundingBox())?.y ?? 0;
+    const bottoms = await page
+      .locator('.atc-plane.is-highlighted')
+      .evaluateAll((planes) =>
+        planes.map((plane) => plane.getBoundingClientRect().bottom),
+      );
+    return bottoms.length === 0 ? Infinity : Math.max(...bottoms) - top;
+  };
+  await expect.poll(belowSheet, { timeout: 15_000 }).toBeLessThan(-8);
   await context.close();
 });
 

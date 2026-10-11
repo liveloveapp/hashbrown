@@ -35,6 +35,41 @@
   line-height: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  transition: opacity var(--atc-fast) var(--atc-ease);
+}
+/*
+ * Where the tag sits, set by the map's tag layout (map/tag-layout.ts, whose
+ * tagRect must match these offsets) so tags never overlap: beside the icon
+ * 2px from its edge, or 2px above or below it, flush with one of its edges.
+ * A tag changing sides fades out first (is-tag-fading). A hidden tag's
+ * plane opens the detail card on hover or tap, which names it; the tag
+ * itself shows on hover only when the card does not fit.
+ */
+.atc-plane[data-tag='left'] .atc-plane-tag {
+  left: auto;
+  right: 24px;
+}
+.atc-plane[data-tag^='above'] .atc-plane-tag,
+.atc-plane[data-tag^='below'] .atc-plane-tag {
+  transform: none;
+}
+.atc-plane[data-tag^='above'] .atc-plane-tag {
+  top: auto;
+  bottom: 24px;
+}
+.atc-plane[data-tag^='below'] .atc-plane-tag {
+  top: 24px;
+}
+.atc-plane[data-tag$='-right'] .atc-plane-tag {
+  left: 0;
+}
+.atc-plane[data-tag$='-left'] .atc-plane-tag {
+  left: auto;
+  right: 0;
+}
+.atc-plane.is-tag-fading .atc-plane-tag,
+.atc-plane[data-tag='hidden']:not(:hover) .atc-plane-tag {
+  opacity: 0;
 }
 .atc-plane.is-highlighted .atc-plane-tag,
 .atc-plane.is-selected .atc-plane-tag,
@@ -51,6 +86,14 @@
   font-family: var(--atc-mono);
   font-weight: 400;
   color: var(--atc-muted);
+}
+/*
+ * A marker with a visible tag (is-tagged, set by the tag layout) stacks above
+ * untagged markers, so a tag that sits over an untagged plane is drawn on
+ * top of its icon. Tagged icons never meet tags: the layout keeps them apart.
+ */
+.atc-plane-icon:has(.is-tagged) {
+  z-index: 10000 !important;
 }
 /*
  * Stacking above the other markers and their tags: the hovered plane (or the

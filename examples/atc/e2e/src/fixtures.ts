@@ -83,6 +83,9 @@ function track(
  * A Cessna 182 and a Robinson R44 fly slowly near Bend, climbing, so with
  * the regional jet they are the traffic within 25 nm of KBDN and none is
  * approaching it. Every aircraft moves and changes altitude each frame.
+ * Six turboprops fly north in a tight block near Klamath Falls
+ * ({@link CLUSTER}), so close that their data tags must move aside, and
+ * spreading apart frame by frame; two Cessnas fly among them.
  */
 const TRACKS: readonly Track[] = [
   track(
@@ -189,7 +192,48 @@ const TRACKS: readonly Track[] = [
     { lat: 43.56, lon: -116.22, altitudeFt: 8_000, speedKt: 150 },
     { dLat: 0.001, dLon: 0.001, dAltFt: -10, trackDeg: 45 },
   ),
+  ...Array.from({ length: 6 }, (_, i) =>
+    track(
+      { hex: `a1c0${(0x10 + i).toString(16)}`, callsign: `QXE21${i + 10}` },
+      'DH8D',
+      {
+        lat: 42.9 + Math.floor(i / 3) * 0.008,
+        lon: -122 + (i % 3) * 0.012,
+        altitudeFt: 9_000 + i * 500,
+        speedKt: 140 + i * 20,
+      },
+      // Each flies a little faster and fans out a little more than the one
+      // before, so the block keeps changing shape and its tags move.
+      {
+        dLat: 0.002 + i * 0.001,
+        dLon: ((i % 3) - 1) * 0.002,
+        dAltFt: 0,
+        trackDeg: [350, 0, 10][i % 3] ?? 0,
+      },
+    ),
+  ),
+  // Two Cessnas flying with the block, never highlighted: their icons sit
+  // where the block's tags go, so tags must be drawn above them.
+  ...[
+    { hex: 'a1c016', registration: 'N7316K', lat: 42.904, lon: -121.97 },
+    { hex: 'a1c017', registration: 'N2284Q', lat: 42.912, lon: -122.03 },
+  ].map(({ lat, lon, ...ident }) =>
+    track(
+      ident,
+      'C172',
+      { lat, lon, altitudeFt: 7_500, speedKt: 110 },
+      { dLat: 0.003, dLon: 0, dAltFt: 0, trackDeg: 0 },
+    ),
+  ),
 ];
+
+/**
+ * The tight block of six turboprops near Klamath Falls: at the highest zoom
+ * a highlight fits to, their icons are 8 to 9 px apart.
+ */
+export const CLUSTER: readonly string[] = TRACKS.filter(({ aircraft }) =>
+  aircraft.callsign?.startsWith('QXE21'),
+).map(({ aircraft }) => aircraft.hex);
 
 /**
  * Frame `n` of the synthetic traffic. `at` always increases; positions advance

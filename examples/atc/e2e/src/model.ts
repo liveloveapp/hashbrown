@@ -1,11 +1,14 @@
 import type { LLMock } from '@copilotkit/aimock';
 import { SELECTED_PROMPT, STARTER_PROMPTS } from '@atc/shared';
-import { NEAR_BEND, PORTLAND_CLASS_C, scenario, ui } from './fixtures';
+import { CLUSTER, NEAR_BEND, PORTLAND_CLASS_C, scenario, ui } from './fixtures';
 
 const { selected, highest, fastest, arrivals, nearby, portland } = scenario;
 
 /** A typed question that outlines KBDN with showArea before listing traffic. */
 export const NEAR_PROMPT = "What's flying near KBDN?";
+
+/** A typed question that highlights the tight block of {@link CLUSTER}. */
+export const CLUSTER_PROMPT = 'Highlight the Horizon block near Klamath Falls.';
 
 /** findAircraft arguments with every filter off. */
 export const ANY = {
@@ -20,10 +23,11 @@ export const ANY = {
 };
 
 /**
- * Scripts the model's answers for the starter prompts and
- * {@link NEAR_PROMPT}: each message gets fixed tool calls, and each tool
- * result gets a fixed UI answer over the synthetic scenario aircraft. Used by
- * the e2e suite and the demo video, so both show the same conversation.
+ * Scripts the model's answers for the starter prompts, {@link NEAR_PROMPT}
+ * and {@link CLUSTER_PROMPT}: each message gets fixed tool calls, and each
+ * tool result gets a fixed UI answer over the synthetic scenario aircraft.
+ * Used by the e2e suite and the demo video, so both show the same
+ * conversation.
  */
 export function scriptAtcModel(mock: LLMock): void {
   const card = (note: string, hex: string) => ({
@@ -213,6 +217,22 @@ export function scriptAtcModel(mock: LLMock): void {
         id: 'redmond-airspace',
         name: 'showAirspace',
         arguments: { airport: 'KRDM' },
+      },
+    ],
+  });
+  mock.onToolResult('cluster-highlight', async () => ({
+    content: ui({
+      Markdown: {
+        props: { children: 'Six Horizon turboprops, flying north.' },
+      },
+    }),
+  }));
+  mock.onMessage(CLUSTER_PROMPT, {
+    toolCalls: [
+      {
+        id: 'cluster-highlight',
+        name: 'highlightAircraft',
+        arguments: { hexes: CLUSTER },
       },
     ],
   });

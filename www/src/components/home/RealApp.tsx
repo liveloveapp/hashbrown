@@ -65,7 +65,7 @@ export function RealApp() {
           <img
             className={styles.phone}
             src="/image/landing-page/atc-mobile.webp"
-            alt="The atc example on a phone answering which planes are the highest and fastest, with a flight card under a map of the Pacific Northwest that labels both planes"
+            alt="The atc example on a phone answering what is flying near Bend: a nearby-traffic board in the chat sheet under a map of central Oregon that circles Bend and labels the highlighted planes"
             loading="lazy"
             width={585}
             height={1266}

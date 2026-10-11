@@ -345,3 +345,16 @@ test('a dimmed airspace label fades to 0.3, like its shelf', () => {
 
   expect(rule).toMatch(/opacity:\s*0\.3;/);
 });
+
+test('a marker with a visible tag stacks above untagged markers and below the hovered and selected tiers', () => {
+  const css = readFileSync(
+    join(ATC, 'shared', 'src', 'styles', 'markers.css'),
+    'utf8',
+  );
+  const rule = css.match(/\.atc-plane-icon:has\(\.is-tagged\)\s*\{([^}]*)\}/);
+
+  const zIndex = Number(rule?.[1]?.match(/z-index:\s*(\d+)/)?.[1]);
+
+  expect(zIndex).toBeGreaterThan(0);
+  expect(zIndex).toBeLessThan(10001);
+});

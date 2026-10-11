@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
-import { type Area, AREAS } from '../places';
+import { AIRPORTS, type Area, AREAS } from '../places';
 import { createAtcStore } from '../store';
 import { createAirspaceMap } from './airspace-map';
 
@@ -36,11 +36,16 @@ const planes: Aircraft[] = [
 /**
  * Mounts a 400x300 map with reduced motion. With `sheetTop`, the map sits in
  * a workbench whose chat panel covers the map from that y down, like the
- * phone bottom sheet.
+ * phone bottom sheet. `media` lists further media queries that match.
  */
-async function mount(sheetTop?: number, area: Area = REGIONAL) {
+async function mount(
+  sheetTop?: number,
+  area: Area = REGIONAL,
+  media: readonly string[] = [],
+) {
   vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query === '(prefers-reduced-motion: reduce)',
+    matches:
+      query === '(prefers-reduced-motion: reduce)' || media.includes(query),
   }));
   const store = createAtcStore();
   const workbench = document.createElement('main');
@@ -82,10 +87,14 @@ async function mount(sheetTop?: number, area: Area = REGIONAL) {
   return {
     store,
     pixel,
+    element,
+    /** Destroys the map but leaves its container in the page. */
+    destroy: () => handle.destroy(),
     cleanup: () => {
       handle.destroy();
       workbench.remove();
       vi.unstubAllGlobals();
+      vi.restoreAllMocks();
     },
   };
 }
@@ -180,4 +189,221 @@ test('resetting on a phone returns to the home view above the sheet', async () =
   const { x, y } = map.pixel('aaaaaa');
   expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
   map.cleanup();
+});
+
+/**
+ * Gives every detail card (and the hidden copy it measures) a height, as
+ * layout would; jsdom has none. Restored by `cleanup`.
+ */
+function cardHeight(height: number) {
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(
+    function (this: HTMLElement) {
+      return this.classList.contains('atc-detail') ? height : 0;
+    },
+  );
+}
+
+/** A plane on screen above the sheet in the regional view. */
+const visible: Aircraft = { ...base, hex: 'dddddd', lat: 44.4, lon: -121.6 };
+/** A plane over Bend, the centre of the shown areas below. */
+const overBend: Aircraft = {
+  ...base,
+  hex: 'eeeeee',
+  lat: AIRPORTS.KBDN.lat,
+  lon: AIRPORTS.KBDN.lon,
+  groundSpeedKt: 0,
+};
+
+test('a plane revealed from off screen lands between the card it docks and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: planes });
+  cardHeight(100);
+
+  map.store.revealAircraft('cccccc');
+  await settle();
+
+  // The card will cover 8 + 100 + 8 px at the top; the sheet starts at 180.
+  const { x, y } = map.pixel('cccccc');
+  expect(Math.hypot(x - 200, y - (116 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('a highlight fit keeps every plane between a docked card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, visible] });
+  cardHeight(60);
+  map.store.select('dddddd');
+
+  map.store.highlight(['dddddd', 'aaaaaa', 'bbbbbb']);
+  await settle();
+
+  const ys = ['dddddd', 'aaaaaa', 'bbbbbb'].map((hex) => map.pixel(hex).y);
+  expect(Math.min(...ys)).toBeGreaterThan(76);
+  expect(Math.max(...ys)).toBeLessThan(180);
+  map.cleanup();
+});
+
+test('highlighting one plane centres it between a docked card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, visible] });
+  cardHeight(60);
+  map.store.select('dddddd');
+
+  map.store.highlight(['dddddd']);
+  await settle();
+
+  const { x, y } = map.pixel('dddddd');
+  expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('a followed plane stays mid-way down the map left above the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: planes });
+
+  map.store.follow('cccccc');
+
+  const { x, y } = map.pixel('cccccc');
+  expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('a followed plane stays between its docked card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, visible] });
+  cardHeight(60);
+  map.store.select('dddddd');
+
+  map.store.follow('dddddd');
+
+  const { x, y } = map.pixel('dddddd');
+  expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('showing an area centres it between a docked card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, overBend] });
+  cardHeight(60);
+  map.store.select('eeeeee');
+
+  map.store.showArea({ airport: 'KBDN', radiusNm: 5 });
+  await settle();
+
+  const { x, y } = map.pixel('eeeeee');
+  expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('showing an airport centres it between a docked card and the sheet', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, overBend] });
+  cardHeight(60);
+  map.store.select('eeeeee');
+
+  map.store.showAirport('KBDN');
+  await settle();
+
+  const { x, y } = map.pixel('eeeeee');
+  expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('a plane revealed from off screen has its summary written as its card opens, so it is announced', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: planes });
+  cardHeight(100);
+  const card = [
+    ...document.querySelectorAll<HTMLElement>(
+      '[data-testid="aircraft-detail"]',
+    ),
+  ].at(-1) as HTMLElement;
+  const events: string[] = [];
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      if (record.attributeName === 'aria-hidden' && record.target === card) {
+        events.push(record.oldValue === 'true' ? 'open' : 'close');
+      } else if (
+        record.type === 'childList' &&
+        (record.target as Element).closest?.('.atc-detail-summary')
+      ) {
+        events.push('write');
+      }
+    }
+  });
+  observer.observe(card, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeOldValue: true,
+    attributeFilter: ['aria-hidden'],
+  });
+
+  map.store.revealAircraft('cccccc');
+  await settle();
+  await Promise.resolve();
+  observer.disconnect();
+
+  // The last write to the live summary comes with the opening that shows it.
+  const lastOpen = events.lastIndexOf('open');
+  const lastWrite = events.lastIndexOf('write');
+  expect(card.getAttribute('aria-hidden')).toBe('false');
+  expect(lastWrite).toBeGreaterThanOrEqual(0);
+  expect(events.slice(lastWrite + 1, lastOpen)).not.toContain('close');
+  expect(events.slice(lastWrite + 1, lastOpen)).not.toContain('open');
+  map.cleanup();
+});
+
+test('a plane tapped earlier (a sticky hover on phones) does not stop a reveal leaving room for the docked card', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: planes });
+  cardHeight(100);
+  document
+    .querySelector('[data-hex="aaaaaa"]')
+    ?.closest('.atc-plane-icon')
+    ?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+
+  map.store.revealAircraft('cccccc');
+  await settle();
+
+  const { x, y } = map.pixel('cccccc');
+  expect(Math.hypot(x - 200, y - (116 + 180) / 2)).toBeLessThan(2);
+  map.cleanup();
+});
+
+test('on a touch screen a tap does not leave a sticky hover: a plane picked in the chat gets the card', async () => {
+  const map = await mount(180, REGIONAL, ['(hover: none)']);
+  const neighbour = { ...base, hex: 'ffffff', lat: 45.65, lon: -122.6 };
+  map.store.applySnapshot({ at: 1, aircraft: [...planes, neighbour] });
+  document
+    .querySelector('[data-hex="ffffff"]')
+    ?.closest('.atc-plane-icon')
+    ?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+
+  map.store.revealAircraft('cccccc');
+  await settle();
+
+  const card = [
+    ...document.querySelectorAll('[data-testid="aircraft-detail"]'),
+  ].at(-1);
+  expect(card?.getAttribute('data-hex')).toBe('cccccc');
+  expect(card?.classList.contains('is-docked')).toBe(true);
+  map.cleanup();
+});
+
+test('destroying the map removes the detail card and its hidden measuring copy', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: planes });
+  cardHeight(100);
+  map.store.revealAircraft('cccccc');
+  await settle();
+  const before = map.element.querySelectorAll('.atc-detail').length;
+
+  map.destroy();
+
+  expect(before).toBe(2);
+  expect(map.element.querySelectorAll('.atc-detail')).toHaveLength(0);
+  map.element.closest('main')?.remove();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });

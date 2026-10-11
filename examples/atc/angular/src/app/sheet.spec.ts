@@ -8,6 +8,7 @@ import {
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AutoScroll } from './auto-scroll';
+import { Composer } from './composer';
 import { SheetHandle } from './sheet-handle';
 
 function pointer(type: string, clientY: number): Event {
@@ -193,4 +194,45 @@ test('an empty chat is not scrolled, so the headline and starters stay in view',
   await append(element, 'atc-empty');
 
   expect(element.scrollTop).toBe(0);
+});
+
+/** The app's sheet around the real composer: focus opens it, sending lowers it. */
+@Component({
+  imports: [Composer],
+  template: `
+    <section [attr.data-snap]="sheet().snap" (focusin)="focus($event)">
+      <atc-composer (send)="move({ type: 'send' })" />
+    </section>
+  `,
+})
+class ComposerSheetHost {
+  readonly sheet = signal(INITIAL_SHEET);
+  move(event: SheetEvent): void {
+    this.sheet.update((sheet) => nextSheet(sheet, event));
+  }
+  focus(event: FocusEvent): void {
+    if (focusOpensSheet(event.target)) {
+      this.move({ type: 'focus' });
+    }
+  }
+}
+
+test('tapping Send lowers the sheet to half, though the composer takes focus back', () => {
+  const fixture = TestBed.createComponent(ComposerSheetHost);
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  document.body.append(element);
+  const field = element.querySelector('input') as HTMLInputElement;
+  const send = element.querySelector('.atc-send') as HTMLButtonElement;
+  field.focus();
+  field.value = "What's flying near Seattle?";
+  // A tap moves focus to the Send button before it submits.
+  send.focus();
+
+  send.click();
+  fixture.detectChanges();
+
+  expect(fixture.componentInstance.sheet().snap).toBe('half');
+  expect(document.activeElement).toBe(field);
+  element.remove();
 });

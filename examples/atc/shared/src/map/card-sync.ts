@@ -1,6 +1,7 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap, Marker } from 'leaflet';
 import { aircraftDetailView } from '../detail-view';
+import { hoverless } from '../dom';
 import type { LatLon } from '../places';
 import type { AtcState, AtcStore } from '../store';
 import {
@@ -13,6 +14,12 @@ import {
 } from './detail-card';
 import { exactLayerPoint } from './motion-loop';
 
+/**
+ * The least map, in pixels, that must show above a phone's sheet for moves
+ * to fit into it; with less, the sheet is ignored.
+ */
+export const SHEET_MIN_MAP = 160;
+
 /** Keeps the map's one detail card on the hovered or selected plane. */
 export interface CardSync {
   /**
@@ -24,10 +31,22 @@ export interface CardSync {
   sync(state: AtcState, force?: boolean): void;
   /** Re-measures the area the card may use; on resize, never per frame. */
   measureArea(): void;
-  /** The part of the map not under the phone's bottom sheet. */
-  area(): CardSize;
-  /** Pixels a docked card covers at the top of the map, else 0. */
-  dockedInset(): number;
+  /**
+   * Pixels the card will cover at the top of the map once it shows the
+   * selected plane docked, else 0. When the card is not docked yet (the
+   * plane is off screen), a hidden copy is measured for that plane, so a
+   * reveal can leave room for it before the plane comes on screen. A
+   * hovered plane does not change it: the selected plane is the one the
+   * card shows once the pointer leaves, and reveals come from the chat.
+   */
+  dockedInsetFor(state: AtcState): number;
+  /**
+   * The strip of map left visible, in container pixels: below a docked card
+   * and above a phone's sheet (when enough map shows above it to use).
+   */
+  band(): { top: number; bottom: number };
+  /** The hovered plane, and the plane the card describes now. */
+  focus(): { hovered: string | null; detailed: string | null };
   /** The pointer entered a plane. */
   hover(hex: string): void;
   /** The pointer left a plane. */
@@ -144,9 +163,29 @@ export function createCardSync(options: {
           : null,
       );
     },
-    area: () => cardArea,
-    dockedInset: () => card.dockedInset(),
+    dockedInsetFor(state) {
+      const shown = card.dockedInset();
+      const hex = state.selectedHex;
+      if (shown > 0 || hex === null || !detailCardDocked(cardArea)) {
+        return shown;
+      }
+      const view = aircraftDetailView(state, hex, Date.now());
+
+      return view === null
+        ? 0
+        : card.measureDocked(view, cardArea.height - 2 * CARD_MARGIN);
+    },
+    band: () => ({
+      top: card.dockedInset(),
+      bottom:
+        cardArea.height > SHEET_MIN_MAP ? cardArea.height : map.getSize().y,
+    }),
+    focus: () => ({ hovered: hoveredHex, detailed: detailedHex }),
     hover(hex) {
+      // A tap's mouseover would stick on a touch screen; taps select instead.
+      if (hoverless()) {
+        return;
+      }
       hoveredHex = hex;
       sync(store.getState());
     },
@@ -159,7 +198,7 @@ export function createCardSync(options: {
     },
     destroy() {
       clearInterval(ticker);
-      card.element.remove();
+      card.remove();
     },
   };
 }

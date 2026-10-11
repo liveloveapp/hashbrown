@@ -5,7 +5,6 @@ import { airspaceOf } from '../chart';
 import { airportByCode, chartAirportByCode } from '../directory';
 import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore, ShownArea } from '../store';
-import type { CardSize } from './detail-card';
 import { circleBounds, type FitTarget, fitTarget } from './fit';
 
 /** Furthest out, and furthest in, that fitting highlighted planes will zoom. */
@@ -61,8 +60,8 @@ export function createViewController(options: {
   drawnAt: (hex: string) => LatLon | null;
   /** The detail card's view of the map (see `createCardSync`). */
   cards: {
-    area(): CardSize;
-    dockedInset(): number;
+    band(): { top: number; bottom: number };
+    dockedInsetFor(state: AtcState): number;
     measureArea(): void;
   };
   obstruction: () => HTMLElement | null;
@@ -135,13 +134,14 @@ export function createViewController(options: {
    * Pixels at the bottom of the map hidden by a phone's bottom sheet, when
    * enough map shows above it to fit into; else 0.
    */
-  const sheetInset = () =>
-    cards.area().height > 160 ? map.getSize().y - cards.area().height : 0;
+  const sheetInset = () => map.getSize().y - cards.band().bottom;
+  /** Pixels a docked detail card covers at the top of the map, else 0. */
+  const cardInset = () => cards.band().top;
   /**
    * The centre that puts `position` mid-way down the map left between `top`
-   * (pixels covered at the top, such as a docked card) and the sheet.
+   * (pixels covered at the top: by default the docked card) and the sheet.
    */
-  const centreAbove = (position: LatLon, zoom: number, top = 0) =>
+  const centreAbove = (position: LatLon, zoom: number, top = cardInset()) =>
     map.unproject(
       map
         .project([position.lat, position.lon], zoom)
@@ -163,8 +163,9 @@ export function createViewController(options: {
       [target.south, target.west],
       [target.north, target.east],
     ];
-    // Extra room on the right for the data tags, and under them for a sheet.
-    const paddingTopLeft: [number, number] = [48, 48];
+    // Extra room on the right for the data tags, under them for a sheet and
+    // above them for a docked card.
+    const paddingTopLeft: [number, number] = [48, 48 + cardInset()];
     const paddingBottomRight: [number, number] = [140, 48 + sheetInset()];
     const zoom = map.getBoundsZoom(
       bounds,
@@ -190,7 +191,10 @@ export function createViewController(options: {
       animate,
     });
   };
-  /** Fits a circle around an airport, keeping it above a phone's sheet. */
+  /**
+   * Fits a circle around an airport, keeping it below a docked card and
+   * above a phone's sheet.
+   */
   const fitArea = (shown: ShownArea, animate: boolean) => {
     const centre = airportByCode(store.getState(), shown.airport);
     if (centre === null) {
@@ -204,7 +208,7 @@ export function createViewController(options: {
         [box.north, box.east],
       ],
       {
-        paddingTopLeft: [AREA_PADDING, AREA_PADDING],
+        paddingTopLeft: [AREA_PADDING, AREA_PADDING + cardInset()],
         paddingBottomRight: [AREA_PADDING, AREA_PADDING + bottom],
         maxZoom: MAX_AREA_ZOOM,
         animate,
@@ -213,7 +217,8 @@ export function createViewController(options: {
   };
   /**
    * Shows one airport's diagram: fits its runway corners (or a small box
-   * around it) at zoom 13 to 15, above a phone's sheet, in one move.
+   * around it) at zoom 13 to 15, between a docked card and a phone's sheet,
+   * in one move.
    */
   const showAirport = (code: string, animate: boolean) => {
     const state = store.getState();
@@ -239,7 +244,10 @@ export function createViewController(options: {
         map.getBoundsZoom(
           bounds,
           false,
-          L.point(2 * AREA_PADDING, 2 * AREA_PADDING + sheetInset()),
+          L.point(
+            2 * AREA_PADDING,
+            2 * AREA_PADDING + sheetInset() + cardInset(),
+          ),
         ),
       ),
     );
@@ -253,8 +261,9 @@ export function createViewController(options: {
     );
   };
   /**
-   * Fits the union of the bboxes of one airport's airspace shelves, above a
-   * phone's sheet, in one move. Without shelves the map stays where it is.
+   * Fits the union of the bboxes of one airport's airspace shelves, between
+   * a docked card and a phone's sheet, in one move. Without shelves the map
+   * stays where it is.
    */
   const showAirspace = (code: string, animate: boolean) => {
     const shelves = airspaceOf(store.getState().airspace.shelves, code);
@@ -269,7 +278,7 @@ export function createViewController(options: {
     );
     moveMap(() =>
       map.fitBounds(bounds, {
-        paddingTopLeft: [AREA_PADDING, AREA_PADDING],
+        paddingTopLeft: [AREA_PADDING, AREA_PADDING + cardInset()],
         paddingBottomRight: [AREA_PADDING, AREA_PADDING + sheetInset()],
         maxZoom: MAX_AREA_ZOOM,
         animate,
@@ -315,10 +324,10 @@ export function createViewController(options: {
       }
       appliedSeq = request.seq;
       const zoom = Math.max(map.getZoom(), REVEAL_ZOOM);
+      // The card docks once the plane is on screen; leave room for it now.
+      const top = cards.dockedInsetFor(state);
       moveMap(() =>
-        map.setView(centreAbove(position, zoom, cards.dockedInset()), zoom, {
-          animate,
-        }),
+        map.setView(centreAbove(position, zoom, top), zoom, { animate }),
       );
       return;
     }
