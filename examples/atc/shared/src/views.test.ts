@@ -1,7 +1,9 @@
 import { expect, test } from 'vitest';
 import type { Aircraft } from './aircraft';
+import type { ChartAirport } from './chart';
 import { applySnapshot, INITIAL_STATE } from './store';
 import {
+  airportCardView,
   arrivalsRows,
   boardShowsEta,
   feedBadgeView,
@@ -281,4 +283,125 @@ test('an airline callsign with an unknown code shows no airline beside the label
   });
 
   expect(subtitles).toEqual([null, 'N123AB']);
+});
+
+function krdm(overrides: Partial<ChartAirport> = {}): ChartAirport {
+  return {
+    code: 'KRDM',
+    faa: 'RDM',
+    name: 'ROBERTS FLD/REDMOND MUNI',
+    city: 'REDMOND',
+    state: 'OR',
+    aliases: ['redmond'],
+    lat: 44.254,
+    lon: -121.15,
+    elevationFt: 3082,
+    kind: 'airport',
+    towered: true,
+    towerPartTime: true,
+    frequencies: {
+      tower: '124.5',
+      atis: '119.025',
+      ctaf: '124.5',
+      unicom: '122.95',
+    },
+    weather: { kind: 'AWOS-3', frequency: '134.425' },
+    lighting: 'limited',
+    fuel: true,
+    military: false,
+    runways: [
+      {
+        id: '05/23',
+        lengthFt: 7038,
+        widthFt: 150,
+        surface: 'ASPH',
+        hard: true,
+        ends: null,
+        corners: null,
+        bearingDeg: null,
+      },
+    ],
+    rank: 0,
+    ...overrides,
+  };
+}
+
+const chartState = {
+  ...INITIAL_STATE,
+  chart: { status: 'ready' as const, cycle: '2610', airports: [krdm()] },
+};
+
+test('airportCardView describes a chart airport', () => {
+  const view = airportCardView(chartState, 'krdm');
+
+  expect(view).toEqual({
+    status: 'ready',
+    code: 'KRDM',
+    title: 'ROBERTS FLD/REDMOND MUNI (RDM)',
+    badge: 'Towered',
+    towered: true,
+    frequencies: [
+      { label: 'Tower', value: '124.5★' },
+      { label: 'ATIS', value: '119.025' },
+      { label: 'CTAF', value: '124.5' },
+      { label: 'UNICOM', value: '122.95' },
+      { label: 'AWOS-3', value: '134.425' },
+    ],
+    elevation: '3,082 ft',
+    runways: ['05/23 · 7,038 × 150 ft · asphalt'],
+  });
+});
+
+test('airportCardView skips null frequencies and names other surfaces', () => {
+  const state = {
+    ...chartState,
+    chart: {
+      ...chartState.chart,
+      airports: [
+        krdm({
+          towered: false,
+          towerPartTime: false,
+          frequencies: { tower: null, atis: null, ctaf: '122.8', unicom: null },
+          weather: null,
+          runways: [
+            { ...krdm().runways[0], id: '12/30', surface: 'TURF' },
+            { ...krdm().runways[0], id: '1/19', surface: 'WXYZ' },
+            { ...krdm().runways[0], id: '2/20', surface: null },
+          ],
+        }),
+      ],
+    },
+  };
+
+  const view = airportCardView(state, 'KRDM');
+
+  expect(view).toMatchObject({
+    badge: 'Non-towered',
+    frequencies: [{ label: 'CTAF', value: '122.8' }],
+    runways: [
+      '12/30 · 7,038 × 150 ft · turf',
+      '1/19 · 7,038 × 150 ft · wxyz',
+      '2/20 · 7,038 × 150 ft',
+    ],
+  });
+});
+
+test('airportCardView gives unknown for a code nobody knows', () => {
+  const view = airportCardView(chartState, 'ZZZZ');
+
+  expect(view).toEqual({ status: 'unknown', code: 'ZZZZ' });
+});
+
+test('airportCardView with only a fallback airport has no badge or facts', () => {
+  const view = airportCardView(INITIAL_STATE, 'KBDN');
+
+  expect(view).toMatchObject({
+    status: 'ready',
+    code: 'KBDN',
+    badge: null,
+    towered: null,
+    frequencies: [],
+    elevation: null,
+    runways: [],
+  });
 });

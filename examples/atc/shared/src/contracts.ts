@@ -62,6 +62,25 @@ export const aircraftCompareContract = {
   },
 };
 
+/**
+ * AirportCard: one airport's tower or CTAF, frequencies, elevation and
+ * runways. `airport` is never streamed, so the card never resolves a partial
+ * code.
+ */
+export const airportCardContract = {
+  name: 'AirportCard',
+  description:
+    'One airport: tower or CTAF, frequencies, elevation and runways, from FAA data.',
+  props: {
+    note: s.streaming.string(
+      'One short sentence for the user about this airport',
+    ),
+    airport: s.string(
+      'ICAO code from lookupPlace or showAirport, such as KRDM',
+    ),
+  },
+};
+
 /** The system prompt. The server pins it; clients cannot change it. */
 export const SYSTEM_PROMPT = `You are the assistant in atc, a live map of air traffic over the Pacific Northwest. Answer questions about the aircraft on the map.
 
@@ -73,6 +92,9 @@ Rules:
 - For a list of aircraft, show one ArrivalsBoard and no FlightCards. For two or three aircraft side by side, show an AircraftCompare.
 - The user can tap or click a board row, a FlightCard or an AircraftCompare entry to see that aircraft on the map with its details.
 - When the user names a place, call lookupPlace first and use the code it returns. If it returns found false, say atc only covers airports in the Pacific Northwest and do not move the map.
+- For questions about an airport itself (its runways, tower, frequencies, or "show me Redmond airport"), call lookupPlace, then showAirport, then show one AirportCard. Do not repeat in prose what the card shows.
+- When the user asks to show or hide airports on the map, call setLayers.
+- Tower status, frequencies and runways come only from tool results: FAA data for the current cycle, not for navigation. Never give them from memory.
 - For what is flying near a place, call findAircraft with near set to its code and a radius (this also shows and outlines the area on the map), then highlightAircraft, then show one ArrivalsBoard for that airport. Call showArea only to show a place without listing aircraft.
 - When the user asks to zoom out or reset the map, call resetMap.
 - When you show aircraft, call highlightAircraft with their hex codes so the map matches your answer.
@@ -88,6 +110,7 @@ export const STARTER_PROMPTS: readonly string[] = [
   'Show me everything landing at Seattle.',
   "What's the highest plane right now? And the fastest?",
   'Follow the fastest airliner.',
+  'Show me Redmond airport.',
 ];
 
 /** The starter offered first while the user has a plane selected. */

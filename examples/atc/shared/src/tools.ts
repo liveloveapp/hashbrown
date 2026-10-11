@@ -8,7 +8,7 @@ import {
 } from './find-aircraft';
 import { distanceNm } from './geo';
 import { airlineFor } from './names';
-import { airportDirectory } from './directory';
+import { airportDirectory, chartAirportByCode } from './directory';
 import { AREAS, lookupPlace } from './places';
 import {
   type AtcState,
@@ -88,6 +88,22 @@ export const ATC_TOOL_DEFINITIONS = {
         s.number('Radius in nautical miles, 5 to 150; 25 if null'),
         s.nullish(),
       ]),
+    }),
+  },
+  showAirport: {
+    name: 'showAirport' as const,
+    description:
+      'Show one airport on the map at diagram zoom, with its runways and taxiways, and turn the airports layer on. Returns its tower, frequencies, runways and elevation from FAA data.',
+    schema: s.object('Airport to show', {
+      airport: s.string('ICAO code from lookupPlace, such as KRDM'),
+    }),
+  },
+  setLayers: {
+    name: 'setLayers' as const,
+    description:
+      'Show or hide map overlays. Pass null to leave a layer as it is.',
+    schema: s.object('Layers', {
+      airports: s.anyOf([s.boolean('Show airports'), s.nullish()]),
     }),
   },
   resetMap: {
@@ -198,6 +214,9 @@ export function createAtcTools(context: AtcToolContext) {
               faa: airport.faa,
               name: airport.name,
               city: `${airport.city}, ${airport.state}`,
+              towered:
+                chartAirportByCode(store.getState(), airport.code)?.towered ??
+                null,
             };
       },
     },
@@ -229,6 +248,59 @@ export function createAtcTools(context: AtcToolContext) {
           moved: followed === null,
           ...(followed === null ? {} : { reason: followingReason(followed) }),
         };
+      },
+    },
+    showAirport: {
+      ...ATC_TOOL_DEFINITIONS.showAirport,
+      handler: async (input: { airport: string }) => {
+        const found = lookupPlace(
+          input.airport,
+          airportDirectory(store.getState()),
+        );
+        if (found === null) {
+          const { reason } = unknownPlace(input.airport);
+
+          return { shown: false as const, reason };
+        }
+        store.showAirport(found.code);
+        const state = store.getState();
+        const chart = chartAirportByCode(state, found.code);
+        const loaded = state.surfaces.get(found.code);
+        const surfaces = typeof loaded === 'object' ? loaded : undefined;
+        const followed = followedLabel(state);
+
+        return {
+          shown: true as const,
+          code: found.code,
+          name: chart?.name ?? found.name,
+          towered: chart?.towered ?? null,
+          towerPartTime: chart?.towerPartTime ?? null,
+          frequencies: chart?.frequencies ?? null,
+          elevationFt: chart?.elevationFt ?? null,
+          runways:
+            chart?.runways.map((r) => ({
+              id: r.id,
+              lengthFt: r.lengthFt,
+              widthFt: r.widthFt,
+              surface: r.surface,
+            })) ?? [],
+          diagram: surfaces?.source ?? 'runways-only',
+          aircraftWithin3Nm: [...state.aircraft.values()].filter(
+            (a) => distanceNm(a, found) <= 3,
+          ).length,
+          moved: followed === null,
+          ...(followed === null ? {} : { reason: followingReason(followed) }),
+        };
+      },
+    },
+    setLayers: {
+      ...ATC_TOOL_DEFINITIONS.setLayers,
+      handler: async (input: { airports: boolean | null }) => {
+        if (input.airports !== null) {
+          store.setLayers({ airports: input.airports });
+        }
+
+        return { layers: store.getState().layers };
       },
     },
     resetMap: {

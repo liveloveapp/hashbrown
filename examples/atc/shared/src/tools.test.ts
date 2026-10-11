@@ -1,5 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from './aircraft';
+import type { ChartAirport } from './chart';
 import { applySnapshot, createAtcStore, INITIAL_STATE } from './store';
 import { findAircraft, type FindAircraftInput } from './find-aircraft';
 import { ATC_TOOL_NAMES, createAtcTools } from './tools';
@@ -357,6 +358,7 @@ test('lookupPlace resolves a place or tells the model it is unknown', async () =
     faa: 'BDN',
     name: 'Bend Municipal',
     city: 'Bend, OR',
+    towered: null,
   });
   expect(tokyo).toEqual({
     found: false,
@@ -507,4 +509,145 @@ test('findAircraft with an unknown approaching airport finds nothing', async () 
   });
 
   expect(rows).toEqual([]);
+});
+
+function krdm(overrides: Partial<ChartAirport> = {}): ChartAirport {
+  return {
+    code: 'KRDM',
+    faa: 'RDM',
+    name: 'ROBERTS FLD/REDMOND MUNI',
+    city: 'REDMOND',
+    state: 'OR',
+    aliases: ['redmond'],
+    lat: 44.254,
+    lon: -121.15,
+    elevationFt: 3082,
+    kind: 'airport',
+    towered: true,
+    towerPartTime: true,
+    frequencies: {
+      tower: '124.5',
+      atis: '119.025',
+      ctaf: '124.5',
+      unicom: '122.95',
+    },
+    weather: { kind: 'AWOS-3', frequency: '134.425' },
+    lighting: 'limited',
+    fuel: true,
+    military: false,
+    runways: [
+      {
+        id: '05/23',
+        lengthFt: 7038,
+        widthFt: 150,
+        surface: 'ASPH',
+        hard: true,
+        ends: null,
+        corners: null,
+        bearingDeg: null,
+      },
+    ],
+    rank: 0,
+    ...overrides,
+  };
+}
+
+function readyStore() {
+  const store = createAtcStore();
+  store.setChart({
+    cycle: '2610',
+    effective: '2026-10-08',
+    airports: [krdm()],
+  });
+
+  return store;
+}
+
+test('showAirport shows the airport and returns its FAA facts', async () => {
+  const store = readyStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirport.handler({ airport: 'Redmond' });
+
+  expect(result).toMatchObject({
+    shown: true,
+    code: 'KRDM',
+    towered: true,
+    elevationFt: 3082,
+    diagram: 'runways-only',
+    moved: true,
+  });
+  expect(result).toHaveProperty('runways.0.id', '05/23');
+  expect(store.getState().viewRequest?.kind).toBe('airport');
+});
+
+test('showAirport reports the diagram source and nearby aircraft', async () => {
+  const store = readyStore();
+  store.setSurfaces('KRDM', { code: 'KRDM', source: 'faa', features: [] });
+  store.applySnapshot({
+    at: 1,
+    aircraft: [
+      plane('aaaaaa', { lat: 44.26, lon: -121.15 }),
+      plane('bbbbbb', { lat: 47.5, lon: -122.3 }),
+    ],
+  });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirport.handler({ airport: 'KRDM' });
+
+  expect(result).toMatchObject({ diagram: 'faa', aircraftWithin3Nm: 1 });
+});
+
+test('while following, showAirport reports that the map stays on the plane', async () => {
+  const store = readyStore();
+  store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });
+  store.follow('aaaaaa');
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirport.handler({ airport: 'KRDM' });
+
+  expect(result).toMatchObject({
+    shown: true,
+    moved: false,
+    reason: 'Following UAL100. Call stopFollowing first to move the map.',
+  });
+  expect(store.getState().viewRequest).toBeNull();
+});
+
+test('showAirport refuses unknown airports', async () => {
+  const store = createAtcStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirport.handler({ airport: 'Tokyo' });
+
+  expect(result).toMatchObject({ shown: false });
+  expect(store.getState().viewRequest).toBeNull();
+});
+
+test('setLayers applies a layer and returns the layers', async () => {
+  const store = createAtcStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.setLayers.handler({ airports: false });
+
+  expect(result).toEqual({ layers: { airports: false } });
+});
+
+test('setLayers with null leaves the layers as they are', async () => {
+  const store = createAtcStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.setLayers.handler({ airports: null });
+
+  expect(result).toEqual({ layers: { airports: true } });
+  expect(store.getState()).toBe(INITIAL_STATE);
+});
+
+test('lookupPlace reports whether the airport has a tower', async () => {
+  const store = readyStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.lookupPlace.handler({ query: 'Redmond' });
+
+  expect(result).toMatchObject({ found: true, code: 'KRDM', towered: true });
 });

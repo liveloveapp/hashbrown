@@ -7,7 +7,7 @@ import {
 import type { Aircraft } from './aircraft';
 import { distanceNm, etaMinutes, isApproaching } from './geo';
 import { aircraftTypeName, knownAirlineFor } from './names';
-import { airportByCode } from './directory';
+import { airportByCode, chartAirportByCode } from './directory';
 import {
   type AtcState,
   type FeedStatus,
@@ -236,4 +236,90 @@ export function feedBadgeView(
 /** A user message's text, or an empty string for non-text content. */
 export function messageText(content: unknown): string {
   return typeof content === 'string' ? content : '';
+}
+
+/** What an AirportCard shows. */
+export type AirportCardView =
+  | { readonly status: 'unknown'; readonly code: string }
+  | {
+      readonly status: 'ready';
+      readonly code: string;
+      /** Such as "ROBERTS FLD/REDMOND MUNI (RDM)". */
+      readonly title: string;
+      /** Null when only the fallback table is loaded. */
+      readonly badge: 'Towered' | 'Non-towered' | null;
+      readonly towered: boolean | null;
+      readonly frequencies: readonly {
+        readonly label: string;
+        readonly value: string;
+      }[];
+      /** Such as "3,082 ft". */
+      readonly elevation: string | null;
+      /** Such as "05/23 · 7,038 × 150 ft · asphalt". */
+      readonly runways: readonly string[];
+    };
+
+const SURFACE_WORDS: Readonly<Record<string, string>> = {
+  ASPH: 'asphalt',
+  CONC: 'concrete',
+  TURF: 'turf',
+  GRVL: 'gravel',
+  DIRT: 'dirt',
+  WATER: 'water',
+};
+
+/** Builds the AirportCard view for an ICAO or FAA code. */
+export function airportCardView(
+  state: AtcState,
+  code: string,
+): AirportCardView {
+  const airport = airportByCode(state, code);
+  if (airport === null) {
+    return { status: 'unknown', code };
+  }
+  const chart = chartAirportByCode(state, airport.code);
+  if (chart === null) {
+    return {
+      status: 'ready',
+      code: airport.code,
+      title: `${airport.name} (${airport.faa})`,
+      badge: null,
+      towered: null,
+      frequencies: [],
+      elevation: null,
+      runways: [],
+    };
+  }
+  const { frequencies: f, weather } = chart;
+  const entries: readonly (readonly [string, string | null])[] = [
+    [
+      'Tower',
+      f.tower === null ? null : `${f.tower}${chart.towerPartTime ? '★' : ''}`,
+    ],
+    ['ATIS', f.atis],
+    ['CTAF', f.ctaf],
+    ['UNICOM', f.unicom],
+    [weather?.kind ?? '', weather?.frequency ?? null],
+  ];
+
+  return {
+    status: 'ready',
+    code: chart.code,
+    title: `${chart.name} (${chart.faa})`,
+    badge: chart.towered ? 'Towered' : 'Non-towered',
+    towered: chart.towered,
+    frequencies: entries.flatMap(([label, value]) =>
+      value === null ? [] : [{ label, value }],
+    ),
+    elevation: `${chart.elevationFt.toLocaleString('en-US')} ft`,
+    runways: chart.runways.map((r) => {
+      const surface =
+        r.surface === null
+          ? null
+          : (SURFACE_WORDS[r.surface] ?? r.surface.toLowerCase());
+      const size = `${r.lengthFt.toLocaleString('en-US')} × ${r.widthFt.toLocaleString('en-US')} ft`;
+
+      return [r.id, size, ...(surface === null ? [] : [surface])].join(' · ');
+    }),
+  };
 }
