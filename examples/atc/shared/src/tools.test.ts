@@ -1077,6 +1077,24 @@ test('findAircraft without inAirspace adds no airspace fields to rows', () => {
   }
 });
 
+test('findAircraft with near and inAirspace leaves the airspace highlighted', async () => {
+  const store = airspaceStore([...pdxShelves, rdmShelf]);
+  store.applySnapshot({
+    at: 1,
+    aircraft: [plane('aaaaaa', { lat: 44.25, lon: -121.15, altitudeFt: 3000 })],
+  });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  await tools.findAircraft.handler({
+    ...any,
+    near: { airport: 'KRDM', radiusNm: 25 },
+    inAirspace: { airport: 'KRDM', class: 'D' },
+  });
+
+  expect(store.getState().highlightedAirspace).toBe('KRDM');
+  expect(store.getState().viewRequest?.kind).toBe('airspace');
+});
+
 test('findAircraft with inAirspace refuses while airspace is unavailable', async () => {
   const store = readyStore();
   store.setAirspaceFailed();
