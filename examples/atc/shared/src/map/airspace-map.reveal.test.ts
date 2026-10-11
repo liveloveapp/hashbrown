@@ -87,6 +87,9 @@ async function mount(
   return {
     store,
     pixel,
+    element,
+    /** Destroys the map but leaves its container in the page. */
+    destroy: () => handle.destroy(),
     cleanup: () => {
       handle.destroy();
       workbench.remove();
@@ -386,4 +389,21 @@ test('on a touch screen a tap does not leave a sticky hover: a plane picked in t
   expect(card?.getAttribute('data-hex')).toBe('cccccc');
   expect(card?.classList.contains('is-docked')).toBe(true);
   map.cleanup();
+});
+
+test('destroying the map removes the detail card and its hidden measuring copy', async () => {
+  const map = await mount(180);
+  map.store.applySnapshot({ at: 1, aircraft: planes });
+  cardHeight(100);
+  map.store.revealAircraft('cccccc');
+  await settle();
+  const before = map.element.querySelectorAll('.atc-detail').length;
+
+  map.destroy();
+
+  expect(before).toBe(2);
+  expect(map.element.querySelectorAll('.atc-detail')).toHaveLength(0);
+  map.element.closest('main')?.remove();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });

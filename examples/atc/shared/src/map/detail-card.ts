@@ -164,6 +164,8 @@ export interface DetailCard {
    * last showed are untouched: showing the plane later still announces it.
    */
   measureDocked(view: AircraftDetailView, maxHeight: number): number;
+  /** Takes the card and its measuring copy out of the page. */
+  remove(): void;
 }
 
 /** Builds an element with a class and, optionally, text (as a text node). */
@@ -456,6 +458,10 @@ export function createDetailCard(
       const height = size?.height || element.offsetHeight;
 
       return height > 0 ? height + 2 * CARD_MARGIN : 0;
+    },
+    remove() {
+      element.remove();
+      probe?.element.remove();
     },
     measureDocked(view, maxHeight) {
       if (probe === null) {

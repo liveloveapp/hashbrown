@@ -198,7 +198,7 @@ export function createCardSync(options: {
     },
     destroy() {
       clearInterval(ticker);
-      card.element.remove();
+      card.remove();
     },
   };
 }
