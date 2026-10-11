@@ -368,7 +368,7 @@ test('an airport card shows the title, badge, tower frequency and runway', () =>
     'Roberts Field (RDM)',
   );
   expect(badge?.textContent?.trim()).toBe('Towered');
-  expect(badge?.classList.contains('is-towered')).toBe(true);
+  expect(badge?.className).toBe('atc-airport-badge');
   expect(element.querySelector('dd')?.textContent?.trim()).toBe('124.5★');
   expect(element.querySelector('.atc-airport-runways li')?.textContent).toBe(
     '05/23 · 7,038 × 150 ft · asphalt',

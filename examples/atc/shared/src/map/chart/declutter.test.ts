@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { ChartAirport } from '../../chart';
-import { blockZoomRule, placeBlocks, visibleAirports } from './declutter';
+import { placeBlocks, visibleAirports } from './declutter';
 
 function field(
   code: string,
@@ -68,16 +68,6 @@ test('at zoom 10 every field shows, turf included', () => {
   const result = visibleAirports(airports, 10);
 
   expect(codes(result)).toEqual(['TURF', 'TWR', 'MID', 'LONG']);
-});
-
-test('blockZoomRule follows the zoom bands', () => {
-  const towered = field('A', 0, true, 5000);
-  const open = field('B', 0, false, 5000);
-
-  expect(blockZoomRule(towered, 7)).toBe(false);
-  expect(blockZoomRule(towered, 8)).toBe(true);
-  expect(blockZoomRule(open, 9)).toBe(false);
-  expect(blockZoomRule(open, 10)).toBe(true);
 });
 
 test('two blocks at the same pixel place only the first', () => {

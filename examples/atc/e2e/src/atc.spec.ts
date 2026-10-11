@@ -445,15 +445,18 @@ test('the airports layer can be hidden by the assistant', async ({
   page,
 }, testInfo) => {
   await open(page, testInfo.project.name);
-  await expect(page.locator('.atc-apt').first()).toBeAttached();
-  await expect(page.locator('.atc-apt.is-fallback')).toHaveCount(0);
+  await expect(
+    page.locator('.atc-apt-block', { hasText: /^RDM$/ }),
+  ).toBeAttached();
+  await expect(page.locator('.atc-apt-block.is-fallback')).toHaveCount(0);
 
   await page
     .getByRole('textbox', { name: 'Message' })
     .fill('Hide the airports.');
   await page.getByRole('button', { name: 'Send' }).click();
 
-  await expect(page.locator('.atc-apt')).toHaveCount(0);
+  await expect(page.locator('.atc-apt-block')).toHaveCount(0);
+  await expect(page.locator('.leaflet-atc-airports-pane > *')).toHaveCount(0);
 });
 
 test('the Layers control works from the keyboard', async ({
@@ -467,7 +470,7 @@ test('the Layers control works from the keyboard', async ({
   await page.getByRole('checkbox', { name: 'Airports' }).press('Space');
   await page.keyboard.press('Escape');
 
-  await expect(page.locator('.atc-apt')).toHaveCount(0);
+  await expect(page.locator('.atc-apt-block')).toHaveCount(0);
   await expect(toggle).toBeFocused();
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 });

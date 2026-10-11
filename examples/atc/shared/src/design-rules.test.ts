@@ -271,14 +271,10 @@ for (const [rule, check] of Object.entries(RULES)) {
 /** Chart colours and tokens, allowed only where chart features are drawn. */
 const CHART_COLOUR =
   /#086ca8|#76334f|#cfcfcf|#955101|--atc-chart-|--atc-diagram-/i;
-/** Where chart colours may appear: chart.css, the AirportCard badge and the chart modules. */
-const CHART_ALLOWED = [
-  'shared/src/styles/chart.css',
-  'shared/src/styles/cards.css',
-  'shared/src/map/chart/',
-];
+/** Where chart colours may appear: chart.css and the chart modules. */
+const CHART_ALLOWED = ['shared/src/styles/chart.css', 'shared/src/map/chart/'];
 
-test('chart colours stay on the map (and the AirportCard badge)', () => {
+test('chart colours stay on the map', () => {
   const sources = [...files, ...sharedSources];
 
   const offenders = sources
@@ -298,4 +294,16 @@ test('chart hexes are defined only in chart.css', () => {
     .filter(({ source }) => hex.test(source));
 
   expect(offenders.map(({ file }) => file)).toEqual([]);
+});
+
+test('the ink data block has a flat surface background and no depth', () => {
+  const css = readFileSync(
+    new URL('./styles/chart.css', import.meta.url),
+    'utf8',
+  );
+
+  const rule = /\.atc-map \.atc-apt-block \{([^}]*)\}/.exec(css)?.[1] ?? '';
+
+  expect(rule).toMatch(/background:\s*var\(--atc-surface\)/);
+  expect(rule).not.toMatch(/shadow|border(?!-radius)|blur/);
 });

@@ -178,13 +178,15 @@ composes it the way it composes `follow` and `card-sync`.
 
 | File                | Role                                                                      |
 | ------------------- | ------------------------------------------------------------------------- |
-| `airport-symbol.ts` | A pure function from an airport to symbol SVG and kind                    |
+| `airport-symbol.ts` | Superseded by `airport-ring.ts` in part 2                                 |
 | `data-block.ts`     | Builds data-block DOM with text nodes only                                |
 | `declutter.ts`      | Pure. Which symbols and blocks show at a zoom, and greedy block placement |
 | `diagram-layer.ts`  | Diagrams at zoom 12 and above, `L.geoJSON` on a canvas renderer           |
 | `layers-control.ts` | The Layers pill and checklist                                             |
 
 ### Airport symbols (zoom 11 and below)
+
+> **Superseded.** Part 2 replaced this with ink airports (true-size runways, rings only where runways cannot be drawn, and ink data blocks). See [the part 2 spec](2026-10-11-atc-overlays-airspace-design.md).
 
 These follow the sectional (Chart Users' Guide 9 July 2026, pp. 14–15 and 23; IAC 2
 §3.9.2.3). The pixel sizes are estimates, because the FAA gives none.
@@ -198,6 +200,8 @@ These follow the sectional (Chart Users' Guide 9 July 2026, pp. 14–15 and 23; 
 | Military or joint                          | Double ring (12 and 6 px); joint fields also get ticks                                                      |
 | Heliport or seaplane base                  | Ring with "H", or an anchor; glyph from zoom 10                                                             |
 | Colour                                     | `--atc-chart-blue` when towered, `--atc-chart-magenta` otherwise                                            |
+
+> **Superseded** for data blocks by part 2's ink labels; see [the part 2 spec](2026-10-11-atc-overlays-airspace-design.md).
 
 Data blocks keep the sectional's line order and colour, with NASR's own capitals
 in the text (CSS `uppercase` stays banned). The first line is the name and ident,

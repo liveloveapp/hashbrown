@@ -22,16 +22,6 @@ export function visibleAirports(
     .sort((a, b) => a.rank - b.rank);
 }
 
-/**
- * Whether an airport may show a data block at a zoom: never below zoom 8,
- * towered fields only at zooms 8 and 9, and every field from zoom 10.
- */
-export function blockZoomRule(airport: ChartAirport, zoom: number): boolean {
-  if (zoom < 8) return false;
-  if (zoom < 10) return airport.towered;
-  return true;
-}
-
 interface Box {
   readonly left: number;
   readonly top: number;
