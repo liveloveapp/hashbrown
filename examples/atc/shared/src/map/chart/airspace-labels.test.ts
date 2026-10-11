@@ -82,6 +82,34 @@ test('a Class D shelf up to 5,600 ft is a 56 box', () => {
   expect(label).toEqual({ kind: 'box', text: '56' });
 });
 
+test('a Class D shelf with an exclusive ceiling gets the chart minus', () => {
+  const shelf: AirspaceShelf = {
+    ...pdxC,
+    class: 'D',
+    type: 'D',
+    floor: { ft: 0, ref: 'SFC' },
+    ceiling: { ft: 3000, exclusive: true },
+  };
+
+  const label = shelfLabel(shelf);
+
+  expect(label).toEqual({ kind: 'box', text: '-30' });
+});
+
+test('a Class D shelf with an inclusive ceiling has no minus', () => {
+  const shelf: AirspaceShelf = {
+    ...pdxC,
+    class: 'D',
+    type: 'D',
+    floor: { ft: 0, ref: 'SFC' },
+    ceiling: { ft: 3000, exclusive: false },
+  };
+
+  const label = shelfLabel(shelf);
+
+  expect(label).toEqual({ kind: 'box', text: '30' });
+});
+
 test('a Class E surface area has no label', () => {
   const shelf: AirspaceShelf = { ...pdxC, class: 'E', type: 'E2' };
 
