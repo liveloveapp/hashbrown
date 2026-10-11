@@ -1,4 +1,13 @@
 import type { AtcState } from '../store';
+import {
+  createObstacleGrid,
+  intersects,
+  PLANE_ICON,
+  type TagObstacle,
+  type TagRect,
+} from './tag-obstacles';
+
+export type { TagObstacle, TagRect } from './tag-obstacles';
 
 /**
  * Where a plane's data tag sits beside its icon, or `hidden` when no side is
@@ -23,14 +32,6 @@ export const TAG_PLACEMENTS: readonly Exclude<TagPlacement, 'hidden'>[] = [
   'below-left',
 ];
 
-/** A rectangle in map container pixels. */
-export interface TagRect {
-  readonly left: number;
-  readonly top: number;
-  readonly right: number;
-  readonly bottom: number;
-}
-
 /** One plane whose tag shows, at its container point, with its tag's width. */
 export interface TagItem {
   readonly hex: string;
@@ -39,28 +40,24 @@ export interface TagItem {
   readonly width: number;
   /** The placement it has now, kept while it is still valid. */
   readonly previous: TagPlacement | null;
-  /** Shown even when crowded (the hovered plane). */
+  /**
+   * Shown even when crowded: the hovered plane, whose tag shows while the
+   * detail card does not (when the card does not fit). A hidden tag's plane
+   * is otherwise reached by hovering or tapping it, which opens the card.
+   */
   readonly always?: boolean;
 }
 
-/** A plane icon tags should not cover. */
-export interface TagObstacle {
-  readonly hex: string;
-  readonly x: number;
-  readonly y: number;
-}
-
-/** A tag's height in pixels: a 16 px line, 1 px padding and border each side. */
+/**
+ * A tag's height in pixels: a 16 px line, plus 1 px of padding and 1 px of
+ * border on each side.
+ */
 export const TAG_HEIGHT = 20;
-/** The plane icon's box, in pixels. */
-const ICON = 22;
-const HALF = ICON / 2;
+const HALF = PLANE_ICON / 2;
 /** From the icon's edge to a side tag (`left: 24px` on a 22 px icon). */
 const SIDE_GAP = 2;
 /** Space kept between two tags, in pixels. */
 const TAG_GAP = 2;
-/** The obstacle grid's cell size, in pixels. */
-const CELL = 32;
 
 /**
  * Where a tag would be drawn for `placement`, in container pixels. Matches
@@ -90,15 +87,6 @@ export function tagRect(
   return { left, top, right: left + width, bottom: top + TAG_HEIGHT };
 }
 
-function intersects(a: TagRect, b: TagRect, gap = 0): boolean {
-  return (
-    a.left < b.right + gap &&
-    b.left < a.right + gap &&
-    a.top < b.bottom + gap &&
-    b.top < a.bottom + gap
-  );
-}
-
 function inside(rect: TagRect, bounds: TagRect): boolean {
   return (
     rect.left >= bounds.left &&
@@ -108,51 +96,6 @@ function inside(rect: TagRect, bounds: TagRect): boolean {
   );
 }
 
-/** Buckets plane icons by grid cell, so a tag only checks its neighbours. */
-function obstacleGrid(planes: readonly TagObstacle[]) {
-  const cells = new Map<string, TagObstacle[]>();
-  for (const plane of planes) {
-    const key = `${Math.floor(plane.x / CELL)},${Math.floor(plane.y / CELL)}`;
-    const cell = cells.get(key);
-    if (cell) {
-      cell.push(plane);
-    } else {
-      cells.set(key, [plane]);
-    }
-  }
-
-  /** True when `rect` covers any plane icon but `own`'s. */
-  return (rect: TagRect, own: string): boolean => {
-    for (
-      let cx = Math.floor((rect.left - HALF) / CELL);
-      cx <= Math.floor((rect.right + HALF) / CELL);
-      cx++
-    ) {
-      for (
-        let cy = Math.floor((rect.top - HALF) / CELL);
-        cy <= Math.floor((rect.bottom + HALF) / CELL);
-        cy++
-      ) {
-        for (const plane of cells.get(`${cx},${cy}`) ?? []) {
-          if (
-            plane.hex !== own &&
-            intersects(rect, {
-              left: plane.x - HALF,
-              top: plane.y - HALF,
-              right: plane.x + HALF,
-              bottom: plane.y + HALF,
-            })
-          ) {
-            return true;
-          }
-        }
-      }
-    }
-
-    return false;
-  };
-}
-
 /**
  * Places data tags so no two overlap. `items` come in priority order (see
  * {@link tagOrder}); each takes the first side, in {@link TAG_PLACEMENTS}
@@ -160,9 +103,14 @@ function obstacleGrid(planes: readonly TagObstacle[]) {
  * the tags already placed, preferring one that covers no other plane icon.
  * A placement the tag already has is kept while it is as good as the best
  * free one, so tags do not flip back and forth as planes move. A tag with no
- * free side is `hidden`, unless it is `always` shown. A plane outside
- * `bounds` gets no entry. Planes are bucketed in a grid, so hundreds of
- * obstacles cost little.
+ * free side is `hidden` (its plane still opens the detail card on hover or
+ * tap), unless it is `always` shown. Planes are bucketed in a grid
+ * (`createObstacleGrid`), so hundreds of obstacles cost little.
+ *
+ * A plane outside `bounds` (under a docked card, past an edge) keeps the
+ * side it has: its tag cannot move into the visible map, but where it pokes
+ * in, the other tags keep clear of it. A plane whose tag cannot reach
+ * `bounds` gets no entry.
  */
 export function layoutTags(input: {
   readonly items: readonly TagItem[];
@@ -171,16 +119,24 @@ export function layoutTags(input: {
   readonly blocked?: readonly TagRect[];
 }): Map<string, TagPlacement> {
   const { items, bounds, blocked = [] } = input;
-  const coversPlane = obstacleGrid(input.planes);
+  const coversPlane = createObstacleGrid(input.planes);
   const placed: TagRect[] = [];
   const result = new Map<string, TagPlacement>();
+  const outside = (item: TagItem) =>
+    item.x < bounds.left ||
+    item.x > bounds.right ||
+    item.y < bounds.top ||
+    item.y > bounds.bottom;
+  for (const item of items.filter(outside)) {
+    const current = item.previous ?? 'right';
+    const rect = tagRect(item, current);
+    if (current !== 'hidden' && intersects(rect, bounds)) {
+      placed.push(rect);
+      result.set(item.hex, current);
+    }
+  }
   for (const item of items) {
-    if (
-      item.x < bounds.left ||
-      item.x > bounds.right ||
-      item.y < bounds.top ||
-      item.y > bounds.bottom
-    ) {
+    if (outside(item)) {
       continue;
     }
     const free = (placement: TagPlacement) => {

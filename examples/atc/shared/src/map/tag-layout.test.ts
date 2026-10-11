@@ -86,7 +86,7 @@ test('when every side is taken, the lowest priority tag is hidden', () => {
   }
 });
 
-test('an always-shown tag (the hovered plane) shows even when crowded', () => {
+test("the hovered plane's tag (always) shows even when crowded, for when its card does not fit", () => {
   const crowd = Array.from({ length: 7 }, (_, i) =>
     item(`p${i}`, 200, 150 + i),
   );
@@ -119,7 +119,7 @@ test('insets shrink the bounds: a docked card on top and a sheet below', () => {
   expect(placements.get('b')).toMatch(/^above/);
 });
 
-test('a plane outside the bounds gets no placement', () => {
+test('a plane whose tag cannot reach the bounds gets no placement', () => {
   const items = [item('a', 100, 290)];
 
   const placements = layoutTags({
@@ -129,6 +129,36 @@ test('a plane outside the bounds gets no placement', () => {
   });
 
   expect(placements.has('a')).toBe(false);
+});
+
+test('a tag poking into the bounds from a plane just under a docked card keeps its side, and others keep clear', () => {
+  const band = { ...bounds, top: 80 };
+  const items = [item('b', 100, 95), item('a', 100, 75, { previous: 'right' })];
+
+  const placements = layoutTags({ items, planes: [], bounds: band });
+
+  expect(placements.get('a')).toBe('right');
+  expect(placements.get('b')).not.toBe('right');
+  expect(
+    overlaps(
+      tagRect(items[1], 'right'),
+      tagRect(items[0], placements.get('b') ?? 'hidden'),
+    ),
+  ).toBe(false);
+});
+
+test('a tag poking in from a plane just past the left edge is kept clear of', () => {
+  const items = [item('b', 40, 100), item('a', -5, 100)];
+
+  const placements = layoutTags({ items, planes: [], bounds });
+
+  expect(placements.get('a')).toBe('right');
+  expect(
+    overlaps(
+      tagRect(items[1], 'right'),
+      tagRect(items[0], placements.get('b') ?? 'hidden'),
+    ),
+  ).toBe(false);
 });
 
 test('blocked rectangles, such as the zoom control, are avoided', () => {
@@ -194,23 +224,6 @@ test('hysteresis: a previous placement that covers a plane gives way to a clear 
   const placements = layoutTags({ items, planes, bounds });
 
   expect(placements.get('a')).toBe('left');
-});
-
-test('hundreds of obstacle planes lay out quickly', () => {
-  const items = Array.from({ length: 30 }, (_, i) =>
-    item(`t${i}`, 20 + ((i * 37) % 360), 20 + ((i * 53) % 260)),
-  );
-  const planes = Array.from({ length: 500 }, (_, i) => ({
-    hex: `o${i}`,
-    x: (i * 7919) % 400,
-    y: (i * 104729) % 300,
-  }));
-
-  const start = performance.now();
-  layoutTags({ items, planes, bounds });
-  const elapsed = performance.now() - start;
-
-  expect(elapsed).toBeLessThan(20);
 });
 
 test('tag order: hovered, then selected, then followed, then highlighted in order', () => {

@@ -29,7 +29,7 @@ dependencies); this file covers atc.
 | `shared/src/map/airspace-map.ts`                | `createAirspaceMap`: composes the modules below                      |
 | `shared/src/map/plane-marker.ts`                | Marker HTML, updated in place                                        |
 | `shared/src/map/motion-loop.ts`, `tween.ts`     | Dead reckoning and turns between snapshots, at sub-pixel positions   |
-| `shared/src/map/tag-layout.ts`, `tag-sync.ts`   | Data tags that never overlap: pure layout, and applying it           |
+| `shared/src/map/tag-*.ts`                       | Data tags that never overlap: layout, obstacle grid, widths, sync    |
 | `shared/src/map/view-controller.ts`, `fit.ts`   | Applying view requests (fits, areas, reveals)                        |
 | `shared/src/map/card-sync.ts`, `detail-card.ts` | The floating detail card                                             |
 | `shared/src/map/follow.ts`, `follow-pill.ts`    | Follow mode and its pill                                             |

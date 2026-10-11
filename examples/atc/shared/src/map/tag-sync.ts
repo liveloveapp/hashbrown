@@ -1,9 +1,9 @@
 import type { Map as LeafletMap, Marker } from 'leaflet';
-import type { Aircraft } from '../aircraft';
 import { prefersReducedMotion } from '../dom';
 import type { LatLon } from '../places';
 import type { AtcState } from '../store';
 import { exactLayerPoint } from './motion-loop';
+import { altText, createTextMeasure } from './tag-measure';
 import {
   layoutTags,
   type TagItem,
@@ -17,16 +17,8 @@ import {
 export const TAG_LAYOUT_MS = 500;
 /** How long a tag fades out before it changes sides, in ms (`--atc-fast`). */
 const FADE_MS = 150;
-/** The tag's horizontal padding and border, in pixels. */
-const TAG_CHROME = 2 * 7 + 2;
-/** The gap before the altitude (`.atc-plane-alt` margin), in pixels. */
-const ALT_GAP = 4;
 /** Planes this far outside the bounds still count as obstacles, in pixels. */
 const OBSTACLE_MARGIN = 40;
-/** Character advances used when text cannot be measured (tests). */
-const FALLBACK_LABEL_ADVANCE = 7.5;
-const FALLBACK_MONO_ADVANCE = 6.6;
-
 /** Keeps the map's data tags from overlapping. */
 export interface TagSync {
   /** Lays the tags out now. */
@@ -42,81 +34,6 @@ export interface TagSync {
    */
   measure(): void;
   destroy(): void;
-}
-
-/**
- * Measures tag text without layout reads: the label in the tag's sans font
- * and the altitude in the mono font, on a canvas, each label once. Without a
- * canvas (jsdom) it estimates from the character count.
- */
-function createTextMeasure(element: HTMLElement) {
-  const win = element.ownerDocument.defaultView;
-  const context =
-    win && typeof win.CanvasRenderingContext2D === 'function'
-      ? element.ownerDocument.createElement('canvas').getContext('2d')
-      : null;
-  let fonts: { label: string; mono: string } | null = null;
-  let monoAdvance: number | null = null;
-  const labels = new Map<string, number>();
-  const clear = () => {
-    labels.clear();
-    monoAdvance = null;
-  };
-  element.ownerDocument.fonts?.addEventListener?.('loadingdone', clear);
-  const fontsOf = () => {
-    if (fonts === null && win) {
-      const style = win.getComputedStyle(element);
-      fonts = {
-        label: `600 11px ${style.getPropertyValue('--atc-font') || 'sans-serif'}`,
-        mono: `400 11px ${style.getPropertyValue('--atc-mono') || 'monospace'}`,
-      };
-    }
-
-    return fonts;
-  };
-  const measure = (text: string, font: 'label' | 'mono') => {
-    const stack = fontsOf();
-    if (context === null || stack === null) {
-      return null;
-    }
-    context.font = stack[font];
-
-    return context.measureText(text).width;
-  };
-
-  return {
-    /** The tag's width for `label` and the altitude text `alt`. */
-    width(label: string, alt: string): number {
-      let labelWidth = labels.get(label);
-      if (labelWidth === undefined) {
-        labelWidth =
-          measure(label, 'label') ?? label.length * FALLBACK_LABEL_ADVANCE;
-        labels.set(label, labelWidth);
-      }
-      monoAdvance ??= measure('0', 'mono') ?? FALLBACK_MONO_ADVANCE;
-
-      return Math.ceil(
-        labelWidth +
-          (alt === '' ? 0 : ALT_GAP + alt.length * monoAdvance) +
-          TAG_CHROME,
-      );
-    },
-    destroy() {
-      element.ownerDocument.fonts?.removeEventListener?.('loadingdone', clear);
-    },
-  };
-}
-
-/** Formats feet as `toLocaleString('en-US')` does, without a new formatter each call. */
-const FEET = new Intl.NumberFormat('en-US');
-
-/** The altitude text a tag shows, as `planeTagText` writes it. */
-function altText(aircraft: Aircraft): string {
-  return aircraft.onGround
-    ? 'GND'
-    : aircraft.altitudeFt === null
-      ? ''
-      : FEET.format(aircraft.altitudeFt);
 }
 
 /**
@@ -215,6 +132,7 @@ export function createTagSync(options: {
       bottom: strip.bottom,
     };
     const { hovered, detailed } = focus();
+    lastFocus = `${hovered} ${detailed}`;
     const items: TagItem[] = [];
     for (const hex of tagOrder(state, { hovered, detailed })) {
       const aircraft = state.aircraft.get(hex);
@@ -264,34 +182,51 @@ export function createTagSync(options: {
     lastLayoutAt = performance.now();
   };
 
+  /** Measures the map's controls, which tags keep clear of. */
+  const measure = () => {
+    const box = element.getBoundingClientRect();
+    blocked = [
+      ...element.querySelectorAll(
+        '.leaflet-control-container .leaflet-control',
+      ),
+    ].map((control) => {
+      const rect = control.getBoundingClientRect();
+
+      return {
+        left: rect.left - box.left,
+        top: rect.top - box.top,
+        right: rect.right - box.left,
+        bottom: rect.bottom - box.top,
+      };
+    });
+  };
+  // A control that changes size (the Layers panel opening, a long
+  // attribution wrapping) is measured again; its corner resizes with it.
+  const controls =
+    typeof ResizeObserver === 'function'
+      ? new ResizeObserver(() => {
+          measure();
+          layout();
+        })
+      : null;
+  for (const corner of element.querySelectorAll(
+    '.leaflet-control-container > div',
+  )) {
+    controls?.observe(corner);
+  }
+
   return {
     layout,
     frame(time) {
       const { hovered, detailed } = focus();
       const key = `${hovered} ${detailed}`;
       if (key !== lastFocus || time - lastLayoutAt >= TAG_LAYOUT_MS) {
-        lastFocus = key;
         layout();
       }
     },
-    measure() {
-      const box = element.getBoundingClientRect();
-      blocked = [
-        ...element.querySelectorAll(
-          '.leaflet-control-container .leaflet-control',
-        ),
-      ].map((control) => {
-        const rect = control.getBoundingClientRect();
-
-        return {
-          left: rect.left - box.left,
-          top: rect.top - box.top,
-          right: rect.right - box.left,
-          bottom: rect.bottom - box.top,
-        };
-      });
-    },
+    measure,
     destroy() {
+      controls?.disconnect();
       for (const { timer } of fading.values()) {
         clearTimeout(timer);
       }

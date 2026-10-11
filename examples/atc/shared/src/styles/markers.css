@@ -41,8 +41,9 @@
  * Where the tag sits, set by the map's tag layout (map/tag-layout.ts, whose
  * tagRect must match these offsets) so tags never overlap: beside the icon
  * 2px from its edge, or 2px above or below it, flush with one of its edges.
- * A tag changing sides fades out first (is-tag-fading); a hidden one shows
- * again on hover.
+ * A tag changing sides fades out first (is-tag-fading). A hidden tag's
+ * plane opens the detail card on hover or tap, which names it; the tag
+ * itself shows on hover only when the card does not fit.
  */
 .atc-plane[data-tag='left'] .atc-plane-tag {
   left: auto;

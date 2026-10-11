@@ -115,15 +115,20 @@ async function zoomOut(page: Page, steps: number): Promise<void> {
 }
 
 /**
- * The boxes of the data tags on screen: shown, not faded out. A tag fading
- * out to change sides is left out, as it is on its way to a free side.
+ * The boxes of the data tags on screen, once no tag is changing sides:
+ * every tag shown and not hidden by the layout, including tags still fading
+ * back in.
  */
 async function visibleTags(page: Page) {
+  await expect(page.locator('.atc-plane.is-tag-fading')).toHaveCount(0);
   return page.locator('.atc-plane-tag').evaluateAll((tags) =>
     tags
       .filter((tag) => {
-        const style = getComputedStyle(tag);
-        return style.display !== 'none' && Number(style.opacity) === 1;
+        const plane = tag.closest('.atc-plane');
+        return (
+          getComputedStyle(tag).display !== 'none' &&
+          plane?.getAttribute('data-tag') !== 'hidden'
+        );
       })
       .map((tag) => {
         const { left, top, right, bottom } = tag.getBoundingClientRect();
@@ -361,8 +366,9 @@ test('the data tags of a tight block of highlighted planes never overlap', async
   await expect
     .poll(async () => (await visibleTags(page)).length)
     .toBeGreaterThanOrEqual(3);
-  // Planes keep moving, and tags are laid out again twice a second.
-  for (let check = 0; check < 6; check++) {
+  // The block spreads with every fix, and tags are laid out again twice a
+  // second; check across several fixes.
+  for (let check = 0; check < 12; check++) {
     expect(overlappingPairs(await visibleTags(page))).toBe(0);
     await page.waitForTimeout(500);
   }

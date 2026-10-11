@@ -84,7 +84,8 @@ function track(
  * the regional jet they are the traffic within 25 nm of KBDN and none is
  * approaching it. Every aircraft moves and changes altitude each frame.
  * Six turboprops fly north in a tight block near Klamath Falls
- * ({@link CLUSTER}), so close that their data tags must move aside.
+ * ({@link CLUSTER}), so close that their data tags must move aside, and
+ * spreading apart frame by frame.
  */
 const TRACKS: readonly Track[] = [
   track(
@@ -199,9 +200,16 @@ const TRACKS: readonly Track[] = [
         lat: 42.9 + Math.floor(i / 3) * 0.008,
         lon: -122 + (i % 3) * 0.012,
         altitudeFt: 9_000 + i * 500,
-        speedKt: 140,
+        speedKt: 140 + i * 20,
       },
-      { dLat: 0.0003, dLon: 0, dAltFt: 0, trackDeg: 0 },
+      // Each flies a little faster and fans out a little more than the one
+      // before, so the block keeps changing shape and its tags move.
+      {
+        dLat: 0.002 + i * 0.001,
+        dLon: ((i % 3) - 1) * 0.002,
+        dAltFt: 0,
+        trackDeg: [350, 0, 10][i % 3] ?? 0,
+      },
     ),
   ),
 ];

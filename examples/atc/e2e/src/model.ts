@@ -23,10 +23,11 @@ export const ANY = {
 };
 
 /**
- * Scripts the model's answers for the starter prompts,
- * {@link NEAR_PROMPT} and {@link CLUSTER_PROMPT}: each message gets fixed tool calls, and each tool
- * result gets a fixed UI answer over the synthetic scenario aircraft. Used by
- * the e2e suite and the demo video, so both show the same conversation.
+ * Scripts the model's answers for the starter prompts, {@link NEAR_PROMPT}
+ * and {@link CLUSTER_PROMPT}: each message gets fixed tool calls, and each
+ * tool result gets a fixed UI answer over the synthetic scenario aircraft.
+ * Used by the e2e suite and the demo video, so both show the same
+ * conversation.
  */
 export function scriptAtcModel(mock: LLMock): void {
   const card = (note: string, hex: string) => ({
