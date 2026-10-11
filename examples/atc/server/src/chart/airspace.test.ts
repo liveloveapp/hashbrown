@@ -137,6 +137,19 @@ test('TI (to and including) is an inclusive ceiling; TNI (to not including) is e
   ]);
 });
 
+test('a nonzero floor coded SFC is above ground level, so it is dropped', () => {
+  const agl = feature({ LOWER_VAL: 700, LOWER_CODE: 'SFC' });
+
+  const { shelves, dropped } = normaliseAirspace(
+    [agl, pdxSurface],
+    centre,
+    250,
+  );
+
+  expect(shelves.map((s) => s.floor)).toEqual([{ ft: 0, ref: 'SFC' }]);
+  expect(dropped).toBe(1);
+});
+
 test('a null LOCAL_TYPE falls back to CLASS and IDENT', () => {
   const { shelves } = normaliseAirspace([noLocalType], centre, 250);
 

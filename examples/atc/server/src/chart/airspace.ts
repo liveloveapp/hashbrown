@@ -103,10 +103,13 @@ function toBase(
   ) {
     return null;
   }
-  const sfc = props['LOWER_CODE'] === 'SFC' || lowerVal === 0;
+  // A surface floor is LOWER_VAL 0. A nonzero value coded SFC is a floor in
+  // feet above ground level, which a shelf cannot represent, so it is dropped.
+  const sfc = lowerVal === 0;
   if (!sfc && (typeof lowerVal !== 'number' || !Number.isFinite(lowerVal))) {
     return null;
   }
+  if (!sfc && props['LOWER_CODE'] === 'SFC') return null;
   const floor = sfc
     ? ({ ft: 0, ref: 'SFC' } as const)
     : ({ ft: lowerVal as number, ref: 'MSL' } as const);

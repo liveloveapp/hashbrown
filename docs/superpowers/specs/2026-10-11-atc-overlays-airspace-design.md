@@ -159,7 +159,9 @@ whitelist, never spread.
   up to 80 characters.
 - `class`: `'B' | 'C' | 'D' | 'E'`.
 - `type`: `'B' | 'C' | 'D' | 'E2' | 'E3' | 'E4'`.
-- `floor`: `{ ft: number; ref: 'SFC' | 'MSL' }`. `SFC` has `ft: 0`.
+- `floor`: `{ ft: number; ref: 'SFC' | 'MSL' }`. `SFC` has `ft: 0` and comes from
+  `LOWER_VAL === 0`; a nonzero `LOWER_VAL` coded `SFC` is an AGL floor and the
+  feature is dropped.
 - `ceiling`: `{ ft: number; exclusive: boolean } | null`. The value is in
   feet MSL, and `exclusive` comes from `UPPER_DESC === 'TNI'` ("to not
   including"). `TI` ("to and including") is an inclusive ceiling. A ceiling of
