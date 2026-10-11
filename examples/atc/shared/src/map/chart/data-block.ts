@@ -28,8 +28,8 @@ export function dataBlockLines(airport: ChartAirport, zoom: number): string[] {
 
 /**
  * Builds a data block element with one span per line; when `ident` is true
- * (the regional ident-only block) the single span gets `is-ident`. Text goes in through
- * `textContent` only, so upstream names cannot inject markup.
+ * (the regional ident-only block) the single span gets `is-ident`. Text goes
+ * in through `textContent` only, so upstream names cannot inject markup.
  */
 export function renderDataBlock(
   doc: Document,

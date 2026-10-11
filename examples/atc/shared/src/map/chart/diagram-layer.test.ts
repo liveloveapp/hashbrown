@@ -334,3 +334,69 @@ test('heliports and seaplane bases draw no runways, only their ring', () => {
   expect(polyline).not.toHaveBeenCalled();
   expect(view.labels('.is-runway')).toEqual([]);
 });
+
+/** BDN 17/35 (75 ft wide) laid over KRDM's centre so it is in view. */
+const bdnAtKrdm: ChartAirport = {
+  ...krdm,
+  runways: [
+    runway(
+      { id: '17', lat: 44.2541 + 0.0078, lon: -121.15 },
+      { id: '35', lat: 44.2541 - 0.0078, lon: -121.15 },
+      5200,
+      75,
+    ),
+  ],
+};
+
+/** Draws `bdnAtKrdm` at a zoom and returns how many strokes and polygons. */
+function drawBdn(zoom: number) {
+  const view = mount(zoom, [bdnAtKrdm]);
+  const polyline = vi.spyOn(L, 'polyline');
+  const polygon = vi.spyOn(L, 'polygon');
+  onTestFinished(() => {
+    polyline.mockRestore();
+    polygon.mockRestore();
+  });
+
+  polyline.mockClear();
+  polygon.mockClear();
+
+  view.chart();
+
+  return {
+    polyline: { calls: [...polyline.mock.calls] },
+    polygon: { calls: [...polygon.mock.calls] },
+  };
+}
+
+test('BDN 17/35 is one stroke at zoom 13 and one polygon at zoom 14', () => {
+  const at13 = drawBdn(13);
+  const strokes13 = at13.polyline.calls.length;
+  const polygons13 = at13.polygon.calls.length;
+
+  const at14 = drawBdn(14);
+
+  expect([strokes13, polygons13]).toEqual([1, 0]);
+  expect([at14.polyline.calls.length, at14.polygon.calls.length]).toEqual([
+    0, 1,
+  ]);
+});
+
+test('the BDN stroke ends sit at the midpoints of the polygon short edges', () => {
+  const at13 = drawBdn(13);
+  const at14 = drawBdn(14);
+
+  const stroke = at13.polyline.calls[0]?.[0] as [number, number][];
+  const corners = at14.polygon.calls[0]?.[0] as [number, number][];
+  const mid = (p: [number, number], q: [number, number]) => [
+    (p[0] + q[0]) / 2,
+    (p[1] + q[1]) / 2,
+  ];
+  const expected = [mid(corners[0], corners[3]), mid(corners[1], corners[2])];
+
+  stroke.forEach((end, i) => {
+    expect(Math.abs(end[0] - expected[i][0])).toBeLessThan(1e-6);
+    expect(Math.abs(end[1] - expected[i][1])).toBeLessThan(1e-6);
+  });
+  expect(stroke).toHaveLength(2);
+});

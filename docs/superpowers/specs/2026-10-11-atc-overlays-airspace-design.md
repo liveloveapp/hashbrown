@@ -58,10 +58,10 @@ structure all stay.
     thresholds: surfaces from zoom 12, letters from zoom 14.
 - **Airports without surveyed runway ends.**
   - Some airports have no surveyed ends, for example Sisters, `6K5`. Each of
-    these gets a 6 px open ink ring at its reference point.
+    these gets a 10 px open ink ring (ruled so the H and anchor glyphs stay legible) at its reference point.
   - The 40-airport fallback table, used when the chart data is limited, draws
     the same ring.
-- **Heliports and seaplane bases** get the 6 px ring with a small ink "H" or
+- **Heliports and seaplane bases** get the 10 px ring with a small ink "H" or
   anchor glyph, drawn from fixed paths.
 - **Which airports draw at each zoom.** Part 1's rank rules stay:
 

@@ -26,6 +26,9 @@
   line-height: 12px;
   white-space: nowrap;
   pointer-events: none;
+  background: var(--atc-surface);
+  padding: 1px 3px;
+  border-radius: 2px;
 }
 .atc-map .atc-apt-block > span {
   display: block;

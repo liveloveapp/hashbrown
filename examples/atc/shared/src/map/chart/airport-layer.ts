@@ -5,7 +5,7 @@ import { type Airport, FALLBACK_AIRPORTS } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
 import { airportRing, RING_BOX } from './airport-ring';
 import { dataBlockLines, renderDataBlock } from './data-block';
-import { blockZoomRule, placeBlocks, visibleAirports } from './declutter';
+import { placeBlocks, visibleAirports } from './declutter';
 /** How far beyond the view (as a fraction of it) airports are still drawn. */
 const NEAR_PAD = 0.5;
 
@@ -19,8 +19,8 @@ interface Drawn {
   readonly ident: boolean;
   /** Whether the airport draws an ink ring (its runways cannot be drawn). */
   readonly ring: boolean;
-  /** The data block's lines, or null when the zoom allows no block. */
-  readonly lines: readonly string[] | null;
+  /** The data block's lines. */
+  readonly lines: readonly string[];
 }
 
 /** A data block marker and what its element currently shows. */
@@ -66,7 +66,7 @@ function drawnAirports(state: AtcState, zoom: number): Drawn[] {
     tone: 'ink',
     ident: zoom <= 9,
     ring: drawsRing(airport),
-    lines: blockZoomRule(airport, zoom) ? dataBlockLines(airport, zoom) : null,
+    lines: dataBlockLines(airport, zoom),
   }));
 }
 
@@ -191,17 +191,14 @@ export function createAirportLayer(options: {
       if (marker && !map.hasLayer(marker)) marker.addTo(map);
     }
 
-    const labelled = drawn.flatMap((d) =>
-      d.lines === null ? [] : [{ ...d, lines: d.lines }],
-    );
     const points = new Map(
-      labelled.map(({ airport }) => [
+      drawn.map(({ airport }) => [
         airport.code,
         map.latLngToContainerPoint([airport.lat, airport.lon]),
       ]),
     );
     const placed = placeBlocks(
-      labelled.map(({ airport, lines }) => {
+      drawn.map(({ airport, lines }) => {
         const point = points.get(airport.code) ?? { x: 0, y: 0 };
         return { code: airport.code, x: point.x, y: point.y, lines };
       }),
@@ -209,7 +206,7 @@ export function createAirportLayer(options: {
     for (const [code, { marker }] of blocks) {
       if (!placed.has(code)) marker.remove();
     }
-    for (const { airport, lines, tone, ident } of labelled) {
+    for (const { airport, lines, tone, ident } of drawn) {
       const at = placed.get(airport.code);
       const point = points.get(airport.code);
       if (at && point) {

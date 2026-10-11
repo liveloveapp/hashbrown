@@ -295,3 +295,15 @@ test('chart hexes are defined only in chart.css', () => {
 
   expect(offenders.map(({ file }) => file)).toEqual([]);
 });
+
+test('the ink data block has a flat surface background and no depth', () => {
+  const css = readFileSync(
+    new URL('./styles/chart.css', import.meta.url),
+    'utf8',
+  );
+
+  const rule = /\.atc-map \.atc-apt-block \{([^}]*)\}/.exec(css)?.[1] ?? '';
+
+  expect(rule).toMatch(/background:\s*var\(--atc-surface\)/);
+  expect(rule).not.toMatch(/shadow|border(?!-radius)|blur/);
+});

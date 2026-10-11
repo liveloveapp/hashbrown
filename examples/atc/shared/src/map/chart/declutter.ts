@@ -22,17 +22,6 @@ export function visibleAirports(
     .sort((a, b) => a.rank - b.rank);
 }
 
-/**
- * Whether an airport may show a data block at a zoom. Every airport that
- * `visibleAirports` returns does, at every zoom; the block's content shrinks
- * with the zoom instead (see `dataBlockLines`).
- */
-// The signature is kept so callers can add per-airport rules later.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function blockZoomRule(_airport: ChartAirport, _zoom: number): boolean {
-  return true;
-}
-
 interface Box {
   readonly left: number;
   readonly top: number;
