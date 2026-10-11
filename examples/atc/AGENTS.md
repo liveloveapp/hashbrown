@@ -29,6 +29,7 @@ dependencies); this file covers atc.
 | `shared/src/map/airspace-map.ts`                | `createAirspaceMap`: composes the modules below                      |
 | `shared/src/map/plane-marker.ts`                | Marker HTML, updated in place                                        |
 | `shared/src/map/motion-loop.ts`, `tween.ts`     | Dead reckoning and turns between snapshots, at sub-pixel positions   |
+| `shared/src/map/tag-layout.ts`, `tag-sync.ts`   | Data tags that never overlap: pure layout, and applying it           |
 | `shared/src/map/view-controller.ts`, `fit.ts`   | Applying view requests (fits, areas, reveals)                        |
 | `shared/src/map/card-sync.ts`, `detail-card.ts` | The floating detail card                                             |
 | `shared/src/map/follow.ts`, `follow-pill.ts`    | Follow mode and its pill                                             |
@@ -65,6 +66,8 @@ dependencies); this file covers atc.
 - The map moves only through store view requests: the newest wins, follow mode wins over
   all, a user drag or zoom cancels.
 - Markers update in place (`updatePlane`); never rebuild them on a snapshot.
+- Data tags never overlap: `tag-layout.ts` places them, and its `tagRect` must match
+  the `data-tag` offsets in `styles/markers.css`. Layouts read no DOM geometry.
 - Moving planes are drawn by the motion loop at unrounded positions; Leaflet's
   `setLatLng` rounds to whole pixels, so call it only to sync markers before a zoom.
 - Component IDs (`hex`, `airport`) never stream, so a card never resolves a partial ID.

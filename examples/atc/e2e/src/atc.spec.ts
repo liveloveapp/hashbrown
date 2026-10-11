@@ -10,11 +10,12 @@ import {
   CHART_AIRPORTS,
   CHART_AIRSPACE,
   chartSurfaces,
+  CLUSTER,
   frame,
   scenario,
   SYNTHETIC_HEXES,
 } from './fixtures';
-import { NEAR_PROMPT, scriptAtcModel } from './model';
+import { CLUSTER_PROMPT, NEAR_PROMPT, scriptAtcModel } from './model';
 
 const dist = resolve(__dirname, '../../../../dist/examples/atc');
 const { selected, highest, fastest, arrivals, nearby } = scenario;
@@ -111,6 +112,44 @@ async function zoomOut(page: Page, steps: number): Promise<void> {
     );
     await expect(page.locator('.leaflet-zoom-anim')).toHaveCount(0);
   }
+}
+
+/**
+ * The boxes of the data tags on screen: shown, not faded out. A tag fading
+ * out to change sides is left out, as it is on its way to a free side.
+ */
+async function visibleTags(page: Page) {
+  return page.locator('.atc-plane-tag').evaluateAll((tags) =>
+    tags
+      .filter((tag) => {
+        const style = getComputedStyle(tag);
+        return style.display !== 'none' && Number(style.opacity) === 1;
+      })
+      .map((tag) => {
+        const { left, top, right, bottom } = tag.getBoundingClientRect();
+        return { left, top, right, bottom };
+      }),
+  );
+}
+
+/** How many pairs of boxes overlap. */
+function overlappingPairs(
+  boxes: { left: number; top: number; right: number; bottom: number }[],
+): number {
+  let pairs = 0;
+  boxes.forEach((a, i) => {
+    for (const b of boxes.slice(i + 1)) {
+      if (
+        a.left < b.right &&
+        b.left < a.right &&
+        a.top < b.bottom &&
+        b.top < a.bottom
+      ) {
+        pairs++;
+      }
+    }
+  });
+  return pairs;
 }
 
 async function expectOnlyCompleteIds(page: Page): Promise<void> {
@@ -293,6 +332,40 @@ test('on a phone, the starters show in the peek, a pick lowers the sheet to half
   await card.getByRole('button', { name: /^Close details/ }).tap();
   await expect(card).toBeHidden();
   await context.close();
+});
+
+test('the data tags of a tight block of highlighted planes never overlap', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+  const input = page.getByRole('textbox', { name: 'Message' });
+
+  await input.fill(CLUSTER_PROMPT);
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  await expect(page.locator('.atc-plane.is-highlighted')).toHaveCount(
+    CLUSTER.length,
+  );
+  // Wait for the fit to settle: the block is mid-map and no zoom animates.
+  const map = page.getByTestId('airspace-map');
+  const block = page.locator(`.atc-plane[data-hex="${CLUSTER[0]}"]`);
+  await expect
+    .poll(async () => {
+      const outer = await map.boundingBox();
+      const plane = await block.boundingBox();
+      if (!outer || !plane) return Infinity;
+      return Math.abs(plane.y - (outer.y + outer.height / 2));
+    })
+    .toBeLessThan(40);
+  await expect(page.locator('.leaflet-zoom-anim')).toHaveCount(0);
+  await expect
+    .poll(async () => (await visibleTags(page)).length)
+    .toBeGreaterThanOrEqual(3);
+  // Planes keep moving, and tags are laid out again twice a second.
+  for (let check = 0; check < 6; check++) {
+    expect(overlappingPairs(await visibleTags(page))).toBe(0);
+    await page.waitForTimeout(500);
+  }
 });
 
 test('compares the highest and the fastest aircraft', async ({

@@ -83,6 +83,8 @@ function track(
  * A Cessna 182 and a Robinson R44 fly slowly near Bend, climbing, so with
  * the regional jet they are the traffic within 25 nm of KBDN and none is
  * approaching it. Every aircraft moves and changes altitude each frame.
+ * Six turboprops fly north in a tight block near Klamath Falls
+ * ({@link CLUSTER}), so close that their data tags must move aside.
  */
 const TRACKS: readonly Track[] = [
   track(
@@ -189,7 +191,28 @@ const TRACKS: readonly Track[] = [
     { lat: 43.56, lon: -116.22, altitudeFt: 8_000, speedKt: 150 },
     { dLat: 0.001, dLon: 0.001, dAltFt: -10, trackDeg: 45 },
   ),
+  ...Array.from({ length: 6 }, (_, i) =>
+    track(
+      { hex: `a1c0${(0x10 + i).toString(16)}`, callsign: `QXE21${i + 10}` },
+      'DH8D',
+      {
+        lat: 42.9 + Math.floor(i / 3) * 0.008,
+        lon: -122 + (i % 3) * 0.012,
+        altitudeFt: 9_000 + i * 500,
+        speedKt: 140,
+      },
+      { dLat: 0.0003, dLon: 0, dAltFt: 0, trackDeg: 0 },
+    ),
+  ),
 ];
+
+/**
+ * The tight block of six turboprops near Klamath Falls: at the highest zoom
+ * a highlight fits to, their icons are 8 to 9 px apart.
+ */
+export const CLUSTER: readonly string[] = TRACKS.filter(({ aircraft }) =>
+  aircraft.callsign?.startsWith('QXE21'),
+).map(({ aircraft }) => aircraft.hex);
 
 /**
  * Frame `n` of the synthetic traffic. `at` always increases; positions advance

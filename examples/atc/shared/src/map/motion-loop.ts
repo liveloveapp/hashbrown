@@ -55,8 +55,9 @@ const RECENT_FRAME_MS = 100;
  * layout. Leaflet's markers keep hit-testing and events; their own
  * latitude and longitude are only synced (rounded) when Leaflet needs them
  * ({@link MotionLoop.syncMarkers}). `onFrame` runs after markers are drawn
- * on each frame (the map uses it to keep a followed plane centred and the
- * detail card beside its plane). Frames pause while a zoom animates, and the
+ * on each frame, with the frame's time (the map uses it to keep a followed
+ * plane centred, the detail card beside its plane and the data tags apart).
+ * Frames pause while a zoom animates, and the
  * browser pauses them in a hidden tab; motion is computed from the clock, and
  * a fix that arrives while frames are paused starts from the clock, so
  * planes resume where they should be.
@@ -66,7 +67,7 @@ export function createMotionLoop(options: {
   map: LeafletMap;
   markers: ReadonlyMap<string, Marker>;
   isZooming: () => boolean;
-  onFrame: () => void;
+  onFrame: (time: number) => void;
 }): MotionLoop {
   const { L, map, markers, isZooming, onFrame } = options;
   /** How each plane moves until its next fix; empty under reduced motion. */
@@ -131,7 +132,7 @@ export function createMotionLoop(options: {
       return;
     }
     const moving = drawMotions(time);
-    onFrame();
+    onFrame(time);
     if (moving) {
       frame = requestAnimationFrame(step);
     } else {

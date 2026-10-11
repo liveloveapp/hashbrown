@@ -10,6 +10,7 @@ import { createDiagramLayer } from './chart/diagram-layer';
 import { createLayersControl } from './chart/layers-control';
 import { createFollowController } from './follow';
 import { createMotionLoop } from './motion-loop';
+import { createTagSync } from './tag-sync';
 import { markerClassName, planeIconHtml, updatePlane } from './plane-marker';
 import { TILE_LAYER } from './tiles';
 import { createViewController } from './view-controller';
@@ -127,9 +128,10 @@ export async function createAirspaceMap(options: {
   const shared = { L, map, element, store, markers, isZooming, obstruction };
   const motion = createMotionLoop({
     ...shared,
-    onFrame: () => {
+    onFrame: (time) => {
       follow.panToFollowed(false);
       cards.sync(store.getState());
+      tags.frame(time);
     },
   });
   /** Where a plane is drawn: the motion loop's position, else its marker's. */
@@ -144,6 +146,13 @@ export async function createAirspaceMap(options: {
   const cards = createCardSync({ ...shared, drawnAt });
   const follow = createFollowController({ ...shared, drawnAt });
   const view = createViewController({ ...shared, area, drawnAt, cards });
+  const tags = createTagSync({
+    ...shared,
+    getState: store.getState,
+    drawnAt,
+    focus: cards.focus,
+    band: cards.band,
+  });
 
   map.on('dragstart', () => {
     view.cancelMove();
@@ -178,11 +187,13 @@ export async function createAirspaceMap(options: {
     markZoom();
     cards.sync(store.getState());
     follow.panToFollowed(true);
+    tags.layout();
     airspace.redraw();
     airports.redraw();
     diagrams.redraw();
   });
   map.on('moveend', () => {
+    tags.layout();
     airspace.redraw();
     airports.redraw();
     diagrams.redraw();
@@ -269,8 +280,14 @@ export async function createAirspaceMap(options: {
           keyboard: false,
         })
           .on('click', () => store.select(aircraft.hex))
-          .on('mouseover', () => cards.hover(aircraft.hex))
-          .on('mouseout', () => cards.leave(aircraft.hex))
+          .on('mouseover', () => {
+            cards.hover(aircraft.hex);
+            tags.layout();
+          })
+          .on('mouseout', () => {
+            cards.leave(aircraft.hex);
+            tags.layout();
+          })
           .addTo(map);
         markers.set(aircraft.hex, marker);
       }
@@ -283,6 +300,7 @@ export async function createAirspaceMap(options: {
     syncOutline(state.shownArea);
     view.applyWhenSettled(state);
     follow.panToFollowed(true);
+    tags.layout();
     if (state.pulse !== null && state.pulse.at !== lastPulseAt) {
       lastPulseAt = state.pulse.at;
       const plane = markers
@@ -297,6 +315,7 @@ export async function createAirspaceMap(options: {
   };
 
   cards.measureArea();
+  tags.measure();
   view.showHome();
   render(store.getState());
   const unsubscribe = store.subscribe(() => render(store.getState()));
@@ -305,6 +324,8 @@ export async function createAirspaceMap(options: {
   const onResize = () => {
     cards.measureArea();
     cards.sync(store.getState());
+    tags.measure();
+    tags.layout();
   };
   const resizeObserver =
     typeof ResizeObserver === 'function'
@@ -334,6 +355,7 @@ export async function createAirspaceMap(options: {
       cards.destroy();
       follow.destroy();
       motion.destroy();
+      tags.destroy();
       airspace.destroy();
       airports.destroy();
       diagrams.destroy();

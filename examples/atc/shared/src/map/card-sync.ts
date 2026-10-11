@@ -13,6 +13,12 @@ import {
 } from './detail-card';
 import { exactLayerPoint } from './motion-loop';
 
+/**
+ * The least map, in pixels, that must show above a phone's sheet for moves
+ * to fit into it; with less, the sheet is ignored.
+ */
+export const SHEET_MIN_MAP = 160;
+
 /** Keeps the map's one detail card on the hovered or selected plane. */
 export interface CardSync {
   /**
@@ -28,6 +34,13 @@ export interface CardSync {
   area(): CardSize;
   /** Pixels a docked card covers at the top of the map, else 0. */
   dockedInset(): number;
+  /**
+   * The strip of map left visible, in container pixels: below a docked card
+   * and above a phone's sheet (when enough map shows above it to use).
+   */
+  band(): { top: number; bottom: number };
+  /** The hovered plane, and the plane the card describes now. */
+  focus(): { hovered: string | null; detailed: string | null };
   /** The pointer entered a plane. */
   hover(hex: string): void;
   /** The pointer left a plane. */
@@ -146,6 +159,12 @@ export function createCardSync(options: {
     },
     area: () => cardArea,
     dockedInset: () => card.dockedInset(),
+    band: () => ({
+      top: card.dockedInset(),
+      bottom:
+        cardArea.height > SHEET_MIN_MAP ? cardArea.height : map.getSize().y,
+    }),
+    focus: () => ({ hovered: hoveredHex, detailed: detailedHex }),
     hover(hex) {
       hoveredHex = hex;
       sync(store.getState());
