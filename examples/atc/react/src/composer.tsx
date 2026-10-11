@@ -37,11 +37,13 @@ export function Composer({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const content = draft.trim();
+    // Focus first: a tap on Send moved focus to the button, and taking it
+    // back opens a phone's sheet, so sending must come after to lower it.
+    field.current?.focus();
     if (content) {
       onSend(content);
       setDraft('');
     }
-    field.current?.focus();
   };
 
   return (

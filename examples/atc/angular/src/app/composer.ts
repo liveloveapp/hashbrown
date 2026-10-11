@@ -65,11 +65,13 @@ export class Composer {
   protected submit(): void {
     const field = this.field().nativeElement;
     const content = field.value.trim();
+    // Focus first: a tap on Send moved focus to the button, and taking it
+    // back opens a phone's sheet, so sending must come after to lower it.
+    field.focus();
     if (content) {
       this.send.emit(content);
       field.value = '';
     }
-    field.focus();
   }
 
   protected focusOnSlash(event: KeyboardEvent): void {

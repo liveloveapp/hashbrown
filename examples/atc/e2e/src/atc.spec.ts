@@ -412,6 +412,40 @@ test('on a phone, a plane picked off screen lands mid-way between the docked car
   await context.close();
 });
 
+test('on a phone, a typed question sent with the Send button lowers the sheet, and the fit lands above it', async ({
+  browser,
+}, testInfo) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  await open(page, testInfo.project.name);
+  const sheet = page.locator('#atc-chat-sheet');
+  const input = page.getByRole('textbox', { name: 'Message' });
+  await input.tap();
+  await expect(sheet).toHaveAttribute('data-snap', 'full');
+  await input.fill(STARTER_PROMPTS[1]);
+
+  await page.getByRole('button', { name: 'Send' }).tap();
+
+  await expect(sheet).toHaveAttribute('data-snap', 'half');
+  await expect(page.getByTestId('arrivals-row')).toHaveCount(arrivals.length);
+  /** The lowest highlighted plane's bottom, minus the sheet's top edge. */
+  const belowSheet = async () => {
+    const top = (await sheet.boundingBox())?.y ?? 0;
+    const bottoms = await page
+      .locator('.atc-plane.is-highlighted')
+      .evaluateAll((planes) =>
+        planes.map((plane) => plane.getBoundingClientRect().bottom),
+      );
+    return bottoms.length === 0 ? Infinity : Math.max(...bottoms) - top;
+  };
+  await expect.poll(belowSheet, { timeout: 15_000 }).toBeLessThan(-8);
+  await context.close();
+});
+
 test('compares the highest and the fastest aircraft', async ({
   page,
 }, testInfo) => {
