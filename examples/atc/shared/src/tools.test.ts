@@ -1028,6 +1028,55 @@ test('findAircraft with inAirspace and no class keeps any shelf of the airport',
   expect(rows.map((row) => row.hex)).toEqual(['bbbbbb']);
 });
 
+test('findAircraft with inAirspace says which altitude the check used', () => {
+  const traffic = applySnapshot(
+    airspaceStore([...pdxShelves, rdmShelf]).getState(),
+    {
+      at: 1,
+      aircraft: [
+        plane('aaaaaa', {
+          lat: 44.25,
+          lon: -121.15,
+          altitudeFt: 3000,
+          geometricAltitudeFt: 3200,
+        }),
+        plane('bbbbbb', { lat: 44.25, lon: -121.15, altitudeFt: 2500 }),
+      ],
+    },
+  );
+
+  const rows = findAircraft(traffic, {
+    ...any,
+    inAirspace: { airport: 'KRDM', class: 'D' },
+    sortBy: 'altitude',
+  });
+
+  expect(rows).toMatchObject([
+    {
+      hex: 'aaaaaa',
+      altitudeFt: 3000,
+      checkedAltitudeFt: 3200,
+      altitudeSource: 'gnss',
+    },
+    {
+      hex: 'bbbbbb',
+      altitudeFt: 2500,
+      checkedAltitudeFt: 2500,
+      altitudeSource: 'baro',
+    },
+  ]);
+});
+
+test('findAircraft without inAirspace adds no airspace fields to rows', () => {
+  const rows = findAircraft(state, any);
+
+  expect(rows.length).toBeGreaterThan(0);
+  for (const row of rows) {
+    expect(row).not.toHaveProperty('checkedAltitudeFt');
+    expect(row).not.toHaveProperty('altitudeSource');
+  }
+});
+
 test('findAircraft with inAirspace refuses while airspace is unavailable', async () => {
   const store = readyStore();
   store.setAirspaceFailed();

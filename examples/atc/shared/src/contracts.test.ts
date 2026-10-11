@@ -47,7 +47,7 @@ test('the prompt covers the airspace tools, and a starter asks about Portland', 
     '- For which airspace one aircraft is in, call airspaceAt.',
   );
   expect(SYSTEM_PROMPT).toContain(
-    '- Airspace answers come only from tool results. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Airspace marked partTime is in effect only during hours set by NOTAM, which the tools don\'t know: when partTime is true, say the aircraft is inside the charted area and that it may not be active now.',
+    '- Airspace answers come only from tool results. checkedAltitudeFt is the altitude the airspace check used, and an altitude column on a board can differ. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Airspace marked partTime is in effect only during hours set by NOTAM, which the tools don\'t know: when partTime is true, say the aircraft is inside the charted area and that it may not be active now.',
   );
   expect(STARTER_PROMPTS.at(-1)).toBe(
     'Which planes are inside the Portland Class C?',

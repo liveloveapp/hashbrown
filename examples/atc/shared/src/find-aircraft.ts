@@ -10,7 +10,7 @@ import {
   type LatLon,
   lookupPlace,
 } from './places';
-import { airspaceOf, shelvesAt } from './chart/airspace-query';
+import { airspaceOf, altitudeMslFt, shelvesAt } from './chart/airspace-query';
 import { airportDirectory } from './directory';
 import type { AtcState } from './store';
 
@@ -97,6 +97,18 @@ export interface AircraftRow {
   readonly distanceNm: number;
 }
 
+/**
+ * An {@link AircraftRow} from an `inAirspace` search. The row's `altitudeFt` is
+ * barometric, but airspace containment uses ground, then GNSS, then baro, so
+ * these fields say which altitude decided it.
+ */
+export interface AirspaceAircraftRow extends AircraftRow {
+  /** The altitude in feet MSL the airspace check used. */
+  readonly checkedAltitudeFt: number | null;
+  /** Where `checkedAltitudeFt` came from. */
+  readonly altitudeSource: 'ground' | 'gnss' | 'baro' | null;
+}
+
 /** The row the model sees for one aircraft, measured from `from`. */
 export function toRow(aircraft: Aircraft, from: LatLon): AircraftRow {
   return {
@@ -111,6 +123,17 @@ export function toRow(aircraft: Aircraft, from: LatLon): AircraftRow {
     groundSpeedKt: aircraft.groundSpeedKt,
     trackDeg: aircraft.trackDeg,
     distanceNm: Math.round(distanceNm(aircraft, from) * 10) / 10,
+  };
+}
+
+/** The row plus the altitude the airspace check used for `aircraft`. */
+function toAirspaceRow(aircraft: Aircraft, from: LatLon): AirspaceAircraftRow {
+  const checked = altitudeMslFt(aircraft);
+
+  return {
+    ...toRow(aircraft, from),
+    checkedAltitudeFt: checked?.ft ?? null,
+    altitudeSource: checked?.source ?? null,
   };
 }
 
@@ -146,7 +169,8 @@ const SORTS: Record<
  * airport in `near`, else `inAirspace`, else the one in `approaching`, else
  * the area centre. A `near`, `inAirspace` or `approaching` airport outside the
  * directory matches nothing, and `inAirspace` keeps aircraft inside any shelf
- * of that airport (of one class when given).
+ * of that airport (of one class when given). Those rows also carry the altitude
+ * the check used.
  */
 export function findAircraft(
   state: AtcState,
@@ -206,7 +230,11 @@ export function findAircraft(
     .filter((a) => airport === null || isApproaching(a, airport))
     .filter((a) => centre === null || distanceNm(a, centre) <= radius)
     .filter((a) => shelves === null || shelvesAt(shelves, a).length > 0)
-    .map((a) => toRow(a, centre ?? airspaceCentre ?? airport ?? area))
+    .map((a) => {
+      const from = centre ?? airspaceCentre ?? airport ?? area;
+
+      return shelves === null ? toRow(a, from) : toAirspaceRow(a, from);
+    })
     .sort(SORTS[input.sortBy])
     .slice(0, limit);
 }
