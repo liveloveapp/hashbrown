@@ -162,7 +162,7 @@ export const APP_FOCUS: Readonly<
   Record<FocusName, { readonly scale: number; readonly origin: string }>
 > = {
   rest: { scale: 1, origin: '50% 50%' },
-  map: { scale: 1.4, origin: '100% 45%' },
+  map: { scale: 1.5, origin: '100% 45%' },
   chat: { scale: 1.6, origin: '0% 100%' },
   board: { scale: 1.45, origin: '0% 60%' },
 };

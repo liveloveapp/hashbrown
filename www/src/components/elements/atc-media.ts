@@ -11,8 +11,8 @@ export interface AtcVideo {
 
 /** The atc demo: about 45 s of code and app, for the blog and docs. */
 export const ATC_DEMO_VIDEO: AtcVideo = {
-  webm: 'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com/video/atc-demo-37a7a6677f68.webm',
-  mp4: 'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com/video/atc-demo-a9239dbfcd9b.mp4',
+  webm: 'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com/video/atc-demo-002eab7a3eaa.webm',
+  mp4: 'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com/video/atc-demo-38d65ccac9de.mp4',
   poster: '/image/landing-page/atc-demo-poster.webp',
   width: 1440,
   height: 810,
@@ -20,8 +20,8 @@ export const ATC_DEMO_VIDEO: AtcVideo = {
 
 /** The home page loop: the app answering one question, seamless. */
 export const ATC_LOOP_VIDEO: AtcVideo = {
-  webm: 'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com/video/atc-loop-a70c05098ab1.webm',
-  mp4: 'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com/video/atc-loop-0065c806ce9e.mp4',
+  webm: 'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com/video/atc-loop-e6402ec4c38c.webm',
+  mp4: 'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com/video/atc-loop-2027bc6120e3.mp4',
   poster: '/image/landing-page/atc-loop-poster.webp',
   width: 1440,
   height: 900,
