@@ -1,0 +1,21 @@
+/* The atc demo figure; the same frame as the walkthrough video it follows. */
+.demo {
+  margin: 16px 0 32px;
+}
+
+.demo video {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  background: var(--vanilla-ivory, #faf9f0);
+  box-shadow:
+    0 16px 40px rgba(61, 60, 58, 0.16),
+    0 0 0 1px rgba(61, 60, 58, 0.08);
+}
+
+.demo figcaption {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--gray, #5e5c5a);
+}

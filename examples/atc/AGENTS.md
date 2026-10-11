@@ -46,6 +46,7 @@ dependencies); this file covers atc.
 | `server/src/chart-airspace-handler.ts`          | `/api/chart/airspace`: FAA class airspace, cached per cycle          |
 | `server/src/chart/`                             | NASR zip and CSV readers, upstream fetches, surfaces merge, cache    |
 | `e2e/src/`                                      | Playwright for both apps with a mocked model and synthetic frames    |
+| `e2e/demo/`                                     | The demo video: storyboard, director page, recorder, ffmpeg encoding |
 
 ## Add a component or a tool
 
@@ -85,6 +86,8 @@ dependencies); this file covers atc.
   ones.
 - `shared/src/design-rules.test.ts` enforces the design rules it can check; keep it
   passing.
+- The demo video's code panes mark lines by pattern (`e2e/demo/storyboard.ts`). If you
+  change a marked line, update its pattern; `npx nx test atc-e2e` fails until you do.
 
 ## Commands
 

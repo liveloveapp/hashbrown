@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 880" width="960" height="880" role="img" aria-labelledby="t d">
+  <title id="t">One question, start to finish</title>
+  <desc id="d">A sequence diagram of "What's flying near Bend?". Hashbrown sends the run to /api/run, which pins the prompt and tools and calls OpenAI. The model calls lookupPlace, then findAircraft and highlightAircraft; each handler runs in the browser against the store. Finally the model streams Markdown and an ArrivalsBoard, which renders row by row.</desc>
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="1" fill="#E9E1CF"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#774625"/>
+    </marker>
+    <marker id="arrow-gold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#E8A23D"/>
+    </marker>
+    <style>
+      .sans { font-family: 'Inter Tight', Inter, 'Helvetica Neue', Arial, sans-serif; }
+      .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; }
+      .h1 { font-size: 26px; font-weight: 700; fill: #774625; }
+      .lede { font-size: 15px; fill: #5E5C5A; }
+      .who { font-size: 16px; font-weight: 600; fill: #774625; }
+      .where { font-size: 14px; fill: #5E5C5A; }
+      .msg { font-size: 15px; fill: #3D3C3A; paint-order: stroke; stroke: #FAF9F0; stroke-width: 6px; stroke-linejoin: round; }
+      .msg-band { font-size: 15px; fill: #3D3C3A; paint-order: stroke; stroke: #F5EFE1; stroke-width: 6px; stroke-linejoin: round; }
+      .answer { font-size: 15px; font-weight: 700; fill: #774625; paint-order: stroke; stroke: #FAF9F0; stroke-width: 6px; stroke-linejoin: round; }
+      .band { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; fill: #AD907C; }
+      .num { font-size: 11px; font-weight: 700; fill: #774625; }
+      .legend { font-size: 13px; fill: #5E5C5A; }
+    </style>
+  </defs>
+
+  <rect width="960" height="880" rx="16" fill="#FAF9F0"/>
+  <rect width="960" height="880" rx="16" fill="url(#grid)"/>
+
+  <text x="32" y="56" class="sans h1">One question, start to finish</text>
+  <text x="32" y="84" class="sans lede">"What's flying near Bend?" takes two tool turns and one streamed answer.</text>
+
+  <!-- Turn bands (turn 2 shaded) -->
+  <rect x="32" y="472" width="896" height="192" fill="#F5EFE1"/>
+  <text x="920" y="252" text-anchor="end" class="sans band">TURN 1</text>
+  <text x="920" y="492" text-anchor="end" class="sans band">TURN 2</text>
+  <text x="920" y="684" text-anchor="end" class="sans band">ANSWER</text>
+
+  <!-- Lifelines at x = 112, 296, 480, 664, 848 -->
+  <g stroke="#D9C9B6" stroke-width="1.5" stroke-dasharray="4 6">
+    <path d="M112 168 V816"/>
+    <path d="M296 168 V816"/>
+    <path d="M480 168 V816"/>
+    <path d="M664 168 V816"/>
+    <path d="M848 168 V816"/>
+  </g>
+
+  <!-- Participants (y 112, h 56, w 160) -->
+  <rect x="32" y="112" width="160" height="56" rx="10" fill="#FFFFFF" stroke="#AD907C" stroke-width="1.5"/>
+  <text x="112" y="137" text-anchor="middle" class="sans who">You</text>
+  <text x="112" y="156" text-anchor="middle" class="sans where">the chat panel</text>
+
+  <rect x="216" y="112" width="160" height="56" rx="10" fill="#FDE4BA" stroke="#E8A23D" stroke-width="1.5"/>
+  <text x="296" y="137" text-anchor="middle" class="sans who">Hashbrown</text>
+  <text x="296" y="156" text-anchor="middle" class="sans where">in the browser</text>
+
+  <rect x="400" y="112" width="160" height="56" rx="10" fill="#FFFFFF" stroke="#AD907C" stroke-width="1.5"/>
+  <text x="480" y="137" text-anchor="middle" class="sans who">atc tools</text>
+  <text x="480" y="156" text-anchor="middle" class="sans where">store and map</text>
+
+  <rect x="584" y="112" width="160" height="56" rx="10" fill="#EEF0E6" stroke="#616F36" stroke-width="1.5"/>
+  <text x="664" y="137" text-anchor="middle" class="mono who">/api/run</text>
+  <text x="664" y="156" text-anchor="middle" class="sans where">Node server</text>
+
+  <rect x="768" y="112" width="160" height="56" rx="10" fill="#D8ECEF" stroke="#64AFB5" stroke-width="1.5"/>
+  <text x="848" y="137" text-anchor="middle" class="sans who">OpenAI</text>
+  <text x="848" y="156" text-anchor="middle" class="mono where">gpt-5-mini</text>
+
+  <!-- Activations on the tools lifeline -->
+  <rect x="474" y="392" width="12" height="64" rx="3" fill="#FFFFFF" stroke="#AD907C" stroke-width="1.5"/>
+  <rect x="474" y="584" width="12" height="64" rx="3" fill="#FFFFFF" stroke="#AD907C" stroke-width="1.5"/>
+
+  <!-- Messages: y = 208 + 48n. Solid = call, dashed = reply or stream. -->
+  <g stroke="#774625" stroke-width="1.75" fill="none">
+    <path d="M112 208 H292" marker-end="url(#arrow)"/>
+    <path d="M296 256 H660" marker-end="url(#arrow)"/>
+    <path d="M664 304 H844" marker-end="url(#arrow)"/>
+    <path d="M848 352 H300" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+    <path d="M296 400 H472" marker-end="url(#arrow)"/>
+    <path d="M474 448 H300" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+    <path d="M296 496 H844" marker-end="url(#arrow)"/>
+    <path d="M848 544 H300" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+    <path d="M296 592 H472" marker-end="url(#arrow)"/>
+    <path d="M474 640 H300" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+    <path d="M296 688 H844" marker-end="url(#arrow)"/>
+    <path d="M296 784 H116" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+  </g>
+  <path d="M848 736 H302" stroke="#E8A23D" stroke-width="3" fill="none" stroke-dasharray="10 5" marker-end="url(#arrow-gold)"/>
+
+  <text x="204" y="200" text-anchor="middle" class="sans msg">What's flying near Bend?</text>
+  <text x="480" y="248" text-anchor="middle" class="sans msg">messages, tool names, UI schema</text>
+  <text x="756" y="296" text-anchor="middle" class="sans msg">pinned prompt + tools</text>
+  <text x="572" y="344" text-anchor="middle" class="mono msg">lookupPlace({ query: 'Bend' })</text>
+  <text x="388" y="392" text-anchor="middle" class="sans msg">handler runs</text>
+  <text x="388" y="440" text-anchor="middle" class="mono msg">{ code: 'KBDN' }</text>
+  <text x="572" y="488" text-anchor="middle" class="sans msg-band">tool result, via /api/run</text>
+  <text x="572" y="536" text-anchor="middle" class="mono msg-band">findAircraft + highlightAircraft</text>
+  <text x="388" y="584" text-anchor="middle" class="sans msg-band">map fits KBDN</text>
+  <text x="388" y="632" text-anchor="middle" class="sans msg-band">compact rows</text>
+  <text x="572" y="680" text-anchor="middle" class="sans msg">tool results, via /api/run</text>
+  <text x="572" y="728" text-anchor="middle" class="sans answer">streams Markdown + ArrivalsBoard</text>
+  <text x="204" y="776" text-anchor="middle" class="sans msg">rows land one by one</text>
+
+  <!-- Legend (y 848) -->
+  <path d="M32 844 H72" stroke="#774625" stroke-width="1.75" marker-end="url(#arrow)"/>
+  <text x="84" y="848" class="sans legend">call</text>
+  <path d="M144 844 H184" stroke="#774625" stroke-width="1.75" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+  <text x="196" y="848" class="sans legend">reply or stream (OpenAI replies travel back through /api/run)</text>
+</svg>

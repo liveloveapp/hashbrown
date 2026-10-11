@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 368" width="960" height="368" role="img" aria-labelledby="t d">
+  <title id="t">From transponder to pixel</title>
+  <desc id="d">An aircraft's ADS-B broadcast is collected by adsb.lol feeders, fetched by /api/aircraft at most every 10 seconds, cached by the Vercel CDN for 3 seconds, polled by the browser every 3 seconds and drawn at 60 frames per second with dead reckoning between fixes.</desc>
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="1" fill="#E9E1CF"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#774625"/>
+    </marker>
+    <style>
+      .sans { font-family: 'Inter Tight', Inter, 'Helvetica Neue', Arial, sans-serif; }
+      .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; }
+      .h1 { font-size: 26px; font-weight: 700; fill: #774625; }
+      .lede { font-size: 15px; fill: #5E5C5A; }
+      .step { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; fill: #AD907C; }
+      .title { font-size: 16px; font-weight: 600; fill: #774625; }
+      .body { font-size: 14px; fill: #3D3C3A; }
+      .chip { font-size: 12px; fill: #774625; }
+      .note { font-size: 14px; fill: #5E5C5A; }
+    </style>
+  </defs>
+
+  <rect width="960" height="368" rx="16" fill="#FAF9F0"/>
+  <rect width="960" height="368" rx="16" fill="url(#grid)"/>
+
+  <text x="32" y="56" class="sans h1">From transponder to pixel</text>
+  <text x="32" y="84" class="sans lede">Every hop runs on its own clock. The browser smooths over all of them.</text>
+
+  <!-- Boxes: x = 32 + 184n, y 112, 160 x 128 -->
+  <rect x="32" y="112" width="160" height="128" rx="10" fill="#D8ECEF" stroke="#64AFB5" stroke-width="1.5"/>
+  <text x="48" y="140" class="sans step">01</text>
+  <text x="48" y="168" class="sans title">The airplane</text>
+  <text x="48" y="194" class="sans body">ADS-B Out,</text>
+  <text x="48" y="214" class="sans body">1090 MHz</text>
+
+  <rect x="216" y="112" width="160" height="128" rx="10" fill="#D8ECEF" stroke="#64AFB5" stroke-width="1.5"/>
+  <text x="232" y="140" class="sans step">02</text>
+  <text x="232" y="168" class="sans title">adsb.lol</text>
+  <text x="232" y="194" class="sans body">community feeders,</text>
+  <text x="232" y="214" class="sans body">open data (ODbL)</text>
+
+  <rect x="400" y="112" width="160" height="128" rx="10" fill="#EEF0E6" stroke="#616F36" stroke-width="1.5"/>
+  <text x="416" y="140" class="sans step">03</text>
+  <text x="416" y="168" class="mono title">/api/aircraft</text>
+  <text x="416" y="194" class="sans body">normalize, strip,</text>
+  <text x="416" y="214" class="sans body">cache per area</text>
+
+  <rect x="584" y="112" width="160" height="128" rx="10" fill="#EEF0E6" stroke="#616F36" stroke-width="1.5"/>
+  <text x="600" y="140" class="sans step">04</text>
+  <text x="600" y="168" class="sans title">Vercel CDN</text>
+  <text x="600" y="194" class="sans body">one response for</text>
+  <text x="600" y="214" class="sans body">every visitor</text>
+
+  <rect x="768" y="112" width="160" height="128" rx="10" fill="#FDE4BA" stroke="#E8A23D" stroke-width="1.5"/>
+  <text x="784" y="140" class="sans step">05</text>
+  <text x="784" y="168" class="sans title">Your browser</text>
+  <text x="784" y="194" class="sans body">applySnapshot,</text>
+  <text x="784" y="214" class="sans body">dead reckoning</text>
+
+  <g stroke="#774625" stroke-width="1.75" fill="none">
+    <path d="M192 176 H212" marker-end="url(#arrow)"/>
+    <path d="M376 176 H396" marker-end="url(#arrow)"/>
+    <path d="M560 176 H580" marker-end="url(#arrow)"/>
+    <path d="M744 176 H764" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- Clocks (y 256, h 32) -->
+  <g fill="#FFFFFF" stroke="#D9C9B6" stroke-width="1.5">
+    <rect x="32" y="256" width="160" height="32" rx="16"/>
+    <rect x="216" y="256" width="160" height="32" rx="16"/>
+    <rect x="400" y="256" width="160" height="32" rx="16"/>
+    <rect x="584" y="256" width="160" height="32" rx="16"/>
+    <rect x="768" y="256" width="160" height="32" rx="16"/>
+  </g>
+  <text x="112" y="276" text-anchor="middle" class="mono chip">~2 fixes / s</text>
+  <text x="296" y="276" text-anchor="middle" class="mono chip">rate limited</text>
+  <text x="480" y="276" text-anchor="middle" class="mono chip">fresh 10 s</text>
+  <text x="664" y="276" text-anchor="middle" class="mono chip">s-maxage=3</text>
+  <text x="848" y="276" text-anchor="middle" class="mono chip">poll 3 s · 60 fps</text>
+
+  <text x="32" y="328" class="sans note">Between fixes, each plane is dead-reckoned along its track. A new fix eases away the error over one second,</text>
+  <text x="32" y="348" class="sans note">so planes glide instead of hopping. If adsb.lol hiccups, the server serves its last snapshot for up to 60 s.</text>
+</svg>
