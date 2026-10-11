@@ -5,29 +5,41 @@ import type {
   LayerGroup,
   Map as LeafletMap,
 } from 'leaflet';
-import type { ChartAirport, SurfaceFeature, Surfaces } from '../../chart';
+import type {
+  ChartAirport,
+  Runway,
+  RunwayEnd,
+  SurfaceFeature,
+  Surfaces,
+} from '../../chart';
 import { loadSurfaces } from '../../chart/chart-feed';
 import { FT_TO_M, metresPerPixel } from '../../chart/runway-geometry';
 import type { LatLon } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
 import { type ChartColours, chartColours } from './chart-colours';
+import { visibleAirports } from './declutter';
 
-/** From this zoom airports are drawn as diagrams instead of symbols. */
+/** From this zoom airports also draw their surfaces (taxiways, aprons, holds, hot spots). */
 export const DIAGRAM_ZOOM = 12;
 /** From this zoom taxiways carry their ref letters. */
 export const TAXIWAY_LABEL_ZOOM = 14;
-/** At this zoom (below diagrams) large airports show runway outlines. */
-const LARGE_OUTLINE_ZOOM = 11;
-/** The sectional draws runway outlines for hard runways this long or longer. */
-const LARGE_RUNWAY_FT = 8070;
-/** How far beyond the view (as a fraction of it) diagrams are still drawn. */
+/** A runway narrower than this many pixels is drawn as a stroke this wide. */
+export const RUNWAY_MIN_PX = 2;
+/** How far beyond the view (as a fraction of it) runways are still drawn. */
 const NEAR_PAD = 0.2;
 /** Runway end numbers sit this fraction of the length in from each end. */
 const END_LABEL_INSET = 0.06;
-/** A runway thinner than this many pixels also gets a 3 px centre line. */
-const MIN_RUNWAY_PX = 3;
 /** Width assumed for a taxiway line without one, in feet. */
 const DEFAULT_TAXIWAY_FT = 50;
+
+/** How one runway is drawn at a zoom. */
+export type RunwayDrawing =
+  | { readonly kind: 'polygon'; readonly corners: readonly LatLon[] }
+  | {
+      readonly kind: 'stroke';
+      readonly ends: readonly [RunwayEnd, RunwayEnd];
+      readonly weight: typeof RUNWAY_MIN_PX;
+    };
 
 /** A mounted diagram layer. */
 export interface DiagramLayer {
@@ -40,19 +52,23 @@ export interface DiagramLayer {
 }
 
 /**
- * Whether `airport` is drawn as runway outlines at `zoom`: the sectional's
- * large-airport pattern, used at zoom 11 for an airport whose longest hard
- * runway is 8,070 ft or more and which has surveyed runway corners. The
- * airport layer hides the symbol whenever this holds.
+ * How `runway` is drawn at `zoom` near latitude `lat`: its true-size corner
+ * polygon, or, when its true width is under {@link RUNWAY_MIN_PX} pixels, a
+ * stroke that wide between its two ends (so its length stays true). Null when
+ * NASR has no surveyed corners for it.
  */
-export function drawsLargeOutline(airport: ChartAirport, zoom: number) {
-  if (zoom < LARGE_OUTLINE_ZOOM || zoom >= DIAGRAM_ZOOM) return false;
-  const hard = airport.runways.filter((r) => r.hard);
+export function runwayDrawing(
+  runway: Runway,
+  zoom: number,
+  lat: number,
+): RunwayDrawing | null {
+  if (runway.corners === null) return null;
+  const widthPx = (runway.widthFt * FT_TO_M) / metresPerPixel(zoom, lat);
+  if (runway.ends !== null && widthPx < RUNWAY_MIN_PX) {
+    return { kind: 'stroke', ends: runway.ends, weight: RUNWAY_MIN_PX };
+  }
 
-  return (
-    hard.some((r) => r.corners !== null) &&
-    Math.max(0, ...hard.map((r) => r.lengthFt)) >= LARGE_RUNWAY_FT
-  );
+  return { kind: 'polygon', corners: runway.corners };
 }
 
 /** [lon, lat] (GeoJSON order) to a Leaflet position. */
@@ -139,13 +155,14 @@ function isLoaded(
 }
 
 /**
- * Draws FAA-style airport diagrams in `pane` on a canvas renderer. Below
- * {@link DIAGRAM_ZOOM} it draws only the large-airport runway outlines at
- * zoom 11 (see {@link drawsLargeOutline}). From {@link DIAGRAM_ZOOM}, for
- * every chart airport near the view it loads the airport's surfaces once
- * (`loadSurfaces`, deduplicated by the store) and draws pavement, runways in
- * ink, hold bars and hot spots, with runway end numbers, taxiway refs (from
- * {@link TAXIWAY_LABEL_ZOOM}) and hot spot names as text-filled markers.
+ * Draws ink airports in `pane` on a canvas renderer. At every zoom, each
+ * chart airport near the view that `visibleAirports` keeps has its runways
+ * drawn in ink at true size (see {@link runwayDrawing}); a runway drawn as a
+ * polygon carries its end numbers. From {@link DIAGRAM_ZOOM} it also loads
+ * each airport's surfaces once (`loadSurfaces`, deduplicated by the store)
+ * and draws pavement, hold bars and hot spots under and over the runways,
+ * with taxiway refs (from {@link TAXIWAY_LABEL_ZOOM}) and hot spot names as
+ * text-filled markers.
  * Everything is rebuilt on `redraw` and whenever the chart, the layers or the
  * surfaces change; aircraft snapshots never reach it. Colours are read from
  * `element`'s chart custom properties, since canvas needs real colours.
@@ -192,19 +209,7 @@ export function createDiagramLayer(options: {
     marker.getElement()?.replaceChildren(span);
   };
 
-  const drawOutline = (airport: ChartAirport, colours: ChartColours) => {
-    const { renderer, group } = shared();
-    const color = airport.towered ? colours.blue : colours.magenta;
-    for (const runway of airport.runways) {
-      if (!runway.hard || runway.corners === null) continue;
-      L.polygon(
-        runway.corners.map((c) => [c.lat, c.lon] as [number, number]),
-        { renderer, fill: false, color, weight: 2, interactive: false },
-      ).addTo(group);
-    }
-  };
-
-  const drawDiagram = (
+  const drawAirport = (
     airport: ChartAirport,
     surfaces: Surfaces | null,
     zoom: number,
@@ -240,10 +245,30 @@ export function createDiagramLayer(options: {
         }).addTo(group);
       }
     }
+    const polygons: Runway[] = [];
     for (const runway of airport.runways) {
-      if (runway.corners === null) continue;
+      const drawing = runwayDrawing(runway, zoom, airport.lat);
+      if (drawing === null) continue;
+      if (drawing.kind === 'stroke') {
+        const [a, b] = drawing.ends;
+        L.polyline(
+          [
+            [a.lat, a.lon],
+            [b.lat, b.lon],
+          ],
+          {
+            ...base,
+            color: colours.ink,
+            opacity: 1,
+            weight: drawing.weight,
+            lineCap: 'butt',
+          },
+        ).addTo(group);
+        continue;
+      }
+      polygons.push(runway);
       L.polygon(
-        runway.corners.map((c) => [c.lat, c.lon] as [number, number]),
+        drawing.corners.map((c) => [c.lat, c.lon] as [number, number]),
         {
           ...base,
           weight: 0,
@@ -252,16 +277,6 @@ export function createDiagramLayer(options: {
           color: colours.ink,
         },
       ).addTo(group);
-      if (runway.ends && (runway.widthFt * FT_TO_M) / mpp < MIN_RUNWAY_PX) {
-        const [a, b] = runway.ends;
-        L.polyline(
-          [
-            [a.lat, a.lon],
-            [b.lat, b.lon],
-          ],
-          { ...base, color: colours.ink, opacity: 1, weight: 3 },
-        ).addTo(group);
-      }
     }
     for (const feature of features) {
       if (feature.shape === 'line' && feature.kind === 'hold') {
@@ -291,7 +306,7 @@ export function createDiagramLayer(options: {
       if (feature.ref) label(group, at, feature.ref, 'is-hotspot');
     }
 
-    for (const runway of airport.runways) {
+    for (const runway of polygons) {
       if (runway.ends === null) continue;
       const [a, b] = runway.ends;
       label(group, along(a, b, END_LABEL_INSET), a.id, 'is-runway');
@@ -313,22 +328,17 @@ export function createDiagramLayer(options: {
     const state = store.getState();
     if (!state.layers.airports || state.chart.status !== 'ready') return;
     const zoom = map.getZoom();
-    if (zoom < LARGE_OUTLINE_ZOOM) return;
     const near = map.getBounds().pad(NEAR_PAD);
-    const onScreen = state.chart.airports.filter((airport) =>
-      near.contains([airport.lat, airport.lon]),
+    const onScreen = visibleAirports(state.chart.airports, zoom).filter(
+      (airport) => near.contains([airport.lat, airport.lon]),
     );
     const colours = chartColours(element);
-    if (zoom < DIAGRAM_ZOOM) {
-      for (const airport of onScreen) {
-        if (drawsLargeOutline(airport, zoom)) drawOutline(airport, colours);
-      }
-      return;
-    }
+    const diagrams = zoom >= DIAGRAM_ZOOM;
     for (const airport of onScreen) {
-      const surfaces = state.surfaces.get(airport.code);
-      drawDiagram(airport, isLoaded(surfaces) ? surfaces : null, zoom, colours);
+      const surfaces = diagrams ? state.surfaces.get(airport.code) : undefined;
+      drawAirport(airport, isLoaded(surfaces) ? surfaces : null, zoom, colours);
     }
+    if (!diagrams) return;
     const missing = onScreen.filter((a) => !state.surfaces.has(a.code));
     if (missing.length === 0) return;
     // Each load marks its airport `loading` in the store at once; that

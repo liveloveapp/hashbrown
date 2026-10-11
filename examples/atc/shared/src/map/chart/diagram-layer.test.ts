@@ -4,17 +4,23 @@ import { expect, onTestFinished, test, vi } from 'vitest';
 import type { ChartAirport, Runway, Surfaces } from '../../chart';
 import { runwayCorners } from '../../chart/runway-geometry';
 import { createAtcStore } from '../../store';
-import { createDiagramLayer } from './diagram-layer';
+import {
+  createDiagramLayer,
+  RUNWAY_MIN_PX,
+  runwayDrawing,
+} from './diagram-layer';
 
 const L = (module as unknown as { default?: typeof module }).default ?? module;
 
 const end05 = { id: '05', lat: 44.2468, lon: -121.16 };
 const end23 = { id: '23', lat: 44.2605, lon: -121.1405 };
+const end11 = { id: '11', lat: 44.257, lon: -121.1625 };
+const end29 = { id: '29', lat: 44.25, lon: -121.138 };
 
 /** A runway between two ends, with true-size corners. */
 const runway = (
-  a: typeof end05,
-  b: typeof end23,
+  a: { id: string; lat: number; lon: number },
+  b: { id: string; lat: number; lon: number },
   lengthFt: number,
   widthFt = 150,
 ): Runway => ({
@@ -46,7 +52,7 @@ const krdm: ChartAirport = {
   lighting: 'full',
   fuel: true,
   military: false,
-  runways: [runway(end05, end23, 7038)],
+  runways: [runway(end05, end23, 7038), runway(end11, end29, 7006, 100)],
   rank: 0,
 };
 
@@ -165,7 +171,7 @@ test('runway end numbers are labelled at zoom 13', () => {
 
   view.chart();
 
-  expect(view.labels('.is-runway').sort()).toEqual(['05', '23']);
+  expect(view.labels('.is-runway').sort()).toEqual(['05', '11', '23', '29']);
 });
 
 test('turning the airports layer off removes every label', () => {
@@ -178,33 +184,6 @@ test('turning the airports layer off removes every label', () => {
 
   expect(before).toBeGreaterThan(0);
   expect(view.labels()).toEqual([]);
-});
-
-test('at zoom 11 a large airport is drawn as blue runway outlines only', () => {
-  const long = { ...krdm, runways: [runway(end05, end23, 8070)] };
-  const view = mount(11, [long]);
-  const polygon = vi.spyOn(L, 'polygon');
-  onTestFinished(() => polygon.mockRestore());
-
-  view.chart();
-
-  expect(polygon).toHaveBeenCalledTimes(1);
-  expect(polygon.mock.calls[0]?.[1]).toMatchObject({
-    fill: false,
-    weight: 2,
-    color: '#111111',
-  });
-  expect(view.labels()).toEqual([]);
-});
-
-test('at zoom 11 a smaller airport draws nothing', () => {
-  const view = mount(11);
-  const polygon = vi.spyOn(L, 'polygon');
-  onTestFinished(() => polygon.mockRestore());
-
-  view.chart();
-
-  expect(polygon).not.toHaveBeenCalled();
 });
 
 test('an aircraft snapshot after surface loads start never redraws', () => {
@@ -237,4 +216,103 @@ test('an aircraft snapshot after surface loads start never redraws', () => {
 
   expect(view.fetchFn).toHaveBeenCalledTimes(1);
   expect(polygon).not.toHaveBeenCalled();
+});
+
+const bdn1735 = runway(
+  { id: '17', lat: 44.1025, lon: -121.2002 },
+  { id: '35', lat: 44.0868, lon: -121.2002 },
+  5200,
+  75,
+);
+
+test('the 2 px minimum is exported', () => {
+  expect(RUNWAY_MIN_PX).toBe(2);
+});
+
+test('KRDM 05/23 is a 2 px stroke between its ends at zoom 10', () => {
+  const krdm0523 = runway(end05, end23, 7038);
+
+  const drawing = runwayDrawing(krdm0523, 10, 44.25);
+
+  expect(drawing).toEqual({ kind: 'stroke', ends: krdm0523.ends, weight: 2 });
+});
+
+test('KRDM 05/23 is a true-size polygon at zoom 14', () => {
+  const krdm0523 = runway(end05, end23, 7038);
+
+  const drawing = runwayDrawing(krdm0523, 14, 44.25);
+
+  expect(drawing).toEqual({ kind: 'polygon', corners: krdm0523.corners });
+});
+
+test('BDN 17/35 is a stroke at zoom 13 and a polygon at zoom 15', () => {
+  const at13 = runwayDrawing(bdn1735, 13, 44.09);
+
+  const at15 = runwayDrawing(bdn1735, 15, 44.09);
+
+  expect(at13?.kind).toBe('stroke');
+  expect(at15?.kind).toBe('polygon');
+});
+
+test('a runway with no corners has no drawing', () => {
+  const unsurveyed: Runway = { ...bdn1735, ends: null, corners: null };
+
+  const drawing = runwayDrawing(unsurveyed, 15, 44.09);
+
+  expect(drawing).toBeNull();
+});
+
+test('at zoom 6 KRDM draws its 2 runways as butt strokes and fetches nothing', () => {
+  const view = mount(6);
+  const polyline = vi.spyOn(L, 'polyline');
+  const polygon = vi.spyOn(L, 'polygon');
+  onTestFinished(() => {
+    polyline.mockRestore();
+    polygon.mockRestore();
+  });
+
+  view.chart();
+
+  expect(polyline).toHaveBeenCalledTimes(2);
+  expect(polyline.mock.calls[0]?.[1]).toMatchObject({
+    weight: 2,
+    lineCap: 'butt',
+  });
+  expect(polygon).not.toHaveBeenCalled();
+  expect(view.fetchFn).not.toHaveBeenCalled();
+  expect(view.labels()).toEqual([]);
+});
+
+test('at zoom 14 runways are polygons with their end numbers', () => {
+  const view = mount(14);
+  const polygon = vi.spyOn(L, 'polygon');
+  onTestFinished(() => polygon.mockRestore());
+
+  view.chart();
+
+  expect(polygon).toHaveBeenCalledTimes(2);
+  expect(view.labels('.is-runway').sort()).toEqual(['05', '11', '23', '29']);
+});
+
+test('a runway drawn as a stroke carries no end numbers', () => {
+  const view = mount(12);
+
+  view.chart();
+
+  expect(view.labels('.is-runway')).toEqual([]);
+});
+
+test('an airport below its zoom rank draws no runways', () => {
+  const small = {
+    ...krdm,
+    towered: false,
+    runways: [runway(end05, end23, 2500)],
+  };
+  const view = mount(6, [small]);
+  const polyline = vi.spyOn(L, 'polyline');
+  onTestFinished(() => polyline.mockRestore());
+
+  view.chart();
+
+  expect(polyline).not.toHaveBeenCalled();
 });

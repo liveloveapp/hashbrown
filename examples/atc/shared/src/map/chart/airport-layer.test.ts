@@ -122,8 +122,8 @@ test('zoom 6 draws the towered field and the long hard runway only', () => {
   view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
 
   expect(view.count('.atc-apt')).toBe(2);
-  expect(view.count('.atc-apt.is-towered')).toBe(1);
-  expect(view.count('.atc-apt.is-nontowered')).toBe(1);
+  expect(view.count('.atc-apt.is-towered')).toBe(0);
+  expect(view.count('.atc-apt.is-nontowered')).toBe(0);
   view.cleanup();
 });
 
@@ -178,6 +178,7 @@ test('a limited chart draws fallback rings with ident-only labels', () => {
   view.store.setChartLimited();
 
   expect(expected.length).toBeGreaterThan(1);
+  expect(view.count('.atc-apt')).toBe(expected.length);
   expect(view.count('.atc-apt.is-fallback')).toBe(expected.length);
   expect(view.count('.is-towered')).toBe(0);
   const labels = [
@@ -188,55 +189,86 @@ test('a limited chart draws fallback rings with ident-only labels', () => {
   view.cleanup();
 });
 
-test('at zoom 12 a symbol hides only once its surfaces have loaded', () => {
-  const view = mount(12);
-  view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
-  const drawn = view.count('.atc-apt');
+const surveyed = (lengthFt: number): Runway => {
+  const a = { id: '05', lat: 44.24, lon: -121.16 };
+  const b = { id: '23', lat: 44.26, lon: -121.14 };
+  return { ...runway(lengthFt, true), ends: [a, b], corners: [a, b, b, a] };
+};
 
-  view.store.setSurfaces('KBDN', 'loading');
-  const whileLoading = view.count('.atc-apt');
-  view.store.setSurfaces('KBDN', { code: 'KBDN', source: 'faa', features: [] });
-
-  expect(whileLoading).toBe(drawn);
-  expect(view.count('.atc-apt')).toBe(drawn - 1);
-  view.cleanup();
-});
-
-test('below zoom 12 loaded surfaces leave the symbol alone', () => {
-  const view = mount(11);
-  view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
-  const drawn = view.count('.atc-apt');
-
-  view.store.setSurfaces('KBDN', { code: 'KBDN', source: 'faa', features: [] });
-
-  expect(view.count('.atc-apt')).toBe(drawn);
-  view.cleanup();
-});
-
-test('at zoom 11 a large airport with runway outlines hides its symbol', () => {
-  const view = mount(11);
-  const a = { id: '05', lat: 44.09, lon: -121.21 };
-  const b = { id: '23', lat: 44.1, lon: -121.19 };
-  const long: Runway = {
-    ...runway(8070, true),
-    ends: [a, b],
-    corners: [a, b, b, a],
-  };
-  const large = airports.map((airport) =>
-    airport.code === 'KBDN' ? { ...airport, runways: [long] } : airport,
+test('at zoom 10 KRDM with surveyed corners has no ring', () => {
+  const view = mount(10);
+  const withCorners = airports.map((airport) =>
+    airport.code === 'KRDM'
+      ? { ...airport, runways: [surveyed(7038), runway(3000, false)] }
+      : airport,
   );
-  view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
-  const drawn = view.count('.atc-apt');
 
   view.store.setChart({
     cycle: '2610',
     effective: '2026-09-03',
-    airports: large,
+    airports: withCorners,
   });
 
-  expect(view.count('.atc-apt')).toBe(drawn - 1);
-  view.map.setZoom(12);
-  view.layer.redraw();
+  expect(view.count('.atc-apt')).toBe(2);
+  expect(view.count('.atc-apt-block')).toBeGreaterThan(0);
+  view.cleanup();
+});
+
+test('an airport whose only runway has no corners has exactly one ring', () => {
+  const view = mount(10);
+
+  view.store.setChart({
+    cycle: '2610',
+    effective: '2026-09-03',
+    airports: [{ ...base, runways: [runway(7038, true)] }],
+  });
+
+  expect(view.count('.atc-apt')).toBe(1);
+  view.cleanup();
+});
+
+test('an airport with no runways has a ring', () => {
+  const view = mount(10);
+
+  view.store.setChart({
+    cycle: '2610',
+    effective: '2026-09-03',
+    airports: [{ ...base, runways: [] }],
+  });
+
+  expect(view.count('.atc-apt')).toBe(1);
+  view.cleanup();
+});
+
+test('heliports and seaplane bases keep their ring even with surveyed corners', () => {
+  const view = mount(10);
+  const heli = { ...base, kind: 'heliport' as const, runways: [surveyed(60)] };
+  const sea = {
+    ...base,
+    code: 'S60',
+    kind: 'seaplane' as const,
+    lat: 44.1,
+    runways: [surveyed(3000)],
+  };
+
+  view.store.setChart({
+    cycle: '2610',
+    effective: '2026-09-03',
+    airports: [heli, sea],
+  });
+
+  expect(view.count('.atc-apt')).toBe(2);
+  view.cleanup();
+});
+
+test('at zoom 12 loaded surfaces leave the rings alone', () => {
+  const view = mount(12);
+  view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
+  const drawn = view.count('.atc-apt');
+
+  view.store.setSurfaces('KBDN', { code: 'KBDN', source: 'faa', features: [] });
+
+  expect(drawn).toBeGreaterThan(0);
   expect(view.count('.atc-apt')).toBe(drawn);
   view.cleanup();
 });

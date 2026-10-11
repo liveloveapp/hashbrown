@@ -1,12 +1,11 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap, Marker } from 'leaflet';
-import type { ChartAirport, Surfaces } from '../../chart';
+import type { ChartAirport } from '../../chart';
 import { type Airport, FALLBACK_AIRPORTS } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
-import { airportSymbol } from './airport-symbol';
+import { airportRing, RING_BOX } from './airport-ring';
 import { dataBlockLines, renderDataBlock } from './data-block';
 import { blockZoomRule, placeBlocks, visibleAirports } from './declutter';
-import { DIAGRAM_ZOOM, drawsLargeOutline } from './diagram-layer';
 /** How far beyond the view (as a fraction of it) airports are still drawn. */
 const NEAR_PAD = 0.5;
 
@@ -16,7 +15,8 @@ type Tone = 'towered' | 'nontowered' | 'fallback';
 interface Drawn {
   readonly airport: ChartAirport | Airport;
   readonly tone: Tone;
-  readonly symbol: boolean;
+  /** Whether the airport draws an ink ring (its runways cannot be drawn). */
+  readonly ring: boolean;
   /** The data block's lines, or null when the zoom allows no block. */
   readonly lines: readonly string[] | null;
 }
@@ -30,7 +30,7 @@ interface Block {
 
 /** A mounted airport layer. */
 export interface AirportLayer {
-  /** Redraws when the chart, the layers or the surfaces changed. */
+  /** Redraws when the chart or the layers changed. */
   sync(state: AtcState): void;
   /** Redraws for the current view; call on `zoomend` and `moveend`. */
   redraw(): void;
@@ -39,24 +39,13 @@ export interface AirportLayer {
 }
 
 /**
- * Whether an airport's symbol shows at `zoom`. At zoom 11 a large airport's
- * runway outlines replace it (`drawsLargeOutline`). From zoom 12 a loaded
- * diagram (a `Surfaces` object) replaces it; while surfaces load or after
- * they fail, the symbol stays.
+ * Whether a chart airport draws a ring instead of runways: heliports and
+ * seaplane bases always do, and so does an airport with no runway that has
+ * surveyed corners. Every other airport's runways are its symbol.
  */
-function drawsSymbol(
-  airport: ChartAirport,
-  zoom: number,
-  surfaces: AtcState['surfaces'],
-): boolean {
-  if (zoom >= DIAGRAM_ZOOM) {
-    return !isLoaded(surfaces.get(airport.code));
-  }
-  return !drawsLargeOutline(airport, zoom);
-}
-
-function isLoaded(value: Surfaces | 'loading' | 'failed' | undefined) {
-  return typeof value === 'object';
+function drawsRing(airport: ChartAirport): boolean {
+  if (airport.kind === 'heliport' || airport.kind === 'seaplane') return true;
+  return airport.runways.every((runway) => runway.corners === null);
 }
 
 /** The airports to draw: the FAA chart when ready, otherwise the fallback table. */
@@ -65,26 +54,27 @@ function drawnAirports(state: AtcState, zoom: number): Drawn[] {
     return FALLBACK_AIRPORTS.map((airport) => ({
       airport,
       tone: 'fallback',
-      symbol: true,
+      ring: true,
       lines: [airport.code],
     }));
   }
   return visibleAirports(state.chart.airports, zoom).map((airport) => ({
     airport,
     tone: airport.towered ? 'towered' : 'nontowered',
-    symbol: drawsSymbol(airport, zoom, state.surfaces),
+    ring: drawsRing(airport),
     lines: blockZoomRule(airport, zoom) ? dataBlockLines(airport, zoom) : null,
   }));
 }
 
 /**
- * Draws the sectional airport symbols and their data blocks in `pane`. One
- * marker per airport is created once per airports array and then only added
- * or removed; aircraft snapshots never reach it, because `sync` acts only
- * when `state.chart`, `state.layers` or `state.surfaces` changed. Until the
- * FAA chart is ready the fallback table draws as ink rings labelled with
- * their ICAO codes. Data blocks are placed in rank order around the symbols
- * by `placeBlocks`, and their text goes in through `renderDataBlock`.
+ * Draws the ink airport rings and the data blocks in `pane`. Runways are
+ * drawn by the diagram layer; a ring marks only an airport whose runways
+ * cannot be drawn (see `airportRing`), and every fallback-table airport
+ * until the FAA chart is ready. One ring marker per airport is created once
+ * per airports array and then only added or removed; aircraft snapshots
+ * never reach it, because `sync` acts only when `state.chart` or
+ * `state.layers` changed. Data blocks are placed in rank order around the
+ * airports by `placeBlocks`, and their text goes in through `renderDataBlock`.
  */
 export function createAirportLayer(options: {
   L: typeof Leaflet;
@@ -94,34 +84,34 @@ export function createAirportLayer(options: {
 }): AirportLayer {
   const { L, map, store, pane } = options;
   const doc = map.getContainer().ownerDocument;
-  const symbols = new Map<string, Marker>();
+  const rings = new Map<string, Marker>();
   const blocks = new Map<string, Block>();
   let source: readonly (ChartAirport | Airport)[] | null = null;
-  let synced: Pick<AtcState, 'chart' | 'layers' | 'surfaces'> | null = null;
+  let synced: Pick<AtcState, 'chart' | 'layers'> | null = null;
 
   const clear = () => {
-    for (const marker of symbols.values()) marker.remove();
+    for (const marker of rings.values()) marker.remove();
     for (const { marker } of blocks.values()) marker.remove();
-    symbols.clear();
+    rings.clear();
     blocks.clear();
   };
 
-  const symbolMarker = (airport: ChartAirport | Airport): Marker => {
-    const existing = symbols.get(airport.code);
+  const ringMarker = (airport: ChartAirport | Airport): Marker => {
+    const existing = rings.get(airport.code);
     if (existing) return existing;
-    const { className, html, size } = airportSymbol(airport);
+    const { className, html } = airportRing(airport);
     const marker = L.marker([airport.lat, airport.lon], {
       icon: L.divIcon({
         html,
         className,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
+        iconSize: [RING_BOX, RING_BOX],
+        iconAnchor: [RING_BOX / 2, RING_BOX / 2],
       }),
       interactive: false,
       keyboard: false,
       pane,
     });
-    symbols.set(airport.code, marker);
+    rings.set(airport.code, marker);
     return marker;
   };
 
@@ -186,13 +176,13 @@ export function createAirportLayer(options: {
     );
 
     const wanted = new Set(
-      drawn.filter((d) => d.symbol).map((d) => d.airport.code),
+      drawn.filter((d) => d.ring).map((d) => d.airport.code),
     );
-    for (const [code, marker] of symbols) {
+    for (const [code, marker] of rings) {
       if (!wanted.has(code)) marker.remove();
     }
-    for (const { airport, symbol } of drawn) {
-      const marker = symbol ? symbolMarker(airport) : null;
+    for (const { airport, ring } of drawn) {
+      const marker = ring ? ringMarker(airport) : null;
       if (marker && !map.hasLayer(marker)) marker.addTo(map);
     }
 
@@ -228,16 +218,11 @@ export function createAirportLayer(options: {
       if (
         synced !== null &&
         synced.chart === state.chart &&
-        synced.layers === state.layers &&
-        synced.surfaces === state.surfaces
+        synced.layers === state.layers
       ) {
         return;
       }
-      synced = {
-        chart: state.chart,
-        layers: state.layers,
-        surfaces: state.surfaces,
-      };
+      synced = { chart: state.chart, layers: state.layers };
       redraw();
     },
     redraw,

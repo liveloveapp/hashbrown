@@ -1,5 +1,5 @@
 /*
- * Chart overlays: FAA sectional airport symbols and airport diagrams. The only
+ * Chart overlays: ink airports (runways, rings) and airport diagrams. The only
  * place chart colours are defined (design-rules.test.ts enforces this).
  * Values measured from the 3 Sep 2026 sectional GeoTIFFs and the FAA airport
  * diagram legend; see docs/superpowers/research/atc-overlays/.
@@ -13,12 +13,6 @@
 
 .atc-map .atc-apt {
   color: var(--atc-ink);
-}
-.atc-map .atc-apt.is-towered {
-  color: var(--atc-chart-blue);
-}
-.atc-map .atc-apt.is-nontowered {
-  color: var(--atc-chart-magenta);
 }
 .atc-map .atc-apt svg {
   display: block;
