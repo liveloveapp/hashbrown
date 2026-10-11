@@ -262,7 +262,8 @@ export function createViewController(options: {
   };
   /**
    * Fits the union of the bboxes of one airport's airspace shelves, between
-   * a docked card and a phone's sheet, in one move. Without shelves the map stays where it is.
+   * a docked card and a phone's sheet, in one move. Without shelves the map
+   * stays where it is.
    */
   const showAirspace = (code: string, animate: boolean) => {
     const shelves = airspaceOf(store.getState().airspace.shelves, code);

@@ -1,6 +1,7 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap, Marker } from 'leaflet';
 import { aircraftDetailView } from '../detail-view';
+import { hoverless } from '../dom';
 import type { LatLon } from '../places';
 import type { AtcState, AtcStore } from '../store';
 import {
@@ -33,8 +34,10 @@ export interface CardSync {
   /**
    * Pixels the card will cover at the top of the map once it shows the
    * selected plane docked, else 0. When the card is not docked yet (the
-   * plane is off screen), it is laid out for that plane, measured and synced
-   * back, so a reveal can leave room for it before the plane comes on screen.
+   * plane is off screen), a hidden copy is measured for that plane, so a
+   * reveal can leave room for it before the plane comes on screen. A
+   * hovered plane does not change it: the selected plane is the one the
+   * card shows once the pointer leaves, and reveals come from the chat.
    */
   dockedInsetFor(state: AtcState): number;
   /**
@@ -163,24 +166,14 @@ export function createCardSync(options: {
     dockedInsetFor(state) {
       const shown = card.dockedInset();
       const hex = state.selectedHex;
-      if (
-        shown > 0 ||
-        hex === null ||
-        hoveredHex !== null ||
-        !detailCardDocked(cardArea)
-      ) {
+      if (shown > 0 || hex === null || !detailCardDocked(cardArea)) {
         return shown;
       }
       const view = aircraftDetailView(state, hex, Date.now());
-      const docked = { pinned: true, docked: true };
-      const inset =
-        view !== null &&
-        card.show(view, cardArea.height - 2 * CARD_MARGIN, docked)
-          ? card.dockedInset()
-          : 0;
-      sync(state, true);
 
-      return inset;
+      return view === null
+        ? 0
+        : card.measureDocked(view, cardArea.height - 2 * CARD_MARGIN);
     },
     band: () => ({
       top: card.dockedInset(),
@@ -189,6 +182,10 @@ export function createCardSync(options: {
     }),
     focus: () => ({ hovered: hoveredHex, detailed: detailedHex }),
     hover(hex) {
+      // A tap's mouseover would stick on a touch screen; taps select instead.
+      if (hoverless()) {
+        return;
+      }
       hoveredHex = hex;
       sync(store.getState());
     },

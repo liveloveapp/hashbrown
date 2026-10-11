@@ -60,3 +60,14 @@ export function prefersReducedMotion(): boolean {
     matchMedia('(prefers-reduced-motion: reduce)').matches
   );
 }
+
+/**
+ * True where the primary pointer cannot hover (touch screens). Taps there
+ * fire mouseover, and it sticks until the next tap, so hover states are
+ * ignored.
+ */
+export function hoverless(): boolean {
+  return (
+    typeof matchMedia === 'function' && matchMedia('(hover: none)').matches
+  );
+}

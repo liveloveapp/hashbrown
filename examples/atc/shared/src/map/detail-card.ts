@@ -115,6 +115,8 @@ export interface DetailCardMode {
 }
 
 const HOVER: DetailCardMode = { pinned: false, docked: false };
+/** The selected plane's card on a narrow map. */
+const DOCKED: DetailCardMode = { pinned: true, docked: true };
 
 /** Whether a map this wide gets the docked card. */
 export function detailCardDocked(area: CardSize): boolean {
@@ -155,6 +157,13 @@ export interface DetailCard {
    * placed, until its content changes.
    */
   dockedInset(): number;
+  /**
+   * The pixels the card would cover at the top of the map docked and pinned
+   * for `view` (with its margins), or 0 when it would not fit. Measured on a
+   * hidden, inert copy, so the card itself, its live summary and what it
+   * last showed are untouched: showing the plane later still announces it.
+   */
+  measureDocked(view: AircraftDetailView, maxHeight: number): number;
 }
 
 /** Builds an element with a class and, optionally, text (as a text node). */
@@ -362,6 +371,8 @@ export function createDetailCard(
   let more = false;
   let hex: string | null = null;
   const parts = buildParts(doc, element);
+  /** The hidden copy `measureDocked` lays out, made on first use. */
+  let probe: { element: HTMLElement; parts: CardParts } | null = null;
   element.addEventListener('click', (event) => {
     // Handled here: the map below must not take it for a click on empty map.
     event.stopPropagation();
@@ -442,7 +453,28 @@ export function createDetailCard(
       }
       // The size measured when the card was last placed, so a caller on a
       // timer (the tag layout) does not force a layout; else measured now.
-      const height = size?.height ?? element.offsetHeight;
+      const height = size?.height || element.offsetHeight;
+
+      return height > 0 ? height + 2 * CARD_MARGIN : 0;
+    },
+    measureDocked(view, maxHeight) {
+      if (probe === null) {
+        const copy = el(doc, 'div', 'atc-detail is-pinned is-docked');
+        copy.setAttribute('aria-hidden', 'true');
+        copy.inert = true;
+        probe = { element: copy, parts: buildParts(doc, copy) };
+        element.after(copy);
+      }
+      const { element: copy, parts: copyParts } = probe;
+      const fitted = fitDetailView(view, maxHeight, (candidate) => {
+        fill(doc, copyParts, candidate, DOCKED, false);
+        return copy.offsetHeight;
+      });
+      if (fitted === null) {
+        return 0;
+      }
+      fill(doc, copyParts, fitted, DOCKED, false);
+      const height = copy.offsetHeight;
 
       return height > 0 ? height + 2 * CARD_MARGIN : 0;
     },
