@@ -11,6 +11,7 @@ import {
   lookupPlace,
 } from './places';
 import { airspaceOf, altitudeMslFt, shelvesAt } from './chart/airspace-query';
+import type { AirspaceShelf } from './chart/types';
 import { airportDirectory } from './directory';
 import type { AtcState } from './store';
 
@@ -107,6 +108,11 @@ export interface AirspaceAircraftRow extends AircraftRow {
   readonly checkedAltitudeFt: number | null;
   /** Where `checkedAltitudeFt` came from. */
   readonly altitudeSource: 'ground' | 'gnss' | 'baro' | null;
+  /**
+   * True when every shelf the aircraft is in is part-time (in effect only
+   * during hours set by NOTAM), so it may be outside active airspace now.
+   */
+  readonly partTime: boolean;
 }
 
 /** The row the model sees for one aircraft, measured from `from`. */
@@ -126,14 +132,22 @@ export function toRow(aircraft: Aircraft, from: LatLon): AircraftRow {
   };
 }
 
-/** The row plus the altitude the airspace check used for `aircraft`. */
-function toAirspaceRow(aircraft: Aircraft, from: LatLon): AirspaceAircraftRow {
+/**
+ * The row plus the altitude the airspace check used for `aircraft`, and
+ * whether every shelf it is in (`inside`) is part-time.
+ */
+function toAirspaceRow(
+  aircraft: Aircraft,
+  from: LatLon,
+  inside: readonly AirspaceShelf[],
+): AirspaceAircraftRow {
   const checked = altitudeMslFt(aircraft);
 
   return {
     ...toRow(aircraft, from),
     checkedAltitudeFt: checked?.ft ?? null,
     altitudeSource: checked?.source ?? null,
+    partTime: inside.length > 0 && inside.every((shelf) => shelf.partTime),
   };
 }
 
@@ -233,7 +247,9 @@ export function findAircraft(
     .map((a) => {
       const from = centre ?? airspaceCentre ?? airport ?? area;
 
-      return shelves === null ? toRow(a, from) : toAirspaceRow(a, from);
+      return shelves === null
+        ? toRow(a, from)
+        : toAirspaceRow(a, from, shelvesAt(shelves, a));
     })
     .sort(SORTS[input.sortBy])
     .slice(0, limit);

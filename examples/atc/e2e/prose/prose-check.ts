@@ -21,7 +21,7 @@ const LEAK =
 
 /** Component and tool names the model sees but users never should. */
 const INTERNAL_NAME =
-  /\b(FlightCard|ArrivalsBoard|AircraftCompare|AirportCard|findAircraft|highlightAircraft|lookupRoute|lookupPlace|showArea|resetMap|followAircraft|setLayers|showAirport|showAirspace|airspaceAt|getSelectedAircraft)\b/;
+  /\b(FlightCard|ArrivalsBoard|AircraftCompare|AirportCard|findAircraft|highlightAircraft|lookupRoute|lookupPlace|showArea|resetMap|followAircraft|setLayers|showAirport|showAirspace|airspaceAt|getSelectedAircraft|partTime|checkedAltitudeFt|altitudeSource|inAirspace|highlightedAirspace)\b/;
 
 /** A paragraph that ends on a colon, with nothing after it. */
 const DANGLING_COLON = /:\s*$/;

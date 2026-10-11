@@ -1067,6 +1067,31 @@ test('findAircraft with inAirspace says which altitude the check used', () => {
   ]);
 });
 
+test('findAircraft with inAirspace says when the airspace is part-time', () => {
+  const traffic = applySnapshot(
+    airspaceStore([...pdxShelves, rdmShelf]).getState(),
+    {
+      at: 1,
+      aircraft: [
+        plane('aaaaaa', { lat: 44.25, lon: -121.15, altitudeFt: 3000 }),
+        plane('bbbbbb', { lat: 45.5, lon: -121.5, altitudeFt: 3000 }),
+      ],
+    },
+  );
+
+  const rdm = findAircraft(traffic, {
+    ...any,
+    inAirspace: { airport: 'KRDM', class: 'D' },
+  });
+  const pdx = findAircraft(traffic, {
+    ...any,
+    inAirspace: { airport: 'KPDX', class: null },
+  });
+
+  expect(rdm).toMatchObject([{ hex: 'aaaaaa', partTime: true }]);
+  expect(pdx).toMatchObject([{ hex: 'bbbbbb', partTime: false }]);
+});
+
 test('findAircraft without inAirspace adds no airspace fields to rows', () => {
   const rows = findAircraft(state, any);
 
