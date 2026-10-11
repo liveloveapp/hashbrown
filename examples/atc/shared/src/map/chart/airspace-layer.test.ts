@@ -31,7 +31,7 @@ const shelf = (
   airport: id.split('-')[0] ?? id,
   name: id,
   floor: { ft: 0, ref: 'SFC' },
-  ceiling: { ft: 5600, exclusive: true },
+  ceiling: { ft: 5600, exclusive: false },
   partTime: false,
   rings: [square(lon, lat, half)],
   bbox: [lon - half, lat - half, lon + half, lat + half],

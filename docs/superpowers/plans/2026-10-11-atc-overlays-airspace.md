@@ -388,7 +388,8 @@ export interface AirspacePayload {
   - `floor`: `LOWER_CODE === 'SFC'` or `LOWER_VAL === 0` gives `{ ft: 0, ref: 'SFC' }`.
     Otherwise `{ ft: LOWER_VAL, ref: 'MSL' }`.
   - `ceiling`: `UPPER_VAL` of `-9998` or below, or `UPPER_DESC === 'AA'`,
-    gives `null`. Otherwise `{ ft: UPPER_VAL, exclusive: UPPER_DESC === 'TI' }`.
+    gives `null`. Otherwise `{ ft: UPPER_VAL, exclusive: UPPER_DESC === 'TNI' }`:
+    `TI` is "to and including" (inclusive), `TNI` is "to not including".
   - `partTime` is `WKHR_CODE === 'NOTAM'`.
   - `airport` is `ICAO_ID` when it matches `^[A-Z][A-Z0-9]{3}$`, else `IDENT`.
   - `id` is `${airport}-${type}-${n}`, where `n` counts per airport and type in

@@ -161,7 +161,8 @@ whitelist, never spread.
 - `type`: `'B' | 'C' | 'D' | 'E2' | 'E3' | 'E4'`.
 - `floor`: `{ ft: number; ref: 'SFC' | 'MSL' }`. `SFC` has `ft: 0`.
 - `ceiling`: `{ ft: number; exclusive: boolean } | null`. The value is in
-  feet MSL, and `exclusive` comes from `UPPER_DESC === 'TI'`. A ceiling of
+  feet MSL, and `exclusive` comes from `UPPER_DESC === 'TNI'` ("to not
+  including"). `TI` ("to and including") is an inclusive ceiling. A ceiling of
   `null` means up to the overlying airspace (`UPPER_VAL` of `-9998`,
   `UPPER_DESC` of `AA`), which the Class E surface areas use.
 - `partTime`: `WKHR_CODE === 'NOTAM'`. This applies to part-time Class D
@@ -363,7 +364,7 @@ first.
   - The design rules: the new band tokens are allowed in `chart.css` only.
 - **Server:**
   - The route with stubbed fetch: paging, the area filter, normalisation of
-    `-9998`/`AA` and `TI`, caching, stale data and 502s.
+    `-9998`/`AA`, `TI` (inclusive) and `TNI` (exclusive), caching, stale data and 502s.
   - Fixtures are trimmed real FAA features for Portland C, Redmond D and E2,
     and Bend E2.
 - **e2e:**

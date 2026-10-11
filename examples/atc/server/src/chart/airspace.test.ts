@@ -109,12 +109,32 @@ test('maps types, floors, ceilings, exclusivity and part-time', () => {
     ['KBDN-E2-1', 'E2', 'E'],
   ]);
   expect(shelves[0].floor).toEqual({ ft: 0, ref: 'SFC' });
-  expect(shelves[0].ceiling).toEqual({ ft: 4000, exclusive: true });
+  expect(shelves[0].ceiling).toEqual({ ft: 4000, exclusive: false });
   expect(shelves[1].floor).toEqual({ ft: 1100, ref: 'MSL' });
   expect(shelves[1].ceiling).toEqual({ ft: 4000, exclusive: false });
   expect(shelves[2].partTime).toBe(true);
   expect(shelves[0].partTime).toBe(false);
   expect(shelves[3].ceiling).toBeNull();
+});
+
+test('TI (to and including) is an inclusive ceiling; TNI (to not including) is exclusive', () => {
+  const including = feature({ UPPER_DESC: 'TI' });
+  const notIncluding = feature({
+    NAME: 'SEATTLE CLASS D',
+    IDENT: 'BFI',
+    ICAO_ID: 'KBFI',
+    CLASS: 'D',
+    LOCAL_TYPE: 'CLASS_D',
+    UPPER_VAL: 3000,
+    UPPER_DESC: 'TNI',
+  });
+
+  const { shelves } = normaliseAirspace([including, notIncluding], centre, 250);
+
+  expect(shelves.map((s) => s.ceiling)).toEqual([
+    { ft: 4000, exclusive: false },
+    { ft: 3000, exclusive: true },
+  ]);
 });
 
 test('a null LOCAL_TYPE falls back to CLASS and IDENT', () => {

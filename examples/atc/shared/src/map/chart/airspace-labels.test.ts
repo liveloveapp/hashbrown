@@ -74,7 +74,7 @@ test('a Class D shelf up to 5,600 ft is a 56 box', () => {
     class: 'D',
     type: 'D',
     floor: { ft: 0, ref: 'SFC' },
-    ceiling: { ft: 5600, exclusive: true },
+    ceiling: { ft: 5600, exclusive: false },
   };
 
   const label = shelfLabel(shelf);

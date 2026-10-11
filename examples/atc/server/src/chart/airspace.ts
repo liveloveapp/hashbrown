@@ -124,9 +124,10 @@ function toBase(
     class: type[0] as AirspaceClass,
     type,
     floor,
+    // UPPER_DESC 'TI' is "to and including"; 'TNI' is "to not including".
     ceiling: open
       ? null
-      : { ft: upperVal as number, exclusive: props['UPPER_DESC'] === 'TI' },
+      : { ft: upperVal as number, exclusive: props['UPPER_DESC'] === 'TNI' },
     partTime: props['WKHR_CODE'] === 'NOTAM',
   };
 }
