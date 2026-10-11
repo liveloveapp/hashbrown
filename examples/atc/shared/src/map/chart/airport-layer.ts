@@ -8,22 +8,14 @@ import { airportRing, RING_BOX } from './airport-ring';
 import type { LabelSource } from './chart-labels';
 import { dataBlockLines, renderDataBlock } from './data-block';
 import { visibleAirports } from './declutter';
-import { LABEL_PRIORITY, type LabelRequest } from './label-placer';
+import {
+  estimateLabelSize,
+  LABEL_PRIORITY,
+  type LabelRequest,
+} from './label-placer';
 
 /** How far beyond the view (as a fraction of it) airports are still drawn. */
 const NEAR_PAD = 0.5;
-/**
- * Estimated advance per character of block text, in pixels. An estimate
- * rather than a canvas measure, so placement is the same in jsdom and the
- * browser and does not shift when the web fonts finish loading.
- */
-const CHAR_PX = 6.4;
-/** A block line's height (`line-height` in chart.css), in pixels. */
-const LINE_PX = 12;
-/** The block's horizontal padding, both sides, in pixels. */
-const BLOCK_PAD_X = 6;
-/** The block's vertical padding, both sides, in pixels. */
-const BLOCK_PAD_Y = 2;
 /** Space between an airport's box and its label, in pixels. */
 const LABEL_GAP = 4;
 
@@ -65,8 +57,10 @@ export interface AirportLayer extends LabelSource {
   /** Redraws for the current view; call on `zoomend` and `moveend`. */
   redraw(): void;
   /**
-   * Each drawn chart airport's runway extent in container pixels (its ring
-   * box when it has a ring), for keeping every label off the runways.
+   * Every drawn airport's box in container pixels (see `anchorBox`): its
+   * runway extent, or the ring box when it has a ring, and at least the
+   * 12x12 box around its reference point. Fallback airports included; no
+   * label may cover any of them.
    */
   runwayBoxes(): TagRect[];
   /** Removes every marker. */
@@ -107,13 +101,6 @@ export function labelCandidates(
     at(midX, box.bottom + LABEL_GAP),
   ];
 }
-
-/** A block's estimated size in pixels: the longest line by the line count. */
-const blockSize = (lines: readonly string[]) => ({
-  width:
-    Math.max(0, ...lines.map((line) => line.length)) * CHAR_PX + BLOCK_PAD_X,
-  height: lines.length * LINE_PX + BLOCK_PAD_Y,
-});
 
 /** The label id of an airport, unique among every chart layer's labels. */
 const labelId = (code: string) => `apt:${code}`;
@@ -325,7 +312,7 @@ export function createAirportLayer(options: {
   const labelRequests = (): LabelRequest[] => {
     pending = new Map(
       drawnNow.map((drawn): [string, Pending] => {
-        const { width, height } = blockSize(drawn.lines);
+        const { width, height } = estimateLabelSize(drawn.lines);
         return [
           labelId(drawn.airport.code),
           {
@@ -368,9 +355,7 @@ export function createAirportLayer(options: {
   };
 
   const runwayBoxes = (): TagRect[] =>
-    drawnNow
-      .filter((drawn) => drawn.tone === 'ink')
-      .map((drawn) => anchorBox(drawn, project));
+    drawnNow.map((drawn) => anchorBox(drawn, project));
 
   return {
     sync(state) {

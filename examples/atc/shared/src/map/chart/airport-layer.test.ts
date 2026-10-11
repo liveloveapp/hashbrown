@@ -105,7 +105,6 @@ function mount(zoom = 6, centre: [number, number] = [44.0946, -121.2002]) {
   const layer = createAirportLayer({ L, map, store, pane: 'atc-airports' });
   const place = () =>
     placeChartLabels({
-      zoom: map.getZoom(),
       sources: [layer],
       runwayBoxes: layer.runwayBoxes,
     });
@@ -350,5 +349,49 @@ test('at zoom 13 KRDM labels outside its crossing runways', () => {
   expect(block).not.toBeNull();
   expect(box).toBeDefined();
   expect(box && intersects(box, extent)).toBe(false);
+  view.cleanup();
+});
+
+test('at zoom 9 neither of two close airports labels over the other', () => {
+  const view = mount(9);
+  const near = (code: string, lon: number, rank: number): ChartAirport => ({
+    ...base,
+    code,
+    faa: code,
+    towered: false,
+    lat: 44.0946,
+    lon,
+    rank,
+  });
+  const pair = [near('AAA', -121.23, 0), near('BBB', -121.17, 1)];
+
+  view.store.setChart({
+    cycle: '2610',
+    effective: '2026-09-03',
+    airports: pair,
+  });
+
+  const requests = view.layer.labelRequests();
+  const boxes = view.layer.runwayBoxes();
+  const placed = pair.map((airport) => {
+    const point = view.map.latLngToContainerPoint([airport.lat, airport.lon]);
+    const block = [...view.element.querySelectorAll('.atc-apt-block')].find(
+      (b) => b.textContent === airport.faa,
+    );
+    const icon = block?.parentElement;
+    const left = point.x + parseFloat(icon?.style.marginLeft ?? 'NaN');
+    const top = point.y + parseFloat(icon?.style.marginTop ?? 'NaN');
+    return requests
+      .find((r) => r.id === `apt:${airport.code}`)
+      ?.candidates.find(
+        (c) => Math.abs(c.left - left) < 1 && Math.abs(c.top - top) < 1,
+      );
+  });
+  expect(boxes).toHaveLength(2);
+  expect(placed.every(Boolean)).toBe(true);
+  const [aLabel, bLabel] = placed;
+  const [aBox, bBox] = boxes;
+  expect(aLabel && bBox && intersects(aLabel, bBox)).toBe(false);
+  expect(bLabel && aBox && intersects(bLabel, aBox)).toBe(false);
   view.cleanup();
 });

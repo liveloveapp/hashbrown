@@ -10,7 +10,11 @@ import {
 } from './airspace-labels';
 import type { TagRect } from '../tag-obstacles';
 import type { LabelSource } from './chart-labels';
-import { LABEL_PRIORITY, type LabelRequest } from './label-placer';
+import {
+  estimateLabelSize,
+  LABEL_PRIORITY,
+  type LabelRequest,
+} from './label-placer';
 
 /** How far beyond the view (as a fraction of it) shelves are still drawn. */
 const NEAR_PAD = 0.5;
@@ -22,8 +26,6 @@ const LABEL_ZOOM = 9;
  * chart.
  */
 const PAINT_ORDER: Record<string, number> = { B: 1, C: 1, D: 2 };
-/** Estimated advance per character of label text, in pixels. */
-const CHAR_PX = 6.4;
 /**
  * Where a label may sit, best first, as pixel offsets from its anchor
  * point: centred on it, then below, above, right and left.
@@ -102,9 +104,7 @@ const labelId = (shelf: AirspaceShelf) => `as:${shelf.id}`;
  * {@link LABEL_OFFSETS} entry, each centred as the CSS draws the text.
  */
 function labelCandidates(point: Point, label: ShelfLabel): TagRect[] {
-  const lines = labelLines(label);
-  const width = Math.max(...lines.map((l) => l.length)) * CHAR_PX + 6;
-  const height = lines.length * 12 + 2;
+  const { width, height } = estimateLabelSize(labelLines(label));
 
   return LABEL_OFFSETS.map(([dx, dy]) => ({
     left: point.x + dx - width / 2,

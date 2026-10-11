@@ -103,7 +103,6 @@ function mount(zoom = 10) {
   const layer = createAirspaceLayer({ L, map, store, pane: 'atc-airspace' });
   const place = () =>
     placeChartLabels({
-      zoom: map.getZoom(),
       sources: [layer],
       runwayBoxes: () => [],
     });

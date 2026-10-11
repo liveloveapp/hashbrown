@@ -80,7 +80,6 @@ function mount(zoom: number) {
     const changed = [airspace.sync(state), airports.sync(state)];
     if (changed.some(Boolean)) {
       placeChartLabels({
-        zoom: map.getZoom(),
         sources: [airspace, airports],
         runwayBoxes: airports.runwayBoxes,
       });

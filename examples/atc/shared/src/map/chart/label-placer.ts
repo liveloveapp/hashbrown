@@ -25,6 +25,31 @@ export const LABEL_PRIORITY = {
   fallback: 3,
 } as const;
 
+/** Estimated advance per character of label text, in pixels. */
+const CHAR_PX = 6.4;
+/** A label line's height (`line-height` in chart.css), in pixels. */
+const LINE_PX = 12;
+/** A label's horizontal padding, both sides, in pixels. */
+const PAD_X = 6;
+/** A label's vertical padding, both sides, in pixels. */
+const PAD_Y = 2;
+
+/**
+ * A chart label's estimated size in pixels: its longest line at
+ * 6.4 px per character, by its line count. An estimate rather than a canvas
+ * measure, so placement is the same in jsdom and the browser and does not
+ * shift when the web fonts finish loading.
+ */
+export function estimateLabelSize(lines: readonly string[]): {
+  width: number;
+  height: number;
+} {
+  return {
+    width: Math.max(0, ...lines.map((line) => line.length)) * CHAR_PX + PAD_X,
+    height: lines.length * LINE_PX + PAD_Y,
+  };
+}
+
 /**
  * Places labels greedily, by priority and then by id so the result never
  * depends on input order. A candidate is taken only when it comes within

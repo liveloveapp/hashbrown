@@ -128,7 +128,6 @@ export async function createAirspaceMap(options: {
    */
   const placeChart = () =>
     placeChartLabels({
-      zoom: map.getZoom(),
       sources: [airspace, airports],
       runwayBoxes: airports.runwayBoxes,
     });
