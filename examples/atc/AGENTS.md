@@ -48,6 +48,7 @@ dependencies); this file covers atc.
 | `server/src/chart/`                             | NASR zip and CSV readers, upstream fetches, surfaces merge, cache    |
 | `e2e/src/`                                      | Playwright for both apps with a mocked model and synthetic frames    |
 | `e2e/demo/`                                     | The demo video: storyboard, director page, recorder, ffmpeg encoding |
+| `e2e/prose/`                                    | Live prose eval: real model answers checked for leaked rules         |
 
 ## Add a component or a tool
 
@@ -91,6 +92,10 @@ dependencies); this file covers atc.
   passing.
 - The demo video's code panes mark lines by pattern (`e2e/demo/storyboard.ts`). If you
   change a marked line, update its pattern; `npx nx test atc-e2e` fails until you do.
+- After changing `SYSTEM_PROMPT` or a component description, restart `atc-server` and run
+  `npx nx prose-eval atc-e2e` (real model, needs `OPENAI_API_KEY` and the dev servers).
+  It flags prose that echoes a rule, names a component or tool, stops on a colon or
+  promises a tap the app doesn't have.
 
 ## Commands
 

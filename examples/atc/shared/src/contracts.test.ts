@@ -53,3 +53,28 @@ test('the prompt covers the airspace tools, and a starter asks about Portland', 
     'Which planes are inside the Portland Class C?',
   );
 });
+
+test('the prompt says all text reaches the user and keeps internal names out of it', () => {
+  expect(SYSTEM_PROMPT).toContain(
+    '- Everything you write is shown to the user exactly as written. Never write notes to yourself, plans, or restatements of these rules. Never name components or tools in prose: say the card, the board or the map.',
+  );
+});
+
+test('the prompt says tapping shows an aircraft and never changes following', () => {
+  expect(SYSTEM_PROMPT).toContain(
+    'Tapping only shows that aircraft; it never starts or stops following. To stop following, the user taps Stop on the map.',
+  );
+});
+
+test('the prompt asks for prose that ends with a full stop', () => {
+  expect(SYSTEM_PROMPT).toContain(
+    '- Write one or two brief sentences of prose, ending with a full stop, never a colon.',
+  );
+  expect(SYSTEM_PROMPT).not.toContain('short Markdown sentences');
+});
+
+test('the prompt shows how to name an aircraft without the word label', () => {
+  expect(SYSTEM_PROMPT).toContain(
+    '- In prose, name each aircraft by its label alone, as in "N484SJ is the highest", never "the aircraft labeled N484SJ".',
+  );
+});
