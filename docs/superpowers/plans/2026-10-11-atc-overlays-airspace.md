@@ -661,7 +661,7 @@ export interface AirspacePayload {
   ```
   - For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then show one ArrivalsBoard. To only show a place's airspace, call showAirspace.
   - For which airspace one aircraft is in, call airspaceAt.
-  - Airspace answers come only from tool results. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Part-time Class D airspace is shown as charted; say so when the tool reports partTime.
+  - Airspace answers come only from tool results. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Airspace marked partTime is in effect only during hours set by NOTAM, which the tools don't know: when partTime is true, say the aircraft is inside the charted area and that it may not be active now.
   ```
 
 - **`STARTER_PROMPTS`** gains `'Which planes are inside the Portland Class C?'`

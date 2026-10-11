@@ -337,8 +337,10 @@ All new tools are added to `ATC_TOOL_DEFINITIONS`, and the server pins them.
 - To show a place's airspace, call `showAirspace`.
 - For which airspace one aircraft is in, call `airspaceAt`.
 - Airspace answers come only from tool results. Altitudes from ADS-B can be
-  off by a few hundred feet, so say "about" near a boundary. Part-time Class D
-  airspace is shown as charted, and the tool reports when it is part-time.
+  off by a few hundred feet, so say "about" near a boundary. Airspace marked
+  `partTime` is in effect only during hours set by NOTAM, which the tools
+  don't know: when `partTime` is true, the answer says the aircraft is inside
+  the charted area and that it may not be active now.
 
 **Supporting changes**
 
