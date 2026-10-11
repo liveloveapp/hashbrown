@@ -245,3 +245,35 @@ for (const [rule, check] of Object.entries(RULES)) {
     expect(offenders).toEqual([]);
   });
 }
+
+/** Chart colours and tokens, allowed only where chart features are drawn. */
+const CHART_COLOUR =
+  /#086ca8|#76334f|#cfcfcf|#955101|--atc-chart-|--atc-diagram-/i;
+/** Where chart colours may appear: chart.css, the AirportCard badge and the chart modules. */
+const CHART_ALLOWED = [
+  'shared/src/styles/chart.css',
+  'shared/src/styles/cards.css',
+  'shared/src/map/chart/',
+];
+
+test('chart colours stay on the map (and the AirportCard badge)', () => {
+  const sources = [...files, ...sharedSources];
+
+  const offenders = sources
+    .filter(
+      ({ file }) => !CHART_ALLOWED.some((allowed) => file.startsWith(allowed)),
+    )
+    .filter(({ source }) => CHART_COLOUR.test(source));
+
+  expect(offenders.map(({ file }) => file)).toEqual([]);
+});
+
+test('chart hexes are defined only in chart.css', () => {
+  const hex = /#086ca8|#76334f|#cfcfcf|#955101/i;
+
+  const offenders = [...files, ...sharedSources]
+    .filter(({ file }) => file !== 'shared/src/styles/chart.css')
+    .filter(({ source }) => hex.test(source));
+
+  expect(offenders.map(({ file }) => file)).toEqual([]);
+});

@@ -4,6 +4,7 @@ import { airportByCode } from '../directory';
 import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore, ShownArea } from '../store';
 import { createCardSync } from './card-sync';
+import { createAirportLayer } from './chart/airport-layer';
 import { createFollowController } from './follow';
 import { createMotionLoop } from './motion-loop';
 import { markerClassName, planeIconHtml, updatePlane } from './plane-marker';
@@ -14,6 +15,12 @@ import { createViewController } from './view-controller';
 const LOW_ZOOM = 6;
 /** Metres in a nautical mile, for Leaflet's circle radius. */
 const METRES_PER_NM = 1852;
+/** The chart overlay panes and their z-index, bottom to top. */
+const CHART_PANES = [
+  ['atc-airspace', 410],
+  ['atc-diagram', 420],
+  ['atc-airports', 430],
+] as const;
 
 /** A mounted map. */
 export interface AirspaceMapHandle {
@@ -37,6 +44,9 @@ export interface AirspaceMapHandle {
  * - `view-controller.ts`: the map moves only for view requests in the store
  *   (see `requestArea`). The newest request wins; follow mode wins over all
  *   of them; a user drag or zoom cancels one still waiting.
+ * - `chart/`: FAA sectional airport symbols and data blocks in their own
+ *   panes below the planes, redrawn only when the chart, the layers or the
+ *   surfaces change, or the view settles.
  *
  * Planes are not keyboard-focusable (`keyboard: false`): every map action is
  * also available from the chat, which is the accessible path.
@@ -81,6 +91,11 @@ export async function createAirspaceMap(options: {
     attribution: TILE_LAYER.attribution,
     maxZoom: TILE_LAYER.maxZoom,
   }).addTo(map);
+  // Chart panes sit above the tiles and below the planes (markerPane is 600).
+  for (const [name, zIndex] of CHART_PANES) {
+    map.createPane(name).style.zIndex = String(zIndex);
+  }
+  const airports = createAirportLayer({ L, map, store, pane: 'atc-airports' });
 
   const markers = new Map<string, Marker>();
   let zooming = false;
@@ -128,7 +143,9 @@ export async function createAirspaceMap(options: {
     markZoom();
     cards.sync(store.getState());
     follow.panToFollowed(true);
+    airports.redraw();
   });
+  map.on('moveend', () => airports.redraw());
   map.on('move', () => cards.sync(store.getState()));
   map.on('click', () => {
     if (store.getState().selectedHex !== null) {
@@ -215,6 +232,7 @@ export async function createAirspaceMap(options: {
         markers.set(aircraft.hex, marker);
       }
     }
+    airports.sync(state);
     cards.sync(state);
     follow.syncPill();
     syncOutline(state.shownArea);
@@ -270,6 +288,7 @@ export async function createAirspaceMap(options: {
       cards.destroy();
       follow.destroy();
       motion.destroy();
+      airports.destroy();
       map.remove();
     },
   };
