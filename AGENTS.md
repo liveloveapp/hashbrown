@@ -133,7 +133,10 @@ that protects the published packages, not examples.
   - `npx nx serve atc-react`
 - `atc-e2e`
   - `npx nx e2e atc-e2e`
+  - `npx nx test atc-e2e` (the demo video recorder's unit tests)
   - `npx nx lint atc-e2e`
+  - `npx nx demo atc-e2e` (records the demo video and home page loop; needs ffmpeg)
+  - `npx nx demo-publish atc-e2e` (posters and Blob URLs into www; `-- --upload` puts the videos)
 
 - `conformance` (`tools/conformance`; no model key needed)
   - `npx nx build conformance`

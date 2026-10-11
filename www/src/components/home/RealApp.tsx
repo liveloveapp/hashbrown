@@ -1,7 +1,8 @@
+import { AtcLoop } from './AtcLoop';
 import { ATC_LINKS } from './home.content';
 import styles from './RealApp.module.css';
 
-/** The atc example showcase: what it shows, links, and a screenshot. */
+/** The atc example showcase: what it shows, links, and the app in motion. */
 export function RealApp() {
   const links = ATC_LINKS;
 
@@ -54,15 +55,12 @@ export function RealApp() {
           target="_blank"
           rel="noopener"
         >
-          {/* Two images rather than <picture>, so each crop has its own alt text.
-              The hidden one is display: none, so lazy loading skips it. */}
-          <img
+          {/* A loop on wide screens and a screenshot on phones, each with its
+              own description. The hidden one is display: none, so neither
+              loads where it is not shown. */}
+          <AtcLoop
             className={styles.desktop}
-            src="/image/landing-page/atc.webp"
-            alt="The atc example answering what is landing at Seattle with a flight card and an arrivals board, beside a map of the Seattle area that highlights the arriving plane"
-            loading="lazy"
-            width={1440}
-            height={900}
+            label="The atc example answering what is landing at Seattle: the question is typed, an arrivals board streams into the chat, and the map zooms to Seattle and highlights the three arriving planes"
           />
           <img
             className={styles.phone}
