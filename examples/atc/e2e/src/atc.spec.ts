@@ -6,7 +6,15 @@ import { once } from 'node:events';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
-import { frame, NEAR_BEND, scenario, SYNTHETIC_HEXES, ui } from './fixtures';
+import {
+  CHART_AIRPORTS,
+  chartSurfaces,
+  frame,
+  NEAR_BEND,
+  scenario,
+  SYNTHETIC_HEXES,
+  ui,
+} from './fixtures';
 
 const dist = resolve(__dirname, '../../../../dist/examples/atc');
 const { selected, highest, fastest, arrivals, nearby } = scenario;
@@ -147,6 +155,40 @@ test.beforeAll(async () => {
       },
     ],
   });
+  const airportCard = ui({
+    AirportCard: {
+      props: { note: 'Redmond has a part-time tower.', airport: 'KRDM' },
+    },
+  });
+  for (const id of ['airport-lookup', 'airport-show']) {
+    mock.onToolResult(id, async () => ({ content: airportCard }));
+  }
+  mock.onMessage(STARTER_PROMPTS[4], {
+    toolCalls: [
+      {
+        id: 'airport-lookup',
+        name: 'lookupPlace',
+        arguments: { query: 'Redmond' },
+      },
+      {
+        id: 'airport-show',
+        name: 'showAirport',
+        arguments: { airport: 'KRDM' },
+      },
+    ],
+  });
+  mock.onToolResult('hide-airports', async () => ({
+    content: 'Airports are hidden.',
+  }));
+  mock.onMessage('Hide the airports.', {
+    toolCalls: [
+      {
+        id: 'hide-airports',
+        name: 'setLayers',
+        arguments: { airports: false },
+      },
+    ],
+  });
   await mock.start();
   server = createApp({
     run: {
@@ -177,6 +219,16 @@ async function open(page: Page, framework: string): Promise<void> {
   );
   await page.route('https://vrs-standing-data.adsb.lol/**', (route) =>
     route.fulfill({ status: 404, body: '' }),
+  );
+  await page.route('**/api/chart/airports', (route) =>
+    route.fulfill({ json: CHART_AIRPORTS }),
+  );
+  await page.route('**/api/chart/surfaces**', (route) =>
+    route.fulfill({
+      json: chartSurfaces(
+        new URL(route.request().url()).searchParams.get('airport') ?? '',
+      ),
+    }),
   );
   let next = 0;
   await page.route('**/api/aircraft**', (route) =>
@@ -455,4 +507,54 @@ test('recovers from a failed send with Retry', async ({ page }, testInfo) => {
     highest.label,
   );
   await expect(alert).toHaveCount(0);
+});
+
+test('shows Redmond airport as a diagram with its card', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+
+  await page.getByRole('button', { name: STARTER_PROMPTS[4] }).click();
+
+  const card = page.getByTestId('airport-card');
+  await expect(card).toContainText('ROBERTS FLD/REDMOND MUNI (RDM)');
+  await expect(card).toContainText('124.5★');
+  await expect(card.locator('.atc-airport-badge')).toHaveText('Towered');
+  await expect(
+    page.locator('.atc-diagram-label.is-runway > span').first(),
+  ).toBeVisible();
+  await expect(page.getByTestId('tool-summary')).toHaveText(
+    'Looked up Redmond, showed KRDM',
+  );
+});
+
+test('the airports layer can be hidden by the assistant', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+  await expect(page.locator('.atc-apt').first()).toBeAttached();
+  await expect(page.locator('.atc-apt.is-fallback')).toHaveCount(0);
+
+  await page
+    .getByRole('textbox', { name: 'Message' })
+    .fill('Hide the airports.');
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  await expect(page.locator('.atc-apt')).toHaveCount(0);
+});
+
+test('the Layers control works from the keyboard', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+  const toggle = page.getByRole('button', { name: 'Layers' });
+
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('checkbox', { name: 'Airports' }).press('Space');
+  await page.keyboard.press('Escape');
+
+  await expect(page.locator('.atc-apt')).toHaveCount(0);
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 });
