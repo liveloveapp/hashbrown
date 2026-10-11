@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { AIRPORTS, type Area, AREAS } from '../places';
 import { createAtcStore } from '../store';
@@ -33,10 +33,17 @@ const planes: Aircraft[] = [
   { ...base, hex: 'cccccc', callsign: 'DAL3', lat: 45.6, lon: -122.6 },
 ];
 
+/** Animation frames the map has asked for, run by {@link settle}. */
+const frames = new Map<number, FrameRequestCallback>();
+let nextFrame = 1;
+
 /**
- * Mounts a 400x300 map with reduced motion. With `sheetTop`, the map sits in
+ * Mounts a 400x300 map with reduced motion and animation frames that only
+ * run when a test calls {@link settle}. With `sheetTop`, the map sits in
  * a workbench whose chat panel covers the map from that y down, like the
- * phone bottom sheet. `media` lists further media queries that match.
+ * phone bottom sheet. `media` lists further media queries that match. The
+ * map is destroyed and the page restored when the test finishes, even if it
+ * fails.
  */
 async function mount(
   sheetTop?: number,
@@ -47,6 +54,12 @@ async function mount(
     matches:
       query === '(prefers-reduced-motion: reduce)' || media.includes(query),
   }));
+  frames.clear();
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.set(nextFrame, callback);
+    return nextFrame++;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
   const store = createAtcStore();
   const workbench = document.createElement('main');
   workbench.className = 'atc-workbench';
@@ -84,23 +97,47 @@ async function mount(
     };
   };
 
+  let destroyed = false;
+  const destroy = () => {
+    if (!destroyed) {
+      destroyed = true;
+      handle.destroy();
+    }
+  };
+  onTestFinished(() => {
+    destroy();
+    workbench.remove();
+    frames.clear();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
   return {
     store,
     pixel,
     element,
     /** Destroys the map but leaves its container in the page. */
-    destroy: () => handle.destroy(),
-    cleanup: () => {
-      handle.destroy();
-      workbench.remove();
-      vi.unstubAllGlobals();
-      vi.restoreAllMocks();
-    },
+    destroy,
   };
 }
 
-/** Waits out the map's two-frame wait for the sheet to settle. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 80));
+/**
+ * Runs the map's pending animation frames, and any they ask for, a few
+ * rounds deep, letting promises settle between rounds. This covers the
+ * map's two-frame wait for the sheet without depending on the clock, so it
+ * holds under load.
+ */
+async function settle(rounds = 4) {
+  for (let round = 0; round < rounds; round++) {
+    const pending = [...frames.values()];
+    frames.clear();
+    for (const callback of pending) {
+      callback(performance.now());
+    }
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
 
 test('revealing a plane picked in the chat centres it', async () => {
   const map = await mount();
@@ -112,7 +149,6 @@ test('revealing a plane picked in the chat centres it', async () => {
   const { x, y } = map.pixel('cccccc');
   expect(Math.hypot(x - 200, y - 150)).toBeLessThan(2);
   expect(map.store.getState().selectedHex).toBe('cccccc');
-  map.cleanup();
 });
 
 test('a revealed plane lands in the middle of the map left above the sheet', async () => {
@@ -124,7 +160,6 @@ test('a revealed plane lands in the middle of the map left above the sheet', asy
 
   const { x, y } = map.pixel('cccccc');
   expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('a highlight fit keeps every plane above the sheet', async () => {
@@ -137,7 +172,6 @@ test('a highlight fit keeps every plane above the sheet', async () => {
   const ys = ['aaaaaa', 'bbbbbb', 'cccccc'].map((hex) => map.pixel(hex).y);
   expect(Math.max(...ys)).toBeLessThan(180);
   expect(Math.min(...ys)).toBeGreaterThan(0);
-  map.cleanup();
 });
 
 test('a revealed plane lands between a docked detail card and the sheet', async () => {
@@ -156,7 +190,6 @@ test('a revealed plane lands between a docked detail card and the sheet', async 
   // The card covers 8 + 60 + 8 px at the top; the sheet starts at 180.
   const { x, y } = map.pixel('dddddd');
   expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('the map opens on its home view, centred in the map left above the sheet', async () => {
@@ -170,7 +203,6 @@ test('the map opens on its home view, centred in the map left above the sheet', 
 
   const { x, y } = map.pixel('aaaaaa');
   expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('resetting on a phone returns to the home view above the sheet', async () => {
@@ -188,12 +220,11 @@ test('resetting on a phone returns to the home view above the sheet', async () =
 
   const { x, y } = map.pixel('aaaaaa');
   expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
-  map.cleanup();
 });
 
 /**
  * Gives every detail card (and the hidden copy it measures) a height, as
- * layout would; jsdom has none. Restored by `cleanup`.
+ * layout would; jsdom has none. Restored when the test finishes.
  */
 function cardHeight(height: number) {
   vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(
@@ -225,7 +256,6 @@ test('a plane revealed from off screen lands between the card it docks and the s
   // The card will cover 8 + 100 + 8 px at the top; the sheet starts at 180.
   const { x, y } = map.pixel('cccccc');
   expect(Math.hypot(x - 200, y - (116 + 180) / 2)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('a highlight fit keeps every plane between a docked card and the sheet', async () => {
@@ -240,7 +270,6 @@ test('a highlight fit keeps every plane between a docked card and the sheet', as
   const ys = ['dddddd', 'aaaaaa', 'bbbbbb'].map((hex) => map.pixel(hex).y);
   expect(Math.min(...ys)).toBeGreaterThan(76);
   expect(Math.max(...ys)).toBeLessThan(180);
-  map.cleanup();
 });
 
 test('highlighting one plane centres it between a docked card and the sheet', async () => {
@@ -254,7 +283,6 @@ test('highlighting one plane centres it between a docked card and the sheet', as
 
   const { x, y } = map.pixel('dddddd');
   expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('a followed plane stays mid-way down the map left above the sheet', async () => {
@@ -265,7 +293,6 @@ test('a followed plane stays mid-way down the map left above the sheet', async (
 
   const { x, y } = map.pixel('cccccc');
   expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('a followed plane stays between its docked card and the sheet', async () => {
@@ -278,7 +305,6 @@ test('a followed plane stays between its docked card and the sheet', async () =>
 
   const { x, y } = map.pixel('dddddd');
   expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('showing an area centres it between a docked card and the sheet', async () => {
@@ -292,7 +318,6 @@ test('showing an area centres it between a docked card and the sheet', async () 
 
   const { x, y } = map.pixel('eeeeee');
   expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('showing an airport centres it between a docked card and the sheet', async () => {
@@ -306,7 +331,6 @@ test('showing an airport centres it between a docked card and the sheet', async 
 
   const { x, y } = map.pixel('eeeeee');
   expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('a plane revealed from off screen has its summary written as its card opens, so it is announced', async () => {
@@ -351,7 +375,6 @@ test('a plane revealed from off screen has its summary written as its card opens
   expect(lastWrite).toBeGreaterThanOrEqual(0);
   expect(events.slice(lastWrite + 1, lastOpen)).not.toContain('close');
   expect(events.slice(lastWrite + 1, lastOpen)).not.toContain('open');
-  map.cleanup();
 });
 
 test('a plane tapped earlier (a sticky hover on phones) does not stop a reveal leaving room for the docked card', async () => {
@@ -368,7 +391,6 @@ test('a plane tapped earlier (a sticky hover on phones) does not stop a reveal l
 
   const { x, y } = map.pixel('cccccc');
   expect(Math.hypot(x - 200, y - (116 + 180) / 2)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('on a touch screen a tap does not leave a sticky hover: a plane picked in the chat gets the card', async () => {
@@ -388,7 +410,6 @@ test('on a touch screen a tap does not leave a sticky hover: a plane picked in t
   ].at(-1);
   expect(card?.getAttribute('data-hex')).toBe('cccccc');
   expect(card?.classList.contains('is-docked')).toBe(true);
-  map.cleanup();
 });
 
 test('destroying the map removes the detail card and its hidden measuring copy', async () => {
@@ -403,7 +424,4 @@ test('destroying the map removes the detail card and its hidden measuring copy',
 
   expect(before).toBe(2);
   expect(map.element.querySelectorAll('.atc-detail')).toHaveLength(0);
-  map.element.closest('main')?.remove();
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
 });
