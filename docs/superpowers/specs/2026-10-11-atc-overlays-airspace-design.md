@@ -314,6 +314,9 @@ All new tools are added to `ATC_TOOL_DEFINITIONS`, and the server pins them.
   - Like `near`, it also highlights that airport's airspace and requests the
     `'airspace'` view.
   - Rows are measured from that airport.
+  - When the airport has no shelf of that class (or none at all when `class`
+    is null), it returns `{ found: false, reason }`, for example
+    `KRDM has no Class C airspace.`, and highlights nothing.
 - **`setLayers`** gains `airspace: boolean | null`.
 - **`clearHighlight`**, **`resetMap`**, **`showArea`** and **`showAirport`**
   also clear `highlightedAirspace`; **`highlightAircraft`** with an empty list

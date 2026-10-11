@@ -1043,6 +1043,38 @@ test('findAircraft with inAirspace refuses while airspace is unavailable', async
   });
 });
 
+test('findAircraft with inAirspace refuses a class the airport does not have', async () => {
+  const store = airspaceStore([...pdxShelves, rdmShelf]);
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.findAircraft.handler({
+    ...any,
+    inAirspace: { airport: 'Redmond', class: 'C' },
+  });
+
+  expect(result).toEqual({
+    found: false,
+    reason: 'KRDM has no Class C airspace.',
+  });
+  expect(store.getState().highlightedAirspace).toBeNull();
+});
+
+test('findAircraft with inAirspace refuses an airport with no airspace', async () => {
+  const store = airspaceStore([...pdxShelves, rdmShelf]);
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.findAircraft.handler({
+    ...any,
+    inAirspace: { airport: 'KBDN', class: null },
+  });
+
+  expect(result).toEqual({
+    found: false,
+    reason: 'KBDN has no Class B, C, D or E surface airspace.',
+  });
+  expect(store.getState().highlightedAirspace).toBeNull();
+});
+
 test('airspaceAt names the airspace around an aircraft on the ground at KRDM', async () => {
   const store = airspaceStore([...pdxShelves, rdmShelf]);
   store.applySnapshot({

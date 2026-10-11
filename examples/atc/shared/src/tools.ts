@@ -146,6 +146,13 @@ function followingReason(label: string): string {
 
 const AIRSPACE_UNAVAILABLE = 'Airspace data is unavailable right now.';
 
+/** Why an airport has no airspace to show or search, of one class or any. */
+function noAirspaceReason(code: string, cls: string | null): string {
+  return cls === null
+    ? `${code} has no Class B, C, D or E surface airspace.`
+    : `${code} has no Class ${cls} airspace.`;
+}
+
 /** Feet as the model reads them: "SFC" for the surface, else "4,000 MSL". */
 function shelfFeet(ft: number, sfc: boolean): string {
   return sfc ? 'SFC' : `${ft.toLocaleString('en-US')} MSL`;
@@ -324,6 +331,17 @@ export function createAtcTools(context: AtcToolContext) {
           if (store.getState().airspace.status !== 'ready') {
             return { found: false as const, reason: AIRSPACE_UNAVAILABLE };
           }
+          const cls = input.inAirspace.class;
+          const shelves = airspaceOf(
+            store.getState().airspace.shelves,
+            centre.code,
+          ).filter((shelf) => cls === null || shelf.class === cls);
+          if (shelves.length === 0) {
+            return {
+              found: false as const,
+              reason: noAirspaceReason(centre.code, cls),
+            };
+          }
           store.showAirspace(centre.code);
         }
         if (input.near) {
@@ -477,7 +495,7 @@ export function createAtcTools(context: AtcToolContext) {
         if (shelves.length === 0) {
           return {
             shown: false as const,
-            reason: `${found.code} has no Class B, C, D or E surface airspace.`,
+            reason: noAirspaceReason(found.code, null),
           };
         }
         store.showAirspace(found.code);
