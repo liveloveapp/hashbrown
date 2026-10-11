@@ -58,6 +58,11 @@ import { CardSkeleton } from './card-skeleton';
             Elevation {{ card.elevation }}
           </p>
         }
+        @if (card.airspace) {
+          <p class="atc-airport-airspace atc-mono">
+            Airspace: {{ card.airspace }}
+          </p>
+        }
         <ul class="atc-airport-runways atc-mono">
           @for (runway of card.runways; track runway) {
             <li>{{ runway }}</li>

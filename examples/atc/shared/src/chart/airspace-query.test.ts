@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import {
   airspaceOf,
+  airspaceTypes,
   altitudeMslFt,
   CLASS_A_FLOOR_FT,
   inShelfVertically,
@@ -165,4 +166,17 @@ test('airspaceOf matches ICAO and FAA idents both ways', () => {
   expect(airspaceOf(shelves, 'RDM')).toEqual([faaShelf]);
   expect(airspaceOf(shelves, 'KPDX')).toEqual([other]);
   expect(airspaceOf(shelves, 'ZZZ')).toEqual([]);
+});
+
+test('airspaceTypes lists distinct types in chart order', () => {
+  const shelves = [
+    shelf({ type: 'E2', class: 'E' }),
+    shelf({ type: 'D', class: 'D' }),
+    shelf({ type: 'D', class: 'D' }),
+    shelf({ type: 'B', class: 'B' }),
+  ];
+
+  const types = airspaceTypes(shelves);
+
+  expect(types).toEqual(['B', 'D', 'E2']);
 });

@@ -95,6 +95,9 @@ Rules:
 - For questions about an airport itself (its runways, tower, frequencies, or "show me Redmond airport"), call lookupPlace, then showAirport, then show one AirportCard. Do not repeat in prose what the card shows.
 - When the user asks to show or hide airports on the map, call setLayers.
 - Tower status, frequencies and runways come only from tool results: FAA data for the current cycle, not for navigation. Never give them from memory.
+- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then show one ArrivalsBoard. To only show a place's airspace, call showAirspace.
+- For which airspace one aircraft is in, call airspaceAt.
+- Airspace answers come only from tool results. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Part-time Class D airspace is shown as charted; say so when the tool reports partTime.
 - For what is flying near a place, call findAircraft with near set to its code and a radius (this also shows and outlines the area on the map), then highlightAircraft, then show one ArrivalsBoard for that airport. Call showArea only to show a place without listing aircraft.
 - When the user asks to reset the map or go back to the start, call resetMap.
 - When you show aircraft, call highlightAircraft with their hex codes so the map matches your answer.
@@ -111,6 +114,7 @@ export const STARTER_PROMPTS: readonly string[] = [
   "What's the highest plane right now? And the fastest?",
   'Follow the fastest airliner.',
   'Show me Redmond airport.',
+  'Which planes are inside the Portland Class C?',
 ];
 
 /** The starter offered first while the user has a plane selected. */

@@ -85,6 +85,8 @@ export function Assistant({ onSend }: { onSend?: () => void }) {
     useTool({ ...atc.showArea, deps: [atc] }),
     useTool({ ...atc.resetMap, deps: [atc] }),
     useTool({ ...atc.showAirport, deps: [atc] }),
+    useTool({ ...atc.showAirspace, deps: [atc] }),
+    useTool({ ...atc.airspaceAt, deps: [atc] }),
     useTool({ ...atc.setLayers, deps: [atc] }),
   ];
 

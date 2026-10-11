@@ -1,6 +1,6 @@
 import type { Aircraft } from '../aircraft';
 import type { LatLon } from '../places';
-import type { AirspaceShelf } from './types';
+import type { AirspaceShelf, AirspaceType } from './types';
 
 /** Class A begins here; a shelf with no ceiling stops below it. */
 export const CLASS_A_FLOOR_FT = 18000;
@@ -103,5 +103,16 @@ export function airspaceOf(
   return shelves.filter(
     (shelf) =>
       shelf.airport === code || (faa !== null && shelf.airport === faa),
+  );
+}
+
+const TYPE_ORDER: readonly AirspaceType[] = ['B', 'C', 'D', 'E2', 'E3', 'E4'];
+
+/** The distinct shelf types in `shelves`, ordered B, C, D, E2, E3, E4. */
+export function airspaceTypes(
+  shelves: readonly AirspaceShelf[],
+): AirspaceType[] {
+  return TYPE_ORDER.filter((type) =>
+    shelves.some((shelf) => shelf.type === type),
   );
 }

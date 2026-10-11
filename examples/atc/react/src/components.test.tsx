@@ -352,6 +352,41 @@ test('an airport card shows the title, badge, tower frequency and runway', () =>
   );
 });
 
+test('an airport card shows its airspace line only when it has airspace', () => {
+  const store = setup();
+  store.setChart({ cycle: '2610', effective: '2026-10-01', airports: [krdm] });
+  const { container } = render(
+    <AtcStoreProvider store={store}>
+      <AirportCard note="x" airport="KRDM" />
+    </AtcStoreProvider>,
+  );
+  const before = container.querySelector('.atc-airport-airspace');
+
+  act(() =>
+    store.setAirspace({
+      cycle: '2610',
+      effective: '2026-10-08',
+      shelves: [{
+      id: 'KRDM-D-0',
+      airport: 'KRDM',
+      name: 'REDMOND CLASS D',
+      class: 'D' as const,
+      type: 'D' as const,
+      floor: { ft: 0, ref: 'SFC' as const },
+      ceiling: { ft: 6000, exclusive: false },
+      partTime: true,
+      rings: [],
+      bbox: [-121.3, 44.1, -121, 44.4] as const,
+    }],
+    }),
+  );
+
+  expect(before).toBeNull();
+  expect(container.querySelector('.atc-airport-airspace')?.textContent).toBe(
+    'Airspace: Class D (part-time)',
+  );
+});
+
 test('the airport card head shows the airport on the map', () => {
   const store = setup();
   store.setChart({ cycle: '2610', effective: '2026-10-01', airports: [krdm] });
