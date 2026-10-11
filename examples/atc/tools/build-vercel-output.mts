@@ -15,9 +15,11 @@ const sources = {
   angular: resolve(repo, 'dist/examples/atc/angular/browser'),
   react: resolve(repo, 'dist/examples/atc/react'),
 };
-const functions = [
-  { name: 'run', maxDuration: 60 },
-  { name: 'aircraft', maxDuration: 10 },
+const functions: { route: string; entry: string; maxDuration: number }[] = [
+  { route: 'run', entry: 'run', maxDuration: 60 },
+  { route: 'aircraft', entry: 'aircraft', maxDuration: 10 },
+  { route: 'chart/airports', entry: 'chart-airports', maxDuration: 30 },
+  { route: 'chart/surfaces', entry: 'chart-surfaces', maxDuration: 20 },
 ];
 
 rmSync(output, { recursive: true, force: true });
@@ -26,8 +28,8 @@ for (const app of HOSTED_APPS) {
   cpSync(sources[app], resolve(output, `static/${app}`), { recursive: true });
 }
 
-for (const { name, maxDuration } of functions) {
-  const dir = resolve(output, `functions/api/${name}.func`);
+for (const { route, entry, maxDuration } of functions) {
+  const dir = resolve(output, `functions/api/${route}.func`);
   await build({
     configFile: false,
     root: repo,
@@ -37,7 +39,7 @@ for (const { name, maxDuration } of functions) {
     resolve: { tsconfigPaths: true },
     ssr: { noExternal: true, target: 'node' },
     build: {
-      ssr: resolve(root, `server/src/vercel/${name}.ts`),
+      ssr: resolve(root, `server/src/vercel/${entry}.ts`),
       outDir: dir,
       emptyOutDir: true,
       minify: false,

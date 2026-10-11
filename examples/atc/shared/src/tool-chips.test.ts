@@ -216,6 +216,30 @@ test('labelForHex names live planes by label and others not at all', () => {
   expect([labelFor('A1B2C3'), labelFor('ffffff')]).toEqual(['UAL1802', null]);
 });
 
+test('the airport tools have running and done labels', () => {
+  const running = [
+    toolCallLabel('showAirport', { airport: 'krdm' }),
+    toolCallLabel('showAirport', {}),
+    toolCallLabel('setLayers', { airports: false }),
+  ];
+  const finished = toolRunView(
+    [
+      done('showAirport', { airport: 'krdm' }),
+      done('setLayers', { airports: false }),
+    ],
+    false,
+  ).summary;
+  const anonymous = toolRunView([done('showAirport')], false).summary;
+
+  expect(running).toEqual([
+    'Showing KRDM',
+    'Showing an airport',
+    'Changing map layers',
+  ]);
+  expect(finished).toBe('Showed KRDM, changed map layers');
+  expect(anonymous).toBe('Showed an airport');
+});
+
 test('toolRunView names the current step and counts the steps for the summary', () => {
   const running: ToolCallLike = {
     name: 'findAircraft',

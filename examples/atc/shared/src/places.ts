@@ -51,13 +51,13 @@ export const AIRPORT_CODES = [
   'KMYL',
 ] as const;
 
-/** An ICAO code from the airport table, such as KBDN. */
-export type AirportCode = (typeof AIRPORT_CODES)[number];
+/** An airport code such as KBDN. Any FAA chart airport is allowed, so this is a plain string. */
+export type AirportCode = string;
 
 /** An airport with its reference point. */
 export interface Airport extends LatLon {
   /** ICAO code, such as KBDN. */
-  readonly code: AirportCode;
+  readonly code: string;
   /**
    * FAA location identifier, such as BDN: the ICAO code without its K. For
    * airline airports it is also the IATA code; for others it may not be.
@@ -72,7 +72,7 @@ export interface Airport extends LatLon {
 }
 
 function airport(
-  code: AirportCode,
+  code: (typeof AIRPORT_CODES)[number],
   name: string,
   city: string,
   state: string,
@@ -83,7 +83,8 @@ function airport(
   return { code, faa: code.slice(1), name, city, state, lat, lon, aliases };
 }
 
-const TABLE: readonly Airport[] = [
+/** The 40-airport fallback table, used until the FAA chart loads. */
+export const FALLBACK_AIRPORTS: readonly Airport[] = [
   airport('KBDN', 'Bend Municipal', 'Bend', 'OR', 44.0946, -121.2002),
   airport('KRDM', 'Roberts Field', 'Redmond', 'OR', 44.2541, -121.15, [
     'Redmond Municipal',
@@ -240,15 +241,14 @@ const TABLE: readonly Airport[] = [
   airport('KMYL', 'McCall Municipal', 'McCall', 'ID', 44.8897, -116.101),
 ];
 
-/** Pacific Northwest airport reference points, keyed by ICAO code. */
+/**
+ * Pacific Northwest fallback airport reference points, keyed by ICAO code.
+ * The keys stay literal so `AIRPORTS.KSEA` type-checks; the type is still
+ * assignable to `Record<string, Airport>`.
+ */
 export const AIRPORTS = Object.fromEntries(
-  TABLE.map((entry) => [entry.code, entry]),
-) as Readonly<Record<AirportCode, Airport>>;
-
-/** Returns true when `value` is an ICAO code from the airport table. */
-export function isAirportCode(value: string): value is AirportCode {
-  return Object.hasOwn(AIRPORTS, value);
-}
+  FALLBACK_AIRPORTS.map((entry) => [entry.code, entry]),
+) as Readonly<Record<(typeof AIRPORT_CODES)[number], Airport>>;
 
 /** Words that do not tell airports apart, dropped before matching. */
 const FILLER = new Set([
@@ -277,18 +277,21 @@ function words(text: string): string {
 }
 
 /**
- * Resolves a place the user named to an airport in the table: an ICAO or
+ * Resolves a place the user named to an airport in `directory`: an ICAO or
  * FAA code (the IATA code at airline airports), an airport name or alias, or a city, ignoring case,
  * punctuation and words such as "airport" or "Oregon". Exact matches win;
  * otherwise a name or city that starts with the query (three letters or
  * more). Returns null for places outside the table, such as Tokyo or KJFK.
  */
-export function lookupPlace(query: string): Airport | null {
+export function lookupPlace(
+  query: string,
+  directory: readonly Airport[] = FALLBACK_AIRPORTS,
+): Airport | null {
   const wanted = words(query);
   if (wanted === '') {
     return null;
   }
-  const exact = TABLE.find((entry) =>
+  const exact = directory.find((entry) =>
     [entry.code, entry.faa, entry.name, entry.city, ...entry.aliases].some(
       (candidate) => words(candidate) === wanted,
     ),
@@ -298,7 +301,7 @@ export function lookupPlace(query: string): Airport | null {
   }
 
   return (
-    TABLE.find((entry) =>
+    directory.find((entry) =>
       [entry.name, entry.city, ...entry.aliases].some((candidate) =>
         words(candidate).startsWith(wanted),
       ),

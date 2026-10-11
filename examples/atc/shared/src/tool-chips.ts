@@ -185,6 +185,12 @@ const RUNNING: Record<
       ? `Showing ${airport}`
       : `Showing ${radius} around ${airport}`;
   },
+  showAirport: (args) => {
+    const airport = code(args['airport']);
+
+    return airport === null ? 'Showing an airport' : `Showing ${airport}`;
+  },
+  setLayers: () => 'Changing map layers',
   resetMap: () => 'Returning to central Oregon',
 };
 
@@ -274,6 +280,12 @@ const DONE: Record<
 
     return airport === null ? 'showed an area' : `showed ${airport}`;
   },
+  showAirport: (calls) => {
+    const airport = code(calls.at(-1)?.['airport']);
+
+    return airport === null ? 'showed an airport' : `showed ${airport}`;
+  },
+  setLayers: () => 'changed map layers',
   resetMap: () => 'returned to central Oregon',
 };
 
