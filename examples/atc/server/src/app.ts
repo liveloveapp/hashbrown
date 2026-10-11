@@ -2,6 +2,7 @@ import express, { type Express } from 'express';
 import { join } from 'node:path';
 import { createAircraftHandler } from './aircraft-handler';
 import { createChartAirportsHandler } from './chart-airports-handler';
+import { createChartSurfacesHandler } from './chart-surfaces-handler';
 import { createRunHandler, type RunHandlerOptions } from './run-handler';
 
 /**
@@ -29,6 +30,11 @@ export function createApp(options: {
   app.all(
     '/api/chart/airports',
     (req, res) => void chartAirports(req, res).catch(() => res.destroy()),
+  );
+  const chartSurfaces = createChartSurfacesHandler(options.chart);
+  app.all(
+    '/api/chart/surfaces',
+    (req, res) => void chartSurfaces(req, res).catch(() => res.destroy()),
   );
   for (const { path, dir } of options.statics ?? []) {
     app.use(path, express.static(dir));

@@ -19,6 +19,7 @@ const functions: { route: string; entry: string; maxDuration: number }[] = [
   { route: 'run', entry: 'run', maxDuration: 60 },
   { route: 'aircraft', entry: 'aircraft', maxDuration: 10 },
   { route: 'chart/airports', entry: 'chart-airports', maxDuration: 30 },
+  { route: 'chart/surfaces', entry: 'chart-surfaces', maxDuration: 20 },
 ];
 
 rmSync(output, { recursive: true, force: true });

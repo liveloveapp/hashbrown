@@ -1,0 +1,174 @@
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { expect, test, vi } from 'vitest';
+import type { Surfaces } from '@atc/shared';
+import { createChartSurfacesHandler } from './chart-surfaces-handler';
+
+interface Sent {
+  status: number;
+  headers: Record<string, string>;
+  body: Partial<Surfaces> & { error?: string };
+}
+
+/** Calls the handler with a fake request and collects the response. */
+async function call(
+  handler: ReturnType<typeof createChartSurfacesHandler>,
+  query: string,
+): Promise<Sent> {
+  const sent: Partial<Sent> = {};
+  const res = {
+    writeHead(status: number, headers: Record<string, string>) {
+      sent.status = status;
+      sent.headers = headers;
+    },
+    end(body: string) {
+      sent.body = JSON.parse(body);
+    },
+  } as unknown as ServerResponse;
+  const req = {
+    method: 'GET',
+    url: `/api/chart/surfaces?${query}`,
+  } as IncomingMessage;
+
+  await handler(req, res);
+
+  return sent as Sent;
+}
+
+const json = (body: unknown) => new Response(JSON.stringify(body));
+const ring = [
+  [-122.3, 47.4],
+  [-122.29, 47.4],
+  [-122.29, 47.41],
+  [-122.3, 47.4],
+];
+const taxiwayLayer = {
+  features: [
+    {
+      properties: { DESIGNATOR: 'A' },
+      geometry: { type: 'Polygon', coordinates: [ring] },
+    },
+  ],
+};
+const empty = { features: [] };
+const airportHit = (ident: string) => ({
+  features: [
+    {
+      properties: { IDENT: ident },
+      geometry: { type: 'Point', coordinates: [-122.3, 47.4] },
+    },
+  ],
+});
+const overpass = {
+  elements: [
+    {
+      type: 'way',
+      tags: { aeroway: 'taxiway', ref: 'B' },
+      geometry: [
+        { lat: 1, lon: 2 },
+        { lat: 2, lon: 3 },
+      ],
+    },
+  ],
+};
+
+/** Routes by URL like the three upstream services. */
+const upstream = (options: { airport: unknown; taxiways: unknown }) =>
+  vi.fn<typeof fetch>(async (input) => {
+    const url = String(input);
+    if (url.includes('US_Airport')) return json(options.airport);
+    if (url.includes('AM_Taxiway')) return json(options.taxiways);
+    if (url.includes('AM_Apron') || url.includes('AM_Hotspot'))
+      return json(empty);
+    if (url.includes('overpass-api.de')) return json(overpass);
+    throw new Error(`unexpected ${url}`);
+  });
+
+const silenceErrors = () =>
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+const NOW = Date.UTC(2026, 9, 10);
+
+test('KSEA with Airport Mapping data is served from the FAA', async () => {
+  const fetchFn = upstream({
+    airport: airportHit('SEA'),
+    taxiways: taxiwayLayer,
+  });
+  const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
+
+  const response = await call(handler, 'airport=ksea');
+
+  expect(response.status).toBe(200);
+  expect(response.body.source).toBe('faa');
+  expect(response.body.code).toBe('KSEA');
+  expect(response.headers['Cache-Control']).toBe(
+    'public, s-maxage=86400, stale-while-revalidate=604800',
+  );
+  expect(
+    fetchFn.mock.calls.some(([url]) => String(url).includes('overpass')),
+  ).toBe(false);
+});
+
+test('KRDM without Airport Mapping data falls back to OSM once', async () => {
+  const fetchFn = upstream({ airport: airportHit('RDM'), taxiways: empty });
+  const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
+
+  const response = await call(handler, 'airport=KRDM');
+
+  expect(response.status).toBe(200);
+  expect(response.body.source).toBe('osm');
+  expect(
+    fetchFn.mock.calls.filter(([url]) => String(url).includes('overpass')),
+  ).toHaveLength(1);
+});
+
+test('a malformed code returns 400 without calling upstream', async () => {
+  const fetchFn = upstream({ airport: empty, taxiways: empty });
+  const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
+
+  const response = await call(handler, 'airport=K%24X');
+
+  expect(response.status).toBe(400);
+  expect(fetchFn).not.toHaveBeenCalled();
+});
+
+test('an unknown well-formed code returns 400 and is not refetched', async () => {
+  const fetchFn = upstream({ airport: empty, taxiways: empty });
+  const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
+
+  const first = await call(handler, 'airport=ZZZZ');
+  const second = await call(handler, 'airport=ZZZZ');
+
+  expect(first.status).toBe(400);
+  expect(second.status).toBe(400);
+  expect(fetchFn).toHaveBeenCalledTimes(1);
+});
+
+test('upstream down with an empty cache returns 502', async () => {
+  const errors = silenceErrors();
+  const fetchFn = vi.fn<typeof fetch>(
+    async () => new Response('no', { status: 500 }),
+  );
+  const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
+
+  const response = await call(handler, 'airport=KSEA');
+
+  expect(response.status).toBe(502);
+  errors.mockRestore();
+});
+
+test('an ArcGIS error body counts as a failure, not as no data', async () => {
+  const errors = silenceErrors();
+  const fetchFn = upstream({
+    airport: airportHit('SEA'),
+    taxiways: { error: { code: 429, message: 'Too many requests' } },
+  });
+  const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
+
+  const response = await call(handler, 'airport=KSEA');
+
+  expect(response.status).toBe(502);
+  expect(
+    fetchFn.mock.calls.some(([url]) => String(url).includes('overpass')),
+  ).toBe(false);
+  errors.mockRestore();
+});
