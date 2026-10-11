@@ -62,10 +62,12 @@ export function altitudeMslFt(
 
 /**
  * Whether `ft` MSL is within the shelf's floor and ceiling. The floor is
- * inclusive; a null ceiling counts as the Class A floor, exclusive.
+ * inclusive, and a surface floor has no lower bound: GNSS (height above the
+ * ellipsoid) and uncorrected baro altitudes can read below zero near sea
+ * level. A null ceiling counts as the Class A floor, exclusive.
  */
 export function inShelfVertically(shelf: AirspaceShelf, ft: number): boolean {
-  if (ft < shelf.floor.ft) return false;
+  if (shelf.floor.ref !== 'SFC' && ft < shelf.floor.ft) return false;
   if (shelf.ceiling === null) return ft < CLASS_A_FLOOR_FT;
   return shelf.ceiling.exclusive
     ? ft < shelf.ceiling.ft

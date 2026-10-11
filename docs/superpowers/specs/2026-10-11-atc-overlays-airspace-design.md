@@ -264,7 +264,9 @@ A new `shared/src/chart/airspace-query.ts` holds the pure query functions.
 - `shelvesAt(shelves, aircraft): AirspaceShelf[]`. The altitude comes from
   `altitudeMslFt`. A shelf contains the aircraft when all of these hold:
   - the point is laterally inside the shelf;
-  - the altitude is at or above the floor;
+  - the altitude is at or above the floor; a surface (`SFC`) floor has no
+    lower bound, because GNSS and uncorrected baro altitudes can read below
+    zero near sea level;
   - the altitude is below the ceiling (or at it, when the ceiling is not
     exclusive);
   - a `null` ceiling counts as 18,000 ft, exclusive.

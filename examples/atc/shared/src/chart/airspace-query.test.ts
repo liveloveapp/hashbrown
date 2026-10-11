@@ -114,6 +114,20 @@ test('a null ceiling stops at the Class A floor', () => {
   expect(inShelfVertically(open, 18000)).toBe(false);
 });
 
+test('a surface floor has no lower bound, so an airborne aircraft at -40 ft is inside', () => {
+  const surface = shelf({ floor: { ft: 0, ref: 'SFC' } });
+
+  const result = shelvesAt([surface], {
+    lat: 45.5,
+    lon: -121.5,
+    onGround: false,
+    altitudeFt: null,
+    geometricAltitudeFt: -40,
+  });
+
+  expect(result).toEqual([surface]);
+});
+
 test('an aircraft on the ground is inside a surface shelf', () => {
   const surface = shelf({
     type: 'E2',
