@@ -1,5 +1,12 @@
 /* The chat panel: body, empty state, tool calls and the composer. */
+/*
+ * The transcript scrolls the full height under the header; the composer
+ * floats over its bottom on a solid surface, and the body's bottom padding
+ * (the composer's height) lets the last message scroll clear of it.
+ */
 .atc-chat {
+  --atc-composer-height: 68px;
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -10,6 +17,8 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  padding-bottom: var(--atc-composer-height);
+  scroll-padding-bottom: var(--atc-composer-height);
 }
 .atc-chat .atc-transcript {
   overflow: visible;
@@ -58,63 +67,80 @@
 
 .atc-tool-run {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
-/* What the finished calls did, in one quiet line that expands to every step. */
-.atc-tool-summary {
+/*
+ * Tool activity: one quiet line. While a step runs it says what it is doing
+ * beside a small spinner; afterwards it is a button with a check, what the
+ * steps did and how many there were, which expands to every step.
+ */
+.atc-activity {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   max-width: 100%;
+  min-height: 24px;
   margin: 0;
-  padding: 4px 8px 4px 10px;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: var(--atc-canvas);
+  background: none;
   color: var(--atc-muted);
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 18px;
   text-align: left;
-  cursor: pointer;
 }
-.atc-tool-summary:hover {
+.atc-activity-toggle {
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color var(--atc-fast) var(--atc-ease);
+}
+.atc-activity-toggle:hover,
+.atc-activity-toggle[aria-expanded='true'] {
   color: var(--atc-ink);
 }
-.atc-tool-summary-text {
+/* One line: a long summary ends in an ellipsis; the steps list has it all. */
+.atc-activity-text {
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.atc-activity-count {
+  flex: none;
+  margin-left: -6px;
+  color: var(--atc-muted);
+  white-space: pre;
+}
+.atc-activity-icon {
+  flex: none;
+  display: block;
 }
 .atc-tool-chevron {
   flex: none;
   transition: transform var(--atc-fast) var(--atc-ease);
 }
-.atc-tool-summary[aria-expanded='true'] .atc-tool-chevron {
+.atc-activity-toggle[aria-expanded='true'] .atc-tool-chevron {
   transform: rotate(180deg);
 }
 .atc-tool-steps {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  width: 100%;
-  margin: 0;
-  padding: 0 0 0 10px;
+  gap: 2px;
+  margin: 0 0 0 6px;
+  padding: 0 0 0 14px;
+  border-left: 1px solid var(--atc-border);
   list-style: none;
 }
-.atc-tool-steps .atc-tool-chip {
-  background: none;
-  padding: 0;
-}
-.atc-tool-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 100%;
-  background: var(--atc-canvas);
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 12px;
+.atc-tool-step {
+  font-size: 13px;
+  line-height: 20px;
   color: var(--atc-muted);
+}
+.atc-tool-step[data-state='failed'],
+.atc-tool-step[data-state='stopped'] {
+  color: var(--atc-ink);
 }
 .atc-tool-spinner {
   flex: none;
@@ -122,33 +148,59 @@
   height: 10px;
   box-sizing: border-box;
   border-radius: 50%;
-  border: 2px solid var(--atc-border);
-  border-top-color: var(--atc-ink);
+  border: 1.5px solid var(--atc-border);
+  border-top-color: var(--atc-muted);
   animation: atc-spin 0.8s linear infinite;
 }
-.atc-tool-dot {
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--atc-muted);
+/*
+ * The working shimmer: a soft ink highlight sweeping across muted text, the
+ * one gradient the design rules allow (see design-rules.test.ts). Static
+ * muted text under reduced motion (motion.css).
+ */
+.atc-shimmer {
+  color: transparent;
+  background: linear-gradient(
+    90deg,
+    var(--atc-muted) 0%,
+    var(--atc-muted) 40%,
+    var(--atc-ink) 50%,
+    var(--atc-muted) 60%,
+    var(--atc-muted) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: atc-shimmer 1.4s linear infinite;
 }
-.atc-tool-chip[data-state='running'] {
-  color: var(--atc-ink);
-}
-.atc-tool-chip[data-state='failed'] {
-  color: var(--atc-ink);
-}
-/* Touch: a 44px hit area around the 32px pill. */
-@media (pointer: coarse) {
-  .atc-tool-summary {
-    position: relative;
-    min-height: 32px;
+@keyframes atc-shimmer {
+  from {
+    background-position: 100% 0;
   }
-  .atc-tool-summary::after {
+  to {
+    background-position: 0% 0;
+  }
+}
+/* Read by screen readers only: the chat's status region. */
+.atc-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Touch: a 44px hit area around the 24px line. */
+@media (pointer: coarse) {
+  .atc-activity-toggle {
+    position: relative;
+  }
+  .atc-activity-toggle::after {
     content: '';
     position: absolute;
-    inset: -6px 0;
+    inset: -10px 0;
   }
 }
 
@@ -167,21 +219,15 @@
 }
 
 .atc-composer {
-  flex: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 0 16px 12px;
-}
-.atc-footnote {
-  align-self: center;
-  font-size: 12px;
-  color: var(--atc-muted);
-  text-decoration: none;
-}
-.atc-footnote:hover {
-  color: var(--atc-ink);
-  text-decoration: underline;
+  padding: 10px 16px 12px;
+  background: var(--atc-surface);
+  border-top: 1px solid var(--atc-border);
 }
 .atc-composer-pill {
   display: flex;

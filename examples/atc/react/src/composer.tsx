@@ -1,9 +1,9 @@
-import { isTyping, SOURCE_URLS } from '@atc/shared';
+import { isTyping } from '@atc/shared';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 
 /**
- * The message pill and the core-file footnote. `/` focuses the pill from
- * anywhere outside another field.
+ * The message pill, floating over the bottom of the transcript. `/` focuses
+ * the pill from anywhere outside another field.
  */
 export function Composer({
   busy = false,
@@ -76,14 +76,6 @@ export function Composer({
           </svg>
         </button>
       </form>
-      <a
-        className="atc-footnote"
-        href={SOURCE_URLS.react}
-        target="_blank"
-        rel="noreferrer"
-      >
-        View the core file
-      </a>
     </div>
   );
 }

@@ -31,11 +31,12 @@ export interface ShownArea {
 }
 
 /**
- * A pending map move: a highlight fit, an area, a reset to the regional view,
- * bringing one aircraft into view, or showing one airport. Precedence: (1) follow mode always wins
- * and drops requests; (2) the newest request (highest `seq`) wins; (3) a user
- * drag or zoom cancels a pending one; (4) highlight and aircraft requests
- * wait for their markers to be drawn. The map applies each `seq` once.
+ * A pending map move: a highlight fit, an area, a reset to the home view,
+ * bringing one aircraft into view, or showing one airport. Precedence:
+ * (1) follow mode always wins and drops requests; (2) the newest request
+ * (highest `seq`) wins; (3) a user drag or zoom cancels a pending one;
+ * (4) highlight and aircraft requests wait for their markers to be drawn.
+ * The map applies each `seq` once.
  */
 export type ViewRequest =
   | { readonly seq: number; readonly kind: 'highlight' }
@@ -198,7 +199,7 @@ export function requestArea(state: AtcState, area: ShownArea): AtcState {
   return requestView({ ...state, shownArea: area }, { kind: 'area', area });
 }
 
-/** Clears the area outline and asks for the regional view. */
+/** Clears the area outline and asks for the home view (`Area.view`). */
 export function requestReset(state: AtcState): AtcState {
   return requestView({ ...state, shownArea: null }, { kind: 'reset' });
 }
@@ -338,7 +339,7 @@ export interface AtcStore {
   follow(hex: string | null): void;
   /** Outlines an area and fits the map to it ({@link requestArea}). */
   showArea(area: ShownArea): void;
-  /** Returns to the regional view ({@link requestReset}). */
+  /** Returns to the home view ({@link requestReset}). */
   resetView(): void;
   /** Drops a pending map move ({@link cancelViewRequest}). */
   cancelViewRequest(): void;

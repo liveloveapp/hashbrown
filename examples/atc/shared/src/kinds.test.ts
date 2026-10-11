@@ -69,11 +69,77 @@ test('isCategory accepts only A to C followed by 0 to 7', () => {
   ]);
 });
 
-test('every kind has a distinct silhouette path in the 24 by 24 box', () => {
+/** Every vertex of a path made only of absolute `M`, `L` and `Z` commands. */
+function vertices(path: string): [number, number][] {
+  return [...path.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)].map((m) => [
+    Number(m[1]),
+    Number(m[2]),
+  ]);
+}
+
+test('every kind has a distinct silhouette made of straight segments', () => {
   const paths = KINDS.map((kind) => KIND_PATHS[kind]);
 
   expect(new Set(paths).size).toBe(4);
   for (const path of paths) {
-    expect(path).toMatch(/^[AaMmLlHhVvCcSsZz0-9 .,-]+$/);
+    expect(path).toMatch(/^(?:[ML]-?[\d.]+ -?[\d.]+|Z)+$/);
   }
+});
+
+test('every silhouette is mirror-symmetric about the vertical centre line', () => {
+  for (const kind of KINDS) {
+    const points = vertices(KIND_PATHS[kind]);
+    const keys = new Set(points.map(([x, y]) => `${x},${y}`));
+
+    const unmatched = points.filter(([x, y]) => !keys.has(`${24 - x},${y}`));
+
+    expect(unmatched, kind).toEqual([]);
+  }
+});
+
+test('every silhouette sits on a quarter-unit grid inside the 24 by 24 box', () => {
+  for (const kind of KINDS) {
+    const points = vertices(KIND_PATHS[kind]);
+
+    const offGrid = points.filter(
+      ([x, y]) =>
+        !Number.isInteger(x * 4) ||
+        !Number.isInteger(y * 4) ||
+        x < 0 ||
+        x > 24 ||
+        y < 0 ||
+        y > 24,
+    );
+
+    expect(offGrid, kind).toEqual([]);
+  }
+});
+
+test('every silhouette stays inside the keyline; fixed wings span all of it', () => {
+  for (const kind of KINDS) {
+    const points = vertices(KIND_PATHS[kind]);
+    const xs = points.map(([x]) => x);
+    const ys = points.map(([, y]) => y);
+
+    const bounds = [Math.min(...xs, ...ys), Math.max(...xs, ...ys)];
+
+    expect(bounds[0], kind).toBeGreaterThanOrEqual(2);
+    expect(bounds[1], kind).toBeLessThanOrEqual(22);
+    if (kind !== 'rotor') {
+      expect([Math.min(...xs), Math.max(...xs)], kind).toEqual([2, 22]);
+    }
+  }
+});
+
+test('the single-engine prop is a short, thin bar, about a fifth of the wingspan', () => {
+  const prop = vertices(KIND_PATHS.single).filter(([, y]) => y < 3.5);
+  const xs = prop.map(([x]) => x);
+  const ys = prop.map(([, y]) => y);
+
+  const width = Math.max(...xs) - Math.min(...xs);
+  const height = Math.max(...ys) - Math.min(...ys);
+
+  expect(width).toBeGreaterThan(0);
+  expect(width).toBeLessThanOrEqual(4);
+  expect(height).toBeLessThanOrEqual(1);
 });

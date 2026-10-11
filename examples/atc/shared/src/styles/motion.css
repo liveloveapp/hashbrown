@@ -15,3 +15,11 @@
     transition: none !important;
   }
 }
+
+/* The shimmer stands still as plain muted text. */
+@media (prefers-reduced-motion: reduce) {
+  .atc-shimmer {
+    background: none;
+    color: var(--atc-muted);
+  }
+}

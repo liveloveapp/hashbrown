@@ -64,3 +64,23 @@ test('the airport table is keyed by ICAO code and stays near the Pacific Northwe
   }
   expect(AIRPORTS.KBDN).toMatchObject({ lat: 44.0946, lon: -121.2002 });
 });
+
+test('the home view opens on central Oregon while the feed stays 250 nm around KBDN', () => {
+  const { pnw } = AREAS;
+  const towns = [
+    { lat: 44.0582, lon: -121.3153 }, // Bend
+    { lat: 44.2726, lon: -121.1739 }, // Redmond
+    { lat: 44.291, lon: -121.5492 }, // Sisters
+    { lat: 44.3001, lon: -120.8342 }, // Prineville
+  ];
+
+  const offsets = towns.map((town) => distanceNm(town, pnw.view));
+
+  expect(pnw.radiusNm).toBe(250);
+  expect({ lat: pnw.lat, lon: pnw.lon }).toEqual({
+    lat: AIRPORTS.KBDN.lat,
+    lon: AIRPORTS.KBDN.lon,
+  });
+  expect(pnw.view.zoom).toBe(9);
+  expect(Math.max(...offsets)).toBeLessThan(20);
+});

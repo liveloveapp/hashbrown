@@ -1,4 +1,4 @@
-import { isTyping, SOURCE_URLS } from '@atc/shared';
+import { isTyping } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,8 +9,9 @@ import {
 } from '@angular/core';
 
 /**
- * The message pill and the core-file footnote. `/` focuses the pill from
- * anywhere outside another field. The field is uncontrolled (read on submit)
+ * The message pill, floating over the bottom of the transcript. `/` focuses
+ * the pill from anywhere outside another field. The field is uncontrolled
+ * (read on submit)
  * because nothing else needs the draft; React's composer keeps it in state,
  * the idiomatic choice there.
  */
@@ -51,9 +52,6 @@ import {
         </svg>
       </button>
     </form>
-    <a class="atc-footnote" [href]="sourceUrl" target="_blank" rel="noreferrer"
-      >View the core file</a
-    >
   `,
 })
 export class Composer {
@@ -61,7 +59,6 @@ export class Composer {
   readonly busy = input(false);
   /** Emits the trimmed message text. */
   readonly send = output<string>();
-  protected readonly sourceUrl = SOURCE_URLS.angular;
   private readonly field =
     viewChild.required<ElementRef<HTMLInputElement>>('field');
 

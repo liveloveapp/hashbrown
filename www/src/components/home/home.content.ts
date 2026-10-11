@@ -138,15 +138,15 @@ export const STEPS: Record<Sdk, Step[]> = {
   react: [
     {
       ...STEP_COPY[0],
-      code: `exposeComponent(AgingChart, {
-  props: { buckets: s.array(…) },
+      code: `exposeComponent(FlightCard, {
+  props: { hex: s.string(…) },
 })`,
     },
     {
       ...STEP_COPY[1],
       code: `useTool({
-  name: 'getInvoices',
-  handler: () => api.list(),
+  name: 'findAircraft',
+  handler: () => atc.aircraft(),
 })`,
     },
     {
@@ -161,15 +161,15 @@ export const STEPS: Record<Sdk, Step[]> = {
   angular: [
     {
       ...STEP_COPY[0],
-      code: `exposeComponent(AgingChart, {
-  input: { buckets: s.array(…) },
+      code: `exposeComponent(FlightCardComponent, {
+  input: { hex: s.string(…) },
 })`,
     },
     {
       ...STEP_COPY[1],
       code: `createTool({
-  name: 'getInvoices',
-  handler: () => api.list(),
+  name: 'findAircraft',
+  handler: () => atc.aircraft(),
 })`,
     },
     {

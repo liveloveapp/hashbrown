@@ -96,7 +96,7 @@ Rules:
 - When the user asks to show or hide airports on the map, call setLayers.
 - Tower status, frequencies and runways come only from tool results: FAA data for the current cycle, not for navigation. Never give them from memory.
 - For what is flying near a place, call findAircraft with near set to its code and a radius (this also shows and outlines the area on the map), then highlightAircraft, then show one ArrivalsBoard for that airport. Call showArea only to show a place without listing aircraft.
-- When the user asks to zoom out or reset the map, call resetMap.
+- When the user asks to reset the map or go back to the start, call resetMap.
 - When you show aircraft, call highlightAircraft with their hex codes so the map matches your answer.
 - When the user asks to follow an aircraft, call followAircraft, then show its FlightCard.
 - Keep prose to one or two short Markdown sentences. Do not repeat what the components already show: numbers, routes, types or airlines. A FlightCard note adds something the card does not show; never restate its route.
@@ -124,10 +124,6 @@ export function starterPrompts(selected: boolean): readonly string[] {
   return selected ? [SELECTED_PROMPT, ...STARTER_PROMPTS] : STARTER_PROMPTS;
 }
 
-/** Links to each framework's core file. */
-export const SOURCE_URLS = {
-  angular:
-    'https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/angular/src/app/assistant.ts',
-  react:
-    'https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/react/src/assistant.tsx',
-} as const;
+/** The atc example's source on GitHub, linked from the chat header. */
+export const ATC_SOURCE_URL =
+  'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc';

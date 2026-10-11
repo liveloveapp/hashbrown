@@ -96,17 +96,135 @@ export function aircraftKind(aircraft: {
   );
 }
 
+/** A point on the 24 by 24 icon grid, x then y, y pointing down. */
+type Point = readonly [x: number, y: number];
+
+/** Twice the signed area; positive means clockwise on screen (y down). */
+function signedArea(points: readonly Point[]): number {
+  return points.reduce((sum, [x, y], i) => {
+    const [nx, ny] = points[(i + 1) % points.length];
+    return sum + x * ny - nx * y;
+  }, 0);
+}
+
 /**
- * SVG path data (24 by 24 box, nose up, filled with the current colour) for
- * each kind. The jet has swept wings; the twin has straight wings with two
- * engine pods; the single has a straight wing and a nose prop; the rotor has
- * a fuselage with a rotor disc and tail boom.
+ * A closed polygon as absolute path commands, always wound clockwise so
+ * overlapping parts of one silhouette fill as a union (nonzero fill rule).
+ */
+function polygon(points: readonly Point[]): string {
+  const wound = signedArea(points) < 0 ? [...points].reverse() : points;
+  return (
+    wound.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x} ${y}`).join('') + 'Z'
+  );
+}
+
+/** Reflects points across the centre line x = 12. */
+function mirror(points: readonly Point[]): Point[] {
+  return points.map(([x, y]) => [24 - x, y] as const);
+}
+
+/**
+ * A polygon from its right half, traced from a point on the centre line to
+ * another point on the centre line. The left half is its exact mirror, so
+ * the outline is symmetric by construction.
+ */
+function symmetric(rightHalf: readonly Point[]): string {
+  const left = mirror(rightHalf.slice(1, -1)).reverse();
+  return polygon([...rightHalf, ...left]);
+}
+
+/**
+ * Vector silhouettes on a 24 by 24 grid, nose up, filled with the current
+ * colour. Every vertex sits on a quarter-unit grid, every shape is mirror
+ * symmetric about x = 12, and stays inside the 20-unit keyline (x and y 2
+ * to 22). The fixed-wing kinds span the full keyline so they read at the
+ * same size; the rotor disc is about as wide as the fuselage is long. The jet has swept
+ * wings; the twin has straight wings with two engine pods; the single has a
+ * straight wing and a short, thin prop (about a fifth of the span, as on a
+ * Cessna); the rotor has a fuselage, tail boom and crossed rotor blades.
  */
 export const KIND_PATHS: Readonly<Record<AircraftKind, string>> = {
-  jet: 'M12 2l1.6 6.4L21 13v2l-7.3-2.2-.7 5.4 2.5 1.8V21L12 20l-3.5 1v-1l2.5-1.8-.7-5.4L3 15v-2l7.4-4.6z',
-  twin: 'M12 2c.9 0 1.4 1.1 1.4 2.8V9.2H22v2H13.4v5.3l2.4 1.5v2.2L12 19.4 8.2 21.2V19l2.4-1.5v-5.3H2v-2h8.6V4.8C10.6 3.1 11.1 2 12 2zM5.6 6.4c.7 0 1.2.5 1.2 1.2v6.2c0 .7-.5 1.2-1.2 1.2s-1.2-.5-1.2-1.2V7.6c0-.7.5-1.2 1.2-1.2zm12.8 0c.7 0 1.2.5 1.2 1.2v6.2c0 .7-.5 1.2-1.2 1.2s-1.2-.5-1.2-1.2V7.6c0-.7.5-1.2 1.2-1.2z',
+  jet: symmetric([
+    [12, 2],
+    [13, 3.25],
+    [13.5, 5],
+    [13.5, 9],
+    [22, 14],
+    [22, 16],
+    [13.5, 13.5],
+    [13, 18.5],
+    [16, 20.5],
+    [16, 22],
+    [12, 21],
+  ]),
+  twin: symmetric([
+    [12, 2.5],
+    [13, 3.5],
+    [13.5, 5.5],
+    [13.5, 9.5],
+    [16, 9.5],
+    [16, 7],
+    [16.5, 6.5],
+    [17.5, 6.5],
+    [18, 7],
+    [18, 9.5],
+    [22, 10],
+    [22, 12],
+    [18, 12],
+    [18, 13.5],
+    [16, 13.5],
+    [16, 12],
+    [13.5, 12],
+    [13, 18.5],
+    [16.5, 20],
+    [16.5, 21.5],
+    [12, 21],
+  ]),
   single:
-    'M12 4c.9 0 1.4 1 1.4 2.4v3.4H22v2.2h-8.6v5l2.6 1.4V21l-4-.7-4 .7v-1.6l2.6-1.4v-5H2V9.8h8.6V6.4C10.6 5 11.1 4 12 4zM8 2h8v1.5H8z',
+    symmetric([
+      [12, 4],
+      [13, 4.75],
+      [13.5, 6.5],
+      [13.5, 8.5],
+      [22, 8.5],
+      [22, 11],
+      [13.5, 11],
+      [13, 17.5],
+      [15.75, 18.75],
+      [15.75, 20.5],
+      [12, 20],
+    ]) +
+    polygon([
+      [10.25, 2.5],
+      [13.75, 2.5],
+      [13.75, 3.25],
+      [10.25, 3.25],
+    ]),
   rotor:
-    'M12 6.8c1.9 0 3.1 1.4 3.1 3.3v2.6c0 1.6-1 2.8-2.3 3.2l.4 5.1h-2.4l.4-5.1c-1.3-.4-2.3-1.6-2.3-3.2v-2.6c0-1.9 1.2-3.3 3.1-3.3zM3.06 5.75l.88-1.1 17 13.6-.88 1.1zM20.06 4.65l.88 1.1-17 13.6-.88-1.1zM9 21.4h6V22.6H9z',
+    symmetric([
+      [12, 6],
+      [13.75, 6.5],
+      [14.75, 8.25],
+      [14.75, 12.75],
+      [13.75, 14.5],
+      [12.75, 15.25],
+      [12.75, 20.25],
+      [15, 20.25],
+      [15, 21.75],
+      [12, 21.75],
+    ]) +
+    polygon([
+      [5.5, 3],
+      [19.5, 17],
+      [18.5, 18],
+      [4.5, 4],
+    ]) +
+    polygon(
+      mirror([
+        [5.5, 3],
+        [19.5, 17],
+        [18.5, 18],
+        [4.5, 4],
+      ]),
+    ),
 };

@@ -31,3 +31,20 @@
   opacity: 1;
   animation: atc-fade 0.9s var(--atc-ease) infinite alternate;
 }
+
+/*
+ * Streaming text: each new word fades in over 180 ms (Hashbrown's Magic Text
+ * adds segments with stable keys, so earlier words never re-animate). Opacity
+ * only, so nothing shifts; static under reduced motion (motion.css).
+ */
+.atc-prose.hb-magic-text-root .hb-magic-text-segment {
+  animation: atc-segment-in 180ms var(--atc-ease) both;
+}
+@keyframes atc-segment-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

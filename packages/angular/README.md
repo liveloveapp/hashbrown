@@ -35,18 +35,18 @@ Expose your components and give the model tools. The model only renders componen
 
 ```ts
 chat = uiChatResource({
-  system: 'Help users understand invoices.',
+  system: 'Help users understand the air traffic on the map.',
   components: [
-    exposeComponent(InvoiceCard, {
-      description: 'Show one invoice',
-      input: { id: s.string('Invoice id') },
+    exposeComponent(FlightCard, {
+      description: 'Show one aircraft',
+      input: { hex: s.string('Aircraft hex code') },
     }),
   ],
   tools: [
     createTool({
-      name: 'getInvoices',
-      description: 'List the invoices',
-      handler: () => inject(InvoiceApi).list(),
+      name: 'getAircraft',
+      description: 'List the aircraft on the map',
+      handler: () => inject(AircraftApi).list(),
     }),
   ],
 });

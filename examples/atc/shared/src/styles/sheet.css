@@ -18,14 +18,14 @@
   .atc-workbench.is-sheet {
     display: block;
     padding: 0;
-    --atc-peek: calc(208px + env(safe-area-inset-bottom, 0px));
+    --atc-peek: calc(176px + env(safe-area-inset-bottom, 0px));
     --atc-half: max(var(--atc-peek), min(50dvh, 460px));
     /* The sheet's resting height, which the map's controls clear. */
     --atc-sheet: var(--atc-peek);
   }
   /* Before the first message the peek also shows a row of starters. */
   .atc-workbench.is-sheet:has(.atc-empty) {
-    --atc-peek: calc(260px + env(safe-area-inset-bottom, 0px));
+    --atc-peek: calc(236px + env(safe-area-inset-bottom, 0px));
   }
   .atc-workbench.is-sheet:has(.atc-chat-panel[data-snap='half']) {
     --atc-sheet: var(--atc-half);
@@ -95,6 +95,9 @@
     white-space: nowrap;
     scroll-snap-align: start;
   }
+  .atc-workbench.is-sheet .atc-chat {
+    --atc-composer-height: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
   .atc-workbench.is-sheet .atc-composer {
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
@@ -157,14 +160,10 @@
   .atc-composer-pill input {
     min-height: 44px;
   }
-  .atc-credit,
-  .atc-footnote {
+  .atc-credit {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
-  }
-  .atc-footnote {
-    margin-block: -12px;
   }
   .atc-panel-header {
     height: 48px;
@@ -192,8 +191,7 @@
   .atc-panel-header {
     height: 40px;
   }
-  .atc-empty-title,
-  .atc-footnote {
+  .atc-empty-title {
     display: none;
   }
   .atc-empty {

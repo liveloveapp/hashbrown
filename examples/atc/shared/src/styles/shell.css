@@ -55,33 +55,49 @@
 .atc-credit:hover {
   color: var(--atc-ink);
 }
-.atc-panel-header-status {
+/* The quiet feed notice, only while the feed is connecting or delayed. */
+.atc-feed-notice {
   margin-left: auto;
-  display: flex;
-}
-.atc-chip {
   display: inline-flex;
   align-items: center;
-  white-space: nowrap;
-  border: 1px solid var(--atc-border);
-  border-radius: 999px;
-  padding: 3px 9px;
+  gap: 6px;
+  min-width: 0;
   font-size: 12px;
-  font-weight: 500;
   color: var(--atc-muted);
-  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.atc-chip-dot {
+.atc-feed-notice-dot {
   flex: none;
   width: 6px;
   height: 6px;
-  margin-right: 6px;
   box-sizing: border-box;
   border-radius: 50%;
-  background: var(--atc-ink);
-}
-/* Connecting or delayed: the same dot, hollow. */
-.atc-chip-dot.is-hollow {
-  background: none;
   border: 1.5px solid var(--atc-muted);
+}
+/* The GitHub mark: muted grey, ink on hover and focus, a 44px target. */
+.atc-source-link {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  margin-right: -12px;
+  border-radius: 10px;
+  color: var(--atc-muted);
+  transition: color var(--atc-fast) var(--atc-ease);
+}
+.atc-panel-header:has(.atc-feed-notice) .atc-source-link {
+  margin-left: 0;
+}
+.atc-source-link:is(:hover, :focus-visible) {
+  color: var(--atc-ink);
+}
+.atc-source-link:focus-visible {
+  outline-offset: -4px;
+}
+.atc-source-link svg {
+  display: block;
 }

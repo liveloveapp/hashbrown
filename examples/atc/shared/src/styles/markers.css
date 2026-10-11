@@ -52,10 +52,18 @@
   font-weight: 400;
   color: var(--atc-muted);
 }
-/* !important beats the inline z-index Leaflet sets on each marker. */
+/*
+ * Stacking above the other markers and their tags: the hovered plane (or the
+ * card's plane while the card is hovered) on top, then the selected, followed
+ * or described plane. !important beats the inline z-index Leaflet sets on
+ * each marker (its y position). The card itself sits above the map panes.
+ */
+.atc-plane-icon:has(.is-selected, .is-followed, .is-detailed) {
+  z-index: 10001 !important;
+}
 .atc-plane-icon:hover,
-.atc-plane-icon:has(.is-selected, .is-followed) {
-  z-index: 10000 !important;
+.atc-map:has(.atc-detail:hover) .atc-plane-icon:has(.is-detailed) {
+  z-index: 10002 !important;
 }
 .atc-plane.is-dimmed:hover {
   color: var(--atc-ink);
