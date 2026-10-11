@@ -27,6 +27,8 @@ export function visibleAirports(
  * `visibleAirports` returns does, at every zoom; the block's content shrinks
  * with the zoom instead (see `dataBlockLines`).
  */
+// The signature is kept so callers can add per-airport rules later.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function blockZoomRule(_airport: ChartAirport, _zoom: number): boolean {
   return true;
 }

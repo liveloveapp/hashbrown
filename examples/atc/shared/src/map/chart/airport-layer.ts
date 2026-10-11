@@ -15,6 +15,8 @@ type Tone = 'ink' | 'fallback';
 interface Drawn {
   readonly airport: ChartAirport | Airport;
   readonly tone: Tone;
+  /** Whether the lines are the bare ident (zoom 9 and below, or fallback). */
+  readonly ident: boolean;
   /** Whether the airport draws an ink ring (its runways cannot be drawn). */
   readonly ring: boolean;
   /** The data block's lines, or null when the zoom allows no block. */
@@ -54,6 +56,7 @@ function drawnAirports(state: AtcState, zoom: number): Drawn[] {
     return FALLBACK_AIRPORTS.map((airport) => ({
       airport,
       tone: 'fallback',
+      ident: true,
       ring: true,
       lines: [airport.code],
     }));
@@ -61,6 +64,7 @@ function drawnAirports(state: AtcState, zoom: number): Drawn[] {
   return visibleAirports(state.chart.airports, zoom).map((airport) => ({
     airport,
     tone: 'ink',
+    ident: zoom <= 9,
     ring: drawsRing(airport),
     lines: blockZoomRule(airport, zoom) ? dataBlockLines(airport, zoom) : null,
   }));
@@ -128,9 +132,10 @@ export function createAirportLayer(options: {
     airport: ChartAirport | Airport,
     lines: readonly string[],
     tone: Tone,
+    ident: boolean,
     anchor: [number, number],
   ) => {
-    const key = `${tone}\n${anchor.join(',')}\n${lines.join('\n')}`;
+    const key = `${tone}\n${ident}\n${anchor.join(',')}\n${lines.join('\n')}`;
     let block = blocks.get(airport.code);
     if (!block) {
       block = {
@@ -152,7 +157,7 @@ export function createAirportLayer(options: {
     if (!map.hasLayer(block.marker)) block.marker.addTo(map);
     const element = block.marker.getElement();
     if (element && element !== block.filled) {
-      element.replaceChildren(renderDataBlock(doc, lines, tone));
+      element.replaceChildren(renderDataBlock(doc, lines, tone, ident));
       block.filled = element;
     }
   };
@@ -204,11 +209,14 @@ export function createAirportLayer(options: {
     for (const [code, { marker }] of blocks) {
       if (!placed.has(code)) marker.remove();
     }
-    for (const { airport, lines, tone } of labelled) {
+    for (const { airport, lines, tone, ident } of labelled) {
       const at = placed.get(airport.code);
       const point = points.get(airport.code);
       if (at && point) {
-        showBlock(airport, lines, tone, [point.x - at.x, point.y - at.y]);
+        showBlock(airport, lines, tone, ident, [
+          point.x - at.x,
+          point.y - at.y,
+        ]);
       }
     }
   };

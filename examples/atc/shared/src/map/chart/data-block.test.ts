@@ -130,12 +130,23 @@ test('at zoom 13 the data line still shows', () => {
   expect(lines).toHaveLength(2);
 });
 
-test('a single-line ident block is marked is-ident', () => {
-  const block = renderDataBlock(document, ['RDM'], 'ink');
+test('the zoom 9 ident block is marked is-ident', () => {
+  const lines = dataBlockLines(base, 9);
+
+  const block = renderDataBlock(document, lines, 'ink', true);
 
   expect(block.querySelector('span')?.classList.contains('is-ident')).toBe(
     true,
   );
+});
+
+test('a one-line name block at zoom 14 is not is-ident', () => {
+  const lines = dataBlockLines(base, 14);
+
+  const block = renderDataBlock(document, lines, 'ink', false);
+
+  expect(lines).toHaveLength(1);
+  expect(block.querySelector('.is-ident')).toBeNull();
 });
 
 test('a two-line block is not marked is-ident', () => {

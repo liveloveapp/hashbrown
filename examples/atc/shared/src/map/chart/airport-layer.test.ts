@@ -275,3 +275,18 @@ test('at zoom 12 loaded surfaces leave the rings alone', () => {
   expect(view.count('.atc-apt')).toBe(drawn);
   view.cleanup();
 });
+
+test('the ident style applies at zoom 9 and not at zoom 14', () => {
+  const regional = mount(9);
+  regional.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
+  const identAtNine = regional.count('.atc-apt-block > .is-ident');
+  regional.cleanup();
+  const close = mount(14);
+
+  close.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
+
+  expect(identAtNine).toBeGreaterThan(0);
+  expect(close.count('.atc-apt-block')).toBeGreaterThan(0);
+  expect(close.count('.is-ident')).toBe(0);
+  close.cleanup();
+});
