@@ -140,8 +140,12 @@ payload.
 - **Cache lifetimes:** per-instance memory per cycle, and
   `Cache-Control: public, s-maxage=86400, stale-while-revalidate=604800` on
   responses. Upstreams see about one call per airport per day.
-- **Timeouts:** each upstream call has its own timeout. A timeout counts as an
-  ordinary failure.
+- **Timeouts:** the airports load gives each upstream call its own timeout. The
+  surfaces load shares one 17 s deadline across the ADDS lookup, the Airport
+  Mapping layers and Overpass (asked for `[timeout:12]`), so it ends inside the
+  20 s function limit. A timeout counts as an ordinary failure. An Airport
+  Mapping failure counts as no FAA data and falls through to Overpass, and an
+  Overpass `remark` (sent with a 200) is a failure.
 - **Vercel:** two new functions in `tools/build-vercel-output.mts`, `chart-airports`
   (`maxDuration` 30, for a cold NASR parse) and `chart-surfaces` (`maxDuration` 20).
   `server/src/app.ts` mounts both for local development and e2e.
@@ -266,7 +270,7 @@ checklist (Airports in part 1). It is a real control, so it is focusable, works
 with the keyboard and closes with Escape. When `chart.status` is `limited` its
 row reads "Airports · limited data".
 
-The attribution line adds: `Airport data FAA (cycle 2610) · diagrams © OpenStreetMap contributors, ODbL · Not for navigation`.
+The attribution line adds: `Airport data FAA · diagrams © OpenStreetMap contributors, ODbL · Not for navigation`. The cycle (such as `FAA cycle 2610`) shows in the Layers panel, not in the attribution.
 
 ## Assistant: tools, component and prompt
 
@@ -290,7 +294,9 @@ Both are added to `ATC_TOOL_DEFINITIONS`, so the server pins them.
 - Turns the airports layer on and requests a view of the airport's runway bounds
   at diagram zoom, using a new `ViewRequest` kind `'airport'` under the existing
   rules: follow mode wins, the newest request wins, and a drag or zoom cancels it.
-- Returns `{ shown, code, name, towered, towerPartTime, frequencies, elevationFt, runways, diagram: 'faa' | 'osm' | 'runways-only', aircraftWithin3Nm, moved }`.
+- Returns `{ shown, code, name, towered, towerPartTime, frequencies, elevationFt, runways, diagram: 'faa' | 'osm' | 'runways-only' | 'loading', aircraftWithin3Nm, moved }`.
+  It waits up to 3 s for the airport's surfaces to load; `loading` means they
+  had not arrived by then.
   `runways` holds end numbers, length × width and surface.
 - While following a plane it returns `moved: false` with `followingReason`, like
   `showArea`.
