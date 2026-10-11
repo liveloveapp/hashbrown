@@ -62,7 +62,7 @@ export interface AirportLayer extends LabelSource {
    * 12x12 box around its reference point. Fallback airports included; no
    * label may cover any of them.
    */
-  runwayBoxes(): TagRect[];
+  runwayBoxes(): readonly TagRect[];
   /** Removes every marker. */
   destroy(): void;
 }
@@ -200,6 +200,8 @@ export function createAirportLayer(options: {
   let drawnNow: readonly Drawn[] = [];
   /** The last requests' airports and candidates, by label id. */
   let pending = new Map<string, Pending>();
+  /** The anchor boxes of every drawn airport, from the last label requests. */
+  let boxes: readonly TagRect[] | null = null;
   let source: readonly (ChartAirport | Airport)[] | null = null;
   let synced: Pick<AtcState, 'chart' | 'layers'> | null = null;
 
@@ -210,6 +212,7 @@ export function createAirportLayer(options: {
     blocks.clear();
     drawnNow = [];
     pending = new Map();
+    boxes = null;
   };
 
   const project = (lat: number, lon: number) =>
@@ -307,25 +310,33 @@ export function createAirportLayer(options: {
     }
 
     drawnNow = drawn;
+    boxes = null;
   };
 
   const labelRequests = (): LabelRequest[] => {
+    // Every drawn airport is an obstacle; only those in view get labels.
+    const view = map.getBounds();
+    const anchors = drawnNow.map((drawn) => ({
+      drawn,
+      box: anchorBox(drawn, project),
+    }));
+    boxes = anchors.map(({ box }) => box);
     pending = new Map(
-      drawnNow.map((drawn): [string, Pending] => {
-        const { width, height } = estimateLabelSize(drawn.lines);
-        return [
-          labelId(drawn.airport.code),
-          {
-            drawn,
-            point: project(drawn.airport.lat, drawn.airport.lon),
-            candidates: labelCandidates(
-              anchorBox(drawn, project),
-              width,
-              height,
-            ),
-          },
-        ];
-      }),
+      anchors
+        .filter(({ drawn }) =>
+          view.contains([drawn.airport.lat, drawn.airport.lon]),
+        )
+        .map(({ drawn, box }): [string, Pending] => {
+          const { width, height } = estimateLabelSize(drawn.lines);
+          return [
+            labelId(drawn.airport.code),
+            {
+              drawn,
+              point: project(drawn.airport.lat, drawn.airport.lon),
+              candidates: labelCandidates(box, width, height),
+            },
+          ];
+        }),
     );
 
     return [...pending].map(([id, { drawn, candidates }], index) => ({
@@ -354,8 +365,8 @@ export function createAirportLayer(options: {
     }
   };
 
-  const runwayBoxes = (): TagRect[] =>
-    drawnNow.map((drawn) => anchorBox(drawn, project));
+  const runwayBoxes = (): readonly TagRect[] =>
+    boxes ?? drawnNow.map((drawn) => anchorBox(drawn, project));
 
   return {
     sync(state) {
