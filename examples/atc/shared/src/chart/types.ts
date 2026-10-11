@@ -113,3 +113,39 @@ export interface ChartState {
   readonly cycle: string | null;
   readonly airports: readonly ChartAirport[];
 }
+
+/** The FAA airspace class a shelf belongs to. */
+export type AirspaceClass = 'B' | 'C' | 'D' | 'E';
+
+/** The shelf type: Class B, C, D or a Class E surface area (E2, E3, E4). */
+export type AirspaceType = 'B' | 'C' | 'D' | 'E2' | 'E3' | 'E4';
+
+/** One airspace shelf: a lateral outline between a floor and a ceiling. */
+export interface AirspaceShelf {
+  /** Built as `${airport}-${type}-${index}`. */
+  readonly id: string;
+  /** ICAO code when it has 4 characters, else the FAA ident. */
+  readonly airport: string;
+  readonly name: string;
+  readonly class: AirspaceClass;
+  readonly type: AirspaceType;
+  /** Floor in feet MSL; SFC has `ft: 0`. */
+  readonly floor: { readonly ft: number; readonly ref: 'SFC' | 'MSL' };
+  /** Ceiling in feet MSL, or null for "up to the overlying airspace". */
+  readonly ceiling: { readonly ft: number; readonly exclusive: boolean } | null;
+  /** True when the airspace is active by NOTAM only (part-time). */
+  readonly partTime: boolean;
+  /** `[lon, lat]` rings: the first is the outer boundary, the rest holes. */
+  readonly rings: readonly (readonly (readonly [number, number])[])[];
+  /** `[west, south, east, north]`. */
+  readonly bbox: readonly [number, number, number, number];
+}
+
+/** The `/api/chart/airspace` payload. */
+export interface AirspacePayload {
+  /** AIRAC cycle ident, such as "2610". */
+  readonly cycle: string;
+  /** Effective date, YYYY-MM-DD. */
+  readonly effective: string;
+  readonly shelves: readonly AirspaceShelf[];
+}
