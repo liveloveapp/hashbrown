@@ -35,12 +35,15 @@
   font-weight: 600;
   font-size: 11px;
 }
-.atc-map .atc-apt-block.is-towered {
-  color: var(--atc-chart-blue);
+.atc-map .atc-apt-block > span:first-child.is-ident {
+  font-family: var(--atc-mono);
+  font-weight: 500;
+  font-size: 10px;
 }
-.atc-map .atc-apt-block.is-nontowered {
-  color: var(--atc-chart-magenta);
+.atc-map .atc-apt-block > span:nth-child(2) {
+  color: var(--atc-muted);
 }
+.atc-map .atc-apt-block.is-ink,
 .atc-map .atc-apt-block.is-fallback {
   color: var(--atc-ink);
 }

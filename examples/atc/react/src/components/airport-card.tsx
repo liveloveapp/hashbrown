@@ -46,11 +46,7 @@ export function AirportCard({ note, airport }: AirportCardProps) {
       >
         <span className="atc-card-title">{view.title}</span>
         {view.badge ? (
-          <span
-            className={`atc-airport-badge ${view.towered ? 'is-towered' : 'is-nontowered'}`}
-          >
-            {view.badge}
-          </span>
+          <span className="atc-airport-badge">{view.badge}</span>
         ) : null}
       </button>
       <p className="atc-card-note">{note}</p>

@@ -43,12 +43,7 @@ import { CardSkeleton } from './card-skeleton';
         >
           <span class="atc-card-title">{{ card.title }}</span>
           @if (card.badge) {
-            <span
-              class="atc-airport-badge"
-              [class.is-towered]="card.towered"
-              [class.is-nontowered]="!card.towered"
-              >{{ card.badge }}</span
-            >
+            <span class="atc-airport-badge">{{ card.badge }}</span>
           }
         </button>
         <p class="atc-card-note">{{ note() }}</p>

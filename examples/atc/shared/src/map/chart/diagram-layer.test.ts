@@ -316,3 +316,21 @@ test('an airport below its zoom rank draws no runways', () => {
 
   expect(polyline).not.toHaveBeenCalled();
 });
+
+test('heliports and seaplane bases draw no runways, only their ring', () => {
+  const heli = { ...krdm, kind: 'heliport' as const };
+  const sea = { ...krdm, code: 'S60', kind: 'seaplane' as const };
+  const view = mount(14, [heli, sea]);
+  const polyline = vi.spyOn(L, 'polyline');
+  const polygon = vi.spyOn(L, 'polygon');
+  onTestFinished(() => {
+    polyline.mockRestore();
+    polygon.mockRestore();
+  });
+
+  view.chart();
+
+  expect(polygon).not.toHaveBeenCalled();
+  expect(polyline).not.toHaveBeenCalled();
+  expect(view.labels('.is-runway')).toEqual([]);
+});

@@ -271,14 +271,10 @@ for (const [rule, check] of Object.entries(RULES)) {
 /** Chart colours and tokens, allowed only where chart features are drawn. */
 const CHART_COLOUR =
   /#086ca8|#76334f|#cfcfcf|#955101|--atc-chart-|--atc-diagram-/i;
-/** Where chart colours may appear: chart.css, the AirportCard badge and the chart modules. */
-const CHART_ALLOWED = [
-  'shared/src/styles/chart.css',
-  'shared/src/styles/cards.css',
-  'shared/src/map/chart/',
-];
+/** Where chart colours may appear: chart.css and the chart modules. */
+const CHART_ALLOWED = ['shared/src/styles/chart.css', 'shared/src/map/chart/'];
 
-test('chart colours stay on the map (and the AirportCard badge)', () => {
+test('chart colours stay on the map', () => {
   const sources = [...files, ...sharedSources];
 
   const offenders = sources

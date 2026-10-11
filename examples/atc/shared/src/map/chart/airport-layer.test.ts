@@ -197,20 +197,23 @@ const surveyed = (lengthFt: number): Runway => {
 
 test('at zoom 10 KRDM with surveyed corners has no ring', () => {
   const view = mount(10);
-  const withCorners = airports.map((airport) =>
-    airport.code === 'KRDM'
-      ? { ...airport, runways: [surveyed(7038), runway(3000, false)] }
-      : airport,
-  );
+  const krdm = (runways: Runway[]) => [{ ...base, runways }];
+  view.store.setChart({
+    cycle: '2610',
+    effective: '2026-09-03',
+    airports: krdm([runway(7038, true)]),
+  });
+  const without = view.count('.atc-apt');
 
   view.store.setChart({
     cycle: '2610',
     effective: '2026-09-03',
-    airports: withCorners,
+    airports: krdm([surveyed(7038), runway(3000, false)]),
   });
 
-  expect(view.count('.atc-apt')).toBe(2);
-  expect(view.count('.atc-apt-block')).toBeGreaterThan(0);
+  expect(without).toBe(1);
+  expect(view.count('.atc-apt')).toBe(0);
+  expect(view.count('.atc-apt-block')).toBe(1);
   view.cleanup();
 });
 

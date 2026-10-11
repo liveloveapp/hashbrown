@@ -1,57 +1,46 @@
 import type { ChartAirport } from '../../chart';
 
-/**
- * The lines of an airport's sectional data block. At zoom 12 and above only
- * the name line shows; below that the block adds the communications line
- * and the elevation, lighting, runway and frequency line.
- */
-export function dataBlockLines(airport: ChartAirport, zoom: number): string[] {
-  const title = `${airport.name} (${airport.faa})`;
-  if (zoom >= 12) return [title];
-
-  const lines = [title];
-  const { frequencies, weather } = airport;
-
-  if (airport.towered) {
-    if (frequencies.tower !== null) {
-      const atis = frequencies.atis !== null ? ` ATIS ${frequencies.atis}` : '';
-      lines.push(
-        `CT ${frequencies.tower}${airport.towerPartTime ? '★' : ''}${atis}`,
-      );
-    }
-  } else if (weather !== null) {
-    lines.push(`${weather.kind} ${weather.frequency}`);
+/** The second line of a block: the frequency to call on, then the elevation. */
+function dataLine(airport: ChartAirport): string {
+  const { frequencies } = airport;
+  const elevation = String(airport.elevationFt);
+  if (airport.towered && frequencies.tower !== null) {
+    const star = airport.towerPartTime ? '★' : '';
+    return `CT ${frequencies.tower}${star} · ${elevation}`;
   }
-
-  const parts: string[] = [String(airport.elevationFt)];
-  if (airport.lighting === 'full') parts.push('L');
-  if (airport.lighting === 'limited') parts.push('*L');
-  if (airport.runways.length > 0) {
-    const maxLengthFt = Math.max(...airport.runways.map((r) => r.lengthFt));
-    parts.push(String(Math.floor((maxLengthFt + 30) / 100)));
-  }
-  const frequency = airport.towered
-    ? frequencies.unicom
-    : (frequencies.ctaf ?? frequencies.unicom);
-  if (frequency !== null) parts.push(frequency);
-  lines.push(parts.join(' '));
-
-  return lines;
+  if (frequencies.ctaf !== null)
+    return `CTAF ${frequencies.ctaf} · ${elevation}`;
+  return elevation;
 }
 
 /**
- * Builds a data block element with one span per line. Text goes in through
+ * The lines of an airport's ink data block. At zoom 9 and below the block is
+ * the ident alone; from zoom 10 to 13 it adds a data line (tower or CTAF
+ * frequency, then elevation in feet); from zoom 14 only the name line shows,
+ * because the diagram carries the detail.
+ */
+export function dataBlockLines(airport: ChartAirport, zoom: number): string[] {
+  if (zoom <= 9) return [airport.faa];
+  const title = `${airport.name} (${airport.faa})`;
+  if (zoom >= 14) return [title];
+  return [title, dataLine(airport)];
+}
+
+/**
+ * Builds a data block element with one span per line; a single line is the
+ * ident and its span gets `is-ident`. Text goes in through
  * `textContent` only, so upstream names cannot inject markup.
  */
 export function renderDataBlock(
   doc: Document,
   lines: readonly string[],
-  tone: 'towered' | 'nontowered' | 'fallback',
+  tone: 'ink' | 'fallback',
 ): HTMLElement {
   const block = doc.createElement('div');
   block.className = `atc-apt-block is-${tone}`;
   for (const line of lines) {
     const span = doc.createElement('span');
+    if (lines.length === 1) span.className = 'is-ident';
     span.textContent = line;
     block.append(span);
   }

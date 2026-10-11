@@ -39,12 +39,12 @@ const base: ChartAirport = {
 const HELI_H = 'M-2.5 -3 V3 M2.5 -3 V3 M-2.5 0 H2.5';
 const count = (html: string, tag: string) => html.split(`<${tag}`).length - 1;
 
-test('an airport is a 6 px open ink ring and nothing else', () => {
+test('an airport is a 10 px open ink ring and nothing else', () => {
   const ring = airportRing(base);
 
   expect(ring.className).toBe('atc-apt');
   expect(count(ring.html, 'circle')).toBe(1);
-  expect(ring.html).toContain('r="3"');
+  expect(ring.html).toContain('r="5"');
   expect(ring.html).toContain('fill="none"');
   expect(ring.html).toContain('stroke="currentColor"');
   expect(count(ring.html, 'path')).toBe(0);
@@ -63,6 +63,14 @@ test('a heliport ring holds the H path', () => {
 
   expect(ring.html).toContain(`d="${HELI_H}"`);
   expect(count(ring.html, 'circle')).toBe(1);
+});
+
+test('the glyphs are scaled to fit inside the 10 px ring', () => {
+  const heli = airportRing({ ...base, kind: 'heliport' });
+  const sea = airportRing({ ...base, kind: 'seaplane' });
+
+  expect(heli.html).toContain('scale(0.8)');
+  expect(sea.html).toContain('scale(0.65)');
 });
 
 test('a seaplane base ring holds an anchor path, not the H', () => {

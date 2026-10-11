@@ -216,17 +216,12 @@
 }
 
 .atc-airport-badge {
-  border: 1px solid currentColor;
+  border: 1px solid var(--atc-ink);
+  color: var(--atc-ink);
   border-radius: 999px;
   padding: 0 8px;
   font-size: 12px;
   font-weight: 500;
-}
-.atc-airport-badge.is-towered {
-  color: var(--atc-chart-blue);
-}
-.atc-airport-badge.is-nontowered {
-  color: var(--atc-chart-magenta);
 }
 .atc-airport-freqs {
   display: grid;

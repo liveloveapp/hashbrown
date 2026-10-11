@@ -246,7 +246,9 @@ export function createDiagramLayer(options: {
       }
     }
     const polygons: Runway[] = [];
-    for (const runway of airport.runways) {
+    // Heliports and seaplane bases show only their ring, never paved runways.
+    const runways = airport.kind === 'airport' ? airport.runways : [];
+    for (const runway of runways) {
       const drawing = runwayDrawing(runway, zoom, airport.lat);
       if (drawing === null) continue;
       if (drawing.kind === 'stroke') {

@@ -23,12 +23,11 @@ export function visibleAirports(
 }
 
 /**
- * Whether an airport may show a data block at a zoom: never below zoom 8,
- * towered fields only at zooms 8 and 9, and every field from zoom 10.
+ * Whether an airport may show a data block at a zoom. Every airport that
+ * `visibleAirports` returns does, at every zoom; the block's content shrinks
+ * with the zoom instead (see `dataBlockLines`).
  */
-export function blockZoomRule(airport: ChartAirport, zoom: number): boolean {
-  if (zoom < 8) return false;
-  if (zoom < 10) return airport.towered;
+export function blockZoomRule(_airport: ChartAirport, _zoom: number): boolean {
   return true;
 }
 

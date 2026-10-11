@@ -9,7 +9,7 @@ import { blockZoomRule, placeBlocks, visibleAirports } from './declutter';
 /** How far beyond the view (as a fraction of it) airports are still drawn. */
 const NEAR_PAD = 0.5;
 
-type Tone = 'towered' | 'nontowered' | 'fallback';
+type Tone = 'ink' | 'fallback';
 
 /** One airport to draw at the current zoom. */
 interface Drawn {
@@ -60,7 +60,7 @@ function drawnAirports(state: AtcState, zoom: number): Drawn[] {
   }
   return visibleAirports(state.chart.airports, zoom).map((airport) => ({
     airport,
-    tone: airport.towered ? 'towered' : 'nontowered',
+    tone: 'ink',
     ring: drawsRing(airport),
     lines: blockZoomRule(airport, zoom) ? dataBlockLines(airport, zoom) : null,
   }));
