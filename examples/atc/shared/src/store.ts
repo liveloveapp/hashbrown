@@ -1,6 +1,7 @@
 import type { Aircraft, AircraftSnapshot } from './aircraft';
 import { distanceNm } from './geo';
-import { type AirportCode, AIRPORTS } from './places';
+import type { ChartState } from './chart';
+import { airportByCode } from './directory';
 
 /** One stop on a scheduled route. */
 export interface RouteAirport {
@@ -25,7 +26,7 @@ export interface DepartedAircraft {
 
 /** A circle around an airport that the map outlines. */
 export interface ShownArea {
-  readonly airport: AirportCode;
+  readonly airport: string;
   readonly radiusNm: number;
 }
 
@@ -50,6 +51,8 @@ export const DEPARTED_TTL_MS = 30 * 60 * 1000;
 
 /** Everything the map, tools and components read. Treat as immutable. */
 export interface AtcState {
+  /** The FAA chart airports, once loaded. */
+  readonly chart: ChartState;
   readonly aircraft: ReadonlyMap<string, Aircraft>;
   /** Aircraft that left the area in the last {@link DEPARTED_TTL_MS}. */
   readonly departed: ReadonlyMap<string, DepartedAircraft>;
@@ -70,6 +73,7 @@ export interface AtcState {
 
 /** The state before any data arrives. */
 export const INITIAL_STATE: AtcState = {
+  chart: { status: 'loading', cycle: null, airports: [] },
   aircraft: new Map(),
   departed: new Map(),
   routes: new Map(),
@@ -220,10 +224,12 @@ function allInside(
 ): boolean {
   return [...hexes].every((hex) => {
     const aircraft = state.aircraft.get(hex);
+    const centre = airportByCode(state, area.airport);
 
     return (
       aircraft !== undefined &&
-      distanceNm(aircraft, AIRPORTS[area.airport]) <= area.radiusNm
+      centre !== null &&
+      distanceNm(aircraft, centre) <= area.radiusNm
     );
   });
 }

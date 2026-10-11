@@ -5,6 +5,7 @@ export * from './format';
 export * from './geo';
 export * from './names';
 export * from './places';
+export * from './directory';
 export * from './chart';
 export * from './store';
 export * from './feed';

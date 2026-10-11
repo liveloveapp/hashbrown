@@ -1,7 +1,8 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
 import { prefersReducedMotion } from '../dom';
-import { AIRPORTS, type Area, type LatLon } from '../places';
+import { airportByCode } from '../directory';
+import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore, ShownArea } from '../store';
 import type { CardSize } from './detail-card';
 import { circleBounds, type FitTarget, fitTarget } from './fit';
@@ -174,7 +175,11 @@ export function createViewController(options: {
   };
   /** Fits a circle around an airport, keeping it above a phone's sheet. */
   const fitArea = (shown: ShownArea, animate: boolean) => {
-    const box = circleBounds(AIRPORTS[shown.airport], shown.radiusNm);
+    const centre = airportByCode(store.getState(), shown.airport);
+    if (centre === null) {
+      return;
+    }
+    const box = circleBounds(centre, shown.radiusNm);
     const bottom = sheetInset();
     map.fitBounds(
       [

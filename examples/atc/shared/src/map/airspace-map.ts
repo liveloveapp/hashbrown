@@ -1,6 +1,7 @@
 import type { Circle, Map as LeafletMap, Marker } from 'leaflet';
 import { isTyping, prefersReducedMotion } from '../dom';
-import { AIRPORTS, type Area, type LatLon } from '../places';
+import { airportByCode } from '../directory';
+import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore, ShownArea } from '../store';
 import { createCardSync } from './card-sync';
 import { createFollowController } from './follow';
@@ -161,7 +162,10 @@ export async function createAirspaceMap(options: {
     if (shown === null) {
       return;
     }
-    const centre = AIRPORTS[shown.airport];
+    const centre = airportByCode(store.getState(), shown.airport);
+    if (centre === null) {
+      return;
+    }
     const layer = L.circle([centre.lat, centre.lon], {
       radius: shown.radiusNm * METRES_PER_NM,
       className: 'atc-area',

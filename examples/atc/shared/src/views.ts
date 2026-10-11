@@ -7,7 +7,7 @@ import {
 import type { Aircraft } from './aircraft';
 import { distanceNm, etaMinutes, isApproaching } from './geo';
 import { aircraftTypeName, knownAirlineFor } from './names';
-import { type AirportCode, AIRPORTS } from './places';
+import { airportByCode } from './directory';
 import {
   type AtcState,
   type FeedStatus,
@@ -141,9 +141,11 @@ function altitudeFigure(
 /** Builds ArrivalsBoard rows, in the order the model gave them. */
 export function arrivalsRows(
   state: AtcState,
-  airport: AirportCode,
+  airport: string,
   hexes: readonly string[],
 ): ArrivalsRow[] {
+  const centre = airportByCode(state, airport);
+
   return hexes.map((hex) => {
     const found = lookupAircraft(state, hex);
     if (found.status === 'unknown') {
@@ -161,8 +163,9 @@ export function arrivalsRows(
     }
     const { aircraft } = found;
     const live = found.status === 'live';
-    const distance = distanceNm(aircraft, AIRPORTS[airport]);
-    const eta = etaMinutes(distance, aircraft.groundSpeedKt);
+    const distance = centre === null ? null : distanceNm(aircraft, centre);
+    const eta =
+      distance === null ? null : etaMinutes(distance, aircraft.groundSpeedKt);
 
     return {
       hex: aircraft.hex,
@@ -170,7 +173,8 @@ export function arrivalsRows(
       label: aircraft.label,
       aircraftType: aircraftTypeName(aircraft.typeCode),
       altitude: altitudeFigure(aircraft),
-      distance: live ? String(Math.round(distance)) : 'n/a',
+      distance:
+        live && distance !== null ? String(Math.round(distance)) : 'n/a',
       eta: live && eta !== null ? String(eta) : 'n/a',
       selectable: live,
       selected: state.selectedHex === aircraft.hex,
@@ -184,13 +188,18 @@ export function arrivalsRows(
  */
 export function boardShowsEta(
   state: AtcState,
-  airport: AirportCode,
+  airport: string,
   hexes: readonly string[],
 ): boolean {
+  const centre = airportByCode(state, airport);
+  if (centre === null) {
+    return false;
+  }
+
   return hexes.some((hex) => {
     const aircraft = state.aircraft.get(normalizeHex(hex));
 
-    return aircraft !== undefined && isApproaching(aircraft, AIRPORTS[airport]);
+    return aircraft !== undefined && isApproaching(aircraft, centre);
   });
 }
 

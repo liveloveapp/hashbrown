@@ -47,7 +47,7 @@ test('lookupPlace matches ICAO and FAA codes, names and cities, ignoring case', 
 test('lookupPlace returns null for places outside the table', () => {
   const queries = ['Tokyo', 'KJFK', 'JFK', 'Portland, Maine', '', '  ', 'k'];
 
-  const results = queries.map(lookupPlace);
+  const results = queries.map((query) => lookupPlace(query));
 
   expect(results).toEqual(queries.map(() => null));
 });

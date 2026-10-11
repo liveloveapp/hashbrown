@@ -495,3 +495,16 @@ test('ATC_TOOL_NAMES lists every tool createAtcTools makes, by its name', () => 
   expect([...ATC_TOOL_NAMES].sort()).toEqual(names.sort());
   expect(Object.keys(tools).sort()).toEqual(names.sort());
 });
+
+test('findAircraft with an unknown approaching airport finds nothing', async () => {
+  const store = createAtcStore();
+  store.applySnapshot({ at: 1, aircraft: [plane('a1')] });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const rows = await tools.findAircraft.handler({
+    ...any,
+    approaching: 'KJFK',
+  });
+
+  expect(rows).toEqual([]);
+});

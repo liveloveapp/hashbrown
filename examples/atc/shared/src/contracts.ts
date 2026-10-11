@@ -1,5 +1,4 @@
 import { s } from '@hashbrownai/core';
-import { AIRPORT_CODES } from './places';
 
 // Hold-back: streamed props (s.streaming.*) render as they arrive; plain
 // props (hex, airport) appear only once complete, and Hashbrown shows the
@@ -36,10 +35,7 @@ export const arrivalsBoardContract = {
     title: s.streaming.string(
       'A short label with no dashes, such as "Arrivals at Seattle" or "Near Bend"',
     ),
-    airport: s.enumeration(
-      'ICAO code of the airport the aircraft are approaching or near',
-      [...AIRPORT_CODES],
-    ),
+    airport: s.string('ICAO code from lookupPlace, such as KBDN'),
     // The array streams row by row, but each s.string item is held back until
     // whole, so a row never points at a partial hex.
     hexes: s.streaming.array(

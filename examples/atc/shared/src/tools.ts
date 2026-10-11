@@ -8,6 +8,7 @@ import {
 } from './find-aircraft';
 import { distanceNm } from './geo';
 import { airlineFor } from './names';
+import { airportDirectory } from './directory';
 import { AREAS, lookupPlace } from './places';
 import {
   type AtcState,
@@ -167,7 +168,10 @@ export function createAtcTools(context: AtcToolContext) {
       ...ATC_TOOL_DEFINITIONS.findAircraft,
       handler: async (input: FindAircraftInput) => {
         if (input.near) {
-          const centre = lookupPlace(input.near.airport);
+          const centre = lookupPlace(
+            input.near.airport,
+            airportDirectory(store.getState()),
+          );
           if (centre === null) {
             return unknownPlace(input.near.airport);
           }
@@ -184,7 +188,7 @@ export function createAtcTools(context: AtcToolContext) {
     lookupPlace: {
       ...ATC_TOOL_DEFINITIONS.lookupPlace,
       handler: async ({ query }: { query: string }) => {
-        const airport = lookupPlace(query);
+        const airport = lookupPlace(query, airportDirectory(store.getState()));
 
         return airport === null
           ? unknownPlace(query)
@@ -200,7 +204,10 @@ export function createAtcTools(context: AtcToolContext) {
     showArea: {
       ...ATC_TOOL_DEFINITIONS.showArea,
       handler: async (input: { airport: string; radiusNm: number | null }) => {
-        const airport = lookupPlace(input.airport);
+        const airport = lookupPlace(
+          input.airport,
+          airportDirectory(store.getState()),
+        );
         if (airport === null) {
           const { reason } = unknownPlace(input.airport);
 
