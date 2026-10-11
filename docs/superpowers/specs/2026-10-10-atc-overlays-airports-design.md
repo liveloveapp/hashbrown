@@ -11,7 +11,7 @@ Research: `docs/superpowers/research/atc-overlays/vector-airport-overlays.md`,
 
 Give atc's map the aviation picture pilots expect, drawn the way a VFR sectional
 draws it, and let the assistant use it. Part 1 adds the overlay foundation and
-airports: about 300 public-use airports as sectional chart symbols with data
+airports: about 265 public-use airports as sectional chart symbols with data
 blocks, accurately sized airport diagrams when zoomed in, a layers control, and
 tools such as "show me Redmond airport".
 
@@ -63,12 +63,14 @@ From the research, checked against live FAA data on 2026-10-10:
   (`CT 124.5★`), not Class C. Bend (KBDN) is non-towered in a Class E surface
   area, and its runway is 17/35; OSM still says 16/34. Symbols and classes
   therefore come from data, never from hand-written tables.
-- **Airport count:** about 1,150 airports sit inside the 250 nm area: 313
-  public-use (300 aerodromes, the rest heliports and seaplane bases) and about
-  840 private.
+- **Airport count:** about 1,150 airports sit inside the 250 nm area. About 265
+  are public-use, including heliports and seaplane bases, and about 840 are
+  private.
 - **FAA runways:** the FAA `Runways` layer builds every runway from the NASR
   runway ends, which are surveyed to about ±1 ft. Lengths match within 1 to 2 ft
-  and widths within about 0.3 ft.
+  and widths within about 0.3 ft. The server therefore computes each runway
+  rectangle from the NASR runway ends, the same surveyed points, and needs no
+  ADDS call for runways.
 - **FAA airport surfaces:** full surface geometry exists for only 190 airports
   nationally, in the FAA `AM_*` airport-mapping layers. In the area those are
   KSEA, KRNT, KPSC, KYKM, KALW, KAWO and KPUW. Bend, Redmond, Portland and
@@ -87,32 +89,36 @@ Both routes are built like `/api/aircraft`: a per-instance cache, a shared
 in-flight upstream call, the last good copy served with `X-Atc-Stale: 1` when an
 upstream fails, and 502 when there is nothing to serve.
 
-**`GET /api/chart/airports`** returns about 300 public-use airports (`PRIVATEUSE = 0`,
+**`GET /api/chart/airports`** returns about 265 public-use airports (`PRIVATEUSE = 0`,
 including heliports and seaplane bases) inside `AREAS.pnw`. Each entry has:
 
 - ICAO code and FAA ident, name, city, state, position and elevation
 - `towered`, from NASR `TWR_TYPE_CODE` starting `ATCT`, and `towerPartTime`
 - frequencies: CT, ATIS, CTAF and UNICOM (NASR `FRQ`)
 - `lighting`, `fuel` and `military`
-- runways, each with end numbers, length × width, surface and the four corners
-  from FAA `Runways`
+- runways, each with end numbers, length × width, surface and the four corners,
+  computed from the NASR runway ends
 - `rank` for decluttering: towered first, then longest hard runway
 
 The estimate is about 120 KB of JSON, about 25 KB gzipped. The response also
-carries `cycle` (for example `2610`) and `effective` dates.
+carries `cycle` (for example `2610`) and `effective` dates. When a new cycle's
+fetch fails, the route serves the previous cycle's last good copy.
 
-**`GET /api/chart/surfaces?airport=KRDM`** returns one airport's diagram as GeoJSON:
-runway polygons, taxiway polygons or lines, aprons, hold-short lines, taxiway label
-points, hot spots, and `source: 'faa' | 'osm'`. The `airport` value must be in the
-current airports list.
+**`GET /api/chart/surfaces?airport=KRDM`** returns one airport's diagram surfaces:
+taxiway polygons or lines, aprons, hold-short lines, taxiway labels and hot spots,
+and `source: 'faa' | 'osm' | 'runways-only'`. It returns no runways, which come
+from the airports payload. The route validates the `airport` value against ADDS
+`US_Airport`.
 
 Sources are merged in this order:
 
-1. **Runways** always come from the FAA `Runways` layer.
-2. **Taxiways, aprons and hot spots** come from the FAA `AM_*` layers where they
+1. **Taxiways, aprons and hot spots** come from the FAA `AM_*` layers where they
    exist.
-3. **Elsewhere,** OSM via Overpass supplies `aeroway=taxiway|taxilane|apron|holding_position`
+2. **Elsewhere,** OSM via Overpass supplies `aeroway=taxiway|taxilane|apron|holding_position`
    inside the aerodrome area, with `ref` labels. OSM runways are ignored.
+
+Runways are not part of this payload. The browser draws them from the airports
+payload.
 
 ### Upstreams and caching
 
@@ -123,12 +129,14 @@ Sources are merged in this order:
   a needed column is missing.
 - **FAA ADDS:** the FeatureServers under
   `services6.arcgis.com/ssFJjBXIUyZDrSYZ` (`US_Airport`, `Runways`, `AM_*`),
-  queried with `f=geojson`, a bounding box or `where`, and `outSR=4326`.
+  queried with `f=geojson`, a bounding box or `where`, `outSR=4326` and per-layer
+  `outFields`. ArcGIS can answer HTTP 200 with an error body, so the fetch helpers
+  throw on one.
 - **Overpass:** one query per airport with a descriptive User-Agent, like the one
   sent to adsb.lol.
-- **Cycles:** a pure `currentCycle(date, kind)` returns the NASR 28-day and ADDS
-  56-day cycle identifiers and effective dates. Server cache keys and the
-  attribution use them.
+- **Cycles:** a pure `currentCycle(date)` returns the AIRAC cycle ident and
+  effective date. NASR's 28-day cycle is the only cycle, and there is no separate
+  56-day cycle. Server cache keys and the attribution use it.
 - **Cache lifetimes:** per-instance memory per cycle, and
   `Cache-Control: public, s-maxage=86400, stale-while-revalidate=604800` on
   responses. Upstreams see about one call per airport per day.
@@ -150,7 +158,8 @@ Sources are merged in this order:
 - **The 40-airport table:** today's table in `places.ts` becomes the fallback and
   the alias source (SeaTac, Coos Bay and so on). It is not deleted.
 - **Fetching diagrams:** `surfaces` are fetched when an airport is on screen at
-  zoom 12 or more, and cached for the session.
+  zoom 12 or more, and cached for the session. The browser culls airport markers
+  to the view padded by 50%.
 - **Airport codes:** `AirportCode` becomes `string`. The `AIRPORT_CODES` enums in
   `contracts.ts` (ArrivalsBoard `airport`) and `find-aircraft.ts` (`approaching`)
   become `s.string` checked at runtime. An enum of about 300 codes would add about
@@ -195,12 +204,12 @@ Grotesk 600 at about 11 px and figures in JetBrains Mono at about 10 px.
 
 What shows at each zoom (starting values, to be tuned by eye during the build):
 
-| Zoom  | Symbols                                        | Data blocks         |
-| ----- | ---------------------------------------------- | ------------------- |
-| ≤ 7   | Towered, or a hard runway of 5,000 ft or more  | none                |
-| 8–9   | Plus hard runways of 3,000 ft or more          | towered fields only |
-| 10–11 | All                                            | all that fit        |
-| ≥ 12  | Diagram replaces the symbol once surfaces load | name and ident only |
+| Zoom  | Symbols                                        | Data blocks                                                                                                   |
+| ----- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| ≤ 7   | Towered, or a hard runway of 5,000 ft or more  | none                                                                                                          |
+| 8–9   | Plus hard runways of 3,000 ft or more          | towered fields only                                                                                           |
+| 10–11 | All                                            | all that fit                                                                                                  |
+| ≥ 12  | Diagram replaces the symbol once surfaces load | name and ident only; a name block stays once the chart has loaded, even after the diagram replaces the symbol |
 
 Blocks are placed greedily by `rank`. A block that would overlap a higher-ranked
 block or symbol is skipped, and its symbol still shows.
@@ -214,7 +223,7 @@ These follow the FAA airport-diagram legend (Chart Users' Guide pp. 123–132).
 | Runways          | Ink polygons. Where true width is under 3 px, an ink centreline at least 3 px wide is drawn too                                 |
 | Taxiways         | FAA polygons, or OSM centrelines stroked at true width (50 ft unless tagged) with a 1.5 px minimum, in `--atc-diagram-pavement` |
 | Aprons           | Polygons in `--atc-diagram-pavement`                                                                                            |
-| Runway numbers   | White JetBrains Mono at each threshold                                                                                          |
+| Runway numbers   | White JetBrains Mono at each threshold, on a small ink tab so the text stays legible                                            |
 | Hold-short lines | Double ink bars                                                                                                                 |
 | Hot spots        | `--atc-diagram-hotspot` ring with an `HS n` label                                                                               |
 | Taxiway letters  | From zoom 14, ink Hanken Grotesk 700                                                                                            |

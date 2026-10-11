@@ -24,17 +24,22 @@ dependencies); this file covers atc.
 | `shared/src/contracts.ts`                       | Component contracts (Skillet) and `SYSTEM_PROMPT`                    |
 | `shared/src/views.ts`, `detail-view.ts`         | Pure view models for cards and the map's detail card                 |
 | `shared/src/tool-chips.ts`, `transcript.ts`     | Tool call labels and transcript rows                                 |
+| `shared/src/chart/`                             | Chart types, AIRAC cycle, parsing, runway geometry, browser feed     |
 | `shared/src/map/airspace-map.ts`                | `createAirspaceMap`: composes the modules below                      |
 | `shared/src/map/plane-marker.ts`                | Marker HTML, updated in place                                        |
 | `shared/src/map/motion-loop.ts`, `tween.ts`     | Dead reckoning between snapshots                                     |
 | `shared/src/map/view-controller.ts`, `fit.ts`   | Applying view requests (fits, areas, reveals)                        |
 | `shared/src/map/card-sync.ts`, `detail-card.ts` | The floating detail card                                             |
 | `shared/src/map/follow.ts`, `follow-pill.ts`    | Follow mode and its pill                                             |
+| `shared/src/map/chart/`                         | Airport symbols, data blocks, declutter, diagrams, Layers control    |
 | `shared/src/map/tiles.ts`                       | Tile URL and attribution                                             |
 | `shared/src/styles/atc.css`                     | Index of the stylesheet partials, in cascade order                   |
 | `angular/src/app/`, `react/src/`                | Thin framework shells that mirror each other                         |
 | `server/src/run-handler.ts`                     | `/api/run`: pins the system prompt and tool definitions, caps output |
 | `server/src/aircraft-handler.ts`                | `/api/aircraft`: cached, stripped adsb.lol                           |
+| `server/src/chart-airports-handler.ts`          | `/api/chart/airports`: NASR airports, cached per cycle               |
+| `server/src/chart-surfaces-handler.ts`          | `/api/chart/surfaces`: FAA and OSM taxiways, aprons, holds           |
+| `server/src/chart/`                             | NASR zip and CSV readers, upstream fetches, surfaces merge, cache    |
 | `e2e/src/`                                      | Playwright for both apps with a mocked model and synthetic frames    |
 
 ## Add a component or a tool
@@ -56,6 +61,13 @@ dependencies); this file covers atc.
 - Markers update in place (`updatePlane`); never rebuild them on a snapshot.
 - Component IDs (`hex`, `airport`) never stream, so a card never resolves a partial ID.
 - Shared code stays framework-free; the two apps stay thin and mirror each other.
+- Chart colours are defined only in `styles/chart.css` and used only on the map and
+  the AirportCard badge (`design-rules.test.ts`).
+- Chart layers redraw on zoom, move and chart, surfaces or layers changes, never on
+  aircraft snapshots.
+- Chart symbols are never filled cobalt; selection stays on planes.
+- Airport codes are runtime strings validated by `lookupPlace` and `airportByCode`,
+  never a Skillet enum.
 - Stylesheet partials load in the order `atc.css` lists; later files override earlier
   ones.
 - `shared/src/design-rules.test.ts` enforces the design rules it can check; keep it
