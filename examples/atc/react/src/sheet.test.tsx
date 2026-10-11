@@ -11,7 +11,11 @@ import { useAutoScroll } from './dom-hooks';
 import { SheetHandle } from './sheet-handle';
 
 /** A sheet section like the app's: the handle and a text field drive `nextSheet`. */
-function Sheet({ initial = INITIAL_SHEET }: { initial?: typeof INITIAL_SHEET }) {
+function Sheet({
+  initial = INITIAL_SHEET,
+}: {
+  initial?: typeof INITIAL_SHEET;
+}) {
   const [sheet, move] = useReducer(nextSheet, initial);
 
   return (

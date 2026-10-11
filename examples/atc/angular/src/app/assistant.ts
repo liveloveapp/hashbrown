@@ -1,5 +1,6 @@
 import {
   aircraftCompareContract,
+  airportCardContract,
   arrivalsBoardContract,
   createAtcTools,
   fetchRoute,
@@ -25,6 +26,7 @@ import {
   AircraftCompare,
   AircraftCompareFallback,
 } from './components/aircraft-compare';
+import { AirportCard, AirportCardFallback } from './components/airport-card';
 import {
   ArrivalsBoard,
   ArrivalsBoardFallback,
@@ -59,6 +61,13 @@ const components = [
     description: aircraftCompareContract.description,
     input: aircraftCompareContract.props,
     fallback: AircraftCompareFallback,
+    children: false,
+  }),
+  exposeComponent(AirportCard, {
+    name: airportCardContract.name,
+    description: airportCardContract.description,
+    input: airportCardContract.props,
+    fallback: AirportCardFallback,
     children: false,
   }),
 ];
@@ -106,6 +115,8 @@ export class Assistant {
     createTool(this.atc.lookupPlace),
     createTool(this.atc.showArea),
     createTool(this.atc.resetMap),
+    createTool(this.atc.showAirport),
+    createTool(this.atc.setLayers),
   ];
 
   // 3. Render the stream.

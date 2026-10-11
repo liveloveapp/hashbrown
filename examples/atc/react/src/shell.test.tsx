@@ -152,9 +152,9 @@ test('tool calls run live, then fold into one summary that expands to every step
   );
   const collapsed = summary()?.getAttribute('aria-expanded');
   act(() => summary()?.click());
-  const steps = [
-    ...element.querySelectorAll('[data-testid="tool-step"]'),
-  ].map((step) => [step.getAttribute('data-state'), text(step)]);
+  const steps = [...element.querySelectorAll('[data-testid="tool-step"]')].map(
+    (step) => [step.getAttribute('data-state'), text(step)],
+  );
 
   expect(running).toEqual([
     { text: 'Finding aircraft · approaching KSEA', spinner: true },
