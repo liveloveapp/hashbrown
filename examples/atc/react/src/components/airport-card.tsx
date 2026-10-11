@@ -61,6 +61,11 @@ export function AirportCard({ note, airport }: AirportCardProps) {
       {view.elevation ? (
         <p className="atc-airport-elev atc-mono">Elevation {view.elevation}</p>
       ) : null}
+      {view.airspace ? (
+        <p className="atc-airport-airspace atc-mono">
+          Airspace: {view.airspace}
+        </p>
+      ) : null}
       <ul className="atc-airport-runways atc-mono">
         {view.runways.map((runway) => (
           <li key={runway}>{runway}</li>

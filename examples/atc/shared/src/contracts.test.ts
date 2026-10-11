@@ -36,5 +36,20 @@ test('AirportCard takes a whole airport code, never a streaming one', () => {
 test('the prompt covers the airport tools, and a starter shows Redmond', () => {
   expect(SYSTEM_PROMPT).toContain('showAirport');
   expect(SYSTEM_PROMPT).toContain('setLayers');
-  expect(STARTER_PROMPTS.at(-1)).toBe('Show me Redmond airport.');
+  expect(STARTER_PROMPTS).toContain('Show me Redmond airport.');
+});
+
+test('the prompt covers the airspace tools, and a starter asks about Portland', () => {
+  expect(SYSTEM_PROMPT).toContain(
+    "- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then show one ArrivalsBoard. To only show a place's airspace, call showAirspace.",
+  );
+  expect(SYSTEM_PROMPT).toContain(
+    '- For which airspace one aircraft is in, call airspaceAt.',
+  );
+  expect(SYSTEM_PROMPT).toContain(
+    '- Airspace answers come only from tool results. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Airspace marked partTime is in effect only during hours set by NOTAM, which the tools don\'t know: when partTime is true, say the aircraft is inside the charted area and that it may not be active now.',
+  );
+  expect(STARTER_PROMPTS.at(-1)).toBe(
+    'Which planes are inside the Portland Class C?',
+  );
 });

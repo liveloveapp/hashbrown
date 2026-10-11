@@ -5,6 +5,7 @@ import {
   formatSpeed,
 } from './format';
 import type { Aircraft } from './aircraft';
+import { airspaceOf, airspaceTypes } from './chart/airspace-query';
 import { distanceNm, etaMinutes, isApproaching } from './geo';
 import { aircraftTypeName, knownAirlineFor } from './names';
 import { airportByCode, chartAirportByCode } from './directory';
@@ -243,6 +244,8 @@ export type AirportCardView =
       readonly elevation: string | null;
       /** Such as "05/23 · 7,038 × 150 ft · asphalt". */
       readonly runways: readonly string[];
+      /** Such as "Class D (part-time), E2"; null with no shelves or no data. */
+      readonly airspace: string | null;
     };
 
 const SURFACE_WORDS: Readonly<Record<string, string>> = {
@@ -267,6 +270,24 @@ function surfaceWords(code: string): string {
     .join('/');
 }
 
+/**
+ * The airport's airspace as one line: its shelf types in chart order, a type
+ * marked part-time when all of its shelves are. Null when there are none or
+ * the airspace is not ready.
+ */
+function airspaceLine(state: AtcState, code: string): string | null {
+  if (state.airspace.status !== 'ready') return null;
+  const shelves = airspaceOf(state.airspace.shelves, code);
+  if (shelves.length === 0) return null;
+  const parts = airspaceTypes(shelves).map((type) =>
+    shelves.filter((s) => s.type === type).every((s) => s.partTime)
+      ? `${type} (part-time)`
+      : type,
+  );
+
+  return `Class ${parts.join(', ')}`;
+}
+
 /** Builds the AirportCard view for an ICAO or FAA code. */
 export function airportCardView(
   state: AtcState,
@@ -287,6 +308,7 @@ export function airportCardView(
       frequencies: [],
       elevation: null,
       runways: [],
+      airspace: airspaceLine(state, airport.code),
     };
   }
   const { frequencies: f, weather } = chart;
@@ -317,5 +339,6 @@ export function airportCardView(
 
       return [r.id, size, ...(surface === null ? [] : [surface])].join(' · ');
     }),
+    airspace: airspaceLine(state, chart.code),
   };
 }

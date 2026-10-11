@@ -272,3 +272,33 @@ test('toolRunView keys each step by its tool call id, else by its position', () 
 
   expect(view.chips.map((chip) => chip.key)).toEqual(['call-1', 'step-1']);
 });
+
+test('the airspace tools have running and done labels', () => {
+  const plane = { hex: 'a1b2c3', label: 'UAL1802' } as unknown as Aircraft;
+  const labelFor = labelForHex(
+    applySnapshot(INITIAL_STATE, { at: 1, aircraft: [plane] }),
+  );
+  const running = [
+    toolCallLabel('showAirspace', { airport: 'kpdx' }),
+    toolCallLabel('showAirspace', {}),
+    toolCallLabel('airspaceAt', { hex: 'A1B2C3' }, labelFor),
+  ];
+  const finished = toolRunView(
+    [
+      done('showAirspace', { airport: 'kpdx' }),
+      done('airspaceAt', { hex: 'a1b2c3' }),
+    ],
+    false,
+  ).summary;
+  const find = toolCallLabel('findAircraft', {
+    inAirspace: { airport: 'KPDX', class: null },
+  });
+
+  expect(running).toEqual([
+    'Showing KPDX airspace',
+    'Showing airspace',
+    'Checking the airspace of UAL1802',
+  ]);
+  expect(finished).toBe('Showed KPDX airspace, checked an airspace');
+  expect(find).toBe('Finding aircraft inside Portland airspace');
+});

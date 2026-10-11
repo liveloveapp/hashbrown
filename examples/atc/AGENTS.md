@@ -33,6 +33,9 @@ dependencies); this file covers atc.
 | `shared/src/map/card-sync.ts`, `detail-card.ts` | The floating detail card                                             |
 | `shared/src/map/follow.ts`, `follow-pill.ts`    | Follow mode and its pill                                             |
 | `shared/src/map/chart/`                         | Ink airports (rings, labels), declutter, diagrams, Layers control    |
+| `shared/src/chart/airspace-query.ts`            | Pure airspace queries: `shelvesAt`, `altitudeMslFt`, `airspaceTypes` |
+| `shared/src/map/chart/airspace-layer.ts`        | Class B, C, D and E shelves on the map, with highlight and labels    |
+| `shared/src/map/chart/airspace-labels.ts`       | Shelf altitude labels and their anchors                              |
 | `shared/src/map/tiles.ts`                       | Tile URL and attribution                                             |
 | `shared/src/styles/atc.css`                     | Index of the stylesheet partials, in cascade order                   |
 | `angular/src/app/`, `react/src/`                | Thin framework shells that mirror each other                         |
@@ -40,6 +43,7 @@ dependencies); this file covers atc.
 | `server/src/aircraft-handler.ts`                | `/api/aircraft`: cached, stripped adsb.lol                           |
 | `server/src/chart-airports-handler.ts`          | `/api/chart/airports`: NASR airports, cached per cycle               |
 | `server/src/chart-surfaces-handler.ts`          | `/api/chart/surfaces`: FAA and OSM taxiways, aprons, holds           |
+| `server/src/chart-airspace-handler.ts`          | `/api/chart/airspace`: FAA class airspace, cached per cycle          |
 | `server/src/chart/`                             | NASR zip and CSV readers, upstream fetches, surfaces merge, cache    |
 | `e2e/src/`                                      | Playwright for both apps with a mocked model and synthetic frames    |
 | `e2e/demo/`                                     | The demo video: storyboard, director page, recorder, ffmpeg encoding |
@@ -71,6 +75,10 @@ dependencies); this file covers atc.
   outline.
 - Chart layers redraw on zoom, move and chart, surfaces or layers changes, never on
   aircraft snapshots.
+- Airspace queries (`chart/airspace-query.ts`) are pure functions of shelves and an
+  aircraft; they never read the store or the map.
+- Altitude precedence for airspace is ground, then GNSS, then baro. An aircraft on the
+  ground is inside surface shelves.
 - Chart features are never filled cobalt; selection stays on planes.
 - Airport codes are runtime strings validated by `lookupPlace` and `airportByCode`,
   never a Skillet enum.

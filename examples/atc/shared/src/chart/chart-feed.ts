@@ -1,5 +1,5 @@
 import type { AtcStore } from '../store';
-import { parseChartAirports, parseSurfaces } from './parse';
+import { parseAirspace, parseChartAirports, parseSurfaces } from './parse';
 
 /** Delays before the first and second retry of the airports fetch. */
 export const CHART_RETRY_MS = [30_000, 120_000];
@@ -16,9 +16,11 @@ const defaultSchedule: Schedule = (fn, ms) => {
 };
 
 /**
- * Loads `/api/chart/airports` into the store. On failure the chart becomes
- * `limited` (only while still `loading`) and the fetch is retried after 30 s,
- * 2 min, then every 10 min until one succeeds. Returns a function that stops it.
+ * Loads `/api/chart/airports` and `/api/chart/airspace` into the store, in
+ * parallel. On failure the chart becomes `limited` and airspace `failed` (only
+ * while still `loading`), and each fetch is retried on its own chain after
+ * 30 s, 2 min, then every 10 min until one succeeds. Returns a function that
+ * stops both.
  */
 export function startChartFeed(options: {
   store: AtcStore;
@@ -27,11 +29,33 @@ export function startChartFeed(options: {
 }): () => void {
   const { store, fetchFn = fetch, schedule = defaultSchedule } = options;
   let stopped = false;
-  let cancel: (() => void) | undefined;
-  let attempt = 0;
+  const cancels = new Set<() => void>();
 
-  const run = async () => {
-    try {
+  /** Runs `load` now and again on the retry schedule until it succeeds. */
+  const retrying = (load: () => Promise<void>, fail: () => void) => {
+    let attempt = 0;
+    const run = async () => {
+      try {
+        await load();
+      } catch {
+        if (stopped) {
+          return;
+        }
+        fail();
+        const delay = CHART_RETRY_MS[attempt] ?? CHART_RETRY_EVERY_MS;
+        attempt += 1;
+        const cancel = schedule(() => {
+          cancels.delete(cancel);
+          void run();
+        }, delay);
+        cancels.add(cancel);
+      }
+    };
+    void run();
+  };
+
+  retrying(
+    async () => {
       const response = await fetchFn('/api/chart/airports');
       if (!response.ok) {
         throw new Error(`Chart feed returned ${response.status}`);
@@ -40,23 +64,33 @@ export function startChartFeed(options: {
       if (!stopped) {
         store.setChart(parsed);
       }
-    } catch {
-      if (stopped) {
-        return;
-      }
+    },
+    () => {
       if (store.getState().chart.status === 'loading') {
         store.setChartLimited();
       }
-      const delay = CHART_RETRY_MS[attempt] ?? CHART_RETRY_EVERY_MS;
-      attempt += 1;
-      cancel = schedule(() => void run(), delay);
-    }
-  };
-  void run();
+    },
+  );
+  retrying(
+    async () => {
+      const response = await fetchFn('/api/chart/airspace');
+      if (!response.ok) {
+        throw new Error(`Airspace feed returned ${response.status}`);
+      }
+      const parsed = parseAirspace(await response.json());
+      if (!stopped) {
+        store.setAirspace(parsed);
+      }
+    },
+    () => store.setAirspaceFailed(),
+  );
 
   return () => {
     stopped = true;
-    cancel?.();
+    for (const cancel of cancels) {
+      cancel();
+    }
+    cancels.clear();
   };
 }
 

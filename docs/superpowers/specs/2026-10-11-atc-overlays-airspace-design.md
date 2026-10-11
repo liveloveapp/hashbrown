@@ -110,7 +110,8 @@ structure all stay.
 
 ### Data and the server route
 
-A live FAA query on 2026-10-11 found 154 shelves in the area:
+A live FAA query on 2026-10-11 found 154 shelves in the area's bounding box;
+after the 250 nm filter the server keeps 130 (the table below counts the 154):
 
 | Class         | Shelves |
 | ------------- | ------- |
@@ -123,8 +124,8 @@ A live FAA query on 2026-10-11 found 154 shelves in the area:
 | No local type | 7       |
 
 The 7 shelves with no local type are classed by `CLASS`. All are plain
-polygons. Simplified to about 50 m, the set is 142 KB of JSON and 34 KB
-gzipped.
+polygons. After the 250 nm filter and simplification to about 50 m, the 130
+shelves are about 105 KB of JSON.
 
 **`GET /api/chart/airspace`**
 
@@ -158,9 +159,12 @@ whitelist, never spread.
   up to 80 characters.
 - `class`: `'B' | 'C' | 'D' | 'E'`.
 - `type`: `'B' | 'C' | 'D' | 'E2' | 'E3' | 'E4'`.
-- `floor`: `{ ft: number; ref: 'SFC' | 'MSL' }`. `SFC` has `ft: 0`.
+- `floor`: `{ ft: number; ref: 'SFC' | 'MSL' }`. `SFC` has `ft: 0` and comes from
+  `LOWER_VAL === 0`; a nonzero `LOWER_VAL` coded `SFC` is an AGL floor and the
+  feature is dropped.
 - `ceiling`: `{ ft: number; exclusive: boolean } | null`. The value is in
-  feet MSL, and `exclusive` comes from `UPPER_DESC === 'TI'`. A ceiling of
+  feet MSL, and `exclusive` comes from `UPPER_DESC === 'TNI'` ("to not
+  including"). `TI` ("to and including") is an inclusive ceiling. A ceiling of
   `null` means up to the overlying airspace (`UPPER_VAL` of `-9998`,
   `UPPER_DESC` of `AA`), which the Class E surface areas use.
 - `partTime`: `WKHR_CODE === 'NOTAM'`. This applies to part-time Class D
@@ -205,13 +209,15 @@ planes.
   - Overview widths apply through a `data-zoom-overview` attribute on the map
     element, set when zoom is 8 or below. `airspace-map.ts` toggles it on
     `zoomend`, as it already does for `data-zoom-low`.
-  - Shelves sharing an edge simply overlap.
+  - Shelves sharing an edge simply overlap. Class D paints above Class E, so
+    the D ring stays blue where it shares an outline with an E2 shelf.
 
 - **Labels** (zoom 9 and above, placed by the same greedy declutter as the
   airport labels):
-  - **Class B and C shelves** get a stacked label in mono bold in the shelf's
-    colour: the ceiling in hundreds of feet, a 1 px rule, then the floor in
-    hundreds or `SFC`. For example, `40` over `11` for Portland's 1,100 to
+  - **Class B and C shelves** get a stacked label in mono bold in the solid
+    chart blue (B) or magenta (C), as the printed chart does, not the screened
+    band colour: the ceiling in hundreds of feet, a 1 px rule, then the floor in
+    hundreds or `SFC`. A B or C shelf with a null ceiling has no label. For example, `40` over `11` for Portland's 1,100 to
     4,000 ft shelf.
   - **Class D** gets one label per airport, at the label point of its largest
     D shelf: the ceiling in hundreds (`56`) inside the chart's corner-bracket
@@ -219,14 +225,19 @@ planes.
   - **Class E** has no labels, as on the chart.
   - **Label point:** the centre of the shelf's bounding box when it lies
     inside the shelf, else the average of its outer ring's vertices. This is
-    computed once per shelf.
+    computed once per shelf. Labels are anchored off the ring centre: when the
+    label point is the bounding-box centre of a core shelf (the airport
+    itself), the label moves halfway to the box's south edge when that point
+    is still inside the shelf.
 - **Highlight.**
   - The store gains `highlightedAirspace: string | null`, the airport code.
   - The highlighted airport's shelves get a cobalt casing: a second path
     underneath with `stroke: var(--atc-accent)`, stroke width equal to the
     shelf's width plus 4 px, and opacity 0.6.
-  - Every other shelf dims to opacity 0.3.
-  - `clearHighlight` and `resetMap` clear it.
+  - Every other shelf, and its label, dims to opacity 0.3.
+  - `clearHighlight`, `resetMap`, and area and airport requests clear it. An
+    empty aircraft highlight does not, so a search that finds no aircraft
+    keeps the airspace it searched.
   - A new `ViewRequest` kind `'airspace'` fits the map to the union of the
     airport's shelf bounding boxes, under the existing rules: follow mode
     wins, the newest request wins, and a drag cancels.
@@ -244,26 +255,30 @@ A new `shared/src/chart/airspace-query.ts` holds the pure query functions.
 
 - `pointInShelf(shelf, point): boolean`. A bounding-box prefilter, then ray
   casting with even-odd holes.
-- `altitudeMslFt(aircraft): number | null`. Rules, in order:
-  1. `onGround` gives 0, so the aircraft is in surface areas.
+- `altitudeMslFt(aircraft): { ft: number; source: 'ground' | 'gnss' | 'baro' } | null`.
+  Rules, in order:
+  1. `onGround` gives 0 feet from source `ground`, so an on-ground aircraft is
+     inside surface shelves.
   2. Otherwise use `geometricAltitudeFt` (GNSS, within about 100 ft of MSL in
      the area) when present.
   3. Otherwise use the barometric `altitudeFt`.
   4. Otherwise `null`.
-- `shelvesAt(shelves, point, altitudeFt): AirspaceShelf[]`. A shelf contains
-  the aircraft when all of these hold:
+- `shelvesAt(shelves, aircraft): AirspaceShelf[]`. The altitude comes from
+  `altitudeMslFt`. A shelf contains the aircraft when all of these hold:
   - the point is laterally inside the shelf;
-  - the altitude is at or above the floor;
+  - the altitude is at or above the floor; a surface (`SFC`) floor has no
+    lower bound, because GNSS and uncorrected baro altitudes can read below
+    zero near sea level;
   - the altitude is below the ceiling (or at it, when the ceiling is not
     exclusive);
   - a `null` ceiling counts as 18,000 ft, exclusive.
 
-  An aircraft with no altitude is never inside a shelf whose floor is above
-  the surface. It counts inside a surface shelf only when its altitude is
-  known.
+  An aircraft with no altitude is inside no shelf.
 
 - `airspaceOf(shelves, airport): AirspaceShelf[]`, matched on the ICAO code or
   the FAA ident.
+- `airspaceTypes(shelves): AirspaceType[]`, the distinct shelf types in chart
+  order (B, C, D, E2, E3, E4), which the AirportCard line reads.
 
 ### Assistant: tools, components and prompt
 
@@ -279,6 +294,7 @@ All new tools are added to `ATC_TOOL_DEFINITIONS`, and the server pins them.
     - `classes` is a list, for example `['D', 'E2']`.
     - `shelves` is a list of `{ type, floor, ceiling }` text, for example
       `{ type: 'C', floor: '1,100 MSL', ceiling: '4,000 MSL' }`.
+      An exclusive ceiling reads `below 3,000 MSL`.
     - `aircraftInside` counts aircraft in any of the airport's shelves.
   - While following a plane, it returns `moved: false` with the existing
     follow reason.
@@ -299,8 +315,13 @@ All new tools are added to `ATC_TOOL_DEFINITIONS`, and the server pins them.
   - Like `near`, it also highlights that airport's airspace and requests the
     `'airspace'` view.
   - Rows are measured from that airport.
+  - When the airport has no shelf of that class (or none at all when `class`
+    is null), it returns `{ found: false, reason }`, for example
+    `KRDM has no Class C airspace.`, and highlights nothing.
 - **`setLayers`** gains `airspace: boolean | null`.
-- **`clearHighlight`** and **`resetMap`** also clear `highlightedAirspace`.
+- **`clearHighlight`**, **`resetMap`**, **`showArea`** and **`showAirport`**
+  also clear `highlightedAirspace`; **`highlightAircraft`** with an empty list
+  does not.
 
 **Components**
 
@@ -317,8 +338,10 @@ All new tools are added to `ATC_TOOL_DEFINITIONS`, and the server pins them.
 - To show a place's airspace, call `showAirspace`.
 - For which airspace one aircraft is in, call `airspaceAt`.
 - Airspace answers come only from tool results. Altitudes from ADS-B can be
-  off by a few hundred feet, so say "about" near a boundary. Part-time Class D
-  airspace is shown as charted, and the tool reports when it is part-time.
+  off by a few hundred feet, so say "about" near a boundary. Airspace marked
+  `partTime` is in effect only during hours set by NOTAM, which the tools
+  don't know: when `partTime` is true, the answer says the aircraft is inside
+  the charted area and that it may not be active now.
 
 **Supporting changes**
 
@@ -355,7 +378,7 @@ first.
   - The design rules: the new band tokens are allowed in `chart.css` only.
 - **Server:**
   - The route with stubbed fetch: paging, the area filter, normalisation of
-    `-9998`/`AA` and `TI`, caching, stale data and 502s.
+    `-9998`/`AA`, `TI` (inclusive) and `TNI` (exclusive), caching, stale data and 502s.
   - Fixtures are trimmed real FAA features for Portland C, Redmond D and E2,
     and Bend E2.
 - **e2e:**

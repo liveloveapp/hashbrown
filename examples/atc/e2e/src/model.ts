@@ -1,8 +1,8 @@
 import type { LLMock } from '@copilotkit/aimock';
 import { SELECTED_PROMPT, STARTER_PROMPTS } from '@atc/shared';
-import { NEAR_BEND, scenario, ui } from './fixtures';
+import { NEAR_BEND, PORTLAND_CLASS_C, scenario, ui } from './fixtures';
 
-const { selected, highest, fastest, arrivals, nearby } = scenario;
+const { selected, highest, fastest, arrivals, nearby, portland } = scenario;
 
 /** A typed question that outlines KBDN with showArea before listing traffic. */
 export const NEAR_PROMPT = "What's flying near KBDN?";
@@ -16,6 +16,7 @@ export const ANY = {
   maxAltitudeFt: null,
   approaching: null,
   near: null,
+  inAirspace: null,
 };
 
 /**
@@ -165,6 +166,56 @@ export function scriptAtcModel(mock: LLMock): void {
       },
     ],
   });
+  const portlandBoard = ui({
+    ArrivalsBoard: {
+      props: {
+        title: 'Inside the Portland Class C',
+        airport: 'KPDX',
+        hexes: portland.map((r) => r.hex),
+      },
+    },
+  });
+  for (const id of ['portland-lookup', 'portland-find', 'portland-highlight']) {
+    mock.onToolResult(id, async () => ({ content: portlandBoard }));
+  }
+  mock.onMessage(STARTER_PROMPTS[5], {
+    toolCalls: [
+      {
+        id: 'portland-lookup',
+        name: 'lookupPlace',
+        arguments: { query: 'Portland' },
+      },
+      {
+        id: 'portland-find',
+        name: 'findAircraft',
+        arguments: {
+          ...ANY,
+          inAirspace: PORTLAND_CLASS_C,
+          sortBy: 'distance',
+          limit: 20,
+        },
+      },
+      {
+        id: 'portland-highlight',
+        name: 'highlightAircraft',
+        arguments: { hexes: portland.map((r) => r.hex) },
+      },
+    ],
+  });
+  mock.onToolResult('redmond-airspace', async () => ({
+    content: ui({
+      Markdown: { props: { children: 'Redmond has a part-time Class D.' } },
+    }),
+  }));
+  mock.onMessage('Show the Redmond airspace.', {
+    toolCalls: [
+      {
+        id: 'redmond-airspace',
+        name: 'showAirspace',
+        arguments: { airport: 'KRDM' },
+      },
+    ],
+  });
   mock.onToolResult('hide-airports', async () => ({
     content: 'Airports are hidden.',
   }));
@@ -173,7 +224,7 @@ export function scriptAtcModel(mock: LLMock): void {
       {
         id: 'hide-airports',
         name: 'setLayers',
-        arguments: { airports: false },
+        arguments: { airports: false, airspace: null },
       },
     ],
   });

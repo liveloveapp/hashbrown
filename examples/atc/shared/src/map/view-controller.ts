@@ -1,6 +1,7 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
 import { prefersReducedMotion } from '../dom';
+import { airspaceOf } from '../chart';
 import { airportByCode, chartAirportByCode } from '../directory';
 import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore, ShownArea } from '../store';
@@ -252,6 +253,30 @@ export function createViewController(options: {
     );
   };
   /**
+   * Fits the union of the bboxes of one airport's airspace shelves, above a
+   * phone's sheet, in one move. Without shelves the map stays where it is.
+   */
+  const showAirspace = (code: string, animate: boolean) => {
+    const shelves = airspaceOf(store.getState().airspace.shelves, code);
+    if (shelves.length === 0) {
+      return;
+    }
+    const bounds = L.latLngBounds(
+      shelves.flatMap(({ bbox: [west, south, east, north] }) => [
+        [south, west] as [number, number],
+        [north, east] as [number, number],
+      ]),
+    );
+    moveMap(() =>
+      map.fitBounds(bounds, {
+        paddingTopLeft: [AREA_PADDING, AREA_PADDING],
+        paddingBottomRight: [AREA_PADDING, AREA_PADDING + sheetInset()],
+        maxZoom: MAX_AREA_ZOOM,
+        animate,
+      }),
+    );
+  };
+  /**
    * Applies the newest view request once. Follow mode drops it. A highlight
    * fit, or a plane picked in the chat, waits until a marker is drawn.
    */
@@ -300,6 +325,11 @@ export function createViewController(options: {
     if (request.kind === 'airport') {
       appliedSeq = request.seq;
       showAirport(request.airport, animate);
+      return;
+    }
+    if (request.kind === 'airspace') {
+      appliedSeq = request.seq;
+      showAirspace(request.airport, animate);
       return;
     }
     appliedSeq = request.seq;

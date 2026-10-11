@@ -4,6 +4,9 @@ import {
   type AircraftReadings,
   type AircraftSnapshot,
   AIRPORTS,
+  type AirspacePayload,
+  type AirspaceShelf,
+  applyAirspace,
   applySnapshot,
   AREAS,
   type ChartAirport,
@@ -228,6 +231,103 @@ const ANY: FindAircraftInput = {
 /** The area the "near KBDN" scenario shows and searches. */
 export const NEAR_BEND = { airport: 'KBDN', radiusNm: 25 } as const;
 
+/** A closed ring of `[lon, lat]` points, `radiusNm` around a centre. */
+function circle(
+  centre: { lat: number; lon: number },
+  radiusNm: number,
+  points = 32,
+): [number, number][] {
+  const dLat = radiusNm / 60;
+  const dLon = dLat / Math.cos((centre.lat * Math.PI) / 180);
+  const ring = Array.from({ length: points }, (_, i): [number, number] => {
+    const angle = (2 * Math.PI * i) / points;
+
+    return [
+      centre.lon + dLon * Math.sin(angle),
+      centre.lat + dLat * Math.cos(angle),
+    ];
+  });
+
+  return [...ring, ring[0] as [number, number]];
+}
+
+/** One airspace shelf around an airport, with its bounding box. */
+function shelf(
+  fields: Pick<AirspaceShelf, 'airport' | 'name' | 'class' | 'type'> &
+    Partial<AirspaceShelf>,
+  centre: { lat: number; lon: number },
+  radiusNm: number,
+  index = 0,
+): AirspaceShelf {
+  const ring = circle(centre, radiusNm);
+  const lons = ring.map(([lon]) => lon);
+  const lats = ring.map(([, lat]) => lat);
+
+  return {
+    id: `${fields.airport}-${fields.type}-${index}`,
+    floor: { ft: 0, ref: 'SFC' },
+    ceiling: null,
+    partTime: false,
+    rings: [ring],
+    bbox: [
+      Math.min(...lons),
+      Math.min(...lats),
+      Math.max(...lons),
+      Math.max(...lats),
+    ],
+    ...fields,
+  };
+}
+
+/**
+ * The `/api/chart/airspace` fixture: Portland's Class C (surface to 4,000 ft
+ * MSL, 5 nm), Redmond's part-time Class D (surface to 5,600 ft, 4.3 nm) with
+ * a Class E2 shelf, and a Class E2 shelf at Bend.
+ */
+export const CHART_AIRSPACE: AirspacePayload = {
+  cycle: '2610',
+  effective: '2026-10-08',
+  shelves: [
+    shelf(
+      {
+        airport: 'KPDX',
+        name: 'PORTLAND CLASS C',
+        class: 'C',
+        type: 'C',
+        ceiling: { ft: 4000, exclusive: false },
+      },
+      AIRPORTS.KPDX,
+      5,
+    ),
+    shelf(
+      {
+        airport: 'KRDM',
+        name: 'REDMOND CLASS D',
+        class: 'D',
+        type: 'D',
+        ceiling: { ft: 5600, exclusive: false },
+        partTime: true,
+      },
+      AIRPORTS.KRDM,
+      4.3,
+    ),
+    shelf(
+      { airport: 'KRDM', name: 'REDMOND CLASS E', class: 'E', type: 'E2' },
+      AIRPORTS.KRDM,
+      6,
+      1,
+    ),
+    shelf(
+      { airport: 'KBDN', name: 'BEND CLASS E', class: 'E', type: 'E2' },
+      AIRPORTS.KBDN,
+      4.5,
+    ),
+  ],
+};
+
+/** The airspace the Portland scenario searches. */
+export const PORTLAND_CLASS_C = { airport: 'KPDX', class: 'C' } as const;
+
 /** The scenario aircraft, found with the app's own search over frame 0. */
 export const scenario = (() => {
   const state = applySnapshot(INITIAL_STATE, frame(0));
@@ -265,6 +365,15 @@ export const scenario = (() => {
         .sort()
         .join(),
   );
+  const inPortland = {
+    ...ANY,
+    inAirspace: PORTLAND_CLASS_C,
+    sortBy: 'distance',
+  } as const;
+  const portland = findAircraft(
+    applyAirspace(state, CHART_AIRSPACE),
+    inPortland,
+  );
   const nearbyKinds = new Set(nearby.map((row) => row.kind));
   if (
     !selected ||
@@ -273,12 +382,13 @@ export const scenario = (() => {
     arrivals.length < 3 ||
     !approachingEveryFrame ||
     !nearbyEveryFrame ||
+    portland.length < 1 ||
     !['jet', 'single', 'rotor'].every((kind) => nearbyKinds.has(kind))
   ) {
     throw new Error('The synthetic frames lack a scenario aircraft.');
   }
 
-  return { selected, highest, fastest, arrivals, nearby };
+  return { selected, highest, fastest, arrivals, nearby, portland };
 })();
 
 /** The JSON a UI chat answer contains. */

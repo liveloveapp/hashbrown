@@ -1,9 +1,15 @@
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from './aircraft';
-import type { ChartAirport } from './chart';
+import type { AirspaceShelf, ChartAirport } from './chart';
 import { applySnapshot, createAtcStore, INITIAL_STATE } from './store';
 import { findAircraft, type FindAircraftInput } from './find-aircraft';
-import { ATC_TOOL_NAMES, createAtcTools, whenChartSettled } from './tools';
+import {
+  ATC_TOOL_DEFINITIONS,
+  ATC_TOOL_NAMES,
+  createAtcTools,
+  whenAirspaceSettled,
+  whenChartSettled,
+} from './tools';
 
 function plane(hex: string, overrides: Partial<Aircraft> = {}): Aircraft {
   return {
@@ -33,6 +39,7 @@ const any: FindAircraftInput = {
   maxAltitudeFt: null,
   approaching: null,
   near: null,
+  inAirspace: null,
   sortBy: 'altitude',
   limit: 20,
 };
@@ -662,18 +669,24 @@ test('setLayers applies a layer and returns the layers', async () => {
   const store = createAtcStore();
   const tools = createAtcTools({ store, fetchRoute: async () => null });
 
-  const result = await tools.setLayers.handler({ airports: false });
+  const result = await tools.setLayers.handler({
+    airports: false,
+    airspace: null,
+  });
 
-  expect(result).toEqual({ layers: { airports: false } });
+  expect(result).toEqual({ layers: { airports: false, airspace: true } });
 });
 
 test('setLayers with null leaves the layers as they are', async () => {
   const store = createAtcStore();
   const tools = createAtcTools({ store, fetchRoute: async () => null });
 
-  const result = await tools.setLayers.handler({ airports: null });
+  const result = await tools.setLayers.handler({
+    airports: null,
+    airspace: null,
+  });
 
-  expect(result).toEqual({ layers: { airports: true } });
+  expect(result).toEqual({ layers: { airports: true, airspace: true } });
   expect(store.getState()).toBe(INITIAL_STATE);
 });
 
@@ -822,4 +835,390 @@ test('showAirport reports loading when surfaces take longer than 3 s', async () 
 
   expect(settledEarly).toBe(false);
   expect(result).toMatchObject({ shown: true, diagram: 'loading' });
+});
+
+function box(
+  west: number,
+  south: number,
+  east: number,
+  north: number,
+): Pick<AirspaceShelf, 'rings' | 'bbox'> {
+  return {
+    rings: [
+      [
+        [west, south],
+        [east, south],
+        [east, north],
+        [west, north],
+        [west, south],
+      ],
+    ],
+    bbox: [west, south, east, north],
+  };
+}
+
+const pdxShelves: readonly AirspaceShelf[] = [
+  {
+    id: 'KPDX-C-0',
+    airport: 'KPDX',
+    name: 'PORTLAND CLASS C',
+    class: 'C',
+    type: 'C',
+    floor: { ft: 1100, ref: 'MSL' },
+    ceiling: { ft: 4000, exclusive: false },
+    partTime: false,
+    ...box(-122, 45, -121, 46),
+  },
+  {
+    id: 'KPDX-E2-0',
+    airport: 'KPDX',
+    name: 'PORTLAND E2',
+    class: 'E',
+    type: 'E2',
+    floor: { ft: 0, ref: 'SFC' },
+    ceiling: null,
+    partTime: false,
+    ...box(-122, 45, -121, 46),
+  },
+];
+
+const rdmShelf: AirspaceShelf = {
+  id: 'KRDM-D-0',
+  airport: 'KRDM',
+  name: 'REDMOND CLASS D',
+  class: 'D',
+  type: 'D',
+  floor: { ft: 0, ref: 'SFC' },
+  ceiling: { ft: 6000, exclusive: false },
+  partTime: true,
+  ...box(-121.3, 44.1, -121, 44.4),
+};
+
+function airspaceStore(shelves: readonly AirspaceShelf[] = pdxShelves) {
+  const store = readyStore();
+  store.setAirspace({ cycle: '2610', effective: '2026-10-08', shelves });
+
+  return store;
+}
+
+test('showAirspace shows the airspace and counts the aircraft inside', async () => {
+  const store = airspaceStore();
+  store.applySnapshot({
+    at: 1,
+    aircraft: [
+      plane('aaaaaa', { lat: 45.5, lon: -121.5, altitudeFt: 3000 }),
+      plane('bbbbbb', { lat: 45.5, lon: -121.5, altitudeFt: 20000 }),
+      plane('cccccc', { lat: 47.5, lon: -122.3, altitudeFt: 3000 }),
+    ],
+  });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirspace.handler({ airport: 'Portland' });
+
+  expect(result).toEqual({
+    shown: true,
+    code: 'KPDX',
+    classes: ['C', 'E2'],
+    shelves: [
+      { type: 'C', floor: '1,100 MSL', ceiling: '4,000 MSL', partTime: false },
+      {
+        type: 'E2',
+        floor: 'SFC',
+        ceiling: 'up to overlying airspace',
+        partTime: false,
+      },
+    ],
+    aircraftInside: 1,
+    moved: true,
+  });
+  expect(store.getState().highlightedAirspace).toBe('KPDX');
+  expect(store.getState().viewRequest?.kind).toBe('airspace');
+});
+
+test('while following, showAirspace reports that the map stays on the plane', async () => {
+  const store = airspaceStore();
+  store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });
+  store.follow('aaaaaa');
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirspace.handler({ airport: 'KPDX' });
+
+  expect(result).toMatchObject({
+    shown: true,
+    moved: false,
+    reason: 'Following UAL100. Call stopFollowing first to move the map.',
+  });
+  expect(store.getState().viewRequest).toBeNull();
+});
+
+test('showAirspace says so when the airport has no shelves', async () => {
+  const store = airspaceStore([rdmShelf]);
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirspace.handler({ airport: 'KPDX' });
+
+  expect(result).toEqual({
+    shown: false,
+    reason: 'KPDX has no Class B, C, D or E surface airspace.',
+  });
+  expect(store.getState().highlightedAirspace).toBeNull();
+});
+
+test('showAirspace refuses when the airspace data failed', async () => {
+  const store = readyStore();
+  store.setAirspaceFailed();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirspace.handler({ airport: 'KPDX' });
+
+  expect(result).toEqual({
+    shown: false,
+    reason: 'Airspace data is unavailable right now.',
+  });
+});
+
+test('showAirspace refuses unknown airports', async () => {
+  const store = airspaceStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirspace.handler({ airport: 'Tokyo' });
+
+  expect(result).toMatchObject({ shown: false });
+  expect(store.getState().highlightedAirspace).toBeNull();
+});
+
+test('findAircraft with inAirspace keeps aircraft inside that class and measures from the airport', async () => {
+  const store = airspaceStore([...pdxShelves, rdmShelf]);
+  store.applySnapshot({
+    at: 1,
+    aircraft: [
+      plane('aaaaaa', { lat: 44.25, lon: -121.15, altitudeFt: 3000 }),
+      plane('bbbbbb', { lat: 44.25, lon: -121.15, altitudeFt: 9000 }),
+      plane('cccccc', { lat: 45.5, lon: -121.5, altitudeFt: 3000 }),
+    ],
+  });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.findAircraft.handler({
+    ...any,
+    inAirspace: { airport: 'KRDM', class: 'D' },
+  });
+
+  expect(result).toMatchObject([{ hex: 'aaaaaa', distanceNm: 0.2 }]);
+  expect(store.getState().highlightedAirspace).toBe('KRDM');
+});
+
+test('findAircraft with inAirspace and no class keeps any shelf of the airport', () => {
+  const state = {
+    ...airspaceStore([...pdxShelves, rdmShelf]).getState(),
+  };
+  const traffic = applySnapshot(state, {
+    at: 1,
+    aircraft: [
+      plane('aaaaaa', { lat: 45.5, lon: -121.5, altitudeFt: 25000 }),
+      plane('bbbbbb', { lat: 45.5, lon: -121.5, altitudeFt: 3000 }),
+    ],
+  });
+
+  const rows = findAircraft(traffic, {
+    ...any,
+    inAirspace: { airport: 'KPDX', class: null },
+  });
+
+  expect(rows.map((row) => row.hex)).toEqual(['bbbbbb']);
+});
+
+test('findAircraft with inAirspace refuses while airspace is unavailable', async () => {
+  const store = readyStore();
+  store.setAirspaceFailed();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.findAircraft.handler({
+    ...any,
+    inAirspace: { airport: 'KPDX', class: null },
+  });
+
+  expect(result).toEqual({
+    found: false,
+    reason: 'Airspace data is unavailable right now.',
+  });
+});
+
+test('findAircraft with inAirspace refuses a class the airport does not have', async () => {
+  const store = airspaceStore([...pdxShelves, rdmShelf]);
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.findAircraft.handler({
+    ...any,
+    inAirspace: { airport: 'Redmond', class: 'C' },
+  });
+
+  expect(result).toEqual({
+    found: false,
+    reason: 'KRDM has no Class C airspace.',
+  });
+  expect(store.getState().highlightedAirspace).toBeNull();
+});
+
+test('findAircraft with inAirspace refuses an airport with no airspace', async () => {
+  const store = airspaceStore([...pdxShelves, rdmShelf]);
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.findAircraft.handler({
+    ...any,
+    inAirspace: { airport: 'KBDN', class: null },
+  });
+
+  expect(result).toEqual({
+    found: false,
+    reason: 'KBDN has no Class B, C, D or E surface airspace.',
+  });
+  expect(store.getState().highlightedAirspace).toBeNull();
+});
+
+test('airspaceAt names the airspace around an aircraft on the ground at KRDM', async () => {
+  const store = airspaceStore([...pdxShelves, rdmShelf]);
+  store.applySnapshot({
+    at: 1,
+    aircraft: [
+      plane('aaaaaa', {
+        lat: 44.25,
+        lon: -121.15,
+        onGround: true,
+        altitudeFt: null,
+      }),
+    ],
+  });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.airspaceAt.handler({ hex: 'AAAAAA' });
+
+  expect(result).toEqual({
+    found: true,
+    label: 'UAL100',
+    altitudeFt: 0,
+    altitudeSource: 'ground',
+    airspace: [{ airport: 'KRDM', type: 'D', partTime: true }],
+  });
+});
+
+test('airspaceAt reports no airspace outside every shelf', async () => {
+  const store = airspaceStore();
+  store.applySnapshot({
+    at: 1,
+    aircraft: [plane('aaaaaa', { lat: 47.5, lon: -122.3 })],
+  });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.airspaceAt.handler({ hex: 'aaaaaa' });
+
+  expect(result).toMatchObject({
+    found: true,
+    altitudeFt: 30000,
+    altitudeSource: 'baro',
+    airspace: [],
+  });
+});
+
+test('airspaceAt refuses an unknown hex and failed airspace', async () => {
+  const store = airspaceStore();
+  const failed = readyStore();
+  failed.setAirspaceFailed();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+  const down = createAtcTools({ store: failed, fetchRoute: async () => null });
+
+  const unknown = await tools.airspaceAt.handler({ hex: 'ABCDEF' });
+  const refused = await down.airspaceAt.handler({ hex: 'ABCDEF' });
+
+  expect(unknown).toEqual({
+    found: false,
+    reason: 'No aircraft with hex abcdef is on the map.',
+  });
+  expect(refused).toEqual({
+    found: false,
+    reason: 'Airspace data is unavailable right now.',
+  });
+});
+
+test('setLayers applies the airspace layer', async () => {
+  const store = createAtcStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.setLayers.handler({
+    airports: null,
+    airspace: false,
+  });
+
+  expect(result).toEqual({ layers: { airports: true, airspace: false } });
+});
+
+test('showAirspace reads an exclusive ceiling as below it', async () => {
+  const seattleD: AirspaceShelf = {
+    ...rdmShelf,
+    partTime: false,
+    ceiling: { ft: 3000, exclusive: true },
+  };
+  const store = airspaceStore([seattleD]);
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.showAirspace.handler({ airport: 'KRDM' });
+
+  expect(result).toMatchObject({
+    shown: true,
+    shelves: [
+      { type: 'D', floor: 'SFC', ceiling: 'below 3,000 MSL', partTime: false },
+    ],
+  });
+});
+
+test('the findAircraft description mentions the airspace filter', () => {
+  const description = ATC_TOOL_DEFINITIONS.findAircraft.description;
+
+  const mentions = description.includes("inside an airport's airspace");
+
+  expect(mentions).toBe(true);
+});
+
+test('the airspace tools wait only chartWaitMs for loading airspace', async () => {
+  const store = readyStore();
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    chartWaitMs: 0,
+  });
+  const late = new Promise((resolve) => setTimeout(resolve, 500, 'late'));
+
+  const result = await Promise.race([
+    tools.airspaceAt.handler({ hex: 'aaaaaa' }),
+    late,
+  ]);
+
+  expect(result).toEqual({
+    found: false,
+    reason: 'Airspace data is unavailable right now.',
+  });
+});
+
+test('whenAirspaceSettled resolves once airspace is no longer loading', async () => {
+  const store = createAtcStore();
+  let settled = false;
+
+  const pending = whenAirspaceSettled(store, 5000).then(() => {
+    settled = true;
+  });
+  await Promise.resolve();
+  const before = settled;
+  store.setAirspaceFailed();
+  await pending;
+
+  expect(before).toBe(false);
+  expect(settled).toBe(true);
+});
+
+test('whenAirspaceSettled gives up after the timeout', async () => {
+  const store = createAtcStore();
+
+  await whenAirspaceSettled(store, 10);
+
+  expect(store.getState().airspace.status).toBe('loading');
 });

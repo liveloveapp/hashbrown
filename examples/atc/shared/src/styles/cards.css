@@ -237,7 +237,8 @@
 .atc-airport-freqs dd {
   margin: 0;
 }
-.atc-airport-elev {
+.atc-airport-elev,
+.atc-airport-airspace {
   margin: 6px 0 0;
   font-size: 13px;
   color: var(--atc-muted);

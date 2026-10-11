@@ -12,10 +12,10 @@ export interface LayersControl {
 let nextPanelId = 0;
 
 /**
- * Adds the Layers pill to `map`: a button that opens a small panel with an
- * Airports checkbox (`store.setLayers`) and the FAA cycle. The checkbox and
- * its text follow the store; a limited chart reads "Airports · limited
- * data". Enter or a click opens the panel, Escape closes it and returns
+ * Adds the Layers pill to `map`: a button that opens a small panel with
+ * Airports and Airspace checkboxes (`store.setLayers`) and the FAA cycle.
+ * The checkboxes and their text follow the store; a limited chart reads
+ * "Airports · limited data" and failed airspace "Airspace · unavailable". Enter or a click opens the panel, Escape closes it and returns
  * focus to the button. Clicks and scrolls inside never reach the map. Add it
  * after the zoom control: Leaflet stacks later bottom controls above.
  */
@@ -49,14 +49,20 @@ export function createLayersControl(options: {
   panel.hidden = true;
   panel.setAttribute('role', 'group');
   panel.setAttribute('aria-label', 'Map layers');
-  const row = make('label', 'atc-layers-row');
-  const airports = make('input');
-  airports.type = 'checkbox';
-  airports.name = 'airports';
-  const text = make('span');
-  row.append(airports, text);
+  /** A labelled checkbox row and its text. */
+  const checkboxRow = (name: string) => {
+    const row = make('label', 'atc-layers-row');
+    const input = make('input');
+    input.type = 'checkbox';
+    input.name = name;
+    const text = make('span');
+    row.append(input, text);
+    return { row, input, text };
+  };
+  const airports = checkboxRow('airports');
+  const airspace = checkboxRow('airspace');
   const cycle = make('p', 'atc-layers-cycle');
-  panel.append(row, cycle);
+  panel.append(airports.row, airspace.row, cycle);
   container.append(toggle, panel);
 
   let open = false;
@@ -66,8 +72,11 @@ export function createLayersControl(options: {
     toggle.setAttribute('aria-expanded', String(value));
   };
   toggle.addEventListener('click', () => setOpen(!open));
-  airports.addEventListener('change', () =>
-    store.setLayers({ airports: airports.checked }),
+  airports.input.addEventListener('change', () =>
+    store.setLayers({ airports: airports.input.checked }),
+  );
+  airspace.input.addEventListener('change', () =>
+    store.setLayers({ airspace: airspace.input.checked }),
   );
   container.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || !open) return;
@@ -79,14 +88,29 @@ export function createLayersControl(options: {
   L.DomEvent.disableClickPropagation(container);
   L.DomEvent.disableScrollPropagation(container);
 
-  let shown: Pick<AtcState, 'chart' | 'layers'> | null = null;
-  /** Updates the panel when the chart or the layers changed. */
+  let shown: Pick<AtcState, 'chart' | 'layers' | 'airspace'> | null = null;
+  /** Updates the panel when the chart, the airspace or the layers changed. */
   const render = (state: AtcState) => {
-    if (shown?.chart === state.chart && shown.layers === state.layers) return;
-    shown = { chart: state.chart, layers: state.layers };
-    airports.checked = state.layers.airports;
-    text.textContent =
+    if (
+      shown?.chart === state.chart &&
+      shown.layers === state.layers &&
+      shown.airspace === state.airspace
+    ) {
+      return;
+    }
+    shown = {
+      chart: state.chart,
+      layers: state.layers,
+      airspace: state.airspace,
+    };
+    airports.input.checked = state.layers.airports;
+    airports.text.textContent =
       state.chart.status === 'limited' ? 'Airports · limited data' : 'Airports';
+    airspace.input.checked = state.layers.airspace;
+    airspace.text.textContent =
+      state.airspace.status === 'failed'
+        ? 'Airspace · unavailable'
+        : 'Airspace';
     cycle.textContent = state.chart.cycle
       ? `FAA cycle ${state.chart.cycle}`
       : '';

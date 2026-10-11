@@ -95,6 +95,13 @@ function nearSummary(value: unknown): string | null {
   return radius === null ? `near ${airport}` : `within ${radius} of ${airport}`;
 }
 
+/** "inside Portland airspace" once the airport has streamed, else null. */
+function airspaceSummary(value: unknown): string | null {
+  const airport = place(record(value)['airport']);
+
+  return airport === null ? null : `inside ${airport} airspace`;
+}
+
 /**
  * What findAircraft is looking for, in plain words: "UAL 737 aircraft above
  * 10,000 ft", "aircraft approaching Seattle", "aircraft sorted by altitude".
@@ -112,6 +119,7 @@ function findSummary(args: Record<string, unknown>): string {
     feet(args['maxAltitudeFt'], 'below'),
     approaching === null ? null : `approaching ${approaching}`,
     nearSummary(args['near']),
+    airspaceSummary(args['inAirspace']),
   ].filter((part): part is string => part !== null);
   const sortBy = shortText(args['sortBy']);
   const filtered = before.length > 0 || after.length > 0;
@@ -189,6 +197,20 @@ const RUNNING: Record<
     const airport = code(args['airport']);
 
     return airport === null ? 'Showing an airport' : `Showing ${airport}`;
+  },
+  showAirspace: (args) => {
+    const airport = code(args['airport']);
+
+    return airport === null
+      ? 'Showing airspace'
+      : `Showing ${airport} airspace`;
+  },
+  airspaceAt: (args, labelFor) => {
+    const name = planeName(args, labelFor);
+
+    return name === null
+      ? 'Checking an airspace'
+      : `Checking the airspace of ${name}`;
   },
   setLayers: () => 'Changing map layers',
   resetMap: () => 'Returning to central Oregon',
@@ -285,6 +307,12 @@ const DONE: Record<
 
     return airport === null ? 'showed an airport' : `showed ${airport}`;
   },
+  showAirspace: (calls) => {
+    const airport = code(calls.at(-1)?.['airport']);
+
+    return airport === null ? 'showed airspace' : `showed ${airport} airspace`;
+  },
+  airspaceAt: () => 'checked an airspace',
   setLayers: () => 'changed map layers',
   resetMap: () => 'returned to central Oregon',
 };

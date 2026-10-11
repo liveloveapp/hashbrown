@@ -112,6 +112,8 @@ export class Assistant {
     createTool(this.atc.showArea),
     createTool(this.atc.resetMap),
     createTool(this.atc.showAirport),
+    createTool(this.atc.showAirspace),
+    createTool(this.atc.airspaceAt),
     createTool(this.atc.setLayers),
   ];
 

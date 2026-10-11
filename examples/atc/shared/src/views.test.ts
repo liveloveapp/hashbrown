@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { Aircraft } from './aircraft';
-import type { ChartAirport } from './chart';
+import type { AirspaceShelf, ChartAirport } from './chart';
 import { applySnapshot, INITIAL_STATE } from './store';
 import {
   airportCardView,
@@ -341,6 +341,7 @@ test('airportCardView describes a chart airport', () => {
     ],
     elevation: '3,082 ft',
     runways: ['05/23 · 7,038 × 150 ft · asphalt'],
+    airspace: null,
   });
 });
 
@@ -424,4 +425,68 @@ test('airportCardView with only a fallback airport has no badge or facts', () =>
     elevation: null,
     runways: [],
   });
+});
+
+function airspaceShelf(
+  type: AirspaceShelf['type'],
+  overrides: Partial<AirspaceShelf> = {},
+): AirspaceShelf {
+  return {
+    id: `KRDM-${type}-0`,
+    airport: 'KRDM',
+    name: 'REDMOND',
+    class: type.charAt(0) as AirspaceShelf['class'],
+    type,
+    floor: { ft: 0, ref: 'SFC' },
+    ceiling: null,
+    partTime: false,
+    rings: [],
+    bbox: [0, 0, 0, 0],
+    ...overrides,
+  };
+}
+
+function withAirspace(
+  shelves: readonly AirspaceShelf[],
+  status: 'ready' | 'failed' = 'ready',
+) {
+  return {
+    ...chartState,
+    airspace: { status, cycle: '2610', shelves },
+  };
+}
+
+test('airportCardView lists the airport airspace, sorted and de-duplicated', () => {
+  const state = withAirspace([
+    airspaceShelf('E2'),
+    airspaceShelf('D', { partTime: true }),
+    airspaceShelf('D', { id: 'KRDM-D-1', partTime: true }),
+    airspaceShelf('C', { airport: 'KPDX' }),
+  ]);
+
+  const view = airportCardView(state, 'KRDM');
+
+  expect(view).toMatchObject({ airspace: 'Class D (part-time), E2' });
+});
+
+test('airportCardView marks a class part-time only when every shelf is', () => {
+  const state = withAirspace([
+    airspaceShelf('D', { partTime: true }),
+    airspaceShelf('D', { id: 'KRDM-D-1' }),
+  ]);
+
+  const view = airportCardView(state, 'KRDM');
+
+  expect(view).toMatchObject({ airspace: 'Class D' });
+});
+
+test('airportCardView has no airspace line without shelves or when airspace failed', () => {
+  const none = airportCardView(withAirspace([]), 'KRDM');
+  const failed = airportCardView(
+    withAirspace([airspaceShelf('D')], 'failed'),
+    'KRDM',
+  );
+
+  expect(none).toMatchObject({ airspace: null });
+  expect(failed).toMatchObject({ airspace: null });
 });

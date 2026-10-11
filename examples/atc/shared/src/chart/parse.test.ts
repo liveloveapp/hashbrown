@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { parseChartAirports, parseSurfaces } from './parse';
+import { parseAirspace, parseChartAirports, parseSurfaces } from './parse';
 
 const validAirport = {
   code: 'KRDM',
@@ -124,4 +124,89 @@ test('a surface ref that fails the pattern becomes null', () => {
   expect(surfaces.features).toHaveLength(2);
   expect(surfaces.features[0]).toMatchObject({ ref: null });
   expect(surfaces.features[1]).toMatchObject({ ref: 'CARGO 2' });
+});
+
+const ring = [
+  [-122, 45],
+  [-121, 45],
+  [-121, 46],
+  [-122, 46],
+  [-122, 45],
+];
+
+const validShelf = {
+  id: 'KPDX-C-0',
+  airport: 'KPDX',
+  name: 'PORTLAND INTERNATIONAL AIRPORT CLASS C',
+  class: 'C',
+  type: 'C',
+  floor: { ft: 1100, ref: 'MSL' },
+  ceiling: { ft: 4000, exclusive: false },
+  partTime: false,
+  rings: [ring],
+  bbox: [-122, 45, -121, 46],
+};
+
+const airspacePayload = (shelves: unknown[]) => ({
+  cycle: '2610',
+  effective: '2026-10-08',
+  shelves,
+});
+
+test('parseAirspace accepts a valid shelf', () => {
+  const result = parseAirspace(airspacePayload([validShelf]));
+
+  expect(result.cycle).toBe('2610');
+  expect(result.effective).toBe('2026-10-08');
+  expect(result.shelves).toEqual([validShelf]);
+});
+
+test('parseAirspace throws when shelves or cycle are wrong', () => {
+  expect(() => parseAirspace(null)).toThrow();
+  expect(() => parseAirspace({ cycle: '2610', shelves: {} })).toThrow();
+  expect(() => parseAirspace({ cycle: 1, shelves: [] })).toThrow();
+});
+
+test('parseAirspace copies whitelisted fields only', () => {
+  const result = parseAirspace(
+    airspacePayload([
+      { ...validShelf, extra: 'x', floor: { ft: 0, ref: 'SFC', y: 1 } },
+    ]),
+  );
+
+  expect(result.shelves[0]).not.toHaveProperty('extra');
+  expect(result.shelves[0].floor).toEqual({ ft: 0, ref: 'SFC' });
+});
+
+test('parseAirspace keeps a null ceiling', () => {
+  const result = parseAirspace(
+    airspacePayload([{ ...validShelf, ceiling: null }]),
+  );
+
+  expect(result.shelves[0].ceiling).toBeNull();
+});
+
+test('parseAirspace drops invalid shelves', () => {
+  const bad = [
+    { ...validShelf, airport: 'toolong' },
+    { ...validShelf, airport: 'a' },
+    { ...validShelf, class: 'A' },
+    { ...validShelf, type: 'E5' },
+    { ...validShelf, floor: { ft: -1, ref: 'MSL' } },
+    { ...validShelf, floor: { ft: Infinity, ref: 'MSL' } },
+    { ...validShelf, floor: { ft: 0, ref: 'AGL' } },
+    { ...validShelf, ceiling: { ft: 1100, exclusive: false } },
+    { ...validShelf, ceiling: { ft: 'x', exclusive: false } },
+    { ...validShelf, rings: [] },
+    { ...validShelf, rings: [ring.slice(0, 3)] },
+    { ...validShelf, rings: [[...ring.slice(0, 4), [-200, 45]]] },
+    { ...validShelf, rings: [[...ring.slice(0, 4), [-122, 95]]] },
+    { ...validShelf, bbox: [-122, 45, -121] },
+    { ...validShelf, bbox: [-122, 45, -121, NaN] },
+    null,
+  ];
+
+  const result = parseAirspace(airspacePayload([validShelf, ...bad]));
+
+  expect(result.shelves).toEqual([validShelf]);
 });

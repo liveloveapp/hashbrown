@@ -6,6 +6,13 @@ import {
   findAircraftInput,
   toRow,
 } from './find-aircraft';
+import {
+  airspaceOf,
+  type AirspaceShelf,
+  airspaceTypes,
+  altitudeMslFt,
+  shelvesAt,
+} from './chart';
 import { distanceNm } from './geo';
 import { airlineFor } from './names';
 import { airportDirectory, chartAirportByCode } from './directory';
@@ -44,15 +51,15 @@ export const CHART_WAIT_MS = 5000;
 export const SURFACES_WAIT_MS = 3000;
 
 /**
- * Resolves once `chart.status` is no longer `loading` (the chart is `ready` or
- * `limited`), or after `timeoutMs`, whichever comes first. Resolves at once
- * when the chart has already settled. Always unsubscribes from the store.
+ * Resolves once `isLoading` reports false, or after `timeoutMs`, whichever
+ * comes first. Resolves at once when it is already false. Always unsubscribes.
  */
-export function whenChartSettled(
+function whenSettled(
   store: AtcStore,
-  timeoutMs = CHART_WAIT_MS,
+  isLoading: (state: AtcState) => boolean,
+  timeoutMs: number,
 ): Promise<void> {
-  if (store.getState().chart.status !== 'loading') {
+  if (!isLoading(store.getState())) {
     return Promise.resolve();
   }
 
@@ -64,11 +71,35 @@ export function whenChartSettled(
     };
     const timer = setTimeout(done, timeoutMs);
     const unsubscribe = store.subscribe(() => {
-      if (store.getState().chart.status !== 'loading') {
+      if (!isLoading(store.getState())) {
         done();
       }
     });
   });
+}
+
+/**
+ * Resolves once `chart.status` is no longer `loading` (the chart is `ready` or
+ * `limited`), or after `timeoutMs`, whichever comes first. Resolves at once
+ * when the chart has already settled. Always unsubscribes from the store.
+ */
+export function whenChartSettled(
+  store: AtcStore,
+  timeoutMs = CHART_WAIT_MS,
+): Promise<void> {
+  return whenSettled(store, (s) => s.chart.status === 'loading', timeoutMs);
+}
+
+/**
+ * Resolves once `airspace.status` is no longer `loading` (it is `ready` or
+ * `failed`), or after `timeoutMs`, whichever comes first. Resolves at once
+ * when the airspace has already settled. Always unsubscribes from the store.
+ */
+export function whenAirspaceSettled(
+  store: AtcStore,
+  timeoutMs = CHART_WAIT_MS,
+): Promise<void> {
+  return whenSettled(store, (s) => s.airspace.status === 'loading', timeoutMs);
 }
 
 /** Waits for `promise` for up to `ms`, ignoring its result and any rejection. */
@@ -96,7 +127,10 @@ export interface AtcToolContext {
    * waits up to {@link SURFACES_WAIT_MS} for it so `diagram` is accurate.
    */
   readonly loadSurfaces?: (code: string) => Promise<void>;
-  /** How long chart tools wait for a loading chart; {@link CHART_WAIT_MS} if unset. */
+  /**
+   * How long chart and airspace tools wait for a loading chart or airspace;
+   * {@link CHART_WAIT_MS} if unset.
+   */
   readonly chartWaitMs?: number;
 }
 
@@ -113,6 +147,36 @@ function followingReason(label: string): string {
   return `Following ${label}. Call stopFollowing first to move the map.`;
 }
 
+const AIRSPACE_UNAVAILABLE = 'Airspace data is unavailable right now.';
+
+/** Why an airport has no airspace to show or search, of one class or any. */
+function noAirspaceReason(code: string, cls: string | null): string {
+  return cls === null
+    ? `${code} has no Class B, C, D or E surface airspace.`
+    : `${code} has no Class ${cls} airspace.`;
+}
+
+/** Feet as the model reads them: "SFC" for the surface, else "4,000 MSL". */
+function shelfFeet(ft: number, sfc: boolean): string {
+  return sfc ? 'SFC' : `${ft.toLocaleString('en-US')} MSL`;
+}
+
+/**
+ * One shelf as the model reads it. An exclusive ceiling reads "below 3,000
+ * MSL"; an inclusive one reads "3,000 MSL".
+ */
+function shelfText(shelf: AirspaceShelf) {
+  return {
+    type: shelf.type,
+    floor: shelfFeet(shelf.floor.ft, shelf.floor.ref === 'SFC'),
+    ceiling:
+      shelf.ceiling === null
+        ? 'up to overlying airspace'
+        : `${shelf.ceiling.exclusive ? 'below ' : ''}${shelfFeet(shelf.ceiling.ft, false)}`,
+    partTime: shelf.partTime,
+  };
+}
+
 /**
  * Each atc tool's name, description and input schema, without its handler.
  * The browser adds handlers in {@link createAtcTools}; the server sends these
@@ -123,7 +187,7 @@ export const ATC_TOOL_DEFINITIONS = {
   findAircraft: {
     name: 'findAircraft' as const,
     description:
-      'Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport. With near, the map also shows and outlines that area. Returns compact rows.',
+      "Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport, or keep only aircraft inside an airport's airspace (optionally of one class). With near, the map also shows and outlines that area; with inAirspace, it highlights that airspace. Returns compact rows.",
     schema: findAircraftInput,
   },
   lookupPlace: {
@@ -154,12 +218,29 @@ export const ATC_TOOL_DEFINITIONS = {
       airport: s.string('ICAO code from lookupPlace, such as KRDM'),
     }),
   },
+  showAirspace: {
+    name: 'showAirspace' as const,
+    description:
+      "Show a place's controlled airspace (Class B, C, D and the Class E surface area) on the map, highlighted, and return its shelves and how many aircraft are inside.",
+    schema: s.object('Airspace to show', {
+      airport: s.string('ICAO code from lookupPlace, such as KPDX'),
+    }),
+  },
+  airspaceAt: {
+    name: 'airspaceAt' as const,
+    description:
+      'Which controlled airspace one aircraft is in now, from its position and altitude.',
+    schema: s.object('Aircraft to check', {
+      hex: s.string('Aircraft hex code from a tool result'),
+    }),
+  },
   setLayers: {
     name: 'setLayers' as const,
     description:
       'Show or hide map overlays. Pass null to leave a layer as it is.',
     schema: s.object('Layers', {
       airports: s.anyOf([s.boolean('Show airports'), s.nullish()]),
+      airspace: s.anyOf([s.boolean('Show airspace'), s.nullish()]),
     }),
   },
   resetMap: {
@@ -235,13 +316,39 @@ export const ATC_TOOL_NAMES = Object.keys(
 export function createAtcTools(context: AtcToolContext) {
   const { store, chartWaitMs = CHART_WAIT_MS } = context;
   const chartSettled = () => whenChartSettled(store, chartWaitMs);
+  const airspaceSettled = () => whenAirspaceSettled(store, chartWaitMs);
 
   return {
     findAircraft: {
       ...ATC_TOOL_DEFINITIONS.findAircraft,
       handler: async (input: FindAircraftInput) => {
-        if (input.near || input.approaching) {
+        if (input.near || input.approaching || input.inAirspace) {
           await chartSettled();
+        }
+        if (input.inAirspace) {
+          await airspaceSettled();
+          const centre = lookupPlace(
+            input.inAirspace.airport,
+            airportDirectory(store.getState()),
+          );
+          if (centre === null) {
+            return unknownPlace(input.inAirspace.airport);
+          }
+          if (store.getState().airspace.status !== 'ready') {
+            return { found: false as const, reason: AIRSPACE_UNAVAILABLE };
+          }
+          const cls = input.inAirspace.class;
+          const shelves = airspaceOf(
+            store.getState().airspace.shelves,
+            centre.code,
+          ).filter((shelf) => cls === null || shelf.class === cls);
+          if (shelves.length === 0) {
+            return {
+              found: false as const,
+              reason: noAirspaceReason(centre.code, cls),
+            };
+          }
+          store.showAirspace(centre.code);
         }
         if (input.near) {
           const centre = lookupPlace(
@@ -370,12 +477,92 @@ export function createAtcTools(context: AtcToolContext) {
         };
       },
     },
+    showAirspace: {
+      ...ATC_TOOL_DEFINITIONS.showAirspace,
+      handler: async (input: { airport: string }) => {
+        await chartSettled();
+        await airspaceSettled();
+        const found = lookupPlace(
+          input.airport,
+          airportDirectory(store.getState()),
+        );
+        if (found === null) {
+          const { reason } = unknownPlace(input.airport);
+
+          return { shown: false as const, reason };
+        }
+        if (store.getState().airspace.status !== 'ready') {
+          return { shown: false as const, reason: AIRSPACE_UNAVAILABLE };
+        }
+        const shelves = airspaceOf(
+          store.getState().airspace.shelves,
+          found.code,
+        );
+        if (shelves.length === 0) {
+          return {
+            shown: false as const,
+            reason: noAirspaceReason(found.code, null),
+          };
+        }
+        store.showAirspace(found.code);
+        const state = store.getState();
+        const followed = followedLabel(state);
+
+        return {
+          shown: true as const,
+          code: found.code,
+          classes: airspaceTypes(shelves),
+          shelves: shelves.map(shelfText),
+          aircraftInside: [...state.aircraft.values()].filter(
+            (a) => shelvesAt(shelves, a).length > 0,
+          ).length,
+          moved: followed === null,
+          ...(followed === null ? {} : { reason: followingReason(followed) }),
+        };
+      },
+    },
+    airspaceAt: {
+      ...ATC_TOOL_DEFINITIONS.airspaceAt,
+      handler: async ({ hex }: { hex: string }) => {
+        await airspaceSettled();
+        if (store.getState().airspace.status !== 'ready') {
+          return { found: false as const, reason: AIRSPACE_UNAVAILABLE };
+        }
+        const state = store.getState();
+        const aircraft = state.aircraft.get(normalizeHex(hex));
+        if (aircraft === undefined) {
+          return {
+            found: false as const,
+            reason: `No aircraft with hex ${normalizeHex(hex)} is on the map.`,
+          };
+        }
+        const altitude = altitudeMslFt(aircraft);
+
+        return {
+          found: true as const,
+          label: aircraft.label,
+          altitudeFt: altitude?.ft ?? null,
+          altitudeSource: altitude?.source ?? null,
+          airspace: shelvesAt(state.airspace.shelves, aircraft).map(
+            (shelf) => ({
+              airport: shelf.airport,
+              type: shelf.type,
+              partTime: shelf.partTime,
+            }),
+          ),
+        };
+      },
+    },
     setLayers: {
       ...ATC_TOOL_DEFINITIONS.setLayers,
-      handler: async (input: { airports: boolean | null }) => {
-        if (input.airports !== null) {
-          store.setLayers({ airports: input.airports });
-        }
+      handler: async (input: {
+        airports: boolean | null;
+        airspace: boolean | null;
+      }) => {
+        store.setLayers({
+          ...(input.airports === null ? {} : { airports: input.airports }),
+          ...(input.airspace === null ? {} : { airspace: input.airspace }),
+        });
 
         return { layers: store.getState().layers };
       },

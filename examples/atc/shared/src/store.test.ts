@@ -2,6 +2,8 @@ import { expect, test, vi } from 'vitest';
 import type { Aircraft } from './aircraft';
 import { AIRPORTS } from './places';
 import {
+  applyAirspace,
+  applyAirspaceFailed,
   applyChart,
   applyChartLimited,
   applyFollow,
@@ -16,6 +18,7 @@ import {
   lookupAircraft,
   requestAircraft,
   requestAirport,
+  requestAirspace,
   requestArea,
   requestReset,
 } from './store';
@@ -382,4 +385,136 @@ test('surfaces are stored per airport without touching others', () => {
   expect(next.surfaces.get('KRDM')).toBe('loading');
   expect(next.surfaces.get('KBDN')).toBe('failed');
   expect(loading.surfaces.has('KBDN')).toBe(false);
+});
+
+const airspacePayload = {
+  cycle: '2610',
+  effective: '2026-10-08',
+  shelves: [
+    {
+      id: 'KPDX-C-0',
+      airport: 'KPDX',
+      name: 'PORTLAND CLASS C',
+      class: 'C' as const,
+      type: 'C' as const,
+      floor: { ft: 0, ref: 'SFC' as const },
+      ceiling: { ft: 4000, exclusive: false },
+      partTime: false,
+      rings: [],
+      bbox: [-122, 45, -121, 46] as const,
+    },
+  ],
+};
+
+test('airspace starts loading, empty and on, with nothing highlighted', () => {
+  const state = INITIAL_STATE;
+
+  expect(state.airspace).toEqual({
+    status: 'loading',
+    cycle: null,
+    shelves: [],
+  });
+  expect(state.layers.airspace).toBe(true);
+  expect(state.highlightedAirspace).toBeNull();
+});
+
+test('an airspace payload makes airspace ready', () => {
+  const next = applyAirspace(INITIAL_STATE, airspacePayload);
+
+  expect(next.airspace).toEqual({
+    status: 'ready',
+    cycle: '2610',
+    shelves: airspacePayload.shelves,
+  });
+});
+
+test('airspace fails only while still loading', () => {
+  const failed = applyAirspaceFailed(INITIAL_STATE);
+  const ready = applyAirspace(INITIAL_STATE, airspacePayload);
+
+  const after = applyAirspaceFailed(ready);
+
+  expect(failed.airspace.status).toBe('failed');
+  expect(after).toBe(ready);
+});
+
+test('showing airspace highlights it, turns the layer on and requests the view', () => {
+  const hidden = applyLayers(
+    { ...INITIAL_STATE, shownArea: { airport: 'KSEA', radiusNm: 10 } },
+    { airspace: false },
+  );
+
+  const next = requestAirspace(hidden, 'KPDX');
+
+  expect(next.highlightedAirspace).toBe('KPDX');
+  expect(next.layers.airspace).toBe(true);
+  expect(next.shownArea).toBeNull();
+  expect(next.viewRequest).toEqual({
+    seq: 1,
+    kind: 'airspace',
+    airport: 'KPDX',
+  });
+});
+
+test('showing airspace while following sets highlight and layer but no move', () => {
+  const following = applyLayers(applyFollow(INITIAL_STATE, 'a1'), {
+    airspace: false,
+  });
+
+  const next = requestAirspace(following, 'KPDX');
+
+  expect(next.viewRequest).toBeNull();
+  expect(next.highlightedAirspace).toBe('KPDX');
+  expect(next.layers.airspace).toBe(true);
+});
+
+test('clearing the highlight and resetting the view clear the airspace highlight', () => {
+  const store = createAtcStore();
+  store.showAirspace('KPDX');
+
+  store.clearHighlight();
+  const cleared = store.getState().highlightedAirspace;
+  store.showAirspace('KPDX');
+  store.resetView();
+
+  expect(cleared).toBeNull();
+  expect(store.getState().highlightedAirspace).toBeNull();
+});
+
+test('an empty aircraft highlight keeps the highlighted airspace', () => {
+  const shown = requestAirspace(INITIAL_STATE, 'KPDX');
+
+  const next = applyHighlight(shown, []);
+
+  expect(next.highlightedAirspace).toBe('KPDX');
+});
+
+test('the store keeps the airspace highlight when highlighting no aircraft', () => {
+  const store = createAtcStore();
+  store.showAirspace('KPDX');
+
+  store.highlight([]);
+
+  expect(store.getState().highlightedAirspace).toBe('KPDX');
+});
+
+test('area and airport requests clear the airspace highlight', () => {
+  const shown = requestAirspace(INITIAL_STATE, 'KPDX');
+
+  const area = requestArea(shown, { airport: 'KSEA', radiusNm: 25 });
+  const airport = requestAirport(shown, 'KSEA');
+
+  expect(area.highlightedAirspace).toBeNull();
+  expect(airport.highlightedAirspace).toBeNull();
+});
+
+test('the store applies airspace and its failure', () => {
+  const store = createAtcStore();
+
+  store.setAirspaceFailed();
+  const failed = store.getState().airspace.status;
+  store.setAirspace(airspacePayload);
+
+  expect(failed).toBe('failed');
+  expect(store.getState().airspace.status).toBe('ready');
 });

@@ -8,6 +8,7 @@ import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 import {
   CHART_AIRPORTS,
+  CHART_AIRSPACE,
   chartSurfaces,
   frame,
   scenario,
@@ -66,6 +67,9 @@ async function open(page: Page, framework: string): Promise<void> {
         new URL(route.request().url()).searchParams.get('airport') ?? '',
       ),
     }),
+  );
+  await page.route('**/api/chart/airspace', (route) =>
+    route.fulfill({ json: CHART_AIRSPACE }),
   );
   let next = 0;
   await page.route('**/api/aircraft**', (route) =>
@@ -473,4 +477,50 @@ test('the Layers control works from the keyboard', async ({
   await expect(page.locator('.atc-apt-block')).toHaveCount(0);
   await expect(toggle).toBeFocused();
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('lists the aircraft inside the Portland Class C and lights its shelf', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+
+  await page.getByRole('button', { name: STARTER_PROMPTS[5] }).click();
+
+  await expect(page.getByTestId('arrivals-row').first()).toBeVisible();
+  await expect(page.locator('.atc-as.is-c.is-highlighted')).toHaveCount(1);
+  await expect(page.getByTestId('tool-summary')).toHaveText(
+    'Looked up Portland, searched traffic, highlighted 1 aircraft · 3 steps',
+  );
+});
+
+test('shows the Redmond airspace with its ceiling label', async ({
+  page,
+}, testInfo) => {
+  await open(page, testInfo.project.name);
+
+  await page
+    .getByRole('textbox', { name: 'Message' })
+    .fill('Show the Redmond airspace.');
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  await expect(
+    page.locator('.atc-as-label .atc-as-text', { hasText: '56' }),
+  ).toBeVisible();
+  await expect(page.locator('.atc-as.is-d.is-highlighted')).toHaveCount(1);
+  await expect(
+    page.getByText('Redmond has a part-time Class D.'),
+  ).toBeVisible();
+  await expect(page.getByTestId('tool-summary')).toHaveText(
+    'Showed KRDM airspace · 1 step',
+  );
+});
+
+test('the Layers control hides the airspace', async ({ page }, testInfo) => {
+  await open(page, testInfo.project.name);
+  await expect(page.locator('.atc-as').first()).toBeAttached();
+
+  await page.getByRole('button', { name: 'Layers' }).click();
+  await page.getByRole('checkbox', { name: 'Airspace' }).uncheck();
+
+  await expect(page.locator('.atc-as')).toHaveCount(0);
 });

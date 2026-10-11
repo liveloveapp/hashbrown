@@ -1,6 +1,10 @@
 import { isRecord } from '../json';
 import type { LatLon } from '../places';
 import type {
+  AirspaceClass,
+  AirspacePayload,
+  AirspaceShelf,
+  AirspaceType,
   ChartAirport,
   ChartAirports,
   FacilityKind,
@@ -282,5 +286,114 @@ export function parseSurfaces(payload: unknown, code: string): Surfaces {
     features: payload['features']
       .map(parseFeature)
       .filter((f): f is SurfaceFeature => f !== null),
+  };
+}
+
+const AIRSPACE_CLASSES: readonly AirspaceClass[] = ['B', 'C', 'D', 'E'];
+const AIRSPACE_TYPES: readonly AirspaceType[] = [
+  'B',
+  'C',
+  'D',
+  'E2',
+  'E3',
+  'E4',
+];
+
+function lonLat(value: unknown): [number, number] | null {
+  const point = pair(value);
+  return point && Math.abs(point[0]) <= 180 && Math.abs(point[1]) <= 90
+    ? point
+    : null;
+}
+
+function parseRings(value: unknown): [number, number][][] | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const rings: [number, number][][] = [];
+  for (const raw of value) {
+    if (!Array.isArray(raw) || raw.length < 4) return null;
+    const points = raw.map(lonLat);
+    if (points.some((p) => p === null)) return null;
+    rings.push(points as [number, number][]);
+  }
+  return rings;
+}
+
+function parseShelf(value: unknown): AirspaceShelf | null {
+  if (!isRecord(value)) return null;
+  const { airport, floor, ceiling, bbox } = value;
+  const id = text(value['id'], MAX_NAME);
+  const name = text(value['name'], MAX_NAME);
+  const rings = parseRings(value['rings']);
+  const shelfClass = value['class'];
+  const type = value['type'];
+
+  if (
+    id === null ||
+    name === null ||
+    typeof airport !== 'string' ||
+    !IDENT.test(airport) ||
+    !AIRSPACE_CLASSES.includes(shelfClass as AirspaceClass) ||
+    !AIRSPACE_TYPES.includes(type as AirspaceType) ||
+    typeof value['partTime'] !== 'boolean' ||
+    !rings ||
+    !isRecord(floor) ||
+    !finite(floor['ft']) ||
+    floor['ft'] < 0 ||
+    (floor['ref'] !== 'SFC' && floor['ref'] !== 'MSL') ||
+    !Array.isArray(bbox) ||
+    bbox.length !== 4 ||
+    !bbox.every(finite)
+  ) {
+    return null;
+  }
+
+  let parsedCeiling: AirspaceShelf['ceiling'] = null;
+  if (ceiling !== null) {
+    if (
+      !isRecord(ceiling) ||
+      !finite(ceiling['ft']) ||
+      ceiling['ft'] <= floor['ft'] ||
+      typeof ceiling['exclusive'] !== 'boolean'
+    ) {
+      return null;
+    }
+    parsedCeiling = { ft: ceiling['ft'], exclusive: ceiling['exclusive'] };
+  }
+
+  return {
+    id,
+    airport,
+    name,
+    class: shelfClass as AirspaceClass,
+    type: type as AirspaceType,
+    floor: { ft: floor['ft'], ref: floor['ref'] },
+    ceiling: parsedCeiling,
+    partTime: value['partTime'],
+    rings,
+    bbox: [bbox[0], bbox[1], bbox[2], bbox[3]],
+  };
+}
+
+/**
+ * Validates an `/api/chart/airspace` payload. Throws when `shelves` is not an
+ * array or `cycle` is not a string; drops shelves that fail validation.
+ * Copies whitelisted fields only.
+ */
+export function parseAirspace(payload: unknown): AirspacePayload {
+  if (
+    !isRecord(payload) ||
+    typeof payload['cycle'] !== 'string' ||
+    !Array.isArray(payload['shelves'])
+  ) {
+    throw new Error('Invalid chart airspace payload');
+  }
+  const effective = payload['effective'];
+  return {
+    cycle: payload['cycle'],
+    effective:
+      typeof effective === 'string' && DATE.test(effective) ? effective : '',
+    shelves: payload['shelves']
+      .map(parseShelf)
+      .filter((s): s is AirspaceShelf => s !== null),
   };
 }

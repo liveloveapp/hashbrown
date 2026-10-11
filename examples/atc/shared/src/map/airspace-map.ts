@@ -5,6 +5,7 @@ import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore, ShownArea } from '../store';
 import { createCardSync } from './card-sync';
 import { createAirportLayer } from './chart/airport-layer';
+import { createAirspaceLayer } from './chart/airspace-layer';
 import { createDiagramLayer } from './chart/diagram-layer';
 import { createLayersControl } from './chart/layers-control';
 import { createFollowController } from './follow';
@@ -15,6 +16,8 @@ import { createViewController } from './view-controller';
 
 /** At this zoom and below, markers are drawn smaller. */
 const LOW_ZOOM = 6;
+/** At this zoom and below, airspace draws its thinner overview lines. */
+const OVERVIEW_ZOOM = 8;
 /** Metres in a nautical mile, for Leaflet's circle radius. */
 const METRES_PER_NM = 1852;
 /** The chart overlay panes and their z-index, bottom to top. */
@@ -48,10 +51,11 @@ export interface AirspaceMapHandle {
  * - `view-controller.ts`: the map moves only for view requests in the store
  *   (see `requestArea`). The newest request wins; follow mode wins over all
  *   of them; a user drag or zoom cancels one still waiting.
- * - `chart/`: FAA sectional airport symbols and data blocks, and from zoom
- *   12 airport diagrams, in their own panes below the planes, redrawn only
- *   when the chart, the layers or the surfaces change, or the view settles.
- *   The Layers pill above the zoom control turns airports on and off.
+ * - `chart/`: Class B, C, D and E surface airspace, FAA sectional airport
+ *   symbols and data blocks, and from zoom 12 airport diagrams, in their own
+ *   panes below the planes, redrawn only when the chart, the airspace, the
+ *   layers or the surfaces change, or the view settles. The Layers pill
+ *   above the zoom control turns airports and airspace on and off.
  *
  * Planes are not keyboard-focusable (`keyboard: false`): every map action is
  * also available from the chat, which is the accessible path.
@@ -100,6 +104,12 @@ export async function createAirspaceMap(options: {
   for (const [name, zIndex] of CHART_PANES) {
     map.createPane(name).style.zIndex = String(zIndex);
   }
+  const airspace = createAirspaceLayer({
+    L,
+    map,
+    store,
+    pane: 'atc-airspace',
+  });
   const airports = createAirportLayer({ L, map, store, pane: 'atc-airports' });
   const diagrams = createDiagramLayer({
     L,
@@ -151,19 +161,29 @@ export async function createAirspaceMap(options: {
     }
     cards.sync(store.getState());
   });
-  /** Marks regional zooms, where the CSS draws smaller silhouettes. */
-  const markZoom = () =>
+  /**
+   * Marks regional zooms, where the CSS draws smaller silhouettes, and
+   * overview zooms, where it draws thinner airspace lines.
+   */
+  const markZoom = () => {
     element.toggleAttribute('data-zoom-low', map.getZoom() <= LOW_ZOOM);
+    element.toggleAttribute(
+      'data-zoom-overview',
+      map.getZoom() <= OVERVIEW_ZOOM,
+    );
+  };
   markZoom();
   map.on('zoomend', () => {
     zooming = false;
     markZoom();
     cards.sync(store.getState());
     follow.panToFollowed(true);
+    airspace.redraw();
     airports.redraw();
     diagrams.redraw();
   });
   map.on('moveend', () => {
+    airspace.redraw();
     airports.redraw();
     diagrams.redraw();
   });
@@ -255,6 +275,7 @@ export async function createAirspaceMap(options: {
         markers.set(aircraft.hex, marker);
       }
     }
+    airspace.sync(state);
     airports.sync(state);
     diagrams.sync(state);
     cards.sync(state);
@@ -313,6 +334,7 @@ export async function createAirspaceMap(options: {
       cards.destroy();
       follow.destroy();
       motion.destroy();
+      airspace.destroy();
       airports.destroy();
       diagrams.destroy();
       layersControl.destroy();

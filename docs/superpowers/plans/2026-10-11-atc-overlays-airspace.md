@@ -385,10 +385,12 @@ export interface AirspacePayload {
   - `type` comes from `LOCAL_TYPE`: `CLASS_B` → B, `CLASS_C` → C, `CLASS_D` → D,
     `CLASS_E2|E3|E4` → E2, E3 or E4. When `LOCAL_TYPE` is null, use `CLASS`
     (B, C or D).
-  - `floor`: `LOWER_CODE === 'SFC'` or `LOWER_VAL === 0` gives `{ ft: 0, ref: 'SFC' }`.
-    Otherwise `{ ft: LOWER_VAL, ref: 'MSL' }`.
+  - `floor`: `LOWER_VAL === 0` gives `{ ft: 0, ref: 'SFC' }`. A nonzero
+    `LOWER_VAL` with `LOWER_CODE === 'SFC'` is an AGL floor, which a shelf cannot
+    represent, so the feature is dropped. Otherwise `{ ft: LOWER_VAL, ref: 'MSL' }`.
   - `ceiling`: `UPPER_VAL` of `-9998` or below, or `UPPER_DESC === 'AA'`,
-    gives `null`. Otherwise `{ ft: UPPER_VAL, exclusive: UPPER_DESC === 'TI' }`.
+    gives `null`. Otherwise `{ ft: UPPER_VAL, exclusive: UPPER_DESC === 'TNI' }`:
+    `TI` is "to and including" (inclusive), `TNI` is "to not including".
   - `partTime` is `WKHR_CODE === 'NOTAM'`.
   - `airport` is `ICAO_ID` when it matches `^[A-Z][A-Z0-9]{3}$`, else `IDENT`.
   - `id` is `${airport}-${type}-${n}`, where `n` counts per airport and type in
@@ -472,8 +474,9 @@ export interface AirspacePayload {
     - Clears `shownArea`.
     - Then `requestView({ kind: 'airspace', airport: code })`, whose
       following-a-plane rule drops the move.
-  - `applyHighlight` with an empty set, and `requestReset`, also clear
-    `highlightedAirspace`.
+  - The store's `clearHighlight`, `requestReset`, `requestArea` and
+    `requestAirport` also clear `highlightedAirspace`. `applyHighlight` never
+    touches it, so an empty set keeps the airspace a search highlighted.
   - Store methods: `setAirspace(payload)`, `setAirspaceFailed()` and
     `showAirspace(code)`.
 - **Chart feed:**
@@ -658,7 +661,7 @@ export interface AirspacePayload {
   ```
   - For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then show one ArrivalsBoard. To only show a place's airspace, call showAirspace.
   - For which airspace one aircraft is in, call airspaceAt.
-  - Airspace answers come only from tool results. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Part-time Class D airspace is shown as charted; say so when the tool reports partTime.
+  - Airspace answers come only from tool results. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Airspace marked partTime is in effect only during hours set by NOTAM, which the tools don't know: when partTime is true, say the aircraft is inside the charted area and that it may not be active now.
   ```
 
 - **`STARTER_PROMPTS`** gains `'Which planes are inside the Portland Class C?'`

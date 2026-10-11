@@ -10,6 +10,7 @@ import {
   type LatLon,
   lookupPlace,
 } from './places';
+import { airspaceOf, shelvesAt } from './chart/airspace-query';
 import { airportDirectory } from './directory';
 import type { AtcState } from './store';
 
@@ -57,6 +58,16 @@ export const findAircraftInput = s.object(
       s.object('Only aircraft within radiusNm of an airport', {
         airport: s.string('ICAO code from lookupPlace, such as KBDN'),
         radiusNm: s.number('Radius in nautical miles, 5 to 150'),
+      }),
+      s.nullish(),
+    ]),
+    inAirspace: s.anyOf([
+      s.object("Only aircraft inside this airport's airspace", {
+        airport: s.string('ICAO code from lookupPlace'),
+        class: s.anyOf([
+          s.enumeration('Airspace class', ['B', 'C', 'D', 'E']),
+          s.nullish(),
+        ]),
       }),
       s.nullish(),
     ]),
@@ -132,8 +143,10 @@ const SORTS: Record<
 
 /**
  * Filters and sorts the aircraft on the map. Distances are measured from the
- * airport in `near`, else the one in `approaching`, else the area centre.
- * A `near` or `approaching` airport outside the directory matches nothing.
+ * airport in `near`, else `inAirspace`, else the one in `approaching`, else
+ * the area centre. A `near`, `inAirspace` or `approaching` airport outside the
+ * directory matches nothing, and `inAirspace` keeps aircraft inside any shelf
+ * of that airport (of one class when given).
  */
 export function findAircraft(
   state: AtcState,
@@ -155,6 +168,19 @@ export function findAircraft(
   if (near !== null && centre === null) {
     return [];
   }
+  const inAirspace = input.inAirspace ?? null;
+  const airspaceCentre: Airport | null =
+    inAirspace === null ? null : lookupPlace(inAirspace.airport, directory);
+  if (inAirspace !== null && airspaceCentre === null) {
+    return [];
+  }
+  const shelves =
+    inAirspace === null || airspaceCentre === null
+      ? null
+      : airspaceOf(state.airspace.shelves, airspaceCentre.code).filter(
+          (shelf) =>
+            inAirspace.class === null || shelf.class === inAirspace.class,
+        );
   const radius = near === null ? Infinity : areaRadiusNm(near.radiusNm);
   const limit = Math.min(20, Math.max(1, Math.round(input.limit)));
 
@@ -179,7 +205,8 @@ export function findAircraft(
     )
     .filter((a) => airport === null || isApproaching(a, airport))
     .filter((a) => centre === null || distanceNm(a, centre) <= radius)
-    .map((a) => toRow(a, centre ?? airport ?? area))
+    .filter((a) => shelves === null || shelvesAt(shelves, a).length > 0)
+    .map((a) => toRow(a, centre ?? airspaceCentre ?? airport ?? area))
     .sort(SORTS[input.sortBy])
     .slice(0, limit);
 }
