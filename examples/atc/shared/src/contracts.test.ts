@@ -78,3 +78,9 @@ test('the prompt shows how to name an aircraft without the word label', () => {
     '- In prose, name each aircraft by its label alone, as in "N484SJ is the highest", never "the aircraft labeled N484SJ".',
   );
 });
+
+test('the prompt keeps the map as the answer left it unless the user asks', () => {
+  expect(SYSTEM_PROMPT).toContain(
+    '- Leave the map as your answer set it: the highlight and any follow stay. Call clearHighlight or stopFollowing only when the user asks for that, never to tidy up an answer.',
+  );
+});

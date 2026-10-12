@@ -275,7 +275,8 @@ export const ATC_TOOL_DEFINITIONS = {
   },
   clearHighlight: {
     name: 'clearHighlight' as const,
-    description: 'Show every aircraft on the map again.',
+    description:
+      'Remove the highlight so every aircraft looks the same again. Only when the user asks to clear the highlight or see all traffic; never at the end of an answer.',
     schema: noInput,
   },
   followAircraft: {
@@ -287,7 +288,8 @@ export const ATC_TOOL_DEFINITIONS = {
   },
   stopFollowing: {
     name: 'stopFollowing' as const,
-    description: 'Stop following an aircraft.',
+    description:
+      'Stop following an aircraft. Only when the user asks to stop following.',
     schema: noInput,
   },
 };
