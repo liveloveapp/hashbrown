@@ -3,9 +3,8 @@ import { prefersReducedMotion } from '../dom';
 import type { LatLon } from '../places';
 import type { AtcState } from '../store';
 import type { MapBand } from './card-sync';
-import { altText, createTextMeasure } from './tag-measure';
 import { exactContainerPoint, type PixelRect } from './pixels';
-import { planeElementOf } from './plane-marker';
+import { altText, planeElementOf } from './plane-marker';
 import {
   layoutTags,
   type TagItem,
@@ -13,6 +12,7 @@ import {
   tagOrder,
   type TagPlacement,
 } from './tag-layout';
+import { createTextMeasure } from './tag-measure';
 
 /** How often tags are laid out again while planes move, in ms. */
 const TAG_LAYOUT_MS = 500;

@@ -37,21 +37,24 @@ export function planeElementOf(
 }
 
 /**
- * The parts of a plane's data tag: the label, and the altitude in feet
- * ("4,200"), "GND" on the ground, or null when unknown (the tag then shows the
- * label alone). The altitude span's CSS margin separates the two, so neither
- * part carries a space.
+ * Formats feet as `toLocaleString('en-US')` does, without making a new
+ * formatter on each call (tags are measured and updated every snapshot).
  */
-function planeTagParts(
-  aircraft: Pick<Aircraft, 'label' | 'altitudeFt' | 'onGround'>,
-): { label: string; altitude: string | null } {
-  const altitude = aircraft.onGround
-    ? 'GND'
-    : aircraft.altitudeFt === null
-      ? null
-      : aircraft.altitudeFt.toLocaleString('en-US');
+const FEET = new Intl.NumberFormat('en-US');
 
-  return { label: aircraft.label, altitude };
+/**
+ * The altitude a plane's data tag shows after its label: feet ("4,200"),
+ * "GND" on the ground, or empty when unknown. No leading space: the altitude
+ * span's CSS margin separates it from the label.
+ */
+export function altText(
+  aircraft: Pick<Aircraft, 'altitudeFt' | 'onGround'>,
+): string {
+  if (aircraft.onGround) {
+    return 'GND';
+  }
+
+  return aircraft.altitudeFt === null ? '' : FEET.format(aircraft.altitudeFt);
 }
 
 /** Classes the store drives; toggled in place, leaving others (is-pulsing). */
@@ -109,8 +112,8 @@ export function updatePlane(
   if (!tag || !alt) {
     return;
   }
-  const { label, altitude } = planeTagParts(aircraft);
-  const altText = altitude ?? '';
+  const { label } = aircraft;
+  const altitude = altText(aircraft);
   if (
     tag.firstChild &&
     tag.firstChild !== alt &&
@@ -118,16 +121,14 @@ export function updatePlane(
   ) {
     tag.firstChild.textContent = label;
   }
-  if (alt.textContent !== altText) {
-    alt.textContent = altText;
+  if (alt.textContent !== altitude) {
+    alt.textContent = altitude;
   }
 }
 
 /** Tag markup: the label, then the altitude in a muted monospace span. */
 function tag(aircraft: Aircraft): string {
-  const { label, altitude } = planeTagParts(aircraft);
-
-  return `${label}<span class="atc-plane-alt">${altitude ?? ''}</span>`;
+  return `${aircraft.label}<span class="atc-plane-alt">${altText(aircraft)}</span>`;
 }
 
 /**

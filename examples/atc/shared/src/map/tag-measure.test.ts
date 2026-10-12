@@ -1,13 +1,6 @@
 // @vitest-environment jsdom
 import { expect, test } from 'vitest';
-import type { Aircraft } from '../aircraft';
-import { altText, createTextMeasure } from './tag-measure';
-
-const plane = {
-  label: 'UAL1',
-  altitudeFt: 4500,
-  onGround: false,
-} as Aircraft;
+import { createTextMeasure } from './tag-measure';
 
 test('a tag is as wide as its text, its padding and border, and 2 px of slack for tabular digits', () => {
   const measure = createTextMeasure(document.createElement('div'));
@@ -27,14 +20,4 @@ test('a tag without an altitude keeps the gap of its empty altitude span', () =>
   // The span stays in the tag, and an empty inline box still takes its margin.
   expect(width).toBe(4 * 7.5 + 4 + 16 + 2);
   measure.destroy();
-});
-
-test('altText matches the tag: feet with a comma, GND on the ground, empty when unknown', () => {
-  const texts = [
-    altText(plane),
-    altText({ ...plane, onGround: true }),
-    altText({ ...plane, altitudeFt: null }),
-  ];
-
-  expect(texts).toEqual(['4,500', 'GND', '']);
 });

@@ -1,5 +1,3 @@
-import type { Aircraft } from '../aircraft';
-
 /** The tag's horizontal padding and border, in pixels. */
 const TAG_CHROME = 2 * 7 + 2;
 /**
@@ -79,19 +77,4 @@ export function createTextMeasure(element: HTMLElement) {
       element.ownerDocument.fonts?.removeEventListener?.('loadingdone', clear);
     },
   };
-}
-
-/**
- * Formats feet as `toLocaleString('en-US')` does, without making a new
- * formatter on each call.
- */
-const FEET = new Intl.NumberFormat('en-US');
-
-/** The altitude text a tag shows, as `planeIconHtml` writes it. */
-export function altText(aircraft: Aircraft): string {
-  return aircraft.onGround
-    ? 'GND'
-    : aircraft.altitudeFt === null
-      ? ''
-      : FEET.format(aircraft.altitudeFt);
 }

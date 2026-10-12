@@ -6,6 +6,7 @@ import { applySnapshot, INITIAL_STATE } from '../store';
 import { testAircraft } from '../testing';
 import type { Marker } from 'leaflet';
 import {
+  altText,
   markerClassName,
   planeElementOf,
   planeIconHtml,
@@ -185,4 +186,14 @@ test('planeElementOf finds the plane element of a drawn marker, else null', () =
   );
 
   expect(found).toEqual([host.querySelector('.atc-plane'), null, null]);
+});
+
+test('altText matches the tag: feet with a comma, GND on the ground, empty when unknown', () => {
+  const texts = [
+    altText({ ...plane, altitudeFt: 4500 }),
+    altText({ ...plane, onGround: true }),
+    altText({ ...plane, altitudeFt: null }),
+  ];
+
+  expect(texts).toEqual(['4,500', 'GND', '']);
 });
