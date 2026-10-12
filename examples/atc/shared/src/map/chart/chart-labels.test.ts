@@ -94,7 +94,11 @@ test('an airport on a D box label point and the D box both show, apart', () => {
 
   const label = view.element.querySelector<HTMLElement>('.atc-as-label');
   const block =
-    view.element.querySelector<HTMLElement>('.atc-apt-block')?.parentElement;
+    view.element.querySelector<HTMLElement>('.atc-apt-block')?.parentElement ??
+    null;
+  // Checked before their boxes are measured, so a missing one fails clearly.
+  expect(label).not.toBeNull();
+  expect(block).not.toBeNull();
   const labelPoint = drawnAt(view.map, label as HTMLElement, labelAt);
   const blockPoint = drawnAt(view.map, block as HTMLElement, field);
   const labelSize = estimateLabelSize([label?.textContent ?? '']);
@@ -117,7 +121,5 @@ test('an airport on a D box label point and the D box both show, apart', () => {
     blockSize.height,
   );
 
-  expect(label).not.toBeNull();
-  expect(block).toBeDefined();
   expect(intersects(labelBox, blockBox)).toBe(false);
 });
