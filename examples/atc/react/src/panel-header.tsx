@@ -9,9 +9,7 @@ import { FeedNotice } from './feed-notice';
 export function PanelHeader() {
   return (
     <div className="atc-panel-header">
-      <span className="atc-logo">
-        <AtcLogo height={15} />
-      </span>
+      <AtcLogo height={15} />
       <a
         className="atc-credit"
         href="https://hashbrown.dev"

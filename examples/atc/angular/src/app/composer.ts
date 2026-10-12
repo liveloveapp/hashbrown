@@ -11,9 +11,8 @@ import {
 /**
  * The message pill, floating over the bottom of the transcript. `/` focuses
  * the pill from anywhere outside another field. The field is uncontrolled
- * (read on submit)
- * because nothing else needs the draft; React's composer keeps it in state,
- * the idiomatic choice there.
+ * (read on submit) because nothing else needs the draft; React's composer
+ * keeps it in state, the idiomatic choice there.
  */
 @Component({
   selector: 'atc-composer',

@@ -17,7 +17,10 @@ export interface FlightCardProps {
 export function FlightCard({ note, hex }: FlightCardProps) {
   const store = useAtcStore();
   const view = flightCardView(useAtcState(), hex);
-  useEffect(() => store.pulse(hex), [store, hex]);
+  // Flash the plane's marker once, so the reader can find it on the map.
+  useEffect(() => {
+    store.pulse(hex);
+  }, [store, hex]);
 
   if (view.status === 'unknown') {
     return (

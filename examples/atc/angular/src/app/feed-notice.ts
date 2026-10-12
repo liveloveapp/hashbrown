@@ -9,6 +9,8 @@ import { injectAtcState } from './store';
 @Component({
   selector: 'atc-feed-notice',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // display: contents makes the notice span, not the host, the header's
+  // flex item.
   host: { style: 'display: contents' },
   template: `
     @if (notice(); as text) {

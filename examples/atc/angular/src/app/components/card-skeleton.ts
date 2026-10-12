@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-/** The quiet hold-back line shown while a card's aircraft IDs stream in. */
+/** The quiet hold-back line shown while a card's ID streams in. */
 @Component({
   selector: 'atc-card-skeleton',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -12,6 +12,5 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   `,
 })
 export class CardSkeleton {
-  /** The hold-back line. */
   readonly label = input('Identifying aircraft…');
 }

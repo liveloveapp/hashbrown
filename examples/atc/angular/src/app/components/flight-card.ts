@@ -91,6 +91,7 @@ export class FlightCard implements OnInit {
   );
 
   ngOnInit(): void {
+    // Flash the plane's marker once, so the reader can find it on the map.
     this.store.pulse(this.hex());
   }
 }
