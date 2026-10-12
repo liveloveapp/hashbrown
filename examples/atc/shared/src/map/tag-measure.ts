@@ -55,7 +55,11 @@ export function createTextMeasure(element: HTMLElement) {
   };
 
   return {
-    /** The tag's width for `label` and the altitude text `alt`. */
+    /**
+     * The tag's width for `label` and the altitude `alt` (without its leading
+     * space). A non-empty altitude also counts the space before it, which the
+     * span draws in the mono font.
+     */
     width(label: string, alt: string): number {
       let labelWidth = labels.get(label);
       if (labelWidth === undefined) {
@@ -68,7 +72,7 @@ export function createTextMeasure(element: HTMLElement) {
       return Math.ceil(
         labelWidth +
           ALT_GAP +
-          alt.length * monoAdvance +
+          (alt === '' ? 0 : 1 + alt.length) * monoAdvance +
           TAG_CHROME +
           TAG_SLACK,
       );

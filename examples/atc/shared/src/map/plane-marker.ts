@@ -52,8 +52,8 @@ const FEET = new Intl.NumberFormat('en-US');
 
 /**
  * The altitude a plane's data tag shows after its label: feet ("4,200"),
- * "GND" on the ground, or empty when unknown. No leading space: the altitude
- * span's CSS margin separates it from the label.
+ * "GND" on the ground, or empty when unknown. The tag's altitude span puts a
+ * space before it (see {@link altSpanText}).
  */
 export function altText(
   aircraft: Pick<Aircraft, 'altitudeFt' | 'onGround'>,
@@ -63,6 +63,17 @@ export function altText(
   }
 
   return aircraft.altitudeFt === null ? '' : FEET.format(aircraft.altitudeFt);
+}
+
+/**
+ * The altitude span's text: a space, then the altitude, or empty when the
+ * altitude is unknown. The space keeps the tag's text two words, so a screen
+ * reader reads "UAL100 31,000" and not "UAL10031,000".
+ */
+function altSpanText(aircraft: Aircraft): string {
+  const altitude = altText(aircraft);
+
+  return altitude === '' ? '' : ` ${altitude}`;
 }
 
 /** Classes the store drives; toggled in place, leaving others (is-pulsing). */
@@ -121,7 +132,7 @@ export function updatePlane(
     return;
   }
   const { label } = aircraft;
-  const altitude = altText(aircraft);
+  const altitude = altSpanText(aircraft);
   if (
     tag.firstChild &&
     tag.firstChild !== alt &&
@@ -136,7 +147,7 @@ export function updatePlane(
 
 /** Tag markup: the label, then the altitude in a muted monospace span. */
 function tag(aircraft: Aircraft): string {
-  return `${aircraft.label}<span class="atc-plane-alt">${altText(aircraft)}</span>`;
+  return `${aircraft.label}<span class="atc-plane-alt">${altSpanText(aircraft)}</span>`;
 }
 
 /**

@@ -47,7 +47,7 @@ test('an altitude-only change updates the tag text in place without rebuilding t
 
   expect(map.planeElement()).toBe(first);
   expect(map.planeElement()?.querySelector('.atc-plane-alt')?.textContent).toBe(
-    '31,000',
+    ' 31,000',
   );
 });
 

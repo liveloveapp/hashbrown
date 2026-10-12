@@ -75,10 +75,10 @@ test('the tag shows a hex-only aircraft by its label', () => {
 
   const parts = renderedTag(unidentified);
 
-  expect(parts).toEqual(['AAAAAA', '30,000']);
+  expect(parts).toEqual(['AAAAAA', ' 30,000']);
 });
 
-test('the tag shows the altitude with a thousands separator and no leading space', () => {
+test('the tag shows the altitude with a thousands separator after a space', () => {
   const tags = [
     renderedTag(plane),
     renderedTag({ ...plane, altitudeFt: 4200 }),
@@ -87,14 +87,22 @@ test('the tag shows the altitude with a thousands separator and no leading space
     renderedTag({ ...plane, altitudeFt: null, onGround: true }),
   ];
 
-  // The altitude's CSS margin separates it from the label.
   expect(tags).toEqual([
-    ['UAL100', '30,000'],
-    ['UAL100', '4,200'],
-    ['UAL100', '0'],
+    ['UAL100', ' 30,000'],
+    ['UAL100', ' 4,200'],
+    ['UAL100', ' 0'],
     ['UAL100', ''],
-    ['UAL100', 'GND'],
+    ['UAL100', ' GND'],
   ]);
+});
+
+test('a screen reader hears the label and the altitude as two words', () => {
+  const host = document.createElement('div');
+  host.innerHTML = planeIconHtml(plane, 'atc-plane');
+
+  const text = host.querySelector('.atc-plane-tag')?.textContent;
+
+  expect(text).toBe('UAL100 30,000');
 });
 
 test('planeIconHtml leaves out the marker title and an unknown altitude', () => {
@@ -124,14 +132,14 @@ test('updatePlane keeps label, data-label and tag current, writing only changes'
   expect(host.querySelector('.atc-plane')?.getAttribute('data-label')).toBe(
     'N352LL',
   );
-  expect(tagParts(host)).toEqual(['N352LL', '4,200']);
+  expect(tagParts(host)).toEqual(['N352LL', ' 4,200']);
 });
 
 test('planeIconHtml carries the tag outside the rotated silhouette', () => {
   const html = planeIconHtml(plane, 'atc-plane is-highlighted');
 
   expect(html).toContain(
-    '<span class="atc-plane-tag">UAL100<span class="atc-plane-alt">30,000</span></span>',
+    '<span class="atc-plane-tag">UAL100<span class="atc-plane-alt"> 30,000</span></span>',
   );
   expect(html.indexOf('rotate(271.6deg)')).toBeLessThan(html.indexOf('<svg'));
   expect(html).toMatch(
