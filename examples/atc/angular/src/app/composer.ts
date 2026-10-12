@@ -23,10 +23,7 @@ import {
     '(document:keydown)': 'focusOnSlash($event)',
   },
   template: `
-    <form
-      class="atc-composer-pill"
-      (submit)="$event.preventDefault(); submit()"
-    >
+    <form class="atc-composer-pill" (submit)="submit($event)">
       <input
         #field
         aria-label="Message"
@@ -62,7 +59,8 @@ export class Composer {
   private readonly field =
     viewChild.required<ElementRef<HTMLInputElement>>('field');
 
-  protected submit(): void {
+  protected submit(event: Event): void {
+    event.preventDefault();
     const field = this.field().nativeElement;
     const content = field.value.trim();
     // Focus first: a tap on Send moved focus to the button, and taking it

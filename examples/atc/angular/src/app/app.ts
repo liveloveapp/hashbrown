@@ -22,9 +22,11 @@ import { PanelHeader } from './panel-header';
 import { SheetHandle } from './sheet-handle';
 import { ATC_STORE } from './store';
 
-/** The page: a two-panel workbench, chat on the left and the live map on the right.
- * On phones and upright tablets the map fills the screen and the chat is a
- * bottom sheet. */
+/**
+ * The page: a two-panel workbench, chat on the left and the live map on the
+ * right. On phones and upright tablets the map fills the screen and the chat
+ * is a bottom sheet.
+ */
 @Component({
   selector: 'atc-root',
   imports: [AirspaceMap, Assistant, PanelHeader, SheetHandle, KeyboardInset],
@@ -40,7 +42,7 @@ import { ATC_STORE } from './store';
         (focusin)="openOnFocus($event)"
         (keydown.escape)="move({ type: 'escape' })"
       >
-        <atc-sheet-handle [expanded]="expanded()" (moved)="move($event)" />
+        <atc-sheet-handle [expanded]="expanded()" (move)="move($event)" />
         <atc-panel-header />
         <atc-assistant (sent)="move({ type: 'send' })" />
       </section>
@@ -55,16 +57,6 @@ export class App {
   protected readonly sheet = signal(INITIAL_SHEET);
   protected readonly expanded = computed(() => sheetExpanded(this.sheet()));
 
-  protected move(event: SheetEvent): void {
-    this.sheet.update((sheet) => nextSheet(sheet, event));
-  }
-
-  protected openOnFocus(event: FocusEvent): void {
-    if (focusOpensSheet(event.target)) {
-      this.move({ type: 'focus' });
-    }
-  }
-
   constructor() {
     const store = inject(ATC_STORE);
     const stopFeed = startAtcFeed({ store });
@@ -74,5 +66,15 @@ export class App {
       stopFeed();
       stopWatching();
     });
+  }
+
+  protected move(event: SheetEvent): void {
+    this.sheet.update((sheet) => nextSheet(sheet, event));
+  }
+
+  protected openOnFocus(event: FocusEvent): void {
+    if (focusOpensSheet(event.target)) {
+      this.move({ type: 'focus' });
+    }
   }
 }

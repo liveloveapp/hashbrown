@@ -6,7 +6,7 @@ import {
   startAtcFeed,
   watchSheetEvents,
 } from '@atc/shared';
-import { useEffect, useReducer, useRef } from 'react';
+import { type FocusEvent, useEffect, useReducer, useRef } from 'react';
 import { AirspaceMap } from './airspace-map';
 import { Assistant } from './assistant';
 import { useKeyboardInset } from './keyboard-inset';
@@ -14,9 +14,11 @@ import { PanelHeader } from './panel-header';
 import { SheetHandle } from './sheet-handle';
 import { useAtcStore } from './store';
 
-/** The page: a two-panel workbench, chat on the left and the live map on the right.
- * On phones and upright tablets the map fills the screen and the chat is a
- * bottom sheet. */
+/**
+ * The page: a two-panel workbench, chat on the left and the live map on the
+ * right. On phones and upright tablets the map fills the screen and the chat
+ * is a bottom sheet.
+ */
 export function App() {
   const store = useAtcStore();
   // Where the phone bottom sheet rests; ignored on wide screens.
@@ -29,6 +31,12 @@ export function App() {
   useEffect(() => watchSheetEvents(store, move), [store]);
   useKeyboardInset(workbench);
 
+  const openOnFocus = (event: FocusEvent) => {
+    if (focusOpensSheet(event.target)) {
+      move({ type: 'focus' });
+    }
+  };
+
   return (
     <main ref={workbench} className="atc-workbench">
       <section
@@ -37,16 +45,16 @@ export function App() {
         className="atc-panel atc-chat-panel"
         data-snap={sheet.snap}
         aria-label="Chat"
-        onFocus={(event) => {
-          if (focusOpensSheet(event.target)) move({ type: 'focus' });
-        }}
+        onFocus={openOnFocus}
         onKeyDown={(event) => {
-          if (event.key === 'Escape') move({ type: 'escape' });
+          if (event.key === 'Escape') {
+            move({ type: 'escape' });
+          }
         }}
       >
         <SheetHandle expanded={sheetExpanded(sheet)} onMove={move} />
         <PanelHeader />
-        <Assistant onSend={() => move({ type: 'send' })} />
+        <Assistant onSent={() => move({ type: 'send' })} />
       </section>
       <section className="atc-panel atc-map-panel" aria-label="Map">
         <AirspaceMap obstruction={chatSheet} />

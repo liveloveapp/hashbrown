@@ -36,7 +36,7 @@ export function ToolChips({
           data-testid="tool-summary"
           aria-expanded={open}
           aria-controls={stepsId}
-          onClick={() => setOpen(!open)}
+          onClick={() => setOpen((open) => !open)}
         >
           <svg
             className="atc-activity-icon"

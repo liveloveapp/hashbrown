@@ -65,9 +65,9 @@ const components = [
 
 /**
  * The chat panel: components, browser-side tools and the streaming answer.
- * `onSend` is called when the user sends a message.
+ * `onSent` is called when the user sends a message.
  */
-export function Assistant({ onSend }: { onSend?: () => void }) {
+export function Assistant({ onSent }: { onSent?: () => void }) {
   const store = useAtcStore();
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
@@ -103,7 +103,7 @@ export function Assistant({ onSend }: { onSend?: () => void }) {
   const scroller = useAutoScroll<HTMLDivElement>();
   const send = (content: string) => {
     chat.sendMessage({ role: 'user', content });
-    onSend?.();
+    onSent?.();
   };
   // Retries the last answer, or resends the first message when it never got one.
   const retry = () =>

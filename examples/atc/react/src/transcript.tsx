@@ -37,21 +37,9 @@ export function Transcript({
         aria-relevant="additions"
         aria-busy={busy}
       >
-        {items.map((item, index) =>
-          item.kind === 'user' ? (
-            <li key={index} className="atc-user">
-              {item.text}
-            </li>
-          ) : item.kind === 'tools' ? (
-            <li key={index}>
-              <ToolChips calls={item.calls} busy={busy} />
-            </li>
-          ) : (
-            <li key={index} className="atc-answer">
-              {item.message.ui}
-            </li>
-          ),
-        )}
+        {items.map((item, index) => (
+          <TranscriptRow key={index} item={item} busy={busy} />
+        ))}
         {thinking === null ? null : (
           <li className="atc-activity" data-testid="thinking">
             <span className="atc-activity-text atc-shimmer">{thinking}</span>
@@ -68,4 +56,26 @@ export function Transcript({
       </p>
     </>
   );
+}
+
+/** One transcript row: a user bubble, a tool activity line or an answer. */
+function TranscriptRow({
+  item,
+  busy,
+}: {
+  item: TranscriptItem<UiChatMessage<Chat.AnyTool>>;
+  busy: boolean;
+}) {
+  switch (item.kind) {
+    case 'user':
+      return <li className="atc-user">{item.text}</li>;
+    case 'tools':
+      return (
+        <li>
+          <ToolChips calls={item.calls} busy={busy} />
+        </li>
+      );
+    case 'answer':
+      return <li className="atc-answer">{item.message.ui}</li>;
+  }
 }

@@ -1,5 +1,6 @@
 import {
   type AirportCode,
+  type ArrivalsRow,
   arrivalsRows,
   boardShowsEta,
   partialText,
@@ -26,6 +27,12 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
   const state = useAtcState();
   const rows = arrivalsRows(state, airport, hexes);
   const showEta = boardShowsEta(state, airport, hexes);
+  // Shows a live row's plane on the map (the row's button bubbles here).
+  const pick = (row: ArrivalsRow) => {
+    if (row.selectable) {
+      store.revealAircraft(row.hex);
+    }
+  };
 
   return (
     <section className="atc-card" data-testid="arrivals-board">
@@ -47,17 +54,10 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
               data-hex={row.hex}
               data-status={row.status}
               className={
-                [
-                  row.selectable ? 'is-selectable' : '',
-                  row.selected ? 'is-selected' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ') || undefined
+                `${row.selectable ? 'is-selectable' : ''} ${row.selected ? 'is-selected' : ''}`.trim() ||
+                undefined
               }
-              // The row's button bubbles here; clicks elsewhere in it count too.
-              onClick={() => {
-                if (row.selectable) store.revealAircraft(row.hex);
-              }}
+              onClick={() => pick(row)}
             >
               <td className="atc-board-flight">
                 {row.selectable ? (

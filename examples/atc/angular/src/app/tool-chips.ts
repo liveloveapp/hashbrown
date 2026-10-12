@@ -37,7 +37,7 @@ let nextId = 0;
         data-testid="tool-summary"
         [attr.aria-expanded]="open()"
         [attr.aria-controls]="stepsId"
-        (click)="open.set(!open())"
+        (click)="open.update((open) => !open)"
       >
         <svg
           class="atc-activity-icon"

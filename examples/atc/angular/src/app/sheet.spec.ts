@@ -21,7 +21,7 @@ function pointer(type: string, clientY: number): Event {
   imports: [SheetHandle],
   template: `
     <section [attr.data-snap]="sheet().snap" (focusin)="focus($event)">
-      <atc-sheet-handle [expanded]="expanded()" (moved)="move($event)" />
+      <atc-sheet-handle [expanded]="expanded()" (move)="move($event)" />
       <input aria-label="Message" />
     </section>
   `,
