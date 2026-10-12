@@ -1,9 +1,9 @@
 import type { Surfaces } from '@atc/shared';
 import { createCachedLoader } from './chart/cached-loader';
-import { amToSurfaces, osmToSurfaces } from './chart/surfaces';
+import { airportMappingToSurfaces, osmToSurfaces } from './chart/surfaces';
 import {
   fetchAddsAirport,
-  fetchAmLayer,
+  fetchAirportMappingLayer,
   fetchOsmAeroways,
 } from './chart/upstream';
 import { type NodeHandler, sendJson } from './http';
@@ -29,12 +29,12 @@ async function loadAm(
 ): Promise<Surfaces | null> {
   try {
     const [taxiways, aprons, hotspots] = await Promise.all([
-      fetchAmLayer(fetchFn, 'AM_Taxiway', faa, signal),
-      fetchAmLayer(fetchFn, 'AM_Apron', faa, signal),
-      fetchAmLayer(fetchFn, 'AM_Hotspot', faa, signal),
+      fetchAirportMappingLayer(fetchFn, 'AM_Taxiway', faa, signal),
+      fetchAirportMappingLayer(fetchFn, 'AM_Apron', faa, signal),
+      fetchAirportMappingLayer(fetchFn, 'AM_Hotspot', faa, signal),
     ]);
 
-    return amToSurfaces(code, { taxiways, aprons, hotspots });
+    return airportMappingToSurfaces(code, { taxiways, aprons, hotspots });
   } catch {
     // Treated as "no FAA data", so OpenStreetMap can still draw the airport.
     return null;

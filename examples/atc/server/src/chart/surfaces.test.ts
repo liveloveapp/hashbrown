@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { amToSurfaces, osmToSurfaces } from './surfaces';
+import { airportMappingToSurfaces, osmToSurfaces } from './surfaces';
 
 const ring = [
   [-122.3, 47.4],
@@ -16,13 +16,13 @@ const polygon = (designator: string) => ({
 
 const empty = { type: 'FeatureCollection', features: [] };
 
-test('amToSurfaces reads taxiway refs and maps UNK to null', () => {
+test('airportMappingToSurfaces reads taxiway refs and maps UNK to null', () => {
   const taxiways = {
     type: 'FeatureCollection',
     features: [polygon('D_B'), polygon('UNK')],
   };
 
-  const result = amToSurfaces('KSEA', {
+  const result = airportMappingToSurfaces('KSEA', {
     taxiways,
     aprons: empty,
     hotspots: empty,
@@ -33,7 +33,7 @@ test('amToSurfaces reads taxiway refs and maps UNK to null', () => {
   expect(result?.features.map((f) => f.ref)).toEqual(['D', null]);
 });
 
-test('amToSurfaces reads aprons, hot spots and multipolygons', () => {
+test('airportMappingToSurfaces reads aprons, hot spots and multipolygons', () => {
   const layers = {
     taxiways: {
       features: [
@@ -54,7 +54,7 @@ test('amToSurfaces reads aprons, hot spots and multipolygons', () => {
     },
   };
 
-  const result = amToSurfaces('KSEA', layers);
+  const result = airportMappingToSurfaces('KSEA', layers);
 
   expect(result?.features.map((f) => [f.kind, f.ref])).toEqual([
     ['taxiway', 'A'],
@@ -64,8 +64,8 @@ test('amToSurfaces reads aprons, hot spots and multipolygons', () => {
   ]);
 });
 
-test('amToSurfaces returns null without taxiways', () => {
-  const result = amToSurfaces('KRDM', {
+test('airportMappingToSurfaces returns null without taxiways', () => {
+  const result = airportMappingToSurfaces('KRDM', {
     taxiways: empty,
     aprons: { features: [polygon('X')] },
     hotspots: empty,

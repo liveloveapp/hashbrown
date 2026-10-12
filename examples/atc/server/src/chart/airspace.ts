@@ -3,12 +3,15 @@ import {
   type AirspaceShelf,
   type AirspaceType,
   distanceNm,
+  ICAO,
+  IDENT,
+  isRecord,
   type LatLon,
+  type LonLat,
+  type Ring,
 } from '@atc/shared';
 
 const MAX_NAME = 80;
-const ICAO = /^[A-Z][A-Z0-9]{3}$/;
-const IDENT = /^[A-Z0-9]{2,4}$/;
 const LOCAL_TYPES: Readonly<Record<string, AirspaceType>> = {
   CLASS_B: 'B',
   CLASS_C: 'C',
@@ -23,17 +26,13 @@ const CLASS_TYPES: Readonly<Record<string, AirspaceType>> = {
   D: 'D',
 };
 
-type Ring = readonly (readonly [number, number])[];
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
+/** Rounds a coordinate to 5 decimals (about 1 m). */
 const round5 = (n: number): number => Math.round(n * 1e5) / 1e5;
 
 /** One ring as rounded `[lon, lat]` pairs, or null when it is malformed. */
 function toRing(raw: unknown): Ring | null {
   if (!Array.isArray(raw) || raw.length < 4) return null;
-  const points: [number, number][] = [];
+  const points: LonLat[] = [];
   for (const p of raw) {
     if (
       !Array.isArray(p) ||
@@ -156,7 +155,7 @@ function bboxOf(rings: readonly Ring[]): AirspaceShelf['bbox'] {
  * count per airport and type from 1, in input order. Invalid features are
  * counted in `dropped`; features outside the area are not.
  */
-export function normaliseAirspace(
+export function normalizeAirspace(
   features: unknown,
   centre: LatLon,
   radiusNm: number,

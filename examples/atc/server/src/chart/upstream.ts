@@ -1,4 +1,4 @@
-import { AREAS, type LatLon } from '@atc/shared';
+import { AREAS, IDENT, type LatLon } from '@atc/shared';
 import { readZipEntries } from './zip';
 import type { NasrFiles } from './nasr';
 
@@ -113,7 +113,7 @@ export async function fetchAddsAirport(
   const faa = properties?.IDENT;
   if (
     typeof faa !== 'string' ||
-    !/^[A-Z0-9]{2,4}$/.test(faa) ||
+    !IDENT.test(faa) ||
     !Array.isArray(coordinates)
   ) {
     return null;
@@ -130,7 +130,7 @@ export async function fetchAddsAirport(
  * with coordinates at 6 decimals. `faa` must come from `fetchAddsAirport`.
  * Aborts with `signal`.
  */
-export function fetchAmLayer(
+export function fetchAirportMappingLayer(
   fetchFn: typeof fetch,
   layer: 'AM_Taxiway' | 'AM_Apron' | 'AM_Hotspot',
   faa: string,

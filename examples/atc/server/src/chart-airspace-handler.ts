@@ -1,5 +1,5 @@
 import { type AirspacePayload, AREAS, currentCycle } from '@atc/shared';
-import { normaliseAirspace } from './chart/airspace';
+import { normalizeAirspace } from './chart/airspace';
 import { createCachedLoader } from './chart/cached-loader';
 import { fetchClassAirspace } from './chart/upstream';
 import { type NodeHandler, sendJson } from './http';
@@ -51,7 +51,7 @@ export function createChartAirspaceHandler(
         fetchFn,
         AbortSignal.timeout(deadlineMs),
       );
-      const { shelves, dropped } = normaliseAirspace(
+      const { shelves, dropped } = normalizeAirspace(
         features,
         AREAS.pnw,
         AREAS.pnw.radiusNm,
