@@ -1,32 +1,18 @@
 // @vitest-environment jsdom
-import { afterAll, expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { AIRPORTS, AREAS } from '../places';
 import { createAtcStore } from '../store';
+import { testAircraft } from '../testing';
 import { createAirspaceMap } from './airspace-map';
+import { createFrameQueue, mapElement } from './testing';
 
 const { KBDN } = AIRPORTS;
-const base: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
-  typeCode: 'B738',
-  category: null,
-  kind: 'jet',
-  lat: KBDN.lat,
-  lon: KBDN.lon,
-  altitudeFt: 5000,
-  onGround: false,
-  groundSpeedKt: 0,
-  trackDeg: 90,
-  verticalRateFpm: 0,
-};
+const base = testAircraft({ lat: KBDN.lat, lon: KBDN.lon, groundSpeedKt: 0 });
 /**
  * Showing 25 nm around Bend on the 400x300 map zooms to 8, where 0.3
  * degrees of latitude is about 76 px: far enough apart for both tags.
  */
-const a = base;
 const farB: Aircraft = {
   ...base,
   hex: 'bbbbbb',
@@ -61,39 +47,38 @@ class FakeResizeObserver {
   }
 }
 
-afterAll(() => {
-  vi.useRealTimers();
-});
-
 /**
  * Mounts a 400x300 map with motion on (no reduced-motion query), a fake
  * clock, a manual animation-frame queue, fake timers for the tag fades and
  * a hand-run ResizeObserver; shows 25 nm around Bend and highlights the
- * two planes, `a` first.
+ * two planes, `base` first.
  */
 async function mount() {
-  let clock = 0;
-  const frames = new Map<number, FrameRequestCallback>();
-  let nextFrame = 1;
+  const queue = createFrameQueue();
   vi.useFakeTimers({
     toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'],
   });
   FakeResizeObserver.all = [];
   vi.stubGlobal('ResizeObserver', FakeResizeObserver);
-  vi.stubGlobal('performance', { now: () => clock });
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-    frames.set(nextFrame, callback);
-    return nextFrame++;
-  });
-  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
   const store = createAtcStore();
-  const element = document.createElement('div');
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
+  const element = mapElement();
   document.body.append(element);
   const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
+  let destroyed = false;
+  const destroy = () => {
+    if (!destroyed) {
+      destroyed = true;
+      handle.destroy();
+    }
+  };
+  onTestFinished(() => {
+    destroy();
+    element.remove();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
   store.showArea({ airport: 'KBDN', radiusNm: 25 });
-  store.applySnapshot({ at: 1, aircraft: [a, farB] });
+  store.applySnapshot({ at: 1, aircraft: [base, farB] });
   store.highlight(['aaaaaa', 'bbbbbb']);
   const plane = (hex: string) =>
     element.querySelector<HTMLElement>(`.atc-plane[data-hex="${hex}"]`);
@@ -110,26 +95,13 @@ async function mount() {
         ?.closest('.atc-plane-icon')
         ?.dispatchEvent(new MouseEvent(type, { bubbles: true })),
     /** Runs the queued animation frames at `time`. */
-    runFrames(time: number) {
-      clock = time;
-      const pending = [...frames.values()];
-      frames.clear();
-      for (const callback of pending) {
-        callback(time);
-      }
-    },
-    /** Moves `b` onto `a` at the current clock and lets it ease there. */
+    runFrames: queue.run,
+    /** Moves `b` onto `base` at the current clock and lets it ease there. */
     bringTogether(time = 1000) {
-      store.applySnapshot({ at: 2, aircraft: [a, onA] });
-      this.runFrames(time);
+      store.applySnapshot({ at: 2, aircraft: [base, onA] });
+      queue.run(time);
     },
-    destroy: () => handle.destroy(),
-    cleanup: () => {
-      handle.destroy();
-      element.remove();
-      vi.unstubAllGlobals();
-      vi.useRealTimers();
-    },
+    destroy,
   };
 }
 
@@ -148,7 +120,6 @@ test('a tag changing sides fades out for 150 ms, then moves and fades back in', 
   expect(fadingAt149).toBe(true);
   expect(map.fading('bbbbbb')).toBe(false);
   expect(map.tag('bbbbbb')).not.toBe('right');
-  map.cleanup();
 });
 
 test('a fade in progress retargets when its side is taken before it lands', async () => {
@@ -168,7 +139,6 @@ test('a fade in progress retargets when its side is taken before it lands', asyn
 
   expect(map.tag('bbbbbb')).toMatch(/^(above|below)-right$/);
   expect(map.fading('bbbbbb')).toBe(false);
-  map.cleanup();
 });
 
 test('a tag no longer shown mid-fade is reset at once, and its fade never lands', async () => {
@@ -181,14 +151,13 @@ test('a tag no longer shown mid-fade is reset at once, and its fade never lands'
 
   expect(reset).toEqual([false, 'right']);
   expect(map.tag('bbbbbb')).toBe('right');
-  map.cleanup();
 });
 
 test('while planes move, tags are laid out again every 500 ms, not every frame', async () => {
   const map = await mount();
-  map.store.applySnapshot({ at: 2, aircraft: [a, onA] });
+  map.store.applySnapshot({ at: 2, aircraft: [base, onA] });
 
-  // By 450 ms b has eased to within 13 px of a: the tags overlap.
+  // By 450 ms b has eased to within 13 px of base: the tags overlap.
   map.runFrames(300);
   map.runFrames(450);
   const at450 = map.fading('bbbbbb') || map.tag('bbbbbb') !== 'right';
@@ -196,7 +165,6 @@ test('while planes move, tags are laid out again every 500 ms, not every frame',
 
   expect(at450).toBe(false);
   expect(map.fading('bbbbbb')).toBe(true);
-  map.cleanup();
 });
 
 test('hovering a plane lays tags out at once: its card replaces its tag, and leaving brings the tag back', async () => {
@@ -215,7 +183,6 @@ test('hovering a plane lays tags out at once: its card replaces its tag, and lea
   expect(moved).not.toBe('right');
   expect(hovered).toEqual([true, 'right']);
   expect(map.tag('bbbbbb')).toBe(moved);
-  map.cleanup();
 });
 
 test('a resize lays tags out again around the map controls', async () => {
@@ -223,7 +190,7 @@ test('a resize lays tags out again around the map controls', async () => {
   const corner = map.element.querySelector<HTMLElement>(
     '.leaflet-bottom.leaflet-right .leaflet-control',
   );
-  // The control now covers the right of the map's middle, where a's tag is.
+  // The control now covers the right of the map's middle, where the first plane's tag is.
   if (corner) {
     corner.getBoundingClientRect = () =>
       ({ left: 150, top: 0, right: 400, bottom: 300 }) as DOMRect;
@@ -233,7 +200,6 @@ test('a resize lays tags out again around the map controls', async () => {
   vi.advanceTimersByTime(150);
 
   expect(map.tag('aaaaaa')).not.toBe('right');
-  map.cleanup();
 });
 
 test('a map control growing (the Layers panel opening) is measured again', async () => {
@@ -252,7 +218,6 @@ test('a map control growing (the Layers panel opening) is measured again', async
   vi.advanceTimersByTime(150);
 
   expect(map.tag('aaaaaa')).not.toBe('right');
-  map.cleanup();
 });
 
 test('destroying the map mid-fade cancels the fade', async () => {
@@ -268,7 +233,4 @@ test('destroying the map mid-fade cancels the fade', async () => {
   expect(fading).toBe(true);
   expect(plane?.classList.contains('is-tag-fading')).toBe(true);
   expect(plane?.getAttribute('data-tag')).toBeNull();
-  map.element.remove();
-  vi.unstubAllGlobals();
-  vi.useRealTimers();
 });

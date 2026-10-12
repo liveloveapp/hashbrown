@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { AREAS } from '../places';
 import { createAtcStore } from '../store';
 import { createAirspaceMap } from './airspace-map';
+import { mapElement, REDUCED_MOTION, stubMedia } from './testing';
 
 /** The whole region at zoom 6, so every test plane is on the 400 by 300 map. */
 const REGIONAL = {
@@ -47,13 +48,11 @@ function rect(top: number, bottom: number): DOMRect {
  * inside a workbench whose chat panel starts its sheet at `sheetTop`.
  */
 async function mount(sheetTop: { value: number } | null = null) {
-  vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query === '(prefers-reduced-motion: reduce)',
-  }));
+  stubMedia(REDUCED_MOTION);
   const store = createAtcStore();
   const workbench = document.createElement('main');
   workbench.className = 'atc-workbench';
-  const element = document.createElement('div');
+  const element = mapElement();
   workbench.append(element);
   let panel: HTMLElement | null = null;
   if (sheetTop !== null) {
@@ -63,13 +62,15 @@ async function mount(sheetTop: { value: number } | null = null) {
     workbench.append(panel);
   }
   document.body.append(workbench);
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
   const handle = await createAirspaceMap({
     element,
     store,
     area: REGIONAL,
     obstruction: () => panel,
+  });
+  onTestFinished(() => {
+    handle.destroy();
+    workbench.remove();
   });
   store.applySnapshot({ at: 1, aircraft: [cessna, jet] });
   const icon = (hex: string) =>
@@ -90,11 +91,6 @@ async function mount(sheetTop: { value: number } | null = null) {
     open,
     plane: (hex: string) =>
       element.querySelector<HTMLElement>(`.atc-plane[data-hex="${hex}"]`),
-    cleanup: () => {
-      handle.destroy();
-      workbench.remove();
-      vi.unstubAllGlobals();
-    },
   };
 }
 
@@ -109,7 +105,6 @@ test('hovering a plane opens one detail card with its readings', async () => {
   expect(map.card()?.textContent).toContain('Altitude4,500 ft');
   expect(map.card()?.textContent).toContain('Squawk1200');
   expect(map.plane('a1c009')?.classList.contains('is-detailed')).toBe(true);
-  map.cleanup();
 });
 
 test('leaving the plane hides the card unless it is selected', async () => {
@@ -130,7 +125,6 @@ test('leaving the plane hides the card unless it is selected', async () => {
   expect(map.open()).toBe(true);
   expect(map.card()?.getAttribute('data-hex')).toBe('a1c001');
   expect(map.plane('a1c009')?.classList.contains('is-detailed')).toBe(false);
-  map.cleanup();
 });
 
 test('a new snapshot updates the open card in place', async () => {
@@ -145,7 +139,6 @@ test('a new snapshot updates the open card in place', async () => {
 
   expect(map.card()).toBe(card);
   expect(card?.textContent).toContain('Altitude4,600 ft');
-  map.cleanup();
 });
 
 test('Escape clears the selection and hides the card', async () => {
@@ -156,7 +149,6 @@ test('Escape clears the selection and hides the card', async () => {
 
   expect(map.store.getState().selectedHex).toBeNull();
   expect(map.open()).toBe(false);
-  map.cleanup();
 });
 
 test('the card hides when its plane leaves the map', async () => {
@@ -166,7 +158,6 @@ test('the card hides when its plane leaves the map', async () => {
   map.store.applySnapshot({ at: 2, aircraft: [jet] });
 
   expect(map.open()).toBe(false);
-  map.cleanup();
 });
 
 test('Escape while typing in a field keeps the selection', async () => {
@@ -188,7 +179,6 @@ test('Escape while typing in a field keeps the selection', async () => {
   expect(map.store.getState().selectedHex).toBe('a1c009');
   expect(map.open()).toBe(true);
   input.remove();
-  map.cleanup();
 });
 
 test('the card hides under an expanded sheet and returns when it shrinks', async () => {
@@ -202,7 +192,6 @@ test('the card hides under an expanded sheet and returns when it shrinks', async
 
   expect(underSheet).toBe(false);
   expect(map.open()).toBe(true);
-  map.cleanup();
 });
 
 test('the card hides when its plane moves off screen', async () => {
@@ -215,7 +204,6 @@ test('the card hides when its plane moves off screen', async () => {
   });
 
   expect(map.open()).toBe(false);
-  map.cleanup();
 });
 
 test('a selected plane gets a pinned card whose close button clears the selection', async () => {
@@ -227,7 +215,6 @@ test('a selected plane gets a pinned card whose close button clears the selectio
 
   expect(map.store.getState().selectedHex).toBeNull();
   expect(map.open()).toBe(false);
-  map.cleanup();
 });
 
 test('on a narrow map the card docks at the top with its summary only', async () => {
@@ -239,7 +226,6 @@ test('on a narrow map the card docks at the top with its summary only', async ()
   expect(map.card()?.style.transform).toBe('translate(8px, 8px)');
   expect(map.card()?.textContent).toContain('More readings');
   expect(map.card()?.textContent).not.toContain('Squawk');
-  map.cleanup();
 });
 
 test('More opens every reading in the docked card and keeps the plane selected', async () => {
@@ -251,7 +237,6 @@ test('More opens every reading in the docked card and keeps the plane selected',
   expect(map.store.getState().selectedHex).toBe('a1c009');
   expect(map.open()).toBe(true);
   expect(map.card()?.textContent).toContain('Squawk1200');
-  map.cleanup();
 });
 
 test('the focused close button stays focused through the age ticker and new snapshots', async () => {
@@ -273,5 +258,4 @@ test('the focused close button stays focused through the age ticker and new snap
   expect(close?.isConnected).toBe(true);
   expect(document.activeElement).toBe(close);
   expect(map.card()?.textContent).toContain('4,700 ft');
-  map.cleanup();
 });

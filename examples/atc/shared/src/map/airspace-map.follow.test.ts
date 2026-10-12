@@ -1,50 +1,42 @@
 // @vitest-environment jsdom
-import { expect, test, vi } from 'vitest';
-import type { Aircraft } from '../aircraft';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import { AREAS } from '../places';
 import { createAtcStore } from '../store';
+import { testAircraft } from '../testing';
 import { createAirspaceMap } from './airspace-map';
+import {
+  createFrameQueue,
+  mapElement,
+  planePixel,
+  REDUCED_MOTION,
+  stubMedia,
+} from './testing';
 
-const plane: Aircraft = {
+const plane = testAircraft({
   hex: 'a1b2c3',
   label: 'UAL1802',
   callsign: 'UAL1802',
-  registration: null,
-  typeCode: 'B738',
-  category: null,
-  kind: 'jet',
   lat: 44,
   lon: -121,
   altitudeFt: 30000,
-  onGround: false,
   groundSpeedKt: 450,
-  trackDeg: 90,
-  verticalRateFpm: 0,
-};
+});
 
 /** Mounts a 400x300 map with reduced motion and one followed-ready plane. */
 async function mount() {
-  vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query === '(prefers-reduced-motion: reduce)',
-  }));
+  stubMedia(REDUCED_MOTION);
   const store = createAtcStore();
-  const element = document.createElement('div');
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
+  const element = mapElement();
   document.body.append(element);
   const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
+  onTestFinished(() => {
+    handle.destroy();
+    element.remove();
+  });
   store.applySnapshot({ at: 1, aircraft: [plane] });
   const pill = () =>
     element.querySelector<HTMLElement>('[data-testid="follow-pill"]');
-  return {
-    store,
-    pill,
-    cleanup: () => {
-      handle.destroy();
-      element.remove();
-      vi.unstubAllGlobals();
-    },
-  };
+  return { store, pill };
 }
 
 test('following shows a pill with the label and a Stop button that ends it', async () => {
@@ -57,7 +49,6 @@ test('following shows a pill with the label and a Stop button that ends it', asy
   expect(text).toBe('Following UAL1802Stop');
   expect(map.store.getState().followingHex).toBeNull();
   expect(map.pill()?.classList.contains('is-open')).toBe(false);
-  map.cleanup();
 });
 
 /**
@@ -67,33 +58,20 @@ test('following shows a pill with the label and a Stop button that ends it', asy
  * (60 px tall); `motionOn` then turns motion on.
  */
 async function mountPhone() {
-  let clock = 0;
-  let reduced = true;
   let cardHeight = 60;
-  const frames = new Map<number, FrameRequestCallback>();
-  let nextFrame = 1;
-  vi.stubGlobal('performance', { now: () => clock });
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-    frames.set(nextFrame, callback);
-    return nextFrame++;
-  });
-  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
-  vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: reduced && query === '(prefers-reduced-motion: reduce)',
-  }));
-  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(
-    function (this: HTMLElement) {
+  const queue = createFrameQueue();
+  stubMedia(REDUCED_MOTION);
+  const offsetHeight = vi
+    .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
+    .mockImplementation(function (this: HTMLElement) {
       return this.classList.contains('atc-detail') ? cardHeight : 0;
-    },
-  );
+    });
   const store = createAtcStore();
   const workbench = document.createElement('main');
   const panel = document.createElement('section');
   panel.getBoundingClientRect = () =>
     ({ left: 0, top: 180, right: 400, bottom: 300 }) as DOMRect;
-  const element = document.createElement('div');
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
+  const element = mapElement();
   element.getBoundingClientRect = () =>
     ({ left: 0, top: 0, right: 400, bottom: 300 }) as DOMRect;
   workbench.append(panel, element);
@@ -104,40 +82,25 @@ async function mountPhone() {
     area: AREAS.pnw,
     obstruction: () => panel,
   });
+  onTestFinished(() => {
+    handle.destroy();
+    workbench.remove();
+    offsetHeight.mockRestore();
+  });
   store.applySnapshot({ at: 1, aircraft: [plane] });
   store.follow('a1b2c3');
   store.select('a1b2c3');
-  const px = (value: string | undefined) => parseFloat(value ?? '0') || 0;
 
   return {
     store,
     element,
     /** The followed plane's y on the map, in pixels. */
-    y: () => {
-      const icon = element
-        .querySelector('[data-hex="a1b2c3"]')
-        ?.closest<HTMLElement>('.atc-plane-icon');
-      const pane = element.querySelector<HTMLElement>('.leaflet-map-pane');
-      return px(icon?.style.top) + px(pane?.style.top);
-    },
-    motionOn: () => (reduced = false),
+    y: () => planePixel(element, 'a1b2c3').y,
+    motionOn: () => stubMedia(),
     /** Animation frames waiting to run. */
-    pendingFrames: () => frames.size,
+    pendingFrames: () => queue.frames.size,
     setCardHeight: (height: number) => (cardHeight = height),
-    runFrames(time: number) {
-      clock = time;
-      const pending = [...frames.values()];
-      frames.clear();
-      for (const callback of pending) {
-        callback(time);
-      }
-    },
-    cleanup: () => {
-      handle.destroy();
-      workbench.remove();
-      vi.unstubAllGlobals();
-      vi.restoreAllMocks();
-    },
+    runFrames: queue.run,
   };
 }
 
@@ -162,7 +125,6 @@ test('when the docked card grows while following, the plane eases to the new mid
   expect(Math.abs(before - (76 + 180) / 2)).toBeLessThan(2);
   expect(nextFrame - before).toBeLessThan(10);
   expect(Math.abs(map.y() - (136 + 180) / 2)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('following under reduced motion schedules no frame loop of its own', async () => {
@@ -173,5 +135,50 @@ test('following under reduced motion schedules no frame loop of its own', async 
   }
 
   expect(map.pendingFrames()).toBe(0);
-  map.cleanup();
+});
+
+/** Mounts a 400x300 map with motion on, a fake clock and a manual frame queue. */
+async function mountMoving() {
+  const queue = createFrameQueue();
+  const store = createAtcStore();
+  const element = mapElement();
+  const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
+  onTestFinished(() => {
+    handle.destroy();
+  });
+
+  return {
+    store,
+    /** Where the plane sits relative to the map's centre, in pixels. */
+    offsetFromCentre: () => {
+      const { x, y } = planePixel(element, plane.hex);
+
+      return { x: x - 200, y: y - 150 };
+    },
+    runFrames: queue.run,
+    setClock: queue.setClock,
+  };
+}
+
+test('the map keeps a followed plane centred while it moves', async () => {
+  const map = await mountMoving();
+  const { view } = AREAS.pnw;
+  const centred = { ...plane, lat: view.lat, lon: view.lon };
+  map.store.applySnapshot({ at: 1, aircraft: [centred] });
+  map.store.follow(centred.hex);
+  map.setClock(3000);
+  map.store.applySnapshot({
+    at: 2,
+    aircraft: [{ ...centred, lat: centred.lat + 0.15, lon: centred.lon + 0.2 }],
+  });
+
+  const offsets = [];
+  for (let time = 3000; time <= 6000; time += 16) {
+    map.runFrames(time);
+    offsets.push(map.offsetFromCentre());
+  }
+
+  const worst = Math.max(...offsets.map((o) => Math.hypot(o.x, o.y)));
+  expect(worst).toBeLessThan(1.5);
+  expect(map.store.getState().followingHex).toBe(centred.hex);
 });

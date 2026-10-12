@@ -1,27 +1,14 @@
 // @vitest-environment jsdom
-import { expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { AIRPORTS, type Area, AREAS } from '../places';
 import { createAtcStore } from '../store';
+import { testAircraft } from '../testing';
 import { createAirspaceMap } from './airspace-map';
+import { mapElement, planePixel, REDUCED_MOTION, stubMedia } from './testing';
 
 const { KBDN } = AIRPORTS;
-const base: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'N352LL',
-  callsign: null,
-  registration: 'N352LL',
-  typeCode: 'C172',
-  category: null,
-  kind: 'single',
-  lat: KBDN.lat,
-  lon: KBDN.lon,
-  altitudeFt: 5000,
-  onGround: false,
-  groundSpeedKt: 110,
-  trackDeg: 90,
-  verticalRateFpm: 0,
-};
+const base = testAircraft({ lat: KBDN.lat, lon: KBDN.lon });
 /** One plane over Bend and one 20 nm east of it. */
 const planes: Aircraft[] = [
   base,
@@ -33,26 +20,14 @@ const planes: Aircraft[] = [
  * real home view unless `area` says otherwise.
  */
 async function mount(area: Area = AREAS.pnw) {
-  vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query === '(prefers-reduced-motion: reduce)',
-  }));
+  stubMedia(REDUCED_MOTION);
   const store = createAtcStore();
-  const element = document.createElement('div');
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
+  const element = mapElement();
   const handle = await createAirspaceMap({ element, store, area });
-  const px = (value: string | undefined) => parseFloat(value ?? '0') || 0;
-  const pane = () => element.querySelector<HTMLElement>('.leaflet-map-pane');
-  const pixel = (hex: string) => {
-    const icon = element
-      .querySelector(`[data-hex="${hex}"]`)
-      ?.closest<HTMLElement>('.atc-plane-icon');
-
-    return {
-      x: px(icon?.style.left) + px(pane()?.style.left),
-      y: px(icon?.style.top) + px(pane()?.style.top),
-    };
-  };
+  onTestFinished(() => {
+    handle.destroy();
+  });
+  const pixel = (hex: string) => planePixel(element, hex);
   /** Pixels between the plane over Bend and the one 20 nm east. */
   const spread = () => pixel('bbbbbb').x - pixel('aaaaaa').x;
 
@@ -64,10 +39,6 @@ async function mount(area: Area = AREAS.pnw) {
     outline: () => element.querySelector('.atc-area'),
     zoomIn: () =>
       element.querySelector<HTMLElement>('.leaflet-control-zoom-in')?.click(),
-    cleanup: () => {
-      handle.destroy();
-      vi.unstubAllGlobals();
-    },
   };
 }
 
@@ -86,7 +57,6 @@ test('showing an area centres it, zooms in and draws a faint outline', async () 
   expect(map.spread()).toBeGreaterThan(before * 3);
   expect(map.spread()).toBeLessThan(200);
   expect(map.outline()).not.toBeNull();
-  map.cleanup();
 });
 
 test('resetting returns to the home view and removes the outline', async () => {
@@ -104,7 +74,6 @@ test('resetting returns to the home view and removes the outline', async () => {
   );
   expect(map.spread()).toBeCloseTo(regional, 0);
   expect(map.outline()).toBeNull();
-  map.cleanup();
 });
 
 test('a followed plane keeps the view when an area is shown', async () => {
@@ -116,7 +85,6 @@ test('a followed plane keeps the view when an area is shown', async () => {
   map.store.showArea({ airport: 'KSEA', radiusNm: 10 });
 
   expect(map.spread()).toBeCloseTo(before, 0);
-  map.cleanup();
 });
 
 test('highlighting planes inside the shown area keeps the area view', async () => {
@@ -129,7 +97,6 @@ test('highlighting planes inside the shown area keeps the area view', async () =
 
   expect(map.spread()).toBeCloseTo(area, 0);
   expect(map.outline()).not.toBeNull();
-  map.cleanup();
 });
 
 test('a user zoom cancels a fit still waiting for its planes', async () => {
@@ -146,7 +113,6 @@ test('a user zoom cancels a fit still waiting for its planes', async () => {
   // Zoom 7 (6 plus the user's step), not the fit's zoom.
   expect(map.spread()).toBeCloseTo(zoomed, -1);
   expect(map.store.getState().viewRequest).toBeNull();
-  map.cleanup();
 });
 
 test('a user zoom still cancels a waiting fit after an area with an unknown airport', async () => {
@@ -163,5 +129,4 @@ test('a user zoom still cancels a waiting fit after an area with an unknown airp
 
   expect(map.spread()).toBeCloseTo(zoomed, -1);
   expect(map.store.getState().viewRequest).toBeNull();
-  map.cleanup();
 });

@@ -3,24 +3,16 @@ import { expect, test } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { KIND_PATHS } from '../kinds';
 import { applySnapshot, INITIAL_STATE } from '../store';
+import { testAircraft } from '../testing';
 import { markerClassName, planeIconHtml, updatePlane } from './plane-marker';
 
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
-  typeCode: 'B738',
-  category: null,
-  kind: 'jet',
+const plane = testAircraft({
   lat: 42,
   lon: -88,
   altitudeFt: 30000,
-  onGround: false,
   groundSpeedKt: 450,
   trackDeg: 271.6,
-  verticalRateFpm: 0,
-};
+});
 
 /** The rendered tag's label and altitude span. */
 function tagParts(host: ParentNode): [string, string] {

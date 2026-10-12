@@ -1,26 +1,13 @@
 // @vitest-environment jsdom
-import { expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { AREAS } from '../places';
 import { createAtcStore } from '../store';
+import { testAircraft } from '../testing';
 import { createAirspaceMap } from './airspace-map';
+import { mapElement, planePixel, REDUCED_MOTION, stubMedia } from './testing';
 
-const base: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
-  typeCode: 'B738',
-  category: null,
-  kind: 'jet',
-  lat: 47.4,
-  lon: -122.3,
-  altitudeFt: 5000,
-  onGround: false,
-  groundSpeedKt: 200,
-  trackDeg: 90,
-  verticalRateFpm: 0,
-};
+const base = testAircraft();
 const planes: Aircraft[] = [
   base,
   { ...base, hex: 'bbbbbb', callsign: 'ASA2', lat: 47.45, lon: -122.2 },
@@ -29,13 +16,9 @@ const planes: Aircraft[] = [
 
 /** Mounts a 400x300 map with reduced motion so moves are immediate. */
 async function mount() {
-  vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query === '(prefers-reduced-motion: reduce)',
-  }));
+  stubMedia(REDUCED_MOTION);
   const store = createAtcStore();
-  const element = document.createElement('div');
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
+  const element = mapElement();
   const handle = await createAirspaceMap({
     element,
     store,
@@ -44,19 +27,11 @@ async function mount() {
       view: { lat: AREAS.pnw.lat, lon: AREAS.pnw.lon, zoom: 6 },
     },
   });
-  const px = (value: string | undefined) => parseFloat(value ?? '0') || 0;
-  const pane = () => element.querySelector<HTMLElement>('.leaflet-map-pane');
+  onTestFinished(() => {
+    handle.destroy();
+  });
   /** Pixel position of a plane relative to the map's top-left. */
-  const pixel = (hex: string) => {
-    const icon = element
-      .querySelector(`[data-hex="${hex}"]`)
-      ?.closest<HTMLElement>('.atc-plane-icon');
-
-    return {
-      x: px(icon?.style.left) + px(pane()?.style.left),
-      y: px(icon?.style.top) + px(pane()?.style.top),
-    };
-  };
+  const pixel = (hex: string) => planePixel(element, hex);
   const spread = () => {
     const a = pixel('aaaaaa');
     const c = pixel('cccccc');
@@ -71,10 +46,6 @@ async function mount() {
       element.querySelector<HTMLElement>('.leaflet-control-zoom-in')?.click(),
     pixel,
     spread,
-    cleanup: () => {
-      handle.destroy();
-      vi.unstubAllGlobals();
-    },
   };
 }
 
@@ -86,7 +57,6 @@ test('highlighting several planes zooms in so they spread apart', async () => {
   map.store.highlight(['aaaaaa', 'bbbbbb', 'cccccc']);
 
   expect(map.spread()).toBeGreaterThan(before * 2);
-  map.cleanup();
 });
 
 test('highlighting one plane centres it', async () => {
@@ -97,7 +67,6 @@ test('highlighting one plane centres it', async () => {
 
   const { x, y } = map.pixel('bbbbbb');
   expect(Math.hypot(x - 200, y - 150)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('clearing the highlight and new snapshots leave the view alone', async () => {
@@ -110,7 +79,6 @@ test('clearing the highlight and new snapshots leave the view alone', async () =
   map.store.applySnapshot({ at: 2, aircraft: planes });
 
   expect(map.spread()).toBeCloseTo(fitted, 0);
-  map.cleanup();
 });
 
 test('a followed plane keeps the view: highlighting does not refit', async () => {
@@ -122,7 +90,6 @@ test('a followed plane keeps the view: highlighting does not refit', async () =>
   map.store.highlight(['aaaaaa', 'cccccc']);
 
   expect(map.spread()).toBeCloseTo(before, 0);
-  map.cleanup();
 });
 
 test('a user zoom after a fit is not overridden by later snapshots', async () => {
@@ -140,7 +107,6 @@ test('a user zoom after a fit is not overridden by later snapshots', async () =>
 
   // Under a pixel: Leaflet rounds after the zoom, the motion loop does not.
   expect(Math.hypot(later.x - after.x, later.y - after.y)).toBeLessThan(1);
-  map.cleanup();
 });
 
 test('a highlight that arrives before its markers fits once they appear', async () => {
@@ -152,7 +118,6 @@ test('a highlight that arrives before its markers fits once they appear', async 
   const a = map.pixel('aaaaaa');
   const c = map.pixel('cccccc');
   expect(Math.hypot(a.x - c.x, a.y - c.y)).toBeGreaterThan(60);
-  map.cleanup();
 });
 
 test('changing the highlighted set refits', async () => {
@@ -166,7 +131,6 @@ test('changing the highlighted set refits', async () => {
   expect(map.pixel('bbbbbb')).not.toEqual(first);
   const { x, y } = map.pixel('bbbbbb');
   expect(Math.hypot(x - 200, y - 150)).toBeLessThan(2);
-  map.cleanup();
 });
 
 test('a wide spread stops zooming out at zoom 5', async () => {
@@ -183,7 +147,6 @@ test('a wide spread stops zooming out at zoom 5', async () => {
   const a = map.pixel('aaaaaa');
   const c = map.pixel('cccccc');
   expect(Math.abs(c.x - a.x)).toBeCloseTo((20 * 256 * 32) / 360, -1);
-  map.cleanup();
 });
 
 test('co-located planes stop zooming in at zoom 10', async () => {
@@ -201,5 +164,4 @@ test('co-located planes stop zooming in at zoom 10', async () => {
   const a = map.pixel('aaaaaa');
   const b = map.pixel('bbbbbb');
   expect(Math.abs(b.x - a.x)).toBeCloseTo((0.1 * 256 * 1024) / 360, 0);
-  map.cleanup();
 });
