@@ -148,3 +148,20 @@ test('a user zoom cancels a fit still waiting for its planes', async () => {
   expect(map.store.getState().viewRequest).toBeNull();
   map.cleanup();
 });
+
+test('a user zoom still cancels a waiting fit after an area with an unknown airport', async () => {
+  const map = await mount({
+    ...AREAS.pnw,
+    view: { lat: AREAS.pnw.lat, lon: AREAS.pnw.lon, zoom: 6 },
+  });
+  map.store.showArea({ airport: 'XXXX', radiusNm: 10 });
+  map.store.highlight(['aaaaaa', 'bbbbbb']);
+  map.zoomIn();
+  const zoomed = (20 * 256 * 2 ** 7) / 360 / 60 / Math.cos(0.7696);
+
+  map.store.applySnapshot({ at: 1, aircraft: planes });
+
+  expect(map.spread()).toBeCloseTo(zoomed, -1);
+  expect(map.store.getState().viewRequest).toBeNull();
+  map.cleanup();
+});

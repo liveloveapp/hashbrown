@@ -195,11 +195,7 @@ export function createViewController(options: {
    * Fits a circle around an airport, keeping it below a docked card and
    * above a phone's sheet.
    */
-  const fitArea = (shown: ShownArea, animate: boolean) => {
-    const centre = airportByCode(store.getState(), shown.airport);
-    if (centre === null) {
-      return;
-    }
+  const fitArea = (centre: LatLon, shown: ShownArea, animate: boolean) => {
     const box = circleBounds(centre, shown.radiusNm);
     const bottom = sheetInset();
     map.fitBounds(
@@ -342,9 +338,14 @@ export function createViewController(options: {
       return;
     }
     appliedSeq = request.seq;
-    moveMap(() =>
-      request.kind === 'area' ? fitArea(request.area, animate) : home(animate),
-    );
+    if (request.kind === 'area') {
+      const centre = airportByCode(state, request.area.airport);
+      if (centre !== null) {
+        moveMap(() => fitArea(centre, request.area, animate));
+      }
+      return;
+    }
+    moveMap(() => home(animate));
   };
 
   return {
