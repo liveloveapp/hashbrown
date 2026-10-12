@@ -52,7 +52,7 @@
 .atc-error button {
   border: 1px solid var(--atc-border);
   background: var(--atc-surface);
-  border-radius: 999px;
+  border-radius: var(--atc-radius-pill);
   padding: 4px 12px;
   cursor: pointer;
   color: var(--atc-ink);
@@ -80,7 +80,7 @@
 .atc-starters button {
   border: 1px solid var(--atc-border);
   background: var(--atc-surface);
-  border-radius: 999px;
+  border-radius: var(--atc-radius-pill);
   padding: 6px 12px;
   cursor: pointer;
   transition: border-color var(--atc-fast) var(--atc-ease);
@@ -135,6 +135,10 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/*
+ * The count starts with " · "; pre keeps the space and the negative margin
+ * cancels most of the flex gap, so summary and count read as one phrase.
+ */
 .atc-activity-count {
   flex: none;
   margin-left: -6px;
@@ -180,6 +184,11 @@
   border-top-color: var(--atc-muted);
   animation: atc-spin 0.8s linear infinite;
 }
+@keyframes atc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 /*
  * The working shimmer: a soft ink highlight sweeping across muted text, the
  * one gradient the design rules allow (see design-rules.test.ts). Static
@@ -208,18 +217,6 @@
     background-position: 0% 0;
   }
 }
-/* Read by screen readers only: the chat's status region. */
-.atc-visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 /* Touch: a 44px hit area around the 24px line. */
 @media (pointer: coarse) {
   .atc-activity-toggle {
@@ -240,11 +237,6 @@
   gap: 8px;
   min-width: 0;
 }
-@keyframes atc-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 .atc-composer {
   position: absolute;
@@ -263,7 +255,7 @@
   gap: 8px;
   padding: 5px 5px 5px 16px;
   border: 1px solid var(--atc-border);
-  border-radius: 999px;
+  border-radius: var(--atc-radius-pill);
   background: var(--atc-surface);
   transition: border-color var(--atc-fast) var(--atc-ease);
 }

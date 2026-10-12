@@ -1,8 +1,10 @@
-/* Reduced motion. Kept last so it overrides every animation above. */
-@media (prefers-reduced-motion: reduce) {
-  .atc-detail,
-  .atc-detail.is-open {
-    transition: none;
+/* Shared keyframes, and reduced motion (kept last so it overrides every animation above). */
+@keyframes atc-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.5;
   }
 }
 
@@ -14,10 +16,7 @@
     animation: none !important;
     transition: none !important;
   }
-}
-
-/* The shimmer stands still as plain muted text. */
-@media (prefers-reduced-motion: reduce) {
+  /* The shimmer stands still as plain muted text. */
   .atc-shimmer {
     background: none;
     color: var(--atc-muted);

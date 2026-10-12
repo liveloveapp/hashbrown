@@ -1,6 +1,7 @@
 /* Follow mode: a pill at the top of the map naming the plane, with Stop. */
 .atc-follow {
   position: absolute;
+  /* Between Leaflet's controls (1000) and the detail card (1100); see tokens.css. */
   z-index: 1050;
   top: 12px;
   left: 50%;
@@ -13,7 +14,7 @@
   padding: 4px 4px 4px 14px;
   background: var(--atc-surface);
   border: 1px solid var(--atc-border);
-  border-radius: 999px;
+  border-radius: var(--atc-radius-pill);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
@@ -31,7 +32,7 @@
   min-height: 28px;
   padding: 0 12px;
   border: 1px solid var(--atc-border);
-  border-radius: 999px;
+  border-radius: var(--atc-radius-pill);
   background: var(--atc-surface);
   color: var(--atc-ink);
   font-weight: 500;

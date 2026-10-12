@@ -29,7 +29,7 @@
   padding: 1px 7px;
   background: var(--atc-surface);
   border: 1px solid var(--atc-border);
-  border-radius: 999px;
+  border-radius: var(--atc-radius-pill);
   color: var(--atc-ink);
   font-size: 11px;
   line-height: 16px;
@@ -108,22 +108,23 @@
 .atc-map:has(.atc-detail:hover) .atc-plane-icon:has(.is-detailed) {
   z-index: 10002 !important;
 }
-.atc-plane.is-dimmed:hover {
-  color: var(--atc-ink);
-}
 .atc-plane.is-highlighted {
   color: var(--atc-accent);
 }
 .atc-plane.is-dimmed {
   color: var(--atc-dimmed);
 }
-/* Regional zoom: smaller silhouettes, so metro clusters stay readable. */
-.atc-map[data-zoom-low] .atc-plane svg {
-  transform: scale(0.75);
+.atc-plane.is-dimmed:hover {
+  color: var(--atc-ink);
 }
+/* After .is-dimmed: a selected plane outside the highlight stays accent. */
 .atc-plane.is-selected,
 .atc-plane.is-followed {
   color: var(--atc-accent);
+}
+/* Regional zoom: smaller silhouettes, so metro clusters stay readable. */
+.atc-map[data-zoom-low] .atc-plane svg {
+  transform: scale(0.75);
 }
 .atc-plane.is-pulsing .atc-plane-body {
   animation: atc-pulse 1.2s var(--atc-ease);

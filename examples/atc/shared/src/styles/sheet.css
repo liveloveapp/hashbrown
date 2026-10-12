@@ -135,7 +135,7 @@
   .atc-sheet-grip {
     width: 36px;
     height: 4px;
-    border-radius: 999px;
+    border-radius: var(--atc-radius-pill);
     background: var(--atc-border);
   }
   .atc-sheet-handle:is(:hover, :focus-visible) .atc-sheet-grip {

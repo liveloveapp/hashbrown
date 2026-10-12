@@ -2,8 +2,8 @@
  * atc visual system, following the design rules of LiveLoveApp (the team
  * behind Hashbrown); shared/src/design-rules.test.ts enforces the subset a
  * source scan can check. Flat, light, one accent.
- * Colours are canvas, surface, border, ink, muted, map and one cobalt accent
- * used only for highlight, selection and focus.
+ * Colours are canvas, surface, border, ink, muted, map, dimmed and one cobalt
+ * accent used only for highlight, selection and focus.
  */
 :root {
   --atc-canvas: #f4f4f5;
@@ -17,6 +17,7 @@
   --atc-dimmed: #c4c4c8;
   --atc-radius: 14px;
   --atc-radius-row: 10px;
+  --atc-radius-pill: 999px;
   --atc-gutter: 12px;
   --atc-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --atc-fast: 150ms;
@@ -32,13 +33,18 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/*
+ * Stacking, lowest first. Inside the map: Leaflet panes (200-700) and
+ * controls (1000), the follow pill (1050), the detail card (1100). Plane
+ * markers use 10000-10002, but inside Leaflet's marker pane, which is its own
+ * stacking context, so they never rise above the controls. Outside the map:
+ * the phone chat sheet (2000) over the whole map panel.
+ */
+
 html,
 body {
   margin: 0;
   height: 100%;
-}
-body {
-  background: var(--atc-canvas);
 }
 button,
 input {
@@ -57,7 +63,15 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
-.atc-map {
+/* Read by screen readers only. */
+.atc-visually-hidden {
   position: absolute;
-  inset: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
