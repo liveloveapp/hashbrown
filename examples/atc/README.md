@@ -9,8 +9,8 @@ the stream. Everything else is ordinary app code reading one store.
 
 ## Run locally
 
-Needs Node 20.19 or later (Vite 8 needs `^20.19.0` or `>=22.12.0`). Put `OPENAI_API_KEY=...` in the repository's `.env`, then run
-each in its own terminal:
+Needs Node 20.19+ or 22.12+ (Vite 8's range). Put `OPENAI_API_KEY=...` in the
+repository's `.env`, then run each in its own terminal:
 
 ```bash
 npx nx serve atc-server
@@ -30,13 +30,13 @@ switcher between them.
 
 The server reads these variables (from `.env` or the environment):
 
-| Variable                  | Default      | Notes                                                                                 |
-| ------------------------- | ------------ | ------------------------------------------------------------------------------------- |
-| `OPENAI_API_KEY`          | none         | Required. The server will not start without it, even though the map alone needs none. |
-| `OPENAI_MODEL`            | `gpt-5-mini` | Any OpenAI chat model.                                                                |
-| `OPENAI_BASE_URL`         | OpenAI       | For an OpenAI-compatible endpoint.                                                    |
-| `OPENAI_REASONING_EFFORT` | `low`        | Sent to gpt-5 and o-series models only. Set it empty to send none.                    |
-| `PORT`                    | `4340`       | The dev servers' `/api` proxy expects 4340.                                           |
+| Variable                  | Default      | Notes                                                                                                 |
+| ------------------------- | ------------ | ----------------------------------------------------------------------------------------------------- |
+| `OPENAI_API_KEY`          | none         | Required. The server will not start without it, even though the map alone needs none.                 |
+| `OPENAI_MODEL`            | `gpt-5-mini` | Any OpenAI chat model.                                                                                |
+| `OPENAI_BASE_URL`         | OpenAI       | For an OpenAI-compatible endpoint.                                                                    |
+| `OPENAI_REASONING_EFFORT` | `low`        | Sent to gpt-5 and o-series models only. Set it empty to send none. An unknown value stops the server. |
+| `PORT`                    | `4340`       | The dev servers' `/api` proxy expects 4340.                                                           |
 
 ## How this example is built
 
@@ -46,17 +46,20 @@ atc/
     src/aircraft.ts      adsb.lol to Aircraft (validation, privacy whitelist)
     src/store.ts         AtcState and pure reducers; the one source of truth
     src/tools.ts         The browser-side tools the model calls
+    src/tool-definitions.ts  Tool names, descriptions and schemas, pinned by the server
+    src/browser-tools.ts The tools wired to the app's data, used by both core files
     src/find-aircraft.ts The query behind the findAircraft tool
     src/contracts.ts     Component contracts (Skillet schemas) and the system prompt
     src/views.ts, detail-view.ts, tool-chips.ts   Pure view models for the UI
     src/chart/           Chart types, cycle, browser chart feed
     src/map/             Leaflet map, detail card, follow pill (no framework)
-    src/map/chart/       Ink airports (runways, rings, labels), diagrams, Layers control
+    src/map/chart/       Ink airports (runways, rings, labels), airspace shelves, diagrams, Layers control
     src/styles/atc.css   One stylesheet for both apps, as ordered partials
   angular/  react/       Thin shells: components and the core file
   server/                /api/run (model and system prompt pinned) and /api/aircraft (cached adsb.lol)
                          /api/chart/airports, /api/chart/surfaces and /api/chart/airspace (cached FAA and OSM data)
-  e2e/                   Playwright against both apps with a mocked model
+  e2e/                   Playwright against both apps with a mocked model, the demo video recorder
+                         and the live prose eval
   tools/                 Vercel build output
 ```
 
@@ -95,9 +98,9 @@ commands to run before finishing.
 `server/src/run-handler.ts` uses `HashbrownOpenAI`. To use another provider, install its
 adapter (for example `@hashbrownai/anthropic`), replace `HashbrownOpenAI.stream.text` with
 `HashbrownAnthropic.stream.text`, and set that provider's key and model. `limitRequest`
-in the same file edits the OpenAI request (`tools`, `max_completion_tokens`,
-`reasoning_effort`); rewrite it for the new provider's request shape, keeping the tool
-allowlist and the output cap.
+in the same file sets the OpenAI request's `max_completion_tokens` and
+`reasoning_effort`; rewrite it for the new provider's request shape, keeping the output
+cap. `pinTools` and `pinSystemPrompt` work on the AG-UI input and carry over unchanged.
 
 ## Tests
 
@@ -109,15 +112,17 @@ npx nx run-many -t build,test,lint -p atc-shared atc-server atc-angular atc-reac
 npx nx e2e atc-e2e
 ```
 
-`atc-e2e` has only `lint` and `e2e` targets; `run-many` skips the rest.
+`atc-e2e` has no `build` target; `run-many` skips it there. Its `typecheck` target runs
+`tsc` over the e2e code, which Playwright and Vitest run without type checking.
 
 ## Demo video
 
 `npx nx demo atc-e2e` records the demo video (about 45 s of code and app, used on the
 blog) and the home page loop into `dist/examples/atc/demo/`, with a contact sheet for
 review. It is deterministic and keyless, like the e2e suite: aimock answers every
-question and synthetic traffic stands in for adsb.lol, with extra aircraft from
-`e2e/demo/traffic.ts`. It needs ffmpeg and runs Chromium headed, off screen, because
+question, synthetic traffic stands in for adsb.lol, with extra aircraft from
+`e2e/demo/traffic.ts`, and the chart fixtures stand in for the FAA data; map tiles stay
+live. It needs ffmpeg and runs Chromium headed, off screen, because
 headless screencasts ignore the 2x device scale that keeps text crisp.
 
 The storyboard (headlines, code panes and their marked lines, camera framings) is in
@@ -142,7 +147,6 @@ set to upload the videos, or run the commands it prints.
   [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/); a
   deployment with heavy traffic should point `TILE_LAYER` in `shared/src/map/tiles.ts` at
   a commercial tile provider.
-
 - **Airports:** FAA NASR 28-day subscription (airports, runways, frequencies, tower
   hours) and FAA ADDS airport-mapping layers, both public domain. The server fetches
   them, caches them per AIRAC cycle and shares them through the CDN for a day.
@@ -155,11 +159,11 @@ set to upload the videos, or run the commands it prints.
 - **Airspace:** FAA ADDS Class Airspace (Class B, C, D and E surface areas), public
   domain. The server fetches it, keeps shelves within 250 nm of the map, caches it per
   AIRAC cycle and shares it through the CDN for a day. `/api/chart/airspace` serves it.
-- **Not for navigation.** The chart is drawn in the style of a VFR sectional, in ink, but it is not one.
-  Do not use it to plan or fly a flight.
+- **Not for navigation.** The chart is drawn in the style of a VFR sectional, in ink,
+  but it is not one. Do not use it to plan or fly a flight.
 
-The `/api/chart/*` routes (airports, surfaces and airspace) need no key. Each has its own Vercel function (see
-"Hosting").
+The `/api/chart/*` routes (airports, surfaces and airspace) need no key. Each has its own
+Vercel function (see Hosting below).
 
 The map credits all of these in its attribution line. The e2e tests stub
 `/api/aircraft` and `/api/chart/*` with synthetic data and block tiles and routes.
@@ -167,11 +171,12 @@ The map credits all of these in its attribution line. The e2e tests stub
 ## Hosting
 
 Only the Angular app is hosted, at https://atc.hashbrown.dev/angular/ (the root redirects
-there). The React app is built and tested in this repository but runs locally for now;
+there). The React app is built and tested in this repository but not hosted;
 `HOSTED_APPS` in `tools/build-vercel-output.mts` is the one line to change to host it.
 
 `npx nx build atc` writes `.vercel/output`, with functions for `/api/run`,
-`/api/aircraft`, `/api/chart/airports`, `/api/chart/surfaces` and `/api/chart/airspace`. The hosted project (`hashbrown-atc`) needs:
+`/api/aircraft`, `/api/chart/airports`, `/api/chart/surfaces` and
+`/api/chart/airspace`. The hosted project (`hashbrown-atc`) needs:
 
 - `OPENAI_API_KEY`: a dedicated OpenAI project key with a hard monthly budget.
 - A Vercel Firewall rate-limit rule on `POST /api/run`. `hashbrown-atc` allows 40 requests

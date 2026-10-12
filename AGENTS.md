@@ -136,6 +136,7 @@ that protects the published packages, not examples.
   - `npx nx prose-eval atc-e2e` (live model; needs `OPENAI_API_KEY` and the atc dev servers)
   - `npx nx test atc-e2e` (the demo video recorder's unit tests)
   - `npx nx lint atc-e2e`
+  - `npx nx typecheck atc-e2e` (`tsc` over the e2e code, which Playwright and Vitest do not type-check)
   - `npx nx demo atc-e2e` (records the demo video and home page loop; needs ffmpeg)
   - `npx nx demo-publish atc-e2e` (posters and Blob URLs into www; `-- --upload` puts the videos)
 
