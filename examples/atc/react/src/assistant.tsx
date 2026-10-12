@@ -69,25 +69,27 @@ const components = [
  */
 export function Assistant({ onSend }: { onSend?: () => void }) {
   const store = useAtcStore();
-  const atc = useMemo(() => createBrowserAtcTools(store), [store]);
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
   //    already on the map; no plane list goes to the server.
+  const atcTools = useMemo(() => createBrowserAtcTools(store), [store]);
+  // deps works like useCallback's: each tool is rebuilt only when the tools
+  // object changes.
   const tools = [
-    useTool({ ...atc.findAircraft, deps: [atc] }),
-    useTool({ ...atc.getSelectedAircraft, deps: [atc] }),
-    useTool({ ...atc.lookupRoute, deps: [atc] }),
-    useTool({ ...atc.highlightAircraft, deps: [atc] }),
-    useTool({ ...atc.clearHighlight, deps: [atc] }),
-    useTool({ ...atc.followAircraft, deps: [atc] }),
-    useTool({ ...atc.stopFollowing, deps: [atc] }),
-    useTool({ ...atc.lookupPlace, deps: [atc] }),
-    useTool({ ...atc.showArea, deps: [atc] }),
-    useTool({ ...atc.resetMap, deps: [atc] }),
-    useTool({ ...atc.showAirport, deps: [atc] }),
-    useTool({ ...atc.showAirspace, deps: [atc] }),
-    useTool({ ...atc.airspaceAt, deps: [atc] }),
-    useTool({ ...atc.setLayers, deps: [atc] }),
+    useTool({ ...atcTools.findAircraft, deps: [atcTools] }),
+    useTool({ ...atcTools.getSelectedAircraft, deps: [atcTools] }),
+    useTool({ ...atcTools.lookupRoute, deps: [atcTools] }),
+    useTool({ ...atcTools.highlightAircraft, deps: [atcTools] }),
+    useTool({ ...atcTools.clearHighlight, deps: [atcTools] }),
+    useTool({ ...atcTools.followAircraft, deps: [atcTools] }),
+    useTool({ ...atcTools.stopFollowing, deps: [atcTools] }),
+    useTool({ ...atcTools.lookupPlace, deps: [atcTools] }),
+    useTool({ ...atcTools.showArea, deps: [atcTools] }),
+    useTool({ ...atcTools.resetMap, deps: [atcTools] }),
+    useTool({ ...atcTools.showAirport, deps: [atcTools] }),
+    useTool({ ...atcTools.showAirspace, deps: [atcTools] }),
+    useTool({ ...atcTools.airspaceAt, deps: [atcTools] }),
+    useTool({ ...atcTools.setLayers, deps: [atcTools] }),
   ];
 
   // 3. Render the stream.

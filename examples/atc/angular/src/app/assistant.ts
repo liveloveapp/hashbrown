@@ -96,25 +96,25 @@ const components = [
 export class Assistant {
   /** Emits when the user sends a message. */
   readonly sent = output();
-  private readonly atc = createBrowserAtcTools(inject(ATC_STORE));
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
   //    already on the map; no plane list goes to the server.
+  private readonly atcTools = createBrowserAtcTools(inject(ATC_STORE));
   private readonly tools = [
-    createTool(this.atc.findAircraft),
-    createTool(this.atc.getSelectedAircraft),
-    createTool(this.atc.lookupRoute),
-    createTool(this.atc.highlightAircraft),
-    createTool(this.atc.clearHighlight),
-    createTool(this.atc.followAircraft),
-    createTool(this.atc.stopFollowing),
-    createTool(this.atc.lookupPlace),
-    createTool(this.atc.showArea),
-    createTool(this.atc.resetMap),
-    createTool(this.atc.showAirport),
-    createTool(this.atc.showAirspace),
-    createTool(this.atc.airspaceAt),
-    createTool(this.atc.setLayers),
+    createTool(this.atcTools.findAircraft),
+    createTool(this.atcTools.getSelectedAircraft),
+    createTool(this.atcTools.lookupRoute),
+    createTool(this.atcTools.highlightAircraft),
+    createTool(this.atcTools.clearHighlight),
+    createTool(this.atcTools.followAircraft),
+    createTool(this.atcTools.stopFollowing),
+    createTool(this.atcTools.lookupPlace),
+    createTool(this.atcTools.showArea),
+    createTool(this.atcTools.resetMap),
+    createTool(this.atcTools.showAirport),
+    createTool(this.atcTools.showAirspace),
+    createTool(this.atcTools.airspaceAt),
+    createTool(this.atcTools.setLayers),
   ];
 
   // 3. Render the stream.

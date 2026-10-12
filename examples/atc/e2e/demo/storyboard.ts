@@ -107,7 +107,7 @@ export const STORYBOARD: readonly Beat[] = [
       },
       {
         path: 'angular/src/app/assistant.ts',
-        focal: /createTool\(this\.atc\.findAircraft\),/,
+        focal: /createTool\(this\.atcTools\.findAircraft\),/,
       },
     ],
     holdMs: 2600,
