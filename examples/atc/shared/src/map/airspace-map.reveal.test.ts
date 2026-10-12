@@ -7,6 +7,7 @@ import { testAircraft } from '../testing';
 import { createAirspaceMap } from './airspace-map';
 import {
   createFrameQueue,
+  destroyOnce,
   mapElement,
   planePixel,
   REDUCED_MOTION,
@@ -64,13 +65,7 @@ async function mount(
     obstruction: () => panel,
   });
 
-  let destroyed = false;
-  const destroy = () => {
-    if (!destroyed) {
-      destroyed = true;
-      handle.destroy();
-    }
-  };
+  const destroy = destroyOnce(handle);
   onTestFinished(() => {
     destroy();
     workbench.remove();

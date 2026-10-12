@@ -3,6 +3,7 @@ import { expect, test } from 'vitest';
 import { prefersReducedMotion } from '../dom';
 import {
   createFrameQueue,
+  destroyOnce,
   leafletModule,
   mapElement,
   planePixel,
@@ -73,4 +74,14 @@ test("planePixel adds the map pane's pan to the icon's position", () => {
   const point = planePixel(element, 'aaaaaa');
 
   expect(point).toEqual({ x: 110.5, y: 45 });
+});
+
+test('destroyOnce destroys the map the first time only', () => {
+  let calls = 0;
+  const destroy = destroyOnce({ destroy: () => calls++ });
+
+  destroy();
+  destroy();
+
+  expect(calls).toBe(1);
 });

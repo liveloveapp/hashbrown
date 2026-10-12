@@ -6,6 +6,7 @@ import { testAircraft } from '../testing';
 import { createAirspaceMap } from './airspace-map';
 import {
   createFrameQueue,
+  destroyOnce,
   mapElement,
   REDUCED_MOTION,
   stubMedia,
@@ -27,13 +28,7 @@ async function mount() {
   const store = createAtcStore();
   const element = mapElement();
   const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
-  let destroyed = false;
-  const destroy = () => {
-    if (!destroyed) {
-      destroyed = true;
-      handle.destroy();
-    }
-  };
+  const destroy = destroyOnce(handle);
   onTestFinished(destroy);
 
   return {

@@ -132,3 +132,18 @@ export function planePixel(element: HTMLElement, hex: string): PixelPoint {
     y: px(icon?.style.top) + px(pane?.style.top),
   };
 }
+
+/**
+ * A destroy for a mounted map that runs once, so a test can destroy the map
+ * mid-test and its `onTestFinished` cleanup can call it again safely.
+ */
+export function destroyOnce(handle: { destroy(): void }): () => void {
+  let destroyed = false;
+
+  return () => {
+    if (!destroyed) {
+      destroyed = true;
+      handle.destroy();
+    }
+  };
+}

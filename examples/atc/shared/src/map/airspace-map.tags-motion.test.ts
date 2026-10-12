@@ -5,7 +5,7 @@ import { AIRPORTS, AREAS } from '../places';
 import { createAtcStore } from '../store';
 import { testAircraft } from '../testing';
 import { createAirspaceMap } from './airspace-map';
-import { createFrameQueue, mapElement } from './testing';
+import { createFrameQueue, destroyOnce, mapElement } from './testing';
 
 const { KBDN } = AIRPORTS;
 const base = testAircraft({ lat: KBDN.lat, lon: KBDN.lon, groundSpeedKt: 0 });
@@ -64,13 +64,7 @@ async function mount() {
   const element = mapElement();
   document.body.append(element);
   const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
-  let destroyed = false;
-  const destroy = () => {
-    if (!destroyed) {
-      destroyed = true;
-      handle.destroy();
-    }
-  };
+  const destroy = destroyOnce(handle);
   onTestFinished(() => {
     destroy();
     element.remove();
