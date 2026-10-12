@@ -19,10 +19,13 @@ test('createBrowserAtcTools loads surfaces for showAirport from the surfaces rou
     );
   const tools = createBrowserAtcTools(store);
 
-  const result = await tools.showAirport.handler({ airport: 'KRDM' });
-  const urls = fetchSpy.mock.calls.map(([url]) => String(url));
-  fetchSpy.mockRestore();
+  try {
+    const result = await tools.showAirport.handler({ airport: 'KRDM' });
+    const urls = fetchSpy.mock.calls.map(([url]) => String(url));
 
-  expect(urls).toEqual(['/api/chart/surfaces?airport=KRDM']);
-  expect(result).toMatchObject({ diagram: 'osm' });
+    expect(urls).toEqual(['/api/chart/surfaces?airport=KRDM']);
+    expect(result).toMatchObject({ diagram: 'osm' });
+  } finally {
+    fetchSpy.mockRestore();
+  }
 });

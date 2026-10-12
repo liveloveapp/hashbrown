@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { aircraftTypeName, airlineFor } from './names';
+import { aircraftTypeName, airlineFor, airlineName } from './names';
 
 test('aircraftTypeName names general aviation and rotor types', () => {
   const codes = ['C172', 'r44', 'EC35', 'PA28', 'XXXX', null];
@@ -35,5 +35,23 @@ test('names Pacific Northwest regional airlines and common light types', () => {
     'Diamond DA62',
     "Van's RV-7",
     'Leonardo AW139',
+  ]);
+});
+
+test('names fall back to the raw code', () => {
+  const labels = [
+    airlineName('UAL1372'),
+    airlineName('ZZZ123'),
+    aircraftTypeName('B39M'),
+    aircraftTypeName('ZZ99'),
+    aircraftTypeName(null),
+  ];
+
+  expect(labels).toEqual([
+    'United Airlines',
+    'ZZZ',
+    'Boeing 737 MAX 9',
+    'ZZ99',
+    'Unknown type',
   ]);
 });

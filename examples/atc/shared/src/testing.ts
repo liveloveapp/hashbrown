@@ -1,5 +1,5 @@
 import type { Aircraft } from './aircraft';
-import type { ChartAirport } from './chart';
+import type { AirspaceShelf, ChartAirport } from './chart';
 
 /** A test aircraft: UAL100, a level Boeing 737 at 5,000 ft near Seattle. */
 export function testAircraft(overrides: Partial<Aircraft> = {}): Aircraft {
@@ -62,6 +62,53 @@ export function testChartAirport(
       },
     ],
     rank: 0,
+    ...overrides,
+  };
+}
+
+/** A closed square `[lon, lat]` ring around (lon, lat), `half` degrees each way. */
+export function squareRing(
+  lon: number,
+  lat: number,
+  half: number,
+): (readonly [number, number])[] {
+  return [
+    [lon - half, lat - half],
+    [lon + half, lat - half],
+    [lon + half, lat + half],
+    [lon - half, lat + half],
+    [lon - half, lat - half],
+  ];
+}
+
+/**
+ * A test airspace shelf: Portland's Class C, 1,100 to 4,000 MSL, a 1-degree
+ * square. The bbox bounds the outer ring unless `overrides` sets one.
+ */
+export function testShelf(
+  overrides: Partial<AirspaceShelf> = {},
+): AirspaceShelf {
+  const rings = overrides.rings ?? [squareRing(-121.5, 45.5, 0.5)];
+  const outer = rings[0] ?? [];
+  const lons = outer.map(([lon]) => lon);
+  const lats = outer.map(([, lat]) => lat);
+
+  return {
+    id: 'KPDX-C-0',
+    airport: 'KPDX',
+    name: 'PORTLAND CLASS C',
+    class: 'C',
+    type: 'C',
+    floor: { ft: 1100, ref: 'MSL' },
+    ceiling: { ft: 4000, exclusive: false },
+    partTime: false,
+    rings,
+    bbox: [
+      Math.min(...lons),
+      Math.min(...lats),
+      Math.max(...lons),
+      Math.max(...lats),
+    ],
     ...overrides,
   };
 }

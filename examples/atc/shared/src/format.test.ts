@@ -6,7 +6,6 @@ import {
   formatSpeed,
   plainLabel,
 } from './format';
-import { aircraftTypeName, airlineName } from './names';
 
 test('formatAltitude handles flight levels, the ground and missing data', () => {
   const values = [
@@ -29,24 +28,6 @@ test('formatSpeed, formatHeading and formatClock produce short labels', () => {
   ];
 
   expect(labels).toEqual(['492 kt', 'n/a', '005°', '000°', 'n/a', '00:05']);
-});
-
-test('names fall back to the raw code', () => {
-  const labels = [
-    airlineName('UAL1372'),
-    airlineName('ZZZ123'),
-    aircraftTypeName('B39M'),
-    aircraftTypeName('ZZ99'),
-    aircraftTypeName(null),
-  ];
-
-  expect(labels).toEqual([
-    'United Airlines',
-    'ZZZ',
-    'Boeing 737 MAX 9',
-    'ZZ99',
-    'Unknown type',
-  ]);
 });
 
 test('plainLabel turns spaced dashes into commas', () => {
