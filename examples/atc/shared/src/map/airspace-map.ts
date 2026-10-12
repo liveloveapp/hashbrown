@@ -144,7 +144,9 @@ export async function createAirspaceMap(options: {
     sync(state: AtcState) {
       const changed = [airspace.sync(state), airports.sync(state)];
       diagrams.sync(state);
-      if (changed.some(Boolean)) placeChart();
+      if (changed.some(Boolean)) {
+        placeChart();
+      }
     },
     redraw() {
       airspace.redraw();
