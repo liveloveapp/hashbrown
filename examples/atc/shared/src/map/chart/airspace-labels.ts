@@ -33,7 +33,9 @@ const hundreds = (ft: number): string => String(Math.round(ft / 100));
  * The text is built from validated numbers and fixed literals only.
  */
 export function shelfLabel(shelf: AirspaceShelf): ShelfLabel | null {
-  if (shelf.ceiling === null) return null;
+  if (shelf.ceiling === null) {
+    return null;
+  }
   const top = hundreds(shelf.ceiling.ft);
   switch (shelf.type) {
     case 'B':
@@ -106,10 +108,16 @@ function widestStretch(shelf: AirspaceShelf, lat: number): LatLon | null {
 export function shelfLabelPoint(shelf: AirspaceShelf): LatLon {
   const [west, south, east, north] = shelf.bbox;
   const centre: LatLon = { lat: (south + north) / 2, lon: (west + east) / 2 };
-  if (pointInShelf(shelf, centre)) return centre;
+  if (pointInShelf(shelf, centre)) {
+    return centre;
+  }
   const average = ringCentroid(openRing(shelf.rings[0] ?? []));
-  if (average === null) return centre;
-  if (pointInShelf(shelf, average)) return average;
+  if (average === null) {
+    return centre;
+  }
+  if (pointInShelf(shelf, average)) {
+    return average;
+  }
   return (
     widestStretch(shelf, centre.lat) ??
     widestStretch(shelf, average.lat) ??
@@ -128,7 +136,9 @@ export function shelfLabelAnchor(shelf: AirspaceShelf): LatLon {
   const point = shelfLabelPoint(shelf);
   const [west, south, east, north] = shelf.bbox;
   const centre: LatLon = { lat: (south + north) / 2, lon: (west + east) / 2 };
-  if (point.lat !== centre.lat || point.lon !== centre.lon) return point;
+  if (point.lat !== centre.lat || point.lon !== centre.lon) {
+    return point;
+  }
   const below: LatLon = { lat: (centre.lat + south) / 2, lon: centre.lon };
   return pointInShelf(shelf, below) ? below : point;
 }

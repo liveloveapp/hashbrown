@@ -237,7 +237,9 @@ export function createAirspaceLayer(options: {
   };
 
   const fillLabel = (element: HTMLElement, label: ShelfLabel) => {
-    if (element.firstChild) return;
+    if (element.firstChild) {
+      return;
+    }
     const text = doc.createElement('span');
     text.className = `atc-as-text is-${label.kind}`;
     if (label.kind === 'stack') {
@@ -295,9 +297,13 @@ export function createAirspaceLayer(options: {
     const shown = new Set<Entry>();
     for (const [id, { entry, label }] of pending) {
       const offset = placed.get(id);
-      if (offset === null || offset === undefined) continue;
+      if (offset === null || offset === undefined) {
+        continue;
+      }
       const marker = markerOf(entry, offset);
-      if (!map.hasLayer(marker)) marker.addTo(map);
+      if (!map.hasLayer(marker)) {
+        marker.addTo(map);
+      }
       const element = marker.getElement();
       if (element) {
         fillLabel(element, label);
@@ -309,7 +315,9 @@ export function createAirspaceLayer(options: {
       shown.add(entry);
     }
     for (const entry of entries) {
-      if (!shown.has(entry)) entry.marker?.remove();
+      if (!shown.has(entry)) {
+        entry.marker?.remove();
+      }
     }
   };
 
@@ -317,7 +325,9 @@ export function createAirspaceLayer(options: {
   const labelled = (drawn: readonly Entry[]) => {
     const largestD = new Map<string, Entry>();
     for (const entry of drawn) {
-      if (entry.shelf.type !== 'D' || entry.label === null) continue;
+      if (entry.shelf.type !== 'D' || entry.label === null) {
+        continue;
+      }
       const best = largestD.get(entry.shelf.airport);
       if (!best || bboxArea(entry.shelf) > bboxArea(best.shelf)) {
         largestD.set(entry.shelf.airport, entry);
@@ -344,7 +354,9 @@ export function createAirspaceLayer(options: {
 
   const redraw = () => {
     const state = store.getState();
-    if (state.airspace.shelves !== source) build(state.airspace.shelves);
+    if (state.airspace.shelves !== source) {
+      build(state.airspace.shelves);
+    }
     if (!state.layers.airspace || state.airspace.status !== 'ready') {
       removeAll();
       return;
@@ -391,7 +403,9 @@ export function createAirspaceLayer(options: {
     // Leaflet appends a path when it is added, so after any add the shelves
     // are raised in paint order: every shelf above every casing, D above E.
     if (added) {
-      for (const entry of drawn) entry.polygon.bringToFront();
+      for (const entry of drawn) {
+        entry.polygon.bringToFront();
+      }
     }
     wantedNow = map.getZoom() >= LABEL_ZOOM ? labelled(drawn) : [];
     litNow = lit;

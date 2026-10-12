@@ -35,15 +35,20 @@ function groupBy(rows: readonly Row[], key: string): Map<string, Row[]> {
   for (const row of rows) {
     const k = row[key] ?? '';
     const list = groups.get(k);
-    if (list) list.push(row);
-    else groups.set(k, [row]);
+    if (list) {
+      list.push(row);
+    } else {
+      groups.set(k, [row]);
+    }
   }
 
   return groups;
 }
 
 function lighting(sked: string): Lighting {
-  if (sked === '') return 'none';
+  if (sked === '') {
+    return 'none';
+  }
 
   return sked === 'SS-SR' ? 'full' : 'limited';
 }
@@ -67,15 +72,26 @@ function airportRow(
   radiusNm: number,
 ): AirportRow | null | 'invalid' {
   const kind = KINDS[(row['SITE_TYPE_CODE'] ?? '') as keyof typeof KINDS];
-  if (row['FACILITY_USE_CODE'] !== 'PU' || row['ARPT_STATUS'] !== 'O' || !kind)
+  if (
+    row['FACILITY_USE_CODE'] !== 'PU' ||
+    row['ARPT_STATUS'] !== 'O' ||
+    !kind
+  ) {
     return null;
+  }
   const lat = Number.parseFloat(row['LAT_DECIMAL'] ?? '');
   const lon = Number.parseFloat(row['LONG_DECIMAL'] ?? '');
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return 'invalid';
-  if (distanceNm(centre, { lat, lon }) > radiusNm) return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return 'invalid';
+  }
+  if (distanceNm(centre, { lat, lon }) > radiusNm) {
+    return null;
+  }
   const faa = row['ARPT_ID'] ?? '';
   const elevation = Number.parseFloat(row['ELEV'] ?? '');
-  if (!IDENT.test(faa) || !Number.isFinite(elevation)) return 'invalid';
+  if (!IDENT.test(faa) || !Number.isFinite(elevation)) {
+    return 'invalid';
+  }
   const icao = row['ICAO_ID'] ?? '';
 
   return {
@@ -106,10 +122,14 @@ function runwaysFor(
   const runways: Runway[] = [];
   for (const row of rwyRows) {
     const id = row['RWY_ID'] ?? '';
-    if (id.startsWith('H') && !heliport) continue;
+    if (id.startsWith('H') && !heliport) {
+      continue;
+    }
     const lengthFt = Number.parseFloat(row['RWY_LEN'] ?? '');
     const widthFt = Number.parseFloat(row['RWY_WIDTH'] ?? '');
-    if (!(lengthFt > 0) || !(widthFt > 0)) continue;
+    if (!(lengthFt > 0) || !(widthFt > 0)) {
+      continue;
+    }
     const surface = row['SURFACE_TYPE_CODE'] || null;
     const ends = endRows
       .filter((e) => e['RWY_ID'] === id)
@@ -267,7 +287,9 @@ export function buildChartAirports(
   const built: ChartAirport[] = [];
   for (const row of base) {
     const parsed = airportRow(row, centre, radiusNm);
-    if (parsed === null) continue;
+    if (parsed === null) {
+      continue;
+    }
     if (parsed === 'invalid') {
       dropped++;
       continue;

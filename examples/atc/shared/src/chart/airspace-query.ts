@@ -41,7 +41,9 @@ export function pointInShelf(shelf: AirspaceShelf, point: LatLon): boolean {
   }
   let inside = false;
   for (const ring of shelf.rings) {
-    if (inRing(ring, point.lon, point.lat)) inside = !inside;
+    if (inRing(ring, point.lon, point.lat)) {
+      inside = !inside;
+    }
   }
   return inside;
 }
@@ -53,7 +55,9 @@ export function pointInShelf(shelf: AirspaceShelf, point: LatLon): boolean {
 export function altitudeMslFt(
   aircraft: Pick<Aircraft, 'onGround' | 'altitudeFt' | 'geometricAltitudeFt'>,
 ): { ft: number; source: 'ground' | 'gnss' | 'baro' } | null {
-  if (aircraft.onGround) return { ft: 0, source: 'ground' };
+  if (aircraft.onGround) {
+    return { ft: 0, source: 'ground' };
+  }
   if (typeof aircraft.geometricAltitudeFt === 'number') {
     return { ft: aircraft.geometricAltitudeFt, source: 'gnss' };
   }
@@ -70,8 +74,12 @@ export function altitudeMslFt(
  * level. A null ceiling counts as the Class A floor, exclusive.
  */
 export function inShelfVertically(shelf: AirspaceShelf, ft: number): boolean {
-  if (shelf.floor.ref !== 'SFC' && ft < shelf.floor.ft) return false;
-  if (shelf.ceiling === null) return ft < CLASS_A_FLOOR_FT;
+  if (shelf.floor.ref !== 'SFC' && ft < shelf.floor.ft) {
+    return false;
+  }
+  if (shelf.ceiling === null) {
+    return ft < CLASS_A_FLOOR_FT;
+  }
   return shelf.ceiling.exclusive
     ? ft < shelf.ceiling.ft
     : ft <= shelf.ceiling.ft;
@@ -89,7 +97,9 @@ export function shelvesAt(
   >,
 ): AirspaceShelf[] {
   const altitude = altitudeMslFt(aircraft);
-  if (!altitude) return [];
+  if (!altitude) {
+    return [];
+  }
   return shelves.filter(
     (shelf) =>
       pointInShelf(shelf, aircraft) && inShelfVertically(shelf, altitude.ft),

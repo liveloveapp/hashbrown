@@ -32,7 +32,9 @@ export function createLayersControl(options: {
     className?: string,
   ) => {
     const node = doc.createElement(tag);
-    if (className) node.className = className;
+    if (className) {
+      node.className = className;
+    }
     return node;
   };
 
@@ -79,7 +81,9 @@ export function createLayersControl(options: {
     store.setLayers({ airspace: airspace.input.checked }),
   );
   container.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !open) return;
+    if (event.key !== 'Escape' || !open) {
+      return;
+    }
     // Handled here, so the map's Escape does not also clear the selection.
     event.preventDefault();
     setOpen(false);

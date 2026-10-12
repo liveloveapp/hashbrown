@@ -97,7 +97,9 @@ const labelId = (code: string) => `apt:${code}`;
  * surveyed corners. Every other airport's runways are its symbol.
  */
 function drawsRing(airport: ChartAirport): boolean {
-  if (airport.kind === 'heliport' || airport.kind === 'seaplane') return true;
+  if (airport.kind === 'heliport' || airport.kind === 'seaplane') {
+    return true;
+  }
   return airport.runways.every((runway) => runway.corners === null);
 }
 
@@ -114,7 +116,9 @@ function anchorBox(
   const { airport } = drawn;
   const point = project(airport.lat, airport.lon);
   const reference = rectAround(point.x, point.y, RING_BOX);
-  if (drawn.ring || !('runways' in airport)) return reference;
+  if (drawn.ring || !('runways' in airport)) {
+    return reference;
+  }
   const points = airport.runways
     .filter((runway) => runway.corners !== null)
     .flatMap((runway) => [...(runway.corners ?? []), ...(runway.ends ?? [])])
@@ -193,8 +197,12 @@ export function createAirportLayer(options: {
   let synced: Pick<AtcState, 'chart' | 'layers'> | null = null;
 
   const clear = () => {
-    for (const marker of rings.values()) marker.remove();
-    for (const { marker } of blocks.values()) marker.remove();
+    for (const marker of rings.values()) {
+      marker.remove();
+    }
+    for (const { marker } of blocks.values()) {
+      marker.remove();
+    }
     rings.clear();
     blocks.clear();
     drawnNow = [];
@@ -207,7 +215,9 @@ export function createAirportLayer(options: {
 
   const ringMarker = (airport: ChartAirport | Airport): Marker => {
     const existing = rings.get(airport.code);
-    if (existing) return existing;
+    if (existing) {
+      return existing;
+    }
     const { className, html } = airportRing(airport);
     const marker = L.marker([airport.lat, airport.lon], {
       icon: L.divIcon({
@@ -259,7 +269,9 @@ export function createAirportLayer(options: {
       block.key = key;
       block.filled = null;
     }
-    if (!map.hasLayer(block.marker)) block.marker.addTo(map);
+    if (!map.hasLayer(block.marker)) {
+      block.marker.addTo(map);
+    }
     const element = block.marker.getElement();
     if (element && element !== block.filled) {
       element.replaceChildren(renderDataBlock(doc, lines, tone, identOnly));
@@ -289,11 +301,15 @@ export function createAirportLayer(options: {
       drawn.filter((d) => d.ring).map((d) => d.airport.code),
     );
     for (const [code, marker] of rings) {
-      if (!wanted.has(code)) marker.remove();
+      if (!wanted.has(code)) {
+        marker.remove();
+      }
     }
     for (const { airport, ring } of drawn) {
       const marker = ring ? ringMarker(airport) : null;
-      if (marker && !map.hasLayer(marker)) marker.addTo(map);
+      if (marker && !map.hasLayer(marker)) {
+        marker.addTo(map);
+      }
     }
 
     drawnNow = drawn;
@@ -339,7 +355,9 @@ export function createAirportLayer(options: {
       const index = placed.get(id);
       const at =
         index === null || index === undefined ? null : candidates[index];
-      if (!at) continue;
+      if (!at) {
+        continue;
+      }
       const { airport, lines, tone, identOnly } = drawn;
       showBlock(airport, lines, tone, identOnly, [
         point.x - at.left,
@@ -348,7 +366,9 @@ export function createAirportLayer(options: {
       shown.add(airport.code);
     }
     for (const [code, { marker }] of blocks) {
-      if (!shown.has(code)) marker.remove();
+      if (!shown.has(code)) {
+        marker.remove();
+      }
     }
   };
 

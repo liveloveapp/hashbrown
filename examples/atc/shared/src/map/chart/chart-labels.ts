@@ -28,5 +28,7 @@ export function placeChartLabels(options: {
   const { sources, airportBoxes } = options;
   const requests = sources.flatMap((source) => source.labelRequests());
   const placed = placeLabels(requests, airportBoxes());
-  for (const source of sources) source.applyLabels(placed);
+  for (const source of sources) {
+    source.applyLabels(placed);
+  }
 }

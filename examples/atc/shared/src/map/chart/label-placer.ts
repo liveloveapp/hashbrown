@@ -74,7 +74,9 @@ export function placeLabels(
         !placed.some((p) => intersects(candidate, p, gap)),
     );
     const chosen = request.candidates[index];
-    if (chosen) placed.push(chosen);
+    if (chosen) {
+      placed.push(chosen);
+    }
     result.set(request.id, chosen ? index : null);
   }
 

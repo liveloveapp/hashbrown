@@ -35,7 +35,9 @@ export function readZipEntries(zip: Uint8Array): Map<string, string> {
       break;
     }
   }
-  if (end < 0) throw new Error('Not a zip archive');
+  if (end < 0) {
+    throw new Error('Not a zip archive');
+  }
   const count = buffer.readUInt16LE(end + 10);
   let pointer = buffer.readUInt32LE(end + 16);
   const entries = new Map<string, string>();

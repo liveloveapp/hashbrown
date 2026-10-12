@@ -234,6 +234,8 @@ export async function fetchClassAirspace(
       throw new Error('Class_Airspace returned no features array');
     }
     features.push(...page);
-    if (page.length !== AIRSPACE_PAGE) return features;
+    if (page.length !== AIRSPACE_PAGE) {
+      return features;
+    }
   }
 }

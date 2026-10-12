@@ -72,7 +72,9 @@ function mount(zoom = 6, centre: [number, number] = [44.0946, -121.2002]) {
       airportBoxes: layer.airportBoxes,
     });
   const sync = () => {
-    if (layer.sync(store.getState())) place();
+    if (layer.sync(store.getState())) {
+      place();
+    }
   };
   const unsubscribe = store.subscribe(sync);
   sync();

@@ -12,7 +12,9 @@ function splitRows(text: string): string[][] {
   const endRow = () => {
     row.push(field);
     field = '';
-    if (row.length > 1 || row[0] !== '') rows.push(row);
+    if (row.length > 1 || row[0] !== '') {
+      rows.push(row);
+    }
     row = [];
   };
   for (let i = 0; i < text.length; i++) {
@@ -37,7 +39,9 @@ function splitRows(text: string): string[][] {
       field += c;
     }
   }
-  if (field !== '' || row.length > 0) endRow();
+  if (field !== '' || row.length > 0) {
+    endRow();
+  }
 
   return rows;
 }

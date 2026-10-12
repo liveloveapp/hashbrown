@@ -20,7 +20,9 @@ function mount() {
   });
   const find = <T extends HTMLElement>(selector: string) => {
     const found = element.querySelector<T>(selector);
-    if (found === null) throw new Error(`No ${selector}`);
+    if (found === null) {
+      throw new Error(`No ${selector}`);
+    }
     return found;
   };
 

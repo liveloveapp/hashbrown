@@ -70,7 +70,9 @@ export function runwayDrawing(
   zoom: number,
   lat: number,
 ): RunwayDrawing | null {
-  if (runway.corners === null) return null;
+  if (runway.corners === null) {
+    return null;
+  }
   const widthPx = (runway.widthFt * FT_TO_M) / metresPerPixel(zoom, lat);
   if (runway.ends !== null && widthPx < RUNWAY_MIN_PX) {
     return { kind: 'stroke', ends: runway.ends, weight: RUNWAY_MIN_PX };
@@ -109,7 +111,9 @@ export function taxiwayLabelSpots(
   const polygons = new Map<string, RefSpot>();
   const keep = (spots: Map<string, RefSpot>, ref: string, spot: RefSpot) => {
     const best = spots.get(ref);
-    if (!best || spot.length > best.length) spots.set(ref, spot);
+    if (!best || spot.length > best.length) {
+      spots.set(ref, spot);
+    }
   };
   const segments = (points: Ring) =>
     points.slice(1).map((b, i) => {
@@ -124,7 +128,9 @@ export function taxiwayLabelSpots(
       };
     });
   for (const feature of features) {
-    if (feature.kind !== 'taxiway' || !feature.ref) continue;
+    if (feature.kind !== 'taxiway' || !feature.ref) {
+      continue;
+    }
     if (feature.shape === 'line') {
       for (const spot of segments(feature.points)) {
         keep(lines, feature.ref, spot);
@@ -136,11 +142,17 @@ export function taxiwayLabelSpots(
       0,
       ...segments(feature.rings[0] ?? []).map((s) => s.length),
     );
-    if (at) keep(polygons, feature.ref, { at, length: longest });
+    if (at) {
+      keep(polygons, feature.ref, { at, length: longest });
+    }
   }
   const spots = new Map<string, [number, number]>();
-  for (const [ref, { at }] of polygons) spots.set(ref, at);
-  for (const [ref, { at }] of lines) spots.set(ref, at);
+  for (const [ref, { at }] of polygons) {
+    spots.set(ref, at);
+  }
+  for (const [ref, { at }] of lines) {
+    spots.set(ref, at);
+  }
 
   return spots;
 }
@@ -250,7 +262,9 @@ export function createDiagramLayer(options: {
     const runways = airport.kind === 'airport' ? airport.runways : [];
     for (const runway of runways) {
       const drawing = runwayDrawing(runway, zoom, airport.lat);
-      if (drawing === null) continue;
+      if (drawing === null) {
+        continue;
+      }
       if (drawing.kind === 'stroke') {
         const [a, b] = drawing.ends;
         L.polyline(
@@ -295,9 +309,13 @@ export function createDiagramLayer(options: {
       }
     }
     for (const feature of features) {
-      if (feature.shape !== 'polygon' || feature.kind !== 'hotspot') continue;
+      if (feature.shape !== 'polygon' || feature.kind !== 'hotspot') {
+        continue;
+      }
       const at = vertexAverage(feature.rings);
-      if (at === null) continue;
+      if (at === null) {
+        continue;
+      }
       L.circleMarker(at, {
         ...base,
         radius: 9,
@@ -305,11 +323,15 @@ export function createDiagramLayer(options: {
         fill: false,
         weight: 2,
       }).addTo(group);
-      if (feature.ref) addLabel(group, at, feature.ref, 'is-hotspot');
+      if (feature.ref) {
+        addLabel(group, at, feature.ref, 'is-hotspot');
+      }
     }
 
     for (const runway of polygonRunways) {
-      if (runway.ends === null) continue;
+      if (runway.ends === null) {
+        continue;
+      }
       const [a, b] = runway.ends;
       addLabel(group, along(a, b, END_LABEL_INSET), a.id, 'is-runway');
       addLabel(group, along(b, a, END_LABEL_INSET), b.id, 'is-runway');
@@ -328,7 +350,9 @@ export function createDiagramLayer(options: {
   const redraw = () => {
     clear();
     const state = store.getState();
-    if (!state.layers.airports || state.chart.status !== 'ready') return;
+    if (!state.layers.airports || state.chart.status !== 'ready') {
+      return;
+    }
     const zoom = map.getZoom();
     const near = map.getBounds().pad(NEAR_PAD);
     const onScreen = visibleAirports(state.chart.airports, zoom).filter(
@@ -340,9 +364,13 @@ export function createDiagramLayer(options: {
       const surfaces = diagrams ? state.surfaces.get(airport.code) : undefined;
       drawAirport(airport, isLoaded(surfaces) ? surfaces : null, zoom, colours);
     }
-    if (!diagrams) return;
+    if (!diagrams) {
+      return;
+    }
     const missing = onScreen.filter((a) => !state.surfaces.has(a.code));
-    if (missing.length === 0) return;
+    if (missing.length === 0) {
+      return;
+    }
     // Each load marks its airport `loading` in the store at once; that
     // changes nothing drawn, so those notifications are not redrawn, and the
     // surfaces they leave are recorded as synced so a later notification
@@ -362,7 +390,9 @@ export function createDiagramLayer(options: {
 
   return {
     sync(state) {
-      if (loading) return;
+      if (loading) {
+        return;
+      }
       if (
         synced !== null &&
         synced.chart === state.chart &&

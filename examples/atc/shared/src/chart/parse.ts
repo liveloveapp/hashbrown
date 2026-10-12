@@ -36,7 +36,9 @@ const text = (v: unknown, max: number): string | null =>
   typeof v === 'string' && v.length <= max ? v : null;
 
 function latLon(value: unknown): LatLon | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const { lat, lon } = value;
   return finite(lat) &&
     finite(lon) &&
@@ -47,12 +49,16 @@ function latLon(value: unknown): LatLon | null {
 }
 
 function frequency(value: unknown): string | null | undefined {
-  if (value === null) return null;
+  if (value === null) {
+    return null;
+  }
   return typeof value === 'string' && FREQUENCY.test(value) ? value : undefined;
 }
 
 function parseFrequencies(value: unknown): Frequencies | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const tower = frequency(value['tower']);
   const atis = frequency(value['atis']);
   const ctaf = frequency(value['ctaf']);
@@ -69,8 +75,12 @@ function parseFrequencies(value: unknown): Frequencies | null {
 }
 
 function parseWeather(value: unknown): FieldWeather | null | undefined {
-  if (value === null) return null;
-  if (!isRecord(value)) return undefined;
+  if (value === null) {
+    return null;
+  }
+  if (!isRecord(value)) {
+    return undefined;
+  }
   const { kind, frequency: freq } = value;
   return typeof kind === 'string' &&
     WEATHER_KIND.test(kind) &&
@@ -87,7 +97,9 @@ function parseEnd(value: unknown): RunwayEnd | null {
 }
 
 function parseRunway(value: unknown): Runway | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const id = text(value['id'], 16);
   const { lengthFt, widthFt, hard, ends, corners, bearingDeg, surface } = value;
   if (
@@ -100,23 +112,35 @@ function parseRunway(value: unknown): Runway | null {
   ) {
     return null;
   }
-  if (surface !== null && text(surface, 16) === null) return null;
-  if (bearingDeg !== null && !finite(bearingDeg)) return null;
+  if (surface !== null && text(surface, 16) === null) {
+    return null;
+  }
+  if (bearingDeg !== null && !finite(bearingDeg)) {
+    return null;
+  }
 
   let parsedEnds: Runway['ends'] = null;
   if (ends !== null) {
-    if (!Array.isArray(ends) || ends.length !== 2) return null;
+    if (!Array.isArray(ends) || ends.length !== 2) {
+      return null;
+    }
     const a = parseEnd(ends[0]);
     const b = parseEnd(ends[1]);
-    if (!a || !b) return null;
+    if (!a || !b) {
+      return null;
+    }
     parsedEnds = [a, b];
   }
 
   let parsedCorners: Runway['corners'] = null;
   if (corners !== null) {
-    if (!Array.isArray(corners) || corners.length !== 4) return null;
+    if (!Array.isArray(corners) || corners.length !== 4) {
+      return null;
+    }
     const points = corners.map(latLon);
-    if (points.some((p) => p === null)) return null;
+    if (points.some((p) => p === null)) {
+      return null;
+    }
     parsedCorners = points as LatLon[];
   }
 
@@ -133,7 +157,9 @@ function parseRunway(value: unknown): Runway | null {
 }
 
 function parseAirport(value: unknown): ChartAirport | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const { code, faa, kind, lighting } = value;
   const point = latLon(value);
   const name = text(value['name'], MAX_TEXT);
@@ -174,7 +200,9 @@ function parseAirport(value: unknown): ChartAirport | null {
   const parsedRunways: Runway[] = [];
   for (const raw of runways) {
     const runway = parseRunway(raw);
-    if (!runway) return null;
+    if (!runway) {
+      return null;
+    }
     parsedRunways.push(runway);
   }
 
@@ -239,7 +267,9 @@ function refOrNull(value: unknown): string | null {
 }
 
 function parseFeature(value: unknown): SurfaceFeature | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const { kind, shape } = value;
   const ref = refOrNull(value['ref']);
 
@@ -247,21 +277,31 @@ function parseFeature(value: unknown): SurfaceFeature | null {
     shape === 'polygon' &&
     (kind === 'taxiway' || kind === 'apron' || kind === 'hotspot')
   ) {
-    if (!Array.isArray(value['rings'])) return null;
+    if (!Array.isArray(value['rings'])) {
+      return null;
+    }
     const rings: Ring[] = [];
     for (const ring of value['rings']) {
-      if (!Array.isArray(ring)) return null;
+      if (!Array.isArray(ring)) {
+        return null;
+      }
       const points = ring.map(pair);
-      if (points.some((p) => p === null)) return null;
+      if (points.some((p) => p === null)) {
+        return null;
+      }
       rings.push(points as LonLat[]);
     }
     return { kind, shape, rings, ref };
   }
 
   if (shape === 'line' && (kind === 'taxiway' || kind === 'hold')) {
-    if (!Array.isArray(value['points'])) return null;
+    if (!Array.isArray(value['points'])) {
+      return null;
+    }
     const points = value['points'].map(pair);
-    if (points.some((p) => p === null)) return null;
+    if (points.some((p) => p === null)) {
+      return null;
+    }
     const widthFt = finite(value['widthFt']) ? value['widthFt'] : null;
     return { kind, shape, points: points as LonLat[], ref, widthFt };
   }
@@ -298,19 +338,27 @@ function lonLat(value: unknown): LonLat | null {
 }
 
 function parseRings(value: unknown): Ring[] | null {
-  if (!Array.isArray(value) || value.length === 0) return null;
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
   const rings: Ring[] = [];
   for (const raw of value) {
-    if (!Array.isArray(raw) || raw.length < 4) return null;
+    if (!Array.isArray(raw) || raw.length < 4) {
+      return null;
+    }
     const points = raw.map(lonLat);
-    if (points.some((p) => p === null)) return null;
+    if (points.some((p) => p === null)) {
+      return null;
+    }
     rings.push(points as LonLat[]);
   }
   return rings;
 }
 
 function parseShelf(value: unknown): AirspaceShelf | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const { airport, floor, ceiling, bbox } = value;
   const id = text(value['id'], MAX_TEXT);
   const name = text(value['name'], MAX_TEXT);
