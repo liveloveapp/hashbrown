@@ -1,13 +1,9 @@
 import { expect, test } from 'vitest';
-import type { PixelRect as TagRect } from '../pixels';
+import { rectAt } from '../pixels';
 import { type LabelRequest, placeLabels } from './label-placer';
 
-const rect = (left: number, top: number, width = 20, height = 10): TagRect => ({
-  left,
-  top,
-  right: left + width,
-  bottom: top + height,
-});
+const rect = (left: number, top: number, width = 20, height = 10) =>
+  rectAt(left, top, width, height);
 
 test('a lower priority value places first and wins the spot', () => {
   const requests: LabelRequest[] = [

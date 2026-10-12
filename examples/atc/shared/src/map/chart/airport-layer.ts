@@ -3,7 +3,7 @@ import type { Map as LeafletMap, Marker, Point } from 'leaflet';
 import type { ChartAirport } from '../../chart';
 import { type Airport, FALLBACK_AIRPORTS } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
-import type { PixelRect as TagRect } from '../pixels';
+import { type PixelRect, rectAround, rectAt } from '../pixels';
 import { airportRing, RING_BOX } from './airport-ring';
 import type { LabelSource } from './chart-labels';
 import { dataBlockLines, renderDataBlock } from './data-block';
@@ -44,7 +44,7 @@ interface Block {
 interface Pending {
   readonly drawn: Drawn;
   readonly point: Point;
-  readonly candidates: readonly TagRect[];
+  readonly candidates: readonly PixelRect[];
 }
 
 /** A mounted airport layer. */
@@ -62,18 +62,10 @@ export interface AirportLayer extends LabelSource {
    * 12x12 box around its reference point. Fallback airports included; no
    * label may cover any of them.
    */
-  runwayBoxes(): readonly TagRect[];
+  runwayBoxes(): readonly PixelRect[];
   /** Removes every marker. */
   destroy(): void;
 }
-
-/** A square box of `size` pixels centred on `point`. */
-const boxAround = (point: Point, size: number): TagRect => ({
-  left: point.x - size / 2,
-  top: point.y - size / 2,
-  right: point.x + size / 2,
-  bottom: point.y + size / 2,
-});
 
 /**
  * Where an airport's label may go around its `box`, best first: right of it
@@ -81,24 +73,18 @@ const boxAround = (point: Point, size: number): TagRect => ({
  * {@link LABEL_GAP} pixels clear. A block is `width` by `height` pixels.
  */
 export function labelCandidates(
-  box: TagRect,
+  box: PixelRect,
   width: number,
   height: number,
-): TagRect[] {
+): PixelRect[] {
   const midX = (box.left + box.right) / 2 - width / 2;
   const midY = (box.top + box.bottom) / 2 - height / 2;
-  const at = (left: number, top: number): TagRect => ({
-    left,
-    top,
-    right: left + width,
-    bottom: top + height,
-  });
 
   return [
-    at(box.right + LABEL_GAP, midY),
-    at(box.left - LABEL_GAP - width, midY),
-    at(midX, box.top - LABEL_GAP - height),
-    at(midX, box.bottom + LABEL_GAP),
+    rectAt(box.right + LABEL_GAP, midY, width, height),
+    rectAt(box.left - LABEL_GAP - width, midY, width, height),
+    rectAt(midX, box.top - LABEL_GAP - height, width, height),
+    rectAt(midX, box.bottom + LABEL_GAP, width, height),
   ];
 }
 
@@ -124,9 +110,10 @@ function drawsRing(airport: ChartAirport): boolean {
 function anchorBox(
   drawn: Drawn,
   project: (lat: number, lon: number) => Point,
-): TagRect {
+): PixelRect {
   const { airport } = drawn;
-  const reference = boxAround(project(airport.lat, airport.lon), RING_BOX);
+  const point = project(airport.lat, airport.lon);
+  const reference = rectAround(point.x, point.y, RING_BOX);
   if (drawn.ring || !('runways' in airport)) return reference;
   const points = airport.runways
     .filter((runway) => runway.corners !== null)
@@ -201,7 +188,7 @@ export function createAirportLayer(options: {
   /** The last requests' airports and candidates, by label id. */
   let pending = new Map<string, Pending>();
   /** The anchor boxes of every drawn airport, from the last label requests. */
-  let boxes: readonly TagRect[] | null = null;
+  let boxes: readonly PixelRect[] | null = null;
   let source: readonly (ChartAirport | Airport)[] | null = null;
   let synced: Pick<AtcState, 'chart' | 'layers'> | null = null;
 
@@ -365,7 +352,7 @@ export function createAirportLayer(options: {
     }
   };
 
-  const runwayBoxes = (): readonly TagRect[] =>
+  const runwayBoxes = (): readonly PixelRect[] =>
     boxes ?? drawnNow.map((drawn) => anchorBox(drawn, project));
 
   return {

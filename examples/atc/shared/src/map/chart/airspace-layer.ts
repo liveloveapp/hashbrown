@@ -3,12 +3,12 @@ import type { Map as LeafletMap, Marker, Point, Polygon, SVG } from 'leaflet';
 import { airspaceOf, type AirspaceShelf } from '../../chart';
 import type { LatLon } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
+import { type PixelRect, rectAround } from '../pixels';
 import {
   type ShelfLabel,
   shelfLabel,
   shelfLabelAnchor,
 } from './airspace-labels';
-import type { PixelRect as TagRect } from '../pixels';
 import type { LabelSource } from './chart-labels';
 import {
   estimateLabelSize,
@@ -66,7 +66,7 @@ interface Entry {
 interface Pending {
   readonly entry: Entry;
   readonly label: ShelfLabel;
-  readonly candidates: readonly TagRect[];
+  readonly candidates: readonly PixelRect[];
 }
 
 /** A mounted airspace layer. */
@@ -103,15 +103,12 @@ const labelId = (shelf: AirspaceShelf) => `as:${shelf.id}`;
  * A label's candidate boxes around its anchor `point`, one per
  * {@link LABEL_OFFSETS} entry, each centred as the CSS draws the text.
  */
-function labelCandidates(point: Point, label: ShelfLabel): TagRect[] {
+function labelCandidates(point: Point, label: ShelfLabel): PixelRect[] {
   const { width, height } = estimateLabelSize(labelLines(label));
 
-  return LABEL_OFFSETS.map(([dx, dy]) => ({
-    left: point.x + dx - width / 2,
-    top: point.y + dy - height / 2,
-    right: point.x + dx + width / 2,
-    bottom: point.y + dy + height / 2,
-  }));
+  return LABEL_OFFSETS.map(([dx, dy]) =>
+    rectAround(point.x + dx, point.y + dy, width, height),
+  );
 }
 
 /**

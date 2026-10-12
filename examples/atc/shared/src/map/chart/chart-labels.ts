@@ -1,4 +1,4 @@
-import type { PixelRect as TagRect } from '../pixels';
+import type { PixelRect } from '../pixels';
 import { type LabelRequest, placeLabels } from './label-placer';
 
 /** A chart layer whose labels are placed together with the others'. */
@@ -24,7 +24,7 @@ export interface LabelSource {
  */
 export function placeChartLabels(options: {
   sources: readonly LabelSource[];
-  runwayBoxes: () => readonly TagRect[];
+  runwayBoxes: () => readonly PixelRect[];
 }): void {
   const { sources, runwayBoxes } = options;
   const requests = sources.flatMap((source) => source.labelRequests());

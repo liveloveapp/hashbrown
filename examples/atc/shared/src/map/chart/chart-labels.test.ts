@@ -3,7 +3,7 @@ import * as module from 'leaflet';
 import { expect, onTestFinished, test } from 'vitest';
 import type { AirspaceShelf, ChartAirport } from '../../chart';
 import { createAtcStore } from '../../store';
-import { intersects, type PixelRect as TagRect } from '../pixels';
+import { intersects, type PixelRect } from '../pixels';
 import { createAirportLayer } from './airport-layer';
 import { shelfLabelAnchor } from './airspace-labels';
 import { createAirspaceLayer } from './airspace-layer';
@@ -100,11 +100,11 @@ function mount(zoom: number) {
 
 /** The candidate whose top-left (or centre) sits at `x`, `y`. */
 const candidateAt = (
-  candidates: readonly TagRect[],
+  candidates: readonly PixelRect[],
   x: number,
   y: number,
   centred: boolean,
-): TagRect | undefined =>
+): PixelRect | undefined =>
   candidates.find((c) => {
     const left = centred ? (c.left + c.right) / 2 : c.left;
     const top = centred ? (c.top + c.bottom) / 2 : c.top;
