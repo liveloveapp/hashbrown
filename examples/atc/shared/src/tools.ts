@@ -71,7 +71,8 @@ export interface AtcToolContext {
  * `angular/src/app/assistant.ts` and `react/src/assistant.tsx`; (3) add its
  * RUNNING and DONE labels in `tool-chips.ts` (the compiler asks for them);
  * (4) tell the model when to use it in `SYSTEM_PROMPT` (`contracts.ts`);
- * (5) script it in `e2e/src/atc.spec.ts`.
+ * (5) script a model turn that calls it in `e2e/src/model.ts` and test it
+ * in `e2e/src/atc.spec.ts`.
  */
 export function createAtcTools(context: AtcToolContext) {
   const { store, chartWaitMs = CHART_WAIT_MS } = context;
