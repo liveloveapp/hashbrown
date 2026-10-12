@@ -174,6 +174,8 @@ there). The React app is built and tested in this repository but runs locally fo
 `/api/aircraft`, `/api/chart/airports`, `/api/chart/surfaces` and `/api/chart/airspace`. The hosted project (`hashbrown-atc`) needs:
 
 - `OPENAI_API_KEY`: a dedicated OpenAI project key with a hard monthly budget.
-- A Vercel Firewall rate-limit rule on `/api/run` (for example 20 requests per minute per IP).
+- A Vercel Firewall rate-limit rule on `POST /api/run`. `hashbrown-atc` allows 40 requests
+  per minute per IP (fixed window, 429 above it). One question makes 3 to 5 requests, one
+  per tool round trip, so that is about ten questions a minute.
 - A look at tile traffic: past light use, point `TILE_LAYER` at a commercial tile provider
   (see "Data and attribution").
