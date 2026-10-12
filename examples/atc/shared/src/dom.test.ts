@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import {
   addsUserMessage,
   focusOpensSheet,
@@ -83,13 +83,15 @@ test('a user who scrolled up is left alone', () => {
 });
 
 test('hoverless is true only where the primary pointer cannot hover (touch screens)', () => {
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+  });
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query === '(hover: none)',
   }));
   const touch = hoverless();
   vi.stubGlobal('matchMedia', () => ({ matches: false }));
   const mouse = hoverless();
-  vi.unstubAllGlobals();
 
   expect([touch, mouse]).toEqual([true, false]);
 });

@@ -1,4 +1,4 @@
-import { expect, test, vi } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import type { Aircraft } from './aircraft';
 import type { AirspaceShelf } from './chart';
 import type { FindAircraftInput } from './find-aircraft';
@@ -633,6 +633,9 @@ test('showAirport waits for loadSurfaces and reports the loaded diagram', async 
 
 test('showAirport reports loading when surfaces take longer than 3 s', async () => {
   vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
   const store = readyStore();
   const tools = createAtcTools({
     store,
@@ -652,7 +655,6 @@ test('showAirport reports loading when surfaces take longer than 3 s', async () 
   const settledEarly = settled;
   await vi.advanceTimersByTimeAsync(1);
   const result = await pending;
-  vi.useRealTimers();
 
   expect(settledEarly).toBe(false);
   expect(result).toMatchObject({ shown: true, diagram: 'loading' });
@@ -866,6 +868,9 @@ test('setLayers applies the airspace layer', async () => {
 
 test('chart tools wait for a chart that loads within 5 s and use it', async () => {
   vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
   const store = createAtcStore();
   const tools = createAtcTools({ store, fetchRoute: async () => null });
   setTimeout(
@@ -889,7 +894,6 @@ test('chart tools wait for a chart that loads within 5 s and use it', async () =
   ]);
   await vi.advanceTimersByTimeAsync(1000);
   const [place, found, area, airport] = await pending;
-  vi.useRealTimers();
 
   expect(place).toMatchObject({ found: true, code: '6K5', towered: false });
   expect(found).toEqual([]);
@@ -899,6 +903,9 @@ test('chart tools wait for a chart that loads within 5 s and use it', async () =
 
 test('lookupPlace gives up waiting after 5 s and uses the fallback table', async () => {
   vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
   const store = createAtcStore();
   const tools = createAtcTools({ store, fetchRoute: async () => null });
   let settled = false;
@@ -911,7 +918,6 @@ test('lookupPlace gives up waiting after 5 s and uses the fallback table', async
   const settledEarly = settled;
   await vi.advanceTimersByTimeAsync(1);
   const result = await pending;
-  vi.useRealTimers();
 
   expect(settledEarly).toBe(false);
   expect(result).toMatchObject({ found: true, code: 'KBDN', towered: null });
@@ -920,6 +926,9 @@ test('lookupPlace gives up waiting after 5 s and uses the fallback table', async
 
 test('whenChartSettled always unsubscribes, whether the chart settles or time runs out', async () => {
   vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
   const store = createAtcStore();
   const unsubscribes: ReturnType<typeof vi.fn>[] = [];
   const watched = {
@@ -939,7 +948,6 @@ test('whenChartSettled always unsubscribes, whether the chart settles or time ru
   store.setChartLimited();
   await settled;
   const ready = await whenChartSettled(watched, 100);
-  vi.useRealTimers();
 
   expect(unsubscribes).toHaveLength(2);
   expect(unsubscribes.map((spy) => spy.mock.calls.length)).toEqual([1, 1]);
