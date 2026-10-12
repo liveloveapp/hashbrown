@@ -1,7 +1,8 @@
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from './aircraft';
-import type { AirspaceShelf, ChartAirport } from './chart';
+import type { AirspaceShelf } from './chart';
 import { applySnapshot, createAtcStore, INITIAL_STATE } from './store';
+import { testAircraft, testChartAirport } from './testing';
 import { findAircraft, type FindAircraftInput } from './find-aircraft';
 import {
   ATC_TOOL_DEFINITIONS,
@@ -12,23 +13,14 @@ import {
 } from './tools';
 
 function plane(hex: string, overrides: Partial<Aircraft> = {}): Aircraft {
-  return {
+  return testAircraft({
     hex,
-    label: 'UAL100',
-    callsign: 'UAL100',
-    registration: null,
-    typeCode: 'B738',
-    category: null,
-    kind: 'jet',
     lat: 44.0946,
     lon: -121.2002,
     altitudeFt: 30000,
-    onGround: false,
     groundSpeedKt: 450,
-    trackDeg: 90,
-    verticalRateFpm: 0,
     ...overrides,
-  };
+  });
 }
 
 const any: FindAircraftInput = {
@@ -572,53 +564,12 @@ test('findAircraft with an unknown approaching airport finds nothing', async () 
   expect(rows).toEqual([]);
 });
 
-function krdm(overrides: Partial<ChartAirport> = {}): ChartAirport {
-  return {
-    code: 'KRDM',
-    faa: 'RDM',
-    name: 'ROBERTS FLD/REDMOND MUNI',
-    city: 'REDMOND',
-    state: 'OR',
-    aliases: ['redmond'],
-    lat: 44.254,
-    lon: -121.15,
-    elevationFt: 3082,
-    kind: 'airport',
-    towered: true,
-    towerPartTime: true,
-    frequencies: {
-      tower: '124.5',
-      atis: '119.025',
-      ctaf: '124.5',
-      unicom: '122.95',
-    },
-    weather: { kind: 'AWOS-3', frequency: '134.425' },
-    lighting: 'limited',
-    fuel: true,
-    military: false,
-    runways: [
-      {
-        id: '05/23',
-        lengthFt: 7038,
-        widthFt: 150,
-        surface: 'ASPH',
-        hard: true,
-        ends: null,
-        corners: null,
-        bearingDeg: null,
-      },
-    ],
-    rank: 0,
-    ...overrides,
-  };
-}
-
 function readyStore() {
   const store = createAtcStore();
   store.setChart({
     cycle: '2610',
     effective: '2026-10-08',
-    airports: [krdm()],
+    airports: [testChartAirport()],
   });
 
   return store;
@@ -723,7 +674,7 @@ test('lookupPlace reports whether the airport has a tower', async () => {
   expect(result).toMatchObject({ found: true, code: 'KRDM', towered: true });
 });
 
-const sisters = krdm({
+const sisters = testChartAirport({
   code: '6K5',
   faa: '6K5',
   name: 'SISTERS EAGLE AIR',

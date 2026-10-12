@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
-import type { Aircraft } from './aircraft';
-import type { AirspaceShelf, ChartAirport } from './chart';
+import type { AirspaceShelf } from './chart';
 import { applySnapshot, INITIAL_STATE } from './store';
+import { testAircraft, testChartAirport } from './testing';
 import {
   airportCardView,
   arrivalsRows,
@@ -12,22 +12,14 @@ import {
   routeText,
 } from './views';
 
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
+const plane = testAircraft({
   typeCode: 'B39M',
-  category: null,
-  kind: 'jet',
   lat: 47.5716,
   lon: -122.3088,
-  altitudeFt: 5000,
-  onGround: false,
   groundSpeedKt: 240,
   trackDeg: 180,
   verticalRateFpm: -800,
-};
+});
 
 test('flightCardView describes a live aircraft', () => {
   const state = applySnapshot(INITIAL_STATE, { at: 1, aircraft: [plane] });
@@ -277,50 +269,15 @@ test('an airline callsign with an unknown code shows no airline beside the label
   expect(subtitles).toEqual([null, 'N123AB']);
 });
 
-function krdm(overrides: Partial<ChartAirport> = {}): ChartAirport {
-  return {
-    code: 'KRDM',
-    faa: 'RDM',
-    name: 'ROBERTS FLD/REDMOND MUNI',
-    city: 'REDMOND',
-    state: 'OR',
-    aliases: ['redmond'],
-    lat: 44.254,
-    lon: -121.15,
-    elevationFt: 3082,
-    kind: 'airport',
-    towered: true,
-    towerPartTime: true,
-    frequencies: {
-      tower: '124.5',
-      atis: '119.025',
-      ctaf: '124.5',
-      unicom: '122.95',
-    },
-    weather: { kind: 'AWOS-3', frequency: '134.425' },
-    lighting: 'limited',
-    fuel: true,
-    military: false,
-    runways: [
-      {
-        id: '05/23',
-        lengthFt: 7038,
-        widthFt: 150,
-        surface: 'ASPH',
-        hard: true,
-        ends: null,
-        corners: null,
-        bearingDeg: null,
-      },
-    ],
-    rank: 0,
-    ...overrides,
-  };
-}
+const runway = testChartAirport().runways[0];
 
 const chartState = {
   ...INITIAL_STATE,
-  chart: { status: 'ready' as const, cycle: '2610', airports: [krdm()] },
+  chart: {
+    status: 'ready' as const,
+    cycle: '2610',
+    airports: [testChartAirport()],
+  },
 };
 
 test('airportCardView describes a chart airport', () => {
@@ -351,15 +308,15 @@ test('airportCardView skips null frequencies and names other surfaces', () => {
     chart: {
       ...chartState.chart,
       airports: [
-        krdm({
+        testChartAirport({
           towered: false,
           towerPartTime: false,
           frequencies: { tower: null, atis: null, ctaf: '122.8', unicom: null },
           weather: null,
           runways: [
-            { ...krdm().runways[0], id: '12/30', surface: 'TURF' },
-            { ...krdm().runways[0], id: '1/19', surface: 'WXYZ' },
-            { ...krdm().runways[0], id: '2/20', surface: null },
+            { ...runway, id: '12/30', surface: 'TURF' },
+            { ...runway, id: '1/19', surface: 'WXYZ' },
+            { ...runway, id: '2/20', surface: null },
           ],
         }),
       ],
@@ -385,11 +342,11 @@ test('airportCardView names each part of a compound surface code', () => {
     chart: {
       ...chartState.chart,
       airports: [
-        krdm({
+        testChartAirport({
           runways: [
-            { ...krdm().runways[0], id: '05/23', surface: 'ASPH-G' },
-            { ...krdm().runways[0], id: '11/29', surface: 'ASPH-CONC' },
-            { ...krdm().runways[0], id: '16/34', surface: 'TURF-WXYZ' },
+            { ...runway, id: '05/23', surface: 'ASPH-G' },
+            { ...runway, id: '11/29', surface: 'ASPH-CONC' },
+            { ...runway, id: '16/34', surface: 'TURF-WXYZ' },
           ],
         }),
       ],

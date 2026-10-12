@@ -8,23 +8,16 @@ import {
   trimDetailView,
 } from './detail-view';
 import { applySnapshot, INITIAL_STATE } from './store';
+import { testAircraft } from './testing';
 
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
+const plane = testAircraft({
   typeCode: 'B39M',
-  category: null,
-  kind: 'jet',
   lat: 47.5716,
   lon: -122.3088,
-  altitudeFt: 5000,
-  onGround: false,
   groundSpeedKt: 240,
   trackDeg: 180,
   verticalRateFpm: -800,
-};
+});
 
 const full: Aircraft = {
   ...plane,
