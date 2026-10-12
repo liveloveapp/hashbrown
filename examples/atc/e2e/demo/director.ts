@@ -2,7 +2,7 @@ import { ATC_MARK } from '@atc/shared';
 import { APP_FOCUS, type Beat, type CodePane, STORYBOARD } from './storyboard';
 
 /** Every motion duration the director page waits on, in ms. Holds live in the storyboard. */
-export const DIRECTOR_TIMING = {
+const DIRECTOR_TIMING = {
   wordStaggerMs: 45,
   wordRevealMs: 380,
   markDrawMs: 900,
@@ -16,11 +16,20 @@ export const DIRECTOR_TIMING = {
 /** The video's size in CSS pixels. */
 export const STAGE = { width: 1440, height: 810 } as const;
 
+/** The app frame: centred, 16:9 like the stage. */
+const FRAME = { left: 163, top: 128, width: 1113, height: 626 } as const;
+
+/** The delay between one stroke of the ATC lettermark and the next. */
+const MARK_STROKE_DELAY_MS = 140;
+
+/** The subtitle starts rising this many word steps late, once the mark has begun to draw. */
+const SUBTITLE_DELAY_WORDS = 4;
+
 /**
  * Lines a code pane shows: one pane fills the frame, two sit side by side at a
  * smaller size. A longer file shows a window around its focal line.
  */
-export const CODE_PANE_LINES = { one: 19, two: 23 } as const;
+const CODE_PANE_LINES = { one: 19, two: 23 } as const;
 
 /** Lines a window keeps below the focal line; the rest go above it. */
 const CODE_CONTEXT_AFTER = { one: 6, two: 8 } as const;
@@ -69,7 +78,7 @@ export function snapWindowStart(
  * The start of a fixed-size window of `before + 1 + after` lines around
  * `index`, shifted (never shrunk) where the file starts or ends.
  */
-export function windowStart(
+function windowStart(
   lineCount: number,
   index: number,
   before: number,
@@ -86,7 +95,7 @@ export function windowStart(
 }
 
 /** Escapes text for HTML. */
-export function escapeHtml(value: string): string {
+function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -168,7 +177,7 @@ export function codePane(
  * Two panes share the frame by what their visible lines need, and neither
  * column narrows below its focal line, so the marked line is always whole.
  */
-export function twoPaneColumns(panes: readonly RenderedPane[]): string {
+function twoPaneColumns(panes: readonly RenderedPane[]): string {
   return panes
     .map(
       (pane) =>
@@ -209,7 +218,7 @@ function atcMarkSvg(): string {
   const paths = ATC_MARK.paths
     .map(
       (d, index) =>
-        `<path d="${d}" pathLength="1" style="transition-delay:${index * 140}ms"/>`,
+        `<path d="${d}" pathLength="1" style="transition-delay:${index * MARK_STROKE_DELAY_MS}ms"/>`,
     )
     .join('');
 
@@ -241,14 +250,14 @@ html, body { width: 1440px; height: 810px; overflow: hidden; background: var(--p
 .titled .title .mark path { stroke-dashoffset: 0; }
 .title .sub { font-weight: 600; font-size: 38px; line-height: 1.2; letter-spacing: -0.02em; color: var(--muted); white-space: nowrap; }
 .untitled .title { opacity: 0; filter: blur(6px); transform: scale(0.98); }
-.head { position: absolute; left: 163px; top: 44px; font-weight: 800; font-size: 88px; line-height: 1.06; letter-spacing: -0.03em; color: var(--brown); transform-origin: 0 0; transform: translateY(300px); transition: transform var(--dock) var(--ease-out); white-space: nowrap; }
+.head { position: absolute; left: ${FRAME.left}px; top: 44px; font-weight: 800; font-size: 88px; line-height: 1.06; letter-spacing: -0.03em; color: var(--brown); transform-origin: 0 0; transform: translateY(300px); transition: transform var(--dock) var(--ease-out); white-space: nowrap; }
 .docked .head { transform: scale(0.42); }
 .roll { overflow: hidden; height: 1.12em; }
 .lines { transition: transform var(--swap) var(--ease-in-out); }
 .lines > div { height: 1.12em; overflow: hidden; transition: opacity calc(var(--swap) * 0.5) var(--ease-out); }
 .rolling .lines > div:first-child:not(:last-child) { opacity: 0; }
 .rolling .lines { transform: translateY(-1.12em); }
-.frame { position: absolute; left: 163px; top: 128px; width: 1113px; height: 626px; overflow: clip; border-radius: 14px; outline: 1.5px solid var(--rule); background: var(--panel); transform: translateY(820px); transition: transform var(--dock) var(--ease-out); }
+.frame { position: absolute; left: ${FRAME.left}px; top: ${FRAME.top}px; width: ${FRAME.width}px; height: ${FRAME.height}px; overflow: clip; border-radius: 14px; outline: 1.5px solid var(--rule); background: var(--panel); transform: translateY(820px); transition: transform var(--dock) var(--ease-out); }
 .docked .frame, .prep .frame { transform: none; }
 .camera { position: absolute; inset: 0; transform-origin: 0 0; transform: translate(0px, 0px) scale(1); transition: transform var(--camera) var(--ease-in-out); }
 .layer { position: absolute; inset: 0; opacity: 0; filter: blur(6px); transform: scale(1.03); transition: opacity var(--swap) var(--ease-in-out), filter var(--swap) var(--ease-in-out), transform var(--swap) var(--ease-in-out); }
@@ -273,7 +282,7 @@ pre { padding: 24px; color: var(--panel-ink); font: 400 17px/1.65 'JetBrains Mon
 .hit.part { text-decoration: underline 2px transparent; text-underline-offset: 5px; transition: text-decoration-color var(--swap) var(--ease-out); }
 .marked .hit.part { text-decoration-color: var(--gold); }
 .app { background: var(--paper); }
-.app iframe { position: absolute; left: 0; top: 0; width: 1440px; height: 810px; border: 0; transform: scale(${1113 / 1440}); transform-origin: 0 0; }
+.app iframe { position: absolute; left: 0; top: 0; width: 1440px; height: 810px; border: 0; transform: scale(${FRAME.width / STAGE.width}); transform-origin: 0 0; }
 .close { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 36px; background: radial-gradient(circle at 12px 12px, var(--dots) 1.2px, transparent 1.6px) 0 0 / 24px 24px, var(--paper); clip-path: inset(0 0 0 100%); transition: clip-path var(--sweep) var(--ease-in-out); }
 .closing .close { clip-path: inset(0 0 0 0); }
 .close .wordmark { width: 420px; height: auto; }
@@ -285,6 +294,17 @@ pre { padding: 24px; color: var(--panel-ink); font: 400 17px/1.65 'JetBrains Mon
 .closing .sweep { left: 0; visibility: visible; }
 .swept .sweep { visibility: hidden; }
 `;
+
+/** What the director page puts on `window.director` for the recorder. */
+export interface DirectorApi {
+  readonly ready: true;
+  /** Leaves the preparation state for the opening frame, with no motion. */
+  reset(): Promise<void>;
+  /** Plays beat `index`; see the runtime's `play`. */
+  play(index: number): Promise<void>;
+  /** Moves the camera to a named framing. */
+  focus(name: string): Promise<void>;
+}
 
 /**
  * The page's runtime, as a script string. The camera always moves by
@@ -397,7 +417,7 @@ const runtime = (
     if (beat === undefined) throw new Error('unknown beat ' + index)
     if (beat.kind === 'title') {
       stage.classList.add('titled')
-      await wait(Math.max(T.markDrawMs + 280, revealMs(stage.querySelectorAll('.title .w').length)) + beat.holdMs)
+      await wait(Math.max(T.markDrawMs + ${(ATC_MARK.paths.length - 1) * MARK_STROKE_DELAY_MS}, revealMs(stage.querySelectorAll('.title .w').length)) + beat.holdMs)
       return
     }
     if (beat.kind === 'close') {
@@ -482,7 +502,7 @@ export function renderDirector(options: {
 </head>
 <body>
 <div class="stage prep">
-  <div class="title">${atcMarkSvg()}<div class="sub">${revealWords(title.subtitle, 4)}</div></div>
+  <div class="title">${atcMarkSvg()}<div class="sub">${revealWords(title.subtitle, SUBTITLE_DELAY_WORDS)}</div></div>
   <h1 class="head"><div class="roll"><div class="lines"></div></div></h1>
   <div class="frame"><div class="camera">
     ${layers.join('\n    ')}

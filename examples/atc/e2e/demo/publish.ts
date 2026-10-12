@@ -20,11 +20,10 @@ const OUT = resolve(REPO, 'dist/examples/atc/demo');
 const POSTERS = resolve(REPO, 'www/public/image/landing-page');
 const MEDIA_MODULE = resolve(REPO, 'www/src/components/elements/atc-media.ts');
 /** The public host of the `hashbrown-www-media` Blob store. */
-export const BLOB_HOST =
-  'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com';
+const BLOB_HOST = 'https://ue1aiy83g4k7z6ts.public.blob.vercel-storage.com';
 
 /** The Blob pathname for a file: its name plus the first 12 hex of its SHA-256. */
-export function hashedPathname(name: string, contents: Buffer): string {
+function hashedPathname(name: string, contents: Buffer): string {
   const hash = createHash('sha256').update(contents).digest('hex').slice(0, 12);
   const dot = name.lastIndexOf('.');
 
@@ -32,7 +31,7 @@ export function hashedPathname(name: string, contents: Buffer): string {
 }
 
 /** The source of `atc-media.ts` for the given Blob pathnames. */
-export function mediaModule(paths: {
+function mediaModule(paths: {
   readonly demo: { readonly webm: string; readonly mp4: string };
   readonly loop: { readonly webm: string; readonly mp4: string };
 }): string {
@@ -127,6 +126,4 @@ function main(): void {
   }
 }
 
-if (require.main === module) {
-  main();
-}
+main();

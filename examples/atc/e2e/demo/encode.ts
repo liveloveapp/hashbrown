@@ -137,6 +137,8 @@ export function loopArgs(
   fade: number,
   out: string,
 ): string[] {
+  // The crossfade starts at length - 2 * fade, which must leave at least one
+  // fade of untouched clip before it.
   if (length <= fade * 3) {
     throw new RangeError(
       `a ${length} s clip is too short for a ${fade} s fade`,
