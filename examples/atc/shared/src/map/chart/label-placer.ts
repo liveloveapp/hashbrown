@@ -1,4 +1,4 @@
-import { intersects, type TagRect } from '../tag-obstacles';
+import { intersects, type PixelRect as TagRect } from '../pixels';
 
 /**
  * One label that wants a place on the map: its candidate boxes, in container

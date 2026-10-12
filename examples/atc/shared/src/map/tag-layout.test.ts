@@ -6,10 +6,10 @@ import {
   type TagItem,
   tagOrder,
   tagRect,
-  type TagRect,
 } from './tag-layout';
+import type { PixelRect } from './pixels';
 
-const bounds: TagRect = { left: 0, top: 0, right: 400, bottom: 300 };
+const bounds: PixelRect = { left: 0, top: 0, right: 400, bottom: 300 };
 
 /** A tag item at (x, y), 60 px wide. */
 function item(hex: string, x: number, y: number, extra: Partial<TagItem> = {}) {
@@ -17,7 +17,7 @@ function item(hex: string, x: number, y: number, extra: Partial<TagItem> = {}) {
 }
 
 /** True when two rectangles overlap. */
-function overlaps(a: TagRect, b: TagRect): boolean {
+function overlaps(a: PixelRect, b: PixelRect): boolean {
   return (
     a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
   );

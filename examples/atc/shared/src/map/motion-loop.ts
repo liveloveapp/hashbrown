@@ -1,8 +1,9 @@
 import type * as Leaflet from 'leaflet';
-import type { Map as LeafletMap, Marker, Point } from 'leaflet';
+import type { Map as LeafletMap, Marker } from 'leaflet';
 import { prefersReducedMotion } from '../dom';
 import type { LatLon } from '../places';
 import type { AtcState } from '../store';
+import { exactLayerPoint } from './pixels';
 import { planeRotation } from './plane-marker';
 import {
   type Motion,
@@ -25,18 +26,6 @@ export interface MotionLoop {
    */
   syncMarkers(): void;
   destroy(): void;
-}
-
-/**
- * Where `position` falls in the map's layer, in unrounded pixels. Leaflet's
- * own `latLngToLayerPoint` rounds to whole pixels; at regional zooms a plane
- * moves well under a pixel a frame, so rounding makes it stand still and
- * then hop, each plane at a different moment.
- */
-export function exactLayerPoint(map: LeafletMap, position: LatLon): Point {
-  return map
-    .project([position.lat, position.lon], map.getZoom())
-    .subtract(map.getPixelOrigin());
 }
 
 /**

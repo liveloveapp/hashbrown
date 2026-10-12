@@ -12,7 +12,7 @@ import {
   isInsideArea,
   visibleMapArea,
 } from './detail-card';
-import { exactLayerPoint } from './motion-loop';
+import { exactContainerPoint } from './pixels';
 
 /**
  * The least map, in pixels, that must show above a phone's sheet for moves
@@ -106,9 +106,7 @@ export function createCardSync(options: {
     const hex = hoveredHex ?? state.selectedHex;
     const position = hex === null ? null : drawnAt(hex);
     const point =
-      position && !isZooming()
-        ? map.layerPointToContainerPoint(exactLayerPoint(map, position))
-        : null;
+      position && !isZooming() ? exactContainerPoint(map, position) : null;
     const pinned = hex !== null && hex === state.selectedHex;
     const docked = pinned && detailCardDocked(cardArea);
     const maxHeight = cardArea.height - 2 * CARD_MARGIN;

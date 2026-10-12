@@ -2,15 +2,14 @@ import type { Map as LeafletMap, Marker } from 'leaflet';
 import { prefersReducedMotion } from '../dom';
 import type { LatLon } from '../places';
 import type { AtcState } from '../store';
-import { exactLayerPoint } from './motion-loop';
 import { altText, createTextMeasure } from './tag-measure';
+import { exactContainerPoint, type PixelRect } from './pixels';
 import {
   layoutTags,
   type TagItem,
   type TagObstacle,
   tagOrder,
   type TagPlacement,
-  type TagRect,
 } from './tag-layout';
 
 /** How often tags are laid out again while planes move, in ms. */
@@ -66,7 +65,7 @@ export function createTagSync(options: {
   >();
   /** The planes laid out last time. */
   let laidOut = new Set<string>();
-  let blocked: TagRect[] = [];
+  let blocked: PixelRect[] = [];
   let lastLayoutAt = -Infinity;
   let lastFocus = '';
 
@@ -76,9 +75,7 @@ export function createTagSync(options: {
   const pointOf = (hex: string) => {
     const position = drawnAt(hex);
 
-    return position
-      ? map.layerPointToContainerPoint(exactLayerPoint(map, position))
-      : null;
+    return position ? exactContainerPoint(map, position) : null;
   };
   const placementOf = (hex: string, plane: HTMLElement): TagPlacement =>
     fading.get(hex)?.target ??

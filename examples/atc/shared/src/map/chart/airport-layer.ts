@@ -3,7 +3,7 @@ import type { Map as LeafletMap, Marker, Point } from 'leaflet';
 import type { ChartAirport } from '../../chart';
 import { type Airport, FALLBACK_AIRPORTS } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
-import type { TagRect } from '../tag-obstacles';
+import type { PixelRect as TagRect } from '../pixels';
 import { airportRing, RING_BOX } from './airport-ring';
 import type { LabelSource } from './chart-labels';
 import { dataBlockLines, renderDataBlock } from './data-block';

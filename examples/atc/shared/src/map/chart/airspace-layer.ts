@@ -8,7 +8,7 @@ import {
   shelfLabel,
   shelfLabelAnchor,
 } from './airspace-labels';
-import type { TagRect } from '../tag-obstacles';
+import type { PixelRect as TagRect } from '../pixels';
 import type { LabelSource } from './chart-labels';
 import {
   estimateLabelSize,

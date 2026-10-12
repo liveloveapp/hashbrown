@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import type { TagRect } from '../tag-obstacles';
+import type { PixelRect as TagRect } from '../pixels';
 import { type LabelRequest, placeLabels } from './label-placer';
 
 const rect = (left: number, top: number, width = 20, height = 10): TagRect => ({

@@ -1,23 +1,10 @@
 import { type AircraftDetailView, fitDetailView } from '../detail-view';
-
-/** A point in map container pixels. */
-export interface CardPoint {
-  readonly x: number;
-  readonly y: number;
-}
+import { intersects, type PixelPoint, type PixelRect } from './pixels';
 
 /** A width and height in pixels. */
 export interface CardSize {
   readonly width: number;
   readonly height: number;
-}
-
-/** The edges of a box in viewport pixels, as `getBoundingClientRect` gives. */
-export interface CardRect {
-  readonly left: number;
-  readonly top: number;
-  readonly right: number;
-  readonly bottom: number;
 }
 
 /** Space between the plane's centre and the card. */
@@ -31,17 +18,12 @@ export const CARD_MARGIN = 8;
  * Something beside the map, such as the desktop chat panel, changes nothing.
  */
 export function visibleMapArea(
-  map: CardRect,
-  obstacle: CardRect | null,
+  map: PixelRect,
+  obstacle: PixelRect | null,
 ): CardSize {
   const width = map.right - map.left;
   const height = map.bottom - map.top;
-  const overlaps =
-    obstacle !== null &&
-    obstacle.left < map.right &&
-    obstacle.right > map.left &&
-    obstacle.top < map.bottom &&
-    obstacle.bottom > map.top;
+  const overlaps = obstacle !== null && intersects(obstacle, map);
 
   return {
     width,
@@ -52,7 +34,7 @@ export function visibleMapArea(
 }
 
 /** True when `point` is within `area`, so the plane is on screen. */
-export function isInsideArea(point: CardPoint, area: CardSize): boolean {
+export function isInsideArea(point: PixelPoint, area: CardSize): boolean {
   return (
     point.x >= 0 &&
     point.y >= 0 &&
@@ -68,10 +50,10 @@ export function isInsideArea(point: CardPoint, area: CardSize): boolean {
  * centred horizontally. Always clamped inside the map with an 8 px margin.
  */
 export function detailCardPosition(
-  point: CardPoint,
+  point: PixelPoint,
   card: CardSize,
   map: CardSize,
-): CardPoint {
+): PixelPoint {
   const clamp = (value: number, size: number, limit: number) =>
     Math.round(
       Math.max(CARD_MARGIN, Math.min(value, limit - size - CARD_MARGIN)),
@@ -150,7 +132,7 @@ export interface DetailCard {
   /** Hides the card, keeping its element for the next plane. */
   hide(): void;
   /** Places the card beside a plane drawn at `point` inside `area`, or docks it. */
-  place(point: CardPoint, area: CardSize): void;
+  place(point: PixelPoint, area: CardSize): void;
   /**
    * The pixels the card covers at the top of the map while it is open and
    * docked (with its margins), else 0. Reuses the size measured when it was

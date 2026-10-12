@@ -1,13 +1,12 @@
 import type { AtcState } from '../store';
+import { contains, intersects, type PixelRect, rectAt } from './pixels';
 import {
   createObstacleGrid,
-  intersects,
   PLANE_ICON,
   type TagObstacle,
-  type TagRect,
 } from './tag-obstacles';
 
-export type { TagObstacle, TagRect } from './tag-obstacles';
+export type { TagObstacle } from './tag-obstacles';
 
 /**
  * Where a plane's data tag sits beside its icon, or `hidden` when no side is
@@ -53,7 +52,8 @@ export interface TagItem {
  * border on each side.
  */
 export const TAG_HEIGHT = 20;
-const HALF = PLANE_ICON / 2;
+/** Half the plane icon's box, in pixels. */
+const ICON_HALF = PLANE_ICON / 2;
 /** From the icon's edge to a side tag (`left: 24px` on a 22 px icon). */
 const SIDE_GAP = 2;
 /** Space kept between two tags, in pixels. */
@@ -68,32 +68,23 @@ const TAG_GAP = 2;
 export function tagRect(
   item: Pick<TagItem, 'x' | 'y' | 'width'>,
   placement: TagPlacement,
-): TagRect {
+): PixelRect {
   const { x, y, width } = item;
-  const side = HALF + SIDE_GAP;
+  const side = ICON_HALF + SIDE_GAP;
   const [left, top] =
     placement === 'left'
       ? [x - side - width, y - TAG_HEIGHT / 2]
       : placement === 'above-right'
-        ? [x - HALF, y - side - TAG_HEIGHT]
+        ? [x - ICON_HALF, y - side - TAG_HEIGHT]
         : placement === 'below-right'
-          ? [x - HALF, y + side]
+          ? [x - ICON_HALF, y + side]
           : placement === 'above-left'
-            ? [x + HALF - width, y - side - TAG_HEIGHT]
+            ? [x + ICON_HALF - width, y - side - TAG_HEIGHT]
             : placement === 'below-left'
-              ? [x + HALF - width, y + side]
+              ? [x + ICON_HALF - width, y + side]
               : [x + side, y - TAG_HEIGHT / 2];
 
-  return { left, top, right: left + width, bottom: top + TAG_HEIGHT };
-}
-
-function inside(rect: TagRect, bounds: TagRect): boolean {
-  return (
-    rect.left >= bounds.left &&
-    rect.top >= bounds.top &&
-    rect.right <= bounds.right &&
-    rect.bottom <= bounds.bottom
-  );
+  return rectAt(left, top, width, TAG_HEIGHT);
 }
 
 /**
@@ -118,12 +109,12 @@ function inside(rect: TagRect, bounds: TagRect): boolean {
 export function layoutTags(input: {
   readonly items: readonly TagItem[];
   readonly planes: readonly TagObstacle[];
-  readonly bounds: TagRect;
-  readonly blocked?: readonly TagRect[];
+  readonly bounds: PixelRect;
+  readonly blocked?: readonly PixelRect[];
 }): Map<string, TagPlacement> {
   const { items, bounds, blocked = [] } = input;
   const coversPlane = createObstacleGrid(input.planes);
-  const placed: TagRect[] = [];
+  const placed: PixelRect[] = [];
   const result = new Map<string, TagPlacement>();
   const outside = (item: TagItem) =>
     item.x < bounds.left ||
@@ -147,7 +138,7 @@ export function layoutTags(input: {
       const rect = tagRect(item, placement);
 
       return (
-        inside(rect, bounds) &&
+        contains(bounds, rect) &&
         !blocked.some((block) => intersects(rect, block)) &&
         !coversPlane(rect, item.hex, true)
       );

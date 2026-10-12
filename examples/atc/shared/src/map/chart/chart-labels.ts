@@ -1,4 +1,4 @@
-import type { TagRect } from '../tag-obstacles';
+import type { PixelRect as TagRect } from '../pixels';
 import { type LabelRequest, placeLabels } from './label-placer';
 
 /** A chart layer whose labels are placed together with the others'. */

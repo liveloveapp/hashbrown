@@ -5,7 +5,7 @@ import type { Aircraft } from '../../aircraft';
 import type { ChartAirport, Runway, RunwayEnd } from '../../chart';
 import { FALLBACK_AIRPORTS } from '../../places';
 import { createAtcStore } from '../../store';
-import { intersects } from '../tag-obstacles';
+import { intersects } from '../pixels';
 import { createAirportLayer } from './airport-layer';
 import { placeChartLabels } from './chart-labels';
 

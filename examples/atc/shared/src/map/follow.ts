@@ -9,13 +9,7 @@ import {
   type FollowResume,
   RESUME_MS,
 } from './follow-pill';
-import { exactLayerPoint } from './motion-loop';
-
-/** A point in map container pixels. */
-export interface PixelPoint {
-  readonly x: number;
-  readonly y: number;
-}
+import { exactContainerPoint, type PixelPoint } from './pixels';
 
 /**
  * How far to pan, in whole pixels, to put a followed plane drawn at `point`
@@ -144,10 +138,10 @@ export function createFollowController(options: {
         panToFollowed(false);
       });
     }
-    const offset = followPanOffset(
-      map.layerPointToContainerPoint(exactLayerPoint(map, position)),
-      { x: map.getSize().x / 2, y },
-    );
+    const offset = followPanOffset(exactContainerPoint(map, position), {
+      x: map.getSize().x / 2,
+      y,
+    });
     if (offset === null) {
       return;
     }

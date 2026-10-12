@@ -3,7 +3,7 @@ import * as module from 'leaflet';
 import { expect, onTestFinished, test } from 'vitest';
 import type { AirspaceShelf, ChartAirport } from '../../chart';
 import { createAtcStore } from '../../store';
-import { intersects, type TagRect } from '../tag-obstacles';
+import { intersects, type PixelRect as TagRect } from '../pixels';
 import { createAirportLayer } from './airport-layer';
 import { shelfLabelAnchor } from './airspace-labels';
 import { createAirspaceLayer } from './airspace-layer';
