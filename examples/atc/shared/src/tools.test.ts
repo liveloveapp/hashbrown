@@ -1350,3 +1350,14 @@ test('whenAirspaceSettled gives up after the timeout', async () => {
 
   expect(store.getState().airspace.status).toBe('loading');
 });
+
+test('clearing the highlight and stopping a follow are for when the user asks', () => {
+  const { clearHighlight, stopFollowing } = ATC_TOOL_DEFINITIONS;
+
+  expect(clearHighlight.description).toBe(
+    'Remove the highlight so every aircraft looks the same again. Only when the user asks to clear the highlight or see all traffic; never at the end of an answer.',
+  );
+  expect(stopFollowing.description).toBe(
+    'Stop following an aircraft. Only when the user asks to stop following.',
+  );
+});

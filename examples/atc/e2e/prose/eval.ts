@@ -2,11 +2,13 @@
  * Live prose eval: asks each starter prompt several times through the real
  * app (the model's tools run in the browser, so it drives the page) and
  * reports prose that leaks rules, names components or tools, stops on a
- * colon or promises a tap the app doesn't have. It calls the real model, so
+ * colon or promises a tap the app doesn't have, and answers that show
+ * aircraft but leave none highlighted on the map. It calls the real model, so
  * it needs `OPENAI_API_KEY` and the dev servers (`npx nx serve atc-server`,
  * `npx nx serve atc-angular`), and it costs a little each run.
  *
  *   npx nx prose-eval atc-e2e -- --runs 8 --concurrency 3
+ *   npx nx prose-eval atc-e2e -- --runs 12 --only highest
  *
  * Exits 1 when any answer has an issue, and writes every answer to
  * `test-results/atc/prose-eval.json` for reading by eye.
@@ -16,11 +18,13 @@ import { type Browser, chromium } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
-import { type ProseIssue, proseIssues } from './prose-check';
+import { mapIssues, type ProseIssue, proseIssues } from './prose-check';
 
 interface Answer {
   readonly prompt: string;
   readonly prose: readonly string[];
+  /** The activity line's summary, such as "Searched traffic, highlighted 2 aircraft". */
+  readonly steps?: string;
   readonly issues: readonly ProseIssue[];
   readonly error?: string;
 }
@@ -31,6 +35,8 @@ const { values } = parseArgs({
     concurrency: { type: 'string', default: '3' },
     url: { type: 'string', default: 'http://127.0.0.1:4341/angular/' },
     out: { type: 'string', default: 'test-results/atc/prose-eval.json' },
+    /** Only the starters containing this text, such as "highest". */
+    only: { type: 'string', default: '' },
   },
 });
 
@@ -58,7 +64,34 @@ async function ask(browser: Browser, prompt: string): Promise<Answer> {
           .map((element) => (element as HTMLElement).innerText.trim())
           .filter(Boolean),
       );
-    return { prompt, prose, issues: proseIssues(prose) };
+    const steps = await page
+      .getByTestId('tool-summary')
+      .last()
+      .innerText()
+      .catch(() => '');
+    const map = await page.evaluate(() => ({
+      shown:
+        document.querySelectorAll(
+          '[data-testid="arrivals-row"], [data-testid="flight-card"]',
+        ).length +
+        document.querySelectorAll('[data-testid="aircraft-compare"]').length,
+      highlighted: document.querySelectorAll('.atc-plane.is-highlighted')
+        .length,
+    }));
+    return {
+      prompt,
+      prose,
+      steps,
+      issues: [
+        ...proseIssues(prose),
+        ...mapIssues({
+          ...map,
+          clearedUnasked:
+            /cleared the highlight/i.test(steps) &&
+            !/\b(clear|reset)\b/i.test(prompt),
+        }),
+      ],
+    };
   } catch (error) {
     return { prompt, prose: [], issues: [], error: String(error) };
   } finally {
@@ -68,8 +101,11 @@ async function ask(browser: Browser, prompt: string): Promise<Answer> {
 
 /** Asks every starter `runs` times, reports issues and sets the exit code. */
 async function main(): Promise<void> {
+  const prompts = STARTER_PROMPTS.filter((prompt) =>
+    prompt.toLowerCase().includes(values.only.toLowerCase()),
+  );
   const queue = Array.from({ length: Number(values.runs) }).flatMap(
-    () => STARTER_PROMPTS,
+    () => prompts,
   );
   const browser = await chromium.launch();
   const answers: Answer[] = [];
