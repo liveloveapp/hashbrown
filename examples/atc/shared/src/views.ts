@@ -9,12 +9,12 @@ import { airspaceOf, airspaceTypes } from './chart/airspace-query';
 import { distanceNm, etaMinutes, isApproaching } from './geo';
 import { aircraftTypeName, knownAirlineFor } from './names';
 import { airportByCode, chartAirportByCode } from './directory';
+import type { Route } from './routes';
 import {
   type AtcState,
   type FeedStatus,
   lookupAircraft,
   normalizeHex,
-  type Route,
 } from './store';
 
 /** What a FlightCard shows. */

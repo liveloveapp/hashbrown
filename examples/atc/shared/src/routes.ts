@@ -1,12 +1,24 @@
 import { isRecord } from './json';
-import type { Route, RouteAirport } from './store';
+import { normalizeCallsign } from './store';
+
+/** One stop on a scheduled route. */
+export interface RouteAirport {
+  readonly iata: string;
+  readonly name: string;
+  readonly city: string;
+}
+
+/** A scheduled route from public data; may be stale. */
+export interface Route {
+  readonly stops: readonly RouteAirport[];
+}
 
 // Fetched by the browser straight from adsb.lol (CORS allowed), so route
 // lookups do not touch our server; the user's IP is visible to adsb.lol.
 
 /** The adsb.lol route file URL for a callsign. */
 export function routeUrl(callsign: string): string {
-  const key = callsign.trim().toUpperCase();
+  const key = normalizeCallsign(callsign);
 
   return `https://vrs-standing-data.adsb.lol/routes/${key.slice(0, 2)}/${key}.json`;
 }

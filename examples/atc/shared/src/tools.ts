@@ -17,11 +17,12 @@ import {
 import { distanceNm } from './geo';
 import { airlineFor } from './names';
 import { type Airport, AREAS, lookupPlace } from './places';
+import type { Route } from './routes';
 import {
   type AtcState,
   type AtcStore,
+  normalizeCallsign,
   normalizeHex,
-  type Route,
   type ShownArea,
 } from './store';
 import { ATC_TOOL_DEFINITIONS, type AtcToolName } from './tool-definitions';
@@ -133,7 +134,7 @@ export function createAtcTools(context: AtcToolContext) {
     lookupRoute: {
       ...ATC_TOOL_DEFINITIONS.lookupRoute,
       handler: async ({ callsign }: ToolInput<'lookupRoute'>) => {
-        const key = callsign.trim().toUpperCase();
+        const key = normalizeCallsign(callsign);
         if (airlineFor(key) === null) {
           return {
             found: false as const,
