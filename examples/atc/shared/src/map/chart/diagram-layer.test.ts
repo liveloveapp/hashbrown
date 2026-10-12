@@ -64,8 +64,6 @@ function mount(zoom: number, airports: readonly ChartAirport[] = [krdm]) {
   const store = createAtcStore();
   const fetchFn = vi.fn(() => new Promise<Response>(() => undefined));
   const element = mapElement();
-  element.style.setProperty('--atc-chart-blue', '#111111');
-  element.style.setProperty('--atc-chart-magenta', '#222222');
   document.body.append(element);
   const map = L.map(element, {
     zoomAnimation: false,

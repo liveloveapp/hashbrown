@@ -1,7 +1,5 @@
 /** The chart colours as computed CSS values, for canvas or SVG strokes. */
 export interface ChartColours {
-  readonly blue: string;
-  readonly magenta: string;
   readonly pavement: string;
   readonly hotspot: string;
   readonly ink: string;
@@ -18,8 +16,6 @@ export function chartColours(element: HTMLElement): ChartColours {
     style.getPropertyValue(name).trim() || 'currentColor';
 
   return {
-    blue: read('--atc-chart-blue'),
-    magenta: read('--atc-chart-magenta'),
     pavement: read('--atc-diagram-pavement'),
     hotspot: read('--atc-diagram-hotspot'),
     ink: read('--atc-ink'),

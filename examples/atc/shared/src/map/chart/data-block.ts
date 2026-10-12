@@ -27,7 +27,7 @@ export function dataBlockLines(airport: ChartAirport, zoom: number): string[] {
 }
 
 /**
- * Builds a data block element with one span per line; when `ident` is true
+ * Builds a data block element with one span per line; when `identOnly` is true
  * (the regional ident-only block) the single span gets `is-ident`. Text goes
  * in through `textContent` only, so upstream names cannot inject markup.
  */
@@ -35,13 +35,13 @@ export function renderDataBlock(
   doc: Document,
   lines: readonly string[],
   tone: 'ink' | 'fallback',
-  ident = false,
+  identOnly = false,
 ): HTMLElement {
   const block = doc.createElement('div');
   block.className = `atc-apt-block is-${tone}`;
   for (const line of lines) {
     const span = doc.createElement('span');
-    if (ident && lines.length === 1) span.className = 'is-ident';
+    if (identOnly && lines.length === 1) span.className = 'is-ident';
     span.textContent = line;
     block.append(span);
   }

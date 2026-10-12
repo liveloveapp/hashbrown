@@ -154,7 +154,7 @@ export function createAirspaceLayer(options: {
   let pending = new Map<string, Pending>();
   let synced: {
     readonly airspace: AtcState['airspace'];
-    readonly on: boolean;
+    readonly layerOn: boolean;
     readonly highlighted: string | null;
   } | null = null;
 
@@ -402,14 +402,14 @@ export function createAirspaceLayer(options: {
       if (
         synced !== null &&
         synced.airspace === state.airspace &&
-        synced.on === state.layers.airspace &&
+        synced.layerOn === state.layers.airspace &&
         synced.highlighted === state.highlightedAirspace
       ) {
         return false;
       }
       synced = {
         airspace: state.airspace,
-        on: state.layers.airspace,
+        layerOn: state.layers.airspace,
         highlighted: state.highlightedAirspace,
       };
       redraw();

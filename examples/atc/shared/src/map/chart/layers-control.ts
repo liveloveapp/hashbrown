@@ -15,17 +15,17 @@ let nextPanelId = 0;
  * Adds the Layers pill to `map`: a button that opens a small panel with
  * Airports and Airspace checkboxes (`store.setLayers`) and the FAA cycle.
  * The checkboxes and their text follow the store; a limited chart reads
- * "Airports · limited data" and failed airspace "Airspace · unavailable". Enter or a click opens the panel, Escape closes it and returns
- * focus to the button. Clicks and scrolls inside never reach the map. Add it
- * after the zoom control: Leaflet stacks later bottom controls above.
+ * "Airports · limited data" and failed airspace "Airspace · unavailable".
+ * Enter or a click opens the panel, Escape closes it and returns focus to the
+ * button. Clicks and scrolls inside never reach the map. Add it after the
+ * zoom control: Leaflet stacks later bottom controls above.
  */
 export function createLayersControl(options: {
   L: typeof Leaflet;
   map: LeafletMap;
   store: AtcStore;
-  position?: 'bottomright';
 }): LayersControl {
-  const { L, map, store, position = 'bottomright' } = options;
+  const { L, map, store } = options;
   const doc = map.getContainer().ownerDocument;
   const make = <K extends keyof HTMLElementTagNameMap>(
     tag: K,
@@ -118,7 +118,7 @@ export function createLayersControl(options: {
   };
 
   const Control = L.Control.extend({ onAdd: () => container });
-  const control = new Control({ position });
+  const control = new Control({ position: 'bottomright' });
   control.addTo(map);
   render(store.getState());
   const unsubscribe = store.subscribe(() => render(store.getState()));
