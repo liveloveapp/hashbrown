@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { expect, test } from 'vitest';
 import type { ChartAirport } from '../../chart';
+import { testChartAirport } from '../../testing';
 import { dataBlockLines, renderDataBlock } from './data-block';
 
 const runway05 = {
@@ -14,53 +15,7 @@ const runway05 = {
   bearingDeg: 60,
 } as const;
 
-const base: ChartAirport = {
-  code: 'KRDM',
-  faa: 'RDM',
-  name: 'ROBERTS FLD/REDMOND MUNI',
-  city: 'REDMOND',
-  state: 'OR',
-  aliases: [],
-  lat: 44.25,
-  lon: -121.15,
-  elevationFt: 3082,
-  kind: 'airport',
-  towered: true,
-  towerPartTime: true,
-  frequencies: {
-    tower: '124.5',
-    atis: '119.025',
-    ctaf: '124.5',
-    unicom: '122.95',
-  },
-  weather: null,
-  lighting: 'limited',
-  fuel: true,
-  military: false,
-  rank: 0,
-  runways: [
-    {
-      id: '05/23',
-      lengthFt: 7038,
-      widthFt: 150,
-      surface: 'ASPH',
-      hard: true,
-      ends: null,
-      corners: null,
-      bearingDeg: 60,
-    },
-    {
-      id: '11/29',
-      lengthFt: 7006,
-      widthFt: 100,
-      surface: 'ASPH',
-      hard: true,
-      ends: null,
-      corners: null,
-      bearingDeg: 105,
-    },
-  ],
-};
+const base = testChartAirport();
 
 test('at zoom 9 and below only the ident shows', () => {
   const lines = dataBlockLines(base, 9);

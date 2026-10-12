@@ -1,24 +1,13 @@
 // @vitest-environment jsdom
-import * as module from 'leaflet';
 import { expect, onTestFinished, test, vi } from 'vitest';
-import type { Aircraft } from '../../aircraft';
 import type { AirspaceShelf } from '../../chart';
 import { createAtcStore } from '../../store';
+import { squareRing, testAircraft, testShelf } from '../../testing';
+import { leafletModule, mapElement } from '../testing';
 import { createAirspaceLayer } from './airspace-layer';
 import { placeChartLabels } from './chart-labels';
 
-const L = (module as unknown as { default?: typeof module }).default ?? module;
-
-type Ring = (readonly [number, number])[];
-
-/** A closed square ring around (lon, lat), `half` degrees each way. */
-const square = (lon: number, lat: number, half: number): Ring => [
-  [lon - half, lat - half],
-  [lon + half, lat - half],
-  [lon + half, lat + half],
-  [lon - half, lat + half],
-  [lon - half, lat - half],
-];
+const L = await leafletModule();
 
 /** A shelf centred on Redmond, `half` degrees each way. */
 const shelf = (
@@ -27,17 +16,16 @@ const shelf = (
   half = 0.05,
   lon = -121.15,
   lat = 44.2541,
-): AirspaceShelf => ({
-  id,
-  airport: id.split('-')[0] ?? id,
-  name: id,
-  floor: { ft: 0, ref: 'SFC' },
-  ceiling: { ft: 5600, exclusive: false },
-  partTime: false,
-  rings: [square(lon, lat, half)],
-  bbox: [lon - half, lat - half, lon + half, lat + half],
-  ...over,
-});
+): AirspaceShelf =>
+  testShelf({
+    id,
+    airport: id.split('-')[0] ?? id,
+    name: id,
+    floor: { ft: 0, ref: 'SFC' },
+    ceiling: { ft: 5600, exclusive: false },
+    rings: [squareRing(lon, lat, half)],
+    ...over,
+  });
 
 const shelves: AirspaceShelf[] = [
   shelf('KRDM-D-0', { class: 'D', type: 'D' }, 0.06),
@@ -69,31 +57,14 @@ const shelves: AirspaceShelf[] = [
   shelf('KFAR-D-0', { class: 'D', type: 'D' }, 0.05, -100, 30),
 ];
 
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'N352LL',
-  callsign: null,
-  registration: 'N352LL',
-  typeCode: 'C172',
-  category: null,
-  kind: 'single',
-  lat: 44.1,
-  lon: -121.2,
-  altitudeFt: 5000,
-  onGround: false,
-  groundSpeedKt: 110,
-  trackDeg: 90,
-  verticalRateFpm: 0,
-};
+const plane = testAircraft({ lat: 44.1, lon: -121.2 });
 
 /** A 400x300 map over Redmond with the airspace layer synced to a store. */
 function mount(zoom = 10) {
   const store = createAtcStore();
-  const element = document.createElement('div');
+  const element = mapElement();
   element.className = 'atc-map';
   document.body.append(element);
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
   const map = L.map(element, {
     zoomAnimation: false,
     fadeAnimation: false,

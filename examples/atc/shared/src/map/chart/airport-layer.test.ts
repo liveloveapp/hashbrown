@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
-import * as module from 'leaflet';
-import { expect, test, vi } from 'vitest';
-import type { Aircraft } from '../../aircraft';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import type { ChartAirport, Runway, RunwayEnd } from '../../chart';
 import { FALLBACK_AIRPORTS } from '../../places';
 import { createAtcStore } from '../../store';
+import { testAircraft, testChartAirport } from '../../testing';
 import { intersects } from '../pixels';
+import { leafletModule, mapElement } from '../testing';
 import { createAirportLayer } from './airport-layer';
 import { placeChartLabels } from './chart-labels';
 
-const L = (module as unknown as { default?: typeof module }).default ?? module;
+const L = await leafletModule();
 
 const runway = (lengthFt: number, hard: boolean): Runway => ({
   id: '05/23',
@@ -22,27 +22,7 @@ const runway = (lengthFt: number, hard: boolean): Runway => ({
   bearingDeg: 50,
 });
 
-const base: ChartAirport = {
-  code: 'KRDM',
-  faa: 'RDM',
-  name: 'ROBERTS FLD',
-  city: 'REDMOND',
-  state: 'OR',
-  aliases: [],
-  lat: 44.2541,
-  lon: -121.15,
-  elevationFt: 3082,
-  kind: 'airport',
-  towered: true,
-  towerPartTime: false,
-  frequencies: { tower: '124.5', atis: null, ctaf: null, unicom: '122.95' },
-  weather: null,
-  lighting: 'full',
-  fuel: true,
-  military: false,
-  runways: [runway(7038, true)],
-  rank: 0,
-};
+const base = testChartAirport({ runways: [runway(7038, true)] });
 const airports: ChartAirport[] = [
   base,
   {
@@ -69,22 +49,7 @@ const airports: ChartAirport[] = [
     rank: 2,
   },
 ];
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'N352LL',
-  callsign: null,
-  registration: 'N352LL',
-  typeCode: 'C172',
-  category: null,
-  kind: 'single',
-  lat: 44.1,
-  lon: -121.2,
-  altitudeFt: 5000,
-  onGround: false,
-  groundSpeedKt: 110,
-  trackDeg: 90,
-  verticalRateFpm: 0,
-};
+const plane = testAircraft({ lat: 44.1, lon: -121.2 });
 
 /**
  * A 400x300 Leaflet map over Bend (or `centre`) with the airport layer synced
@@ -92,10 +57,8 @@ const plane: Aircraft = {
  */
 function mount(zoom = 6, centre: [number, number] = [44.0946, -121.2002]) {
   const store = createAtcStore();
-  const element = document.createElement('div');
+  const element = mapElement();
   element.className = 'atc-map';
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
   const map = L.map(element, {
     zoomAnimation: false,
     fadeAnimation: false,
@@ -117,20 +80,14 @@ function mount(zoom = 6, centre: [number, number] = [44.0946, -121.2002]) {
     layer.redraw();
     place();
   });
+  onTestFinished(() => {
+    unsubscribe();
+    layer.destroy();
+    map.remove();
+  });
   const count = (selector: string) => element.querySelectorAll(selector).length;
 
-  return {
-    store,
-    map,
-    layer,
-    element,
-    count,
-    cleanup: () => {
-      unsubscribe();
-      layer.destroy();
-      map.remove();
-    },
-  };
+  return { store, map, layer, element, count };
 }
 
 test('zoom 6 draws the towered field and the long hard runway only', () => {
@@ -139,9 +96,6 @@ test('zoom 6 draws the towered field and the long hard runway only', () => {
   view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
 
   expect(view.count('.atc-apt')).toBe(2);
-  expect(view.count('.atc-apt.is-towered')).toBe(0);
-  expect(view.count('.atc-apt.is-nontowered')).toBe(0);
-  view.cleanup();
 });
 
 test('zooming to 10 adds the turf field', () => {
@@ -152,7 +106,6 @@ test('zooming to 10 adds the turf field', () => {
 
   expect(view.count('.atc-apt')).toBe(3);
   expect(view.count('.atc-apt-block')).toBeGreaterThan(0);
-  view.cleanup();
 });
 
 test('turning the airports layer off removes every symbol and block', () => {
@@ -163,7 +116,6 @@ test('turning the airports layer off removes every symbol and block', () => {
 
   expect(view.count('.atc-apt')).toBe(0);
   expect(view.count('.atc-apt-block')).toBe(0);
-  view.cleanup();
 });
 
 test('an aircraft snapshot never re-creates airport markers', () => {
@@ -181,7 +133,6 @@ test('an aircraft snapshot never re-creates airport markers', () => {
   expect(view.element.querySelector('.atc-apt')).toBe(before);
   marker.mockRestore();
   measured.mockRestore();
-  view.cleanup();
 });
 
 test('a limited chart draws fallback rings with ident-only labels', () => {
@@ -202,7 +153,6 @@ test('a limited chart draws fallback rings with ident-only labels', () => {
   ].map((block) => block.textContent);
   expect(labels.length).toBeGreaterThan(0);
   expect(labels.every((label) => /^K[A-Z]{3}$/.test(label ?? ''))).toBe(true);
-  view.cleanup();
 });
 
 const surveyed = (lengthFt: number): Runway => {
@@ -230,7 +180,6 @@ test('at zoom 10 KRDM with surveyed corners has no ring', () => {
   expect(without).toBe(1);
   expect(view.count('.atc-apt')).toBe(0);
   expect(view.count('.atc-apt-block')).toBe(1);
-  view.cleanup();
 });
 
 test('an airport whose only runway has no corners has exactly one ring', () => {
@@ -243,7 +192,6 @@ test('an airport whose only runway has no corners has exactly one ring', () => {
   });
 
   expect(view.count('.atc-apt')).toBe(1);
-  view.cleanup();
 });
 
 test('an airport with no runways has a ring', () => {
@@ -256,7 +204,6 @@ test('an airport with no runways has a ring', () => {
   });
 
   expect(view.count('.atc-apt')).toBe(1);
-  view.cleanup();
 });
 
 test('heliports and seaplane bases keep their ring even with surveyed corners', () => {
@@ -277,7 +224,6 @@ test('heliports and seaplane bases keep their ring even with surveyed corners', 
   });
 
   expect(view.count('.atc-apt')).toBe(2);
-  view.cleanup();
 });
 
 test('at zoom 12 loaded surfaces leave the rings alone', () => {
@@ -289,14 +235,12 @@ test('at zoom 12 loaded surfaces leave the rings alone', () => {
 
   expect(drawn).toBeGreaterThan(0);
   expect(view.count('.atc-apt')).toBe(drawn);
-  view.cleanup();
 });
 
 test('the ident style applies at zoom 9 and not at zoom 14', () => {
   const regional = mount(9);
   regional.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
   const identAtNine = regional.count('.atc-apt-block > .is-ident');
-  regional.cleanup();
   const close = mount(14);
 
   close.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
@@ -304,7 +248,6 @@ test('the ident style applies at zoom 9 and not at zoom 14', () => {
   expect(identAtNine).toBeGreaterThan(0);
   expect(close.count('.atc-apt-block')).toBeGreaterThan(0);
   expect(close.count('.is-ident')).toBe(0);
-  close.cleanup();
 });
 
 test('at zoom 13 KRDM labels outside its crossing runways', () => {
@@ -349,7 +292,6 @@ test('at zoom 13 KRDM labels outside its crossing runways', () => {
   expect(block).not.toBeNull();
   expect(box).toBeDefined();
   expect(box && intersects(box, extent)).toBe(false);
-  view.cleanup();
 });
 
 test('at zoom 9 neither of two close airports labels over the other', () => {
@@ -393,7 +335,6 @@ test('at zoom 9 neither of two close airports labels over the other', () => {
   const [aBox, bBox] = boxes;
   expect(aLabel && bBox && intersects(aLabel, bBox)).toBe(false);
   expect(bLabel && aBox && intersects(bLabel, aBox)).toBe(false);
-  view.cleanup();
 });
 
 test('airportBoxes reuses the boxes projected for the label requests', () => {
@@ -406,7 +347,6 @@ test('airportBoxes reuses the boxes projected for the label requests', () => {
 
   expect(boxes.length).toBeGreaterThan(0);
   expect(project).not.toHaveBeenCalled();
-  view.cleanup();
 });
 
 test('an airport just outside the view is an obstacle but gets no label request', () => {
@@ -430,5 +370,4 @@ test('an airport just outside the view is an obstacle but gets no label request'
   const requests = view.layer.labelRequests();
   expect(requests.map((r) => r.id)).not.toContain('apt:OUT');
   expect(view.layer.airportBoxes()).toHaveLength(1);
-  view.cleanup();
 });

@@ -7,36 +7,11 @@ import {
 } from './directory';
 import { FALLBACK_AIRPORTS, lookupPlace } from './places';
 import { type AtcState, INITIAL_STATE } from './store';
+import { testChartAirport } from './testing';
 
-function chartAirport(overrides: Partial<ChartAirport>): ChartAirport {
-  return {
-    code: 'KRDM',
-    faa: 'RDM',
-    name: 'ROBERTS FLD/REDMOND MUNI',
-    city: 'REDMOND',
-    state: 'OR',
-    aliases: [],
-    lat: 44.254,
-    lon: -121.15,
-    elevationFt: 3082,
-    kind: 'airport',
-    towered: true,
-    towerPartTime: true,
-    frequencies: {
-      tower: '124.5',
-      atis: '119.025',
-      ctaf: '124.5',
-      unicom: '122.95',
-    },
-    weather: null,
-    lighting: 'limited',
-    fuel: true,
-    military: false,
-    runways: [],
-    rank: 0,
-    ...overrides,
-  };
-}
+/** KRDM with no aliases or runways, unless `overrides` adds them. */
+const chartAirport = (overrides: Partial<ChartAirport>) =>
+  testChartAirport({ aliases: [], runways: [], weather: null, ...overrides });
 
 const ready: AtcState = {
   ...INITIAL_STATE,

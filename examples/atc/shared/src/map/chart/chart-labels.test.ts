@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { expect, onTestFinished, test } from 'vitest';
-import type { AirspaceShelf, ChartAirport } from '../../chart';
 import { createAtcStore } from '../../store';
+import { squareRing, testChartAirport, testShelf } from '../../testing';
 import { intersects, rectAround, rectAt } from '../pixels';
 import { leafletModule, mapElement, stubCanvas } from '../testing';
 import { shelfLabelAnchor } from './airspace-labels';
@@ -13,7 +13,7 @@ const L = await leafletModule();
 const half = 0.06;
 const lon = -121.15;
 const lat = 44.2541;
-const dShelf: AirspaceShelf = {
+const dShelf = testShelf({
   id: 'KRDM-D-0',
   airport: 'KRDM',
   name: 'REDMOND',
@@ -21,41 +21,21 @@ const dShelf: AirspaceShelf = {
   type: 'D',
   floor: { ft: 0, ref: 'SFC' },
   ceiling: { ft: 5600, exclusive: false },
-  partTime: false,
-  rings: [
-    [
-      [lon - half, lat - half],
-      [lon + half, lat - half],
-      [lon + half, lat + half],
-      [lon - half, lat + half],
-      [lon - half, lat - half],
-    ],
-  ],
-  bbox: [lon - half, lat - half, lon + half, lat + half],
-};
+  rings: [squareRing(lon, lat, half)],
+});
 const labelAt = shelfLabelAnchor(dShelf);
 /** A ring-only field right on the D box's label point. */
-const field: ChartAirport = {
+const field = testChartAirport({
   code: 'S33',
   faa: 'S33',
   name: 'NEAR FIELD',
-  city: 'REDMOND',
-  state: 'OR',
-  aliases: [],
   lat: labelAt.lat,
   lon: labelAt.lon,
   elevationFt: 3000,
-  kind: 'airport',
   towered: false,
-  towerPartTime: false,
   frequencies: { tower: null, atis: null, ctaf: '122.8', unicom: null },
-  weather: null,
-  lighting: 'none',
-  fuel: false,
-  military: false,
   runways: [],
-  rank: 0,
-};
+});
 
 /**
  * A 400x300 map on the D label point with the chart layers mounted as the
