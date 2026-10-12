@@ -5,8 +5,10 @@ import {
   focusOpensSheet,
   hoverless,
   isEmptyChat,
+  isFocusShortcut,
   isNearBottom,
   isTyping,
+  keyboardInset,
 } from './dom';
 
 test('isTyping is true inside inputs, textareas, selects and editable regions', () => {
@@ -90,4 +92,59 @@ test('hoverless is true only where the primary pointer cannot hover (touch scree
   vi.unstubAllGlobals();
 
   expect([touch, mouse]).toEqual([true, false]);
+});
+
+test('isFocusShortcut is true for a bare slash outside a text field', () => {
+  document.body.innerHTML = '<input id="field"><button id="button"></button>';
+  const button = document.getElementById('button');
+  const field = document.getElementById('field');
+  const key = (target: Element | null, init: KeyboardEventInit = {}) => {
+    const event = new KeyboardEvent('keydown', {
+      key: '/',
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    });
+    target?.dispatchEvent(event);
+
+    return event;
+  };
+  const handled = key(button);
+  handled.preventDefault();
+
+  const results = [
+    key(button),
+    key(document.body),
+    key(field),
+    key(button, { key: 'a' }),
+    key(button, { ctrlKey: true }),
+    key(button, { metaKey: true }),
+    key(button, { altKey: true }),
+    handled,
+  ].map(isFocusShortcut);
+
+  expect(results).toEqual([
+    true,
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
+});
+
+test('keyboardInset is the height the keyboard covers, in whole pixels', () => {
+  const open = keyboardInset({ height: 400.4, offsetTop: 0 }, 700);
+  const scrolled = keyboardInset({ height: 400, offsetTop: 50 }, 700);
+  const closed = keyboardInset({ height: 700, offsetTop: 0 }, 700);
+  const zoomed = keyboardInset({ height: 500, offsetTop: 300 }, 700);
+
+  expect([open, scrolled, closed, zoomed]).toEqual([
+    '300px',
+    '250px',
+    '0px',
+    '0px',
+  ]);
 });

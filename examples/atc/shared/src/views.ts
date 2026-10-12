@@ -220,6 +220,16 @@ export function feedNotice(status: FeedStatus): string | null {
   }
 }
 
+/** A streamed string prop from a fallback's partial props, or '' until it is a string. */
+export function partialText(
+  partialProps: Readonly<Record<string, unknown>> | undefined,
+  key: string,
+): string {
+  const value = partialProps?.[key];
+
+  return typeof value === 'string' ? value : '';
+}
+
 /** A user message's text, or an empty string for non-text content. */
 export function messageText(content: unknown): string {
   return typeof content === 'string' ? content : '';

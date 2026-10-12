@@ -9,6 +9,7 @@ import {
   feedNotice,
   flightCardView,
   messageText,
+  partialText,
   routeText,
 } from './views';
 
@@ -446,4 +447,17 @@ test('airportCardView has no airspace line without shelves or when airspace fail
 
   expect(none).toMatchObject({ airspace: null });
   expect(failed).toMatchObject({ airspace: null });
+});
+
+test('partialText reads a streamed string prop, or empty until it is one', () => {
+  const props = { note: 'Climbing out of Redmond', count: 3 };
+
+  const results = [
+    partialText(props, 'note'),
+    partialText(props, 'count'),
+    partialText(props, 'missing'),
+    partialText(undefined, 'note'),
+  ];
+
+  expect(results).toEqual(['Climbing out of Redmond', '', '', '']);
 });
