@@ -5,8 +5,7 @@ const repoRoot = resolve(__dirname, '../../..');
 
 export default defineConfig({
   testDir: resolve(__dirname, 'src'),
-  // One worker: several tests time map animations and 3 s snapshots, which
-  // drift when browsers compete for the CPU.
+  // Serial: tests wait on map animations and 3 s snapshots.
   fullyParallel: false,
   workers: 1,
   retries: 0,
