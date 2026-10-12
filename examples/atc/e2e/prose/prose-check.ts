@@ -1,8 +1,9 @@
 /**
- * Checks for the assistant's prose: words a user should never see, such as
- * a rule echoed back ("Two short sentences."), a component or tool name, an
- * answer that stops on a colon, or a tap that promises something the app
- * does not do. Used by the live prose eval (`prose/eval.ts`).
+ * Checks for the assistant's answers: words a user should never see, such
+ * as a rule echoed back ("Two short sentences."), a component or tool name,
+ * an answer that stops on a colon, or a tap that promises something the app
+ * does not do; and a map left without the highlight the answer needs. Used
+ * by the live prose eval (`prose/eval.ts`).
  */
 
 /** What kind of problem a paragraph has. */
@@ -47,4 +48,39 @@ export function proseIssues(paragraphs: readonly string[]): ProseIssue[] {
       text,
     })),
   );
+}
+
+/** What the map showed when an answer finished. */
+export interface MapState {
+  /** Aircraft the answer's components show (board rows, cards, compares). */
+  readonly shown: number;
+  /** Aircraft highlighted on the map. */
+  readonly highlighted: number;
+  /** The model cleared the highlight although the question didn't ask. */
+  readonly clearedUnasked: boolean;
+}
+
+/**
+ * Problems with the map an answer leaves behind: the model cleared its own
+ * highlight unasked, or the chat shows aircraft but the map highlights none
+ * of them.
+ */
+export function mapIssues({
+  shown,
+  highlighted,
+  clearedUnasked,
+}: MapState): ProseIssue[] {
+  if (clearedUnasked) {
+    return [
+      { kind: 'cleared-highlight', text: 'Cleared the highlight unasked' },
+    ];
+  }
+  return shown > 0 && highlighted === 0
+    ? [
+        {
+          kind: 'cleared-highlight',
+          text: `Showed ${shown} aircraft, highlighted none on the map`,
+        },
+      ]
+    : [];
 }

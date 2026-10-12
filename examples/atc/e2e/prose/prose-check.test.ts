@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { proseIssues } from './prose-check';
+import { mapIssues, proseIssues } from './prose-check';
 
 test('a plain answer has no issues', () => {
   const prose = ['N484SJ is the highest, and UAL45 is the fastest.'];
@@ -69,4 +69,35 @@ test('a tool field name in the prose is reported as an internal name', () => {
   const issues = proseIssues(prose).map((issue) => issue.kind);
 
   expect(issues).toEqual(['internal-name']);
+});
+
+test('an answer that shows aircraft but leaves none highlighted is reported', () => {
+  const cleared = { shown: 2, highlighted: 0, clearedUnasked: false };
+  const kept = { shown: 2, highlighted: 2, clearedUnasked: false };
+  const noAircraft = { shown: 0, highlighted: 0, clearedUnasked: false };
+
+  const issues = [cleared, kept, noAircraft].map(mapIssues);
+
+  expect(issues).toEqual([
+    [
+      {
+        kind: 'cleared-highlight',
+        text: 'Showed 2 aircraft, highlighted none on the map',
+      },
+    ],
+    [],
+    [],
+  ]);
+});
+
+test('clearing the highlight without being asked is reported once', () => {
+  const proseOnly = { shown: 0, highlighted: 0, clearedUnasked: true };
+  const withCards = { shown: 2, highlighted: 0, clearedUnasked: true };
+
+  const issues = [proseOnly, withCards].map(mapIssues);
+
+  expect(issues).toEqual([
+    [{ kind: 'cleared-highlight', text: 'Cleared the highlight unasked' }],
+    [{ kind: 'cleared-highlight', text: 'Cleared the highlight unasked' }],
+  ]);
 });
