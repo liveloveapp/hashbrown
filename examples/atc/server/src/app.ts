@@ -4,6 +4,7 @@ import { createAircraftHandler } from './aircraft-handler';
 import { createChartAirportsHandler } from './chart-airports-handler';
 import { createChartAirspaceHandler } from './chart-airspace-handler';
 import { createChartSurfacesHandler } from './chart-surfaces-handler';
+import type { NodeHandler } from './http';
 import { createRunHandler, type RunHandlerOptions } from './run-handler';
 
 /**
@@ -12,36 +13,24 @@ import { createRunHandler, type RunHandlerOptions } from './run-handler';
  */
 export function createApp(options: {
   run: RunHandlerOptions;
-  aircraft?: { fetchFn?: typeof fetch; now?: () => number };
-  chart?: { fetchFn?: typeof fetch; now?: () => number };
   statics?: readonly { path: string; dir: string }[];
 }): Express {
   const app = express();
-  const run = createRunHandler(options.run);
-  const aircraft = createAircraftHandler(options.aircraft);
-  app.all(
-    '/api/run',
-    (req, res) => void run(req, res).catch(() => res.destroy()),
-  );
-  app.all(
-    '/api/aircraft',
-    (req, res) => void aircraft(req, res).catch(() => res.destroy()),
-  );
-  const chartAirports = createChartAirportsHandler(options.chart);
-  app.all(
-    '/api/chart/airports',
-    (req, res) => void chartAirports(req, res).catch(() => res.destroy()),
-  );
-  const chartSurfaces = createChartSurfacesHandler(options.chart);
-  app.all(
-    '/api/chart/surfaces',
-    (req, res) => void chartSurfaces(req, res).catch(() => res.destroy()),
-  );
-  const chartAirspace = createChartAirspaceHandler(options.chart);
-  app.all(
-    '/api/chart/airspace',
-    (req, res) => void chartAirspace(req, res).catch(() => res.destroy()),
-  );
+  const routes: [string, NodeHandler][] = [
+    ['/api/run', createRunHandler(options.run)],
+    ['/api/aircraft', createAircraftHandler()],
+    ['/api/chart/airports', createChartAirportsHandler()],
+    ['/api/chart/surfaces', createChartSurfacesHandler()],
+    ['/api/chart/airspace', createChartAirspaceHandler()],
+  ];
+  for (const [path, handler] of routes) {
+    // A handler that fails after streaming began cannot send a 500; drop the
+    // connection instead.
+    app.all(
+      path,
+      (req, res) => void handler(req, res).catch(() => res.destroy()),
+    );
+  }
   for (const { path, dir } of options.statics ?? []) {
     app.use(path, express.static(dir));
     app.get(`${path}/*`, (_req, res) => res.sendFile(join(dir, 'index.html')));
