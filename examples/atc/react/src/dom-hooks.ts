@@ -1,4 +1,9 @@
-import { addsUserMessage, isEmptyChat, isNearBottom } from '@atc/shared';
+import {
+  addsUserMessage,
+  isEmptyChat,
+  isNearBottom,
+  keyboardInset,
+} from '@atc/shared';
 import { type RefObject, useEffect, useRef } from 'react';
 
 /**
@@ -59,7 +64,7 @@ export function useKeyboardInset(ref: RefObject<HTMLElement | null>): void {
     const update = () =>
       element.style.setProperty(
         '--atc-kb',
-        `${Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))}px`,
+        keyboardInset(viewport, window.innerHeight),
       );
     viewport.addEventListener('resize', update);
     viewport.addEventListener('scroll', update);

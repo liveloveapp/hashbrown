@@ -1,4 +1,4 @@
-import { flightCardView, plainLabel } from '@atc/shared';
+import { flightCardView, partialText, plainLabel } from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
 import { useAtcState, useAtcStore } from '../store';
 import { CardSkeleton } from './card-skeleton';
@@ -50,14 +50,12 @@ export function AircraftCompare({ takeaway, hexes }: AircraftCompareProps) {
 export function AircraftCompareFallback({
   partialProps,
 }: ComponentFallbackProps) {
-  const takeaway = partialProps?.['takeaway'];
+  const takeaway = plainLabel(partialText(partialProps, 'takeaway'));
 
   return (
     <section className="atc-card" data-testid="aircraft-compare-fallback">
       <CardSkeleton />
-      {typeof takeaway === 'string' && takeaway ? (
-        <p className="atc-card-note">{plainLabel(takeaway)}</p>
-      ) : null}
+      {takeaway ? <p className="atc-card-note">{takeaway}</p> : null}
     </section>
   );
 }

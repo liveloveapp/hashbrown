@@ -1,4 +1,4 @@
-import { isTyping } from '@atc/shared';
+import { isFocusShortcut } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -75,13 +75,7 @@ export class Composer {
   }
 
   protected focusOnSlash(event: KeyboardEvent): void {
-    const modified = event.ctrlKey || event.metaKey || event.altKey;
-    if (
-      event.key !== '/' ||
-      modified ||
-      event.defaultPrevented ||
-      isTyping(event.target)
-    ) {
+    if (!isFocusShortcut(event)) {
       return;
     }
     event.preventDefault();

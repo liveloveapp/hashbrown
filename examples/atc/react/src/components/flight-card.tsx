@@ -1,4 +1,4 @@
-import { flightCardView } from '@atc/shared';
+import { flightCardView, partialText } from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
 import { useEffect } from 'react';
 import { useAtcState, useAtcStore } from '../store';
@@ -83,14 +83,12 @@ export function FlightCard({ note, hex }: FlightCardProps) {
 
 /** Shown until the full aircraft ID has arrived. */
 export function FlightCardFallback({ partialProps }: ComponentFallbackProps) {
-  const note = partialProps?.['note'];
+  const note = partialText(partialProps, 'note');
 
   return (
     <article className="atc-card" data-testid="flight-card-fallback">
       <CardSkeleton />
-      {typeof note === 'string' && note ? (
-        <p className="atc-card-note">{note}</p>
-      ) : null}
+      {note ? <p className="atc-card-note">{note}</p> : null}
     </article>
   );
 }

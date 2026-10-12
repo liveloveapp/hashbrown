@@ -1,4 +1,4 @@
-import { airportCardView } from '@atc/shared';
+import { airportCardView, partialText } from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
 import { Fragment } from 'react';
 import { useAtcState, useAtcStore } from '../store';
@@ -77,14 +77,12 @@ export function AirportCard({ note, airport }: AirportCardProps) {
 
 /** Shown until the full airport code has arrived. */
 export function AirportCardFallback({ partialProps }: ComponentFallbackProps) {
-  const note = partialProps?.['note'];
+  const note = partialText(partialProps, 'note');
 
   return (
     <article className="atc-card" data-testid="airport-card-fallback">
       <CardSkeleton label="Identifying airport…" />
-      {typeof note === 'string' && note ? (
-        <p className="atc-card-note">{note}</p>
-      ) : null}
+      {note ? <p className="atc-card-note">{note}</p> : null}
     </article>
   );
 }

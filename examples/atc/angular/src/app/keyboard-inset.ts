@@ -1,3 +1,4 @@
+import { keyboardInset } from '@atc/shared';
 import { DestroyRef, Directive, inject, signal } from '@angular/core';
 
 /**
@@ -18,9 +19,7 @@ export class KeyboardInset {
       return;
     }
     const update = () =>
-      this.inset.set(
-        `${Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))}px`,
-      );
+      this.inset.set(keyboardInset(viewport, window.innerHeight));
     viewport.addEventListener('resize', update);
     viewport.addEventListener('scroll', update);
     update();

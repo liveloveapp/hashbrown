@@ -2,6 +2,7 @@ import {
   type AirportCode,
   arrivalsRows,
   boardShowsEta,
+  partialText,
   plainLabel,
 } from '@atc/shared';
 import type { ComponentFallbackProps } from '@hashbrownai/core';
@@ -89,13 +90,11 @@ export function ArrivalsBoard({ title, airport, hexes }: ArrivalsBoardProps) {
 export function ArrivalsBoardFallback({
   partialProps,
 }: ComponentFallbackProps) {
-  const title = partialProps?.['title'];
+  const title = plainLabel(partialText(partialProps, 'title'));
 
   return (
     <section className="atc-card" data-testid="arrivals-board-fallback">
-      {typeof title === 'string' && title ? (
-        <h3 className="atc-card-title">{plainLabel(title)}</h3>
-      ) : null}
+      {title ? <h3 className="atc-card-title">{title}</h3> : null}
       <CardSkeleton />
     </section>
   );

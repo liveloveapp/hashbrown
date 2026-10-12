@@ -1,4 +1,4 @@
-import { flightCardView } from '@atc/shared';
+import { flightCardView, partialText } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -111,9 +111,7 @@ export class FlightCard implements OnInit {
 })
 export class FlightCardFallback {
   readonly partialProps = input<Record<string, JsonResolvedValue>>({});
-  protected readonly note = computed(() => {
-    const note = this.partialProps()['note'];
-
-    return typeof note === 'string' ? note : '';
-  });
+  protected readonly note = computed(() =>
+    partialText(this.partialProps(), 'note'),
+  );
 }
