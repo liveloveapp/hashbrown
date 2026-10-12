@@ -205,13 +205,12 @@ export function findAircraft(
   if (input.approaching && approachAirport === null) {
     return [];
   }
-  const near = input.near ?? null;
+  const { near, inAirspace } = input;
   const nearAirport: Airport | null =
     near === null ? null : lookupPlace(near.airport, directory);
   if (near !== null && nearAirport === null) {
     return [];
   }
-  const inAirspace = input.inAirspace ?? null;
   const airspaceAirport: Airport | null =
     inAirspace === null ? null : lookupPlace(inAirspace.airport, directory);
   if (inAirspace !== null && airspaceAirport === null) {
@@ -235,7 +234,7 @@ export function findAircraft(
         (a.typeCode ?? '').toLowerCase() === type ||
         aircraftTypeName(a.typeCode).toLowerCase().includes(type),
     )
-    .filter((a) => !input.kind || a.kind === input.kind)
+    .filter((a) => input.kind === null || a.kind === input.kind)
     .filter(
       (a) =>
         input.minAltitudeFt === null ||
