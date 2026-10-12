@@ -11,9 +11,9 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join, resolve } from 'node:path';
-import { CHART_AIRPORTS, chartSurfaces } from '../src/chart-fixtures';
-import { scenario } from '../src/traffic-fixtures';
 import { scriptAtcModel } from '../src/model';
+import { stubAtcFeeds } from '../src/stubs';
+import { scenario } from '../src/traffic-fixtures';
 import { renderDirector, STAGE } from './director';
 import {
   duration,
@@ -43,8 +43,9 @@ import { demoFrame } from './traffic';
 /*
  * Records the atc demo video and the home page loop, then encodes them with
  * ffmpeg into dist/examples/atc/demo/. Deterministic and keyless: aimock
- * scripts every model turn (the e2e suite's script) and synthetic frames
- * stand in for adsb.lol. Needs a built atc-angular and ffmpeg.
+ * scripts every model turn (the e2e suite's script), synthetic frames stand
+ * in for adsb.lol and the chart fixtures for the FAA data; map tiles stay
+ * live. Needs a built atc-angular and ffmpeg.
  *
  * Runs headed, off screen: headless Chrome's screencast ignores the device
  * scale factor, and the 2x frames are what keep text crisp after scaling.
@@ -113,30 +114,6 @@ async function capture(
       return timeline;
     },
   };
-}
-
-/**
- * Serves synthetic traffic and the e2e chart fixtures, blocks route lookups,
- * and leaves map tiles live.
- */
-async function stubFeeds(context: BrowserContext): Promise<void> {
-  await context.route('**/api/chart/airports', (route) =>
-    route.fulfill({ json: CHART_AIRPORTS }),
-  );
-  await context.route('**/api/chart/surfaces**', (route) =>
-    route.fulfill({
-      json: chartSurfaces(
-        new URL(route.request().url()).searchParams.get('airport') ?? '',
-      ),
-    }),
-  );
-  let next = 0;
-  await context.route('**/api/aircraft**', (route) =>
-    route.fulfill({ json: demoFrame(next++) }),
-  );
-  await context.route('https://vrs-standing-data.adsb.lol/**', (route) =>
-    route.fulfill({ status: 404, body: '' }),
-  );
 }
 
 /** Waits until the map in `app` has drawn and its tiles have loaded. */
@@ -380,7 +357,7 @@ async function main(): Promise<void> {
       deviceScaleFactor: 2,
       reducedMotion: 'no-preference',
     });
-    await stubFeeds(context);
+    await stubAtcFeeds(context, { frames: demoFrame, blockTiles: false });
     const encoder = await context.newPage();
     const only = process.argv.includes('--loop-only')
       ? 'loop'
