@@ -1,12 +1,13 @@
 import {
-  type Aircraft,
   ATC_SOURCE_URL,
   createAtcStore,
   SELECTED_PROMPT,
   STARTER_PROMPTS,
   transcriptItems,
 } from '@atc/shared';
+import { testAircraft } from '@atc/shared/testing';
 import { TestBed } from '@angular/core/testing';
+import { expect, test } from 'vitest';
 import { Composer } from './composer';
 import { EmptyState } from './empty-state';
 import { PanelHeader } from './panel-header';
@@ -14,22 +15,7 @@ import { ToolChips } from './tool-chips';
 import { Transcript } from './transcript';
 import { ATC_STORE } from './store';
 
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
-  typeCode: 'B39M',
-  category: null,
-  kind: 'jet',
-  lat: 47.5716,
-  lon: -122.3088,
-  altitudeFt: 5000,
-  onGround: false,
-  groundSpeedKt: 240,
-  trackDeg: 180,
-  verticalRateFpm: -800,
-};
+const plane = testAircraft();
 
 function setup() {
   const store = createAtcStore();
@@ -114,6 +100,84 @@ test('the empty state offers the selected-plane question first while a plane is 
   ]);
 });
 
+function composer() {
+  setup();
+  const fixture = TestBed.createComponent(Composer);
+  const sent: string[] = [];
+  fixture.componentInstance.send.subscribe((message) => sent.push(message));
+  fixture.detectChanges();
+  document.body.appendChild(fixture.nativeElement);
+  const input = (fixture.nativeElement as HTMLElement).querySelector(
+    'input',
+  ) as HTMLInputElement;
+
+  return { fixture, input, sent };
+}
+
+function slash(target: EventTarget): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key: '/',
+    bubbles: true,
+    cancelable: true,
+  });
+  target.dispatchEvent(event);
+
+  return event;
+}
+
+test('pressing / anywhere focuses the composer', () => {
+  const { fixture, input } = composer();
+  (document.activeElement as HTMLElement | null)?.blur();
+
+  const event = slash(document.body);
+
+  expect(document.activeElement).toBe(input);
+  expect(event.defaultPrevented).toBe(true);
+  fixture.destroy();
+});
+
+test('pressing / inside an input, textarea or contenteditable types a slash', () => {
+  const { fixture, input } = composer();
+  const other = document.createElement('input');
+  const area = document.createElement('textarea');
+  const editable = document.createElement('div');
+  editable.setAttribute('contenteditable', 'true');
+  const inner = document.createElement('span');
+  editable.appendChild(inner);
+  document.body.append(other, area, editable);
+
+  const events = [other, area, inner, input].map((target) => {
+    if (target instanceof HTMLElement) {
+      target.focus();
+    }
+    return slash(target).defaultPrevented;
+  });
+
+  expect(events).toEqual([false, false, false, false]);
+  expect(document.activeElement).toBe(input);
+  other.remove();
+  area.remove();
+  editable.remove();
+  fixture.destroy();
+});
+
+test('submitting sends the trimmed draft, clears the input and keeps focus', () => {
+  const { fixture, input, sent } = composer();
+  input.focus();
+
+  input.value = '  Show me Seattle  ';
+  input.dispatchEvent(new Event('input'));
+  (fixture.nativeElement as HTMLElement)
+    .querySelector('form')
+    ?.dispatchEvent(new Event('submit', { cancelable: true }));
+  fixture.detectChanges();
+
+  expect(sent).toEqual(['Show me Seattle']);
+  expect(input.value).toBe('');
+  expect(document.activeElement).toBe(input);
+  fixture.destroy();
+});
+
 test('a running step shows as one shimmering line, then folds into a summary that expands to every step', () => {
   setup();
   const fixture = TestBed.createComponent(ToolChips);
@@ -171,82 +235,6 @@ test('a running step shows as one shimmering line, then folds into a summary tha
   ]);
 });
 
-function composer() {
-  setup();
-  const fixture = TestBed.createComponent(Composer);
-  const sent: string[] = [];
-  fixture.componentInstance.send.subscribe((message) => sent.push(message));
-  fixture.detectChanges();
-  document.body.appendChild(fixture.nativeElement);
-  const input = (fixture.nativeElement as HTMLElement).querySelector(
-    'input',
-  ) as HTMLInputElement;
-
-  return { fixture, input, sent };
-}
-
-function slash(target: EventTarget): KeyboardEvent {
-  const event = new KeyboardEvent('keydown', {
-    key: '/',
-    bubbles: true,
-    cancelable: true,
-  });
-  target.dispatchEvent(event);
-
-  return event;
-}
-
-test('pressing / anywhere focuses the composer', () => {
-  const { fixture, input } = composer();
-  (document.activeElement as HTMLElement | null)?.blur();
-
-  const event = slash(document.body);
-
-  expect(document.activeElement).toBe(input);
-  expect(event.defaultPrevented).toBe(true);
-  fixture.destroy();
-});
-
-test('pressing / inside an input, textarea or contenteditable types a slash', () => {
-  const { fixture, input } = composer();
-  const other = document.createElement('input');
-  const area = document.createElement('textarea');
-  const editable = document.createElement('div');
-  editable.setAttribute('contenteditable', 'true');
-  const inner = document.createElement('span');
-  editable.appendChild(inner);
-  document.body.append(other, area, editable);
-
-  const events = [other, area, inner, input].map((target) => {
-    if (target instanceof HTMLElement) target.focus();
-    return slash(target).defaultPrevented;
-  });
-
-  expect(events).toEqual([false, false, false, false]);
-  expect(document.activeElement).toBe(input);
-  other.remove();
-  area.remove();
-  editable.remove();
-  fixture.destroy();
-});
-
-test('Enter sends the trimmed draft, clears the input and keeps focus', () => {
-  const { fixture, input, sent } = composer();
-  input.focus();
-
-  input.value = '  Show me Seattle  ';
-  input.dispatchEvent(new Event('input'));
-  (fixture.nativeElement as HTMLElement)
-    .querySelector('form')
-    ?.dispatchEvent(new Event('submit', { cancelable: true }));
-  fixture.detectChanges();
-
-  expect(sent).toEqual(['Show me Seattle']);
-  expect(input.value).toBe('');
-  expect(document.activeElement).toBe(input);
-  fixture.destroy();
-});
-
 test('consecutive tool calls fold into one activity line in a polite live region', () => {
   setup();
   const fixture = TestBed.createComponent(Transcript);
@@ -283,15 +271,6 @@ test('consecutive tool calls fold into one activity line in a polite live region
   expect(status?.closest('[aria-busy]')).toBeNull();
   expect(status?.classList.contains('atc-visually-hidden')).toBe(true);
   expect(text(status)).toBe('Clearing the highlight…');
-});
-
-test('the composer has no footnote under it', () => {
-  const { fixture } = composer();
-
-  const link = (fixture.nativeElement as HTMLElement).querySelector('a');
-
-  expect(link).toBeNull();
-  fixture.destroy();
 });
 
 test('a thinking line shimmers after the question until something else shows work', () => {

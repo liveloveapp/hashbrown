@@ -11,7 +11,6 @@ export default defineConfig({
   // Resolve @atc/* and @hashbrownai/* from tsconfig paths to their source.
   resolve: { tsconfigPaths: true },
   test: {
-    globals: true,
     environment: 'jsdom',
     setupFiles: ['src/test-setup.ts'],
     include: ['src/**/*.spec.ts'],

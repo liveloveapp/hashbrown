@@ -22,7 +22,9 @@ function Sheet({
     <section
       data-snap={sheet.snap}
       onFocus={(event) => {
-        if (focusOpensSheet(event.target)) move({ type: 'focus' });
+        if (focusOpensSheet(event.target)) {
+          move({ type: 'focus' });
+        }
       }}
     >
       <SheetHandle expanded={sheetExpanded(sheet)} onMove={move} />
@@ -56,9 +58,9 @@ test('the sheet handle is a button that reports and toggles aria-expanded', () =
   const { button } = sheet();
 
   const before = button.getAttribute('aria-expanded');
-  const label = button.getAttribute('aria-label');
   act(() => button.click());
   const opened = button.getAttribute('aria-expanded');
+  const label = button.getAttribute('aria-label');
   act(() => button.click());
 
   expect([before, opened, button.getAttribute('aria-expanded')]).toEqual([
@@ -66,7 +68,8 @@ test('the sheet handle is a button that reports and toggles aria-expanded', () =
     'true',
     'false',
   ]);
-  expect(label).toBe('Expand chat');
+  expect(label).toBe('Collapse chat');
+  expect(button.getAttribute('aria-label')).toBe('Expand chat');
   expect(button.getAttribute('aria-controls')).toBe('atc-chat-sheet');
 });
 
@@ -114,7 +117,7 @@ test('focusing the handle does not open the sheet, so one tap opens and the next
   expect(opened).toEqual([true, false]);
 });
 
-test('focusing the composer opens the sheet', () => {
+test('focusing the composer opens the sheet fully', () => {
   const { input, expanded } = sheet();
 
   act(() => input.focus());
@@ -130,7 +133,9 @@ function ComposerSheet() {
     <section
       data-snap={sheet.snap}
       onFocus={(event) => {
-        if (focusOpensSheet(event.target)) move({ type: 'focus' });
+        if (focusOpensSheet(event.target)) {
+          move({ type: 'focus' });
+        }
       }}
     >
       <Composer onSend={() => move({ type: 'send' })} />
@@ -138,8 +143,15 @@ function ComposerSheet() {
   );
 }
 
-test('tapping Send lowers the sheet to half, though the composer takes focus back', () => {
+function composerSheet() {
+  cleanup();
   const { container } = render(<ComposerSheet />);
+
+  return container;
+}
+
+test('tapping Send lowers the sheet to half, though the composer takes focus back', () => {
+  const container = composerSheet();
   const field = container.querySelector('input') as HTMLInputElement;
   const send = container.querySelector('.atc-send') as HTMLButtonElement;
   act(() => field.focus());
@@ -153,5 +165,4 @@ test('tapping Send lowers the sheet to half, though the composer takes focus bac
     'half',
   );
   expect(document.activeElement).toBe(field);
-  cleanup();
 });

@@ -1,6 +1,8 @@
-import { type Aircraft, type ChartAirport, createAtcStore } from '@atc/shared';
+import { createAtcStore } from '@atc/shared';
+import { testAircraft, testChartAirport } from '@atc/shared/testing';
 import type { Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { expect, test } from 'vitest';
 import {
   AircraftCompare,
   AircraftCompareFallback,
@@ -13,70 +15,15 @@ import { AirportCard, AirportCardFallback } from './components/airport-card';
 import { FlightCard, FlightCardFallback } from './components/flight-card';
 import { ATC_STORE } from './store';
 
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
+const plane = testAircraft({
   typeCode: 'B39M',
-  category: null,
-  kind: 'jet',
   lat: 47.5716,
   lon: -122.3088,
-  altitudeFt: 5000,
-  onGround: false,
   groundSpeedKt: 240,
   trackDeg: 180,
   verticalRateFpm: -800,
-};
-
-const krdm: ChartAirport = {
-  code: 'KRDM',
-  faa: 'RDM',
-  name: 'Roberts Field',
-  city: 'Redmond',
-  state: 'OR',
-  aliases: [],
-  lat: 44.2541,
-  lon: -121.15,
-  elevationFt: 3082,
-  kind: 'airport',
-  towered: true,
-  towerPartTime: true,
-  frequencies: {
-    tower: '124.5',
-    atis: '119.025',
-    ctaf: '124.5',
-    unicom: '122.95',
-  },
-  weather: null,
-  lighting: 'full',
-  fuel: true,
-  military: false,
-  runways: [
-    {
-      id: '05/23',
-      lengthFt: 7038,
-      widthFt: 150,
-      surface: 'ASPH',
-      hard: true,
-      ends: null,
-      corners: null,
-      bearingDeg: null,
-    },
-    {
-      id: '11/29',
-      lengthFt: 7006,
-      widthFt: 100,
-      surface: 'ASPH',
-      hard: true,
-      ends: null,
-      corners: null,
-      bearingDeg: null,
-    },
-  ],
-  rank: 0,
-};
+});
+const krdm = testChartAirport();
 
 function setup() {
   const store = createAtcStore();
@@ -261,7 +208,7 @@ test('the arrivals board hides ETA unless an aircraft is approaching its airport
   ]);
 });
 
-test('the arrivals board title has no dashes', () => {
+test('the arrivals board title turns a spaced dash into a comma', () => {
   setup();
   const fixture = TestBed.createComponent(ArrivalsBoard);
 
@@ -276,7 +223,7 @@ test('the arrivals board title has no dashes', () => {
   );
 });
 
-test('the compare takeaway has no dashes', () => {
+test('the compare takeaway turns a spaced dash into a comma', () => {
   setup();
   const fixture = TestBed.createComponent(AircraftCompare);
 
@@ -290,17 +237,24 @@ test('the compare takeaway has no dashes', () => {
   expect(note?.textContent).toBe('Same jet, different speeds');
 });
 
-test('the compare card shows each aircraft and unknown IDs', () => {
+test('the compare card waits for its IDs, then shows each aircraft', () => {
   setup();
-  const fixture = TestBed.createComponent(AircraftCompare);
+  const fallback = TestBed.createComponent(AircraftCompareFallback);
 
+  fallback.componentRef.setInput('partialProps', { takeaway: 'The 737' });
+  fallback.detectChanges();
+  const fixture = TestBed.createComponent(AircraftCompare);
   fixture.componentRef.setInput('takeaway', 'Same jet.');
   fixture.componentRef.setInput('hexes', ['aaaaaa', 'ffffff']);
   fixture.detectChanges();
 
+  const waiting = (fallback.nativeElement as HTMLElement).querySelector(
+    '[data-testid="aircraft-compare-fallback"]',
+  )?.textContent;
   const text = (fixture.nativeElement as HTMLElement).querySelector(
     '[data-testid="aircraft-compare"]',
   )?.textContent;
+  expect(waiting).toContain('The 737');
   expect(text).toContain('UAL100');
   expect(text).toContain('Unknown aircraft');
 });
@@ -365,7 +319,7 @@ test('an airport card shows the title, badge, tower frequency and runway', () =>
   const element = fixture.nativeElement as HTMLElement;
   const badge = element.querySelector('.atc-airport-badge');
   expect(element.querySelector('.atc-card-title')?.textContent).toContain(
-    'Roberts Field (RDM)',
+    'ROBERTS FLD/REDMOND MUNI (RDM)',
   );
   expect(badge?.textContent?.trim()).toBe('Towered');
   expect(badge?.className).toBe('atc-airport-badge');

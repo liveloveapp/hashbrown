@@ -7,6 +7,7 @@ import {
 } from '@atc/shared';
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { expect, test } from 'vitest';
 import { Composer } from './composer';
 import { SheetHandle } from './sheet-handle';
 
@@ -26,7 +27,7 @@ function pointer(type: string, clientY: number): Event {
     </section>
   `,
 })
-class SheetHost {
+class Sheet {
   readonly sheet = signal(INITIAL_SHEET);
   readonly expanded = computed(() => sheetExpanded(this.sheet()));
   move(event: SheetEvent): void {
@@ -39,8 +40,8 @@ class SheetHost {
   }
 }
 
-function handle() {
-  const fixture = TestBed.createComponent(SheetHost);
+function sheet() {
+  const fixture = TestBed.createComponent(Sheet);
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
   const button = element.querySelector('button') as HTMLButtonElement;
@@ -53,7 +54,7 @@ function handle() {
 }
 
 test('the sheet handle is a button that reports and toggles aria-expanded', () => {
-  const { fixture, button } = handle();
+  const { fixture, button } = sheet();
 
   const before = button.getAttribute('aria-expanded');
   button.click();
@@ -74,7 +75,7 @@ test('the sheet handle is a button that reports and toggles aria-expanded', () =
 });
 
 test('dragging the handle up moves the sheet one snap, without a second toggle from the click', () => {
-  const { button, snap } = handle();
+  const { button, snap } = sheet();
 
   button.dispatchEvent(pointer('pointerdown', 700));
   button.dispatchEvent(pointer('pointerup', 600));
@@ -89,7 +90,7 @@ test('dragging the handle up moves the sheet one snap, without a second toggle f
 });
 
 test('dragging the handle down lowers an open sheet one snap', () => {
-  const { fixture, button, snap } = handle();
+  const { fixture, button, snap } = sheet();
   fixture.componentInstance.sheet.set({ snap: 'full', held: true });
 
   button.dispatchEvent(pointer('pointerdown', 300));
@@ -100,7 +101,7 @@ test('dragging the handle down lowers an open sheet one snap', () => {
 });
 
 test('focusing the handle does not open the sheet, so one tap opens and the next closes', () => {
-  const { element, button, snap } = handle();
+  const { element, button, snap } = sheet();
   document.body.append(element);
   const opened: string[] = [];
 
@@ -117,7 +118,7 @@ test('focusing the handle does not open the sheet, so one tap opens and the next
 });
 
 test('focusing the composer opens the sheet fully', () => {
-  const { element, snap } = handle();
+  const { element, snap } = sheet();
   document.body.append(element);
 
   element.querySelector('input')?.focus();

@@ -1,79 +1,28 @@
-import { type Aircraft, type ChartAirport, createAtcStore } from '@atc/shared';
+import { createAtcStore } from '@atc/shared';
+import { testAircraft, testChartAirport } from '@atc/shared/testing';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import {
   AircraftCompare,
   AircraftCompareFallback,
 } from './components/aircraft-compare';
-import { ArrivalsBoard } from './components/arrivals-board';
+import {
+  ArrivalsBoard,
+  ArrivalsBoardFallback,
+} from './components/arrivals-board';
 import { AirportCard, AirportCardFallback } from './components/airport-card';
 import { FlightCard, FlightCardFallback } from './components/flight-card';
 import { AtcStoreProvider } from './store';
 
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
+const plane = testAircraft({
   typeCode: 'B39M',
-  category: null,
-  kind: 'jet',
   lat: 47.5716,
   lon: -122.3088,
-  altitudeFt: 5000,
-  onGround: false,
   groundSpeedKt: 240,
   trackDeg: 180,
   verticalRateFpm: -800,
-};
-
-const krdm: ChartAirport = {
-  code: 'KRDM',
-  faa: 'RDM',
-  name: 'Roberts Field',
-  city: 'Redmond',
-  state: 'OR',
-  aliases: [],
-  lat: 44.2541,
-  lon: -121.15,
-  elevationFt: 3082,
-  kind: 'airport',
-  towered: true,
-  towerPartTime: true,
-  frequencies: {
-    tower: '124.5',
-    atis: '119.025',
-    ctaf: '124.5',
-    unicom: '122.95',
-  },
-  weather: null,
-  lighting: 'full',
-  fuel: true,
-  military: false,
-  runways: [
-    {
-      id: '05/23',
-      lengthFt: 7038,
-      widthFt: 150,
-      surface: 'ASPH',
-      hard: true,
-      ends: null,
-      corners: null,
-      bearingDeg: null,
-    },
-    {
-      id: '11/29',
-      lengthFt: 7006,
-      widthFt: 100,
-      surface: 'ASPH',
-      hard: true,
-      ends: null,
-      corners: null,
-      bearingDeg: null,
-    },
-  ],
-  rank: 0,
-};
+});
+const krdm = testChartAirport();
 
 function setup() {
   cleanup();
@@ -84,7 +33,7 @@ function setup() {
 }
 
 test('the fallback shows the streaming note while the ID is incomplete', () => {
-  cleanup();
+  setup();
 
   render(
     <FlightCardFallback
@@ -98,6 +47,28 @@ test('the fallback shows the streaming note while the ID is incomplete', () => {
   );
   expect(screen.getByText('Identifying aircraft…')).toBeVisible();
   expect(screen.queryByTestId('flight-card')).toBeNull();
+});
+
+test('every fallback shows a quiet identifying line and two skeleton bars', () => {
+  setup();
+  const { container } = render(
+    <>
+      <FlightCardFallback tag="FlightCard" partialProps={{}} />
+      <ArrivalsBoardFallback tag="ArrivalsBoard" partialProps={{}} />
+      <AircraftCompareFallback tag="AircraftCompare" partialProps={{}} />
+    </>,
+  );
+
+  const views = [...container.querySelectorAll('.atc-card')].map((element) => ({
+    line: element.querySelector('.atc-card-muted')?.textContent?.trim(),
+    bars: element.querySelectorAll('.atc-skeleton-bar').length,
+  }));
+
+  expect(views).toEqual([
+    { line: 'Identifying aircraft…', bars: 2 },
+    { line: 'Identifying aircraft…', bars: 2 },
+    { line: 'Identifying aircraft…', bars: 2 },
+  ]);
 });
 
 test('a flight card updates live and freezes when the aircraft leaves', () => {
@@ -228,7 +199,7 @@ test('the arrivals board hides ETA unless an aircraft is approaching its airport
   ]);
 });
 
-test('the arrivals board title has no dashes', () => {
+test('the arrivals board title turns a spaced dash into a comma', () => {
   const store = setup();
 
   render(
@@ -246,7 +217,7 @@ test('the arrivals board title has no dashes', () => {
   );
 });
 
-test('the compare takeaway has no dashes', () => {
+test('the compare takeaway turns a spaced dash into a comma', () => {
   const store = setup();
 
   render(
@@ -343,7 +314,7 @@ test('an airport card shows the title, badge, tower frequency and runway', () =>
   );
 
   const badge = container.querySelector('.atc-airport-badge');
-  expect(screen.getByText('Roberts Field (RDM)')).toBeVisible();
+  expect(screen.getByText('ROBERTS FLD/REDMOND MUNI (RDM)')).toBeVisible();
   expect(badge).toHaveTextContent('Towered');
   expect(badge?.className).toBe('atc-airport-badge');
   expect(container.querySelector('dd')?.textContent).toBe('124.5★');
@@ -366,18 +337,20 @@ test('an airport card shows its airspace line only when it has airspace', () => 
     store.setAirspace({
       cycle: '2610',
       effective: '2026-10-08',
-      shelves: [{
-      id: 'KRDM-D-0',
-      airport: 'KRDM',
-      name: 'REDMOND CLASS D',
-      class: 'D' as const,
-      type: 'D' as const,
-      floor: { ft: 0, ref: 'SFC' as const },
-      ceiling: { ft: 6000, exclusive: false },
-      partTime: true,
-      rings: [],
-      bbox: [-121.3, 44.1, -121, 44.4] as const,
-    }],
+      shelves: [
+        {
+          id: 'KRDM-D-0',
+          airport: 'KRDM',
+          name: 'REDMOND CLASS D',
+          class: 'D' as const,
+          type: 'D' as const,
+          floor: { ft: 0, ref: 'SFC' as const },
+          ceiling: { ft: 6000, exclusive: false },
+          partTime: true,
+          rings: [],
+          bbox: [-121.3, 44.1, -121, 44.4] as const,
+        },
+      ],
     }),
   );
 
@@ -415,7 +388,7 @@ test('an airport card for an unknown code says so', () => {
 });
 
 test('the airport fallback identifies the airport', () => {
-  cleanup();
+  setup();
 
   render(<AirportCardFallback tag="AirportCard" partialProps={{}} />);
 
