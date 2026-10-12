@@ -37,11 +37,12 @@ const RECENT_FRAME_MS = 100;
 
 /**
  * Creates the animation loop (see `airspace-map.ts` for how planes move).
- * One `requestAnimationFrame` loop draws every moving plane in the same
- * frame at its exact sub-pixel position (`translate3d`, via
- * `L.DomUtil.setPosition`) and heading, without reading layout. Leaflet's
- * markers keep hit-testing and events; their own latitude and longitude are
- * only synced (rounded) when Leaflet needs them
+ * Each plane's next position and heading come from {@link nextMotion}. One
+ * `requestAnimationFrame` loop draws every moving plane in the same frame at
+ * its exact sub-pixel position (`translate3d`, via `L.DomUtil.setPosition`)
+ * and heading, without reading layout. Leaflet's markers keep hit-testing
+ * and events; their own latitude and longitude are only synced (rounded)
+ * when Leaflet needs them
  * ({@link MotionLoop.syncMarkers}). `onFrame` runs after markers are drawn
  * on each frame, with the frame's time (the map uses it to keep a followed
  * plane centred, the detail card beside its plane and the data tags apart).

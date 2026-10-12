@@ -124,10 +124,10 @@ function fontNames(source: string): string[] {
 /**
  * The one allowed gradient: a `linear-gradient` inside the rule for exactly
  * `.atc-shimmer`, the loading shimmer on the assistant's working text: a sweep
- * across text needs a gradient clipped to it. Only a rule whose whole selector is `.atc-shimmer`
- * (at the start of the source or after another rule or block opens) is
- * exempt; a selector list or descendant selector that includes it, any other
- * selector, or a shadow inside that rule still fails.
+ * across text needs a gradient clipped to it. Only a rule whose whole
+ * selector is `.atc-shimmer` (at the start of the source or after another
+ * rule or block opens) is exempt; a selector list or descendant selector that
+ * includes it, any other selector, or a shadow inside that rule still fails.
  */
 function allowShimmerGradient(source: string): string {
   return source.replace(/(^|[{}])\s*\.atc-shimmer\s*\{[^}]*\}/g, (rule) =>
