@@ -1,11 +1,14 @@
 import type { Aircraft } from '../aircraft';
 import type { LatLon } from '../places';
-import type { AirspaceShelf, AirspaceType } from './types';
+import {
+  AIRSPACE_TYPES,
+  type AirspaceShelf,
+  type AirspaceType,
+  type Ring,
+} from './types';
 
 /** Class A begins here; a shelf with no ceiling stops below it. */
 export const CLASS_A_FLOOR_FT = 18000;
-
-type Ring = readonly (readonly [number, number])[];
 
 function inRing(ring: Ring, lon: number, lat: number): boolean {
   let inside = false;
@@ -108,13 +111,11 @@ export function airspaceOf(
   );
 }
 
-const TYPE_ORDER: readonly AirspaceType[] = ['B', 'C', 'D', 'E2', 'E3', 'E4'];
-
 /** The distinct shelf types in `shelves`, ordered B, C, D, E2, E3, E4. */
 export function airspaceTypes(
   shelves: readonly AirspaceShelf[],
 ): AirspaceType[] {
-  return TYPE_ORDER.filter((type) =>
+  return AIRSPACE_TYPES.filter((type) =>
     shelves.some((shelf) => shelf.type === type),
   );
 }

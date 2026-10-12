@@ -5,19 +5,23 @@ import type {
   LayerGroup,
   Map as LeafletMap,
 } from 'leaflet';
-import type {
-  ChartAirport,
-  Runway,
-  RunwayEnd,
-  SurfaceFeature,
-  Surfaces,
+import {
+  type ChartAirport,
+  FT_TO_M,
+  loadSurfaces,
+  metresPerPixel,
+  type Ring,
+  ringCentroid,
+  type Runway,
+  type RunwayEnd,
+  type SurfaceFeature,
+  type Surfaces,
 } from '../../chart';
-import { loadSurfaces } from '../../chart/chart-feed';
-import { FT_TO_M, metresPerPixel } from '../../chart/runway-geometry';
 import type { LatLon } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
 import { type ChartColours, chartColours } from './chart-colours';
 import { visibleAirports } from './declutter';
+import { toLatLng } from './leaflet-coords';
 
 /** From this zoom airports also draw their surfaces (taxiways, aprons, holds, hot spots). */
 export const DIAGRAM_ZOOM = 12;
@@ -71,27 +75,16 @@ export function runwayDrawing(
   return { kind: 'polygon', corners: runway.corners };
 }
 
-/** [lon, lat] (GeoJSON order) to a Leaflet position. */
-const toLatLng = ([lon, lat]: readonly [number, number]): [number, number] => [
-  lat,
-  lon,
-];
-
 const along = (a: LatLon, b: LatLon, t: number): [number, number] => [
   a.lat + (b.lat - a.lat) * t,
   a.lon + (b.lon - a.lon) * t,
 ];
 
 /** The average of a polygon's outer ring vertices, as a Leaflet position. */
-function vertexAverage(
-  rings: readonly (readonly (readonly [number, number])[])[],
-): [number, number] | null {
-  const ring = rings[0] ?? [];
-  if (ring.length === 0) return null;
-  const lon = ring.reduce((sum, [x]) => sum + x, 0) / ring.length;
-  const lat = ring.reduce((sum, [, y]) => sum + y, 0) / ring.length;
+function vertexAverage(rings: readonly Ring[]): [number, number] | null {
+  const centre = ringCentroid(rings[0] ?? []);
 
-  return [lat, lon];
+  return centre === null ? null : [centre.lat, centre.lon];
 }
 
 /** A label candidate for one taxiway ref: where, and how long its segment is. */
@@ -114,9 +107,9 @@ export function taxiwayLabelSpots(
     const best = spots.get(ref);
     if (!best || spot.length > best.length) spots.set(ref, spot);
   };
-  const segments = (points: readonly (readonly [number, number])[]) =>
+  const segments = (points: Ring) =>
     points.slice(1).map((b, i) => {
-      const a = points[i] as readonly [number, number];
+      const a = points[i];
       return {
         at: [(a[1] + b[1]) / 2, (a[0] + b[0]) / 2] as [number, number],
         // Degrees of longitude shrink with latitude; this only ranks segments.

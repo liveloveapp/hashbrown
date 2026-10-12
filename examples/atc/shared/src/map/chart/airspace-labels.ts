@@ -1,4 +1,9 @@
-import { type AirspaceShelf, pointInShelf } from '../../chart';
+import {
+  type AirspaceShelf,
+  pointInShelf,
+  type Ring,
+  ringCentroid,
+} from '../../chart';
 import type { LatLon } from '../../places';
 
 /** A shelf's altitude label, as the sectional prints it. */
@@ -49,9 +54,7 @@ export function shelfLabel(shelf: AirspaceShelf): ShelfLabel | null {
 }
 
 /** A ring's vertices without the closing repeat of the first. */
-function openRing(
-  ring: readonly (readonly [number, number])[],
-): readonly (readonly [number, number])[] {
+function openRing(ring: Ring): Ring {
   const first = ring[0];
   const last = ring[ring.length - 1];
   return ring.length > 1 &&
@@ -72,8 +75,8 @@ function widestStretch(shelf: AirspaceShelf, lat: number): LatLon | null {
   const crossings: number[] = [];
   for (const ring of shelf.rings) {
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const [xi, yi] = ring[i] ?? [0, 0];
-      const [xj, yj] = ring[j] ?? [0, 0];
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
       if (yi > lat !== yj > lat) {
         crossings.push(xi + ((lat - yi) * (xj - xi)) / (yj - yi));
       }
@@ -83,8 +86,8 @@ function widestStretch(shelf: AirspaceShelf, lat: number): LatLon | null {
   let best: LatLon | null = null;
   let width = 0;
   for (let k = 0; k + 1 < sorted.length; k += 2) {
-    const west = sorted[k] ?? 0;
-    const east = sorted[k + 1] ?? 0;
+    const west = sorted[k];
+    const east = sorted[k + 1];
     if (east - west > width) {
       width = east - west;
       best = { lat, lon: (west + east) / 2 };
@@ -104,12 +107,8 @@ export function shelfLabelPoint(shelf: AirspaceShelf): LatLon {
   const [west, south, east, north] = shelf.bbox;
   const centre: LatLon = { lat: (south + north) / 2, lon: (west + east) / 2 };
   if (pointInShelf(shelf, centre)) return centre;
-  const outer = openRing(shelf.rings[0] ?? []);
-  if (outer.length === 0) return centre;
-  const average: LatLon = {
-    lat: outer.reduce((sum, [, lat]) => sum + lat, 0) / outer.length,
-    lon: outer.reduce((sum, [lon]) => sum + lon, 0) / outer.length,
-  };
+  const average = ringCentroid(openRing(shelf.rings[0] ?? []));
+  if (average === null) return centre;
   if (pointInShelf(shelf, average)) return average;
   return (
     widestStretch(shelf, centre.lat) ??

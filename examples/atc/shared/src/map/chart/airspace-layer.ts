@@ -1,6 +1,6 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap, Marker, Point, Polygon, SVG } from 'leaflet';
-import { airspaceOf, type AirspaceShelf } from '../../chart';
+import { airspaceOf, type AirspaceShelf, type AirspaceType } from '../../chart';
 import type { LatLon } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
 import { type PixelRect, rectAround } from '../pixels';
@@ -15,6 +15,7 @@ import {
   LABEL_PRIORITY,
   type LabelRequest,
 } from './label-placer';
+import { toLatLng } from './leaflet-coords';
 
 /** How far beyond the view (as a fraction of it) shelves are still drawn. */
 const NEAR_PAD = 0.5;
@@ -25,7 +26,7 @@ const LABEL_ZOOM = 9;
  * so a D ring drawn on the same outline as its E2 area shows blue, as on the
  * chart.
  */
-const PAINT_ORDER: Record<string, number> = { B: 1, C: 1, D: 2 };
+const PAINT_ORDER: Partial<Record<AirspaceType, number>> = { B: 1, C: 1, D: 2 };
 /**
  * Where a label may sit, best first, as pixel offsets from its anchor
  * point: centred on it, then below, above, right and left.
@@ -38,7 +39,11 @@ const LABEL_OFFSETS: readonly (readonly [number, number])[] = [
   [-24, 0],
 ];
 /** Label priority: B over C over D. */
-const LABEL_ORDER: Record<string, number> = { B: 0, C: 1, D: 2 };
+const LABEL_ORDER: Partial<Record<AirspaceType, number>> = {
+  B: 0,
+  C: 1,
+  D: 2,
+};
 /**
  * The chart's Class D corner brackets, each side broken in the middle. Fixed
  * literals only; the box stretches to its digits.
@@ -82,11 +87,9 @@ export interface AirspaceLayer extends LabelSource {
   destroy(): void;
 }
 
-/** A shelf's rings as Leaflet positions: `[lon, lat]` becomes `[lat, lon]`. */
+/** A shelf's rings as Leaflet positions. */
 const latLngs = (shelf: AirspaceShelf): [number, number][][] =>
-  shelf.rings.map((ring) =>
-    ring.map(([lon, lat]): [number, number] => [lat, lon]),
-  );
+  shelf.rings.map((ring) => ring.map(toLatLng));
 
 /** The bbox's area in square degrees, to pick an airport's largest D shelf. */
 const bboxArea = ({ bbox: [w, s, e, n] }: AirspaceShelf): number =>
@@ -201,7 +204,7 @@ export function createAirspaceLayer(options: {
 
   /** A label's icon, drawn `LABEL_OFFSETS[offset]` from its anchor. */
   const labelIcon = (entry: Entry, offset: number) => {
-    const [dx, dy] = LABEL_OFFSETS[offset] ?? [0, 0];
+    const [dx, dy] = LABEL_OFFSETS[offset];
     return L.divIcon({
       html: '',
       className: `atc-as-label is-${entry.shelf.type.toLowerCase()}`,
@@ -331,6 +334,7 @@ export function createAirspaceLayer(options: {
           : [],
       )
       .sort(
+        // Unlabelled types sort last.
         (a, b) =>
           (LABEL_ORDER[a.entry.shelf.type] ?? 9) -
             (LABEL_ORDER[b.entry.shelf.type] ?? 9) ||

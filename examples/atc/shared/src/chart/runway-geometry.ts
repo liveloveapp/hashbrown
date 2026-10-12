@@ -1,4 +1,5 @@
 import type { LatLon } from '../places';
+import type { ChartAirport, Ring } from './types';
 
 /** Feet to metres. */
 export const FT_TO_M = 0.3048;
@@ -51,4 +52,30 @@ export function runwayCorners(a: LatLon, b: LatLon, widthFt: number): LatLon[] {
 /** Ground metres per CSS pixel on a Web Mercator map at `zoom` and `lat`. */
 export function metresPerPixel(zoom: number, lat: number): number {
   return (40_075_016.686 * Math.cos(lat * RAD)) / (256 * 2 ** zoom);
+}
+
+/** The length of an airport's longest hard (paved) runway in feet, or 0. */
+export function longestHardRunwayFt(airport: ChartAirport): number {
+  return Math.max(
+    0,
+    ...airport.runways
+      .filter((runway) => runway.hard)
+      .map((runway) => runway.lengthFt),
+  );
+}
+
+/**
+ * The average of a ring's vertices, or null for an empty ring. Each vertex
+ * counts once as given, so drop a closed ring's repeated first vertex to
+ * weigh it evenly.
+ */
+export function ringCentroid(ring: Ring): LatLon | null {
+  if (ring.length === 0) {
+    return null;
+  }
+
+  return {
+    lat: ring.reduce((sum, [, lat]) => sum + lat, 0) / ring.length,
+    lon: ring.reduce((sum, [lon]) => sum + lon, 0) / ring.length,
+  };
 }
