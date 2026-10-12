@@ -73,6 +73,16 @@ test('readRunOptions reads OPENAI_REASONING_EFFORT, and an empty value turns it 
   expect(off.reasoningEffort).toBeNull();
 });
 
+test('readRunOptions rejects an OPENAI_REASONING_EFFORT the OpenAI API does not accept', () => {
+  const env = { OPENAI_API_KEY: 'k' };
+
+  const read = () => readRunOptions({ ...env, OPENAI_REASONING_EFFORT: 'lo' });
+  const xhigh = readRunOptions({ ...env, OPENAI_REASONING_EFFORT: 'xhigh' });
+
+  expect(read).toThrow('OPENAI_REASONING_EFFORT must be one of');
+  expect(xhigh.reasoningEffort).toBe('xhigh');
+});
+
 const request = {
   stream: true as const,
   model: 'gpt-5-mini',

@@ -19,6 +19,19 @@ type ReasoningEffort = NonNullable<
   OpenAI.Chat.ChatCompletionCreateParams['reasoning_effort']
 >;
 
+/** Every effort the installed OpenAI types allow; the type fails on a missing or extra key. */
+const REASONING_EFFORTS: Record<ReasoningEffort, true> = {
+  none: true,
+  minimal: true,
+  low: true,
+  medium: true,
+  high: true,
+  xhigh: true,
+  max: true,
+};
+
+const DEFAULT_REASONING_EFFORT: ReasoningEffort = 'low';
+
 /** Model settings for `/api/run`. The client never chooses the model. */
 export interface RunHandlerOptions {
   readonly apiKey: string;
@@ -37,19 +50,35 @@ export function readRunOptions(env: NodeJS.ProcessEnv): RunHandlerOptions {
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is not set');
   }
-  const effort = env['OPENAI_REASONING_EFFORT'];
 
   return {
     apiKey,
     model: env['OPENAI_MODEL'] ?? 'gpt-5-mini',
     baseURL: env['OPENAI_BASE_URL'],
-    reasoningEffort:
-      effort === undefined
-        ? 'low'
-        : effort === ''
-          ? null
-          : (effort as ReasoningEffort),
+    reasoningEffort: parseReasoningEffort(env['OPENAI_REASONING_EFFORT']),
   };
+}
+
+/**
+ * Checked at startup: a typo would otherwise surface only as an OpenAI 400 on
+ * the first question.
+ */
+function parseReasoningEffort(
+  value: string | undefined,
+): ReasoningEffort | null {
+  if (value === undefined) {
+    return DEFAULT_REASONING_EFFORT;
+  }
+  if (value === '') {
+    return null;
+  }
+  if (!Object.hasOwn(REASONING_EFFORTS, value)) {
+    throw new Error(
+      `OPENAI_REASONING_EFFORT must be one of ${Object.keys(REASONING_EFFORTS).join(', ')}, or empty for none`,
+    );
+  }
+
+  return value as ReasoningEffort;
 }
 
 /** Enough for the longest answer atc gives, reasoning included. */
