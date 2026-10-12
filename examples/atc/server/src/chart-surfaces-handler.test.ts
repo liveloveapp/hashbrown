@@ -1,38 +1,16 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
 import { expect, test, vi } from 'vitest';
 import type { Surfaces } from '@atc/shared';
 import { createChartSurfacesHandler } from './chart-surfaces-handler';
+import { callHandler, silenceErrors } from './test-http';
 
-interface Sent {
-  status: number;
-  headers: Record<string, string>;
-  body: Partial<Surfaces> & { error?: string };
-}
-
-/** Calls the handler with a fake request and collects the response. */
-async function call(
+/** Calls the handler with a GET and a query string. */
+const call = (
   handler: ReturnType<typeof createChartSurfacesHandler>,
   query: string,
-): Promise<Sent> {
-  const sent: Partial<Sent> = {};
-  const res = {
-    writeHead(status: number, headers: Record<string, string>) {
-      sent.status = status;
-      sent.headers = headers;
-    },
-    end(body: string) {
-      sent.body = JSON.parse(body);
-    },
-  } as unknown as ServerResponse;
-  const req = {
-    method: 'GET',
+) =>
+  callHandler<Partial<Surfaces>>(handler, {
     url: `/api/chart/surfaces?${query}`,
-  } as IncomingMessage;
-
-  await handler(req, res);
-
-  return sent as Sent;
-}
+  });
 
 const json = (body: unknown) => new Response(JSON.stringify(body));
 const ring = [
@@ -82,9 +60,6 @@ const upstream = (options: { airport: unknown; taxiways: unknown }) =>
     if (url.includes('overpass-api.de')) return json(overpass);
     throw new Error(`unexpected ${url}`);
   });
-
-const silenceErrors = () =>
-  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
 const NOW = Date.UTC(2026, 9, 10);
 

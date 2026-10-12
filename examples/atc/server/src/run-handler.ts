@@ -7,6 +7,7 @@ import {
 } from '@atc/shared';
 import { s } from '@hashbrownai/core';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type OpenAI from 'openai';
 import {
   BodyTooLargeError,
@@ -81,8 +82,60 @@ function parseReasoningEffort(
   return value as ReasoningEffort;
 }
 
+/*
+ * A public route's limits on one run: the whole body (256 KiB, in
+ * readJsonBody), the number of messages and each message's size. They bound
+ * the cost of a request before it reaches OpenAI.
+ */
+
+/** Far more than any atc conversation; a longer one is not atc. */
+const MAX_MESSAGES = 100;
+
+/**
+ * Per message, counting everything in it (text or multipart content, tool
+ * call arguments); the longest tool result (20 aircraft rows) is about 6 kB.
+ */
+const MAX_MESSAGE_CHARS = 16_000;
+
 /** Enough for the longest answer atc gives, reasoning included. */
 const MAX_OUTPUT_TOKENS = 4096;
+
+function isRunInput(value: unknown): value is RunAgentInput {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Array.isArray((value as { messages?: unknown }).messages)
+  );
+}
+
+function isTooLarge(input: RunAgentInput): boolean {
+  return (
+    input.messages.length > MAX_MESSAGES ||
+    input.messages.some(
+      (message) => JSON.stringify(message).length > MAX_MESSAGE_CHARS,
+    )
+  );
+}
+
+/**
+ * Drops client system and developer messages and puts the server's prompt
+ * first. Hashbrown clients always send a system message; dropping it here
+ * means the browser can never change the rules.
+ */
+export function pinSystemPrompt(
+  input: RunAgentInput,
+  prompt: string,
+): RunAgentInput {
+  return {
+    ...input,
+    messages: [
+      { id: 'atc-system', role: 'system', content: prompt },
+      ...input.messages.filter(
+        (message) => message.role !== 'system' && message.role !== 'developer',
+      ),
+    ],
+  };
+}
 
 /** Each atc tool as the model sees it, built from the shared definitions. */
 const PINNED_TOOLS: ReadonlyMap<string, Tool> = new Map(
@@ -120,62 +173,53 @@ const REASONING_MODEL = /^(gpt-5|o\d)/;
  */
 export function limitRequest(
   request: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
-  options: Pick<RunHandlerOptions, 'reasoningEffort'>,
+  reasoningEffort: ReasoningEffort | null,
 ): OpenAI.Chat.ChatCompletionCreateParamsStreaming {
-  const effort = options.reasoningEffort ?? null;
-
   return {
     ...request,
     max_completion_tokens: MAX_OUTPUT_TOKENS,
-    ...(effort !== null && REASONING_MODEL.test(request.model)
-      ? { reasoning_effort: effort }
+    ...(reasoningEffort !== null && REASONING_MODEL.test(request.model)
+      ? { reasoning_effort: reasoningEffort }
       : {}),
   };
 }
 
-/**
- * Drops client system and developer messages and puts the server's prompt
- * first. Hashbrown clients always send a system message; dropping it here
- * means the browser can never change the rules.
- */
-export function pinSystemPrompt(
-  input: RunAgentInput,
-  prompt: string,
-): RunAgentInput {
-  return {
-    ...input,
-    messages: [
-      { id: 'atc-system', role: 'system', content: prompt },
-      ...input.messages.filter(
-        (message) => message.role !== 'system' && message.role !== 'developer',
-      ),
-    ],
-  };
-}
+/** The run input of a POST body, or null once a 400 or 413 has been sent. */
+async function readRunInput(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<RunAgentInput | null> {
+  let input: unknown;
+  try {
+    input = await readJsonBody(req);
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      // The rest of the body was never read, so this connection cannot carry
+      // another request.
+      sendJson(
+        res,
+        413,
+        { error: 'Request too large' },
+        { Connection: 'close' },
+      );
+    } else {
+      sendJson(res, 400, { error: 'Invalid JSON' });
+    }
 
-const MAX_MESSAGES = 100;
+    return null;
+  }
+  if (!isRunInput(input)) {
+    sendJson(res, 400, { error: 'Invalid run input' });
 
-/**
- * Per message, counting everything in it (text or multipart content, tool
- * call arguments); the longest tool result (20 aircraft rows) is about 6 kB.
- */
-const MAX_MESSAGE_CHARS = 16_000;
+    return null;
+  }
+  if (isTooLarge(input)) {
+    sendJson(res, 413, { error: 'Request too large' });
 
-function isRunInput(value: unknown): value is RunAgentInput {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    Array.isArray((value as { messages?: unknown }).messages)
-  );
-}
+    return null;
+  }
 
-function isTooLarge(input: RunAgentInput): boolean {
-  return (
-    input.messages.length > MAX_MESSAGES ||
-    input.messages.some(
-      (message) => JSON.stringify(message).length > MAX_MESSAGE_CHARS,
-    )
-  );
+  return input;
 }
 
 /**
@@ -187,29 +231,20 @@ function isTooLarge(input: RunAgentInput): boolean {
  * inside the framework packages, so the server cannot rebuild it.
  */
 export function createRunHandler(options: RunHandlerOptions): NodeHandler {
+  const reasoningEffort =
+    options.reasoningEffort === undefined
+      ? DEFAULT_REASONING_EFFORT
+      : options.reasoningEffort;
+
   return async (req, res) => {
     if (req.method !== 'POST') {
       return sendJson(res, 405, { error: 'Use POST' });
     }
-    let input: unknown;
-    try {
-      input = await readJsonBody(req);
-    } catch (error) {
-      return error instanceof BodyTooLargeError
-        ? sendJson(
-            res,
-            413,
-            { error: 'Request too large' },
-            { Connection: 'close' },
-          )
-        : sendJson(res, 400, { error: 'Invalid JSON' });
+    const input = await readRunInput(req, res);
+    if (input === null) {
+      return;
     }
-    if (!isRunInput(input)) {
-      return sendJson(res, 400, { error: 'Invalid run input' });
-    }
-    if (isTooLarge(input)) {
-      return sendJson(res, 413, { error: 'Request too large' });
-    }
+    // A closed stream (the user pressed Stop or left) cancels the OpenAI call too.
     const abortController = new AbortController();
     res.once('close', () => abortController.abort());
     try {
@@ -224,14 +259,10 @@ export function createRunHandler(options: RunHandlerOptions): NodeHandler {
         ),
         signal: abortController.signal,
         transformRequestOptions: (request) =>
-          limitRequest(request, {
-            // Undefined means the default; null means none.
-            reasoningEffort:
-              options.reasoningEffort === undefined
-                ? 'low'
-                : options.reasoningEffort,
-          }),
+          limitRequest(request, reasoningEffort),
       });
+      // Server-sent events: no caching or transforms, and no proxy buffering
+      // (X-Accel-Buffering), so each event reaches the browser as it is written.
       res.writeHead(200, {
         'Content-Type': encoder.getContentType(),
         'Cache-Control': 'no-cache, no-store, must-revalidate, no-transform',

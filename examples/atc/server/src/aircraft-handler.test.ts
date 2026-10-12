@@ -1,46 +1,83 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { AircraftSnapshot } from '@atc/shared';
 import { expect, test, vi } from 'vitest';
 import { createAircraftHandler } from './aircraft-handler';
+import { callHandler, silenceErrors } from './test-http';
 
-interface Sent {
-  status: number;
-  headers: Record<string, string>;
-  body: { at?: number; error?: string };
-}
-
-/** Calls the handler with a fake GET request and collects the response. */
-async function get(
-  handler: ReturnType<typeof createAircraftHandler>,
-  area = 'pnw',
-): Promise<Sent> {
-  const sent: Partial<Sent> = {};
-  const res = {
-    writeHead(status: number, headers: Record<string, string>) {
-      sent.status = status;
-      sent.headers = headers;
-    },
-    end(body: string) {
-      sent.body = JSON.parse(body);
-    },
-  } as unknown as ServerResponse;
-  const req = {
-    method: 'GET',
+/** Calls the handler with a GET for an area. */
+const get = (handler: ReturnType<typeof createAircraftHandler>, area = 'pnw') =>
+  callHandler<Partial<AircraftSnapshot>>(handler, {
     url: `/api/aircraft?area=${area}`,
-  } as IncomingMessage;
-
-  await handler(req, res);
-
-  return sent as Sent;
-}
+  });
 
 const upstreamOk = () =>
   Response.json({
     ac: [{ hex: 'aa7f28', flight: 'UAL1372', lat: 44, lon: -121 }],
   });
 
-/** Silences console.error; call `mockRestore()` on the result at the end of the test. */
-const silenceErrors = () =>
-  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+test('the aircraft handler proxies adsb.lol, keeps all traffic, strips owner data and sets CDN caching', async () => {
+  const fetchFn = vi.fn<typeof fetch>(async () =>
+    Response.json({
+      ac: [
+        {
+          hex: 'aa7f28',
+          flight: 'UAL1372 ',
+          t: 'B39M',
+          ownOp: 'Owner',
+          lat: 42,
+          lon: -88,
+          alt_baro: 35000,
+        },
+        {
+          hex: 'a3f001',
+          flight: 'N352LL',
+          r: 'N352LL',
+          t: 'C172',
+          ownOp: 'Private Owner LLC',
+          lat: 44,
+          lon: -121,
+          alt_baro: 4500,
+        },
+        { hex: 'a3f002', lat: 44.1, lon: -121.1 },
+      ],
+    }),
+  );
+  const handler = createAircraftHandler({ fetchFn, now: () => 7 });
+
+  const response = await get(handler);
+
+  expect(response.status).toBe(200);
+  expect(response.headers['Cache-Control']).toBe(
+    'public, s-maxage=3, stale-while-revalidate=5',
+  );
+  expect(String(fetchFn.mock.calls[0][0])).toBe(
+    'https://api.adsb.lol/v2/point/44.0946/-121.2002/250',
+  );
+  expect(response.body.at).toBe(7);
+  expect(response.body.aircraft?.map((a) => a.label)).toEqual([
+    'UAL1372',
+    'N352LL',
+    'A3F002',
+  ]);
+  expect(JSON.stringify(response.body)).not.toContain('Owner');
+});
+
+test('the aircraft handler rejects unknown areas and reports upstream failures as 502', async () => {
+  const silenced = silenceErrors();
+  const down = vi.fn(async () => new Response('busy', { status: 503 }));
+  const garbage = vi.fn(async () => new Response('<html>', { status: 200 }));
+  const a = createAircraftHandler({ fetchFn: down });
+  const b = createAircraftHandler({ fetchFn: garbage });
+
+  const unknown = await get(a, 'lax');
+  const failed = await get(a);
+  const malformed = await get(b);
+
+  expect(unknown.status).toBe(400);
+  expect([failed.status, malformed.status]).toEqual([502, 502]);
+  expect(failed.body).toEqual({ error: 'Aircraft feed unavailable' });
+  expect(silenced).toHaveBeenCalledTimes(2);
+  silenced.mockRestore();
+});
 
 test('concurrent requests share one upstream fetch', async () => {
   let release: (response: Response) => void = () => undefined;
