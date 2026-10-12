@@ -65,7 +65,7 @@ snapshot, and the map and components re-render. The model's tools read the same 
 the browser, so the server never sees the plane list.
 
 `/api/run` is public, so the server replaces the system prompt and the tool definitions
-(with its own copies from `shared/src/tools.ts`), drops unknown tools, and caps the
+(with its own copies from `shared/src/tool-definitions.ts`), drops unknown tools, and caps the
 answer's length and each message's size. The UI response schema still comes from the
 client, bounded by that cap.
 

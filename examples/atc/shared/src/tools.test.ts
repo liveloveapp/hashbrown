@@ -4,13 +4,8 @@ import type { AirspaceShelf } from './chart';
 import { applySnapshot, createAtcStore, INITIAL_STATE } from './store';
 import { testAircraft, testChartAirport } from './testing';
 import { findAircraft, type FindAircraftInput } from './find-aircraft';
-import {
-  ATC_TOOL_DEFINITIONS,
-  ATC_TOOL_NAMES,
-  createAtcTools,
-  whenAirspaceSettled,
-  whenChartSettled,
-} from './tools';
+import { ATC_TOOL_DEFINITIONS, ATC_TOOL_NAMES } from './tool-definitions';
+import { createAtcTools, whenAirspaceSettled, whenChartSettled } from './tools';
 
 function plane(hex: string, overrides: Partial<Aircraft> = {}): Aircraft {
   return testAircraft({

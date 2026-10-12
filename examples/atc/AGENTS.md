@@ -20,7 +20,8 @@ dependencies); this file covers atc.
 | ----------------------------------------------- | -------------------------------------------------------------------- |
 | `shared/src/aircraft.ts`                        | adsb.lol to `Aircraft`: validation and the privacy whitelist         |
 | `shared/src/store.ts`, `feed.ts`                | State, reducers, view requests; polling `/api/aircraft`              |
-| `shared/src/tools.ts`, `find-aircraft.ts`       | Tool definitions; the pure aircraft query                            |
+| `shared/src/tools.ts`, `find-aircraft.ts`       | Tool handlers; the pure aircraft query                               |
+| `shared/src/tool-definitions.ts`                | Tool names, descriptions and schemas, pinned by the server           |
 | `shared/src/browser-tools.ts`                   | The tools wired to the app's routes and surfaces, for both apps      |
 | `shared/src/contracts.ts`                       | Component contracts (Skillet) and `SYSTEM_PROMPT`                    |
 | `shared/src/views.ts`, `detail-view.ts`         | Pure view models for cards and the map's detail card                 |
@@ -54,8 +55,8 @@ dependencies); this file covers atc.
 
 - Component: README, "Add a component".
 - Tool: the comment on `createAtcTools` in `shared/src/tools.ts`. Its name,
-  description and schema go in `ATC_TOOL_DEFINITIONS`, which the server sends to the
-  model; a tool missing there is dropped.
+  description and schema go in `ATC_TOOL_DEFINITIONS` (`shared/src/tool-definitions.ts`),
+  which the server sends to the model; a tool missing there is dropped.
 
 ## Invariants not to break
 

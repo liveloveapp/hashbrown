@@ -1,6 +1,6 @@
 import { AIRPORTS } from './places';
 import { type AtcState, normalizeHex } from './store';
-import type { AtcToolName } from './tools';
+import type { AtcToolName } from './tool-definitions';
 
 /** The parts of a Hashbrown tool call that the tool chips read. */
 export interface ToolCallLike {
