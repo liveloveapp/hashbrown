@@ -71,20 +71,23 @@ export function tagRect(
 ): PixelRect {
   const { x, y, width } = item;
   const side = ICON_HALF + SIDE_GAP;
-  const [left, top] =
-    placement === 'left'
-      ? [x - side - width, y - TAG_HEIGHT / 2]
-      : placement === 'above-right'
-        ? [x - ICON_HALF, y - side - TAG_HEIGHT]
-        : placement === 'below-right'
-          ? [x - ICON_HALF, y + side]
-          : placement === 'above-left'
-            ? [x + ICON_HALF - width, y - side - TAG_HEIGHT]
-            : placement === 'below-left'
-              ? [x + ICON_HALF - width, y + side]
-              : [x + side, y - TAG_HEIGHT / 2];
-
-  return rectAt(left, top, width, TAG_HEIGHT);
+  const at = (left: number, top: number) =>
+    rectAt(left, top, width, TAG_HEIGHT);
+  switch (placement) {
+    case 'left':
+      return at(x - side - width, y - TAG_HEIGHT / 2);
+    case 'above-right':
+      return at(x - ICON_HALF, y - side - TAG_HEIGHT);
+    case 'below-right':
+      return at(x - ICON_HALF, y + side);
+    case 'above-left':
+      return at(x + ICON_HALF - width, y - side - TAG_HEIGHT);
+    case 'below-left':
+      return at(x + ICON_HALF - width, y + side);
+    case 'right':
+    case 'hidden':
+      return at(x + side, y - TAG_HEIGHT / 2);
+  }
 }
 
 /**
@@ -133,7 +136,7 @@ export function layoutTags(input: {
     if (outside(item)) {
       continue;
     }
-    /** Inside the map, off the controls and clear of every tagged icon. */
+    /** Open: inside, off the controls, clear of hard icons. */
     const open = (placement: TagPlacement) => {
       const rect = tagRect(item, placement);
 
@@ -143,28 +146,28 @@ export function layoutTags(input: {
         !coversPlane(rect, item.hex, true)
       );
     };
-    /** Open and clear of the tags already placed. */
+    /** Free: open and clear of the tags already placed. */
     const free = (placement: TagPlacement) =>
       open(placement) &&
       !placed.some((other) =>
         intersects(tagRect(item, placement), other, TAG_GAP),
       );
+    /** Clear: free and covering no plane icon. */
     const clear = (placement: TagPlacement) =>
       free(placement) && !coversPlane(tagRect(item, placement), item.hex);
     const previous =
       item.previous === null || item.previous === 'hidden'
         ? null
         : item.previous;
+    /** The kept placement when it passes `test`, else the first that does. */
+    const pick = (test: (placement: TagPlacement) => boolean) =>
+      (previous !== null && test(previous) ? previous : undefined) ??
+      TAG_PLACEMENTS.find(test);
     const best =
-      (previous !== null && clear(previous) ? previous : null) ??
-      TAG_PLACEMENTS.find(clear) ??
-      (previous !== null && free(previous) ? previous : null) ??
-      TAG_PLACEMENTS.find(free) ??
-      (item.always
-        ? ((previous !== null && open(previous) ? previous : null) ??
-          TAG_PLACEMENTS.find(open) ??
-          'hidden')
-        : 'hidden');
+      pick(clear) ??
+      pick(free) ??
+      (item.always ? pick(open) : undefined) ??
+      'hidden';
     result.set(item.hex, best);
     if (best !== 'hidden') {
       placed.push(tagRect(item, best));
