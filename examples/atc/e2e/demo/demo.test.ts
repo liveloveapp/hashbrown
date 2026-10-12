@@ -8,7 +8,7 @@ import {
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
-import { scenario } from '../src/fixtures';
+import { NEAR_BEND, NO_FILTERS, scenario } from '../src/fixtures';
 import { codePane, renderDirector, snapWindowStart } from './director';
 import { loopArgs, masterArgs } from './encode';
 import {
@@ -179,20 +179,11 @@ test('the seeded random source repeats', () => {
 
 test('filler traffic keeps the scripted answers true', () => {
   const state = applySnapshot(INITIAL_STATE, demoFrame(0));
-  const any = {
-    airline: null,
-    typeCode: null,
-    kind: null,
-    minAltitudeFt: null,
-    maxAltitudeFt: null,
-    approaching: null,
-    near: null,
-    limit: 20,
-  } as const;
+  const any = { ...NO_FILTERS, limit: 20 } as const;
 
   const nearBend = findAircraft(state, {
     ...any,
-    near: { airport: 'KBDN', radiusNm: 25 },
+    near: NEAR_BEND,
     sortBy: 'distance',
   });
   const arrivals = findAircraft(state, {

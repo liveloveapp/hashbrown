@@ -8,7 +8,12 @@
 
 /** What kind of problem a paragraph has. */
 export type ProseIssueKind =
-  'leak' | 'internal-name' | 'dangling-colon' | 'false-tap';
+  | 'leak'
+  | 'internal-name'
+  | 'dangling-colon'
+  | 'false-tap'
+  | 'cleared-highlight'
+  | 'no-highlight';
 
 /** One problem, with the paragraph it was found in. */
 export interface ProseIssue {
@@ -78,7 +83,7 @@ export function mapIssues({
   return shown > 0 && highlighted === 0
     ? [
         {
-          kind: 'cleared-highlight',
+          kind: 'no-highlight',
           text: `Showed ${shown} aircraft, highlighted none on the map`,
         },
       ]

@@ -260,7 +260,8 @@ export const SYNTHETIC_HEXES: ReadonlySet<string> = new Set(
   TRACKS.map((t) => t.aircraft.hex),
 );
 
-const ANY: FindAircraftInput = {
+/** findAircraft filters with every one off; add `sortBy` and `limit` per query. */
+export const NO_FILTERS = {
   airline: null,
   typeCode: null,
   kind: null,
@@ -268,9 +269,10 @@ const ANY: FindAircraftInput = {
   maxAltitudeFt: null,
   approaching: null,
   near: null,
-  sortBy: 'altitude',
-  limit: 20,
-};
+  inAirspace: null,
+} as const satisfies Omit<FindAircraftInput, 'sortBy' | 'limit'>;
+
+const ANY: FindAircraftInput = { ...NO_FILTERS, sortBy: 'altitude', limit: 20 };
 
 /** The area the "near KBDN" scenario shows and searches. */
 export const NEAR_BEND = { airport: 'KBDN', radiusNm: 25 } as const;
@@ -427,7 +429,9 @@ export const scenario = (() => {
     !approachingEveryFrame ||
     !nearbyEveryFrame ||
     portland.length < 1 ||
-    !['jet', 'single', 'rotor'].every((kind) => nearbyKinds.has(kind))
+    !(['jet', 'single', 'rotor'] as const).every((kind) =>
+      nearbyKinds.has(kind),
+    )
   ) {
     throw new Error('The synthetic frames lack a scenario aircraft.');
   }

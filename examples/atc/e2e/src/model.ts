@@ -1,6 +1,13 @@
 import type { LLMock } from '@copilotkit/aimock';
 import { SELECTED_PROMPT, STARTER_PROMPTS } from '@atc/shared';
-import { CLUSTER, NEAR_BEND, PORTLAND_CLASS_C, scenario, ui } from './fixtures';
+import {
+  CLUSTER,
+  NEAR_BEND,
+  NO_FILTERS,
+  PORTLAND_CLASS_C,
+  scenario,
+  ui,
+} from './fixtures';
 
 const { selected, highest, fastest, arrivals, nearby, portland } = scenario;
 
@@ -9,18 +16,6 @@ export const NEAR_PROMPT = "What's flying near KBDN?";
 
 /** A typed question that highlights the tight block of {@link CLUSTER}. */
 export const CLUSTER_PROMPT = 'Highlight the Horizon block near Klamath Falls.';
-
-/** findAircraft arguments with every filter off. */
-export const ANY = {
-  airline: null,
-  typeCode: null,
-  kind: null,
-  minAltitudeFt: null,
-  maxAltitudeFt: null,
-  approaching: null,
-  near: null,
-  inAirspace: null,
-};
 
 /**
  * Scripts the model's answers for the starter prompts, {@link NEAR_PROMPT}
@@ -60,7 +55,12 @@ export function scriptAtcModel(mock: LLMock): void {
       {
         id: 'near-find',
         name: 'findAircraft',
-        arguments: { ...ANY, near: NEAR_BEND, sortBy: 'distance', limit: 20 },
+        arguments: {
+          ...NO_FILTERS,
+          near: NEAR_BEND,
+          sortBy: 'distance',
+          limit: 20,
+        },
       },
       {
         id: 'near-highlight',
@@ -79,7 +79,12 @@ export function scriptAtcModel(mock: LLMock): void {
       {
         id: 'bend-find',
         name: 'findAircraft',
-        arguments: { ...ANY, near: NEAR_BEND, sortBy: 'distance', limit: 20 },
+        arguments: {
+          ...NO_FILTERS,
+          near: NEAR_BEND,
+          sortBy: 'distance',
+          limit: 20,
+        },
       },
       {
         id: 'bend-highlight',
@@ -117,7 +122,7 @@ export function scriptAtcModel(mock: LLMock): void {
         id: 'arrivals-find',
         name: 'findAircraft',
         arguments: {
-          ...ANY,
+          ...NO_FILTERS,
           approaching: 'KSEA',
           sortBy: 'distance',
           limit: 10,
@@ -135,7 +140,7 @@ export function scriptAtcModel(mock: LLMock): void {
       {
         id: 'compare-find',
         name: 'findAircraft',
-        arguments: { ...ANY, sortBy: 'altitude', limit: 3 },
+        arguments: { ...NO_FILTERS, sortBy: 'altitude', limit: 3 },
       },
     ],
   });
@@ -193,7 +198,7 @@ export function scriptAtcModel(mock: LLMock): void {
         id: 'portland-find',
         name: 'findAircraft',
         arguments: {
-          ...ANY,
+          ...NO_FILTERS,
           inAirspace: PORTLAND_CLASS_C,
           sortBy: 'distance',
           limit: 20,
