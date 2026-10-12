@@ -12,7 +12,7 @@ export interface TagObstacle {
   readonly hard?: boolean;
 }
 
-/** The plane icon's box, in pixels (`iconSize` in `airspace-map.ts`). */
+/** The plane icon's box, in pixels; matches `.atc-plane` in styles/markers.css. */
 export const PLANE_ICON = 22;
 /** Space kept around an icon, in pixels. */
 export const ICON_MARGIN = 2;

@@ -36,6 +36,14 @@ export function planeElementOf(
   );
 }
 
+/** Restarts a plane's pulse animation, if the plane is drawn. */
+export function restartPulse(plane: HTMLElement | null): void {
+  plane?.classList.remove('is-pulsing');
+  // Forces a reflow so removing and re-adding the class restarts the pulse.
+  void plane?.getBoundingClientRect();
+  plane?.classList.add('is-pulsing');
+}
+
 /**
  * Formats feet as `toLocaleString('en-US')` does, without making a new
  * formatter on each call (tags are measured and updated every snapshot).

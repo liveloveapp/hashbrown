@@ -1,8 +1,8 @@
-import type { Circle, Map as LeafletMap, Marker } from 'leaflet';
+import type { Map as LeafletMap, Marker } from 'leaflet';
 import { isTyping, prefersReducedMotion } from '../dom';
-import { airportByCode } from '../directory';
 import type { Area, LatLon } from '../places';
-import type { AtcState, AtcStore, ShownArea } from '../store';
+import type { AtcState, AtcStore } from '../store';
+import { createAreaOutline } from './area-outline';
 import { createCardSync } from './card-sync';
 import { createAirportLayer } from './chart/airport-layer';
 import { createAirspaceLayer } from './chart/airspace-layer';
@@ -12,7 +12,14 @@ import { createLayersControl } from './chart/layers-control';
 import { createFollowController } from './follow';
 import { createMotionLoop } from './motion-loop';
 import { createTagSync } from './tag-sync';
-import { markerClassName, planeIconHtml, updatePlane } from './plane-marker';
+import {
+  markerClassName,
+  planeElementOf,
+  planeIconHtml,
+  restartPulse,
+  updatePlane,
+} from './plane-marker';
+import { PLANE_ICON } from './tag-obstacles';
 import { TILE_LAYER } from './tiles';
 import { createViewController } from './view-controller';
 
@@ -20,8 +27,6 @@ import { createViewController } from './view-controller';
 const LOW_ZOOM = 6;
 /** At this zoom and below, airspace draws its thinner overview lines. */
 const OVERVIEW_ZOOM = 8;
-/** Metres in a nautical mile, for Leaflet's circle radius. */
-const METRES_PER_NM = 1852;
 /** The chart overlay panes and their z-index, bottom to top. */
 const CHART_PANES = [
   ['atc-airspace', 410],
@@ -49,16 +54,18 @@ export interface AirspaceMapHandle {
  *   docked card and a phone's sheet, and a pill names it with a
  *   Stop button; a drag ends follow mode and offers Resume for a few seconds.
  * - `card-sync.ts`: hovering or selecting a plane opens one detail card
- *   beside it. Escape (outside text fields) or a click on the empty map
- *   clears the selection. On phones the card stays above the bottom sheet.
+ *   beside it. On phones the card stays above the bottom sheet.
  * - `view-controller.ts`: the map moves only for view requests in the store
  *   (see `requestArea`). The newest request wins; follow mode wins over all
  *   of them; a user drag or zoom cancels one still waiting.
+ * - `area-outline.ts`: the faint circle around a shown area.
  * - `chart/`: Class B, C, D and E surface airspace, FAA sectional airport
  *   symbols and data blocks, and from zoom 12 airport diagrams, in their own
- *   panes below the planes, redrawn only when the chart, the airspace, the
- *   layers or the surfaces change, or the view settles. The Layers pill
- *   above the zoom control turns airports and airspace on and off.
+ *   panes below the planes. The Layers pill above the zoom control turns
+ *   airports and airspace on and off.
+ *
+ * Escape (outside text fields) or a click on the empty map clears the
+ * selection.
  *
  * Planes are not keyboard-focusable (`keyboard: false`): every map action is
  * also available from the chat, which is the accessible path.
@@ -86,6 +93,8 @@ export async function createAirspaceMap(options: {
       },
     };
   }
+  // Leaflet ships as CommonJS: depending on the bundler, a dynamic import
+  // returns it as the namespace or under `default`.
   const L =
     (module as unknown as { default?: typeof module }).default ?? module;
   // Leaflet's own animations are set once here; later moves re-read the setting.
@@ -242,41 +251,14 @@ export async function createAirspaceMap(options: {
   };
   doc.addEventListener('keydown', onKeydown);
 
-  // The class, not `L.svg()`, which returns null where SVG is not detected.
-  const outlineRenderer = new L.SVG({ padding: 0.5 });
-  let outline: { readonly area: ShownArea; readonly layer: Circle } | null =
-    null;
-  /** Draws the shown area's outline, or removes it. */
-  const syncOutline = (shown: ShownArea | null) => {
-    if (outline?.area === shown) {
-      return;
-    }
-    outline?.layer.remove();
-    outline = null;
-    if (shown === null) {
-      return;
-    }
-    const centre = airportByCode(store.getState(), shown.airport);
-    if (centre === null) {
-      return;
-    }
-    const layer = L.circle([centre.lat, centre.lon], {
-      radius: shown.radiusNm * METRES_PER_NM,
-      className: 'atc-area',
-      renderer: outlineRenderer,
-      fill: false,
-      weight: 1,
-      interactive: false,
-    }).addTo(map);
-    outline = { area: shown, layer };
-  };
+  const outline = createAreaOutline({ L, map, store });
 
   const icon = (html: string) =>
     L.divIcon({
       html,
       className: 'atc-plane-icon',
-      iconSize: [22, 22],
-      iconAnchor: [11, 11],
+      iconSize: [PLANE_ICON, PLANE_ICON],
+      iconAnchor: [PLANE_ICON / 2, PLANE_ICON / 2],
     });
   let lastUpdatedAt: number | null = null;
   let lastPulseAt: number | null = null;
@@ -320,20 +302,13 @@ export async function createAirspaceMap(options: {
     chart.sync(state);
     cards.sync(state);
     follow.syncPill();
-    syncOutline(state.shownArea);
+    outline.sync(state.shownArea);
     view.applyWhenSettled(state);
     follow.panToFollowed(true);
     tags.layout();
     if (state.pulse !== null && state.pulse.at !== lastPulseAt) {
       lastPulseAt = state.pulse.at;
-      const plane = markers
-        .get(state.pulse.hex)
-        ?.getElement()
-        ?.querySelector('.atc-plane');
-      plane?.classList.remove('is-pulsing');
-      // Forces a reflow so removing and re-adding the class restarts the pulse.
-      void plane?.getBoundingClientRect();
-      plane?.classList.add('is-pulsing');
+      restartPulse(planeElementOf(markers, state.pulse.hex));
     }
   };
 

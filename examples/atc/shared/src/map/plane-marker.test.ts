@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { KIND_PATHS } from '../kinds';
 import { applySnapshot, INITIAL_STATE } from '../store';
@@ -10,6 +10,7 @@ import {
   markerClassName,
   planeElementOf,
   planeIconHtml,
+  restartPulse,
   updatePlane,
 } from './plane-marker';
 
@@ -196,4 +197,16 @@ test('altText matches the tag: feet with a comma, GND on the ground, empty when 
   ];
 
   expect(texts).toEqual(['4,500', 'GND', '']);
+});
+
+test('restartPulse removes and re-adds is-pulsing, and ignores a plane not drawn', () => {
+  const plane = document.createElement('div');
+  plane.classList.add('atc-plane', 'is-pulsing');
+  const remove = vi.spyOn(plane.classList, 'remove');
+
+  restartPulse(plane);
+  restartPulse(null);
+
+  expect(remove).toHaveBeenCalledWith('is-pulsing');
+  expect(plane.classList.contains('is-pulsing')).toBe(true);
 });
