@@ -7,7 +7,10 @@ const TAG_CHROME = 2 * 7 + 2;
  * cannot, so a measured label can come out a little narrow.
  */
 const TAG_SLACK = 2;
-/** The gap before the altitude (`.atc-plane-alt` margin), in pixels. */
+/**
+ * The gap before the altitude (`.atc-plane-alt` margin), in pixels. Counted
+ * without an altitude too: the empty span stays and still takes its margin.
+ */
 const ALT_GAP = 4;
 /** Character advances used when text cannot be measured (tests). */
 const FALLBACK_LABEL_ADVANCE = 7.5;
@@ -66,7 +69,8 @@ export function createTextMeasure(element: HTMLElement) {
 
       return Math.ceil(
         labelWidth +
-          (alt === '' ? 0 : ALT_GAP + alt.length * monoAdvance) +
+          ALT_GAP +
+          alt.length * monoAdvance +
           TAG_CHROME +
           TAG_SLACK,
       );
@@ -83,7 +87,7 @@ export function createTextMeasure(element: HTMLElement) {
  */
 const FEET = new Intl.NumberFormat('en-US');
 
-/** The altitude text a tag shows, as `planeTagText` writes it. */
+/** The altitude text a tag shows, as `planeIconHtml` writes it. */
 export function altText(aircraft: Aircraft): string {
   return aircraft.onGround
     ? 'GND'

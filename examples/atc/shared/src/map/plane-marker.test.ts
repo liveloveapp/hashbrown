@@ -3,12 +3,7 @@ import { expect, test } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { KIND_PATHS } from '../kinds';
 import { applySnapshot, INITIAL_STATE } from '../store';
-import {
-  markerClassName,
-  planeIconHtml,
-  planeTagText,
-  updatePlane,
-} from './plane-marker';
+import { markerClassName, planeIconHtml, updatePlane } from './plane-marker';
 
 const plane: Aircraft = {
   hex: 'aaaaaa',
@@ -26,6 +21,24 @@ const plane: Aircraft = {
   trackDeg: 271.6,
   verticalRateFpm: 0,
 };
+
+/** The rendered tag's label and altitude span. */
+function tagParts(host: ParentNode): [string, string] {
+  const tag = host.querySelector('.atc-plane-tag');
+
+  return [
+    tag?.firstChild?.textContent ?? '',
+    tag?.querySelector('.atc-plane-alt')?.textContent ?? '',
+  ];
+}
+
+/** Renders a marker and reads its tag's label and altitude span. */
+function renderedTag(aircraft: Aircraft): [string, string] {
+  const host = document.createElement('div');
+  host.innerHTML = planeIconHtml(aircraft, 'atc-plane');
+
+  return tagParts(host);
+}
 
 test('markerClassName reflects selection, follow and highlight', () => {
   const base = applySnapshot(INITIAL_STATE, { at: 1, aircraft: [plane] });
@@ -57,29 +70,30 @@ test('planeIconHtml rotates the plane to its track and tags it with its ID', () 
   expect(html).toContain('rotate(271.6deg)');
 });
 
-test('planeTagText tags hex-only aircraft by their label', () => {
+test('the tag shows a hex-only aircraft by its label', () => {
   const unidentified = { ...plane, label: 'AAAAAA', callsign: null };
 
-  const text = planeTagText(unidentified);
+  const parts = renderedTag(unidentified);
 
-  expect(text).toBe('AAAAAA 30,000');
+  expect(parts).toEqual(['AAAAAA', '30,000']);
 });
 
-test('planeTagText shows label and altitude with a thousands separator', () => {
-  const texts = [
-    planeTagText(plane),
-    planeTagText({ ...plane, altitudeFt: 4200 }),
-    planeTagText({ ...plane, altitudeFt: 0 }),
-    planeTagText({ ...plane, altitudeFt: null }),
-    planeTagText({ ...plane, altitudeFt: null, onGround: true }),
+test('the tag shows the altitude with a thousands separator and no leading space', () => {
+  const tags = [
+    renderedTag(plane),
+    renderedTag({ ...plane, altitudeFt: 4200 }),
+    renderedTag({ ...plane, altitudeFt: 0 }),
+    renderedTag({ ...plane, altitudeFt: null }),
+    renderedTag({ ...plane, altitudeFt: null, onGround: true }),
   ];
 
-  expect(texts).toEqual([
-    'UAL100 30,000',
-    'UAL100 4,200',
-    'UAL100 0',
-    'UAL100',
-    'UAL100 GND',
+  // The altitude's CSS margin separates it from the label.
+  expect(tags).toEqual([
+    ['UAL100', '30,000'],
+    ['UAL100', '4,200'],
+    ['UAL100', '0'],
+    ['UAL100', ''],
+    ['UAL100', 'GND'],
   ]);
 });
 
@@ -110,14 +124,14 @@ test('updatePlane keeps label, data-label and tag current, writing only changes'
   expect(host.querySelector('.atc-plane')?.getAttribute('data-label')).toBe(
     'N352LL',
   );
-  expect(tagNode.textContent).toBe('N352LL 4,200');
+  expect(tagParts(host)).toEqual(['N352LL', '4,200']);
 });
 
 test('planeIconHtml carries the tag outside the rotated silhouette', () => {
   const html = planeIconHtml(plane, 'atc-plane is-highlighted');
 
   expect(html).toContain(
-    '<span class="atc-plane-tag">UAL100<span class="atc-plane-alt"> 30,000</span></span>',
+    '<span class="atc-plane-tag">UAL100<span class="atc-plane-alt">30,000</span></span>',
   );
   expect(html.indexOf('rotate(271.6deg)')).toBeLessThan(html.indexOf('<svg'));
   expect(html).toMatch(

@@ -19,12 +19,13 @@ test('a tag is as wide as its text, its padding and border, and 2 px of slack fo
   measure.destroy();
 });
 
-test('a tag without an altitude has no gap for one', () => {
+test('a tag without an altitude keeps the gap of its empty altitude span', () => {
   const measure = createTextMeasure(document.createElement('div'));
 
   const width = measure.width('UAL1', '');
 
-  expect(width).toBe(4 * 7.5 + 16 + 2);
+  // The span stays in the tag, and an empty inline box still takes its margin.
+  expect(width).toBe(4 * 7.5 + 4 + 16 + 2);
   measure.destroy();
 });
 

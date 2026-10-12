@@ -27,7 +27,8 @@ export function markerClassName(state: AtcState, hex: string): string {
 /**
  * The parts of a plane's data tag: the label, and the altitude in feet
  * ("4,200"), "GND" on the ground, or null when unknown (the tag then shows the
- * label alone).
+ * label alone). The altitude span's CSS margin separates the two, so neither
+ * part carries a space.
  */
 function planeTagParts(
   aircraft: Pick<Aircraft, 'label' | 'altitudeFt' | 'onGround'>,
@@ -39,20 +40,6 @@ function planeTagParts(
       : aircraft.altitudeFt.toLocaleString('en-US');
 
   return { label: aircraft.label, altitude };
-}
-
-/**
- * Text of a plane's data tag, exactly as rendered: label and altitude in
- * feet separated by a space, such as "ASA123 4,200", "N352LL GND" on the
- * ground, or just "ASA123" when the altitude is unknown. Built only from
- * validated fields.
- */
-export function planeTagText(
-  aircraft: Pick<Aircraft, 'label' | 'altitudeFt' | 'onGround'>,
-): string {
-  const { label, altitude } = planeTagParts(aircraft);
-
-  return altitude === null ? label : `${label} ${altitude}`;
 }
 
 /** Classes the store drives; toggled in place, leaving others (is-pulsing). */
@@ -111,7 +98,7 @@ export function updatePlane(
     return;
   }
   const { label, altitude } = planeTagParts(aircraft);
-  const altText = altitude === null ? '' : ` ${altitude}`;
+  const altText = altitude ?? '';
   if (
     tag.firstChild &&
     tag.firstChild !== alt &&
@@ -128,7 +115,7 @@ export function updatePlane(
 function tag(aircraft: Aircraft): string {
   const { label, altitude } = planeTagParts(aircraft);
 
-  return `${label}<span class="atc-plane-alt">${altitude === null ? '' : ` ${altitude}`}</span>`;
+  return `${label}<span class="atc-plane-alt">${altitude ?? ''}</span>`;
 }
 
 /**
