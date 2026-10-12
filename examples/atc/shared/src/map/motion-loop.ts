@@ -36,20 +36,19 @@ export interface MotionLoop {
 const RECENT_FRAME_MS = 100;
 
 /**
- * Creates the animation loop. Between snapshots each plane is dead-reckoned
- * along its track and turned towards it ({@link nextMotion}); under reduced
- * motion it jumps to its fix instead. One `requestAnimationFrame` loop draws
- * every moving plane in the same frame at its exact sub-pixel position
- * (`translate3d`, via `L.DomUtil.setPosition`) and heading, without reading
- * layout. Leaflet's markers keep hit-testing and events; their own
- * latitude and longitude are only synced (rounded) when Leaflet needs them
+ * Creates the animation loop (see `airspace-map.ts` for how planes move).
+ * One `requestAnimationFrame` loop draws every moving plane in the same
+ * frame at its exact sub-pixel position (`translate3d`, via
+ * `L.DomUtil.setPosition`) and heading, without reading layout. Leaflet's
+ * markers keep hit-testing and events; their own latitude and longitude are
+ * only synced (rounded) when Leaflet needs them
  * ({@link MotionLoop.syncMarkers}). `onFrame` runs after markers are drawn
  * on each frame, with the frame's time (the map uses it to keep a followed
  * plane centred, the detail card beside its plane and the data tags apart).
- * Frames pause while a zoom animates, and the
- * browser pauses them in a hidden tab; motion is computed from the clock, and
- * a fix that arrives while frames are paused starts from the clock, so
- * planes resume where they should be.
+ * Drawing pauses while a zoom animates, and the browser pauses frames in a
+ * hidden tab; motion is computed from the clock, and a fix that arrives
+ * while frames are paused starts from the clock, so planes resume where they
+ * should be.
  */
 export function createMotionLoop(options: {
   L: typeof Leaflet;
@@ -116,6 +115,9 @@ export function createMotionLoop(options: {
   const step = (time: number) => {
     frame = null;
     lastFrameAt = time;
+    // Leaflet animates the marker pane itself during a zoom; drawing now
+    // would fight it. Keep polling so drawing resumes on the first frame
+    // after zoomend.
     if (isZooming()) {
       frame = requestAnimationFrame(step);
       return;
@@ -138,25 +140,23 @@ export function createMotionLoop(options: {
         clock - lastFrameAt < RECENT_FRAME_MS
           ? lastFrameAt
           : clock;
-      const reduced = prefersReducedMotion();
-      const next = new Map<string, Motion>();
-      for (const aircraft of state.aircraft.values()) {
-        if (!reduced) {
-          const { hex } = aircraft;
-          next.set(
-            hex,
-            nextMotion(motions.get(hex), aircraft, drawn.get(hex) ?? null, now),
-          );
-        }
-      }
-      motions = next;
       drawn = new Map([...drawn].filter(([hex]) => state.aircraft.has(hex)));
-      if (reduced) {
+      if (prefersReducedMotion()) {
+        motions = new Map();
         for (const aircraft of state.aircraft.values()) {
           draw(aircraft.hex, aircraft, aircraft.trackDeg);
         }
         return;
       }
+      const next = new Map<string, Motion>();
+      for (const aircraft of state.aircraft.values()) {
+        const { hex } = aircraft;
+        next.set(
+          hex,
+          nextMotion(motions.get(hex), aircraft, drawn.get(hex) ?? null, now),
+        );
+      }
+      motions = next;
       drawMotions(now);
       if (frame === null && motions.size > 0) {
         frame = requestAnimationFrame(step);

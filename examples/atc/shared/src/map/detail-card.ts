@@ -100,9 +100,15 @@ const HOVER: DetailCardMode = { pinned: false, docked: false };
 /** The selected plane's card on a narrow map. */
 const DOCKED: DetailCardMode = { pinned: true, docked: true };
 
+/**
+ * Maps narrower than this dock the selected plane's card at the top: beside
+ * the plane it would cover most of the map.
+ */
+const DOCK_BELOW_WIDTH = 560;
+
 /** Whether a map this wide gets the docked card. */
 export function detailCardDocked(area: CardSize): boolean {
-  return area.width < 560;
+  return area.width < DOCK_BELOW_WIDTH;
 }
 
 /** What the card calls back for. */
@@ -336,6 +342,7 @@ function fillAge(parts: CardParts, age: string | null): void {
     setText(value, age);
   }
 }
+
 /**
  * Creates the detail card element (`data-testid="aircraft-detail"`), hidden
  * until shown. Content is text nodes only, so no reading can inject markup.
