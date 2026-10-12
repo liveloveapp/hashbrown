@@ -52,6 +52,13 @@
     },
     "typecheck": {
       "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/**/*.ts",
+        "{projectRoot}/tsconfig.json",
+        "{workspaceRoot}/tsconfig.base.json",
+        "^production"
+      ],
       "options": {
         "command": "tsc -p examples/atc/e2e/tsconfig.json"
       }
