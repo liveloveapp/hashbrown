@@ -4,10 +4,7 @@ import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore } from '../store';
 import { createAreaOutline } from './area-outline';
 import { createCardSync } from './card-sync';
-import { createAirportLayer } from './chart/airport-layer';
-import { createAirspaceLayer } from './chart/airspace-layer';
-import { placeChartLabels } from './chart/chart-labels';
-import { createDiagramLayer } from './chart/diagram-layer';
+import { createChartLayers } from './chart/chart-layers';
 import { createLayersControl } from './chart/layers-control';
 import { createFollowController } from './follow';
 import { createMotionLoop } from './motion-loop';
@@ -27,12 +24,6 @@ import { createViewController } from './view-controller';
 const LOW_ZOOM = 6;
 /** At this zoom and below, airspace draws its thinner overview lines. */
 const OVERVIEW_ZOOM = 8;
-/** The chart overlay panes and their z-index, bottom to top. */
-const CHART_PANES = [
-  ['atc-airspace', 410],
-  ['atc-diagram', 420],
-  ['atc-airports', 430],
-] as const;
 
 /** A mounted map. */
 export interface AirspaceMapHandle {
@@ -112,49 +103,7 @@ export async function createAirspaceMap(options: {
     attribution: TILE_LAYER.attribution,
     maxZoom: TILE_LAYER.maxZoom,
   }).addTo(map);
-  // Chart panes sit above the tiles and below the planes (markerPane is 600).
-  for (const [name, zIndex] of CHART_PANES) {
-    map.createPane(name).style.zIndex = String(zIndex);
-  }
-  const airspace = createAirspaceLayer({
-    L,
-    map,
-    store,
-    pane: 'atc-airspace',
-  });
-  const airports = createAirportLayer({ L, map, store, pane: 'atc-airports' });
-  const diagrams = createDiagramLayer({
-    L,
-    map,
-    store,
-    pane: 'atc-diagram',
-    element,
-  });
-  /**
-   * The chart layers as one: airport and airspace labels are placed together
-   * (`placeChartLabels`) after the layers redraw for a settled view, or after
-   * a sync that changed them; aircraft snapshots never place them.
-   */
-  const placeChart = () =>
-    placeChartLabels({
-      sources: [airspace, airports],
-      runwayBoxes: airports.runwayBoxes,
-    });
-  const chart = {
-    sync(state: AtcState) {
-      const changed = [airspace.sync(state), airports.sync(state)];
-      diagrams.sync(state);
-      if (changed.some(Boolean)) {
-        placeChart();
-      }
-    },
-    redraw() {
-      airspace.redraw();
-      airports.redraw();
-      diagrams.redraw();
-      placeChart();
-    },
-  };
+  const chart = createChartLayers({ L, map, store, element });
   // Added after the zoom control, so it stacks above it.
   const layersControl = createLayersControl({ L, map, store });
 
@@ -356,9 +305,7 @@ export async function createAirspaceMap(options: {
       follow.destroy();
       motion.destroy();
       tags.destroy();
-      airspace.destroy();
-      airports.destroy();
-      diagrams.destroy();
+      chart.destroy();
       layersControl.destroy();
       map.remove();
     },

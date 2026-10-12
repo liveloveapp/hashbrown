@@ -62,7 +62,7 @@ export interface AirportLayer extends LabelSource {
    * 12x12 box around its reference point. Fallback airports included; no
    * label may cover any of them.
    */
-  runwayBoxes(): readonly PixelRect[];
+  airportBoxes(): readonly PixelRect[];
   /** Removes every marker. */
   destroy(): void;
 }
@@ -352,7 +352,7 @@ export function createAirportLayer(options: {
     }
   };
 
-  const runwayBoxes = (): readonly PixelRect[] =>
+  const airportBoxes = (): readonly PixelRect[] =>
     boxes ?? drawnNow.map((drawn) => anchorBox(drawn, project));
 
   return {
@@ -371,7 +371,7 @@ export function createAirportLayer(options: {
     redraw,
     labelRequests,
     applyLabels,
-    runwayBoxes,
+    airportBoxes,
     destroy() {
       clear();
       source = null;

@@ -1,15 +1,14 @@
 // @vitest-environment jsdom
-import * as module from 'leaflet';
 import { expect, onTestFinished, test } from 'vitest';
 import type { AirspaceShelf, ChartAirport } from '../../chart';
 import { createAtcStore } from '../../store';
-import { intersects, type PixelRect } from '../pixels';
-import { createAirportLayer } from './airport-layer';
+import { intersects, rectAround, rectAt } from '../pixels';
+import { leafletModule, mapElement, stubCanvas } from '../testing';
 import { shelfLabelAnchor } from './airspace-labels';
-import { createAirspaceLayer } from './airspace-layer';
-import { placeChartLabels } from './chart-labels';
+import { createChartLayers } from './chart-layers';
+import { estimateLabelSize } from './label-placer';
 
-const L = (module as unknown as { default?: typeof module }).default ?? module;
+const L = await leafletModule();
 
 const half = 0.06;
 const lon = -121.15;
@@ -58,58 +57,33 @@ const field: ChartAirport = {
   rank: 0,
 };
 
-/** A 400x300 map on the D label point with both chart layers placing together. */
+/**
+ * A 400x300 map on the D label point with the chart layers mounted as the
+ * app mounts them, syncing with the store.
+ */
 function mount(zoom: number) {
+  stubCanvas();
   const store = createAtcStore();
-  const element = document.createElement('div');
+  const element = mapElement();
   element.className = 'atc-map';
   document.body.append(element);
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
   const map = L.map(element, {
     zoomAnimation: false,
     fadeAnimation: false,
     markerZoomAnimation: false,
   }).setView([labelAt.lat, labelAt.lon], zoom);
-  map.createPane('atc-airspace');
-  map.createPane('atc-airports');
-  const airspace = createAirspaceLayer({ L, map, store, pane: 'atc-airspace' });
-  const airports = createAirportLayer({ L, map, store, pane: 'atc-airports' });
-  const sync = () => {
-    const state = store.getState();
-    const changed = [airspace.sync(state), airports.sync(state)];
-    if (changed.some(Boolean)) {
-      placeChartLabels({
-        sources: [airspace, airports],
-        runwayBoxes: airports.runwayBoxes,
-      });
-    }
-  };
-  const unsubscribe = store.subscribe(sync);
-  sync();
+  const chart = createChartLayers({ L, map, store, element });
+  const unsubscribe = store.subscribe(() => chart.sync(store.getState()));
+  chart.sync(store.getState());
   onTestFinished(() => {
     unsubscribe();
-    airspace.destroy();
-    airports.destroy();
+    chart.destroy();
     map.remove();
     element.remove();
   });
 
-  return { store, map, element, airspace, airports };
+  return { store, map, element };
 }
-
-/** The candidate whose top-left (or centre) sits at `x`, `y`. */
-const candidateAt = (
-  candidates: readonly PixelRect[],
-  x: number,
-  y: number,
-  centred: boolean,
-): PixelRect | undefined =>
-  candidates.find((c) => {
-    const left = centred ? (c.left + c.right) / 2 : c.left;
-    const top = centred ? (c.top + c.bottom) / 2 : c.top;
-    return Math.abs(left - x) < 1 && Math.abs(top - y) < 1;
-  });
 
 /** Where a marker's icon is drawn: its point plus the icon's margins. */
 const drawnAt = (
@@ -141,23 +115,29 @@ test('an airport on a D box label point and the D box both show, apart', () => {
   const label = view.element.querySelector<HTMLElement>('.atc-as-label');
   const block =
     view.element.querySelector<HTMLElement>('.atc-apt-block')?.parentElement;
-  expect(label).not.toBeNull();
-  expect(block).toBeDefined();
   const labelPoint = drawnAt(view.map, label as HTMLElement, labelAt);
   const blockPoint = drawnAt(view.map, block as HTMLElement, field);
-  const labelBox = candidateAt(
-    view.airspace.labelRequests()[0]?.candidates ?? [],
+  const labelSize = estimateLabelSize([label?.textContent ?? '']);
+  const blockSize = estimateLabelSize(
+    [...(block?.querySelectorAll('span') ?? [])].map(
+      (s) => s.textContent ?? '',
+    ),
+  );
+  // An airspace label is centred on its point, a data block hangs from it.
+  const labelBox = rectAround(
     labelPoint.x,
     labelPoint.y,
-    true,
+    labelSize.width,
+    labelSize.height,
   );
-  const blockBox = candidateAt(
-    view.airports.labelRequests()[0]?.candidates ?? [],
+  const blockBox = rectAt(
     blockPoint.x,
     blockPoint.y,
-    false,
+    blockSize.width,
+    blockSize.height,
   );
-  expect(labelBox).toBeDefined();
-  expect(blockBox).toBeDefined();
-  expect(labelBox && blockBox && intersects(labelBox, blockBox)).toBe(false);
+
+  expect(label).not.toBeNull();
+  expect(block).toBeDefined();
+  expect(intersects(labelBox, blockBox)).toBe(false);
 });

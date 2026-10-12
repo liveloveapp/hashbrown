@@ -104,7 +104,7 @@ function mount(zoom = 10) {
   const place = () =>
     placeChartLabels({
       sources: [layer],
-      runwayBoxes: () => [],
+      airportBoxes: () => [],
     });
   const sync = () => {
     if (layer.sync(store.getState())) place();

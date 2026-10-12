@@ -106,7 +106,7 @@ function mount(zoom = 6, centre: [number, number] = [44.0946, -121.2002]) {
   const place = () =>
     placeChartLabels({
       sources: [layer],
-      runwayBoxes: layer.runwayBoxes,
+      airportBoxes: layer.airportBoxes,
     });
   const sync = () => {
     if (layer.sync(store.getState())) place();
@@ -372,7 +372,7 @@ test('at zoom 9 neither of two close airports labels over the other', () => {
   });
 
   const requests = view.layer.labelRequests();
-  const boxes = view.layer.runwayBoxes();
+  const boxes = view.layer.airportBoxes();
   const placed = pair.map((airport) => {
     const point = view.map.latLngToContainerPoint([airport.lat, airport.lon]);
     const block = [...view.element.querySelectorAll('.atc-apt-block')].find(
@@ -396,13 +396,13 @@ test('at zoom 9 neither of two close airports labels over the other', () => {
   view.cleanup();
 });
 
-test('runwayBoxes reuses the boxes projected for the label requests', () => {
+test('airportBoxes reuses the boxes projected for the label requests', () => {
   const view = mount(9);
   view.store.setChart({ cycle: '2610', effective: '2026-09-03', airports });
   view.layer.labelRequests();
   const project = vi.spyOn(view.map, 'latLngToContainerPoint');
 
-  const boxes = view.layer.runwayBoxes();
+  const boxes = view.layer.airportBoxes();
 
   expect(boxes.length).toBeGreaterThan(0);
   expect(project).not.toHaveBeenCalled();
@@ -429,6 +429,6 @@ test('an airport just outside the view is an obstacle but gets no label request'
 
   const requests = view.layer.labelRequests();
   expect(requests.map((r) => r.id)).not.toContain('apt:OUT');
-  expect(view.layer.runwayBoxes()).toHaveLength(1);
+  expect(view.layer.airportBoxes()).toHaveLength(1);
   view.cleanup();
 });
