@@ -9,7 +9,7 @@ import {
 import { useEffect, useReducer, useRef } from 'react';
 import { AirspaceMap } from './airspace-map';
 import { Assistant } from './assistant';
-import { useKeyboardInset } from './dom-hooks';
+import { useKeyboardInset } from './keyboard-inset';
 import { PanelHeader } from './panel-header';
 import { SheetHandle } from './sheet-handle';
 import { useAtcStore } from './store';

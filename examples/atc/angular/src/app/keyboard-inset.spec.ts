@@ -1,14 +1,15 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { expect, test } from 'vitest';
 import { KeyboardInset } from './keyboard-inset';
 
 @Component({
   imports: [KeyboardInset],
   template: `<div atcKeyboardInset></div>`,
 })
-class Host {}
+class KeyboardInsetHost {}
 
-test('the keyboard inset follows visualViewport through a host style binding', () => {
+test("the keyboard inset publishes the keyboard's height as --atc-kb", () => {
   const viewport = Object.assign(new EventTarget(), {
     height: 800,
     offsetTop: 0,
@@ -21,7 +22,7 @@ test('the keyboard inset follows visualViewport through a host style binding', (
     value: 800,
     configurable: true,
   });
-  const fixture = TestBed.createComponent(Host);
+  const fixture = TestBed.createComponent(KeyboardInsetHost);
   fixture.detectChanges();
   const div = (fixture.nativeElement as HTMLElement).querySelector(
     'div',

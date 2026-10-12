@@ -24,7 +24,7 @@ import {
 } from './components/arrivals-board';
 import { FlightCard, FlightCardFallback } from './components/flight-card';
 import { Composer } from './composer';
-import { useAutoScroll } from './dom-hooks';
+import { useAutoScroll } from './auto-scroll';
 import { EmptyState } from './empty-state';
 import { useAtcStore } from './store';
 import { Transcript } from './transcript';

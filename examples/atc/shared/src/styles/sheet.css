@@ -46,7 +46,7 @@
     z-index: 2000;
     left: 0;
     right: 0;
-    /* The on-screen keyboard's height, set by keyboard-inset.ts / dom-hooks.ts. */
+    /* The on-screen keyboard's height, set by keyboard-inset.ts in each app. */
     bottom: var(--atc-kb, 0px);
     box-sizing: border-box;
     height: var(--atc-sheet);
