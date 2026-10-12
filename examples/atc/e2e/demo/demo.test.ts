@@ -1,5 +1,6 @@
 import {
   AIRPORTS,
+  applyAirspace,
   applySnapshot,
   distanceNm,
   findAircraft,
@@ -8,7 +9,13 @@ import {
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
-import { NEAR_BEND, NO_FILTERS, scenario } from '../src/fixtures';
+import { CHART_AIRSPACE } from '../src/chart-fixtures';
+import {
+  NEAR_BEND,
+  NO_FILTERS,
+  PORTLAND_CLASS_C,
+  scenario,
+} from '../src/traffic-fixtures';
 import { codePane, renderDirector, snapWindowStart } from './director';
 import { loopArgs, masterArgs } from './encode';
 import {
@@ -178,7 +185,10 @@ test('the seeded random source repeats', () => {
 });
 
 test('filler traffic keeps the scripted answers true', () => {
-  const state = applySnapshot(INITIAL_STATE, demoFrame(0));
+  const state = applyAirspace(
+    applySnapshot(INITIAL_STATE, demoFrame(0)),
+    CHART_AIRSPACE,
+  );
   const any = { ...NO_FILTERS, limit: 20 } as const;
 
   const nearBend = findAircraft(state, {
@@ -194,6 +204,11 @@ test('filler traffic keeps the scripted answers true', () => {
   const fastest = findAircraft(state, { ...any, sortBy: 'speed' }).filter(
     (row) => row.hex !== scenario.highest.hex,
   );
+  const portland = findAircraft(state, {
+    ...any,
+    inAirspace: PORTLAND_CLASS_C,
+    sortBy: 'distance',
+  });
 
   expect(nearBend.map((row) => row.hex)).toEqual(
     scenario.nearby.map((row) => row.hex),
@@ -202,6 +217,9 @@ test('filler traffic keeps the scripted answers true', () => {
     scenario.arrivals.map((row) => row.hex),
   );
   expect(fastest[0].hex).toBe(scenario.fastest.hex);
+  expect(portland.map((row) => row.hex)).toEqual(
+    scenario.portland.map((row) => row.hex),
+  );
 });
 
 test('filler traffic stays clear of the Bend ring', () => {

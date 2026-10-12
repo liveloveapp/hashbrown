@@ -11,7 +11,8 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join, resolve } from 'node:path';
-import { CHART_AIRPORTS, chartSurfaces, scenario } from '../src/fixtures';
+import { CHART_AIRPORTS, chartSurfaces } from '../src/chart-fixtures';
+import { scenario } from '../src/traffic-fixtures';
 import { scriptAtcModel } from '../src/model';
 import { renderDirector, STAGE } from './director';
 import {

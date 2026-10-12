@@ -1,4 +1,4 @@
-import { STARTER_PROMPTS } from '@atc/shared';
+import { PROMPTS } from '../src/model';
 
 /**
  * The atc demo video's storyboard: it alternates the real code behind each
@@ -56,9 +56,9 @@ export type Beat =
 
 /** The app beats' prompts, from the app's own starter list. */
 export const DEMO_PROMPTS = {
-  near: STARTER_PROMPTS[0],
-  arrivals: STARTER_PROMPTS[1],
-  follow: STARTER_PROMPTS[3],
+  near: PROMPTS.nearBend,
+  arrivals: PROMPTS.seattleArrivals,
+  follow: PROMPTS.followFastest,
 } as const;
 
 /** The demo, beat by beat. */

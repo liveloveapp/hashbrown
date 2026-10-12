@@ -6,10 +6,7 @@ import {
   deadReckon,
   displayLabel,
 } from '@atc/shared';
-import { frame } from '../src/fixtures';
-
-/** Seconds between synthetic frames, as the e2e fixtures advance them. */
-const FRAME_S = 3;
+import { frame, FRAME_MS } from '../src/traffic-fixtures';
 
 /** A small seeded PRNG (mulberry32), so every recording shows the same sky. */
 export function seededRandom(seed: number): () => number {
@@ -38,7 +35,7 @@ const AIRLINES = ['ASA', 'UAL', 'DAL', 'SWA', 'AAL', 'SKW', 'QXE', 'JBU'];
 const JETS = ['B738', 'A320', 'E75L', 'B39M', 'A321', 'CRJ9', 'B739', 'A20N'];
 const PROPS = ['C172', 'PA28', 'SR22', 'C182', 'BE36'];
 
-/** Keeps filler out of the scripted answers: the Bend ring and Seattle approaches. */
+/** Filler stays this far from KBDN (about 33 nm), outside the 25 nm ring the near-Bend answer lists. */
 const BEND = AIRPORTS.KBDN;
 const CLEAR_OF_BEND_DEG = 0.55;
 
@@ -46,7 +43,9 @@ const CLEAR_OF_BEND_DEG = 0.55;
  * Filler aircraft at frame 0: airliners at cruise and light aircraft, level
  * (never descending, so none is "approaching" an airport), slower and lower
  * than the scenario's fastest and highest planes, and clear of the Bend ring,
- * so the scripted answers stay true.
+ * so the scripted answers stay true. Light aircraft fly at 4,500 ft or
+ * higher, above the Portland Class C's 4,000 ft ceiling, so none joins the
+ * Portland answer.
  */
 export const FILLER: readonly Aircraft[] = (() => {
   const random = seededRandom(0xa7c);
@@ -103,7 +102,7 @@ export const FILLER: readonly Aircraft[] = (() => {
 /** Demo frame `n`: the e2e scenario's frame plus the filler, flown forward. */
 export function demoFrame(n: number): AircraftSnapshot {
   const base = frame(n);
-  const seconds = n * FRAME_S;
+  const seconds = (n * FRAME_MS) / 1000;
 
   return {
     at: base.at,
