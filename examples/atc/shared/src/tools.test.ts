@@ -274,6 +274,30 @@ test('map tools update the store and report unknown aircraft', async () => {
   expect(store.getState().highlighted.size).toBe(0);
 });
 
+test('highlighting a set with an unknown hex keeps the shown area', async () => {
+  const store = createAtcStore();
+  store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });
+  const tools = createAtcTools({
+    store,
+    fetchRoute: async () => null,
+    chartWaitMs: 0,
+  });
+  await tools.showArea.handler({ airport: 'KBDN', radiusNm: 25 });
+  const shown = store.getState();
+
+  const result = await tools.highlightAircraft.handler({
+    hexes: ['aaaaaa', 'ffffff'],
+  });
+
+  expect(result).toEqual({ highlighted: 1, unknown: ['ffffff'] });
+  expect(store.getState().shownArea).toEqual({
+    airport: 'KBDN',
+    radiusNm: 25,
+  });
+  expect(store.getState().viewSeq).toBe(shown.viewSeq);
+  expect([...store.getState().highlighted]).toEqual(['aaaaaa']);
+});
+
 test('getSelectedAircraft returns the selected row or null', async () => {
   const store = createAtcStore();
   store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });

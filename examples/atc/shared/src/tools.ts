@@ -643,13 +643,15 @@ export function createAtcTools(context: AtcToolContext) {
     highlightAircraft: {
       ...ATC_TOOL_DEFINITIONS.highlightAircraft,
       handler: async ({ hexes }: { hexes: string[] }) => {
-        store.highlight(hexes);
+        const { aircraft } = store.getState();
         const asked = [...new Set(hexes.map(normalizeHex))];
-        const unknown = asked.filter(
-          (hex) => !store.getState().aircraft.has(hex),
-        );
+        const known = asked.filter((hex) => aircraft.has(hex));
+        const unknown = asked.filter((hex) => !aircraft.has(hex));
+        // Only drawable planes: an unknown hex would fail the shown-area check
+        // and discard the area outline.
+        store.highlight(known);
 
-        return { highlighted: asked.length - unknown.length, unknown };
+        return { highlighted: known.length, unknown };
       },
     },
     clearHighlight: {
