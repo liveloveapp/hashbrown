@@ -5,6 +5,7 @@
  * does not do; and a map left without the highlight the answer needs. Used
  * by the live prose eval (`prose/eval.ts`).
  */
+import { ATC_TOOL_NAMES } from '@atc/shared';
 
 /** What kind of problem a paragraph has. */
 export type ProseIssueKind =
@@ -25,9 +26,21 @@ export interface ProseIssue {
 const LEAK =
   /\b(sentences?|lead-?ins?|prose|em-?dash(es)?|en-?dash(es)?|exclamation|emoji|hex (codes?|fields?)|props?|tool (calls?|results?)|these rules|instructions?|as instructed|label(l?ed)?)\b/i;
 
-/** Component and tool names the model sees but users never should. */
-const INTERNAL_NAME =
-  /\b(FlightCard|ArrivalsBoard|AircraftCompare|AirportCard|findAircraft|highlightAircraft|lookupRoute|lookupPlace|showArea|resetMap|followAircraft|setLayers|showAirport|showAirspace|airspaceAt|getSelectedAircraft|partTime|checkedAltitudeFt|altitudeSource|inAirspace|highlightedAirspace)\b/;
+/** Component, tool and field names the model sees but users never should. */
+const INTERNAL_NAME = new RegExp(
+  `\\b(${[
+    ...ATC_TOOL_NAMES,
+    'FlightCard',
+    'ArrivalsBoard',
+    'AircraftCompare',
+    'AirportCard',
+    'partTime',
+    'checkedAltitudeFt',
+    'altitudeSource',
+    'inAirspace',
+    'highlightedAirspace',
+  ].join('|')})\\b`,
+);
 
 /** A paragraph that ends on a colon, with nothing after it. */
 const DANGLING_COLON = /:\s*$/;
