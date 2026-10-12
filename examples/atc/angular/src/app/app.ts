@@ -30,7 +30,7 @@ import { ATC_STORE } from './store';
   imports: [AirspaceMap, Assistant, PanelHeader, SheetHandle, KeyboardInset],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="atc-workbench is-sheet" atcKeyboardInset>
+    <main class="atc-workbench" atcKeyboardInset>
       <section
         #chatSheet
         id="atc-chat-sheet"

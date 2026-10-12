@@ -30,7 +30,7 @@ export function App() {
   useKeyboardInset(workbench);
 
   return (
-    <main ref={workbench} className="atc-workbench is-sheet">
+    <main ref={workbench} className="atc-workbench">
       <section
         ref={chatSheet}
         id="atc-chat-sheet"
