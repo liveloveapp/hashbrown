@@ -35,7 +35,7 @@ export const SHEET_DRAG_THRESHOLD = 24;
 const LONG_DRAG = 160;
 const SNAPS: readonly SheetSnap[] = ['peek', 'half', 'full'];
 
-function at(snap: SheetSnap): SheetState {
+function restAt(snap: SheetSnap): SheetState {
   return { snap, held: snap === 'full' };
 }
 
@@ -45,36 +45,33 @@ function at(snap: SheetSnap): SheetState {
  * lowers it to half so the map shows above the answer; a map move does too,
  * unless the user is holding it at full; picking a plane from the chat
  * always does. Escape closes it to its peek. "Held" means the user put the
- * sheet at full themselves: automatic events (map, reveal, send) never pull a
- * held sheet down, only the user's drag or Escape does.
+ * sheet at full themselves; only a map move respects it.
  */
 export function nextSheet(state: SheetState, event: SheetEvent): SheetState {
   switch (event.type) {
     case 'drag': {
       const distance = Math.abs(event.deltaY);
       if (distance < SHEET_DRAG_THRESHOLD) {
-        return at(state.snap === 'full' ? 'peek' : 'full');
+        return restAt(state.snap === 'full' ? 'peek' : 'full');
       }
       const steps = distance >= LONG_DRAG ? 2 : 1;
       const index =
         SNAPS.indexOf(state.snap) + (event.deltaY < 0 ? steps : -steps);
 
-      return at(
+      return restAt(
         SNAPS[Math.max(0, Math.min(SNAPS.length - 1, index))] ?? 'peek',
       );
     }
     case 'focus':
-      return at('full');
+      return restAt('full');
     case 'escape':
       return INITIAL_SHEET;
     case 'send':
-      return { snap: 'half', held: false };
+      return restAt('half');
     case 'map':
-      return state.snap === 'full' && !state.held
-        ? { snap: 'half', held: false }
-        : state;
+      return state.snap === 'full' && !state.held ? restAt('half') : state;
     case 'reveal':
-      return state.snap === 'full' ? { snap: 'half', held: false } : state;
+      return state.snap === 'full' ? restAt('half') : state;
   }
 }
 

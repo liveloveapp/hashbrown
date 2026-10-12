@@ -1,5 +1,10 @@
 import { expect, test } from 'vitest';
-import { chatStatus, thinkingStatus, transcriptItems } from './transcript';
+import {
+  chatStatus,
+  messageText,
+  thinkingStatus,
+  transcriptItems,
+} from './transcript';
 
 const call = (name: string, status: 'pending' | 'done' = 'done') => ({
   name,
@@ -142,4 +147,14 @@ test('chatStatus says what the assistant is doing now: the running step, else th
     null,
     null,
   ]);
+});
+
+test('messageText reads string content and ignores anything else', () => {
+  const texts = [
+    messageText('hello'),
+    messageText([{ type: 'text', text: 'x' }]),
+    messageText(undefined),
+  ];
+
+  expect(texts).toEqual(['hello', '', '']);
 });

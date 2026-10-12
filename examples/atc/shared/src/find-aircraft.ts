@@ -95,6 +95,10 @@ export interface AircraftRow {
   readonly altitudeFt: number | null;
   readonly groundSpeedKt: number | null;
   readonly trackDeg: number | null;
+  /**
+   * Nautical miles from the search centre: the near, inAirspace or
+   * approaching airport, else the area centre.
+   */
   readonly distanceNm: number;
 }
 
@@ -151,7 +155,8 @@ function toAirspaceRow(
   };
 }
 
-function text(value: string | null): string | null {
+/** Lower-cased, trimmed query, or null when empty. */
+function queryText(value: string | null): string | null {
   const trimmed = value?.trim().toLowerCase() ?? '';
 
   return trimmed === '' ? null : trimmed;
@@ -191,31 +196,31 @@ export function findAircraft(
   input: FindAircraftInput,
   area: Area = AREAS.pnw,
 ): AircraftRow[] {
-  const airline = text(input.airline);
-  const type = text(input.typeCode);
+  const airline = queryText(input.airline);
+  const type = queryText(input.typeCode);
   const directory = airportDirectory(state);
-  const airport = input.approaching
+  const approachAirport = input.approaching
     ? lookupPlace(input.approaching, directory)
     : null;
-  if (input.approaching && airport === null) {
+  if (input.approaching && approachAirport === null) {
     return [];
   }
   const near = input.near ?? null;
-  const centre: Airport | null =
+  const nearAirport: Airport | null =
     near === null ? null : lookupPlace(near.airport, directory);
-  if (near !== null && centre === null) {
+  if (near !== null && nearAirport === null) {
     return [];
   }
   const inAirspace = input.inAirspace ?? null;
-  const airspaceCentre: Airport | null =
+  const airspaceAirport: Airport | null =
     inAirspace === null ? null : lookupPlace(inAirspace.airport, directory);
-  if (inAirspace !== null && airspaceCentre === null) {
+  if (inAirspace !== null && airspaceAirport === null) {
     return [];
   }
   const shelves =
-    inAirspace === null || airspaceCentre === null
+    inAirspace === null || airspaceAirport === null
       ? null
-      : airspaceOf(state.airspace.shelves, airspaceCentre.code).filter(
+      : airspaceOf(state.airspace.shelves, airspaceAirport.code).filter(
           (shelf) =>
             inAirspace.class === null || shelf.class === inAirspace.class,
         );
@@ -241,11 +246,13 @@ export function findAircraft(
         input.maxAltitudeFt === null ||
         (a.altitudeFt !== null && a.altitudeFt <= input.maxAltitudeFt),
     )
-    .filter((a) => airport === null || isApproaching(a, airport))
-    .filter((a) => centre === null || distanceNm(a, centre) <= radius)
+    .filter(
+      (a) => approachAirport === null || isApproaching(a, approachAirport),
+    )
+    .filter((a) => nearAirport === null || distanceNm(a, nearAirport) <= radius)
     .filter((a) => shelves === null || shelvesAt(shelves, a).length > 0)
     .map((a) => {
-      const from = centre ?? airspaceCentre ?? airport ?? area;
+      const from = nearAirport ?? airspaceAirport ?? approachAirport ?? area;
 
       return shelves === null
         ? toRow(a, from)

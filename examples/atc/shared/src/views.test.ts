@@ -8,7 +8,6 @@ import {
   boardShowsEta,
   feedNotice,
   flightCardView,
-  messageText,
   partialText,
   routeText,
 } from './views';
@@ -235,16 +234,6 @@ test('feedNotice is silent while live and names a connecting or delayed feed', (
     'Traffic data delayed',
     'Traffic data delayed',
   ]);
-});
-
-test('messageText reads string content and ignores anything else', () => {
-  const texts = [
-    messageText('hello'),
-    messageText([{ type: 'text', text: 'x' }]),
-    messageText(undefined),
-  ];
-
-  expect(texts).toEqual(['hello', '', '']);
 });
 
 test('an airline callsign with an unknown code shows no airline beside the label', () => {

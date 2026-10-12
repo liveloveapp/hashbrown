@@ -1,5 +1,4 @@
 import { type HexLabel, type ToolCallLike, toolRunView } from './tool-chips';
-import { messageText } from './views';
 
 /** The parts of a Hashbrown chat message that the transcript reads. */
 export interface TranscriptMessageLike {
@@ -17,11 +16,41 @@ export type TranscriptItem<M extends TranscriptMessageLike> =
       readonly message: Extract<M, { readonly role: 'assistant' }>;
     };
 
+/** A user message's text, or an empty string for non-text content. */
+export function messageText(content: unknown): string {
+  return typeof content === 'string' ? content : '';
+}
+
+/**
+ * True when an assistant message carries at least one UI element, not only
+ * tool calls.
+ */
 function hasAnswer(content: unknown): boolean {
-  if (typeof content !== 'object' || content === null) return false;
+  if (typeof content !== 'object' || content === null) {
+    return false;
+  }
   const ui = (content as { ui?: unknown }).ui;
 
   return Array.isArray(ui) && ui.length > 0;
+}
+
+/** Appends `calls` to the last tools row, or starts one. */
+function withToolCalls<M extends TranscriptMessageLike>(
+  items: TranscriptItem<M>[],
+  calls: readonly ToolCallLike[],
+): TranscriptItem<M>[] {
+  if (calls.length === 0) {
+    return items;
+  }
+  const last = items.at(-1);
+  if (last?.kind === 'tools') {
+    return [
+      ...items.slice(0, -1),
+      { kind: 'tools', calls: [...last.calls, ...calls] },
+    ];
+  }
+
+  return [...items, { kind: 'tools', calls }];
 }
 
 /**
@@ -36,18 +65,10 @@ export function transcriptItems<M extends TranscriptMessageLike>(
     if (message.role === 'user') {
       return [...items, { kind: 'user', text: messageText(message.content) }];
     }
-    if (message.role !== 'assistant') return items;
-    const calls = message.toolCalls ?? [];
-    const last = items.at(-1);
-    const withCalls: TranscriptItem<M>[] =
-      calls.length === 0
-        ? items
-        : last?.kind === 'tools'
-          ? [
-              ...items.slice(0, -1),
-              { kind: 'tools', calls: [...last.calls, ...calls] },
-            ]
-          : [...items, { kind: 'tools', calls }];
+    if (message.role !== 'assistant') {
+      return items;
+    }
+    const withCalls = withToolCalls(items, message.toolCalls ?? []);
 
     return hasAnswer(message.content)
       ? [
@@ -72,7 +93,9 @@ export function thinkingStatus<M extends TranscriptMessageLike>(
   busy: boolean,
 ): string | null {
   const last = items.at(-1);
-  if (!busy || last === undefined || last.kind === 'answer') return null;
+  if (!busy || last === undefined || last.kind === 'answer') {
+    return null;
+  }
   if (last.kind === 'tools' && last.calls.some((c) => c.status === 'pending')) {
     return null;
   }

@@ -142,7 +142,7 @@ function row<T>(
   ];
 }
 
-const text = (value: string) => value;
+const asIs = (value: string) => value;
 
 /** The readable type name, else adsb.lol's description, else null. */
 function readableType(aircraft: Aircraft): string | null {
@@ -162,6 +162,8 @@ function summary(state: AtcState, aircraft: Aircraft): DetailSummary {
         ? null
         : routeText(state.routes, aircraft.callsign),
     figures: [
+      // formatAltitude needs the whole aircraft; null leaves the row out when
+      // neither is known.
       ...row(
         'Altitude',
         aircraft.onGround || aircraft.altitudeFt !== null ? aircraft : null,
@@ -180,15 +182,15 @@ function identityRows(aircraft: Aircraft): DetailRow[] {
     ...row(
       'Emergency',
       emergency === 'none' ? null : emergency,
-      (state) => EMERGENCY_NAMES[state],
+      (emergency) => EMERGENCY_NAMES[emergency],
       { wide: true, text: true },
     ),
-    ...row('Registration', aircraft.registration, text),
-    ...row('ICAO type', typeCode, text),
+    ...row('Registration', aircraft.registration, asIs),
+    ...row('ICAO type', typeCode, asIs),
     ...row('Kind', aircraft.kind, (kind) => KIND_NAMES[kind], { text: true }),
-    ...row('Model year', aircraft.year, text),
-    ...row('Callsign', aircraft.callsign, text),
-    ...row('Squawk', aircraft.squawk, text),
+    ...row('Model year', aircraft.year, asIs),
+    ...row('Callsign', aircraft.callsign, asIs),
+    ...row('Squawk', aircraft.squawk, asIs),
     ...row(
       'Category',
       category,
@@ -235,7 +237,7 @@ function speedRows(aircraft: Aircraft): DetailRow[] {
     ...row('Selected heading', aircraft.selectedHeadingDeg, formatHeading, {
       id: 'selected-heading',
     }),
-    ...row('Wind', wind, text, { id: 'wind' }),
+    ...row('Wind', wind, asIs, { id: 'wind' }),
     ...row(
       'Outside air',
       aircraft.outsideAirTempC,

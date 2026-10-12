@@ -1,3 +1,5 @@
+import { isRecord, numberOrNull } from './json';
+import type { AircraftKind } from './kinds';
 import { AIRPORTS } from './places';
 import { type AtcState, normalizeHex } from './store';
 import type { AtcToolName } from './tool-definitions';
@@ -38,14 +40,14 @@ export function labelForHex(state: AtcState): HexLabel {
 const MAX_ARG = 24;
 
 function record(args: unknown): Record<string, unknown> {
-  return typeof args === 'object' && args !== null
-    ? (args as Record<string, unknown>)
-    : {};
+  return isRecord(args) ? args : {};
 }
 
 function shortText(value: unknown): string | null {
   const text = typeof value === 'string' ? value.trim() : '';
-  if (text === '') return null;
+  if (text === '') {
+    return null;
+  }
 
   return text.length > MAX_ARG ? `${text.slice(0, MAX_ARG - 1)}…` : text;
 }
@@ -54,10 +56,16 @@ function code(value: unknown): string | null {
   return shortText(value)?.toUpperCase() ?? null;
 }
 
-/** An airport by its city ("KSEA" is "Seattle"), else its code. */
+/**
+ * An airport by its city from the fallback table ("KSEA" is "Seattle"), else
+ * its code. Chips are labelled without the store, so other chart airports
+ * read as codes.
+ */
 function place(value: unknown): string | null {
   const id = code(value);
-  if (id === null) return null;
+  if (id === null) {
+    return null;
+  }
 
   return Object.hasOwn(AIRPORTS, id)
     ? AIRPORTS[id as keyof typeof AIRPORTS].city
@@ -65,24 +73,33 @@ function place(value: unknown): string | null {
 }
 
 /** How a kind reads before "aircraft". */
-const KIND_WORDS: Record<string, string> = {
+const KIND_WORDS: Readonly<Record<AircraftKind, string>> = {
   single: 'single-engine',
   twin: 'twin-engine',
   jet: 'jet',
   rotor: 'helicopter',
 };
 
+/** A kind in words ("twin-engine"), or the streamed text as it is. */
+function kindWords(kind: string): string {
+  return Object.hasOwn(KIND_WORDS, kind)
+    ? KIND_WORDS[kind as AircraftKind]
+    : kind;
+}
+
 function feet(value: unknown, prefix: string): string | null {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? `${prefix} ${Math.round(value).toLocaleString('en-US')} ft`
-    : null;
+  const n = numberOrNull(value);
+
+  return n === null
+    ? null
+    : `${prefix} ${Math.round(n).toLocaleString('en-US')} ft`;
 }
 
 /** "25 nm" for a finite number, else null. */
 function miles(value: unknown): string | null {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? `${Math.round(value)} nm`
-    : null;
+  const n = numberOrNull(value);
+
+  return n === null ? null : `${Math.round(n)} nm`;
 }
 
 /** "within 25 nm of Bend", or "near Bend" while the radius streams. */
@@ -90,7 +107,9 @@ function nearSummary(value: unknown): string | null {
   const near = record(value);
   const airport = place(near['airport']);
   const radius = miles(near['radiusNm']);
-  if (airport === null) return null;
+  if (airport === null) {
+    return null;
+  }
 
   return radius === null ? `near ${airport}` : `within ${radius} of ${airport}`;
 }
@@ -112,7 +131,7 @@ function findSummary(args: Record<string, unknown>): string {
   const before = [
     shortText(args['airline']),
     shortText(args['typeCode']),
-    kind === null ? null : (KIND_WORDS[kind] ?? kind),
+    kind === null ? null : kindWords(kind),
   ].filter((part): part is string => part !== null);
   const after = [
     feet(args['minAltitudeFt'], 'above'),
@@ -123,12 +142,8 @@ function findSummary(args: Record<string, unknown>): string {
   ].filter((part): part is string => part !== null);
   const sortBy = shortText(args['sortBy']);
   const filtered = before.length > 0 || after.length > 0;
-  const tail =
-    after.length > 0
-      ? ` ${after.join(', ')}`
-      : !filtered && sortBy !== null
-        ? ` sorted by ${sortBy}`
-        : '';
+  const sorted = !filtered && sortBy !== null ? ` sorted by ${sortBy}` : '';
+  const tail = after.length > 0 ? ` ${after.join(', ')}` : sorted;
 
   return `${[...before, 'aircraft'].join(' ')}${tail}`;
 }
@@ -187,7 +202,9 @@ const RUNNING: Record<
   showArea: (args) => {
     const airport = place(args['airport']);
     const radius = miles(args['radiusNm']);
-    if (airport === null) return 'Showing an area';
+    if (airport === null) {
+      return 'Showing an area';
+    }
 
     return radius === null
       ? `Showing ${airport}`
@@ -366,12 +383,13 @@ export function toolRunView(
     ...(stopped > 0 ? [`${stopped} stopped`] : []),
   ];
   const text = parts.join(', ');
-  const running = chips.findLast((chip) => chip.state === 'running');
+  const live = chips.filter((chip) => chip.state === 'running');
+  const running = live.at(-1);
 
   return {
     summary:
       text === '' ? null : `${text.charAt(0).toUpperCase()}${text.slice(1)}`,
-    live: chips.filter((chip) => chip.state === 'running'),
+    live,
     chips,
     current: running === undefined ? null : `${running.label}…`,
     steps: plural(chips.length, 'step', 'steps'),

@@ -278,10 +278,11 @@ function words(text: string): string {
 
 /**
  * Resolves a place the user named to an airport in `directory`: an ICAO or
- * FAA code (the IATA code at airline airports), an airport name or alias, or a city, ignoring case,
- * punctuation and words such as "airport" or "Oregon". Exact matches win;
- * otherwise a name or city that starts with the query (three letters or
- * more). Returns null for places outside the table, such as Tokyo or KJFK.
+ * FAA code (the IATA code at airline airports), an airport name or alias, or
+ * a city, ignoring case, punctuation and words such as "airport" or "Oregon".
+ * Exact matches win; otherwise a name or city that starts with the query
+ * (three letters or more). Returns null for places outside the table, such
+ * as Tokyo or KJFK.
  */
 export function lookupPlace(
   query: string,
