@@ -172,7 +172,7 @@ export async function createAirspaceMap(options: {
   const follow = createFollowController({
     ...shared,
     drawnAt,
-    band: cards.band,
+    band: cards.visibleBand,
   });
   const view = createViewController({ ...shared, area, drawnAt, cards });
   const tags = createTagSync({
@@ -180,7 +180,7 @@ export async function createAirspaceMap(options: {
     getState: store.getState,
     drawnAt,
     focus: cards.focus,
-    band: cards.band,
+    band: cards.visibleBand,
   });
 
   map.on('dragstart', () => {
@@ -338,7 +338,7 @@ export async function createAirspaceMap(options: {
   };
 
   cards.measureArea();
-  tags.measure();
+  tags.measureControls();
   view.showHome();
   render(store.getState());
   const unsubscribe = store.subscribe(() => render(store.getState()));
@@ -347,7 +347,7 @@ export async function createAirspaceMap(options: {
   const onResize = () => {
     cards.measureArea();
     cards.sync(store.getState());
-    tags.measure();
+    tags.measureControls();
     tags.layout();
   };
   const resizeObserver =

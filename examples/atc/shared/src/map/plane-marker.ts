@@ -1,3 +1,4 @@
+import type { Marker } from 'leaflet';
 import type { Aircraft } from '../aircraft';
 import { type AircraftKind, KIND_PATHS } from '../kinds';
 import type { AtcState } from '../store';
@@ -22,6 +23,17 @@ export function markerClassName(state: AtcState, hex: string): string {
   }
 
   return classes.join(' ');
+}
+
+/** The `.atc-plane` element of a plane's marker, once Leaflet has drawn it. */
+export function planeElementOf(
+  markers: ReadonlyMap<string, Marker>,
+  hex: string,
+): HTMLElement | null {
+  return (
+    markers.get(hex)?.getElement()?.querySelector<HTMLElement>('.atc-plane') ??
+    null
+  );
 }
 
 /**

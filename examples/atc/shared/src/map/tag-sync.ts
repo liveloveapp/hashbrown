@@ -2,8 +2,10 @@ import type { Map as LeafletMap, Marker } from 'leaflet';
 import { prefersReducedMotion } from '../dom';
 import type { LatLon } from '../places';
 import type { AtcState } from '../store';
+import type { MapBand } from './card-sync';
 import { altText, createTextMeasure } from './tag-measure';
 import { exactContainerPoint, type PixelRect } from './pixels';
+import { planeElementOf } from './plane-marker';
 import {
   layoutTags,
   type TagItem,
@@ -13,11 +15,12 @@ import {
 } from './tag-layout';
 
 /** How often tags are laid out again while planes move, in ms. */
-export const TAG_LAYOUT_MS = 500;
+const TAG_LAYOUT_MS = 500;
 /** How long a tag fades out before it changes sides, in ms (`--atc-fast`). */
 const FADE_MS = 150;
 /** Planes this far outside the bounds still count as obstacles, in pixels. */
 const OBSTACLE_MARGIN = 40;
+
 /** Keeps the map's data tags from overlapping. */
 export interface TagSync {
   /** Lays the tags out now. */
@@ -31,7 +34,7 @@ export interface TagSync {
    * Re-measures the map's controls (zoom, Layers, attribution), which tags
    * keep clear of; on resize, never per frame.
    */
-  measure(): void;
+  measureControls(): void;
   destroy(): void;
 }
 
@@ -53,7 +56,7 @@ export function createTagSync(options: {
   /** The hovered plane and the one the detail card describes. */
   focus: () => { hovered: string | null; detailed: string | null };
   /** The strip of map between a docked card and a phone's sheet. */
-  band: () => { top: number; bottom: number };
+  band: () => MapBand;
 }): TagSync {
   const { map, element, getState, markers, isZooming, drawnAt, focus, band } =
     options;
@@ -69,9 +72,7 @@ export function createTagSync(options: {
   let lastLayoutAt = -Infinity;
   let lastFocus = '';
 
-  const planeOf = (hex: string) =>
-    markers.get(hex)?.getElement()?.querySelector<HTMLElement>('.atc-plane') ??
-    null;
+  const planeOf = (hex: string) => planeElementOf(markers, hex);
   const pointOf = (hex: string) => {
     const position = drawnAt(hex);
 
@@ -136,7 +137,8 @@ export function createTagSync(options: {
     const { hovered, detailed } = focus();
     lastFocus = `${hovered} ${detailed}`;
     const order = tagOrder(state, { hovered, detailed });
-    // Planes no tag may cover: tagged, highlighted, selected or followed.
+    // Planes no tag may cover: tagged, highlighted, selected or followed, or
+    // described by the card.
     const hard = new Set([
       ...order,
       ...state.highlighted,
@@ -194,7 +196,7 @@ export function createTagSync(options: {
   };
 
   /** Measures the map's controls, which tags keep clear of. */
-  const measure = () => {
+  const measureControls = () => {
     const box = element.getBoundingClientRect();
     blocked = [
       ...element.querySelectorAll(
@@ -216,7 +218,7 @@ export function createTagSync(options: {
   const controls =
     typeof ResizeObserver === 'function'
       ? new ResizeObserver(() => {
-          measure();
+          measureControls();
           layout();
         })
       : null;
@@ -235,7 +237,7 @@ export function createTagSync(options: {
         layout();
       }
     },
-    measure,
+    measureControls,
     destroy() {
       controls?.disconnect();
       for (const { timer } of fading.values()) {

@@ -4,7 +4,13 @@ import type { Aircraft } from '../aircraft';
 import { KIND_PATHS } from '../kinds';
 import { applySnapshot, INITIAL_STATE } from '../store';
 import { testAircraft } from '../testing';
-import { markerClassName, planeIconHtml, updatePlane } from './plane-marker';
+import type { Marker } from 'leaflet';
+import {
+  markerClassName,
+  planeElementOf,
+  planeIconHtml,
+  updatePlane,
+} from './plane-marker';
 
 const plane = testAircraft({
   lat: 42,
@@ -164,4 +170,19 @@ test('updatePlane swaps the silhouette when the kind changes, leaving the marker
   expect(body.getAttribute('data-kind')).toBe('rotor');
   expect(body.querySelector('path')?.getAttribute('d')).toBe(KIND_PATHS.rotor);
   expect(body.style.transform).toBe('rotate(271.6deg)');
+});
+
+test('planeElementOf finds the plane element of a drawn marker, else null', () => {
+  const host = document.createElement('div');
+  host.innerHTML = planeIconHtml(plane, 'atc-plane');
+  const markers = new Map([
+    ['aaaaaa', { getElement: () => host } as unknown as Marker],
+    ['bbbbbb', { getElement: () => undefined } as unknown as Marker],
+  ]);
+
+  const found = ['aaaaaa', 'bbbbbb', 'cccccc'].map((hex) =>
+    planeElementOf(markers, hex),
+  );
+
+  expect(found).toEqual([host.querySelector('.atc-plane'), null, null]);
 });

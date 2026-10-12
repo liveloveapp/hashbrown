@@ -7,10 +7,10 @@ const positions = new Map([
   ['c', { lat: 46, lon: -123 }],
 ]);
 
-test('a new set of several planes fits their bounds', () => {
-  const previous = new Set<string>();
+test('several planes fit their bounds', () => {
+  const highlighted = new Set(['a', 'b']);
 
-  const target = fitTarget(previous, new Set(['a', 'b']), positions, false);
+  const target = fitTarget(highlighted, positions);
 
   expect(target).toEqual({
     kind: 'bounds',
@@ -22,22 +22,20 @@ test('a new set of several planes fits their bounds', () => {
 });
 
 test('a single plane targets a point at zoom 9', () => {
-  const target = fitTarget(new Set(), new Set(['c']), positions, false);
+  const target = fitTarget(new Set(['c']), positions);
 
   expect(target).toEqual({ kind: 'point', lat: 46, lon: -123, zoom: 9 });
 });
 
-test('an unchanged set, a cleared set and a followed plane do not move the map', () => {
-  const same = fitTarget(new Set(['a']), new Set(['a']), positions, false);
-  const cleared = fitTarget(new Set(['a']), new Set(), positions, false);
-  const following = fitTarget(new Set(), new Set(['a']), positions, true);
+test('a cleared set does not move the map', () => {
+  const cleared = fitTarget(new Set(), positions);
 
-  expect([same, cleared, following]).toEqual([null, null, null]);
+  expect(cleared).toBeNull();
 });
 
 test('hexes without a known position are ignored, and none known gives null', () => {
-  const partial = fitTarget(new Set(), new Set(['a', 'zz']), positions, false);
-  const unknown = fitTarget(new Set(), new Set(['zz']), positions, false);
+  const partial = fitTarget(new Set(['a', 'zz']), positions);
+  const unknown = fitTarget(new Set(['zz']), positions);
 
   expect(partial).toEqual({ kind: 'point', lat: 47, lon: -122, zoom: 9 });
   expect(unknown).toBeNull();
