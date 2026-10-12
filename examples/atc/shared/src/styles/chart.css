@@ -1,7 +1,7 @@
 /*
  * Chart overlays: airspace, ink airports (runways, rings) and airport
- * diagrams. The only
- * place chart colours are defined (design-rules.test.ts enforces this).
+ * diagrams. The only place chart colours are defined (design-rules.test.ts
+ * enforces this).
  * Values measured from the 3 Sep 2026 sectional GeoTIFFs and the FAA airport
  * diagram legend; see docs/superpowers/research/atc-overlays/.
  */
@@ -195,7 +195,7 @@
   pointer-events: none;
 }
 .atc-map .atc-diagram-label.is-runway {
-  color: #fff;
+  color: var(--atc-surface);
 }
 .atc-map .atc-diagram-label.is-taxiway {
   color: var(--atc-ink);
@@ -240,7 +240,7 @@
 .atc-map.leaflet-container .atc-layers-toggle {
   min-height: 34px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: var(--atc-radius-pill);
   cursor: pointer;
   transition: background var(--atc-fast) var(--atc-ease);
 }

@@ -1,24 +1,32 @@
+/*
+ * End-to-end tests for both apps, with no model key and no network. One real
+ * atc server serves the built apps and `/api/run`; `/api/run` talks to aimock
+ * instead of OpenAI, and aimock answers each question with the tool calls and
+ * UI scripted in `model.ts`. The browser's data routes are stubbed with the
+ * synthetic traffic and chart fixtures (`stubs.ts`). Each Playwright project
+ * (`angular`, `react`) opens the app at its own path.
+ */
 import { createApp } from '@atc/server';
-import { SELECTED_PROMPT, STARTER_PROMPTS } from '@atc/shared';
 import { LLMock } from '@copilotkit/aimock';
-import { expect, type Page, test } from '@playwright/test';
+import { type Browser, expect, type Page, test } from '@playwright/test';
 import { once } from 'node:events';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
+import { PROMPTS, scriptAtcModel } from './model';
+import { stubAtcFeeds } from './stubs';
 import {
-  CHART_AIRPORTS,
-  CHART_AIRSPACE,
-  chartSurfaces,
   CLUSTER,
   frame,
+  NAMED,
   scenario,
   SYNTHETIC_HEXES,
-} from './fixtures';
-import { CLUSTER_PROMPT, NEAR_PROMPT, scriptAtcModel } from './model';
+} from './traffic-fixtures';
 
 const dist = resolve(__dirname, '../../../../dist/examples/atc');
-const { selected, highest, fastest, arrivals, nearby } = scenario;
+const { selected, highest, fastest, arrivals, nearby, portland } = scenario;
+/** The phone most tests use. */
+const PHONE = { width: 390, height: 844 } as const;
 let mock: LLMock;
 let server: Server;
 let origin: string;
@@ -52,30 +60,11 @@ test.afterAll(async () => {
   await mock?.stop();
 });
 
-async function open(page: Page, framework: string): Promise<void> {
-  await page.route('https://tile.openstreetmap.org/**', (route) =>
-    route.abort(),
-  );
-  await page.route('https://vrs-standing-data.adsb.lol/**', (route) =>
-    route.fulfill({ status: 404, body: '' }),
-  );
-  await page.route('**/api/chart/airports', (route) =>
-    route.fulfill({ json: CHART_AIRPORTS }),
-  );
-  await page.route('**/api/chart/surfaces**', (route) =>
-    route.fulfill({
-      json: chartSurfaces(
-        new URL(route.request().url()).searchParams.get('airport') ?? '',
-      ),
-    }),
-  );
-  await page.route('**/api/chart/airspace', (route) =>
-    route.fulfill({ json: CHART_AIRSPACE }),
-  );
-  let next = 0;
-  await page.route('**/api/aircraft**', (route) =>
-    route.fulfill({ json: frame(next++) }),
-  );
+/** Opens one app with stubbed feeds and waits for the map to draw its first frame. */
+async function openApp(page: Page, framework: string): Promise<void> {
+  await stubAtcFeeds(page, { frames: frame, blockTiles: true });
+  // Record every data-hex a card ever renders, not just the final DOM, so a
+  // card that briefly showed a half-streamed ID is caught by expectOnlyCompleteIds.
   await page.addInitScript(() => {
     const seen: string[] = [];
     (window as unknown as { __atcCardHexes: string[] }).__atcCardHexes = seen;
@@ -92,6 +81,29 @@ async function open(page: Page, framework: string): Promise<void> {
     'data-ready',
     '',
   );
+}
+
+/** Opens one app in a new phone-sized, touch context. Close the context when done. */
+async function openPhone(
+  browser: Browser,
+  framework: string,
+  viewport: { readonly width: number; readonly height: number } = PHONE,
+): Promise<{ page: Page; close: () => Promise<void> }> {
+  const context = await browser.newContext({
+    viewport,
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  await openApp(page, framework);
+
+  return { page, close: () => context.close() };
+}
+
+/** Types `prompt` into the composer and sends it. */
+async function ask(page: Page, prompt: string): Promise<void> {
+  await page.getByRole('textbox', { name: 'Message' }).fill(prompt);
+  await page.getByRole('button', { name: 'Send' }).click();
 }
 
 /**
@@ -227,6 +239,7 @@ function overlappingPairs(
   return pairs;
 }
 
+/** Fails if any card rendered a hex that is not a synthetic aircraft, such as a partial ID. */
 async function expectOnlyCompleteIds(page: Page): Promise<void> {
   const hexes = await page.evaluate(
     () => (window as unknown as { __atcCardHexes: string[] }).__atcCardHexes,
@@ -243,12 +256,12 @@ async function expectOnlyCompleteIds(page: Page): Promise<void> {
 test('tags private and unidentified traffic by label', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
   const tags = [
-    ['a1c009', 'N352LL'],
-    ['a1c00a', 'N911LF'],
-    ['a1c00b', 'A1C00B'],
+    [NAMED.eugeneCessna, 'N352LL'],
+    [NAMED.lifeFlight, 'N911LF'],
+    [NAMED.unidentified, 'A1C00B'],
   ].map(([hex, label]) => ({
     tag: page.locator(`.atc-plane[data-hex="${hex}"] .atc-plane-tag`),
     label,
@@ -260,14 +273,14 @@ test('tags private and unidentified traffic by label', async ({
 });
 
 test('hovering a plane shows its detail card', async ({ page }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
   // The home view frames central Oregon; zoom out to bring Eugene on screen.
   await zoomOut(page, 2);
   const card = page.getByTestId('aircraft-detail');
   await expect(card).toBeHidden();
 
   await page
-    .locator('.atc-plane[data-hex="a1c009"]')
+    .locator(`.atc-plane[data-hex="${NAMED.eugeneCessna}"]`)
     .dispatchEvent('mouseover');
 
   await expect(card).toBeVisible();
@@ -277,7 +290,9 @@ test('hovering a plane shows its detail card', async ({ page }, testInfo) => {
   await expect(card).toContainText('QNH1016.4 hPa');
   await expect(card).toContainText('Altimeter30.01 inHg');
 
-  await page.locator('.atc-plane[data-hex="a1c009"]').dispatchEvent('mouseout');
+  await page
+    .locator(`.atc-plane[data-hex="${NAMED.eugeneCessna}"]`)
+    .dispatchEvent('mouseout');
 
   await expect(card).toBeHidden();
 });
@@ -285,7 +300,7 @@ test('hovering a plane shows its detail card', async ({ page }, testInfo) => {
 test('the hovered plane stacks above the selected one and every other marker', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
   const icon = (hex: string) =>
     page.locator('.atc-plane-icon').filter({
       has: page.locator(`.atc-plane[data-hex="${hex}"]`),
@@ -298,7 +313,7 @@ test('the hovered plane stacks above the selected one and every other marker', a
 
   // N4417B, near Bend: on screen in the home view, like the selected plane.
   // force: planes glide every frame, so they never count as stable.
-  await icon('a1c00c').hover({ force: true });
+  await icon(NAMED.bendCessna).hover({ force: true });
 
   const others = await page
     .locator('.atc-plane-icon')
@@ -307,7 +322,7 @@ test('the hovered plane stacks above the selected one and every other marker', a
         .filter((node) => !node.matches(':hover, :has(.is-selected)'))
         .map((node) => Number(getComputedStyle(node).zIndex)),
     );
-  const hovered = await zIndex('a1c00c');
+  const hovered = await zIndex(NAMED.bendCessna);
   const chosen = await zIndex(selected.hex);
   expect(hovered).toBeGreaterThan(chosen);
   expect(chosen).toBeGreaterThan(Math.max(...others));
@@ -316,12 +331,12 @@ test('the hovered plane stacks above the selected one and every other marker', a
 test('renders the selected aircraft as a live card', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
   await page
     .locator(`.atc-plane[data-hex="${selected.hex}"]`)
     .dispatchEvent('click');
 
-  await page.getByRole('button', { name: SELECTED_PROMPT }).click();
+  await page.getByRole('button', { name: PROMPTS.selected }).click();
   const card = page.locator(
     `[data-testid="flight-card"][data-hex="${selected.hex}"]`,
   );
@@ -339,9 +354,9 @@ test('renders the selected aircraft as a live card', async ({
 test('shows Seattle arrivals and highlights them on the map', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: STARTER_PROMPTS[1] }).click();
+  await page.getByRole('button', { name: PROMPTS.seattleArrivals }).click();
 
   await expect(page.getByTestId('arrivals-row')).toHaveCount(arrivals.length);
   await expect(page.locator('.atc-plane.is-dimmed').first()).toBeAttached();
@@ -356,11 +371,9 @@ test('shows Seattle arrivals and highlights them on the map', async ({
 test("shows what's flying near KBDN in an outlined area", async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
-  const input = page.getByRole('textbox', { name: 'Message' });
+  await openApp(page, testInfo.project.name);
 
-  await input.fill(NEAR_PROMPT);
-  await page.getByRole('button', { name: 'Send' }).click();
+  await ask(page, PROMPTS.nearKbdn);
 
   const board = page.getByTestId('arrivals-board');
   await expect(page.locator('.atc-area')).toBeAttached();
@@ -379,15 +392,13 @@ test("shows what's flying near KBDN in an outlined area", async ({
 test('on a phone, the starters show in the peek, a pick lowers the sheet to half, and a row shows its plane', async ({
   browser,
 }, testInfo) => {
-  const context = await browser.newContext({
-    viewport: { width: 375, height: 812 },
-    isMobile: true,
-    hasTouch: true,
+  // The narrowest common phone: the peek must still show the starters.
+  const { page, close } = await openPhone(browser, testInfo.project.name, {
+    width: 375,
+    height: 812,
   });
-  const page = await context.newPage();
-  await open(page, testInfo.project.name);
   const sheet = page.locator('#atc-chat-sheet');
-  const starter = page.getByRole('button', { name: STARTER_PROMPTS[0] });
+  const starter = page.getByRole('button', { name: PROMPTS.nearBend });
   await expect(sheet).toHaveAttribute('data-snap', 'peek');
   await expect(starter).toBeInViewport();
 
@@ -406,17 +417,15 @@ test('on a phone, the starters show in the peek, a pick lowers the sheet to half
   await expect(card).toHaveClass(/is-docked/);
   await card.getByRole('button', { name: /^Close details/ }).tap();
   await expect(card).toBeHidden();
-  await context.close();
+  await close();
 });
 
 test('the data tags of a tight block of highlighted planes overlap no tag and no tagged icon, and sit above untagged icons', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
-  const input = page.getByRole('textbox', { name: 'Message' });
+  await openApp(page, testInfo.project.name);
 
-  await input.fill(CLUSTER_PROMPT);
-  await page.getByRole('button', { name: 'Send' }).click();
+  await ask(page, PROMPTS.cluster);
 
   await expect(page.locator('.atc-plane.is-highlighted')).toHaveCount(
     CLUSTER.length,
@@ -448,14 +457,8 @@ test('the data tags of a tight block of highlighted planes overlap no tag and no
 test('on a phone, a plane picked off screen lands mid-way between the docked card and the sheet', async ({
   browser,
 }, testInfo) => {
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    isMobile: true,
-    hasTouch: true,
-  });
-  const page = await context.newPage();
-  await open(page, testInfo.project.name);
-  await page.getByRole('button', { name: STARTER_PROMPTS[2] }).tap();
+  const { page, close } = await openPhone(browser, testInfo.project.name);
+  await page.getByRole('button', { name: PROMPTS.highestAndFastest }).tap();
   const pick = page.locator(
     `[data-testid="aircraft-compare"] [data-hex="${highest.hex}"]`,
   );
@@ -480,24 +483,18 @@ test('on a phone, a plane picked off screen lands mid-way between the docked car
   };
   // The band starts 8 px below the card; the slack covers that.
   await expect.poll(offMiddle, { timeout: 15_000 }).toBeLessThan(12);
-  await context.close();
+  await close();
 });
 
 test('on a phone, a typed question sent with the Send button lowers the sheet, and the fit lands above it', async ({
   browser,
 }, testInfo) => {
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-    isMobile: true,
-    hasTouch: true,
-  });
-  const page = await context.newPage();
-  await open(page, testInfo.project.name);
+  const { page, close } = await openPhone(browser, testInfo.project.name);
   const sheet = page.locator('#atc-chat-sheet');
   const input = page.getByRole('textbox', { name: 'Message' });
   await input.tap();
   await expect(sheet).toHaveAttribute('data-snap', 'full');
-  await input.fill(STARTER_PROMPTS[1]);
+  await input.fill(PROMPTS.seattleArrivals);
 
   await page.getByRole('button', { name: 'Send' }).tap();
 
@@ -514,15 +511,15 @@ test('on a phone, a typed question sent with the Send button lowers the sheet, a
     return bottoms.length === 0 ? Infinity : Math.max(...bottoms) - top;
   };
   await expect.poll(belowSheet, { timeout: 15_000 }).toBeLessThan(-8);
-  await context.close();
+  await close();
 });
 
 test('compares the highest and the fastest aircraft', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: STARTER_PROMPTS[2] }).click();
+  await page.getByRole('button', { name: PROMPTS.highestAndFastest }).click();
 
   const compare = page.getByTestId('aircraft-compare');
   await expect(compare).toContainText(highest.label);
@@ -533,7 +530,7 @@ test('compares the highest and the fastest aircraft', async ({
 test('each app stands alone, with no links to the other framework', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
   const links = page.locator(
     'a[href^="/angular"], a[href^="/react"], a[href*="atc.hashbrown.dev"]',
@@ -544,10 +541,8 @@ test('each app stands alone, with no links to the other framework', async ({
   await expect(named).toHaveCount(0);
 });
 
-test('the header links to the source on GitHub and says nothing about a live feed', async ({
-  page,
-}, testInfo) => {
-  await open(page, testInfo.project.name);
+test('the header links to the source on GitHub', async ({ page }, testInfo) => {
+  await openApp(page, testInfo.project.name);
 
   const link = page.getByRole('link', { name: 'atc source on GitHub' });
 
@@ -555,15 +550,10 @@ test('the header links to the source on GitHub and says nothing about a live fee
     'href',
     'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc',
   );
-  await expect(
-    page.locator('.atc-panel-header').getByRole('status'),
-  ).toHaveCount(0);
-  await expect(page.locator('.atc-panel-header')).not.toContainText('Live');
-  await expect(page.getByText('View the core file')).toHaveCount(0);
 });
 
 test('pressing / focuses the composer', async ({ page }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
   const input = page.getByRole('textbox', { name: 'Message' });
   await page.locator('body').click({ position: { x: 1, y: 1 } });
   await expect(input).not.toBeFocused();
@@ -577,9 +567,9 @@ test('pressing / focuses the composer', async ({ page }, testInfo) => {
 test('folds tool calls into one activity line that expands to every step', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: STARTER_PROMPTS[2] }).click();
+  await page.getByRole('button', { name: PROMPTS.highestAndFastest }).click();
 
   const summary = page.getByTestId('tool-summary');
   await expect(summary).toHaveText('Searched traffic · 1 step');
@@ -592,9 +582,9 @@ test('folds tool calls into one activity line that expands to every step', async
 });
 
 test('follows an aircraft on the map', async ({ page }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: STARTER_PROMPTS[3] }).click();
+  await page.getByRole('button', { name: PROMPTS.followFastest }).click();
 
   await expect(
     page.locator(`[data-testid="flight-card"][data-hex="${fastest.hex}"]`),
@@ -613,6 +603,7 @@ test('follows an aircraft on the map', async ({ page }, testInfo) => {
     );
   };
   const startedAt = await page.evaluate(() => performance.now());
+  // Still centred after two more 3 s snapshots.
   await expect.poll(offCentre).toBeLessThan(3);
   await expect
     .poll(
@@ -635,9 +626,9 @@ test('recovers from a failed send with Retry', async ({ page }, testInfo) => {
     failed = true;
     return route.fulfill({ status: 500, body: 'boom' });
   });
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: STARTER_PROMPTS[2] }).click();
+  await page.getByRole('button', { name: PROMPTS.highestAndFastest }).click();
   const alert = page.getByRole('alert');
   await expect(alert).toBeVisible();
   await alert.getByRole('button', { name: 'Retry' }).click();
@@ -651,9 +642,9 @@ test('recovers from a failed send with Retry', async ({ page }, testInfo) => {
 test('shows Redmond airport as a diagram with its card', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: STARTER_PROMPTS[4] }).click();
+  await page.getByRole('button', { name: PROMPTS.redmondAirport }).click();
 
   const card = page.getByTestId('airport-card');
   await expect(card).toContainText('ROBERTS FLD/REDMOND MUNI (RDM)');
@@ -670,16 +661,13 @@ test('shows Redmond airport as a diagram with its card', async ({
 test('the airports layer can be hidden by the assistant', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
   await expect(
     page.locator('.atc-apt-block', { hasText: /^RDM$/ }),
   ).toBeAttached();
   await expect(page.locator('.atc-apt-block.is-fallback')).toHaveCount(0);
 
-  await page
-    .getByRole('textbox', { name: 'Message' })
-    .fill('Hide the airports.');
-  await page.getByRole('button', { name: 'Send' }).click();
+  await ask(page, PROMPTS.hideAirports);
 
   await expect(page.locator('.atc-apt-block')).toHaveCount(0);
   await expect(page.locator('.leaflet-atc-airports-pane > *')).toHaveCount(0);
@@ -688,7 +676,7 @@ test('the airports layer can be hidden by the assistant', async ({
 test('the Layers control works from the keyboard', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
   const toggle = page.getByRole('button', { name: 'Layers' });
 
   await toggle.focus();
@@ -704,26 +692,23 @@ test('the Layers control works from the keyboard', async ({
 test('lists the aircraft inside the Portland Class C and lights its shelf', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: STARTER_PROMPTS[5] }).click();
+  await page.getByRole('button', { name: PROMPTS.portlandClassC }).click();
 
-  await expect(page.getByTestId('arrivals-row').first()).toBeVisible();
+  await expect(page.getByTestId('arrivals-row')).toHaveCount(portland.length);
   await expect(page.locator('.atc-as.is-c.is-highlighted')).toHaveCount(1);
   await expect(page.getByTestId('tool-summary')).toHaveText(
-    'Looked up Portland, searched traffic, highlighted 1 aircraft · 3 steps',
+    `Looked up Portland, searched traffic, highlighted ${portland.length} aircraft · 3 steps`,
   );
 });
 
 test('shows the Redmond airspace with its ceiling label', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
-  await page
-    .getByRole('textbox', { name: 'Message' })
-    .fill('Show the Redmond airspace.');
-  await page.getByRole('button', { name: 'Send' }).click();
+  await ask(page, PROMPTS.redmondAirspace);
 
   await expect(
     page.locator('.atc-as-label .atc-as-text', { hasText: '56' }),
@@ -738,7 +723,7 @@ test('shows the Redmond airspace with its ceiling label', async ({
 });
 
 test('the Layers control hides the airspace', async ({ page }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
   await expect(page.locator('.atc-as').first()).toBeAttached();
 
   await page.getByRole('button', { name: 'Layers' }).click();

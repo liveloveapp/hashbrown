@@ -6,6 +6,29 @@ export function isTyping(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(EDITABLE) !== null;
 }
 
+/** Whether a keydown is a bare `/` outside a text field, which focuses the composer. */
+export function isFocusShortcut(event: KeyboardEvent): boolean {
+  const modified = event.ctrlKey || event.metaKey || event.altKey;
+
+  return (
+    event.key === '/' &&
+    !modified &&
+    !event.defaultPrevented &&
+    !isTyping(event.target)
+  );
+}
+
+/**
+ * The on-screen keyboard's height as a CSS length, such as `'300px'`: the part
+ * of the window below the visual viewport.
+ */
+export function keyboardInset(
+  viewport: { readonly height: number; readonly offsetTop: number },
+  innerHeight: number,
+): string {
+  return `${Math.max(0, Math.round(innerHeight - viewport.height - viewport.offsetTop))}px`;
+}
+
 /**
  * Whether focus landing on `target` should open the sheet fully: only a text
  * field, where the user is about to type. Buttons such as the starters and

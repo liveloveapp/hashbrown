@@ -5,6 +5,7 @@ import { build } from 'vite';
 const root = resolve(import.meta.dirname, '..');
 const repo = resolve(root, '../..');
 const output = resolve(root, '.vercel/output');
+
 /**
  * The apps this deploy hosts. Only Angular ships for now; React still builds
  * and is tested in the repo. To host it, change this to
@@ -15,6 +16,13 @@ const sources = {
   angular: resolve(repo, 'dist/examples/atc/angular/browser'),
   react: resolve(repo, 'dist/examples/atc/react'),
 };
+
+/**
+ * One Vercel function per API route; each entry is a file in
+ * server/src/vercel/ and a route in server/src/app.ts. maxDuration sits above
+ * each handler's own upstream deadline (airports 25 s, airspace and surfaces
+ * 17 s, aircraft 8 s); run allows a full streamed answer.
+ */
 const functions: { route: string; entry: string; maxDuration: number }[] = [
   { route: 'run', entry: 'run', maxDuration: 60 },
   { route: 'aircraft', entry: 'aircraft', maxDuration: 10 },
@@ -70,7 +78,7 @@ writeFileSync(
   JSON.stringify({
     version: 3,
     routes: [
-      { src: '^/$', status: 307, headers: { Location: '/angular/' } },
+      { src: '^/$', status: 307, headers: { Location: `/${HOSTED_APPS[0]}/` } },
       ...HOSTED_APPS.flatMap((app) => [
         { src: `^/${app}$`, status: 308, headers: { Location: `/${app}/` } },
       ]),

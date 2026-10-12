@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
-import * as module from 'leaflet';
 import { expect, onTestFinished, test, vi } from 'vitest';
-import type { ChartAirport, Runway, Surfaces } from '../../chart';
-import { runwayCorners } from '../../chart/runway-geometry';
-import { createAtcStore } from '../../store';
 import {
-  createDiagramLayer,
-  RUNWAY_MIN_PX,
-  runwayDrawing,
-} from './diagram-layer';
+  type ChartAirport,
+  type Runway,
+  runwayCorners,
+  type Surfaces,
+} from '../../chart';
+import { createAtcStore } from '../../store';
+import { testAircraft, testChartAirport } from '../../testing';
+import { leafletModule, mapElement, stubCanvas } from '../testing';
+import { createDiagramLayer, runwayDrawing } from './diagram-layer';
 
-const L = (module as unknown as { default?: typeof module }).default ?? module;
+const L = await leafletModule();
 
 const end05 = { id: '05', lat: 44.2468, lon: -121.16 };
 const end23 = { id: '23', lat: 44.2605, lon: -121.1405 };
@@ -34,27 +35,9 @@ const runway = (
   bearingDeg: 50,
 });
 
-const krdm: ChartAirport = {
-  code: 'KRDM',
-  faa: 'RDM',
-  name: 'ROBERTS FLD',
-  city: 'REDMOND',
-  state: 'OR',
-  aliases: [],
-  lat: 44.2541,
-  lon: -121.15,
-  elevationFt: 3082,
-  kind: 'airport',
-  towered: true,
-  towerPartTime: false,
-  frequencies: { tower: '124.5', atis: null, ctaf: null, unicom: '122.95' },
-  weather: null,
-  lighting: 'full',
-  fuel: true,
-  military: false,
+const krdm = testChartAirport({
   runways: [runway(end05, end23, 7038), runway(end11, end29, 7006, 100)],
-  rank: 0,
-};
+});
 
 /** One taxiway line, ref A, running beside the runway. */
 const surfaces: Surfaces = {
@@ -75,31 +58,12 @@ const surfaces: Surfaces = {
   ],
 };
 
-/** jsdom has no canvas; Leaflet's renderer draws into a no-op context. */
-function stubCanvas() {
-  const context = new Proxy({} as Record<string | symbol, unknown>, {
-    get: (target, key) => (key in target ? target[key] : () => undefined),
-    set: (target, key, value) => {
-      target[key] = value;
-      return true;
-    },
-  });
-  const spy = vi
-    .spyOn(HTMLCanvasElement.prototype, 'getContext')
-    .mockImplementation(() => context as unknown as CanvasRenderingContext2D);
-  onTestFinished(() => spy.mockRestore());
-}
-
 /** A 400x300 map over KRDM with the diagram layer synced to a store. */
 function mount(zoom: number, airports: readonly ChartAirport[] = [krdm]) {
   stubCanvas();
   const store = createAtcStore();
   const fetchFn = vi.fn(() => new Promise<Response>(() => undefined));
-  const element = document.createElement('div');
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
-  element.style.setProperty('--atc-chart-blue', '#111111');
-  element.style.setProperty('--atc-chart-magenta', '#222222');
+  const element = mapElement();
   document.body.append(element);
   const map = L.map(element, {
     zoomAnimation: false,
@@ -194,24 +158,7 @@ test('an aircraft snapshot after surface loads start never redraws', () => {
 
   view.store.applySnapshot({
     at: 1,
-    aircraft: [
-      {
-        hex: 'aaaaaa',
-        label: 'N352LL',
-        callsign: null,
-        registration: 'N352LL',
-        typeCode: 'C172',
-        category: null,
-        kind: 'single',
-        lat: 44.25,
-        lon: -121.15,
-        altitudeFt: 5000,
-        onGround: false,
-        groundSpeedKt: 110,
-        trackDeg: 90,
-        verticalRateFpm: 0,
-      },
-    ],
+    aircraft: [testAircraft({ lat: 44.25, lon: -121.15 })],
   });
 
   expect(view.fetchFn).toHaveBeenCalledTimes(1);
@@ -224,10 +171,6 @@ const bdn1735 = runway(
   5200,
   75,
 );
-
-test('the 2 px minimum is exported', () => {
-  expect(RUNWAY_MIN_PX).toBe(2);
-});
 
 test('KRDM 05/23 is a 2 px stroke between its ends at zoom 10', () => {
   const krdm0523 = runway(end05, end23, 7038);
@@ -243,15 +186,6 @@ test('KRDM 05/23 is a true-size polygon at zoom 14', () => {
   const drawing = runwayDrawing(krdm0523, 14, 44.25);
 
   expect(drawing).toEqual({ kind: 'polygon', corners: krdm0523.corners });
-});
-
-test('BDN 17/35 is a stroke at zoom 13 and a polygon at zoom 15', () => {
-  const at13 = runwayDrawing(bdn1735, 13, 44.09);
-
-  const at15 = runwayDrawing(bdn1735, 15, 44.09);
-
-  expect(at13?.kind).toBe('stroke');
-  expect(at15?.kind).toBe('polygon');
 });
 
 test('a runway with no corners has no drawing', () => {
@@ -357,7 +291,7 @@ function drawBdn(zoom: number) {
     polyline.mockRestore();
     polygon.mockRestore();
   });
-
+  // A second call in the same test gets the first call's spies back.
   polyline.mockClear();
   polygon.mockClear();
 

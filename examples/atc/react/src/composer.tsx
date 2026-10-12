@@ -1,4 +1,4 @@
-import { isTyping } from '@atc/shared';
+import { isFocusShortcut } from '@atc/shared';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 
 /**
@@ -17,13 +17,7 @@ export function Composer({
 
   useEffect(() => {
     const focusOnSlash = (event: KeyboardEvent) => {
-      const modified = event.ctrlKey || event.metaKey || event.altKey;
-      if (
-        event.key !== '/' ||
-        modified ||
-        event.defaultPrevented ||
-        isTyping(event.target)
-      ) {
+      if (!isFocusShortcut(event)) {
         return;
       }
       event.preventDefault();

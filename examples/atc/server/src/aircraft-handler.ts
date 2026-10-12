@@ -5,7 +5,7 @@ import {
   isAreaId,
   normalizeAdsbLol,
 } from '@atc/shared';
-import { type NodeHandler, sendJson } from './http';
+import { type NodeHandler, queryParam, sendCached, sendJson } from './http';
 
 /**
  * How long a fetched snapshot is served without calling adsb.lol again.
@@ -30,7 +30,10 @@ class UpstreamError extends Error {
   }
 }
 
-/** What the handler remembers about one area. Replaced, never mutated. */
+/**
+ * What the handler remembers about one area. Replaced, never mutated. The same
+ * in-flight sharing as chart/cached-loader.ts, plus a cooldown after a 429.
+ */
 interface AreaCache {
   readonly last: {
     readonly snapshot: AircraftSnapshot;
@@ -142,9 +145,7 @@ export function createAircraftHandler(
     if (req.method !== 'GET') {
       return sendJson(res, 405, { error: 'Use GET' });
     }
-    const area =
-      new URL(req.url ?? '/', 'http://localhost').searchParams.get('area') ??
-      '';
+    const area = queryParam(req, 'area');
     if (!isAreaId(area)) {
       return sendJson(res, 400, { error: 'Unknown area' });
     }
@@ -152,9 +153,9 @@ export function createAircraftHandler(
     if (result === null) {
       return sendJson(res, 502, { error: 'Aircraft feed unavailable' });
     }
-    sendJson(res, 200, result.snapshot, {
-      'Cache-Control': CACHE_CONTROL,
-      ...(result.stale ? { 'X-Atc-Stale': '1' } : {}),
+    sendCached(res, result.snapshot, {
+      stale: result.stale,
+      cacheControl: CACHE_CONTROL,
     });
   };
 }

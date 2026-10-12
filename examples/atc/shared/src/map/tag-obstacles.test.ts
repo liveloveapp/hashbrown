@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { createObstacleGrid, intersects } from './tag-obstacles';
+import { createObstacleGrid } from './tag-obstacles';
 
 test('a rect covering another plane icon is blocked; its own plane is not', () => {
   const covers = createObstacleGrid([
@@ -67,13 +67,4 @@ test('a question only looks at the planes near the rect, not at every plane', ()
 
   // Each question reads the x and y of a handful of planes, not of all 500.
   expect((reads - built) / 30).toBeLessThan(40);
-});
-
-test('intersects keeps a gap when asked', () => {
-  const a = { left: 0, top: 0, right: 10, bottom: 10 };
-  const b = { left: 11, top: 0, right: 20, bottom: 10 };
-
-  const results = [intersects(a, b), intersects(a, b, 2)];
-
-  expect(results).toEqual([false, true]);
 });

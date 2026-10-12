@@ -1,18 +1,20 @@
-import type { SurfaceFeature, Surfaces } from '@atc/shared';
-
-type Position = readonly [number, number];
+import {
+  FT_TO_M,
+  isRecord,
+  type LonLat,
+  type Ring,
+  type SurfaceFeature,
+  type Surfaces,
+} from '@atc/shared';
 
 /** Rounds a coordinate to 6 decimals (about 0.1 m). */
 const round6 = (value: number): number => Math.round(value * 1e6) / 1e6;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 const asArray = (value: unknown): readonly unknown[] =>
   Array.isArray(value) ? value : [];
 
 /** Reads [lon, lat] from a GeoJSON position, or null when malformed. */
-function toPosition(value: unknown): Position | null {
+function toPosition(value: unknown): LonLat | null {
   const [lon, lat] = asArray(value);
 
   return typeof lon === 'number' &&
@@ -24,7 +26,7 @@ function toPosition(value: unknown): Position | null {
 }
 
 /** Reads a GeoJSON polygon's rings, dropping malformed points and rings. */
-function toRings(value: unknown): readonly (readonly Position[])[] {
+function toRings(value: unknown): readonly Ring[] {
   return asArray(value)
     .map((ring) =>
       asArray(ring).flatMap((p) => {
@@ -83,7 +85,7 @@ const text = (value: unknown): string | null =>
  * surfaces. Returns null when the airport has no taxiways, so the caller can
  * fall back to another source.
  */
-export function amToSurfaces(
+export function airportMappingToSurfaces(
   code: string,
   layers: { taxiways: unknown; aprons: unknown; hotspots: unknown },
 ): Surfaces | null {
@@ -132,7 +134,7 @@ function wayToFeature(way: unknown): SurfaceFeature | null {
     return null;
   }
   const tags = way['tags'];
-  const points = asArray(way['geometry']).flatMap((p): Position[] => {
+  const points = asArray(way['geometry']).flatMap((p): LonLat[] => {
     if (!isRecord(p)) {
       return [];
     }
@@ -171,7 +173,7 @@ function wayToFeature(way: unknown): SurfaceFeature | null {
       shape: 'line',
       points,
       ref: taxiwayRef(tags['ref']),
-      widthFt: Number.isFinite(metres) ? metres / 0.3048 : null,
+      widthFt: Number.isFinite(metres) ? metres / FT_TO_M : null,
     };
   }
   if (aeroway === 'holding_position') {

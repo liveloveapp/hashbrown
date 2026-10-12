@@ -9,18 +9,7 @@ import type {
   Surfaces,
 } from './chart';
 import { airportByCode } from './directory';
-
-/** One stop on a scheduled route. */
-export interface RouteAirport {
-  readonly iata: string;
-  readonly name: string;
-  readonly city: string;
-}
-
-/** A scheduled route from public data; may be stale. */
-export interface Route {
-  readonly stops: readonly RouteAirport[];
-}
+import type { Route } from './routes';
 
 /** How fresh the aircraft data is. */
 export type FeedStatus = 'connecting' | 'live' | 'delayed' | 'stalled';
@@ -45,21 +34,16 @@ export interface ShownArea {
  * (4) highlight and aircraft requests wait for their markers to be drawn.
  * The map applies each `seq` once.
  */
-export type ViewRequest =
-  | { readonly seq: number; readonly kind: 'highlight' }
-  | { readonly seq: number; readonly kind: 'area'; readonly area: ShownArea }
-  | { readonly seq: number; readonly kind: 'reset' }
-  | { readonly seq: number; readonly kind: 'aircraft'; readonly hex: string }
-  | {
-      readonly seq: number;
-      readonly kind: 'airport';
-      readonly airport: string;
-    }
-  | {
-      readonly seq: number;
-      readonly kind: 'airspace';
-      readonly airport: string;
-    };
+export type ViewRequest = ViewMove & { readonly seq: number };
+
+/** A map move before it is numbered. */
+type ViewMove =
+  | { readonly kind: 'highlight' }
+  | { readonly kind: 'area'; readonly area: ShownArea }
+  | { readonly kind: 'reset' }
+  | { readonly kind: 'aircraft'; readonly hex: string }
+  | { readonly kind: 'airport'; readonly airport: string }
+  | { readonly kind: 'airspace'; readonly airport: string };
 
 /**
  * How long a departed aircraft is remembered, so cards in the transcript can
@@ -79,15 +63,23 @@ export interface AtcState {
   readonly highlightedAirspace: string | null;
   /** Which chart layers are drawn. */
   readonly layers: Layers;
+  /** Live aircraft by lower-case hex. */
   readonly aircraft: ReadonlyMap<string, Aircraft>;
   /** Aircraft that left the area in the last {@link DEPARTED_TTL_MS}. */
   readonly departed: ReadonlyMap<string, DepartedAircraft>;
+  /** Scheduled routes by upper-case callsign; null records that none is published. */
   readonly routes: ReadonlyMap<string, Route | null>;
   readonly selectedHex: string | null;
+  /** Hexes the assistant highlighted; the rest are dimmed while this is non-empty. */
   readonly highlighted: ReadonlySet<string>;
   readonly followingHex: string | null;
+  /**
+   * The last marker flash: a FlightCard pulses its plane when it appears;
+   * `at` makes a repeat pulse distinct.
+   */
   readonly pulse: { readonly hex: string; readonly at: number } | null;
   readonly feedStatus: FeedStatus;
+  /** The `at` of the applied snapshot, or null before the first. */
   readonly updatedAt: number | null;
   /** The area the map outlines, or null. */
   readonly shownArea: ShownArea | null;
@@ -122,6 +114,13 @@ export const INITIAL_STATE: AtcState = {
 export function normalizeHex(hex: string): string {
   return hex.trim().toLowerCase();
 }
+
+/** Trims and upper-cases a callsign, as the model may not. */
+export function normalizeCallsign(callsign: string): string {
+  return callsign.trim().toUpperCase();
+}
+
+// --- Data
 
 /**
  * Returns the state after a new snapshot. Aircraft missing from the snapshot
@@ -187,20 +186,74 @@ export function lookupAircraft(state: AtcState, hex: string): AircraftLookup {
   return { status: 'unknown' };
 }
 
+/** Marks the chart ready with the airports in `payload`. */
+export function applyChart(state: AtcState, payload: ChartAirports): AtcState {
+  return {
+    ...state,
+    chart: {
+      status: 'ready',
+      cycle: payload.cycle,
+      airports: payload.airports,
+    },
+  };
+}
+
+/** Marks the chart limited: the airport data is unavailable. */
+export function applyChartLimited(state: AtcState): AtcState {
+  return {
+    ...state,
+    chart: { status: 'limited', cycle: null, airports: [] },
+  };
+}
+
+/** Stores the surfaces (or load status) for one airport, leaving others alone. */
+export function applySurfaces(
+  state: AtcState,
+  code: string,
+  value: Surfaces | 'loading' | 'failed',
+): AtcState {
+  return { ...state, surfaces: new Map(state.surfaces).set(code, value) };
+}
+
+/** Marks airspace ready with the shelves in `payload`. */
+export function applyAirspace(
+  state: AtcState,
+  payload: AirspacePayload,
+): AtcState {
+  return {
+    ...state,
+    airspace: {
+      status: 'ready',
+      cycle: payload.cycle,
+      shelves: payload.shelves,
+    },
+  };
+}
+
+/** Marks airspace failed, but only while it is still loading. */
+export function applyAirspaceFailed(state: AtcState): AtcState {
+  return state.airspace.status === 'loading'
+    ? { ...state, airspace: { status: 'failed', cycle: null, shelves: [] } }
+    : state;
+}
+
+/** Merges `patch` into the layers; returns the same state when nothing changes. */
+export function applyLayers(state: AtcState, patch: Partial<Layers>): AtcState {
+  const layers = { ...state.layers, ...patch };
+  const changed = (Object.keys(layers) as (keyof Layers)[]).some(
+    (key) => layers[key] !== state.layers[key],
+  );
+
+  return changed ? { ...state, layers } : state;
+}
+
+// --- Map moves
+
 /**
  * Sets the newest map move. Follow mode owns the view, so while an aircraft
  * is followed no move is requested and any pending one is dropped.
  */
-function requestView(
-  state: AtcState,
-  request:
-    | { readonly kind: 'highlight' }
-    | { readonly kind: 'area'; readonly area: ShownArea }
-    | { readonly kind: 'reset' }
-    | { readonly kind: 'aircraft'; readonly hex: string }
-    | { readonly kind: 'airport'; readonly airport: string }
-    | { readonly kind: 'airspace'; readonly airport: string },
-): AtcState {
+function requestView(state: AtcState, request: ViewMove): AtcState {
   if (state.followingHex !== null) {
     return { ...state, viewRequest: null };
   }
@@ -242,45 +295,6 @@ export function requestAircraft(state: AtcState, hex: string): AtcState {
   );
 }
 
-/** Marks the chart ready with the airports in `payload`. */
-export function applyChart(state: AtcState, payload: ChartAirports): AtcState {
-  return {
-    ...state,
-    chart: {
-      status: 'ready',
-      cycle: payload.cycle,
-      airports: payload.airports,
-    },
-  };
-}
-
-/** Marks the chart limited: the airport data is unavailable. */
-export function applyChartLimited(state: AtcState): AtcState {
-  return {
-    ...state,
-    chart: { status: 'limited', cycle: null, airports: [] },
-  };
-}
-
-/** Stores the surfaces (or load status) for one airport, leaving others alone. */
-export function applySurfaces(
-  state: AtcState,
-  code: string,
-  value: Surfaces | 'loading' | 'failed',
-): AtcState {
-  return { ...state, surfaces: new Map(state.surfaces).set(code, value) };
-}
-
-/** Merges `patch` into the layers; returns the same state when nothing changes. */
-export function applyLayers(state: AtcState, patch: Partial<Layers>): AtcState {
-  const layers = { ...state.layers, ...patch };
-  const changed = (Object.keys(layers) as (keyof Layers)[]).some(
-    (key) => layers[key] !== state.layers[key],
-  );
-
-  return changed ? { ...state, layers } : state;
-}
-
 /**
  * Turns the airports layer on, clears the area outline and the airspace
  * highlight, and asks the map to show the airport `code`. While following,
@@ -295,28 +309,6 @@ export function requestAirport(state: AtcState, code: string): AtcState {
     },
     { kind: 'airport', airport: code },
   );
-}
-
-/** Marks airspace ready with the shelves in `payload`. */
-export function applyAirspace(
-  state: AtcState,
-  payload: AirspacePayload,
-): AtcState {
-  return {
-    ...state,
-    airspace: {
-      status: 'ready',
-      cycle: payload.cycle,
-      shelves: payload.shelves,
-    },
-  };
-}
-
-/** Marks airspace failed, but only while it is still loading. */
-export function applyAirspaceFailed(state: AtcState): AtcState {
-  return state.airspace.status === 'loading'
-    ? { ...state, airspace: { status: 'failed', cycle: null, shelves: [] } }
-    : state;
 }
 
 /**
@@ -340,6 +332,8 @@ export function cancelViewRequest(state: AtcState): AtcState {
   return state.viewRequest === null ? state : { ...state, viewRequest: null };
 }
 
+// --- Highlight and follow
+
 /** Follows an aircraft (or stops with null); following drops a pending move. */
 export function applyFollow(state: AtcState, hex: string | null): AtcState {
   return hex === null
@@ -353,14 +347,16 @@ function allInside(
   hexes: ReadonlySet<string>,
   area: ShownArea,
 ): boolean {
+  const centre = airportByCode(state, area.airport);
+  if (centre === null) {
+    return false;
+  }
+
   return [...hexes].every((hex) => {
     const aircraft = state.aircraft.get(hex);
-    const centre = airportByCode(state, area.airport);
 
     return (
-      aircraft !== undefined &&
-      centre !== null &&
-      distanceNm(aircraft, centre) <= area.radiusNm
+      aircraft !== undefined && distanceNm(aircraft, centre) <= area.radiusNm
     );
   });
 }
@@ -408,38 +404,41 @@ export interface AtcStore {
   getState(): AtcState;
   subscribe(listener: () => void): () => void;
   applySnapshot(snapshot: AircraftSnapshot): void;
+  /** Caches a route (null for none published) under the upper-case callsign. */
   setRoute(callsign: string, route: Route | null): void;
-  select(hex: string | null): void;
-  highlight(hexes: readonly string[]): void;
-  /** Clears the aircraft highlight and the airspace highlight. */
-  clearHighlight(): void;
-  follow(hex: string | null): void;
-  /** Outlines an area and fits the map to it ({@link requestArea}). */
-  showArea(area: ShownArea): void;
-  /** Returns to the home view ({@link requestReset}). */
-  resetView(): void;
-  /** Drops a pending map move ({@link cancelViewRequest}). */
-  cancelViewRequest(): void;
-  /** Selects an aircraft and brings it into view ({@link requestAircraft}). */
-  revealAircraft(hex: string): void;
   /** Stores the chart airports ({@link applyChart}). */
   setChart(payload: ChartAirports): void;
   /** Marks the chart limited ({@link applyChartLimited}). */
   setChartLimited(): void;
   /** Stores one airport's surfaces or status ({@link applySurfaces}). */
   setSurfaces(code: string, value: Surfaces | 'loading' | 'failed'): void;
-  /** Patches the layers ({@link applyLayers}). */
-  setLayers(patch: Partial<Layers>): void;
-  /** Turns airports on and shows one ({@link requestAirport}). */
-  showAirport(code: string): void;
   /** Stores the airspace shelves ({@link applyAirspace}). */
   setAirspace(payload: AirspacePayload): void;
   /** Marks airspace failed ({@link applyAirspaceFailed}). */
   setAirspaceFailed(): void;
+  /** Patches the layers ({@link applyLayers}). */
+  setLayers(patch: Partial<Layers>): void;
+  setFeedStatus(status: FeedStatus): void;
+  /** Outlines an area and fits the map to it ({@link requestArea}). */
+  showArea(area: ShownArea): void;
+  /** Returns to the home view ({@link requestReset}). */
+  resetView(): void;
+  /** Selects an aircraft and brings it into view ({@link requestAircraft}). */
+  revealAircraft(hex: string): void;
+  /** Turns airports on and shows one ({@link requestAirport}). */
+  showAirport(code: string): void;
   /** Highlights and shows an airport's airspace ({@link requestAirspace}). */
   showAirspace(code: string): void;
+  /** Drops a pending map move ({@link cancelViewRequest}). */
+  cancelViewRequest(): void;
+  follow(hex: string | null): void;
+  /** Highlights aircraft ({@link applyHighlight}). */
+  highlight(hexes: readonly string[]): void;
+  /** Clears the aircraft highlight and the airspace highlight. */
+  clearHighlight(): void;
+  select(hex: string | null): void;
+  /** Flashes the plane's marker once. */
   pulse(hex: string): void;
-  setFeedStatus(status: FeedStatus): void;
 }
 
 /** Creates an {@link AtcStore}. `now` is injectable for tests. */
@@ -470,34 +469,34 @@ export function createAtcStore(options: { now?: () => number } = {}): AtcStore {
     setRoute: (callsign, route) =>
       update({
         ...state,
-        routes: new Map(state.routes).set(callsign.trim().toUpperCase(), route),
+        routes: new Map(state.routes).set(normalizeCallsign(callsign), route),
       }),
+    setChart: (payload) => update(applyChart(state, payload)),
+    setChartLimited: () => update(applyChartLimited(state)),
+    setSurfaces: (code, value) => update(applySurfaces(state, code, value)),
+    setAirspace: (payload) => update(applyAirspace(state, payload)),
+    setAirspaceFailed: () => update(applyAirspaceFailed(state)),
+    setLayers: (patch) => update(applyLayers(state, patch)),
+    setFeedStatus: (feedStatus) =>
+      update(
+        state.feedStatus === feedStatus ? state : { ...state, feedStatus },
+      ),
+    showArea: (area) => update(requestArea(state, area)),
+    resetView: () => update(requestReset(state)),
+    revealAircraft: (hex) => update(requestAircraft(state, hex)),
+    showAirport: (code) => update(requestAirport(state, code)),
+    showAirspace: (code) => update(requestAirspace(state, code)),
+    cancelViewRequest: () => update(cancelViewRequest(state)),
+    follow: (hex) => update(applyFollow(state, hex)),
+    highlight: (hexes) => update(applyHighlight(state, hexes)),
+    clearHighlight: () =>
+      update(clearAirspaceHighlight(applyHighlight(state, []))),
     select: (hex) =>
       update({
         ...state,
         selectedHex: hex === null ? null : normalizeHex(hex),
       }),
-    highlight: (hexes) => update(applyHighlight(state, hexes)),
-    clearHighlight: () =>
-      update(clearAirspaceHighlight(applyHighlight(state, []))),
-    follow: (hex) => update(applyFollow(state, hex)),
-    showArea: (area) => update(requestArea(state, area)),
-    resetView: () => update(requestReset(state)),
-    cancelViewRequest: () => update(cancelViewRequest(state)),
-    revealAircraft: (hex) => update(requestAircraft(state, hex)),
-    setChart: (payload) => update(applyChart(state, payload)),
-    setChartLimited: () => update(applyChartLimited(state)),
-    setSurfaces: (code, value) => update(applySurfaces(state, code, value)),
-    setLayers: (patch) => update(applyLayers(state, patch)),
-    showAirport: (code) => update(requestAirport(state, code)),
-    setAirspace: (payload) => update(applyAirspace(state, payload)),
-    setAirspaceFailed: () => update(applyAirspaceFailed(state)),
-    showAirspace: (code) => update(requestAirspace(state, code)),
     pulse: (hex) =>
       update({ ...state, pulse: { hex: normalizeHex(hex), at: now() } }),
-    setFeedStatus: (feedStatus) =>
-      update(
-        state.feedStatus === feedStatus ? state : { ...state, feedStatus },
-      ),
   };
 }

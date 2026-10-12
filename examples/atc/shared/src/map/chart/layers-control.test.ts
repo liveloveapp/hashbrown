@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import * as module from 'leaflet';
 import { expect, onTestFinished, test } from 'vitest';
 import { createAtcStore } from '../../store';
+import { leafletModule } from '../testing';
 import { createLayersControl } from './layers-control';
 
-const L = (module as unknown as { default?: typeof module }).default ?? module;
+const L = await leafletModule();
 
 /** A map in the document with the Layers control added. */
 function mount() {
@@ -20,7 +20,9 @@ function mount() {
   });
   const find = <T extends HTMLElement>(selector: string) => {
     const found = element.querySelector<T>(selector);
-    if (found === null) throw new Error(`No ${selector}`);
+    if (found === null) {
+      throw new Error(`No ${selector}`);
+    }
     return found;
   };
 

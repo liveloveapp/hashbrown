@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import { AREAS } from '@atc/shared';
-import { buildChartAirports } from './nasr';
+import { parseCsv } from './csv';
+import { buildChartAirports, NasrFormatError, requireColumns } from './nasr';
 import { aptBase, aptRwy, aptRwyEnd, frq } from './nasr-fixture';
 
 const built = buildChartAirports(
@@ -88,4 +89,14 @@ test('a missing column is a format error, not a silent empty result', () => {
     );
 
   expect(run).toThrow(/TWR_TYPE_CODE/);
+});
+
+test('requireColumns names the file and the missing columns', () => {
+  const rows = parseCsv('"A"\n"1"\n');
+
+  const check = () =>
+    requireColumns(rows, 'APT_BASE.csv', ['A', 'TWR_TYPE_CODE']);
+
+  expect(check).toThrow(NasrFormatError);
+  expect(check).toThrow(/APT_BASE\.csv.*TWR_TYPE_CODE/);
 });

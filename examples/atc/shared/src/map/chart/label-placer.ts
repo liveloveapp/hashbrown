@@ -1,4 +1,4 @@
-import { intersects, type TagRect } from '../tag-obstacles';
+import { intersects, type PixelRect } from '../pixels';
 
 /**
  * One label that wants a place on the map: its candidate boxes, in container
@@ -10,7 +10,7 @@ export interface LabelRequest {
   /** Lower values place first. */
   readonly priority: number;
   /** Where the label may go, best first. */
-  readonly candidates: readonly TagRect[];
+  readonly candidates: readonly PixelRect[];
 }
 
 /**
@@ -58,14 +58,14 @@ export function estimateLabelSize(lines: readonly string[]): {
  */
 export function placeLabels(
   requests: readonly LabelRequest[],
-  obstacles: readonly TagRect[],
+  obstacles: readonly PixelRect[],
   gap = 2,
 ): Map<string, number | null> {
   const ordered = [...requests].sort(
     (a, b) =>
       a.priority - b.priority || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
   );
-  const placed: TagRect[] = [];
+  const placed: PixelRect[] = [];
   const result = new Map<string, number | null>();
   for (const request of ordered) {
     const index = request.candidates.findIndex(
@@ -74,7 +74,9 @@ export function placeLabels(
         !placed.some((p) => intersects(candidate, p, gap)),
     );
     const chosen = request.candidates[index];
-    if (chosen) placed.push(chosen);
+    if (chosen) {
+      placed.push(chosen);
+    }
     result.set(request.id, chosen ? index : null);
   }
 

@@ -9,12 +9,12 @@ import { airspaceOf, airspaceTypes } from './chart/airspace-query';
 import { distanceNm, etaMinutes, isApproaching } from './geo';
 import { aircraftTypeName, knownAirlineFor } from './names';
 import { airportByCode, chartAirportByCode } from './directory';
+import type { Route } from './routes';
 import {
   type AtcState,
   type FeedStatus,
   lookupAircraft,
   normalizeHex,
-  type Route,
 } from './store';
 
 /** What a FlightCard shows. */
@@ -220,9 +220,14 @@ export function feedNotice(status: FeedStatus): string | null {
   }
 }
 
-/** A user message's text, or an empty string for non-text content. */
-export function messageText(content: unknown): string {
-  return typeof content === 'string' ? content : '';
+/** A streamed string prop from a fallback's partial props, or '' until it is a string. */
+export function partialText(
+  partialProps: Readonly<Record<string, unknown>> | undefined,
+  key: string,
+): string {
+  const value = partialProps?.[key];
+
+  return typeof value === 'string' ? value : '';
 }
 
 /** What an AirportCard shows. */
@@ -276,9 +281,13 @@ function surfaceWords(code: string): string {
  * the airspace is not ready.
  */
 function airspaceLine(state: AtcState, code: string): string | null {
-  if (state.airspace.status !== 'ready') return null;
+  if (state.airspace.status !== 'ready') {
+    return null;
+  }
   const shelves = airspaceOf(state.airspace.shelves, code);
-  if (shelves.length === 0) return null;
+  if (shelves.length === 0) {
+    return null;
+  }
   const parts = airspaceTypes(shelves).map((type) =>
     shelves.filter((s) => s.type === type).every((s) => s.partTime)
       ? `${type} (part-time)`
@@ -311,15 +320,19 @@ export function airportCardView(
       airspace: airspaceLine(state, airport.code),
     };
   }
-  const { frequencies: f, weather } = chart;
+  const { frequencies, weather } = chart;
+  // ★ marks a part-time tower, as on FAA charts. A missing weather station has
+  // a null value, so its empty label is filtered out below.
   const entries: readonly (readonly [string, string | null])[] = [
     [
       'Tower',
-      f.tower === null ? null : `${f.tower}${chart.towerPartTime ? '★' : ''}`,
+      frequencies.tower === null
+        ? null
+        : `${frequencies.tower}${chart.towerPartTime ? '★' : ''}`,
     ],
-    ['ATIS', f.atis],
-    ['CTAF', f.ctaf],
-    ['UNICOM', f.unicom],
+    ['ATIS', frequencies.atis],
+    ['CTAF', frequencies.ctaf],
+    ['UNICOM', frequencies.unicom],
     [weather?.kind ?? '', weather?.frequency ?? null],
   ];
 

@@ -1,11 +1,14 @@
 import type { Aircraft } from '../aircraft';
 import type { LatLon } from '../places';
-import type { AirspaceShelf, AirspaceType } from './types';
+import {
+  AIRSPACE_TYPES,
+  type AirspaceShelf,
+  type AirspaceType,
+  type Ring,
+} from './types';
 
 /** Class A begins here; a shelf with no ceiling stops below it. */
 export const CLASS_A_FLOOR_FT = 18000;
-
-type Ring = readonly (readonly [number, number])[];
 
 function inRing(ring: Ring, lon: number, lat: number): boolean {
   let inside = false;
@@ -38,7 +41,9 @@ export function pointInShelf(shelf: AirspaceShelf, point: LatLon): boolean {
   }
   let inside = false;
   for (const ring of shelf.rings) {
-    if (inRing(ring, point.lon, point.lat)) inside = !inside;
+    if (inRing(ring, point.lon, point.lat)) {
+      inside = !inside;
+    }
   }
   return inside;
 }
@@ -50,7 +55,9 @@ export function pointInShelf(shelf: AirspaceShelf, point: LatLon): boolean {
 export function altitudeMslFt(
   aircraft: Pick<Aircraft, 'onGround' | 'altitudeFt' | 'geometricAltitudeFt'>,
 ): { ft: number; source: 'ground' | 'gnss' | 'baro' } | null {
-  if (aircraft.onGround) return { ft: 0, source: 'ground' };
+  if (aircraft.onGround) {
+    return { ft: 0, source: 'ground' };
+  }
   if (typeof aircraft.geometricAltitudeFt === 'number') {
     return { ft: aircraft.geometricAltitudeFt, source: 'gnss' };
   }
@@ -67,8 +74,12 @@ export function altitudeMslFt(
  * level. A null ceiling counts as the Class A floor, exclusive.
  */
 export function inShelfVertically(shelf: AirspaceShelf, ft: number): boolean {
-  if (shelf.floor.ref !== 'SFC' && ft < shelf.floor.ft) return false;
-  if (shelf.ceiling === null) return ft < CLASS_A_FLOOR_FT;
+  if (shelf.floor.ref !== 'SFC' && ft < shelf.floor.ft) {
+    return false;
+  }
+  if (shelf.ceiling === null) {
+    return ft < CLASS_A_FLOOR_FT;
+  }
   return shelf.ceiling.exclusive
     ? ft < shelf.ceiling.ft
     : ft <= shelf.ceiling.ft;
@@ -86,7 +97,9 @@ export function shelvesAt(
   >,
 ): AirspaceShelf[] {
   const altitude = altitudeMslFt(aircraft);
-  if (!altitude) return [];
+  if (!altitude) {
+    return [];
+  }
   return shelves.filter(
     (shelf) =>
       pointInShelf(shelf, aircraft) && inShelfVertically(shelf, altitude.ft),
@@ -108,13 +121,11 @@ export function airspaceOf(
   );
 }
 
-const TYPE_ORDER: readonly AirspaceType[] = ['B', 'C', 'D', 'E2', 'E3', 'E4'];
-
 /** The distinct shelf types in `shelves`, ordered B, C, D, E2, E3, E4. */
 export function airspaceTypes(
   shelves: readonly AirspaceShelf[],
 ): AirspaceType[] {
-  return TYPE_ORDER.filter((type) =>
+  return AIRSPACE_TYPES.filter((type) =>
     shelves.some((shelf) => shelf.type === type),
   );
 }

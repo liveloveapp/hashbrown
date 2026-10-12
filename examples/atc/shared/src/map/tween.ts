@@ -16,7 +16,10 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-/** True when a marker should ease from `from` to `to`: it moved, by at most 20 nm. */
+/**
+ * True when a marker should ease from `from` to `to`: it moved, by at most
+ * {@link MAX_TWEEN_NM}.
+ */
 export function shouldTween(from: LatLon, to: LatLon): boolean {
   const distance = distanceNm(from, to);
 

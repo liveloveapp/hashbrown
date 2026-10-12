@@ -3,14 +3,6 @@ export type CsvRows = Record<string, string>[] & {
   readonly columns: readonly string[];
 };
 
-/** Thrown when a NASR file lacks columns the parser reads. */
-export class NasrFormatError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'NasrFormatError';
-  }
-}
-
 /** Splits CSV text into rows of fields (quotes, commas and CRLF handled). */
 function splitRows(text: string): string[][] {
   const rows: string[][] = [];
@@ -20,7 +12,9 @@ function splitRows(text: string): string[][] {
   const endRow = () => {
     row.push(field);
     field = '';
-    if (row.length > 1 || row[0] !== '') rows.push(row);
+    if (row.length > 1 || row[0] !== '') {
+      rows.push(row);
+    }
     row = [];
   };
   for (let i = 0; i < text.length; i++) {
@@ -45,7 +39,9 @@ function splitRows(text: string): string[][] {
       field += c;
     }
   }
-  if (field !== '' || row.length > 0) endRow();
+  if (field !== '' || row.length > 0) {
+    endRow();
+  }
 
   return rows;
 }
@@ -64,20 +60,4 @@ export function parseCsv(text: string): CsvRows {
   return Object.defineProperty(records, 'columns', {
     value: header,
   }) as CsvRows;
-}
-
-/**
- * Throws a `NasrFormatError` naming the file and every column in `columns`
- * that the header row lacks. An empty file counts as missing all of them.
- */
-export function requireColumns(
-  records: CsvRows,
-  file: string,
-  columns: readonly string[],
-): void {
-  const missing = columns.filter((c) => !records.columns.includes(c));
-  if (missing.length > 0)
-    throw new NasrFormatError(
-      `${file} is missing columns: ${missing.join(', ')}`,
-    );
 }

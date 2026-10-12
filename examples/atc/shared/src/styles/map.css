@@ -1,4 +1,8 @@
 /* The map: grey tiles, the area ring and Leaflet's controls. */
+.atc-map {
+  position: absolute;
+  inset: 0;
+}
 /* The OpenStreetMap tiles in grey, so planes and the accent carry the map. */
 .atc-map .leaflet-tile-pane {
   filter: grayscale(1) contrast(0.92) brightness(1.04);
@@ -23,7 +27,7 @@
 /* Zoom and attribution as pills. */
 .atc-map.leaflet-container .leaflet-control-zoom {
   border: 1px solid var(--atc-border);
-  border-radius: 999px;
+  border-radius: var(--atc-radius-pill);
   overflow: hidden;
   background: var(--atc-surface);
 }
@@ -52,7 +56,7 @@
 }
 .atc-map.leaflet-container .leaflet-control-attribution {
   border: 1px solid var(--atc-border);
-  border-radius: 999px;
+  border-radius: var(--atc-radius-pill);
   background: var(--atc-surface);
   padding: 1px 8px;
   font-size: 10.5px;

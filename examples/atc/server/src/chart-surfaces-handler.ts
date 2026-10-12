@@ -1,22 +1,23 @@
-import type { Surfaces } from '@atc/shared';
-import { createCachedLoader } from './chart/cached-loader';
-import { amToSurfaces, osmToSurfaces } from './chart/surfaces';
+import { IDENT, type Surfaces } from '@atc/shared';
+import {
+  CHART_CACHE_CONTROL,
+  CHART_FRESH_MS,
+  CHART_STALE_LIMIT_MS,
+  createCachedLoader,
+} from './chart/cached-loader';
+import { airportMappingToSurfaces, osmToSurfaces } from './chart/surfaces';
 import {
   fetchAddsAirport,
-  fetchAmLayer,
+  fetchAirportMappingLayer,
   fetchOsmAeroways,
 } from './chart/upstream';
-import { type NodeHandler, sendJson } from './http';
+import { type NodeHandler, queryParam, sendCached, sendJson } from './http';
 
-const FRESH_MS = 24 * 60 * 60 * 1000;
-const STALE_LIMIT_MS = 30 * FRESH_MS;
 /**
  * One deadline for the whole load (ADDS lookup, Airport Mapping, Overpass), so
  * it ends inside the 20 s Vercel function limit. Overpass is asked for 12 s.
  */
 const LOAD_DEADLINE_MS = 17_000;
-const CACHE_CONTROL = 'public, s-maxage=86400, stale-while-revalidate=604800';
-const CODE = /^[A-Z0-9]{2,4}$/;
 /** Cached for well-formed codes the FAA does not know, so they are not refetched. */
 const UNKNOWN = 'UNKNOWN';
 
@@ -29,12 +30,12 @@ async function loadAm(
 ): Promise<Surfaces | null> {
   try {
     const [taxiways, aprons, hotspots] = await Promise.all([
-      fetchAmLayer(fetchFn, 'AM_Taxiway', faa, signal),
-      fetchAmLayer(fetchFn, 'AM_Apron', faa, signal),
-      fetchAmLayer(fetchFn, 'AM_Hotspot', faa, signal),
+      fetchAirportMappingLayer(fetchFn, 'AM_Taxiway', faa, signal),
+      fetchAirportMappingLayer(fetchFn, 'AM_Apron', faa, signal),
+      fetchAirportMappingLayer(fetchFn, 'AM_Hotspot', faa, signal),
     ]);
 
-    return amToSurfaces(code, { taxiways, aprons, hotspots });
+    return airportMappingToSurfaces(code, { taxiways, aprons, hotspots });
   } catch {
     // Treated as "no FAA data", so OpenStreetMap can still draw the airport.
     return null;
@@ -64,8 +65,8 @@ export function createChartSurfacesHandler(
     deadlineMs = LOAD_DEADLINE_MS,
   } = options;
   const load = createCachedLoader<Surfaces | typeof UNKNOWN>({
-    freshMs: FRESH_MS,
-    staleLimitMs: STALE_LIMIT_MS,
+    freshMs: CHART_FRESH_MS,
+    staleLimitMs: CHART_STALE_LIMIT_MS,
     now,
     load: async (code) => {
       const signal = AbortSignal.timeout(deadlineMs);
@@ -86,11 +87,8 @@ export function createChartSurfacesHandler(
     if (req.method !== 'GET') {
       return sendJson(res, 405, { error: 'Use GET' });
     }
-    const code = (
-      new URL(req.url ?? '/', 'http://localhost').searchParams.get('airport') ??
-      ''
-    ).toUpperCase();
-    if (!CODE.test(code)) {
+    const code = queryParam(req, 'airport').toUpperCase();
+    if (!IDENT.test(code)) {
       return sendJson(res, 400, { error: 'Unknown airport' });
     }
     const result = await load(code);
@@ -100,9 +98,9 @@ export function createChartSurfacesHandler(
     if (result.value === UNKNOWN) {
       return sendJson(res, 400, { error: 'Unknown airport' });
     }
-    sendJson(res, 200, result.value, {
-      'Cache-Control': CACHE_CONTROL,
-      ...(result.stale ? { 'X-Atc-Stale': '1' } : {}),
+    sendCached(res, result.value, {
+      stale: result.stale,
+      cacheControl: CHART_CACHE_CONTROL,
     });
   };
 }

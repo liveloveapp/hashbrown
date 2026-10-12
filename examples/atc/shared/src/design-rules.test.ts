@@ -20,12 +20,14 @@ const ROOTS = [
 function walk(dir: string, pattern: RegExp, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) walk(path, pattern, out);
-    else if (
+    if (entry.isDirectory()) {
+      walk(path, pattern, out);
+    } else if (
       pattern.test(entry.name) &&
       !/\.(test|spec)\.tsx?$/.test(entry.name)
-    )
+    ) {
       out.push(path);
+    }
   }
   return out;
 }
@@ -47,7 +49,7 @@ const files = ROOTS.flatMap(({ dir, pattern }) => walk(dir, pattern)).map(
 
 /** Shared source files (not tests, not styles), comments stripped. */
 const sharedSources = walk(join(ATC, 'shared', 'src'), /\.ts$/)
-  .filter((path) => !path.includes(`${join('shared', 'src', 'styles')}`))
+  .filter((path) => !path.includes(join('shared', 'src', 'styles')))
   .map((path) => ({
     file: relative(ATC, path),
     source: stripComments(readFileSync(path, 'utf8')),
@@ -121,12 +123,11 @@ function fontNames(source: string): string[] {
 
 /**
  * The one allowed gradient: a `linear-gradient` inside the rule for exactly
- * `.atc-shimmer`, the loading shimmer on the assistant's working text. The
- * user asked for a shimmer (2026-10-10), and a sweep across text needs a
- * gradient clipped to it. Only a rule whose whole selector is `.atc-shimmer`
- * (at the start of the source or after another rule or block opens) is
- * exempt; a selector list or descendant selector that includes it, any other
- * selector, or a shadow inside that rule still fails.
+ * `.atc-shimmer`, the loading shimmer on the assistant's working text: a sweep
+ * across text needs a gradient clipped to it. Only a rule whose whole
+ * selector is `.atc-shimmer` (at the start of the source or after another
+ * rule or block opens) is exempt; a selector list or descendant selector that
+ * includes it, any other selector, or a shadow inside that rule still fails.
  */
 function allowShimmerGradient(source: string): string {
   return source.replace(/(^|[{}])\s*\.atc-shimmer\s*\{[^}]*\}/g, (rule) =>
@@ -268,9 +269,13 @@ for (const [rule, check] of Object.entries(RULES)) {
   });
 }
 
+/** The chart hexes: the two inks, the two airspace bands and the diagram. */
+const CHART_HEX = /#086ca8|#76334f|#3288b5|#a6768e|#cfcfcf|#955101/i;
 /** Chart colours and tokens, allowed only where chart features are drawn. */
-const CHART_COLOUR =
-  /#086ca8|#76334f|#3288b5|#a6768e|#cfcfcf|#955101|--atc-chart-|--atc-diagram-/i;
+const CHART_COLOUR = new RegExp(
+  `${CHART_HEX.source}|--atc-chart-|--atc-diagram-`,
+  'i',
+);
 /** Where chart colours may appear: chart.css and the chart modules. */
 const CHART_ALLOWED = ['shared/src/styles/chart.css', 'shared/src/map/chart/'];
 
@@ -285,9 +290,6 @@ test('chart colours stay on the map', () => {
 
   expect(offenders.map(({ file }) => file)).toEqual([]);
 });
-
-/** The chart hexes: the two inks, the two airspace bands and the diagram. */
-const CHART_HEX = /#086ca8|#76334f|#3288b5|#a6768e|#cfcfcf|#955101/i;
 
 /** Files other than chart.css that use a chart hex. */
 function chartHexOffenders(
@@ -322,11 +324,13 @@ test('an airspace band hex outside chart.css fails the hex rule', () => {
   ]);
 });
 
+/** A stylesheet partial's source. */
+function readStyle(name: string): string {
+  return readFileSync(join(ATC, 'shared', 'src', 'styles', name), 'utf8');
+}
+
 test('the ink data block has a flat surface background and no depth', () => {
-  const css = readFileSync(
-    new URL('./styles/chart.css', import.meta.url),
-    'utf8',
-  );
+  const css = readStyle('chart.css');
 
   const rule = /\.atc-map \.atc-apt-block \{([^}]*)\}/.exec(css)?.[1] ?? '';
 
@@ -335,10 +339,7 @@ test('the ink data block has a flat surface background and no depth', () => {
 });
 
 test('a dimmed airspace label fades to 0.3, like its shelf', () => {
-  const css = readFileSync(
-    new URL('./styles/chart.css', import.meta.url),
-    'utf8',
-  );
+  const css = readStyle('chart.css');
 
   const rule =
     /\.atc-map \.atc-as-label\.is-dimmed \{([^}]*)\}/.exec(css)?.[1] ?? '';
@@ -347,10 +348,7 @@ test('a dimmed airspace label fades to 0.3, like its shelf', () => {
 });
 
 test('a marker with a visible tag stacks above untagged markers and below the hovered and selected tiers', () => {
-  const css = readFileSync(
-    join(ATC, 'shared', 'src', 'styles', 'markers.css'),
-    'utf8',
-  );
+  const css = readStyle('markers.css');
   const rule = css.match(/\.atc-plane-icon:has\(\.is-tagged\)\s*\{([^}]*)\}/);
 
   const zIndex = Number(rule?.[1]?.match(/z-index:\s*(\d+)/)?.[1]);
@@ -361,10 +359,7 @@ test('a marker with a visible tag stacks above untagged markers and below the ho
 
 /** The declarations of the chart.css rule with exactly this selector list. */
 function chartRule(selectors: string): string {
-  const css = readFileSync(
-    new URL('./styles/chart.css', import.meta.url),
-    'utf8',
-  );
+  const css = readStyle('chart.css');
   const escaped = selectors
     .replace(/[.[\]()]/g, '\\$&')
     .replace(/,\s*/g, ',\\s*');
@@ -375,19 +370,6 @@ function chartRule(selectors: string): string {
   );
 }
 
-const DASHED = [
-  '.atc-map .atc-as-casing.is-d',
-  '.atc-map .atc-as-casing.is-e2',
-  '.atc-map .atc-as-casing.is-e3',
-  '.atc-map .atc-as-casing.is-e4',
-].join(',\n');
-const DASHED_OVERVIEW = [
-  '.atc-map[data-zoom-overview] .atc-as-casing.is-d',
-  '.atc-map[data-zoom-overview] .atc-as-casing.is-e2',
-  '.atc-map[data-zoom-overview] .atc-as-casing.is-e3',
-  '.atc-map[data-zoom-overview] .atc-as-casing.is-e4',
-].join(',\n');
-
 test('the highlight casing is cobalt at 0.45 and butt-capped', () => {
   const rule = chartRule('.atc-map .atc-as-casing');
 
@@ -396,20 +378,70 @@ test('the highlight casing is cobalt at 0.45 and butt-capped', () => {
   expect(rule).toMatch(/stroke-linecap:\s*butt/);
 });
 
-test('the casing is 2 px wider than its shelf and keeps the shelf dashes', () => {
-  const bc = chartRule(
-    '.atc-map .atc-as-casing.is-b,\n.atc-map .atc-as-casing.is-c',
+/** The declarations of the chart.css rule whose selector list includes `selector`. */
+function chartRuleWith(selector: string): string {
+  const rules = stripComments(readStyle('chart.css')).matchAll(
+    /([^{}]+)\{([^{}]*)\}/g,
   );
-  const de = chartRule(DASHED);
-  const deOverview = chartRule(DASHED_OVERVIEW);
-  const bcOverview = chartRule(
-    '.atc-map[data-zoom-overview] .atc-as-casing.is-b,\n.atc-map[data-zoom-overview] .atc-as-casing.is-c',
+  for (const [, selectors = '', body = ''] of rules) {
+    if (selectors.split(',').some((item) => item.trim() === selector)) {
+      return body;
+    }
+  }
+  return '';
+}
+
+/** A property's value in a rule's declarations, or '' when it is not set. */
+function declared(rule: string, property: string): string {
+  return (
+    new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+);`).exec(rule)?.[1] ?? ''
+  ).trim();
+}
+
+/** A shelf or casing stroke: the overview rule's value, else the base rule's. */
+function stroke(
+  element: string,
+  shelf: string,
+  overview: boolean,
+  property: string,
+): string {
+  const rules = [
+    ...(overview
+      ? [`.atc-map[data-zoom-overview] .${element}.is-${shelf}`]
+      : []),
+    `.atc-map .${element}.is-${shelf}`,
+    `.atc-map .${element}`,
+  ];
+  return (
+    rules
+      .map((selector) => declared(chartRuleWith(selector), property))
+      .find((value) => value !== '') ?? ''
+  );
+}
+
+test('the casing is 2 px wider than its shelf and keeps the shelf dashes', () => {
+  const cases = ['b', 'c', 'd', 'e2', 'e3', 'e4'].flatMap((shelf) =>
+    [false, true].map((overview) => ({ shelf, overview })),
   );
 
-  expect(bc).toMatch(/stroke-width:\s*7px/);
-  expect(bcOverview).toMatch(/stroke-width:\s*5px/);
-  expect(de).toMatch(/stroke-width:\s*4px/);
-  expect(de).toMatch(/stroke-dasharray:\s*8 2\.2;/);
-  expect(deOverview).toMatch(/stroke-width:\s*3\.5px/);
-  expect(deOverview).toMatch(/stroke-dasharray:\s*6 1\.65;/);
+  const strokes = cases.map(({ shelf, overview }) => ({
+    shelf,
+    overview,
+    width: parseFloat(stroke('atc-as', shelf, overview, 'stroke-width')),
+    casingWidth: parseFloat(
+      stroke('atc-as-casing', shelf, overview, 'stroke-width'),
+    ),
+    dashes: stroke('atc-as', shelf, overview, 'stroke-dasharray'),
+    casingDashes: stroke('atc-as-casing', shelf, overview, 'stroke-dasharray'),
+  }));
+
+  const broken = strokes.filter(
+    ({ width, casingWidth, dashes, casingDashes }) =>
+      !(width > 0 && casingWidth === width + 2) ||
+      dashes === '' ||
+      casingDashes !== dashes,
+  );
+
+  expect(strokes).toHaveLength(12);
+  expect(broken).toEqual([]);
 });

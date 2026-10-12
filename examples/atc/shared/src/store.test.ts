@@ -22,24 +22,10 @@ import {
   requestArea,
   requestReset,
 } from './store';
+import { testAircraft } from './testing';
 
 function aircraft(hex: string, altitudeFt = 30000): Aircraft {
-  return {
-    hex,
-    label: 'UAL1',
-    callsign: 'UAL1',
-    registration: null,
-    typeCode: 'B738',
-    category: null,
-    kind: 'jet',
-    lat: 42,
-    lon: -88,
-    altitudeFt,
-    onGround: false,
-    groundSpeedKt: 450,
-    trackDeg: 90,
-    verticalRateFpm: 0,
-  };
+  return testAircraft({ hex, label: 'UAL1', callsign: 'UAL1', altitudeFt });
 }
 
 test('applySnapshot replaces positions and records departures with their last-seen time', () => {

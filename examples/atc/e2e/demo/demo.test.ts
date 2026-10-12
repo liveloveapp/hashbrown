@@ -1,14 +1,23 @@
 import {
   AIRPORTS,
+  applyAirspace,
   applySnapshot,
   distanceNm,
   findAircraft,
   INITIAL_STATE,
 } from '@atc/shared';
+import type { BrowserContext, Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
-import { scenario } from '../src/fixtures';
+import { CHART_AIRSPACE } from '../src/chart-fixtures';
+import { stubAtcFeeds } from '../src/stubs';
+import {
+  NEAR_BEND,
+  NO_FILTERS,
+  PORTLAND_CLASS_C,
+  scenario,
+} from '../src/traffic-fixtures';
 import { codePane, renderDirector, snapWindowStart } from './director';
 import { loopArgs, masterArgs } from './encode';
 import {
@@ -178,21 +187,15 @@ test('the seeded random source repeats', () => {
 });
 
 test('filler traffic keeps the scripted answers true', () => {
-  const state = applySnapshot(INITIAL_STATE, demoFrame(0));
-  const any = {
-    airline: null,
-    typeCode: null,
-    kind: null,
-    minAltitudeFt: null,
-    maxAltitudeFt: null,
-    approaching: null,
-    near: null,
-    limit: 20,
-  } as const;
+  const state = applyAirspace(
+    applySnapshot(INITIAL_STATE, demoFrame(0)),
+    CHART_AIRSPACE,
+  );
+  const any = { ...NO_FILTERS, limit: 20 } as const;
 
   const nearBend = findAircraft(state, {
     ...any,
-    near: { airport: 'KBDN', radiusNm: 25 },
+    near: NEAR_BEND,
     sortBy: 'distance',
   });
   const arrivals = findAircraft(state, {
@@ -203,6 +206,11 @@ test('filler traffic keeps the scripted answers true', () => {
   const fastest = findAircraft(state, { ...any, sortBy: 'speed' }).filter(
     (row) => row.hex !== scenario.highest.hex,
   );
+  const portland = findAircraft(state, {
+    ...any,
+    inAirspace: PORTLAND_CLASS_C,
+    sortBy: 'distance',
+  });
 
   expect(nearBend.map((row) => row.hex)).toEqual(
     scenario.nearby.map((row) => row.hex),
@@ -211,6 +219,9 @@ test('filler traffic keeps the scripted answers true', () => {
     scenario.arrivals.map((row) => row.hex),
   );
   expect(fastest[0].hex).toBe(scenario.fastest.hex);
+  expect(portland.map((row) => row.hex)).toEqual(
+    scenario.portland.map((row) => row.hex),
+  );
 });
 
 test('filler traffic stays clear of the Bend ring', () => {
@@ -221,4 +232,25 @@ test('filler traffic stays clear of the Bend ring', () => {
   const clear = nearest > 25;
 
   expect(clear).toBe(true);
+});
+
+test('the feed stubs serve the airspace from the chart fixtures', async () => {
+  const handlers = new Map<string, (route: Route) => unknown>();
+  const context = {
+    route: async (url: string, handler: (route: Route) => unknown) => {
+      handlers.set(url, handler);
+    },
+  } as unknown as BrowserContext;
+  let served: unknown = null;
+  const route = {
+    request: () => ({ url: () => 'http://atc.test/api/chart/airspace' }),
+    fulfill: async (response: unknown) => {
+      served = response;
+    },
+  } as unknown as Route;
+
+  await stubAtcFeeds(context, { frames: demoFrame, blockTiles: false });
+  await handlers.get('**/api/chart/airspace')?.(route);
+
+  expect(served).toEqual({ json: CHART_AIRSPACE });
 });

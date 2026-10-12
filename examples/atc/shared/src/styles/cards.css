@@ -1,4 +1,4 @@
-/* Cards: FlightCard, ArrivalsBoard, AircraftCompare. */
+/* Cards: FlightCard, ArrivalsBoard, AircraftCompare, AirportCard and the card skeleton. */
 .atc-card {
   border: 1px solid var(--atc-border);
   border-radius: var(--atc-radius-row);
@@ -54,9 +54,6 @@
 .atc-card .atc-card-note {
   margin: 10px 0 0;
   line-height: 1.55;
-}
-.atc-card header + .atc-card-muted {
-  margin: 2px 0 0;
 }
 .atc-card table {
   width: 100%;
@@ -152,20 +149,12 @@
   display: block;
   width: 100%;
 }
-/* Touch: every pick is at least 44px tall. */
-@media (pointer: coarse) {
-  .atc-pick {
-    min-height: 44px;
-  }
-  .atc-board td {
-    padding-block: 4px;
-  }
-}
 .atc-compare {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 8px;
 }
+/* After .atc-pick, so its border, radius and padding replace the pick's resets. */
 .atc-compare-item {
   min-width: 0;
   padding: 8px 10px;
@@ -176,9 +165,6 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  border: 1px solid var(--atc-border);
-  border-radius: var(--atc-radius-row);
-  padding: 8px 10px;
 }
 .atc-compare-item.atc-pick:not(:disabled):hover {
   background: var(--atc-canvas);
@@ -186,8 +172,14 @@
 .atc-compare-item .atc-figure {
   margin-top: 4px;
 }
-.atc-card-skeleton .atc-card-muted {
-  margin: 0 0 2px;
+/* Touch: every pick is at least 44px tall. */
+@media (pointer: coarse) {
+  .atc-pick {
+    min-height: 44px;
+  }
+  .atc-board td {
+    padding-block: 4px;
+  }
 }
 
 /* Hold-back fallback: a quiet line and two bars; static under reduced motion. */
@@ -195,6 +187,9 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.atc-card-skeleton .atc-card-muted {
+  margin: 0 0 2px;
 }
 .atc-skeleton-bar {
   height: 12px;
@@ -206,19 +201,10 @@
 .atc-skeleton-bar.is-short {
   width: 45%;
 }
-@keyframes atc-fade {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0.5;
-  }
-}
-
 .atc-airport-badge {
   border: 1px solid var(--atc-ink);
   color: var(--atc-ink);
-  border-radius: 999px;
+  border-radius: var(--atc-radius-pill);
   padding: 0 8px;
   font-size: 12px;
   font-weight: 500;

@@ -4,13 +4,17 @@ import {
   distanceNm,
   type FieldWeather,
   type Frequencies,
+  FREQUENCY,
+  ICAO,
+  IDENT,
   type LatLon,
   type Lighting,
+  longestHardRunwayFt,
   type Runway,
   runwayCorners,
   type RunwayEnd,
 } from '@atc/shared';
-import { type CsvRows, parseCsv, requireColumns } from './csv';
+import { type CsvRows, parseCsv } from './csv';
 
 type Row = Record<string, string>;
 
@@ -24,7 +28,6 @@ export interface NasrFiles {
 
 const KINDS = { A: 'airport', H: 'heliport', C: 'seaplane' } as const;
 const MILITARY = new Set(['MA', 'MN', 'MR', 'CG']);
-const FREQ = /^\d{3}\.\d{1,3}$/;
 
 /** Groups rows by the value of one column. */
 function groupBy(rows: readonly Row[], key: string): Map<string, Row[]> {
@@ -32,15 +35,20 @@ function groupBy(rows: readonly Row[], key: string): Map<string, Row[]> {
   for (const row of rows) {
     const k = row[key] ?? '';
     const list = groups.get(k);
-    if (list) list.push(row);
-    else groups.set(k, [row]);
+    if (list) {
+      list.push(row);
+    } else {
+      groups.set(k, [row]);
+    }
   }
 
   return groups;
 }
 
 function lighting(sked: string): Lighting {
-  if (sked === '') return 'none';
+  if (sked === '') {
+    return 'none';
+  }
 
   return sked === 'SS-SR' ? 'full' : 'limited';
 }
@@ -64,21 +72,31 @@ function airportRow(
   radiusNm: number,
 ): AirportRow | null | 'invalid' {
   const kind = KINDS[(row['SITE_TYPE_CODE'] ?? '') as keyof typeof KINDS];
-  if (row['FACILITY_USE_CODE'] !== 'PU' || row['ARPT_STATUS'] !== 'O' || !kind)
+  if (
+    row['FACILITY_USE_CODE'] !== 'PU' ||
+    row['ARPT_STATUS'] !== 'O' ||
+    !kind
+  ) {
     return null;
+  }
   const lat = Number.parseFloat(row['LAT_DECIMAL'] ?? '');
   const lon = Number.parseFloat(row['LONG_DECIMAL'] ?? '');
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return 'invalid';
-  if (distanceNm(centre, { lat, lon }) > radiusNm) return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return 'invalid';
+  }
+  if (distanceNm(centre, { lat, lon }) > radiusNm) {
+    return null;
+  }
   const faa = row['ARPT_ID'] ?? '';
   const elevation = Number.parseFloat(row['ELEV'] ?? '');
-  if (!/^[A-Z0-9]{2,4}$/.test(faa) || !Number.isFinite(elevation))
+  if (!IDENT.test(faa) || !Number.isFinite(elevation)) {
     return 'invalid';
+  }
   const icao = row['ICAO_ID'] ?? '';
 
   return {
     siteNo: row['SITE_NO'] ?? '',
-    code: /^[A-Z][A-Z0-9]{3}$/.test(icao) ? icao : faa,
+    code: ICAO.test(icao) ? icao : faa,
     faa,
     name: row['ARPT_NAME'] ?? '',
     city: row['CITY'] ?? '',
@@ -104,10 +122,14 @@ function runwaysFor(
   const runways: Runway[] = [];
   for (const row of rwyRows) {
     const id = row['RWY_ID'] ?? '';
-    if (id.startsWith('H') && !heliport) continue;
+    if (id.startsWith('H') && !heliport) {
+      continue;
+    }
     const lengthFt = Number.parseFloat(row['RWY_LEN'] ?? '');
     const widthFt = Number.parseFloat(row['RWY_WIDTH'] ?? '');
-    if (!(lengthFt > 0) || !(widthFt > 0)) continue;
+    if (!(lengthFt > 0) || !(widthFt > 0)) {
+      continue;
+    }
     const surface = row['SURFACE_TYPE_CODE'] || null;
     const ends = endRows
       .filter((e) => e['RWY_ID'] === id)
@@ -140,7 +162,7 @@ function frequenciesFor(rows: readonly Row[]): {
   weather: FieldWeather | null;
   towerPartTime: boolean;
 } {
-  const valid = rows.filter((r) => FREQ.test(r['FREQ'] ?? ''));
+  const valid = rows.filter((r) => FREQUENCY.test(r['FREQ'] ?? ''));
   const use = (r: Row) => r['FREQ_USE'] ?? '';
   const first = (pred: (r: Row) => boolean) =>
     valid.find(pred)?.['FREQ'] ?? null;
@@ -172,8 +194,29 @@ function frequenciesFor(rows: readonly Row[]): {
   };
 }
 
-function longestHard(a: ChartAirport): number {
-  return Math.max(0, ...a.runways.filter((r) => r.hard).map((r) => r.lengthFt));
+/** Thrown when a NASR file lacks columns the parser reads. */
+export class NasrFormatError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NasrFormatError';
+  }
+}
+
+/**
+ * Throws a `NasrFormatError` naming the file and every column in `columns`
+ * that the header row lacks. An empty file counts as missing all of them.
+ */
+export function requireColumns(
+  records: CsvRows,
+  file: string,
+  columns: readonly string[],
+): void {
+  const missing = columns.filter((c) => !records.columns.includes(c));
+  if (missing.length > 0) {
+    throw new NasrFormatError(
+      `${file} is missing columns: ${missing.join(', ')}`,
+    );
+  }
 }
 
 function parseChecked(text: string, file: string, columns: string[]): CsvRows {
@@ -244,7 +287,9 @@ export function buildChartAirports(
   const built: ChartAirport[] = [];
   for (const row of base) {
     const parsed = airportRow(row, centre, radiusNm);
-    if (parsed === null) continue;
+    if (parsed === null) {
+      continue;
+    }
     if (parsed === 'invalid') {
       dropped++;
       continue;
@@ -266,7 +311,7 @@ export function buildChartAirports(
     .sort(
       (a, b) =>
         Number(b.towered) - Number(a.towered) ||
-        longestHard(b) - longestHard(a) ||
+        longestHardRunwayFt(b) - longestHardRunwayFt(a) ||
         a.code.localeCompare(b.code),
     )
     .map((a, rank) => ({ ...a, rank }));

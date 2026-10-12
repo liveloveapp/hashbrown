@@ -48,9 +48,12 @@ async function ask(browser: Browser, prompt: string): Promise<Answer> {
   const page = await context.newPage();
   try {
     await page.goto(values.url);
-    await page.waitForSelector('.atc-map[data-ready]', { timeout: 30_000 });
-    await page.getByPlaceholder('Ask about the planes').fill(prompt);
-    await page.keyboard.press('Enter');
+    await page
+      .getByTestId('airspace-map')
+      .and(page.locator('[data-ready]'))
+      .waitFor({ timeout: 30_000 });
+    await page.getByRole('textbox', { name: 'Message' }).fill(prompt);
+    await page.getByRole('button', { name: 'Send' }).click();
     await page.waitForSelector('[aria-busy="true"]', { timeout: 10_000 });
     await page.waitForFunction(
       () => !document.querySelector('[aria-busy="true"]'),
@@ -70,11 +73,9 @@ async function ask(browser: Browser, prompt: string): Promise<Answer> {
       .innerText()
       .catch(() => '');
     const map = await page.evaluate(() => ({
-      shown:
-        document.querySelectorAll(
-          '[data-testid="arrivals-row"], [data-testid="flight-card"]',
-        ).length +
-        document.querySelectorAll('[data-testid="aircraft-compare"]').length,
+      shown: document.querySelectorAll(
+        '[data-testid="arrivals-row"], [data-testid="flight-card"], [data-testid="aircraft-compare"]',
+      ).length,
       highlighted: document.querySelectorAll('.atc-plane.is-highlighted')
         .length,
     }));

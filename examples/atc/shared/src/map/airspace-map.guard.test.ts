@@ -1,27 +1,13 @@
 // @vitest-environment jsdom
-import { expect, test, vi } from 'vitest';
-import type { Aircraft } from '../aircraft';
+import { expect, onTestFinished, test } from 'vitest';
 import { AIRPORTS, AREAS } from '../places';
 import { createAtcStore } from '../store';
+import { testAircraft } from '../testing';
 import { createAirspaceMap } from './airspace-map';
+import { leafletModule, mapElement, stubMedia } from './testing';
 
 const { KBDN } = AIRPORTS;
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'N352LL',
-  callsign: null,
-  registration: 'N352LL',
-  typeCode: 'C172',
-  category: null,
-  kind: 'single',
-  lat: KBDN.lat,
-  lon: KBDN.lon,
-  altitudeFt: 5000,
-  onGround: false,
-  groundSpeedKt: 110,
-  trackDeg: 90,
-  verticalRateFpm: 0,
-};
+const plane = testAircraft({ lat: KBDN.lat, lon: KBDN.lon });
 
 /**
  * Mounts a 400x300 map with motion on and Leaflet's zoom animation enabled,
@@ -29,28 +15,24 @@ const plane: Aircraft = {
  * on the next animation frame, as it does in a browser.
  */
 async function mountAnimated() {
-  vi.stubGlobal('matchMedia', () => ({ matches: false }));
-  const module = await import('leaflet');
-  const L =
-    (module as unknown as { default?: typeof module }).default ?? module;
+  stubMedia();
+  const L = await leafletModule();
   const any3d = L.Browser.any3d;
   (L.Browser as { any3d: boolean }).any3d = true;
   const store = createAtcStore();
-  const element = document.createElement('div');
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
-  const handle = await createAirspaceMap({ element, store, area: AREAS.pnw });
-
-  return {
+  const handle = await createAirspaceMap({
+    element: mapElement(),
     store,
-    /** Lets Leaflet's 250 ms zoom transition end before the map is removed. */
-    cleanup: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      handle.destroy();
-      (L.Browser as { any3d: boolean }).any3d = any3d;
-      vi.unstubAllGlobals();
-    },
-  };
+    area: AREAS.pnw,
+  });
+  onTestFinished(async () => {
+    // Lets Leaflet's 250 ms zoom transition end before the map is removed.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    handle.destroy();
+    (L.Browser as { any3d: boolean }).any3d = any3d;
+  });
+
+  return { store };
 }
 
 const frame = () => new Promise((resolve) => setTimeout(resolve, 50));
@@ -65,7 +47,6 @@ test("an animated area zoom does not cancel a newer request when Leaflet's zooms
   await frame();
 
   expect(map.store.getState().viewRequest?.kind).toBe('highlight');
-  await map.cleanup();
 });
 
 test('a move that interrupts another keeps the guard until its own animation ends', async () => {
@@ -81,5 +62,4 @@ test('a move that interrupts another keeps the guard until its own animation end
   }
 
   expect(map.store.getState().viewRequest?.kind).toBe('highlight');
-  await map.cleanup();
 });

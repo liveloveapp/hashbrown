@@ -1,31 +1,44 @@
 // @vitest-environment jsdom
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { KIND_PATHS } from '../kinds';
 import { applySnapshot, INITIAL_STATE } from '../store';
+import { testAircraft } from '../testing';
+import type { Marker } from 'leaflet';
 import {
+  altText,
   markerClassName,
+  planeElementOf,
   planeIconHtml,
-  planeTagText,
+  restartPulse,
   updatePlane,
 } from './plane-marker';
 
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
-  typeCode: 'B738',
-  category: null,
-  kind: 'jet',
+const plane = testAircraft({
   lat: 42,
   lon: -88,
   altitudeFt: 30000,
-  onGround: false,
   groundSpeedKt: 450,
   trackDeg: 271.6,
-  verticalRateFpm: 0,
-};
+});
+
+/** The rendered tag's label and altitude span. */
+function tagParts(host: ParentNode): [string, string] {
+  const tag = host.querySelector('.atc-plane-tag');
+
+  return [
+    tag?.firstChild?.textContent ?? '',
+    tag?.querySelector('.atc-plane-alt')?.textContent ?? '',
+  ];
+}
+
+/** Renders a marker and reads its tag's label and altitude span. */
+function renderedTag(aircraft: Aircraft): [string, string] {
+  const host = document.createElement('div');
+  host.innerHTML = planeIconHtml(aircraft, 'atc-plane');
+
+  return tagParts(host);
+}
 
 test('markerClassName reflects selection, follow and highlight', () => {
   const base = applySnapshot(INITIAL_STATE, { at: 1, aircraft: [plane] });
@@ -57,30 +70,39 @@ test('planeIconHtml rotates the plane to its track and tags it with its ID', () 
   expect(html).toContain('rotate(271.6deg)');
 });
 
-test('planeTagText tags hex-only aircraft by their label', () => {
+test('the tag shows a hex-only aircraft by its label', () => {
   const unidentified = { ...plane, label: 'AAAAAA', callsign: null };
 
-  const text = planeTagText(unidentified);
+  const parts = renderedTag(unidentified);
 
-  expect(text).toBe('AAAAAA 30,000');
+  expect(parts).toEqual(['AAAAAA', ' 30,000']);
 });
 
-test('planeTagText shows label and altitude with a thousands separator', () => {
-  const texts = [
-    planeTagText(plane),
-    planeTagText({ ...plane, altitudeFt: 4200 }),
-    planeTagText({ ...plane, altitudeFt: 0 }),
-    planeTagText({ ...plane, altitudeFt: null }),
-    planeTagText({ ...plane, altitudeFt: null, onGround: true }),
+test('the tag shows the altitude with a thousands separator after a space', () => {
+  const tags = [
+    renderedTag(plane),
+    renderedTag({ ...plane, altitudeFt: 4200 }),
+    renderedTag({ ...plane, altitudeFt: 0 }),
+    renderedTag({ ...plane, altitudeFt: null }),
+    renderedTag({ ...plane, altitudeFt: null, onGround: true }),
   ];
 
-  expect(texts).toEqual([
-    'UAL100 30,000',
-    'UAL100 4,200',
-    'UAL100 0',
-    'UAL100',
-    'UAL100 GND',
+  expect(tags).toEqual([
+    ['UAL100', ' 30,000'],
+    ['UAL100', ' 4,200'],
+    ['UAL100', ' 0'],
+    ['UAL100', ''],
+    ['UAL100', ' GND'],
   ]);
+});
+
+test('a screen reader hears the label and the altitude as two words', () => {
+  const host = document.createElement('div');
+  host.innerHTML = planeIconHtml(plane, 'atc-plane');
+
+  const text = host.querySelector('.atc-plane-tag')?.textContent;
+
+  expect(text).toBe('UAL100 30,000');
 });
 
 test('planeIconHtml leaves out the marker title and an unknown altitude', () => {
@@ -110,7 +132,7 @@ test('updatePlane keeps label, data-label and tag current, writing only changes'
   expect(host.querySelector('.atc-plane')?.getAttribute('data-label')).toBe(
     'N352LL',
   );
-  expect(tagNode.textContent).toBe('N352LL 4,200');
+  expect(tagParts(host)).toEqual(['N352LL', ' 4,200']);
 });
 
 test('planeIconHtml carries the tag outside the rotated silhouette', () => {
@@ -158,4 +180,41 @@ test('updatePlane swaps the silhouette when the kind changes, leaving the marker
   expect(body.getAttribute('data-kind')).toBe('rotor');
   expect(body.querySelector('path')?.getAttribute('d')).toBe(KIND_PATHS.rotor);
   expect(body.style.transform).toBe('rotate(271.6deg)');
+});
+
+test('planeElementOf finds the plane element of a drawn marker, else null', () => {
+  const host = document.createElement('div');
+  host.innerHTML = planeIconHtml(plane, 'atc-plane');
+  const markers = new Map([
+    ['aaaaaa', { getElement: () => host } as unknown as Marker],
+    ['bbbbbb', { getElement: () => undefined } as unknown as Marker],
+  ]);
+
+  const found = ['aaaaaa', 'bbbbbb', 'cccccc'].map((hex) =>
+    planeElementOf(markers, hex),
+  );
+
+  expect(found).toEqual([host.querySelector('.atc-plane'), null, null]);
+});
+
+test('altText matches the tag: feet with a comma, GND on the ground, empty when unknown', () => {
+  const texts = [
+    altText({ ...plane, altitudeFt: 4500 }),
+    altText({ ...plane, onGround: true }),
+    altText({ ...plane, altitudeFt: null }),
+  ];
+
+  expect(texts).toEqual(['4,500', 'GND', '']);
+});
+
+test('restartPulse removes and re-adds is-pulsing, and ignores a plane not drawn', () => {
+  const plane = document.createElement('div');
+  plane.classList.add('atc-plane', 'is-pulsing');
+  const remove = vi.spyOn(plane.classList, 'remove');
+
+  restartPulse(plane);
+  restartPulse(null);
+
+  expect(remove).toHaveBeenCalledWith('is-pulsing');
+  expect(plane.classList.contains('is-pulsing')).toBe(true);
 });

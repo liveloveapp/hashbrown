@@ -11,9 +11,10 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join, resolve } from 'node:path';
-import { CHART_AIRPORTS, chartSurfaces, scenario } from '../src/fixtures';
 import { scriptAtcModel } from '../src/model';
-import { renderDirector, STAGE } from './director';
+import { stubAtcFeeds } from '../src/stubs';
+import { scenario } from '../src/traffic-fixtures';
+import { type DirectorApi, renderDirector, STAGE } from './director';
 import {
   duration,
   ffmpeg,
@@ -26,6 +27,7 @@ import {
 import {
   beatSceneName,
   DEMO_PROMPTS,
+  type DemoPrompt,
   STORYBOARD,
   storyboardPaths,
 } from './storyboard';
@@ -42,8 +44,9 @@ import { demoFrame } from './traffic';
 /*
  * Records the atc demo video and the home page loop, then encodes them with
  * ffmpeg into dist/examples/atc/demo/. Deterministic and keyless: aimock
- * scripts every model turn (the e2e suite's script) and synthetic frames
- * stand in for adsb.lol. Needs a built atc-angular and ffmpeg.
+ * scripts every model turn (the e2e suite's script), synthetic frames stand
+ * in for adsb.lol and the chart fixtures for the FAA data; map tiles stay
+ * live. Needs a built atc-angular and ffmpeg.
  *
  * Runs headed, off screen: headless Chrome's screencast ignores the device
  * scale factor, and the 2x frames are what keep text crisp after scaling.
@@ -59,9 +62,14 @@ const WORDMARK = resolve(REPO, 'www/public/image/logo/word-mark.svg');
 const LOOP = { width: 1440, height: 900 } as const;
 const LOOP_FADE_S = 0.8;
 const TYPE_DELAY_MS = 32;
+/** Lets a few 3 s snapshots arrive, so planes are already gliding. */
+const WARM_UP_MS = 7000;
 const { fastest, arrivals, nearby } = scenario;
 
 const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
+
+/** The director page's window, with its API for the recorder. */
+type DirectorWindow = { readonly director: DirectorApi };
 
 /** A running screencast that records frames and named scenes. */
 interface Capture {
@@ -114,30 +122,6 @@ async function capture(
   };
 }
 
-/**
- * Serves synthetic traffic and the e2e chart fixtures, blocks route lookups,
- * and leaves map tiles live.
- */
-async function stubFeeds(context: BrowserContext): Promise<void> {
-  await context.route('**/api/chart/airports', (route) =>
-    route.fulfill({ json: CHART_AIRPORTS }),
-  );
-  await context.route('**/api/chart/surfaces**', (route) =>
-    route.fulfill({
-      json: chartSurfaces(
-        new URL(route.request().url()).searchParams.get('airport') ?? '',
-      ),
-    }),
-  );
-  let next = 0;
-  await context.route('**/api/aircraft**', (route) =>
-    route.fulfill({ json: demoFrame(next++) }),
-  );
-  await context.route('https://vrs-standing-data.adsb.lol/**', (route) =>
-    route.fulfill({ status: 404, body: '' }),
-  );
-}
-
 /** Waits until the map in `app` has drawn and its tiles have loaded. */
 async function mapReady(app: FrameLocator | Page): Promise<void> {
   await app
@@ -156,27 +140,36 @@ async function ask(app: FrameLocator | Page, prompt: string): Promise<void> {
   await app.getByRole('button', { name: 'Send' }).click();
 }
 
+/** How the recorder knows each demo question's answer has rendered. */
+const ANSWERED: Readonly<
+  Record<DemoPrompt, (app: FrameLocator | Page) => Promise<void>>
+> = {
+  near: (app) =>
+    app
+      .getByTestId('arrivals-board')
+      .last()
+      .getByTestId('arrivals-row')
+      .nth(nearby.length - 1)
+      .waitFor(),
+  arrivals: (app) =>
+    app
+      .getByTestId('arrivals-board')
+      .last()
+      .getByTestId('arrivals-row')
+      .nth(arrivals.length - 1)
+      .waitFor(),
+  follow: (app) =>
+    app
+      .locator(`[data-testid="flight-card"][data-hex="${fastest.hex}"]`)
+      .waitFor(),
+};
+
 /** Waits for the answer to `prompt` to finish rendering. */
 async function answered(
   app: FrameLocator | Page,
-  prompt: string,
+  prompt: DemoPrompt,
 ): Promise<void> {
-  const board = app.getByTestId('arrivals-board').last();
-  if (prompt === DEMO_PROMPTS.near) {
-    await board
-      .getByTestId('arrivals-row')
-      .nth(nearby.length - 1)
-      .waitFor();
-  } else if (prompt === DEMO_PROMPTS.arrivals) {
-    await board
-      .getByTestId('arrivals-row')
-      .nth(arrivals.length - 1)
-      .waitFor();
-  } else {
-    await app
-      .locator(`[data-testid="flight-card"][data-hex="${fastest.hex}"]`)
-      .waitFor();
-  }
+  await ANSWERED[prompt](app);
   await app.locator('.atc-transcript[aria-busy="false"]').waitFor();
 }
 
@@ -221,37 +214,25 @@ async function recordDemo(context: BrowserContext, origin: string) {
   await page.evaluate(() => document.fonts.ready);
   const app = page.frameLocator('iframe[name="app"]');
   await mapReady(app);
-  // Let a few snapshots arrive, so planes are already gliding.
-  await wait(7000);
+  await wait(WARM_UP_MS);
   const take = await capture(page, join(WORK, 'demo-frames'), STAGE);
   await page.evaluate(() =>
-    (
-      window as unknown as { director: { reset(): Promise<void> } }
-    ).director.reset(),
+    (window as unknown as DirectorWindow).director.reset(),
   );
   for (const [index, beat] of STORYBOARD.entries()) {
     await take.scene(beatSceneName(index, beat), async () => {
       await page.evaluate(
-        (at) =>
-          (
-            window as unknown as {
-              director: { play(i: number): Promise<void> };
-            }
-          ).director.play(at),
+        (at) => (window as unknown as DirectorWindow).director.play(at),
         index,
       );
       if (beat.kind !== 'app') return;
       if (beat.prompt !== null) {
-        await ask(app, beat.prompt);
+        await ask(app, DEMO_PROMPTS[beat.prompt]);
         await answered(app, beat.prompt);
         if (beat.then !== undefined) {
           await page.evaluate(
             (name) =>
-              (
-                window as unknown as {
-                  director: { focus(n: string): Promise<void> };
-                }
-              ).director.focus(name),
+              (window as unknown as DirectorWindow).director.focus(name),
             beat.then,
           );
         }
@@ -271,12 +252,12 @@ async function recordLoop(context: BrowserContext, origin: string) {
   await page.setViewportSize(LOOP);
   await page.goto(`${origin}/angular/`);
   await mapReady(page);
-  await wait(7000);
+  await wait(WARM_UP_MS);
   const take = await capture(page, join(WORK, 'loop-frames'), LOOP);
   await take.scene('loop', async () => {
     await wait(1200);
     await ask(page, DEMO_PROMPTS.arrivals);
-    await answered(page, DEMO_PROMPTS.arrivals);
+    await answered(page, 'arrivals');
     await wait(3800);
   });
   const timeline = await take.stop();
@@ -324,7 +305,7 @@ async function toWebp(page: Page, png: string, out: string): Promise<void> {
 }
 
 /** Encodes web MP4 and WebM copies and a WebP poster at `posterAt` seconds. */
-async function publish(
+async function encodeForWeb(
   page: Page,
   source: string,
   name: string,
@@ -379,7 +360,7 @@ async function main(): Promise<void> {
       deviceScaleFactor: 2,
       reducedMotion: 'no-preference',
     });
-    await stubFeeds(context);
+    await stubAtcFeeds(context, { frames: demoFrame, blockTiles: false });
     const encoder = await context.newPage();
     const only = process.argv.includes('--loop-only')
       ? 'loop'
@@ -390,11 +371,15 @@ async function main(): Promise<void> {
       const demo = await recordDemo(context, servers.origin);
       const source = master(demo, join(WORK, 'demo-frames'), 'demo', STAGE);
       // The poster: the near-Bend board, just before the tools beat.
-      await publish(
+      const toolsBeat = STORYBOARD.findIndex((beat) => beat.id === 'tools');
+      await encodeForWeb(
         encoder,
         source,
         'atc-demo',
-        sceneOffset(demo.scenes, beatSceneName(4, STORYBOARD[4])) - 0.2,
+        sceneOffset(
+          demo.scenes,
+          beatSceneName(toolsBeat, STORYBOARD[toolsBeat]),
+        ) - 0.2,
       );
       contactSheet(source, join(OUT, 'atc-demo-contact-sheet.png'));
       console.log(`demo: ${duration(join(OUT, 'atc-demo.mp4')).toFixed(1)} s`);
@@ -404,7 +389,7 @@ async function main(): Promise<void> {
       const raw = master(loop, join(WORK, 'loop-frames'), 'loop', LOOP);
       const seamless = join(WORK, 'loop-seamless.mp4');
       ffmpeg(loopArgs(raw, duration(raw), LOOP_FADE_S, seamless));
-      await publish(encoder, seamless, 'atc-loop', 0);
+      await encodeForWeb(encoder, seamless, 'atc-loop', 0);
       console.log(`loop: ${duration(join(OUT, 'atc-loop.mp4')).toFixed(1)} s`);
     }
     console.log(`Wrote ${OUT}`);

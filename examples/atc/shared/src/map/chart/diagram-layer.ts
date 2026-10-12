@@ -5,19 +5,23 @@ import type {
   LayerGroup,
   Map as LeafletMap,
 } from 'leaflet';
-import type {
-  ChartAirport,
-  Runway,
-  RunwayEnd,
-  SurfaceFeature,
-  Surfaces,
+import {
+  type ChartAirport,
+  FT_TO_M,
+  loadSurfaces,
+  metresPerPixel,
+  type Ring,
+  ringCentroid,
+  type Runway,
+  type RunwayEnd,
+  type SurfaceFeature,
+  type Surfaces,
 } from '../../chart';
-import { loadSurfaces } from '../../chart/chart-feed';
-import { FT_TO_M, metresPerPixel } from '../../chart/runway-geometry';
 import type { LatLon } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
 import { type ChartColours, chartColours } from './chart-colours';
 import { visibleAirports } from './declutter';
+import { toLatLng } from './leaflet-coords';
 
 /** From this zoom airports also draw their surfaces (taxiways, aprons, holds, hot spots). */
 export const DIAGRAM_ZOOM = 12;
@@ -25,7 +29,11 @@ export const DIAGRAM_ZOOM = 12;
 export const TAXIWAY_LABEL_ZOOM = 14;
 /** A runway narrower than this many pixels is drawn as a stroke this wide. */
 export const RUNWAY_MIN_PX = 2;
-/** How far beyond the view (as a fraction of it) runways are still drawn. */
+/**
+ * How far beyond the view (as a fraction of it) runways are still drawn.
+ * Smaller than the other layers' 0.5: this layer redraws every runway and
+ * surface on each move.
+ */
 const NEAR_PAD = 0.2;
 /** Runway end numbers sit this fraction of the length in from each end. */
 const END_LABEL_INSET = 0.06;
@@ -62,7 +70,9 @@ export function runwayDrawing(
   zoom: number,
   lat: number,
 ): RunwayDrawing | null {
-  if (runway.corners === null) return null;
+  if (runway.corners === null) {
+    return null;
+  }
   const widthPx = (runway.widthFt * FT_TO_M) / metresPerPixel(zoom, lat);
   if (runway.ends !== null && widthPx < RUNWAY_MIN_PX) {
     return { kind: 'stroke', ends: runway.ends, weight: RUNWAY_MIN_PX };
@@ -71,27 +81,16 @@ export function runwayDrawing(
   return { kind: 'polygon', corners: runway.corners };
 }
 
-/** [lon, lat] (GeoJSON order) to a Leaflet position. */
-const toLatLng = ([lon, lat]: readonly [number, number]): [number, number] => [
-  lat,
-  lon,
-];
-
 const along = (a: LatLon, b: LatLon, t: number): [number, number] => [
   a.lat + (b.lat - a.lat) * t,
   a.lon + (b.lon - a.lon) * t,
 ];
 
 /** The average of a polygon's outer ring vertices, as a Leaflet position. */
-function vertexAverage(
-  rings: readonly (readonly (readonly [number, number])[])[],
-): [number, number] | null {
-  const ring = rings[0] ?? [];
-  if (ring.length === 0) return null;
-  const lon = ring.reduce((sum, [x]) => sum + x, 0) / ring.length;
-  const lat = ring.reduce((sum, [, y]) => sum + y, 0) / ring.length;
+function vertexAverage(rings: readonly Ring[]): [number, number] | null {
+  const centre = ringCentroid(rings[0] ?? []);
 
-  return [lat, lon];
+  return centre === null ? null : [centre.lat, centre.lon];
 }
 
 /** A label candidate for one taxiway ref: where, and how long its segment is. */
@@ -112,11 +111,13 @@ export function taxiwayLabelSpots(
   const polygons = new Map<string, RefSpot>();
   const keep = (spots: Map<string, RefSpot>, ref: string, spot: RefSpot) => {
     const best = spots.get(ref);
-    if (!best || spot.length > best.length) spots.set(ref, spot);
+    if (!best || spot.length > best.length) {
+      spots.set(ref, spot);
+    }
   };
-  const segments = (points: readonly (readonly [number, number])[]) =>
+  const segments = (points: Ring) =>
     points.slice(1).map((b, i) => {
-      const a = points[i] as readonly [number, number];
+      const a = points[i];
       return {
         at: [(a[1] + b[1]) / 2, (a[0] + b[0]) / 2] as [number, number],
         // Degrees of longitude shrink with latitude; this only ranks segments.
@@ -127,7 +128,9 @@ export function taxiwayLabelSpots(
       };
     });
   for (const feature of features) {
-    if (feature.kind !== 'taxiway' || !feature.ref) continue;
+    if (feature.kind !== 'taxiway' || !feature.ref) {
+      continue;
+    }
     if (feature.shape === 'line') {
       for (const spot of segments(feature.points)) {
         keep(lines, feature.ref, spot);
@@ -139,11 +142,17 @@ export function taxiwayLabelSpots(
       0,
       ...segments(feature.rings[0] ?? []).map((s) => s.length),
     );
-    if (at) keep(polygons, feature.ref, { at, length: longest });
+    if (at) {
+      keep(polygons, feature.ref, { at, length: longest });
+    }
   }
   const spots = new Map<string, [number, number]>();
-  for (const [ref, { at }] of polygons) spots.set(ref, at);
-  for (const [ref, { at }] of lines) spots.set(ref, at);
+  for (const [ref, { at }] of polygons) {
+    spots.set(ref, at);
+  }
+  for (const [ref, { at }] of lines) {
+    spots.set(ref, at);
+  }
 
   return spots;
 }
@@ -155,14 +164,15 @@ function isLoaded(
 }
 
 /**
- * Draws ink airports in `pane` on a canvas renderer. At every zoom, each
- * chart airport near the view that `visibleAirports` keeps has its runways
- * drawn in ink at true size (see {@link runwayDrawing}); a runway drawn as a
- * polygon carries its end numbers. From {@link DIAGRAM_ZOOM} it also loads
- * each airport's surfaces once (`loadSurfaces`, deduplicated by the store)
- * and draws pavement, hold bars and hot spots under and over the runways,
- * with taxiway refs (from {@link TAXIWAY_LABEL_ZOOM}) and hot spot names as
- * text-filled markers.
+ * Draws chart airports' runways in ink at true size on a canvas renderer, and
+ * from {@link DIAGRAM_ZOOM} their diagrams: pavement, hold bars, hot spots and
+ * labels. At every zoom, each chart airport near the view that
+ * `visibleAirports` keeps has its runways drawn (see {@link runwayDrawing});
+ * a runway drawn as a polygon carries its end numbers. From
+ * {@link DIAGRAM_ZOOM} it also loads each airport's surfaces once
+ * (`loadSurfaces`, deduplicated by the store) and draws them under and over
+ * the runways, with taxiway refs (from {@link TAXIWAY_LABEL_ZOOM}) and hot
+ * spot names as text-filled markers.
  * Everything is rebuilt on `redraw` and whenever the chart, the layers or the
  * surfaces change; aircraft snapshots never reach it. Colours are read from
  * `element`'s chart custom properties, since canvas needs real colours.
@@ -182,13 +192,13 @@ export function createDiagramLayer(options: {
   /** True while this layer starts surface loads, which notify the store. */
   let loading = false;
 
-  const shared = () => {
+  const ensureCanvas = () => {
     renderer ??= L.canvas({ pane });
     group ??= L.layerGroup().addTo(map);
     return { renderer, group };
   };
 
-  const label = (
+  const addLabel = (
     target: LayerGroup,
     at: LatLngExpression,
     text: string,
@@ -215,11 +225,13 @@ export function createDiagramLayer(options: {
     zoom: number,
     colours: ChartColours,
   ) => {
-    const { renderer, group } = shared();
+    const { renderer, group } = ensureCanvas();
     const mpp = metresPerPixel(zoom, airport.lat);
     const base = { renderer, interactive: false };
     const features = surfaces?.features ?? [];
 
+    // Canvas paints in call order, bottom to top: apron and taxiway polygons,
+    // taxiway lines, runways, hold bars, hot spots, then the text labels.
     for (const feature of features) {
       if (feature.shape === 'polygon' && feature.kind !== 'hotspot') {
         L.polygon(
@@ -245,12 +257,14 @@ export function createDiagramLayer(options: {
         }).addTo(group);
       }
     }
-    const polygons: Runway[] = [];
+    const polygonRunways: Runway[] = [];
     // Heliports and seaplane bases show only their ring, never paved runways.
     const runways = airport.kind === 'airport' ? airport.runways : [];
     for (const runway of runways) {
       const drawing = runwayDrawing(runway, zoom, airport.lat);
-      if (drawing === null) continue;
+      if (drawing === null) {
+        continue;
+      }
       if (drawing.kind === 'stroke') {
         const [a, b] = drawing.ends;
         L.polyline(
@@ -268,7 +282,7 @@ export function createDiagramLayer(options: {
         ).addTo(group);
         continue;
       }
-      polygons.push(runway);
+      polygonRunways.push(runway);
       L.polygon(
         drawing.corners.map((c) => [c.lat, c.lon] as [number, number]),
         {
@@ -295,9 +309,13 @@ export function createDiagramLayer(options: {
       }
     }
     for (const feature of features) {
-      if (feature.shape !== 'polygon' || feature.kind !== 'hotspot') continue;
+      if (feature.shape !== 'polygon' || feature.kind !== 'hotspot') {
+        continue;
+      }
       const at = vertexAverage(feature.rings);
-      if (at === null) continue;
+      if (at === null) {
+        continue;
+      }
       L.circleMarker(at, {
         ...base,
         radius: 9,
@@ -305,18 +323,22 @@ export function createDiagramLayer(options: {
         fill: false,
         weight: 2,
       }).addTo(group);
-      if (feature.ref) label(group, at, feature.ref, 'is-hotspot');
+      if (feature.ref) {
+        addLabel(group, at, feature.ref, 'is-hotspot');
+      }
     }
 
-    for (const runway of polygons) {
-      if (runway.ends === null) continue;
+    for (const runway of polygonRunways) {
+      if (runway.ends === null) {
+        continue;
+      }
       const [a, b] = runway.ends;
-      label(group, along(a, b, END_LABEL_INSET), a.id, 'is-runway');
-      label(group, along(b, a, END_LABEL_INSET), b.id, 'is-runway');
+      addLabel(group, along(a, b, END_LABEL_INSET), a.id, 'is-runway');
+      addLabel(group, along(b, a, END_LABEL_INSET), b.id, 'is-runway');
     }
     if (zoom >= TAXIWAY_LABEL_ZOOM) {
       for (const [ref, at] of taxiwayLabelSpots(features)) {
-        label(group, at, ref, 'is-taxiway');
+        addLabel(group, at, ref, 'is-taxiway');
       }
     }
   };
@@ -328,7 +350,9 @@ export function createDiagramLayer(options: {
   const redraw = () => {
     clear();
     const state = store.getState();
-    if (!state.layers.airports || state.chart.status !== 'ready') return;
+    if (!state.layers.airports || state.chart.status !== 'ready') {
+      return;
+    }
     const zoom = map.getZoom();
     const near = map.getBounds().pad(NEAR_PAD);
     const onScreen = visibleAirports(state.chart.airports, zoom).filter(
@@ -340,9 +364,13 @@ export function createDiagramLayer(options: {
       const surfaces = diagrams ? state.surfaces.get(airport.code) : undefined;
       drawAirport(airport, isLoaded(surfaces) ? surfaces : null, zoom, colours);
     }
-    if (!diagrams) return;
+    if (!diagrams) {
+      return;
+    }
     const missing = onScreen.filter((a) => !state.surfaces.has(a.code));
-    if (missing.length === 0) return;
+    if (missing.length === 0) {
+      return;
+    }
     // Each load marks its airport `loading` in the store at once; that
     // changes nothing drawn, so those notifications are not redrawn, and the
     // surfaces they leave are recorded as synced so a later notification
@@ -362,7 +390,9 @@ export function createDiagramLayer(options: {
 
   return {
     sync(state) {
-      if (loading) return;
+      if (loading) {
+        return;
+      }
       if (
         synced !== null &&
         synced.chart === state.chart &&

@@ -1,10 +1,4 @@
-/** A rectangle in map container pixels. */
-export interface TagRect {
-  readonly left: number;
-  readonly top: number;
-  readonly right: number;
-  readonly bottom: number;
-}
+import { intersects, type PixelRect, rectAround } from './pixels';
 
 /** A plane icon that tags should not cover, at its container point. */
 export interface TagObstacle {
@@ -18,24 +12,14 @@ export interface TagObstacle {
   readonly hard?: boolean;
 }
 
-/** The plane icon's box, in pixels (`iconSize` in `airspace-map.ts`). */
+/** The plane icon's box, in pixels; matches `.atc-plane` in styles/markers.css. */
 export const PLANE_ICON = 22;
 /** Space kept around an icon, in pixels. */
 export const ICON_MARGIN = 2;
 /** Half the box a tag keeps out of: the icon and its margin. */
-const HALF = PLANE_ICON / 2 + ICON_MARGIN;
+const KEEP_OUT_HALF = PLANE_ICON / 2 + ICON_MARGIN;
 /** The grid's cell size, in pixels. */
 const CELL = 32;
-
-/** True when two rectangles overlap, or come closer than `gap` pixels. */
-export function intersects(a: TagRect, b: TagRect, gap = 0): boolean {
-  return (
-    a.left < b.right + gap &&
-    b.left < a.right + gap &&
-    a.top < b.bottom + gap &&
-    b.top < a.bottom + gap
-  );
-}
 
 const cellKey = (cx: number, cy: number) => `${cx},${cy}`;
 
@@ -48,7 +32,7 @@ const cellKey = (cx: number, cy: number) => `${cx},${cy}`;
  */
 export function createObstacleGrid(
   planes: readonly TagObstacle[],
-): (rect: TagRect, own: string, hardOnly?: boolean) => boolean {
+): (rect: PixelRect, own: string, hardOnly?: boolean) => boolean {
   const cells = new Map<string, TagObstacle[]>();
   for (const plane of planes) {
     const key = cellKey(Math.floor(plane.x / CELL), Math.floor(plane.y / CELL));
@@ -59,11 +43,11 @@ export function createObstacleGrid(
       cells.set(key, [plane]);
     }
   }
-  const nearby = function* (rect: TagRect) {
-    const left = Math.floor((rect.left - HALF) / CELL);
-    const right = Math.floor((rect.right + HALF) / CELL);
-    const top = Math.floor((rect.top - HALF) / CELL);
-    const bottom = Math.floor((rect.bottom + HALF) / CELL);
+  const nearby = function* (rect: PixelRect) {
+    const left = Math.floor((rect.left - KEEP_OUT_HALF) / CELL);
+    const right = Math.floor((rect.right + KEEP_OUT_HALF) / CELL);
+    const top = Math.floor((rect.top - KEEP_OUT_HALF) / CELL);
+    const bottom = Math.floor((rect.bottom + KEEP_OUT_HALF) / CELL);
     for (let cx = left; cx <= right; cx++) {
       for (let cy = top; cy <= bottom; cy++) {
         yield* cells.get(cellKey(cx, cy)) ?? [];
@@ -76,12 +60,7 @@ export function createObstacleGrid(
       if (hardOnly && !plane.hard) {
         continue;
       }
-      const icon = {
-        left: plane.x - HALF,
-        top: plane.y - HALF,
-        right: plane.x + HALF,
-        bottom: plane.y + HALF,
-      };
+      const icon = rectAround(plane.x, plane.y, 2 * KEEP_OUT_HALF);
       if (plane.hex !== own && intersects(rect, icon)) {
         return true;
       }

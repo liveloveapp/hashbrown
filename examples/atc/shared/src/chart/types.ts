@@ -1,5 +1,11 @@
 import type { LatLon } from '../places';
 
+/** A `[lon, lat]` position, in GeoJSON order. */
+export type LonLat = readonly [number, number];
+
+/** A polygon ring of `[lon, lat]` positions. */
+export type Ring = readonly LonLat[];
+
 /** One end of a runway: its number and surveyed threshold position. */
 export interface RunwayEnd extends LatLon {
   /** Runway end number as NASR writes it, such as "05" or "23". */
@@ -38,11 +44,17 @@ export interface FieldWeather {
   readonly frequency: string;
 }
 
+/** The kinds of landing facility, a closed set. */
+export const FACILITY_KINDS = ['airport', 'heliport', 'seaplane'] as const;
+
 /** What kind of landing facility: drawn with different symbols. */
-export type FacilityKind = 'airport' | 'heliport' | 'seaplane';
+export type FacilityKind = (typeof FACILITY_KINDS)[number];
+
+/** The ways a field can be lit, a closed set. */
+export const LIGHTINGS = ['full', 'limited', 'none'] as const;
 
 /** How the field is lit: L (sunset to sunrise), *L (limited) or none. */
-export type Lighting = 'full' | 'limited' | 'none';
+export type Lighting = (typeof LIGHTINGS)[number];
 
 /** A public-use airport from FAA NASR, as the chart draws it. */
 export interface ChartAirport extends LatLon {
@@ -82,13 +94,13 @@ export type SurfaceFeature =
   | {
       readonly kind: 'taxiway' | 'apron' | 'hotspot';
       readonly shape: 'polygon';
-      readonly rings: readonly (readonly (readonly [number, number])[])[];
+      readonly rings: readonly Ring[];
       readonly ref: string | null;
     }
   | {
       readonly kind: 'taxiway' | 'hold';
       readonly shape: 'line';
-      readonly points: readonly (readonly [number, number])[];
+      readonly points: Ring;
       readonly ref: string | null;
       readonly widthFt: number | null;
     };
@@ -101,7 +113,7 @@ export interface Surfaces {
   readonly features: readonly SurfaceFeature[];
 }
 
-/** Which overlays the map draws. Later parts add keys. */
+/** Which overlays the map draws. */
 export interface Layers {
   readonly airports: boolean;
   readonly airspace: boolean;
@@ -115,11 +127,17 @@ export interface ChartState {
   readonly airports: readonly ChartAirport[];
 }
 
+/** The FAA airspace classes the chart draws, a closed set. */
+export const AIRSPACE_CLASSES = ['B', 'C', 'D', 'E'] as const;
+
 /** The FAA airspace class a shelf belongs to. */
-export type AirspaceClass = 'B' | 'C' | 'D' | 'E';
+export type AirspaceClass = (typeof AIRSPACE_CLASSES)[number];
+
+/** The shelf types in chart order: B, C, D, then Class E surface areas. */
+export const AIRSPACE_TYPES = ['B', 'C', 'D', 'E2', 'E3', 'E4'] as const;
 
 /** The shelf type: Class B, C, D or a Class E surface area (E2, E3, E4). */
-export type AirspaceType = 'B' | 'C' | 'D' | 'E2' | 'E3' | 'E4';
+export type AirspaceType = (typeof AIRSPACE_TYPES)[number];
 
 /** One airspace shelf: a lateral outline between a floor and a ceiling. */
 export interface AirspaceShelf {
@@ -137,7 +155,7 @@ export interface AirspaceShelf {
   /** True when the airspace is active by NOTAM only (part-time). */
   readonly partTime: boolean;
   /** `[lon, lat]` rings: the first is the outer boundary, the rest holes. */
-  readonly rings: readonly (readonly (readonly [number, number])[])[];
+  readonly rings: readonly Ring[];
   /** `[west, south, east, north]`. */
   readonly bbox: readonly [number, number, number, number];
 }

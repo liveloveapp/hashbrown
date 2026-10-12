@@ -1,34 +1,17 @@
 import { expect, test } from 'vitest';
 import { type AirspaceShelf, pointInShelf } from '../../chart';
+import { squareRing, testShelf } from '../../testing';
 import {
   shelfLabel,
   shelfLabelAnchor,
   shelfLabelPoint,
 } from './airspace-labels';
 
-type Ring = (readonly [number, number])[];
-
-/** A closed square ring around (lon, lat), `half` degrees each way. */
-const square = (lon: number, lat: number, half: number): Ring => [
-  [lon - half, lat - half],
-  [lon + half, lat - half],
-  [lon + half, lat + half],
-  [lon - half, lat + half],
-  [lon - half, lat - half],
-];
-
-const pdxC: AirspaceShelf = {
+const pdxC = testShelf({
   id: 'KPDX-C-1',
-  airport: 'KPDX',
-  name: 'PORTLAND CLASS C',
-  class: 'C',
-  type: 'C',
-  floor: { ft: 1100, ref: 'MSL' },
-  ceiling: { ft: 4000, exclusive: false },
-  partTime: false,
-  rings: [square(-122.6, 45.59, 0.1)],
+  rings: [squareRing(-122.6, 45.59, 0.1)],
   bbox: [-122.7, 45.49, -122.5, 45.69],
-};
+});
 
 test('a Class C shelf from 1,100 to 4,000 ft stacks 40 over 11', () => {
   const shelf = pdxC;
@@ -130,7 +113,7 @@ test('a convex shelf is labelled at its bbox centre', () => {
 test('a donut-shaped shelf is labelled on the ring, not in the hole', () => {
   const shelf: AirspaceShelf = {
     ...pdxC,
-    rings: [square(-122.6, 45.59, 0.2), square(-122.6, 45.59, 0.1)],
+    rings: [squareRing(-122.6, 45.59, 0.2), squareRing(-122.6, 45.59, 0.1)],
     bbox: [-122.8, 45.39, -122.4, 45.79],
   };
 
@@ -182,7 +165,7 @@ test('a label at the bbox centre moves halfway to the south edge', () => {
 test('a label off the bbox centre stays at its label point', () => {
   const shelf: AirspaceShelf = {
     ...pdxC,
-    rings: [square(-122.6, 45.59, 0.2), square(-122.6, 45.59, 0.1)],
+    rings: [squareRing(-122.6, 45.59, 0.2), squareRing(-122.6, 45.59, 0.1)],
     bbox: [-122.8, 45.39, -122.4, 45.79],
   };
 

@@ -85,6 +85,9 @@ const HEX = /^[0-9a-f]{6}$/;
 const AIRLINE_CALLSIGN = /^[A-Z]{3}\d[A-Z0-9]{0,4}$/;
 const LABEL = /^[A-Z0-9]{1,8}$/;
 const REGISTRATION = /^[A-Z0-9](?:[A-Z0-9-]{0,8}[A-Z0-9])?$/;
+const SQUAWK = /^[0-7]{4}$/;
+const YEAR = /^\d{4}$/;
+const DESCRIPTION = /^[A-Za-z0-9 .,/()&'+-]{1,40}$/;
 
 /**
  * Returns true for airline flight numbers such as `UAL1372`: a three-letter
@@ -94,10 +97,6 @@ const REGISTRATION = /^[A-Z0-9](?:[A-Z0-9-]{0,8}[A-Z0-9])?$/;
 export function isAirlineCallsign(callsign: string): boolean {
   return AIRLINE_CALLSIGN.test(callsign);
 }
-
-const SQUAWK = /^[0-7]{4}$/;
-const YEAR = /^\d{4}$/;
-const DESCRIPTION = /^[A-Za-z0-9 .,/()&'+-]{1,40}$/;
 
 /** True for a finite number. */
 function isFiniteNumber(value: unknown): value is number {
@@ -263,16 +262,20 @@ export function normalizeAdsbLol(
   return { at, aircraft };
 }
 
+/**
+ * One adsb.lol entry as an Aircraft, or null without a valid hex and
+ * position. Whitelisted fields only.
+ */
 function normalizeEntry(entry: unknown): Aircraft | null {
   if (!isRecord(entry)) {
     return null;
   }
   const hex =
     typeof entry['hex'] === 'string' ? entry['hex'].toLowerCase() : '';
-  const flight = upper(entry['flight']);
-  const callsign = isLabel(flight) ? flight : null;
-  const r = upper(entry['r']);
-  const registration = isRegistration(r) ? r : null;
+  const rawCallsign = upper(entry['flight']);
+  const callsign = isLabel(rawCallsign) ? rawCallsign : null;
+  const rawRegistration = upper(entry['r']);
+  const registration = isRegistration(rawRegistration) ? rawRegistration : null;
   const lat = numberOrNull(entry['lat']);
   const lon = numberOrNull(entry['lon']);
   if (!HEX.test(hex) || lat === null || lon === null) {
@@ -321,6 +324,7 @@ function parseAircraft(value: unknown): Aircraft | null {
   const callsign = value['callsign'];
   const registration = value['registration'];
   const typeCode = value['typeCode'];
+  // Tolerates snapshots from servers that predate the category field.
   const category = value['category'] ?? null;
   const lat = numberOrNull(value['lat']);
   const lon = numberOrNull(value['lon']);

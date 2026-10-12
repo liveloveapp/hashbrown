@@ -1,13 +1,12 @@
 import type { AtcState } from '../store';
+import { contains, intersects, type PixelRect, rectAt } from './pixels';
 import {
   createObstacleGrid,
-  intersects,
   PLANE_ICON,
   type TagObstacle,
-  type TagRect,
 } from './tag-obstacles';
 
-export type { TagObstacle, TagRect } from './tag-obstacles';
+export type { TagObstacle } from './tag-obstacles';
 
 /**
  * Where a plane's data tag sits beside its icon, or `hidden` when no side is
@@ -53,7 +52,8 @@ export interface TagItem {
  * border on each side.
  */
 export const TAG_HEIGHT = 20;
-const HALF = PLANE_ICON / 2;
+/** Half the plane icon's box, in pixels. */
+const ICON_HALF = PLANE_ICON / 2;
 /** From the icon's edge to a side tag (`left: 24px` on a 22 px icon). */
 const SIDE_GAP = 2;
 /** Space kept between two tags, in pixels. */
@@ -68,32 +68,26 @@ const TAG_GAP = 2;
 export function tagRect(
   item: Pick<TagItem, 'x' | 'y' | 'width'>,
   placement: TagPlacement,
-): TagRect {
+): PixelRect {
   const { x, y, width } = item;
-  const side = HALF + SIDE_GAP;
-  const [left, top] =
-    placement === 'left'
-      ? [x - side - width, y - TAG_HEIGHT / 2]
-      : placement === 'above-right'
-        ? [x - HALF, y - side - TAG_HEIGHT]
-        : placement === 'below-right'
-          ? [x - HALF, y + side]
-          : placement === 'above-left'
-            ? [x + HALF - width, y - side - TAG_HEIGHT]
-            : placement === 'below-left'
-              ? [x + HALF - width, y + side]
-              : [x + side, y - TAG_HEIGHT / 2];
-
-  return { left, top, right: left + width, bottom: top + TAG_HEIGHT };
-}
-
-function inside(rect: TagRect, bounds: TagRect): boolean {
-  return (
-    rect.left >= bounds.left &&
-    rect.top >= bounds.top &&
-    rect.right <= bounds.right &&
-    rect.bottom <= bounds.bottom
-  );
+  const side = ICON_HALF + SIDE_GAP;
+  const at = (left: number, top: number) =>
+    rectAt(left, top, width, TAG_HEIGHT);
+  switch (placement) {
+    case 'left':
+      return at(x - side - width, y - TAG_HEIGHT / 2);
+    case 'above-right':
+      return at(x - ICON_HALF, y - side - TAG_HEIGHT);
+    case 'below-right':
+      return at(x - ICON_HALF, y + side);
+    case 'above-left':
+      return at(x + ICON_HALF - width, y - side - TAG_HEIGHT);
+    case 'below-left':
+      return at(x + ICON_HALF - width, y + side);
+    case 'right':
+    case 'hidden':
+      return at(x + side, y - TAG_HEIGHT / 2);
+  }
 }
 
 /**
@@ -118,12 +112,12 @@ function inside(rect: TagRect, bounds: TagRect): boolean {
 export function layoutTags(input: {
   readonly items: readonly TagItem[];
   readonly planes: readonly TagObstacle[];
-  readonly bounds: TagRect;
-  readonly blocked?: readonly TagRect[];
+  readonly bounds: PixelRect;
+  readonly blocked?: readonly PixelRect[];
 }): Map<string, TagPlacement> {
   const { items, bounds, blocked = [] } = input;
   const coversPlane = createObstacleGrid(input.planes);
-  const placed: TagRect[] = [];
+  const placed: PixelRect[] = [];
   const result = new Map<string, TagPlacement>();
   const outside = (item: TagItem) =>
     item.x < bounds.left ||
@@ -142,38 +136,38 @@ export function layoutTags(input: {
     if (outside(item)) {
       continue;
     }
-    /** Inside the map, off the controls and clear of every tagged icon. */
+    /** Open: inside, off the controls, clear of hard icons. */
     const open = (placement: TagPlacement) => {
       const rect = tagRect(item, placement);
 
       return (
-        inside(rect, bounds) &&
+        contains(bounds, rect) &&
         !blocked.some((block) => intersects(rect, block)) &&
         !coversPlane(rect, item.hex, true)
       );
     };
-    /** Open and clear of the tags already placed. */
+    /** Free: open and clear of the tags already placed. */
     const free = (placement: TagPlacement) =>
       open(placement) &&
       !placed.some((other) =>
         intersects(tagRect(item, placement), other, TAG_GAP),
       );
+    /** Clear: free and covering no plane icon. */
     const clear = (placement: TagPlacement) =>
       free(placement) && !coversPlane(tagRect(item, placement), item.hex);
     const previous =
       item.previous === null || item.previous === 'hidden'
         ? null
         : item.previous;
+    /** The kept placement when it passes `test`, else the first that does. */
+    const pick = (test: (placement: TagPlacement) => boolean) =>
+      (previous !== null && test(previous) ? previous : undefined) ??
+      TAG_PLACEMENTS.find(test);
     const best =
-      (previous !== null && clear(previous) ? previous : null) ??
-      TAG_PLACEMENTS.find(clear) ??
-      (previous !== null && free(previous) ? previous : null) ??
-      TAG_PLACEMENTS.find(free) ??
-      (item.always
-        ? ((previous !== null && open(previous) ? previous : null) ??
-          TAG_PLACEMENTS.find(open) ??
-          'hidden')
-        : 'hidden');
+      pick(clear) ??
+      pick(free) ??
+      (item.always ? pick(open) : undefined) ??
+      'hidden';
     result.set(item.hex, best);
     if (best !== 'hidden') {
       placed.push(tagRect(item, best));

@@ -1,123 +1,116 @@
 import type { LLMock } from '@copilotkit/aimock';
 import { SELECTED_PROMPT, STARTER_PROMPTS } from '@atc/shared';
-import { CLUSTER, NEAR_BEND, PORTLAND_CLASS_C, scenario, ui } from './fixtures';
+import {
+  CLUSTER,
+  NEAR_BEND,
+  NO_FILTERS,
+  PORTLAND_CLASS_C,
+  scenario,
+} from './traffic-fixtures';
 
 const { selected, highest, fastest, arrivals, nearby, portland } = scenario;
 
-/** A typed question that outlines KBDN with showArea before listing traffic. */
-export const NEAR_PROMPT = "What's flying near KBDN?";
+/** The app's starter questions by what they ask, plus the typed questions the suite scripts. */
+export const PROMPTS = {
+  nearBend: STARTER_PROMPTS[0],
+  seattleArrivals: STARTER_PROMPTS[1],
+  highestAndFastest: STARTER_PROMPTS[2],
+  followFastest: STARTER_PROMPTS[3],
+  redmondAirport: STARTER_PROMPTS[4],
+  portlandClassC: STARTER_PROMPTS[5],
+  selected: SELECTED_PROMPT,
+  /** Outlines KBDN with showArea before listing the traffic. */
+  nearKbdn: "What's flying near KBDN?",
+  /** Highlights the tight block of {@link CLUSTER}. */
+  cluster: 'Highlight the Horizon block near Klamath Falls.',
+  redmondAirspace: 'Show the Redmond airspace.',
+  hideAirports: 'Hide the airports.',
+} as const;
 
-/** A typed question that highlights the tight block of {@link CLUSTER}. */
-export const CLUSTER_PROMPT = 'Highlight the Horizon block near Klamath Falls.';
+/** One tool call the scripted model makes. */
+interface ScriptedCall {
+  readonly id: string;
+  readonly name: string;
+  readonly arguments: Record<string, unknown>;
+}
 
-/** findAircraft arguments with every filter off. */
-export const ANY = {
-  airline: null,
-  typeCode: null,
-  kind: null,
-  minAltitudeFt: null,
-  maxAltitudeFt: null,
-  approaching: null,
-  near: null,
-  inAirspace: null,
-};
+/** The JSON a UI chat answer contains. */
+function ui(
+  ...components: Record<string, { props: Record<string, unknown> }>[]
+): string {
+  return JSON.stringify({ ui: components });
+}
 
 /**
- * Scripts the model's answers for the starter prompts, {@link NEAR_PROMPT}
- * and {@link CLUSTER_PROMPT}: each message gets fixed tool calls, and each
- * tool result gets a fixed UI answer over the synthetic scenario aircraft.
- * Used by the e2e suite and the demo video, so both show the same
- * conversation.
+ * Scripts one turn: `prompt` gets `toolCalls`, and the request that returns
+ * their results gets `answer`. aimock matches a tool result by the id of the
+ * request's last message, and parallel calls can finish in any order, so
+ * every call id carries the same answer. That request also still holds the
+ * prompt, and aimock serves the first fixture that matches, so the results
+ * are registered before the prompt.
+ */
+function scriptTurn(
+  mock: LLMock,
+  prompt: string,
+  toolCalls: readonly ScriptedCall[],
+  answer: string,
+): void {
+  for (const { id } of toolCalls) {
+    mock.onToolResult(id, async () => ({ content: answer }));
+  }
+  mock.onMessage(prompt, { toolCalls: [...toolCalls] });
+}
+
+/**
+ * Scripts the model's answers for {@link PROMPTS}: each question gets fixed
+ * tool calls, and their results get a fixed UI answer over the synthetic
+ * scenario aircraft. Used by the e2e suite and the demo video, so both show
+ * the same conversation.
  */
 export function scriptAtcModel(mock: LLMock): void {
   const card = (note: string, hex: string) => ({
     FlightCard: { props: { note, hex } },
   });
-  const board = ui({
-    ArrivalsBoard: {
-      props: {
-        title: 'Arriving at Seattle',
-        airport: 'KSEA',
-        hexes: arrivals.map((r) => r.hex),
+  const board = (
+    title: string,
+    airport: string,
+    rows: readonly { hex: string }[],
+  ) =>
+    ui({
+      ArrivalsBoard: {
+        props: { title, airport, hexes: rows.map((row) => row.hex) },
       },
+    });
+  const nearBoard = board('Near Bend', NEAR_BEND.airport, nearby);
+  const findNearby = {
+    name: 'findAircraft',
+    arguments: {
+      ...NO_FILTERS,
+      near: NEAR_BEND,
+      sortBy: 'distance',
+      limit: 20,
     },
-  });
-  const nearBoard = ui({
-    ArrivalsBoard: {
-      props: {
-        title: 'Near Bend',
-        airport: NEAR_BEND.airport,
-        hexes: nearby.map((r) => r.hex),
-      },
-    },
-  });
-  for (const id of ['near-area', 'near-find', 'near-highlight']) {
-    mock.onToolResult(id, async () => ({ content: nearBoard }));
-  }
-  mock.onMessage(NEAR_PROMPT, {
-    toolCalls: [
-      { id: 'near-area', name: 'showArea', arguments: NEAR_BEND },
-      {
-        id: 'near-find',
-        name: 'findAircraft',
-        arguments: { ...ANY, near: NEAR_BEND, sortBy: 'distance', limit: 20 },
-      },
-      {
-        id: 'near-highlight',
-        name: 'highlightAircraft',
-        arguments: { hexes: nearby.map((r) => r.hex) },
-      },
-    ],
-  });
-  // The near-Bend starter: the model lists nearby traffic without calling
-  // showArea; findAircraft draws the ring itself.
-  for (const id of ['bend-find', 'bend-highlight']) {
-    mock.onToolResult(id, async () => ({ content: nearBoard }));
-  }
-  mock.onMessage(STARTER_PROMPTS[0], {
-    toolCalls: [
-      {
-        id: 'bend-find',
-        name: 'findAircraft',
-        arguments: { ...ANY, near: NEAR_BEND, sortBy: 'distance', limit: 20 },
-      },
-      {
-        id: 'bend-highlight',
-        name: 'highlightAircraft',
-        arguments: { hexes: nearby.map((r) => r.hex) },
-      },
-    ],
-  });
-  mock.onToolResult('selected-1', async () => ({
-    content: ui(card('This is the plane you selected.', selected.hex)),
-  }));
-  mock.onToolResult('arrivals-find', async () => ({ content: board }));
-  mock.onToolResult('arrivals-highlight', async () => ({ content: board }));
-  mock.onToolResult('compare-find', async () => ({
-    content: ui({
-      AircraftCompare: {
-        props: {
-          takeaway: 'One climbs highest, one flies fastest.',
-          hexes: [highest.hex, fastest.hex],
-        },
-      },
-    }),
-  }));
-  mock.onToolResult('follow-1', async () => ({
-    content: ui(card('Following this flight.', fastest.hex)),
-  }));
-  mock.onMessage(SELECTED_PROMPT, {
-    toolCalls: [
-      { id: 'selected-1', name: 'getSelectedAircraft', arguments: {} },
-    ],
-  });
-  mock.onMessage(STARTER_PROMPTS[1], {
-    toolCalls: [
+  };
+  const highlightNearby = {
+    name: 'highlightAircraft',
+    arguments: { hexes: nearby.map((row) => row.hex) },
+  };
+
+  scriptTurn(
+    mock,
+    PROMPTS.selected,
+    [{ id: 'selected-1', name: 'getSelectedAircraft', arguments: {} }],
+    ui(card('This is the plane you selected.', selected.hex)),
+  );
+  scriptTurn(
+    mock,
+    PROMPTS.seattleArrivals,
+    [
       {
         id: 'arrivals-find',
         name: 'findAircraft',
         arguments: {
-          ...ANY,
+          ...NO_FILTERS,
           approaching: 'KSEA',
           sortBy: 'distance',
           limit: 10,
@@ -126,38 +119,83 @@ export function scriptAtcModel(mock: LLMock): void {
       {
         id: 'arrivals-highlight',
         name: 'highlightAircraft',
-        arguments: { hexes: arrivals.map((r) => r.hex) },
+        arguments: { hexes: arrivals.map((row) => row.hex) },
       },
     ],
-  });
-  mock.onMessage(STARTER_PROMPTS[2], {
-    toolCalls: [
+    board('Arriving at Seattle', 'KSEA', arrivals),
+  );
+  scriptTurn(
+    mock,
+    PROMPTS.nearKbdn,
+    [
+      { id: 'near-area', name: 'showArea', arguments: NEAR_BEND },
+      { id: 'near-find', ...findNearby },
+      { id: 'near-highlight', ...highlightNearby },
+    ],
+    nearBoard,
+  );
+  // The near-Bend starter: the model lists nearby traffic without calling
+  // showArea; findAircraft draws the ring itself.
+  scriptTurn(
+    mock,
+    PROMPTS.nearBend,
+    [
+      { id: 'bend-find', ...findNearby },
+      { id: 'bend-highlight', ...highlightNearby },
+    ],
+    nearBoard,
+  );
+  scriptTurn(
+    mock,
+    PROMPTS.cluster,
+    [
+      {
+        id: 'cluster-highlight',
+        name: 'highlightAircraft',
+        arguments: { hexes: CLUSTER },
+      },
+    ],
+    ui({
+      Markdown: {
+        props: { children: 'Six Horizon turboprops, flying north.' },
+      },
+    }),
+  );
+  scriptTurn(
+    mock,
+    PROMPTS.highestAndFastest,
+    [
       {
         id: 'compare-find',
         name: 'findAircraft',
-        arguments: { ...ANY, sortBy: 'altitude', limit: 3 },
+        arguments: { ...NO_FILTERS, sortBy: 'altitude', limit: 3 },
       },
     ],
-  });
-  mock.onMessage(STARTER_PROMPTS[3], {
-    toolCalls: [
+    ui({
+      AircraftCompare: {
+        props: {
+          takeaway: 'One climbs highest, one flies fastest.',
+          hexes: [highest.hex, fastest.hex],
+        },
+      },
+    }),
+  );
+  scriptTurn(
+    mock,
+    PROMPTS.followFastest,
+    [
       {
         id: 'follow-1',
         name: 'followAircraft',
         arguments: { hex: fastest.hex },
       },
     ],
-  });
-  const airportCard = ui({
-    AirportCard: {
-      props: { note: 'Redmond has a part-time tower.', airport: 'KRDM' },
-    },
-  });
-  for (const id of ['airport-lookup', 'airport-show']) {
-    mock.onToolResult(id, async () => ({ content: airportCard }));
-  }
-  mock.onMessage(STARTER_PROMPTS[4], {
-    toolCalls: [
+    ui(card('Following this flight.', fastest.hex)),
+  );
+  scriptTurn(
+    mock,
+    PROMPTS.redmondAirport,
+    [
       {
         id: 'airport-lookup',
         name: 'lookupPlace',
@@ -169,21 +207,28 @@ export function scriptAtcModel(mock: LLMock): void {
         arguments: { airport: 'KRDM' },
       },
     ],
-  });
-  const portlandBoard = ui({
-    ArrivalsBoard: {
-      props: {
-        title: 'Inside the Portland Class C',
-        airport: 'KPDX',
-        hexes: portland.map((r) => r.hex),
+    ui({
+      AirportCard: {
+        props: { note: 'Redmond has a part-time tower.', airport: 'KRDM' },
       },
-    },
-  });
-  for (const id of ['portland-lookup', 'portland-find', 'portland-highlight']) {
-    mock.onToolResult(id, async () => ({ content: portlandBoard }));
-  }
-  mock.onMessage(STARTER_PROMPTS[5], {
-    toolCalls: [
+    }),
+  );
+  scriptTurn(
+    mock,
+    PROMPTS.hideAirports,
+    [
+      {
+        id: 'hide-airports',
+        name: 'setLayers',
+        arguments: { airports: false, airspace: null },
+      },
+    ],
+    'Airports are hidden.',
+  );
+  scriptTurn(
+    mock,
+    PROMPTS.portlandClassC,
+    [
       {
         id: 'portland-lookup',
         name: 'lookupPlace',
@@ -193,7 +238,7 @@ export function scriptAtcModel(mock: LLMock): void {
         id: 'portland-find',
         name: 'findAircraft',
         arguments: {
-          ...ANY,
+          ...NO_FILTERS,
           inAirspace: PORTLAND_CLASS_C,
           sortBy: 'distance',
           limit: 20,
@@ -202,50 +247,23 @@ export function scriptAtcModel(mock: LLMock): void {
       {
         id: 'portland-highlight',
         name: 'highlightAircraft',
-        arguments: { hexes: portland.map((r) => r.hex) },
+        arguments: { hexes: portland.map((row) => row.hex) },
       },
     ],
-  });
-  mock.onToolResult('redmond-airspace', async () => ({
-    content: ui({
-      Markdown: { props: { children: 'Redmond has a part-time Class D.' } },
-    }),
-  }));
-  mock.onMessage('Show the Redmond airspace.', {
-    toolCalls: [
+    board('Inside the Portland Class C', 'KPDX', portland),
+  );
+  scriptTurn(
+    mock,
+    PROMPTS.redmondAirspace,
+    [
       {
         id: 'redmond-airspace',
         name: 'showAirspace',
         arguments: { airport: 'KRDM' },
       },
     ],
-  });
-  mock.onToolResult('cluster-highlight', async () => ({
-    content: ui({
-      Markdown: {
-        props: { children: 'Six Horizon turboprops, flying north.' },
-      },
+    ui({
+      Markdown: { props: { children: 'Redmond has a part-time Class D.' } },
     }),
-  }));
-  mock.onMessage(CLUSTER_PROMPT, {
-    toolCalls: [
-      {
-        id: 'cluster-highlight',
-        name: 'highlightAircraft',
-        arguments: { hexes: CLUSTER },
-      },
-    ],
-  });
-  mock.onToolResult('hide-airports', async () => ({
-    content: 'Airports are hidden.',
-  }));
-  mock.onMessage('Hide the airports.', {
-    toolCalls: [
-      {
-        id: 'hide-airports',
-        name: 'setLayers',
-        arguments: { airports: false, airspace: null },
-      },
-    ],
-  });
+  );
 }

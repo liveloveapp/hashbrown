@@ -43,31 +43,3 @@ export function useAutoScroll<T extends HTMLElement>(): {
 
   return { ref, onScroll };
 }
-
-/**
- * Publishes the on-screen keyboard's height as `--atc-kb` on `ref`'s element,
- * from `visualViewport`, so the phone sheet can sit above it (iOS Safari does
- * not resize the layout viewport). A no-op where `visualViewport` is missing.
- */
-export function useKeyboardInset(ref: RefObject<HTMLElement | null>): void {
-  useEffect(() => {
-    const element = ref.current;
-    const viewport = window.visualViewport;
-    if (!element || !viewport) {
-      return;
-    }
-    const update = () =>
-      element.style.setProperty(
-        '--atc-kb',
-        `${Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))}px`,
-      );
-    viewport.addEventListener('resize', update);
-    viewport.addEventListener('scroll', update);
-    update();
-
-    return () => {
-      viewport.removeEventListener('resize', update);
-      viewport.removeEventListener('scroll', update);
-    };
-  }, [ref]);
-}

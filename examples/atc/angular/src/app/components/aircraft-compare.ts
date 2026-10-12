@@ -1,4 +1,4 @@
-import { flightCardView, plainLabel } from '@atc/shared';
+import { flightCardView, partialText, plainLabel } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -70,9 +70,7 @@ export class AircraftCompare {
 })
 export class AircraftCompareFallback {
   readonly partialProps = input<Record<string, JsonResolvedValue>>({});
-  protected readonly takeaway = computed(() => {
-    const takeaway = this.partialProps()['takeaway'];
-
-    return typeof takeaway === 'string' ? plainLabel(takeaway) : '';
-  });
+  protected readonly takeaway = computed(() =>
+    plainLabel(partialText(this.partialProps(), 'takeaway')),
+  );
 }

@@ -1,3 +1,4 @@
+import type { Marker } from 'leaflet';
 import type { Aircraft } from '../aircraft';
 import { type AircraftKind, KIND_PATHS } from '../kinds';
 import type { AtcState } from '../store';
@@ -24,35 +25,55 @@ export function markerClassName(state: AtcState, hex: string): string {
   return classes.join(' ');
 }
 
-/**
- * The parts of a plane's data tag: the label, and the altitude in feet
- * ("4,200"), "GND" on the ground, or null when unknown (the tag then shows the
- * label alone).
- */
-function planeTagParts(
-  aircraft: Pick<Aircraft, 'label' | 'altitudeFt' | 'onGround'>,
-): { label: string; altitude: string | null } {
-  const altitude = aircraft.onGround
-    ? 'GND'
-    : aircraft.altitudeFt === null
-      ? null
-      : aircraft.altitudeFt.toLocaleString('en-US');
+/** The `.atc-plane` element of a plane's marker, once Leaflet has drawn it. */
+export function planeElementOf(
+  markers: ReadonlyMap<string, Marker>,
+  hex: string,
+): HTMLElement | null {
+  return (
+    markers.get(hex)?.getElement()?.querySelector<HTMLElement>('.atc-plane') ??
+    null
+  );
+}
 
-  return { label: aircraft.label, altitude };
+/** Restarts a plane's pulse animation, if the plane is drawn. */
+export function restartPulse(plane: HTMLElement | null): void {
+  plane?.classList.remove('is-pulsing');
+  // Forces a reflow so removing and re-adding the class restarts the pulse.
+  void plane?.getBoundingClientRect();
+  plane?.classList.add('is-pulsing');
 }
 
 /**
- * Text of a plane's data tag, exactly as rendered: label and altitude in
- * feet separated by a space, such as "ASA123 4,200", "N352LL GND" on the
- * ground, or just "ASA123" when the altitude is unknown. Built only from
- * validated fields.
+ * Formats feet as `toLocaleString('en-US')` does, without making a new
+ * formatter on each call (tags are measured and updated every snapshot).
  */
-export function planeTagText(
-  aircraft: Pick<Aircraft, 'label' | 'altitudeFt' | 'onGround'>,
-): string {
-  const { label, altitude } = planeTagParts(aircraft);
+const FEET = new Intl.NumberFormat('en-US');
 
-  return altitude === null ? label : `${label} ${altitude}`;
+/**
+ * The altitude a plane's data tag shows after its label: feet ("4,200"),
+ * "GND" on the ground, or empty when unknown. The tag's altitude span puts a
+ * space before it (see {@link altSpanText}).
+ */
+export function altText(
+  aircraft: Pick<Aircraft, 'altitudeFt' | 'onGround'>,
+): string {
+  if (aircraft.onGround) {
+    return 'GND';
+  }
+
+  return aircraft.altitudeFt === null ? '' : FEET.format(aircraft.altitudeFt);
+}
+
+/**
+ * The altitude span's text: a space, then the altitude, or empty when the
+ * altitude is unknown. The space keeps the tag's text two words, so a screen
+ * reader reads "UAL100 31,000" and not "UAL10031,000".
+ */
+function altSpanText(aircraft: Aircraft): string {
+  const altitude = altText(aircraft);
+
+  return altitude === '' ? '' : ` ${altitude}`;
 }
 
 /** Classes the store drives; toggled in place, leaving others (is-pulsing). */
@@ -110,8 +131,8 @@ export function updatePlane(
   if (!tag || !alt) {
     return;
   }
-  const { label, altitude } = planeTagParts(aircraft);
-  const altText = altitude === null ? '' : ` ${altitude}`;
+  const { label } = aircraft;
+  const altitude = altSpanText(aircraft);
   if (
     tag.firstChild &&
     tag.firstChild !== alt &&
@@ -119,16 +140,14 @@ export function updatePlane(
   ) {
     tag.firstChild.textContent = label;
   }
-  if (alt.textContent !== altText) {
-    alt.textContent = altText;
+  if (alt.textContent !== altitude) {
+    alt.textContent = altitude;
   }
 }
 
 /** Tag markup: the label, then the altitude in a muted monospace span. */
 function tag(aircraft: Aircraft): string {
-  const { label, altitude } = planeTagParts(aircraft);
-
-  return `${label}<span class="atc-plane-alt">${altitude === null ? '' : ` ${altitude}`}</span>`;
+  return `${aircraft.label}<span class="atc-plane-alt">${altSpanText(aircraft)}</span>`;
 }
 
 /**

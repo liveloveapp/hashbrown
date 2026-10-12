@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { AREAS, parseAirspace } from '@atc/shared';
-import { normaliseAirspace } from './airspace';
+import { normalizeAirspace } from './airspace';
 
 const RING = (lon: number, lat: number, d = 0.1): number[][] => [
   [lon - d, lat - d],
@@ -98,7 +98,7 @@ const centre = { lat: AREAS.pnw.lat, lon: AREAS.pnw.lon };
 test('maps types, floors, ceilings, exclusivity and part-time', () => {
   const features = [pdxSurface, pdxShelf, redmondD, redmondE2, bendE2];
 
-  const { shelves, dropped } = normaliseAirspace(features, centre, 250);
+  const { shelves, dropped } = normalizeAirspace(features, centre, 250);
 
   expect(dropped).toBe(0);
   expect(shelves.map((s) => [s.id, s.type, s.class])).toEqual([
@@ -129,7 +129,7 @@ test('TI (to and including) is an inclusive ceiling; TNI (to not including) is e
     UPPER_DESC: 'TNI',
   });
 
-  const { shelves } = normaliseAirspace([including, notIncluding], centre, 250);
+  const { shelves } = normalizeAirspace([including, notIncluding], centre, 250);
 
   expect(shelves.map((s) => s.ceiling)).toEqual([
     { ft: 4000, exclusive: false },
@@ -140,7 +140,7 @@ test('TI (to and including) is an inclusive ceiling; TNI (to not including) is e
 test('a nonzero floor coded SFC is above ground level, so it is dropped', () => {
   const agl = feature({ LOWER_VAL: 700, LOWER_CODE: 'SFC' });
 
-  const { shelves, dropped } = normaliseAirspace(
+  const { shelves, dropped } = normalizeAirspace(
     [agl, pdxSurface],
     centre,
     250,
@@ -151,14 +151,14 @@ test('a nonzero floor coded SFC is above ground level, so it is dropped', () => 
 });
 
 test('a null LOCAL_TYPE falls back to CLASS and IDENT', () => {
-  const { shelves } = normaliseAirspace([noLocalType], centre, 250);
+  const { shelves } = normalizeAirspace([noLocalType], centre, 250);
 
   expect(shelves[0]).toMatchObject({ airport: 'S33', type: 'D', class: 'D' });
   expect(shelves[0].id).toBe('S33-D-1');
 });
 
 test('filters features outside the area and counts invalid ones', () => {
-  const { shelves, dropped } = normaliseAirspace(
+  const { shelves, dropped } = normalizeAirspace(
     [far, invalid, redmondD],
     centre,
     250,
@@ -185,7 +185,7 @@ test('splits a MultiPolygon, rounds to 5 decimals and computes the bbox', () => 
     'MultiPolygon',
   );
 
-  const { shelves } = normaliseAirspace([multi], centre, 250);
+  const { shelves } = normalizeAirspace([multi], centre, 250);
 
   expect(shelves).toHaveLength(2);
   expect(shelves[0].rings[0][0]).toEqual([-121.12346, 44.1]);
@@ -194,7 +194,7 @@ test('splits a MultiPolygon, rounds to 5 decimals and computes the bbox', () => 
 });
 
 test('the output round-trips through parseAirspace', () => {
-  const { shelves } = normaliseAirspace(
+  const { shelves } = normalizeAirspace(
     [pdxSurface, pdxShelf, redmondD, redmondE2, bendE2, noLocalType],
     centre,
     250,
@@ -210,7 +210,7 @@ test('the output round-trips through parseAirspace', () => {
 });
 
 test('a non-array input yields nothing', () => {
-  expect(normaliseAirspace(null, centre, 250)).toEqual({
+  expect(normalizeAirspace(null, centre, 250)).toEqual({
     shelves: [],
     dropped: 0,
   });

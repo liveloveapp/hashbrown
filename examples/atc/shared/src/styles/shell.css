@@ -1,11 +1,16 @@
-/* The workbench: panels, header, logo and the feed status chip. */
-/* Workbench: chat panel left, map panel right, on the canvas. The window never scrolls. */
+/*
+ * The workbench (chat panel left, map panel right, on the canvas; the window
+ * never scrolls), panel header, logo, feed notice and source link.
+ */
 .atc-workbench {
   position: fixed;
   inset: 0;
   display: grid;
   gap: var(--atc-gutter);
-  padding: var(--atc-gutter);
+  padding-block: var(--atc-gutter);
+  /* Notched phones in landscape: keep the panels clear of the sensor housing. */
+  padding-left: max(var(--atc-gutter), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--atc-gutter), env(safe-area-inset-right, 0px));
   grid-template-columns: minmax(360px, 400px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   background: var(--atc-canvas);
@@ -84,8 +89,9 @@
   width: 44px;
   height: 44px;
   margin-left: auto;
+  /* Pulls the 44px target into the header's padding so the glyph lines up with the panel edge. */
   margin-right: -12px;
-  border-radius: 10px;
+  border-radius: var(--atc-radius-row);
   color: var(--atc-muted);
   transition: color var(--atc-fast) var(--atc-ease);
 }

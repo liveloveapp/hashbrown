@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { squareRing, testShelf } from '../testing';
 import {
   airspaceOf,
   airspaceTypes,
@@ -8,38 +9,11 @@ import {
   pointInShelf,
   shelvesAt,
 } from './airspace-query';
-import type { AirspaceShelf } from './types';
 
-const square = [
-  [-122, 45],
-  [-121, 45],
-  [-121, 46],
-  [-122, 46],
-  [-122, 45],
-] as const;
-const hole = [
-  [-121.6, 45.4],
-  [-121.4, 45.4],
-  [-121.4, 45.6],
-  [-121.6, 45.6],
-  [-121.6, 45.4],
-] as const;
-
-function shelf(overrides: Partial<AirspaceShelf> = {}): AirspaceShelf {
-  return {
-    id: 'KPDX-C-0',
-    airport: 'KPDX',
-    name: 'PORTLAND CLASS C',
-    class: 'C',
-    type: 'C',
-    floor: { ft: 1100, ref: 'MSL' },
-    ceiling: { ft: 4000, exclusive: false },
-    partTime: false,
-    rings: [square],
-    bbox: [-122, 45, -121, 46],
-    ...overrides,
-  };
-}
+const square = squareRing(-121.5, 45.5, 0.5);
+const hole = squareRing(-121.5, 45.5, 0.1);
+/** Portland's Class C on `square`, 1,100 to 4,000 MSL. */
+const shelf = testShelf;
 
 test('a point inside the outer ring is inside the shelf', () => {
   const result = pointInShelf(shelf(), { lat: 45.5, lon: -121.5 });
@@ -59,14 +33,15 @@ test('a point in a hole is outside the shelf', () => {
 
 test('a point outside the bbox is outside without a ring test', () => {
   let reads = 0;
-  const rings = new Proxy([square], {
+  const plain = shelf();
+  const rings = new Proxy(plain.rings, {
     get(target, prop, receiver) {
       reads += 1;
       return Reflect.get(target, prop, receiver);
     },
   });
 
-  const result = pointInShelf(shelf({ rings }), { lat: 50, lon: -100 });
+  const result = pointInShelf({ ...plain, rings }, { lat: 50, lon: -100 });
 
   expect(result).toBe(false);
   expect(reads).toBe(0);
@@ -170,7 +145,7 @@ test('shelvesAt needs both lateral and vertical containment', () => {
   expect(shelvesAt([a], away)).toEqual([]);
 });
 
-test('airspaceOf matches ICAO and FAA idents both ways', () => {
+test('airspaceOf matches a K-prefixed ICAO code to its FAA ident too', () => {
   const faaShelf = shelf({ airport: 'RDM' });
   const icaoShelf = shelf({ airport: 'KRDM' });
   const other = shelf({ airport: 'KPDX' });

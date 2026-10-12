@@ -1,9 +1,6 @@
 import { expect, test, vi } from 'vitest';
-import { createCachedLoader } from './cached-loader';
-
-/** Silences console.error; call `mockRestore()` on the result at the end of the test. */
-const silenceErrors = () =>
-  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+import { silenceErrors } from '../test-http';
+import { createCachedLoader, createCycleLoader } from './cached-loader';
 
 test('concurrent calls share one load', async () => {
   let release: (value: string) => void = () => undefined;
@@ -98,5 +95,43 @@ test('with no value and a failed load the result is null', async () => {
   const result = await get('a');
 
   expect(result).toBeNull();
+  errors.mockRestore();
+});
+
+/** 10 October 2026, in AIRAC cycle 2610; 2611 starts on 29 October. */
+const CYCLE_2610 = Date.UTC(2026, 9, 10);
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+test('a cycle loader builds once per cycle from the current cycle', async () => {
+  const build = vi.fn(async ({ ident }: { ident: string }) => ident);
+  const get = createCycleLoader({ build, now: () => CYCLE_2610 });
+
+  const first = await get();
+  const second = await get();
+
+  expect(build).toHaveBeenCalledTimes(1);
+  expect(first).toEqual({ value: '2610', stale: false });
+  expect(second).toEqual({ value: '2610', stale: false });
+});
+
+test('a cycle loader serves the previous cycle as stale while a new one fails, up to 30 days', async () => {
+  const errors = silenceErrors();
+  let clock = CYCLE_2610;
+  const build = vi.fn(async ({ ident }: { ident: string }) => {
+    if (ident !== '2610') {
+      throw new Error('not published');
+    }
+    return ident;
+  });
+  const get = createCycleLoader({ build, now: () => clock });
+
+  await get();
+  clock = Date.UTC(2026, 9, 30);
+  const previous = await get();
+  clock = CYCLE_2610 + 31 * DAY_MS;
+  const expired = await get();
+
+  expect(previous).toEqual({ value: '2610', stale: true });
+  expect(expired).toBeNull();
   errors.mockRestore();
 });

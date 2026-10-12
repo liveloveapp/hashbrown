@@ -1,38 +1,17 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
 import { expect, test, vi } from 'vitest';
 import type { AirspacePayload } from '@atc/shared';
 import { createChartAirspaceHandler } from './chart-airspace-handler';
+import { callHandler, silenceErrors } from './test-http';
 
-interface Sent {
-  status: number;
-  headers: Record<string, string>;
-  body: Partial<AirspacePayload> & { error?: string };
-}
-
-/** Calls the handler with a fake request and collects the response. */
-async function call(
+/** Calls the handler with a request to its route. */
+const call = (
   handler: ReturnType<typeof createChartAirspaceHandler>,
   method = 'GET',
-): Promise<Sent> {
-  const sent: Partial<Sent> = {};
-  const res = {
-    writeHead(status: number, headers: Record<string, string>) {
-      sent.status = status;
-      sent.headers = headers;
-    },
-    end(body: string) {
-      sent.body = JSON.parse(body);
-    },
-  } as unknown as ServerResponse;
-  const req = { method, url: '/api/chart/airspace' } as IncomingMessage;
-
-  await handler(req, res);
-
-  return sent as Sent;
-}
-
-const silenceErrors = () =>
-  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+) =>
+  callHandler<Partial<AirspacePayload>>(handler, {
+    method,
+    url: '/api/chart/airspace',
+  });
 
 const NOW = Date.UTC(2026, 9, 10);
 

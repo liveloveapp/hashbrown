@@ -1,40 +1,9 @@
 import { expect, test } from 'vitest';
-import type { ChartAirport } from '../../chart';
 import { type Airport, AIRPORTS } from '../../places';
+import { testChartAirport } from '../../testing';
 import { airportRing } from './airport-ring';
 
-const runway = {
-  id: '05/23',
-  lengthFt: 7038,
-  widthFt: 150,
-  surface: 'ASPH',
-  hard: true,
-  ends: null,
-  corners: null,
-  bearingDeg: 60,
-} as const;
-
-const base: ChartAirport = {
-  code: 'KRDM',
-  faa: 'RDM',
-  name: 'ROBERTS FLD/REDMOND MUNI',
-  city: 'REDMOND',
-  state: 'OR',
-  aliases: [],
-  lat: 44.25,
-  lon: -121.15,
-  elevationFt: 3082,
-  kind: 'airport',
-  towered: true,
-  towerPartTime: true,
-  frequencies: { tower: '124.5', atis: null, ctaf: null, unicom: null },
-  weather: null,
-  lighting: 'limited',
-  fuel: true,
-  military: false,
-  rank: 0,
-  runways: [runway],
-};
+const base = testChartAirport();
 
 const HELI_H = 'M-2.5 -3 V3 M2.5 -3 V3 M-2.5 0 H2.5';
 const count = (html: string, tag: string) => html.split(`<${tag}`).length - 1;

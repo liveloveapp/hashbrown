@@ -3,7 +3,16 @@ import { expect, onTestFinished, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { AIRPORTS, type Area, AREAS } from '../places';
 import { createAtcStore } from '../store';
+import { testAircraft } from '../testing';
 import { createAirspaceMap } from './airspace-map';
+import {
+  createFrameQueue,
+  destroyOnce,
+  mapElement,
+  planePixel,
+  REDUCED_MOTION,
+  stubMedia,
+} from './testing';
 
 /** The whole region at zoom 6, so every test plane is on the 400 by 300 map. */
 const REGIONAL = {
@@ -11,36 +20,17 @@ const REGIONAL = {
   view: { lat: AREAS.pnw.lat, lon: AREAS.pnw.lon, zoom: 6 },
 };
 
-const base: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
-  typeCode: 'B738',
-  category: null,
-  kind: 'jet',
-  lat: 47.4,
-  lon: -122.3,
-  altitudeFt: 5000,
-  onGround: false,
-  groundSpeedKt: 200,
-  trackDeg: 90,
-  verticalRateFpm: 0,
-};
+const base = testAircraft();
 const planes: Aircraft[] = [
   base,
   { ...base, hex: 'bbbbbb', callsign: 'ASA2', lat: 47.45, lon: -122.2 },
   { ...base, hex: 'cccccc', callsign: 'DAL3', lat: 45.6, lon: -122.6 },
 ];
 
-/** Animation frames the map has asked for, run by {@link settle}. */
-const frames = new Map<number, FrameRequestCallback>();
-let nextFrame = 1;
-
 /**
  * Mounts a 400x300 map with reduced motion and animation frames that only
- * run when a test calls {@link settle}. With `sheetTop`, the map sits in
- * a workbench whose chat panel covers the map from that y down, like the
+ * run when a test calls the returned `settle`. With `sheetTop`, the map sits
+ * in a workbench whose chat panel covers the map from that y down, like the
  * phone bottom sheet. `media` lists further media queries that match. The
  * map is destroyed and the page restored when the test finishes, even if it
  * fails.
@@ -50,22 +40,12 @@ async function mount(
   area: Area = REGIONAL,
   media: readonly string[] = [],
 ) {
-  vi.stubGlobal('matchMedia', (query: string) => ({
-    matches:
-      query === '(prefers-reduced-motion: reduce)' || media.includes(query),
-  }));
-  frames.clear();
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-    frames.set(nextFrame, callback);
-    return nextFrame++;
-  });
-  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+  stubMedia(REDUCED_MOTION, ...media);
+  const queue = createFrameQueue();
   const store = createAtcStore();
   const workbench = document.createElement('main');
   workbench.className = 'atc-workbench';
-  const element = document.createElement('div');
-  Object.defineProperty(element, 'clientWidth', { value: 400 });
-  Object.defineProperty(element, 'clientHeight', { value: 300 });
+  const element = mapElement();
   element.getBoundingClientRect = () =>
     ({ left: 0, top: 0, right: 400, bottom: 300 }) as DOMRect;
   let panel: HTMLElement | null = null;
@@ -84,59 +64,27 @@ async function mount(
     area,
     obstruction: () => panel,
   });
-  const px = (value: string | undefined) => parseFloat(value ?? '0') || 0;
-  const pane = () => element.querySelector<HTMLElement>('.leaflet-map-pane');
-  const pixel = (hex: string) => {
-    const icon = element
-      .querySelector(`[data-hex="${hex}"]`)
-      ?.closest<HTMLElement>('.atc-plane-icon');
 
-    return {
-      x: px(icon?.style.left) + px(pane()?.style.left),
-      y: px(icon?.style.top) + px(pane()?.style.top),
-    };
-  };
-
-  let destroyed = false;
-  const destroy = () => {
-    if (!destroyed) {
-      destroyed = true;
-      handle.destroy();
-    }
-  };
+  const destroy = destroyOnce(handle);
   onTestFinished(() => {
     destroy();
     workbench.remove();
-    frames.clear();
-    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
   return {
     store,
-    pixel,
+    pixel: (hex: string) => planePixel(element, hex),
     element,
+    /**
+     * Runs the map's pending animation frames, and any they ask for, a few
+     * rounds deep. This covers the map's two-frame wait for the sheet
+     * without depending on the clock, so it holds under load.
+     */
+    settle: queue.settle,
     /** Destroys the map but leaves its container in the page. */
     destroy,
   };
-}
-
-/**
- * Runs the map's pending animation frames, and any they ask for, a few
- * rounds deep, letting promises settle between rounds. This covers the
- * map's two-frame wait for the sheet without depending on the clock, so it
- * holds under load.
- */
-async function settle(rounds = 4) {
-  for (let round = 0; round < rounds; round++) {
-    const pending = [...frames.values()];
-    frames.clear();
-    for (const callback of pending) {
-      callback(performance.now());
-    }
-    await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
 }
 
 test('revealing a plane picked in the chat centres it', async () => {
@@ -144,7 +92,7 @@ test('revealing a plane picked in the chat centres it', async () => {
   map.store.applySnapshot({ at: 1, aircraft: planes });
 
   map.store.revealAircraft('cccccc');
-  await settle();
+  await map.settle();
 
   const { x, y } = map.pixel('cccccc');
   expect(Math.hypot(x - 200, y - 150)).toBeLessThan(2);
@@ -156,7 +104,7 @@ test('a revealed plane lands in the middle of the map left above the sheet', asy
   map.store.applySnapshot({ at: 1, aircraft: planes });
 
   map.store.revealAircraft('cccccc');
-  await settle();
+  await map.settle();
 
   const { x, y } = map.pixel('cccccc');
   expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
@@ -167,7 +115,7 @@ test('a highlight fit keeps every plane above the sheet', async () => {
   map.store.applySnapshot({ at: 1, aircraft: planes });
 
   map.store.highlight(['aaaaaa', 'bbbbbb', 'cccccc']);
-  await settle();
+  await map.settle();
 
   const ys = ['aaaaaa', 'bbbbbb', 'cccccc'].map((hex) => map.pixel(hex).y);
   expect(Math.max(...ys)).toBeLessThan(180);
@@ -185,7 +133,7 @@ test('a revealed plane lands between a docked detail card and the sheet', async 
   Object.defineProperty(card, 'offsetHeight', { get: () => 60 });
 
   map.store.revealAircraft('dddddd');
-  await settle();
+  await map.settle();
 
   // The card covers 8 + 60 + 8 px at the top; the sheet starts at 180.
   const { x, y } = map.pixel('dddddd');
@@ -213,10 +161,10 @@ test('resetting on a phone returns to the home view above the sheet', async () =
     aircraft: [{ ...base, lat: view.lat, lon: view.lon, groundSpeedKt: 0 }],
   });
   map.store.showArea({ airport: 'KSEA', radiusNm: 10 });
-  await settle();
+  await map.settle();
 
   map.store.resetView();
-  await settle();
+  await map.settle();
 
   const { x, y } = map.pixel('aaaaaa');
   expect(Math.hypot(x - 200, y - 90)).toBeLessThan(2);
@@ -251,7 +199,7 @@ test('a plane revealed from off screen lands between the card it docks and the s
   cardHeight(100);
 
   map.store.revealAircraft('cccccc');
-  await settle();
+  await map.settle();
 
   // The card will cover 8 + 100 + 8 px at the top; the sheet starts at 180.
   const { x, y } = map.pixel('cccccc');
@@ -265,7 +213,7 @@ test('a highlight fit keeps every plane between a docked card and the sheet', as
   map.store.select('dddddd');
 
   map.store.highlight(['dddddd', 'aaaaaa', 'bbbbbb']);
-  await settle();
+  await map.settle();
 
   const ys = ['dddddd', 'aaaaaa', 'bbbbbb'].map((hex) => map.pixel(hex).y);
   expect(Math.min(...ys)).toBeGreaterThan(76);
@@ -279,7 +227,7 @@ test('highlighting one plane centres it between a docked card and the sheet', as
   map.store.select('dddddd');
 
   map.store.highlight(['dddddd']);
-  await settle();
+  await map.settle();
 
   const { x, y } = map.pixel('dddddd');
   expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
@@ -314,7 +262,7 @@ test('showing an area centres it between a docked card and the sheet', async () 
   map.store.select('eeeeee');
 
   map.store.showArea({ airport: 'KBDN', radiusNm: 5 });
-  await settle();
+  await map.settle();
 
   const { x, y } = map.pixel('eeeeee');
   expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
@@ -327,7 +275,7 @@ test('showing an airport centres it between a docked card and the sheet', async 
   map.store.select('eeeeee');
 
   map.store.showAirport('KBDN');
-  await settle();
+  await map.settle();
 
   const { x, y } = map.pixel('eeeeee');
   expect(Math.hypot(x - 200, y - (76 + 180) / 2)).toBeLessThan(2);
@@ -364,7 +312,7 @@ test('a plane revealed from off screen has its summary written as its card opens
   });
 
   map.store.revealAircraft('cccccc');
-  await settle();
+  await map.settle();
   await Promise.resolve();
   observer.disconnect();
 
@@ -387,7 +335,7 @@ test('a plane tapped earlier (a sticky hover on phones) does not stop a reveal l
     ?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
 
   map.store.revealAircraft('cccccc');
-  await settle();
+  await map.settle();
 
   const { x, y } = map.pixel('cccccc');
   expect(Math.hypot(x - 200, y - (116 + 180) / 2)).toBeLessThan(2);
@@ -403,7 +351,7 @@ test('on a touch screen a tap does not leave a sticky hover: a plane picked in t
     ?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
 
   map.store.revealAircraft('cccccc');
-  await settle();
+  await map.settle();
 
   const card = [
     ...document.querySelectorAll('[data-testid="aircraft-detail"]'),
@@ -417,7 +365,7 @@ test('destroying the map removes the detail card and its hidden measuring copy',
   map.store.applySnapshot({ at: 1, aircraft: planes });
   cardHeight(100);
   map.store.revealAircraft('cccccc');
-  await settle();
+  await map.settle();
   const before = map.element.querySelectorAll('.atc-detail').length;
 
   map.destroy();

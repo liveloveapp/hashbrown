@@ -1,5 +1,3 @@
-import type { Aircraft } from '../aircraft';
-
 /** The tag's horizontal padding and border, in pixels. */
 const TAG_CHROME = 2 * 7 + 2;
 /**
@@ -7,7 +5,10 @@ const TAG_CHROME = 2 * 7 + 2;
  * cannot, so a measured label can come out a little narrow.
  */
 const TAG_SLACK = 2;
-/** The gap before the altitude (`.atc-plane-alt` margin), in pixels. */
+/**
+ * The gap before the altitude (`.atc-plane-alt` margin), in pixels. Counted
+ * without an altitude too: the empty span stays and still takes its margin.
+ */
 const ALT_GAP = 4;
 /** Character advances used when text cannot be measured (tests). */
 const FALLBACK_LABEL_ADVANCE = 7.5;
@@ -54,7 +55,11 @@ export function createTextMeasure(element: HTMLElement) {
   };
 
   return {
-    /** The tag's width for `label` and the altitude text `alt`. */
+    /**
+     * The tag's width for `label` and the altitude `alt` (without its leading
+     * space). A non-empty altitude also counts the space before it, which the
+     * span draws in the mono font.
+     */
     width(label: string, alt: string): number {
       let labelWidth = labels.get(label);
       if (labelWidth === undefined) {
@@ -66,7 +71,8 @@ export function createTextMeasure(element: HTMLElement) {
 
       return Math.ceil(
         labelWidth +
-          (alt === '' ? 0 : ALT_GAP + alt.length * monoAdvance) +
+          ALT_GAP +
+          (alt === '' ? 0 : 1 + alt.length) * monoAdvance +
           TAG_CHROME +
           TAG_SLACK,
       );
@@ -75,19 +81,4 @@ export function createTextMeasure(element: HTMLElement) {
       element.ownerDocument.fonts?.removeEventListener?.('loadingdone', clear);
     },
   };
-}
-
-/**
- * Formats feet as `toLocaleString('en-US')` does, without making a new
- * formatter on each call.
- */
-const FEET = new Intl.NumberFormat('en-US');
-
-/** The altitude text a tag shows, as `planeTagText` writes it. */
-export function altText(aircraft: Aircraft): string {
-  return aircraft.onGround
-    ? 'GND'
-    : aircraft.altitudeFt === null
-      ? ''
-      : FEET.format(aircraft.altitudeFt);
 }

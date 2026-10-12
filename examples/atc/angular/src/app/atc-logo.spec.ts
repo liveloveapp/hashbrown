@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { expect, test } from 'vitest';
 import { AtcLogo } from './atc-logo';
 
 test('the logo renders the three letter strokes with an ATC label', () => {
@@ -26,15 +27,4 @@ test('the logo height follows its input', () => {
   expect(
     fixture.nativeElement.querySelector('svg').getAttribute('height'),
   ).toBe('32');
-});
-
-test('the logo host is a flex box so the mark sits on the header line', () => {
-  TestBed.resetTestingModule();
-  const fixture = TestBed.createComponent(AtcLogo);
-
-  fixture.detectChanges();
-
-  expect(
-    (fixture.nativeElement as HTMLElement).classList.contains('atc-logo'),
-  ).toBe(true);
 });

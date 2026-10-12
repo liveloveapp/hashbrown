@@ -1,4 +1,4 @@
-import type { TagRect } from '../tag-obstacles';
+import type { PixelRect } from '../pixels';
 import { type LabelRequest, placeLabels } from './label-placer';
 
 /** A chart layer whose labels are placed together with the others'. */
@@ -16,18 +16,19 @@ export interface LabelSource {
 /**
  * Places every chart label at once, so airport labels, airspace labels and
  * airports never overlap: gathers each source's requests, keeps them off
- * every drawn airport's box at every zoom (`runwayBoxes`, in container
- * pixels: runway extents, rings, at least 12x12 each), runs `placeLabels`
- * and hands the result back to every source.
+ * every drawn airport's box (`airportBoxes`), runs `placeLabels` and hands
+ * the result back to every source.
  * Call it after the layers redraw (zoom, move, or a sync that changed them),
  * never on aircraft snapshots.
  */
 export function placeChartLabels(options: {
   sources: readonly LabelSource[];
-  runwayBoxes: () => readonly TagRect[];
+  airportBoxes: () => readonly PixelRect[];
 }): void {
-  const { sources, runwayBoxes } = options;
+  const { sources, airportBoxes } = options;
   const requests = sources.flatMap((source) => source.labelRequests());
-  const placed = placeLabels(requests, runwayBoxes());
-  for (const source of sources) source.applyLabels(placed);
+  const placed = placeLabels(requests, airportBoxes());
+  for (const source of sources) {
+    source.applyLabels(placed);
+  }
 }

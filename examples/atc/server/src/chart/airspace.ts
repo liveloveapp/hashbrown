@@ -3,12 +3,15 @@ import {
   type AirspaceShelf,
   type AirspaceType,
   distanceNm,
+  ICAO,
+  IDENT,
+  isRecord,
   type LatLon,
+  type LonLat,
+  type Ring,
 } from '@atc/shared';
 
 const MAX_NAME = 80;
-const ICAO = /^[A-Z][A-Z0-9]{3}$/;
-const IDENT = /^[A-Z0-9]{2,4}$/;
 const LOCAL_TYPES: Readonly<Record<string, AirspaceType>> = {
   CLASS_B: 'B',
   CLASS_C: 'C',
@@ -23,17 +26,15 @@ const CLASS_TYPES: Readonly<Record<string, AirspaceType>> = {
   D: 'D',
 };
 
-type Ring = readonly (readonly [number, number])[];
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
+/** Rounds a coordinate to 5 decimals (about 1 m). */
 const round5 = (n: number): number => Math.round(n * 1e5) / 1e5;
 
 /** One ring as rounded `[lon, lat]` pairs, or null when it is malformed. */
 function toRing(raw: unknown): Ring | null {
-  if (!Array.isArray(raw) || raw.length < 4) return null;
-  const points: [number, number][] = [];
+  if (!Array.isArray(raw) || raw.length < 4) {
+    return null;
+  }
+  const points: LonLat[] = [];
   for (const p of raw) {
     if (
       !Array.isArray(p) ||
@@ -64,12 +65,18 @@ function toPolygons(geometry: unknown): Ring[][] | null {
       : geometry['type'] === 'MultiPolygon'
         ? coordinates
         : null;
-  if (polygons === null || polygons.length === 0) return null;
+  if (polygons === null || polygons.length === 0) {
+    return null;
+  }
   const result: Ring[][] = [];
   for (const polygon of polygons) {
-    if (!Array.isArray(polygon) || polygon.length === 0) return null;
+    if (!Array.isArray(polygon) || polygon.length === 0) {
+      return null;
+    }
     const rings = polygon.map(toRing);
-    if (rings.some((r) => r === null)) return null;
+    if (rings.some((r) => r === null)) {
+      return null;
+    }
     result.push(rings as Ring[]);
   }
 
@@ -109,7 +116,9 @@ function toBase(
   if (!sfc && (typeof lowerVal !== 'number' || !Number.isFinite(lowerVal))) {
     return null;
   }
-  if (!sfc && props['LOWER_CODE'] === 'SFC') return null;
+  if (!sfc && props['LOWER_CODE'] === 'SFC') {
+    return null;
+  }
   const floor = sfc
     ? ({ ft: 0, ref: 'SFC' } as const)
     : ({ ft: lowerVal as number, ref: 'MSL' } as const);
@@ -119,7 +128,9 @@ function toBase(
   if (!open && (typeof upperVal !== 'number' || !Number.isFinite(upperVal))) {
     return null;
   }
-  if (floor.ft < 0 || (!open && (upperVal as number) <= floor.ft)) return null;
+  if (floor.ft < 0 || (!open && (upperVal as number) <= floor.ft)) {
+    return null;
+  }
 
   return {
     airport,
@@ -156,12 +167,14 @@ function bboxOf(rings: readonly Ring[]): AirspaceShelf['bbox'] {
  * count per airport and type from 1, in input order. Invalid features are
  * counted in `dropped`; features outside the area are not.
  */
-export function normaliseAirspace(
+export function normalizeAirspace(
   features: unknown,
   centre: LatLon,
   radiusNm: number,
 ): { shelves: AirspaceShelf[]; dropped: number } {
-  if (!Array.isArray(features)) return { shelves: [], dropped: 0 };
+  if (!Array.isArray(features)) {
+    return { shelves: [], dropped: 0 };
+  }
   const counts = new Map<string, number>();
   const shelves: AirspaceShelf[] = [];
   let dropped = 0;
@@ -178,7 +191,9 @@ export function normaliseAirspace(
       const near = rings.some((ring) =>
         ring.some(([lon, lat]) => distanceNm(centre, { lat, lon }) <= radiusNm),
       );
-      if (!near) continue;
+      if (!near) {
+        continue;
+      }
       const key = `${base.airport}-${base.type}`;
       const n = (counts.get(key) ?? 0) + 1;
       counts.set(key, n);

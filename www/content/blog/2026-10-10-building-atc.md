@@ -170,7 +170,10 @@ const STALE_LIMIT_MS = 60_000;
 const COOLDOWN_MS = 15_000;
 const CACHE_CONTROL = 'public, s-maxage=3, stale-while-revalidate=5';
 
-/** What the handler remembers about one area. Replaced, never mutated. */
+/**
+ * What the handler remembers about one area. Replaced, never mutated. The same
+ * in-flight sharing as chart/cached-loader.ts, plus a cooldown after a 429.
+ */
 interface AreaCache {
   readonly last: {
     readonly snapshot: AircraftSnapshot;
@@ -255,10 +258,10 @@ function normalizeEntry(entry: unknown): Aircraft | null {
   }
   const hex =
     typeof entry['hex'] === 'string' ? entry['hex'].toLowerCase() : '';
-  const flight = upper(entry['flight']);
-  const callsign = isLabel(flight) ? flight : null;
-  const r = upper(entry['r']);
-  const registration = isRegistration(r) ? r : null;
+  const rawCallsign = upper(entry['flight']);
+  const callsign = isLabel(rawCallsign) ? rawCallsign : null;
+  const rawRegistration = upper(entry['r']);
+  const registration = isRegistration(rawRegistration) ? rawRegistration : null;
   const lat = numberOrNull(entry['lat']);
   const lon = numberOrNull(entry['lon']);
   if (!HEX.test(hex) || lat === null || lon === null) {
@@ -442,16 +445,22 @@ So, who wins?
 ```ts
 /**
  * A pending map move: a highlight fit, an area, a reset to the home view,
- * or bringing one aircraft into view. Precedence: (1) follow mode always wins
- * and drops requests; (2) the newest request (highest `seq`) wins; (3) a user
- * drag or zoom cancels a pending one; (4) highlight and aircraft requests
- * wait for their markers to be drawn. The map applies each `seq` once.
+ * bringing one aircraft into view, or showing one airport. Precedence:
+ * (1) follow mode always wins and drops requests; (2) the newest request
+ * (highest `seq`) wins; (3) a user drag or zoom cancels a pending one;
+ * (4) highlight and aircraft requests wait for their markers to be drawn.
+ * The map applies each `seq` once.
  */
-export type ViewRequest =
-  | { readonly seq: number; readonly kind: 'highlight' }
-  | { readonly seq: number; readonly kind: 'area'; readonly area: ShownArea }
-  | { readonly seq: number; readonly kind: 'reset' }
-  | { readonly seq: number; readonly kind: 'aircraft'; readonly hex: string };
+export type ViewRequest = ViewMove & { readonly seq: number };
+
+/** A map move before it is numbered. */
+type ViewMove =
+  | { readonly kind: 'highlight' }
+  | { readonly kind: 'area'; readonly area: ShownArea }
+  | { readonly kind: 'reset' }
+  | { readonly kind: 'aircraft'; readonly hex: string }
+  | { readonly kind: 'airport'; readonly airport: string }
+  | { readonly kind: 'airspace'; readonly airport: string };
 ```
 
 </hb-code-example>
@@ -619,7 +628,7 @@ So each plane would stand still for a few frames, then hop one pixel, each plane
 
 The fix was to compute the position ourselves, without rounding, and write the transform directly:
 
-<hb-code-example header="shared/src/map/motion-loop.ts">
+<hb-code-example header="shared/src/map/pixels.ts">
 
 ```ts
 /**
@@ -633,7 +642,13 @@ export function exactLayerPoint(map: LeafletMap, position: LatLon): Point {
     .project([position.lat, position.lon], map.getZoom())
     .subtract(map.getPixelOrigin());
 }
+```
 
+</hb-code-example>
+
+<hb-code-example header="shared/src/map/motion-loop.ts">
+
+```ts
 /** Writes one plane's position and heading; transforms only, no reads. */
 const draw = (hex: string, position: LatLon, heading: number | null) => {
   drawn.set(hex, position);
@@ -722,10 +737,7 @@ export const arrivalsBoardContract = {
     title: s.streaming.string(
       'A short label with no dashes, such as "Arrivals at Seattle" or "Near Bend"',
     ),
-    airport: s.enumeration(
-      'ICAO code of the airport the aircraft are approaching or near',
-      [...AIRPORT_CODES],
-    ),
+    airport: s.string('ICAO code from lookupPlace, such as KBDN'),
     // The array streams row by row, but each s.string item is held back until
     // whole, so a row never points at a partial hex.
     hexes: s.streaming.array(
@@ -830,12 +842,22 @@ Here's the Angular `FlightCard`:
   template: `
     @let card = view();
     @if (card.status === 'unknown') {
-      <article class="atc-card" data-testid="flight-card">
+      <article
+        class="atc-card"
+        data-testid="flight-card"
+        [attr.data-hex]="card.hex"
+        data-status="unknown"
+      >
         <p class="atc-card-title">Unknown aircraft</p>
         <p class="atc-card-note">{{ note() }}</p>
       </article>
     } @else {
-      <article class="atc-card" data-testid="flight-card">
+      <article
+        class="atc-card"
+        data-testid="flight-card"
+        [attr.data-hex]="card.hex"
+        [attr.data-status]="card.status"
+      >
         <header>
           <button
             type="button"
@@ -866,6 +888,7 @@ export class FlightCard implements OnInit {
   );
 
   ngOnInit(): void {
+    // Flash the plane's marker once, so the reader can find it on the map.
     this.store.pulse(this.hex());
   }
 }
@@ -881,11 +904,19 @@ And here's the React one:
 export function FlightCard({ note, hex }: FlightCardProps) {
   const store = useAtcStore();
   const view = flightCardView(useAtcState(), hex);
-  useEffect(() => store.pulse(hex), [store, hex]);
+  // Flash the plane's marker once, so the reader can find it on the map.
+  useEffect(() => {
+    store.pulse(hex);
+  }, [store, hex]);
 
   if (view.status === 'unknown') {
     return (
-      <article className="atc-card" data-testid="flight-card">
+      <article
+        className="atc-card"
+        data-testid="flight-card"
+        data-hex={view.hex}
+        data-status="unknown"
+      >
         <p className="atc-card-title">Unknown aircraft</p>
         <p className="atc-card-note">{note}</p>
       </article>
@@ -893,7 +924,12 @@ export function FlightCard({ note, hex }: FlightCardProps) {
   }
 
   return (
-    <article className="atc-card" data-testid="flight-card">
+    <article
+      className="atc-card"
+      data-testid="flight-card"
+      data-hex={view.hex}
+      data-status={view.status}
+    >
       <header>
         <button
           type="button"
@@ -969,14 +1005,14 @@ In atc, every tool runs in the browser.
 I split each tool into two halves.
 The _definition_ (name, description, Skillet schema) lives in one table, `ATC_TOOL_DEFINITIONS`:
 
-<hb-code-example header="shared/src/tools.ts">
+<hb-code-example header="shared/src/tool-definitions.ts">
 
 ```ts
 export const ATC_TOOL_DEFINITIONS = {
   findAircraft: {
     name: 'findAircraft' as const,
     description:
-      'Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport. With near, the map also shows and outlines that area. Returns compact rows.',
+      "Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport, or keep only aircraft inside an airport's airspace (optionally of one class). With near, the map also shows and outlines that area; with inAirspace, it highlights that airspace; with both, the airspace highlight is shown. Returns compact rows.",
     schema: findAircraftInput,
   },
   lookupPlace: {
@@ -994,7 +1030,7 @@ export const ATC_TOOL_DEFINITIONS = {
       hex: s.string('Aircraft hex code from a tool result'),
     }),
   },
-  // ...seven more
+  // ...eleven more
 };
 ```
 
@@ -1008,37 +1044,42 @@ The _handlers_ only make sense in the browser, so they're added by `createAtcToo
 
 ```ts
 export function createAtcTools(context: AtcToolContext) {
-  const { store } = context;
+  const { store, chartWaitMs = CHART_WAIT_MS } = context;
+  const chartSettled = () => whenChartSettled(store, chartWaitMs);
 
   return {
+    // ...
+    followAircraft: {
+      ...ATC_TOOL_DEFINITIONS.followAircraft,
+      handler: async ({ hex }: ToolInput<'followAircraft'>) => {
+        const key = normalizeHex(hex);
+        if (!store.getState().aircraft.has(key)) {
+          return {
+            following: false as const,
+            reason: `No aircraft with hex ${key} is on the map.`,
+          };
+        }
+        store.follow(key);
+
+        return { following: true as const };
+      },
+    },
     lookupPlace: {
       ...ATC_TOOL_DEFINITIONS.lookupPlace,
-      handler: async ({ query }: { query: string }) => {
-        const airport = lookupPlace(query);
+      handler: async ({ query }: ToolInput<'lookupPlace'>) => {
+        await chartSettled();
+        const airport = resolveAirport(store, query);
 
         return airport === null
-          ? unknownPlace(query)
+          ? { found: false as const, reason: unknownPlaceReason(query) }
           : {
               found: true as const,
               code: airport.code,
               faa: airport.faa,
               name: airport.name,
               city: `${airport.city}, ${airport.state}`,
+              // ...
             };
-      },
-    },
-    followAircraft: {
-      ...ATC_TOOL_DEFINITIONS.followAircraft,
-      handler: async ({ hex }: { hex: string }) => {
-        if (!store.getState().aircraft.has(normalizeHex(hex))) {
-          return {
-            following: false,
-            reason: `No aircraft with hex ${normalizeHex(hex)} is on the map.`,
-          };
-        }
-        store.follow(hex);
-
-        return { following: true };
       },
     },
     // ...
@@ -1084,7 +1125,7 @@ export const findAircraftInput = s.object(
     ]),
     sortBy: s.enumeration('Sort order', ['altitude', 'speed', 'distance']),
     limit: s.integer('Maximum rows, 1 to 20'),
-    // ...typeCode, maxAltitudeFt, approaching
+    // ...typeCode, maxAltitudeFt, approaching, inAirspace
   },
 );
 
@@ -1104,24 +1145,24 @@ In Angular, with `createTool`:
 <hb-code-example header="angular/src/app/assistant.ts">
 
 ```ts
-private readonly atc = createAtcTools({
-  store: inject(ATC_STORE),
-  fetchRoute,
-});
-
 // 2. Give the model tools. They run here in the browser, against the aircraft
 //    already on the map; no plane list goes to the server.
+private readonly atcTools = createBrowserAtcTools(inject(ATC_STORE));
 private readonly tools = [
-  createTool(this.atc.findAircraft),
-  createTool(this.atc.getSelectedAircraft),
-  createTool(this.atc.lookupRoute),
-  createTool(this.atc.highlightAircraft),
-  createTool(this.atc.clearHighlight),
-  createTool(this.atc.followAircraft),
-  createTool(this.atc.stopFollowing),
-  createTool(this.atc.lookupPlace),
-  createTool(this.atc.showArea),
-  createTool(this.atc.resetMap),
+  createTool(this.atcTools.findAircraft),
+  createTool(this.atcTools.getSelectedAircraft),
+  createTool(this.atcTools.lookupRoute),
+  createTool(this.atcTools.highlightAircraft),
+  createTool(this.atcTools.clearHighlight),
+  createTool(this.atcTools.followAircraft),
+  createTool(this.atcTools.stopFollowing),
+  createTool(this.atcTools.lookupPlace),
+  createTool(this.atcTools.showArea),
+  createTool(this.atcTools.resetMap),
+  createTool(this.atcTools.showAirport),
+  createTool(this.atcTools.showAirspace),
+  createTool(this.atcTools.airspaceAt),
+  createTool(this.atcTools.setLayers),
 ];
 ```
 
@@ -1133,14 +1174,16 @@ In React, with `useTool`:
 
 ```tsx
 const store = useAtcStore();
-const atc = useMemo(() => createAtcTools({ store, fetchRoute }), [store]);
 
 // 2. Give the model tools. They run here in the browser, against the aircraft
 //    already on the map; no plane list goes to the server.
+const atcTools = useMemo(() => createBrowserAtcTools(store), [store]);
+// deps works like useCallback's: each tool is rebuilt only when the tools
+// object changes.
 const tools = [
-  useTool({ ...atc.findAircraft, deps: [atc] }),
-  useTool({ ...atc.getSelectedAircraft, deps: [atc] }),
-  useTool({ ...atc.lookupRoute, deps: [atc] }),
+  useTool({ ...atcTools.findAircraft, deps: [atcTools] }),
+  useTool({ ...atcTools.getSelectedAircraft, deps: [atcTools] }),
+  useTool({ ...atcTools.lookupRoute, deps: [atcTools] }),
   // ...
 ];
 ```
@@ -1209,9 +1252,7 @@ Then the answer is rendered:
 <hb-code-example header="react/src/transcript.tsx">
 
 ```tsx
-<li key={index} className="atc-answer">
-  {item.message.ui}
-</li>
+<li className="atc-answer">{item.message.ui}</li>
 ```
 
 </hb-code-example>
@@ -1301,13 +1342,10 @@ const stream = HashbrownOpenAI.stream.text({
     SYSTEM_PROMPT,
   ),
   signal: abortController.signal,
-  transformRequestOptions: (request) =>
-    limitRequest(request, {
-      // Undefined means the default; null means none.
-      reasoningEffort:
-        options.reasoningEffort === undefined ? 'low' : options.reasoningEffort,
-    }),
+  transformRequestOptions: (request) => limitRequest(request, reasoningEffort),
 });
+// Server-sent events: no caching or transforms, and no proxy buffering
+// (X-Accel-Buffering), so each event reaches the browser as it is written.
 res.writeHead(200, {
   'Content-Type': encoder.getContentType(),
   'Cache-Control': 'no-cache, no-store, must-revalidate, no-transform',
@@ -1349,8 +1387,8 @@ Rules:
 - For "this plane" or "the selected plane", call getSelectedAircraft. If it returns null, ask the user to tap or click a plane on the map.
 - For a list of aircraft, show one ArrivalsBoard and no FlightCards. For two or three aircraft side by side, show an AircraftCompare.
 - When you show aircraft, call highlightAircraft with their hex codes so the map matches your answer.
-- Keep prose to one or two short Markdown sentences. Do not repeat what the components already show: numbers, routes, types or airlines.
-- Start with the answer. No lead-ins such as "Here are", "Here's", "Sure" or "Let me".
+- Write one or two brief sentences of prose, ending with a full stop, never a colon. Do not repeat what the components already show: numbers, routes, types or airlines. A FlightCard note adds something the card does not show; never restate its route.
+- Start with the answer. No lead-ins such as "Here are", "Here's", "Sure" or "Let me". No exclamation marks, emoji, em-dashes or en-dashes; use a comma, colon or full stop.
 - Routes are scheduled routes from public data and can be wrong. Call them scheduled.
 ...`;
 ```
@@ -1381,14 +1419,23 @@ The mock answers by the user's message with scripted tool calls and streamed UI:
 
 ```ts
 mock = new LLMock({ port: 0, chunkSize: 8 });
+scriptAtcModel(mock);
+```
 
-mock.onMessage(STARTER_PROMPTS[1], {
-  toolCalls: [
+</hb-code-example>
+
+<hb-code-example header="e2e/src/model.ts">
+
+```ts
+scriptTurn(
+  mock,
+  PROMPTS.seattleArrivals,
+  [
     {
       id: 'arrivals-find',
       name: 'findAircraft',
       arguments: {
-        ...ANY,
+        ...NO_FILTERS,
         approaching: 'KSEA',
         sortBy: 'distance',
         limit: 10,
@@ -1397,10 +1444,11 @@ mock.onMessage(STARTER_PROMPTS[1], {
     {
       id: 'arrivals-highlight',
       name: 'highlightAircraft',
-      arguments: { hexes: arrivals.map((r) => r.hex) },
+      arguments: { hexes: arrivals.map((row) => row.hex) },
     },
   ],
-});
+  board('Arriving at Seattle', 'KSEA', arrivals),
+);
 ```
 
 </hb-code-example>
@@ -1420,9 +1468,9 @@ Then the tests read like a story:
 test('shows Seattle arrivals and highlights them on the map', async ({
   page,
 }, testInfo) => {
-  await open(page, testInfo.project.name);
+  await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: STARTER_PROMPTS[1] }).click();
+  await page.getByRole('button', { name: PROMPTS.seattleArrivals }).click();
 
   await expect(page.getByTestId('arrivals-row')).toHaveCount(arrivals.length);
   await expect(page.locator('.atc-plane.is-dimmed').first()).toBeAttached();
@@ -1484,12 +1532,13 @@ Here's the doc block on `createAtcTools`:
 
 ```ts
 /**
- * To add a tool: (1) add its definition to `ATC_TOOL_DEFINITIONS` and its
- * handler here; (2) register it in
+ * To add a tool: (1) add its definition to `ATC_TOOL_DEFINITIONS`
+ * (`tool-definitions.ts`) and its handler here; (2) register it in
  * `angular/src/app/assistant.ts` and `react/src/assistant.tsx`; (3) add its
  * RUNNING and DONE labels in `tool-chips.ts` (the compiler asks for them);
  * (4) tell the model when to use it in `SYSTEM_PROMPT` (`contracts.ts`);
- * (5) script it in `e2e/src/atc.spec.ts`.
+ * (5) script a model turn that calls it in `e2e/src/model.ts` and test it
+ * in `e2e/src/atc.spec.ts`.
  */
 ```
 

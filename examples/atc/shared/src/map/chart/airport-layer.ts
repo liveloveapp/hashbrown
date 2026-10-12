@@ -3,7 +3,7 @@ import type { Map as LeafletMap, Marker, Point } from 'leaflet';
 import type { ChartAirport } from '../../chart';
 import { type Airport, FALLBACK_AIRPORTS } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
-import type { TagRect } from '../tag-obstacles';
+import { type PixelRect, rectAround, rectAt } from '../pixels';
 import { airportRing, RING_BOX } from './airport-ring';
 import type { LabelSource } from './chart-labels';
 import { dataBlockLines, renderDataBlock } from './data-block';
@@ -22,11 +22,11 @@ const LABEL_GAP = 4;
 type Tone = 'ink' | 'fallback';
 
 /** One airport to draw at the current zoom. */
-interface Drawn {
+interface DrawnAirport {
   readonly airport: ChartAirport | Airport;
   readonly tone: Tone;
   /** Whether the lines are the bare ident (zoom 9 and below, or fallback). */
-  readonly ident: boolean;
+  readonly identOnly: boolean;
   /** Whether the airport draws an ink ring (its runways cannot be drawn). */
   readonly ring: boolean;
   /** The data block's lines. */
@@ -42,9 +42,9 @@ interface Block {
 
 /** A label request's airport, where it is drawn and its candidates. */
 interface Pending {
-  readonly drawn: Drawn;
+  readonly drawn: DrawnAirport;
   readonly point: Point;
-  readonly candidates: readonly TagRect[];
+  readonly candidates: readonly PixelRect[];
 }
 
 /** A mounted airport layer. */
@@ -62,18 +62,10 @@ export interface AirportLayer extends LabelSource {
    * 12x12 box around its reference point. Fallback airports included; no
    * label may cover any of them.
    */
-  runwayBoxes(): readonly TagRect[];
+  airportBoxes(): readonly PixelRect[];
   /** Removes every marker. */
   destroy(): void;
 }
-
-/** A square box of `size` pixels centred on `point`. */
-const boxAround = (point: Point, size: number): TagRect => ({
-  left: point.x - size / 2,
-  top: point.y - size / 2,
-  right: point.x + size / 2,
-  bottom: point.y + size / 2,
-});
 
 /**
  * Where an airport's label may go around its `box`, best first: right of it
@@ -81,24 +73,18 @@ const boxAround = (point: Point, size: number): TagRect => ({
  * {@link LABEL_GAP} pixels clear. A block is `width` by `height` pixels.
  */
 export function labelCandidates(
-  box: TagRect,
+  box: PixelRect,
   width: number,
   height: number,
-): TagRect[] {
+): PixelRect[] {
   const midX = (box.left + box.right) / 2 - width / 2;
   const midY = (box.top + box.bottom) / 2 - height / 2;
-  const at = (left: number, top: number): TagRect => ({
-    left,
-    top,
-    right: left + width,
-    bottom: top + height,
-  });
 
   return [
-    at(box.right + LABEL_GAP, midY),
-    at(box.left - LABEL_GAP - width, midY),
-    at(midX, box.top - LABEL_GAP - height),
-    at(midX, box.bottom + LABEL_GAP),
+    rectAt(box.right + LABEL_GAP, midY, width, height),
+    rectAt(box.left - LABEL_GAP - width, midY, width, height),
+    rectAt(midX, box.top - LABEL_GAP - height, width, height),
+    rectAt(midX, box.bottom + LABEL_GAP, width, height),
   ];
 }
 
@@ -107,11 +93,13 @@ const labelId = (code: string) => `apt:${code}`;
 
 /**
  * Whether a chart airport draws a ring instead of runways: heliports and
- * seaplane bases always do, and so does an airport with no runway that has
+ * seaplane bases always do, and so does an airport none of whose runways has
  * surveyed corners. Every other airport's runways are its symbol.
  */
 function drawsRing(airport: ChartAirport): boolean {
-  if (airport.kind === 'heliport' || airport.kind === 'seaplane') return true;
+  if (airport.kind === 'heliport' || airport.kind === 'seaplane') {
+    return true;
+  }
   return airport.runways.every((runway) => runway.corners === null);
 }
 
@@ -122,12 +110,15 @@ function drawsRing(airport: ChartAirport): boolean {
  * an airport drawn as a ring.
  */
 function anchorBox(
-  drawn: Drawn,
+  drawn: DrawnAirport,
   project: (lat: number, lon: number) => Point,
-): TagRect {
+): PixelRect {
   const { airport } = drawn;
-  const reference = boxAround(project(airport.lat, airport.lon), RING_BOX);
-  if (drawn.ring || !('runways' in airport)) return reference;
+  const point = project(airport.lat, airport.lon);
+  const reference = rectAround(point.x, point.y, RING_BOX);
+  if (drawn.ring || !('runways' in airport)) {
+    return reference;
+  }
   const points = airport.runways
     .filter((runway) => runway.corners !== null)
     .flatMap((runway) => [...(runway.corners ?? []), ...(runway.ends ?? [])])
@@ -142,7 +133,7 @@ function anchorBox(
 }
 
 /** A drawn airport's label priority, ordered by rank within its tier. */
-function priorityOf(drawn: Drawn, index: number, count: number): number {
+function priorityOf(drawn: DrawnAirport, index: number, count: number): number {
   const tier =
     drawn.tone === 'fallback'
       ? LABEL_PRIORITY.fallback
@@ -154,12 +145,12 @@ function priorityOf(drawn: Drawn, index: number, count: number): number {
 }
 
 /** The airports to draw: the FAA chart when ready, otherwise the fallback table. */
-function drawnAirports(state: AtcState, zoom: number): Drawn[] {
+function drawnAirports(state: AtcState, zoom: number): DrawnAirport[] {
   if (state.chart.status !== 'ready') {
     return FALLBACK_AIRPORTS.map((airport) => ({
       airport,
       tone: 'fallback',
-      ident: true,
+      identOnly: true,
       ring: true,
       lines: [airport.code],
     }));
@@ -167,7 +158,7 @@ function drawnAirports(state: AtcState, zoom: number): Drawn[] {
   return visibleAirports(state.chart.airports, zoom).map((airport) => ({
     airport,
     tone: 'ink',
-    ident: zoom <= 9,
+    identOnly: zoom <= 9,
     ring: drawsRing(airport),
     lines: dataBlockLines(airport, zoom),
   }));
@@ -197,17 +188,21 @@ export function createAirportLayer(options: {
   const rings = new Map<string, Marker>();
   const blocks = new Map<string, Block>();
   /** The airports drawn by the last redraw, in rank order. */
-  let drawnNow: readonly Drawn[] = [];
+  let drawnNow: readonly DrawnAirport[] = [];
   /** The last requests' airports and candidates, by label id. */
   let pending = new Map<string, Pending>();
   /** The anchor boxes of every drawn airport, from the last label requests. */
-  let boxes: readonly TagRect[] | null = null;
+  let boxes: readonly PixelRect[] | null = null;
   let source: readonly (ChartAirport | Airport)[] | null = null;
   let synced: Pick<AtcState, 'chart' | 'layers'> | null = null;
 
   const clear = () => {
-    for (const marker of rings.values()) marker.remove();
-    for (const { marker } of blocks.values()) marker.remove();
+    for (const marker of rings.values()) {
+      marker.remove();
+    }
+    for (const { marker } of blocks.values()) {
+      marker.remove();
+    }
     rings.clear();
     blocks.clear();
     drawnNow = [];
@@ -220,7 +215,9 @@ export function createAirportLayer(options: {
 
   const ringMarker = (airport: ChartAirport | Airport): Marker => {
     const existing = rings.get(airport.code);
-    if (existing) return existing;
+    if (existing) {
+      return existing;
+    }
     const { className, html } = airportRing(airport);
     const marker = L.marker([airport.lat, airport.lon], {
       icon: L.divIcon({
@@ -250,10 +247,10 @@ export function createAirportLayer(options: {
     airport: ChartAirport | Airport,
     lines: readonly string[],
     tone: Tone,
-    ident: boolean,
+    identOnly: boolean,
     anchor: [number, number],
   ) => {
-    const key = `${tone}\n${ident}\n${anchor.join(',')}\n${lines.join('\n')}`;
+    const key = `${tone}\n${identOnly}\n${anchor.join(',')}\n${lines.join('\n')}`;
     let block = blocks.get(airport.code);
     if (!block) {
       block = {
@@ -272,10 +269,12 @@ export function createAirportLayer(options: {
       block.key = key;
       block.filled = null;
     }
-    if (!map.hasLayer(block.marker)) block.marker.addTo(map);
+    if (!map.hasLayer(block.marker)) {
+      block.marker.addTo(map);
+    }
     const element = block.marker.getElement();
     if (element && element !== block.filled) {
-      element.replaceChildren(renderDataBlock(doc, lines, tone, ident));
+      element.replaceChildren(renderDataBlock(doc, lines, tone, identOnly));
       block.filled = element;
     }
   };
@@ -302,11 +301,15 @@ export function createAirportLayer(options: {
       drawn.filter((d) => d.ring).map((d) => d.airport.code),
     );
     for (const [code, marker] of rings) {
-      if (!wanted.has(code)) marker.remove();
+      if (!wanted.has(code)) {
+        marker.remove();
+      }
     }
     for (const { airport, ring } of drawn) {
       const marker = ring ? ringMarker(airport) : null;
-      if (marker && !map.hasLayer(marker)) marker.addTo(map);
+      if (marker && !map.hasLayer(marker)) {
+        marker.addTo(map);
+      }
     }
 
     drawnNow = drawn;
@@ -352,20 +355,24 @@ export function createAirportLayer(options: {
       const index = placed.get(id);
       const at =
         index === null || index === undefined ? null : candidates[index];
-      if (!at) continue;
-      const { airport, lines, tone, ident } = drawn;
-      showBlock(airport, lines, tone, ident, [
+      if (!at) {
+        continue;
+      }
+      const { airport, lines, tone, identOnly } = drawn;
+      showBlock(airport, lines, tone, identOnly, [
         point.x - at.left,
         point.y - at.top,
       ]);
       shown.add(airport.code);
     }
     for (const [code, { marker }] of blocks) {
-      if (!shown.has(code)) marker.remove();
+      if (!shown.has(code)) {
+        marker.remove();
+      }
     }
   };
 
-  const runwayBoxes = (): readonly TagRect[] =>
+  const airportBoxes = (): readonly PixelRect[] =>
     boxes ?? drawnNow.map((drawn) => anchorBox(drawn, project));
 
   return {
@@ -384,7 +391,7 @@ export function createAirportLayer(options: {
     redraw,
     labelRequests,
     applyLabels,
-    runwayBoxes,
+    airportBoxes,
     destroy() {
       clear();
       source = null;

@@ -120,7 +120,7 @@ Angular:
 chat = uiChatResource({
   system: 'Help users understand the planes on the map.',
   components,
-  tools: [createTool(this.atc.findAircraft)],
+  tools: [createTool(this.atcTools.findAircraft)],
 });
 ```
 
@@ -129,8 +129,8 @@ React:
 ```tsx
 export function Assistant() {
   const store = useAtcStore();
-  const atc = useMemo(() => createAtcTools({ store, fetchRoute }), [store]);
-  const findAircraft = useTool({ ...atc.findAircraft, deps: [atc] });
+  const atcTools = useMemo(() => createBrowserAtcTools(store), [store]);
+  const findAircraft = useTool({ ...atcTools.findAircraft, deps: [atcTools] });
 
   const chat = useUiChat({
     system: 'Help users understand the planes on the map.',

@@ -7,7 +7,7 @@ import {
 } from '@atc/shared';
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AutoScroll } from './auto-scroll';
+import { expect, test } from 'vitest';
 import { Composer } from './composer';
 import { SheetHandle } from './sheet-handle';
 
@@ -22,12 +22,12 @@ function pointer(type: string, clientY: number): Event {
   imports: [SheetHandle],
   template: `
     <section [attr.data-snap]="sheet().snap" (focusin)="focus($event)">
-      <atc-sheet-handle [expanded]="expanded()" (moved)="move($event)" />
+      <atc-sheet-handle [expanded]="expanded()" (move)="move($event)" />
       <input aria-label="Message" />
     </section>
   `,
 })
-class SheetHost {
+class Sheet {
   readonly sheet = signal(INITIAL_SHEET);
   readonly expanded = computed(() => sheetExpanded(this.sheet()));
   move(event: SheetEvent): void {
@@ -40,8 +40,8 @@ class SheetHost {
   }
 }
 
-function handle() {
-  const fixture = TestBed.createComponent(SheetHost);
+function sheet() {
+  const fixture = TestBed.createComponent(Sheet);
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
   const button = element.querySelector('button') as HTMLButtonElement;
@@ -54,7 +54,7 @@ function handle() {
 }
 
 test('the sheet handle is a button that reports and toggles aria-expanded', () => {
-  const { fixture, button } = handle();
+  const { fixture, button } = sheet();
 
   const before = button.getAttribute('aria-expanded');
   button.click();
@@ -75,7 +75,7 @@ test('the sheet handle is a button that reports and toggles aria-expanded', () =
 });
 
 test('dragging the handle up moves the sheet one snap, without a second toggle from the click', () => {
-  const { button, snap } = handle();
+  const { button, snap } = sheet();
 
   button.dispatchEvent(pointer('pointerdown', 700));
   button.dispatchEvent(pointer('pointerup', 600));
@@ -90,7 +90,7 @@ test('dragging the handle up moves the sheet one snap, without a second toggle f
 });
 
 test('dragging the handle down lowers an open sheet one snap', () => {
-  const { fixture, button, snap } = handle();
+  const { fixture, button, snap } = sheet();
   fixture.componentInstance.sheet.set({ snap: 'full', held: true });
 
   button.dispatchEvent(pointer('pointerdown', 300));
@@ -100,55 +100,8 @@ test('dragging the handle down lowers an open sheet one snap', () => {
   expect(snap()).toBe('half');
 });
 
-@Component({
-  imports: [AutoScroll],
-  template: '<div atcAutoScroll class="scroller"></div>',
-})
-class Host {}
-
-function scroller() {
-  const fixture = TestBed.createComponent(Host);
-  fixture.detectChanges();
-  const element = (fixture.nativeElement as HTMLElement).querySelector(
-    '.scroller',
-  ) as HTMLElement;
-  Object.defineProperty(element, 'scrollHeight', { value: 1000 });
-  Object.defineProperty(element, 'clientHeight', { value: 500 });
-
-  return element;
-}
-
-async function append(element: HTMLElement, className: string) {
-  const row = document.createElement('p');
-  row.className = className;
-  element.append(row);
-  await new Promise((resolve) => setTimeout(resolve));
-}
-
-test('streamed content scrolls to the newest row while the user is at the end', async () => {
-  const element = scroller();
-  element.scrollTop = 0;
-
-  await append(element, 'atc-prose');
-
-  expect(element.scrollTop).toBe(1000);
-});
-
-test('a user who scrolled up is not yanked down, until they send a message', async () => {
-  const element = scroller();
-  element.scrollTop = 100;
-  element.dispatchEvent(new Event('scroll'));
-
-  await append(element, 'atc-prose');
-  const stayed = element.scrollTop;
-  await append(element, 'atc-user');
-
-  expect(stayed).toBe(100);
-  expect(element.scrollTop).toBe(1000);
-});
-
 test('focusing the handle does not open the sheet, so one tap opens and the next closes', () => {
-  const { element, button, snap } = handle();
+  const { element, button, snap } = sheet();
   document.body.append(element);
   const opened: string[] = [];
 
@@ -165,35 +118,13 @@ test('focusing the handle does not open the sheet, so one tap opens and the next
 });
 
 test('focusing the composer opens the sheet fully', () => {
-  const { element, snap } = handle();
+  const { element, snap } = sheet();
   document.body.append(element);
 
   element.querySelector('input')?.focus();
 
   expect(snap()).toBe('full');
   element.remove();
-});
-
-test('a user message nested in an added node still re-pins the scroller', async () => {
-  const element = scroller();
-  element.scrollTop = 100;
-  element.dispatchEvent(new Event('scroll'));
-  const li = document.createElement('li');
-  li.innerHTML = '<p class="atc-user">hi</p>';
-
-  element.append(li);
-  await new Promise((resolve) => setTimeout(resolve));
-
-  expect(element.scrollTop).toBe(1000);
-});
-
-test('an empty chat is not scrolled, so the headline and starters stay in view', async () => {
-  const element = scroller();
-  element.scrollTop = 0;
-
-  await append(element, 'atc-empty');
-
-  expect(element.scrollTop).toBe(0);
 });
 
 /** The app's sheet around the real composer: focus opens it, sending lowers it. */

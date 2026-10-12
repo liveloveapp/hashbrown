@@ -5,6 +5,8 @@ import { airspaceOf } from '../chart';
 import { airportByCode, chartAirportByCode } from '../directory';
 import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore, ShownArea } from '../store';
+import type { MapBand } from './card-sync';
+import { DIAGRAM_ZOOM } from './chart/diagram-layer';
 import { circleBounds, type FitTarget, fitTarget } from './fit';
 
 /** Furthest out, and furthest in, that fitting highlighted planes will zoom. */
@@ -16,8 +18,15 @@ const REVEAL_ZOOM = 8;
 const MAX_AREA_ZOOM = 12;
 /** Space kept around a shown area, in pixels. */
 const AREA_PADDING = 24;
-/** Showing an airport zooms to at least this, where its diagram draws. */
-const MIN_AIRPORT_ZOOM = 13;
+/** Space kept around fitted planes, in pixels. */
+const FIT_PADDING = 48;
+/** Extra room on the right of fitted planes for their data tags, in pixels. */
+const TAG_ROOM = 140;
+/**
+ * Showing an airport zooms to at least this: a step past where its diagram
+ * starts drawing, so the diagram is legible.
+ */
+const MIN_AIRPORT_ZOOM = DIAGRAM_ZOOM + 1;
 /** Furthest in that showing an airport will zoom. */
 const MAX_AIRPORT_ZOOM = 15;
 /** Half the box around an airport without runway corners, in degrees. */
@@ -48,8 +57,8 @@ export interface ViewController {
 /**
  * Creates the controller that moves the map for view requests: fitting
  * highlighted planes, showing an area or an airport, revealing one plane or
- * resetting to `area`. Each request applies once (by `seq`), and every move leaves room
- * for a phone's bottom sheet and a docked detail card.
+ * resetting to `area`. Each request applies once (by `seq`), and every move
+ * leaves room for a phone's bottom sheet and a docked detail card.
  */
 export function createViewController(options: {
   L: typeof Leaflet;
@@ -60,7 +69,7 @@ export function createViewController(options: {
   drawnAt: (hex: string) => LatLon | null;
   /** The detail card's view of the map (see `createCardSync`). */
   cards: {
-    band(): { top: number; bottom: number };
+    visibleBand(): MapBand;
     dockedInsetFor(state: AtcState): number;
     measureArea(): void;
   };
@@ -92,39 +101,39 @@ export function createViewController(options: {
   const moveMap = (move: () => void) => {
     endMove?.();
     programmatic = true;
-    let running = true;
-    let endedInside = false;
-    let started = false;
-    const onStart = () => {
-      if (!running) {
-        started = true;
+    let inMoveCall = true;
+    let endedDuringCall = false;
+    let animationStarted = false;
+    const onMoveStart = () => {
+      if (!inMoveCall) {
+        animationStarted = true;
       }
     };
-    const finish = () => {
-      map.off('moveend', onEnd);
-      map.off('movestart', onStart);
-      if (endMove === finish) {
+    const endGuard = () => {
+      map.off('moveend', onMoveEnd);
+      map.off('movestart', onMoveStart);
+      if (endMove === endGuard) {
         endMove = null;
         programmatic = false;
       }
     };
-    const onEnd = () => {
-      if (running) {
-        endedInside = true;
+    const onMoveEnd = () => {
+      if (inMoveCall) {
+        endedDuringCall = true;
       } else {
-        finish();
+        endGuard();
       }
     };
-    endMove = finish;
-    map.on('moveend', onEnd);
-    map.on('movestart', onStart);
+    endMove = endGuard;
+    map.on('moveend', onMoveEnd);
+    map.on('movestart', onMoveStart);
     move();
-    running = false;
-    if (endedInside) {
+    inMoveCall = false;
+    if (endedDuringCall) {
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          if (!started) {
-            finish();
+          if (!animationStarted) {
+            endGuard();
           }
         }),
       );
@@ -134,9 +143,9 @@ export function createViewController(options: {
    * Pixels at the bottom of the map hidden by a phone's bottom sheet, when
    * enough map shows above it to fit into; else 0.
    */
-  const sheetInset = () => map.getSize().y - cards.band().bottom;
+  const sheetInset = () => map.getSize().y - cards.visibleBand().bottom;
   /** Pixels a docked detail card covers at the top of the map, else 0. */
-  const cardInset = () => cards.band().top;
+  const cardInset = () => cards.visibleBand().top;
   /**
    * The centre that puts `position` mid-way down the map left between `top`
    * (pixels covered at the top: by default the docked card) and the sheet.
@@ -165,8 +174,14 @@ export function createViewController(options: {
     ];
     // Extra room on the right for the data tags, under them for a sheet and
     // above them for a docked card.
-    const paddingTopLeft: [number, number] = [48, 48 + cardInset()];
-    const paddingBottomRight: [number, number] = [140, 48 + sheetInset()];
+    const paddingTopLeft: [number, number] = [
+      FIT_PADDING,
+      FIT_PADDING + cardInset(),
+    ];
+    const paddingBottomRight: [number, number] = [
+      TAG_ROOM,
+      FIT_PADDING + sheetInset(),
+    ];
     const zoom = map.getBoundsZoom(
       bounds,
       false,
@@ -192,39 +207,47 @@ export function createViewController(options: {
     });
   };
   /**
-   * Fits a circle around an airport, keeping it below a docked card and
-   * above a phone's sheet.
+   * The move that fits a circle around an airport, keeping it below a docked
+   * card and above a phone's sheet. Null when the airport is unknown.
    */
-  const fitArea = (shown: ShownArea, animate: boolean) => {
-    const centre = airportByCode(store.getState(), shown.airport);
+  const areaMove = (
+    state: AtcState,
+    shown: ShownArea,
+    animate: boolean,
+  ): (() => void) | null => {
+    const centre = airportByCode(state, shown.airport);
     if (centre === null) {
-      return;
+      return null;
     }
     const box = circleBounds(centre, shown.radiusNm);
-    const bottom = sheetInset();
-    map.fitBounds(
-      [
-        [box.south, box.west],
-        [box.north, box.east],
-      ],
-      {
-        paddingTopLeft: [AREA_PADDING, AREA_PADDING + cardInset()],
-        paddingBottomRight: [AREA_PADDING, AREA_PADDING + bottom],
-        maxZoom: MAX_AREA_ZOOM,
-        animate,
-      },
-    );
+
+    return () =>
+      map.fitBounds(
+        [
+          [box.south, box.west],
+          [box.north, box.east],
+        ],
+        {
+          paddingTopLeft: [AREA_PADDING, AREA_PADDING + cardInset()],
+          paddingBottomRight: [AREA_PADDING, AREA_PADDING + sheetInset()],
+          maxZoom: MAX_AREA_ZOOM,
+          animate,
+        },
+      );
   };
   /**
-   * Shows one airport's diagram: fits its runway corners (or a small box
-   * around it) at zoom 13 to 15, between a docked card and a phone's sheet,
-   * in one move.
+   * The move that shows one airport's diagram: fits its runway corners (or a
+   * small box around it) at zoom 13 to 15, between a docked card and a
+   * phone's sheet. Null when the airport is unknown.
    */
-  const showAirport = (code: string, animate: boolean) => {
-    const state = store.getState();
+  const airportMove = (
+    state: AtcState,
+    code: string,
+    animate: boolean,
+  ): (() => void) | null => {
     const airport = airportByCode(state, code);
     if (airport === null) {
-      return;
+      return null;
     }
     const corners =
       chartAirportByCode(state, code)?.runways.flatMap(
@@ -252,23 +275,27 @@ export function createViewController(options: {
       ),
     );
     const centre = bounds.getCenter();
-    moveMap(() =>
+
+    return () =>
       map.setView(
         centreAbove({ lat: centre.lat, lon: centre.lng }, zoom),
         zoom,
         { animate },
-      ),
-    );
+      );
   };
   /**
-   * Fits the union of the bboxes of one airport's airspace shelves, between
-   * a docked card and a phone's sheet, in one move. Without shelves the map
-   * stays where it is.
+   * The move that fits the union of the bboxes of one airport's airspace
+   * shelves, between a docked card and a phone's sheet. Null without
+   * shelves: the map stays where it is.
    */
-  const showAirspace = (code: string, animate: boolean) => {
-    const shelves = airspaceOf(store.getState().airspace.shelves, code);
+  const airspaceMove = (
+    state: AtcState,
+    code: string,
+    animate: boolean,
+  ): (() => void) | null => {
+    const shelves = airspaceOf(state.airspace.shelves, code);
     if (shelves.length === 0) {
-      return;
+      return null;
     }
     const bounds = L.latLngBounds(
       shelves.flatMap(({ bbox: [west, south, east, north] }) => [
@@ -276,14 +303,14 @@ export function createViewController(options: {
         [north, east] as [number, number],
       ]),
     );
-    moveMap(() =>
+
+    return () =>
       map.fitBounds(bounds, {
         paddingTopLeft: [AREA_PADDING, AREA_PADDING + cardInset()],
         paddingBottomRight: [AREA_PADDING, AREA_PADDING + sheetInset()],
         maxZoom: MAX_AREA_ZOOM,
         animate,
-      }),
-    );
+      });
   };
   /**
    * Applies the newest view request once. Follow mode drops it. A highlight
@@ -301,50 +328,60 @@ export function createViewController(options: {
     // Read per move, so turning the OS setting on mid-session stops the
     // next move animating (Leaflet's own zoom animations are set at mount).
     const animate = !prefersReducedMotion();
-    if (request.kind === 'highlight') {
-      const positions = new Map<string, LatLon>();
-      for (const hex of state.highlighted) {
-        const position = drawnAt(hex);
-        if (position) {
-          positions.set(hex, position);
+    let move: (() => void) | null;
+    // Only `highlight` and `aircraft` return before `appliedSeq` is set:
+    // they wait for a marker, and the next render tries again.
+    switch (request.kind) {
+      case 'highlight': {
+        const positions = new Map<string, LatLon>();
+        for (const hex of state.highlighted) {
+          const position = drawnAt(hex);
+          if (position) {
+            positions.set(hex, position);
+          }
         }
+        const target = fitTarget(state.highlighted, positions);
+        if (target === null) {
+          return;
+        }
+        move = () => fitHighlight(target, animate);
+        break;
       }
-      const target = fitTarget(new Set(), state.highlighted, positions, false);
-      if (target === null) {
-        return;
+      case 'aircraft': {
+        const position = drawnAt(request.hex);
+        if (position === null) {
+          return;
+        }
+        const zoom = Math.max(map.getZoom(), REVEAL_ZOOM);
+        // The card docks once the plane is on screen; leave room for it now.
+        const top = cards.dockedInsetFor(state);
+        move = () =>
+          map.setView(centreAbove(position, zoom, top), zoom, { animate });
+        break;
       }
-      appliedSeq = request.seq;
-      moveMap(() => fitHighlight(target, animate));
-      return;
-    }
-    if (request.kind === 'aircraft') {
-      const position = drawnAt(request.hex);
-      if (position === null) {
-        return;
+      case 'area':
+        move = areaMove(state, request.area, animate);
+        break;
+      case 'airport':
+        move = airportMove(state, request.airport, animate);
+        break;
+      case 'airspace':
+        move = airspaceMove(state, request.airport, animate);
+        break;
+      case 'reset':
+        move = () => home(animate);
+        break;
+      default: {
+        const unknown: never = request;
+        throw new Error(`Unknown view request: ${JSON.stringify(unknown)}`);
       }
-      appliedSeq = request.seq;
-      const zoom = Math.max(map.getZoom(), REVEAL_ZOOM);
-      // The card docks once the plane is on screen; leave room for it now.
-      const top = cards.dockedInsetFor(state);
-      moveMap(() =>
-        map.setView(centreAbove(position, zoom, top), zoom, { animate }),
-      );
-      return;
-    }
-    if (request.kind === 'airport') {
-      appliedSeq = request.seq;
-      showAirport(request.airport, animate);
-      return;
-    }
-    if (request.kind === 'airspace') {
-      appliedSeq = request.seq;
-      showAirspace(request.airport, animate);
-      return;
     }
     appliedSeq = request.seq;
-    moveMap(() =>
-      request.kind === 'area' ? fitArea(request.area, animate) : home(animate),
-    );
+    // Nothing to move (an unknown airport, no shelves): entering moveMap
+    // would hold the guard with no moveend to end it.
+    if (move !== null) {
+      moveMap(move);
+    }
   };
 
   return {
@@ -366,7 +403,10 @@ export function createViewController(options: {
         requestAnimationFrame(() => {
           const running = panel.getAnimations?.() ?? [];
           void Promise.all(
-            running.map((animation) => animation.finished.catch(() => null)),
+            running.map((animation) =>
+              // A cancelled transition rejects `finished`; it has still stopped moving.
+              animation.finished.catch(() => null),
+            ),
           ).then(() => {
             settling = false;
             if (!destroyed) {

@@ -71,7 +71,7 @@ export const HERO_CODE: Record<Sdk, CodeSample> = {
 ];
 
 function Assistant() {
-  const findAircraft = useTool({ ...atc.findAircraft, deps: [atc] });
+  const findAircraft = useTool({ ...atcTools.findAircraft, deps: [atcTools] });
 
   const chat = useUiChat({
     system: 'Provided by the server.',
@@ -100,7 +100,7 @@ function Assistant() {
 chat = uiChatResource({
   system: 'Provided by the server.',
   components,
-  tools: [createTool(this.atc.findAircraft)],
+  tools: [createTool(this.atcTools.findAircraft)],
 });`,
   },
 };

@@ -1,7 +1,14 @@
 import { expect, test } from 'vitest';
 import { distanceNm } from '../geo';
 import type { LatLon } from '../places';
-import { bearingDeg, metresPerPixel, runwayCorners } from './runway-geometry';
+import { testChartAirport } from '../testing';
+import {
+  bearingDeg,
+  longestHardRunwayFt,
+  metresPerPixel,
+  ringCentroid,
+  runwayCorners,
+} from './runway-geometry';
 
 const NM_TO_FT = 6076.12;
 // KRDM runway 05/23 thresholds from NASR (7,038 ft by 150 ft).
@@ -36,4 +43,46 @@ test('metres per pixel halves with each zoom level', () => {
 
   expect(z10).toBeCloseTo(109.97, 1);
   expect(z11 * 2).toBeCloseTo(z10, 6);
+});
+
+test('longestHardRunwayFt is the longest paved runway, ignoring turf', () => {
+  const runway = testChartAirport().runways[0];
+  const airport = testChartAirport({
+    runways: [
+      { ...runway, lengthFt: 5000 },
+      { ...runway, lengthFt: 9000, hard: false },
+      { ...runway, lengthFt: 7000 },
+    ],
+  });
+
+  const longest = longestHardRunwayFt(airport);
+
+  expect(longest).toBe(7000);
+});
+
+test('longestHardRunwayFt is 0 without a paved runway', () => {
+  const airport = testChartAirport({ runways: [] });
+
+  const longest = longestHardRunwayFt(airport);
+
+  expect(longest).toBe(0);
+});
+
+test('ringCentroid averages the vertices it is given', () => {
+  const ring = [
+    [-121, 44],
+    [-120, 44],
+    [-120, 46],
+  ] as const;
+
+  const centre = ringCentroid(ring);
+
+  expect(centre?.lat).toBeCloseTo(44.6667, 4);
+  expect(centre?.lon).toBeCloseTo(-120.3333, 4);
+});
+
+test('ringCentroid of an empty ring is null', () => {
+  const centre = ringCentroid([]);
+
+  expect(centre).toBeNull();
 });

@@ -10,5 +10,10 @@
     "noEmit": true,
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*.ts", "demo/**/*.ts", "playwright.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "demo/**/*.ts",
+    "prose/**/*.ts",
+    "playwright.config.ts"
+  ]
 }

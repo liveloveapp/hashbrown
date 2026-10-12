@@ -1,38 +1,16 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
 import { expect, test, vi } from 'vitest';
 import type { Surfaces } from '@atc/shared';
 import { createChartSurfacesHandler } from './chart-surfaces-handler';
+import { callHandler, silenceErrors } from './test-http';
 
-interface Sent {
-  status: number;
-  headers: Record<string, string>;
-  body: Partial<Surfaces> & { error?: string };
-}
-
-/** Calls the handler with a fake request and collects the response. */
-async function call(
+/** Calls the handler with a GET and a query string. */
+const call = (
   handler: ReturnType<typeof createChartSurfacesHandler>,
   query: string,
-): Promise<Sent> {
-  const sent: Partial<Sent> = {};
-  const res = {
-    writeHead(status: number, headers: Record<string, string>) {
-      sent.status = status;
-      sent.headers = headers;
-    },
-    end(body: string) {
-      sent.body = JSON.parse(body);
-    },
-  } as unknown as ServerResponse;
-  const req = {
-    method: 'GET',
+) =>
+  callHandler<Partial<Surfaces>>(handler, {
     url: `/api/chart/surfaces?${query}`,
-  } as IncomingMessage;
-
-  await handler(req, res);
-
-  return sent as Sent;
-}
+  });
 
 const json = (body: unknown) => new Response(JSON.stringify(body));
 const ring = [
@@ -75,16 +53,20 @@ const overpass = {
 const upstream = (options: { airport: unknown; taxiways: unknown }) =>
   vi.fn<typeof fetch>(async (input) => {
     const url = String(input);
-    if (url.includes('US_Airport')) return json(options.airport);
-    if (url.includes('AM_Taxiway')) return json(options.taxiways);
-    if (url.includes('AM_Apron') || url.includes('AM_Hotspot'))
+    if (url.includes('US_Airport')) {
+      return json(options.airport);
+    }
+    if (url.includes('AM_Taxiway')) {
+      return json(options.taxiways);
+    }
+    if (url.includes('AM_Apron') || url.includes('AM_Hotspot')) {
       return json(empty);
-    if (url.includes('overpass-api.de')) return json(overpass);
+    }
+    if (url.includes('overpass-api.de')) {
+      return json(overpass);
+    }
     throw new Error(`unexpected ${url}`);
   });
-
-const silenceErrors = () =>
-  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
 const NOW = Date.UTC(2026, 9, 10);
 
@@ -174,8 +156,12 @@ test('an ArcGIS error body on an Airport Mapping layer counts as no FAA data', a
 test('an Airport Mapping layer that returns 500 falls back to OSM', async () => {
   const fetchFn = vi.fn<typeof fetch>(async (input) => {
     const url = String(input);
-    if (url.includes('US_Airport')) return json(airportHit('BDN'));
-    if (url.includes('overpass-api.de')) return json(overpass);
+    if (url.includes('US_Airport')) {
+      return json(airportHit('BDN'));
+    }
+    if (url.includes('overpass-api.de')) {
+      return json(overpass);
+    }
     return new Response('down', { status: 500 });
   });
   const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
@@ -190,9 +176,12 @@ test('the US_Airport lookup failing still fails the load', async () => {
   const errors = silenceErrors();
   const fetchFn = vi.fn<typeof fetch>(async (input) => {
     const url = String(input);
-    if (url.includes('overpass-api.de')) return json(overpass);
-    if (url.includes('US_Airport'))
+    if (url.includes('overpass-api.de')) {
+      return json(overpass);
+    }
+    if (url.includes('US_Airport')) {
       return new Response('down', { status: 500 });
+    }
     return json(empty);
   });
   const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
@@ -207,12 +196,15 @@ test('an Overpass error remark sent as 200 is a failure, not runways-only', asyn
   const errors = silenceErrors();
   const fetchFn = vi.fn<typeof fetch>(async (input) => {
     const url = String(input);
-    if (url.includes('US_Airport')) return json(airportHit('BDN'));
-    if (url.includes('overpass-api.de'))
+    if (url.includes('US_Airport')) {
+      return json(airportHit('BDN'));
+    }
+    if (url.includes('overpass-api.de')) {
       return json({
         elements: [],
         remark: 'runtime error: Query timed out in "query" at line 1',
       });
+    }
     return json(empty);
   });
   const handler = createChartSurfacesHandler({ fetchFn, now: () => NOW });
@@ -242,7 +234,9 @@ test('the whole load shares one deadline, so slow upstream steps add up to a 502
     (input, init) =>
       new Promise((resolve, reject) => {
         // Like fetch: an already aborted signal rejects at once.
-        if (init?.signal?.aborted) return reject(init.signal.reason);
+        if (init?.signal?.aborted) {
+          return reject(init.signal.reason);
+        }
         const timer = setTimeout(() => resolve(routed(input, init)), 30);
         init?.signal?.addEventListener('abort', () => {
           clearTimeout(timer);

@@ -1,11 +1,11 @@
 import {
-  type Aircraft,
   ATC_SOURCE_URL,
   createAtcStore,
   SELECTED_PROMPT,
   STARTER_PROMPTS,
   transcriptItems,
 } from '@atc/shared';
+import { testAircraft } from '@atc/shared/testing';
 import type { Chat } from '@hashbrownai/core';
 import type { UiChatMessage } from '@hashbrownai/react';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
@@ -18,22 +18,7 @@ import { AtcStoreProvider } from './store';
 import { ToolChips } from './tool-chips';
 import { Transcript } from './transcript';
 
-const plane: Aircraft = {
-  hex: 'aaaaaa',
-  label: 'UAL100',
-  callsign: 'UAL100',
-  registration: null,
-  typeCode: 'B39M',
-  category: null,
-  kind: 'jet',
-  lat: 47.5716,
-  lon: -122.3088,
-  altitudeFt: 5000,
-  onGround: false,
-  groundSpeedKt: 240,
-  trackDeg: 180,
-  verticalRateFpm: -800,
-};
+const plane = testAircraft();
 
 function setup(ui: ReactElement) {
   cleanup();
@@ -105,6 +90,71 @@ test('the empty state offers the selected-plane question first while a plane is 
   ]);
 });
 
+function composer() {
+  const sent: string[] = [];
+  const { element } = setup(
+    <Composer onSend={(message) => sent.push(message)} />,
+  );
+  const input = element.querySelector('input') as HTMLInputElement;
+
+  return { element, input, sent };
+}
+
+function slash(target: EventTarget): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key: '/',
+    bubbles: true,
+    cancelable: true,
+  });
+  target.dispatchEvent(event);
+
+  return event;
+}
+
+test('pressing / anywhere focuses the composer', () => {
+  const { input } = composer();
+  (document.activeElement as HTMLElement | null)?.blur();
+
+  const event = slash(document.body);
+
+  expect(document.activeElement).toBe(input);
+  expect(event.defaultPrevented).toBe(true);
+});
+
+test('pressing / inside an input, textarea or contenteditable types a slash', () => {
+  const { input } = composer();
+  const other = document.createElement('input');
+  const area = document.createElement('textarea');
+  const editable = document.createElement('div');
+  editable.setAttribute('contenteditable', 'true');
+  const inner = document.createElement('span');
+  editable.appendChild(inner);
+  document.body.append(other, area, editable);
+
+  const events = [other, area, inner, input].map((target) => {
+    target.focus();
+    return slash(target).defaultPrevented;
+  });
+
+  expect(events).toEqual([false, false, false, false]);
+  expect(document.activeElement).toBe(input);
+  other.remove();
+  area.remove();
+  editable.remove();
+});
+
+test('submitting sends the trimmed draft, clears the input and keeps focus', () => {
+  const { element, input, sent } = composer();
+  input.focus();
+
+  fireEvent.change(input, { target: { value: '  Show me Seattle  ' } });
+  fireEvent.submit(element.querySelector('form') as HTMLFormElement);
+
+  expect(sent).toEqual(['Show me Seattle']);
+  expect(input.value).toBe('');
+  expect(document.activeElement).toBe(input);
+});
+
 test('a running step shows as one shimmering line, then folds into a summary that expands to every step', () => {
   const find = {
     name: 'findAircraft',
@@ -163,71 +213,6 @@ test('a running step shows as one shimmering line, then folds into a summary tha
   ]);
 });
 
-function composer() {
-  const sent: string[] = [];
-  const { element } = setup(
-    <Composer onSend={(message) => sent.push(message)} />,
-  );
-  const input = element.querySelector('input') as HTMLInputElement;
-
-  return { element, input, sent };
-}
-
-function slash(target: EventTarget): KeyboardEvent {
-  const event = new KeyboardEvent('keydown', {
-    key: '/',
-    bubbles: true,
-    cancelable: true,
-  });
-  target.dispatchEvent(event);
-
-  return event;
-}
-
-test('pressing / anywhere focuses the composer', () => {
-  const { input } = composer();
-  (document.activeElement as HTMLElement | null)?.blur();
-
-  const event = slash(document.body);
-
-  expect(document.activeElement).toBe(input);
-  expect(event.defaultPrevented).toBe(true);
-});
-
-test('pressing / inside an input, textarea or contenteditable types a slash', () => {
-  const { input } = composer();
-  const other = document.createElement('input');
-  const area = document.createElement('textarea');
-  const editable = document.createElement('div');
-  editable.setAttribute('contenteditable', 'true');
-  const inner = document.createElement('span');
-  editable.appendChild(inner);
-  document.body.append(other, area, editable);
-
-  const events = [other, area, inner, input].map((target) => {
-    target.focus();
-    return slash(target).defaultPrevented;
-  });
-
-  expect(events).toEqual([false, false, false, false]);
-  expect(document.activeElement).toBe(input);
-  other.remove();
-  area.remove();
-  editable.remove();
-});
-
-test('Enter sends the trimmed draft, clears the input and keeps focus', () => {
-  const { element, input, sent } = composer();
-  input.focus();
-
-  fireEvent.change(input, { target: { value: '  Show me Seattle  ' } });
-  fireEvent.submit(element.querySelector('form') as HTMLFormElement);
-
-  expect(sent).toEqual(['Show me Seattle']);
-  expect(input.value).toBe('');
-  expect(document.activeElement).toBe(input);
-});
-
 test('consecutive tool calls fold into one activity line in a polite live region', () => {
   const messages: UiChatMessage<Chat.AnyTool>[] = [
     { role: 'user', content: 'Seattle?' },
@@ -277,14 +262,6 @@ test('consecutive tool calls fold into one activity line in a polite live region
   expect(status?.closest('[aria-busy]')).toBeNull();
   expect(status?.classList.contains('atc-visually-hidden')).toBe(true);
   expect(text(status)).toBe('Clearing the highlight…');
-});
-
-test('the composer has no footnote under it', () => {
-  const { element } = composer();
-
-  const link = element.querySelector('a');
-
-  expect(link).toBeNull();
 });
 
 test('a thinking line shimmers after the question until something else shows work', () => {

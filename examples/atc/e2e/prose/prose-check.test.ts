@@ -81,7 +81,7 @@ test('an answer that shows aircraft but leaves none highlighted is reported', ()
   expect(issues).toEqual([
     [
       {
-        kind: 'cleared-highlight',
+        kind: 'no-highlight',
         text: 'Showed 2 aircraft, highlighted none on the map',
       },
     ],

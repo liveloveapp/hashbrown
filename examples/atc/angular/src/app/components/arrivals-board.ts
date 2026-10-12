@@ -3,6 +3,7 @@ import {
   type ArrivalsRow,
   arrivalsRows,
   boardShowsEta,
+  partialText,
   plainLabel,
 } from '@atc/shared';
 import {
@@ -116,9 +117,7 @@ export class ArrivalsBoard {
 })
 export class ArrivalsBoardFallback {
   readonly partialProps = input<Record<string, JsonResolvedValue>>({});
-  protected readonly title = computed(() => {
-    const title = this.partialProps()['title'];
-
-    return typeof title === 'string' ? plainLabel(title) : '';
-  });
+  protected readonly title = computed(() =>
+    plainLabel(partialText(this.partialProps(), 'title')),
+  );
 }

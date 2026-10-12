@@ -36,7 +36,7 @@ export class SheetHandle {
   /** Whether the sheet is fully open. */
   readonly expanded = input(false);
   /** Emits each drag, or a tap as a drag of 0. */
-  readonly moved = output<SheetEvent>();
+  readonly move = output<SheetEvent>();
   private startY: number | null = null;
   private dragged = false;
 
@@ -55,7 +55,7 @@ export class SheetHandle {
     // A real drag settles here; a tap falls through to the click handler.
     this.dragged = Math.abs(deltaY) >= SHEET_DRAG_THRESHOLD;
     if (this.dragged) {
-      this.moved.emit({ type: 'drag', deltaY });
+      this.move.emit({ type: 'drag', deltaY });
     }
   }
 
@@ -68,6 +68,6 @@ export class SheetHandle {
       this.dragged = false;
       return;
     }
-    this.moved.emit({ type: 'drag', deltaY: 0 });
+    this.move.emit({ type: 'drag', deltaY: 0 });
   }
 }

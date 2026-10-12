@@ -5,10 +5,7 @@ import { s } from '@hashbrownai/core';
 // fallback until then. Keep IDs non-streaming so a half-streamed "a1c" never
 // resolves to another plane.
 
-/**
- * FlightCard: one aircraft. `note` streams first; `hex` is never streamed, so
- * the card only resolves to a plane once its full ID has arrived.
- */
+/** FlightCard: one aircraft. */
 export const flightCardContract = {
   name: 'FlightCard',
   description:
@@ -62,11 +59,7 @@ export const aircraftCompareContract = {
   },
 };
 
-/**
- * AirportCard: one airport's tower or CTAF, frequencies, elevation and
- * runways. `airport` is never streamed, so the card never resolves a partial
- * code.
- */
+/** AirportCard: one airport's tower or CTAF, frequencies, elevation and runways. */
 export const airportCardContract = {
   name: 'AirportCard',
   description:

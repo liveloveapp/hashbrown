@@ -8,7 +8,6 @@ import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { useReducer } from 'react';
 import { expect, test } from 'vitest';
 import { Composer } from './composer';
-import { useAutoScroll } from './dom-hooks';
 import { SheetHandle } from './sheet-handle';
 
 /** A sheet section like the app's: the handle and a text field drive `nextSheet`. */
@@ -23,7 +22,9 @@ function Sheet({
     <section
       data-snap={sheet.snap}
       onFocus={(event) => {
-        if (focusOpensSheet(event.target)) move({ type: 'focus' });
+        if (focusOpensSheet(event.target)) {
+          move({ type: 'focus' });
+        }
       }}
     >
       <SheetHandle expanded={sheetExpanded(sheet)} onMove={move} />
@@ -57,9 +58,9 @@ test('the sheet handle is a button that reports and toggles aria-expanded', () =
   const { button } = sheet();
 
   const before = button.getAttribute('aria-expanded');
-  const label = button.getAttribute('aria-label');
   act(() => button.click());
   const opened = button.getAttribute('aria-expanded');
+  const label = button.getAttribute('aria-label');
   act(() => button.click());
 
   expect([before, opened, button.getAttribute('aria-expanded')]).toEqual([
@@ -67,7 +68,8 @@ test('the sheet handle is a button that reports and toggles aria-expanded', () =
     'true',
     'false',
   ]);
-  expect(label).toBe('Expand chat');
+  expect(label).toBe('Collapse chat');
+  expect(button.getAttribute('aria-label')).toBe('Expand chat');
   expect(button.getAttribute('aria-controls')).toBe('atc-chat-sheet');
 });
 
@@ -115,70 +117,12 @@ test('focusing the handle does not open the sheet, so one tap opens and the next
   expect(opened).toEqual([true, false]);
 });
 
-test('focusing the composer opens the sheet', () => {
+test('focusing the composer opens the sheet fully', () => {
   const { input, expanded } = sheet();
 
   act(() => input.focus());
 
   expect(expanded()).toBe(true);
-});
-
-function Scroller() {
-  return <div className="scroller" {...useAutoScroll<HTMLDivElement>()} />;
-}
-
-function scroller() {
-  cleanup();
-  const { container } = render(<Scroller />);
-  const element = container.querySelector('.scroller') as HTMLElement;
-  Object.defineProperty(element, 'scrollHeight', { value: 1000 });
-  Object.defineProperty(element, 'clientHeight', { value: 500 });
-
-  return element;
-}
-
-async function append(element: HTMLElement, node: Element) {
-  element.append(node);
-  await new Promise((resolve) => setTimeout(resolve));
-}
-
-function row(className: string): HTMLElement {
-  const element = document.createElement('p');
-  element.className = className;
-  return element;
-}
-
-test('streamed content scrolls to the newest row while the user is at the end', async () => {
-  const element = scroller();
-  element.scrollTop = 0;
-
-  await append(element, row('atc-prose'));
-
-  expect(element.scrollTop).toBe(1000);
-});
-
-test('a user who scrolled up is not yanked down, until they send a message', async () => {
-  const element = scroller();
-  element.scrollTop = 100;
-  fireEvent.scroll(element);
-
-  await append(element, row('atc-prose'));
-  const stayed = element.scrollTop;
-  const li = document.createElement('li');
-  li.append(row('atc-user'));
-  await append(element, li);
-
-  expect(stayed).toBe(100);
-  expect(element.scrollTop).toBe(1000);
-});
-
-test('an empty chat is not scrolled, so the headline and starters stay in view', async () => {
-  const element = scroller();
-  element.scrollTop = 0;
-
-  await append(element, row('atc-empty'));
-
-  expect(element.scrollTop).toBe(0);
 });
 
 /** The app's sheet around the real composer: focus opens it, sending lowers it. */
@@ -189,7 +133,9 @@ function ComposerSheet() {
     <section
       data-snap={sheet.snap}
       onFocus={(event) => {
-        if (focusOpensSheet(event.target)) move({ type: 'focus' });
+        if (focusOpensSheet(event.target)) {
+          move({ type: 'focus' });
+        }
       }}
     >
       <Composer onSend={() => move({ type: 'send' })} />
@@ -197,8 +143,15 @@ function ComposerSheet() {
   );
 }
 
-test('tapping Send lowers the sheet to half, though the composer takes focus back', () => {
+function composerSheet() {
+  cleanup();
   const { container } = render(<ComposerSheet />);
+
+  return container;
+}
+
+test('tapping Send lowers the sheet to half, though the composer takes focus back', () => {
+  const container = composerSheet();
   const field = container.querySelector('input') as HTMLInputElement;
   const send = container.querySelector('.atc-send') as HTMLButtonElement;
   act(() => field.focus());
@@ -212,5 +165,4 @@ test('tapping Send lowers the sheet to half, though the composer takes focus bac
     'half',
   );
   expect(document.activeElement).toBe(field);
-  cleanup();
 });

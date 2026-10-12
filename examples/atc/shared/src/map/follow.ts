@@ -3,19 +3,14 @@ import type { Map as LeafletMap } from 'leaflet';
 import { prefersReducedMotion } from '../dom';
 import type { LatLon } from '../places';
 import type { AtcStore } from '../store';
+import type { MapBand } from './card-sync';
 import {
   createFollowPill,
   followPillView,
   type FollowResume,
   RESUME_MS,
 } from './follow-pill';
-import { exactLayerPoint } from './motion-loop';
-
-/** A point in map container pixels. */
-export interface PixelPoint {
-  readonly x: number;
-  readonly y: number;
-}
+import { exactContainerPoint, type PixelPoint } from './pixels';
 
 /**
  * How far to pan, in whole pixels, to put a followed plane drawn at `point`
@@ -29,13 +24,16 @@ export function followPanOffset(
   const x = point.x - centre.x;
   const y = point.y - centre.y;
 
-  return Math.hypot(x, y) < 1
-    ? null
-    : { x: Math.round(x) || 0, y: Math.round(y) || 0 };
+  if (Math.hypot(x, y) < 1) {
+    return null;
+  }
+
+  // || 0 turns -0 into 0
+  return { x: Math.round(x) || 0, y: Math.round(y) || 0 };
 }
 
 /** How long the followed plane takes to move to a new band middle, in ms. */
-export const CENTRE_EASE_MS = 200;
+const CENTRE_EASE_MS = 200;
 
 /** A band middle easing from `from` to `to` since `at` (ms). */
 interface CentreEase {
@@ -86,9 +84,9 @@ export function createFollowController(options: {
   drawnAt: (hex: string) => LatLon | null;
   isZooming: () => boolean;
   /** The strip of map left visible between a docked card and the sheet. */
-  band: () => { top: number; bottom: number };
+  band: () => MapBand;
 }): FollowController {
-  const { map, element, store, drawnAt, isZooming, band } = options;
+  const { L, map, element, store, drawnAt, isZooming, band } = options;
   let panning = false;
   /** The band middle the plane is held at, easing when the band changes. */
   let centre: CentreEase | null = null;
@@ -114,13 +112,14 @@ export function createFollowController(options: {
     store.follow(view.action === 'resume' ? view.hex : null);
   });
   element.append(pill.element);
-  options.L.DomEvent.disableClickPropagation(pill.element);
+  L.DomEvent.disableClickPropagation(pill.element);
   const syncPill = () =>
     pill.show(followPillView(store.getState(), resume, performance.now()));
 
-  const panToFollowed = (wanted: boolean) => {
-    // Read per pan, like the view controller's moves.
-    const animate = wanted && !prefersReducedMotion();
+  const panToFollowed = (animate: boolean) => {
+    // Read per pan, so turning on reduced motion mid-session stops the next
+    // pan animating.
+    const animated = animate && !prefersReducedMotion();
     const { followingHex } = store.getState();
     if (followingHex === null) {
       centre = null;
@@ -144,18 +143,18 @@ export function createFollowController(options: {
         panToFollowed(false);
       });
     }
-    const offset = followPanOffset(
-      map.layerPointToContainerPoint(exactLayerPoint(map, position)),
-      { x: map.getSize().x / 2, y },
-    );
+    const offset = followPanOffset(exactContainerPoint(map, position), {
+      x: map.getSize().x / 2,
+      y,
+    });
     if (offset === null) {
       return;
     }
-    if (animate) {
+    if (animated) {
       panning = true;
       map.once('moveend', () => (panning = false));
     }
-    map.panBy([offset.x, offset.y], { animate });
+    map.panBy([offset.x, offset.y], { animate: animated });
   };
 
   return {

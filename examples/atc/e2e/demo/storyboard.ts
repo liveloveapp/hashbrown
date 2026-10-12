@@ -1,4 +1,4 @@
-import { STARTER_PROMPTS } from '@atc/shared';
+import { PROMPTS } from '../src/model';
 
 /**
  * The atc demo video's storyboard: it alternates the real code behind each
@@ -40,8 +40,8 @@ export type Beat =
       readonly kind: 'app';
       readonly headline: string;
       readonly focus: FocusName;
-      /** The message the recorder sends, or null to just watch the map. */
-      readonly prompt: string | null;
+      /** The question the recorder sends, by its {@link DEMO_PROMPTS} name, or null to just watch the map. */
+      readonly prompt: DemoPrompt | null;
       /** Where the camera moves once the answer has rendered, if anywhere. */
       readonly then?: FocusName;
       readonly holdMs: number;
@@ -56,10 +56,13 @@ export type Beat =
 
 /** The app beats' prompts, from the app's own starter list. */
 export const DEMO_PROMPTS = {
-  near: STARTER_PROMPTS[0],
-  arrivals: STARTER_PROMPTS[1],
-  follow: STARTER_PROMPTS[3],
+  near: PROMPTS.nearBend,
+  arrivals: PROMPTS.seattleArrivals,
+  follow: PROMPTS.followFastest,
 } as const;
+
+/** The name of one of {@link DEMO_PROMPTS}. */
+export type DemoPrompt = keyof typeof DEMO_PROMPTS;
 
 /** The demo, beat by beat. */
 export const STORYBOARD: readonly Beat[] = [
@@ -92,7 +95,7 @@ export const STORYBOARD: readonly Beat[] = [
     kind: 'app',
     headline: 'Ask in plain words.',
     focus: 'rest',
-    prompt: DEMO_PROMPTS.near,
+    prompt: 'near',
     then: 'board',
     holdMs: 2400,
   },
@@ -107,7 +110,7 @@ export const STORYBOARD: readonly Beat[] = [
       },
       {
         path: 'angular/src/app/assistant.ts',
-        focal: /createTool\(this\.atc\.findAircraft\),/,
+        focal: /createTool\(this\.atcTools\.findAircraft\),/,
       },
     ],
     holdMs: 2600,
@@ -117,7 +120,7 @@ export const STORYBOARD: readonly Beat[] = [
     kind: 'app',
     headline: 'The map answers too.',
     focus: 'rest',
-    prompt: DEMO_PROMPTS.arrivals,
+    prompt: 'arrivals',
     then: 'map',
     holdMs: 2200,
   },
@@ -139,7 +142,7 @@ export const STORYBOARD: readonly Beat[] = [
     kind: 'app',
     headline: 'Follow one.',
     focus: 'rest',
-    prompt: DEMO_PROMPTS.follow,
+    prompt: 'follow',
     holdMs: 3000,
   },
   {

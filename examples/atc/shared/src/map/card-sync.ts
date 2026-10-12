@@ -12,13 +12,23 @@ import {
   isInsideArea,
   visibleMapArea,
 } from './detail-card';
-import { exactLayerPoint } from './motion-loop';
+import { exactContainerPoint, type PixelPoint } from './pixels';
+import { planeElementOf } from './plane-marker';
 
 /**
  * The least map, in pixels, that must show above a phone's sheet for moves
  * to fit into it; with less, the sheet is ignored.
  */
-export const SHEET_MIN_MAP = 160;
+const SHEET_MIN_MAP = 160;
+
+/**
+ * The strip of map left visible, in container pixels: below a docked card,
+ * above a phone's sheet.
+ */
+export interface MapBand {
+  readonly top: number;
+  readonly bottom: number;
+}
 
 /** Keeps the map's one detail card on the hovered or selected plane. */
 export interface CardSync {
@@ -41,10 +51,10 @@ export interface CardSync {
    */
   dockedInsetFor(state: AtcState): number;
   /**
-   * The strip of map left visible, in container pixels: below a docked card
-   * and above a phone's sheet (when enough map shows above it to use).
+   * The strip of map left visible: below a docked card and above a phone's
+   * sheet (when enough map shows above it to use).
    */
-  band(): { top: number; bottom: number };
+  visibleBand(): MapBand;
   /** The hovered plane, and the plane the card describes now. */
   focus(): { hovered: string | null; detailed: string | null };
   /** The pointer entered a plane. */
@@ -78,9 +88,10 @@ export function createCardSync(options: {
   let hoveredHex: string | null = null;
   /** The plane the card is showing. */
   let detailedHex: string | null = null;
-  let cardArea: CardSize = { width: 0, height: 0 };
+  /** The map the card may use: above a phone's sheet. */
+  let visibleArea: CardSize = { width: 0, height: 0 };
   /** The inputs of the card on screen, so animation frames skip rebuilding it. */
-  let drawn: string | null = null;
+  let shownKey: string | null = null;
   const card = createDetailCard(element.ownerDocument, {
     onClose: () => {
       hoveredHex = null;
@@ -94,49 +105,63 @@ export function createCardSync(options: {
   L.DomEvent.disableScrollPropagation(card.element);
   let lastState: AtcState | null = null;
 
-  const planeElement = (hex: string | null) =>
-    hex === null
-      ? null
-      : markers.get(hex)?.getElement()?.querySelector('.atc-plane');
   const hide = () => {
-    drawn = null;
+    shownKey = null;
     card.hide();
+  };
+  /**
+   * Where the card's plane is drawn, or null when there is no plane, it is
+   * not drawn yet, a zoom is animating, or it is outside the visible area.
+   */
+  const cardPointOf = (hex: string | null): PixelPoint | null => {
+    const position = hex === null ? null : drawnAt(hex);
+    if (position === null || isZooming()) {
+      return null;
+    }
+    const point = exactContainerPoint(map, position);
+
+    return isInsideArea(point, visibleArea) ? point : null;
+  };
+  /** Moves `is-detailed` to the plane the card describes now, if any. */
+  const markDetailed = (next: string | null) => {
+    if (next === detailedHex) {
+      return;
+    }
+    if (detailedHex !== null) {
+      planeElementOf(markers, detailedHex)?.classList.remove('is-detailed');
+    }
+    if (next !== null) {
+      planeElementOf(markers, next)?.classList.add('is-detailed');
+    }
+    detailedHex = next;
   };
   const sync = (state: AtcState, force = false) => {
     const hex = hoveredHex ?? state.selectedHex;
-    const position = hex === null ? null : drawnAt(hex);
-    const point =
-      position && !isZooming()
-        ? map.layerPointToContainerPoint(exactLayerPoint(map, position))
-        : null;
+    const point = cardPointOf(hex);
     const pinned = hex !== null && hex === state.selectedHex;
-    const docked = pinned && detailCardDocked(cardArea);
-    const maxHeight = cardArea.height - 2 * CARD_MARGIN;
+    const docked = pinned && detailCardDocked(visibleArea);
+    const maxHeight = visibleArea.height - 2 * CARD_MARGIN;
     // The view only changes with the state; the message age is redrawn by
     // the ticker below, so a moving plane only moves its card.
     const inputs = `${hex} ${pinned} ${docked} ${Math.floor(maxHeight)}`;
-    const reuse = !force && state === lastState && inputs === drawn;
+    const reuse = !force && state === lastState && inputs === shownKey;
     lastState = state;
-    const inside =
-      hex !== null && point !== null && isInsideArea(point, cardArea);
-    const view =
-      inside && !reuse ? aircraftDetailView(state, hex, Date.now()) : null;
-    const shown =
-      inside &&
-      (reuse ||
-        (view !== null && card.show(view, maxHeight, { pinned, docked })));
-    const next = shown ? hex : null;
-    if (next !== detailedHex) {
-      planeElement(detailedHex)?.classList.remove('is-detailed');
-      planeElement(next)?.classList.add('is-detailed');
-      detailedHex = next;
-    }
-    if (!shown || point === null) {
+    if (hex === null || point === null) {
+      markDetailed(null);
       hide();
       return;
     }
-    drawn = inputs;
-    card.place(point, cardArea);
+    if (!reuse) {
+      const view = aircraftDetailView(state, hex, Date.now());
+      if (view === null || !card.show(view, maxHeight, { pinned, docked })) {
+        markDetailed(null);
+        hide();
+        return;
+      }
+    }
+    markDetailed(hex);
+    shownKey = inputs;
+    card.place(point, visibleArea);
   };
   // Counts the card's message age up between snapshots.
   const ticker = setInterval(() => {
@@ -151,7 +176,7 @@ export function createCardSync(options: {
       const size = map.getSize();
       const box = element.getBoundingClientRect();
       const panel = obstruction()?.getBoundingClientRect();
-      cardArea = visibleMapArea(
+      visibleArea = visibleMapArea(
         { left: 0, top: 0, right: size.x, bottom: size.y },
         panel
           ? {
@@ -166,19 +191,21 @@ export function createCardSync(options: {
     dockedInsetFor(state) {
       const shown = card.dockedInset();
       const hex = state.selectedHex;
-      if (shown > 0 || hex === null || !detailCardDocked(cardArea)) {
+      if (shown > 0 || hex === null || !detailCardDocked(visibleArea)) {
         return shown;
       }
       const view = aircraftDetailView(state, hex, Date.now());
 
       return view === null
         ? 0
-        : card.measureDocked(view, cardArea.height - 2 * CARD_MARGIN);
+        : card.measureDocked(view, visibleArea.height - 2 * CARD_MARGIN);
     },
-    band: () => ({
+    visibleBand: () => ({
       top: card.dockedInset(),
       bottom:
-        cardArea.height > SHEET_MIN_MAP ? cardArea.height : map.getSize().y,
+        visibleArea.height > SHEET_MIN_MAP
+          ? visibleArea.height
+          : map.getSize().y,
     }),
     focus: () => ({ hovered: hoveredHex, detailed: detailedHex }),
     hover(hex) {

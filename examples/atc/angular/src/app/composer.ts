@@ -1,4 +1,4 @@
-import { isTyping } from '@atc/shared';
+import { isFocusShortcut } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -11,9 +11,8 @@ import {
 /**
  * The message pill, floating over the bottom of the transcript. `/` focuses
  * the pill from anywhere outside another field. The field is uncontrolled
- * (read on submit)
- * because nothing else needs the draft; React's composer keeps it in state,
- * the idiomatic choice there.
+ * (read on submit) because nothing else needs the draft; React's composer
+ * keeps it in state, the idiomatic choice there.
  */
 @Component({
   selector: 'atc-composer',
@@ -23,10 +22,7 @@ import {
     '(document:keydown)': 'focusOnSlash($event)',
   },
   template: `
-    <form
-      class="atc-composer-pill"
-      (submit)="$event.preventDefault(); submit()"
-    >
+    <form class="atc-composer-pill" (submit)="submit($event)">
       <input
         #field
         aria-label="Message"
@@ -62,7 +58,8 @@ export class Composer {
   private readonly field =
     viewChild.required<ElementRef<HTMLInputElement>>('field');
 
-  protected submit(): void {
+  protected submit(event: Event): void {
+    event.preventDefault();
     const field = this.field().nativeElement;
     const content = field.value.trim();
     // Focus first: a tap on Send moved focus to the button, and taking it
@@ -75,13 +72,7 @@ export class Composer {
   }
 
   protected focusOnSlash(event: KeyboardEvent): void {
-    const modified = event.ctrlKey || event.metaKey || event.altKey;
-    if (
-      event.key !== '/' ||
-      modified ||
-      event.defaultPrevented ||
-      isTyping(event.target)
-    ) {
+    if (!isFocusShortcut(event)) {
       return;
     }
     event.preventDefault();

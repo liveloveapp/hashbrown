@@ -1,20 +1,21 @@
 import type * as Leaflet from 'leaflet';
 import type { Map as LeafletMap, Marker, Point, Polygon, SVG } from 'leaflet';
-import { airspaceOf, type AirspaceShelf } from '../../chart';
+import { airspaceOf, type AirspaceShelf, type AirspaceType } from '../../chart';
 import type { LatLon } from '../../places';
 import type { AtcState, AtcStore } from '../../store';
+import { type PixelRect, rectAround } from '../pixels';
 import {
   type ShelfLabel,
   shelfLabel,
   shelfLabelAnchor,
 } from './airspace-labels';
-import type { TagRect } from '../tag-obstacles';
 import type { LabelSource } from './chart-labels';
 import {
   estimateLabelSize,
   LABEL_PRIORITY,
   type LabelRequest,
 } from './label-placer';
+import { toLatLng } from './leaflet-coords';
 
 /** How far beyond the view (as a fraction of it) shelves are still drawn. */
 const NEAR_PAD = 0.5;
@@ -25,7 +26,7 @@ const LABEL_ZOOM = 9;
  * so a D ring drawn on the same outline as its E2 area shows blue, as on the
  * chart.
  */
-const PAINT_ORDER: Record<string, number> = { B: 1, C: 1, D: 2 };
+const PAINT_ORDER: Partial<Record<AirspaceType, number>> = { B: 1, C: 1, D: 2 };
 /**
  * Where a label may sit, best first, as pixel offsets from its anchor
  * point: centred on it, then below, above, right and left.
@@ -38,7 +39,11 @@ const LABEL_OFFSETS: readonly (readonly [number, number])[] = [
   [-24, 0],
 ];
 /** Label priority: B over C over D. */
-const LABEL_ORDER: Record<string, number> = { B: 0, C: 1, D: 2 };
+const LABEL_ORDER: Partial<Record<AirspaceType, number>> = {
+  B: 0,
+  C: 1,
+  D: 2,
+};
 /**
  * The chart's Class D corner brackets, each side broken in the middle. Fixed
  * literals only; the box stretches to its digits.
@@ -66,7 +71,7 @@ interface Entry {
 interface Pending {
   readonly entry: Entry;
   readonly label: ShelfLabel;
-  readonly candidates: readonly TagRect[];
+  readonly candidates: readonly PixelRect[];
 }
 
 /** A mounted airspace layer. */
@@ -82,11 +87,9 @@ export interface AirspaceLayer extends LabelSource {
   destroy(): void;
 }
 
-/** A shelf's rings as Leaflet positions: `[lon, lat]` becomes `[lat, lon]`. */
+/** A shelf's rings as Leaflet positions. */
 const latLngs = (shelf: AirspaceShelf): [number, number][][] =>
-  shelf.rings.map((ring) =>
-    ring.map(([lon, lat]): [number, number] => [lat, lon]),
-  );
+  shelf.rings.map((ring) => ring.map(toLatLng));
 
 /** The bbox's area in square degrees, to pick an airport's largest D shelf. */
 const bboxArea = ({ bbox: [w, s, e, n] }: AirspaceShelf): number =>
@@ -103,15 +106,12 @@ const labelId = (shelf: AirspaceShelf) => `as:${shelf.id}`;
  * A label's candidate boxes around its anchor `point`, one per
  * {@link LABEL_OFFSETS} entry, each centred as the CSS draws the text.
  */
-function labelCandidates(point: Point, label: ShelfLabel): TagRect[] {
+function labelCandidates(point: Point, label: ShelfLabel): PixelRect[] {
   const { width, height } = estimateLabelSize(labelLines(label));
 
-  return LABEL_OFFSETS.map(([dx, dy]) => ({
-    left: point.x + dx - width / 2,
-    top: point.y + dy - height / 2,
-    right: point.x + dx + width / 2,
-    bottom: point.y + dy + height / 2,
-  }));
+  return LABEL_OFFSETS.map(([dx, dy]) =>
+    rectAround(point.x + dx, point.y + dy, width, height),
+  );
 }
 
 /**
@@ -154,7 +154,7 @@ export function createAirspaceLayer(options: {
   let pending = new Map<string, Pending>();
   let synced: {
     readonly airspace: AtcState['airspace'];
-    readonly on: boolean;
+    readonly layerOn: boolean;
     readonly highlighted: string | null;
   } | null = null;
 
@@ -204,7 +204,7 @@ export function createAirspaceLayer(options: {
 
   /** A label's icon, drawn `LABEL_OFFSETS[offset]` from its anchor. */
   const labelIcon = (entry: Entry, offset: number) => {
-    const [dx, dy] = LABEL_OFFSETS[offset] ?? [0, 0];
+    const [dx, dy] = LABEL_OFFSETS[offset];
     return L.divIcon({
       html: '',
       className: `atc-as-label is-${entry.shelf.type.toLowerCase()}`,
@@ -237,7 +237,9 @@ export function createAirspaceLayer(options: {
   };
 
   const fillLabel = (element: HTMLElement, label: ShelfLabel) => {
-    if (element.firstChild) return;
+    if (element.firstChild) {
+      return;
+    }
     const text = doc.createElement('span');
     text.className = `atc-as-text is-${label.kind}`;
     if (label.kind === 'stack') {
@@ -295,9 +297,13 @@ export function createAirspaceLayer(options: {
     const shown = new Set<Entry>();
     for (const [id, { entry, label }] of pending) {
       const offset = placed.get(id);
-      if (offset === null || offset === undefined) continue;
+      if (offset === null || offset === undefined) {
+        continue;
+      }
       const marker = markerOf(entry, offset);
-      if (!map.hasLayer(marker)) marker.addTo(map);
+      if (!map.hasLayer(marker)) {
+        marker.addTo(map);
+      }
       const element = marker.getElement();
       if (element) {
         fillLabel(element, label);
@@ -309,7 +315,9 @@ export function createAirspaceLayer(options: {
       shown.add(entry);
     }
     for (const entry of entries) {
-      if (!shown.has(entry)) entry.marker?.remove();
+      if (!shown.has(entry)) {
+        entry.marker?.remove();
+      }
     }
   };
 
@@ -317,7 +325,9 @@ export function createAirspaceLayer(options: {
   const labelled = (drawn: readonly Entry[]) => {
     const largestD = new Map<string, Entry>();
     for (const entry of drawn) {
-      if (entry.shelf.type !== 'D' || entry.label === null) continue;
+      if (entry.shelf.type !== 'D' || entry.label === null) {
+        continue;
+      }
       const best = largestD.get(entry.shelf.airport);
       if (!best || bboxArea(entry.shelf) > bboxArea(best.shelf)) {
         largestD.set(entry.shelf.airport, entry);
@@ -334,6 +344,7 @@ export function createAirspaceLayer(options: {
           : [],
       )
       .sort(
+        // Unlabelled types sort last.
         (a, b) =>
           (LABEL_ORDER[a.entry.shelf.type] ?? 9) -
             (LABEL_ORDER[b.entry.shelf.type] ?? 9) ||
@@ -343,7 +354,9 @@ export function createAirspaceLayer(options: {
 
   const redraw = () => {
     const state = store.getState();
-    if (state.airspace.shelves !== source) build(state.airspace.shelves);
+    if (state.airspace.shelves !== source) {
+      build(state.airspace.shelves);
+    }
     if (!state.layers.airspace || state.airspace.status !== 'ready') {
       removeAll();
       return;
@@ -390,7 +403,9 @@ export function createAirspaceLayer(options: {
     // Leaflet appends a path when it is added, so after any add the shelves
     // are raised in paint order: every shelf above every casing, D above E.
     if (added) {
-      for (const entry of drawn) entry.polygon.bringToFront();
+      for (const entry of drawn) {
+        entry.polygon.bringToFront();
+      }
     }
     wantedNow = map.getZoom() >= LABEL_ZOOM ? labelled(drawn) : [];
     litNow = lit;
@@ -401,14 +416,14 @@ export function createAirspaceLayer(options: {
       if (
         synced !== null &&
         synced.airspace === state.airspace &&
-        synced.on === state.layers.airspace &&
+        synced.layerOn === state.layers.airspace &&
         synced.highlighted === state.highlightedAirspace
       ) {
         return false;
       }
       synced = {
         airspace: state.airspace,
-        on: state.layers.airspace,
+        layerOn: state.layers.airspace,
         highlighted: state.highlightedAirspace,
       };
       redraw();

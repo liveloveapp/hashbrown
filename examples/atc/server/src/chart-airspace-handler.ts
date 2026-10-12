@@ -1,16 +1,11 @@
-import { type AirspacePayload, AREAS, currentCycle } from '@atc/shared';
-import { normaliseAirspace } from './chart/airspace';
-import { createCachedLoader } from './chart/cached-loader';
+import { type AirspacePayload, AREAS } from '@atc/shared';
+import { normalizeAirspace } from './chart/airspace';
+import { CHART_CACHE_CONTROL, createCycleLoader } from './chart/cached-loader';
 import { fetchClassAirspace } from './chart/upstream';
-import { type NodeHandler, sendJson } from './http';
+import { type NodeHandler, sendCached, sendJson } from './http';
 
-/** How long a built payload is served without fetching the FAA again. */
-const FRESH_MS = 24 * 60 * 60 * 1000;
-/** How old a payload may be and still stand in when the FAA fails. */
-const STALE_LIMIT_MS = 30 * FRESH_MS;
 /** One deadline across all pages, inside the 20 s Vercel function limit. */
 const LOAD_DEADLINE_MS = 17_000;
-const CACHE_CONTROL = 'public, s-maxage=86400, stale-while-revalidate=604800';
 
 /**
  * `/api/chart/airspace`: Class B, C, D and E surface airspace shelves from the
@@ -33,25 +28,14 @@ export function createChartAirspaceHandler(
     now = Date.now,
     deadlineMs = LOAD_DEADLINE_MS,
   } = options;
-  /** The newest payload built for any cycle; replaced, never mutated. */
-  let lastGood: {
-    readonly value: AirspacePayload;
-    readonly at: number;
-  } | null = null;
-  const loadCycle = createCachedLoader<AirspacePayload>({
-    freshMs: FRESH_MS,
-    staleLimitMs: STALE_LIMIT_MS,
+  const load = createCycleLoader<AirspacePayload>({
     now,
-    load: async (ident) => {
-      const cycle = currentCycle(new Date(now()));
-      if (cycle.ident !== ident) {
-        throw new Error(`Cycle changed from ${ident} to ${cycle.ident}`);
-      }
+    build: async (cycle) => {
       const features = await fetchClassAirspace(
         fetchFn,
         AbortSignal.timeout(deadlineMs),
       );
-      const { shelves, dropped } = normaliseAirspace(
+      const { shelves, dropped } = normalizeAirspace(
         features,
         AREAS.pnw,
         AREAS.pnw.radiusNm,
@@ -60,14 +44,7 @@ export function createChartAirspaceHandler(
         console.error(`[atc] airspace dropped ${dropped} shelves`);
       }
 
-      const payload = {
-        cycle: cycle.ident,
-        effective: cycle.effective,
-        shelves,
-      };
-      lastGood = { value: payload, at: now() };
-
-      return payload;
+      return { cycle: cycle.ident, effective: cycle.effective, shelves };
     },
   });
 
@@ -75,18 +52,13 @@ export function createChartAirspaceHandler(
     if (req.method !== 'GET') {
       return sendJson(res, 405, { error: 'Use GET' });
     }
-    const loaded = await loadCycle(currentCycle(new Date(now())).ident);
-    const result =
-      loaded ??
-      (lastGood && now() - lastGood.at <= STALE_LIMIT_MS
-        ? { value: lastGood.value, stale: true }
-        : null);
+    const result = await load();
     if (result === null) {
       return sendJson(res, 502, { error: 'Airspace data unavailable' });
     }
-    sendJson(res, 200, result.value, {
-      'Cache-Control': CACHE_CONTROL,
-      ...(result.stale ? { 'X-Atc-Stale': '1' } : {}),
+    sendCached(res, result.value, {
+      stale: result.stale,
+      cacheControl: CHART_CACHE_CONTROL,
     });
   };
 }

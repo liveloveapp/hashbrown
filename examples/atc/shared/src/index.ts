@@ -12,6 +12,7 @@ export * from './feed';
 export * from './routes';
 export * from './contracts';
 export * from './find-aircraft';
+export * from './tool-definitions';
 export * from './tools';
 export * from './browser-tools';
 export * from './views';

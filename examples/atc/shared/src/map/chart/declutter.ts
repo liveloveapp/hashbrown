@@ -1,11 +1,4 @@
-import type { ChartAirport } from '../../chart';
-
-function longestHardFt(airport: ChartAirport): number {
-  return airport.runways.reduce(
-    (max, r) => (r.hard && r.lengthFt > max ? r.lengthFt : max),
-    0,
-  );
-}
+import { type ChartAirport, longestHardRunwayFt } from '../../chart';
 
 /**
  * The airports worth drawing at a zoom, sorted by rank. Zoom 7 and below
@@ -18,6 +11,8 @@ export function visibleAirports(
 ): ChartAirport[] {
   const minHardFt = zoom <= 7 ? 5000 : zoom <= 9 ? 3000 : 0;
   return airports
-    .filter((a) => zoom >= 10 || a.towered || longestHardFt(a) >= minHardFt)
+    .filter(
+      (a) => zoom >= 10 || a.towered || longestHardRunwayFt(a) >= minHardFt,
+    )
     .sort((a, b) => a.rank - b.rank);
 }

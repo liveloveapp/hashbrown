@@ -1,29 +1,33 @@
 import { isRecord } from '../json';
 import type { LatLon } from '../places';
-import type {
-  AirspaceClass,
-  AirspacePayload,
-  AirspaceShelf,
-  AirspaceType,
-  ChartAirport,
-  ChartAirports,
-  FacilityKind,
-  FieldWeather,
-  Frequencies,
-  Lighting,
-  Runway,
-  RunwayEnd,
-  SurfaceFeature,
-  Surfaces,
+import { FREQUENCY, IDENT } from './patterns';
+import {
+  AIRSPACE_CLASSES,
+  AIRSPACE_TYPES,
+  type AirspaceClass,
+  type AirspacePayload,
+  type AirspaceShelf,
+  type AirspaceType,
+  type ChartAirport,
+  type ChartAirports,
+  FACILITY_KINDS,
+  type FacilityKind,
+  type FieldWeather,
+  type Frequencies,
+  type Lighting,
+  LIGHTINGS,
+  type LonLat,
+  type Ring,
+  type Runway,
+  type RunwayEnd,
+  type SurfaceFeature,
+  type Surfaces,
 } from './types';
 
-const IDENT = /^[A-Z0-9]{2,4}$/;
-const FREQUENCY = /^\d{3}\.\d{1,3}$/;
 const WEATHER_KIND = /^[A-Z0-9-]{2,12}$/;
 const SURFACE_REF = /^[A-Z0-9 ]{1,12}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const MAX_NAME = 80;
-const MAX_SHORT = 80;
+const MAX_TEXT = 80;
 
 const finite = (v: unknown): v is number =>
   typeof v === 'number' && Number.isFinite(v);
@@ -32,7 +36,9 @@ const text = (v: unknown, max: number): string | null =>
   typeof v === 'string' && v.length <= max ? v : null;
 
 function latLon(value: unknown): LatLon | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const { lat, lon } = value;
   return finite(lat) &&
     finite(lon) &&
@@ -43,12 +49,16 @@ function latLon(value: unknown): LatLon | null {
 }
 
 function frequency(value: unknown): string | null | undefined {
-  if (value === null) return null;
+  if (value === null) {
+    return null;
+  }
   return typeof value === 'string' && FREQUENCY.test(value) ? value : undefined;
 }
 
 function parseFrequencies(value: unknown): Frequencies | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const tower = frequency(value['tower']);
   const atis = frequency(value['atis']);
   const ctaf = frequency(value['ctaf']);
@@ -65,8 +75,12 @@ function parseFrequencies(value: unknown): Frequencies | null {
 }
 
 function parseWeather(value: unknown): FieldWeather | null | undefined {
-  if (value === null) return null;
-  if (!isRecord(value)) return undefined;
+  if (value === null) {
+    return null;
+  }
+  if (!isRecord(value)) {
+    return undefined;
+  }
   const { kind, frequency: freq } = value;
   return typeof kind === 'string' &&
     WEATHER_KIND.test(kind) &&
@@ -83,7 +97,9 @@ function parseEnd(value: unknown): RunwayEnd | null {
 }
 
 function parseRunway(value: unknown): Runway | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const id = text(value['id'], 16);
   const { lengthFt, widthFt, hard, ends, corners, bearingDeg, surface } = value;
   if (
@@ -96,23 +112,35 @@ function parseRunway(value: unknown): Runway | null {
   ) {
     return null;
   }
-  if (surface !== null && text(surface, 16) === null) return null;
-  if (bearingDeg !== null && !finite(bearingDeg)) return null;
+  if (surface !== null && text(surface, 16) === null) {
+    return null;
+  }
+  if (bearingDeg !== null && !finite(bearingDeg)) {
+    return null;
+  }
 
   let parsedEnds: Runway['ends'] = null;
   if (ends !== null) {
-    if (!Array.isArray(ends) || ends.length !== 2) return null;
+    if (!Array.isArray(ends) || ends.length !== 2) {
+      return null;
+    }
     const a = parseEnd(ends[0]);
     const b = parseEnd(ends[1]);
-    if (!a || !b) return null;
+    if (!a || !b) {
+      return null;
+    }
     parsedEnds = [a, b];
   }
 
   let parsedCorners: Runway['corners'] = null;
   if (corners !== null) {
-    if (!Array.isArray(corners) || corners.length !== 4) return null;
+    if (!Array.isArray(corners) || corners.length !== 4) {
+      return null;
+    }
     const points = corners.map(latLon);
-    if (points.some((p) => p === null)) return null;
+    if (points.some((p) => p === null)) {
+      return null;
+    }
     parsedCorners = points as LatLon[];
   }
 
@@ -128,16 +156,15 @@ function parseRunway(value: unknown): Runway | null {
   };
 }
 
-const KINDS: readonly FacilityKind[] = ['airport', 'heliport', 'seaplane'];
-const LIGHTING: readonly Lighting[] = ['full', 'limited', 'none'];
-
 function parseAirport(value: unknown): ChartAirport | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const { code, faa, kind, lighting } = value;
   const point = latLon(value);
-  const name = text(value['name'], MAX_NAME);
-  const city = text(value['city'], MAX_SHORT);
-  const state = text(value['state'], MAX_SHORT);
+  const name = text(value['name'], MAX_TEXT);
+  const city = text(value['city'], MAX_TEXT);
+  const state = text(value['state'], MAX_TEXT);
   const frequencies = parseFrequencies(value['frequencies']);
   const weather = parseWeather(value['weather']);
   const { aliases, runways, elevationFt, rank } = value;
@@ -153,8 +180,8 @@ function parseAirport(value: unknown): ChartAirport | null {
     state === null ||
     !frequencies ||
     weather === undefined ||
-    !KINDS.includes(kind as FacilityKind) ||
-    !LIGHTING.includes(lighting as Lighting) ||
+    !FACILITY_KINDS.includes(kind as FacilityKind) ||
+    !LIGHTINGS.includes(lighting as Lighting) ||
     !finite(elevationFt) ||
     !finite(rank) ||
     typeof value['towered'] !== 'boolean' ||
@@ -173,7 +200,9 @@ function parseAirport(value: unknown): ChartAirport | null {
   const parsedRunways: Runway[] = [];
   for (const raw of runways) {
     const runway = parseRunway(raw);
-    if (!runway) return null;
+    if (!runway) {
+      return null;
+    }
     parsedRunways.push(runway);
   }
 
@@ -224,7 +253,7 @@ export function parseChartAirports(payload: unknown): ChartAirports {
   };
 }
 
-function pair(value: unknown): [number, number] | null {
+function pair(value: unknown): LonLat | null {
   return Array.isArray(value) &&
     value.length === 2 &&
     finite(value[0]) &&
@@ -238,7 +267,9 @@ function refOrNull(value: unknown): string | null {
 }
 
 function parseFeature(value: unknown): SurfaceFeature | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const { kind, shape } = value;
   const ref = refOrNull(value['ref']);
 
@@ -246,23 +277,33 @@ function parseFeature(value: unknown): SurfaceFeature | null {
     shape === 'polygon' &&
     (kind === 'taxiway' || kind === 'apron' || kind === 'hotspot')
   ) {
-    if (!Array.isArray(value['rings'])) return null;
-    const rings: [number, number][][] = [];
+    if (!Array.isArray(value['rings'])) {
+      return null;
+    }
+    const rings: Ring[] = [];
     for (const ring of value['rings']) {
-      if (!Array.isArray(ring)) return null;
+      if (!Array.isArray(ring)) {
+        return null;
+      }
       const points = ring.map(pair);
-      if (points.some((p) => p === null)) return null;
-      rings.push(points as [number, number][]);
+      if (points.some((p) => p === null)) {
+        return null;
+      }
+      rings.push(points as LonLat[]);
     }
     return { kind, shape, rings, ref };
   }
 
   if (shape === 'line' && (kind === 'taxiway' || kind === 'hold')) {
-    if (!Array.isArray(value['points'])) return null;
+    if (!Array.isArray(value['points'])) {
+      return null;
+    }
     const points = value['points'].map(pair);
-    if (points.some((p) => p === null)) return null;
+    if (points.some((p) => p === null)) {
+      return null;
+    }
     const widthFt = finite(value['widthFt']) ? value['widthFt'] : null;
-    return { kind, shape, points: points as [number, number][], ref, widthFt };
+    return { kind, shape, points: points as LonLat[], ref, widthFt };
   }
 
   return null;
@@ -289,40 +330,38 @@ export function parseSurfaces(payload: unknown, code: string): Surfaces {
   };
 }
 
-const AIRSPACE_CLASSES: readonly AirspaceClass[] = ['B', 'C', 'D', 'E'];
-const AIRSPACE_TYPES: readonly AirspaceType[] = [
-  'B',
-  'C',
-  'D',
-  'E2',
-  'E3',
-  'E4',
-];
-
-function lonLat(value: unknown): [number, number] | null {
+function lonLat(value: unknown): LonLat | null {
   const point = pair(value);
   return point && Math.abs(point[0]) <= 180 && Math.abs(point[1]) <= 90
     ? point
     : null;
 }
 
-function parseRings(value: unknown): [number, number][][] | null {
-  if (!Array.isArray(value) || value.length === 0) return null;
-  const rings: [number, number][][] = [];
+function parseRings(value: unknown): Ring[] | null {
+  if (!Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+  const rings: Ring[] = [];
   for (const raw of value) {
-    if (!Array.isArray(raw) || raw.length < 4) return null;
+    if (!Array.isArray(raw) || raw.length < 4) {
+      return null;
+    }
     const points = raw.map(lonLat);
-    if (points.some((p) => p === null)) return null;
-    rings.push(points as [number, number][]);
+    if (points.some((p) => p === null)) {
+      return null;
+    }
+    rings.push(points as LonLat[]);
   }
   return rings;
 }
 
 function parseShelf(value: unknown): AirspaceShelf | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value)) {
+    return null;
+  }
   const { airport, floor, ceiling, bbox } = value;
-  const id = text(value['id'], MAX_NAME);
-  const name = text(value['name'], MAX_NAME);
+  const id = text(value['id'], MAX_TEXT);
+  const name = text(value['name'], MAX_TEXT);
   const rings = parseRings(value['rings']);
   const shelfClass = value['class'];
   const type = value['type'];

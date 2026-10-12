@@ -1,37 +1,19 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
 import { expect, test, vi } from 'vitest';
 import type { ChartAirports } from '@atc/shared';
 import { createChartAirportsHandler } from './chart-airports-handler';
 import { aptBase, aptRwy, aptRwyEnd, frq } from './chart/nasr-fixture';
 import { makeZip } from './chart/test-zip';
+import { callHandler, silenceErrors } from './test-http';
 
-interface Sent {
-  status: number;
-  headers: Record<string, string>;
-  body: Partial<ChartAirports> & { error?: string };
-}
-
-/** Calls the handler with a fake request and collects the response. */
-async function call(
+/** Calls the handler with a request to its route. */
+const call = (
   handler: ReturnType<typeof createChartAirportsHandler>,
   method = 'GET',
-): Promise<Sent> {
-  const sent: Partial<Sent> = {};
-  const res = {
-    writeHead(status: number, headers: Record<string, string>) {
-      sent.status = status;
-      sent.headers = headers;
-    },
-    end(body: string) {
-      sent.body = JSON.parse(body);
-    },
-  } as unknown as ServerResponse;
-  const req = { method, url: '/api/chart/airports' } as IncomingMessage;
-
-  await handler(req, res);
-
-  return sent as Sent;
-}
+) =>
+  callHandler<Partial<ChartAirports>>(handler, {
+    method,
+    url: '/api/chart/airports',
+  });
 
 const aptZip = makeZip({
   'APT_BASE.csv': aptBase,
@@ -47,10 +29,6 @@ const upstreamOk = () =>
       ? new Response(aptZip)
       : new Response(frqZip),
   );
-
-/** Silences console.error; call `mockRestore()` on the result at the end of the test. */
-const silenceErrors = () =>
-  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
 const NOW = Date.UTC(2026, 9, 10);
 

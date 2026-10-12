@@ -29,6 +29,7 @@ export class AirspaceMap {
     const store = inject(ATC_STORE);
     const controller = new AbortController();
     let handle: AirspaceMapHandle | undefined;
+    // Leaflet measures its container, so build the map after the first render.
     afterNextRender(() => {
       void createAirspaceMap({
         element,

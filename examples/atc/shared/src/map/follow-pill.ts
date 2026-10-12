@@ -10,13 +10,13 @@ export interface FollowResume {
   readonly until: number;
 }
 
-/** What the follow pill shows, or null when it is hidden. */
-export type FollowPillView = {
+/** What the follow pill shows. */
+export interface FollowPillView {
   readonly text: string;
   readonly action: 'stop' | 'resume';
   readonly button: string;
   readonly hex: string;
-} | null;
+}
 
 /**
  * The map's follow pill: "Following UAL1802" with Stop while a plane is
@@ -27,7 +27,7 @@ export function followPillView(
   state: AtcState,
   resume: FollowResume | null,
   now: number,
-): FollowPillView {
+): FollowPillView | null {
   const label = (hex: string) => state.aircraft.get(hex)?.label ?? null;
   if (state.followingHex !== null) {
     const hex = normalizeHex(state.followingHex);
@@ -56,7 +56,7 @@ export function followPillView(
 export interface FollowPill {
   readonly element: HTMLElement;
   /** Shows `view`, rebuilding only when it changed, or hides the pill. */
-  show(view: FollowPillView): void;
+  show(view: FollowPillView | null): void;
 }
 
 /**
@@ -66,13 +66,13 @@ export interface FollowPill {
  */
 export function createFollowPill(
   doc: Document,
-  onAction: (view: NonNullable<FollowPillView>) => void,
+  onAction: (view: FollowPillView) => void,
 ): FollowPill {
   const element = doc.createElement('div');
   element.className = 'atc-follow';
   element.setAttribute('data-testid', 'follow-pill');
   element.setAttribute('role', 'status');
-  let current: FollowPillView = null;
+  let current: FollowPillView | null = null;
   let key = '';
   element.addEventListener('click', (event) => {
     event.stopPropagation();

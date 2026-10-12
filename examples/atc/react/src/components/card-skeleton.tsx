@@ -1,4 +1,4 @@
-/** The quiet hold-back line shown while a card's aircraft IDs stream in. */
+/** The quiet hold-back line shown while a card's ID streams in. */
 export function CardSkeleton({
   label = 'Identifying aircraft…',
 }: {

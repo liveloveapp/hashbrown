@@ -2,19 +2,20 @@ import type { ChartAirport } from './chart';
 import { type Airport, AIRPORT_CODES, FALLBACK_AIRPORTS } from './places';
 import type { AtcState } from './store';
 
-interface Ordered {
+interface OrderedAirports {
   /** Chart airports with fallback aliases, in lookup priority order. */
   readonly chart: readonly ChartAirport[];
   /** `chart` plus the fallback airports it lacks, in lookup priority order. */
   readonly all: readonly Airport[];
 }
 
-const cache = new WeakMap<readonly ChartAirport[], Ordered>();
+const cache = new WeakMap<readonly ChartAirport[], OrderedAirports>();
 const PRIORITY = new Map<string, number>(
   AIRPORT_CODES.map((code, index) => [code, index]),
 );
 const ALIASES = new Map(FALLBACK_AIRPORTS.map((a) => [a.code, a.aliases]));
 
+// Fallback airports have no chart rank; they sort by the priority table only.
 const rankOf = (airport: Airport): number =>
   'rank' in airport ? (airport as ChartAirport).rank : 0;
 
@@ -28,9 +29,11 @@ const byPriority = (a: Airport, b: Airport): number =>
  * the same list with the fallback airports the chart lacks (those beyond its
  * radius, such as KGEG and KSUN) added in their priority place.
  */
-function ordered(airports: readonly ChartAirport[]): Ordered {
+function orderedAirports(airports: readonly ChartAirport[]): OrderedAirports {
   const hit = cache.get(airports);
-  if (hit) return hit;
+  if (hit) {
+    return hit;
+  }
   const chart = airports
     .map((a) => ({
       ...a,
@@ -55,7 +58,7 @@ function ordered(airports: readonly ChartAirport[]): Ordered {
  */
 export function airportDirectory(state: AtcState): readonly Airport[] {
   return state.chart.status === 'ready'
-    ? ordered(state.chart.airports).all
+    ? orderedAirports(state.chart.airports).all
     : FALLBACK_AIRPORTS;
 }
 
@@ -75,11 +78,13 @@ export function chartAirportByCode(
   state: AtcState,
   code: string,
 ): ChartAirport | null {
-  if (state.chart.status !== 'ready') return null;
+  if (state.chart.status !== 'ready') {
+    return null;
+  }
   const wanted = code.trim().toUpperCase();
 
   return (
-    ordered(state.chart.airports).chart.find(
+    orderedAirports(state.chart.airports).chart.find(
       (a) => a.code === wanted || a.faa === wanted,
     ) ?? null
   );
