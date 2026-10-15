@@ -2,7 +2,8 @@
  * Live prose eval: asks each starter prompt several times through the real
  * app (the model's tools run in the browser, so it drives the page) and
  * reports prose that leaks rules, names components or tools, stops on a
- * colon or promises a tap the app doesn't have, and answers that show
+ * colon, promises a tap the app doesn't have or opens with a lead-in; answers
+ * that show more cards than the prompt asks for; and answers that show
  * aircraft but leave none highlighted on the map. It calls the real model, so
  * it needs `OPENAI_API_KEY` and the dev servers (`npx nx serve atc-server`,
  * `npx nx serve atc-angular`), and it costs a little each run.
@@ -18,13 +19,21 @@ import { type Browser, chromium } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
-import { mapIssues, type ProseIssue, proseIssues } from './prose-check';
+import {
+  type CardCounts,
+  cardIssues,
+  mapIssues,
+  type ProseIssue,
+  proseIssues,
+} from './prose-check';
 
 interface Answer {
   readonly prompt: string;
   readonly prose: readonly string[];
   /** The activity line's summary, such as "Searched traffic, highlighted 2 aircraft". */
   readonly steps?: string;
+  /** How many of each component the answer rendered. */
+  readonly cards?: CardCounts;
   readonly issues: readonly ProseIssue[];
   readonly error?: string;
 }
@@ -72,6 +81,17 @@ async function ask(browser: Browser, prompt: string): Promise<Answer> {
       .last()
       .innerText()
       .catch(() => '');
+    // tsx names inner functions with a helper the page lacks, so the page
+    // only counts selectors and the names are attached here.
+    const [boards, flightCards, compares, airportCards] = await page.evaluate(
+      (testIds) =>
+        testIds.map(
+          (testId) =>
+            document.querySelectorAll(`[data-testid="${testId}"]`).length,
+        ),
+      ['arrivals-board', 'flight-card', 'aircraft-compare', 'airport-card'],
+    );
+    const cards: CardCounts = { boards, flightCards, compares, airportCards };
     const map = await page.evaluate(() => ({
       shown: document.querySelectorAll(
         '[data-testid="arrivals-row"], [data-testid="flight-card"], [data-testid="aircraft-compare"]',
@@ -83,8 +103,10 @@ async function ask(browser: Browser, prompt: string): Promise<Answer> {
       prompt,
       prose,
       steps,
+      cards,
       issues: [
         ...proseIssues(prose),
+        ...cardIssues(cards),
         ...mapIssues({
           ...map,
           clearedUnasked:

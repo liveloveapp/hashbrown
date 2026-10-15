@@ -56,7 +56,7 @@ dependencies); this file covers atc.
 | `server/src/chart/`                             | NASR zip and CSV readers, upstream fetches, surfaces merge, cache                                                                                  |
 | `e2e/src/`                                      | Playwright for both apps: `atc.spec.ts`, the scripted model turns in `model.ts`, the traffic and chart fixtures, and `stubs.ts`, which serves them |
 | `e2e/demo/`                                     | The demo video: storyboard, director page, recorder, ffmpeg encoding                                                                               |
-| `e2e/prose/`                                    | Live prose eval: real model answers checked for leaked rules and for the highlight they leave on the map                                           |
+| `e2e/prose/`                                    | Live prose eval: real model answers checked for leaked rules, extra cards and the highlight they leave on the map                                  |
 
 ## Add a component or a tool
 
@@ -102,9 +102,9 @@ dependencies); this file covers atc.
   change a marked line, update its pattern; `npx nx test atc-e2e` fails until you do.
 - After changing `SYSTEM_PROMPT` or a component description, restart `atc-server` and run
   `npx nx prose-eval atc-e2e` (real model, needs `OPENAI_API_KEY` and the dev servers).
-  It flags prose that echoes a rule, names a component or tool, stops on a colon or
-  promises a tap the app doesn't have, and answers that show aircraft but leave none
-  highlighted.
+  It flags prose that echoes a rule, names a component or tool, stops on a colon,
+  promises a tap the app doesn't have or opens with a lead-in; answers with more cards
+  than the prompt asks for; and answers that show aircraft but leave none highlighted.
 
 ## Commands
 

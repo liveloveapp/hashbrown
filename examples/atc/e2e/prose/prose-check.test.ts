@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { mapIssues, proseIssues } from './prose-check';
+import { cardIssues, mapIssues, proseIssues } from './prose-check';
 
 test('a plain answer has no issues', () => {
   const prose = ['N484SJ is the highest, and UAL45 is the fastest.'];
@@ -99,5 +99,68 @@ test('clearing the highlight without being asked is reported once', () => {
   expect(issues).toEqual([
     [{ kind: 'cleared-highlight', text: 'Cleared the highlight unasked' }],
     [{ kind: 'cleared-highlight', text: 'Cleared the highlight unasked' }],
+  ]);
+});
+
+test('a lead-in before the answer is reported', () => {
+  const prose = [
+    "Here's what is flying near Bend.",
+    'Sure, N484SJ is the highest.',
+    'Let me check the board.',
+    'Here are the arrivals at Seattle.',
+    'Heres the answer: N484SJ.',
+  ];
+
+  const kinds = proseIssues(prose).map((issue) => issue.kind);
+
+  expect(kinds).toEqual([
+    'lead-in',
+    'lead-in',
+    'lead-in',
+    'lead-in',
+    'lead-in',
+  ]);
+});
+
+test('an answer that names the aircraft first is not a lead-in', () => {
+  const prose = [
+    'Herein lies nothing.',
+    'Seven aircraft are inside the Portland Class C.',
+    'I highlighted the aircraft near Bend.',
+  ];
+
+  const issues = proseIssues(prose);
+
+  expect(issues).toEqual([]);
+});
+
+test('the cards an answer shows follow the prompt: one board, one card, or one compare', () => {
+  const none = { boards: 0, flightCards: 0, compares: 0, airportCards: 0 };
+  const board = { ...none, boards: 1 };
+  const card = { ...none, flightCards: 1 };
+  const compare = { ...none, compares: 1 };
+  const airport = { ...none, airportCards: 1 };
+
+  const issues = [none, board, card, compare, airport].map(cardIssues);
+
+  expect(issues).toEqual([[], [], [], [], []]);
+});
+
+test('extra cards are reported', () => {
+  const none = { boards: 0, flightCards: 0, compares: 0, airportCards: 0 };
+  const twoBoards = { ...none, boards: 2 };
+  const boardAndCards = { ...none, boards: 1, flightCards: 2 };
+  const twoCards = { ...none, flightCards: 2 };
+  const compareAndCard = { ...none, compares: 1, flightCards: 1 };
+
+  const issues = [twoBoards, boardAndCards, twoCards, compareAndCard].map(
+    cardIssues,
+  );
+
+  expect(issues).toEqual([
+    [{ kind: 'extra-cards', text: 'Showed 2 boards' }],
+    [{ kind: 'extra-cards', text: 'Showed 1 board and 2 flight cards' }],
+    [{ kind: 'extra-cards', text: 'Showed 2 flight cards' }],
+    [{ kind: 'extra-cards', text: 'Showed 1 compare and 1 flight card' }],
   ]);
 });

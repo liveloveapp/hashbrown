@@ -13,6 +13,8 @@ export type ProseIssueKind =
   | 'internal-name'
   | 'dangling-colon'
   | 'false-tap'
+  | 'lead-in'
+  | 'extra-cards'
   | 'cleared-highlight'
   | 'no-highlight';
 
@@ -48,11 +50,16 @@ const DANGLING_COLON = /:\s*$/;
 /** A tap that starts or stops following (only the map's Stop does that). */
 const FALSE_TAP = /\btap\b(?! stop\b)[^.]*\b(follow|stop following|unfollow)/i;
 
+/** An opening the prompt rules out: the answer comes first. */
+const LEAD_IN =
+  /^(here(['’]?s| are| is)|sure|certainly|of course|let me|okay|great)\b/i;
+
 const CHECKS: readonly (readonly [ProseIssueKind, RegExp])[] = [
   ['leak', LEAK],
   ['internal-name', INTERNAL_NAME],
   ['dangling-colon', DANGLING_COLON],
   ['false-tap', FALSE_TAP],
+  ['lead-in', LEAD_IN],
 ];
 
 /**
@@ -101,4 +108,57 @@ export function mapIssues({
         },
       ]
     : [];
+}
+
+/** How many of each component an answer rendered. */
+export interface CardCounts {
+  readonly boards: number;
+  readonly flightCards: number;
+  readonly compares: number;
+  readonly airportCards: number;
+}
+
+/** "1 board", "2 flight cards". */
+function count(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? '' : 's'}`;
+}
+
+/**
+ * Cards beyond what the prompt asks for: one board for a list, one flight
+ * card for one aircraft, one compare for two or three. Reports the first
+ * rule broken, so an answer counts once.
+ */
+export function cardIssues({
+  boards,
+  flightCards,
+  compares,
+}: CardCounts): ProseIssue[] {
+  const extra = extraCards(boards, flightCards, compares);
+
+  return extra === null ? [] : [{ kind: 'extra-cards', text: extra }];
+}
+
+/** What is extra about these counts, or null when they follow the prompt. */
+function extraCards(
+  boards: number,
+  flightCards: number,
+  compares: number,
+): string | null {
+  if (boards > 1) {
+    return `Showed ${count(boards, 'board')}`;
+  }
+  if (boards === 1 && flightCards > 0) {
+    return `Showed 1 board and ${count(flightCards, 'flight card')}`;
+  }
+  if (compares > 0 && flightCards > 0) {
+    return `Showed ${count(compares, 'compare')} and ${count(flightCards, 'flight card')}`;
+  }
+  if (compares > 1) {
+    return `Showed ${count(compares, 'compare')}`;
+  }
+  if (flightCards > 1) {
+    return `Showed ${count(flightCards, 'flight card')}`;
+  }
+
+  return null;
 }
