@@ -1,7 +1,6 @@
 import {
   assertInInjectionContext,
   computed,
-  DestroyRef,
   effect,
   inject,
   Injector,
@@ -20,7 +19,7 @@ import {
 } from '@hashbrownai/core';
 import {
   type ProvideHashbrownOptions,
-  ɵHASHBROWN_CONFIG_INJECTION_TOKEN,
+  ɵinjectHashbrownConfig,
 } from '../providers/provide-hashbrown.fn';
 import { readReactiveOption } from '../utils/signals';
 import type { ReactiveOption } from '../utils/types';
@@ -69,15 +68,15 @@ export interface DecisionResourceRef<S extends DecidableSchema> {
 
 function resolveTransport(
   options: { transport?: Decision.Transport },
-  config: ProvideHashbrownOptions | null,
+  config: ProvideHashbrownOptions,
   injector: Injector,
 ): Decision.Transport {
   if (options.transport) return options.transport;
-  if (config?.decision?.transport) return config.decision.transport;
+  if (config.decision?.transport) return config.decision.transport;
 
   return createHttpDecisionTransport({
-    url: config?.decision?.url,
-    middleware: config?.middleware?.map((middleware): Chat.Middleware => {
+    url: config.decision?.url,
+    middleware: config.middleware?.map((middleware): Chat.Middleware => {
       return (requestInit) =>
         runInInjectionContext(injector, () => middleware(requestInit));
     }),
@@ -88,9 +87,14 @@ function resolveTransport(
  * Decides about an input by asking a model closed questions defined by a
  * decidable schema, and exposes the typed answer with its metadata as signals.
  *
- * The decision runtime is recreated when the `system` option changes. Input
- * changes trigger a new decision. Must be called in an injection context; the
- * in-flight request is aborted when the context is destroyed.
+ * Requires `provideHashbrown`; creating the resource without it throws.
+ *
+ * The decision runtime is recreated when the `system` option changes: the old
+ * request is aborted and `value` and `meta` reset to null before the new
+ * decision arrives. Input changes trigger a new decision. Must be called in an
+ * injection context; the in-flight request is aborted when the context is
+ * destroyed, after which the signals keep their last values (so `isLoading()`
+ * may stay true) and never update again.
  *
  * @public
  * @example
@@ -109,9 +113,8 @@ export function decisionResource<S extends DecidableSchema>(
   options: DecisionResourceOptions<S>,
 ): DecisionResourceRef<S> {
   assertInInjectionContext(decisionResource);
-  const config = inject(ɵHASHBROWN_CONFIG_INJECTION_TOKEN, { optional: true });
+  const config = ɵinjectHashbrownConfig();
   const injector = inject(Injector);
-  const destroyRef = inject(DestroyRef);
   const transport = resolveTransport(options, config, injector);
 
   // Construction is side-effect free, so a computed may create the runtime.
@@ -152,8 +155,6 @@ export function decisionResource<S extends DecidableSchema>(
     const input = options.input() ?? null;
     untracked(() => current.setInput(input));
   });
-
-  destroyRef.onDestroy(() => untracked(runtime).destroy());
 
   return {
     value: computed(() => state().value),

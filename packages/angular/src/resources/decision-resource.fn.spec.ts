@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { type Provider, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type Decision, s } from '@hashbrownai/core';
 import { vi } from 'vitest';
@@ -39,9 +39,9 @@ async function settle() {
   TestBed.tick();
 }
 
-function configure(providers: unknown[] = []) {
+function configure(providers: Provider[] = [provideHashbrown({})]) {
   TestBed.resetTestingModule();
-  TestBed.configureTestingModule({ providers: providers as never[] });
+  TestBed.configureTestingModule({ providers });
 }
 
 test('decisionResource returns a typed value and meta', async () => {
@@ -120,12 +120,12 @@ test('decisionResource default transport posts to /api/decide with provider midd
   expect(new Headers(init?.headers).get('x-test')).toBe('yes');
 });
 
-test('decisionResource re-decides on input change and treats null as idle', async () => {
+test('decisionResource re-decides on input change', async () => {
   // Arrange
   const fake = createFakeTransport();
   configure();
   const input = signal<string | null | undefined>('one');
-  const ref = TestBed.runInInjectionContext(() =>
+  TestBed.runInInjectionContext(() =>
     decisionResource({ schema, input, transport: fake.transport }),
   );
   await settle();
@@ -137,14 +137,68 @@ test('decisionResource re-decides on input change and treats null as idle', asyn
   // Assert
   expect(fake.calls).toHaveLength(2);
   expect(fake.calls[1].request.state).toBe('two');
+});
+
+test('decisionResource treats null and undefined input as idle', async () => {
+  // Arrange
+  const fake = createFakeTransport();
+  configure();
+  const input = signal<string | null | undefined>('one');
+  const ref = TestBed.runInInjectionContext(() =>
+    decisionResource({ schema, input, transport: fake.transport }),
+  );
+  await settle();
 
   // Act
   input.set(undefined);
   await settle();
 
   // Assert
+  expect(fake.calls).toHaveLength(1);
   expect(ref.value()).toBeNull();
   expect(ref.isLoading()).toBe(false);
+});
+
+test('decisionResource throws without provideHashbrown', () => {
+  // Arrange
+  configure([]);
+
+  // Act
+  const create = () =>
+    TestBed.runInInjectionContext(() =>
+      decisionResource({ schema, input: signal('hello') }),
+    );
+
+  // Assert
+  expect(create).toThrow();
+});
+
+test('decisionResource aborts the old request when system changes', async () => {
+  // Arrange
+  configure();
+  const signals: AbortSignal[] = [];
+  const system = signal('a');
+  TestBed.runInInjectionContext(() =>
+    decisionResource({
+      schema,
+      input: signal('hello'),
+      system,
+      transport: (_request, signal) => {
+        signals.push(signal);
+        return new Promise<Decision.Response>(() => undefined);
+      },
+    }),
+  );
+  await settle();
+
+  // Act
+  system.set('b');
+  await settle();
+
+  // Assert
+  expect(signals).toHaveLength(2);
+  expect(signals[0].aborted).toBe(true);
+  expect(signals[1].aborted).toBe(false);
 });
 
 test('decisionResource with an inline transport decides exactly once per input', async () => {
