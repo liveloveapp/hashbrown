@@ -48,7 +48,7 @@ dependencies); this file covers atc.
 | `shared/src/map/tiles.ts`                       | Tile URL and attribution                                                                                                                           |
 | `shared/src/styles/atc.css`                     | Index of the stylesheet partials, in cascade order                                                                                                 |
 | `angular/src/app/`, `react/src/`                | Thin framework shells that mirror each other                                                                                                       |
-| `server/src/run-handler.ts`                     | `/api/run`: pins the system prompt and tool definitions, caps output                                                                               |
+| `server/src/run-handler.ts`                     | `/api/run`: pins the system prompt, tool definitions and UI response schema, caps output                                                           |
 | `server/src/aircraft-handler.ts`                | `/api/aircraft`: cached, stripped adsb.lol                                                                                                         |
 | `server/src/chart-airports-handler.ts`          | `/api/chart/airports`: NASR airports, cached per cycle                                                                                             |
 | `server/src/chart-surfaces-handler.ts`          | `/api/chart/surfaces`: FAA and OSM taxiways, aprons, holds                                                                                         |
@@ -71,7 +71,8 @@ dependencies); this file covers atc.
   marker HTML. Everything else is rendered as text.
 - `normalizeAdsbLol` copies whitelisted fields only; never spread adsb.lol entries.
 - The system prompt, the tool definitions, the UI response schema and the output cap are
-  fixed on the server; clients cannot change them.
+  fixed on the server; clients cannot change them. A request that omits the response
+  schema gets free-form text, still under the pinned prompt, tools and cap.
 - The map moves only through store view requests: the newest wins, follow mode wins over
   all, a user drag or zoom cancels.
 - Markers update in place (`updatePlane`); never rebuild them on a snapshot.

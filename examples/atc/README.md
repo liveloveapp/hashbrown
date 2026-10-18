@@ -67,10 +67,9 @@ Data flow: `shared/src/feed.ts` polls `/api/aircraft`, `store.applySnapshot` tak
 snapshot, and the map and components re-render. The model's tools read the same store in
 the browser, so the server never sees the plane list.
 
-`/api/run` is public, so the server replaces the system prompt and the tool definitions
-(with its own copies from `shared/src/tool-definitions.ts`), drops unknown tools, and caps the
-answer's length and each message's size. The UI response schema still comes from the
-client, bounded by that cap.
+`/api/run` is public, so the server replaces the system prompt, the tool definitions
+(with its own copies from `shared/src/tool-definitions.ts`) and the UI response schema,
+drops unknown tools, and caps the answer's length and each message's size.
 
 The map is pointer-only (planes are not keyboard-focusable); every map action is also
 available from the chat.
@@ -100,7 +99,8 @@ adapter (for example `@hashbrownai/anthropic`), replace `HashbrownOpenAI.stream.
 `HashbrownAnthropic.stream.text`, and set that provider's key and model. `limitRequest`
 in the same file sets the OpenAI request's `max_completion_tokens` and
 `reasoning_effort`; rewrite it for the new provider's request shape, keeping the output
-cap. `pinTools` and `pinSystemPrompt` work on the AG-UI input and carry over unchanged.
+cap. `pinTools`, `pinResponseSchema` and `pinSystemPrompt` work on the AG-UI input and carry over
+unchanged.
 
 ## Tests
 
@@ -184,3 +184,5 @@ there). The React app is built and tested in this repository but not hosted;
   per tool round trip, so that is about ten questions a minute.
 - A look at tile traffic: past light use, point `TILE_LAYER` at a commercial tile provider
   (see "Data and attribution").
+
+What the server pins, and why: [Securing a public endpoint](https://hashbrown.dev/docs/angular/recipes/public-endpoint).
