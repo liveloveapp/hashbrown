@@ -198,6 +198,8 @@ await HashbrownTypeSafe.decide({
 });
 ```
 
+The schema is your code, so it is checked when you call `decide`. An invalid schema (for example an unbounded score) rejects with the `DecisionSchemaError` from `@hashbrownai/core`, not a `DecisionError`. Treat it as a server error and don't send its details to the client.
+
 Without a `schema`, the request is validated before any network call: question shapes, at most 255 options per choice, 2 to 10 score levels, and at most 64,000 characters of JSON.
 
 ## Vercel AI Gateway
@@ -215,11 +217,17 @@ await HashbrownTypeSafe.decide({
 
 ## Errors
 
-Every failure throws a `DecisionError` with a `code` and an HTTP `status`. An aborted `signal` rejects with the signal's reason instead.
+Every failure caused by the client's request, TypeSafe, or the network throws a `DecisionError` with a `code` and an HTTP `status`. A few things reject with something else:
+
+- An aborted `signal` rejects with the signal's reason.
+- An invalid server `schema` rejects with `DecisionSchemaError`.
+- Anything thrown by `transformRequest` propagates unchanged.
+
+The last two are server programming errors. Let them reach your error handler as HTTP 500, as the examples above do by rethrowing.
 
 | Code               | Meaning                                               |
 | ------------------ | ----------------------------------------------------- |
-| `invalid_request`  | The request or schema is not valid.                   |
+| `invalid_request`  | The client's request is not valid.                    |
 | `unauthorized`     | TypeSafe rejected the API key.                        |
 | `rate_limited`     | TypeSafe is rate limiting. Retried twice before this. |
 | `upstream`         | TypeSafe or the network failed.                       |
@@ -229,7 +237,11 @@ Responses with HTTP 429 or 529 are retried up to twice.
 
 ## Transform Request
 
-`transformRequest` receives the native TypeSafe request body just before it is sent. Use it for server-owned settings.
+`transformRequest` receives the native TypeSafe request body just before it is sent. Use it for server-owned settings. Anything it throws propagates unchanged.
+
+## Long Context
+
+When the client sends `options: { longContext: true }`, the adapter adds TypeSafe's `TypeSafe-Danger-Zone-Long-Context: true` header. That raises the request and per-question context limits to 262k tokens. Long context is slower and less accurate, so enable it only for requests that need it. See [TypeSafe models](https://docs.typesafe.ai/models.md).
 
 ---
 

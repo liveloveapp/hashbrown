@@ -1,7 +1,8 @@
-import { s } from '@hashbrownai/core';
+import { DecisionSchemaError, s } from '@hashbrownai/core';
 import type { Decision } from '@hashbrownai/core';
 import { HashbrownTypeSafe } from './decide.fn';
 import { DecisionError } from './decision-error';
+import * as fromNative from './native/from-native';
 import * as nativeResponse from './native/__fixtures__/response.json';
 
 const request: Decision.Request = {
@@ -376,4 +377,117 @@ test('requires model', () => {
   const call = () => HashbrownTypeSafe.decide(options);
 
   expect(typeof call).toBe('function');
+});
+
+test('longContext sends the TypeSafe long-context header', async () => {
+  const { fn, calls } = fakeFetch(jsonResponse(nativeResponse));
+  const plain = fakeFetch(jsonResponse(nativeResponse));
+
+  await HashbrownTypeSafe.decide({
+    apiKey: 'k',
+    model: 'm',
+    request: { ...request, options: { longContext: true } },
+    fetch: fn,
+  });
+  await HashbrownTypeSafe.decide({
+    apiKey: 'k',
+    model: 'm',
+    request: { ...request, options: { longContext: false } },
+    fetch: plain.fn,
+  });
+
+  const headers = calls[0].init.headers as Record<string, string>;
+  const plainHeaders = plain.calls[0].init.headers as Record<string, string>;
+  expect(headers['TypeSafe-Danger-Zone-Long-Context']).toBe('true');
+  expect('TypeSafe-Danger-Zone-Long-Context' in plainHeaders).toBe(false);
+  expect(JSON.parse(calls[0].init.body as string)).not.toHaveProperty(
+    'options',
+  );
+});
+
+test('a bad server schema rejects with DecisionSchemaError unchanged', async () => {
+  const { fn, mock } = fakeFetch();
+  const schema = s.object('d', {
+    n: s.integer('N', { minimum: 0 }),
+  }) as unknown as Parameters<typeof HashbrownTypeSafe.decide>[0]['schema'];
+
+  const error = await rejection(
+    HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      schema,
+      request: { state: 'x' },
+      fetch: fn,
+    }),
+  );
+
+  expect(error).toBeInstanceOf(DecisionSchemaError);
+  expect(error).not.toBeInstanceOf(DecisionError);
+  expect((error as DecisionSchemaError).path).toBe('n');
+  expect(mock).not.toHaveBeenCalled();
+});
+
+test('a malformed answer field maps to invalid_response with a cause', async () => {
+  const { fn } = fakeFetch(
+    jsonResponse({
+      answers: {
+        ...nativeResponse.answers,
+        frustration: {
+          type: 'score',
+          score: 1,
+          probabilities: null,
+          confidence: 0.5,
+        },
+      },
+    }),
+  );
+
+  const error = (await rejection(
+    HashbrownTypeSafe.decide({ apiKey: 'k', model: 'm', request, fetch: fn }),
+  )) as DecisionError;
+
+  expect(error).toBeInstanceOf(DecisionError);
+  expect(error.code).toBe('invalid_response');
+  expect(error.status).toBe(502);
+  expect(error.cause).toBeInstanceOf(Error);
+});
+
+test('any mapper error maps to invalid_response with the original cause', async () => {
+  const { fn } = fakeFetch();
+  const cause = new TypeError('boom');
+  const spy = jest
+    .spyOn(fromNative, 'fromNativeResponse')
+    .mockImplementation(() => {
+      throw cause;
+    });
+
+  const error = (await rejection(
+    HashbrownTypeSafe.decide({ apiKey: 'k', model: 'm', request, fetch: fn }),
+  )) as DecisionError;
+  spy.mockRestore();
+
+  expect(error).toBeInstanceOf(DecisionError);
+  expect(error.code).toBe('invalid_response');
+  expect(error.status).toBe(502);
+  expect(error.cause).toBe(cause);
+});
+
+test('an error thrown by transformRequest propagates unchanged', async () => {
+  const { fn, mock } = fakeFetch();
+  const thrown = new RangeError('server bug');
+
+  const error = await rejection(
+    HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      request,
+      transformRequest: () => {
+        throw thrown;
+      },
+      fetch: fn,
+    }),
+  );
+
+  expect(error).toBe(thrown);
+  expect(mock).not.toHaveBeenCalled();
 });

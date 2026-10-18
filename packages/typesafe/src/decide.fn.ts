@@ -1,4 +1,4 @@
-import { DecisionResponseError, ɵcompileDecision } from '@hashbrownai/core';
+import { ɵcompileDecision } from '@hashbrownai/core';
 import type { DecidableSchema, Decision } from '@hashbrownai/core';
 import { DecisionError } from './decision-error';
 import { fromNativeResponse } from './native/from-native';
@@ -11,6 +11,8 @@ const MAX_OPTIONS = 255;
 const MIN_LEVELS = 2;
 const MAX_LEVELS = 10;
 const RETRY_DELAYS_MS = [250, 500];
+/** Documented at https://docs.typesafe.ai/models.md (raises limits to 262k tokens). */
+const LONG_CONTEXT_HEADER = 'TypeSafe-Danger-Zone-Long-Context';
 
 /**
  * Options for {@link HashbrownTypeSafe.decide}.
@@ -24,13 +26,20 @@ export interface TypeSafeDecideOptions {
   model: string;
   /** The client's decision request (untrusted JSON). */
   request: unknown;
-  /** When given, questions are compiled from this schema and the client's are ignored. */
+  /**
+   * When given, questions are compiled from this schema and the client's are
+   * ignored. An invalid schema rejects with the core `DecisionSchemaError`
+   * unchanged (a server programming error), not with a `DecisionError`.
+   */
   schema?: DecidableSchema;
   /** Defaults to `https://api.typesafe.ai`. Use `https://ai-gateway.vercel.sh/typesafe` for the Gateway. */
   baseURL?: string;
   /** Aborts the call; an aborted call rejects with the signal's reason. */
   signal?: AbortSignal;
-  /** Edits the native request body just before it is sent. */
+  /**
+   * Edits the native request body just before it is sent. Anything it throws
+   * propagates unchanged.
+   */
   transformRequest?: (body: NativeRequest) => NativeRequest;
   /** A `fetch` implementation. Defaults to the global `fetch`. */
   fetch?: typeof fetch;
@@ -132,14 +141,9 @@ function validateRequest(
   const options = longContext === undefined ? {} : { options: { longContext } };
 
   if (schema) {
-    let questions: Record<string, Decision.Question>;
-    try {
-      questions = ɵcompileDecision(schema);
-    } catch (error) {
-      throw invalid(
-        error instanceof Error ? error.message : 'Invalid decision schema',
-      );
-    }
+    // The schema is server code: a DecisionSchemaError here is a programming
+    // error, so it propagates unchanged and never reaches the client as a 400.
+    const questions = ɵcompileDecision(schema);
     return { state: state as Decision.JsonValue, questions, ...options };
   }
 
@@ -173,6 +177,7 @@ async function post(
   url: string,
   apiKey: string,
   body: NativeRequest,
+  longContext: boolean,
   signal?: AbortSignal,
 ): Promise<globalThis.Response> {
   for (let attempt = 0; ; attempt++) {
@@ -184,6 +189,7 @@ async function post(
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
+          ...(longContext ? { [LONG_CONTEXT_HEADER]: 'true' } : {}),
         },
         body: JSON.stringify(body),
         signal,
@@ -218,8 +224,16 @@ export const HashbrownTypeSafe: {
    * Validates a decision request, sends it to TypeSafe and maps the answer.
    *
    * Retries HTTP 429 and 529 up to twice. Rejects with {@link DecisionError}
-   * for every failure except an aborted `signal`, which rejects with the
-   * signal's reason.
+   * for every failure of the client request, TypeSafe, or the network. Three
+   * cases reject with something else: an aborted `signal` rejects with the
+   * signal's reason, and server programming errors propagate unchanged: a
+   * `DecisionSchemaError` from an invalid `schema`, and anything thrown by
+   * `transformRequest`. Treat those as HTTP 500 and do not send their details
+   * to clients.
+   *
+   * `request.options.longContext: true` sends TypeSafe's
+   * `TypeSafe-Danger-Zone-Long-Context: true` header, which raises the context
+   * limits to 262k tokens (slower and less accurate).
    *
    * @param options - The call options.
    * @returns The vendor-neutral decision response.
@@ -241,6 +255,7 @@ export const HashbrownTypeSafe: {
       `${baseURL}/v1/systemone`,
       options.apiKey,
       native,
+      request.options?.longContext === true,
       options.signal,
     );
 
@@ -289,10 +304,14 @@ export const HashbrownTypeSafe: {
     try {
       return fromNativeResponse(body as NativeResponse, request.questions);
     } catch (error) {
-      if (error instanceof DecisionResponseError) {
-        throw new DecisionError('invalid_response', 502, error.message, error);
-      }
-      throw error;
+      throw new DecisionError(
+        'invalid_response',
+        502,
+        error instanceof Error
+          ? error.message
+          : 'TypeSafe returned an unexpected answer',
+        error,
+      );
     }
   },
 };

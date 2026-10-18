@@ -6,8 +6,9 @@ import type { NativeJson, NativeQuestion, NativeRequest } from './native.types';
  * Maps a Hashbrown decision request to the TypeSafe `systemone` dialect.
  *
  * Yes/no questions become `noul`, choice options become `criteria`, and score
- * levels become an ordered `criteria` array. The `longContext` option does not
- * change the body; it only affects the transport.
+ * levels become an ordered `criteria` array (sorted by numeric level value).
+ * The `longContext` option does not change the body; `decide` sends it as the
+ * `TypeSafe-Danger-Zone-Long-Context` header.
  *
  * @param request - The vendor-neutral decision request.
  * @param model - The TypeSafe model name, such as `jev-latest`.
