@@ -59,9 +59,18 @@ test('{ max } compiles to one yesNo question per option', () => {
   const questions = compileDecision(schema);
 
   expect(questions).toEqual({
-    map: { type: 'yesNo', instructions: 'Does this fit the input: A map' },
-    chart: { type: 'yesNo', instructions: 'Does this fit the input: A chart' },
-    table: { type: 'yesNo', instructions: 'Does this fit the input: A table' },
+    map: {
+      type: 'yesNo',
+      instructions: 'Does this option fit the input: A map',
+    },
+    chart: {
+      type: 'yesNo',
+      instructions: 'Does this option fit the input: A chart',
+    },
+    table: {
+      type: 'yesNo',
+      instructions: 'Does this option fit the input: A table',
+    },
   });
 });
 
@@ -215,4 +224,48 @@ test("rejects 'one' with more than 255 options", () => {
   const error = catchError(() => createSelectionSchema(many, 'one'));
 
   expect(error).toBeInstanceOf(DecisionSchemaError);
+});
+
+test('rejects reserved ids', () => {
+  const ids = ['__proto__', 'constructor', 'prototype'];
+
+  const errors = ids.map((id) =>
+    catchError(() => createSelectionSchema([{ id, description: 'x' }], 'one')),
+  );
+
+  for (const error of errors) {
+    expect(error).toBeInstanceOf(DecisionSchemaError);
+  }
+  expect((errors[0] as Error).message).toContain('__proto__');
+});
+
+test('rejects reserved ids in { max } mode', () => {
+  const error = catchError(() =>
+    createSelectionSchema([{ id: '__proto__', description: 'x' }], { max: 1 }),
+  );
+
+  expect(error).toBeInstanceOf(DecisionSchemaError);
+});
+
+test('rejects an empty-string id', () => {
+  const error = catchError(() =>
+    createSelectionSchema([{ id: '', description: 'x' }], 'one'),
+  );
+
+  expect(error).toBeInstanceOf(DecisionSchemaError);
+});
+
+test('never drops an option', () => {
+  const many = ['toString', 'valueOf', 'hasOwnProperty', 'a'].map((id) => ({
+    id,
+    description: 'd',
+  }));
+
+  const one = compileDecision(createSelectionSchema(many, 'one'));
+  const multi = compileDecision(createSelectionSchema(many, { max: 4 }));
+
+  expect(Object.keys((one['pick'] as { options: object }).options)).toEqual(
+    many.map((o) => o.id),
+  );
+  expect(Object.keys(multi)).toEqual(many.map((o) => o.id));
 });

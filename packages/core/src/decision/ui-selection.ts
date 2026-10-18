@@ -4,6 +4,7 @@ import type { ChoiceMeta, Result, Select, YesNoMeta } from './decision.types';
 import { DecisionSchemaError } from './errors';
 
 const MAX_CHOICE_OPTIONS = 255;
+const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
 const MIN_PROBABILITY = 0.5;
 
 /**
@@ -28,6 +29,12 @@ export function createSelectionSchema(
   }
   const seen = new Set<string>();
   for (const { id } of options) {
+    if (id === '' || RESERVED_IDS.has(id)) {
+      throw new DecisionSchemaError(
+        `Option id "${id}" is empty or reserved`,
+        id,
+      );
+    }
     if (id.includes('.')) {
       throw new DecisionSchemaError(
         `Option ids must not contain "." (found "${id}")`,
@@ -46,10 +53,9 @@ export function createSelectionSchema(
         'pick',
       );
     }
-    const entries: Record<string, string> = {};
-    for (const { id, description } of options) {
-      entries[id] = description;
-    }
+    const entries = Object.fromEntries(
+      options.map(({ id, description }) => [id, description]),
+    );
     return s.object('Selection', {
       pick: s.enumeration('Which one fits the input best', entries),
     });
@@ -60,10 +66,12 @@ export function createSelectionSchema(
       '',
     );
   }
-  const shape: Record<string, ReturnType<typeof s.boolean>> = {};
-  for (const { id, description } of options) {
-    shape[id] = s.boolean(`Does this fit the input: ${description}`);
-  }
+  const shape = Object.fromEntries(
+    options.map(({ id, description }) => [
+      id,
+      s.boolean(`Does this option fit the input: ${description}`),
+    ]),
+  );
   return s.object('Selection', shape);
 }
 
