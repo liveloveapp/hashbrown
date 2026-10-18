@@ -27,7 +27,9 @@ test('POSTs JSON to the default url and returns the body unchanged', async () =>
   const [url, init] = fetch.mock.calls[0];
   expect(url).toBe('/api/decide');
   expect(init.method).toBe('POST');
-  expect(init.headers['Content-Type']).toBe('application/json');
+  expect(new Headers(init.headers).get('Content-Type')).toBe(
+    'application/json',
+  );
   expect(init.body).toBe(JSON.stringify(request));
   expect(result).toEqual(body);
 });
@@ -58,7 +60,9 @@ test('applies middleware in declaration order', async () => {
   await transport(request, new AbortController().signal);
 
   expect(seen).toEqual(['1']);
-  expect(fetch.mock.calls[0][1].headers).toMatchObject({ A: '1', B: '2' });
+  const headers = new Headers(fetch.mock.calls[0][1].headers);
+  expect(headers.get('A')).toBe('1');
+  expect(headers.get('B')).toBe('2');
 });
 
 test('passes the abort signal to fetch', async () => {
@@ -141,4 +145,63 @@ test('a 2xx body that is not JSON is a non-retryable TransportError', async () =
   expect(error).toBeInstanceOf(TransportError);
   expect(error.retryable).toBe(false);
   expect(error.status).toBe(200);
+});
+
+test('keeps Content-Type when middleware replaces headers', async () => {
+  const fetch = jest.fn().mockResolvedValue(jsonResponse({}));
+  const transport = createHttpDecisionTransport({
+    fetch,
+    middleware: [(init) => ({ ...init, headers: { Authorization: 'x' } })],
+  });
+
+  await transport(request, new AbortController().signal);
+
+  const headers = new Headers(fetch.mock.calls[0][1].headers);
+  expect(headers.get('Authorization')).toBe('x');
+  expect(headers.get('Content-Type')).toBe('application/json');
+});
+
+test('keeps Content-Type when middleware drops headers', async () => {
+  const fetch = jest.fn().mockResolvedValue(jsonResponse({}));
+  const transport = createHttpDecisionTransport({
+    fetch,
+    middleware: [(init) => ({ ...init, headers: undefined })],
+  });
+
+  await transport(request, new AbortController().signal);
+
+  const headers = new Headers(fetch.mock.calls[0][1].headers);
+  expect(headers.get('Content-Type')).toBe('application/json');
+});
+
+test('merges a Headers instance returned by middleware', async () => {
+  const fetch = jest.fn().mockResolvedValue(jsonResponse({}));
+  const transport = createHttpDecisionTransport({
+    fetch,
+    middleware: [
+      (init) => ({ ...init, headers: new Headers({ 'X-Trace': '1' }) }),
+    ],
+  });
+
+  await transport(request, new AbortController().signal);
+
+  const headers = new Headers(fetch.mock.calls[0][1].headers);
+  expect(headers.get('X-Trace')).toBe('1');
+  expect(headers.get('Content-Type')).toBe('application/json');
+});
+
+test('abort during slow middleware rejects with the reason without fetching', async () => {
+  const fetch = jest.fn().mockResolvedValue(jsonResponse({}));
+  const transport = createHttpDecisionTransport({
+    fetch,
+    middleware: [() => new Promise<RequestInit>(() => undefined)],
+  });
+  const controller = new AbortController();
+  const reason = new Error('stop');
+
+  const pending = catchError(transport(request, controller.signal));
+  controller.abort(reason);
+
+  expect(await pending).toBe(reason);
+  expect(fetch).not.toHaveBeenCalled();
 });

@@ -53,7 +53,12 @@ export function createHttpDecisionTransport(
         abortError,
       );
     }
-    init = { ...init, signal };
+    // Middleware may replace or drop headers; guarantee the JSON content type.
+    const headers = new Headers(init.headers);
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+    init = { ...init, headers, signal };
 
     let response: Response;
     try {
