@@ -1,6 +1,7 @@
 import { Component, input, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { RenderMessageComponent } from '../components';
+import { createUiJsonSchema, markdownComponent } from '@hashbrownai/core';
 import { createUiKit } from './ui-kit.fn';
 import {
   exposeMarkdown,
@@ -324,4 +325,36 @@ test('exposeMarkdown callbacks are invoked through hb-render-message injector wi
 
   expect(fixture.componentInstance.linkClicks()).toBe(1);
   expect(fixture.componentInstance.citationClicks()).toBe(1);
+});
+
+test('exposeMarkdown gives the model the schema markdownComponent defines', () => {
+  const cases = [
+    {},
+    { name: 'Answer' },
+    { description: 'Short answers only.' },
+    { citations: true },
+  ];
+
+  const pairs = cases.map((options) => [
+    createUiJsonSchema({ components: [exposeMarkdown(options)] }),
+    createUiJsonSchema({ components: [markdownComponent(options)] }),
+  ]);
+
+  for (const [exposed, defined] of pairs) {
+    expect(exposed).toEqual(defined);
+  }
+});
+
+test('exposeMarkdown with a custom renderer gives the model the same schema', () => {
+  const options = { name: 'Answer', citations: true };
+
+  const exposed = createUiJsonSchema({
+    components: [
+      exposeMarkdown({ ...options, renderer: CustomMarkdownRendererComponent }),
+    ],
+  });
+
+  expect(exposed).toEqual(
+    createUiJsonSchema({ components: [markdownComponent(options)] }),
+  );
 });
