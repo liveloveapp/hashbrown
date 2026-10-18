@@ -19,6 +19,7 @@ Hashbrown uses the adapter pattern for supporting multiple platforms.
 | [Amazon Bedrock](/docs/angular/platform/bedrock)     | `@hashbrownai/bedrock`   |
 | [Google Gemini](/docs/angular/platform/google)       | `@hashbrownai/google`    |
 | [Ollama](/docs/angular/platform/ollama)              | `@hashbrownai/ollama`    |
+| [TypeSafe](/docs/angular/platform/typesafe)          | `@hashbrownai/typesafe`  |
 
 ## Custom Adapters
 
@@ -34,6 +35,7 @@ Can't find your preferred AI provider? [Create a custom adapter](/docs/angular/p
 | Amazon Bedrock   | ✅   | ✅        | ✅    | ✅                |
 | Google Gemini    | ✅   | ✅        | ✅    | ✅                |
 | Ollama           | ✅   | ✅        | ✅    | ✅                |
+| TypeSafe         | ❌   | ❌        | ❌    | ❌                |
 
 ## Platform Limitations
 
@@ -45,6 +47,7 @@ Can't find your preferred AI provider? [Create a custom adapter](/docs/angular/p
 | Amazon Bedrock   | Native structured output support varies by model |
 | Google Gemini    | Native structured output support varies by model |
 | Ollama           | Limited model support                            |
+| TypeSafe         | Decisions only: no text, streaming or tools      |
 
 ## Where is X platform?
 
