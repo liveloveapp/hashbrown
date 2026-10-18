@@ -88,6 +88,17 @@ export {
   type UiUserMessage,
 } from './hooks/use-ui-chat';
 export {
+  useUiDecision,
+  type UiDecisionCandidate,
+  type UiDecisionGenerateOptions,
+  type UseUiDecisionBaseOptions,
+  type UseUiDecisionCandidatesOptions,
+  type UseUiDecisionCandidatesResult,
+  type UseUiDecisionNarrowingOptions,
+  type UseUiDecisionNarrowingResult,
+  type UseUiDecisionOptions,
+} from './hooks/use-ui-decision';
+export {
   useUiCompletion,
   type UiCompletionOptions,
   type UseUiCompletionResult,
