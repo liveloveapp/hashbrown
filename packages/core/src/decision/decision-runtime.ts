@@ -4,7 +4,14 @@ import { sleep } from '../utils/async';
 import { compileDecision } from './compile-decision';
 import type { DecidableSchema } from './decidable-schema';
 import { decodeDecision } from './decode-decision';
-import type * as Decision from './decision.types';
+import type {
+  JsonValue as DecisionJsonValue,
+  Meta as DecisionMeta,
+  Request as DecisionRequest,
+  Response as DecisionResponse,
+  Result as DecisionResult,
+  Transport as DecisionTransport,
+} from './decision.types';
 
 /** Fixed delay between retries. */
 const RETRY_DELAY_MS = 250;
@@ -18,7 +25,7 @@ export interface DecisionRuntimeOptions<S extends DecidableSchema> {
   /** The decidable schema whose questions the model answers. */
   schema: S;
   /** Sends decision requests to an endpoint. */
-  transport: Decision.Transport;
+  transport: DecisionTransport;
   /** Optional system text; when set, state is sent as `{ system, input }`. */
   system?: string;
   /** Milliseconds to wait after an input change before sending. Defaults to 0. */
@@ -40,7 +47,7 @@ export interface DecisionRuntimeState<S extends DecidableSchema> {
   /** The last decoded value, or null. */
   value: s.Infer<S> | null;
   /** Metadata mirroring the value, or null. */
-  meta: Decision.Meta<S> | null;
+  meta: DecisionMeta<S> | null;
   /** The last failure, cleared when a new request starts. */
   error: Error | undefined;
 }
@@ -56,7 +63,7 @@ export interface DecisionRuntime<S extends DecidableSchema> {
   /** Subscribes to state changes and returns an unsubscribe function. */
   subscribe(listener: () => void): () => void;
   /** Sets the input to decide about; `null` aborts and resets to idle. */
-  setInput(input: string | Decision.JsonValue | null): void;
+  setInput(input: string | DecisionJsonValue | null): void;
   /** Resends the last non-null input; returns false when there is none. */
   reload(): boolean;
   /** Aborts the in-flight request, keeping the last value. */
@@ -71,7 +78,7 @@ export interface DecisionRuntime<S extends DecidableSchema> {
 
 type Action<S extends DecidableSchema> =
   | { type: 'started' }
-  | { type: 'succeeded'; result: Decision.Result<S> }
+  | { type: 'succeeded'; result: DecisionResult<S> }
   | { type: 'failed'; error: Error }
   | { type: 'reset' }
   | { type: 'stopped' };
@@ -147,7 +154,7 @@ export function createDecisionRuntime<S extends DecidableSchema>(
   });
 
   let state = initialState<S>();
-  let lastInput: string | Decision.JsonValue | null = null;
+  let lastInput: string | DecisionJsonValue | null = null;
   let requestId = 0;
   let controller: AbortController | undefined;
   let destroyed = false;
@@ -174,7 +181,7 @@ export function createDecisionRuntime<S extends DecidableSchema>(
     controller = undefined;
   }
 
-  async function run(input: string | Decision.JsonValue) {
+  async function run(input: string | DecisionJsonValue) {
     abortInFlight();
     const id = requestId;
     const current = new AbortController();
@@ -190,7 +197,7 @@ export function createDecisionRuntime<S extends DecidableSchema>(
       if (!isCurrent()) return;
     }
 
-    const request: Decision.Request = {
+    const request: DecisionRequest = {
       state: system === undefined ? input : { system, input },
       questions: shuffled
         ? compileDecision(schema, { optionOrder: 'shuffled' })
@@ -198,7 +205,7 @@ export function createDecisionRuntime<S extends DecidableSchema>(
     };
 
     for (let attempt = 0; ; attempt++) {
-      let response: Decision.Response;
+      let response: DecisionResponse;
       try {
         response = await transport(request, signal);
       } catch (error) {
@@ -216,7 +223,7 @@ export function createDecisionRuntime<S extends DecidableSchema>(
         continue;
       }
       if (!isCurrent()) return;
-      let result: Decision.Result<S>;
+      let result: DecisionResult<S>;
       try {
         result = decodeDecision(schema, response);
       } catch (error) {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Skillet's EnumType and ObjectType generics need `any` to accept every enumeration and shape. */
 import type { s } from '../schema';
 import type { internal } from '../schema/constants';
 
@@ -6,8 +7,10 @@ import type { internal } from '../schema/constants';
  *
  * Expressed structurally over the schema's definition because `ObjectType`
  * is invariant in its shape parameter.
+ *
+ * @public
  */
-type DecidableObject = s.ObjectType<any> & {
+export type DecidableObject = s.ObjectType<any> & {
   [internal]: {
     definition: { shape: Readonly<Record<string, DecidableSchema>> };
   };

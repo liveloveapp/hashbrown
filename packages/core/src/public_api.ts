@@ -52,7 +52,10 @@ export type {
 export { createUiKit as ɵcreateUiKit, isUiKit as ɵisUiKit } from './ui/ui-kit';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { sanitizeUrl as ɵsanitizeUrl } from './utils/sanitize-url';
-export { compileDecision as ɵcompileDecision } from './decision/compile-decision';
+export {
+  compileDecision as ɵcompileDecision,
+  type CompileDecisionOptions as ɵCompileDecisionOptions,
+} from './decision/compile-decision';
 export { decodeDecision as ɵdecodeDecision } from './decision/decode-decision';
 export {
   createSelectionSchema as ɵcreateSelectionSchema,

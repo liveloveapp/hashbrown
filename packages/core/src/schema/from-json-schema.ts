@@ -93,7 +93,6 @@ function parseSchema(
   path: string[],
 ): HashbrownType {
   assertIsObjectSchema(schema, path);
-
   assertNoForbiddenKeywords(schema, path);
 
   if ('anyOf' in schema) {

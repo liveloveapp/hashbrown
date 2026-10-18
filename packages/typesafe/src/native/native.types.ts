@@ -1,5 +1,7 @@
 /**
  * A JSON value accepted as `state` by the TypeSafe API.
+ *
+ * @public
  */
 export type NativeJson =
   | string
@@ -15,6 +17,8 @@ export type NativeJson =
  * Documented at https://docs.typesafe.ai/api.md: `choice` takes a map of
  * option names to descriptions, `score` takes an ordered array of level
  * descriptions, and `noul` takes optional `true`/`false` descriptions.
+ *
+ * @public
  */
 export type NativeQuestion =
   | {

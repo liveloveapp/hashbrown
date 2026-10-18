@@ -9,7 +9,7 @@ const MIN_LEVELS = 2;
 const MAX_LEVELS = 10;
 
 /**
- * Options for {@link compileDecision}.
+ * Options for `compileDecision`.
  *
  * @public
  */

@@ -274,12 +274,16 @@ export function useUiDecision(
   const { value, meta } = decision;
   const selection = useMemo(() => {
     if (value === null || meta === null) return null;
+    const parsed = JSON.parse(optionsKey) as {
+      options: Array<{ id: string }>;
+    };
     return ɵresolveSelection(
       { value, meta } as Decision.Result<DecidableSchema>,
       JSON.parse(selectKey) as Decision.Select,
+      parsed.options.map(({ id }) => id),
       minConfidence,
     );
-  }, [value, meta, selectKey, minConfidence]);
+  }, [value, meta, selectKey, optionsKey, minConfidence]);
 
   // Phase 1 has settled for this input once no request is in flight and
   // either a request was seen in flight since the input (or options) changed,

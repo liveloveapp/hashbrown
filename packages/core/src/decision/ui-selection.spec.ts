@@ -11,6 +11,8 @@ const options = [
   { id: 'table', description: 'A table' },
 ];
 
+const optionIds = options.map((option) => option.id);
+
 function catchError(fn: () => unknown): unknown {
   try {
     fn();
@@ -89,7 +91,9 @@ test("'one' schema decodes a hand-built envelope", () => {
     },
   });
 
-  expect(resolveSelection(result as Result<DecidableSchema>, 'one')).toEqual({
+  expect(
+    resolveSelection(result as Result<DecidableSchema>, 'one', optionIds),
+  ).toEqual({
     ids: ['chart'],
     confident: true,
   });
@@ -110,15 +114,15 @@ test('{ max } schema decodes a hand-built envelope', () => {
   });
 
   expect(
-    resolveSelection(result as Result<DecidableSchema>, { max: 2 }),
+    resolveSelection(result as Result<DecidableSchema>, { max: 2 }, optionIds),
   ).toEqual({ ids: ['table', 'map'], confident: true });
 });
 
 test("'one' resolves the pick and compares confidence to the minimum", () => {
   const result = oneResult('map', 0.6);
 
-  const high = resolveSelection(result, 'one', 0.5);
-  const low = resolveSelection(result, 'one', 0.7);
+  const high = resolveSelection(result, 'one', ['map'], 0.5);
+  const low = resolveSelection(result, 'one', ['map'], 0.7);
 
   expect(high).toEqual({ ids: ['map'], confident: true });
   expect(low).toEqual({ ids: ['map'], confident: false });
@@ -127,7 +131,12 @@ test("'one' resolves the pick and compares confidence to the minimum", () => {
 test('{ max } keeps ids at or above 0.5 sorted by probability descending', () => {
   const result = manyResult({ map: 0.5, chart: 0.9, table: 0.4, list: 0.7 });
 
-  const resolved = resolveSelection(result, { max: 5 });
+  const resolved = resolveSelection(result, { max: 5 }, [
+    'map',
+    'chart',
+    'table',
+    'list',
+  ]);
 
   expect(resolved).toEqual({ ids: ['chart', 'list', 'map'], confident: true });
 });
@@ -135,7 +144,7 @@ test('{ max } keeps ids at or above 0.5 sorted by probability descending', () =>
 test('{ max } caps the number of ids', () => {
   const result = manyResult({ map: 0.6, chart: 0.9, table: 0.8 });
 
-  const resolved = resolveSelection(result, { max: 2 });
+  const resolved = resolveSelection(result, { max: 2 }, optionIds);
 
   expect(resolved.ids).toEqual(['chart', 'table']);
 });
@@ -143,15 +152,29 @@ test('{ max } caps the number of ids', () => {
 test('{ max } keeps option order for ties', () => {
   const result = manyResult({ a: 0.7, b: 0.7, c: 0.7, d: 0.9, e: 0.7 });
 
-  const resolved = resolveSelection(result, { max: 4 });
+  const resolved = resolveSelection(result, { max: 4 }, [
+    'a',
+    'b',
+    'c',
+    'd',
+    'e',
+  ]);
 
   expect(resolved.ids).toEqual(['d', 'a', 'b', 'c']);
+});
+
+test('{ max } keeps option order for ties with integer-like ids', () => {
+  const result = manyResult({ b: 0.7, '2': 0.7, '1': 0.7, x: 0.9 });
+
+  const resolved = resolveSelection(result, { max: 4 }, ['b', '2', '1', 'x']);
+
+  expect(resolved.ids).toEqual(['x', 'b', '2', '1']);
 });
 
 test('{ max } is not confident when nothing is kept', () => {
   const result = manyResult({ map: 0.2, chart: 0.1 });
 
-  const resolved = resolveSelection(result, { max: 2 });
+  const resolved = resolveSelection(result, { max: 2 }, ['map', 'chart']);
 
   expect(resolved).toEqual({ ids: [], confident: false });
 });
@@ -159,8 +182,8 @@ test('{ max } is not confident when nothing is kept', () => {
 test('{ max } confidence compares the best probability to the minimum', () => {
   const result = manyResult({ map: 0.6, chart: 0.55 });
 
-  const confident = resolveSelection(result, { max: 2 }, 0.6);
-  const unsure = resolveSelection(result, { max: 2 }, 0.61);
+  const confident = resolveSelection(result, { max: 2 }, ['map', 'chart'], 0.6);
+  const unsure = resolveSelection(result, { max: 2 }, ['map', 'chart'], 0.61);
 
   expect(confident.confident).toBe(true);
   expect(unsure.confident).toBe(false);
@@ -170,7 +193,7 @@ test('resolveSelection does not mutate the result', () => {
   const result = manyResult({ a: 0.6, b: 0.9 });
   const snapshot = structuredClone(result);
 
-  resolveSelection(result, { max: 2 });
+  resolveSelection(result, { max: 2 }, ['a', 'b']);
 
   expect(result).toEqual(snapshot);
 });

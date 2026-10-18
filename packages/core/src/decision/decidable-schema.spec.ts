@@ -57,5 +57,6 @@ test('Decision.Meta mirrors the schema shape', () => {
     clear: { probability: 1 },
   };
 
+  expect(schema).toBeDefined();
   expect(meta.clear.probability).toBe(1);
 });

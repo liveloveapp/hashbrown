@@ -80,6 +80,7 @@ Use narrowing when the model should write props. A decision first picks from the
 <hb-code-example header="narrow, then generate">
 
 ```tsx
+import { s } from '@hashbrownai/core';
 import { exposeComponent, useUiDecision } from '@hashbrownai/react';
 
 function Answer({ query }: { query: string }) {

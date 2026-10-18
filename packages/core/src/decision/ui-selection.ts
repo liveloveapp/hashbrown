@@ -80,12 +80,18 @@ export function createSelectionSchema(
  *
  * For `'one'`, the picked id is returned and `confident` compares the pick's
  * confidence to `minConfidence`. For `{ max }`, ids with probability of at
- * least 0.5 are kept, ordered by probability descending (ties keep option
- * order) and capped at `max`; `confident` compares the best probability to
- * `minConfidence` and is false when nothing is kept.
+ * least 0.5 are kept, ordered by probability descending (ties keep the order
+ * of `optionIds`) and capped at `max`; `confident` compares the best
+ * probability to `minConfidence` and is false when nothing is kept.
+ *
+ * The option order is passed in rather than read from `result.meta` or the
+ * schema, because both are records and JavaScript enumerates integer-like
+ * keys first.
  *
  * @param result - The decoded decision result.
  * @param select - The selection mode used to build the schema.
+ * @param optionIds - The option ids in the order given to
+ * `createSelectionSchema`.
  * @param minConfidence - The minimum confidence to count as confident.
  * @returns The selected ids and whether the decision was confident.
  *
@@ -94,6 +100,7 @@ export function createSelectionSchema(
 export function resolveSelection(
   result: Result<DecidableSchema>,
   select: Select,
+  optionIds: readonly string[],
   minConfidence = 0,
 ): { ids: string[]; confident: boolean } {
   const value = result.value as Record<string, unknown>;
@@ -103,10 +110,15 @@ export function resolveSelection(
     const pickMeta = meta['pick'] as ChoiceMeta;
     return { ids: [pick], confident: pickMeta.confidence >= minConfidence };
   }
-  const kept = Object.keys(meta)
-    .map((id) => ({ id, probability: (meta[id] as YesNoMeta).probability }))
+  const kept = optionIds
+    .filter((id) => Object.prototype.hasOwnProperty.call(meta, id))
+    .map((id, index) => ({
+      id,
+      index,
+      probability: (meta[id] as YesNoMeta).probability,
+    }))
     .filter((entry) => entry.probability >= MIN_PROBABILITY)
-    .sort((a, b) => b.probability - a.probability)
+    .sort((a, b) => b.probability - a.probability || a.index - b.index)
     .slice(0, select.max);
   return {
     ids: kept.map((entry) => entry.id),

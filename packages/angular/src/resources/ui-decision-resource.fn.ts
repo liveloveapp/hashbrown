@@ -324,6 +324,7 @@ export function uiDecisionResource(
           return { id: name, description };
         });
   const hasOptions = decisionOptions.length > 0;
+  const optionIds = decisionOptions.map(({ id }) => id);
   const schema = hasOptions
     ? ɵcreateSelectionSchema(decisionOptions, select)
     : PLACEHOLDER_SCHEMA;
@@ -342,6 +343,7 @@ export function uiDecisionResource(
     return ɵresolveSelection(
       { value, meta } as Decision.Result<DecidableSchema>,
       select,
+      optionIds,
       minConfidence,
     );
   });

@@ -1,6 +1,13 @@
 import * as s from './public_api';
 import { fromJsonSchema } from './from-json-schema';
 
+type EnumDefinition = { entries?: unknown; entryDescriptions?: unknown };
+
+function definitionOf(schema: unknown): EnumDefinition {
+  return (schema as { '~schema': { definition: EnumDefinition } })['~schema']
+    .definition;
+}
+
 test('enumeration accepts a record of entry descriptions', () => {
   const schema = s.enumeration('Kind', { jet: 'Jets', rotor: 'Helicopters' });
   type Kind = s.Infer<typeof schema>;
@@ -32,7 +39,7 @@ test('enumeration stores entry descriptions and ordered entries on the definitio
 
   const schema = s.enumeration('Kind', record);
 
-  const definition = (schema as any)['~schema'].definition;
+  const definition = definitionOf(schema);
   expect(definition.entryDescriptions).toEqual(record);
   expect(definition.entries).toEqual(['jet', 'rotor']);
 });
@@ -57,7 +64,5 @@ test('fromJsonSchema of a described enumeration is lossy: array form with combin
   const parsed = fromJsonSchema(emitted);
 
   expect(parsed.toJsonSchema()).toEqual(emitted);
-  expect(
-    (parsed as any)['~schema'].definition.entryDescriptions,
-  ).toBeUndefined();
+  expect(definitionOf(parsed).entryDescriptions).toBeUndefined();
 });
