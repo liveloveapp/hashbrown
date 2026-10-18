@@ -40,7 +40,8 @@ export type ExposeMarkdownConfig = Omit<
   /**
    * LLM-facing component description.
    *
-   * When omitted, a default description is used.
+   * When omitted, the default description of `markdownComponent` (from
+   * `@hashbrownai/core`) is used.
    */
   description?: string;
 
