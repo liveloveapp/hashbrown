@@ -7,17 +7,32 @@ import type {
 import { cloneAndFreezeOptionalJsonValue } from '../utils/json-value';
 
 /**
- * Validates and owns terminal interrupts, returning undefined for ordinary success.
+ * A validated AG-UI 1.0 `RUN_FINISHED.outcome`: success, interrupt, or cancelled.
  *
  * @internal
  */
-export function validateInterruptOutcome(
+export type ValidatedRunFinishedOutcome =
+  | { readonly type: 'success' }
+  | { readonly type: 'interrupt'; readonly interrupts: readonly Interrupt[] }
+  | { readonly type: 'cancelled' };
+
+/**
+ * Validates a `RUN_FINISHED.outcome` and owns its interrupts.
+ *
+ * An absent outcome is success, as AG-UI 1.0 defines it. A cancelled outcome
+ * carries nothing else: the run stopped without failing, so there is neither
+ * a result to keep nor an interrupt to answer.
+ *
+ * @internal
+ */
+export function validateRunFinishedOutcome(
   value: unknown,
-): readonly Interrupt[] | undefined {
-  if (value === undefined) return undefined;
+): ValidatedRunFinishedOutcome {
+  if (value === undefined) return SUCCESS;
   try {
     if (!isRecord(value)) throw new TypeError();
-    if (value['type'] === 'success') return undefined;
+    if (value['type'] === 'success') return SUCCESS;
+    if (value['type'] === 'cancelled') return CANCELLED;
     const interrupts = value['interrupts'];
     if (
       value['type'] !== 'interrupt' ||
@@ -26,45 +41,74 @@ export function validateInterruptOutcome(
     )
       throw new TypeError();
     const ids = new Set<string>();
-    return Object.freeze(
-      Array.from(interrupts, (item): Interrupt => {
-        if (
-          !isRecord(item) ||
-          typeof item['id'] !== 'string' ||
-          typeof item['reason'] !== 'string' ||
-          ids.has(item['id'])
-        )
-          throw new TypeError();
-        ids.add(item['id']);
-        const optional: Record<string, unknown> = {};
-        for (const key of [
-          'message',
-          'toolCallId',
-          'subagentRunId',
-          'expiresAt',
-        ]) {
-          const field = item[key];
-          if (field === undefined) continue;
-          if (typeof field !== 'string') throw new TypeError();
-          if (key === 'expiresAt') parseExpiry(field);
-          optional[key] = field;
-        }
-        for (const key of ['responseSchema', 'metadata']) {
-          const field = item[key];
-          if (field === undefined) continue;
-          if (!isRecord(field)) throw new TypeError();
-          optional[key] = cloneAndFreezeOptionalJsonValue(field);
-        }
-        return Object.freeze({
-          id: item['id'],
-          reason: item['reason'],
-          ...optional,
-        });
-      }),
-    );
+    return Object.freeze({
+      type: 'interrupt',
+      interrupts: Object.freeze(
+        Array.from(interrupts, (item): Interrupt => {
+          if (
+            !isRecord(item) ||
+            typeof item['id'] !== 'string' ||
+            typeof item['reason'] !== 'string' ||
+            ids.has(item['id'])
+          )
+            throw new TypeError();
+          ids.add(item['id']);
+          const optional: Record<string, unknown> = {};
+          for (const key of [
+            'message',
+            'toolCallId',
+            'subagentRunId',
+            'expiresAt',
+          ]) {
+            const field = item[key];
+            if (field === undefined) continue;
+            if (typeof field !== 'string') throw new TypeError();
+            if (key === 'expiresAt') parseExpiry(field);
+            optional[key] = field;
+          }
+          for (const key of ['responseSchema', 'metadata']) {
+            const field = item[key];
+            if (field === undefined) continue;
+            if (!isRecord(field)) throw new TypeError();
+            optional[key] = cloneAndFreezeOptionalJsonValue(field);
+          }
+          return Object.freeze({
+            id: item['id'],
+            reason: item['reason'],
+            ...optional,
+          });
+        }),
+      ),
+    });
   } catch {
-    throw new TypeError('Invalid interrupt outcome.');
+    throw new TypeError('Invalid run outcome.');
   }
+}
+
+const SUCCESS: ValidatedRunFinishedOutcome = Object.freeze({
+  type: 'success',
+});
+const CANCELLED: ValidatedRunFinishedOutcome = Object.freeze({
+  type: 'cancelled',
+});
+
+/**
+ * Validates and owns terminal interrupts, returning undefined for ordinary success.
+ *
+ * Only runs that completed may reach here: a cancelled outcome is settled by
+ * the run driver before any terminal event is forwarded, so reading one as
+ * interrupt-free success would be a bug, and it throws.
+ *
+ * @internal
+ */
+export function validateInterruptOutcome(
+  value: unknown,
+): readonly Interrupt[] | undefined {
+  const outcome = validateRunFinishedOutcome(value);
+  if (outcome.type === 'cancelled') {
+    throw new TypeError('A cancelled run has no interrupts to publish.');
+  }
+  return outcome.type === 'interrupt' ? outcome.interrupts : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

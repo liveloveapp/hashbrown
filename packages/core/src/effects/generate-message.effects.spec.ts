@@ -4512,6 +4512,53 @@ test('generation failure does not execute streamed tool calls', async () => {
   }
 });
 
+test('a server-cancelled run drops its partial answer, reports no error, and is not retried', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-cancelled',
+          role: 'assistant',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-cancelled',
+          delta: 'Partial',
+        } as AGUIEvent;
+        yield {
+          type: EventType.RUN_FINISHED,
+          ...identity,
+          outcome: { type: 'cancelled' },
+        } as AGUIEvent;
+      })(),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    retries: 2,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+  });
+  const teardown = runtime.start();
+
+  try {
+    await Promise.resolve();
+    runtime.sendMessage({ role: 'user', content: 'Cancel this run.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(runtime.error()).toBeUndefined();
+    expect(runtime.isLoading()).toBe(false);
+    expect(runtime.messages().map((message) => message.role)).toEqual(['user']);
+  } finally {
+    teardown();
+  }
+});
+
 test('sends one RunAgentInput with tools, structured output, and UI metadata', async () => {
   jest.clearAllMocks();
   const responseSchema = s.object('answer', {
