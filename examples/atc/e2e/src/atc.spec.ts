@@ -375,6 +375,7 @@ test('the browser sends the response schema the server pins', async ({
   const warn = console.warn;
   console.warn = (...args: unknown[]) => {
     warnings.push(args.map(String).join(' '));
+    warn.apply(console, args);
   };
   try {
     await openApp(page, testInfo.project.name);
