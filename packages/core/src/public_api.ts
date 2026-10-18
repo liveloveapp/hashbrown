@@ -54,6 +54,12 @@ export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { sanitizeUrl as ɵsanitizeUrl } from './utils/sanitize-url';
 export { compileDecision as ɵcompileDecision } from './decision/compile-decision';
 export { decodeDecision as ɵdecodeDecision } from './decision/decode-decision';
+export { createDecisionRuntime as ɵcreateDecisionRuntime } from './decision/decision-runtime';
+export type {
+  DecisionRuntime as ɵDecisionRuntime,
+  DecisionRuntimeOptions as ɵDecisionRuntimeOptions,
+  DecisionRuntimeState as ɵDecisionRuntimeState,
+} from './decision/decision-runtime';
 export { mergeMessagesForThread } from './utils/threading';
 export type { StateSignal } from './utils/micro-ngrx';
 export * as ɵtypes from './utils/types';
