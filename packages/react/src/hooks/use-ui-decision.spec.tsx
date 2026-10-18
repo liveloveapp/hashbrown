@@ -13,6 +13,21 @@ vi.mock('./use-ui-completion', async (importOriginal) => {
 });
 
 const useUiCompletionMock = vi.mocked(useUiCompletion);
+const { useUiCompletion: realUseUiCompletion } = await vi.importActual<
+  typeof import('./use-ui-completion')
+>('./use-ui-completion');
+
+function withRealCompletion() {
+  useUiCompletionMock.mockReset();
+  useUiCompletionMock.mockImplementation(realUseUiCompletion);
+}
+
+function withFakeCompletion() {
+  const setComponents = vi.fn();
+  useUiCompletionMock.mockReset();
+  useUiCompletionMock.mockImplementation(() => fakeCompletion(setComponents));
+  return setComponents;
+}
 
 type Call = { request: Decision.Request; signal: AbortSignal };
 
@@ -130,7 +145,7 @@ const weather = exposeComponent(Weather, {
 });
 
 test("useUiDecision candidates 'one' renders only the chosen element", async () => {
-  useUiCompletionMock.mockClear();
+  withRealCompletion();
   const fake = createFakeTransport(() =>
     pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
   );
@@ -150,6 +165,7 @@ test("useUiDecision candidates 'one' renders only the chosen element", async () 
 });
 
 test('useUiDecision candidates { max: 2 } renders in probability order', async () => {
+  withRealCompletion();
   const fake = createFakeTransport(() =>
     multiResponse({ flight: 0.6, airport: 0.2, weather: 0.95 }),
   );
@@ -170,6 +186,7 @@ test('useUiDecision candidates { max: 2 } renders in probability order', async (
 });
 
 test('useUiDecision candidates below minConfidence renders nothing', async () => {
+  withRealCompletion();
   const fake = createFakeTransport(() =>
     pickResponse('airport', 0.4, ['flight', 'airport', 'weather']),
   );
@@ -191,7 +208,7 @@ test('useUiDecision candidates below minConfidence renders nothing', async () =>
 });
 
 test('useUiDecision candidates mode keeps the UI completion idle without requests', async () => {
-  useUiCompletionMock.mockClear();
+  withRealCompletion();
   const fetchMock = vi.fn<typeof fetch>();
   vi.stubGlobal('fetch', fetchMock);
   const fake = createFakeTransport(() =>
@@ -218,9 +235,7 @@ test('useUiDecision candidates mode keeps the UI completion idle without request
 });
 
 test('useUiDecision narrowing passes only the chosen components and waits for phase 1', async () => {
-  const setComponents = vi.fn();
-  useUiCompletionMock.mockReset();
-  useUiCompletionMock.mockImplementation(() => fakeCompletion(setComponents));
+  const setComponents = withFakeCompletion();
   const Note = () => null;
   const kit = ɵcreateUiKit<any>({
     components: [
@@ -271,9 +286,7 @@ test('useUiDecision narrowing passes only the chosen components and waits for ph
 });
 
 test('useUiDecision narrowing with low confidence passes all components', async () => {
-  const setComponents = vi.fn();
-  useUiCompletionMock.mockReset();
-  useUiCompletionMock.mockImplementation(() => fakeCompletion(setComponents));
+  const setComponents = withFakeCompletion();
   const components = [flight, airport, weather];
   const fake = createFakeTransport(() =>
     pickResponse('Airport', 0.4, ['Flight', 'Airport', 'Weather']),
@@ -298,9 +311,7 @@ test('useUiDecision narrowing with low confidence passes all components', async 
 });
 
 test('useUiDecision narrowing phase 1 error passes all components and exposes decisionError', async () => {
-  const setComponents = vi.fn();
-  useUiCompletionMock.mockReset();
-  useUiCompletionMock.mockImplementation(() => fakeCompletion(setComponents));
+  const setComponents = withFakeCompletion();
   const components = [flight, airport, weather];
   const failure = new Error('decide failed');
   const fake = createFakeTransport(() => Promise.reject(failure));
@@ -324,9 +335,7 @@ test('useUiDecision narrowing phase 1 error passes all components and exposes de
 });
 
 test('useUiDecision narrowing re-decides on input change before generating again', async () => {
-  const setComponents = vi.fn();
-  useUiCompletionMock.mockReset();
-  useUiCompletionMock.mockImplementation(() => fakeCompletion(setComponents));
+  const setComponents = withFakeCompletion();
   const ids = ['Flight', 'Airport', 'Weather'];
   const deferred = deferredTransport();
   const { rerender } = renderHook(
@@ -364,11 +373,7 @@ test('useUiDecision narrowing re-decides on input change before generating again
 });
 
 test('useUiDecision narrowing sends the first generation with only the chosen components', async () => {
-  const actual = await vi.importActual<typeof import('./use-ui-completion')>(
-    './use-ui-completion',
-  );
-  useUiCompletionMock.mockReset();
-  useUiCompletionMock.mockImplementation(actual.useUiCompletion);
+  withRealCompletion();
   const bodies: string[] = [];
   const fetchMock = vi.fn<typeof fetch>(async (_url, init) => {
     bodies.push(String(init?.body));
@@ -401,4 +406,87 @@ test('useUiDecision narrowing sends the first generation with only the chosen co
   expect(bodies[0]).toContain('Airport');
   expect(bodies[0]).not.toContain('Weather');
   expect(bodies[0]).not.toContain('Flight');
+});
+
+test('useUiDecision narrowing settles with every component after decision.stop()', async () => {
+  const setComponents = withFakeCompletion();
+  const ids = ['Flight', 'Airport', 'Weather'];
+  const components = [flight, airport, weather];
+  const deferred = deferredTransport();
+  const { result, rerender } = renderHook(
+    ({ input }: { input: string }) =>
+      useUiDecision({
+        input,
+        components,
+        select: 'one',
+        generate: { system: 'Render it' },
+      }),
+    { initialProps: { input: 'one' }, wrapper: wrapperFor(deferred.transport) },
+  );
+  await waitFor(() => expect(deferred.calls).toHaveLength(1));
+  await act(async () => {
+    deferred.resolve(pickResponse('Flight', 0.9, ids));
+  });
+  await waitFor(() => expect(setComponents).toHaveBeenCalledTimes(1));
+  rerender({ input: 'two' });
+  await waitFor(() => expect(result.current.decision.isLoading).toBe(true));
+
+  act(() => result.current.decision.stop());
+  await waitFor(() => expect(setComponents).toHaveBeenCalledTimes(2));
+
+  expect(setComponents.mock.calls[1][0]).toEqual(components);
+  expect(result.current.isDeciding).toBe(false);
+  expect(result.current.isLoading).toBe(false);
+  expect(result.current.decisionError).toBeUndefined();
+  expect(useUiCompletionMock.mock.lastCall?.[0].input).toBe('two');
+});
+
+test('useUiDecision narrowing with only UI kits skips the decision', async () => {
+  const setComponents = withFakeCompletion();
+  const Note = () => null;
+  const kit = ɵcreateUiKit<any>({
+    components: [
+      exposeComponent(Note, { name: 'Note', description: 'A note' }),
+    ],
+  });
+  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
+
+  const { result } = renderHook(
+    () =>
+      useUiDecision({
+        input: 'hello',
+        components: [kit],
+        select: 'one',
+        generate: { system: 'Render it' },
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(setComponents).toHaveBeenCalled());
+
+  expect(setComponents.mock.calls[0][0]).toEqual([kit]);
+  expect(fake.calls).toHaveLength(0);
+  expect(result.current.isDeciding).toBe(false);
+  expect(result.current.decisionError).toBeUndefined();
+  expect(result.current.decision.isLoading).toBe(false);
+  expect(useUiCompletionMock.mock.lastCall?.[0].input).toBe('hello');
+});
+
+test('useUiDecision candidates with no candidates renders nothing', async () => {
+  withRealCompletion();
+  const fake = createFakeTransport(() =>
+    pickResponse('flight', 0.9, ['flight']),
+  );
+
+  const { result } = renderHook(
+    () => useUiDecision({ input: 'hello', candidates: [], select: 'one' }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+
+  expect(result.current.ids).toEqual([]);
+  expect(result.current.ui).toEqual([]);
+  expect(result.current.error).toBeUndefined();
+  expect(fake.calls).toHaveLength(0);
 });

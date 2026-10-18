@@ -1,8 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, no-redeclare */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-redeclare -- the core rule (the one enabled here) flags TypeScript overload signatures of useUiDecision */
 import {
   type Chat,
   type DecidableSchema,
   type Decision,
+  s,
   type SystemPrompt,
   type TransportOrFactory,
   ɵcreateSelectionSchema,
@@ -11,11 +13,7 @@ import {
 } from '@hashbrownai/core';
 import { cloneElement, type ReactElement, useMemo, useState } from 'react';
 import { type ExposedComponent } from '../expose-component.fn';
-import {
-  useDecision,
-  type UseDecisionOptions,
-  type UseDecisionResult,
-} from './use-decision';
+import { useDecision, type UseDecisionResult } from './use-decision';
 import {
   useUiCompletion,
   type UseUiCompletionResult,
@@ -140,7 +138,7 @@ export interface UseUiDecisionCandidatesResult {
  */
 export interface UseUiDecisionNarrowingResult extends Omit<
   UseUiCompletionResult<Chat.AnyTool>,
-  'ui' | 'isLoading' | 'isGenerating' | 'error'
+  'ui' | 'isLoading' | 'isGenerating' | 'error' | 'setComponents'
 > {
   /** The rendered elements from the UI completion. */
   ui: ReactElement<any>[] | null;
@@ -163,18 +161,28 @@ export interface UseUiDecisionNarrowingResult extends Omit<
 
 const NO_COMPONENTS: UiKitInput<ExposedComponent<any>>[] = [];
 
+/**
+ * Decided over when there is nothing to choose (kit-only components or no
+ * candidates). The decision stays idle, so it never sends a request.
+ */
+const PLACEHOLDER_SCHEMA: DecidableSchema = s.object('Selection', {
+  unused: s.boolean('Unused'),
+});
+
 interface Baseline {
   key: string | null;
   value: unknown;
   error: Error | undefined;
+  /** Whether a request was seen in flight for `key`. */
+  started: boolean;
 }
 
 /**
  * Chooses UI for an input with a decision.
  *
  * In candidates mode the model picks among app-rendered elements and the
- * chosen elements are returned in order. Below `minConfidence` nothing is
- * chosen.
+ * chosen elements are returned in order. Below `minConfidence`, or with no
+ * candidates, nothing is chosen.
  *
  * @public
  * @example
@@ -202,7 +210,10 @@ export function useUiDecision(
  * chosen components plus any UI kits. The completion waits until the decision
  * settles. When the decision fails or falls below `minConfidence`, the
  * completion runs with every component, and a failure is exposed as
- * `decisionError`. Input changes re-run the decision before generating again.
+ * `decisionError`; the same applies when the decision is stopped. With no
+ * exposed components (only UI kits) there is nothing to decide, so the
+ * completion runs with every component straight away. Input changes re-run
+ * the decision before generating again.
  *
  * @public
  * @example
@@ -247,15 +258,17 @@ export function useUiDecision(
       select: Decision.Select;
       options: Array<{ id: string; description: string }>;
     };
-    return ɵcreateSelectionSchema(parsed.options, parsed.select);
+    return parsed.options.length === 0
+      ? null
+      : ɵcreateSelectionSchema(parsed.options, parsed.select);
   }, [optionsKey]);
+  const hasOptions = schema !== null;
 
-  const decisionOptions: UseDecisionOptions<DecidableSchema> = {
-    schema,
-    input,
+  const decision = useDecision({
+    schema: schema ?? PLACEHOLDER_SCHEMA,
+    input: hasOptions ? input : null,
     transport,
-  };
-  const decision = useDecision(decisionOptions);
+  });
 
   const selectKey = JSON.stringify(select);
   const { value, meta } = decision;
@@ -268,37 +281,56 @@ export function useUiDecision(
     );
   }, [value, meta, selectKey, minConfidence]);
 
-  // Phase 1 has settled for this input once its value or error changes after
-  // the input (or schema) changed and no request is in flight.
+  // Phase 1 has settled for this input once no request is in flight and
+  // either a request was seen in flight since the input (or options) changed,
+  // or the value or error changed since then. Without options there is
+  // nothing to decide, so it settles at once.
   const requestKey =
     inputKey === null ? null : JSON.stringify([optionsKey, inputKey]);
   const [baseline, setBaseline] = useState<Baseline>(() => ({
     key: requestKey,
     value: decision.value,
     error: decision.error,
+    started: decision.isLoading,
   }));
   if (baseline.key !== requestKey) {
     setBaseline({
       key: requestKey,
       value: decision.value,
       error: decision.error,
+      started: decision.isLoading,
     });
+  } else if (decision.isLoading && !baseline.started) {
+    setBaseline({ ...baseline, started: true });
   }
+  const freshValue =
+    baseline.key === requestKey &&
+    decision.value !== null &&
+    decision.value !== baseline.value;
+  const freshError =
+    baseline.key === requestKey &&
+    decision.error !== undefined &&
+    decision.error !== baseline.error;
   const settled =
     requestKey !== null &&
-    baseline.key === requestKey &&
-    !decision.isLoading &&
-    (decision.value !== null || decision.error !== undefined) &&
-    (decision.value !== baseline.value || decision.error !== baseline.error);
+    (!hasOptions ||
+      (baseline.key === requestKey &&
+        !decision.isLoading &&
+        (baseline.started || freshValue || freshError)));
 
+  // Only a fresh, error-free, confident result narrows; anything else (no
+  // options, a failure, a stop, low confidence) falls back to every component.
   const confidentIds =
-    selection !== null && selection.confident ? selection.ids : null;
+    hasOptions &&
+    freshValue &&
+    decision.error === undefined &&
+    selection !== null &&
+    selection.confident
+      ? selection.ids
+      : null;
   const chosenKey = !settled
     ? null
-    : JSON.stringify([
-        requestKey,
-        decision.error === undefined ? confidentIds : null,
-      ]);
+    : JSON.stringify([requestKey, confidentIds]);
 
   const [appliedKey, setAppliedKey] = useState<string | null>(null);
   const completion = useUiCompletion<string | Decision.JsonValue>({
@@ -318,7 +350,7 @@ export function useUiDecision(
     // the chosen components together with the input.
     setAppliedKey(chosenKey);
     const chosen =
-      decision.error === undefined && confidentIds !== null
+      confidentIds !== null
         ? components.filter(
             (entry) =>
               ɵisUiKit(entry) ||
@@ -328,12 +360,23 @@ export function useUiDecision(
     completion.setComponents(chosen);
   }
 
+  const ids = useMemo(
+    () =>
+      hasOptions && selection !== null && selection.confident
+        ? selection.ids
+        : [],
+    [hasOptions, selection],
+  );
+  const ui = useMemo(
+    () =>
+      ids.flatMap((id) => {
+        const candidate = candidates?.find((entry) => entry.id === id);
+        return candidate ? [cloneElement(candidate.element, { key: id })] : [];
+      }),
+    [ids, candidates],
+  );
+
   if (isCandidates) {
-    const ids = selection !== null && selection.confident ? selection.ids : [];
-    const ui = ids.flatMap((id) => {
-      const candidate = candidates.find((entry) => entry.id === id);
-      return candidate ? [cloneElement(candidate.element, { key: id })] : [];
-    });
     return {
       ui,
       ids,
@@ -352,6 +395,6 @@ export function useUiDecision(
     isGenerating: completion.isLoading,
     isLoading: isDeciding || completion.isLoading,
     error: completion.error,
-    decisionError: decision.error,
+    decisionError: hasOptions ? decision.error : undefined,
   };
 }
