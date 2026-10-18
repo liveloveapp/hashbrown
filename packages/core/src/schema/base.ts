@@ -1762,13 +1762,13 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor({
     const { entries, entryDescriptions, description } =
       schema[internal].definition;
     if (entryDescriptions) {
+      const lines = entries.map(
+        (entry: string) => `- ${entry}: ${entryDescriptions[entry]}`,
+      );
       return {
         type: 'string',
-        oneOf: entries.map((entry: string) => ({
-          const: entry,
-          description: entryDescriptions[entry],
-        })),
-        description,
+        enum: entries,
+        description: `${description}\n\n${lines.join('\n')}`,
       };
     }
     return {
@@ -1824,8 +1824,9 @@ export function isEnumType(type: HashbrownType): type is EnumType {
  * Creates a string enumeration schema.
  *
  * Pass an array of entries, or a record mapping each entry to a description
- * of what it means. Entry descriptions are emitted as a `oneOf` of
- * `{ const, description }` items in the JSON Schema.
+ * of what it means. The JSON Schema stays provider-safe: it emits a plain
+ * `enum`, and the entry descriptions are appended to the description as a
+ * `- key: description` list.
  *
  * @public
  * @param description - Description of the enumeration.
@@ -1837,7 +1838,21 @@ export function enumeration<const Entries extends readonly string[]>(
   entries: [...Entries],
 ): EnumType<Entries>;
 /**
+ * Creates a string enumeration schema from a record of entry descriptions.
+ *
+ * The record keys become the allowed values, in declared order. The JSON
+ * Schema emits a plain `enum` with the descriptions appended to the schema
+ * description as a `- key: description` list.
+ *
  * @public
+ * @param description - Description of the enumeration.
+ * @param entries - A record mapping each allowed value to its description.
+ * @returns An enumeration schema.
+ *
+ * @example
+ * ```ts
+ * const kind = s.enumeration('Kind', { jet: 'Jets', rotor: 'Helicopters' });
+ * ```
  */
 export function enumeration<const Entry extends string>(
   description: string,
