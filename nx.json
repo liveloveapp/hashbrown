@@ -54,10 +54,11 @@
       "packages/google",
       "packages/ollama",
       "packages/openai",
-      "packages/react"
+      "packages/react",
+      "packages/typesafe"
     ],
     "version": {
-      "preVersionCommand": "npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react"
+      "preVersionCommand": "npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react typesafe"
     }
   },
   "sync": {
