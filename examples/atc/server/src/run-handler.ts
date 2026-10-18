@@ -10,7 +10,10 @@ import {
   SYSTEM_PROMPT,
 } from '@atc/shared';
 import { createUiJsonSchema, markdownComponent, s } from '@hashbrownai/core';
-import { HashbrownOpenAI } from '@hashbrownai/openai';
+import {
+  HashbrownOpenAI,
+  type OpenAIHashbrownRunAgentInput,
+} from '@hashbrownai/openai';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type OpenAI from 'openai';
 import {
@@ -184,11 +187,6 @@ export const PINNED_RESPONSE_SCHEMA = createUiJsonSchema({
 
 const PINNED_RESPONSE_SCHEMA_JSON = JSON.stringify(PINNED_RESPONSE_SCHEMA);
 
-/** A run request as Hashbrown sends it: the UI response schema rides in `hashbrown`. */
-type UiRunInput = RunAgentInput & {
-  hashbrown?: { responseSchema?: object; ui?: boolean };
-};
-
 /**
  * Replaces the response schema the browser sent with the server's own, so
  * the model can only render atc's components. A different schema (tampering,
@@ -196,7 +194,7 @@ type UiRunInput = RunAgentInput & {
  * it is untrusted and can be large.
  */
 export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
-  const { hashbrown } = input as UiRunInput;
+  const { hashbrown } = input as OpenAIHashbrownRunAgentInput;
   if (hashbrown?.responseSchema === undefined) {
     return input;
   }
@@ -211,7 +209,7 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   return {
     ...input,
     hashbrown: { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA },
-  } as UiRunInput;
+  } as OpenAIHashbrownRunAgentInput;
 }
 
 /** gpt-5 and the o-series accept `reasoning_effort`; other models reject it with a 400. */

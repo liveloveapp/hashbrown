@@ -99,8 +99,9 @@ adapter (for example `@hashbrownai/anthropic`), replace `HashbrownOpenAI.stream.
 `HashbrownAnthropic.stream.text`, and set that provider's key and model. `limitRequest`
 in the same file sets the OpenAI request's `max_completion_tokens` and
 `reasoning_effort`; rewrite it for the new provider's request shape, keeping the output
-cap. `pinTools`, `pinResponseSchema` and `pinSystemPrompt` work on the AG-UI input and carry over
-unchanged.
+cap. `pinTools`, `pinResponseSchema` and `pinSystemPrompt` work on the AG-UI input and
+carry over unchanged, except that `pinResponseSchema` casts to the adapter's run input
+type (`OpenAIHashbrownRunAgentInput`; for example `AnthropicHashbrownRunAgentInput`).
 
 ## Tests
 
