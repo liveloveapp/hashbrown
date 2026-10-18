@@ -93,6 +93,11 @@ function parseSchema(
   path: string[],
 ): HashbrownType {
   assertIsObjectSchema(schema, path);
+
+  if (isDescribedEnumSchema(schema)) {
+    return parseDescribedEnum(schema as JsonSchema, path);
+  }
+
   assertNoForbiddenKeywords(schema, path);
 
   if ('anyOf' in schema) {
@@ -199,6 +204,52 @@ function parseConst(schema: JsonSchema, path: string[]): HashbrownType {
   }
 
   return createLiteral(value);
+}
+
+function isDescribedEnumSchema(schema: Record<string, unknown>): boolean {
+  const oneOf = schema['oneOf'];
+  return (
+    schema['type'] === 'string' &&
+    Array.isArray(oneOf) &&
+    oneOf.length > 0 &&
+    oneOf.every(
+      (item) =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as Record<string, unknown>)['const'] === 'string',
+    )
+  );
+}
+
+function parseDescribedEnum(schema: JsonSchema, path: string[]): HashbrownType {
+  assertAllowedKeys(
+    schema as Record<string, unknown>,
+    new Set([...BASE_ALLOWED_KEYS, 'type', 'oneOf']),
+    path,
+  );
+
+  const items = (schema as Record<string, unknown>)['oneOf'] as Record<
+    string,
+    unknown
+  >[];
+  const entries: Record<string, string> = {};
+  items.forEach((item, index) => {
+    assertAllowedKeys(item, new Set(['const', 'description']), [
+      ...path,
+      'oneOf',
+      String(index),
+    ]);
+    const description = item['description'];
+    if (description !== undefined && typeof description !== 'string') {
+      throw new Error(
+        `"description" must be a string at ${formatPath([...path, 'oneOf', String(index)])}.`,
+      );
+    }
+    entries[item['const'] as string] =
+      (description as string | undefined) ?? '';
+  });
+
+  return enumeration(getDescription(schema, 'Enum'), entries);
 }
 
 function parseEnum(schema: JsonSchema, path: string[]): HashbrownType {

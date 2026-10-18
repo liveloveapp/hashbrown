@@ -1723,6 +1723,10 @@ interface EnumTypeDefinition<
 > extends HashbrownTypeDefinition {
   type: 'enum';
   entries: Entries;
+  /**
+   * Optional per-entry descriptions, keyed by entry value.
+   */
+  entryDescriptions?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -1755,10 +1759,22 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor({
     HashbrownType.init(inst, def);
   },
   toJsonSchemaImpl: (schema: any) => {
+    const { entries, entryDescriptions, description } =
+      schema[internal].definition;
+    if (entryDescriptions) {
+      return {
+        type: 'string',
+        oneOf: entries.map((entry: string) => ({
+          const: entry,
+          description: entryDescriptions[entry],
+        })),
+        description,
+      };
+    }
     return {
       type: 'string',
-      enum: schema[internal].definition.entries,
-      description: schema[internal].definition.description,
+      enum: entries,
+      description,
     };
   },
   toTypeScriptImpl: (schema: any) => {
@@ -1805,16 +1821,46 @@ export function isEnumType(type: HashbrownType): type is EnumType {
 }
 
 /**
+ * Creates a string enumeration schema.
+ *
+ * Pass an array of entries, or a record mapping each entry to a description
+ * of what it means. Entry descriptions are emitted as a `oneOf` of
+ * `{ const, description }` items in the JSON Schema.
+ *
  * @public
+ * @param description - Description of the enumeration.
+ * @param entries - The allowed values, or a record of value to description.
+ * @returns An enumeration schema.
  */
 export function enumeration<const Entries extends readonly string[]>(
   description: string,
   entries: [...Entries],
-): EnumType<Entries> {
+): EnumType<Entries>;
+/**
+ * @public
+ */
+export function enumeration<const Entry extends string>(
+  description: string,
+  entries: Record<Entry, string>,
+): EnumType<Entry[]>;
+export function enumeration(
+  description: string,
+  entries: readonly string[] | Record<string, string>,
+): EnumType {
+  if (Array.isArray(entries)) {
+    return new EnumType({
+      type: 'enum',
+      description,
+      entries,
+      streaming: false,
+    }) as any;
+  }
+  const record = entries as Record<string, string>;
   return new EnumType({
     type: 'enum',
     description,
-    entries,
+    entries: Object.keys(record),
+    entryDescriptions: { ...record },
     streaming: false,
   }) as any;
 }
