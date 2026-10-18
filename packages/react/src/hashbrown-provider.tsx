@@ -1,6 +1,8 @@
 import { createContext, useMemo } from 'react';
 import {
+  createHttpDecisionTransport,
   createHttpTransport,
+  type Decision,
   type TransportOrFactory,
 } from '@hashbrownai/core';
 
@@ -24,10 +26,27 @@ export interface HashbrownProviderOptions {
    * Optional transport override applied to all descendant hooks.
    */
   transport?: TransportOrFactory;
+  /**
+   * Configuration for descendant `useDecision` hooks.
+   */
+  decision?: {
+    /**
+     * The URL of the decision endpoint.
+     *
+     * @defaultValue `/api/decide`
+     */
+    url?: string;
+    /**
+     * Optional decision transport override. When set, `url` and `middleware`
+     * are not used for decisions.
+     */
+    transport?: Decision.Transport;
+  };
 }
 
 interface HashbrownProviderContext {
   transport: TransportOrFactory;
+  decisionTransport: Decision.Transport;
 }
 
 export const HashbrownContext = createContext<
@@ -53,7 +72,7 @@ export const HashbrownProvider = (
     children: React.ReactNode;
   },
 ) => {
-  const { url, middleware, transport, children } = props;
+  const { url, middleware, transport, decision, children } = props;
   const configuredTransport = useMemo<TransportOrFactory>(
     () =>
       transport ??
@@ -64,9 +83,17 @@ export const HashbrownProvider = (
         })),
     [middleware, transport, url],
   );
+  const decisionUrl = decision?.url;
+  const decisionOverride = decision?.transport;
+  const decisionTransport = useMemo<Decision.Transport>(
+    () =>
+      decisionOverride ??
+      createHttpDecisionTransport({ url: decisionUrl, middleware }),
+    [decisionOverride, decisionUrl, middleware],
+  );
   const context = useMemo(
-    () => ({ transport: configuredTransport }),
-    [configuredTransport],
+    () => ({ transport: configuredTransport, decisionTransport }),
+    [configuredTransport, decisionTransport],
   );
 
   return (

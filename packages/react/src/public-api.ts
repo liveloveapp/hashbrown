@@ -22,6 +22,11 @@ export {
   type UseCompletionResult,
 } from './hooks/use-completion';
 export {
+  useDecision,
+  type UseDecisionOptions,
+  type UseDecisionResult,
+} from './hooks/use-decision';
+export {
   useImperativeJsonParser,
   type UseImperativeJsonParserResult,
 } from './hooks/use-imperative-json-parser';
