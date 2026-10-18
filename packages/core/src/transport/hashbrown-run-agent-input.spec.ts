@@ -283,3 +283,15 @@ test('preserves omitted resume payloads and explicit empty resume arrays', () =>
   );
   expect(createInput({ resume: [] }).resume).toEqual([]);
 });
+
+test('AG-UI 1.0 accepts the top-level hashbrown extension key as sent', () => {
+  const input = createInput({ responseSchema: { type: 'string' }, ui: true });
+
+  const result = RunAgentInputSchema.safeParse(input);
+
+  expect(result.success).toBe(true);
+  expect(result.data).toHaveProperty('hashbrown', {
+    responseSchema: { type: 'string' },
+    ui: true,
+  });
+});
