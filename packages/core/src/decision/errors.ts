@@ -20,8 +20,12 @@ export class DecisionSchemaError extends Error {
  * @public
  */
 export class DecisionResponseError extends Error {
-  constructor(message: string) {
+  /** The underlying error, such as a Skillet validation failure. */
+  override readonly cause?: unknown;
+
+  constructor(message: string, options?: { cause?: unknown }) {
     super(message);
     this.name = 'DecisionResponseError';
+    this.cause = options?.cause;
   }
 }
