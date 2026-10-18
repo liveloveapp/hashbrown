@@ -54,29 +54,33 @@ test('throws a DecisionSchemaError at creation for an invalid schema', () => {
 
 test('debounces input changes and sends one request', async () => {
   jest.useFakeTimers();
-  const { calls, transport } = createFakeTransport();
-  const runtime = createDecisionRuntime({
-    schema,
-    transport,
-    debounceTime: 100,
-  });
+  try {
+    const { calls, transport } = createFakeTransport();
+    const runtime = createDecisionRuntime({
+      schema,
+      transport,
+      debounceTime: 100,
+    });
 
-  runtime.setInput('a');
-  jest.advanceTimersByTime(50);
-  runtime.setInput('ab');
-  jest.advanceTimersByTime(99);
-  await flush();
-  expect(calls).toHaveLength(0);
-  jest.advanceTimersByTime(1);
-  await flush();
-  calls[0].resolve(responseFor('chat'));
-  await flush();
+    runtime.setInput('a');
+    jest.advanceTimersByTime(50);
+    runtime.setInput('ab');
+    jest.advanceTimersByTime(99);
+    await flush();
+    const callsBeforeDebounce = calls.length;
+    jest.advanceTimersByTime(1);
+    await flush();
+    calls[0].resolve(responseFor('chat'));
+    await flush();
 
-  expect(calls).toHaveLength(1);
-  expect(calls[0].request.state).toBe('ab');
-  expect(runtime.getState().status).toBe('success');
-  expect(runtime.getState().value).toEqual({ intent: 'chat' });
-  jest.useRealTimers();
+    expect(callsBeforeDebounce).toBe(0);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].request.state).toBe('ab');
+    expect(runtime.getState().status).toBe('success');
+    expect(runtime.getState().value).toEqual({ intent: 'chat' });
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test('wraps state with system when system is set', async () => {
@@ -146,26 +150,29 @@ test('setInput(null) aborts and returns to idle with a null value', async () => 
 
 test('retries retryable transport errors up to retries, then errors', async () => {
   jest.useFakeTimers();
-  const { calls, transport } = createFakeTransport();
-  const runtime = createDecisionRuntime({ schema, transport, retries: 2 });
-  runtime.setInput('a');
-  await flush();
+  try {
+    const { calls, transport } = createFakeTransport();
+    const runtime = createDecisionRuntime({ schema, transport, retries: 2 });
+    runtime.setInput('a');
+    await flush();
 
-  calls[0].reject(new TransportError('boom'));
-  await flush();
-  jest.advanceTimersByTime(250);
-  await flush();
-  calls[1].reject(new TransportError('boom'));
-  await flush();
-  jest.advanceTimersByTime(500);
-  await flush();
-  calls[2].reject(new TransportError('boom'));
-  await flush();
+    calls[0].reject(new TransportError('boom'));
+    await flush();
+    jest.advanceTimersByTime(250);
+    await flush();
+    calls[1].reject(new TransportError('boom'));
+    await flush();
+    jest.advanceTimersByTime(250);
+    await flush();
+    calls[2].reject(new TransportError('boom'));
+    await flush();
 
-  expect(calls).toHaveLength(3);
-  expect(runtime.getState().status).toBe('error');
-  expect(runtime.getState().error?.message).toBe('boom');
-  jest.useRealTimers();
+    expect(calls).toHaveLength(3);
+    expect(runtime.getState().status).toBe('error');
+    expect(runtime.getState().error?.message).toBe('boom');
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test('non-retryable errors fail immediately', async () => {
@@ -248,8 +255,85 @@ test('destroy aborts and stops notifying', async () => {
   runtime.subscribe(listener);
 
   runtime.destroy();
+  runtime.setInput('b');
+  const reloaded = runtime.reload();
   await flush();
 
   expect(calls[0].signal.aborted).toBe(true);
+  expect(calls).toHaveLength(1);
+  expect(reloaded).toBe(false);
   expect(listener).not.toHaveBeenCalled();
+});
+
+test('an older response is ignored even when the transport ignores the signal', async () => {
+  const resolvers: Array<(response: D.Response) => void> = [];
+  const transport: Decision.Transport = () =>
+    new Promise<D.Response>((resolve) => resolvers.push(resolve));
+  const runtime = createDecisionRuntime({ schema, transport });
+  runtime.setInput('a');
+  await flush();
+  runtime.setInput('b');
+  await flush();
+
+  resolvers[1](responseFor('chat'));
+  await flush();
+  resolvers[0](responseFor('filter'));
+  await flush();
+
+  expect(runtime.getState().value).toEqual({ intent: 'chat' });
+  expect(runtime.getState().status).toBe('success');
+});
+
+test('a throwing listener does not corrupt state or silence other listeners', async () => {
+  const rethrown: unknown[] = [];
+  const spy = jest
+    .spyOn(globalThis, 'queueMicrotask')
+    .mockImplementation((callback) => {
+      try {
+        callback();
+      } catch (error) {
+        rethrown.push(error);
+      }
+    });
+  try {
+    const { calls, transport } = createFakeTransport();
+    const runtime = createDecisionRuntime({ schema, transport });
+    const boom = new Error('listener failed');
+    const second = jest.fn();
+    runtime.subscribe(() => {
+      if (runtime.getState().status === 'success') throw boom;
+    });
+    runtime.subscribe(second);
+    runtime.setInput('a');
+    await flush();
+
+    calls[0].resolve(responseFor('chat'));
+    await flush();
+
+    expect(runtime.getState().status).toBe('success');
+    expect(runtime.getState().value).toEqual({ intent: 'chat' });
+    expect(runtime.getState().error).toBeUndefined();
+    expect(second).toHaveBeenCalledTimes(2);
+    expect(rethrown).toEqual([boom]);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+test('a listener that calls setInput re-entrantly sends only the newer input', async () => {
+  const { calls, transport } = createFakeTransport();
+  const runtime = createDecisionRuntime({ schema, transport });
+  let reentered = false;
+  runtime.subscribe(() => {
+    if (!reentered && runtime.getState().status === 'loading') {
+      reentered = true;
+      runtime.setInput('b');
+    }
+  });
+
+  runtime.setInput('a');
+  await flush();
+
+  expect(calls).toHaveLength(1);
+  expect(calls[0].request.state).toBe('b');
 });

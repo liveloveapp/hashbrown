@@ -6,7 +6,7 @@ import type { DecidableSchema } from './decidable-schema';
 import { decodeDecision } from './decode-decision';
 import type * as Decision from './decision.types';
 
-/** Base delay between retries, multiplied by the attempt number. */
+/** Fixed delay between retries. */
 const RETRY_DELAY_MS = 250;
 
 /**
@@ -35,9 +35,13 @@ export interface DecisionRuntimeOptions<S extends DecidableSchema> {
  * @public
  */
 export interface DecisionRuntimeState<S extends DecidableSchema> {
+  /** The lifecycle status of the current request. */
   status: 'idle' | 'loading' | 'success' | 'error';
+  /** The last decoded value, or null. */
   value: s.Infer<S> | null;
+  /** Metadata mirroring the value, or null. */
   meta: Decision.Meta<S> | null;
+  /** The last failure, cleared when a new request starts. */
   error: Error | undefined;
 }
 
@@ -153,7 +157,15 @@ export function createDecisionRuntime<S extends DecidableSchema>(
     const next = reduce(state, action);
     if (next === state) return;
     state = next;
-    listeners.forEach((listener) => listener());
+    for (const listener of [...listeners]) {
+      try {
+        listener();
+      } catch (error) {
+        queueMicrotask(() => {
+          throw error;
+        });
+      }
+    }
   }
 
   function abortInFlight() {
@@ -171,6 +183,7 @@ export function createDecisionRuntime<S extends DecidableSchema>(
     const isCurrent = () => id === requestId && !signal.aborted;
 
     dispatch({ type: 'started' });
+    if (!isCurrent()) return;
 
     if (debounceTime > 0) {
       await sleep(debounceTime, signal);
@@ -198,19 +211,19 @@ export function createDecisionRuntime<S extends DecidableSchema>(
           dispatch({ type: 'failed', error: toError(error) });
           return;
         }
-        await sleep(RETRY_DELAY_MS * (attempt + 1), signal);
+        await sleep(RETRY_DELAY_MS, signal);
         if (!isCurrent()) return;
         continue;
       }
       if (!isCurrent()) return;
+      let result: Decision.Result<S>;
       try {
-        dispatch({
-          type: 'succeeded',
-          result: decodeDecision(schema, response),
-        });
+        result = decodeDecision(schema, response);
       } catch (error) {
         dispatch({ type: 'failed', error: toError(error) });
+        return;
       }
+      dispatch({ type: 'succeeded', result });
       return;
     }
   }
