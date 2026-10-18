@@ -1,5 +1,6 @@
 import { DecisionResponseError } from '@hashbrownai/core';
 import type { Decision } from '@hashbrownai/core';
+import { orderedLevelKeys } from './levels';
 import type { NativeAnswer, NativeResponse } from './native.types';
 
 type Tree = { [key: string]: Decision.JsonValue };
@@ -9,14 +10,17 @@ type Tree = { [key: string]: Decision.JsonValue };
  *
  * Values are nested by dotted question id; metadata stays keyed by the dotted
  * id. A choice returns its option key, a `noul` answer is true at or above 0.5,
- * and a score returns the nearest level key as a number with the weighted score
- * kept in its metadata.
+ * and a score returns the nearest level as a number. Native score answers are
+ * level indexes into the numerically ordered levels; the weighted score in the
+ * metadata is mapped back to level values by linear interpolation (levels
+ * `[10, 20]` with a native score of 0.8 give 18).
  *
  * @param native - The native response body.
  * @param questions - The questions that were asked, keyed by dotted id.
  * @returns The vendor-neutral decision response.
  * @throws DecisionResponseError when an answer is missing, has the wrong type,
- * or names an option or level the question does not define.
+ * names an option or level the question does not define, or carries a
+ * non-numeric score, confidence, noul or probability.
  */
 export function fromNativeResponse(
   native: NativeResponse,
@@ -51,11 +55,56 @@ export function fromNativeResponse(
   };
 }
 
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function checkProbabilities(
+  id: string,
+  probabilities: unknown,
+): Record<string, number> {
+  if (
+    typeof probabilities !== 'object' ||
+    probabilities === null ||
+    Array.isArray(probabilities) ||
+    !Object.values(probabilities).every(isNumber)
+  ) {
+    throw new DecisionResponseError(
+      `Answer for "${id}" has probabilities that are not a map of numbers`,
+    );
+  }
+  return probabilities as Record<string, number>;
+}
+
+function checkNumber(id: string, field: string, value: unknown): number {
+  if (!isNumber(value)) {
+    throw new DecisionResponseError(
+      `Answer for "${id}" has a ${field} that is not a finite number`,
+    );
+  }
+  return value;
+}
+
+/**
+ * Maps a weighted score in index space (0 to levels - 1) to level-value space
+ * by linear interpolation between neighbouring level values.
+ */
+function interpolate(values: readonly number[], index: number): number {
+  const clamped = Math.min(values.length - 1, Math.max(0, index));
+  const lower = Math.floor(clamped);
+  const upper = Math.min(values.length - 1, lower + 1);
+  const fraction = clamped - lower;
+  return values[lower] + fraction * (values[upper] - values[lower]);
+}
+
 function mapAnswer(
   id: string,
   question: Decision.Question,
   answer: NativeAnswer,
 ): { value: Decision.JsonValue; meta: Decision.MetaJson[string] } {
+  if (typeof answer !== 'object' || answer === null) {
+    throw new DecisionResponseError(`Answer for "${id}" is not an object`);
+  }
   const expected = question.type === 'yesNo' ? 'noul' : question.type;
   if (answer.type !== expected) {
     throw new DecisionResponseError(
@@ -65,6 +114,7 @@ function mapAnswer(
 
   if (question.type === 'choice' && answer.type === 'choice') {
     if (
+      typeof answer.choice !== 'string' ||
       !Object.prototype.hasOwnProperty.call(question.options, answer.choice)
     ) {
       throw new DecisionResponseError(
@@ -74,44 +124,44 @@ function mapAnswer(
     return {
       value: answer.choice,
       meta: {
-        confidence: answer.confidence,
-        probabilities: answer.probabilities,
+        confidence: checkNumber(id, 'confidence', answer.confidence),
+        probabilities: checkProbabilities(id, answer.probabilities),
       },
     };
   }
 
   if (question.type === 'score' && answer.type === 'score') {
-    const keys = Object.keys(question.levels);
-    const index = Math.min(
-      keys.length - 1,
-      Math.max(0, Math.round(answer.score)),
-    );
-    const level = Number(keys[index]);
-    if (!Number.isFinite(level)) {
+    const keys = orderedLevelKeys(question.levels);
+    const values = keys.map(Number);
+    const bad = keys.find((_, i) => !Number.isFinite(values[i]));
+    if (bad !== undefined) {
       throw new DecisionResponseError(
-        `Score level "${keys[index]}" for "${id}" is not numeric`,
+        `Score level "${bad}" for "${id}" is not numeric`,
       );
     }
+    const score = checkNumber(id, 'score', answer.score);
+    const confidence = checkNumber(id, 'confidence', answer.confidence);
+    const index = Math.min(keys.length - 1, Math.max(0, Math.round(score)));
     const probabilities = Object.fromEntries(
-      Object.entries(answer.probabilities).map(([i, p]) => [
-        keys[Number(i)] ?? i,
-        p,
-      ]),
+      Object.entries(checkProbabilities(id, answer.probabilities)).map(
+        ([i, p]) => [keys[Number(i)] ?? i, p],
+      ),
     );
     return {
-      value: level,
+      value: values[index],
       meta: {
-        confidence: answer.confidence,
-        score: answer.score,
+        confidence,
+        score: interpolate(values, score),
         probabilities,
       },
     };
   }
 
   if (answer.type === 'noul') {
+    const noul = checkNumber(id, 'noul', answer.noul);
     return {
-      value: answer.noul >= 0.5,
-      meta: { probability: answer.noul },
+      value: noul >= 0.5,
+      meta: { probability: noul },
     };
   }
 

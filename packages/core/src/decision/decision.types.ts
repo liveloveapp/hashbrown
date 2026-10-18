@@ -13,7 +13,9 @@ export type JsonValue = CoreJsonValue;
  * A question put to a decision model.
  *
  * - `choice`: pick one option; `options` maps option ids to optional descriptions.
- * - `score`: rate on an ordered scale; `levels` maps level ids to descriptions.
+ * - `score`: rate on an ordered scale; `levels` maps level ids (numeric
+ *   strings) to descriptions. The scale order is the numeric order of the
+ *   ids, not the record's key order.
  * - `yesNo`: a boolean question.
  *
  * @public
@@ -58,7 +60,9 @@ export type ChoiceMeta = {
  */
 export type ScoreMeta = {
   confidence: number;
+  /** The probability-weighted score in level values; it may fall between levels. */
   score: number;
+  /** Probability per level, keyed by level value. */
   probabilities: Record<string, number>;
 };
 

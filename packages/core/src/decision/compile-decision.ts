@@ -74,6 +74,14 @@ function compileScore(
   if (!(step > 0) || !Number.isFinite(step) || maximum < minimum) {
     throw fail('A score requires a positive step and minimum <= maximum');
   }
+  const offset = minimum / step;
+  if (Math.abs(offset - Math.round(offset)) > 1e-9) {
+    // Skillet checks multipleOf from 0, so an off-grid minimum would make
+    // every level fail validation when the answer is decoded.
+    throw fail(
+      `A score minimum (${minimum}) must be a multiple of multipleOf (${step})`,
+    );
+  }
   const places = Math.max(decimalPlaces(step), decimalPlaces(minimum));
   const count = Math.floor((maximum - minimum) / step + 1e-9) + 1;
   if (count < MIN_LEVELS || count > MAX_LEVELS) {
@@ -160,8 +168,14 @@ function compileNode(
  * with path `''` is thrown. Enumerations become `choice` questions (at most
  * 255 options), booleans become `yesNo`, and bounded integers or numbers with
  * `multipleOf` become `score` questions of 2 to 10 levels. Exclusive bounds,
- * unbounded scores, and property names containing `.` throw
- * `DecisionSchemaError` carrying the offending path.
+ * unbounded scores, a `minimum` that is not a multiple of `multipleOf`, and
+ * property names containing `.` throw `DecisionSchemaError` carrying the
+ * offending path.
+ *
+ * Score `levels` are keyed by the level value as a string. JavaScript
+ * enumerates integer-like keys first, so the record's key order is not the
+ * scale order for fractional or negative ranges: sort the keys numerically to
+ * get the scale.
  *
  * @param schema - The decidable object schema.
  * @param options - Option ordering controls.

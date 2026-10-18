@@ -63,3 +63,51 @@ test('structured state passes through', () => {
 
   expect(native.state).toEqual({ ticket: { id: 1 } });
 });
+
+test('fractional score levels map to criteria in numeric order', () => {
+  const fractional: Decision.Request = {
+    state: 's',
+    questions: {
+      weight: {
+        type: 'score',
+        instructions: 'w',
+        levels: {
+          '0': 'zero',
+          '0.25': 'quarter',
+          '0.5': 'half',
+          '0.75': 'three quarters',
+          '1': 'one',
+        },
+      },
+    },
+  };
+
+  const native = toNativeRequest(fractional, 'jev-latest');
+
+  expect(native.questions['weight']).toEqual({
+    type: 'score',
+    instructions: 'w',
+    criteria: ['zero', 'quarter', 'half', 'three quarters', 'one'],
+  });
+});
+
+test('negative score levels map to criteria in numeric order', () => {
+  const negative: Decision.Request = {
+    state: 's',
+    questions: {
+      tilt: {
+        type: 'score',
+        instructions: 't',
+        levels: { '-2': 'm2', '-1': 'm1', '0': 'z', '1': 'p1', '2': 'p2' },
+      },
+    },
+  };
+
+  const native = toNativeRequest(negative, 'jev-latest');
+
+  expect(native.questions['tilt']).toEqual({
+    type: 'score',
+    instructions: 't',
+    criteria: ['m2', 'm1', 'z', 'p1', 'p2'],
+  });
+});

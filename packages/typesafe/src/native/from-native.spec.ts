@@ -81,7 +81,7 @@ test('score uses the level keys rather than indexes', () => {
   expect(response.value).toEqual({ s: 20 });
   expect(response.meta['s']).toEqual({
     confidence: 0.5,
-    score: 0.8,
+    score: 18,
     probabilities: { '10': 0.2, '20': 0.8 },
   });
 });
@@ -166,6 +166,168 @@ test('an answer of the wrong type throws', () => {
   });
 
   expect(() => fromNativeResponse(wrong, questions)).toThrow(
+    DecisionResponseError,
+  );
+});
+
+test('meta.score interpolates between non-uniform level values', () => {
+  const uneven: Record<string, Decision.Question> = {
+    s: {
+      type: 'score',
+      instructions: 'x',
+      levels: { '0': 'a', '1': 'b', '10': 'c' },
+    },
+  };
+  const input: NativeResponse = {
+    answers: {
+      s: {
+        type: 'score',
+        score: 1.5,
+        probabilities: { '0': 0, '1': 0.5, '2': 0.5 },
+        confidence: 0.5,
+      },
+    },
+  };
+
+  const response = fromNativeResponse(input, uneven);
+
+  expect(response.value).toEqual({ s: 10 });
+  expect((response.meta['s'] as Decision.ScoreMeta).score).toBe(5.5);
+});
+
+test('fractional score indexes map to levels in numeric order', () => {
+  const fractional: Record<string, Decision.Question> = {
+    w: {
+      type: 'score',
+      instructions: 'w',
+      levels: { '0': 'a', '0.25': 'b', '0.5': 'c', '0.75': 'd', '1': 'e' },
+    },
+  };
+  const input: NativeResponse = {
+    answers: {
+      w: {
+        type: 'score',
+        score: 1,
+        probabilities: { '0': 0.1, '1': 0.6, '2': 0.1, '3': 0.1, '4': 0.1 },
+        confidence: 0.5,
+      },
+    },
+  };
+
+  const response = fromNativeResponse(input, fractional);
+
+  expect(response.value).toEqual({ w: 0.25 });
+  const meta = response.meta['w'] as Decision.ScoreMeta;
+  expect(meta.score).toBe(0.25);
+  expect(
+    Object.entries(meta.probabilities).sort(
+      ([a], [b]) => Number(a) - Number(b),
+    ),
+  ).toEqual([
+    ['0', 0.1],
+    ['0.25', 0.6],
+    ['0.5', 0.1],
+    ['0.75', 0.1],
+    ['1', 0.1],
+  ]);
+});
+
+test('negative score indexes map to levels in numeric order', () => {
+  const negative: Record<string, Decision.Question> = {
+    t: {
+      type: 'score',
+      instructions: 't',
+      levels: { '-2': 'a', '-1': 'b', '0': 'c', '1': 'd', '2': 'e' },
+    },
+  };
+  const input: NativeResponse = {
+    answers: {
+      t: {
+        type: 'score',
+        score: 0.75,
+        probabilities: { '0': 0.3, '1': 0.6, '2': 0.1, '3': 0, '4': 0 },
+        confidence: 0.5,
+      },
+    },
+  };
+
+  const response = fromNativeResponse(input, negative);
+
+  expect(response.value).toEqual({ t: -1 });
+  const meta = response.meta['t'] as Decision.ScoreMeta;
+  expect(meta.score).toBe(-1.25);
+  expect(meta.probabilities).toEqual({
+    '-2': 0.3,
+    '-1': 0.6,
+    '0': 0.1,
+    '1': 0,
+    '2': 0,
+  });
+});
+
+test('null probabilities throw DecisionResponseError', () => {
+  const bad = withAnswers({
+    ...renamed(native.answers),
+    frustration: {
+      type: 'score',
+      score: 1,
+      probabilities: null as unknown as Record<string, number>,
+      confidence: 0.5,
+    },
+  });
+
+  expect(() => fromNativeResponse(bad, questions)).toThrow(
+    DecisionResponseError,
+  );
+});
+
+test('non-numeric confidence or score throws DecisionResponseError', () => {
+  const badConfidence = withAnswers({
+    ...renamed(native.answers),
+    department: {
+      type: 'choice',
+      choice: 'billing',
+      probabilities: { billing: 1 },
+      confidence: 'high' as unknown as number,
+    },
+  });
+  const badScore = withAnswers({
+    ...renamed(native.answers),
+    frustration: {
+      type: 'score',
+      score: 'one' as unknown as number,
+      probabilities: { '0': 1 },
+      confidence: 0.5,
+    },
+  });
+  const badProbability = withAnswers({
+    ...renamed(native.answers),
+    department: {
+      type: 'choice',
+      choice: 'billing',
+      probabilities: { billing: 'most' as unknown as number },
+      confidence: 1,
+    },
+  });
+
+  expect(() => fromNativeResponse(badConfidence, questions)).toThrow(
+    DecisionResponseError,
+  );
+  expect(() => fromNativeResponse(badScore, questions)).toThrow(
+    DecisionResponseError,
+  );
+  expect(() => fromNativeResponse(badProbability, questions)).toThrow(
+    DecisionResponseError,
+  );
+});
+
+test('a non-numeric noul throws DecisionResponseError', () => {
+  const bad = withAnswers({
+    ...renamed(native.answers),
+    'flags.is_urgent': { type: 'noul', noul: null as unknown as number },
+  });
+
+  expect(() => fromNativeResponse(bad, questions)).toThrow(
     DecisionResponseError,
   );
 });

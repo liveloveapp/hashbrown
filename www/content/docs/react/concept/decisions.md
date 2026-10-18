@@ -149,7 +149,7 @@ route.reload();
 route.stop();
 ```
 
-`meta` mirrors the shape of `value`. An enumeration has `confidence` and `probabilities` per option. A number has a probability-weighted `score` as well. A boolean has a `probability`.
+`meta` mirrors the shape of `value`. An enumeration has `confidence` and `probabilities` per option. A number has a probability-weighted `score` as well, on the same scale as its levels (it can fall between two levels). A boolean has a `probability`.
 
 ---
 

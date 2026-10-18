@@ -1,4 +1,5 @@
 import type { Decision } from '@hashbrownai/core';
+import { orderedLevelKeys } from './levels';
 import type { NativeJson, NativeQuestion, NativeRequest } from './native.types';
 
 /**
@@ -38,7 +39,9 @@ function toNativeQuestion(question: Decision.Question): NativeQuestion {
       return {
         type: 'score',
         instructions: question.instructions,
-        criteria: Object.values(question.levels),
+        criteria: orderedLevelKeys(question.levels).map(
+          (key) => question.levels[key],
+        ),
       };
     case 'yesNo':
       return { type: 'noul', instructions: question.instructions };

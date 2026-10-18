@@ -110,6 +110,48 @@ test('avoids floating-point drift in level keys', () => {
   ]);
 });
 
+test('a negative range keeps every level, ordered numerically', () => {
+  const schema = s.object('Decision', {
+    tilt: s.integer('Tilt', { minimum: -2, maximum: 2 }),
+  });
+
+  const questions = compileDecision(schema);
+
+  const levels = (questions['tilt'] as any).levels as Record<string, string>;
+  const ordered = Object.keys(levels).sort((a, b) => Number(a) - Number(b));
+  expect(ordered).toEqual(['-2', '-1', '0', '1', '2']);
+  expect(ordered.map((key) => levels[key])).toEqual([
+    '-2 of -2 to 2',
+    '-1 of -2 to 2',
+    '0 of -2 to 2',
+    '1 of -2 to 2',
+    '2 of -2 to 2',
+  ]);
+});
+
+test('throws when minimum is not a multiple of multipleOf', () => {
+  const schema = s.object('Decision', {
+    a: s.object('A', {
+      n: s.number('N', { minimum: 0.1, maximum: 1.1, multipleOf: 0.25 }),
+    }),
+  });
+
+  const error = catchError(() => compileDecision(schema));
+
+  expect(error).toBeInstanceOf(DecisionSchemaError);
+  expect(error.path).toBe('a.n');
+});
+
+test('accepts a negative minimum on the multipleOf grid', () => {
+  const schema = s.object('Decision', {
+    n: s.number('N', { minimum: -0.5, maximum: 0.5, multipleOf: 0.25 }),
+  });
+
+  const questions = compileDecision(schema);
+
+  expect(Object.keys((questions['n'] as any).levels).length).toBe(5);
+});
+
 test('flattens nested objects to dotted ids', () => {
   const schema = s.object('Decision', {
     filter: s.object('Filter', {
