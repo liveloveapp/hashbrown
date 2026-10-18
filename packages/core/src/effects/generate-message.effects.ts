@@ -35,6 +35,7 @@ import {
   normalizeToolResult,
 } from '../transport/normalize-tool-result';
 import { sleep } from '../utils/async';
+import { cloneAndFreezeOptionalJsonValue } from '../utils/json-value';
 import { updateAssistantMessage } from '../utils/assistant-message';
 import { createEffect } from '../utils/micro-ngrx';
 import {
@@ -217,10 +218,17 @@ export const generateMessage = createEffect((store) => {
           publishToolSnapshot();
         }
       }
+      const result =
+        !interrupts &&
+        terminalEvent?.type === EventType.RUN_FINISHED &&
+        terminalEvent.result !== undefined
+          ? cloneAndFreezeOptionalJsonValue(terminalEvent.result)
+          : undefined;
       dispatch(
         apiActions.generateMessageSuccess({
           ...(streamingMessage ? { message: streamingMessage } : {}),
           toolCalls: finalizedToolCalls,
+          ...(result !== undefined ? { result } : {}),
         }),
       );
     }

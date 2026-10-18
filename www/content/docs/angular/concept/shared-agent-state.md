@@ -91,6 +91,20 @@ If the model itself needs a fact from shared state, explicitly include that fact
 
 ---
 
+## The Run's Return Value
+
+An agent can attach a return value to the AG-UI `RUN_FINISHED` event, separate from the messages and from shared state. Hashbrown exposes it as `lastRunResult` on `chatResource()` and the other chat and completion APIs.
+
+```ts
+const result = chat.lastRunResult();
+```
+
+The value is the return value of the last run that completed, as any JSON value, or `undefined` when the agent attached none. It is cleared when the next run starts, so a value always belongs to the messages currently shown. Interrupted, cancelled, and failed runs never set it. When one turn spans several runs because the model called your tools, each completed run replaces the value, so you read what the final run returned.
+
+Hashbrown's direct provider adapters do not produce a return value. Use it with an agent implementation that sets `result` on its terminal event.
+
+---
+
 ## Next Steps
 
 <hb-next-steps>

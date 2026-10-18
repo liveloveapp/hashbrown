@@ -20,6 +20,7 @@ import {
   selectIsRunningToolCalls,
   selectIsSending,
   selectLastAssistantMessage,
+  selectLastRunResult,
   selectPendingInterrupts,
   selectResponseSchema,
   selectRetries,
@@ -49,7 +50,7 @@ import {
   ɵassertAgUiMessageAppendCompatibility,
   ɵpairViewMessagesWithAgUi,
 } from './reducers/ag-ui-message-history';
-import { cloneAndFreezeOptionalJsonValue } from './utils';
+import { cloneAndFreezeOptionalJsonValue, type JsonValue } from './utils';
 
 /** Settlement and thread ownership used by completion adapters. @internal */
 export interface ɵRuntimeSchedulingState {
@@ -132,6 +133,13 @@ export interface ChatRuntime<
   exhaustedRetries: StateSignal<boolean>;
   sendingError: StateSignal<Error | undefined>;
   generatingError: StateSignal<Error | undefined>;
+  /**
+   * The return value the agent attached to the last run that completed
+   * (AG-UI's `RUN_FINISHED.result`), or `undefined` when it attached none.
+   * Cleared when the next run starts, so it always belongs to the messages
+   * currently shown. Interrupted, cancelled, and failed runs never set it.
+   */
+  lastRunResult: StateSignal<JsonValue | undefined>;
   lastAssistantMessage: StateSignal<
     Chat.AssistantMessage<Output, Tools> | undefined
   >;
@@ -282,6 +290,7 @@ export function createChatRuntime(init: {
       sendingError: selectSendingError(state),
       generatingError: selectGeneratingError(state),
       error: selectUnifiedError(state),
+      lastRunResult: selectLastRunResult(state),
       ɵɵinternal: state,
     }),
   });
@@ -606,6 +615,7 @@ export function createChatRuntime(init: {
     sendingError: state.createSignal(selectSendingError),
     generatingError: state.createSignal(selectGeneratingError),
     exhaustedRetries: state.createSignal(selectExhaustedRetries),
+    lastRunResult: state.createSignal(selectLastRunResult),
     lastAssistantMessage: state.createSignal(selectLastAssistantMessage),
     threadId: Object.assign(
       () =>

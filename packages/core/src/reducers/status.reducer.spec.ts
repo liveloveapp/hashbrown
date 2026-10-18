@@ -524,3 +524,53 @@ test('retry success clears unified error without treating pending calls as runni
   expect(selectUnifiedError(state)).toBeUndefined();
   expect(selectIsRunningToolCalls(state)).toBe(false);
 });
+
+test('stores the run result committed with a successful generation', () => {
+  const result = { verdict: 'approved', scores: [1, 2] };
+
+  const next = reducer(
+    initialStatusState,
+    apiActions.generateMessageSuccess({ toolCalls: [], result }),
+  );
+
+  expect(next.lastRunResult).toEqual(result);
+});
+
+test('a successful generation without a result leaves none behind', () => {
+  const state = { ...initialStatusState, lastRunResult: { stale: true } };
+
+  const next = reducer(
+    state,
+    apiActions.generateMessageSuccess({ toolCalls: [] }),
+  );
+
+  expect(next.lastRunResult).toBeUndefined();
+});
+
+test('clears the last run result when the next run starts', () => {
+  const state = { ...initialStatusState, lastRunResult: { stale: true } };
+
+  const next = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-2',
+    }),
+  );
+
+  expect(next.lastRunResult).toBeUndefined();
+});
+
+test('clears the last run result on a stop and a message replacement', () => {
+  const state = { ...initialStatusState, lastRunResult: { stale: true } };
+
+  const stopped = reducer(state, devActions.stopMessageGeneration(false));
+  const replaced = reducer(
+    state,
+    devActions.setMessages({ messages: [], canonicalMessages: [] }),
+  );
+
+  expect(stopped.lastRunResult).toBeUndefined();
+  expect(replaced.lastRunResult).toBeUndefined();
+});

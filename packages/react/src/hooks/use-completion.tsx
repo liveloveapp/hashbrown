@@ -1,5 +1,6 @@
 import {
   Chat,
+  type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
   type TransportOrFactory,
@@ -146,6 +147,14 @@ export interface UseCompletionResult<State = unknown> {
    * Whether the current request has exhausted retries.
    */
   exhaustedRetries: boolean;
+
+  /**
+   * The return value the agent attached to the last run that completed
+   * (AG-UI's `RUN_FINISHED.result`), or `undefined` when it attached none.
+   * Cleared when the next run starts. Interrupted, cancelled, and failed
+   * runs never set it.
+   */
+  lastRunResult: JsonValue | undefined;
 }
 
 /**
@@ -210,5 +219,6 @@ export function useCompletion<Input, State = unknown>(
     sendingError: chat.sendingError,
     generatingError: chat.generatingError,
     exhaustedRetries: chat.exhaustedRetries,
+    lastRunResult: chat.lastRunResult,
   };
 }

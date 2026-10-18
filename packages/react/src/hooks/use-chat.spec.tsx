@@ -180,6 +180,27 @@ test('useChat seeds, observes, and delegates shared agent state', () => {
   ]);
 });
 
+test('useChat exposes the last run result from the runtime', () => {
+  // Arrange
+  const lastRunResult = createMutableSignal<unknown>(undefined);
+  const runtime = createRuntimeStub({ messages: [], lastRunResult });
+  createChatRuntimeMock.mockReset();
+  createChatRuntimeMock.mockReturnValue(runtime);
+
+  const { result } = renderHook(
+    () => useChat({ system: 'You are a helpful assistant.' }),
+    { wrapper: ProviderWrapper },
+  );
+  const before = result.current.lastRunResult;
+
+  // Act
+  act(() => lastRunResult.set({ verdict: 'approved' }));
+
+  // Assert
+  expect(before).toBeUndefined();
+  expect(result.current.lastRunResult).toEqual({ verdict: 'approved' });
+});
+
 function ProviderWrapper({ children }: { children: ReactNode }) {
   return <HashbrownProvider url="/chat">{children}</HashbrownProvider>;
 }
@@ -187,9 +208,11 @@ function ProviderWrapper({ children }: { children: ReactNode }) {
 function createRuntimeStub({
   messages,
   state = createMutableSignal<unknown>(undefined),
+  lastRunResult = createSignal<unknown>(undefined),
 }: {
   messages: unknown[];
   state?: ReturnType<typeof createMutableSignal<unknown>>;
+  lastRunResult?: ReturnType<typeof createSignal<unknown>>;
 }) {
   return {
     state,
@@ -207,6 +230,7 @@ function createRuntimeStub({
     sendingError: createSignal(undefined),
     generatingError: createSignal(undefined),
     lastAssistantMessage: createSignal(undefined),
+    lastRunResult: lastRunResult,
     isLoadingThread: createSignal(false),
     isSavingThread: createSignal(false),
     threadLoadError: createSignal(undefined),

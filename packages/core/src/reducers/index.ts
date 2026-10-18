@@ -373,6 +373,10 @@ export const selectExhaustedRetries = select(
   selectStatusState,
   fromStatus.selectExhaustedRetries,
 );
+export const selectLastRunResult = select(
+  selectStatusState,
+  fromStatus.selectLastRunResult,
+);
 
 /**
  * Streaming Message

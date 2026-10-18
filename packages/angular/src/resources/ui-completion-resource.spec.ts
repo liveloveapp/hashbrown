@@ -34,6 +34,7 @@ const createCompletionStub = (
     stop: vi.fn(),
     isSending: signal(false),
     isReceiving: signal(false),
+    lastRunResult: signal<unknown>(undefined),
     hasValue: vi.fn(),
   } as ReturnType<typeof structuredCompletionResource>;
 };
@@ -62,6 +63,20 @@ test('uiCompletionResource preserves shared state signal and setter identity', (
   expect(resource.resume).toBe(completion.resume);
   expect(resource.state).toBe(state);
   expect(resource.setState).toBe(setState);
+});
+
+test('uiCompletionResource forwards the last run result signal', () => {
+  structuredCompletionResourceMock.mockReset();
+  const completion = createCompletionStub(signal<any | null>(null));
+  structuredCompletionResourceMock.mockReturnValue(completion);
+
+  const resource = uiCompletionResource({
+    components: [],
+    input: signal('Describe a component'),
+    system: 'System prompt',
+  });
+
+  expect(resource.lastRunResult).toBe(completion.lastRunResult);
 });
 
 test('uiCompletionResource wraps structured completion output with UI metadata', () => {

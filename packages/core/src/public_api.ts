@@ -53,6 +53,7 @@ export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { sanitizeUrl as ɵsanitizeUrl } from './utils/sanitize-url';
 export { mergeMessagesForThread } from './utils/threading';
 export type { StateSignal } from './utils/micro-ngrx';
+export type { JsonValue } from './utils/types';
 export * as ɵtypes from './utils/types';
 export {
   createSegments as ɵcreateTextSegments,

@@ -13,6 +13,7 @@ import {
 import {
   Chat,
   createChatRuntime,
+  type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
   type TransportOrFactory,
@@ -73,6 +74,13 @@ export interface CompletionResourceRef<State = unknown> extends Resource<
   sendingError: Signal<Error | undefined>;
   /** Error emitted during generation events. */
   generatingError: Signal<Error | undefined>;
+  /**
+   * The return value the agent attached to the last run that completed
+   * (AG-UI's `RUN_FINISHED.result`), or `undefined` when it attached none.
+   * Cleared when the next run starts. Interrupted, cancelled, and failed
+   * runs never set it.
+   */
+  lastRunResult: Signal<JsonValue | undefined>;
 }
 
 /**
@@ -199,6 +207,7 @@ export function completionResource<Input, State = unknown>(
   const isRunningToolCalls = toNgSignal(runtime.isRunningToolCalls);
   const isLoading = toNgSignal(runtime.isLoading);
   const sendingError = toNgSignal(runtime.sendingError);
+  const lastRunResult = toNgSignal(runtime.lastRunResult);
   const generatingError = toNgSignal(runtime.generatingError);
 
   const error = toNgSignal(
@@ -307,6 +316,7 @@ export function completionResource<Input, State = unknown>(
     isGenerating,
     isRunningToolCalls,
     sendingError,
+    lastRunResult,
     generatingError,
     reload,
     stop,

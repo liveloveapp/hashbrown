@@ -2,6 +2,7 @@ import {
   Chat,
   type ChatRuntime,
   createChatRuntime,
+  type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -204,6 +205,14 @@ export interface UseStructuredChatResult<
   generatingError: Error | undefined;
 
   /**
+   * The return value the agent attached to the last run that completed
+   * (AG-UI's `RUN_FINISHED.result`), or `undefined` when it attached none.
+   * Cleared when the next run starts. Interrupted, cancelled, and failed
+   * runs never set it.
+   */
+  lastRunResult: JsonValue | undefined;
+
+  /**
    * The last assistant message.
    */
   lastAssistantMessage: Chat.AssistantMessage<Output, Tools> | undefined;
@@ -349,6 +358,7 @@ export function useStructuredChat<
   const lastAssistantMessage = useHashbrownSignal(
     runtimeRef.current.lastAssistantMessage,
   );
+  const lastRunResult = useHashbrownSignal(runtimeRef.current.lastRunResult);
   const sendMessage = useCallback((message: Chat.Message<Output, Tools>) => {
     getRuntime().sendMessage(message);
   }, []);
@@ -403,6 +413,7 @@ export function useStructuredChat<
     exhaustedRetries,
     sendingError,
     generatingError,
+    lastRunResult,
     lastAssistantMessage,
   };
 }

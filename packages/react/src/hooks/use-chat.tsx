@@ -2,6 +2,7 @@ import {
   type Chat,
   type ChatRuntime,
   createChatRuntime,
+  type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
   type TransportOrFactory,
@@ -169,6 +170,14 @@ export interface UseChatResult<Tools extends Chat.AnyTool, State = unknown> {
   generatingError: Error | undefined;
 
   /**
+   * The return value the agent attached to the last run that completed
+   * (AG-UI's `RUN_FINISHED.result`), or `undefined` when it attached none.
+   * Cleared when the next run starts. Interrupted, cancelled, and failed
+   * runs never set it.
+   */
+  lastRunResult: JsonValue | undefined;
+
+  /**
    * The last assistant message.
    */
   lastAssistantMessage: Chat.AssistantMessage<string, Tools> | undefined;
@@ -318,6 +327,9 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
   const generatingError = useHashbrownSignal<Error | undefined>(
     getRuntime().generatingError,
   );
+  const lastRunResult = useHashbrownSignal<JsonValue | undefined>(
+    getRuntime().lastRunResult,
+  );
   const lastAssistantMessage = useHashbrownSignal<
     Chat.AssistantMessage<string, Tools> | undefined
   >(getRuntime().lastAssistantMessage);
@@ -370,6 +382,7 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
     exhaustedRetries,
     sendingError,
     generatingError,
+    lastRunResult,
     lastAssistantMessage,
   };
 }

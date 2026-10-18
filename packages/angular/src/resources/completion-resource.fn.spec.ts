@@ -487,6 +487,7 @@ function createRuntimeStub({
     sendingError: createSignal(undefined),
     generatingError: createSignal(undefined),
     lastAssistantMessage: createSignal(undefined),
+    lastRunResult: createSignal(undefined),
     isLoadingThread: createSignal(false),
     isSavingThread: createSignal(false),
     threadLoadError: createSignal(undefined),

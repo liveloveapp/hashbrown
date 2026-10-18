@@ -4559,6 +4559,150 @@ test('a server-cancelled run drops its partial answer, reports no error, and is 
   }
 });
 
+test('exposes the return value of a successful run as lastRunResult', async () => {
+  jest.clearAllMocks();
+  const result = { verdict: 'approved', scores: [1, 2] };
+  const { send } = makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-1',
+          role: 'assistant',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-1',
+          delta: 'Done',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-1',
+        } as AGUIEvent;
+        yield {
+          type: EventType.RUN_FINISHED,
+          ...identity,
+          result,
+        } as AGUIEvent;
+      })(),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+  });
+  const teardown = runtime.start();
+
+  try {
+    await Promise.resolve();
+    expect(runtime.lastRunResult()).toBeUndefined();
+    runtime.sendMessage({ role: 'user', content: 'Judge this.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(runtime.lastRunResult()).toEqual(result);
+    expect(runtime.lastRunResult()).not.toBe(result);
+    expect(Object.isFrozen(runtime.lastRunResult())).toBe(true);
+    expect(runtime.messages().map((message) => message.role)).toEqual([
+      'user',
+      'assistant',
+    ]);
+  } finally {
+    teardown();
+  }
+});
+
+test('the next run clears lastRunResult until it finishes', async () => {
+  jest.clearAllMocks();
+  let attempt = 0;
+  const { send } = makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    attempt++;
+    const result = attempt === 1 ? { run: 1 } : undefined;
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+        yield {
+          type: EventType.RUN_FINISHED,
+          ...identity,
+          ...(result ? { result } : {}),
+        } as AGUIEvent;
+      })(),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+  });
+  const teardown = runtime.start();
+
+  try {
+    await Promise.resolve();
+    runtime.sendMessage({ role: 'user', content: 'One.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+    const afterFirst = runtime.lastRunResult();
+    runtime.sendMessage({ role: 'user', content: 'Two.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(afterFirst).toEqual({ run: 1 });
+    expect(runtime.lastRunResult()).toBeUndefined();
+  } finally {
+    teardown();
+  }
+});
+
+test.each([
+  {
+    label: 'a cancelled run',
+    terminal: (identity: { threadId: string; runId: string }) => ({
+      type: EventType.RUN_FINISHED,
+      ...identity,
+      outcome: { type: 'cancelled' },
+      result: { ignored: true },
+    }),
+  },
+  {
+    label: 'a failed run',
+    terminal: () => ({
+      type: EventType.RUN_ERROR,
+      message: 'failed',
+      result: { ignored: true },
+    }),
+  },
+])('$label never publishes a run result', async ({ terminal }) => {
+  jest.clearAllMocks();
+  makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+        yield terminal(identity) as AGUIEvent;
+      })(),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+  });
+  const teardown = runtime.start();
+
+  try {
+    await Promise.resolve();
+    runtime.sendMessage({ role: 'user', content: 'Go.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(runtime.lastRunResult()).toBeUndefined();
+  } finally {
+    teardown();
+  }
+});
+
 test('sends one RunAgentInput with tools, structured output, and UI metadata', async () => {
   jest.clearAllMocks();
   const responseSchema = s.object('answer', {

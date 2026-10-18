@@ -2,6 +2,7 @@
 import { computed, Resource, Signal } from '@angular/core';
 import {
   Chat,
+  type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -54,6 +55,13 @@ export interface StructuredCompletionResourceRef<
   sendingError: Signal<Error | undefined>;
   /** Error emitted during generation events. */
   generatingError: Signal<Error | undefined>;
+  /**
+   * The return value the agent attached to the last run that completed
+   * (AG-UI's `RUN_FINISHED.result`), or `undefined` when it attached none.
+   * Cleared when the next run starts. Interrupted, cancelled, and failed
+   * runs never set it.
+   */
+  lastRunResult: Signal<JsonValue | undefined>;
   /**
    * Reloads the resource.
    *
@@ -221,6 +229,7 @@ export function structuredCompletionResource<
     isReceiving: resource.isReceiving,
     isRunningToolCalls: resource.isRunningToolCalls,
     sendingError: resource.sendingError,
+    lastRunResult: resource.lastRunResult,
     generatingError: resource.generatingError,
     reload,
     stop,
