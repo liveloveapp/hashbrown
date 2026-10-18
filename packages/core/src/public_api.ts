@@ -11,6 +11,7 @@ export {
 } from './chat-runtime';
 export * from './models';
 export * from './transport';
+export * from './decision';
 export { prompt } from './prompt/prompt';
 export type {
   HBTree,
