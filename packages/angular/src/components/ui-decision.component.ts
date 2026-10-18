@@ -12,7 +12,7 @@ import { RenderMessageComponent } from './render-message.component';
  * Renders the result of `uiDecisionResource`.
  *
  * In candidates mode it renders the chosen candidates in order, binding each
- * candidate's `inputs`. In narrowing mode it renders the UI completion's
+ * candidate's latest `inputs` (signal inputs update in place). In narrowing mode it renders the UI completion's
  * message with `hb-render-message`.
  *
  * @public

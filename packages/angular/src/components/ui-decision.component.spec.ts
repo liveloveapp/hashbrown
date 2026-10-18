@@ -91,6 +91,56 @@ test('hb-ui-decision renders chosen candidates in order with their inputs', asyn
   ]);
 });
 
+test('hb-ui-decision re-renders a chosen candidate when its signal inputs change', async () => {
+  let requests = 0;
+  const transport: Decision.Transport = async () => {
+    requests++;
+    return multiResponse({ flight: 0.9, airport: 0.1 });
+  };
+  TestBed.resetTestingModule();
+  TestBed.configureTestingModule({
+    imports: [UiDecisionComponent],
+    providers: [provideHashbrown({ decision: { transport } })],
+  });
+  const tail = signal<Record<string, unknown>>({ tail: 'N123' });
+  const resource = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('N123'),
+      select: { max: 1 },
+      candidates: [
+        {
+          id: 'flight',
+          description: 'One aircraft',
+          component: FlightCard,
+          inputs: tail,
+        },
+        {
+          id: 'airport',
+          description: 'An airport',
+          component: AirportCard,
+          inputs: { code: 'KSFO' },
+        },
+      ],
+    }),
+  );
+  const fixture = TestBed.createComponent(UiDecisionComponent);
+  fixture.componentRef.setInput('resource', resource);
+  await settle();
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  const card = element.querySelector('hb-test-flight');
+  const before = card?.textContent?.trim();
+
+  tail.set({ tail: 'N456' });
+  await settle();
+  fixture.detectChanges();
+
+  expect(before).toBe('flight N123');
+  expect(element.querySelector('hb-test-flight')).toBe(card);
+  expect(card?.textContent?.trim()).toBe('flight N456');
+  expect(requests).toBe(1);
+});
+
 test('hb-ui-decision delegates narrowing results to hb-render-message', () => {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({ imports: [UiDecisionComponent] });

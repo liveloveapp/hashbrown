@@ -7,6 +7,7 @@ import {
   effect,
   inject,
   Injector,
+  isSignal,
   linkedSignal,
   runInInjectionContext,
   signal,
@@ -50,7 +51,29 @@ export interface UiDecisionCandidate {
   description: string;
   /** The component rendered when the candidate is chosen. */
   component: Type<unknown>;
-  /** Inputs bound to the component when it is rendered. */
+  /**
+   * Inputs bound to the component when it is rendered. Pass a signal to keep
+   * the rendered component in step with app state; changing it re-renders the
+   * chosen candidate without a new decision. The `id` and `description` stay
+   * static.
+   */
+  inputs?: Record<string, unknown> | Signal<Record<string, unknown>>;
+}
+
+/**
+ * A candidate chosen by `uiDecisionResource`, with its `inputs` resolved to
+ * their latest value.
+ *
+ * @public
+ */
+export interface UiDecisionChosenCandidate {
+  /** The candidate's id. */
+  id: string;
+  /** The candidate's description. */
+  description: string;
+  /** The component to render. */
+  component: Type<unknown>;
+  /** The latest inputs to bind to the component. */
   inputs?: Record<string, unknown>;
 }
 
@@ -142,8 +165,11 @@ export interface UiDecisionResourceCandidatesRef {
    * decision falls below `minConfidence`.
    */
   ids: Signal<string[]>;
-  /** The chosen candidates in order. */
-  chosen: Signal<UiDecisionCandidate[]>;
+  /**
+   * The chosen candidates in order, with signal `inputs` read reactively so
+   * this updates when they change.
+   */
+  chosen: Signal<UiDecisionChosenCandidate[]>;
   /** The underlying selection decision. */
   decision: DecisionResourceRef<DecidableSchema>;
   /** Whether the decision is in flight. */
@@ -326,9 +352,12 @@ export function uiDecisionResource(
 
   if (isCandidates) {
     const chosen = computed(() =>
-      ids().flatMap((id) => {
+      ids().flatMap((id): UiDecisionChosenCandidate[] => {
         const candidate = candidates.find((entry) => entry.id === id);
-        return candidate ? [candidate] : [];
+        if (!candidate) return [];
+        const { inputs, ...rest } = candidate;
+        if (inputs === undefined) return [rest];
+        return [{ ...rest, inputs: isSignal(inputs) ? inputs() : inputs }];
       }),
     );
     return {

@@ -48,6 +48,7 @@ import { UiDecisionComponent, uiDecisionResource } from '@hashbrownai/angular';
 })
 export class AnswerComponent {
   readonly query = input('');
+  readonly callsign = input('UAL123');
 
   readonly answer = uiDecisionResource({
     input: computed(() => (this.query() === '' ? null : this.query())),
@@ -58,7 +59,7 @@ export class AnswerComponent {
         id: 'flight',
         description: 'The user asks about one aircraft',
         component: FlightCardComponent,
-        inputs: { callsign: 'UAL123' },
+        inputs: computed(() => ({ callsign: this.callsign() })),
       },
       {
         id: 'airport',
@@ -72,7 +73,7 @@ export class AnswerComponent {
 
 </hb-code-example>
 
-1. Each candidate has a unique `id` that is not empty and has no `.`, a `description` that tells the model when it fits, a `component`, and optional `inputs`.
+1. Each candidate has a unique `id` that is not empty and has no `.`, a `description` that tells the model when it fits, a `component`, and optional `inputs`. `inputs` is a plain object or a signal of one. A signal keeps the rendered component in step with app state: when it changes, the chosen component re-renders with the new inputs and no new decision is made. The `id` and `description` stay fixed.
 2. `<hb-ui-decision [resource]>` renders the chosen components in order. `ids()` and `chosen()` hold what was picked.
 3. Candidates mode renders nothing while the decision is pending, when there are no candidates, and when confidence is below `minConfidence`.
 

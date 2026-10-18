@@ -187,6 +187,46 @@ test("uiDecisionResource candidates 'one' chooses only the picked candidate", as
   expect(created).toHaveLength(0);
 });
 
+test('uiDecisionResource candidates read signal inputs reactively without a new request', async () => {
+  trackCompletions();
+  const fake = createFakeTransport(() =>
+    pickResponse('flight', 0.9, ['flight', 'airport']),
+  );
+  configure(fake.transport);
+  const flightInputs = signal<Record<string, unknown>>({ tail: 'N123' });
+  const ref = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('N123'),
+      candidates: [
+        {
+          id: 'flight',
+          description: 'One aircraft',
+          component: FlightCard,
+          inputs: flightInputs,
+        },
+        {
+          id: 'airport',
+          description: 'An airport',
+          component: AirportCard,
+          inputs: { code: 'KSFO' },
+        },
+      ],
+      select: 'one',
+    }),
+  );
+  await settle();
+  const before = ref.chosen().map((candidate) => candidate.inputs);
+
+  flightInputs.set({ tail: 'N456' });
+  await settle();
+
+  expect(before).toEqual([{ tail: 'N123' }]);
+  expect(ref.chosen().map((candidate) => candidate.inputs)).toEqual([
+    { tail: 'N456' },
+  ]);
+  expect(fake.calls).toHaveLength(1);
+});
+
 test('uiDecisionResource candidates { max: 2 } chooses in probability order', async () => {
   trackCompletions();
   const fake = createFakeTransport(() =>

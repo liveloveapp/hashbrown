@@ -41,6 +41,7 @@ export {
   type UiCompletionResourceRef,
   uiDecisionResource,
   type UiDecisionCandidate,
+  type UiDecisionChosenCandidate,
   type UiDecisionGenerateOptions,
   type UiDecisionResourceBaseOptions,
   type UiDecisionResourceCandidatesOptions,
