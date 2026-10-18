@@ -8,7 +8,8 @@ import {
 import type { RuntimeSmokeAimockHandle } from './test-fixture';
 
 /** Scenario shells supported by both runtime smoke fixture applications. */
-export type RuntimeSmokeScenario = 'plain' | 'tool' | 'structured' | 'ui';
+export type RuntimeSmokeScenario =
+  'plain' | 'tool' | 'structured' | 'ui' | 'decision';
 
 /**
  * One narrowly matched browser hygiene exception expected exactly once.
