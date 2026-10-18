@@ -52,6 +52,7 @@ export type {
 export { createUiKit as ɵcreateUiKit, isUiKit as ɵisUiKit } from './ui/ui-kit';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { sanitizeUrl as ɵsanitizeUrl } from './utils/sanitize-url';
+export { compileDecision as ɵcompileDecision } from './decision/compile-decision';
 export { mergeMessagesForThread } from './utils/threading';
 export type { StateSignal } from './utils/micro-ngrx';
 export * as ɵtypes from './utils/types';
