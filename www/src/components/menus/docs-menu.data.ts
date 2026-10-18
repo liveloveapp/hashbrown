@@ -82,7 +82,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'UI Kits', path: 'recipes/ui-kits' },
       { text: 'Predictive Suggestions', path: 'recipes/predictive-actions' },
       { text: 'Remote MCP', path: 'recipes/remote-mcp' },
-      { text: 'Public Endpoints', path: 'recipes/public-endpoint' },
+      { text: 'Securing a Public Endpoint', path: 'recipes/public-endpoint' },
       { text: 'Threads', path: 'recipes/threads' },
       { text: 'Magic Text', path: 'recipes/magic-text' },
       { text: 'JSON Parser', path: 'recipes/json-parser' },

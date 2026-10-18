@@ -17,7 +17,7 @@ This recipe uses the server of [atc](https://github.com/liveloveapp/hashbrown/tr
 
 `useUiChat` sends everything the model needs in each run request: the messages, the system prompt, the tools and the UI response schema. Your app builds that request, but anyone can send any request to your endpoint with `curl`. A server that forwards the request as it arrives lets a stranger use your provider key for any prompt, any tools and any output.
 
-The fix is to decide on the server what the model sees, and to treat the request as a list of user messages and nothing more.
+The fix is to decide on the server what the model sees. Treat the rest of the request as untrusted, including earlier assistant turns and tool results: tools run in the browser, so the server forwards those messages to the model, and an attacker can forge them. Pinning cannot stop a forged message. It bounds what one can do: the model still runs under your prompt, with only your tools and your schema, and every request is capped in size, output and rate.
 
 ---
 
@@ -80,11 +80,21 @@ export function pinTools(tools: readonly Tool[]): Tool[] {
 
 ### The UI response schema
 
-The response schema lists the components the model may render and their props. Build it on the server with `createUiJsonSchema` from `@hashbrownai/core`, passing the same component definitions, in the same order, that the browser passes to `exposeComponent`. `exposeMarkdown` builds from `markdownComponent()`, so pass that too, with the same `name`, `description` and `citations` options if you set any:
+The response schema lists the components the model may render and their props. Build it on the server with `createUiJsonSchema` from `@hashbrownai/core`, passing the same component definitions, in the same order, that the browser exposes. `exposeMarkdown` builds from `markdownComponent()`, so pass that too, with the same `name`, `description` and `citations` options if you set any:
 
 <hb-code-example header="run-handler.ts">
 
 ```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import {
+  aircraftCompareContract,
+  airportCardContract,
+  arrivalsBoardContract,
+  flightCardContract,
+} from '@atc/shared';
+import { createUiJsonSchema, markdownComponent } from '@hashbrownai/core';
+import type { OpenAIHashbrownRunAgentInput } from '@hashbrownai/openai';
+
 export const PINNED_RESPONSE_SCHEMA = createUiJsonSchema({
   components: [
     markdownComponent(),
@@ -98,7 +108,7 @@ export const PINNED_RESPONSE_SCHEMA = createUiJsonSchema({
 const PINNED_RESPONSE_SCHEMA_JSON = JSON.stringify(PINNED_RESPONSE_SCHEMA);
 
 export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
-  const { hashbrown } = input as UiRunInput;
+  const { hashbrown } = input as OpenAIHashbrownRunAgentInput;
   if (hashbrown?.responseSchema === undefined) {
     return input;
   }
@@ -113,7 +123,7 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   return {
     ...input,
     hashbrown: { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA },
-  } as UiRunInput;
+  } as OpenAIHashbrownRunAgentInput;
 }
 ```
 
@@ -169,6 +179,8 @@ const stream = HashbrownOpenAI.stream.text({
 
 Each pin replaces what the browser sent instead of returning an error. A rejection stops no attacker, who just sends the expected values, and it breaks real users still running an older build of your app after a deploy. Log the difference instead, as `pinResponseSchema` does, and never log the payload itself: it is untrusted and can be large.
 
+Replacing keeps an older build working only while the component set is unchanged. After a deploy that adds, renames or changes a component, an open tab on the old build can receive output it does not know how to render, so keep component changes backwards compatible or ask open tabs to reload.
+
 ---
 
 ## Bound each request
@@ -199,6 +211,15 @@ A request over either limit gets a 413 before it reaches the provider. `limitReq
 <hb-code-example header="run-handler.ts">
 
 ```ts
+import type OpenAI from 'openai';
+
+type ReasoningEffort = NonNullable<
+  OpenAI.Chat.ChatCompletionCreateParams['reasoning_effort']
+>;
+
+/** gpt-5 and the o-series accept `reasoning_effort`; other models reject it with a 400. */
+const REASONING_MODEL = /^(gpt-5|o\d)/;
+
 const MAX_OUTPUT_TOKENS = 4096;
 
 export function limitRequest(
