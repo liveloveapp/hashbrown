@@ -8,6 +8,7 @@ export type {
   Request,
   Response,
   Result,
+  Select,
   ScoreMeta,
   Transport,
   YesNoMeta,

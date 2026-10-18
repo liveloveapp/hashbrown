@@ -54,6 +54,10 @@ export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { sanitizeUrl as ɵsanitizeUrl } from './utils/sanitize-url';
 export { compileDecision as ɵcompileDecision } from './decision/compile-decision';
 export { decodeDecision as ɵdecodeDecision } from './decision/decode-decision';
+export {
+  createSelectionSchema as ɵcreateSelectionSchema,
+  resolveSelection as ɵresolveSelection,
+} from './decision/ui-selection';
 export { createDecisionRuntime as ɵcreateDecisionRuntime } from './decision/decision-runtime';
 export type {
   DecisionRuntime as ɵDecisionRuntime,

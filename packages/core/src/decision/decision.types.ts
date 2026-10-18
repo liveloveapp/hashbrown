@@ -130,3 +130,11 @@ export type Transport = (
   request: Request,
   signal: AbortSignal,
 ) => Promise<Response>;
+
+/**
+ * How many options a UI selection may choose: exactly `'one'`, or up to
+ * `max` options.
+ *
+ * @public
+ */
+export type Select = 'one' | { max: number };
