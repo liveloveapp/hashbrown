@@ -1,4 +1,4 @@
-import { type JsonResolvedValue, s } from '@hashbrownai/core';
+import { type JsonResolvedValue, markdownComponent } from '@hashbrownai/core';
 import type { ComponentType } from 'react';
 import {
   MagicTextRenderer,
@@ -9,18 +9,6 @@ import {
   exposeComponent,
   type ExposedComponent,
 } from './expose-component.fn';
-
-const DEFAULT_COMPONENT_NAME = 'Markdown';
-const DEFAULT_DESCRIPTION = [
-  'Render markdown content for the user.',
-  '',
-  'Write all markdown into the `children` prop.',
-  'Use standard markdown for headings, lists, links, tables, and code blocks.',
-].join('\n');
-const CITATION_DESCRIPTION_SUFFIX = [
-  'For citations, use inline references like `[^source-id]` and include matching definitions like `[^source-id]: Source title` or `[^source-id]: Source title https://example.com`.',
-  'Citation numbers are assigned by first inline reference, and if an id is defined multiple times, only the first definition is used.',
-].join('\n');
 
 interface MarkdownNodeProp {
   complete: boolean;
@@ -76,18 +64,8 @@ export type ExposeMarkdownConfig = Omit<
 export function exposeMarkdown(
   config: ExposeMarkdownConfig = {},
 ): ExposedComponent<ComponentType<ExposedMarkdownComponentProps>> {
-  const {
-    name = DEFAULT_COMPONENT_NAME,
-    description,
-    citations = false,
-    ...rendererProps
-  } = config;
-
-  const effectiveDescription = description
-    ?? `${DEFAULT_DESCRIPTION}${citations ? `\n${CITATION_DESCRIPTION_SUFFIX}` : ''}`;
-  const propsSchema = {
-    children: s.node(s.streaming.string('Markdown content to render')),
-  } as unknown as ComponentPropSchema<ComponentType<ExposedMarkdownComponentProps>>;
+  const { name, description, citations, ...rendererProps } = config;
+  const definition = markdownComponent({ name, description, citations });
 
   const ExposedMarkdownComponent = ({
     children,
@@ -111,8 +89,10 @@ export function exposeMarkdown(
   };
 
   return exposeComponent(ExposedMarkdownComponent, {
-    name,
-    description: effectiveDescription,
-    props: propsSchema,
+    name: definition.name,
+    description: definition.description,
+    props: definition.props as unknown as ComponentPropSchema<
+      ComponentType<ExposedMarkdownComponentProps>
+    >,
   });
 }
