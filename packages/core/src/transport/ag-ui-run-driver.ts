@@ -5,7 +5,10 @@ import type {
   TransportResponse,
 } from './transport';
 import type { Interrupt } from '../models/interrupt';
-import { validateInterruptOutcome } from './interrupt-validation';
+import {
+  type ValidatedRunFinishedOutcome,
+  validateRunFinishedOutcome,
+} from './interrupt-validation';
 import { TransportError } from './transport-error';
 
 /**
@@ -261,18 +264,23 @@ async function consumeResponse({
           );
         }
 
-        let interrupts: readonly Interrupt[] | undefined;
+        let outcome: ValidatedRunFinishedOutcome;
         try {
-          interrupts = validateInterruptOutcome(event.outcome);
+          outcome = validateRunFinishedOutcome(event.outcome);
         } catch (error) {
           throw new TransportError(
-            error instanceof Error
-              ? error.message
-              : 'Invalid interrupt outcome',
+            error instanceof Error ? error.message : 'Invalid run outcome',
             { retryable: false, code: 'PROTOCOL_ERROR' },
           );
         }
-        if (interrupts) {
+        if (outcome.type === 'cancelled') {
+          // The server stopped the run without failing. Nothing was produced,
+          // so the attempt rolls back like a local stop and is not retried;
+          // the terminal is not forwarded, since there is nothing to commit.
+          return { kind: 'cancelled' };
+        }
+        if (outcome.type === 'interrupt') {
+          const { interrupts } = outcome;
           const ownedEvent = {
             ...event,
             outcome: Object.freeze({ type: 'interrupt' as const, interrupts }),
