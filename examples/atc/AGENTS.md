@@ -70,8 +70,8 @@ dependencies); this file covers atc.
 - Only fields validated in `shared/src/aircraft.ts` (hex, label, kind, numbers) go into
   marker HTML. Everything else is rendered as text.
 - `normalizeAdsbLol` copies whitelisted fields only; never spread adsb.lol entries.
-- The system prompt, the tool definitions and the output cap are fixed on the server;
-  clients cannot change them. (The UI response schema still comes from the client.)
+- The system prompt, the tool definitions, the UI response schema and the output cap are
+  fixed on the server; clients cannot change them.
 - The map moves only through store view requests: the newest wins, follow mode wins over
   all, a user drag or zoom cancels.
 - Markers update in place (`updatePlane`); never rebuild them on a snapshot.

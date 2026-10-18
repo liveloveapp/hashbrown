@@ -1,11 +1,15 @@
 import type { RunAgentInput, Tool } from '@ag-ui/core';
 import { EventEncoder } from '@ag-ui/encoder';
 import {
+  aircraftCompareContract,
+  airportCardContract,
+  arrivalsBoardContract,
   ATC_TOOL_DEFINITIONS,
   type AtcToolName,
+  flightCardContract,
   SYSTEM_PROMPT,
 } from '@atc/shared';
-import { s } from '@hashbrownai/core';
+import { createUiJsonSchema, markdownComponent, s } from '@hashbrownai/core';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type OpenAI from 'openai';
@@ -163,6 +167,53 @@ export function pinTools(tools: readonly Tool[]): Tool[] {
   });
 }
 
+/**
+ * The UI the model may render, built from the same definitions, in the same
+ * order, as the components both apps expose. Neither app passes UI examples;
+ * if one ever does, pass the same ones here.
+ */
+export const PINNED_RESPONSE_SCHEMA = createUiJsonSchema({
+  components: [
+    markdownComponent(),
+    { ...flightCardContract, children: false },
+    { ...arrivalsBoardContract, children: false },
+    { ...aircraftCompareContract, children: false },
+    { ...airportCardContract, children: false },
+  ],
+});
+
+const PINNED_RESPONSE_SCHEMA_JSON = JSON.stringify(PINNED_RESPONSE_SCHEMA);
+
+/** A run request as Hashbrown sends it: the UI response schema rides in `hashbrown`. */
+type UiRunInput = RunAgentInput & {
+  hashbrown?: { responseSchema?: object; ui?: boolean };
+};
+
+/**
+ * Replaces the response schema the browser sent with the server's own, so
+ * the model can only render atc's components. A different schema (tampering,
+ * or a browser on an older build) is logged, never rejected and never echoed:
+ * it is untrusted and can be large.
+ */
+export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
+  const { hashbrown } = input as UiRunInput;
+  if (hashbrown?.responseSchema === undefined) {
+    return input;
+  }
+  if (
+    JSON.stringify(hashbrown.responseSchema) !== PINNED_RESPONSE_SCHEMA_JSON
+  ) {
+    console.warn(
+      '[atc] replaced a response schema that differs from the pinned one',
+    );
+  }
+
+  return {
+    ...input,
+    hashbrown: { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA },
+  } as UiRunInput;
+}
+
 /** gpt-5 and the o-series accept `reasoning_effort`; other models reject it with a 400. */
 const REASONING_MODEL = /^(gpt-5|o\d)/;
 
@@ -225,10 +276,8 @@ async function readRunInput(
 /**
  * `/api/run`: streams the model's answer as AG-UI server-sent events.
  *
- * A public endpoint: the system prompt, the tool definitions and the output
- * length are fixed here, so the route can only run atc. The UI response
- * schema still comes from the client: its Markdown component is defined
- * inside the framework packages, so the server cannot rebuild it.
+ * A public endpoint: the system prompt, the tools, the UI response schema and
+ * the output length are fixed here, so the route can only run atc.
  */
 export function createRunHandler(options: RunHandlerOptions): NodeHandler {
   const reasoningEffort =
@@ -254,7 +303,7 @@ export function createRunHandler(options: RunHandlerOptions): NodeHandler {
         baseURL: options.baseURL,
         model: options.model,
         input: pinSystemPrompt(
-          { ...input, tools: pinTools(input.tools ?? []) },
+          pinResponseSchema({ ...input, tools: pinTools(input.tools ?? []) }),
           SYSTEM_PROMPT,
         ),
         signal: abortController.signal,
