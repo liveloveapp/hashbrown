@@ -93,13 +93,19 @@ test('useDecision default transport posts to /api/decide with provider middlewar
   ];
 
   // Act
-  const { result } = renderHook(() => useDecision({ schema, input: 'hello' }), {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <HashbrownProvider middleware={middleware}>{children}</HashbrownProvider>
-    ),
-  });
-  await waitFor(() => expect(result.current.value).not.toBeNull());
-  vi.unstubAllGlobals();
+  let result: { current: { value: unknown } } | undefined;
+  try {
+    result = renderHook(() => useDecision({ schema, input: 'hello' }), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <HashbrownProvider middleware={middleware}>
+          {children}
+        </HashbrownProvider>
+      ),
+    }).result;
+    await waitFor(() => expect(result?.current.value).not.toBeNull());
+  } finally {
+    vi.unstubAllGlobals();
+  }
 
   // Assert
   const [url, init] = fetchMock.mock.calls[0];
@@ -139,21 +145,36 @@ test('useDecision re-decides on input change and treats null input as idle', asy
 test('useDecision aborts on unmount mid-request and never updates', async () => {
   // Arrange
   let signal: AbortSignal | undefined;
-  const transport: Decision.Transport = (_request, s) => {
-    signal = s;
-    return new Promise<Decision.Response>(() => undefined);
+  let resolve: (response: Decision.Response) => void = () => undefined;
+  const transport: Decision.Transport = (_request, sig) => {
+    signal = sig;
+    return new Promise<Decision.Response>((r) => {
+      resolve = r;
+    });
   };
+  const errorSpy = vi
+    .spyOn(console, 'error')
+    .mockImplementation(() => undefined);
   const { result, unmount } = renderHook(
     () => useDecision({ schema, input: 'hello' }),
     { wrapper: wrapperFor(transport) },
   );
   await waitFor(() => expect(result.current.isLoading).toBe(true));
+  const before = result.current;
 
   // Act
   unmount();
+  resolve(responseFor('filter'));
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
 
   // Assert
   expect(signal?.aborted).toBe(true);
+  expect(result.current).toBe(before);
+  expect(errorSpy).not.toHaveBeenCalled();
+  errorSpy.mockRestore();
 });
 
 test('useDecision works under StrictMode double mounting', async () => {
@@ -194,4 +215,87 @@ test('useDecision reload resends and stop aborts', async () => {
   // Assert
   expect(reloaded).toBe(true);
   expect(typeof result.current.stop).toBe('function');
+});
+
+test('useDecision with an inline transport decides exactly once per input', async () => {
+  // Arrange
+  const calls: Decision.Request[] = [];
+
+  // Act
+  const { result } = renderHook(
+    () =>
+      useDecision({
+        schema,
+        input: 'hello',
+        transport: async (request) => {
+          calls.push(request);
+          return responseFor('filter');
+        },
+      }),
+    { wrapper: wrapperFor(createFakeTransport().transport) },
+  );
+  await waitFor(() => expect(result.current.value).not.toBeNull());
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 20));
+  });
+
+  // Assert
+  expect(calls).toHaveLength(1);
+});
+
+test('useDecision keeps its value when a provider with inline middleware re-renders', async () => {
+  // Arrange
+  const fetchMock = vi.fn<typeof fetch>(
+    async () =>
+      new Response(JSON.stringify(responseFor('filter')), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  try {
+    const { result, rerender } = renderHook(
+      () => useDecision({ schema, input: 'hello' }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <HashbrownProvider middleware={[(request) => request]}>
+            {children}
+          </HashbrownProvider>
+        ),
+      },
+    );
+    await waitFor(() => expect(result.current.value).not.toBeNull());
+
+    // Act
+    rerender();
+    rerender();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    // Assert
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.value?.intent).toBe('filter');
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+test('useDecision recreates the runtime and re-decides when system changes', async () => {
+  // Arrange
+  const fake = createFakeTransport();
+  const { result, rerender } = renderHook(
+    ({ system }: { system: string }) =>
+      useDecision({ schema, input: 'hello', system }),
+    { initialProps: { system: 'a' }, wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(result.current.value).not.toBeNull());
+
+  // Act
+  rerender({ system: 'b' });
+  await waitFor(() => expect(fake.calls).toHaveLength(2));
+
+  // Assert
+  expect(fake.calls[0].request.state).toEqual({ system: 'a', input: 'hello' });
+  expect(fake.calls[1].request.state).toEqual({ system: 'b', input: 'hello' });
 });

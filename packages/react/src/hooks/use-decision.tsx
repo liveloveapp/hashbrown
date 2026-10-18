@@ -1,6 +1,9 @@
 import {
+  useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useReducer,
   useRef,
   useSyncExternalStore,
@@ -61,7 +64,6 @@ type Runtime<S extends DecidableSchema> = ReturnType<
 
 interface Holder<S extends DecidableSchema> {
   schemaKey: string;
-  transport: Decision.Transport;
   system: string | undefined;
   debounceTime: number | undefined;
   retries: number | undefined;
@@ -74,9 +76,11 @@ interface Holder<S extends DecidableSchema> {
  * Decides about an input by asking a model closed questions defined by a
  * decidable schema, and exposes the typed answer with its metadata.
  *
- * The decision runtime is recreated only when the serialized schema, the
- * transport, or the system, debounceTime, retries or optionOrder options
- * change. Input changes trigger a new decision.
+ * The decision runtime is recreated only when the serialized schema, or the
+ * system, debounceTime, retries or optionOrder options change. A changed
+ * transport (including a new inline function each render) applies from the
+ * next request and never recreates the runtime. Input changes trigger a new
+ * decision.
  *
  * @public
  * @example
@@ -102,7 +106,21 @@ export function useDecision<S extends DecidableSchema>(
 
   const { schema, system, debounceTime, retries, optionOrder } = options;
   const transport = options.transport ?? config.decisionTransport;
-  const schemaKey = JSON.stringify(s.toJsonSchema(schema));
+  const schemaKey = useMemo(
+    () => JSON.stringify(s.toJsonSchema(schema)),
+    [schema],
+  );
+  const transportRef = useRef(transport);
+  const stableTransport = useCallback<Decision.Transport>(
+    (request, signal) => transportRef.current(request, signal),
+    [],
+  );
+
+  // Runs before the passive effects below, so the next request sees it.
+  useLayoutEffect(() => {
+    transportRef.current = transport;
+  }, [transport]);
+
   const [, recreate] = useReducer((n: number) => n + 1, 0);
   const holderRef = useRef<Holder<S> | null>(null);
 
@@ -111,7 +129,6 @@ export function useDecision<S extends DecidableSchema>(
     !holder ||
     holder.destroyed ||
     holder.schemaKey !== schemaKey ||
-    holder.transport !== transport ||
     holder.system !== system ||
     holder.debounceTime !== debounceTime ||
     holder.retries !== retries ||
@@ -119,14 +136,13 @@ export function useDecision<S extends DecidableSchema>(
   ) {
     holder = {
       schemaKey,
-      transport,
       system,
       debounceTime,
       retries,
       optionOrder,
       runtime: ɵcreateDecisionRuntime({
         schema,
-        transport,
+        transport: stableTransport,
         system,
         debounceTime,
         retries,
@@ -134,6 +150,7 @@ export function useDecision<S extends DecidableSchema>(
       }),
       destroyed: false,
     };
+    // Construction is side-effect free (no timers or requests until setInput).
     holderRef.current = holder;
   }
   const current = holder;
@@ -159,6 +176,9 @@ export function useDecision<S extends DecidableSchema>(
     runtime.setInput(inputKey === null ? null : JSON.parse(inputKey));
   }, [runtime, inputKey]);
 
+  const reload = useCallback(() => runtime.reload(), [runtime]);
+  const stop = useCallback(() => runtime.stop(), [runtime]);
+
   const state = useSyncExternalStore(
     runtime.subscribe,
     runtime.getState,
@@ -170,7 +190,7 @@ export function useDecision<S extends DecidableSchema>(
     meta: state.meta,
     isLoading: state.status === 'loading',
     error: state.error,
-    reload: () => runtime.reload(),
-    stop: () => runtime.stop(),
+    reload,
+    stop,
   };
 }
