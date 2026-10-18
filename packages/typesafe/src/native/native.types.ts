@@ -27,6 +27,8 @@ export type NativeQuestion =
 
 /**
  * The request body for `POST /v1/systemone`.
+ *
+ * @public
  */
 export type NativeRequest = {
   model: string;

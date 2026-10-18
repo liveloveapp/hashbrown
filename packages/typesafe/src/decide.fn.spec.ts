@@ -1,0 +1,379 @@
+import { s } from '@hashbrownai/core';
+import type { Decision } from '@hashbrownai/core';
+import { HashbrownTypeSafe } from './decide.fn';
+import { DecisionError } from './decision-error';
+import * as nativeResponse from './native/__fixtures__/response.json';
+
+const request: Decision.Request = {
+  state: 'Payouts have been failing for 3 days.',
+  questions: {
+    is_urgent: { type: 'yesNo', instructions: 'Does this convey urgency?' },
+    department: {
+      type: 'choice',
+      instructions: 'Which team should handle this?',
+      options: { billing: 'Payments and refunds', technical: null },
+    },
+    frustration: {
+      type: 'score',
+      instructions: 'How frustrated is the customer?',
+      levels: { '0': 'Calm', '1': 'Frustrated', '2': 'Very angry' },
+    },
+  },
+};
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function fakeFetch(...responses: Array<Response | Error>) {
+  const calls: Array<{ url: string; init: RequestInit }> = [];
+  const fn = jest.fn(async (url: unknown, init?: RequestInit) => {
+    calls.push({ url: String(url), init: init as RequestInit });
+    const next = responses.shift();
+    if (next instanceof Error) throw next;
+    return next ?? jsonResponse(nativeResponse);
+  });
+  return { fn: fn as unknown as typeof fetch, calls, mock: fn };
+}
+
+async function rejection(promise: Promise<unknown>): Promise<unknown> {
+  try {
+    await promise;
+  } catch (error) {
+    return error;
+  }
+  return undefined;
+}
+
+test('posts to {baseURL}/v1/systemone with a bearer key', async () => {
+  const { fn, calls } = fakeFetch();
+
+  const result = await HashbrownTypeSafe.decide({
+    apiKey: 'k',
+    model: 'jev-1.14.0',
+    request,
+    fetch: fn,
+  });
+
+  expect(calls[0].url).toBe('https://api.typesafe.ai/v1/systemone');
+  expect(calls[0].init.method).toBe('POST');
+  expect(
+    (calls[0].init.headers as Record<string, string>)['Authorization'],
+  ).toBe('Bearer k');
+  expect(JSON.parse(calls[0].init.body as string).model).toBe('jev-1.14.0');
+  expect(result.kind).toBe('hashbrown.decision');
+  expect(result.value).toEqual({
+    is_urgent: true,
+    department: 'billing',
+    frustration: 1,
+  });
+});
+
+test('Gateway baseURL changes only the host and path prefix', async () => {
+  const { fn, calls } = fakeFetch();
+
+  await HashbrownTypeSafe.decide({
+    apiKey: 'k',
+    model: 'jev-1.14.0',
+    request,
+    baseURL: 'https://ai-gateway.vercel.sh/typesafe/',
+    fetch: fn,
+  });
+
+  expect(calls[0].url).toBe(
+    'https://ai-gateway.vercel.sh/typesafe/v1/systemone',
+  );
+});
+
+test('with schema, ignores client questions and compiles its own', async () => {
+  const { fn, calls } = fakeFetch(
+    jsonResponse({
+      answers: { urgent: { type: 'noul', noul: 0.9 } },
+    }),
+  );
+
+  const result = await HashbrownTypeSafe.decide({
+    apiKey: 'k',
+    model: 'jev-1.14.0',
+    schema: s.object('d', { urgent: s.boolean('Is it urgent?') }),
+    request: { state: 'x', questions: 'garbage' },
+    fetch: fn,
+  });
+
+  const body = JSON.parse(calls[0].init.body as string);
+  expect(Object.keys(body.questions)).toEqual(['urgent']);
+  expect(result.value).toEqual({ urgent: true });
+});
+
+test('without schema, rejects malformed requests and never calls fetch', async () => {
+  const { fn, mock } = fakeFetch();
+  const bad: unknown[] = [
+    null,
+    'text',
+    { questions: request.questions },
+    { state: 'x' },
+    { state: 'x', questions: [] },
+    { state: 'x', questions: { q: { type: 'other', instructions: 'i' } } },
+    { state: 'x', questions: { q: { type: 'yesNo', instructions: 1 } } },
+    {
+      state: 'x',
+      questions: { q: { type: 'choice', instructions: 'i', options: {} } },
+    },
+    {
+      state: 'x',
+      questions: {
+        q: { type: 'choice', instructions: 'i', options: { a: 3 } },
+      },
+    },
+    {
+      state: 'x',
+      questions: {
+        q: { type: 'score', instructions: 'i', levels: { '0': 'only' } },
+      },
+    },
+    {
+      state: 'x',
+      questions: {
+        q: {
+          type: 'score',
+          instructions: 'i',
+          levels: { a: 'x', b: 'y' },
+        },
+      },
+    },
+    { ...request, options: { longContext: 'yes' } },
+  ];
+
+  for (const candidate of bad) {
+    const error = await rejection(
+      HashbrownTypeSafe.decide({
+        apiKey: 'k',
+        model: 'm',
+        request: candidate,
+        fetch: fn,
+      }),
+    );
+    expect(error).toBeInstanceOf(DecisionError);
+    expect((error as DecisionError).code).toBe('invalid_request');
+    expect((error as DecisionError).status).toBe(400);
+  }
+  expect(mock).not.toHaveBeenCalled();
+});
+
+test('rejects more than 255 options and requests over 64,000 characters', async () => {
+  const { fn, mock } = fakeFetch();
+  const options = Object.fromEntries(
+    Array.from({ length: 256 }, (_, i) => [`o${i}`, null]),
+  );
+  const tooManyOptions = {
+    state: 'x',
+    questions: { q: { type: 'choice', instructions: 'i', options } },
+  };
+  const tooLong = { state: 'x'.repeat(64_000), questions: request.questions };
+
+  const errors = [
+    await rejection(
+      HashbrownTypeSafe.decide({
+        apiKey: 'k',
+        model: 'm',
+        request: tooManyOptions,
+        fetch: fn,
+      }),
+    ),
+    await rejection(
+      HashbrownTypeSafe.decide({
+        apiKey: 'k',
+        model: 'm',
+        request: tooLong,
+        fetch: fn,
+      }),
+    ),
+    await rejection(
+      HashbrownTypeSafe.decide({
+        apiKey: 'k',
+        model: 'm',
+        schema: s.object('d', { urgent: s.boolean('Is it urgent?') }),
+        request: { state: 'x'.repeat(64_000) },
+        fetch: fn,
+      }),
+    ),
+  ];
+
+  for (const error of errors) {
+    expect((error as DecisionError).code).toBe('invalid_request');
+  }
+  expect(mock).not.toHaveBeenCalled();
+});
+
+test('retries 429 and 529 at most twice', async () => {
+  jest.useFakeTimers();
+  try {
+    const { fn, mock } = fakeFetch(
+      jsonResponse({}, 429),
+      jsonResponse({}, 529),
+      jsonResponse(nativeResponse),
+    );
+
+    const promise = HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      request,
+      fetch: fn,
+    });
+    await jest.advanceTimersByTimeAsync(1000);
+    const result = await promise;
+
+    expect(mock).toHaveBeenCalledTimes(3);
+    expect(result.kind).toBe('hashbrown.decision');
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('maps exhausted retries to rate_limited', async () => {
+  jest.useFakeTimers();
+  try {
+    const { fn, mock } = fakeFetch(
+      jsonResponse({}, 429),
+      jsonResponse({}, 429),
+      jsonResponse({}, 429),
+    );
+
+    const promise = rejection(
+      HashbrownTypeSafe.decide({ apiKey: 'k', model: 'm', request, fetch: fn }),
+    );
+    await jest.advanceTimersByTimeAsync(1000);
+    const error = (await promise) as DecisionError;
+
+    expect(mock).toHaveBeenCalledTimes(3);
+    expect(error.code).toBe('rate_limited');
+    expect(error.status).toBe(429);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('maps 401 to unauthorized and other non-2xx to upstream', async () => {
+  const unauthorized = fakeFetch(jsonResponse({}, 401));
+  const forbidden = fakeFetch(jsonResponse({}, 403));
+  const failing = fakeFetch(jsonResponse({}, 500));
+
+  const a = (await rejection(
+    HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      request,
+      fetch: unauthorized.fn,
+    }),
+  )) as DecisionError;
+  const b = (await rejection(
+    HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      request,
+      fetch: forbidden.fn,
+    }),
+  )) as DecisionError;
+  const c = (await rejection(
+    HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      request,
+      fetch: failing.fn,
+    }),
+  )) as DecisionError;
+
+  expect(a.code).toBe('unauthorized');
+  expect(b.code).toBe('unauthorized');
+  expect(c.code).toBe('upstream');
+  expect(c.status).toBe(500);
+  expect(failing.mock).toHaveBeenCalledTimes(1);
+});
+
+test('maps network failures to upstream 502 with a cause', async () => {
+  const cause = new TypeError('fetch failed');
+  const { fn } = fakeFetch(cause);
+
+  const error = (await rejection(
+    HashbrownTypeSafe.decide({ apiKey: 'k', model: 'm', request, fetch: fn }),
+  )) as DecisionError;
+
+  expect(error.code).toBe('upstream');
+  expect(error.status).toBe(502);
+  expect(error.cause).toBe(cause);
+});
+
+test('maps invalid native bodies to invalid_response', async () => {
+  const notJson = fakeFetch(new Response('nope', { status: 200 }));
+  const badAnswers = fakeFetch(jsonResponse({ answers: {} }));
+
+  const a = (await rejection(
+    HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      request,
+      fetch: notJson.fn,
+    }),
+  )) as DecisionError;
+  const b = (await rejection(
+    HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      request,
+      fetch: badAnswers.fn,
+    }),
+  )) as DecisionError;
+
+  expect(a.code).toBe('invalid_response');
+  expect(a.status).toBe(502);
+  expect(b.code).toBe('invalid_response');
+});
+
+test('an aborted signal rejects with the abort reason', async () => {
+  const controller = new AbortController();
+  const reason = new Error('stop');
+  controller.abort(reason);
+  const fn = jest.fn(async (_url: unknown, init?: RequestInit) => {
+    init?.signal?.throwIfAborted();
+    return jsonResponse(nativeResponse);
+  }) as unknown as typeof fetch;
+
+  const error = await rejection(
+    HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      request,
+      signal: controller.signal,
+      fetch: fn,
+    }),
+  );
+
+  expect(error).toBe(reason);
+});
+
+test('transformRequest edits the native body', async () => {
+  const { fn, calls } = fakeFetch();
+
+  await HashbrownTypeSafe.decide({
+    apiKey: 'k',
+    model: 'm',
+    request,
+    transformRequest: (body) => ({ ...body, model: 'edited' }),
+    fetch: fn,
+  });
+
+  expect(JSON.parse(calls[0].init.body as string).model).toBe('edited');
+});
+
+test('requires model', () => {
+  const { fn } = fakeFetch();
+  const options = { apiKey: 'k', request, fetch: fn };
+
+  // @ts-expect-error model is required
+  const call = () => HashbrownTypeSafe.decide(options);
+
+  expect(typeof call).toBe('function');
+});
