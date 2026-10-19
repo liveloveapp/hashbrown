@@ -5,11 +5,13 @@ import { s } from '@hashbrownai/core';
 import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { expect, test } from 'vitest';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import type { NodeHandler } from './http';
 import {
   createRunHandler,
   limitRequest,
+  PINNED_RESPONSE_SCHEMA,
+  pinResponseSchema,
   pinSystemPrompt,
   pinTools,
   readRunOptions,
@@ -381,4 +383,61 @@ test('the run handler answers 413 for oversized bodies and too many messages', a
   expect(many.status).toBe(413);
   expect(await many.json()).toEqual({ error: 'Request too large' });
   server.close();
+});
+
+/** A run request whose browser sent `responseSchema`. */
+function withSchema(responseSchema: object): RunAgentInput {
+  return { ...input, hashbrown: { responseSchema, ui: true } } as RunAgentInput;
+}
+
+/** Collects console.warn lines for one test. */
+function captureWarnings(): string[] {
+  const lines: string[] = [];
+  const spy = vi
+    .spyOn(console, 'warn')
+    .mockImplementation((...args: unknown[]) => {
+      lines.push(args.map(String).join(' '));
+    });
+  onTestFinished(() => spy.mockRestore());
+  return lines;
+}
+
+test('a tampered response schema is replaced with the pinned one and logged without its contents', () => {
+  const warnings = captureWarnings();
+  const tampered = withSchema({
+    type: 'object',
+    description: 'SECRET-PAYLOAD',
+  });
+
+  const pinned = pinResponseSchema(tampered) as RunAgentInput & {
+    hashbrown: { responseSchema: object; ui: boolean };
+  };
+
+  expect(pinned.hashbrown.responseSchema).toBe(PINNED_RESPONSE_SCHEMA);
+  expect(pinned.hashbrown.ui).toBe(true);
+  expect(warnings).toHaveLength(1);
+  expect(warnings[0]).toContain('response schema');
+  expect(warnings[0]).not.toContain('SECRET-PAYLOAD');
+});
+
+test('an identical response schema is replaced silently', () => {
+  const warnings = captureWarnings();
+  const sent = withSchema(JSON.parse(JSON.stringify(PINNED_RESPONSE_SCHEMA)));
+
+  const pinned = pinResponseSchema(sent) as RunAgentInput & {
+    hashbrown: { responseSchema: object };
+  };
+
+  expect(pinned.hashbrown.responseSchema).toBe(PINNED_RESPONSE_SCHEMA);
+  expect(warnings).toEqual([]);
+});
+
+test('a request without a response schema is left alone', () => {
+  const warnings = captureWarnings();
+  const uiOnly = { ...input, hashbrown: { ui: true } } as RunAgentInput;
+
+  const results = [pinResponseSchema(input), pinResponseSchema(uiOnly)];
+
+  expect(results).toEqual([input, uiOnly]);
+  expect(warnings).toEqual([]);
 });

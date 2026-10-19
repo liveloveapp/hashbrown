@@ -758,3 +758,25 @@ test('rechecks expiry after delayed transport preparation before any send', asyn
   });
   expect(transport.send).not.toHaveBeenCalled();
 });
+
+test('a server-cancelled run rolls back once and is not retried', async () => {
+  const transport = createTransport(async (request) => ({
+    events: createEvents([
+      createStarted(request),
+      {
+        type: EventType.RUN_FINISHED,
+        threadId: request.input.threadId,
+        runId: request.input.runId,
+        outcome: { type: 'cancelled' },
+      },
+    ]),
+  }));
+  const onAttemptRolledBack = jest.fn();
+
+  const outcome = await execute({ transport, retries: 2, onAttemptRolledBack });
+
+  expect(outcome).toEqual({ kind: 'cancelled' });
+  expect(transport.send).toHaveBeenCalledTimes(1);
+  expect(onAttemptRolledBack).toHaveBeenCalledTimes(1);
+  expect(onAttemptRolledBack.mock.calls[0][1]).toBeUndefined();
+});

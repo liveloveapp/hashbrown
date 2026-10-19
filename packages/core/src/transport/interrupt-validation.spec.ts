@@ -3,6 +3,7 @@ import {
   assertInterruptsNotExpired,
   validateInterruptOutcome,
   validateResumeOptions,
+  validateRunFinishedOutcome,
 } from './interrupt-validation';
 
 test('owns and recursively freezes every supported interrupt field', () => {
@@ -77,7 +78,7 @@ for (const outcome of [
   test(`rejects malformed outcome ${JSON.stringify(outcome)}`, () => {
     const act = () => validateInterruptOutcome(outcome);
 
-    expect(act).toThrow(/interrupt outcome/i);
+    expect(act).toThrow(/run outcome/i);
   });
 }
 
@@ -104,7 +105,7 @@ for (const fields of [
 
     const act = () => validateInterruptOutcome(outcome);
 
-    expect(act).toThrow(/interrupt outcome/i);
+    expect(act).toThrow(/run outcome/i);
   });
 }
 
@@ -292,7 +293,7 @@ test('rejects sparse interrupt batches', () => {
 
   const act = () => validateInterruptOutcome(outcome);
 
-  expect(act).toThrow(/interrupt outcome/i);
+  expect(act).toThrow(/run outcome/i);
 });
 
 test('accepts valid leap days including years below one hundred', () => {
@@ -304,4 +305,43 @@ test('accepts valid leap days including years below one hundred', () => {
   const result = validateInterruptOutcome(outcome);
 
   expect(result).toEqual(outcome.interrupts);
+});
+
+test('reads a cancelled outcome as a cancelled run, not an interrupt', () => {
+  const outcome = { type: 'cancelled' };
+
+  const result = validateRunFinishedOutcome(outcome);
+
+  expect(result).toEqual({ type: 'cancelled' });
+});
+
+test('reads absent and success outcomes as a successful run', () => {
+  const outcomes = [undefined, { type: 'success' }];
+
+  const results = outcomes.map(validateRunFinishedOutcome);
+
+  expect(results).toEqual([{ type: 'success' }, { type: 'success' }]);
+});
+
+test('reads an interrupt outcome with its owned interrupts', () => {
+  const outcome = { type: 'interrupt', interrupts: [{ id: 'a', reason: 'x' }] };
+
+  const result = validateRunFinishedOutcome(outcome);
+
+  expect(result).toEqual({
+    type: 'interrupt',
+    interrupts: [{ id: 'a', reason: 'x' }],
+  });
+});
+
+test('rejects a malformed outcome with the same protocol error', () => {
+  const act = () => validateRunFinishedOutcome({ type: 'unknown' });
+
+  expect(act).toThrow(/outcome/i);
+});
+
+test('never reads a cancelled outcome as interrupt-free success', () => {
+  const act = () => validateInterruptOutcome({ type: 'cancelled' });
+
+  expect(act).toThrow(/cancelled/i);
 });

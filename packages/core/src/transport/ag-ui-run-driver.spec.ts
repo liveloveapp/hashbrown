@@ -857,3 +857,27 @@ test('treats an explicit success outcome as finished', async () => {
 
   expect(outcome).toEqual({ kind: 'finished' });
 });
+
+test('a RUN_FINISHED cancelled outcome settles the attempt as cancelled without forwarding the terminal', async () => {
+  const request = createRequest();
+  const cancelledFinish: AGUIEvent = {
+    type: EventType.RUN_FINISHED,
+    threadId: request.input.threadId,
+    runId: request.input.runId,
+    outcome: { type: 'cancelled' },
+  };
+  const dispose = jest.fn();
+  const transport = createTransport(async () => ({
+    events: createEvents([createStarted(request), cancelledFinish]),
+    dispose,
+  }));
+  const onEvent = jest.fn();
+
+  const outcome = await runAttempt({ transport, request, onEvent });
+
+  expect(outcome).toEqual({ kind: 'cancelled' });
+  expect(onEvent.mock.calls.map(([event]) => event)).toEqual([
+    expect.objectContaining({ type: EventType.RUN_STARTED }),
+  ]);
+  expect(dispose).toHaveBeenCalledTimes(1);
+});

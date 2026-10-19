@@ -44,6 +44,10 @@ export {
   type UiComponentDefinition,
   type UiJsonSchemaOptions,
 } from './ui/ui-json-schema';
+export {
+  markdownComponent,
+  type MarkdownComponentOptions,
+} from './ui/markdown-component';
 export type {
   UiKit as ɵUiKit,
   UiKitInput as ɵUiKitInput,
