@@ -1,4 +1,5 @@
 import type { AGUIEvent } from '@ag-ui/core';
+import type { JsonValue } from '../utils/types';
 import { createActionGroup, props } from '../utils/micro-ngrx';
 import { Chat } from '../models';
 import { s } from '../schema';
@@ -13,6 +14,8 @@ type ApiActionPayloads = {
   generateMessageSuccess: {
     message?: Chat.Internal.AssistantMessage;
     toolCalls: Chat.Internal.ToolCall[];
+    /** The owned `RUN_FINISHED.result` of a run that completed. */
+    result?: JsonValue;
   };
   generateMessageError: Error;
   generateMessageExhaustedRetries: void;

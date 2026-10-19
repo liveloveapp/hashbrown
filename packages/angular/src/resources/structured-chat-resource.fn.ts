@@ -13,6 +13,7 @@ import {
 import {
   Chat,
   createChatRuntime,
+  type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -78,6 +79,13 @@ export interface StructuredChatResourceRef<
   sendingError: Signal<Error | undefined>;
   /** Error emitted during generation events. */
   generatingError: Signal<Error | undefined>;
+  /**
+   * The return value the agent attached to the last run that completed
+   * (AG-UI's `RUN_FINISHED.result`), or `undefined` when it attached none.
+   * Cleared when the next run starts. Interrupted, cancelled, and failed
+   * runs never set it.
+   */
+  lastRunResult: Signal<JsonValue | undefined>;
   /**
    * Send a new user message to the chat.
    *
@@ -316,6 +324,10 @@ export function structuredChatResource<
     runtime.lastAssistantMessage,
     options.debugName && `${options.debugName}.lastAssistantMessage`,
   );
+  const lastRunResult = toNgSignal(
+    runtime.lastRunResult,
+    options.debugName && `${options.debugName}.lastRunResult`,
+  );
   const status = computed(
     (): ResourceStatus => {
       if (isLoading()) {
@@ -412,6 +424,7 @@ export function structuredChatResource<
     value,
     error,
     sendingError,
+    lastRunResult,
     generatingError,
     setMessages,
     setState,

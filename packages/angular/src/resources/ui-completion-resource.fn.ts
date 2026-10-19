@@ -2,6 +2,7 @@
 import { computed, Resource, Signal } from '@angular/core';
 import {
   Chat,
+  type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -132,6 +133,13 @@ export interface UiCompletionResourceRef<
    * @param clearStreamingMessage - Whether to clear the current streaming response.
    */
   stop: (clearStreamingMessage?: boolean) => void;
+  /**
+   * The return value the agent attached to the last run that completed
+   * (AG-UI's `RUN_FINISHED.result`), or `undefined` when it attached none.
+   * Cleared when the next run starts. Interrupted, cancelled, and failed
+   * runs never set it.
+   */
+  lastRunResult: Signal<JsonValue | undefined>;
 }
 
 /**
@@ -241,6 +249,7 @@ export function uiCompletionResource<
     stop: completion.stop,
     isSending: completion.isSending,
     isReceiving: completion.isReceiving,
+    lastRunResult: completion.lastRunResult,
     hasValue: hasValue as any,
   };
 }

@@ -73,6 +73,7 @@ export type {
 } from './decision/decision-runtime';
 export { mergeMessagesForThread } from './utils/threading';
 export type { StateSignal } from './utils/micro-ngrx';
+export type { JsonValue } from './utils/types';
 export * as ɵtypes from './utils/types';
 export {
   createSegments as ɵcreateTextSegments,

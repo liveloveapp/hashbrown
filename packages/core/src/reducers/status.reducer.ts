@@ -1,4 +1,5 @@
 import { EventType } from '@ag-ui/core';
+import type { JsonValue } from '../utils/types';
 import { createReducer, on } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
 import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
@@ -13,6 +14,8 @@ export interface StatusState {
   generatingError: Error | undefined;
   error: Error | undefined;
   exhaustedRetries: boolean;
+  /** The return value of the last run that completed, until the next run starts. */
+  lastRunResult: JsonValue | undefined;
 }
 
 export const initialStatusState: StatusState = {
@@ -25,6 +28,7 @@ export const initialStatusState: StatusState = {
   generatingError: undefined,
   error: undefined,
   exhaustedRetries: false,
+  lastRunResult: undefined,
 };
 
 export const reducer = createReducer(
@@ -51,6 +55,7 @@ export const reducer = createReducer(
       ...state,
       isSending: true,
       sendingError: undefined,
+      lastRunResult: undefined,
     };
   }),
   on(
@@ -62,6 +67,7 @@ export const reducer = createReducer(
         ...state,
         isSending: true,
         sendingError: undefined,
+        lastRunResult: undefined,
       };
     },
   ),
@@ -101,6 +107,7 @@ export const reducer = createReducer(
           sendingError: undefined,
           generatingError: undefined,
           error: undefined,
+          lastRunResult: undefined,
         };
       case EventType.RUN_FINISHED:
         return {
@@ -128,7 +135,7 @@ export const reducer = createReducer(
         return state;
     }
   }),
-  on(apiActions.generateMessageSuccess, (state) => {
+  on(apiActions.generateMessageSuccess, (state, action) => {
     return {
       ...state,
       acceptedTerminalEvent: false,
@@ -139,6 +146,7 @@ export const reducer = createReducer(
       error: undefined,
       generatingError: undefined,
       exhaustedRetries: false,
+      lastRunResult: action.payload.result,
     };
   }),
   on(apiActions.generateMessageError, (state, action) => {
@@ -210,6 +218,7 @@ export const reducer = createReducer(
       generatingError: undefined,
       error: undefined,
       exhaustedRetries: false,
+      lastRunResult: undefined,
     };
   }),
   on(internalActions.skippedToolCalls, (state) => {
@@ -226,3 +235,4 @@ export const selectGeneratingError = (state: StatusState) =>
 export const selectError = (state: StatusState) => state.error;
 export const selectExhaustedRetries = (state: StatusState) =>
   state.exhaustedRetries;
+export const selectLastRunResult = (state: StatusState) => state.lastRunResult;

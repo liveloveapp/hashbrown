@@ -3,6 +3,7 @@ import { computed, Resource, Signal } from '@angular/core';
 import {
   Chat,
   type ComponentTreeSchema,
+  type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -144,6 +145,14 @@ export interface UiChatResourceRef<
    * @param clearStreamingMessage - Whether the currently-streaming message should be removed from state.
    */
   stop: (clearStreamingMessage?: boolean) => void;
+
+  /**
+   * The return value the agent attached to the last run that completed
+   * (AG-UI's `RUN_FINISHED.result`), or `undefined` when it attached none.
+   * Cleared when the next run starts. Interrupted, cancelled, and failed
+   * runs never set it.
+   */
+  lastRunResult: Signal<JsonValue | undefined>;
 
   /**
    * The last assistant message for the UI chat resource.

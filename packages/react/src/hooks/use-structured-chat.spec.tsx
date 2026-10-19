@@ -178,12 +178,35 @@ function ProviderWrapper({ children }: { children: ReactNode }) {
   return <HashbrownProvider url="/chat">{children}</HashbrownProvider>;
 }
 
+test('useStructuredChat exposes the last run result from the runtime', () => {
+  const lastRunResult = createMutableSignal<unknown>(undefined);
+  const runtime = createRuntimeStub({ messages: [], lastRunResult });
+  createChatRuntimeMock.mockReset();
+  createChatRuntimeMock.mockReturnValue(runtime);
+
+  const { result } = renderHook(
+    () =>
+      useStructuredChat({
+        system: 'You are a helpful assistant.',
+        schema: s.object('risk summary', { risk: s.string('Risk level') }),
+      }),
+    { wrapper: ProviderWrapper },
+  );
+  const before = result.current.lastRunResult;
+  act(() => lastRunResult.set({ verdict: 'approved' }));
+
+  expect(before).toBeUndefined();
+  expect(result.current.lastRunResult).toEqual({ verdict: 'approved' });
+});
+
 function createRuntimeStub({
   messages,
   state = createMutableSignal<unknown>(undefined),
+  lastRunResult = createSignal<unknown>(undefined),
 }: {
   messages: unknown[];
   state?: ReturnType<typeof createMutableSignal<unknown>>;
+  lastRunResult?: ReturnType<typeof createSignal<unknown>>;
 }) {
   return {
     state,
@@ -201,6 +224,7 @@ function createRuntimeStub({
     sendingError: createSignal(undefined),
     generatingError: createSignal(undefined),
     lastAssistantMessage: createSignal(undefined),
+    lastRunResult,
     isLoadingThread: createSignal(false),
     isSavingThread: createSignal(false),
     threadLoadError: createSignal(undefined),

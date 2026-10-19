@@ -165,6 +165,25 @@ test('chatResource forwards initial state and exposes runtime state updates', ()
   expect(runtime.setState).toHaveBeenCalledWith({ count: 3 });
 });
 
+test('chatResource exposes the last run result from the runtime', () => {
+  createChatRuntimeMock.mockReset();
+  const lastRunResult = createSignal<unknown>(undefined);
+  const runtime = createRuntimeStub({ messages: [], lastRunResult });
+  createChatRuntimeMock.mockReturnValue(runtime);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    chatResource({ system: 'System A' }),
+  );
+  const before = resource.lastRunResult();
+  lastRunResult.set({ verdict: 'approved' });
+
+  expect(before).toBeUndefined();
+  expect(resource.lastRunResult()).toEqual({ verdict: 'approved' });
+});
+
 test('chatResource does not resend state when reactive options change', () => {
   createChatRuntimeMock.mockReset();
   const system = signal('System A');
@@ -562,11 +581,13 @@ function createRuntimeStub({
   error,
   isLoading = false,
   state = createSignal<unknown>(undefined),
+  lastRunResult = createSignal<unknown>(undefined),
 }: {
   messages: unknown[];
   error?: Error;
   isLoading?: boolean;
   state?: ReturnType<typeof createSignal<unknown>>;
+  lastRunResult?: ReturnType<typeof createSignal<unknown>>;
 }) {
   const messagesSignal = createSignal(messages);
 
@@ -586,6 +607,7 @@ function createRuntimeStub({
     sendingError: createSignal(undefined),
     generatingError: createSignal(undefined),
     lastAssistantMessage: createSignal(undefined),
+    lastRunResult,
     isLoadingThread: createSignal(false),
     isSavingThread: createSignal(false),
     threadLoadError: createSignal(undefined),
