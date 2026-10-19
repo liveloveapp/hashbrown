@@ -1,0 +1,34 @@
+{
+  "name": "@hashbrownai/typesafe",
+  "version": "0.7.0",
+  "description": "TypeSafe Jev decision adapter for Hashbrown AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liveloveapp/hashbrown.git",
+    "directory": "packages/typesafe"
+  },
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "peerDependencies": {
+    "@hashbrownai/core": "0.7.0"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "hashbrown",
+    "typesafe",
+    "jev",
+    "decisions",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

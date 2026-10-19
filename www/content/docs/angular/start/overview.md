@@ -2,8 +2,9 @@
 title: 'API Overview: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Get familiar with Hashbrown''s resources and APIs.'
+    content: "Get familiar with Hashbrown's resources and APIs."
 ---
+
 # API Overview
 
 <p class="subtitle">Get familiar with Hashbrown's resources and APIs.</p>
@@ -21,6 +22,8 @@ Choose the right Angular resource for the task.
 | @hashbrownai/angular!completionResource:function           | ❌              | ✅                | ❌                         | ❌           | ❌                     |
 | @hashbrownai/angular!structuredCompletionResource:function | ❌              | ✅                | ✅                         | ✅           | ❌                     |
 | @hashbrownai/angular!uiChatResource:function               | ✅              | ❌                | ✅                         | ✅           | ✅                     |
+| @hashbrownai/angular!decisionResource:function             | ❌              | ✅                | ✅                         | ❌           | ❌                     |
+| @hashbrownai/angular!uiDecisionResource:function           | ❌              | ✅                | ✅                         | ❌           | ✅                     |
 
 ---
 

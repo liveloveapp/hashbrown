@@ -22,6 +22,11 @@ export {
   type UseCompletionResult,
 } from './hooks/use-completion';
 export {
+  useDecision,
+  type UseDecisionOptions,
+  type UseDecisionResult,
+} from './hooks/use-decision';
+export {
   useImperativeJsonParser,
   type UseImperativeJsonParserResult,
 } from './hooks/use-imperative-json-parser';
@@ -82,6 +87,17 @@ export {
   type UiErrorMessage,
   type UiUserMessage,
 } from './hooks/use-ui-chat';
+export {
+  useUiDecision,
+  type UiDecisionCandidate,
+  type UiDecisionGenerateOptions,
+  type UseUiDecisionBaseOptions,
+  type UseUiDecisionCandidatesOptions,
+  type UseUiDecisionCandidatesResult,
+  type UseUiDecisionNarrowingOptions,
+  type UseUiDecisionNarrowingResult,
+  type UseUiDecisionOptions,
+} from './hooks/use-ui-decision';
 export {
   useUiCompletion,
   type UiCompletionOptions,

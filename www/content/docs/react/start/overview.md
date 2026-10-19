@@ -2,8 +2,9 @@
 title: 'API Overview: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Get familiar with Hashbrown''s hooks and APIs.'
+    content: "Get familiar with Hashbrown's hooks and APIs."
 ---
+
 # API Overview
 
 <p class="subtitle">Get familiar with Hashbrown's hooks and APIs.</p>
@@ -21,6 +22,8 @@ Choose the right hook for the task.
 | @hashbrownai/react!useCompletion:function           | ❌              | ✅                | ❌                         | ✅           | ❌                     |
 | @hashbrownai/react!useStructuredCompletion:function | ❌              | ✅                | ✅                         | ✅           | ❌                     |
 | @hashbrownai/react!useUiChat:function               | ✅              | ❌                | ✅                         | ✅           | ✅                     |
+| @hashbrownai/react!useDecision:function             | ❌              | ✅                | ✅                         | ❌           | ❌                     |
+| @hashbrownai/react!useUiDecision:function           | ❌              | ✅                | ✅                         | ❌           | ✅                     |
 
 ---
 

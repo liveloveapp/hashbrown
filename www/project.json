@@ -57,7 +57,15 @@
       "options": { "command": "tsx www/src/tools/review-docs.ts" },
       "dependsOn": [
         {
-          "projects": ["angular", "azure", "core", "google", "openai", "react"],
+          "projects": [
+            "angular",
+            "azure",
+            "core",
+            "google",
+            "openai",
+            "react",
+            "typesafe"
+          ],
           "target": "build-api-report"
         }
       ]
@@ -67,7 +75,15 @@
       "options": { "command": "tsx www/src/tools/translate-docs.ts" },
       "dependsOn": [
         {
-          "projects": ["angular", "azure", "core", "google", "openai", "react"],
+          "projects": [
+            "angular",
+            "azure",
+            "core",
+            "google",
+            "openai",
+            "react",
+            "typesafe"
+          ],
           "target": "build-api-report"
         }
       ]

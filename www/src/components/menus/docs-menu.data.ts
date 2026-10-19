@@ -66,8 +66,9 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: '5. Streaming', path: 'concept/streaming' },
       { text: '6. Tool Calling', path: 'concept/functions' },
       { text: '7. Structured Output', path: 'concept/structured-output' },
-      { text: '8. Generative UI', path: 'concept/components' },
-      { text: '9. JavaScript Runtime', path: 'concept/runtime' },
+      { text: '8. Decisions', path: 'concept/decisions' },
+      { text: '9. Generative UI', path: 'concept/components' },
+      { text: '10. JavaScript Runtime', path: 'concept/runtime' },
     ],
   },
   {
@@ -80,6 +81,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       },
       { text: 'UI Chatbot with Tools', path: 'recipes/ui-chatbot' },
       { text: 'UI Kits', path: 'recipes/ui-kits' },
+      { text: 'UI Selection', path: 'recipes/ui-selection' },
       { text: 'Predictive Suggestions', path: 'recipes/predictive-actions' },
       { text: 'Remote MCP', path: 'recipes/remote-mcp' },
       { text: 'Securing a Public Endpoint', path: 'recipes/public-endpoint' },
@@ -100,6 +102,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'Azure', path: 'platform/azure' },
       { text: 'Amazon Bedrock', path: 'platform/bedrock' },
       { text: 'Ollama', path: 'platform/ollama' },
+      { text: 'TypeSafe', path: 'platform/typesafe' },
     ],
   },
 ];

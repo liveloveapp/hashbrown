@@ -1,5 +1,9 @@
 import { inject, InjectionToken, Provider } from '@angular/core';
-import { Chat, type TransportOrFactory } from '@hashbrownai/core';
+import {
+  Chat,
+  type Decision,
+  type TransportOrFactory,
+} from '@hashbrownai/core';
 
 /**
  * Hashbrown must be configured with a base URL,
@@ -20,6 +24,20 @@ export interface ProvideHashbrownOptions {
    * Optional transport to use instead of the default HTTP transport.
    */
   transport?: TransportOrFactory;
+  /**
+   * Configuration for decision resources.
+   */
+  decision?: {
+    /**
+     * The URL of the decision endpoint. Defaults to `/api/decide`.
+     */
+    url?: string;
+    /**
+     * Optional decision transport override. When set, `url` and `middleware`
+     * are not used for decisions.
+     */
+    transport?: Decision.Transport;
+  };
 }
 
 /**
