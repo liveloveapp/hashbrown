@@ -17,6 +17,25 @@ export default defineConfig({
   build: {
     outDir: '../../../dist/examples/atc/react',
     emptyOutDir: true,
+    rolldownOptions: {
+      output: {
+        // Libraries in their own chunks: each stays under Vite's 500 kB
+        // warning, they load in parallel, and a redeploy of atc's own code
+        // leaves them cached. Leaflet is already split (imported lazily).
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react',
+              test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+            },
+            {
+              name: 'hashbrown',
+              test: /packages[\\/](core|react)[\\/]|node_modules[\\/](@ag-ui|@cacheplane|zod|rxjs|fast-json-patch)[\\/]/,
+            },
+          ],
+        },
+      },
+    },
   },
   test: {
     environment: 'jsdom',

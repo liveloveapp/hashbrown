@@ -25,7 +25,8 @@
         "styles": [
           "node_modules/leaflet/dist/leaflet.css",
           "examples/atc/shared/src/styles/atc.css"
-        ]
+        ],
+        "allowedCommonJsDependencies": ["leaflet"]
       },
       "configurations": {
         "production": { "outputHashing": "all" },
