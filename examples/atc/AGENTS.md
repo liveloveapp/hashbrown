@@ -106,6 +106,10 @@ dependencies); this file covers atc.
   It flags prose that echoes a rule, names a component or tool, stops on a colon,
   promises a tap the app doesn't have or opens with a lead-in; answers with more cards
   than the prompt asks for; and answers that show aircraft but leave none highlighted.
+- Builds stay free of warnings. Leaflet 1.x ships only CommonJS, so the Angular build
+  lists it in `allowedCommonJsDependencies` (`angular/project.json`); the React build
+  splits React and Hashbrown into their own chunks (`react/vite.config.mts`) so no chunk
+  passes Vite's 500 kB warning. A new library goes in one of those groups or stays small.
 
 ## Commands
 
