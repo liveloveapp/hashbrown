@@ -1,0 +1,75 @@
+{
+  "name": "typesafe",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/typesafe/src",
+  "projectType": "library",
+  "release": {
+    "version": {
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk",
+      "preserveLocalDependencyProtocols": false,
+      "manifestRootsToUpdate": ["dist/packages/typesafe", "packages/typesafe"]
+    }
+  },
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/typesafe",
+        "tsConfig": "packages/typesafe/tsconfig.lib.json",
+        "packageJson": "packages/typesafe/package.json",
+        "main": "packages/typesafe/src/index.ts",
+        "assets": [
+          "packages/typesafe/*.md",
+          {
+            "input": ".",
+            "glob": "LICENSE",
+            "output": "."
+          }
+        ]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/typesafe/jest.config.ts",
+        "passWithNoTests": false
+      }
+    },
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/typesafe/jest.e2e.config.ts",
+        "passWithNoTests": true
+      }
+    },
+    "nx-release-publish": {
+      "executor": "@nx/js:release-publish",
+      "dependsOn": ["^nx-release-publish"],
+      "options": {
+        "packageRoot": "dist/packages/typesafe"
+      }
+    },
+    "build-api-report": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        {
+          "projects": ["typesafe"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "npx api-extractor run --local --config packages/typesafe/api-extractor.json",
+        "parallel": true
+      }
+    }
+  }
+}

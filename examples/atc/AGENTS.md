@@ -48,7 +48,7 @@ dependencies); this file covers atc.
 | `shared/src/map/tiles.ts`                       | Tile URL and attribution                                                                                                                           |
 | `shared/src/styles/atc.css`                     | Index of the stylesheet partials, in cascade order                                                                                                 |
 | `angular/src/app/`, `react/src/`                | Thin framework shells that mirror each other                                                                                                       |
-| `server/src/run-handler.ts`                     | `/api/run`: pins the system prompt and tool definitions, caps output                                                                               |
+| `server/src/run-handler.ts`                     | `/api/run`: pins the system prompt, tool definitions and UI response schema, caps output                                                           |
 | `server/src/aircraft-handler.ts`                | `/api/aircraft`: cached, stripped adsb.lol                                                                                                         |
 | `server/src/chart-airports-handler.ts`          | `/api/chart/airports`: NASR airports, cached per cycle                                                                                             |
 | `server/src/chart-surfaces-handler.ts`          | `/api/chart/surfaces`: FAA and OSM taxiways, aprons, holds                                                                                         |
@@ -70,8 +70,9 @@ dependencies); this file covers atc.
 - Only fields validated in `shared/src/aircraft.ts` (hex, label, kind, numbers) go into
   marker HTML. Everything else is rendered as text.
 - `normalizeAdsbLol` copies whitelisted fields only; never spread adsb.lol entries.
-- The system prompt, the tool definitions and the output cap are fixed on the server;
-  clients cannot change them. (The UI response schema still comes from the client.)
+- The system prompt, the tool definitions, the UI response schema and the output cap are
+  fixed on the server; clients cannot change them. A request that omits the response
+  schema gets free-form text, still under the pinned prompt, tools and cap.
 - The map moves only through store view requests: the newest wins, follow mode wins over
   all, a user drag or zoom cancels.
 - Markers update in place (`updatePlane`); never rebuild them on a snapshot.
@@ -105,6 +106,10 @@ dependencies); this file covers atc.
   It flags prose that echoes a rule, names a component or tool, stops on a colon,
   promises a tap the app doesn't have or opens with a lead-in; answers with more cards
   than the prompt asks for; and answers that show aircraft but leave none highlighted.
+- Builds stay free of warnings. Leaflet 1.x ships only CommonJS, so the Angular build
+  lists it in `allowedCommonJsDependencies` (`angular/project.json`); the React build
+  splits React and Hashbrown into their own chunks (`react/vite.config.mts`) so no chunk
+  passes Vite's 500 kB warning. A new library goes in one of those groups or stays small.
 
 ## Commands
 

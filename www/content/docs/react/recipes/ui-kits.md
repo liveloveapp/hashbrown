@@ -287,7 +287,7 @@ export const metricDefinition = {
 
 </hb-code-example>
 
-On the server, `createUiJsonSchema()` builds the JSON Schema the kit would send to a model, examples included. Pass it to your model as a structured output schema. For example, an OpenAI agent can use it as a `json_schema` response format:
+On the server, `createUiJsonSchema()` builds the JSON Schema the kit would send to a model, examples included. Pass it to your model as a structured output schema. If the kit includes `exposeMarkdown`, add `markdownComponent()` from `@hashbrownai/core` to `components` in the same position, with the same `name`, `description` and `citations` options. For example, an OpenAI agent can use it as a `json_schema` response format:
 
 <hb-code-example header="agent.ts">
 

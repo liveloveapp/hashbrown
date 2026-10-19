@@ -1723,6 +1723,10 @@ interface EnumTypeDefinition<
 > extends HashbrownTypeDefinition {
   type: 'enum';
   entries: Entries;
+  /**
+   * Optional per-entry descriptions, keyed by entry value.
+   */
+  entryDescriptions?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -1755,10 +1759,22 @@ export const EnumType: HashbrownTypeCtor<EnumType> = HashbrownTypeCtor({
     HashbrownType.init(inst, def);
   },
   toJsonSchemaImpl: (schema: any) => {
+    const { entries, entryDescriptions, description } =
+      schema[internal].definition;
+    if (entryDescriptions) {
+      const lines = entries.map(
+        (entry: string) => `- ${entry}: ${entryDescriptions[entry]}`,
+      );
+      return {
+        type: 'string',
+        enum: entries,
+        description: `${description}\n\n${lines.join('\n')}`,
+      };
+    }
     return {
       type: 'string',
-      enum: schema[internal].definition.entries,
-      description: schema[internal].definition.description,
+      enum: entries,
+      description,
     };
   },
   toTypeScriptImpl: (schema: any) => {
@@ -1805,16 +1821,61 @@ export function isEnumType(type: HashbrownType): type is EnumType {
 }
 
 /**
+ * Creates a string enumeration schema.
+ *
+ * Pass an array of entries, or a record mapping each entry to a description
+ * of what it means. The JSON Schema stays provider-safe: it emits a plain
+ * `enum`, and the entry descriptions are appended to the description as a
+ * `- key: description` list.
+ *
  * @public
+ * @param description - Description of the enumeration.
+ * @param entries - The allowed values, or a record of value to description.
+ * @returns An enumeration schema.
  */
 export function enumeration<const Entries extends readonly string[]>(
   description: string,
   entries: [...Entries],
-): EnumType<Entries> {
+): EnumType<Entries>;
+/**
+ * Creates a string enumeration schema from a record of entry descriptions.
+ *
+ * The record keys become the allowed values, in declared order. The JSON
+ * Schema emits a plain `enum` with the descriptions appended to the schema
+ * description as a `- key: description` list.
+ *
+ * @public
+ * @param description - Description of the enumeration.
+ * @param entries - A record mapping each allowed value to its description.
+ * @returns An enumeration schema.
+ *
+ * @example
+ * ```ts
+ * const kind = s.enumeration('Kind', { jet: 'Jets', rotor: 'Helicopters' });
+ * ```
+ */
+export function enumeration<const Entry extends string>(
+  description: string,
+  entries: Record<Entry, string>,
+): EnumType<Entry[]>;
+export function enumeration(
+  description: string,
+  entries: readonly string[] | Record<string, string>,
+): EnumType {
+  if (Array.isArray(entries)) {
+    return new EnumType({
+      type: 'enum',
+      description,
+      entries,
+      streaming: false,
+    }) as any;
+  }
+  const record = entries as Record<string, string>;
   return new EnumType({
     type: 'enum',
     description,
-    entries,
+    entries: Object.keys(record),
+    entryDescriptions: { ...record },
     streaming: false,
   }) as any;
 }

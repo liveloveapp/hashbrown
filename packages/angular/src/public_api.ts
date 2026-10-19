@@ -1,4 +1,8 @@
-export { RenderMessageComponent, MagicText } from './components';
+export {
+  RenderMessageComponent,
+  MagicText,
+  UiDecisionComponent,
+} from './components';
 export {
   MagicTextRenderCaret,
   MagicTextRenderCitation,
@@ -16,6 +20,9 @@ export {
   chatResource,
   type ChatResourceOptions,
   type ChatResourceRef,
+  decisionResource,
+  type DecisionResourceOptions,
+  type DecisionResourceRef,
   completionResource,
   type CompletionResourceOptions,
   type CompletionResourceRef,
@@ -32,6 +39,17 @@ export {
   uiCompletionResource,
   type UiCompletionResourceOptions,
   type UiCompletionResourceRef,
+  uiDecisionResource,
+  type UiDecisionCandidate,
+  type UiDecisionChosenCandidate,
+  type UiDecisionGenerateOptions,
+  type UiDecisionResourceBaseOptions,
+  type UiDecisionResourceCandidatesOptions,
+  type UiDecisionResourceCandidatesRef,
+  type UiDecisionResourceNarrowingOptions,
+  type UiDecisionResourceNarrowingRef,
+  type UiDecisionResourceOptions,
+  type UiDecisionResourceRef,
 } from './resources';
 export { provideHashbrown, type ProvideHashbrownOptions } from './providers';
 export {

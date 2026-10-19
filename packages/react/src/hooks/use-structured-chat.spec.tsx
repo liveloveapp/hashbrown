@@ -145,6 +145,35 @@ test('useStructuredChat seeds, observes, and delegates shared agent state', () =
   ]);
 });
 
+test('useStructuredChat applies a changed schema and ignores an equal one', () => {
+  // Arrange
+  const runtime = createRuntimeStub({ messages: [] });
+  createChatRuntimeMock.mockReset();
+  createChatRuntimeMock.mockReturnValue(runtime);
+  const first = () => s.object('Answer', { risk: s.string('Risk level') });
+  const second = s.object('Answer', { score: s.number('Risk score') });
+  const { rerender } = renderHook(
+    ({ schema }: { schema: s.SchemaOutput }) =>
+      useStructuredChat({ system: 'You are a portfolio analyst.', schema }),
+    { initialProps: { schema: first() }, wrapper: ProviderWrapper },
+  );
+  const initial = createChatRuntimeMock.mock.calls[0]?.[0].responseSchema;
+  runtime.updateOptions.mockClear();
+
+  // Act
+  rerender({ schema: first() });
+  const afterEqual = runtime.updateOptions.mock.calls.length;
+  rerender({ schema: second });
+
+  // Assert
+  expect(afterEqual).toBe(0);
+  expect(createChatRuntimeMock).toHaveBeenCalledTimes(1);
+  expect(runtime.updateOptions).toHaveBeenLastCalledWith(
+    expect.objectContaining({ responseSchema: second }),
+  );
+  expect(initial).not.toBe(second);
+});
+
 function ProviderWrapper({ children }: { children: ReactNode }) {
   return <HashbrownProvider url="/chat">{children}</HashbrownProvider>;
 }

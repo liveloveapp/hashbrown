@@ -368,6 +368,29 @@ test('shows Seattle arrivals and highlights them on the map', async ({
   await expectOnlyCompleteIds(page);
 });
 
+test('the browser sends the response schema the server pins', async ({
+  page,
+}, testInfo) => {
+  const warnings: string[] = [];
+  const warn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map(String).join(' '));
+    warn.apply(console, args);
+  };
+  try {
+    await openApp(page, testInfo.project.name);
+
+    await page.getByRole('button', { name: PROMPTS.seattleArrivals }).click();
+    await expect(page.getByTestId('arrivals-row')).toHaveCount(arrivals.length);
+  } finally {
+    console.warn = warn;
+  }
+
+  expect(warnings.filter((line) => line.includes('response schema'))).toEqual(
+    [],
+  );
+});
+
 test("shows what's flying near KBDN in an outlined area", async ({
   page,
 }, testInfo) => {

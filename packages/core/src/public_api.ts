@@ -11,6 +11,7 @@ export {
 } from './chat-runtime';
 export * from './models';
 export * from './transport';
+export * from './decision';
 export { prompt } from './prompt/prompt';
 export type {
   HBTree,
@@ -43,6 +44,10 @@ export {
   type UiComponentDefinition,
   type UiJsonSchemaOptions,
 } from './ui/ui-json-schema';
+export {
+  markdownComponent,
+  type MarkdownComponentOptions,
+} from './ui/markdown-component';
 export type {
   UiKit as ɵUiKit,
   UiKitInput as ɵUiKitInput,
@@ -51,6 +56,21 @@ export type {
 export { createUiKit as ɵcreateUiKit, isUiKit as ɵisUiKit } from './ui/ui-kit';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { sanitizeUrl as ɵsanitizeUrl } from './utils/sanitize-url';
+export {
+  compileDecision as ɵcompileDecision,
+  type CompileDecisionOptions as ɵCompileDecisionOptions,
+} from './decision/compile-decision';
+export { decodeDecision as ɵdecodeDecision } from './decision/decode-decision';
+export {
+  createSelectionSchema as ɵcreateSelectionSchema,
+  resolveSelection as ɵresolveSelection,
+} from './decision/ui-selection';
+export { createDecisionRuntime as ɵcreateDecisionRuntime } from './decision/decision-runtime';
+export type {
+  DecisionRuntime as ɵDecisionRuntime,
+  DecisionRuntimeOptions as ɵDecisionRuntimeOptions,
+  DecisionRuntimeState as ɵDecisionRuntimeState,
+} from './decision/decision-runtime';
 export { mergeMessagesForThread } from './utils/threading';
 export type { StateSignal } from './utils/micro-ngrx';
 export type { JsonValue } from './utils/types';

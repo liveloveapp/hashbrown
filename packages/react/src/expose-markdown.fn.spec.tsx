@@ -1,5 +1,9 @@
 import { render } from '@testing-library/react';
-import type { ComponentNode } from '@hashbrownai/core';
+import {
+  type ComponentNode,
+  createUiJsonSchema,
+  markdownComponent,
+} from '@hashbrownai/core';
 import { exposeMarkdown } from './expose-markdown.fn';
 import { renderUiNodes } from './hooks/ui-kit.helpers';
 
@@ -167,4 +171,22 @@ test('exposeMarkdown allows disabling the default caret', () => {
   const caret = container.querySelector('[data-magic-text-caret]');
 
   expect(caret).toBeNull();
+});
+
+test('exposeMarkdown gives the model the schema markdownComponent defines', () => {
+  const cases = [
+    {},
+    { name: 'Answer' },
+    { description: 'Short answers only.' },
+    { citations: true },
+  ];
+
+  const pairs = cases.map((options) => [
+    createUiJsonSchema({ components: [exposeMarkdown(options)] }),
+    createUiJsonSchema({ components: [markdownComponent(options)] }),
+  ]);
+
+  for (const [exposed, defined] of pairs) {
+    expect(exposed).toEqual(defined);
+  }
 });

@@ -67,6 +67,13 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx lint openai`
   - `npx nx build-api-report openai`
   - `npx nx nx-release-publish openai`
+- `typesafe`
+  - `npx nx build typesafe`
+  - `npx nx test typesafe`
+  - `npx nx e2e typesafe`
+  - `npx nx lint typesafe`
+  - `npx nx build-api-report typesafe`
+  - `npx nx nx-release-publish typesafe`
 - `anthropic`
   - `npx nx build anthropic`
   - `npx nx test anthropic`

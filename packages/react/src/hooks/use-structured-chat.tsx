@@ -9,14 +9,7 @@ import {
   type TransportOrFactory,
   ɵassertRuntimeMessageSchedulingAllowed,
 } from '@hashbrownai/core';
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { HashbrownContext } from '../hashbrown-provider';
 import { useHashbrownSignal } from './use-hashbrown-signal';
 
@@ -270,7 +263,15 @@ export function useStructuredChat<
     options.tools ?? [],
   );
 
-  const [schema] = useState<Schema>(options.schema);
+  // A schema with the same JSON Schema keeps its identity, so inline schemas
+  // don't churn the runtime; a different one is applied via updateOptions.
+  const schemaKey = useMemo(
+    () =>
+      JSON.stringify(s.toJsonSchema(s.normalizeSchemaOutput(options.schema))),
+    [options.schema],
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const schema = useMemo(() => options.schema, [schemaKey]);
   const runtimeRef = useRef<ChatRuntime<Output, Tools, State> | null>(null);
 
   if (!runtimeRef.current) {

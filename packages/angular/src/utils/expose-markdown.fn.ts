@@ -1,6 +1,6 @@
 import { type Provider, reflectComponentType } from '@angular/core';
 import type { PartialMarkdownParserOptions } from '@cacheplane/partial-markdown';
-import { s, type SegmenterOptions } from '@hashbrownai/core';
+import { markdownComponent, type SegmenterOptions } from '@hashbrownai/core';
 import {
   type MagicTextCitationClickEvent,
   type MagicTextLinkClickEvent,
@@ -18,18 +18,6 @@ import {
   exposeComponent,
   type ExposedComponent,
 } from './expose-component.fn';
-
-const DEFAULT_COMPONENT_NAME = 'Markdown';
-const DEFAULT_MARKDOWN_DESCRIPTION = [
-  'Render markdown content for the user.',
-  '',
-  'Write all markdown into the `children` prop.',
-  'Use standard markdown for headings, lists, links, tables, and code blocks.',
-].join('\n');
-const CITATION_DESCRIPTION_SUFFIX = [
-  'For citations, use inline references like `[^source-id]` and include matching definitions like `[^source-id]: Source title` or `[^source-id]: Source title https://example.com`.',
-  'Citation numbers are assigned by first inline reference, and if an id is defined multiple times, only the first definition is used.',
-].join('\n');
 
 /** @public */
 export type MagicTextExposeInputs = {
@@ -85,7 +73,8 @@ export type ExposeMarkdownConfig = {
   /**
    * LLM-facing component description.
    *
-   * @default DEFAULT_MARKDOWN_DESCRIPTION
+   * When omitted, the default description of `markdownComponent` (from
+   * `@hashbrownai/core`) is used.
    */
   description?: string;
 
@@ -111,19 +100,14 @@ export function exposeMarkdown(
   | typeof ɵExposedMarkdownComponent
   | typeof ɵExposedMarkdownCustomRendererComponent
 > {
-  const {
-    name = DEFAULT_COMPONENT_NAME,
-    description,
-    citations = false,
-  } = config;
-
-  const effectiveDescription =
-    description ??
-    `${DEFAULT_MARKDOWN_DESCRIPTION}${citations ? `\n${CITATION_DESCRIPTION_SUFFIX}` : ''}`;
-
-  const propsSchema = {
-    children: s.node(s.streaming.string('Markdown content to render')),
-  } as unknown as ComponentPropSchema<typeof ɵExposedMarkdownComponent>;
+  const definition = markdownComponent({
+    name: config.name,
+    description: config.description,
+    citations: config.citations,
+  });
+  const propsSchema = definition.props as unknown as ComponentPropSchema<
+    typeof ɵExposedMarkdownComponent
+  >;
 
   if ('renderer' in config && config.renderer) {
     validateCustomRenderer(config.renderer);
@@ -141,8 +125,8 @@ export function exposeMarkdown(
     ];
 
     return exposeComponent(ɵExposedMarkdownCustomRendererComponent, {
-      name,
-      description: effectiveDescription,
+      name: definition.name,
+      description: definition.description,
       input: propsSchema,
       providers,
     });
@@ -165,8 +149,8 @@ export function exposeMarkdown(
   ];
 
   return exposeComponent(ɵExposedMarkdownComponent, {
-    name,
-    description: effectiveDescription,
+    name: definition.name,
+    description: definition.description,
     input: propsSchema,
     providers,
   });

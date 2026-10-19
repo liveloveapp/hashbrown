@@ -1,0 +1,20 @@
+{
+  "model": "jev-latest",
+  "state": "Payouts have been failing for 3 days.",
+  "questions": {
+    "is_urgent": {
+      "type": "noul",
+      "instructions": "Does this convey urgency?"
+    },
+    "department": {
+      "type": "choice",
+      "instructions": "Which team should handle this?",
+      "criteria": { "billing": "Payments and refunds", "technical": null }
+    },
+    "frustration": {
+      "type": "score",
+      "instructions": "How frustrated is the customer?",
+      "criteria": ["Calm", "Frustrated", "Very angry"]
+    }
+  }
+}
