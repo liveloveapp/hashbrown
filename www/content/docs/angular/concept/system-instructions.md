@@ -128,6 +128,8 @@ For models like OpenAI's GPT-4.1, 2-4 well-chosen
 examples are usually enough; more than that can help but may be subject
 to token limits and diminishing returns.
 
+For generative UI, don't write sample UI answers into the system instruction. Put guidance about a component in its description and input schemas, and keep only layout and composition rules here. See [Guide the Model](/docs/angular/concept/components#guide-the-model).
+
 Example:
 
 ```markdown

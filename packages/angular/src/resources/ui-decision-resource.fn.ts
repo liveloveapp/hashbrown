@@ -20,7 +20,6 @@ import {
   type DecidableSchema,
   type Decision,
   s,
-  type SystemPrompt,
   type TransportOrFactory,
   ɵcreateSelectionSchema,
   ɵisUiKit,
@@ -119,7 +118,7 @@ export interface UiDecisionResourceCandidatesOptions extends UiDecisionResourceB
  */
 export interface UiDecisionGenerateOptions {
   /** The system prompt for the UI completion. */
-  system: ReactiveOption<string | SystemPrompt>;
+  system: ReactiveOption<string>;
   /** Overrides the provider's transport for the UI completion. */
   transport?: TransportOrFactory;
   /** Milliseconds to wait after an input change before generating. */

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Chat, SystemPrompt, type TransportOrFactory } from '@hashbrownai/core';
+import { Chat, type TransportOrFactory } from '@hashbrownai/core';
 import {
   Dispatch,
   ReactElement,
@@ -37,7 +37,7 @@ export interface UiCompletionOptions<
   /**
    * The system prompt to use for the completion.
    */
-  system: string | SystemPrompt;
+  system: string;
 
   /**
    * The components that can be rendered by the completion.
@@ -48,10 +48,6 @@ export interface UiCompletionOptions<
    * The initial shared agent state.
    */
   state?: State;
-  /**
-   * Optional prompt-based UI examples to include in the wrapper schema description.
-   */
-  examples?: SystemPrompt;
 
   /**
    * The tools to make available to the completion.
@@ -130,36 +126,19 @@ export const useUiCompletion = <
 ): UseUiCompletionResult<Tools, State> => {
   const {
     components: initialComponents,
-    examples,
     system,
     tools,
     ...completionOptions
   } = options;
   const [components, setComponents] = useState(initialComponents);
-  const uiKit = useUiKit<ExposedComponent<any>>({ components, examples });
+  const uiKit = useUiKit<ExposedComponent<any>>({ components });
 
   const uiSchema = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);
-
-  const systemAsString = useMemo(() => {
-    if (typeof system === 'string') {
-      return system;
-    }
-
-    const compiled = system.compile(uiKit.components, uiSchema);
-
-    if (system.diagnostics.length > 0) {
-      throw new Error(
-        `System prompt has ${system.diagnostics.length} errors: \n\n${system.diagnostics.map((d) => d.message).join('\n\n')}`,
-      );
-    }
-
-    return compiled;
-  }, [system, uiSchema, uiKit.components]);
 
   const structured = useStructuredCompletion<Input, typeof uiSchema, State>({
     ...completionOptions,
     schema: uiSchema as any,
-    system: systemAsString,
+    system,
     tools,
     ui: true,
   });

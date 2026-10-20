@@ -12,14 +12,6 @@ export {
 export * from './models';
 export * from './transport';
 export * from './decision';
-export { prompt } from './prompt/prompt';
-export type {
-  HBTree,
-  PromptDiagnostic,
-  PromptDiagnosticCode,
-  PromptDiagnosticSeverity,
-  SystemPrompt,
-} from './prompt/types';
 export {
   createRuntimeFunctionImpl as ɵcreateRuntimeFunctionImpl,
   createRuntimeImpl as ɵcreateRuntimeImpl,

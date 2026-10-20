@@ -297,56 +297,60 @@ function Messages({ chat }: { chat: ReturnType<typeof useUiChat> }) {
 
 ---
 
-## The `prompt` Tagged Template Literal
+## Guide the Model
 
-Providing examples in the system instructions enables few-shot prompting.
-Hashbrown provides the `prompt` tagged template literal for generative UI for better instruction following.
+The model picks components from their descriptions and fills in props from their schemas. Put guidance where it travels with the component, so it stays correct when you add, remove or compose components:
 
-<hb-code-example header="prompt with ui">
+1. **Component descriptions** say when to use the component, when not to, and how it differs from similar components.
+2. **Prop descriptions and schema constraints** carry value conventions: units, formats, ranges and allowed values. Anything the schema can enforce, such as a fixed set of values, belongs in the schema.
+3. **A short system prompt** holds layout and composition rules, such as which component comes first or how many results to show.
+
+<hb-code-example header="guide the model">
 
 ```ts
 useUiChat({
-  // 1. Use the prompt tagged template literal
-  system: prompt`
-    ### ROLE & TONE
+  // 3. Layout and composition rules in a plain string
+  system: `
+    You are a smart home assistant.
 
-    You are **Smart Home Assistant**, a friendly and concise AI assistant for a
-    smart home web application.
-
-    - Voice: clear, helpful, and respectful.
-    - Audience: users controlling lights and scenes via the web interface.
-
-    ### RULES
-
-    1. **Never** expose raw data or internal code details.
-    2. For commands you cannot perform, **admit it** and suggest an alternative.
-    3. For actionable requests (e.g., changing light settings), **precede** any
-      explanation with the appropriate tool call.
-
-    ### EXAMPLES
-
-    <user>Hello</user>
-    <assistant>
-      <ui>
-        <app-markdown data="How may I assist you?" />
-      </ui>
-    </assistant>
+    - Show one LightCard for each light the user asks about.
+    - Add at most one Markdown summary, after the cards, only when there is
+      more to say.
   `,
   components: [
-    exposeComponent(MarkdownComponent, { ... })
-  ]
+    exposeComponent(LightCard, {
+      name: 'LightCard',
+      // 1. When to use it, when not to, and how it differs
+      description:
+        'One light and its current state. Use it once per light the user asks about. For general explanations, use Markdown instead.',
+      props: {
+        lightId: s.string(
+          'The light ID from the getLights tool, such as "light-1"',
+        ),
+        // 2. Value conventions in prop descriptions and the schema
+        brightness: s.number('Brightness from 0 (off) to 100 (full)'),
+        scene: s.enumeration('The active scene', {
+          day: 'Bright, cool light',
+          evening: 'Warm, dimmed light',
+          night: 'Minimal light for moving around',
+        }),
+      },
+    }),
+    exposeComponent(Markdown, {
+      name: 'Markdown',
+      description:
+        'A short markdown message for explanations and summaries. Never use it to show the state of a light; use LightCard for that.',
+      props: {
+        data: s.string('The markdown content, one or two short paragraphs'),
+      },
+    }),
+  ],
 });
 ```
 
 </hb-code-example>
 
-The `prompt` tagged template literal will parse the content inside of the `<ui>` brackets and do the following for you:
-
-1. Validate that the examples match the list of components provided to the model.
-2. Validate that the component props have been set correctly based on their schema definitions.
-3. Convert the example into Hashbrown's underlying JSON representation.
-
-Quoted attribute values are strings. To pass a number, boolean, array, or object, use `${}`, as in `<BarChart data=${[{ label: 'Oct', value: 350000 }]} />`. Hashbrown validates the value against the prop's schema like any other attribute. See [Add Examples](/docs/react/recipes/ui-kits#4.-add-examples).
+Prefer rules over sample answers. A rule in a description lives next to the component it describes, so it changes when the component does and leaves with it when the component is removed. A hand-written sample answer silently drifts when a prop or component changes.
 
 ---
 

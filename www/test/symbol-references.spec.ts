@@ -21,7 +21,7 @@ test('collects each symbol-link reference once, in document order', () => {
         children: [
           symbolLink('@hashbrownai/react!useChat:function'),
           { type: 'text', value: ' and ' },
-          symbolLink('@hashbrownai/core!prompt:function'),
+          symbolLink('@hashbrownai/core!createUiJsonSchema:function'),
         ],
       },
       symbolLink('@hashbrownai/react!useChat:function'),
@@ -32,7 +32,7 @@ test('collects each symbol-link reference once, in document order', () => {
 
   expect(references).toEqual([
     '@hashbrownai/react!useChat:function',
-    '@hashbrownai/core!prompt:function',
+    '@hashbrownai/core!createUiJsonSchema:function',
   ]);
 });
 
@@ -64,7 +64,7 @@ test('finds references in prose and raw HTML but not in code', async () => {
   const md = [
     'Call @hashbrownai/react!useChat:function first.',
     '',
-    '<hb-symbol-link reference="@hashbrownai/core!prompt:function"></hb-symbol-link>',
+    '<hb-symbol-link reference="@hashbrownai/core!createUiJsonSchema:function"></hb-symbol-link>',
     '',
     '`@hashbrownai/react!useTool:function`',
     '',
@@ -78,6 +78,6 @@ test('finds references in prose and raw HTML but not in code', async () => {
 
   expect(references).toEqual([
     '@hashbrownai/react!useChat:function',
-    '@hashbrownai/core!prompt:function',
+    '@hashbrownai/core!createUiJsonSchema:function',
   ]);
 });
