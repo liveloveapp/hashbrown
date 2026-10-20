@@ -119,7 +119,7 @@ function Answer({ query }: { query: string }) {
 3. A chosen component brings the components declared in its `children` with it, recursively, so the completion can always render a chosen parent's children. The completion sees the chosen components in the order they were declared.
 4. `generate` configures the UI completion that runs after it. `system` is required.
 5. An empty `components` list skips the decision and generates straight away.
-6. Component names become option ids, so the flattened list must fit the selection limits: no name may be empty or contain `.`, and `select: 'one'` allows at most 255 components. When the list breaks a limit, narrowing skips the decision, generates with every component, and exposes the `DecisionSchemaError` as `decisionError`.
+6. Component names become option ids, so the flattened list must fit the selection limits: no name may be empty, contain `.`, or be `__proto__`, `constructor` or `prototype`, and `select: 'one'` allows at most 255 components. When the list breaks a limit, narrowing skips the decision, generates with every component, and exposes the `DecisionSchemaError` as `decisionError`.
 
 ### Low confidence
 
