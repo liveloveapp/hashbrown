@@ -293,6 +293,29 @@ test('drops a trailing reasoning group with nothing after it', () => {
   expect(input).toEqual([{ role: 'user', content: 'Hi' }]);
 });
 
+test('drops a reasoning group followed by an empty assistant message', () => {
+  const messages: Message[] = [
+    { id: 'm-1', role: 'user', content: 'Hi' },
+    {
+      id: 'r-1',
+      role: 'reasoning',
+      content: 'Thinking.',
+      encryptedValue: 'enc-1',
+      metadata: { openai: { itemId: 'rs_1' } },
+    },
+    {
+      id: 'm-2',
+      role: 'assistant',
+      content: '',
+      metadata: { openai: { reasoningItemIds: ['rs_1'] } },
+    },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([{ role: 'user', content: 'Hi' }]);
+});
+
 test('drops reasoning from other providers', () => {
   const messages: Message[] = [
     {

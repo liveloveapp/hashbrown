@@ -136,8 +136,7 @@ function mapTurn(
     marker.reasoningItemIds.every((id) => replayedIds.has(id)),
   );
 
-  return [
-    ...reasoningItems,
+  const turnItems = [
     ...mapAssistantText(
       assistant.content,
       keepIds ? assistantMarker.itemId : undefined,
@@ -149,6 +148,10 @@ function mapTurn(
       ),
     ),
   ];
+
+  // Reasoning must be followed by an assistant item, so a turn with nothing
+  // to send drops its whole reasoning group.
+  return turnItems.length > 0 ? [...reasoningItems, ...turnItems] : [];
 }
 
 function mapAssistantText(
