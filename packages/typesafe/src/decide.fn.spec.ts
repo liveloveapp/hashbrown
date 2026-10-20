@@ -164,7 +164,7 @@ test('without schema, rejects malformed requests and never calls fetch', async (
   expect(mock).not.toHaveBeenCalled();
 });
 
-test('rejects more than 255 options and requests over 64,000 characters', async () => {
+test('rejects more than 255 options and requests over 256,000 characters', async () => {
   const { fn, mock } = fakeFetch();
   const options = Object.fromEntries(
     Array.from({ length: 256 }, (_, i) => [`o${i}`, null]),
@@ -173,7 +173,7 @@ test('rejects more than 255 options and requests over 64,000 characters', async 
     state: 'x',
     questions: { q: { type: 'choice', instructions: 'i', options } },
   };
-  const tooLong = { state: 'x'.repeat(64_000), questions: request.questions };
+  const tooLong = { state: 'x'.repeat(256_000), questions: request.questions };
 
   const errors = [
     await rejection(
@@ -197,7 +197,7 @@ test('rejects more than 255 options and requests over 64,000 characters', async 
         apiKey: 'k',
         model: 'm',
         schema: s.object('d', { urgent: s.boolean('Is it urgent?') }),
-        request: { state: 'x'.repeat(64_000) },
+        request: { state: 'x'.repeat(256_000) },
         fetch: fn,
       }),
     ),
@@ -206,6 +206,65 @@ test('rejects more than 255 options and requests over 64,000 characters', async 
   for (const error of errors) {
     expect((error as DecisionError).code).toBe('invalid_request');
   }
+  expect(mock).not.toHaveBeenCalled();
+});
+
+test('accepts requests up to 256,000 characters by default', async () => {
+  const { fn, mock } = fakeFetch(jsonResponse(nativeResponse));
+
+  await HashbrownTypeSafe.decide({
+    apiKey: 'k',
+    model: 'm',
+    request: { state: 'x'.repeat(200_000), questions: request.questions },
+    fetch: fn,
+  });
+
+  expect(mock).toHaveBeenCalledTimes(1);
+});
+
+test('longContext raises the request cap to 1,048,000 characters', async () => {
+  const { fn, mock } = fakeFetch(jsonResponse(nativeResponse));
+  const longRequest = (state: string) => ({
+    state,
+    questions: request.questions,
+    options: { longContext: true },
+  });
+
+  await HashbrownTypeSafe.decide({
+    apiKey: 'k',
+    model: 'm',
+    request: longRequest('x'.repeat(800_000)),
+    fetch: fn,
+  });
+  const error = await rejection(
+    HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      request: longRequest('x'.repeat(1_048_000)),
+      fetch: fn,
+    }),
+  );
+
+  expect(mock).toHaveBeenCalledTimes(1);
+  expect((error as DecisionError).code).toBe('invalid_request');
+  expect((error as DecisionError).message).toContain('1048000');
+});
+
+test('maxRequestChars sets a stricter cap', async () => {
+  const { fn, mock } = fakeFetch();
+
+  const error = await rejection(
+    HashbrownTypeSafe.decide({
+      apiKey: 'k',
+      model: 'm',
+      request: { state: 'x'.repeat(2_000), questions: request.questions },
+      maxRequestChars: 1_000,
+      fetch: fn,
+    }),
+  );
+
+  expect((error as DecisionError).code).toBe('invalid_request');
+  expect((error as DecisionError).message).toContain('1000');
   expect(mock).not.toHaveBeenCalled();
 });
 
@@ -292,6 +351,60 @@ test('maps 401 to unauthorized and other non-2xx to upstream', async () => {
   expect(c.code).toBe('upstream');
   expect(c.status).toBe(500);
   expect(failing.mock).toHaveBeenCalledTimes(1);
+});
+
+test('upstream errors carry the vendor error type and message', async () => {
+  const gateway = fakeFetch(
+    jsonResponse(
+      {
+        error: {
+          message: 'AI Gateway requires a valid credit card on file.',
+          type: 'customer_verification_required',
+        },
+      },
+      403,
+    ),
+  );
+  const typesafe = fakeFetch(
+    jsonResponse(
+      { message: 'questions.q.type: unknown', error_type: 'invalid_request' },
+      422,
+    ),
+  );
+  const text = fakeFetch(new Response('Bad gateway', { status: 502 }));
+  const detail = fakeFetch(
+    jsonResponse({ detail: { error_type: 'max_tokens_exceeded' } }, 400),
+  );
+
+  const [a, b, c, d] = (await Promise.all(
+    [gateway, typesafe, text, detail].map(({ fn }) =>
+      rejection(
+        HashbrownTypeSafe.decide({
+          apiKey: 'secret-key',
+          model: 'm',
+          request,
+          fetch: fn,
+        }),
+      ),
+    ),
+  )) as DecisionError[];
+
+  expect(a.code).toBe('unauthorized');
+  expect(a.status).toBe(403);
+  expect(a.message).toBe(
+    'TypeSafe responded with status 403 (customer_verification_required): AI Gateway requires a valid credit card on file.',
+  );
+  expect(b.code).toBe('upstream');
+  expect(b.message).toBe(
+    'TypeSafe responded with status 422 (invalid_request): questions.q.type: unknown',
+  );
+  expect(c.message).toBe('TypeSafe responded with status 502: Bad gateway');
+  expect(d.message).toBe(
+    'TypeSafe responded with status 400 (max_tokens_exceeded)',
+  );
+  for (const error of [a, b, c, d]) {
+    expect(error.message).not.toContain('secret-key');
+  }
 });
 
 test('maps network failures to upstream 502 with a cause', async () => {
