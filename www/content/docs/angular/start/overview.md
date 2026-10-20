@@ -23,7 +23,7 @@ Choose the right Angular resource for the task.
 | @hashbrownai/angular!structuredCompletionResource:function | ❌              | ✅                | ✅                         | ✅           | ❌                     |
 | @hashbrownai/angular!uiChatResource:function               | ✅              | ❌                | ✅                         | ✅           | ✅                     |
 | @hashbrownai/angular!decisionResource:function             | ❌              | ✅                | ✅                         | ❌           | ❌                     |
-| @hashbrownai/angular!uiDecisionResource:function           | ❌              | ✅                | ✅                         | ❌           | ✅                     |
+| @hashbrownai/angular!uiDecisionResource:function           | ✅              | ✅                | ✅                         | ✅           | ✅                     |
 
 ---
 

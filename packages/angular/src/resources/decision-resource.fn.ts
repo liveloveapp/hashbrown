@@ -66,7 +66,11 @@ export interface DecisionResourceRef<S extends DecidableSchema> {
   stop: () => void;
 }
 
-function resolveTransport(
+/**
+ * Resolves the decision transport: the option, then the provider's
+ * transport, then an HTTP transport for the provider's decision URL.
+ */
+export function resolveDecisionTransport(
   options: { transport?: Decision.Transport },
   config: ProvideHashbrownOptions,
   injector: Injector,
@@ -115,7 +119,7 @@ export function decisionResource<S extends DecidableSchema>(
   assertInInjectionContext(decisionResource);
   const config = ɵinjectHashbrownConfig();
   const injector = inject(Injector);
-  const transport = resolveTransport(options, config, injector);
+  const transport = resolveDecisionTransport(options, config, injector);
 
   // Construction is side-effect free, so a computed may create the runtime.
   const runtime = computed(() =>

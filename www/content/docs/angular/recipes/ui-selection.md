@@ -2,17 +2,16 @@
 title: 'UI Selection: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Choose which Angular components to show for an input with a decision.'
+    content: 'Choose which Angular components to show for an input, or narrow a chat, with a decision.'
 ---
 
 # UI Selection
 
-<p class="subtitle">Choose which Angular components to show for an input with a decision.</p>
+<p class="subtitle">Choose which Angular components to show for an input, or narrow a chat, with a decision.</p>
 
 1. Describe each option in plain language.
 2. The @hashbrownai/angular!uiDecisionResource:function resource asks a decision model which option fits the input.
-3. Render only the options it chooses.
-4. Optionally let the model fill in the props of the chosen components.
+3. Render only the options it chooses, or let a chat answer with only the components it chooses.
 
 ---
 
@@ -20,59 +19,36 @@ meta:
 
 uiDecisionResource has two modes. Which one you get depends on the options you pass.
 
-| Mode       | You pass                  | The model chooses                            | Who fills in props      |
-| ---------- | ------------------------- | -------------------------------------------- | ----------------------- |
-| Candidates | `candidates`              | Among components your code has already built | Your code               |
-| Narrowing  | `components` + `generate` | Which exposed components to use              | The model, by streaming |
+| Mode       | You pass                      | The model chooses                              | Who fills in props |
+| ---------- | ----------------------------- | ---------------------------------------------- | ------------------ |
+| Candidates | `input` and `candidates`      | Among components your code has already built   | Your code          |
+| Chat       | `chat`, from `uiChatResource` | Which of the chat's components fit the message | The chat, as usual |
 
 Both modes take these options:
 
-| Option            | Required          | What it does                                                                                                                                                                   |
-| ----------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `input`           | Yes               | A signal of the input to decide about. `null` or `undefined` keeps the resource idle.                                                                                          |
-| `select`          | Yes               | `'one'` chooses one option, and `{ max: 3 }` chooses up to three.                                                                                                              |
-| `minConfidence`   | No                | The confidence needed to act on the choice. Defaults to 0.                                                                                                                     |
-| `system`          | No                | Context for the decision model: what your app is and what the input means. Accepts a signal. Changing it asks again.                                                           |
-| `optionOrder`     | No                | `'shuffled'` varies the order of the options on every request, to spread the model's bias toward the first.                                                                    |
-| `debounce`        | No                | Waits for the input to settle before deciding. In narrowing mode, generation starts as soon as the decision settles; when no decision runs, this debounces generation instead. |
-| `transport`       | No                | Decision only: overrides the provider's decision transport. Generation uses the provider's chat transport.                                                                     |
-| `generate.system` | In narrowing mode | The system prompt for the model that writes the chosen components' props.                                                                                                      |
+| Option          | Required | What it does                                                                                                |
+| --------------- | -------- | ----------------------------------------------------------------------------------------------------------- |
+| `select`        | Yes      | `'one'` chooses one option, and `{ max: 3 }` chooses up to three.                                           |
+| `minConfidence` | No       | The confidence needed to act on the choice. Defaults to 0.                                                  |
+| `system`        | No       | Context for the decision model: what your app is and what the input means. Accepts a signal.                |
+| `optionOrder`   | No       | `'shuffled'` varies the order of the options on every request, to spread the model's bias toward the first. |
+| `transport`     | No       | Overrides the provider's decision transport. In chat mode, the chat keeps its own transport.                |
 
-The resource requires `provideHashbrown`. Set up the decision endpoint as described in [Decisions](/docs/angular/concept/decisions).
-
----
-
-## Two Prompts
-
-UI selection can call two models, and each one has its own prompt. Neither prompt defaults to the other.
-
-| Option            | Read by                                     | What to write                               |
-| ----------------- | ------------------------------------------- | ------------------------------------------- |
-| `system`          | The decision model, in both modes           | What your app is and what the input means   |
-| `generate.system` | The model that writes props, narrowing only | How to fill in the chosen components' props |
-
-`system` is context for the decision model. It is sent with the input, so describe the situation rather than give instructions. `generate.system` is the system prompt for the UI completion that runs after the decision in narrowing mode. It is required there, and the decision never sees it.
-
-```ts
-readonly answer = uiDecisionResource({
-  input: this.query,
-  select: { max: 2 },
-  // Context for the decision model.
-  system:
-    'A flight-tracking app. The input is a search query about aircraft or airports.',
-  components: [flightCard, airportCard],
-  // The system prompt for the model that writes the chosen components' props.
-  generate: {
-    system: 'Fill in the chosen cards from the query. Use short labels.',
-  },
-});
-```
+The resource requires `provideHashbrown` and an injection context. Set up the decision endpoint as described in [Decisions](/docs/angular/concept/decisions).
 
 ---
 
 ## Candidates Mode
 
 Use candidates when your code already knows what each option shows. The model never writes props. It only picks.
+
+Candidates mode also takes these options:
+
+| Option       | Required | What it does                                                                          |
+| ------------ | -------- | ------------------------------------------------------------------------------------- |
+| `input`      | Yes      | A signal of the input to decide about. `null` or `undefined` keeps the resource idle. |
+| `candidates` | Yes      | The components the model chooses from.                                                |
+| `debounce`   | No       | Waits for the input to settle before deciding. Changing `system` asks again.          |
 
 <hb-code-example header="choose among candidates">
 
@@ -120,34 +96,55 @@ With `select: 'one'`, confidence is the model's confidence in its pick. With `{ 
 
 ---
 
-## Narrowing Mode
+## Narrowing a Chat
 
-Use narrowing when the model should write props. A decision first picks from the components you expose. Then a UI completion streams props, seeing only the chosen components. This keeps the prompt small and the choices focused.
+Use chat mode when a chat writes the answer and you want each answer to use only the components that fit the message. The app keeps its own chat, with its own system prompt and tools, and sends messages through the resource instead. A decision first picks from the chat's components. Then the chat answers, seeing only the chosen components. This keeps the prompt small and the choices focused.
 
-<hb-code-example header="narrow, then generate">
+<hb-code-example header="narrow a chat">
 
 ```ts
-import { Component, computed, input } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { s } from '@hashbrownai/core';
 import {
+  createTool,
   exposeComponent,
-  UiDecisionComponent,
+  RenderMessageComponent,
+  uiChatResource,
   uiDecisionResource,
 } from '@hashbrownai/angular';
-import { s } from '@hashbrownai/core';
 
 @Component({
-  selector: 'app-answer',
-  imports: [UiDecisionComponent],
-  template: `<hb-ui-decision [resource]="answer" />`,
+  selector: 'app-assistant',
+  imports: [RenderMessageComponent, ComposerComponent],
+  template: `
+    @for (message of chat.value(); track $index) {
+      @if (message.role === 'assistant') {
+        <hb-render-message [message]="message" />
+      } @else if (message.role === 'user') {
+        <p>{{ message.content }}</p>
+      }
+    }
+    <app-composer
+      [disabled]="narrowing.isDeciding()"
+      (send)="narrowing.sendMessage($event)"
+    />
+  `,
 })
-export class AnswerComponent {
-  readonly query = input('');
-
-  readonly answer = uiDecisionResource({
-    input: computed(() => (this.query() === '' ? null : this.query())),
-    select: { max: 2 },
-    minConfidence: 0.7,
-    system: 'A flight-tracking app. The input is a search query.',
+export class AssistantComponent {
+  // 1. The app's own chat: its system prompt, components and tools.
+  readonly chat = uiChatResource({
+    system:
+      'Answer questions about live flights. Use the cards to show results.',
+    tools: [
+      createTool({
+        name: 'getFlights',
+        description: 'Get the flights near an airport',
+        schema: s.object('Airport', {
+          ident: s.string('The airport identifier'),
+        }),
+        handler: ({ ident }) => inject(FlightService).near(ident),
+      }),
+    ],
     components: [
       exposeComponent(FlightCardComponent, {
         name: 'FlightCard',
@@ -160,44 +157,74 @@ export class AnswerComponent {
         input: { ident: s.string('The airport identifier') },
       }),
     ],
-    generate: { system: 'Fill in the chosen cards from the query.' },
+  });
+
+  // 2. Narrows the chat's components for each message.
+  readonly narrowing = uiDecisionResource({
+    chat: this.chat,
+    select: { max: 2 },
+    minConfidence: 0.7,
+    system: 'A flight-tracking app. The input is a chat message.',
   });
 }
 ```
 
 </hb-code-example>
 
-1. The decision sees each component's name and description.
-2. UI kits in `components` are decided over by member. Each kit is expanded into its components, including the children they declare, and duplicate names count once. A list of only UI kits decides over the kits' members.
-3. A chosen component brings the components declared in its `children` with it, recursively, so the completion can always render a chosen parent's children. The completion sees the chosen components in the order they were declared.
-4. `generate.system` is the system prompt for the UI completion that runs after the decision. It is required. The completion uses the provider's chat transport; to send it to a different endpoint, provide `provideHashbrown` again in a child injector, such as the component's `providers`. It starts as soon as the decision settles, because the input was already debounced before the decision. When no decision runs (an empty `components` list, or one that breaks the limits below), it debounces the input with `debounce` instead.
-5. An empty `components` list skips the decision and generates straight away.
-6. Component names become option ids, so the flattened list must fit the selection limits: no name may be empty, contain `.`, or be `__proto__`, `constructor` or `prototype`, and `select: 'one'` allows at most 255 components. When the list breaks a limit, narrowing skips the decision, generates with every component, and exposes the `DecisionSchemaError` as `decisionError`.
+1. `chat` is the ref from `uiChatResource`. The resource needs only its `components` signal, `setComponents`, `sendMessage` and `isLoading` signal, described by the `UiDecisionChat` type.
+2. `sendMessage(content)` asks the decision about `content`, sets the chat's components to the chosen ones, and then sends `content` to the chat. The send always uses the narrowed components.
+3. Render the chat as usual, with `<hb-render-message>`. `<hb-ui-decision>` is only for candidates mode. The transcript, tools, `isLoading()` and `stop()` stay on the chat. The resource returns only `sendMessage`, `decision`, `isDeciding()` and `decisionError()`.
+4. The decision sees each component's name and description. UI kits are decided over by member: each kit is expanded into its components, including the children they declare, and duplicate names count once.
+5. A chosen component brings the components declared in its `children` with it, recursively, so the chat can always render a chosen parent's children. The chat sees the chosen components in the order they were declared.
+6. Component names become option ids, so the flattened list must fit the selection limits: no name may be empty, contain `.`, or be `__proto__`, `constructor` or `prototype`, and `select: 'one'` allows at most 255 components.
 
-### Low confidence
+### Two prompts
 
-Decide when sure, generate everything otherwise. When confidence is below `minConfidence`, or the decision fails, narrowing generates with the `components` you passed, unchanged, with UI kits intact. A failure is exposed as `decisionError`.
+Chat mode uses two models, and each one has its own prompt. Neither prompt defaults to the other.
 
-`isDeciding()` is true until the decision settles, `isGenerating()` while the completion runs, and `isLoading()` for either. `value()` holds the UI completion's message, which `<hb-ui-decision>` renders.
+| Prompt                       | Read by            | What to write                             |
+| ---------------------------- | ------------------ | ----------------------------------------- |
+| `system` on the resource     | The decision model | What your app is and what the input means |
+| `system` on `uiChatResource` | The chat model     | How to answer, with which tools and cards |
+
+The resource's `system` is context for the decision. It is sent with each message, so describe the situation rather than give instructions. The chat never sees it, and the decision never sees the chat's system prompt or tools.
+
+### Fallback
+
+Decide when sure, offer everything otherwise. The message is sent with all of the chat's components when:
+
+- confidence is below `minConfidence`;
+- the decision fails, or `decision.stop()` aborts it;
+- the components break the selection limits above (no decision is asked).
+
+Failures are exposed as `decisionError()`. A `DecisionSchemaError` there means the components could not be decided over. `isDeciding()` is true while a decision is in flight.
+
+### Restoring after the turn
+
+When the narrowed turn finishes, errors or is stopped, the resource sets the chat's components back to the full list. A follow-up sent directly with `chat.sendMessage` sees every component, and earlier answers keep rendering, because a UI chat renders with every component it has offered.
+
+### Concurrency
+
+Calling `sendMessage` while a decision is still in flight aborts that decision and starts a new one, so only the latest message is sent. Once a message is sent, the chat owns it: sending while the chat is still generating behaves exactly like the chat's own `sendMessage`.
 
 ---
 
 ## Pinning the Questions on the Server
 
-The browser builds the selection questions from your candidates or components. A public decision route answers whatever questions it is sent, unless the server pins them. To pin them, build the same schema on the server with `createSelectionSchema` from `@hashbrownai/core`, and pass it to the adapter's `schema` option. Pass the same `select` value the browser uses.
+The browser builds the selection questions from your candidates or the chat's components. A public decision route answers whatever questions it is sent, unless the server pins them. To pin them, build the same schema on the server with `createSelectionSchema` from `@hashbrownai/core`, and pass it to the adapter's `schema` option. Pass the same `select` value the browser uses.
 
-`createSelectionSchema` takes the same list you pass to the resource, in the same order. Each entry can be:
+`createSelectionSchema` takes the same list the resource decides over, in the same order: your candidates, or the components you pass to `uiChatResource`. Each entry can be:
 
 - a candidate item, `{ id, description }`, as in candidates mode;
 - a component, such as an `exposeComponent` result or a component definition (`UiComponentDefinition`) with a `name`, a `description` and optional `children`;
 - a UI kit.
 
-UI kits and declared children are flattened exactly as the resource flattens them: each kit's members in place, each component followed by its declared children, and every name once. An entry with an `id` is always a candidate item, even if it also has a `name`; an entry with a `name` and no `id` is a component, and its option id is its `name`. So a component you pass to the resource must not carry an `id` at the top level, or `createSelectionSchema` treats it as a candidate item and the pinned questions differ. Kit members and declared children are always components.
+UI kits and declared children are flattened exactly as the resource flattens them: each kit's members in place, each component followed by its declared children, and every name once. An entry with an `id` is always a candidate item, even if it also has a `name`; an entry with a `name` and no `id` is a component, and its option id is its `name`. So a chat component must not carry an `id` at the top level, or `createSelectionSchema` treats it as a candidate item and the pinned questions differ. Kit members and declared children are always components.
 
 ```ts
 import { createSelectionSchema } from '@hashbrownai/core';
 import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
-// Shared with the browser: the components and kits passed to `components`.
+// Shared with the browser: the components and kits passed to uiChatResource.
 import { flightCard, cardsKit } from './cards';
 
 const decision = await HashbrownTypeSafe.decide({
@@ -218,7 +245,7 @@ A pinned schema replaces the questions the browser sends, so `optionOrder: 'shuf
 
 - Describe when an option fits, not what it is. "The user asks about an airport" works better than "Airport card".
 - Keep descriptions distinct. Overlapping options split confidence between them.
-- In narrowing mode, child components are options too, and `select: 'one'` can pick a child alone. Say where a child belongs in its description, such as "A row, only inside a Table".
+- In chat mode, child components are options too, and `select: 'one'` can pick a child alone. Say where a child belongs in its description, such as "A row, only inside a Table".
 - Add an option for "none of these" when it makes sense. In candidates mode, simply render nothing when confidence is low.
 - Pass short, plain input. See the model limits in [Decisions](/docs/angular/concept/decisions).
 

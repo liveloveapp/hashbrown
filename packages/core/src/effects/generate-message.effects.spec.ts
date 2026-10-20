@@ -14,6 +14,7 @@ import {
   selectPendingToolCalls,
   selectRawStreamingMessage,
   selectRawStreamingToolCalls,
+  selectRequestResponseSchema,
   selectResponseSchema,
   selectRetries,
   selectSendingError,
@@ -90,6 +91,7 @@ function createTestStore(selectorOverrides: SelectorMap = new Map()) {
   const defaults: SelectorMap = new Map<SelectorKey, unknown>([
     [ɵselectInterrupts, initialInterruptsState],
     [selectResponseSchema, undefined],
+    [selectRequestResponseSchema, undefined],
     [
       ɵselectEffectiveCommittedAgUiMessages,
       [
@@ -4731,6 +4733,7 @@ test('sends one RunAgentInput with tools, structured output, and UI metadata', a
       [selectTools, [tool]],
       [selectToolEntities, { search: tool }],
       [selectResponseSchema, responseSchema],
+      [selectRequestResponseSchema, responseSchema],
       [selectThreadId, 'configured-thread'],
       [selectUiRequested, true],
       [

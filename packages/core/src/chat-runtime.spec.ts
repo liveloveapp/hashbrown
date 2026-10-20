@@ -1,6 +1,10 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { Chat } from './models';
-import { type ChatRuntime, createChatRuntime } from './chat-runtime';
+import {
+  type ChatRuntime,
+  createChatRuntime,
+  ɵsetRequestResponseSchema,
+} from './chat-runtime';
 import { s } from './schema';
 import {
   AgentRunError,
@@ -556,6 +560,107 @@ test('refuses a second turn that reuses the message ID of a finished answer', as
         .filter((message) => message.role === 'assistant')
         .map((message) => message.content),
     ).toEqual(['one']);
+  } finally {
+    teardown();
+  }
+});
+
+function answerSchema(...names: string[]) {
+  return s.object('Answer', {
+    ui: s.array(
+      'Components',
+      s.anyOf(
+        names.map((name) =>
+          s.object(name, { [name]: s.object(name, { x: s.string('x') }) }),
+        ),
+      ),
+    ),
+  });
+}
+
+test('ɵsetRequestResponseSchema narrows only the schema sent to the model', async () => {
+  const full = answerSchema('A', 'B');
+  const narrowed = answerSchema('A');
+  const send = jest.fn(async (request: TransportRequest) => ({
+    events: successfulEvents(request, [
+      {
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: 'answer-2',
+        role: 'assistant',
+      },
+      {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId: 'answer-2',
+        delta: JSON.stringify({ ui: [{ A: { x: 'two' } }] }),
+      },
+      { type: EventType.TEXT_MESSAGE_END, messageId: 'answer-2' },
+    ]),
+  }));
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'test',
+    responseSchema: full,
+    messages: [
+      { role: 'user', content: 'one' },
+      {
+        role: 'assistant',
+        content: { ui: [{ B: { x: 'one' } }] },
+        toolCalls: [],
+      },
+    ] as never,
+    transport: { name: 'test', send },
+  });
+  const teardown = runtime.start();
+
+  try {
+    await flushTaskBoundary();
+    ɵsetRequestResponseSchema(runtime, narrowed);
+    runtime.sendMessage({ role: 'user', content: 'two' });
+    await waitForRuntimeIdle(runtime);
+
+    const input = send.mock.calls[0]?.[0].input;
+    expect(
+      (input?.forwardedProps as { hashbrown: { responseSchema: unknown } })
+        .hashbrown.responseSchema,
+    ).toEqual(s.toJsonSchema(narrowed));
+    const contents = runtime
+      .messages()
+      .filter((message) => message.role === 'assistant')
+      .map((message) => message.content);
+    expect(contents).toEqual([
+      { ui: [{ B: { x: 'one' } }] },
+      { ui: [{ A: { x: 'two' } }] },
+    ]);
+  } finally {
+    teardown();
+  }
+});
+
+test('ɵsetRequestResponseSchema with undefined sends the response schema again', async () => {
+  const full = answerSchema('A', 'B');
+  const send = jest.fn(async (request: TransportRequest) => ({
+    events: successfulEvents(request),
+  }));
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'test',
+    responseSchema: full,
+    transport: { name: 'test', send },
+  });
+  const teardown = runtime.start();
+
+  try {
+    await flushTaskBoundary();
+    ɵsetRequestResponseSchema(runtime, answerSchema('A'));
+    ɵsetRequestResponseSchema(runtime, undefined);
+    runtime.sendMessage({ role: 'user', content: 'one' });
+    await waitForRuntimeIdle(runtime);
+
+    const input = send.mock.calls[0]?.[0].input;
+    expect(
+      (input?.forwardedProps as { hashbrown: { responseSchema: unknown } })
+        .hashbrown.responseSchema,
+    ).toEqual(s.toJsonSchema(full));
   } finally {
     teardown();
   }

@@ -1,70 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  Component,
-  computed,
-  DestroyRef,
-  inject,
-  InjectionToken,
-  Injector,
-  type Provider,
-  type ResourceStatus,
-  runInInjectionContext,
-  signal,
-} from '@angular/core';
+import { EventType } from '@ag-ui/core';
+import { type Provider, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   createSelectionSchema,
   type Decision,
   DecisionSchemaError,
+  type TransportRequest,
   ɵcompileDecision,
 } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { provideHashbrown } from '../providers';
 import { createUiKit } from '../utils/ui-kit.fn';
-import { uiCompletionResource } from './ui-completion-resource.fn';
-import {
-  type UiDecisionGenerateOptions,
-  uiDecisionResource,
-} from './ui-decision-resource.fn';
-
-vi.mock('./ui-completion-resource.fn', () => ({
-  uiCompletionResource: vi.fn(),
-}));
-
-const uiCompletionResourceMock = vi.mocked(uiCompletionResource);
-
-interface Created {
-  options: Parameters<typeof uiCompletionResource>[0];
-  destroyed: boolean;
-  status: ReturnType<typeof signal<ResourceStatus>>;
-  value: ReturnType<typeof signal<any>>;
-}
-
-function trackCompletions(): Created[] {
-  const created: Created[] = [];
-  uiCompletionResourceMock.mockReset();
-  uiCompletionResourceMock.mockImplementation((options) => {
-    const entry: Created = {
-      options,
-      destroyed: false,
-      status: signal<ResourceStatus>('idle'),
-      value: signal<any>(null),
-    };
-    inject(DestroyRef).onDestroy(() => {
-      entry.destroyed = true;
-    });
-    created.push(entry);
-    return {
-      value: entry.value,
-      status: entry.status,
-      error: signal(undefined),
-      isLoading: computed(() => entry.status() === 'loading'),
-      reload: vi.fn(() => true),
-      stop: vi.fn(),
-    } as any;
-  });
-  return created;
-}
+import { uiChatResource } from './ui-chat-resource.fn';
+import { uiDecisionResource } from './ui-decision-resource.fn';
 
 type Call = { request: Decision.Request; signal: AbortSignal };
 
@@ -161,19 +110,11 @@ const airport = {
   name: 'Airport',
   description: 'An airport',
 };
-const weather = {
-  component: WeatherCard,
-  name: 'Weather',
-  description: 'The weather',
-};
-const ids = ['Flight', 'Airport', 'Weather'];
 
 class NoteCard {}
-class MemoCard {}
 class RowCard {}
 class TableCard {}
 const note = { component: NoteCard, name: 'Note', description: 'A note' };
-const memo = { component: MemoCard, name: 'Memo', description: 'A memo' };
 const row = { component: RowCard, name: 'Row', description: 'A table row' };
 const table = {
   component: TableCard,
@@ -183,7 +124,6 @@ const table = {
 };
 
 test("uiDecisionResource candidates 'one' chooses only the picked candidate", async () => {
-  const created = trackCompletions();
   const fake = createFakeTransport(() =>
     pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
   );
@@ -206,11 +146,9 @@ test("uiDecisionResource candidates 'one' chooses only the picked candidate", as
   expect(ref.isLoading()).toBe(false);
   expect(ref.error()).toBeUndefined();
   expect(fake.calls).toHaveLength(1);
-  expect(created).toHaveLength(0);
 });
 
 test('uiDecisionResource candidates read signal inputs reactively without a new request', async () => {
-  trackCompletions();
   const fake = createFakeTransport(() =>
     pickResponse('flight', 0.9, ['flight', 'airport']),
   );
@@ -250,7 +188,6 @@ test('uiDecisionResource candidates read signal inputs reactively without a new 
 });
 
 test('uiDecisionResource candidates { max: 2 } chooses in probability order', async () => {
-  trackCompletions();
   const fake = createFakeTransport(() =>
     multiResponse({ flight: 0.6, airport: 0.2, weather: 0.95 }),
   );
@@ -273,7 +210,6 @@ test('uiDecisionResource candidates { max: 2 } chooses in probability order', as
 });
 
 test('uiDecisionResource candidates below minConfidence chooses nothing', async () => {
-  trackCompletions();
   const fake = createFakeTransport(() =>
     pickResponse('airport', 0.4, ['flight', 'airport', 'weather']),
   );
@@ -295,7 +231,6 @@ test('uiDecisionResource candidates below minConfidence chooses nothing', async 
 });
 
 test('uiDecisionResource candidates with no candidates chooses nothing without a request', async () => {
-  trackCompletions();
   const fake = createFakeTransport(() =>
     pickResponse('flight', 0.9, ['flight']),
   );
@@ -316,428 +251,7 @@ test('uiDecisionResource candidates with no candidates chooses nothing without a
   expect(fake.calls).toHaveLength(0);
 });
 
-test('uiDecisionResource narrowing holds phase 2 until phase 1 settles, then passes only the chosen components', async () => {
-  const created = trackCompletions();
-  const kit = createUiKit<any>({ components: [note] });
-  const deferred = deferredTransport();
-  configure(deferred.transport);
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('show KSFO'),
-      components: [flight, kit, airport, weather],
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  expect(deferred.calls).toHaveLength(1);
-  expect(ref.isDeciding()).toBe(true);
-  expect(ref.isLoading()).toBe(true);
-  expect(created).toHaveLength(0);
-  expect(ref.value()).toBeNull();
-  expect(ref.isGenerating()).toBe(false);
-
-  deferred.resolve(
-    pickResponse('Airport', 0.9, ['Flight', 'Note', 'Airport', 'Weather']),
-  );
-  await settle();
-
-  expect(created).toHaveLength(1);
-  expect(created[0].options.components).toEqual([airport]);
-  expect(created[0].options.components[0]).toBe(airport);
-  expect(created[0].options.input()).toBe('show KSFO');
-  expect(created[0].options.system).toBe('Render it');
-  expect(ref.isDeciding()).toBe(false);
-  expect(ref.decisionError()).toBeUndefined();
-});
-
-test('uiDecisionResource narrowing passes through the phase 2 value and status', async () => {
-  const created = trackCompletions();
-  const fake = createFakeTransport(() => pickResponse('Airport', 0.9, ids));
-  configure(fake.transport);
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('show KSFO'),
-      components: [flight, airport, weather],
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-  const message = { role: 'assistant', content: { ui: [] }, toolCalls: [] };
-
-  created[0].value.set(message);
-  created[0].status.set('loading');
-
-  expect(ref.value()).toBe(message);
-  expect(ref.isGenerating()).toBe(true);
-  expect(ref.isLoading()).toBe(true);
-});
-
-test('uiDecisionResource narrowing with low confidence passes all components', async () => {
-  const created = trackCompletions();
-  const components = [flight, airport, weather];
-  const fake = createFakeTransport(() => pickResponse('Airport', 0.4, ids));
-  configure(fake.transport);
-
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('something'),
-      components,
-      select: 'one',
-      minConfidence: 0.7,
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  expect(created).toHaveLength(1);
-  expect(created[0].options.components).toEqual(components);
-  expect(created[0].options.input()).toBe('something');
-  expect(ref.decisionError()).toBeUndefined();
-});
-
-test('uiDecisionResource narrowing phase 1 error passes all components and exposes decisionError', async () => {
-  const created = trackCompletions();
-  const components = [flight, airport, weather];
-  const failure = new Error('decide failed');
-  const fake = createFakeTransport(() => {
-    throw failure;
-  });
-  configure(fake.transport);
-
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('something'),
-      components,
-      select: { max: 2 },
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  expect(created).toHaveLength(1);
-  expect(created[0].options.components).toEqual(components);
-  expect(ref.decisionError()).toBe(failure);
-  expect(ref.error()).toBeUndefined();
-  expect(created[0].options.input()).toBe('something');
-});
-
-test('uiDecisionResource narrowing re-decides on input change and swaps the phase 2 resource', async () => {
-  const created = trackCompletions();
-  const deferred = deferredTransport();
-  configure(deferred.transport);
-  const input = signal('one');
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input,
-      components: [flight, airport, weather],
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-  deferred.resolve(pickResponse('Flight', 0.9, ids));
-  await settle();
-  expect(created).toHaveLength(1);
-
-  input.set('two');
-  await settle();
-
-  expect(deferred.calls).toHaveLength(2);
-  expect(ref.isDeciding()).toBe(true);
-  expect(created).toHaveLength(1);
-  expect(created[0].options.input()).toBeNull();
-  expect(created[0].destroyed).toBe(false);
-
-  deferred.resolve(pickResponse('Weather', 0.9, ids));
-  await settle();
-
-  expect(created).toHaveLength(2);
-  expect(created[0].destroyed).toBe(true);
-  expect(created[0].options.input()).toBeNull();
-  expect(created[1].options.components).toEqual([weather]);
-  expect(created[1].options.input()).toBe('two');
-  expect(created[1].destroyed).toBe(false);
-});
-
-test('uiDecisionResource narrowing keeps the phase 2 resource when the chosen set is unchanged', async () => {
-  const created = trackCompletions();
-  const fake = createFakeTransport(() => pickResponse('Flight', 0.9, ids));
-  configure(fake.transport);
-  const input = signal('one');
-  TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input,
-      components: [flight, airport, weather],
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  input.set('two');
-  await settle();
-
-  expect(fake.calls).toHaveLength(2);
-  expect(created).toHaveLength(1);
-  expect(created[0].options.input()).toBe('two');
-});
-
-test('uiDecisionResource narrowing settles with every component after decision.stop()', async () => {
-  const created = trackCompletions();
-  const components = [flight, airport, weather];
-  const deferred = deferredTransport();
-  configure(deferred.transport);
-  const input = signal('one');
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input,
-      components,
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-  deferred.resolve(pickResponse('Flight', 0.9, ids));
-  await settle();
-  input.set('two');
-  await settle();
-  expect(ref.decision.isLoading()).toBe(true);
-
-  ref.decision.stop();
-  await settle();
-
-  expect(created).toHaveLength(2);
-  expect(created[1].options.components).toEqual(components);
-  expect(created[1].options.input()).toBe('two');
-  expect(ref.isDeciding()).toBe(false);
-  expect(ref.isLoading()).toBe(false);
-  expect(ref.decisionError()).toBeUndefined();
-});
-
-test('uiDecisionResource narrowing with a kit decides over the kit members', async () => {
-  trackCompletions();
-  const kit = createUiKit<any>({ components: [note, table] });
-  const components = [flight, kit];
-  const deferred = deferredTransport();
-  configure(deferred.transport);
-
-  TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('show KSFO'),
-      components,
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  expect(deferred.calls).toHaveLength(1);
-  const pick = deferred.calls[0].request.questions['pick'] as {
-    options: Record<string, string | null>;
-  };
-  expect(Object.keys(pick.options)).toEqual(['Flight', 'Note', 'Table', 'Row']);
-  expect(JSON.stringify(deferred.calls[0].request.questions)).toBe(
-    JSON.stringify(ɵcompileDecision(createSelectionSchema(components, 'one'))),
-  );
-});
-
-test('uiDecisionResource narrowing passes chosen kit members with their declared children', async () => {
-  const created = trackCompletions();
-  const kit = createUiKit<any>({ components: [note, table, memo] });
-  const fake = createFakeTransport(() =>
-    multiResponse({ Flight: 0.1, Note: 0.2, Table: 0.9, Row: 0.1, Memo: 0.8 }),
-  );
-  configure(fake.transport);
-
-  TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('list the rows'),
-      components: [flight, kit],
-      select: { max: 2 },
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  expect(created).toHaveLength(1);
-  expect(created[0].options.components).toEqual([table, row, memo]);
-  expect(created[0].options.components[0]).toBe(table);
-  expect(created[0].options.components[1]).toBe(row);
-  expect(created[0].options.input()).toBe('list the rows');
-});
-
-test('uiDecisionResource narrowing with only a UI kit decides over its members', async () => {
-  const created = trackCompletions();
-  const kit = createUiKit<any>({ components: [note, memo] });
-  const fake = createFakeTransport(() =>
-    pickResponse('Memo', 0.9, ['Note', 'Memo']),
-  );
-  configure(fake.transport);
-
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('hello'),
-      components: [kit],
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  expect(fake.calls).toHaveLength(1);
-  expect(created).toHaveLength(1);
-  expect(created[0].options.components).toEqual([memo]);
-  expect(created[0].options.input()).toBe('hello');
-  expect(ref.decisionError()).toBeUndefined();
-});
-
-test('uiDecisionResource narrowing with low confidence passes the original components, kit intact', async () => {
-  const created = trackCompletions();
-  const kit = createUiKit<any>({ components: [note, table] });
-  const components = [flight, kit];
-  const fake = createFakeTransport(() =>
-    pickResponse('Table', 0.4, ['Flight', 'Note', 'Table', 'Row']),
-  );
-  configure(fake.transport);
-
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('something'),
-      components,
-      select: 'one',
-      minConfidence: 0.7,
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  expect(created).toHaveLength(1);
-  expect(created[0].options.components).toEqual(components);
-  expect(created[0].options.components[1]).toBe(kit);
-  expect(ref.decisionError()).toBeUndefined();
-});
-
-test('uiDecisionResource narrowing decision error passes the original components, kit intact', async () => {
-  const created = trackCompletions();
-  const kit = createUiKit<any>({ components: [note, table] });
-  const components = [flight, kit];
-  const failure = new Error('decide failed');
-  const fake = createFakeTransport(() => {
-    throw failure;
-  });
-  configure(fake.transport);
-
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('something'),
-      components,
-      select: { max: 2 },
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  expect(created).toHaveLength(1);
-  expect(created[0].options.components).toEqual(components);
-  expect(created[0].options.components[1]).toBe(kit);
-  expect(ref.decisionError()).toBe(failure);
-});
-
-test('uiDecisionResource narrowing with no components skips the decision', async () => {
-  const created = trackCompletions();
-  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
-  configure(fake.transport);
-
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('hello'),
-      components: [],
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  expect(created).toHaveLength(1);
-  expect(created[0].options.components).toEqual([]);
-  expect(created[0].options.input()).toBe('hello');
-  expect(fake.calls).toHaveLength(0);
-  expect(ref.isDeciding()).toBe(false);
-  expect(ref.decisionError()).toBeUndefined();
-  expect(ref.decision.isLoading()).toBe(false);
-});
-
-test('uiDecisionResource narrowing destroys the phase 2 injector with its context', async () => {
-  const created = trackCompletions();
-  const fake = createFakeTransport(() => pickResponse('Flight', 0.9, ids));
-  configure(fake.transport);
-  const context = Injector.create({
-    providers: [],
-    parent: TestBed.inject(Injector),
-  });
-  const ref = runInInjectionContext(context, () =>
-    uiDecisionResource({
-      input: signal('one'),
-      components: [flight, airport, weather],
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-  expect(created).toHaveLength(1);
-
-  context.destroy();
-  await settle();
-
-  expect(created[0].destroyed).toBe(true);
-  expect(ref.value()).toBeNull();
-});
-
-const CONTEXT_TOKEN = new InjectionToken<string>('ui-decision-context');
-
-@Component({
-  selector: 'hb-test-host',
-  template: '',
-  providers: [{ provide: CONTEXT_TOKEN, useValue: 'from-component' }],
-})
-class HostComponent {
-  resource = uiDecisionResource({
-    input: signal('one'),
-    components: [flight, airport, weather],
-    select: 'one',
-    generate: { system: 'Render it' },
-  });
-}
-
-test('uiDecisionResource narrowing creates phase 2 under the calling node injector', async () => {
-  const seen: unknown[] = [];
-  trackCompletions();
-  uiCompletionResourceMock.mockImplementation(() => {
-    seen.push(inject(CONTEXT_TOKEN, { optional: true }));
-    return {
-      value: signal(null),
-      status: signal('idle'),
-      error: signal(undefined),
-      isLoading: signal(false),
-      reload: vi.fn(() => true),
-      stop: vi.fn(),
-    } as any;
-  });
-  const fake = createFakeTransport(() => pickResponse('Flight', 0.9, ids));
-  configure(fake.transport);
-
-  const fixture = TestBed.createComponent(HostComponent);
-  await settle();
-
-  expect(fixture.componentInstance.resource.isDeciding()).toBe(false);
-  expect(seen).toEqual(['from-component']);
-});
-
 test('uiDecisionResource sends system with the input to the selection decision', async () => {
-  trackCompletions();
   const fake = createFakeTransport(() =>
     pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
   );
@@ -761,7 +275,6 @@ test('uiDecisionResource sends system with the input to the selection decision',
 });
 
 test("uiDecisionResource shuffles the selection options with optionOrder: 'shuffled'", async () => {
-  trackCompletions();
   const random = vi.spyOn(Math, 'random').mockReturnValue(0);
   const fake = createFakeTransport(() =>
     pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
@@ -793,7 +306,6 @@ test("uiDecisionResource shuffles the selection options with optionOrder: 'shuff
 });
 
 test('uiDecisionResource debounces the selection decision with debounce', async () => {
-  trackCompletions();
   const fake = createFakeTransport(() =>
     pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
   );
@@ -819,109 +331,7 @@ test('uiDecisionResource debounces the selection decision with debounce', async 
   expect(fake.calls[0].request.state).toBe('show KSFO');
 });
 
-test('uiDecisionResource narrowing waits for the new decision after system changes', async () => {
-  const created = trackCompletions();
-  const fake = createFakeTransport(() => pickResponse('Flight', 0.9, ids));
-  configure(fake.transport);
-  const system = signal('First context');
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('show N123'),
-      system,
-      debounce: 20,
-      components: [flight, airport, weather],
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await new Promise((resolve) => setTimeout(resolve, 40));
-  await settle();
-  expect(created).toHaveLength(1);
-
-  system.set('Second context');
-  const decidingAfterChange = ref.isDeciding();
-  await settle();
-  await new Promise((resolve) => setTimeout(resolve, 40));
-  await settle();
-
-  expect(decidingAfterChange).toBe(true);
-  expect(fake.calls).toHaveLength(2);
-  for (const entry of created) {
-    expect(entry.options.components).toEqual([flight]);
-  }
-  expect(created[created.length - 1].options.input()).toBe('show N123');
-  expect(fake.calls[1].request.state).toEqual({
-    system: 'Second context',
-    input: 'show N123',
-  });
-});
-
-test('uiDecisionResource narrowing falls back when a kit cannot be decided over', async () => {
-  const created = trackCompletions();
-  const kit = createUiKit<any>({
-    components: [
-      note,
-      { component: class {}, name: 'Bad.Name', description: 'Invalid id' },
-    ],
-  });
-  const components = [kit];
-  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
-  configure(fake.transport);
-
-  const ref = TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('hello'),
-      components,
-      select: 'one',
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  expect(created).toHaveLength(1);
-  expect(created[0].options.components).toBe(components);
-  expect(created[0].options.input()).toBe('hello');
-  expect(ref.decisionError()).toBeInstanceOf(DecisionSchemaError);
-  expect(ref.isDeciding()).toBe(false);
-  expect(fake.calls).toHaveLength(0);
-});
-
-test('uiDecisionResource narrowing asks byte-identical questions to createSelectionSchema with the same components', async () => {
-  trackCompletions();
-  const kit = createUiKit<any>({ components: [table, note] });
-  const components = [flight, kit, airport, flight];
-  const fake = createFakeTransport(() =>
-    multiResponse({
-      Flight: 0.9,
-      Table: 0.1,
-      Row: 0.1,
-      Note: 0.1,
-      Airport: 0.1,
-    }),
-  );
-  configure(fake.transport);
-
-  TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('show KSFO'),
-      components,
-      select: { max: 2 },
-      generate: { system: 'Render it' },
-    }),
-  );
-  await settle();
-
-  const pinned = ɵcompileDecision(
-    createSelectionSchema(components, { max: 2 }),
-  );
-  expect(fake.calls).toHaveLength(1);
-  expect(JSON.stringify(fake.calls[0].request.questions)).toBe(
-    JSON.stringify(pinned),
-  );
-});
-
 test('uiDecisionResource candidates asks byte-identical questions to createSelectionSchema with the same candidates', async () => {
-  trackCompletions();
   const fake = createFakeTransport(() =>
     pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
   );
@@ -943,103 +353,296 @@ test('uiDecisionResource candidates asks byte-identical questions to createSelec
   );
 });
 
-test('uiDecisionResource narrowing sends system to the decision and generate.system to the completion', async () => {
-  const created = trackCompletions();
-  const fake = createFakeTransport(() =>
-    pickResponse('Airport', 0.9, ['Flight', 'Airport']),
-  );
-  configure(fake.transport);
+// ---------------------------------------------------------------------------
+// Chat mode
+// ---------------------------------------------------------------------------
 
-  TestBed.runInInjectionContext(() =>
-    uiDecisionResource({
-      input: signal('show KSFO'),
-      system: 'A flight-tracking app. The input is a search query.',
-      components: [flight, airport],
-      select: 'one',
-      generate: { system: 'Write props for the chosen cards.' },
-    }),
-  );
-  await settle();
+const chatComponents = [
+  flight,
+  createUiKit({ components: [table, note] }),
+  airport,
+];
+const allNames = ['Flight', 'Table', 'Row', 'Note', 'Airport'];
 
-  expect(fake.calls[0].request.state).toEqual({
-    system: 'A flight-tracking app. The input is a search query.',
-    input: 'show KSFO',
+type ChatTurn = 'answer' | 'error' | 'hold';
+
+function chatTransport(turns: ChatTurn[] = []) {
+  const requests: TransportRequest[] = [];
+  const send = vi.fn(async (request: TransportRequest) => {
+    const turn = turns[requests.length] ?? 'answer';
+    requests.push(request);
+    const identity = {
+      threadId: request.input.threadId,
+      runId: request.input.runId,
+    };
+    const messageId = `answer-${requests.length}`;
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity };
+        if (turn === 'hold') {
+          await new Promise(() => undefined);
+        }
+        if (turn === 'error') {
+          yield { type: EventType.RUN_ERROR, message: 'model failed' };
+          return;
+        }
+        yield {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId,
+          role: 'assistant' as const,
+        };
+        yield {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId,
+          delta: JSON.stringify({ ui: [] }),
+        };
+        yield { type: EventType.TEXT_MESSAGE_END, messageId };
+        yield { type: EventType.RUN_FINISHED, ...identity };
+      })(),
+    };
   });
-  expect(created).toHaveLength(1);
-  expect(created[0].options.system).toBe('Write props for the chosen cards.');
-  expect(created[0].options.transport).toBeUndefined();
-  expect(created[0].options.debounce).toBe(0);
-});
+  return { requests, send };
+}
 
-test('UiDecisionGenerateOptions accepts only system', () => {
-  const generate: UiDecisionGenerateOptions = { system: 'Render it' };
-
-  const withDebounce: UiDecisionGenerateOptions = {
-    system: 'Render it',
-    // @ts-expect-error generate.debounce was removed: the input is debounced before the decision
-    debounce: 10,
-  };
-  const withTransport: UiDecisionGenerateOptions = {
-    system: 'Render it',
-    // @ts-expect-error generate.transport was removed: generation uses the provider's chat transport
-    transport: undefined,
-  };
-
-  expect(Object.keys(generate)).toEqual(['system']);
-  expect(withDebounce.system).toBe('Render it');
-  expect(withTransport.system).toBe('Render it');
-});
-
-test('uiDecisionResource narrowing without a decision debounces generation with debounce', async () => {
-  const actual = await vi.importActual<
-    typeof import('./ui-completion-resource.fn')
-  >('./ui-completion-resource.fn');
-  uiCompletionResourceMock.mockReset();
-  uiCompletionResourceMock.mockImplementation(actual.uiCompletionResource);
-  const bodies: string[] = [];
-  vi.stubGlobal(
-    'fetch',
-    vi.fn<typeof fetch>(async (_url, init) => {
-      bodies.push(String(init?.body));
-      return new Promise<Response>(() => undefined);
-    }),
+function offered(request: TransportRequest | undefined): string[] {
+  const schema = JSON.stringify(
+    (request?.input.forwardedProps as { hashbrown?: unknown }).hashbrown,
   );
-  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
+  return allNames.filter((name) => schema.includes(`"${name}"`));
+}
+
+function configureChat(
+  decision: Decision.Transport,
+  chat: ReturnType<typeof chatTransport>,
+) {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
       provideHashbrown({
-        baseUrl: '/api/chat',
-        decision: { transport: fake.transport },
+        transport: { name: 'test', send: chat.send } as never,
+        decision: { transport: decision },
       }),
     ],
   });
-  const input = signal('show K');
+}
 
-  try {
-    TestBed.runInInjectionContext(() =>
-      uiDecisionResource({
-        input,
-        debounce: 50,
-        components: [],
-        select: 'one',
-        generate: { system: 'Render it' },
-      }),
-    );
-    await settle();
-    for (const next of ['show KS', 'show KSFO']) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-      input.set(next);
-      TestBed.tick();
-    }
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    await settle();
-  } finally {
-    TestBed.resetTestingModule();
-    vi.unstubAllGlobals();
-  }
+function narrowedChat(options: {
+  select?: Decision.Select;
+  system?: string;
+  minConfidence?: number;
+  components?: any[];
+}) {
+  return TestBed.runInInjectionContext(() => {
+    const chat = uiChatResource({
+      system: 'You are the chat.',
+      components: options.components ?? chatComponents,
+      debounce: 0,
+    });
+    const narrowing = uiDecisionResource({
+      chat,
+      select: options.select ?? 'one',
+      system: options.system,
+      minConfidence: options.minConfidence,
+    });
+    return { chat, narrowing };
+  });
+}
 
+test('uiDecisionResource chat mode decides over the chat components with createSelectionSchema questions', async () => {
+  const fake = createFakeTransport(() =>
+    multiResponse({
+      Flight: 0.9,
+      Table: 0.1,
+      Row: 0.1,
+      Note: 0.1,
+      Airport: 0.1,
+    }),
+  );
+  const chat = chatTransport();
+  configureChat(fake.transport, chat);
+  const { narrowing } = narrowedChat({ select: { max: 2 } });
+
+  narrowing.sendMessage('show UA1');
+  await settle();
+
+  const pinned = ɵcompileDecision(
+    createSelectionSchema(chatComponents, { max: 2 }),
+  );
+  expect(JSON.stringify(fake.calls[0].request.questions)).toBe(
+    JSON.stringify(pinned),
+  );
+  expect(fake.calls[0].request.state).toBe('show UA1');
+  expect(chat.requests).toHaveLength(1);
+});
+
+test('uiDecisionResource chat mode sends with only the chosen components plus their children', async () => {
+  const fake = createFakeTransport(() => pickResponse('Table', 0.9, allNames));
+  const chat = chatTransport(['hold']);
+  configureChat(fake.transport, chat);
+  const { narrowing } = narrowedChat({});
+
+  narrowing.sendMessage('list the rows');
+  await settle();
+
+  expect(chat.requests).toHaveLength(1);
+  expect(offered(chat.requests[0])).toEqual(['Table', 'Row']);
+  expect(chat.requests[0].input.messages).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ role: 'user', content: 'list the rows' }),
+    ]),
+  );
+  expect(narrowing.isDeciding()).toBe(false);
+  expect(narrowing.decision.value()).toEqual({ pick: 'Table' });
+  expect(narrowing.decisionError()).toBeUndefined();
+});
+
+test('uiDecisionResource chat mode sends with every component below minConfidence', async () => {
+  const fake = createFakeTransport(() => pickResponse('Table', 0.4, allNames));
+  const chat = chatTransport();
+  configureChat(fake.transport, chat);
+  const { narrowing } = narrowedChat({ minConfidence: 0.7 });
+
+  narrowing.sendMessage('hmm');
+  await settle();
+
+  expect(offered(chat.requests[0])).toEqual(allNames);
+  expect(narrowing.decisionError()).toBeUndefined();
+});
+
+test('uiDecisionResource chat mode sends with every component when the decision fails', async () => {
+  const failure = new Error('decision offline');
+  const fake = createFakeTransport(() => {
+    throw failure;
+  });
+  const chat = chatTransport();
+  configureChat(fake.transport, chat);
+  const { narrowing } = narrowedChat({});
+
+  narrowing.sendMessage('hmm');
+  await settle();
+
+  expect(offered(chat.requests[0])).toEqual(allNames);
+  expect(narrowing.decisionError()).toBe(failure);
+  expect(narrowing.decision.error()).toBe(failure);
+});
+
+test('uiDecisionResource chat mode sends with every component when they break the selection limits', async () => {
+  class BadCard {}
+  const components = [
+    note,
+    { component: BadCard, name: 'Bad.Name', description: 'Invalid id' },
+  ];
+  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
+  const chat = chatTransport();
+  configureChat(fake.transport, chat);
+  const { chat: uiChat, narrowing } = narrowedChat({ components });
+
+  narrowing.sendMessage('hello');
+  await settle();
+
+  expect(chat.requests).toHaveLength(1);
   expect(fake.calls).toHaveLength(0);
-  expect(bodies).toHaveLength(1);
-  expect(bodies[0]).toContain('show KSFO');
+  expect(narrowing.decisionError()).toBeInstanceOf(DecisionSchemaError);
+  expect(uiChat.components()).toBe(components);
+});
+
+test('uiDecisionResource chat mode restores every component after the turn completes', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const chat = chatTransport();
+  configureChat(fake.transport, chat);
+  const { chat: uiChat, narrowing } = narrowedChat({});
+
+  narrowing.sendMessage('show SFO');
+  await settle();
+  const restored = uiChat.components();
+  uiChat.sendMessage({ role: 'user', content: 'and more' });
+  await settle();
+
+  expect(restored).toBe(chatComponents);
+  expect(offered(chat.requests[0])).toEqual(['Airport']);
+  expect(offered(chat.requests[1])).toEqual(allNames);
+});
+
+test('uiDecisionResource chat mode restores every component after the turn errors', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const chat = chatTransport(['error']);
+  configureChat(fake.transport, chat);
+  const { chat: uiChat, narrowing } = narrowedChat({});
+
+  narrowing.sendMessage('show SFO');
+  await settle();
+
+  expect(uiChat.error()).toBeDefined();
+  expect(uiChat.components()).toBe(chatComponents);
+  expect(offered(chat.requests[0])).toEqual(['Airport']);
+});
+
+test('uiDecisionResource chat mode restores every component after the turn stops', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const chat = chatTransport(['hold']);
+  configureChat(fake.transport, chat);
+  const { chat: uiChat, narrowing } = narrowedChat({});
+  narrowing.sendMessage('show SFO');
+  await settle();
+  const narrowed = uiChat.components();
+
+  uiChat.stop();
+  await settle();
+
+  expect(narrowed).not.toBe(chatComponents);
+  expect(uiChat.components()).toBe(chatComponents);
+});
+
+test('uiDecisionResource chat mode sends only the latest message when one arrives during a pending decision', async () => {
+  const deferred = deferredTransport();
+  const chat = chatTransport();
+  configureChat(deferred.transport, chat);
+  const { narrowing } = narrowedChat({});
+
+  narrowing.sendMessage('first');
+  await settle();
+  narrowing.sendMessage('second');
+  await settle();
+  deferred.resolve(pickResponse('Note', 0.9, allNames));
+  await settle();
+
+  expect(deferred.calls).toHaveLength(2);
+  expect(deferred.calls[0].signal.aborted).toBe(true);
+  expect(chat.requests).toHaveLength(1);
+  expect(offered(chat.requests[0])).toEqual(['Note']);
+  const userMessages = chat.requests[0].input.messages.filter(
+    (message) => message.role === 'user',
+  );
+  expect(userMessages.map((message) => message.content)).toEqual(['second']);
+});
+
+test('uiDecisionResource chat mode sends system to the decision while the chat keeps its own', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const chat = chatTransport();
+  configureChat(fake.transport, chat);
+  const { narrowing } = narrowedChat({
+    system: 'A flight-tracking app. The input is a chat message.',
+  });
+
+  narrowing.sendMessage('show SFO');
+  await settle();
+
+  expect(fake.calls[0].request.state).toEqual({
+    system: 'A flight-tracking app. The input is a chat message.',
+    input: 'show SFO',
+  });
+  const systemMessages = chat.requests[0].input.messages.filter(
+    (message) => message.role === 'system',
+  );
+  expect(systemMessages.map((message) => message.content)).toEqual([
+    'You are the chat.',
+  ]);
 });

@@ -5,18 +5,25 @@ import {
   createSelectionSchema,
   type DecidableSchema,
   type Decision,
-  DecisionSchemaError,
   s,
-  ɵcreateComponentSelection,
+  ɵcreateUiChatDecision,
   ɵresolveSelection,
 } from '@hashbrownai/core';
-import { cloneElement, type ReactElement, useMemo, useState } from 'react';
-import { type ExposedComponent } from '../expose-component.fn';
-import { useDecision, type UseDecisionResult } from './use-decision';
 import {
-  useUiCompletion,
-  type UseUiCompletionResult,
-} from './use-ui-completion';
+  cloneElement,
+  type ReactElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { type ExposedComponent } from '../expose-component.fn';
+import { HashbrownContext } from '../hashbrown-provider';
+import { useDecision, type UseDecisionResult } from './use-decision';
 import { type UiKitInput } from './use-ui-kit';
 
 /**
@@ -39,8 +46,6 @@ export interface UiDecisionCandidate {
  * @public
  */
 export interface UseUiDecisionBaseOptions {
-  /** The input to decide about. `null` or `undefined` keeps the hook idle. */
-  input: string | Decision.JsonValue | null | undefined;
   /** Whether to choose one option, or up to `max` options. */
   select: Decision.Select;
   /**
@@ -50,14 +55,13 @@ export interface UseUiDecisionBaseOptions {
   minConfidence?: number;
   /**
    * Overrides the provider's decision transport for the selection. Decision
-   * only: generation in narrowing mode uses the provider's chat transport.
+   * only: in chat mode the chat keeps its own transport.
    */
   transport?: Decision.Transport;
   /**
    * Context for the decision model (what your app is, what the input
-   * means). Sent with the input in both modes, and only to the decision: in
-   * narrowing mode the model that writes props gets `generate.system`
-   * instead. Changing it asks again and resets the selection.
+   * means). Sent with the input, and only to the decision: in chat mode the
+   * chat keeps its own system prompt.
    */
   system?: string;
   /**
@@ -65,13 +69,6 @@ export interface UseUiDecisionBaseOptions {
    * the model's bias toward the first option. Defaults to `'declared'`.
    */
   optionOrder?: 'declared' | 'shuffled';
-  /**
-   * How long the input must stay unchanged, in milliseconds, before the
-   * selection is decided. In narrowing mode, generation starts as soon as
-   * the decision settles; when no decision runs, this debounces generation
-   * instead.
-   */
-  debounceTime?: number;
 }
 
 /**
@@ -81,53 +78,57 @@ export interface UseUiDecisionBaseOptions {
  * @public
  */
 export interface UseUiDecisionCandidatesOptions extends UseUiDecisionBaseOptions {
+  /** The input to decide about. `null` or `undefined` keeps the hook idle. */
+  input: string | Decision.JsonValue | null | undefined;
+  /**
+   * How long the input must stay unchanged, in milliseconds, before the
+   * selection is decided. Changing `system` asks again and resets the
+   * selection.
+   */
+  debounceTime?: number;
   /** The elements the model chooses from. */
   candidates: ReadonlyArray<UiDecisionCandidate>;
   /** Not used in candidates mode. */
-  components?: never;
-  /** Not used in candidates mode. */
-  generate?: never;
+  chat?: never;
 }
 
 /**
- * Settings for the UI completion that runs after the decision in narrowing
- * mode. The completion uses the provider's chat transport. When a decision
- * runs, the completion starts as soon as it settles, with no further
- * debounce, because the input was already debounced before the decision.
- * When no decision runs (no components, or components that break the
- * selection limits), the completion debounces the input with the top-level
- * `debounceTime` instead.
+ * What `useUiDecision` needs from a chat in chat mode. The result of
+ * `useUiChat` satisfies it.
  *
  * @public
  */
-export interface UiDecisionGenerateOptions {
-  /**
-   * The system prompt for the model that writes the chosen components'
-   * props. Separate from the top-level `system`, which is context for the
-   * decision model only; it does not default to it.
-   */
-  system: string;
+export interface UiDecisionChat {
+  /** The components the chat offers to the model on its next request. */
+  readonly components: UiKitInput<ExposedComponent<any>>[];
+  /** Whether the chat is sending, generating or running tool calls. */
+  readonly isLoading: boolean;
+  /** Replaces the components the chat offers to the model. */
+  setComponents(components: UiKitInput<ExposedComponent<any>>[]): void;
+  /** Sends a user message to the chat. */
+  sendMessage(message: Chat.UserMessage): void;
 }
 
 /**
- * Options for `useUiDecision` in narrowing mode, where the model first
- * picks exposed components and a UI completion then streams their props.
+ * Options for `useUiDecision` in chat mode, where each message sent through
+ * the hook first narrows the chat's own components.
  *
  * @public
  */
-export interface UseUiDecisionNarrowingOptions extends UseUiDecisionBaseOptions {
+export interface UseUiDecisionChatOptions extends UseUiDecisionBaseOptions {
   /**
-   * The components to narrow. UI kits are flattened into their members
-   * (deduped by name, declared children included) and each component is
-   * decided over by `name` and `description`. A chosen component brings the
-   * components declared in its `children` with it. Pass the same list to
-   * `createSelectionSchema` to pin the questions on a server.
+   * The app's UI chat, usually the result of `useUiChat`. The decision is
+   * over its components: UI kits are decided by member and a chosen
+   * component brings the components declared in its `children`. Pass the
+   * same list to `createSelectionSchema` to pin the questions on a server.
    */
-  components: UiKitInput<ExposedComponent<any>>[];
-  /** The UI completion settings: the system prompt that writes props. */
-  generate: UiDecisionGenerateOptions;
-  /** Not used in narrowing mode. */
+  chat: UiDecisionChat;
+  /** Not used in chat mode. */
   candidates?: never;
+  /** Not used in chat mode: the input is each message. */
+  input?: never;
+  /** Not used in chat mode: messages are decided about at once. */
+  debounceTime?: never;
 }
 
 /**
@@ -136,7 +137,7 @@ export interface UseUiDecisionNarrowingOptions extends UseUiDecisionBaseOptions 
  * @public
  */
 export type UseUiDecisionOptions =
-  UseUiDecisionCandidatesOptions | UseUiDecisionNarrowingOptions;
+  UseUiDecisionCandidatesOptions | UseUiDecisionChatOptions;
 
 /**
  * The result of `useUiDecision` in candidates mode.
@@ -160,54 +161,63 @@ export interface UseUiDecisionCandidatesResult {
 }
 
 /**
- * The result of `useUiDecision` in narrowing mode: the UI completion's
- * fields plus the decision state.
+ * The selection decision behind `useUiDecision` in chat mode.
  *
  * @public
  */
-export interface UseUiDecisionNarrowingResult extends Omit<
-  UseUiCompletionResult<Chat.AnyTool>,
-  'ui' | 'isLoading' | 'isGenerating' | 'error' | 'setComponents'
-> {
-  /** The rendered elements from the UI completion. */
-  ui: ReactElement<any>[] | null;
-  /** The underlying selection decision. */
-  decision: UseDecisionResult<DecidableSchema>;
-  /** Whether the selection decision has not yet settled for the input. */
-  isDeciding: boolean;
-  /** Whether the UI completion is loading. */
-  isGenerating: boolean;
-  /** Whether either phase is in progress. */
+export interface UseUiDecisionChatDecision {
+  /** The last decoded selection, or null. */
+  value: s.Infer<DecidableSchema> | null;
+  /** Metadata mirroring the value, or null. */
+  meta: Decision.Meta<DecidableSchema> | null;
+  /** Whether a decision is in flight. */
   isLoading: boolean;
-  /** The UI completion's error. */
+  /** The last decision failure; the same as `decisionError`. */
   error: Error | undefined;
   /**
-   * The selection decision's failure. When set, the UI completion ran with
-   * every component. A `DecisionSchemaError` here means the components could
-   * not be decided over (for example more than 255 with `'one'`, or a name
+   * Aborts the pending decision. Its message is then sent with every
+   * component.
+   */
+  stop: () => void;
+}
+
+/**
+ * The result of `useUiDecision` in chat mode. The transcript, rendered UI,
+ * tools and loading state stay on the chat.
+ *
+ * @public
+ */
+export interface UseUiDecisionChatResult {
+  /**
+   * Decides about `content`, sets the chat's components to the chosen ones
+   * (plus their declared children), then sends `content` to the chat. When
+   * that turn finishes, errors or stops, the chat's components are set back
+   * to the full list. Calling it again while a decision is pending aborts
+   * that decision, so only the latest message is sent.
+   */
+  sendMessage: (content: string) => void;
+  /** The underlying selection decision. */
+  decision: UseUiDecisionChatDecision;
+  /** Whether a decision is in flight. */
+  isDeciding: boolean;
+  /**
+   * The last decision failure. When set, the message was sent with every
+   * component. A `DecisionSchemaError` here means the components could not
+   * be decided over (for example more than 255 with `'one'`, or a name
    * containing `.`), so no decision was asked.
    */
   decisionError: Error | undefined;
 }
 
-const NO_COMPONENTS: UiKitInput<ExposedComponent<any>>[] = [];
+const NO_CANDIDATES: ReadonlyArray<UiDecisionCandidate> = [];
 
 /**
- * Decided over when there is nothing to choose (no components after
- * flattening, or no candidates). The decision stays idle, so it never sends
- * a request.
+ * Decided over when there are no candidates. The decision stays idle, so it
+ * never sends a request.
  */
 const PLACEHOLDER_SCHEMA: DecidableSchema = s.object('Selection', {
   unused: s.boolean('Unused'),
 });
-
-interface Baseline {
-  key: string | null;
-  value: unknown;
-  error: Error | undefined;
-  /** Whether a request was seen in flight for `key`. */
-  started: boolean;
-}
 
 /**
  * Chooses UI for an input with a decision.
@@ -235,205 +245,110 @@ export function useUiDecision(
   options: UseUiDecisionCandidatesOptions,
 ): UseUiDecisionCandidatesResult;
 /**
- * Chooses UI for an input with a decision, then generates it.
+ * Narrows a UI chat's components for each message with a decision.
  *
- * In narrowing mode the model first picks among the components (by name and
- * description), with UI kits flattened into their members; a UI completion
- * then streams props using only the chosen components plus, recursively, the
- * components declared in their `children`, in declared order. The
- * completion starts as soon as the decision settles, with no further
- * debounce. When the decision fails or falls below `minConfidence`, the
- * completion runs with the original `components` unchanged (kits intact),
- * and a failure is exposed as `decisionError`; the same applies when the
- * decision is stopped, and when the flattened components break the
- * selection limits (exposed as a `DecisionSchemaError`). With no components
- * there is nothing to decide, so the completion runs without a decision.
- * Without a decision, the completion debounces the input with `debounceTime`.
- * Input and `system` changes re-run the decision before generating again.
- * To pin the questions on a server, pass the same `components` to
- * `createSelectionSchema`.
+ * In chat mode, `sendMessage(content)` asks the decision which of the chat's
+ * components fit `content` (by name and description, UI kits decided by
+ * member), sets the chat's components to the chosen ones plus, recursively,
+ * the components declared in their `children`, and then sends `content` to
+ * the chat, which writes the answer with its own system prompt and tools.
+ * The send waits until the chat offers the narrowed components. When the
+ * decision falls below `minConfidence`, fails, is stopped, or the
+ * components break the selection limits, the message is sent with every
+ * component, and a failure is exposed as `decisionError`.
  *
- * There are two prompts: `system` is context for the decision model (what
- * your app is, what the input means), and `generate.system` is the system
- * prompt for the model that writes the chosen components' props.
+ * When the narrowed turn finishes, errors or is stopped, the chat's
+ * components are set back to the full list, so a follow-up sent directly
+ * with `chat.sendMessage` sees every component.
+ *
+ * Calling `sendMessage` while a decision is pending aborts that decision,
+ * so only the latest message is sent. While the chat is still generating,
+ * the send behaves like the chat's own `sendMessage`.
+ *
+ * There are two prompts: `system` is context for the decision model only,
+ * and the chat keeps its own `system`. To pin the questions on a server,
+ * pass the chat's components to `createSelectionSchema`.
  *
  * @public
  * @example
  * ```tsx
- * const { ui, isDeciding } = useUiDecision({
- *   input: query,
- *   select: { max: 2 },
- *   system: 'A flight-tracking app. The input is a search query.',
+ * const chat = useUiChat({
+ *   system: 'Answer questions about live flights.',
  *   components: [flightCard, airportCard, weatherCard],
- *   generate: { system: 'Write props for the chosen cards.' },
+ *   tools: [getFlights],
+ * });
+ * const { sendMessage, isDeciding } = useUiDecision({
+ *   chat,
+ *   select: { max: 2 },
+ *   system: 'A flight-tracking app. The input is a chat message.',
  * });
  * ```
- * @param options - The narrowing-mode options.
- * @returns The UI completion state plus the decision state.
+ * @param options - The chat-mode options.
+ * @returns The narrowing `sendMessage` and the decision state.
  */
 export function useUiDecision(
-  options: UseUiDecisionNarrowingOptions,
-): UseUiDecisionNarrowingResult;
+  options: UseUiDecisionChatOptions,
+): UseUiDecisionChatResult;
 export function useUiDecision(
   options: UseUiDecisionOptions,
-): UseUiDecisionCandidatesResult | UseUiDecisionNarrowingResult {
-  const {
-    select,
-    minConfidence,
-    transport,
-    system,
-    optionOrder,
-    debounceTime,
-  } = options;
-  const candidates = options.candidates;
-  const isCandidates = candidates !== undefined;
-  const components = isCandidates ? NO_COMPONENTS : options.components;
-  const generate = options.generate;
-  const input = options.input ?? null;
-  const inputKey = input === null ? null : JSON.stringify(input);
-
-  const componentSelection = useMemo(
-    () => ɵcreateComponentSelection<ExposedComponent<any>>(components),
-    [components],
+): UseUiDecisionCandidatesResult | UseUiDecisionChatResult {
+  // Both modes' hooks always run, so the hook order never changes; the
+  // inactive mode stays idle.
+  const isChat = options.chat !== undefined;
+  const candidatesResult = useCandidates(
+    isChat ? null : (options as UseUiDecisionCandidatesOptions),
   );
+  const chatResult = useChatNarrowing(
+    isChat ? (options as UseUiDecisionChatOptions) : null,
+  );
+  return isChat ? chatResult : candidatesResult;
+}
+
+function useCandidates(
+  options: UseUiDecisionCandidatesOptions | null,
+): UseUiDecisionCandidatesResult {
+  const candidates = options?.candidates ?? NO_CANDIDATES;
+  const select = options?.select ?? 'one';
   const optionsKey = JSON.stringify({
     select,
-    options: isCandidates
-      ? candidates.map(({ id, description }) => ({ id, description }))
-      : componentSelection.options,
+    options: candidates.map(({ id, description }) => ({ id, description })),
   });
-  const { schema, schemaError } = useMemo(() => {
+  // Candidates are app-authored, so an invalid candidate list throws.
+  const schema = useMemo(() => {
     const parsed = JSON.parse(optionsKey) as {
       select: Decision.Select;
       options: Array<{ id: string; description: string }>;
     };
-    if (parsed.options.length === 0) {
-      return { schema: null, schemaError: undefined };
-    }
-    try {
-      return {
-        schema: createSelectionSchema(parsed.options, parsed.select),
-        schemaError: undefined,
-      };
-    } catch (error) {
-      // Candidates are app-authored, so an invalid candidate list throws.
-      // Narrowing options come from component names, which may not fit the
-      // selection limits; then narrowing falls back to every component.
-      if (isCandidates || !(error instanceof DecisionSchemaError)) throw error;
-      return { schema: null, schemaError: error };
-    }
-  }, [optionsKey, isCandidates]);
+    return parsed.options.length === 0
+      ? null
+      : createSelectionSchema(parsed.options, parsed.select);
+  }, [optionsKey]);
   const hasOptions = schema !== null;
 
   const decision = useDecision({
     schema: schema ?? PLACEHOLDER_SCHEMA,
-    input: hasOptions ? input : null,
-    transport,
-    system,
-    optionOrder,
-    debounceTime,
+    input: hasOptions ? options?.input : null,
+    transport: options?.transport,
+    system: options?.system,
+    optionOrder: options?.optionOrder,
+    debounceTime: options?.debounceTime,
   });
 
-  const selectKey = JSON.stringify(select);
   const { value, meta } = decision;
+  const minConfidence = options?.minConfidence;
   const selection = useMemo(() => {
     if (value === null || meta === null) return null;
     const parsed = JSON.parse(optionsKey) as {
+      select: Decision.Select;
       options: Array<{ id: string }>;
     };
     return ɵresolveSelection(
       { value, meta } as Decision.Result<DecidableSchema>,
-      JSON.parse(selectKey) as Decision.Select,
+      parsed.select,
       parsed.options.map(({ id }) => id),
       minConfidence,
     );
-  }, [value, meta, selectKey, optionsKey, minConfidence]);
-
-  // Phase 1 has settled for this input once no request is in flight and
-  // either a request was seen in flight since the input (or options) changed,
-  // or the value or error changed since then. Without options there is
-  // nothing to decide, so it settles at once.
-  // A change to `system`, `optionOrder` or `debounceTime` rebuilds the
-  // decision runtime (resetting its value), so it starts a new request too.
-  const requestKey =
-    inputKey === null
-      ? null
-      : JSON.stringify([
-          optionsKey,
-          inputKey,
-          system ?? null,
-          optionOrder ?? null,
-          debounceTime ?? null,
-        ]);
-  const [baseline, setBaseline] = useState<Baseline>(() => ({
-    key: requestKey,
-    value: decision.value,
-    error: decision.error,
-    started: decision.isLoading,
-  }));
-  if (baseline.key !== requestKey) {
-    setBaseline({
-      key: requestKey,
-      value: decision.value,
-      error: decision.error,
-      started: decision.isLoading,
-    });
-  } else if (decision.isLoading && !baseline.started) {
-    setBaseline({ ...baseline, started: true });
-  }
-  const freshValue =
-    baseline.key === requestKey &&
-    decision.value !== null &&
-    decision.value !== baseline.value;
-  const freshError =
-    baseline.key === requestKey &&
-    decision.error !== undefined &&
-    decision.error !== baseline.error;
-  const settled =
-    requestKey !== null &&
-    (!hasOptions ||
-      (baseline.key === requestKey &&
-        !decision.isLoading &&
-        (baseline.started || freshValue || freshError)));
-
-  // Only a fresh, error-free, confident result narrows; anything else (no
-  // options, a failure, a stop, low confidence) falls back to every component.
-  const confidentIds =
-    hasOptions &&
-    freshValue &&
-    decision.error === undefined &&
-    selection !== null &&
-    selection.confident
-      ? selection.ids
-      : null;
-  const chosenKey = !settled
-    ? null
-    : JSON.stringify([requestKey, confidentIds]);
-
-  const [appliedKey, setAppliedKey] = useState<string | null>(null);
-  const completion = useUiCompletion<string | Decision.JsonValue>({
-    input:
-      !isCandidates && chosenKey !== null && chosenKey === appliedKey
-        ? input
-        : null,
-    system: generate?.system ?? '',
-    components,
-    // After a decision the input was already debounced, so generate at once.
-    // Without one (nothing to decide), debounce the input here instead.
-    debounceTime: hasOptions ? 0 : debounceTime,
-  });
-
-  if (!isCandidates && chosenKey !== null && chosenKey !== appliedKey) {
-    // Adjusts state from the previous render (the completion's components
-    // and ours); React re-renders before committing, so the completion sees
-    // the chosen components together with the input.
-    setAppliedKey(chosenKey);
-    const chosen =
-      confidentIds !== null
-        ? componentSelection.expand(confidentIds)
-        : components;
-    completion.setComponents(chosen);
-  }
+  }, [value, meta, optionsKey, minConfidence]);
 
   const ids = useMemo(
     () =>
@@ -445,31 +360,133 @@ export function useUiDecision(
   const ui = useMemo(
     () =>
       ids.flatMap((id) => {
-        const candidate = candidates?.find((entry) => entry.id === id);
+        const candidate = candidates.find((entry) => entry.id === id);
         return candidate ? [cloneElement(candidate.element, { key: id })] : [];
       }),
     [ids, candidates],
   );
 
-  if (isCandidates) {
-    return {
-      ui,
-      ids,
-      decision,
-      isLoading: decision.isLoading,
-      error: decision.error,
-    };
+  return {
+    ui,
+    ids,
+    decision,
+    isLoading: decision.isLoading,
+    error: decision.error,
+  };
+}
+
+/** A decided message waiting for the chat to offer its components. */
+interface PendingSend {
+  content: string;
+  components: UiKitInput<ExposedComponent<any>>[];
+  original: UiKitInput<ExposedComponent<any>>[];
+}
+
+/** A narrowed turn whose end restores the chat's components. */
+interface Turn {
+  original: UiKitInput<ExposedComponent<any>>[];
+}
+
+function useChatNarrowing(
+  options: UseUiDecisionChatOptions | null,
+): UseUiDecisionChatResult {
+  const config = useContext(HashbrownContext);
+  if (!config) {
+    throw new Error('HashbrownContext not found');
   }
 
-  const isDeciding = requestKey !== null && !settled;
+  const [controller] = useState(() => ɵcreateUiChatDecision());
+  const state = useSyncExternalStore(
+    controller.subscribe,
+    controller.getState,
+    controller.getState,
+  );
+
+  // The latest options, read when a decision settles.
+  const latest = useRef({ options, transport: config.decisionTransport });
+  useLayoutEffect(() => {
+    latest.current = { options, transport: config.decisionTransport };
+  });
+
+  // Drops a pending decision on unmount. The controller stays usable, so
+  // StrictMode's remount keeps working.
+  useEffect(() => () => controller.dispose(), [controller]);
+
+  const [pending, setPending] = useState<PendingSend | null>(null);
+  const sent = useRef<PendingSend | null>(null);
+  const turn = useRef<Turn | null>(null);
+  // The full component list while the chat is narrowed for a turn.
+  const original = useRef<UiKitInput<ExposedComponent<any>>[] | null>(null);
+
+  const chat = options?.chat ?? null;
+  const chatComponents = chat?.components;
+  const chatIsLoading = chat?.isLoading ?? false;
+
+  // Runs before the send below, so a turn ending in the same commit is
+  // restored before the next one starts.
+  useEffect(() => {
+    const current = turn.current;
+    if (!chat || !current || chatIsLoading) return;
+    turn.current = null;
+    original.current = null;
+    chat.setComponents(current.original);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatIsLoading]);
+
+  // `setComponents` only applies on the next render, so the message is sent
+  // once the chat offers the decided components. The chat updates what its
+  // next request offers in the same commit, before the request is built.
+  useEffect(() => {
+    if (!chat || !pending || sent.current === pending) return;
+    if (chatComponents !== pending.components) return;
+    sent.current = pending;
+    turn.current = { original: pending.original };
+    chat.sendMessage({ role: 'user', content: pending.content });
+  }, [chat, chatComponents, pending]);
+
+  const sendMessage = useCallback(
+    (content: string) => {
+      const current = latest.current.options;
+      if (!current) return;
+      const full = original.current ?? current.chat.components;
+      void controller
+        .decide(content, full, {
+          select: current.select,
+          system: current.system,
+          minConfidence: current.minConfidence,
+          optionOrder: current.optionOrder,
+          transport: current.transport ?? latest.current.transport,
+        })
+        .then((outcome) => {
+          const now = latest.current.options;
+          if (outcome.kind === 'superseded' || !now) return;
+          const components =
+            outcome.kind === 'narrowed' ? outcome.components : full;
+          original.current = full;
+          now.chat.setComponents(components);
+          setPending({ content, components, original: full });
+        });
+    },
+    [controller],
+  );
+
+  const stop = useCallback(() => controller.stop(), [controller]);
+  const isDeciding = state.status === 'loading';
+  const decision = useMemo(
+    () => ({
+      value: state.value,
+      meta: state.meta,
+      isLoading: isDeciding,
+      error: state.error,
+      stop,
+    }),
+    [state, isDeciding, stop],
+  );
+
   return {
-    ...completion,
-    ui: completion.ui,
+    sendMessage,
     decision,
     isDeciding,
-    isGenerating: completion.isLoading,
-    isLoading: isDeciding || completion.isLoading,
-    error: completion.error,
-    decisionError: hasOptions ? decision.error : schemaError,
+    decisionError: state.error,
   };
 }

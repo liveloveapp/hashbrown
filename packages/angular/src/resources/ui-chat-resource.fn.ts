@@ -1,5 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { computed, Resource, Signal } from '@angular/core';
+import {
+  computed,
+  linkedSignal,
+  Resource,
+  signal,
+  Signal,
+  untracked,
+} from '@angular/core';
 import {
   Chat,
   type ComponentTreeSchema,
@@ -8,6 +15,7 @@ import {
   type ResumeOptions,
   s,
   type TransportOrFactory,
+  ɵsetRequestResponseSchema,
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredChatResource } from './structured-chat-resource.fn';
@@ -17,7 +25,7 @@ import {
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
 import { ReactiveOption } from '../utils/types';
-import { createUiKit, type UiKitInput } from '../utils/ui-kit.fn';
+import { createUiKit, type UiKit, type UiKitInput } from '../utils/ui-kit.fn';
 import { createResourceSnapshot } from './create-resource-snapshot.fn';
 
 /**
@@ -39,7 +47,8 @@ export interface UiChatResourceOptions<
   State = unknown,
 > {
   /**
-   * The components to use for the UI chat resource.
+   * The components the model may render. Replace them later with
+   * `setComponents`.
    */
   components: UiKitInput<ExposedComponent<any>>[];
 
@@ -113,6 +122,22 @@ export interface UiChatResourceRef<
 
   /** Replace shared agent state without starting a generation. */
   setState(state: State): void;
+
+  /**
+   * The components offered to the model on the next request: the
+   * `components` option until `setComponents` replaces them.
+   */
+  readonly components: Signal<UiKitInput<ExposedComponent<any>>[]>;
+
+  /**
+   * Replace the components offered to the model. The change applies to the
+   * next request, including a message sent right after. Messages keep
+   * rendering with every component the chat has offered, so earlier answers
+   * still render after the list narrows.
+   *
+   * @param components - The components to offer.
+   */
+  setComponents(components: UiKitInput<ExposedComponent<any>>[]): void;
   /**
    * Send a new user message to the chat.
    *
@@ -166,13 +191,33 @@ export interface UiChatResourceRef<
 export function uiChatResource<Tools extends Chat.AnyTool, State = unknown>(
   args: UiChatResourceOptions<Tools, State>,
 ): UiChatResourceRef<Tools, State> {
-  const uiKit = createUiKit<ExposedComponent<any>>({
-    components: args.components,
+  const components = signal(args.components);
+  // Every component the chat has offered, newest first. Responses and
+  // history are parsed and rendered with these, so an earlier answer keeps
+  // rendering after `setComponents` removes its component.
+  const offered = linkedSignal<
+    UiKitInput<ExposedComponent<any>>[],
+    UiKitInput<ExposedComponent<any>>[]
+  >({
+    source: components,
+    computation: (next, previous) => {
+      if (!previous) return next;
+      const added = next.filter((entry) => !previous.value.includes(entry));
+      return added.length > 0 ? [...added, ...previous.value] : previous.value;
+    },
   });
-  const internalSchema = uiKit.schema;
+  const sameSchema = (
+    a: UiKit<ExposedComponent<any>>,
+    b: UiKit<ExposedComponent<any>>,
+  ) => a.serializedSchema === b.serializedSchema;
+  const uiKit = computed(
+    () => createUiKit<ExposedComponent<any>>({ components: offered() }),
+    { equal: sameSchema },
+  );
+  const schema = computed(() => uiKit().schema);
 
   const chat = structuredChatResource({
-    schema: internalSchema,
+    schema,
     tools: [...(args.tools ?? [])],
     system: args.system,
     state: args.state,
@@ -192,7 +237,7 @@ export function uiChatResource<Tools extends Chat.AnyTool, State = unknown>(
       return messages.map((message): UiChatMessage<Tools> => {
         if (message.role === 'assistant') {
           const content = message.content as
-            s.Infer<typeof internalSchema> | '' | undefined;
+            s.Infer<UiKit<ExposedComponent<any>>['schema']> | '' | undefined;
 
           if (!content) {
             return {
@@ -203,7 +248,7 @@ export function uiChatResource<Tools extends Chat.AnyTool, State = unknown>(
 
           return {
             ...message,
-            [TAG_NAME_REGISTRY]: uiKit.tagNameRegistry ?? {},
+            [TAG_NAME_REGISTRY]: uiKit().tagNameRegistry ?? {},
           };
         }
         if (message.role === 'user') {
@@ -229,8 +274,23 @@ export function uiChatResource<Tools extends Chat.AnyTool, State = unknown>(
     args.debugName && `${args.debugName}.snapshot`,
   );
 
+  // The model is offered only the current components. Applied at once, so a
+  // message sent right after uses them.
+  let requestSchemaSet = false;
+  function setComponents(next: UiKitInput<ExposedComponent<any>>[]) {
+    components.set(next);
+    const requestKit = createUiKit<ExposedComponent<any>>({ components: next });
+    const narrowed =
+      requestKit.serializedSchema !== untracked(uiKit).serializedSchema;
+    if (!narrowed && !requestSchemaSet) return;
+    requestSchemaSet = narrowed;
+    ɵsetRequestResponseSchema(chat, narrowed ? requestKit.schema : undefined);
+  }
+
   return {
     ...chat,
+    components: components.asReadonly(),
+    setComponents,
     hasValue: chat.hasValue as any,
     value,
     snapshot,

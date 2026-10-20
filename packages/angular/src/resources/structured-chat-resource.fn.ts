@@ -9,6 +9,7 @@ import {
   ResourceStatus,
   runInInjectionContext,
   Signal,
+  untracked,
 } from '@angular/core';
 import {
   Chat,
@@ -144,9 +145,10 @@ export interface StructuredChatResourceOptions<
   system: ReactiveOption<string>;
 
   /**
-   * The schema to use for the structured chat resource.
+   * The schema to use for the structured chat resource. Pass a signal to
+   * change it after creation; the next request uses the latest schema.
    */
-  schema: Schema;
+  schema: ReactiveOption<Schema>;
 
   /**
    * The tools to use for the structured chat resource.
@@ -236,7 +238,7 @@ export function structuredChatResource<
     state: options.state,
     messages: [...(options.messages ?? [])],
     tools: options.tools?.map((tool) => bindToolToInjector(tool, injector)),
-    responseSchema: options.schema,
+    responseSchema: untracked(() => readReactiveOption(options.schema)),
     debugName: options.debugName,
     debounce: options.debounce,
     retries: options.retries,
@@ -252,6 +254,26 @@ export function structuredChatResource<
     options.threadId !== undefined
       ? readReactiveOption(options.threadId)
       : undefined;
+  // A schema with the same JSON Schema is not reapplied. Sends sync it first,
+  // so a schema set right before a send is the one the request uses.
+  const schemaKeyOf = (schema: Schema) =>
+    JSON.stringify(s.toJsonSchema(s.normalizeSchemaOutput(schema)));
+  let appliedSchemaKey = schemaKeyOf(
+    untracked(() => readReactiveOption(options.schema)),
+  );
+  function syncSchema(schema: Schema) {
+    const key = schemaKeyOf(schema);
+    if (key === appliedSchemaKey) return;
+    appliedSchemaKey = key;
+    runtime.updateOptions({ responseSchema: schema });
+  }
+  const schemaEffect = effect(() => {
+    const schema = readReactiveOption(options.schema);
+    untracked(() => syncSchema(schema));
+  });
+  const syncLatestSchema = () =>
+    syncSchema(untracked(() => readReactiveOption(options.schema)));
+
   const optionsEffect = effect(() => {
     const threadId =
       options.threadId !== undefined
@@ -275,6 +297,7 @@ export function structuredChatResource<
   destroyRef.onDestroy(() => {
     teardown();
     optionsEffect.destroy();
+    schemaEffect.destroy();
   });
 
   const rawValueSignal = toNgSignal(
@@ -369,6 +392,7 @@ export function structuredChatResource<
     const lastMessage = messages[messages.length - 1];
 
     if (lastMessage?.role === 'assistant') {
+      syncLatestSchema();
       runtime.setMessages(messages.slice(0, -1));
 
       return true;
@@ -385,14 +409,17 @@ export function structuredChatResource<
   }
 
   function sendMessage(message: Chat.UserMessage) {
+    syncLatestSchema();
     runtime.sendMessage(message);
   }
 
   function resendMessages() {
+    syncLatestSchema();
     runtime.resendMessages();
   }
 
   function setMessages(messages: Chat.Message<Output, Tools>[]) {
+    syncLatestSchema();
     runtime.setMessages(messages);
   }
 

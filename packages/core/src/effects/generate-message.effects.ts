@@ -10,6 +10,7 @@ import { ɵprepareAgUiMessageEvent } from '../reducers/ag-ui-message-history';
 import {
   selectDebounce,
   selectRawStreamingMessage,
+  selectRequestResponseSchema,
   selectResponseSchema,
   selectRetries,
   selectShouldGenerateMessage,
@@ -452,8 +453,13 @@ export const generateMessage = createEffect((store) => {
           const toolsByName = resumedRun
             ? resumedRun.checkpoint.toolsByName
             : store.read(selectToolEntities);
-          const responseJsonSchema = responseSchema
-            ? s.toJsonSchema(responseSchema)
+          // The model may be offered a narrower schema than the one used to
+          // parse responses and history.
+          const requestResponseSchema = resumedRun
+            ? resumedRun.checkpoint.requestResponseSchema
+            : store.read(selectRequestResponseSchema);
+          const responseJsonSchema = requestResponseSchema
+            ? s.toJsonSchema(requestResponseSchema)
             : undefined;
           const uiRequested = resumedRun
             ? resumedRun.checkpoint.uiRequested

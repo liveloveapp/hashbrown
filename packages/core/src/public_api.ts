@@ -7,6 +7,7 @@ export {
   type ChatRuntime,
   ɵgetRuntimeSchedulingState,
   ɵassertRuntimeMessageSchedulingAllowed,
+  ɵsetRequestResponseSchema,
   type ɵRuntimeSchedulingState,
 } from './chat-runtime';
 export * from './models';
@@ -58,6 +59,13 @@ export {
   type ComponentSelection as ɵComponentSelection,
 } from './decision/component-selection';
 export { createDecisionRuntime as ɵcreateDecisionRuntime } from './decision/decision-runtime';
+export {
+  createUiChatDecision as ɵcreateUiChatDecision,
+  type UiChatDecision as ɵUiChatDecision,
+  type UiChatDecisionOptions as ɵUiChatDecisionOptions,
+  type UiChatDecisionOutcome as ɵUiChatDecisionOutcome,
+  type UiChatDecisionState as ɵUiChatDecisionState,
+} from './decision/ui-chat-decision';
 export type {
   DecisionRuntime as ɵDecisionRuntime,
   DecisionRuntimeOptions as ɵDecisionRuntimeOptions,
