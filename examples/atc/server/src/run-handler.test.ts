@@ -387,7 +387,10 @@ test('the run handler answers 413 for oversized bodies and too many messages', a
 
 /** A run request whose browser sent `responseSchema`. */
 function withSchema(responseSchema: object): RunAgentInput {
-  return { ...input, hashbrown: { responseSchema, ui: true } } as RunAgentInput;
+  return {
+    ...input,
+    forwardedProps: { hashbrown: { responseSchema, ui: true } },
+  } as RunAgentInput;
 }
 
 /** Collects console.warn lines for one test. */
@@ -410,36 +413,30 @@ test('a tampered response schema is replaced with the pinned one and logged with
   });
 
   const pinned = pinResponseSchema(tampered) as RunAgentInput & {
-    hashbrown: { responseSchema: object; ui: boolean };
-  };
-
-  expect(pinned.hashbrown.responseSchema).toBe(PINNED_RESPONSE_SCHEMA);
-  expect(pinned.hashbrown.ui).toBe(true);
-  expect(warnings).toHaveLength(1);
-  expect(warnings[0]).toContain('response schema');
-  expect(warnings[0]).not.toContain('SECRET-PAYLOAD');
-});
-
-test('a schema sent only in forwardedProps.hashbrown is pinned in both places', () => {
-  const warnings = captureWarnings();
-  const sent = {
-    ...input,
-    forwardedProps: {
-      hashbrown: { responseSchema: { type: 'object' }, ui: true },
-    },
-  } as RunAgentInput;
-
-  const pinned = pinResponseSchema(sent) as RunAgentInput & {
     forwardedProps: { hashbrown: { responseSchema: object; ui: boolean } };
-    hashbrown: { responseSchema: object; ui: boolean };
   };
 
   expect(pinned.forwardedProps.hashbrown.responseSchema).toBe(
     PINNED_RESPONSE_SCHEMA,
   );
   expect(pinned.forwardedProps.hashbrown.ui).toBe(true);
-  expect(pinned.hashbrown.responseSchema).toBe(PINNED_RESPONSE_SCHEMA);
+  expect(pinned).not.toHaveProperty('hashbrown');
   expect(warnings).toHaveLength(1);
+  expect(warnings[0]).toContain('response schema');
+  expect(warnings[0]).not.toContain('SECRET-PAYLOAD');
+});
+
+test('a schema sent only at the top level is ignored and left alone', () => {
+  const warnings = captureWarnings();
+  const sent = {
+    ...input,
+    hashbrown: { responseSchema: { type: 'object' }, ui: true },
+  } as RunAgentInput;
+
+  const pinned = pinResponseSchema(sent);
+
+  expect(pinned).toBe(sent);
+  expect(warnings).toEqual([]);
 });
 
 test('an identical response schema is replaced silently', () => {
@@ -447,16 +444,21 @@ test('an identical response schema is replaced silently', () => {
   const sent = withSchema(JSON.parse(JSON.stringify(PINNED_RESPONSE_SCHEMA)));
 
   const pinned = pinResponseSchema(sent) as RunAgentInput & {
-    hashbrown: { responseSchema: object };
+    forwardedProps: { hashbrown: { responseSchema: object } };
   };
 
-  expect(pinned.hashbrown.responseSchema).toBe(PINNED_RESPONSE_SCHEMA);
+  expect(pinned.forwardedProps.hashbrown.responseSchema).toBe(
+    PINNED_RESPONSE_SCHEMA,
+  );
   expect(warnings).toEqual([]);
 });
 
 test('a request without a response schema is left alone', () => {
   const warnings = captureWarnings();
-  const uiOnly = { ...input, hashbrown: { ui: true } } as RunAgentInput;
+  const uiOnly = {
+    ...input,
+    forwardedProps: { hashbrown: { ui: true } },
+  } as RunAgentInput;
 
   const results = [pinResponseSchema(input), pinResponseSchema(uiOnly)];
 

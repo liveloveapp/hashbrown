@@ -429,16 +429,18 @@ test('Anthropic emits complete tool events with streamed arguments', async () =>
 
 test('Anthropic streams structured-output JSON without hidden emulation', async () => {
   const input = baseInput('return structured output');
-  input.hashbrown = {
-    responseSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string' },
-        ok: { type: 'boolean' },
+  input.forwardedProps = {
+    hashbrown: {
+      responseSchema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string' },
+          ok: { type: 'boolean' },
+        },
+        required: ['text', 'ok'],
       },
-      required: ['text', 'ok'],
+      ui: true,
     },
-    ui: true,
   };
   let capturedOptions:
     Anthropic.Messages.MessageCreateParamsStreaming | undefined;
@@ -546,10 +548,9 @@ test('Anthropic maps complete AG-UI request history for aimock', async () => {
       },
     },
   ];
-  input.forwardedProps = { model: 'client-selected-model' };
-  input.hashbrown = {
-    responseSchema: { type: 'object' },
-    ui: true,
+  input.forwardedProps = {
+    model: 'client-selected-model',
+    hashbrown: { responseSchema: { type: 'object' }, ui: true },
   };
   let capturedOptions:
     Anthropic.Messages.MessageCreateParamsStreaming | undefined;

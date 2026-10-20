@@ -63,18 +63,20 @@ HashbrownAzure.stream.text({
 
 The adapter maps system and developer instructions, message history, tool definitions, tool results, and native structured output. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
-Set `input.hashbrown.responseSchema` to use Azure OpenAI native JSON schema output:
+Set `input.forwardedProps.hashbrown.responseSchema` to use Azure OpenAI native JSON schema output:
 
 ```ts
 const input = {
   ...runInput,
-  hashbrown: {
-    responseSchema: {
-      type: 'object',
-      properties: {
-        answer: { type: 'string' },
+  forwardedProps: {
+    hashbrown: {
+      responseSchema: {
+        type: 'object',
+        properties: {
+          answer: { type: 'string' },
+        },
+        required: ['answer'],
       },
-      required: ['answer'],
     },
   },
 };
@@ -128,6 +130,235 @@ app.post('/run', async (req, res) => {
 
 app.listen(3000);
 ```
+
+</div>
+
+<div backend="fastify">
+
+```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { HashbrownAzure } from '@hashbrownai/azure';
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post('/run', async (request, reply) => {
+  const abortController = new AbortController();
+  request.raw.once('aborted', () => abortController.abort());
+  reply.raw.once('close', () => abortController.abort());
+  const stream = HashbrownAzure.stream.text({
+    clientOptions: {
+      apiKey: process.env.AZURE_API_KEY!,
+      endpoint: process.env.AZURE_ENDPOINT!,
+      apiVersion: process.env.AZURE_API_VERSION!,
+      deployment: process.env.AZURE_DEPLOYMENT,
+    },
+    model: process.env.AZURE_MODEL!,
+    input: request.body as RunAgentInput,
+    signal: abortController.signal,
+  });
+  const encoder = new EventEncoder();
+
+  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  reply.header('Content-Type', encoder.getContentType());
+  reply.header('Connection', 'keep-alive');
+
+  for await (const event of stream) {
+    reply.raw.write(encoder.encodeSSE(event));
+  }
+
+  if (!reply.raw.writableEnded) {
+    reply.raw.end();
+  }
+});
+
+fastify.listen({ port: 3000 });
+```
+
+</div>
+
+<div backend="nestjs">
+
+```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import { HashbrownAzure } from '@hashbrownai/azure';
+import type { Request, Response } from 'express';
+
+@Controller()
+export class RunController {
+  @Post('run')
+  async run(
+    @Body() input: RunAgentInput,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const abortController = new AbortController();
+    req.once('aborted', () => abortController.abort());
+    res.once('close', () => abortController.abort());
+    const stream = HashbrownAzure.stream.text({
+      clientOptions: {
+        apiKey: process.env.AZURE_API_KEY!,
+        endpoint: process.env.AZURE_ENDPOINT!,
+        apiVersion: process.env.AZURE_API_VERSION!,
+        deployment: process.env.AZURE_DEPLOYMENT,
+      },
+      model: process.env.AZURE_MODEL!,
+      input,
+      signal: abortController.signal,
+    });
+    const encoder = new EventEncoder();
+
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Content-Type', encoder.getContentType());
+    res.header('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    for await (const event of stream) {
+      res.write(encoder.encodeSSE(event));
+    }
+
+    if (!res.writableEnded) {
+      res.end();
+    }
+  }
+}
+```
+
+</div>
+
+<div backend="hono">
+
+```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { HashbrownAzure } from '@hashbrownai/azure';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/run', async (c) => {
+  const input = (await c.req.json()) as RunAgentInput;
+  const stream = HashbrownAzure.stream.text({
+    clientOptions: {
+      apiKey: process.env.AZURE_API_KEY!,
+      endpoint: process.env.AZURE_ENDPOINT!,
+      apiVersion: process.env.AZURE_API_VERSION!,
+      deployment: process.env.AZURE_DEPLOYMENT,
+    },
+    model: process.env.AZURE_MODEL!,
+    input,
+    signal: c.req.raw.signal,
+  });
+  const encoder = new EventEncoder();
+  const textEncoder = new TextEncoder();
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const event of stream) {
+          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Content-Type': encoder.getContentType(),
+      },
+    },
+  );
+});
+
+export default app;
+```
+
+</div>
+
+</hb-backend-code-example>
+
+### Transform Request Options
+
+`transformRequestOptions` receives the final Azure OpenAI SDK request after AG-UI input has been mapped. Use it for server-owned provider settings.
+
+```ts
+const stream = HashbrownAzure.stream.text({
+  clientOptions: {
+    apiKey: process.env.AZURE_API_KEY!,
+    endpoint: process.env.AZURE_ENDPOINT!,
+    apiVersion: process.env.AZURE_API_VERSION!,
+    deployment: process.env.AZURE_DEPLOYMENT,
+  },
+  model: process.env.AZURE_MODEL!,
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    temperature: 0.2,
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      ...options.messages,
+    ],
+  }),
+});
+```
+
+[Learn more about transformRequestOptions](/docs/angular/concept/transform-request-options)
+
+};
+
+````
+
+### Node.js Server Integration
+
+<hb-backend-code-example>
+
+<div backend="express">
+
+```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { HashbrownAzure } from '@hashbrownai/azure';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
+
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
+  const stream = HashbrownAzure.stream.text({
+    clientOptions: {
+      apiKey: process.env.AZURE_API_KEY!,
+      endpoint: process.env.AZURE_ENDPOINT!,
+      apiVersion: process.env.AZURE_API_VERSION!,
+      deployment: process.env.AZURE_DEPLOYMENT,
+    },
+    model: process.env.AZURE_MODEL!,
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
+  });
+  const encoder = new EventEncoder();
+
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
+  }
+
+  if (!res.writableEnded) {
+    res.end();
+  }
+});
+
+app.listen(3000);
+````
 
 </div>
 

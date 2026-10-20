@@ -2,7 +2,7 @@ import type { RunAgentInput } from '@ag-ui/core';
 import { createBedrockRequestOptions } from './bedrock-request';
 
 function createInput(): RunAgentInput & {
-  hashbrown: { responseSchema: object };
+  forwardedProps: { hashbrown: { responseSchema: object } };
 } {
   return {
     threadId: 'thread-bedrock',
@@ -57,13 +57,14 @@ function createInput(): RunAgentInput & {
     ],
     context: [],
     state: {},
-    forwardedProps: {},
-    hashbrown: {
-      responseSchema: {
-        type: 'object',
-        properties: { answer: { type: 'string' } },
-        required: ['answer'],
-        additionalProperties: false,
+    forwardedProps: {
+      hashbrown: {
+        responseSchema: {
+          type: 'object',
+          properties: { answer: { type: 'string' } },
+          required: ['answer'],
+          additionalProperties: false,
+        },
       },
     },
   };
@@ -135,7 +136,9 @@ test('maps AG-UI messages, tools, reasoning, and structured output to Bedrock', 
         type: 'json_schema',
         structure: {
           jsonSchema: {
-            schema: JSON.stringify(input.hashbrown.responseSchema),
+            schema: JSON.stringify(
+              input.forwardedProps.hashbrown.responseSchema,
+            ),
           },
         },
       },
@@ -222,13 +225,16 @@ test('rejects structured tool result content', () => {
   );
 });
 
-test('reads the response schema from forwardedProps.hashbrown', () => {
-  const { hashbrown, ...standard } = createInput();
-  const input = { ...standard, forwardedProps: { hashbrown } };
+test('ignores a top-level hashbrown key', () => {
+  const { forwardedProps, ...standard } = createInput();
+  const legacy = {
+    ...standard,
+    forwardedProps: {},
+    hashbrown: forwardedProps.hashbrown,
+  };
+  const bare = { ...standard, forwardedProps: {} };
 
-  const result = createBedrockRequestOptions(input, 'bedrock-model');
+  const result = createBedrockRequestOptions(legacy, 'bedrock-model');
 
-  expect(result).toEqual(
-    createBedrockRequestOptions(createInput(), 'bedrock-model'),
-  );
+  expect(result).toEqual(createBedrockRequestOptions(bare, 'bedrock-model'));
 });

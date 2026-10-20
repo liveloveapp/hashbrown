@@ -149,14 +149,16 @@ test('streams real Bedrock native structured output as canonical AG-UI text', as
     'bedrock-runtime-structured-output',
     'Return the object required by the response schema.',
   );
-  value.hashbrown = {
-    responseSchema: {
-      type: 'object',
-      properties: {
-        status: { type: 'string', enum: ['runtime-ok'] },
+  value.forwardedProps = {
+    hashbrown: {
+      responseSchema: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['runtime-ok'] },
+        },
+        required: ['status'],
+        additionalProperties: false,
       },
-      required: ['status'],
-      additionalProperties: false,
     },
   };
 

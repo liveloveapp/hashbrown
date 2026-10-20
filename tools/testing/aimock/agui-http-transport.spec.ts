@@ -452,14 +452,16 @@ test('createHttpTransport posts Hashbrown run input and collects text events ove
     ],
     context: [{ description: 'workspace', value: 'hashbrown' }],
     state: { locale: 'en-US' },
-    forwardedProps: { traceId: 'trace-text' },
-    hashbrown: {
-      responseSchema: {
-        type: 'object',
-        properties: { answer: { type: 'string' } },
-        required: ['answer'],
+    forwardedProps: {
+      traceId: 'trace-text',
+      hashbrown: {
+        responseSchema: {
+          type: 'object',
+          properties: { answer: { type: 'string' } },
+          required: ['answer'],
+        },
+        ui: true,
       },
-      ui: true,
     },
   };
   const expectedEvents: AGUIEvent[] = [
@@ -741,9 +743,7 @@ test('createChatRuntime resolves chunked structured output and sends the respons
     });
     expect(observedContent).toContainEqual({ count: 2, answer: 'det' });
     expect(capturedInputs).toHaveLength(1);
-    expect(capturedInputs[0]?.hashbrown).toEqual({
-      responseSchema: s.toJsonSchema(responseSchema),
-    });
+    expect(capturedInputs[0]).not.toHaveProperty('hashbrown');
     expect(capturedInputs[0]).not.toHaveProperty('responseSchema');
     expect(capturedInputs[0]).not.toHaveProperty('params');
     expect(capturedInputs[0]?.forwardedProps).toEqual({
@@ -835,7 +835,8 @@ test('createChatRuntime resolves validated generative UI state and marks the req
     });
     expect(() => responseSchema.validate(assistant?.content)).not.toThrow();
     expect(capturedInputs).toHaveLength(1);
-    expect(capturedInputs[0]?.hashbrown).toEqual({
+    expect(capturedInputs[0]).not.toHaveProperty('hashbrown');
+    expect(capturedInputs[0]?.forwardedProps?.hashbrown).toEqual({
       responseSchema: s.toJsonSchema(responseSchema),
       ui: true,
     });

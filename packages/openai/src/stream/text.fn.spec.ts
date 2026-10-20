@@ -156,16 +156,18 @@ test('isolates frozen schemas from a mutating transform and omits reasoning', as
           },
         },
       ],
-      hashbrown: {
-        responseSchema: {
-          type: 'object',
-          properties: {
-            answer: {
-              type: 'string',
-              description: 'Original response field.',
+      forwardedProps: {
+        hashbrown: {
+          responseSchema: {
+            type: 'object',
+            properties: {
+              answer: {
+                type: 'string',
+                description: 'Original response field.',
+              },
             },
+            required: ['answer'],
           },
-          required: ['answer'],
         },
       },
     }),
@@ -229,8 +231,8 @@ test('isolates frozen schemas from a mutating transform and omits reasoning', as
   expect(input.tools[0]?.parameters).toEqual(
     inputSnapshot.tools[0]?.parameters,
   );
-  expect(input.hashbrown?.responseSchema).toEqual(
-    inputSnapshot.hashbrown?.responseSchema,
+  expect(input.forwardedProps?.hashbrown?.responseSchema).toEqual(
+    inputSnapshot.forwardedProps?.hashbrown?.responseSchema,
   );
   expect(provider.create).toHaveBeenCalledTimes(1);
   expect(provider.abort).toHaveBeenCalledTimes(1);
@@ -437,4 +439,26 @@ test('reads the response schema from forwardedProps.hashbrown', async () => {
     type: 'json_schema',
     json_schema: expect.objectContaining({ schema: responseSchema }),
   });
+});
+
+test('ignores a top-level hashbrown key', async () => {
+  mockProvider();
+  const input = {
+    ...createInput(),
+    hashbrown: { responseSchema: { type: 'object' } },
+  };
+  let capturedOptions:
+    OpenAI.Chat.ChatCompletionCreateParamsStreaming | undefined;
+
+  await collectEvents(
+    createOptions({
+      input,
+      transformRequestOptions: (options) => {
+        capturedOptions = options;
+        return options;
+      },
+    }),
+  );
+
+  expect(capturedOptions?.response_format).toBeUndefined();
 });

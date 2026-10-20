@@ -3,9 +3,11 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { createAnthropicRequestOptions } from './anthropic-request';
 
 type TestRunAgentInput = RunAgentInput & {
-  hashbrown?: {
-    responseSchema?: object;
-    ui?: boolean;
+  forwardedProps?: {
+    hashbrown?: {
+      responseSchema?: object;
+      ui?: boolean;
+    };
   };
 };
 
@@ -465,7 +467,7 @@ test('maps Hashbrown response metadata to native JSON schema output without chan
         parameters: { type: 'object', properties: {} },
       },
     ],
-    hashbrown: { responseSchema, ui: true },
+    forwardedProps: { hashbrown: { responseSchema, ui: true } },
   });
 
   const result = createAnthropicRequestOptions(input, 'claude-test');
@@ -487,7 +489,7 @@ test('isolates the native response schema from result and source mutations', () 
     properties: { answer: { type: 'string' } },
   };
   const input = createInput({
-    hashbrown: { responseSchema, ui: true },
+    forwardedProps: { hashbrown: { responseSchema, ui: true } },
   });
 
   const result = createAnthropicRequestOptions(input, 'claude-test');
@@ -542,7 +544,7 @@ test('does not mutate the input, messages, tool calls, schemas, or metadata', ()
         parameters: schema,
       },
     ],
-    hashbrown: { responseSchema, ui: true },
+    forwardedProps: { hashbrown: { responseSchema, ui: true } },
   });
   const snapshot = structuredClone(input);
 
@@ -550,7 +552,7 @@ test('does not mutate the input, messages, tool calls, schemas, or metadata', ()
 
   expect(input).toEqual(snapshot);
   expect(input.tools[0]?.parameters).toBe(schema);
-  expect(input.hashbrown?.responseSchema).toBe(responseSchema);
+  expect(input.forwardedProps?.hashbrown?.responseSchema).toBe(responseSchema);
   expect(result.messages).not.toBe(input.messages);
   expect(result.messages[0]).not.toBe(input.messages[1]);
   expect(result.tools).not.toBe(input.tools);
@@ -603,4 +605,15 @@ test('reads the response schema from forwardedProps.hashbrown', () => {
   expect(result.output_config).toEqual({
     format: { type: 'json_schema', schema: responseSchema },
   });
+});
+
+test('ignores a top-level hashbrown key', () => {
+  const input = {
+    ...createInput(),
+    hashbrown: { responseSchema: { type: 'object' }, ui: true },
+  };
+
+  const result = createAnthropicRequestOptions(input, 'claude-test');
+
+  expect(result.output_config).toBeUndefined();
 });

@@ -167,14 +167,16 @@ test('OpenAI emits complete AG-UI tool call lifecycles', async () => {
 
 test('OpenAI maps the Hashbrown response schema to native structured output', async () => {
   const input = baseInput('return structured output');
-  input.hashbrown = {
-    responseSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string' },
-        ok: { type: 'boolean' },
+  input.forwardedProps = {
+    hashbrown: {
+      responseSchema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string' },
+          ok: { type: 'boolean' },
+        },
+        required: ['text', 'ok'],
       },
-      required: ['text', 'ok'],
     },
   };
   let capturedResponseFormat: unknown;
@@ -200,7 +202,7 @@ test('OpenAI maps the Hashbrown response schema to native structured output', as
       strict: true,
       name: 'schema',
       description: '',
-      schema: input.hashbrown.responseSchema,
+      schema: input.forwardedProps?.hashbrown?.responseSchema,
     },
   });
   expect(JSON.parse(streamedContent(events))).toEqual({

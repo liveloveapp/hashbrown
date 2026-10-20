@@ -2,7 +2,7 @@ import type { RunAgentInput } from '@ag-ui/core';
 import { createAzureRequestOptions } from './azure-request';
 
 function createInput(): RunAgentInput & {
-  hashbrown: { responseSchema: object };
+  forwardedProps: { hashbrown: { responseSchema: object } };
 } {
   return {
     threadId: 'thread-azure',
@@ -61,12 +61,13 @@ function createInput(): RunAgentInput & {
     ],
     context: [],
     state: {},
-    forwardedProps: {},
-    hashbrown: {
-      responseSchema: {
-        type: 'object',
-        properties: { answer: { type: 'string' } },
-        required: ['answer'],
+    forwardedProps: {
+      hashbrown: {
+        responseSchema: {
+          type: 'object',
+          properties: { answer: { type: 'string' } },
+          required: ['answer'],
+        },
       },
     },
   };
@@ -150,11 +151,16 @@ test('rejects structured tool result content', () => {
   );
 });
 
-test('reads the response schema from forwardedProps.hashbrown', () => {
-  const { hashbrown, ...standard } = createInput();
-  const input = { ...standard, forwardedProps: { hashbrown } };
+test('ignores a top-level hashbrown key', () => {
+  const { forwardedProps, ...standard } = createInput();
+  const legacy = {
+    ...standard,
+    forwardedProps: {},
+    hashbrown: forwardedProps.hashbrown,
+  };
+  const bare = { ...standard, forwardedProps: {} };
 
-  const result = createAzureRequestOptions(input, 'gpt-4.1');
+  const result = createAzureRequestOptions(legacy, 'gpt-4.1');
 
-  expect(result).toEqual(createAzureRequestOptions(createInput(), 'gpt-4.1'));
+  expect(result).toEqual(createAzureRequestOptions(bare, 'gpt-4.1'));
 });

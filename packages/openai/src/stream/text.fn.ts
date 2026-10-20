@@ -27,11 +27,6 @@ export interface OpenAIHashbrownRunAgentInput extends RunAgentInput {
       ui?: boolean;
     };
   } & Record<string, unknown>;
-  /** @deprecated Read `forwardedProps.hashbrown`; removed after one release. */
-  hashbrown?: {
-    responseSchema?: object;
-    ui?: boolean;
-  };
 }
 
 /**
@@ -252,7 +247,7 @@ export async function* text(
             }))
           : undefined,
       response_format: createResponseFormat(
-        (input.forwardedProps?.hashbrown ?? input.hashbrown)?.responseSchema,
+        input.forwardedProps?.hashbrown?.responseSchema,
       ),
     };
     const requestOptions = transformRequestOptions

@@ -108,7 +108,8 @@ export const PINNED_RESPONSE_SCHEMA = createUiJsonSchema({
 const PINNED_RESPONSE_SCHEMA_JSON = JSON.stringify(PINNED_RESPONSE_SCHEMA);
 
 export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
-  const { hashbrown } = input as OpenAIHashbrownRunAgentInput;
+  const { forwardedProps } = input as OpenAIHashbrownRunAgentInput;
+  const hashbrown = forwardedProps?.hashbrown;
   if (hashbrown?.responseSchema === undefined) {
     return input;
   }
@@ -122,14 +123,17 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
 
   return {
     ...input,
-    hashbrown: { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA },
+    forwardedProps: {
+      ...forwardedProps,
+      hashbrown: { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA },
+    },
   } as OpenAIHashbrownRunAgentInput;
 }
 ```
 
 </hb-code-example>
 
-The schema is pinned when the browser sends one. A request that leaves out `hashbrown.responseSchema` reaches the model with no schema and gets free-form text back, still under the pinned prompt, the pinned tools, the output cap and the rate limit.
+The schema is pinned when the browser sends one. A request that leaves out `forwardedProps.hashbrown.responseSchema` reaches the model with no schema and gets free-form text back, still under the pinned prompt, the pinned tools, the output cap and the rate limit.
 
 ### Share the definitions
 

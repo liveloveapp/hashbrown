@@ -21,11 +21,6 @@ export interface AzureHashbrownRunAgentInput extends RunAgentInput {
       ui?: boolean;
     };
   } & Record<string, unknown>;
-  /** @deprecated Read `forwardedProps.hashbrown`; removed after one release. */
-  hashbrown?: {
-    responseSchema?: object;
-    ui?: boolean;
-  };
 }
 
 /**

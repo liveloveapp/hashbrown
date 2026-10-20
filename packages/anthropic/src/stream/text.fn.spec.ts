@@ -374,8 +374,8 @@ test('maps a native structured-output provider rejection to exactly one RUN_ERRO
   const create = jest.fn().mockRejectedValue(new Error('Provider unavailable'));
   MockedAnthropic.mockImplementation(() => ({ messages: { create } }));
   const input = createInput({
-    hashbrown: {
-      responseSchema: { type: 'object', properties: {} },
+    forwardedProps: {
+      hashbrown: { responseSchema: { type: 'object', properties: {} } },
     },
   });
 

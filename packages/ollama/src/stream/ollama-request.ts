@@ -176,8 +176,7 @@ export function createOllamaRequestOptions(
     return mapped ? [mapped] : [];
   });
   const tools = input.tools.map(mapTool);
-  const responseSchema = (input.forwardedProps?.hashbrown ?? input.hashbrown)
-    ?.responseSchema;
+  const responseSchema = input.forwardedProps?.hashbrown?.responseSchema;
 
   return {
     stream: true,
