@@ -199,3 +199,15 @@ test('createUiChatDecision notifies subscribers of state changes', async () => {
 
   expect(statuses).toEqual(['loading', 'success']);
 });
+
+test('createUiChatDecision fail exposes an error from after the decision', () => {
+  const decision = createUiChatDecision();
+  const failure = new Error('send refused');
+
+  decision.fail(failure);
+
+  expect(decision.getState()).toMatchObject({
+    status: 'error',
+    error: failure,
+  });
+});

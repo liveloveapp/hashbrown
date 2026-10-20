@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventType } from '@ag-ui/core';
-import { type Provider, signal } from '@angular/core';
+import {
+  Injector,
+  type Provider,
+  runInInjectionContext,
+  signal,
+} from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   createSelectionSchema,
@@ -364,10 +369,14 @@ const chatComponents = [
 ];
 const allNames = ['Flight', 'Table', 'Row', 'Note', 'Airport'];
 
-type ChatTurn = 'answer' | 'error' | 'hold';
+type ChatTurn = 'answer' | 'error' | 'hold' | 'interrupt' | 'gated-interrupt';
 
 function chatTransport(turns: ChatTurn[] = []) {
   const requests: TransportRequest[] = [];
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   const send = vi.fn(async (request: TransportRequest) => {
     const turn = turns[requests.length] ?? 'answer';
     requests.push(request);
@@ -381,6 +390,20 @@ function chatTransport(turns: ChatTurn[] = []) {
         yield { type: EventType.RUN_STARTED, ...identity };
         if (turn === 'hold') {
           await new Promise(() => undefined);
+        }
+        if (turn === 'gated-interrupt') {
+          await gate;
+        }
+        if (turn === 'interrupt' || turn === 'gated-interrupt') {
+          yield {
+            type: EventType.RUN_FINISHED,
+            ...identity,
+            outcome: {
+              type: 'interrupt' as const,
+              interrupts: [{ id: 'approve', reason: 'approval' }],
+            },
+          };
+          return;
         }
         if (turn === 'error') {
           yield { type: EventType.RUN_ERROR, message: 'model failed' };
@@ -401,7 +424,7 @@ function chatTransport(turns: ChatTurn[] = []) {
       })(),
     };
   });
-  return { requests, send };
+  return { requests, send, release: () => release() };
 }
 
 function offered(request: TransportRequest | undefined): string[] {
@@ -645,4 +668,132 @@ test('uiDecisionResource chat mode sends system to the decision while the chat k
   expect(systemMessages.map((message) => message.content)).toEqual([
     'You are the chat.',
   ]);
+});
+
+test('uiDecisionResource chat mode throws at once while the chat has a pending interrupt', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const chat = chatTransport(['interrupt']);
+  configureChat(fake.transport, chat);
+  const { chat: uiChat, narrowing } = narrowedChat({});
+  narrowing.sendMessage('show SFO');
+  await settle();
+  expect(uiChat.pendingInterrupts()).toBeDefined();
+
+  expect(() => narrowing.sendMessage('again')).toThrow(/interrupt/i);
+  expect(fake.calls).toHaveLength(1);
+  expect(uiChat.components()).toBe(chatComponents);
+});
+
+test('uiDecisionResource chat mode restores the components and sets decisionError when the send throws', async () => {
+  const deferred = deferredTransport();
+  const chat = chatTransport(['gated-interrupt']);
+  configureChat(deferred.transport, chat);
+  const { chat: uiChat, narrowing } = narrowedChat({});
+  narrowing.sendMessage('first');
+  await settle();
+  deferred.resolve(pickResponse('Airport', 0.9, allNames));
+  await settle();
+  narrowing.sendMessage('second');
+  await settle();
+
+  chat.release();
+  await settle();
+  deferred.resolve(pickResponse('Note', 0.9, allNames));
+  await settle();
+
+  expect(uiChat.pendingInterrupts()).toBeDefined();
+  expect(narrowing.decisionError()?.message).toMatch(/interrupt/i);
+  expect(uiChat.components()).toBe(chatComponents);
+  expect(chat.requests).toHaveLength(1);
+});
+
+test('uiDecisionResource chat mode restores the components when the chat never starts the turn', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  configureChat(fake.transport, chatTransport());
+  const components = signal<any[]>(chatComponents);
+  const sent = vi.fn();
+  const fakeChat = {
+    components: components.asReadonly(),
+    isLoading: signal(false).asReadonly(),
+    setComponents: (next: any[]) => components.set(next),
+    sendMessage: sent,
+  };
+  const narrowing = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({ chat: fakeChat, select: 'one' }),
+  );
+
+  narrowing.sendMessage('show SFO');
+  await settle();
+
+  expect(sent).toHaveBeenCalledTimes(1);
+  expect(components()).toBe(chatComponents);
+});
+
+test('uiDecisionResource chat mode restores the components when it is destroyed mid-turn', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const chat = chatTransport(['hold']);
+  configureChat(fake.transport, chat);
+  const uiChat = TestBed.runInInjectionContext(() =>
+    uiChatResource({
+      system: 'You are the chat.',
+      components: chatComponents,
+      debounce: 0,
+    }),
+  );
+  const child = Injector.create({
+    providers: [],
+    parent: TestBed.inject(Injector),
+  });
+  const narrowing = runInInjectionContext(child, () =>
+    uiDecisionResource({ chat: uiChat, select: 'one' }),
+  );
+  narrowing.sendMessage('show SFO');
+  await settle();
+  expect(uiChat.components()).not.toBe(chatComponents);
+
+  child.destroy();
+
+  expect(uiChat.components()).toBe(chatComponents);
+});
+
+test('uiDecisionResource chat mode leaves components the app changed mid-turn', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const chat = chatTransport(['hold']);
+  configureChat(fake.transport, chat);
+  const { chat: uiChat, narrowing } = narrowedChat({});
+  narrowing.sendMessage('show SFO');
+  await settle();
+  const appComponents = [note];
+  uiChat.setComponents(appComponents);
+
+  uiChat.stop();
+  await settle();
+
+  expect(uiChat.components()).toBe(appComponents);
+});
+
+test('uiDecisionResource chat mode decision.stop() still sends, with every component', async () => {
+  const deferred = deferredTransport();
+  const chat = chatTransport();
+  configureChat(deferred.transport, chat);
+  const { narrowing } = narrowedChat({});
+  narrowing.sendMessage('show SFO');
+  await settle();
+  expect(narrowing.isDeciding()).toBe(true);
+
+  narrowing.decision.stop();
+  await settle();
+
+  expect(chat.requests).toHaveLength(1);
+  expect(offered(chat.requests[0])).toEqual(allNames);
+  expect(narrowing.decisionError()).toBeUndefined();
+  expect(narrowing.isDeciding()).toBe(false);
 });

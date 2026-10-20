@@ -6,6 +6,7 @@ import {
   type DecidableSchema,
   type Decision,
   s,
+  ɵassertRuntimeMessageSchedulingAllowed,
   ɵcreateUiChatDecision,
   ɵresolveSelection,
 } from '@hashbrownai/core';
@@ -175,8 +176,8 @@ export interface UseUiDecisionChatDecision {
   /** The last decision failure; the same as `decisionError`. */
   error: Error | undefined;
   /**
-   * Aborts the pending decision. Its message is then sent with every
-   * component.
+   * Aborts the pending decision. It does not cancel the send: the message
+   * is still sent, with every component.
    */
   stop: () => void;
 }
@@ -191,9 +192,15 @@ export interface UseUiDecisionChatResult {
   /**
    * Decides about `content`, sets the chat's components to the chosen ones
    * (plus their declared children), then sends `content` to the chat. When
-   * that turn finishes, errors or stops, the chat's components are set back
-   * to the full list. Calling it again while a decision is pending aborts
-   * that decision, so only the latest message is sent.
+   * that turn finishes, errors or stops, or the chat never starts it, the
+   * chat's components are set back to the full list. Calling it again while
+   * a decision is pending aborts that decision, so only the latest message
+   * is sent.
+   *
+   * Throws at once, like the chat's own `sendMessage`, when the chat cannot
+   * take a message (for example while an interrupt batch is pending). When
+   * the chat refuses the message after the decision, the components are
+   * restored and the error is exposed as `decisionError`.
    */
   sendMessage: (content: string) => void;
   /** The underlying selection decision. */
@@ -259,11 +266,17 @@ export function useUiDecision(
  *
  * When the narrowed turn finishes, errors or is stopped, the chat's
  * components are set back to the full list, so a follow-up sent directly
- * with `chat.sendMessage` sees every component.
+ * with `chat.sendMessage` sees every component. The same happens when the
+ * chat never starts the turn, and when the hook unmounts while the chat is
+ * narrowed. If the app replaced the chat's components in the meantime, they
+ * are left as the app set them.
  *
  * Calling `sendMessage` while a decision is pending aborts that decision,
  * so only the latest message is sent. While the chat is still generating,
- * the send behaves like the chat's own `sendMessage`.
+ * the send behaves like the chat's own `sendMessage`. `sendMessage` throws
+ * at once when the chat cannot take a message (for example while an
+ * interrupt batch is pending); a send the chat refuses after the decision
+ * restores the components and sets `decisionError`.
  *
  * There are two prompts: `system` is context for the decision model only,
  * and the chat keeps its own `system`. To pin the questions on a server,
@@ -379,12 +392,32 @@ function useCandidates(
 interface PendingSend {
   content: string;
   components: UiKitInput<ExposedComponent<any>>[];
-  original: UiKitInput<ExposedComponent<any>>[];
 }
 
-/** A narrowed turn whose end restores the chat's components. */
-interface Turn {
+/** The chat's components while the hook has narrowed them. */
+interface Narrowing {
   original: UiKitInput<ExposedComponent<any>>[];
+  narrowed: UiKitInput<ExposedComponent<any>>[];
+}
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+/**
+ * Throws the error the chat's own `sendMessage` would throw right now (for
+ * example while an interrupt batch is pending), when the chat is backed by
+ * a Hashbrown runtime.
+ */
+function assertChatCanSend(chat: UiDecisionChat): void {
+  const resume = (chat as { resume?: unknown }).resume;
+  if (typeof resume === 'function') {
+    ɵassertRuntimeMessageSchedulingAllowed(
+      chat as unknown as Parameters<
+        typeof ɵassertRuntimeMessageSchedulingAllowed
+      >[0],
+    );
+  }
 }
 
 function useChatNarrowing(
@@ -402,36 +435,59 @@ function useChatNarrowing(
     controller.getState,
   );
 
-  // The latest options, read when a decision settles.
+  // The latest options, read when a decision settles and on unmount.
   const latest = useRef({ options, transport: config.decisionTransport });
   useLayoutEffect(() => {
     latest.current = { options, transport: config.decisionTransport };
   });
 
-  // Drops a pending decision on unmount. The controller stays usable, so
-  // StrictMode's remount keeps working.
-  useEffect(() => () => controller.dispose(), [controller]);
-
   const [pending, setPending] = useState<PendingSend | null>(null);
   const sent = useRef<PendingSend | null>(null);
-  const turn = useRef<Turn | null>(null);
-  // The full component list while the chat is narrowed for a turn.
-  const original = useRef<UiKitInput<ExposedComponent<any>>[] | null>(null);
+  const narrowing = useRef<Narrowing | null>(null);
+  // The sent turn, and whether the chat was seen loading it.
+  const turn = useRef<{ started: boolean } | null>(null);
+  // Bumped after a send, so the next commit checks whether the turn started.
+  const [sends, setSends] = useState(0);
 
   const chat = options?.chat ?? null;
   const chatComponents = chat?.components;
   const chatIsLoading = chat?.isLoading ?? false;
 
+  // Sets the chat back to every component, unless the app has replaced the
+  // narrowed list in the meantime.
+  const restore = useCallback((target: UiDecisionChat | null | undefined) => {
+    const current = narrowing.current;
+    narrowing.current = null;
+    turn.current = null;
+    if (!target || !current || current.narrowed === current.original) return;
+    if (target.components !== current.narrowed) return;
+    target.setComponents(current.original);
+  }, []);
+
+  // Drops a pending decision and restores a narrowed chat on unmount. The
+  // controller stays usable, so StrictMode's remount keeps working.
+  useEffect(
+    () => () => {
+      controller.dispose();
+      restore(latest.current.options?.chat);
+    },
+    [controller, restore],
+  );
+
   // Runs before the send below, so a turn ending in the same commit is
-  // restored before the next one starts.
+  // restored before the next one starts. A turn ends when the chat stops
+  // loading after it started, or at the first commit after the send when
+  // the chat never started it (it refused the message).
   useEffect(() => {
     const current = turn.current;
-    if (!chat || !current || chatIsLoading) return;
-    turn.current = null;
-    original.current = null;
-    chat.setComponents(current.original);
+    if (!chat || !current) return;
+    if (chatIsLoading) {
+      current.started = true;
+      return;
+    }
+    restore(chat);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatIsLoading]);
+  }, [chatIsLoading, sends]);
 
   // `setComponents` only applies on the next render, so the message is sent
   // once the chat offers the decided components. The chat updates what its
@@ -440,15 +496,25 @@ function useChatNarrowing(
     if (!chat || !pending || sent.current === pending) return;
     if (chatComponents !== pending.components) return;
     sent.current = pending;
-    turn.current = { original: pending.original };
-    chat.sendMessage({ role: 'user', content: pending.content });
-  }, [chat, chatComponents, pending]);
+    try {
+      chat.sendMessage({ role: 'user', content: pending.content });
+    } catch (error) {
+      // The chat refused the message (for example an interrupt arrived
+      // while deciding): offer every component again and report it.
+      restore(chat);
+      controller.fail(toError(error));
+      return;
+    }
+    turn.current = { started: false };
+    setSends((count) => count + 1);
+  }, [chat, chatComponents, controller, pending, restore]);
 
   const sendMessage = useCallback(
     (content: string) => {
       const current = latest.current.options;
       if (!current) return;
-      const full = original.current ?? current.chat.components;
+      assertChatCanSend(current.chat);
+      const full = narrowing.current?.original ?? current.chat.components;
       void controller
         .decide(content, full, {
           select: current.select,
@@ -462,9 +528,9 @@ function useChatNarrowing(
           if (outcome.kind === 'superseded' || !now) return;
           const components =
             outcome.kind === 'narrowed' ? outcome.components : full;
-          original.current = full;
+          narrowing.current = { original: full, narrowed: components };
           now.chat.setComponents(components);
-          setPending({ content, components, original: full });
+          setPending({ content, components });
         });
     },
     [controller],

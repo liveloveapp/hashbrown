@@ -194,14 +194,20 @@ The resource's `system` is context for the decision. It is sent with each messag
 Decide when sure, offer everything otherwise. The message is sent with all of the chat's components when:
 
 - confidence is below `minConfidence`;
-- the decision fails, or `decision.stop()` aborts it;
+- the decision fails, or `decision.stop()` aborts it (stopping never cancels the send);
 - the components break the selection limits above (no decision is asked).
 
 Failures are exposed as `decisionError()`. A `DecisionSchemaError` there means the components could not be decided over. `isDeciding()` is true while a decision is in flight.
 
 ### Restoring after the turn
 
-When the narrowed turn finishes, errors or is stopped, the resource sets the chat's components back to the full list. A follow-up sent directly with `chat.sendMessage` sees every component, and earlier answers keep rendering, because a UI chat renders with every component it has offered.
+When the narrowed turn finishes, errors or is stopped, the resource sets the chat's components back to the full list. The same happens when the chat never starts the turn, and when the resource's injection context is destroyed while the chat is narrowed. A follow-up sent directly with `chat.sendMessage` sees every component. If your app replaces the chat's components during the turn, the resource leaves your list in place.
+
+A UI chat keeps every component it has ever offered, one per name, and the newest definition of a name replaces older ones. Earlier answers render with that set, so they keep rendering after a narrowed turn or a `setComponents` call. New responses are parsed against it too, so a provider that does not enforce the response schema strictly can still render a component that is no longer offered.
+
+### Errors
+
+`sendMessage` throws at once, as the chat's own `sendMessage` would, when the chat cannot take a message, for example while an interrupt batch is pending. If the chat refuses the message after the decision, the resource restores every component and exposes the error as `decisionError()`.
 
 ### Concurrency
 

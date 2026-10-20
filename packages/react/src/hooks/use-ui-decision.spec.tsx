@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventType } from '@ag-ui/core';
 import { act, render, renderHook, waitFor } from '@testing-library/react';
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import {
+  type Chat,
   createSelectionSchema,
   type Decision,
   DecisionSchemaError,
@@ -312,10 +313,14 @@ const chatComponents = [
 ];
 const allNames = ['Flight', 'Table', 'Row', 'Note', 'Airport'];
 
-type ChatTurn = 'answer' | 'error' | 'hold';
+type ChatTurn = 'answer' | 'error' | 'hold' | 'interrupt' | 'gated-interrupt';
 
 function chatTransport(turns: ChatTurn[] = []) {
   const requests: TransportRequest[] = [];
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   const send = vi.fn(async (request: TransportRequest) => {
     const turn = turns[requests.length] ?? 'answer';
     requests.push(request);
@@ -329,6 +334,20 @@ function chatTransport(turns: ChatTurn[] = []) {
         yield { type: EventType.RUN_STARTED, ...identity };
         if (turn === 'hold') {
           await new Promise(() => undefined);
+        }
+        if (turn === 'gated-interrupt') {
+          await gate;
+        }
+        if (turn === 'interrupt' || turn === 'gated-interrupt') {
+          yield {
+            type: EventType.RUN_FINISHED,
+            ...identity,
+            outcome: {
+              type: 'interrupt' as const,
+              interrupts: [{ id: 'approve', reason: 'approval' }],
+            },
+          };
+          return;
         }
         if (turn === 'error') {
           yield { type: EventType.RUN_ERROR, message: 'model failed' };
@@ -349,7 +368,7 @@ function chatTransport(turns: ChatTurn[] = []) {
       })(),
     };
   });
-  return { requests, send };
+  return { requests, send, release: () => release() };
 }
 
 function offered(request: TransportRequest | undefined): string[] {
@@ -642,4 +661,173 @@ test('useUiDecision chat mode narrows a chat created in a parent component', asy
   await waitFor(() => expect(chat.requests).toHaveLength(1));
 
   expect(offered(chat.requests[0])).toEqual(['Airport']);
+});
+
+test('useUiDecision chat mode throws at once while the chat has a pending interrupt', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const chat = chatTransport(['interrupt']);
+  const { result } = renderHook(() => useNarrowedChat({}), {
+    wrapper: chatWrapper(fake.transport, chat),
+  });
+  act(() => result.current.narrowing.sendMessage('show SFO'));
+  await waitFor(() =>
+    expect(result.current.chat.pendingInterrupts).toBeDefined(),
+  );
+  await waitFor(() =>
+    expect(result.current.chat.components).toBe(chatComponents),
+  );
+
+  expect(() => result.current.narrowing.sendMessage('again')).toThrow(
+    /interrupt/i,
+  );
+  expect(fake.calls).toHaveLength(1);
+  expect(result.current.chat.components).toBe(chatComponents);
+});
+
+test('useUiDecision chat mode restores the components and sets decisionError when the send throws', async () => {
+  const deferred = deferredTransport();
+  const chat = chatTransport(['gated-interrupt']);
+  const { result } = renderHook(() => useNarrowedChat({}), {
+    wrapper: chatWrapper(deferred.transport, chat),
+  });
+  act(() => result.current.narrowing.sendMessage('first'));
+  await waitFor(() => expect(deferred.calls).toHaveLength(1));
+  await act(async () => {
+    deferred.resolve(pickResponse('Airport', 0.9, allNames));
+  });
+  await waitFor(() => expect(chat.requests).toHaveLength(1));
+  act(() => result.current.narrowing.sendMessage('second'));
+  await waitFor(() => expect(deferred.calls).toHaveLength(2));
+
+  await act(async () => {
+    chat.release();
+  });
+  await waitFor(() =>
+    expect(result.current.chat.pendingInterrupts).toBeDefined(),
+  );
+  await act(async () => {
+    deferred.resolve(pickResponse('Note', 0.9, allNames));
+  });
+
+  await waitFor(() =>
+    expect(result.current.narrowing.decisionError?.message).toMatch(
+      /interrupt/i,
+    ),
+  );
+  expect(result.current.chat.components).toBe(chatComponents);
+  expect(chat.requests).toHaveLength(1);
+});
+
+function useFakeChat(onSend: (message: Chat.UserMessage) => void) {
+  const [components, setComponents] = useState<any[]>(chatComponents);
+  return {
+    components,
+    setComponents,
+    isLoading: false,
+    sendMessage: onSend,
+  } satisfies UiDecisionChat;
+}
+
+test('useUiDecision chat mode restores the components when the chat never starts the turn', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const sent = vi.fn();
+  const narrowedLists: unknown[] = [];
+  const { result } = renderHook(
+    () => {
+      const chat = useFakeChat(sent);
+      narrowedLists.push(chat.components);
+      const narrowing = useUiDecision({ chat, select: 'one' });
+      return { chat, narrowing };
+    },
+    { wrapper: wrapperFor(fake.transport) },
+  );
+
+  act(() => result.current.narrowing.sendMessage('show SFO'));
+  await waitFor(() => expect(sent).toHaveBeenCalledTimes(1));
+
+  await waitFor(() =>
+    expect(result.current.chat.components).toBe(chatComponents),
+  );
+  expect(narrowedLists).toContainEqual([airport]);
+});
+
+test('useUiDecision chat mode restores the components when it unmounts mid-turn', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const chat = chatTransport(['hold']);
+  let send: (content: string) => void = () => undefined;
+  let uiChat: UiDecisionChat | undefined;
+  let hideChild: () => void = () => undefined;
+  function Child({ chat: current }: { chat: UiDecisionChat }) {
+    send = useUiDecision({ chat: current, select: 'one' }).sendMessage;
+    return null;
+  }
+  function Parent() {
+    const [show, setShow] = useState(true);
+    hideChild = () => setShow(false);
+    uiChat = useUiChat({
+      system: 'You are the chat.',
+      components: chatComponents,
+      debounceTime: 0,
+    });
+    return show ? <Child chat={uiChat} /> : null;
+  }
+  const Wrapper = chatWrapper(fake.transport, chat);
+  render(
+    <Wrapper>
+      <Parent />
+    </Wrapper>,
+  );
+  act(() => send('show SFO'));
+  await waitFor(() => expect(chat.requests).toHaveLength(1));
+  expect(uiChat?.components).not.toBe(chatComponents);
+
+  act(() => hideChild());
+
+  await waitFor(() => expect(uiChat?.components).toBe(chatComponents));
+});
+
+test('useUiDecision chat mode leaves components the app changed mid-turn', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, allNames),
+  );
+  const chat = chatTransport(['hold']);
+  const { result } = renderHook(() => useNarrowedChat({}), {
+    wrapper: chatWrapper(fake.transport, chat),
+  });
+  act(() => result.current.narrowing.sendMessage('show SFO'));
+  await waitFor(() => expect(chat.requests).toHaveLength(1));
+  await waitFor(() => expect(result.current.chat.isLoading).toBe(true));
+  const appComponents = [note];
+  act(() => result.current.chat.setComponents(appComponents));
+
+  act(() => result.current.chat.stop());
+  await waitFor(() => expect(result.current.chat.isLoading).toBe(false));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+
+  expect(result.current.chat.components).toBe(appComponents);
+});
+
+test('useUiDecision chat mode decision.stop() still sends, with every component', async () => {
+  const deferred = deferredTransport();
+  const chat = chatTransport();
+  const { result } = renderHook(() => useNarrowedChat({}), {
+    wrapper: chatWrapper(deferred.transport, chat),
+  });
+  act(() => result.current.narrowing.sendMessage('show SFO'));
+  await waitFor(() => expect(result.current.narrowing.isDeciding).toBe(true));
+
+  act(() => result.current.narrowing.decision.stop());
+  await waitFor(() => expect(chat.requests).toHaveLength(1));
+
+  expect(offered(chat.requests[0])).toEqual(allNames);
+  expect(result.current.narrowing.decisionError).toBeUndefined();
+  expect(result.current.narrowing.isDeciding).toBe(false);
 });

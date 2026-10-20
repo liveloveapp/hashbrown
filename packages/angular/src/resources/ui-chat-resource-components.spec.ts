@@ -141,3 +141,32 @@ test('uiChatResource keeps rendering earlier answers after setComponents narrows
     expect.arrayContaining(['Flight', 'Airport']),
   );
 });
+
+test('uiChatResource renders a component redefined under the same name with the new implementation', () => {
+  class CardV1 {}
+  class CardV2 {}
+  configure(vi.fn());
+  const chat = TestBed.runInInjectionContext(() =>
+    uiChatResource({
+      system: 'Answer.',
+      components: [{ component: CardV1, name: 'Card', description: 'A card' }],
+      messages: [
+        { role: 'user', content: 'hi' },
+        {
+          role: 'assistant',
+          content: { ui: [{ Card: { props: {} } }] },
+          toolCalls: [],
+        } as any,
+      ],
+    }),
+  );
+
+  chat.setComponents([
+    { component: CardV2, name: 'Card', description: 'A card' },
+  ]);
+  const message = chat
+    .value()
+    .find((entry) => entry.role === 'assistant') as any;
+
+  expect(message[TAG_NAME_REGISTRY]['Card'].component).toBe(CardV2);
+});

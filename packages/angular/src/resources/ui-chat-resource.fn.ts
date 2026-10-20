@@ -15,6 +15,7 @@ import {
   type ResumeOptions,
   s,
   type TransportOrFactory,
+  ɵmergeOfferedComponents,
   ɵsetRequestResponseSchema,
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
@@ -131,9 +132,14 @@ export interface UiChatResourceRef<
 
   /**
    * Replace the components offered to the model. The change applies to the
-   * next request, including a message sent right after. Messages keep
-   * rendering with every component the chat has offered, so earlier answers
-   * still render after the list narrows.
+   * next request, including a message sent right after.
+   *
+   * The chat keeps every component it has ever offered, one per name, with
+   * the newest definition of a name replacing older ones. Messages render
+   * with that set, so earlier answers still render after the list narrows,
+   * and new responses are parsed against it too: a provider that does not
+   * enforce the response schema strictly can still render a component that
+   * was removed.
    *
    * @param components - The components to offer.
    */
@@ -192,27 +198,39 @@ export function uiChatResource<Tools extends Chat.AnyTool, State = unknown>(
   args: UiChatResourceOptions<Tools, State>,
 ): UiChatResourceRef<Tools, State> {
   const components = signal(args.components);
-  // Every component the chat has offered, newest first. Responses and
-  // history are parsed and rendered with these, so an earlier answer keeps
-  // rendering after `setComponents` removes its component.
+  // Every component the chat has offered, one per name, the newest
+  // definition winning. Responses and history are parsed and rendered with
+  // these, so an earlier answer keeps rendering after `setComponents` removes
+  // its component.
   const offered = linkedSignal<
     UiKitInput<ExposedComponent<any>>[],
-    UiKitInput<ExposedComponent<any>>[]
+    ExposedComponent<any>[]
   >({
     source: components,
-    computation: (next, previous) => {
-      if (!previous) return next;
-      const added = next.filter((entry) => !previous.value.includes(entry));
-      return added.length > 0 ? [...added, ...previous.value] : previous.value;
-    },
+    computation: (next, previous) =>
+      ɵmergeOfferedComponents<ExposedComponent<any>>(
+        next,
+        previous?.value ?? [],
+      ),
   });
-  const sameSchema = (
+  // Same schema and implementations: keep the kit, so the chat's schema and
+  // the message registry don't churn.
+  const sameKit = (
     a: UiKit<ExposedComponent<any>>,
     b: UiKit<ExposedComponent<any>>,
-  ) => a.serializedSchema === b.serializedSchema;
+  ) =>
+    a.serializedSchema === b.serializedSchema &&
+    Array.from(a.registry.values()).every((entry) => {
+      const other = b.registry.get(entry.name);
+      return (
+        other !== undefined &&
+        other.component === entry.component &&
+        other.fallback === entry.fallback
+      );
+    });
   const uiKit = computed(
     () => createUiKit<ExposedComponent<any>>({ components: offered() }),
-    { equal: sameSchema },
+    { equal: sameKit },
   );
   const schema = computed(() => uiKit().schema);
 

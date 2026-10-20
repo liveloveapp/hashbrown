@@ -78,6 +78,11 @@ export interface UiChatDecision {
   stop(): void;
   /** Aborts the pending decision, which then settles as superseded. */
   dispose(): void;
+  /**
+   * Records a failure that happened after the decision settled, such as the
+   * chat refusing the send, as the state's `error`.
+   */
+  fail(error: Error): void;
 }
 
 interface Pending {
@@ -220,6 +225,9 @@ export function createUiChatDecision(): UiChatDecision {
       if (!pending) return;
       abortPending({ kind: 'superseded' });
       setState(settled());
+    },
+    fail(error) {
+      setState({ ...state, status: 'error', error });
     },
   };
 }

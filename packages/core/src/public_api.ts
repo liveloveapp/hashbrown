@@ -47,6 +47,7 @@ export type {
   UiKitOptions as ɵUiKitOptions,
 } from './ui/ui-kit';
 export { createUiKit as ɵcreateUiKit, isUiKit as ɵisUiKit } from './ui/ui-kit';
+export { mergeOfferedComponents as ɵmergeOfferedComponents } from './ui/offered-components';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { sanitizeUrl as ɵsanitizeUrl } from './utils/sanitize-url';
 export {

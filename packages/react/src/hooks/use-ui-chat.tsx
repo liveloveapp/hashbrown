@@ -5,6 +5,7 @@ import {
   type ComponentNode,
   type TransportOrFactory,
   type UiWrapper,
+  ɵmergeOfferedComponents,
   ɵsetRequestResponseSchema,
 } from '@hashbrownai/core';
 import {
@@ -98,9 +99,14 @@ export interface UiChatResult<
    */
   readonly components: UiKitInput<ExposedComponent<any>>[];
   /**
-   * Replace the components offered to the model. Messages keep rendering
-   * with every component the chat has offered, so earlier answers still
-   * render after the list narrows.
+   * Replace the components offered to the model on the next request.
+   *
+   * The chat keeps every component it has ever offered, one per name, with
+   * the newest definition of a name replacing older ones. Messages render
+   * with that set, so earlier answers still render after the list narrows,
+   * and new responses are parsed against it too: a provider that does not
+   * enforce the response schema strictly can still render a component that
+   * was removed.
    */
   setComponents: Dispatch<SetStateAction<UiKitInput<ExposedComponent<any>>[]>>;
   /** The most recent assistant response, including its rendered UI. */
@@ -203,16 +209,32 @@ export const useUiChat = <Tools extends Chat.AnyTool, State = unknown>(
 ): UiChatResult<Tools, State> => {
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
-  // Every component the chat has offered, newest first. Responses and
-  // history are parsed and rendered with these, so an earlier answer keeps
-  // rendering after `setComponents` removes its component.
-  const [offered, setOffered] = useState(initialComponents);
-  const added = components.filter((entry) => !offered.includes(entry));
-  if (added.length > 0) {
-    setOffered([...added, ...offered]);
+  // Every component the chat has offered, one per name, the newest
+  // definition winning. Responses and history are parsed and rendered with
+  // these, so an earlier answer keeps rendering after `setComponents` removes
+  // its component.
+  const [offered, setOffered] = useState(() => ({
+    source: initialComponents,
+    components: ɵmergeOfferedComponents<ExposedComponent<any>>(
+      initialComponents,
+      [],
+    ),
+  }));
+  const current =
+    offered.source === components
+      ? offered
+      : {
+          source: components,
+          components: ɵmergeOfferedComponents<ExposedComponent<any>>(
+            components,
+            offered.components,
+          ),
+        };
+  if (current !== offered) {
+    setOffered(current);
   }
   const uiKit = useUiKit<ExposedComponent<any>>({
-    components: added.length > 0 ? [...added, ...offered] : offered,
+    components: current.components,
   });
   const requestKit = useUiKit<ExposedComponent<any>>({ components });
   const ui = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);

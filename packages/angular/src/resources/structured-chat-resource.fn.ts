@@ -255,13 +255,17 @@ export function structuredChatResource<
       ? readReactiveOption(options.threadId)
       : undefined;
   // A schema with the same JSON Schema is not reapplied. Sends sync it first,
-  // so a schema set right before a send is the one the request uses.
+  // so a schema set right before a send is the one the request uses. The
+  // last schema object is remembered, so an unchanged schema is never
+  // serialized again (`uiChatResource` keeps the kit's schema object while
+  // its serialized schema is unchanged).
   const schemaKeyOf = (schema: Schema) =>
     JSON.stringify(s.toJsonSchema(s.normalizeSchemaOutput(schema)));
-  let appliedSchemaKey = schemaKeyOf(
-    untracked(() => readReactiveOption(options.schema)),
-  );
+  let appliedSchema = untracked(() => readReactiveOption(options.schema));
+  let appliedSchemaKey = schemaKeyOf(appliedSchema);
   function syncSchema(schema: Schema) {
+    if (schema === appliedSchema) return;
+    appliedSchema = schema;
     const key = schemaKeyOf(schema);
     if (key === appliedSchemaKey) return;
     appliedSchemaKey = key;

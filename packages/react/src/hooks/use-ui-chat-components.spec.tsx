@@ -130,3 +130,35 @@ test('useUiChat keeps rendering earlier answers after setComponents narrows the 
     Airport,
   ]);
 });
+
+test('useUiChat renders a component redefined under the same name with the new implementation', async () => {
+  const CardV1 = () => null;
+  const CardV2 = () => null;
+  const card = exposeComponent(CardV1, {
+    name: 'Card',
+    description: 'A card',
+    props: { title: s.string('Title') },
+  });
+  const cardV2 = exposeComponent(CardV2, {
+    name: 'Card',
+    description: 'A card',
+    props: { title: s.string('Title') },
+  });
+  const send = vi.fn(async (request: TransportRequest) =>
+    answer(request, 'answer-1', [{ Card: { props: { title: 'Hi' } } }]),
+  );
+  const { result } = renderHook(
+    () => useUiChat({ system: 'Answer.', components: [card], debounceTime: 0 }),
+    { wrapper: wrapperFor(send) },
+  );
+
+  act(() => result.current.setComponents([cardV2]));
+  act(() => result.current.sendMessage({ role: 'user', content: 'hi' }));
+  await waitFor(() => expect(result.current.messages).toHaveLength(2));
+  await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+  const answers = result.current.messages.filter(
+    (message) => message.role === 'assistant',
+  );
+  expect(answers[0]?.ui?.[0]?.type).toBe(CardV2);
+});
