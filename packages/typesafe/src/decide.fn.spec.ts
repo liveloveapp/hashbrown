@@ -1,4 +1,4 @@
-import { DecisionSchemaError, s } from '@hashbrownai/core';
+import { DecisionSchemaError, decodeDecision, s } from '@hashbrownai/core';
 import type { Decision } from '@hashbrownai/core';
 import { HashbrownTypeSafe } from './decide.fn';
 import { DecisionError } from './decision-error';
@@ -107,6 +107,30 @@ test('with schema, ignores client questions and compiles its own', async () => {
   const body = JSON.parse(calls[0].init.body as string);
   expect(Object.keys(body.questions)).toEqual(['urgent']);
   expect(result.value).toEqual({ urgent: true });
+});
+
+test('with schema, accepts a state-only request that decodeDecision types', async () => {
+  const { fn, calls } = fakeFetch(
+    jsonResponse({
+      answers: { urgent: { type: 'noul', noul: 0.9 } },
+    }),
+  );
+  const schema = s.object('d', { urgent: s.boolean('Is it urgent?') });
+
+  const response = await HashbrownTypeSafe.decide({
+    apiKey: 'k',
+    model: 'jev-1.14.0',
+    schema,
+    request: { state: { ticket: 'Payouts failing' } },
+    fetch: fn,
+  });
+  const result = decodeDecision(schema, response);
+
+  const body = JSON.parse(calls[0].init.body as string);
+  expect(Object.keys(body.questions)).toEqual(['urgent']);
+  const urgent: boolean = result.value.urgent;
+  expect(urgent).toBe(true);
+  expect(result.meta.urgent.probability).toBe(0.9);
 });
 
 test('without schema, rejects malformed requests and never calls fetch', async () => {

@@ -5,6 +5,7 @@ import type {
   TransportResponse,
 } from './transport';
 import { TransportError } from './transport-error';
+import { AgentRunError } from './agent-run-error';
 import { createCanonicalRunAgentInput } from './hashbrown-run-agent-input';
 import { runAgUiAttempt } from './ag-ui-run-driver';
 
@@ -148,6 +149,46 @@ test('returns a named server error without converting RUN_ERROR to a protocol fa
     error: { message: 'server rejected the run' },
   });
   expect(onEvent).toHaveBeenLastCalledWith(runError);
+});
+
+test('keeps the RUN_ERROR code on the server error', async () => {
+  const request = createRequest();
+  const runError: AGUIEvent = {
+    type: EventType.RUN_ERROR,
+    message: 'decision model unavailable',
+    code: 'hashbrown.decision.upstream',
+  };
+  const transport = createTransport(async () => ({
+    events: createEvents([createStarted(request), runError]),
+  }));
+
+  const outcome = await runAttempt({ transport, request });
+
+  expect(outcome.kind).toBe('server-error');
+  const error = outcome.kind === 'server-error' ? outcome.error : undefined;
+  expect(error).toBeInstanceOf(AgentRunError);
+  expect(error).toMatchObject({
+    name: 'AgentRunError',
+    message: 'decision model unavailable',
+    code: 'hashbrown.decision.upstream',
+  });
+});
+
+test('leaves the code undefined when RUN_ERROR has none', async () => {
+  const request = createRequest();
+  const runError: AGUIEvent = {
+    type: EventType.RUN_ERROR,
+    message: 'server rejected the run',
+  };
+  const transport = createTransport(async () => ({
+    events: createEvents([createStarted(request), runError]),
+  }));
+
+  const outcome = await runAttempt({ transport, request });
+
+  const error = outcome.kind === 'server-error' ? outcome.error : undefined;
+  expect(error).toBeInstanceOf(AgentRunError);
+  expect((error as AgentRunError).code).toBeUndefined();
 });
 
 test.each([

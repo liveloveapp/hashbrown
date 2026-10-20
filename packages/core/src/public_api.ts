@@ -52,7 +52,6 @@ export {
   compileDecision as ɵcompileDecision,
   type CompileDecisionOptions as ɵCompileDecisionOptions,
 } from './decision/compile-decision';
-export { decodeDecision as ɵdecodeDecision } from './decision/decode-decision';
 export { resolveSelection as ɵresolveSelection } from './decision/ui-selection';
 export {
   createComponentSelection as ɵcreateComponentSelection,

@@ -10,6 +10,7 @@ import {
   validateRunFinishedOutcome,
 } from './interrupt-validation';
 import { TransportError } from './transport-error';
+import { AgentRunError } from './agent-run-error';
 
 /**
  * Result of executing one AG-UI transport attempt.
@@ -294,7 +295,10 @@ async function consumeResponse({
 
       if (event.type === EventType.RUN_ERROR) {
         await invokeCallback(() => onEvent(event));
-        return { kind: 'server-error', error: new Error(event.message) };
+        return {
+          kind: 'server-error',
+          error: new AgentRunError(event.message, { code: event.code }),
+        };
       }
 
       await invokeCallback(() => onEvent(event));

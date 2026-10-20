@@ -1,6 +1,7 @@
 import { s } from '../schema';
 import { decodeDecision } from './decode-decision';
 import { DecisionResponseError } from './errors';
+import * as publicApi from '../public_api';
 
 const schema = s.object('Decision', {
   intent: s.enumeration('Intent', ['filter', 'chat']),
@@ -118,4 +119,13 @@ test('rejects extra meta ids', () => {
   const error = catchError(() => decodeDecision(schema, { ...response, meta }));
 
   expect(error).toBeInstanceOf(DecisionResponseError);
+});
+
+test('decodeDecision is public and the ɵ alias is gone', () => {
+  const api = publicApi as Record<string, unknown>;
+
+  const result = publicApi.decodeDecision(schema, validResponse());
+
+  expect(result.value.intent).toBe('filter');
+  expect(api['ɵdecodeDecision']).toBeUndefined();
 });
