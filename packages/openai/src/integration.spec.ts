@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import {
   runProviderAGUIWithAimock,
@@ -7,6 +7,7 @@ import {
 } from '@hashbrownai/testing/aimock';
 import OpenAI from 'openai';
 import { HashbrownOpenAI } from './index';
+import { historyFromEvents } from './testing/history-from-events';
 import type { OpenAIHashbrownRunAgentInput } from './stream/types';
 
 const OPENAI_MODEL = 'gpt-4.1-mini';
@@ -53,75 +54,6 @@ async function runFixture(
         signal,
       }),
   });
-}
-
-/**
- * Builds the second run's AG-UI history from the first run's captured events
- * plus a tool result, the way a client would after the first run.
- */
-function historyFromEvents(
-  first: OpenAIHashbrownRunAgentInput,
-  events: AGUIEvent[],
-): Message[] {
-  const reasoningStart = events.find(
-    (event) => event.type === EventType.REASONING_MESSAGE_START,
-  );
-  const encrypted = events.find(
-    (event) => event.type === EventType.REASONING_ENCRYPTED_VALUE,
-  );
-  const textStart = events.find(
-    (event) => event.type === EventType.TEXT_MESSAGE_START,
-  );
-  const toolStart = events.find(
-    (event) => event.type === EventType.TOOL_CALL_START,
-  );
-  const toolArgs = events
-    .filter((event) => event.type === EventType.TOOL_CALL_ARGS)
-    .map((event) => event.delta)
-    .join('');
-  if (
-    reasoningStart?.type !== EventType.REASONING_MESSAGE_START ||
-    encrypted?.type !== EventType.REASONING_ENCRYPTED_VALUE ||
-    toolStart?.type !== EventType.TOOL_CALL_START
-  ) {
-    throw new Error('Expected reasoning and a tool call in the first run.');
-  }
-
-  return [
-    ...first.messages,
-    {
-      id: reasoningStart.messageId,
-      role: 'reasoning',
-      content: events
-        .filter((event) => event.type === EventType.REASONING_MESSAGE_CONTENT)
-        .map((event) => event.delta)
-        .join(''),
-      encryptedValue: encrypted.encryptedValue,
-      metadata: reasoningStart.metadata,
-    },
-    {
-      id: `${first.runId}:assistant`,
-      role: 'assistant',
-      toolCalls: [
-        {
-          id: toolStart.toolCallId,
-          type: 'function',
-          function: { name: toolStart.toolCallName, arguments: toolArgs },
-          metadata: toolStart.metadata,
-        },
-      ],
-      metadata:
-        textStart?.type === EventType.TEXT_MESSAGE_START
-          ? textStart.metadata
-          : undefined,
-    },
-    {
-      id: 'tool-openai',
-      role: 'tool',
-      toolCallId: toolStart.toolCallId,
-      content: 'fixture continuation result',
-    },
-  ];
 }
 
 function contentEvents(events: AGUIEvent[]) {
@@ -404,7 +336,12 @@ test('OpenAI replays reasoning across a tool round trip', async () => {
         signal,
       }),
   });
-  const history = historyFromEvents(first, firstEvents);
+  const history = historyFromEvents(
+    first.messages,
+    first.runId,
+    firstEvents,
+    () => 'fixture continuation result',
+  );
   const second: OpenAIHashbrownRunAgentInput = {
     ...first,
     runId: 'run-openai-2',
