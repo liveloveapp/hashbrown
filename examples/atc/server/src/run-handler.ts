@@ -194,7 +194,10 @@ const PINNED_RESPONSE_SCHEMA_JSON = JSON.stringify(PINNED_RESPONSE_SCHEMA);
  * it is untrusted and can be large.
  */
 export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
-  const { hashbrown } = input as OpenAIHashbrownRunAgentInput;
+  const { forwardedProps } = input as OpenAIHashbrownRunAgentInput;
+  const hashbrown =
+    forwardedProps?.hashbrown ??
+    (input as OpenAIHashbrownRunAgentInput).hashbrown;
   if (hashbrown?.responseSchema === undefined) {
     return input;
   }
@@ -206,9 +209,12 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
     );
   }
 
+  const pinned = { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA };
+
   return {
     ...input,
-    hashbrown: { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA },
+    forwardedProps: { ...forwardedProps, hashbrown: pinned },
+    hashbrown: pinned,
   } as OpenAIHashbrownRunAgentInput;
 }
 

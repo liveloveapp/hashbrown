@@ -31,6 +31,19 @@ export interface TransportMetadata {
 export interface TransportRequest {
   /** AG-UI run input whose thread and run IDs define the response identity. */
   input: RunAgentInput & {
+    /**
+     * AG-UI's pass-through extension point. Hashbrown's generation semantics
+     * travel in `forwardedProps.hashbrown`.
+     */
+    forwardedProps?: {
+      hashbrown?: {
+        /** JSON Schema for native structured output. */
+        responseSchema?: object;
+        /** Whether the run is expected to produce generative UI output. */
+        ui?: boolean;
+      };
+    } & Record<string, unknown>;
+    /** @deprecated Read `forwardedProps.hashbrown`; removed after one release. */
     hashbrown?: {
       responseSchema?: object;
       ui?: boolean;

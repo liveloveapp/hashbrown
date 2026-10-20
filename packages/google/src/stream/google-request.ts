@@ -205,7 +205,8 @@ export function createGoogleRequestOptions(
     return mapped ? [mapped] : [];
   });
   const functionDeclarations = input.tools.map(mapTool);
-  const responseSchema = input.hashbrown?.responseSchema;
+  const responseSchema = (input.forwardedProps?.hashbrown ?? input.hashbrown)
+    ?.responseSchema;
   const config: GenerateContentConfig = {
     ...(signal === undefined ? {} : { abortSignal: signal }),
     ...(systemParts.length === 0

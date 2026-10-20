@@ -149,3 +149,12 @@ test('rejects structured tool result content', () => {
     'Azure OpenAI provider currently requires text tool result content',
   );
 });
+
+test('reads the response schema from forwardedProps.hashbrown', () => {
+  const { hashbrown, ...standard } = createInput();
+  const input = { ...standard, forwardedProps: { hashbrown } };
+
+  const result = createAzureRequestOptions(input, 'gpt-4.1');
+
+  expect(result).toEqual(createAzureRequestOptions(createInput(), 'gpt-4.1'));
+});

@@ -1,7 +1,10 @@
 import type { Message, Tool } from '@ag-ui/core';
 import { RunAgentInputSchema } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
-import { createCanonicalRunAgentInput } from './hashbrown-run-agent-input';
+import {
+  createCanonicalRunAgentInput,
+  readHashbrownExtension,
+} from './hashbrown-run-agent-input';
 
 const threadId = 'thread-1';
 const runId = 'run-1';
@@ -294,4 +297,32 @@ test('AG-UI 1.0 accepts the top-level hashbrown extension key as sent', () => {
     responseSchema: { type: 'string' },
     ui: true,
   });
+});
+
+test('carries the Hashbrown extension in forwardedProps and, for older servers, at the top level', () => {
+  const responseSchema = { type: 'object' };
+
+  const standard = createInput();
+  const structured = createInput({ responseSchema, ui: true });
+
+  expect(standard.forwardedProps).toEqual({});
+  expect(standard).not.toHaveProperty('hashbrown');
+  expect(structured.forwardedProps).toEqual({
+    hashbrown: { responseSchema, ui: true },
+  });
+  expect(structured.hashbrown).toEqual({ responseSchema, ui: true });
+});
+
+test('reads the extension from forwardedProps before the deprecated top-level key', () => {
+  const base = createInput();
+  const fromForwarded = {
+    ...base,
+    forwardedProps: { hashbrown: { ui: true } },
+    hashbrown: { ui: false },
+  };
+  const fromLegacy = { ...base, forwardedProps: {}, hashbrown: { ui: false } };
+
+  const results = [base, fromForwarded, fromLegacy].map(readHashbrownExtension);
+
+  expect(results).toEqual([undefined, { ui: true }, { ui: false }]);
 });

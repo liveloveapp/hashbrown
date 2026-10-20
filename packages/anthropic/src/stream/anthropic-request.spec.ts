@@ -588,3 +588,19 @@ test('rejects structured tool result content', () => {
     'Anthropic provider currently requires text tool result content',
   );
 });
+
+test('reads the response schema from forwardedProps.hashbrown', () => {
+  const responseSchema = {
+    type: 'object',
+    properties: { answer: { type: 'string' } },
+  };
+  const input = createInput({
+    forwardedProps: { hashbrown: { responseSchema } },
+  });
+
+  const result = createAnthropicRequestOptions(input, 'claude-test');
+
+  expect(result.output_config).toEqual({
+    format: { type: 'json_schema', schema: responseSchema },
+  });
+});

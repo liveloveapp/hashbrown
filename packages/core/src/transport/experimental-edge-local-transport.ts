@@ -1,3 +1,4 @@
+import { readHashbrownExtension } from './hashbrown-run-agent-input';
 import {
   type DetectionResult,
   type Transport,
@@ -497,7 +498,7 @@ function defaultTransformRequest(request: TransportRequest): PromptRequest {
   }
 
   const options: PromptOptions = {};
-  const responseSchema = input.hashbrown?.responseSchema;
+  const responseSchema = readHashbrownExtension(input)?.responseSchema;
   if (responseSchema) {
     if (!isSupportedResponseConstraint(responseSchema)) {
       throw new TransportError(

@@ -231,3 +231,14 @@ test('rejects structured tool result content', () => {
     'Ollama provider currently requires text tool result content',
   );
 });
+
+test('reads the response schema from forwardedProps.hashbrown', () => {
+  const { hashbrown, ...standard } = createInput();
+  const input = { ...standard, forwardedProps: { hashbrown } };
+
+  const result = createOllamaRequestOptions(input, 'gpt-oss:20b');
+
+  expect(result).toEqual(
+    createOllamaRequestOptions(createInput(), 'gpt-oss:20b'),
+  );
+});

@@ -164,3 +164,22 @@ test('rejects structured tool result content', () => {
     'Google provider currently requires text tool result content',
   );
 });
+
+test('reads the response schema from forwardedProps.hashbrown', () => {
+  const { hashbrown, ...standard } = createInput();
+  const input = { ...standard, forwardedProps: { hashbrown } };
+
+  const result = createGoogleRequestOptions(
+    input,
+    'gemini-3-flash',
+    new AbortController().signal,
+  );
+
+  expect(result).toEqual(
+    createGoogleRequestOptions(
+      createInput(),
+      'gemini-3-flash',
+      new AbortController().signal,
+    ),
+  );
+});
