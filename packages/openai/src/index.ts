@@ -1,10 +1,12 @@
 import type { AGUIEvent } from '@ag-ui/core';
-import { type OpenAITextStreamOptions, text } from './stream/text.fn';
+import { text } from './stream/text.fn';
+import type { OpenAITextStreamOptions } from './stream/types';
 
+export type { OpenAIReasoningOption } from './stream/reasoning';
 export type {
   OpenAIHashbrownRunAgentInput,
   OpenAITextStreamOptions,
-} from './stream/text.fn';
+} from './stream/types';
 
 /**
  * Hashbrown adapter for OpenAI.

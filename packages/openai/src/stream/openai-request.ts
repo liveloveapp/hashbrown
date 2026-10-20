@@ -1,7 +1,7 @@
 import type OpenAI from 'openai';
 import { mapInput } from './openai-input';
 import { type OpenAIReasoningOption, resolveReasoning } from './reasoning';
-import type { OpenAIHashbrownRunAgentInput } from './text.fn';
+import type { OpenAIHashbrownRunAgentInput } from './types';
 
 /**
  * Builds the stateless, streaming Responses API request for an AG-UI run.

@@ -289,7 +289,8 @@ function mapEvent(
  * The mapper does not emit `RUN_STARTED`, `RUN_FINISHED` or `RUN_ERROR`; it
  * throws on `response.failed`, `error` and `response.incomplete` so the
  * caller can emit `RUN_ERROR`. All text goes into one assistant message,
- * which stays open across tool calls and ends at `response.completed`.
+ * which stays open across tool calls and ends at `response.completed`. A
+ * stream that ends without `response.completed` also throws.
  *
  * @param options - Responses stream and AG-UI message identity.
  * @returns AG-UI events for the provider response.
@@ -300,11 +301,14 @@ export async function* mapOpenAIEvents(
   options: MapOpenAIEventsOptions,
 ): AsyncIterable<AGUIEvent> {
   let state = initialState;
+  let completed = false;
 
   for await (const event of options.events) {
     if (options.signal?.aborted) {
       return;
     }
+
+    completed = completed || event.type === 'response.completed';
 
     const step = mapEvent(state, options.messageId, event);
     state = step.state;
@@ -320,7 +324,7 @@ export async function* mapOpenAIEvents(
     return;
   }
 
-  for (const output of endText(state, options.messageId).events) {
-    yield output;
+  if (!completed) {
+    throw new Error('OpenAI stream ended before response.completed');
   }
 }

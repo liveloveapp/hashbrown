@@ -1,4 +1,4 @@
-import type { OpenAIHashbrownRunAgentInput } from './text.fn';
+import type { OpenAIHashbrownRunAgentInput } from './types';
 import { mapInput } from './openai-input';
 import { createOpenAIRequestOptions } from './openai-request';
 

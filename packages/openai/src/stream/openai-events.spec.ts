@@ -485,3 +485,13 @@ test('stops yielding once aborted', async () => {
     { type: EventType.TEXT_MESSAGE_CONTENT, messageId, delta: 'One.' },
   ]);
 });
+
+test('throws when the stream ends before response.completed', async () => {
+  const input = [messageAdded('msg_1'), textDelta('msg_1', 'Cut off.')];
+
+  const result = collectEvents(input);
+
+  await expect(result).rejects.toThrow(
+    'OpenAI stream ended before response.completed',
+  );
+});

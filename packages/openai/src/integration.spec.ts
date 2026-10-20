@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import {
   runProviderAGUIWithAimock,
@@ -7,7 +7,7 @@ import {
 } from '@hashbrownai/testing/aimock';
 import OpenAI from 'openai';
 import { HashbrownOpenAI } from './index';
-import type { OpenAIHashbrownRunAgentInput } from './stream/text.fn';
+import type { OpenAIHashbrownRunAgentInput } from './stream/types';
 
 const OPENAI_MODEL = 'gpt-4.1-mini';
 
@@ -55,6 +55,75 @@ async function runFixture(
   });
 }
 
+/**
+ * Builds the second run's AG-UI history from the first run's captured events
+ * plus a tool result, the way a client would after the first run.
+ */
+function historyFromEvents(
+  first: OpenAIHashbrownRunAgentInput,
+  events: AGUIEvent[],
+): Message[] {
+  const reasoningStart = events.find(
+    (event) => event.type === EventType.REASONING_MESSAGE_START,
+  );
+  const encrypted = events.find(
+    (event) => event.type === EventType.REASONING_ENCRYPTED_VALUE,
+  );
+  const textStart = events.find(
+    (event) => event.type === EventType.TEXT_MESSAGE_START,
+  );
+  const toolStart = events.find(
+    (event) => event.type === EventType.TOOL_CALL_START,
+  );
+  const toolArgs = events
+    .filter((event) => event.type === EventType.TOOL_CALL_ARGS)
+    .map((event) => event.delta)
+    .join('');
+  if (
+    reasoningStart?.type !== EventType.REASONING_MESSAGE_START ||
+    encrypted?.type !== EventType.REASONING_ENCRYPTED_VALUE ||
+    toolStart?.type !== EventType.TOOL_CALL_START
+  ) {
+    throw new Error('Expected reasoning and a tool call in the first run.');
+  }
+
+  return [
+    ...first.messages,
+    {
+      id: reasoningStart.messageId,
+      role: 'reasoning',
+      content: events
+        .filter((event) => event.type === EventType.REASONING_MESSAGE_CONTENT)
+        .map((event) => event.delta)
+        .join(''),
+      encryptedValue: encrypted.encryptedValue,
+      metadata: reasoningStart.metadata,
+    },
+    {
+      id: `${first.runId}:assistant`,
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: toolStart.toolCallId,
+          type: 'function',
+          function: { name: toolStart.toolCallName, arguments: toolArgs },
+          metadata: toolStart.metadata,
+        },
+      ],
+      metadata:
+        textStart?.type === EventType.TEXT_MESSAGE_START
+          ? textStart.metadata
+          : undefined,
+    },
+    {
+      id: 'tool-openai',
+      role: 'tool',
+      toolCallId: toolStart.toolCallId,
+      content: 'fixture continuation result',
+    },
+  ];
+}
+
 function contentEvents(events: AGUIEvent[]) {
   return events.filter(
     (event) => event.type === EventType.TEXT_MESSAGE_CONTENT,
@@ -80,6 +149,9 @@ test('OpenAI consumes AG-UI input and emits a canonical text run', async () => {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'run-openai:assistant',
       role: 'assistant',
+      metadata: {
+        openai: { itemId: expect.any(String), reasoningItemIds: [] },
+      },
     },
     {
       type: EventType.TEXT_MESSAGE_CONTENT,
@@ -179,7 +251,7 @@ test('OpenAI maps the Hashbrown response schema to native structured output', as
       },
     },
   };
-  let capturedResponseFormat: unknown;
+  let capturedTextFormat: unknown;
   const events = await runProviderAGUIWithAimock({
     fixturePath: fixturePath('structured-output.json'),
     createStream: (aimock, signal) =>
@@ -190,20 +262,17 @@ test('OpenAI maps the Hashbrown response schema to native structured output', as
         input,
         signal,
         transformRequestOptions: (options) => {
-          capturedResponseFormat = options.response_format;
+          capturedTextFormat = options.text?.format;
           return options;
         },
       }),
   });
 
-  expect(capturedResponseFormat).toEqual({
+  expect(capturedTextFormat).toEqual({
     type: 'json_schema',
-    json_schema: {
-      strict: true,
-      name: 'schema',
-      description: '',
-      schema: input.forwardedProps?.hashbrown?.responseSchema,
-    },
+    name: 'schema',
+    schema: input.forwardedProps?.hashbrown?.responseSchema,
+    strict: true,
   });
   expect(JSON.parse(streamedContent(events))).toEqual({
     text: 'Hello from structured aimock.',
@@ -246,7 +315,7 @@ test('OpenAI maps complete AG-UI history without provider-specific wire keys', a
     },
     input.messages[1],
   ];
-  let capturedMessages: OpenAI.ChatCompletionMessageParam[] | undefined;
+  let capturedInput: OpenAI.Responses.ResponseCreateParamsStreaming['input'];
 
   await Array.fromAsync(
     HashbrownOpenAI.stream.text({
@@ -254,37 +323,167 @@ test('OpenAI maps complete AG-UI history without provider-specific wire keys', a
       model: OPENAI_MODEL,
       input,
       transformRequestOptions: (options) => {
-        capturedMessages = options.messages;
+        capturedInput = options.input;
         throw new Error('stop after capture');
       },
     }),
     (event) => EventSchemas.parse(event),
   );
 
-  expect(capturedMessages).toEqual([
-    {
-      role: 'system',
-      content: 'You are a deterministic test assistant.',
-    },
+  expect(capturedInput).toEqual([
+    { role: 'system', content: 'You are a deterministic test assistant.' },
     { role: 'user', content: 'previous question' },
     {
-      role: 'assistant',
-      content: null,
-      tool_calls: [
-        {
-          id: 'call-previous',
-          type: 'function',
-          function: { name: 'lookup', arguments: '{"query":"previous"}' },
-        },
-      ],
+      type: 'function_call',
+      call_id: 'call-previous',
+      name: 'lookup',
+      arguments: '{"query":"previous"}',
     },
     {
-      role: 'tool',
-      tool_call_id: 'call-previous',
-      content: '{"answer":"previous result"}',
+      type: 'function_call_output',
+      call_id: 'call-previous',
+      output: '{"answer":"previous result"}',
     },
     { role: 'user', content: 'new question' },
   ]);
+});
+
+const LOOKUP_TOOL = {
+  name: 'lookup',
+  description: 'Lookup deterministic fixture data.',
+  parameters: {
+    type: 'object',
+    properties: { query: { type: 'string' } },
+    required: ['query'],
+  },
+};
+
+test('OpenAI streams reasoning summaries and encrypted reasoning from a reasoning model', async () => {
+  const events = await runProviderAGUIWithAimock({
+    fixturePath: fixturePath('openai/reasoning.json'),
+    createStream: (aimock, signal) =>
+      HashbrownOpenAI.stream.text({
+        apiKey: 'test-not-used',
+        baseURL: aimock.openAiBaseUrl,
+        model: 'gpt-5-mini',
+        input: baseInput('reason before answering'),
+        signal,
+      }),
+  });
+
+  const types = events.map((event) => event.type);
+  expect(types.slice(0, 6)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.REASONING_MESSAGE_START,
+    EventType.REASONING_MESSAGE_CONTENT,
+    EventType.REASONING_ENCRYPTED_VALUE,
+    EventType.REASONING_MESSAGE_END,
+    EventType.TEXT_MESSAGE_START,
+  ]);
+  expect(
+    events
+      .filter((event) => event.type === EventType.REASONING_MESSAGE_CONTENT)
+      .map((event) => event.delta)
+      .join(''),
+  ).toBe('I will answer deterministically.');
+  expect(streamedContent(events)).toBe('Reasoned answer from aimock.');
+  expect(events.at(-1)?.type).toBe(EventType.RUN_FINISHED);
+});
+
+test('OpenAI replays reasoning across a tool round trip', async () => {
+  const first = baseInput('reason before calling lookup');
+  first.tools = [LOOKUP_TOOL];
+  const firstEvents = await runProviderAGUIWithAimock({
+    fixturePath: fixturePath('openai/reasoning-tool-call.json'),
+    createStream: (aimock, signal) =>
+      HashbrownOpenAI.stream.text({
+        apiKey: 'test-not-used',
+        baseURL: aimock.openAiBaseUrl,
+        model: 'gpt-5-mini',
+        input: first,
+        signal,
+      }),
+  });
+  const history = historyFromEvents(first, firstEvents);
+  const second: OpenAIHashbrownRunAgentInput = {
+    ...first,
+    runId: 'run-openai-2',
+    messages: history,
+  };
+  let capturedInput: OpenAI.Responses.ResponseCreateParamsStreaming['input'];
+
+  const secondEvents = await runProviderAGUIWithAimock({
+    fixturePath: fixturePath('openai/reasoning-tool-call.json'),
+    createStream: (aimock, signal) =>
+      HashbrownOpenAI.stream.text({
+        apiKey: 'test-not-used',
+        baseURL: aimock.openAiBaseUrl,
+        model: 'gpt-5-mini',
+        input: second,
+        signal,
+        transformRequestOptions: (options) => {
+          capturedInput = options.input;
+          return options;
+        },
+      }),
+  });
+
+  expect(history.map((message) => message.role)).toEqual([
+    'system',
+    'user',
+    'reasoning',
+    'assistant',
+    'tool',
+  ]);
+  expect(Array.isArray(capturedInput) ? capturedInput : []).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        type: 'reasoning',
+        encrypted_content: expect.any(String),
+      }),
+      expect.objectContaining({ type: 'function_call', name: 'lookup' }),
+      expect.objectContaining({ type: 'function_call_output' }),
+    ]),
+  );
+  expect(streamedContent(secondEvents)).toBe('Continued answer from aimock.');
+  expect(secondEvents.at(-1)?.type).toBe(EventType.RUN_FINISHED);
+});
+
+test('transformRequestOptions receives Responses params', async () => {
+  const fetchSpy = jest.spyOn(globalThis, 'fetch');
+  let received: OpenAI.Responses.ResponseCreateParamsStreaming | undefined;
+
+  try {
+    const events = await runProviderAGUIWithAimock({
+      fixturePath: fixturePath('text.json'),
+      createStream: (aimock, signal) =>
+        HashbrownOpenAI.stream.text({
+          apiKey: 'test-not-used',
+          baseURL: aimock.openAiBaseUrl,
+          model: OPENAI_MODEL,
+          input: baseInput('say hi briefly'),
+          signal,
+          transformRequestOptions: (options) => {
+            received = options;
+            return { ...options, max_output_tokens: 321 };
+          },
+        }),
+    });
+    const wireBodies = fetchSpy.mock.calls
+      .filter(([url]) => String(url).endsWith('/v1/responses'))
+      .map(([, init]) => JSON.parse(String(init?.body)));
+
+    expect(received).toMatchObject({ store: false, stream: true });
+    expect(Array.isArray(received?.input)).toBe(true);
+    expect(wireBodies).toHaveLength(1);
+    expect(wireBodies[0]).toMatchObject({
+      max_output_tokens: 321,
+      store: false,
+    });
+    expect(events.at(-1)?.type).toBe(EventType.RUN_FINISHED);
+  } finally {
+    fetchSpy.mockRestore();
+  }
 });
 
 test('OpenAI provider errors terminate the AG-UI run with RUN_ERROR', async () => {
