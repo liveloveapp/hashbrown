@@ -87,8 +87,9 @@ export interface UseUiDecisionCandidatesOptions extends UseUiDecisionBaseOptions
 
 /**
  * Settings for the UI completion that runs after the decision in narrowing
- * mode. The completion uses the provider's chat transport and starts once
- * the decision settles.
+ * mode. The completion uses the provider's chat transport and starts as
+ * soon as the decision settles, with no further debounce: the input was
+ * already debounced before the decision.
  *
  * @public
  */
@@ -232,7 +233,7 @@ export function useUiDecision(
  * description), with UI kits flattened into their members; a UI completion
  * then streams props using only the chosen components plus, recursively, the
  * components declared in their `children`, in declared order. The completion
- * waits until the decision settles. When the decision fails or falls below
+ * starts as soon as the decision settles, with no further debounce. When the decision fails or falls below
  * `minConfidence`, the completion runs with the original `components`
  * unchanged (kits intact), and a failure is exposed as `decisionError`; the
  * same applies when the decision is stopped, and when the flattened
@@ -407,6 +408,8 @@ export function useUiDecision(
         : null,
     system: generate?.system ?? '',
     components,
+    // The input was debounced before the decision, so generate at once.
+    debounceTime: 0,
   });
 
   if (!isCandidates && chosenKey !== null && chosenKey !== appliedKey) {

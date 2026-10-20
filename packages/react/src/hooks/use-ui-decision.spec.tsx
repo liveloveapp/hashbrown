@@ -843,7 +843,7 @@ test('useUiDecision narrowing sends system to the decision and generate.system t
   const completionOptions = useUiCompletionMock.mock.lastCall?.[0];
   expect(completionOptions?.system).toBe('Write props for the chosen cards.');
   expect(completionOptions?.transport).toBeUndefined();
-  expect(completionOptions?.debounceTime).toBeUndefined();
+  expect(completionOptions?.debounceTime).toBe(0);
 });
 
 test('UiDecisionGenerateOptions accepts only system', () => {

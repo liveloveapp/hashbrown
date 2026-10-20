@@ -968,7 +968,7 @@ test('uiDecisionResource narrowing sends system to the decision and generate.sys
   expect(created).toHaveLength(1);
   expect(created[0].options.system).toBe('Write props for the chosen cards.');
   expect(created[0].options.transport).toBeUndefined();
-  expect(created[0].options.debounce).toBeUndefined();
+  expect(created[0].options.debounce).toBe(0);
 });
 
 test('UiDecisionGenerateOptions accepts only system', () => {
