@@ -43,10 +43,12 @@ const stream = HashbrownOpenAI.stream.text({
   transformRequestOptions: (options) => {
     return {
       ...options,
-      messages: [
-        { role: 'system', content: 'You are a helpful assistant.' },
-        ...options.messages,
-      ],
+      instructions: [
+        'You are a helpful assistant.',
+        options.instructions,
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
     };
   },
 });
@@ -54,7 +56,7 @@ const stream = HashbrownOpenAI.stream.text({
 
 </hb-code-example>
 
-In this example, we're adding a system message to every conversation without exposing it to the client-side code.
+In this example, we're adding a system instruction to every conversation without exposing it to the client-side code.
 
 ---
 
@@ -73,17 +75,13 @@ const stream = HashbrownOpenAI.stream.text({
 
     return {
       ...options,
-      messages: [
-        {
-          role: 'system',
-          content: `
-            You are an AI assistant for ${userContext.companyName}.
-            User role: ${userContext.role}
-            Available features: ${userContext.features.join(', ')}
-          `,
-        },
-        ...options.messages,
-      ],
+      instructions: `
+        You are an AI assistant for ${userContext.companyName}.
+        User role: ${userContext.role}
+        Available features: ${userContext.features.join(', ')}
+
+        ${options.instructions ?? ''}
+      `,
     };
   },
 });
@@ -108,14 +106,15 @@ const stream = HashbrownOpenAI.stream.text({
   transformRequestOptions: (options) => {
     return {
       ...options,
-      messages: options.messages.map((message) => {
-        if (message.role === 'user') {
-          // Filter out sensitive information
-          const filteredContent = filterSensitiveData(message.content);
-          return { ...message, content: filteredContent };
-        }
-        return message;
-      }),
+      input: Array.isArray(options.input)
+        ? options.input.map((item) => {
+            if ('role' in item && item.role === 'user' && typeof item.content === 'string') {
+              // Filter out sensitive information
+              return { ...item, content: filterSensitiveData(item.content) };
+            }
+            return item;
+          })
+        : options.input,
     };
   },
 });
@@ -141,7 +140,11 @@ const stream = HashbrownOpenAI.stream.text({
     return {
       ...options,
       temperature: userPlan === 'creative' ? 0.8 : 0.2,
-      max_tokens: userPlan === 'free' ? 500 : undefined,
+      max_output_tokens: userPlan === 'free' ? 500 : undefined,
+      reasoning:
+        userPlan === 'premium'
+          ? { ...options.reasoning, effort: 'high' }
+          : options.reasoning,
       tools: userPlan === 'premium' ? options.tools : undefined,
     };
   },
@@ -167,13 +170,12 @@ const stream = HashbrownOpenAI.stream.text({
 
     return {
       ...options,
-      messages: [
-        {
-          role: 'system',
-          content: `User prefers ${userPreferences.communicationStyle} responses.`,
-        },
-        ...options.messages,
-      ],
+      instructions: [
+        `User prefers ${userPreferences.communicationStyle} responses.`,
+        options.instructions,
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
     };
   },
 });
@@ -187,7 +189,7 @@ const stream = HashbrownOpenAI.stream.text({
 
 ### OpenAI
 
-Supports all OpenAI chat completion parameters. Can modify `tools`, `tool_choice`, `response_format`, and more.
+Receives OpenAI `ResponseCreateParamsStreaming` (the Responses API). Can modify `input`, `instructions`, `tools`, `tool_choice`, `text`, `max_output_tokens`, `reasoning`, and more. Every request already sends `store: false`, and requests with reasoning include `reasoning.encrypted_content`; keep those if you replace `include`.
 
 ### Google (Gemini)
 
@@ -195,7 +197,7 @@ Uses `GenerateContentParameters` format with different message structure. System
 
 ### Azure OpenAI
 
-Same parameters as OpenAI but ensure compatibility with your Azure deployment configuration.
+Receives the same Responses API parameters as OpenAI. Azure selects the deployment through the `model` option, so do not change `model` to a different deployment unless you intend to.
 
 ---
 

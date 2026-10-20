@@ -2,7 +2,7 @@
 title: 'OpenAI: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Hashbrown’s OpenAI adapter maps AG-UI runs to the OpenAI Chat Completions API and streams canonical AG-UI events.'
+    content: 'Hashbrown’s OpenAI adapter maps AG-UI runs to the OpenAI Responses API, with reasoning, and streams canonical AG-UI events.'
 ---
 
 # OpenAI
@@ -15,7 +15,7 @@ npm install @hashbrownai/openai openai @ag-ui/core @ag-ui/encoder
 
 ## Streaming Text Responses
 
-`HashbrownOpenAI.stream.text(options)` accepts an AG-UI `RunAgentInput` and returns an `AsyncIterable<AGUIEvent>`. The adapter uses OpenAI's streaming Chat Completions API. Encode its events as AG-UI SSE at your HTTP boundary.
+`HashbrownOpenAI.stream.text(options)` accepts an AG-UI `RunAgentInput` and returns an `AsyncIterable<AGUIEvent>`. The adapter uses OpenAI's streaming Responses API. Encode its events as AG-UI SSE at your HTTP boundary.
 
 The model is server configuration and is not read from the client run input.
 
@@ -24,13 +24,42 @@ The model is server configuration and is not read from the client run input.
 | Name                      | Type                                    | Description                                                               |
 | ------------------------- | --------------------------------------- | ------------------------------------------------------------------------- |
 | `apiKey`                  | `string`                                | OpenAI API key.                                                           |
-| `baseURL`                 | `string`                                | _(Optional)_ OpenAI-compatible API base URL.                              |
+| `baseURL`                 | `string`                                | _(Optional)_ Base URL of a server that implements the Responses API.      |
 | `model`                   | `string`                                | Server-selected OpenAI model.                                             |
 | `input`                   | `OpenAIHashbrownRunAgentInput`          | AG-UI run input, including messages and tools.                            |
 | `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the OpenAI request when the HTTP client disconnects. |
-| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Chat Completions request.     |
+| `reasoning`               | `false \| { effort?, summary? }`        | _(Optional)_ Controls the `reasoning` request parameter. See [Reasoning](#reasoning). |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Responses request (`ResponseCreateParamsStreaming`). |
 
 The adapter maps system and developer instructions, message history, tool definitions, and tool results. Text and tool calls become canonical AG-UI events. Provider and mapping failures are emitted as `RUN_ERROR` events.
+
+### Responses API
+
+The adapter streams from OpenAI's Responses API. Every request sends `store: false`, so OpenAI does not keep conversation state for you. Hashbrown replays the earlier turns, including earlier reasoning, from the history your client sends, which also works with zero-data-retention organizations.
+
+`baseURL` must point at a server that implements the Responses API. Servers that only implement Chat Completions (for example vLLM, OpenRouter, or LM Studio, depending on the server and mode) are no longer supported by `@hashbrownai/openai`.
+
+### Reasoning
+
+Reasoning models, which are models whose names start with `o` and a digit (`o3`), `gpt-5`, or `gpt-` followed by a major version of 5 or later, stream reasoning summaries by default. Hashbrown sends `reasoning: { summary: 'auto' }` and `include: ['reasoning.encrypted_content']` for them, and leaves `effort` to the model. Other models get no `reasoning` field.
+
+Use the `reasoning` option to change this:
+
+```ts
+const stream = HashbrownOpenAI.stream.text({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: 'gpt-5',
+  input,
+  reasoning: { effort: 'low', summary: 'detailed' },
+});
+```
+
+- `reasoning: { effort, summary }` is sent as given. A missing `summary` defaults to `'auto'`. `effort` is sent only when you set it.
+- `reasoning: false` stops Hashbrown from requesting reasoning summaries. It does not turn reasoning off: a reasoning model may still return encrypted reasoning, which Hashbrown still replays on the next turn.
+
+The client receives reasoning as AG-UI `REASONING_MESSAGE_START`, `REASONING_MESSAGE_CONTENT`, and `REASONING_MESSAGE_END` events for the summary text, and `REASONING_ENCRYPTED_VALUE` events for the encrypted content. On the Hashbrown side, assistant messages expose them as `reasoning` and `reasoningDetails`.
+
+### Structured Output
 
 Set `input.forwardedProps.hashbrown.responseSchema` to use OpenAI native JSON schema output:
 
@@ -232,7 +261,7 @@ export default app;
 
 ## Transform Request Options
 
-`transformRequestOptions` receives the final OpenAI SDK request after AG-UI input has been mapped. Use it for server-owned provider settings.
+`transformRequestOptions` receives the final Responses API request (`ResponseCreateParamsStreaming`) after AG-UI input has been mapped. Use it for server-owned provider settings.
 
 ```ts
 const stream = HashbrownOpenAI.stream.text({
@@ -241,7 +270,7 @@ const stream = HashbrownOpenAI.stream.text({
   input,
   transformRequestOptions: (options) => ({
     ...options,
-    max_completion_tokens: 2048,
+    max_output_tokens: 2048,
   }),
 });
 ```
@@ -432,7 +461,7 @@ export default app;
 
 ## Transform Request Options
 
-`transformRequestOptions` receives the final OpenAI SDK request after AG-UI input has been mapped. Use it for server-owned provider settings.
+`transformRequestOptions` receives the final Responses API request (`ResponseCreateParamsStreaming`) after AG-UI input has been mapped. Use it for server-owned provider settings.
 
 ```ts
 const stream = HashbrownOpenAI.stream.text({
@@ -441,7 +470,7 @@ const stream = HashbrownOpenAI.stream.text({
   input,
   transformRequestOptions: (options) => ({
     ...options,
-    max_completion_tokens: 2048,
+    max_output_tokens: 2048,
   }),
 });
 ```

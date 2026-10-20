@@ -39,7 +39,6 @@ app.post('/run', async (req, res) => {
       apiKey: process.env.AZURE_API_KEY!,
       endpoint: process.env.AZURE_ENDPOINT!,
       apiVersion: process.env.AZURE_API_VERSION!,
-      deployment: process.env.AZURE_DEPLOYMENT,
     },
     model: process.env.AZURE_MODEL!,
     input: req.body as RunAgentInput,
