@@ -92,7 +92,7 @@ test('renders the link in the browser when not yet dismissed', () => {
 
   mount();
 
-  expect(link()?.textContent).toBe('New: Hashbrown v0.7 moves to AG-UI 1.0');
+  expect(link()?.textContent).toBe('New: Hashbrown v0.8 adds decisions');
   expect(link()?.querySelector('strong')?.textContent).toBe('New:');
 });
 
@@ -121,7 +121,7 @@ test('dismissing stores the announcement date and hides it', () => {
   });
 
   expect(localStorage.getItem(ANNOUNCEMENT_STORAGE_KEY)).toBe(
-    '2026-10-08T18:00:00.000Z',
+    '2026-10-20T18:00:00.000Z',
   );
   expect(link()).toBeNull();
 });
