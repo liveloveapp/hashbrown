@@ -9,7 +9,7 @@ import {
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
-import { structuredCompletionResource } from './structured-completion-resource.fn';
+import { ɵstructuredCompletionResourceWithMessage } from './structured-completion-resource.fn';
 import {
   TAG_NAME_REGISTRY,
   UiAssistantMessage,
@@ -158,46 +158,47 @@ export function uiCompletionResource<
   });
   const internalSchema = uiKit.schema;
 
-  const completion = structuredCompletionResource<
-    Input,
-    typeof internalSchema,
-    s.Infer<UiChatMessageOutput>,
-    State
-  >({
-    input: options.input,
-    schema: internalSchema,
-    system: options.system,
-    state: options.state,
-    tools: options.tools,
-    debugName: options.debugName,
-    apiUrl: options.apiUrl,
-    retries: options.retries,
-    debounce: options.debounce,
-    transport: options.transport,
-    ui: true,
-    ...(Object.hasOwn(options, 'threadId')
-      ? { threadId: options.threadId }
-      : {}),
-  });
+  const { ref: completion, message: completionMessage } =
+    ɵstructuredCompletionResourceWithMessage<
+      Input,
+      typeof internalSchema,
+      s.Infer<UiChatMessageOutput>,
+      State
+    >({
+      input: options.input,
+      schema: internalSchema,
+      system: options.system,
+      state: options.state,
+      tools: options.tools,
+      debugName: options.debugName,
+      apiUrl: options.apiUrl,
+      retries: options.retries,
+      debounce: options.debounce,
+      transport: options.transport,
+      ui: true,
+      ...(Object.hasOwn(options, 'threadId')
+        ? { threadId: options.threadId }
+        : {}),
+    });
 
   const value = computed(
     (): UiAssistantMessage<Tools> | null => {
       const content = completion.value();
+      const message = completionMessage();
 
-      if (!content) {
+      if (!content || !message) {
         return null;
       }
 
       const tagNameRegistry = uiKit.tagNameRegistry ?? {};
 
-      // A completion's output is not a chat message, so it has no canonical
-      // AG-UI id.
       return {
+        id: message.id,
         role: 'assistant',
         content,
         toolCalls: [],
         [TAG_NAME_REGISTRY]: tagNameRegistry,
-      } as Omit<UiAssistantMessage<Tools>, 'id'> as UiAssistantMessage<Tools>;
+      };
     },
     { debugName: options.debugName && `${options.debugName}.value` },
   );

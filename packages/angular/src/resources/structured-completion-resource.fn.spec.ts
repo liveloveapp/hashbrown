@@ -4,7 +4,10 @@ import { TestBed } from '@angular/core/testing';
 import { s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { structuredChatResource } from './structured-chat-resource.fn';
-import { structuredCompletionResource } from './structured-completion-resource.fn';
+import {
+  structuredCompletionResource,
+  ɵstructuredCompletionResourceWithMessage,
+} from './structured-completion-resource.fn';
 
 vi.mock('@hashbrownai/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@hashbrownai/core')>();
@@ -186,6 +189,40 @@ test('structuredCompletionResource snapshot uses the exposed completion value', 
     status: 'resolved',
     value: completion,
   });
+});
+
+test('the completion exposes the assistant message its value comes from', () => {
+  // Arrange
+  structuredChatResourceMock.mockReset();
+  const assistant = {
+    id: 'assistant-7',
+    role: 'assistant',
+    content: { summary: 'Completed response' },
+    toolCalls: [],
+  };
+  structuredChatResourceMock.mockReturnValue(
+    createChatStub(
+      signal<any[]>([
+        { id: 'user-1', role: 'user', content: 'Summarize this' },
+        assistant,
+      ]),
+    ),
+  );
+
+  // Act
+  const { ref, message } = TestBed.runInInjectionContext(() =>
+    ɵstructuredCompletionResourceWithMessage({
+      system: 'System prompt',
+      input: signal('Summarize this'),
+      schema: s.object('summary', {
+        summary: s.string('Summary'),
+      }),
+    }),
+  );
+
+  // Assert
+  expect(message()).toBe(assistant);
+  expect(ref.value()).toBe(assistant.content);
 });
 
 test.each([

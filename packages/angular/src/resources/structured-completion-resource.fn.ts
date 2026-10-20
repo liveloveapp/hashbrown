@@ -158,6 +158,32 @@ export function structuredCompletionResource<
 >(
   options: StructuredCompletionResourceOptions<Input, Schema, State>,
 ): StructuredCompletionResourceRef<Output, State> {
+  return ɵstructuredCompletionResourceWithMessage<Input, Schema, Output, State>(
+    options,
+  ).ref;
+}
+
+/**
+ * Creates a structured completion resource together with the assistant
+ * message its value comes from, so a wrapper such as `uiCompletionResource`
+ * can expose that message's canonical id.
+ *
+ * @internal
+ * @param options - The options for the structured completion resource.
+ * @returns The resource and the assistant message behind its value, or
+ * `null` when there is no value yet.
+ */
+export function ɵstructuredCompletionResourceWithMessage<
+  Input,
+  Schema extends s.SchemaOutput,
+  Output extends s.InferSchemaOutput<Schema> = s.InferSchemaOutput<Schema>,
+  State = unknown,
+>(
+  options: StructuredCompletionResourceOptions<Input, Schema, State>,
+): {
+  readonly ref: StructuredCompletionResourceRef<Output, State>;
+  readonly message: Signal<Chat.AssistantMessage<Output, Chat.AnyTool> | null>;
+} {
   const { input, schema, system, tools, debugName, apiUrl, retries, debounce } =
     options;
 
@@ -179,8 +205,8 @@ export function structuredCompletionResource<
 
   connectCompletionInput(input, resource);
 
-  const valueSignal = computed(
-    () => {
+  const message = computed(
+    (): Chat.AssistantMessage<Output, Chat.AnyTool> | null => {
       const messages = resource.value();
       const lastMessage = messages[messages.length - 1];
       if (
@@ -189,12 +215,15 @@ export function structuredCompletionResource<
         lastMessage.content !== undefined &&
         lastMessage.content !== null
       ) {
-        return lastMessage.content;
+        return lastMessage;
       }
       return null;
     },
-    { debugName: debugName && `${debugName}.value` },
+    { debugName: debugName && `${debugName}.message` },
   );
+  const valueSignal = computed(() => message()?.content ?? null, {
+    debugName: debugName && `${debugName}.value`,
+  });
   const value = toDeepSignal(valueSignal);
 
   const status = resource.status;
@@ -213,7 +242,7 @@ export function structuredCompletionResource<
     return status() !== 'error' && valueSignal() !== null;
   }
 
-  return {
+  const ref: StructuredCompletionResourceRef<Output, State> = {
     pendingInterrupts: resource.pendingInterrupts,
     isResuming: resource.isResuming,
     resume: resource.resume,
@@ -235,4 +264,6 @@ export function structuredCompletionResource<
     stop,
     hasValue: hasValue as any,
   };
+
+  return { ref, message };
 }

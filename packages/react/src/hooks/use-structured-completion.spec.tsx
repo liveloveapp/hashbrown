@@ -3,7 +3,10 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { s, type TransportRequest } from '@hashbrownai/core';
 import { HashbrownProvider } from '../hashbrown-provider';
-import { useStructuredCompletion } from './use-structured-completion';
+import {
+  useStructuredCompletion,
+  ɵuseStructuredCompletionWithMessage,
+} from './use-structured-completion';
 
 test('useStructuredCompletion exposes runtime-owned shared agent state', () => {
   // Arrange
@@ -75,6 +78,56 @@ test('useStructuredCompletion retains the configured system message in runtime r
       }),
     ]),
   );
+});
+
+test('the completion exposes the assistant message its output comes from', async () => {
+  // Arrange
+  const send = vi.fn(async (request: TransportRequest) => ({
+    events: (async function* () {
+      const identity = {
+        threadId: request.input.threadId,
+        runId: request.input.runId,
+      };
+      yield { type: EventType.RUN_STARTED, ...identity };
+      yield {
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: 'answer',
+        role: 'assistant',
+      };
+      yield {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId: 'answer',
+        delta: '{"value":"done"}',
+      };
+      yield { type: EventType.TEXT_MESSAGE_END, messageId: 'answer' };
+      yield { type: EventType.RUN_FINISHED, ...identity };
+    })(),
+  }));
+
+  // Act
+  const { result } = renderHook(
+    () =>
+      ɵuseStructuredCompletionWithMessage({
+        input: 'Summarize this account.',
+        system: 'Return a concise account summary.',
+        schema: s.object('summary', { value: s.string('value') }),
+        debounceTime: 0,
+      }),
+    {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <HashbrownProvider transport={{ name: 'test', send }}>
+          {children}
+        </HashbrownProvider>
+      ),
+    },
+  );
+  await waitFor(() =>
+    expect(result.current.result.output).toEqual({ value: 'done' }),
+  );
+
+  // Assert
+  expect(result.current.message?.id).toBe('answer');
+  expect(result.current.message?.content).toBe(result.current.result.output);
 });
 
 function ProviderWrapper({ children }: { children: ReactNode }) {

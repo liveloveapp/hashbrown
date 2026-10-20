@@ -214,6 +214,35 @@ export function useStructuredCompletion<
 >(
   options: UseStructuredCompletionOptions<Input, Schema, State>,
 ): UseStructuredCompletionResult<s.InferSchemaOutput<Schema>, State> {
+  return ɵuseStructuredCompletionWithMessage(options).result;
+}
+
+/**
+ * Runs a structured completion and also returns the assistant message its
+ * output comes from, so a wrapper such as `useUiCompletion` can expose that
+ * message's canonical id.
+ *
+ * @internal
+ * @param options - The options for the structured completion.
+ * @returns The completion result and the assistant message behind its
+ * output, or `null` when there is no output yet.
+ */
+export function ɵuseStructuredCompletionWithMessage<
+  Input,
+  Schema extends s.SchemaOutput,
+  State = unknown,
+>(
+  options: UseStructuredCompletionOptions<Input, Schema, State>,
+): {
+  readonly result: UseStructuredCompletionResult<
+    s.InferSchemaOutput<Schema>,
+    State
+  >;
+  readonly message: Chat.AssistantMessage<
+    s.InferSchemaOutput<Schema>,
+    Chat.AnyTool
+  > | null;
+} {
   const { setMessages, ...chat } = useStructuredChat<
     Schema,
     Chat.AnyTool,
@@ -226,21 +255,27 @@ export function useStructuredCompletion<
 
   useCompletionInput(options.input, chat.resume, setMessages);
 
-  const output: s.InferSchemaOutput<Schema> | null = useMemo(() => {
-    const message = chat.messages.find(
-      (message) =>
-        message.role === 'assistant' &&
-        message.content !== null &&
-        message.content !== undefined,
-    );
+  const message = useMemo(
+    () =>
+      chat.messages.find(
+        (
+          message,
+        ): message is Chat.AssistantMessage<
+          s.InferSchemaOutput<Schema>,
+          Chat.AnyTool
+        > =>
+          message.role === 'assistant' &&
+          message.content !== null &&
+          message.content !== undefined,
+      ) ?? null,
+    [chat.messages],
+  );
+  const output: s.InferSchemaOutput<Schema> | null = message?.content ?? null;
 
-    const content = message?.content;
-    return content === undefined || content === null
-      ? null
-      : (content as s.InferSchemaOutput<Schema>);
-  }, [chat.messages]);
-
-  return {
+  const result: UseStructuredCompletionResult<
+    s.InferSchemaOutput<Schema>,
+    State
+  > = {
     pendingInterrupts: chat.pendingInterrupts,
     isResuming: chat.isResuming,
     resume: chat.resume,
@@ -260,4 +295,6 @@ export function useStructuredCompletion<
     exhaustedRetries: chat.exhaustedRetries,
     lastRunResult: chat.lastRunResult,
   };
+
+  return { result, message };
 }
