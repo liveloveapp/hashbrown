@@ -864,3 +864,51 @@ test('UiDecisionGenerateOptions accepts only system', () => {
   expect(withDebounce.system).toBe('Render it');
   expect(withTransport.system).toBe('Render it');
 });
+
+test('useUiDecision narrowing without a decision debounces generation with debounceTime', async () => {
+  withRealCompletion();
+  const bodies: string[] = [];
+  const fetchMock = vi.fn<typeof fetch>(async (_url, init) => {
+    bodies.push(String(init?.body));
+    return new Promise<Response>(() => undefined);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  const fake = createFakeTransport(() =>
+    pickResponse('Flight', 0.9, ['Flight']),
+  );
+  const components: never[] = [];
+
+  let unmount: () => void = () => undefined;
+  try {
+    const hook = renderHook(
+      ({ input }: { input: string }) =>
+        useUiDecision({
+          input,
+          debounceTime: 50,
+          components,
+          select: 'one',
+          generate: { system: 'Render it' },
+        }),
+      {
+        wrapper: wrapperFor(fake.transport),
+        initialProps: { input: 'show K' },
+      },
+    );
+    unmount = hook.unmount;
+    for (const input of ['show KS', 'show KSFO']) {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+      hook.rerender({ input });
+    }
+    await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  } finally {
+    unmount();
+    vi.unstubAllGlobals();
+  }
+
+  expect(fake.calls).toHaveLength(0);
+  expect(bodies).toHaveLength(1);
+  expect(bodies[0]).toContain('show KSFO');
+});

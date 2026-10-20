@@ -48,7 +48,10 @@ export interface UseUiDecisionBaseOptions {
    * needed to act on the decision. Defaults to 0.
    */
   minConfidence?: number;
-  /** Overrides the provider's decision transport for the selection. */
+  /**
+   * Overrides the provider's decision transport for the selection. Decision
+   * only: generation in narrowing mode uses the provider's chat transport.
+   */
   transport?: Decision.Transport;
   /**
    * Context for the decision model (what your app is, what the input
@@ -64,8 +67,9 @@ export interface UseUiDecisionBaseOptions {
   optionOrder?: 'declared' | 'shuffled';
   /**
    * How long the input must stay unchanged, in milliseconds, before the
-   * selection is decided. In narrowing mode, generation starts once the
-   * decision settles.
+   * selection is decided. In narrowing mode, generation starts as soon as
+   * the decision settles; when no decision runs, this debounces generation
+   * instead.
    */
   debounceTime?: number;
 }
@@ -87,9 +91,12 @@ export interface UseUiDecisionCandidatesOptions extends UseUiDecisionBaseOptions
 
 /**
  * Settings for the UI completion that runs after the decision in narrowing
- * mode. The completion uses the provider's chat transport and starts as
- * soon as the decision settles, with no further debounce: the input was
- * already debounced before the decision.
+ * mode. The completion uses the provider's chat transport. When a decision
+ * runs, the completion starts as soon as it settles, with no further
+ * debounce, because the input was already debounced before the decision.
+ * When no decision runs (no components, or components that break the
+ * selection limits), the completion debounces the input with the top-level
+ * `debounceTime` instead.
  *
  * @public
  */
@@ -187,7 +194,8 @@ const NO_COMPONENTS: UiKitInput<ExposedComponent<any>>[] = [];
 
 /**
  * Decided over when there is nothing to choose (no components after
- * flattening, or no candidates). The decision stays idle, so it never sends a request.
+ * flattening, or no candidates). The decision stays idle, so it never sends
+ * a request.
  */
 const PLACEHOLDER_SCHEMA: DecidableSchema = s.object('Selection', {
   unused: s.boolean('Unused'),
@@ -232,16 +240,18 @@ export function useUiDecision(
  * In narrowing mode the model first picks among the components (by name and
  * description), with UI kits flattened into their members; a UI completion
  * then streams props using only the chosen components plus, recursively, the
- * components declared in their `children`, in declared order. The completion
- * starts as soon as the decision settles, with no further debounce. When the decision fails or falls below
- * `minConfidence`, the completion runs with the original `components`
- * unchanged (kits intact), and a failure is exposed as `decisionError`; the
- * same applies when the decision is stopped, and when the flattened
- * components break the selection limits (exposed as a `DecisionSchemaError`).
- * With no components there is nothing to decide, so the completion runs
- * straight away. Input and `system` changes re-run the decision before
- * generating again. To pin the questions on a server, pass the same
- * `components` to `createSelectionSchema`.
+ * components declared in their `children`, in declared order. The
+ * completion starts as soon as the decision settles, with no further
+ * debounce. When the decision fails or falls below `minConfidence`, the
+ * completion runs with the original `components` unchanged (kits intact),
+ * and a failure is exposed as `decisionError`; the same applies when the
+ * decision is stopped, and when the flattened components break the
+ * selection limits (exposed as a `DecisionSchemaError`). With no components
+ * there is nothing to decide, so the completion runs without a decision.
+ * Without a decision, the completion debounces the input with `debounceTime`.
+ * Input and `system` changes re-run the decision before generating again.
+ * To pin the questions on a server, pass the same `components` to
+ * `createSelectionSchema`.
  *
  * There are two prompts: `system` is context for the decision model (what
  * your app is, what the input means), and `generate.system` is the system
@@ -408,8 +418,9 @@ export function useUiDecision(
         : null,
     system: generate?.system ?? '',
     components,
-    // The input was debounced before the decision, so generate at once.
-    debounceTime: 0,
+    // After a decision the input was already debounced, so generate at once.
+    // Without one (nothing to decide), debounce the input here instead.
+    debounceTime: hasOptions ? 0 : debounceTime,
   });
 
   if (!isCandidates && chosenKey !== null && chosenKey !== appliedKey) {

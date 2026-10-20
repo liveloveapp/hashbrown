@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ExposedComponentDescriptor } from '../ui/expose-component';
 import { isUiKit, type UiKit, type UiKitInput } from '../ui/ui-kit';
+import { DecisionSchemaError } from './errors';
 
 /**
  * The shape shared by exposed components and component definitions.
@@ -20,13 +21,10 @@ interface SelectionItem {
 }
 
 /**
- * An entry accepted by `createSelectionSchema`: a candidate item, a component
- * or a UI kit.
+ * A flattened entry, tagged once: a top-level candidate item, or a component.
  */
-export type SelectionEntry =
-  | SelectionItem
-  | { name: string; description: string; children?: unknown }
-  | UiKit<any>;
+type OrderedEntry<T> =
+  { kind: 'item'; item: SelectionItem } | { kind: 'component'; component: T };
 
 /**
  * The options and expansion for narrowing a component list with a decision.
@@ -53,24 +51,25 @@ export interface ComponentSelection<T extends ExposedComponentDescriptor> {
  *
  * With `acceptItems`, a top-level entry with an `id` is a candidate item: it
  * is kept as is (not deduped or flattened) and appears in `ordered` at its
- * declared position.
+ * declared position. Only top-level entries are classified this way; kit
+ * members and declared children are always components.
  *
- * @returns The flattened components, every entry in declared order
- * (`ordered`, which includes candidate items), and, for each name, every
- * object seen with that name.
+ * @returns The flattened components, every entry in declared order, tagged
+ * once (`ordered`, which includes candidate items), and, for each name,
+ * every object seen with that name.
  */
 function flattenSelectable<T extends Selectable>(
   entries: ReadonlyArray<T | UiKit<any> | SelectionItem>,
   acceptItems: boolean,
 ): {
   flat: T[];
-  ordered: Array<T | SelectionItem>;
+  ordered: Array<OrderedEntry<T>>;
   variants: Map<string, Selectable[]>;
 } {
   const visited = new Set<object>();
   const variants = new Map<string, Selectable[]>();
   const flat: T[] = [];
-  const ordered: Array<T | SelectionItem> = [];
+  const ordered: Array<OrderedEntry<T>> = [];
 
   function add(entry: T): void {
     if (visited.has(entry)) return;
@@ -81,7 +80,7 @@ function flattenSelectable<T extends Selectable>(
     } else {
       variants.set(entry.name, [entry]);
       flat.push(entry);
-      ordered.push(entry);
+      ordered.push({ kind: 'component', component: entry });
     }
     if (Array.isArray(entry.children)) {
       (entry.children as T[]).forEach(add);
@@ -92,7 +91,7 @@ function flattenSelectable<T extends Selectable>(
     if (isUiKit(entry)) {
       (entry.components as unknown as T[]).forEach(add);
     } else if (acceptItems && 'id' in entry) {
-      ordered.push(entry);
+      ordered.push({ kind: 'item', item: entry });
     } else {
       add(entry as T);
     }
@@ -149,22 +148,76 @@ export function createComponentSelection<T extends ExposedComponentDescriptor>(
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function describeEntry(value: unknown): string {
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+}
+
 /**
- * Turns selection entries into options in declared order. An entry with an
- * `id` is a candidate item and becomes `{ id, description }` as is. UI kits
- * and components (entries with a `name` and no `id`) are flattened exactly as
- * {@link createComponentSelection} flattens them, each becoming
- * `{ id: name, description }`.
+ * Checks that a top-level entry is a UI kit, a candidate item
+ * `{ id, description }` or a component `{ name, description }`.
+ *
+ * @throws DecisionSchemaError naming the entry when it matches no shape.
+ */
+function assertSelectionEntry(entry: unknown, index: number): void {
+  if (isUiKit(entry)) return;
+  const valid =
+    isRecord(entry) &&
+    typeof entry['description'] === 'string' &&
+    ('id' in entry
+      ? typeof entry['id'] === 'string'
+      : typeof entry['name'] === 'string');
+  if (!valid) {
+    throw new DecisionSchemaError(
+      `Selection entry at index ${index} is not a candidate item { id, description }, a component { name, description } or a UI kit (found ${describeEntry(entry)})`,
+      '',
+    );
+  }
+}
+
+/**
+ * Turns selection entries into options in declared order. A top-level entry
+ * with an `id` is a candidate item and becomes `{ id, description }` as is.
+ * UI kits and components (top-level entries with a `name` and no `id`) are
+ * flattened exactly as {@link createComponentSelection} flattens them, each
+ * becoming `{ id: name, description }`; kit members and declared children
+ * are always components, whatever other fields they carry.
  *
  * @param entries - Candidate items, components and/or UI kits.
  * @returns One option per candidate item or flattened component.
+ * @throws DecisionSchemaError when an entry, or a component reached through
+ * a kit or `children`, matches none of these shapes.
  */
 export function toSelectionOptions(
-  entries: ReadonlyArray<SelectionEntry>,
+  entries: ReadonlyArray<unknown>,
 ): SelectionItem[] {
-  return flattenSelectable<Selectable>(entries, true).ordered.map((entry) =>
-    'id' in entry
-      ? { id: entry.id, description: entry.description }
-      : toOption(entry),
+  entries.forEach(assertSelectionEntry);
+  const { ordered } = flattenSelectable<Selectable>(
+    entries as ReadonlyArray<Selectable | UiKit<any> | SelectionItem>,
+    true,
   );
+  return ordered.map((entry) => {
+    if (entry.kind === 'item') {
+      return { id: entry.item.id, description: entry.item.description };
+    }
+    const { component } = entry;
+    if (
+      !isRecord(component) ||
+      typeof component.name !== 'string' ||
+      typeof component.description !== 'string'
+    ) {
+      throw new DecisionSchemaError(
+        `A component reached through a UI kit or children is not a component { name, description } (found ${describeEntry(component)})`,
+        '',
+      );
+    }
+    return toOption(component);
+  });
 }

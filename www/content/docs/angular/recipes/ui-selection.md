@@ -27,16 +27,16 @@ uiDecisionResource has two modes. Which one you get depends on the options you p
 
 Both modes take these options:
 
-| Option            | Required          | What it does                                                                                                         |
-| ----------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `input`           | Yes               | A signal of the input to decide about. `null` or `undefined` keeps the resource idle.                                |
-| `select`          | Yes               | `'one'` chooses one option, and `{ max: 3 }` chooses up to three.                                                    |
-| `minConfidence`   | No                | The confidence needed to act on the choice. Defaults to 0.                                                           |
-| `system`          | No                | Context for the decision model: what your app is and what the input means. Accepts a signal. Changing it asks again. |
-| `optionOrder`     | No                | `'shuffled'` varies the order of the options on every request, to spread the model's bias toward the first.          |
-| `debounce`        | No                | Waits for the input to settle before deciding. In narrowing mode, generation starts once the decision settles.       |
-| `transport`       | No                | Overrides the provider's decision transport.                                                                         |
-| `generate.system` | In narrowing mode | The system prompt for the model that writes the chosen components' props.                                            |
+| Option            | Required          | What it does                                                                                                                                                                   |
+| ----------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `input`           | Yes               | A signal of the input to decide about. `null` or `undefined` keeps the resource idle.                                                                                          |
+| `select`          | Yes               | `'one'` chooses one option, and `{ max: 3 }` chooses up to three.                                                                                                              |
+| `minConfidence`   | No                | The confidence needed to act on the choice. Defaults to 0.                                                                                                                     |
+| `system`          | No                | Context for the decision model: what your app is and what the input means. Accepts a signal. Changing it asks again.                                                           |
+| `optionOrder`     | No                | `'shuffled'` varies the order of the options on every request, to spread the model's bias toward the first.                                                                    |
+| `debounce`        | No                | Waits for the input to settle before deciding. In narrowing mode, generation starts as soon as the decision settles; when no decision runs, this debounces generation instead. |
+| `transport`       | No                | Decision only: overrides the provider's decision transport. Generation uses the provider's chat transport.                                                                     |
+| `generate.system` | In narrowing mode | The system prompt for the model that writes the chosen components' props.                                                                                                      |
 
 The resource requires `provideHashbrown`. Set up the decision endpoint as described in [Decisions](/docs/angular/concept/decisions).
 
@@ -170,7 +170,7 @@ export class AnswerComponent {
 1. The decision sees each component's name and description.
 2. UI kits in `components` are decided over by member. Each kit is expanded into its components, including the children they declare, and duplicate names count once. A list of only UI kits decides over the kits' members.
 3. A chosen component brings the components declared in its `children` with it, recursively, so the completion can always render a chosen parent's children. The completion sees the chosen components in the order they were declared.
-4. `generate.system` is the system prompt for the UI completion that runs after the decision. It is required. The completion uses the provider's chat transport and starts as soon as the decision settles, because the input was already debounced before the decision.
+4. `generate.system` is the system prompt for the UI completion that runs after the decision. It is required. The completion uses the provider's chat transport; to send it to a different endpoint, provide `provideHashbrown` again in a child injector, such as the component's `providers`. It starts as soon as the decision settles, because the input was already debounced before the decision. When no decision runs (an empty `components` list, or one that breaks the limits below), it debounces the input with `debounce` instead.
 5. An empty `components` list skips the decision and generates straight away.
 6. Component names become option ids, so the flattened list must fit the selection limits: no name may be empty, contain `.`, or be `__proto__`, `constructor` or `prototype`, and `select: 'one'` allows at most 255 components. When the list breaks a limit, narrowing skips the decision, generates with every component, and exposes the `DecisionSchemaError` as `decisionError`.
 
@@ -192,7 +192,7 @@ The browser builds the selection questions from your candidates or components. A
 - a component, such as an `exposeComponent` result or a component definition (`UiComponentDefinition`) with a `name`, a `description` and optional `children`;
 - a UI kit.
 
-UI kits and declared children are flattened exactly as the resource flattens them: each kit's members in place, each component followed by its declared children, and every name once. An entry with an `id` is always a candidate item, even if it also has a `name`; an entry with a `name` and no `id` is a component, and its option id is its `name`.
+UI kits and declared children are flattened exactly as the resource flattens them: each kit's members in place, each component followed by its declared children, and every name once. An entry with an `id` is always a candidate item, even if it also has a `name`; an entry with a `name` and no `id` is a component, and its option id is its `name`. So a component you pass to the resource must not carry an `id` at the top level, or `createSelectionSchema` treats it as a candidate item and the pinned questions differ. Kit members and declared children are always components.
 
 ```ts
 import { createSelectionSchema } from '@hashbrownai/core';

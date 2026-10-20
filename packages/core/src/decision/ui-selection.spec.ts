@@ -470,3 +470,55 @@ test('componentSelectionOptions is no longer public', () => {
 
   expect(exported).toBeUndefined();
 });
+
+test('createSelectionSchema decides over children and kit members by name, even when they carry an id', () => {
+  const child = { ...component('Row'), id: 'row-id' };
+  const member = { ...component('Airport'), id: 'airport-id' };
+  const table = component('Table', [child]);
+  const kit = createUiKit({ components: [member] });
+  const components = [table, kit];
+
+  const pinned = compileDecision(createSelectionSchema(components, 'one'));
+  const sent = compileDecision(
+    createSelectionSchema(createComponentSelection(components).options, 'one'),
+  );
+
+  expect(questionIds(createSelectionSchema(components, 'one'))).toEqual([
+    'Table',
+    'Row',
+    'Airport',
+  ]);
+  expect(JSON.stringify(pinned)).toBe(JSON.stringify(sent));
+});
+
+test('createSelectionSchema rejects an entry that is not an item, a component or a kit', () => {
+  const entries = [
+    { name: 'Flight', description: 'One aircraft' },
+    { id: undefined, name: 'Airport', description: 'An airport' },
+  ] as unknown as Parameters<typeof createSelectionSchema>[0];
+
+  const error = catchError(() => createSelectionSchema(entries, 'one'));
+
+  expect(error).toBeInstanceOf(DecisionSchemaError);
+  expect((error as DecisionSchemaError).message).toContain('index 1');
+});
+
+test('createSelectionSchema rejects a kit from another copy of core', () => {
+  const foreignKit = {
+    components: [component('Flight')],
+  } as unknown as Parameters<typeof createSelectionSchema>[0][number];
+
+  const error = catchError(() => createSelectionSchema([foreignKit], 'one'));
+
+  expect(error).toBeInstanceOf(DecisionSchemaError);
+  expect((error as DecisionSchemaError).message).toContain('index 0');
+});
+
+test('createSelectionSchema rejects a declared child without a name', () => {
+  const table = component('Table', [{ description: 'No name' }]);
+
+  const error = catchError(() => createSelectionSchema([table], 'one'));
+
+  expect(error).toBeInstanceOf(DecisionSchemaError);
+  expect((error as DecisionSchemaError).message).toContain('No name');
+});

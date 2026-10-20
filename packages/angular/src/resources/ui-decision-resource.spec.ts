@@ -989,3 +989,57 @@ test('UiDecisionGenerateOptions accepts only system', () => {
   expect(withDebounce.system).toBe('Render it');
   expect(withTransport.system).toBe('Render it');
 });
+
+test('uiDecisionResource narrowing without a decision debounces generation with debounce', async () => {
+  const actual = await vi.importActual<
+    typeof import('./ui-completion-resource.fn')
+  >('./ui-completion-resource.fn');
+  uiCompletionResourceMock.mockReset();
+  uiCompletionResourceMock.mockImplementation(actual.uiCompletionResource);
+  const bodies: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn<typeof fetch>(async (_url, init) => {
+      bodies.push(String(init?.body));
+      return new Promise<Response>(() => undefined);
+    }),
+  );
+  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
+  TestBed.resetTestingModule();
+  TestBed.configureTestingModule({
+    providers: [
+      provideHashbrown({
+        baseUrl: '/api/chat',
+        decision: { transport: fake.transport },
+      }),
+    ],
+  });
+  const input = signal('show K');
+
+  try {
+    TestBed.runInInjectionContext(() =>
+      uiDecisionResource({
+        input,
+        debounce: 50,
+        components: [],
+        select: 'one',
+        generate: { system: 'Render it' },
+      }),
+    );
+    await settle();
+    for (const next of ['show KS', 'show KSFO']) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      input.set(next);
+      TestBed.tick();
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await settle();
+  } finally {
+    TestBed.resetTestingModule();
+    vi.unstubAllGlobals();
+  }
+
+  expect(fake.calls).toHaveLength(0);
+  expect(bodies).toHaveLength(1);
+  expect(bodies[0]).toContain('show KSFO');
+});
