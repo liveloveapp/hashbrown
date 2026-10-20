@@ -221,3 +221,14 @@ test('rejects structured tool result content', () => {
     'Bedrock provider currently requires text tool result content',
   );
 });
+
+test('reads the response schema from forwardedProps.hashbrown', () => {
+  const { hashbrown, ...standard } = createInput();
+  const input = { ...standard, forwardedProps: { hashbrown } };
+
+  const result = createBedrockRequestOptions(input, 'bedrock-model');
+
+  expect(result).toEqual(
+    createBedrockRequestOptions(createInput(), 'bedrock-model'),
+  );
+});

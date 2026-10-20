@@ -412,3 +412,29 @@ test('maps structured tool result content to one RUN_ERROR', async () => {
   ]);
   expect(provider.create).not.toHaveBeenCalled();
 });
+
+test('reads the response schema from forwardedProps.hashbrown', async () => {
+  mockProvider();
+  const responseSchema = {
+    type: 'object',
+    properties: { answer: { type: 'string' } },
+    required: ['answer'],
+  };
+  let capturedOptions:
+    OpenAI.Chat.ChatCompletionCreateParamsStreaming | undefined;
+
+  await collectEvents(
+    createOptions({
+      input: createInput({ forwardedProps: { hashbrown: { responseSchema } } }),
+      transformRequestOptions: (options) => {
+        capturedOptions = options;
+        return options;
+      },
+    }),
+  );
+
+  expect(capturedOptions?.response_format).toEqual({
+    type: 'json_schema',
+    json_schema: expect.objectContaining({ schema: responseSchema }),
+  });
+});

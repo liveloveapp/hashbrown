@@ -420,6 +420,28 @@ test('a tampered response schema is replaced with the pinned one and logged with
   expect(warnings[0]).not.toContain('SECRET-PAYLOAD');
 });
 
+test('a schema sent only in forwardedProps.hashbrown is pinned in both places', () => {
+  const warnings = captureWarnings();
+  const sent = {
+    ...input,
+    forwardedProps: {
+      hashbrown: { responseSchema: { type: 'object' }, ui: true },
+    },
+  } as RunAgentInput;
+
+  const pinned = pinResponseSchema(sent) as RunAgentInput & {
+    forwardedProps: { hashbrown: { responseSchema: object; ui: boolean } };
+    hashbrown: { responseSchema: object; ui: boolean };
+  };
+
+  expect(pinned.forwardedProps.hashbrown.responseSchema).toBe(
+    PINNED_RESPONSE_SCHEMA,
+  );
+  expect(pinned.forwardedProps.hashbrown.ui).toBe(true);
+  expect(pinned.hashbrown.responseSchema).toBe(PINNED_RESPONSE_SCHEMA);
+  expect(warnings).toHaveLength(1);
+});
+
 test('an identical response schema is replaced silently', () => {
   const warnings = captureWarnings();
   const sent = withSchema(JSON.parse(JSON.stringify(PINNED_RESPONSE_SCHEMA)));

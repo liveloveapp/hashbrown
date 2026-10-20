@@ -1026,3 +1026,24 @@ test('propagates a rejected stream read without emitting RUN_ERROR', async () =>
     expectNoRunError(observedEvents);
   });
 });
+
+test('reads the response schema from forwardedProps.hashbrown', async () => {
+  const session = createSession(createTextStream([]));
+  const languageModel = { create: jest.fn().mockResolvedValue(session) };
+
+  await withLanguageModel(languageModel, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({});
+    const request = createRequest({
+      forwardedProps: { hashbrown: { responseSchema } },
+      hashbrown: undefined,
+    });
+
+    const response = await transport.send(request);
+    await collectEvents(response.events);
+
+    expect(session.promptStreaming).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ responseConstraint: responseSchema }),
+    );
+  });
+});

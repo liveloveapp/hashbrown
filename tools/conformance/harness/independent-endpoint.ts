@@ -6,13 +6,25 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { z } from 'zod';
 
-// Validate extensions separately from AG-UI's own run input schema.
-const inputExtensionSchema = z.object({
-  hashbrown: z.object({
-    responseSchema: z.record(z.string(), z.unknown()),
-    ui: z.boolean().optional(),
-  }),
+// Validate extensions separately from AG-UI's own run input schema. The
+// extension lives in forwardedProps.hashbrown; the top-level key is the
+// deprecated pre-0.8 shape, still accepted for one release.
+const hashbrownExtensionSchema = z.object({
+  responseSchema: z.record(z.string(), z.unknown()),
+  ui: z.boolean().optional(),
 });
+const inputExtensionSchema = z
+  .object({
+    forwardedProps: z
+      .object({ hashbrown: hashbrownExtensionSchema.optional() })
+      .optional(),
+    hashbrown: hashbrownExtensionSchema.optional(),
+  })
+  .transform(({ forwardedProps, hashbrown }) => {
+    const extension = forwardedProps?.hashbrown ?? hashbrown;
+    if (!extension) throw new Error('Missing Hashbrown extension');
+    return { hashbrown: extension };
+  });
 
 /**
  * Parses a run input the way a standard AG-UI endpoint sees it: AG-UI 1.0's

@@ -746,7 +746,9 @@ test('createChatRuntime resolves chunked structured output and sends the respons
     });
     expect(capturedInputs[0]).not.toHaveProperty('responseSchema');
     expect(capturedInputs[0]).not.toHaveProperty('params');
-    expect(capturedInputs[0]?.forwardedProps).toEqual({});
+    expect(capturedInputs[0]?.forwardedProps).toEqual({
+      hashbrown: { responseSchema: s.toJsonSchema(responseSchema) },
+    });
     expect(runtime.error()).toBeUndefined();
   } finally {
     unsubscribeContent?.();

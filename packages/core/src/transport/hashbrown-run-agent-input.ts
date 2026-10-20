@@ -4,16 +4,45 @@ import { Chat } from '../models';
 import type { JsonValue } from '../utils';
 
 /**
+ * Hashbrown's generation semantics for one AG-UI run.
+ *
+ * @internal
+ */
+export interface HashbrownRunAgentExtension {
+  responseSchema?: object;
+  ui?: boolean;
+}
+
+/**
  * AG-UI run input with Hashbrown framework semantics.
+ *
+ * The extension travels in `forwardedProps.hashbrown`, AG-UI's extension
+ * point for values an agent reads and intermediaries pass through untouched.
+ * The top-level `hashbrown` key is the shape clients sent before 0.8 and is
+ * still emitted for one release so older servers keep working.
  *
  * @internal
  */
 export type HashbrownRunAgentInput = RunAgentInput & {
-  hashbrown?: {
-    responseSchema?: object;
-    ui?: boolean;
-  };
+  forwardedProps?: { hashbrown?: HashbrownRunAgentExtension } & Record<
+    string,
+    unknown
+  >;
+  /** @deprecated Read `forwardedProps.hashbrown`; removed after one release. */
+  hashbrown?: HashbrownRunAgentExtension;
 };
+
+/**
+ * Reads the Hashbrown extension from a run input, preferring
+ * `forwardedProps.hashbrown` over the deprecated top-level key.
+ *
+ * @internal
+ */
+export function readHashbrownExtension(
+  input: HashbrownRunAgentInput,
+): HashbrownRunAgentExtension | undefined {
+  return input.forwardedProps?.hashbrown ?? input.hashbrown;
+}
 
 /**
  * Inputs used to create an AG-UI run request from an owned canonical checkpoint.
@@ -43,7 +72,7 @@ function mapTool(tool: Chat.Api.Tool): Tool {
 function createHashbrownExtension(
   responseSchema: object | undefined,
   ui: boolean | undefined,
-): HashbrownRunAgentInput['hashbrown'] {
+): HashbrownRunAgentExtension | undefined {
   return responseSchema !== undefined || ui === true
     ? {
         ...(responseSchema !== undefined ? { responseSchema } : {}),
@@ -76,7 +105,7 @@ export function createCanonicalRunAgentInput({
     tools: tools.map(mapTool),
     context: [],
     state,
-    forwardedProps: {},
+    forwardedProps: hashbrown ? { hashbrown } : {},
     ...(resume !== undefined
       ? {
           resume: resume.map(({ interruptId, status, payload, metadata }) => ({

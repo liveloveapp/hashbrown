@@ -15,6 +15,19 @@ import type { FunctionParameters } from 'openai/resources/shared';
  * @public
  */
 export interface OpenAIHashbrownRunAgentInput extends RunAgentInput {
+  /**
+   * AG-UI's pass-through extension point. Hashbrown's generation semantics
+   * travel in `forwardedProps.hashbrown`.
+   */
+  forwardedProps?: {
+    hashbrown?: {
+      /** JSON Schema used for native structured output. */
+      responseSchema?: object;
+      /** Whether the run is expected to produce generative UI output. */
+      ui?: boolean;
+    };
+  } & Record<string, unknown>;
+  /** @deprecated Read `forwardedProps.hashbrown`; removed after one release. */
   hashbrown?: {
     responseSchema?: object;
     ui?: boolean;
@@ -238,7 +251,9 @@ export async function* text(
               },
             }))
           : undefined,
-      response_format: createResponseFormat(input.hashbrown?.responseSchema),
+      response_format: createResponseFormat(
+        (input.forwardedProps?.hashbrown ?? input.hashbrown)?.responseSchema,
+      ),
     };
     const requestOptions = transformRequestOptions
       ? await transformRequestOptions(baseOptions)

@@ -8,10 +8,21 @@ import type { ChatRequest, Ollama } from 'ollama';
  */
 export interface OllamaHashbrownRunAgentInput extends RunAgentInput {
   /** Hashbrown semantics layered onto the standard AG-UI run input. */
+  /**
+   * AG-UI's pass-through extension point. Hashbrown's generation semantics
+   * travel in `forwardedProps.hashbrown`.
+   */
+  forwardedProps?: {
+    hashbrown?: {
+      /** JSON Schema used for native structured output. */
+      responseSchema?: object;
+      /** Whether the run is expected to produce generative UI output. */
+      ui?: boolean;
+    };
+  } & Record<string, unknown>;
+  /** @deprecated Read `forwardedProps.hashbrown`; removed after one release. */
   hashbrown?: {
-    /** JSON Schema used for Ollama native structured output. */
     responseSchema?: object;
-    /** Whether the run is expected to produce generative UI output. */
     ui?: boolean;
   };
 }

@@ -102,6 +102,8 @@ export function createAzureRequestOptions(
               strict: true,
             },
           })),
-    response_format: createResponseFormat(input.hashbrown?.responseSchema),
+    response_format: createResponseFormat(
+      (input.forwardedProps?.hashbrown ?? input.hashbrown)?.responseSchema,
+    ),
   };
 }

@@ -26,12 +26,19 @@ Consume AG-UI types directly in the provider package. Do not duplicate or re-exp
 
 ## Input
 
-Hashbrown sends a standard AG-UI run input and may add a `hashbrown` object for framework-specific generation modes.
+Hashbrown sends a standard AG-UI run input. For framework-specific generation modes it adds a `hashbrown` object inside `forwardedProps`, AG-UI's extension point for values the agent reads and intermediaries pass through untouched. Clients before 0.8 sent the same object as a top-level `hashbrown` key; Hashbrown still sends both for one release, and a server should prefer `forwardedProps.hashbrown`.
 
 ```ts
 import type { RunAgentInput } from '@ag-ui/core';
 
 export interface CustomHashbrownRunAgentInput extends RunAgentInput {
+  forwardedProps?: {
+    hashbrown?: {
+      responseSchema?: object;
+      ui?: boolean;
+    };
+  };
+  /** @deprecated Older clients; read forwardedProps.hashbrown first. */
   hashbrown?: {
     responseSchema?: object;
     ui?: boolean;
@@ -84,7 +91,8 @@ export async function* text(
       model,
       messages: mapMessages(input.messages),
       tools: mapTools(input.tools),
-      responseSchema: input.hashbrown?.responseSchema,
+      responseSchema: (input.forwardedProps?.hashbrown ?? input.hashbrown)
+        ?.responseSchema,
       stream: true,
     };
     const request = transformRequestOptions
@@ -129,7 +137,7 @@ export async function* text(
 
 For tool calls, emit `TOOL_CALL_START` once the call ID and name are known, stream argument fragments with `TOOL_CALL_ARGS`, and finish with `TOOL_CALL_END`. Preserve the provider's call ID so later tool-result messages correlate correctly. Tool-result messages, like user messages, can carry content parts instead of a string, so map them or reject them with a clear error, as the official providers do. Map provider reasoning to AG-UI reasoning events and use `RAW` for useful provider details that have no canonical event.
 
-If the provider supports native structured output, map `input.hashbrown?.responseSchema` to that capability. Hashbrown continues to incrementally parse the resulting assistant text; the provider integration should not add a second parser or validate the full output itself.
+If the provider supports native structured output, map `input.forwardedProps?.hashbrown?.responseSchema` to that capability. Hashbrown continues to incrementally parse the resulting assistant text; the provider integration should not add a second parser or validate the full output itself.
 
 ## Expose POST `/run`
 

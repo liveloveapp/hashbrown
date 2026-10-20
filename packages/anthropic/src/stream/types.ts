@@ -7,6 +7,19 @@ import type Anthropic from '@anthropic-ai/sdk';
  * @public
  */
 export interface AnthropicHashbrownRunAgentInput extends RunAgentInput {
+  /**
+   * AG-UI's pass-through extension point. Hashbrown's generation semantics
+   * travel in `forwardedProps.hashbrown`.
+   */
+  forwardedProps?: {
+    hashbrown?: {
+      /** JSON Schema used for native structured output. */
+      responseSchema?: object;
+      /** Whether the run is expected to produce generative UI output. */
+      ui?: boolean;
+    };
+  } & Record<string, unknown>;
+  /** @deprecated Read `forwardedProps.hashbrown`; removed after one release. */
   hashbrown?: {
     responseSchema?: object;
     ui?: boolean;
