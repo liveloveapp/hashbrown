@@ -212,6 +212,8 @@ const route = decisionResource({
 
 By default the client sends the questions. To stop clients from asking anything they like, pass the same `schema` to `HashbrownTypeSafe.decide` on the server. The server compiles its own questions and ignores the ones in the request. See [TypeSafe](/docs/angular/platform/typesafe).
 
+To make decisions inside an agent tool or node, or to send them to an AG-UI agent server, see [Decisions in Agents](/docs/angular/recipes/decisions-in-agents).
+
 ---
 
 ## Errors

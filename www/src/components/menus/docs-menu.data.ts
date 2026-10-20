@@ -83,6 +83,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'UI Chatbot with Tools', path: 'recipes/ui-chatbot' },
       { text: 'UI Kits', path: 'recipes/ui-kits' },
       { text: 'UI Selection', path: 'recipes/ui-selection' },
+      { text: 'Decisions in Agents', path: 'recipes/decisions-in-agents' },
       { text: 'Predictive Suggestions', path: 'recipes/predictive-actions' },
       { text: 'Remote MCP', path: 'recipes/remote-mcp' },
       { text: 'Securing a Public Endpoint', path: 'recipes/public-endpoint' },
