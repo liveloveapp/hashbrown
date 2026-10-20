@@ -14,14 +14,21 @@ import { historyFromEvents } from './testing/history-from-events';
 // (`{endpoint}/openai/responses?api-version=…`). They need AZURE_API_KEY and
 // AZURE_ENDPOINT. Reasoning cases also need AZURE_REASONING_MODEL (a reasoning
 // deployment name); the plain case needs AZURE_MODEL (a non-reasoning
-// deployment name). AZURE_API_VERSION defaults to `preview`.
+// deployment name). AZURE_API_VERSION defaults to `2025-04-01-preview`.
+// They call the paid API, so they also need HASHBROWN_LIVE_TESTS=1; CI's
+// `nx run-many -t e2e` skips them. Run them with:
+//
+//   set -a; source .env; set +a; HASHBROWN_LIVE_TESTS=1 npx nx e2e azure
+const liveEnabled = process.env['HASHBROWN_LIVE_TESTS'] === '1';
 const apiKey = process.env['AZURE_API_KEY'];
 const endpoint = process.env['AZURE_ENDPOINT'];
-const apiVersion = process.env['AZURE_API_VERSION'] ?? 'preview';
+const apiVersion = process.env['AZURE_API_VERSION'] ?? '2025-04-01-preview';
 const reasoningModel = process.env['AZURE_REASONING_MODEL'] ?? '';
 const plainModel = process.env['AZURE_MODEL'] ?? '';
-const reasoningTest = apiKey && endpoint && reasoningModel ? test : test.skip;
-const plainTest = apiKey && endpoint && plainModel ? test : test.skip;
+const reasoningTest =
+  liveEnabled && apiKey && endpoint && reasoningModel ? test : test.skip;
+const plainTest =
+  liveEnabled && apiKey && endpoint && plainModel ? test : test.skip;
 // A deployment name need not look like a model name; when it does not, the
 // default `reasoning` resolves to nothing, so request summaries explicitly.
 const DEFAULT_REASONING: AzureReasoningOption | undefined = isReasoningModel(

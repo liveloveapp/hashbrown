@@ -35,9 +35,10 @@ type OpenAIMarker = {
  * without an encrypted value, reasoning not followed by an assistant message,
  * and activity messages are dropped.
  *
- * Item ids are all or nothing per turn: a turn's assistant message and
- * `function_call` items carry their OpenAI item ids only when every reasoning
- * item the turn recorded in `reasoningItemIds` is replayed.
+ * Item ids and reasoning are all or nothing per turn: a turn's assistant
+ * message and `function_call` items carry their OpenAI item ids, and its
+ * reasoning items are replayed, only when every reasoning item the turn
+ * recorded in `reasoningItemIds` can be replayed.
  *
  * @param messages - The AG-UI conversation history.
  * @returns The Responses `input` items, in history order.
@@ -149,9 +150,14 @@ function mapTurn(
     ),
   ];
 
-  // Reasoning must be followed by an assistant item, so a turn with nothing
-  // to send drops its whole reasoning group.
-  return turnItems.length > 0 ? [...reasoningItems, ...turnItems] : [];
+  // A turn whose ids were stripped replays none of its reasoning, and
+  // reasoning must be followed by an assistant item, so a turn with nothing
+  // to send drops its whole reasoning group too.
+  if (turnItems.length === 0) {
+    return [];
+  }
+
+  return keepIds ? [...reasoningItems, ...turnItems] : turnItems;
 }
 
 function mapAssistantText(

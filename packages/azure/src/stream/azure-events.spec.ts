@@ -150,7 +150,7 @@ test('maps output text and refusal deltas into one assistant message', async () 
       type: EventType.TEXT_MESSAGE_START,
       messageId,
       role: 'assistant',
-      metadata: { openai: { itemId: 'msg_1', reasoningItemIds: [] } },
+      metadata: { azure: { itemId: 'msg_1', reasoningItemIds: [] } },
     },
     { type: EventType.TEXT_MESSAGE_CONTENT, messageId, delta: 'Accepted. ' },
     { type: EventType.TEXT_MESSAGE_CONTENT, messageId, delta: 'Declined.' },
@@ -174,7 +174,7 @@ test('maps a reasoning item with two summary parts and encrypted content', async
       type: EventType.REASONING_MESSAGE_START,
       messageId: 'rs_1',
       role: 'reasoning',
-      metadata: { openai: { itemId: 'rs_1' } },
+      metadata: { azure: { itemId: 'rs_1' } },
     },
     {
       type: EventType.REASONING_MESSAGE_CONTENT,
@@ -216,7 +216,7 @@ test('maps a reasoning item with an empty summary to start and end only', async 
       type: EventType.REASONING_MESSAGE_START,
       messageId: 'rs_1',
       role: 'reasoning',
-      metadata: { openai: { itemId: 'rs_1' } },
+      metadata: { azure: { itemId: 'rs_1' } },
     },
     { type: EventType.REASONING_MESSAGE_END, messageId: 'rs_1' },
   ]);
@@ -266,14 +266,14 @@ test('maps parallel function calls with interleaved argument deltas by item id',
       toolCallId: 'call_1',
       toolCallName: 'lookup',
       parentMessageId: messageId,
-      metadata: { openai: { itemId: 'fc_1', reasoningItemIds: [] } },
+      metadata: { azure: { itemId: 'fc_1', reasoningItemIds: [] } },
     },
     {
       type: EventType.TOOL_CALL_START,
       toolCallId: 'call_2',
       toolCallName: 'search',
       parentMessageId: messageId,
-      metadata: { openai: { itemId: 'fc_2', reasoningItemIds: [] } },
+      metadata: { azure: { itemId: 'fc_2', reasoningItemIds: [] } },
     },
     { type: EventType.TOOL_CALL_ARGS, toolCallId: 'call_1', delta: '{"a":' },
     { type: EventType.TOOL_CALL_ARGS, toolCallId: 'call_2', delta: '{"b":' },
@@ -304,7 +304,7 @@ test('records reasoning item ids on the text message and tool calls that follow'
       type: EventType.REASONING_MESSAGE_START,
       messageId: 'rs_1',
       role: 'reasoning',
-      metadata: { openai: { itemId: 'rs_1' } },
+      metadata: { azure: { itemId: 'rs_1' } },
     },
     { type: EventType.REASONING_MESSAGE_END, messageId: 'rs_1' },
     {
@@ -312,14 +312,15 @@ test('records reasoning item ids on the text message and tool calls that follow'
       toolCallId: 'call_1',
       toolCallName: 'lookup',
       parentMessageId: messageId,
-      metadata: { openai: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
+      metadata: { azure: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
     },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'call_1', delta: '{}' },
     { type: EventType.TOOL_CALL_END, toolCallId: 'call_1' },
     {
       type: EventType.REASONING_MESSAGE_START,
       messageId: 'rs_2',
       role: 'reasoning',
-      metadata: { openai: { itemId: 'rs_2' } },
+      metadata: { azure: { itemId: 'rs_2' } },
     },
     { type: EventType.REASONING_MESSAGE_END, messageId: 'rs_2' },
     {
@@ -327,7 +328,7 @@ test('records reasoning item ids on the text message and tool calls that follow'
       messageId,
       role: 'assistant',
       metadata: {
-        openai: { itemId: 'msg_1', reasoningItemIds: ['rs_1', 'rs_2'] },
+        azure: { itemId: 'msg_1', reasoningItemIds: ['rs_1', 'rs_2'] },
       },
     },
     { type: EventType.TEXT_MESSAGE_CONTENT, messageId, delta: 'Done.' },
@@ -378,7 +379,7 @@ test('keeps text open across tool calls and ends it at completion', async () => 
       type: EventType.TEXT_MESSAGE_START,
       messageId,
       role: 'assistant',
-      metadata: { openai: { itemId: 'msg_1', reasoningItemIds: [] } },
+      metadata: { azure: { itemId: 'msg_1', reasoningItemIds: [] } },
     },
     { type: EventType.TEXT_MESSAGE_CONTENT, messageId, delta: 'Looking. ' },
     {
@@ -386,7 +387,7 @@ test('keeps text open across tool calls and ends it at completion', async () => 
       toolCallId: 'call_1',
       toolCallName: 'lookup',
       parentMessageId: messageId,
-      metadata: { openai: { itemId: 'fc_1', reasoningItemIds: [] } },
+      metadata: { azure: { itemId: 'fc_1', reasoningItemIds: [] } },
     },
     { type: EventType.TOOL_CALL_ARGS, toolCallId: 'call_1', delta: '{}' },
     { type: EventType.TOOL_CALL_END, toolCallId: 'call_1' },
@@ -480,7 +481,7 @@ test('stops yielding once aborted', async () => {
       type: EventType.TEXT_MESSAGE_START,
       messageId,
       role: 'assistant',
-      metadata: { openai: { itemId: 'msg_1', reasoningItemIds: [] } },
+      metadata: { azure: { itemId: 'msg_1', reasoningItemIds: [] } },
     },
     { type: EventType.TEXT_MESSAGE_CONTENT, messageId, delta: 'One.' },
   ]);
@@ -494,4 +495,38 @@ test('throws when the stream ends before response.completed', async () => {
   await expect(result).rejects.toThrow(
     'Azure OpenAI stream ended before response.completed',
   );
+});
+
+test('emits the finished arguments when a function call streamed no argument deltas', async () => {
+  const input = [
+    functionCallAdded('fc_1', 'call_1', 'lookup'),
+    functionCallDone('fc_1', 'call_1', 'lookup', '{"a":1}'),
+    functionCallAdded('fc_2', 'call_2', 'search'),
+    argsDelta('fc_2', '{"b":2}'),
+    functionCallDone('fc_2', 'call_2', 'search', '{"b":2}'),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(events).toEqual([
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call_1',
+      toolCallName: 'lookup',
+      parentMessageId: messageId,
+      metadata: { azure: { itemId: 'fc_1', reasoningItemIds: [] } },
+    },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'call_1', delta: '{"a":1}' },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'call_1' },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call_2',
+      toolCallName: 'search',
+      parentMessageId: messageId,
+      metadata: { azure: { itemId: 'fc_2', reasoningItemIds: [] } },
+    },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'call_2', delta: '{"b":2}' },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'call_2' },
+  ]);
 });

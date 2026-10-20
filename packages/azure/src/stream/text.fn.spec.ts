@@ -273,7 +273,7 @@ test('streams refusal fragments through one assistant text lifecycle', async () 
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'run-azure:assistant',
       role: 'assistant',
-      metadata: { openai: { itemId: 'msg_1', reasoningItemIds: [] } },
+      metadata: { azure: { itemId: 'msg_1', reasoningItemIds: [] } },
     },
     {
       type: EventType.TEXT_MESSAGE_CONTENT,

@@ -16,7 +16,7 @@ import type { AzureHashbrownRunAgentInput } from './stream/types';
 // Responses fixtures (including `openai/reasoning*.json`) drive these runs.
 
 const AZURE_MODEL = 'gpt-4.1-mini';
-const AZURE_API_VERSION = 'preview';
+const AZURE_API_VERSION = '2025-04-01-preview';
 
 function fixturePath(name: string): string {
   return resolve(__dirname, '../../../tools/testing/aimock/fixtures', name);
@@ -97,7 +97,7 @@ test('Azure OpenAI consumes AG-UI input and emits a canonical text run', async (
       messageId: 'run-azure:assistant',
       role: 'assistant',
       metadata: {
-        openai: { itemId: expect.any(String), reasoningItemIds: [] },
+        azure: { itemId: expect.any(String), reasoningItemIds: [] },
       },
     },
     {
@@ -418,7 +418,9 @@ test('transformRequestOptions receives Responses params sent to the Azure Respon
     });
     const wireBodies = fetchSpy.mock.calls
       .filter(([url]) =>
-        String(url).includes('/openai/responses?api-version=preview'),
+        String(url).includes(
+          `/openai/responses?api-version=${AZURE_API_VERSION}`,
+        ),
       )
       .map(([, init]) => JSON.parse(String(init?.body)));
 

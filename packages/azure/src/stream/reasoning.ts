@@ -18,15 +18,17 @@ export type AzureReasoningOption =
     };
 
 const REASONING_MODEL = /^(o\d|gpt-(?:[5-9]|\d{2,})(?!\d))/i;
+const CHAT_MODEL = /-chat(?:-|$)/i;
 
 /**
  * Whether a model name denotes an Azure OpenAI reasoning model: `o` followed by a
  * digit, or `gpt-` with a major version of 5 or later (case-insensitive).
+ * `-chat` variants such as `gpt-5-chat-latest` are not reasoning models.
  *
  * @param model - The model or deployment name.
  */
 export function isReasoningModel(model: string): boolean {
-  return REASONING_MODEL.test(model);
+  return REASONING_MODEL.test(model) && !CHAT_MODEL.test(model);
 }
 
 /**

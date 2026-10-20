@@ -19,9 +19,9 @@ type Segment =
   | { readonly kind: 'message'; readonly message: Message };
 
 /**
- * The validated `metadata.openai` marker of a message or tool call.
+ * The validated `metadata.azure` marker of a message or tool call.
  */
-type OpenAIMarker = {
+type AzureMarker = {
   readonly itemId?: string;
   readonly reasoningItemIds: readonly string[];
 };
@@ -29,19 +29,20 @@ type OpenAIMarker = {
 /**
  * Maps AG-UI message history to Azure OpenAI Responses API input items.
  *
- * Azure OpenAI reasoning messages (those carrying `metadata.openai` and a non-empty
+ * Azure OpenAI reasoning messages (those carrying `metadata.azure` and a non-empty
  * `encryptedValue`) are replayed as `reasoning` items directly before the
- * assistant turn they preceded. Reasoning from other providers, reasoning
- * without an encrypted value, reasoning not followed by an assistant message,
+ * assistant turn they preceded. Reasoning from other providers (including the
+ * OpenAI provider's `metadata.openai`), reasoning without an encrypted value, reasoning not followed by an assistant message,
  * and activity messages are dropped.
  *
- * Item ids are all or nothing per turn: a turn's assistant message and
- * `function_call` items carry their OpenAI item ids only when every reasoning
- * item the turn recorded in `reasoningItemIds` is replayed.
+ * Item ids and reasoning are all or nothing per turn: a turn's assistant
+ * message and `function_call` items carry their OpenAI item ids, and its
+ * reasoning items are replayed, only when every reasoning item the turn
+ * recorded in `reasoningItemIds` can be replayed.
  *
  * @param messages - The AG-UI conversation history.
  * @returns The Responses `input` items, in history order.
- * @throws When user or tool content is not text, or when `metadata.openai`
+ * @throws When user or tool content is not text, or when `metadata.azure`
  * is malformed.
  */
 export function mapInput(messages: readonly Message[]): InputItem[] {
@@ -151,9 +152,14 @@ function mapTurn(
     ),
   ];
 
-  // Reasoning must be followed by an assistant item, so a turn with nothing
-  // to send drops its whole reasoning group.
-  return turnItems.length > 0 ? [...reasoningItems, ...turnItems] : [];
+  // A turn whose ids were stripped replays none of its reasoning, and
+  // reasoning must be followed by an assistant item, so a turn with nothing
+  // to send drops its whole reasoning group too.
+  if (turnItems.length === 0) {
+    return [];
+  }
+
+  return keepIds ? [...reasoningItems, ...turnItems] : turnItems;
 }
 
 function mapAssistantText(
@@ -196,20 +202,20 @@ function mapReasoningMessage(
   message: ReasoningMessage,
 ): OpenAI.Responses.ResponseReasoningItem[] {
   const metadata = message.metadata;
-  if (!isRecord(metadata) || !Object.hasOwn(metadata, 'openai')) {
+  if (!isRecord(metadata) || !Object.hasOwn(metadata, 'azure')) {
     return [];
   }
 
   const messageReference = `Azure OpenAI reasoning message "${message.id}"`;
-  const marker = metadata['openai'];
+  const marker = metadata['azure'];
   if (!isRecord(marker)) {
-    throw new Error(`${messageReference} metadata.openai must be an object`);
+    throw new Error(`${messageReference} metadata.azure must be an object`);
   }
 
   const itemId = marker['itemId'];
   if (itemId !== undefined && typeof itemId !== 'string') {
     throw new Error(
-      `${messageReference} metadata.openai.itemId must be a string`,
+      `${messageReference} metadata.azure.itemId must be a string`,
     );
   }
 
@@ -234,19 +240,19 @@ function mapReasoningMessage(
   ];
 }
 
-function readMarker(metadata: unknown, reference: string): OpenAIMarker {
-  if (!isRecord(metadata) || !Object.hasOwn(metadata, 'openai')) {
+function readMarker(metadata: unknown, reference: string): AzureMarker {
+  if (!isRecord(metadata) || !Object.hasOwn(metadata, 'azure')) {
     return { reasoningItemIds: [] };
   }
 
-  const marker = metadata['openai'];
+  const marker = metadata['azure'];
   if (!isRecord(marker)) {
-    throw new Error(`${reference} metadata.openai must be an object`);
+    throw new Error(`${reference} metadata.azure must be an object`);
   }
 
   const itemId = marker['itemId'];
   if (itemId !== undefined && typeof itemId !== 'string') {
-    throw new Error(`${reference} metadata.openai.itemId must be a string`);
+    throw new Error(`${reference} metadata.azure.itemId must be a string`);
   }
 
   const reasoningItemIds = marker['reasoningItemIds'] ?? [];
@@ -255,7 +261,7 @@ function readMarker(metadata: unknown, reference: string): OpenAIMarker {
     !reasoningItemIds.every((id) => typeof id === 'string')
   ) {
     throw new Error(
-      `${reference} metadata.openai.reasoningItemIds must be an array of strings`,
+      `${reference} metadata.azure.reasoningItemIds must be an array of strings`,
     );
   }
 

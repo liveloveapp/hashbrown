@@ -1,41 +1,29 @@
 import { isReasoningModel, resolveReasoning } from './reasoning';
 
-test('isReasoningModel matches o-series and gpt-5 and later, case-insensitively', () => {
-  const models = [
-    'o1',
-    'o3-mini',
-    'O4-mini',
-    'gpt-5',
-    'gpt-5-mini',
-    'gpt-5.1',
-    'gpt-6',
-    'gpt-6.1-sol',
-    'gpt-10',
-    'gpt-4.1',
-    'gpt-4o',
-    'gpt-4o-mini',
-    'omni-moderation',
-    'my-deployment',
+test('isReasoningModel matches o-series and gpt-5 and later, but not chat variants, case-insensitively', () => {
+  const table: ReadonlyArray<readonly [string, boolean]> = [
+    ['o1', true],
+    ['o3-mini', true],
+    ['O4-mini', true],
+    ['gpt-5', true],
+    ['gpt-5-mini', true],
+    ['gpt-5.1', true],
+    ['gpt-6', true],
+    ['gpt-6.1-sol', true],
+    ['gpt-10', true],
+    ['gpt-5-chat-latest', false],
+    ['gpt-5.1-chat-latest', false],
+    ['GPT-5-Chat', false],
+    ['gpt-4.1', false],
+    ['gpt-4o', false],
+    ['gpt-4o-mini', false],
+    ['omni-moderation', false],
+    ['my-deployment', false],
   ];
 
-  const result = models.map(isReasoningModel);
+  const result = table.map(([model]) => [model, isReasoningModel(model)]);
 
-  expect(result).toEqual([
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ]);
+  expect(result).toEqual(table);
 });
 
 test('resolveReasoning requests auto summaries for reasoning models when unset', () => {

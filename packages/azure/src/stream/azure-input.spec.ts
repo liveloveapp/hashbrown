@@ -46,19 +46,19 @@ test('replays Azure OpenAI reasoning with encrypted content before the turn it p
       role: 'reasoning',
       content: 'Need the weather tool.',
       encryptedValue: 'enc-1',
-      metadata: { openai: { itemId: 'rs_1' } },
+      metadata: { azure: { itemId: 'rs_1' } },
     },
     {
       id: 'm-2',
       role: 'assistant',
       content: 'Checking.',
-      metadata: { openai: { itemId: 'msg_1', reasoningItemIds: ['rs_1'] } },
+      metadata: { azure: { itemId: 'msg_1', reasoningItemIds: ['rs_1'] } },
       toolCalls: [
         {
           id: 'call_1',
           type: 'function',
           function: { name: 'getWeather', arguments: '{}' },
-          metadata: { openai: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
+          metadata: { azure: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
         },
       ],
     },
@@ -100,13 +100,13 @@ test('sends an empty summary array for a reasoning message with no text', () => 
       role: 'reasoning',
       content: '',
       encryptedValue: 'enc-1',
-      metadata: { openai: { itemId: 'rs_1' } },
+      metadata: { azure: { itemId: 'rs_1' } },
     },
     {
       id: 'm-1',
       role: 'assistant',
       content: 'Hi.',
-      metadata: { openai: { itemId: 'msg_1', reasoningItemIds: ['rs_1'] } },
+      metadata: { azure: { itemId: 'msg_1', reasoningItemIds: ['rs_1'] } },
     },
   ];
 
@@ -136,14 +136,14 @@ test('groups several reasoning messages before one turn, in order', () => {
       role: 'reasoning',
       content: 'First.',
       encryptedValue: 'enc-1',
-      metadata: { openai: { itemId: 'rs_1' } },
+      metadata: { azure: { itemId: 'rs_1' } },
     },
     {
       id: 'r-2',
       role: 'reasoning',
       content: 'Second.',
       encryptedValue: 'enc-2',
-      metadata: { openai: { itemId: 'rs_2' } },
+      metadata: { azure: { itemId: 'rs_2' } },
     },
     {
       id: 'm-1',
@@ -153,14 +153,14 @@ test('groups several reasoning messages before one turn, in order', () => {
           id: 'call_1',
           type: 'function',
           function: { name: 'a', arguments: '{}' },
-          metadata: { openai: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
+          metadata: { azure: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
         },
         {
           id: 'call_2',
           type: 'function',
           function: { name: 'b', arguments: '{}' },
           metadata: {
-            openai: { itemId: 'fc_2', reasoningItemIds: ['rs_1', 'rs_2'] },
+            azure: { itemId: 'fc_2', reasoningItemIds: ['rs_1', 'rs_2'] },
           },
         },
       ],
@@ -205,19 +205,19 @@ test('strips item ids from a turn whose reasoning cannot be replayed', () => {
       id: 'r-1',
       role: 'reasoning',
       content: 'Thinking.',
-      metadata: { openai: { itemId: 'rs_1' } },
+      metadata: { azure: { itemId: 'rs_1' } },
     },
     {
       id: 'm-1',
       role: 'assistant',
       content: 'Checking.',
-      metadata: { openai: { itemId: 'msg_1', reasoningItemIds: ['rs_1'] } },
+      metadata: { azure: { itemId: 'msg_1', reasoningItemIds: ['rs_1'] } },
       toolCalls: [
         {
           id: 'call_1',
           type: 'function',
           function: { name: 'a', arguments: '{}' },
-          metadata: { openai: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
+          metadata: { azure: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
         },
       ],
     },
@@ -237,13 +237,13 @@ test('keeps item ids on turns that had no reasoning', () => {
       id: 'm-1',
       role: 'assistant',
       content: 'Checking.',
-      metadata: { openai: { itemId: 'msg_1', reasoningItemIds: [] } },
+      metadata: { azure: { itemId: 'msg_1', reasoningItemIds: [] } },
       toolCalls: [
         {
           id: 'call_1',
           type: 'function',
           function: { name: 'a', arguments: '{}' },
-          metadata: { openai: { itemId: 'fc_1', reasoningItemIds: [] } },
+          metadata: { azure: { itemId: 'fc_1', reasoningItemIds: [] } },
         },
       ],
     },
@@ -277,14 +277,14 @@ test('drops a trailing reasoning group with nothing after it', () => {
       role: 'reasoning',
       content: 'Thinking.',
       encryptedValue: 'enc-1',
-      metadata: { openai: { itemId: 'rs_1' } },
+      metadata: { azure: { itemId: 'rs_1' } },
     },
     {
       id: 'r-2',
       role: 'reasoning',
       content: 'More.',
       encryptedValue: 'enc-2',
-      metadata: { openai: { itemId: 'rs_2' } },
+      metadata: { azure: { itemId: 'rs_2' } },
     },
   ];
 
@@ -301,13 +301,13 @@ test('drops a reasoning group followed by an empty assistant message', () => {
       role: 'reasoning',
       content: 'Thinking.',
       encryptedValue: 'enc-1',
-      metadata: { openai: { itemId: 'rs_1' } },
+      metadata: { azure: { itemId: 'rs_1' } },
     },
     {
       id: 'm-2',
       role: 'assistant',
       content: '',
-      metadata: { openai: { reasoningItemIds: ['rs_1'] } },
+      metadata: { azure: { reasoningItemIds: ['rs_1'] } },
     },
   ];
 
@@ -349,14 +349,14 @@ test('drops activity messages', () => {
   expect(input).toEqual([{ role: 'user', content: 'Hi' }]);
 });
 
-test('throws on malformed metadata.openai', () => {
+test('throws on malformed metadata.azure', () => {
   const notAnObject: Message[] = [
     {
       id: 'r-1',
       role: 'reasoning',
       content: '',
       encryptedValue: 'enc-1',
-      metadata: { openai: 'rs_1' },
+      metadata: { azure: 'rs_1' },
     },
     { id: 'm-1', role: 'assistant', content: 'Hi.' },
   ];
@@ -366,7 +366,7 @@ test('throws on malformed metadata.openai', () => {
       role: 'reasoning',
       content: '',
       encryptedValue: 'enc-1',
-      metadata: { openai: { itemId: 42 } },
+      metadata: { azure: { itemId: 42 } },
     },
     { id: 'm-1', role: 'assistant', content: 'Hi.' },
   ];
@@ -375,10 +375,10 @@ test('throws on malformed metadata.openai', () => {
   const mapNonStringItemId = () => mapInput(nonStringItemId);
 
   expect(mapNotAnObject).toThrow(
-    'Azure OpenAI reasoning message "r-1" metadata.openai must be an object',
+    'Azure OpenAI reasoning message "r-1" metadata.azure must be an object',
   );
   expect(mapNonStringItemId).toThrow(
-    'Azure OpenAI reasoning message "r-2" metadata.openai.itemId must be a string',
+    'Azure OpenAI reasoning message "r-2" metadata.azure.itemId must be a string',
   );
 });
 
@@ -396,4 +396,69 @@ test('throws on non-text user content', () => {
   expect(map).toThrow(
     'Azure OpenAI provider currently requires text user content',
   );
+});
+
+test("drops all reasoning and item ids when only part of a turn's reasoning can be replayed", () => {
+  const messages: Message[] = [
+    {
+      id: 'r-1',
+      role: 'reasoning',
+      content: 'First.',
+      encryptedValue: 'enc-1',
+      metadata: { azure: { itemId: 'rs_1' } },
+    },
+    {
+      id: 'r-2',
+      role: 'reasoning',
+      content: 'Second.',
+      metadata: { azure: { itemId: 'rs_2' } },
+    },
+    {
+      id: 'm-1',
+      role: 'assistant',
+      content: 'Checking.',
+      metadata: {
+        azure: { itemId: 'msg_1', reasoningItemIds: ['rs_1', 'rs_2'] },
+      },
+      toolCalls: [
+        {
+          id: 'call_1',
+          type: 'function',
+          function: { name: 'a', arguments: '{}' },
+          metadata: {
+            azure: { itemId: 'fc_1', reasoningItemIds: ['rs_1', 'rs_2'] },
+          },
+        },
+      ],
+    },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([
+    { role: 'assistant', content: 'Checking.' },
+    { type: 'function_call', call_id: 'call_1', name: 'a', arguments: '{}' },
+  ]);
+});
+
+test('drops reasoning and item ids recorded by the OpenAI provider', () => {
+  const messages: Message[] = [
+    {
+      id: 'r-1',
+      role: 'reasoning',
+      content: 'Thinking.',
+      encryptedValue: 'enc-1',
+      metadata: { openai: { itemId: 'rs_1' } },
+    },
+    {
+      id: 'm-1',
+      role: 'assistant',
+      content: 'Hi.',
+      metadata: { openai: { itemId: 'msg_1', reasoningItemIds: ['rs_1'] } },
+    },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([{ role: 'assistant', content: 'Hi.' }]);
 });

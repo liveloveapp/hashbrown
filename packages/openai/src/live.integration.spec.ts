@@ -7,9 +7,14 @@ import type { OpenAIHashbrownRunAgentInput } from './stream/types';
 import { historyFromEvents } from './testing/history-from-events';
 
 // Live OpenAI checks for the replay rules aimock cannot reproduce (reasoning
-// and function_call pairing, item ids). They run only with OPENAI_API_KEY set.
+// and function_call pairing, item ids). They call the paid API, so they run
+// only when HASHBROWN_LIVE_TESTS=1 and OPENAI_API_KEY are both set; CI's
+// `nx run-many -t e2e` (which has OPENAI_API_KEY) skips them. Run them with:
+//
+//   set -a; source .env; set +a; HASHBROWN_LIVE_TESTS=1 npx nx e2e openai
+const liveEnabled = process.env['HASHBROWN_LIVE_TESTS'] === '1';
 const apiKey = process.env['OPENAI_API_KEY'];
-const liveTest = apiKey ? test : test.skip;
+const liveTest = liveEnabled && apiKey ? test : test.skip;
 const LIVE_TIMEOUT = 120_000;
 
 const LOOKUP_TOOL = {

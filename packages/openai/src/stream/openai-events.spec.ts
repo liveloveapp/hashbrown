@@ -314,6 +314,7 @@ test('records reasoning item ids on the text message and tool calls that follow'
       parentMessageId: messageId,
       metadata: { openai: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
     },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'call_1', delta: '{}' },
     { type: EventType.TOOL_CALL_END, toolCallId: 'call_1' },
     {
       type: EventType.REASONING_MESSAGE_START,
@@ -494,4 +495,38 @@ test('throws when the stream ends before response.completed', async () => {
   await expect(result).rejects.toThrow(
     'OpenAI stream ended before response.completed',
   );
+});
+
+test('emits the finished arguments when a function call streamed no argument deltas', async () => {
+  const input = [
+    functionCallAdded('fc_1', 'call_1', 'lookup'),
+    functionCallDone('fc_1', 'call_1', 'lookup', '{"a":1}'),
+    functionCallAdded('fc_2', 'call_2', 'search'),
+    argsDelta('fc_2', '{"b":2}'),
+    functionCallDone('fc_2', 'call_2', 'search', '{"b":2}'),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(events).toEqual([
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call_1',
+      toolCallName: 'lookup',
+      parentMessageId: messageId,
+      metadata: { openai: { itemId: 'fc_1', reasoningItemIds: [] } },
+    },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'call_1', delta: '{"a":1}' },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'call_1' },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call_2',
+      toolCallName: 'search',
+      parentMessageId: messageId,
+      metadata: { openai: { itemId: 'fc_2', reasoningItemIds: [] } },
+    },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'call_2', delta: '{"b":2}' },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'call_2' },
+  ]);
 });

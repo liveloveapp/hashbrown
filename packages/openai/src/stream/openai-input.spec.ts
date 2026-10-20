@@ -395,3 +395,68 @@ test('throws on non-text user content', () => {
 
   expect(map).toThrow('OpenAI provider currently requires text user content');
 });
+
+test("drops all reasoning and item ids when only part of a turn's reasoning can be replayed", () => {
+  const messages: Message[] = [
+    {
+      id: 'r-1',
+      role: 'reasoning',
+      content: 'First.',
+      encryptedValue: 'enc-1',
+      metadata: { openai: { itemId: 'rs_1' } },
+    },
+    {
+      id: 'r-2',
+      role: 'reasoning',
+      content: 'Second.',
+      metadata: { openai: { itemId: 'rs_2' } },
+    },
+    {
+      id: 'm-1',
+      role: 'assistant',
+      content: 'Checking.',
+      metadata: {
+        openai: { itemId: 'msg_1', reasoningItemIds: ['rs_1', 'rs_2'] },
+      },
+      toolCalls: [
+        {
+          id: 'call_1',
+          type: 'function',
+          function: { name: 'a', arguments: '{}' },
+          metadata: {
+            openai: { itemId: 'fc_1', reasoningItemIds: ['rs_1', 'rs_2'] },
+          },
+        },
+      ],
+    },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([
+    { role: 'assistant', content: 'Checking.' },
+    { type: 'function_call', call_id: 'call_1', name: 'a', arguments: '{}' },
+  ]);
+});
+
+test('drops reasoning and item ids recorded by the Azure provider', () => {
+  const messages: Message[] = [
+    {
+      id: 'r-1',
+      role: 'reasoning',
+      content: 'Thinking.',
+      encryptedValue: 'enc-1',
+      metadata: { azure: { itemId: 'rs_1' } },
+    },
+    {
+      id: 'm-1',
+      role: 'assistant',
+      content: 'Hi.',
+      metadata: { azure: { itemId: 'msg_1', reasoningItemIds: ['rs_1'] } },
+    },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([{ role: 'assistant', content: 'Hi.' }]);
+});

@@ -8,12 +8,17 @@ interface ReasoningItemState {
   readonly hasContent: boolean;
 }
 
+interface ToolCallState {
+  readonly toolCallId: string;
+  readonly hasArgs: boolean;
+}
+
 interface MapperState {
   readonly textStarted: boolean;
   readonly firstMessageItemId?: string;
   readonly reasoningItemIds: readonly string[];
   readonly openReasoning: ReadonlyMap<string, ReasoningItemState>;
-  readonly toolCallIds: ReadonlyMap<string, string>;
+  readonly toolCalls: ReadonlyMap<string, ToolCallState>;
 }
 
 interface MapperStep {
@@ -35,7 +40,7 @@ const initialState: MapperState = {
   textStarted: false,
   reasoningItemIds: [],
   openReasoning: new Map(),
-  toolCallIds: new Map(),
+  toolCalls: new Map(),
 };
 
 function withEntry<V>(
@@ -82,7 +87,7 @@ function mapTextDelta(
         messageId,
         role: 'assistant',
         metadata: {
-          openai: {
+          azure: {
             itemId: state.firstMessageItemId ?? itemId,
             reasoningItemIds: [...state.reasoningItemIds],
           },
@@ -113,7 +118,7 @@ function mapItemAdded(
             type: EventType.REASONING_MESSAGE_START,
             messageId: item.id,
             role: 'reasoning',
-            metadata: { openai: { itemId: item.id } },
+            metadata: { azure: { itemId: item.id } },
           },
         ],
       };
@@ -129,11 +134,10 @@ function mapItemAdded(
       return {
         state: {
           ...state,
-          toolCallIds: withEntry(
-            state.toolCallIds,
-            item.id ?? item.call_id,
-            item.call_id,
-          ),
+          toolCalls: withEntry(state.toolCalls, item.id ?? item.call_id, {
+            toolCallId: item.call_id,
+            hasArgs: false,
+          }),
         },
         events: [
           {
@@ -142,7 +146,7 @@ function mapItemAdded(
             toolCallName: item.name,
             parentMessageId: messageId,
             metadata: {
-              openai: {
+              azure: {
                 ...(item.id === undefined ? {} : { itemId: item.id }),
                 reasoningItemIds: [...state.reasoningItemIds],
               },
@@ -186,12 +190,27 @@ function mapItemDone(
 
   if (item.type === 'function_call') {
     const key = item.id ?? item.call_id;
-    if (!state.toolCallIds.has(key)) {
+    const toolCall = state.toolCalls.get(key);
+    if (!toolCall) {
       return { state, events: [] };
     }
+    // A call that streamed no argument deltas sends its arguments here.
+    const args: readonly AGUIEvent[] =
+      !toolCall.hasArgs && item.arguments
+        ? [
+            {
+              type: EventType.TOOL_CALL_ARGS,
+              toolCallId: item.call_id,
+              delta: item.arguments,
+            },
+          ]
+        : [];
     return {
-      state: { ...state, toolCallIds: withoutEntry(state.toolCallIds, key) },
-      events: [{ type: EventType.TOOL_CALL_END, toolCallId: item.call_id }],
+      state: { ...state, toolCalls: withoutEntry(state.toolCalls, key) },
+      events: [
+        ...args,
+        { type: EventType.TOOL_CALL_END, toolCallId: item.call_id },
+      ],
     };
   }
 
@@ -250,19 +269,25 @@ function mapEvent(
     case 'response.refusal.delta':
       return mapTextDelta(state, messageId, event.item_id, event.delta);
     case 'response.function_call_arguments.delta': {
-      const toolCallId = state.toolCallIds.get(event.item_id);
+      const toolCall = state.toolCalls.get(event.item_id);
+      if (!toolCall || !event.delta) {
+        return { state, events: [] };
+      }
       return {
-        state,
-        events:
-          toolCallId && event.delta
-            ? [
-                {
-                  type: EventType.TOOL_CALL_ARGS,
-                  toolCallId,
-                  delta: event.delta,
-                },
-              ]
-            : [],
+        state: {
+          ...state,
+          toolCalls: withEntry(state.toolCalls, event.item_id, {
+            ...toolCall,
+            hasArgs: true,
+          }),
+        },
+        events: [
+          {
+            type: EventType.TOOL_CALL_ARGS,
+            toolCallId: toolCall.toolCallId,
+            delta: event.delta,
+          },
+        ],
       };
     }
     case 'response.completed':
