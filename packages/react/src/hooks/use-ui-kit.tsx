@@ -39,6 +39,34 @@ function isRenderableComplete(node: ComponentTree[number]): boolean {
   return value.children.every((child) => isRenderableComplete(child));
 }
 
+const implementationIds = new WeakMap<object, number>();
+let nextImplementationId = 0;
+
+/** A stable id per component function, so kits can be compared by them. */
+function implementationId(value: unknown): number | null {
+  if (
+    value === null ||
+    (typeof value !== 'object' && typeof value !== 'function')
+  ) {
+    return null;
+  }
+  let id = implementationIds.get(value as object);
+  if (id === undefined) {
+    id = nextImplementationId++;
+    implementationIds.set(value as object, id);
+  }
+  return id;
+}
+
+function implementationKey(kit: CoreUiKit<ExposedComponent<any>>): string {
+  return Array.from(kit.registry.values())
+    .map(
+      (entry) =>
+        `${entry.name}:${implementationId(entry.component)}:${implementationId(entry.fallback)}`,
+    )
+    .join(',');
+}
+
 /**
  * Public UiKit input type for React.
  *
@@ -85,8 +113,12 @@ export function useUiKit<T extends ExposedComponent<any>>(
       }),
     [options.components],
   );
+  // The kit keeps its identity while its schema and implementations stay the
+  // same, so inline component lists don't churn; a component redefined with
+  // a new implementation under the same name still renders the new one.
+  const kitKey = `${nextKit.serializedSchema}|${implementationKey(nextKit)}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const uiKit = useMemo(() => nextKit, [nextKit.serializedSchema]);
+  const uiKit = useMemo(() => nextKit, [kitKey]);
   const render = useCallback(
     (value: UiWrapper) => {
       const nodes = value.ui;

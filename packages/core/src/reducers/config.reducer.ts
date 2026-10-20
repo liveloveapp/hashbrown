@@ -7,6 +7,11 @@ export interface ConfigState {
   system: string;
   debounce: number;
   responseSchema?: s.HashbrownType;
+  /**
+   * A narrower schema sent to the model in place of `responseSchema`.
+   * Responses and history are still parsed with `responseSchema`.
+   */
+  requestResponseSchema?: s.HashbrownType;
   retries: number;
   transport?: TransportOrFactory;
   ui?: boolean;
@@ -43,12 +48,21 @@ export const reducer = createReducer(
       retries = state.retries,
       transport = state.transport,
       ui = state.ui,
+      ɵrequestResponseSchema,
       ...configPayload
     } = action.payload;
     void _threadId;
     const responseSchema = configPayload.responseSchema
       ? s.normalizeSchemaOutput(configPayload.responseSchema)
       : state.responseSchema;
+    const requestResponseSchema = !Object.hasOwn(
+      action.payload,
+      'ɵrequestResponseSchema',
+    )
+      ? state.requestResponseSchema
+      : ɵrequestResponseSchema
+        ? s.normalizeSchemaOutput(ɵrequestResponseSchema)
+        : undefined;
 
     return {
       ...state,
@@ -59,6 +73,7 @@ export const reducer = createReducer(
       transport,
       ui,
       responseSchema,
+      requestResponseSchema,
     };
   }),
 );
@@ -67,6 +82,8 @@ export const selectSystem = (state: ConfigState) => state.system;
 export const selectDebounce = (state: ConfigState) => state.debounce;
 export const selectResponseSchema = (state: ConfigState) =>
   state.responseSchema;
+export const selectRequestResponseSchema = (state: ConfigState) =>
+  state.requestResponseSchema ?? state.responseSchema;
 export const selectRetries = (state: ConfigState) => state.retries;
 export const selectTransport = (state: ConfigState) => state.transport;
 export const selectUiRequested = (state: ConfigState) => state.ui ?? false;

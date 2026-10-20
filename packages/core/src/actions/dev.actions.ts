@@ -70,6 +70,8 @@ export default createActionGroup('dev', {
     systemMessage?: Readonly<SystemMessage>;
     tools?: Chat.AnyTool[];
     responseSchema?: s.SchemaOutput;
+    /** A narrower schema sent to the model; null clears it. @internal */
+    ɵrequestResponseSchema?: s.SchemaOutput | null;
     debounce?: number;
     retries?: number;
     transport?: TransportOrFactory;

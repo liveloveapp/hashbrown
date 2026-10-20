@@ -222,7 +222,7 @@ Failures appear in `error`: a transport error, a response that does not match th
     </div>
     <div>
       <h4>Choose UI with a decision</h4>
-      <p>Pick components for an input with useUiDecision.</p>
+      <p>Pick components for an input, or narrow a chat, with useUiDecision.</p>
     </div>
   </hb-next-step>
   <hb-next-step link="platform/typesafe">

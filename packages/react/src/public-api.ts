@@ -90,12 +90,13 @@ export {
 export {
   useUiDecision,
   type UiDecisionCandidate,
-  type UiDecisionGenerateOptions,
+  type UiDecisionChat,
   type UseUiDecisionBaseOptions,
   type UseUiDecisionCandidatesOptions,
   type UseUiDecisionCandidatesResult,
-  type UseUiDecisionNarrowingOptions,
-  type UseUiDecisionNarrowingResult,
+  type UseUiDecisionChatDecision,
+  type UseUiDecisionChatOptions,
+  type UseUiDecisionChatResult,
   type UseUiDecisionOptions,
 } from './hooks/use-ui-decision';
 export {
