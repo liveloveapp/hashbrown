@@ -6,7 +6,12 @@ import type { NativeRequest, NativeResponse } from './native/native.types';
 import { toNativeRequest } from './native/to-native';
 
 const DEFAULT_BASE_URL = 'https://api.typesafe.ai';
-const MAX_REQUEST_CHARACTERS = 64_000;
+/** About Jev's default 64k-token limit, at roughly four characters a token. */
+const MAX_REQUEST_CHARACTERS = 256_000;
+/** About Jev's 262k-token long-context limit. */
+const MAX_LONG_CONTEXT_REQUEST_CHARACTERS = 1_048_000;
+/** The longest vendor error detail copied into a {@link DecisionError} message. */
+const MAX_ERROR_DETAIL = 300;
 const MAX_OPTIONS = 255;
 const MIN_LEVELS = 2;
 const MAX_LEVELS = 10;
@@ -43,6 +48,13 @@ export interface TypeSafeDecideOptions {
   transformRequest?: (body: NativeRequest) => NativeRequest;
   /** A `fetch` implementation. Defaults to the global `fetch`. */
   fetch?: typeof fetch;
+  /**
+   * The largest request accepted, in characters of JSON. Defaults to 256,000
+   * (about Jev's 64k-token limit), or 1,048,000 when the request sets
+   * `options.longContext` (about its 262k-token long-context limit). Set it
+   * lower to bound what a public endpoint will forward.
+   */
+  maxRequestChars?: number;
 }
 
 function invalid(message: string): DecisionError {
@@ -101,6 +113,7 @@ function validateQuestion(id: string, question: unknown): Decision.Question {
 function validateRequest(
   raw: unknown,
   schema: DecidableSchema | undefined,
+  maxRequestChars: number | undefined,
 ): Decision.Request {
   if (!isRecord(raw) || !('state' in raw) || raw['state'] === undefined) {
     throw invalid('The request must be an object with a state');
@@ -117,18 +130,6 @@ function validateRequest(
     }
   }
 
-  let size: number;
-  try {
-    size = JSON.stringify(raw).length;
-  } catch {
-    throw invalid('The request must be JSON-serializable');
-  }
-  if (size > MAX_REQUEST_CHARACTERS) {
-    throw invalid(
-      `The request exceeds ${MAX_REQUEST_CHARACTERS} characters of JSON`,
-    );
-  }
-
   const longContext = isRecord(raw['options'])
     ? raw['options']['longContext']
     : undefined;
@@ -139,6 +140,21 @@ function validateRequest(
     throw invalid('options.longContext must be a boolean');
   }
   const options = longContext === undefined ? {} : { options: { longContext } };
+
+  const limit =
+    maxRequestChars ??
+    (longContext === true
+      ? MAX_LONG_CONTEXT_REQUEST_CHARACTERS
+      : MAX_REQUEST_CHARACTERS);
+  let size: number;
+  try {
+    size = JSON.stringify(raw).length;
+  } catch {
+    throw invalid('The request must be JSON-serializable');
+  }
+  if (size > limit) {
+    throw invalid(`The request exceeds ${limit} characters of JSON`);
+  }
 
   if (schema) {
     // The schema is server code: a DecisionSchemaError here is a programming
@@ -170,6 +186,47 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
     }, ms);
     signal?.addEventListener('abort', onAbort, { once: true });
   });
+}
+
+/**
+ * Describes a failed response with the vendor's own error type and message,
+ * so a 403 for missing billing does not read like a bad key. Reads TypeSafe's
+ * `{ detail: { error_type } }` and `{ message, error_type }`, AI Gateway's
+ * `{ error: { message, type } }`, or a plain-text body.
+ */
+async function errorMessage(response: globalThis.Response): Promise<string> {
+  const prefix = `TypeSafe responded with status ${response.status}`;
+  let text: string;
+  try {
+    text = (await response.text()).trim();
+  } catch {
+    return prefix;
+  }
+  if (text === '') return prefix;
+  let type: unknown;
+  let detail: unknown = text;
+  try {
+    const body: unknown = JSON.parse(text);
+    const error = !isRecord(body)
+      ? body
+      : isRecord(body['error'])
+        ? body['error']
+        : isRecord(body['detail'])
+          ? body['detail']
+          : body;
+    if (isRecord(error)) {
+      detail = error['message'];
+      type = error['error_type'] ?? error['type'];
+    }
+  } catch {
+    // Not JSON: keep the text.
+  }
+  const kind = typeof type === 'string' && type !== '' ? ` (${type})` : '';
+  const said =
+    typeof detail === 'string' && detail !== ''
+      ? `: ${detail.slice(0, MAX_ERROR_DETAIL)}`
+      : '';
+  return `${prefix}${kind}${said}`;
 }
 
 async function post(
@@ -231,7 +288,13 @@ export const HashbrownTypeSafe: {
    * `transformRequest`. Treat those as HTTP 500 and do not send their details
    * to clients.
    *
-   * `request.options.longContext: true` sends TypeSafe's
+   * For HTTP errors, the message includes the status and the vendor's error
+   * type and message (for example the Gateway's
+   * `customer_verification_required`), never the API key.
+   *
+   * Requests over `maxRequestChars` (default 256,000 characters of JSON) are
+   * rejected before any network call. `request.options.longContext: true`
+   * raises the default to 1,048,000 and sends TypeSafe's
    * `TypeSafe-Danger-Zone-Long-Context: true` header, which raises the context
    * limits to 262k tokens (slower and less accurate).
    *
@@ -243,7 +306,11 @@ export const HashbrownTypeSafe: {
   ) => Promise<Decision.Response>;
 } = {
   async decide(options) {
-    const request = validateRequest(options.request, options.schema);
+    const request = validateRequest(
+      options.request,
+      options.schema,
+      options.maxRequestChars,
+    );
     const native = (options.transformRequest ?? ((body) => body))(
       toNativeRequest(request, options.model),
     );
@@ -259,26 +326,15 @@ export const HashbrownTypeSafe: {
       options.signal,
     );
 
-    if (response.status === 401 || response.status === 403) {
-      throw new DecisionError(
-        'unauthorized',
-        response.status,
-        'TypeSafe rejected the API key',
-      );
-    }
-    if (response.status === 429 || response.status === 529) {
-      throw new DecisionError(
-        'rate_limited',
-        response.status,
-        'TypeSafe is rate limiting requests',
-      );
-    }
     if (!response.ok) {
-      throw new DecisionError(
-        'upstream',
-        response.status,
-        `TypeSafe responded with status ${response.status}`,
-      );
+      const message = await errorMessage(response);
+      const code =
+        response.status === 401 || response.status === 403
+          ? 'unauthorized'
+          : response.status === 429 || response.status === 529
+            ? 'rate_limited'
+            : 'upstream';
+      throw new DecisionError(code, response.status, message);
     }
 
     let body: unknown;
