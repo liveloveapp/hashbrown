@@ -25,14 +25,48 @@ useUiDecision has two modes. Which one you get depends on the options you pass.
 | Candidates | `candidates`              | Among elements your code has already built | Your code               |
 | Narrowing  | `components` + `generate` | Which exposed components to use            | The model, by streaming |
 
-Both modes take `select`: `'one'` chooses one option, and `{ max: 3 }` chooses up to three. Both also take:
+Both modes take these options:
 
-- `minConfidence`: the confidence needed to act on the choice.
-- `system`: context sent with the input, such as what your app does. Changing it asks again.
-- `optionOrder: 'shuffled'`: varies the order of the options on every request, to spread the model's bias toward the first one.
-- `debounceTime`: waits for the input to settle before deciding. This is separate from the debounce for generation in narrowing mode.
+| Option            | Required          | What it does                                                                                                   |
+| ----------------- | ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| `input`           | Yes               | The input to decide about. `null` or `undefined` keeps the hook idle.                                          |
+| `select`          | Yes               | `'one'` chooses one option, and `{ max: 3 }` chooses up to three.                                              |
+| `minConfidence`   | No                | The confidence needed to act on the choice. Defaults to 0.                                                     |
+| `system`          | No                | Context for the decision model: what your app is and what the input means. Changing it asks again.             |
+| `optionOrder`     | No                | `'shuffled'` varies the order of the options on every request, to spread the model's bias toward the first.    |
+| `debounceTime`    | No                | Waits for the input to settle before deciding. In narrowing mode, generation starts once the decision settles. |
+| `transport`       | No                | Overrides the provider's decision transport.                                                                   |
+| `generate.system` | In narrowing mode | The system prompt for the model that writes the chosen components' props.                                      |
 
 The hook requires a `HashbrownProvider`. Set up the decision endpoint as described in [Decisions](/docs/react/concept/decisions).
+
+---
+
+## Two Prompts
+
+UI selection can call two models, and each one has its own prompt. Neither prompt defaults to the other.
+
+| Option            | Read by                                     | What to write                               |
+| ----------------- | ------------------------------------------- | ------------------------------------------- |
+| `system`          | The decision model, in both modes           | What your app is and what the input means   |
+| `generate.system` | The model that writes props, narrowing only | How to fill in the chosen components' props |
+
+`system` is context for the decision model. It is sent with the input, so describe the situation rather than give instructions. `generate.system` is the system prompt for the UI completion that runs after the decision in narrowing mode. It is required there, and the decision never sees it.
+
+```ts
+const answer = useUiDecision({
+  input: query,
+  select: { max: 2 },
+  // Context for the decision model.
+  system:
+    'A flight-tracking app. The input is a search query about aircraft or airports.',
+  components: [flightCard, airportCard],
+  // The system prompt for the model that writes the chosen components' props.
+  generate: {
+    system: 'Fill in the chosen cards from the query. Use short labels.',
+  },
+});
+```
 
 ---
 
@@ -93,6 +127,7 @@ function Answer({ query }: { query: string }) {
     input: query === '' ? null : query,
     select: { max: 2 },
     minConfidence: 0.7,
+    system: 'A flight-tracking app. The input is a search query.',
     components: [
       exposeComponent(FlightCard, {
         name: 'FlightCard',
@@ -105,7 +140,7 @@ function Answer({ query }: { query: string }) {
         props: { ident: s.string('The airport identifier') },
       }),
     ],
-    generate: { system: 'Show the cards that answer the question.' },
+    generate: { system: 'Fill in the chosen cards from the query.' },
   });
 
   return <>{ui}</>;
@@ -117,7 +152,7 @@ function Answer({ query }: { query: string }) {
 1. The decision sees each component's name and description.
 2. UI kits in `components` are decided over by member. Each kit is expanded into its components, including the children they declare, and duplicate names count once. A list of only UI kits decides over the kits' members.
 3. A chosen component brings the components declared in its `children` with it, recursively, so the completion can always render a chosen parent's children. The completion sees the chosen components in the order they were declared.
-4. `generate` configures the UI completion that runs after it. `system` is required.
+4. `generate.system` is the system prompt for the UI completion that runs after the decision. It is required. The completion uses the provider's chat transport and starts as soon as the decision settles, because the input was already debounced before the decision.
 5. An empty `components` list skips the decision and generates straight away.
 6. Component names become option ids, so the flattened list must fit the selection limits: no name may be empty, contain `.`, or be `__proto__`, `constructor` or `prototype`, and `select: 'one'` allows at most 255 components. When the list breaks a limit, narrowing skips the decision, generates with every component, and exposes the `DecisionSchemaError` as `decisionError`.
 
@@ -133,48 +168,29 @@ Decide when sure, generate everything otherwise. When confidence is below `minCo
 
 The browser builds the selection questions from your candidates or components. A public decision route answers whatever questions it is sent, unless the server pins them. To pin them, build the same schema on the server with `createSelectionSchema` from `@hashbrownai/core`, and pass it to the adapter's `schema` option. Pass the same `select` value the browser uses.
 
-In candidates mode, list the candidate ids and descriptions, in the same order:
+`createSelectionSchema` takes the same list you pass to the hook, in the same order. Each entry can be:
+
+- a candidate item, `{ id, description }`, as in candidates mode;
+- a component, such as an `exposeComponent` result or a component definition (`UiComponentDefinition`) with a `name`, a `description` and optional `children`;
+- a UI kit.
+
+UI kits and declared children are flattened exactly as the hook flattens them: each kit's members in place, each component followed by its declared children, and every name once. An entry with an `id` is always a candidate item, even if it also has a `name`; an entry with a `name` and no `id` is a component, and its option id is its `name`.
 
 ```ts
 import { createSelectionSchema } from '@hashbrownai/core';
 import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
-
-// Shared with the browser: the same ids and descriptions, in the same order.
-export const cards = [
-  { id: 'flight', description: 'The user asks about one aircraft' },
-  { id: 'airport', description: 'The user asks about an airport' },
-];
+// Shared with the browser: the components and kits passed to `components`.
+import { flightCard, cardsKit } from './cards';
 
 const decision = await HashbrownTypeSafe.decide({
   apiKey: process.env.TYPESAFE_API_KEY!,
   model: 'jev-1.14.0',
-  schema: createSelectionSchema(cards, 'one'),
+  schema: createSelectionSchema([flightCard, cardsKit], { max: 2 }),
   request,
 });
 ```
 
-In narrowing mode, pass the same components to `componentSelectionOptions` from `@hashbrownai/core`. It flattens UI kits and declared children exactly as the hook does, and returns the options in the same order, so the server asks the same questions. It accepts component definitions (`UiComponentDefinition`), exposed components and UI kits, so share whichever your server can import:
-
-```ts
-import {
-  componentSelectionOptions,
-  createSelectionSchema,
-} from '@hashbrownai/core';
-import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
-// Shared with the browser: the components or kit passed to `components`.
-import { cards } from './cards';
-
-const decision = await HashbrownTypeSafe.decide({
-  apiKey: process.env.TYPESAFE_API_KEY!,
-  model: 'jev-1.14.0',
-  schema: createSelectionSchema(componentSelectionOptions(cards), {
-    max: 2,
-  }),
-  request,
-});
-```
-
-If the server can't import your components or kits, list each component's name as the `id` and its description, in the order `componentSelectionOptions` would give: components in the order passed, each kit's members in place, each component followed by its declared children, and every name once.
+For candidates mode, pass the candidates (or just their `{ id, description }` items), such as `createSelectionSchema(cards, 'one')`. If the server can't import your components or kits, pass `{ name, description, children? }` definitions with the same names, descriptions and children, in the same order.
 
 A pinned schema replaces the questions the browser sends, so `optionOrder: 'shuffled'` has no effect once the questions are pinned. The server always asks in the order it built.
 

@@ -4,6 +4,9 @@ import type { DecidableSchema } from './decidable-schema';
 import type { Result } from './decision.types';
 import { DecisionSchemaError } from './errors';
 import * as publicApi from '../public_api';
+import type { ExposedComponentDescriptor } from '../ui/expose-component';
+import { createUiKit } from '../ui/ui-kit';
+import { createComponentSelection } from './component-selection';
 import { createSelectionSchema, resolveSelection } from './ui-selection';
 
 const options = [
@@ -303,4 +306,167 @@ test('createSelectionSchema is public, so a server can pin selection questions',
 
   expect(server).toEqual(client);
   expect('ɵcreateSelectionSchema' in publicApi).toBe(false);
+});
+
+function component(
+  name: string,
+  children?: ExposedComponentDescriptor['children'],
+): ExposedComponentDescriptor {
+  return {
+    component: { name },
+    name,
+    description: `The ${name} component`,
+    ...(children === undefined ? {} : { children }),
+  };
+}
+
+function questionIds(schema: DecidableSchema): string[] {
+  const pick = compileDecision(schema)['pick'] as {
+    options: Record<string, string | null>;
+  };
+  return Object.keys(pick.options);
+}
+
+test('createSelectionSchema accepts candidate items', () => {
+  const items = [
+    { id: 'flight', description: 'One aircraft' },
+    { id: 'airport', description: 'An airport' },
+  ];
+
+  const schema = createSelectionSchema(items, 'one');
+
+  expect(compileDecision(schema)).toEqual({
+    pick: {
+      type: 'choice',
+      instructions: 'Which one fits the input best',
+      options: { flight: 'One aircraft', airport: 'An airport' },
+    },
+  });
+});
+
+test('createSelectionSchema decides over components by name and description', () => {
+  const definitions = [
+    {
+      name: 'Table',
+      description: 'A table',
+      children: [{ name: 'Row', description: 'A row' }],
+    },
+    { name: 'Flight', description: 'One aircraft', children: 'text' },
+  ];
+
+  const schema = createSelectionSchema(definitions, { max: 2 });
+
+  expect(compileDecision(schema)).toEqual({
+    Table: {
+      type: 'yesNo',
+      instructions: 'Does this option fit the input: A table',
+    },
+    Row: {
+      type: 'yesNo',
+      instructions: 'Does this option fit the input: A row',
+    },
+    Flight: {
+      type: 'yesNo',
+      instructions: 'Does this option fit the input: One aircraft',
+    },
+  });
+});
+
+test('createSelectionSchema flattens kits like the hooks: dedupe, children and order', () => {
+  const flight = component('Flight');
+  const airport = component('Airport');
+  const table = component('Table', [component('Row')]);
+  const kit = createUiKit({ components: [table, airport] });
+  const components = [flight, kit, airport, flight];
+
+  const pinned = compileDecision(createSelectionSchema(components, 'one'));
+  const sent = compileDecision(
+    createSelectionSchema(createComponentSelection(components).options, 'one'),
+  );
+
+  expect(questionIds(createSelectionSchema(components, 'one'))).toEqual([
+    'Flight',
+    'Table',
+    'Row',
+    'Airport',
+  ]);
+  expect(JSON.stringify(pinned)).toBe(JSON.stringify(sent));
+});
+
+test('createSelectionSchema terminates on a component that is its own descendant', () => {
+  const tree: ExposedComponentDescriptor = {
+    component: { name: 'Tree' },
+    name: 'Tree',
+    description: 'A tree',
+    children: [],
+  };
+  (tree.children as unknown[]).push(component('Branch', [tree]));
+
+  const schema = createSelectionSchema([tree], 'one');
+
+  expect(questionIds(schema)).toEqual(['Tree', 'Branch']);
+});
+
+test('createSelectionSchema mixes candidate items, components and kits in declared order', () => {
+  const kit = createUiKit({ components: [component('Airport')] });
+  const entries = [
+    { id: 'summary', description: 'A short summary' },
+    kit,
+    { name: 'Flight', description: 'One aircraft' },
+  ];
+
+  const schema = createSelectionSchema(entries, 'one');
+
+  expect(compileDecision(schema)).toEqual({
+    pick: {
+      type: 'choice',
+      instructions: 'Which one fits the input best',
+      options: {
+        summary: 'A short summary',
+        Airport: 'The Airport component',
+        Flight: 'One aircraft',
+      },
+    },
+  });
+});
+
+test('createSelectionSchema treats an entry with an id as a candidate item, even with a name', () => {
+  const entry = {
+    id: 'flight',
+    name: 'Flight',
+    description: 'One aircraft',
+    children: [{ name: 'Row', description: 'A row' }],
+  };
+
+  const schema = createSelectionSchema([entry], 'one');
+
+  expect(questionIds(schema)).toEqual(['flight']);
+});
+
+test('createSelectionSchema rejects a candidate id that repeats a component name', () => {
+  const entries = [
+    { name: 'Flight', description: 'One aircraft' },
+    { id: 'Flight', description: 'Also one aircraft' },
+  ];
+
+  const error = catchError(() => createSelectionSchema(entries, 'one'));
+
+  expect(error).toBeInstanceOf(DecisionSchemaError);
+  expect((error as DecisionSchemaError).message).toContain('"Flight"');
+});
+
+test('createSelectionSchema rejects a kit whose components flatten to nothing', () => {
+  const kit = createUiKit({ components: [] });
+
+  const error = catchError(() => createSelectionSchema([kit], 'one'));
+
+  expect(error).toBeInstanceOf(DecisionSchemaError);
+});
+
+test('componentSelectionOptions is no longer public', () => {
+  const api = publicApi as Record<string, unknown>;
+
+  const exported = api['componentSelectionOptions'];
+
+  expect(exported).toBeUndefined();
 });

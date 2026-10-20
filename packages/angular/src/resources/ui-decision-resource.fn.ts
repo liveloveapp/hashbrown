@@ -22,7 +22,6 @@ import {
   type Decision,
   DecisionSchemaError,
   s,
-  type TransportOrFactory,
   ɵcreateComponentSelection,
   ɵresolveSelection,
 } from '@hashbrownai/core';
@@ -96,8 +95,10 @@ export interface UiDecisionResourceBaseOptions {
   /** Overrides the provider's decision transport for the selection. */
   transport?: Decision.Transport;
   /**
-   * Context sent with the input, such as what the app does. Changing it asks
-   * again and resets the selection.
+   * Context for the decision model (what your app is, what the input
+   * means). Sent with the input in both modes, and only to the decision: in
+   * narrowing mode the model that writes props gets `generate.system`
+   * instead. Changing it asks again and resets the selection.
    */
   system?: ReactiveOption<string>;
   /**
@@ -107,7 +108,8 @@ export interface UiDecisionResourceBaseOptions {
   optionOrder?: 'declared' | 'shuffled';
   /**
    * How long the input must stay unchanged, in milliseconds, before the
-   * selection is decided. Separate from `generate.debounce`.
+   * selection is decided. In narrowing mode, generation starts once the
+   * decision settles.
    */
   debounce?: number;
 }
@@ -129,17 +131,18 @@ export interface UiDecisionResourceCandidatesOptions extends UiDecisionResourceB
 
 /**
  * Settings for the UI completion that runs after the decision in narrowing
- * mode.
+ * mode. The completion uses the provider's chat transport and starts once
+ * the decision settles.
  *
  * @public
  */
 export interface UiDecisionGenerateOptions {
-  /** The system prompt for the UI completion. */
+  /**
+   * The system prompt for the model that writes the chosen components'
+   * props. Separate from the top-level `system`, which is context for the
+   * decision model only; it does not default to it.
+   */
   system: ReactiveOption<string>;
-  /** Overrides the provider's transport for the UI completion. */
-  transport?: TransportOrFactory;
-  /** Milliseconds to wait after an input change before generating. */
-  debounce?: number;
 }
 
 /**
@@ -153,11 +156,11 @@ export interface UiDecisionResourceNarrowingOptions extends UiDecisionResourceBa
    * The components to narrow. UI kits are flattened into their members
    * (deduped by name, declared children included) and each component is
    * decided over by `name` and `description`. A chosen component brings the
-   * components declared in its `children` with it. Use
-   * `componentSelectionOptions` to build the same options on a server.
+   * components declared in its `children` with it. Pass the same list to
+   * `createSelectionSchema` to pin the questions on a server.
    */
   components: UiKitInput<ExposedComponent<any>>[];
-  /** The UI completion settings. */
+  /** The UI completion settings: the system prompt that writes props. */
   generate: UiDecisionGenerateOptions;
   /** Not used in narrowing mode. */
   candidates?: never;
@@ -330,11 +333,13 @@ export function uiDecisionResource(
  * same applies when the decision is stopped, and when the flattened
  * components break the selection limits (exposed as a `DecisionSchemaError`).
  * With no components there is nothing to decide, so the completion runs
- * straight away. Changing `system` re-runs the decision before generating
- * again. To pin the
- * questions on a server, pass `componentSelectionOptions(components)` to
- * `createSelectionSchema`. Input changes re-run
- * the decision before generating again.
+ * straight away. Input and `system` changes re-run the decision before
+ * generating again. To pin the questions on a server, pass the same
+ * `components` to `createSelectionSchema`.
+ *
+ * There are two prompts: `system` is context for the decision model (what
+ * your app is, what the input means), and `generate.system` is the system
+ * prompt for the model that writes the chosen components' props.
  *
  * Each distinct chosen set gets a fresh UI completion, created in a child
  * injector of the calling context; the previous one is destroyed when the
@@ -347,8 +352,9 @@ export function uiDecisionResource(
  * readonly cards = uiDecisionResource({
  *   input: this.query,
  *   select: { max: 2 },
+ *   system: 'A flight-tracking app. The input is a search query.',
  *   components: [flightCard, airportCard, weatherCard],
- *   generate: { system: 'Show the relevant cards.' },
+ *   generate: { system: 'Write props for the chosen cards.' },
  * });
  * ```
  * @param options - The narrowing-mode options.
@@ -549,8 +555,6 @@ export function uiDecisionResource(
           components: chosenComponents,
           input: gatedInput,
           system: generate.system,
-          transport: generate.transport,
-          debounce: generate.debounce,
         }),
       );
       phase2.set({ setKey, injector: child, ref });

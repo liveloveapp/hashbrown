@@ -12,16 +12,21 @@ interface Selectable {
 }
 
 /**
- * A component or UI kit accepted by {@link componentSelectionOptions}.
- *
- * A component is anything with a `name` and a `description`, such as an
- * `exposeComponent` result or a `UiComponentDefinition`. When `children` is
- * an array, its entries are components too.
- *
- * @public
+ * A candidate item: an option id and the description the model reads.
  */
-export type ComponentSelectionInput =
-  { name: string; description: string; children?: unknown } | UiKit<any>;
+interface SelectionItem {
+  id: string;
+  description: string;
+}
+
+/**
+ * An entry accepted by `createSelectionSchema`: a candidate item, a component
+ * or a UI kit.
+ */
+export type SelectionEntry =
+  | SelectionItem
+  | { name: string; description: string; children?: unknown }
+  | UiKit<any>;
 
 /**
  * The options and expansion for narrowing a component list with a decision.
@@ -46,15 +51,26 @@ export interface ComponentSelection<T extends ExposedComponentDescriptor> {
  * duplicate name are still visited. Each object is visited once, so cycles
  * terminate.
  *
- * @returns The flattened components and, for each name, every object seen
- * with that name.
+ * With `acceptItems`, a top-level entry with an `id` is a candidate item: it
+ * is kept as is (not deduped or flattened) and appears in `ordered` at its
+ * declared position.
+ *
+ * @returns The flattened components, every entry in declared order
+ * (`ordered`, which includes candidate items), and, for each name, every
+ * object seen with that name.
  */
 function flattenSelectable<T extends Selectable>(
-  entries: ReadonlyArray<T | UiKit<any>>,
-): { flat: T[]; variants: Map<string, Selectable[]> } {
+  entries: ReadonlyArray<T | UiKit<any> | SelectionItem>,
+  acceptItems: boolean,
+): {
+  flat: T[];
+  ordered: Array<T | SelectionItem>;
+  variants: Map<string, Selectable[]>;
+} {
   const visited = new Set<object>();
   const variants = new Map<string, Selectable[]>();
   const flat: T[] = [];
+  const ordered: Array<T | SelectionItem> = [];
 
   function add(entry: T): void {
     if (visited.has(entry)) return;
@@ -65,6 +81,7 @@ function flattenSelectable<T extends Selectable>(
     } else {
       variants.set(entry.name, [entry]);
       flat.push(entry);
+      ordered.push(entry);
     }
     if (Array.isArray(entry.children)) {
       (entry.children as T[]).forEach(add);
@@ -74,11 +91,13 @@ function flattenSelectable<T extends Selectable>(
   for (const entry of entries) {
     if (isUiKit(entry)) {
       (entry.components as unknown as T[]).forEach(add);
+    } else if (acceptItems && 'id' in entry) {
+      ordered.push(entry);
     } else {
       add(entry as T);
     }
   }
-  return { flat, variants };
+  return { flat, ordered, variants };
 }
 
 function toOption({ name, description }: Selectable): {
@@ -96,8 +115,8 @@ function toOption({ name, description }: Selectable): {
  * declared children, is an option. `expand` returns the chosen components
  * plus, recursively, their declared children, so a chosen parent always
  * brings the children it allows. Shared by `useUiDecision` and
- * `uiDecisionResource`; {@link componentSelectionOptions} returns the same
- * options for servers.
+ * `uiDecisionResource`; `createSelectionSchema` flattens components the same
+ * way for servers.
  *
  * @param components - Exposed components and/or UI kits.
  * @returns The selection options and an `expand` function.
@@ -107,7 +126,7 @@ function toOption({ name, description }: Selectable): {
 export function createComponentSelection<T extends ExposedComponentDescriptor>(
   components: ReadonlyArray<UiKitInput<T>>,
 ): ComponentSelection<T> {
-  const { flat, variants } = flattenSelectable<T>(components);
+  const { flat, variants } = flattenSelectable<T>(components, false);
 
   return {
     options: flat.map(toOption),
@@ -131,36 +150,21 @@ export function createComponentSelection<T extends ExposedComponentDescriptor>(
 }
 
 /**
- * Returns the options `useUiDecision` and `uiDecisionResource` decide over in
- * narrowing mode, in the same order, for pinning the selection questions on a
- * server.
+ * Turns selection entries into options in declared order. An entry with an
+ * `id` is a candidate item and becomes `{ id, description }` as is. UI kits
+ * and components (entries with a `name` and no `id`) are flattened exactly as
+ * {@link createComponentSelection} flattens them, each becoming
+ * `{ id: name, description }`.
  *
- * UI kits are flattened into their members, declared children are included,
- * and components are deduped by name. Each option's id is the component's
- * `name` and its description is the component's `description`. Pass the
- * result to {@link createSelectionSchema} with the same `select` the client
- * uses, and the server asks byte-identical questions.
- *
- * @example
- * ```ts
- * // Shared by the app and the server:
- * const definitions = [flightCard, airportCard, weatherCard];
- *
- * // On the server:
- * const schema = createSelectionSchema(
- *   componentSelectionOptions(definitions),
- *   { max: 2 },
- * );
- * ```
- *
- * @param components - Component definitions, `exposeComponent` results
- * and/or UI kits, in the order passed to the hook or resource.
- * @returns The selection options, one per component.
- *
- * @public
+ * @param entries - Candidate items, components and/or UI kits.
+ * @returns One option per candidate item or flattened component.
  */
-export function componentSelectionOptions(
-  components: ReadonlyArray<ComponentSelectionInput>,
-): Array<{ id: string; description: string }> {
-  return flattenSelectable<Selectable>(components).flat.map(toOption);
+export function toSelectionOptions(
+  entries: ReadonlyArray<SelectionEntry>,
+): SelectionItem[] {
+  return flattenSelectable<Selectable>(entries, true).ordered.map((entry) =>
+    'id' in entry
+      ? { id: entry.id, description: entry.description }
+      : toOption(entry),
+  );
 }

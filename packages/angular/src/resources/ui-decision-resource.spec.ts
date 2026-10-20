@@ -13,7 +13,6 @@ import {
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
-  componentSelectionOptions,
   createSelectionSchema,
   type Decision,
   DecisionSchemaError,
@@ -23,7 +22,10 @@ import { vi } from 'vitest';
 import { provideHashbrown } from '../providers';
 import { createUiKit } from '../utils/ui-kit.fn';
 import { uiCompletionResource } from './ui-completion-resource.fn';
-import { uiDecisionResource } from './ui-decision-resource.fn';
+import {
+  type UiDecisionGenerateOptions,
+  uiDecisionResource,
+} from './ui-decision-resource.fn';
 
 vi.mock('./ui-completion-resource.fn', () => ({
   uiCompletionResource: vi.fn(),
@@ -537,10 +539,8 @@ test('uiDecisionResource narrowing with a kit decides over the kit members', asy
     options: Record<string, string | null>;
   };
   expect(Object.keys(pick.options)).toEqual(['Flight', 'Note', 'Table', 'Row']);
-  expect(deferred.calls[0].request.questions).toEqual(
-    ɵcompileDecision(
-      createSelectionSchema(componentSelectionOptions(components), 'one'),
-    ),
+  expect(JSON.stringify(deferred.calls[0].request.questions)).toBe(
+    JSON.stringify(ɵcompileDecision(createSelectionSchema(components, 'one'))),
   );
 });
 
@@ -884,4 +884,108 @@ test('uiDecisionResource narrowing falls back when a kit cannot be decided over'
   expect(ref.decisionError()).toBeInstanceOf(DecisionSchemaError);
   expect(ref.isDeciding()).toBe(false);
   expect(fake.calls).toHaveLength(0);
+});
+
+test('uiDecisionResource narrowing asks byte-identical questions to createSelectionSchema with the same components', async () => {
+  trackCompletions();
+  const kit = createUiKit<any>({ components: [table, note] });
+  const components = [flight, kit, airport, flight];
+  const fake = createFakeTransport(() =>
+    multiResponse({
+      Flight: 0.9,
+      Table: 0.1,
+      Row: 0.1,
+      Note: 0.1,
+      Airport: 0.1,
+    }),
+  );
+  configure(fake.transport);
+
+  TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('show KSFO'),
+      components,
+      select: { max: 2 },
+      generate: { system: 'Render it' },
+    }),
+  );
+  await settle();
+
+  const pinned = ɵcompileDecision(
+    createSelectionSchema(components, { max: 2 }),
+  );
+  expect(fake.calls).toHaveLength(1);
+  expect(JSON.stringify(fake.calls[0].request.questions)).toBe(
+    JSON.stringify(pinned),
+  );
+});
+
+test('uiDecisionResource candidates asks byte-identical questions to createSelectionSchema with the same candidates', async () => {
+  trackCompletions();
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+  configure(fake.transport);
+
+  TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('show KSFO'),
+      candidates,
+      select: 'one',
+    }),
+  );
+  await settle();
+
+  const pinned = ɵcompileDecision(createSelectionSchema(candidates, 'one'));
+  expect(fake.calls).toHaveLength(1);
+  expect(JSON.stringify(fake.calls[0].request.questions)).toBe(
+    JSON.stringify(pinned),
+  );
+});
+
+test('uiDecisionResource narrowing sends system to the decision and generate.system to the completion', async () => {
+  const created = trackCompletions();
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, ['Flight', 'Airport']),
+  );
+  configure(fake.transport);
+
+  TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('show KSFO'),
+      system: 'A flight-tracking app. The input is a search query.',
+      components: [flight, airport],
+      select: 'one',
+      generate: { system: 'Write props for the chosen cards.' },
+    }),
+  );
+  await settle();
+
+  expect(fake.calls[0].request.state).toEqual({
+    system: 'A flight-tracking app. The input is a search query.',
+    input: 'show KSFO',
+  });
+  expect(created).toHaveLength(1);
+  expect(created[0].options.system).toBe('Write props for the chosen cards.');
+  expect(created[0].options.transport).toBeUndefined();
+  expect(created[0].options.debounce).toBeUndefined();
+});
+
+test('UiDecisionGenerateOptions accepts only system', () => {
+  const generate: UiDecisionGenerateOptions = { system: 'Render it' };
+
+  const withDebounce: UiDecisionGenerateOptions = {
+    system: 'Render it',
+    // @ts-expect-error generate.debounce was removed: the input is debounced before the decision
+    debounce: 10,
+  };
+  const withTransport: UiDecisionGenerateOptions = {
+    system: 'Render it',
+    // @ts-expect-error generate.transport was removed: generation uses the provider's chat transport
+    transport: undefined,
+  };
+
+  expect(Object.keys(generate)).toEqual(['system']);
+  expect(withDebounce.system).toBe('Render it');
+  expect(withTransport.system).toBe('Render it');
 });

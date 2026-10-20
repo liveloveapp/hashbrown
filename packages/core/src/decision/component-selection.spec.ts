@@ -1,13 +1,7 @@
 import type { ExposedComponentDescriptor } from '../ui/expose-component';
 import { createUiKit } from '../ui/ui-kit';
 import * as publicApi from '../public_api';
-import { compileDecision } from './compile-decision';
-import {
-  type ComponentSelectionInput,
-  componentSelectionOptions,
-  createComponentSelection,
-} from './component-selection';
-import { createSelectionSchema } from './ui-selection';
+import { createComponentSelection } from './component-selection';
 
 function component(
   name: string,
@@ -127,48 +121,6 @@ test('createComponentSelection with no components has no options', () => {
   expect(selection.expand([])).toEqual([]);
 });
 
-test('componentSelectionOptions matches the options the hooks decide over', () => {
-  const kit = createUiKit({ components: [table, airport] });
-  const components = [flight, kit, grid];
-
-  const pinned = compileDecision(
-    createSelectionSchema(componentSelectionOptions(components), 'one'),
-  );
-  const sent = compileDecision(
-    createSelectionSchema(createComponentSelection(components).options, 'one'),
-  );
-
-  expect(pinned).toEqual(sent);
-  expect(JSON.stringify(pinned)).toBe(JSON.stringify(sent));
-});
-
-test('componentSelectionOptions accepts definitions without implementations', () => {
-  const definitions = [
-    {
-      name: 'Table',
-      description: 'A table',
-      children: [{ name: 'Row', description: 'A row' }],
-    },
-    { name: 'Flight', description: 'One aircraft' },
-  ];
-
-  const options = componentSelectionOptions(definitions);
-
-  expect(options).toEqual([
-    { id: 'Table', description: 'A table' },
-    { id: 'Row', description: 'A row' },
-    { id: 'Flight', description: 'One aircraft' },
-  ]);
-});
-
-test('componentSelectionOptions is public and createComponentSelection is ɵ', () => {
-  const api = publicApi as Record<string, unknown>;
-
-  expect(api['componentSelectionOptions']).toBe(componentSelectionOptions);
-  expect(api['ɵcreateComponentSelection']).toBe(createComponentSelection);
-  expect(api['createComponentSelection']).toBeUndefined();
-});
-
 test('createComponentSelection recurses into the children of a duplicate name like createUiKit', () => {
   const plainTable = component('Table');
   const tableWithRows = component('Table', [row]);
@@ -209,17 +161,11 @@ test('createComponentSelection handles a component that is its own descendant', 
   expect(names(selection.expand(['Branch']))).toEqual(['Tree', 'Branch']);
 });
 
-test('componentSelectionOptions accepts structural components and kits', () => {
-  const kit = createUiKit({ components: [airport] });
-  const inputs: ComponentSelectionInput[] = [
-    { name: 'Flight', description: 'One aircraft', children: 'text' },
-    kit,
-  ];
+test('createComponentSelection is ɵ', () => {
+  const api = publicApi as Record<string, unknown>;
 
-  const options = componentSelectionOptions(inputs);
+  const exported = api['ɵcreateComponentSelection'];
 
-  expect(options).toEqual([
-    { id: 'Flight', description: 'One aircraft' },
-    { id: 'Airport', description: 'The Airport component' },
-  ]);
+  expect(exported).toBe(createComponentSelection);
+  expect(api['createComponentSelection']).toBeUndefined();
 });

@@ -1,7 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { s } from '../schema';
 import type { DecidableSchema } from './decidable-schema';
 import type { ChoiceMeta, Result, Select, YesNoMeta } from './decision.types';
 import { DecisionSchemaError } from './errors';
+import type { UiKit } from '../ui/ui-kit';
+import { toSelectionOptions } from './component-selection';
 
 const MAX_CHOICE_OPTIONS = 255;
 const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -14,21 +17,41 @@ const MIN_PROBABILITY = 0.5;
  * description; `{ max }` produces one boolean per option id. This is the
  * schema `useUiDecision` and `uiDecisionResource` ask, so a server can pass
  * it to a decision adapter's `schema` option to pin UI selection questions.
- * Use the same ids and descriptions, in the same order: candidate ids in
- * candidates mode, and `componentSelectionOptions(components)` in narrowing
- * mode (UI kits flattened into their members).
+ * Pass the same entries, in the same order, as the hook or resource, with
+ * the same `select`, and the server asks byte-identical questions.
+ *
+ * Each entry is one of:
+ * - a candidate item `{ id, description }`, used as is;
+ * - a component `{ name, description, children? }`, such as an
+ *   `exposeComponent` result or a definition without an implementation,
+ *   whose option id is its `name`;
+ * - a UI kit, flattened into its members.
+ *
+ * An entry with an `id` is always a candidate item, even when it also has a
+ * `name`. Components and kits are flattened as the hooks flatten them:
+ * declared children are included depth first, components are deduped by
+ * name (the first wins) and cycles terminate. Candidate items are not
+ * deduped, so a candidate id that repeats another option id throws.
  *
  * @example
  * ```ts
- * const cards = [
- *   { id: 'flight', description: 'The user asks about one aircraft' },
- *   { id: 'airport', description: 'The user asks about an airport' },
- * ];
- * // On the server:
- * HashbrownTypeSafe.decide({ ..., schema: createSelectionSchema(cards, 'one') });
+ * // Candidates mode:
+ * createSelectionSchema(
+ *   [
+ *     { id: 'flight', description: 'The user asks about one aircraft' },
+ *     { id: 'airport', description: 'The user asks about an airport' },
+ *   ],
+ *   'one',
+ * );
+ *
+ * // Narrowing mode, with the components (or kits) passed to the hook:
+ * HashbrownTypeSafe.decide({
+ *   ...,
+ *   schema: createSelectionSchema([flightCard, cardsKit], { max: 2 }),
+ * });
  * ```
  *
- * @param options - The selectable options.
+ * @param options - Candidate items, components and/or UI kits, in order.
  * @param select - How many options may be selected.
  * @returns A decidable object schema.
  * @throws DecisionSchemaError when the options or `select` are invalid.
@@ -36,6 +59,17 @@ const MIN_PROBABILITY = 0.5;
  * @public
  */
 export function createSelectionSchema(
+  options: ReadonlyArray<
+    | { id: string; description: string }
+    | { name: string; description: string; children?: unknown }
+    | UiKit<any>
+  >,
+  select: Select,
+): DecidableSchema {
+  return buildSelectionSchema(toSelectionOptions(options), select);
+}
+
+function buildSelectionSchema(
   options: ReadonlyArray<{ id: string; description: string }>,
   select: Select,
 ): DecidableSchema {
