@@ -60,94 +60,66 @@ function withToolCalls<M extends TranscriptMessageLike>(
   return [...items, { kind: 'tools', calls }];
 }
 
-/** Rows built so far, and where the current turn's reasoning row sits. */
-interface TranscriptDraft<M extends TranscriptMessageLike> {
-  readonly items: readonly TranscriptItem<M>[];
-  readonly reasoningAt: number | null;
-}
-
 /**
- * Adds `text` to the current turn's reasoning row, or starts one. A turn's
- * reasoning reads as one row, even when it arrives across several model calls.
+ * Adds `text` to the last row when it is a reasoning row, or starts one. So a
+ * model call's reasoning sits right before its own tool calls and answer, and
+ * reasoning with nothing between merges into one row.
  */
 function withReasoning<M extends TranscriptMessageLike>(
-  draft: TranscriptDraft<M>,
+  items: readonly TranscriptItem<M>[],
   text: string,
-): TranscriptDraft<M> {
+): readonly TranscriptItem<M>[] {
   if (text === '') {
-    return draft;
+    return items;
   }
-  const { items, reasoningAt } = draft;
-  const open = reasoningAt === null ? undefined : items[reasoningAt];
-  if (reasoningAt === null || open?.kind !== 'reasoning') {
-    return {
-      items: [...items, { kind: 'reasoning', text, done: false }],
-      reasoningAt: items.length,
-    };
+  const last = items.at(-1);
+  if (last?.kind !== 'reasoning') {
+    return [...items, { kind: 'reasoning', text, done: false }];
   }
 
-  return {
-    items: items.map((item, index) =>
-      index === reasoningAt
-        ? { ...open, text: `${open.text}\n\n${text}` }
-        : item,
-    ),
-    reasoningAt,
-  };
+  return [...items.slice(0, -1), { ...last, text: `${last.text}\n\n${text}` }];
 }
 
-/** Adds one chat message's rows to the draft. */
+/** Adds one chat message's rows. */
 function withMessage<M extends TranscriptMessageLike>(
-  draft: TranscriptDraft<M>,
+  items: readonly TranscriptItem<M>[],
   message: M,
-): TranscriptDraft<M> {
+): readonly TranscriptItem<M>[] {
   if (message.role === 'user') {
-    return {
-      items: [
-        ...draft.items,
-        { kind: 'user', text: messageText(message.content) },
-      ],
-      reasoningAt: null,
-    };
+    return [...items, { kind: 'user', text: messageText(message.content) }];
   }
   if (message.role !== 'assistant') {
-    return draft;
+    return items;
   }
-  const reasoned = withReasoning(draft, message.reasoning ?? '');
-  const items = withToolCalls(reasoned.items, message.toolCalls ?? []);
-  if (!hasAnswer(message.content)) {
-    return { items, reasoningAt: reasoned.reasoningAt };
-  }
+  const withCalls = withToolCalls(
+    withReasoning(items, message.reasoning ?? ''),
+    message.toolCalls ?? [],
+  );
 
-  return {
-    items: [
-      ...items,
-      {
-        kind: 'answer',
-        message: message as Extract<M, { readonly role: 'assistant' }>,
-      },
-    ],
-    reasoningAt: null,
-  };
+  return hasAnswer(message.content)
+    ? [
+        ...withCalls,
+        {
+          kind: 'answer',
+          message: message as Extract<M, { readonly role: 'assistant' }>,
+        },
+      ]
+    : withCalls;
 }
 
 /**
  * Turns chat messages into transcript rows. Hashbrown sends each tool call as
  * its own assistant message; consecutive calls fold into one chip row until an
  * answer or a user message ends it. A message's reasoning summary comes before
- * its tool calls and answer, and a turn's reasoning (everything between a user
- * message or answer and the next) merges into one row, joined by blank lines.
- * A reasoning row is done once a later row exists or the chat is no longer
- * `busy`. Error messages are left to the error card.
+ * its tool calls and answer; reasoning with no other row between merges into
+ * one row, joined by blank lines. A reasoning row is done once a later row
+ * exists or the chat is no longer `busy`. Error messages are left to the error card.
  */
 export function transcriptItems<M extends TranscriptMessageLike>(
   messages: readonly M[],
   busy = false,
 ): TranscriptItem<M>[] {
-  const { items } = messages.reduce<TranscriptDraft<M>>(withMessage, {
-    items: [],
-    reasoningAt: null,
-  });
+  const items = messages.reduce<readonly TranscriptItem<M>[]>(withMessage, []);
 
   return items.map((item, index) =>
     item.kind === 'reasoning'

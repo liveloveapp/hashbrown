@@ -178,11 +178,12 @@ test("puts an assistant message's reasoning before its tool calls", () => {
   ]);
 });
 
-test('merges reasoning within one turn', () => {
+test('merges adjacent reasoning and starts a new row after tool chips', () => {
   const answer = { role: 'assistant', reasoning: 'Answering.', content: ui };
   const messages = [
     { role: 'user', content: 'Highest?' },
-    { role: 'assistant', reasoning: 'Looking.', toolCalls: [call('a')] },
+    { role: 'assistant', reasoning: 'Looking.' },
+    { role: 'assistant', reasoning: 'Still looking.', toolCalls: [call('a')] },
     { role: 'assistant', reasoning: '', toolCalls: [call('b')] },
     { role: 'assistant', reasoning: 'Comparing.', toolCalls: [call('c')] },
     answer,
@@ -194,16 +195,33 @@ test('merges reasoning within one turn', () => {
 
   expect(items).toEqual([
     { kind: 'user', text: 'Highest?' },
-    {
-      kind: 'reasoning',
-      text: 'Looking.\n\nComparing.\n\nAnswering.',
-      done: true,
-    },
-    { kind: 'tools', calls: [call('a'), call('b'), call('c')] },
+    { kind: 'reasoning', text: 'Looking.\n\nStill looking.', done: true },
+    { kind: 'tools', calls: [call('a'), call('b')] },
+    { kind: 'reasoning', text: 'Comparing.', done: true },
+    { kind: 'tools', calls: [call('c')] },
+    { kind: 'reasoning', text: 'Answering.', done: true },
     { kind: 'answer', message: answer },
     { kind: 'user', text: 'Lowest?' },
     { kind: 'reasoning', text: 'Again.', done: true },
   ]);
+});
+
+test("a later call's reasoning streams live after finished tool chips", () => {
+  const messages = [
+    { role: 'user', content: 'Highest?' },
+    { role: 'assistant', reasoning: 'Looking.', toolCalls: [call('a')] },
+    { role: 'assistant', reasoning: 'Comparing.' },
+  ];
+
+  const items = transcriptItems(messages, true);
+  const thinking = thinkingStatus(items, true);
+
+  expect(items.slice(1)).toEqual([
+    { kind: 'reasoning', text: 'Looking.', done: true },
+    { kind: 'tools', calls: [call('a')] },
+    { kind: 'reasoning', text: 'Comparing.', done: false },
+  ]);
+  expect(thinking).toBeNull();
 });
 
 test('marks reasoning done once a later row exists or the chat is idle', () => {
