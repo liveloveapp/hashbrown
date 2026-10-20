@@ -5,7 +5,7 @@
  * drop whole modules. When everything is concatenated into one file, unused
  * module-level work (action groups, reducers, selectors, effects, and the
  * AG-UI schemas they reference) can no longer be dropped, so an app that only
- * needs `s` and `prompt` pays for the whole chat runtime. Keeping modules
+ * needs `s` and `createUiJsonSchema` pays for the whole chat runtime. Keeping modules
  * separate restores module-level tree-shaking.
  *
  * Third-party code that Rollup inlines (tslib and the lazily loaded QuickJS

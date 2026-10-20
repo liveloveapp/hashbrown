@@ -2,7 +2,7 @@
 title: 'UI Kits in Angular: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Create reusable Hashbrown UI Kits in Angular with createUiKit, trusted components, examples, fallbacks, providers, and direct rendering.'
+    content: 'Create reusable Hashbrown UI Kits in Angular with createUiKit, trusted components, component descriptions, fallbacks, providers, and direct rendering.'
 ---
 
 # UI Kits in Angular
@@ -13,7 +13,7 @@ Use UI Kits when you want to:
 
 - Reuse the same component set across `uiChatResource()`, `uiCompletionResource()`, and direct rendering.
 - Compose smaller kits into larger product kits.
-- Include prompt examples with the component schema.
+- Keep guidance on when to use each component with the component itself.
 - Render fallback components while inputs are still streaming.
 - Provide Angular dependency injection values to rendered components.
 
@@ -136,54 +136,33 @@ Component names must be unique unless they point at the same component implement
 
 ---
 
-## 4. Add Examples
+## 4. Describe When to Use Each Component
 
-Examples become part of the wrapper schema description. Use them to show good UI structure, not to list every possible component.
+The model chooses components from their descriptions and fills in inputs from their schemas, so write that guidance on the component itself. It then travels with the kit wherever you compose it, and into `createUiJsonSchema()` for agents Hashbrown doesn't run.
 
 <hb-code-example header="product-ui-kit.ts">
 
 ```ts
-import { prompt } from '@hashbrownai/core';
-import { createUiKit } from '@hashbrownai/angular';
-
-export const productUiKit = createUiKit({
-  components: [productCard],
-  examples: prompt`
-    <ui>
-      <ProductCard
-        name="Trail Mix"
-        summary="High-protein snack with a balanced calorie profile."
-      />
-    </ui>
-  `,
+exposeComponent(ProductCard, {
+  name: 'ProductCard',
+  // When to use it, when not to, and how it differs from similar components
+  description:
+    'One recommended product with the reason it fits. Use it once per product when the user asks for a recommendation or a comparison. For general advice that names no product, use Markdown instead.',
+  input: {
+    // Value conventions belong in input descriptions and the schema
+    name: s.string('The product name exactly as the catalog lists it'),
+    summary: s.streaming.string(
+      'Why this product fits the request, in one sentence',
+    ),
+  },
 });
 ```
 
 </hb-code-example>
 
-If an example references a component that is not in the kit, Hashbrown raises an error instead of silently sending bad guidance to the model.
-
-Quoted attribute values are strings. Hashbrown converts a quoted number such as `count="3"` for a number input, but it does not parse arrays or objects out of a string. Pass any value that isn't a string with `${}`, and Hashbrown checks it against the input's schema:
-
-<hb-code-example header="sales-ui-kit.ts">
-
-```ts
-examples: prompt`
-  <ui>
-    <BarChart
-      title="Monthly revenue"
-      data=${[
-        { label: 'Oct', value: 350000 },
-        { label: 'Nov', value: 400000 },
-      ]}
-    />
-  </ui>
-`,
-```
-
-</hb-code-example>
-
-Because the example carries a real array, the `data` input can stay `s.array(...)`. There's no need to model it as a JSON-encoded string.
+- Say when to use the component, when not to, and how it differs from similar components.
+- Put units, formats and ranges in input descriptions. When the schema can enforce a rule, such as a fixed set of values with `s.enumeration()`, enforce it there instead of describing it.
+- Keep rules that span components, such as "show at most three product cards, then a short summary", in the plain-string `system` prompt of the resource that uses the kit.
 
 ---
 
@@ -319,7 +298,7 @@ export const metricDefinition = {
 
 </hb-code-example>
 
-On the server, `createUiJsonSchema()` builds the JSON Schema the kit would send to a model, examples included. Pass it to your model as a structured output schema. If the kit includes `exposeMarkdown`, add `markdownComponent()` from `@hashbrownai/core` to `components` in the same position, with the same `name`, `description` and `citations` options. For example, an OpenAI agent can use it as a `json_schema` response format:
+On the server, `createUiJsonSchema()` builds the JSON Schema the kit would send to a model, component and input descriptions included. Pass it to your model as a structured output schema. If the kit includes `exposeMarkdown`, add `markdownComponent()` from `@hashbrownai/core` to `components` in the same position, with the same `name`, `description` and `citations` options. For example, an OpenAI agent can use it as a `json_schema` response format:
 
 <hb-code-example header="agent.ts">
 
@@ -378,6 +357,6 @@ export class AgentMessage {
 
 </hb-code-example>
 
-The parser resolves each component once its inputs are complete, so the first components render while the rest of the message is still streaming. When `examples` are passed, pass the same ones to both `createUiKit()` and `createUiJsonSchema()` so the two schemas stay identical.
+The parser resolves each component once its inputs are complete, so the first components render while the rest of the message is still streaming. Build both from the same definitions so the two schemas stay identical.
 
 If you can't use structured output, include the schema in the agent's instructions and ask for a single JSON object with no surrounding text. The parser can't recover from prose or code fences before the JSON.

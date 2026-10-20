@@ -226,7 +226,7 @@ test('uiCompletionResource passes reactive options through to structuredCompleti
       threadId,
     }),
   );
-  expect(delegatedSystem).not.toBe(system);
+  expect(delegatedSystem).toBe(system);
   expect(delegatedSystem()).toBe('System prompt');
 
   system.set('Updated system prompt');

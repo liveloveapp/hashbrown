@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { createElement } from 'react';
 import { expect, test, vi } from 'vitest';
-import { s, ɵcreateUiKit, ɵisUiKit } from '@hashbrownai/core';
+import { s, ɵcreateUiKit } from '@hashbrownai/core';
 import { useStructuredCompletion } from './use-structured-completion';
 import { useUiCompletion } from './use-ui-completion';
 
@@ -247,7 +247,7 @@ test('useUiCompletion accepts UiKit inputs and renders their components', () => 
   expect(result.current.ui?.[0]?.type).toBe(UiKitButton);
 });
 
-test('useUiCompletion compiles system prompts with normalized components', () => {
+test('useUiCompletion forwards the system prompt string unchanged', () => {
   // Arrange
   useStructuredCompletionMock.mockReset();
 
@@ -266,13 +266,6 @@ test('useUiCompletion compiles system prompts with normalized components', () =>
       },
     ],
   });
-
-  const systemPrompt = {
-    compile: vi.fn(() => 'compiled'),
-    examples: [],
-    diagnostics: [],
-    meta: { uiBlocks: [] },
-  };
 
   useStructuredCompletionMock.mockReturnValue({
     pendingInterrupts: undefined,
@@ -296,19 +289,15 @@ test('useUiCompletion compiles system prompts with normalized components', () =>
   renderHook(() =>
     useUiCompletion({
       input: 'Generate a UI',
-      system: systemPrompt,
+      system: 'Answer with a single UiKitButton.',
       components: [uiKit],
     }),
   );
 
-  const [components] = systemPrompt.compile.mock.calls[0] ?? [];
-  const hasUIKit = Array.isArray(components)
-    ? components.some((entry) => ɵisUiKit(entry))
-    : false;
-
   // Assert
-  expect(systemPrompt.compile).toHaveBeenCalledTimes(1);
-  expect(hasUIKit).toBe(false);
+  expect(useStructuredCompletionMock).toHaveBeenCalledWith(
+    expect.objectContaining({ system: 'Answer with a single UiKitButton.' }),
+  );
 });
 
 test('useUiCompletion propagates thread identity without exposing persistence state', () => {

@@ -1,4 +1,3 @@
-import type { SystemPrompt } from '../prompt/types';
 import { s } from '../schema';
 import type { ExposedComponentDescriptor } from './expose-component';
 import { createUiKit } from './ui-kit';
@@ -18,7 +17,9 @@ export interface UiComponentDefinition {
    */
   name: string;
   /**
-   * What the component shows and when the model should use it.
+   * What the component shows and when the model should use it. Say when to
+   * use it, when not to, and how it differs from similar components. Put
+   * value conventions in the prop schemas' descriptions instead.
    */
   description: string;
   /**
@@ -43,11 +44,6 @@ export interface UiJsonSchemaOptions {
    * `exposeComponent` results.
    */
   components: readonly UiComponentDefinition[];
-  /**
-   * Optional prompt-based UI examples, compiled into the schema description
-   * exactly as `useUiKit`, `useUiChat` and `uiChatResource` compile them.
-   */
-  examples?: SystemPrompt;
 }
 
 /**
@@ -65,7 +61,7 @@ export interface UiJsonSchemaOptions {
  * file for agents in other languages.
  *
  * @public
- * @param options - The component definitions and optional examples.
+ * @param options - The component definitions.
  * @returns The JSON Schema for a `{ "ui": [...] }` response.
  */
 export function createUiJsonSchema(
@@ -74,7 +70,6 @@ export function createUiJsonSchema(
   const descriptors = new Map<object, ExposedComponentDescriptor>();
   const kit = createUiKit({
     components: options.components.map(toDescriptor),
-    examples: options.examples,
   });
 
   return JSON.parse(JSON.stringify(s.toJsonSchema(kit.schema)));

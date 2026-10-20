@@ -12,14 +12,6 @@ export {
 export * from './models';
 export * from './transport';
 export * from './decision';
-export { prompt } from './prompt/prompt';
-export type {
-  HBTree,
-  PromptDiagnostic,
-  PromptDiagnosticCode,
-  PromptDiagnosticSeverity,
-  SystemPrompt,
-} from './prompt/types';
 export {
   createRuntimeFunctionImpl as ɵcreateRuntimeFunctionImpl,
   createRuntimeImpl as ɵcreateRuntimeImpl,
@@ -60,11 +52,11 @@ export {
   compileDecision as ɵcompileDecision,
   type CompileDecisionOptions as ɵCompileDecisionOptions,
 } from './decision/compile-decision';
-export { decodeDecision as ɵdecodeDecision } from './decision/decode-decision';
+export { resolveSelection as ɵresolveSelection } from './decision/ui-selection';
 export {
-  createSelectionSchema as ɵcreateSelectionSchema,
-  resolveSelection as ɵresolveSelection,
-} from './decision/ui-selection';
+  createComponentSelection as ɵcreateComponentSelection,
+  type ComponentSelection as ɵComponentSelection,
+} from './decision/component-selection';
 export { createDecisionRuntime as ɵcreateDecisionRuntime } from './decision/decision-runtime';
 export type {
   DecisionRuntime as ɵDecisionRuntime,

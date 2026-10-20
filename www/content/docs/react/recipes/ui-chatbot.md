@@ -355,7 +355,8 @@ import { Markdown } from './Markdown';
 
 export const exposedMarkdownComponent = exposeComponent(Markdown, {
   name: 'Markdown',
-  description: 'Renders formatted markdown text in the chat',
+  description:
+    'Formatted text in the chat. Use it for explanations, confirmations and simple answers. Never use it to list lights or scenes; use Card with LightListItem or SceneListItem for those.',
   props: {
     content: s.streaming.string('Markdown body to display to the user'),
   },
@@ -368,7 +369,7 @@ Let's break this down:
 
 1. The first argument to `exposeComponent` is the React component.
 2. The next argument we provide is a `TitleCase` unique name for the component.
-3. Like tools, `description` is a natural language description of the component. The LLM will use it to determine when to render the component.
+3. Like tools, `description` is a natural language description of the component. The LLM will use it to determine when to render the component, so say when to use it, when not to, and how it differs from similar components.
 4. The LLM can generate data for your component's props by specifying schema for each prop. Here we are leveraging Skillet's `streaming` keyword to bind a streaming string to the prop, letting the component show realtime Markdown as it is getting generated.
 
 Only after exposing the markdown component can the assistant send plain conversational answers.
@@ -386,26 +387,31 @@ import { SceneListItem } from './SceneListItem';
 
 export const exposedCardComponent = exposeComponent(Card, {
   name: 'Card',
-  description: 'Shows a card with a title and arbitrary children',
+  description:
+    'A titled group of LightListItem or SceneListItem entries. Use it whenever you show one or more lights or scenes, even a single one. For a single sentence of text, use Markdown instead.',
   props: {
-    title: s.streaming.string('Title to display in the card header'),
+    title: s.streaming.string(
+      'Title to display in the card header, such as "Bedroom Lights"',
+    ),
   },
   children: 'any',
 });
 
 export const exposedLightListItemComponent = exposeComponent(LightListItem, {
   name: 'LightListItem',
-  description: 'Display a light and its state, given the lightId',
+  description:
+    'One light and its current state. Use it inside a Card, once per light. For a scene, use SceneListItem instead.',
   props: {
-    lightId: s.string('The id of the light to display'),
+    lightId: s.string('The id of the light from the getLights tool'),
   },
 });
 
 export const exposedSceneListItemComponent = exposeComponent(SceneListItem, {
   name: 'SceneListItem',
-  description: 'Display a scene (and let the user apply it) by id',
+  description:
+    'One scene the user can apply. Use it inside a Card, once per scene. For a single light, use LightListItem instead.',
   props: {
-    sceneId: s.string('The id of the scene to display'),
+    sceneId: s.string('The id of the scene from the getScenes tool'),
   },
 });
 ```
@@ -413,7 +419,7 @@ export const exposedSceneListItemComponent = exposeComponent(SceneListItem, {
 </hb-code-example>
 
 **How Skillet helps with components:**
-The prop schemas tell the LLM exactly what props are needed and whether they stream.
+The prop schemas tell the LLM exactly what props are needed and whether they stream. The descriptions tell it when to pick each component, and the prop descriptions say where each value comes from.
 
 ---
 
@@ -455,15 +461,10 @@ export const Chatbot: React.FC = () => {
       - Call functions to get all lights, get scenes, set a light's brightness, and apply scenes.
 
       # Rules
-      - Always use the Markdown component for simple explanations or answers. For lists, wrap LightListItem/SceneListItem in Card.
-      - If you want to show an example UI, use the following format:
-
-      <ui>
-        <Card title="Bedroom Lights">
-          <LightListItem lightId="bedroom" />
-          <LightListItem lightId="living" />
-        </Card>
-      <ui>
+      - Answer simple questions with a single Markdown component.
+      - To show lights or scenes, even just one, render one Card per room or
+        group, with a LightListItem or SceneListItem for each entry inside it.
+      - Put a short Markdown summary after the cards only when there is more to say.
     `,
     components: [
       exposedMarkdownComponent,
@@ -516,7 +517,7 @@ Let's break this down:
 2. When creating `useUiChat`, we provide:
 
 - `debugName` - Lets you debug and introspect the resource using the Redux Devtools browser extension.
-- `system` - We use a system instruction with a clear role, capabilities, and rules. You can write UI examples in your system instruction (using the `<ui>` XML tag). Hashbrown will convert them into the underlying JSON representation.
+- `system` - We use a plain-string system instruction with a clear role, capabilities, and layout rules. Guidance about a single component lives in that component's description instead.
 - `components` - The list of components we want the LLM to use when generating responses.
 - `tools` - The list of tools we want to expose to the LLM in this chat. This could be dynamic if you want to change the list of tools at runtime.
 

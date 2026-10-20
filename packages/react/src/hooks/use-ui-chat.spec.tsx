@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { createElement } from 'react';
-import { s, ɵcreateUiKit, ɵisUiKit } from '@hashbrownai/core';
+import { s, ɵcreateUiKit } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { exposeComponent } from '../expose-component.fn';
 import { useStructuredChat } from './use-structured-chat';
@@ -89,11 +89,10 @@ test('useUiChat renders components from UiKit and exposed component inputs', () 
   expect(ui[1]?.type).toBe(FallbackButton);
 });
 
-test('useUiChat compiles system prompts with normalized components', () => {
+test('useUiChat forwards the system prompt string unchanged', () => {
   // Arrange
   const Button = ({ label }: { label: string }) =>
     createElement('button', null, label);
-
   const uiKit = ɵcreateUiKit({
     components: [
       exposeComponent(Button, {
@@ -105,14 +104,6 @@ test('useUiChat compiles system prompts with normalized components', () => {
       }),
     ],
   });
-
-  const systemPrompt = {
-    compile: vi.fn(() => 'compiled'),
-    examples: [],
-    diagnostics: [],
-    meta: { uiBlocks: [] },
-  };
-
   useStructuredChatMock.mockReturnValue({
     messages: [],
   } as ReturnType<typeof useStructuredChat>);
@@ -120,19 +111,15 @@ test('useUiChat compiles system prompts with normalized components', () => {
   // Act
   renderHook(() =>
     useUiChat({
-      system: systemPrompt,
+      system: 'Answer with a single UiKitButton.',
       components: [uiKit],
     }),
   );
 
-  const [components] = systemPrompt.compile.mock.calls[0] ?? [];
-  const hasUIKit = Array.isArray(components)
-    ? components.some((entry) => ɵisUiKit(entry))
-    : false;
-
   // Assert
-  expect(systemPrompt.compile).toHaveBeenCalledTimes(1);
-  expect(hasUIKit).toBe(false);
+  expect(useStructuredChatMock).toHaveBeenCalledWith(
+    expect.objectContaining({ system: 'Answer with a single UiKitButton.' }),
+  );
 });
 
 test('useUiChat forwards and returns shared agent state unchanged', () => {

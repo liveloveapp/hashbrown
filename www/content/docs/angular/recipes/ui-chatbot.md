@@ -342,7 +342,8 @@ import { s } from '@hashbrownai/core';
 import { Markdown } from './app-markdown';
 
 export const markdownComponent = exposeComponent(Markdown, {
-  description: 'Renders formatted markdown text in the chat',
+  description:
+    'Formatted text in the chat. Use it for explanations, confirmations and simple answers. Never use it to list lights or scenes; use app-card with app-light-list-item or app-scene-list-item for those.',
   input: {
     content: s.streaming.string('Markdown body to display to the user'),
   },
@@ -354,7 +355,7 @@ export const markdownComponent = exposeComponent(Markdown, {
 Let's break this down:
 
 1. The first argument @hashbrownai/angular!exposeComponent:function expects is the component class. Hashbrown will use the component's selector as the unique identifier for the component. This can be overriden by optionally providing a `name`.
-2. Like tools, `description` is a natural language description of the component. The LLM will use it to determine when to render the component.
+2. Like tools, `description` is a natural language description of the component. The LLM will use it to determine when to render the component, so say when to use it, when not to, and how it differs from similar components.
 3. The LLM can generate data for your component's inputs by specifying schema for each input on the component. Here we are leveraging Skillet's `streaming` keyword to bind a streaming string to the input, letting the component show realtime Markdown as it is getting generated.
 
 Only after exposing the markdown component can the assistant send plain conversational answers.
@@ -371,24 +372,29 @@ import { LightListItem } from './app-light-list-item';
 import { SceneListItem } from './app-scene-list-item';
 
 export const exposedCardComponent = exposeComponent(Card, {
-  description: 'Shows a card with a title and arbitrary children',
+  description:
+    'A titled group of app-light-list-item or app-scene-list-item entries. Use it whenever you show one or more lights or scenes, even a single one. For a single sentence of text, use app-markdown instead.',
   input: {
-    title: s.streaming.string('Title to display in the card header'),
+    title: s.streaming.string(
+      'Title to display in the card header, such as "Bedroom Lights"',
+    ),
   },
   children: 'any',
 });
 
 export const exposedLightListItemComponent = exposeComponent(LightListItem, {
-  description: 'Display a light and its state, given the lightId',
+  description:
+    'One light and its current state. Use it inside an app-card, once per light. For a scene, use app-scene-list-item instead.',
   input: {
-    lightId: s.string('The id of the light to display'),
+    lightId: s.string('The id of the light from the getLights tool'),
   },
 });
 
 export const exposedSceneListItemComponent = exposeComponent(SceneListItem, {
-  description: 'Display a scene (and let the user apply it) by id',
+  description:
+    'One scene the user can apply. Use it inside an app-card, once per scene. For a single light, use app-light-list-item instead.',
   input: {
-    sceneId: s.string('The id of the scene to display'),
+    sceneId: s.string('The id of the scene from the getScenes tool'),
   },
 });
 ```
@@ -396,7 +402,7 @@ export const exposedSceneListItemComponent = exposeComponent(SceneListItem, {
 </hb-code-example>
 
 **How Skillet helps with components:**
-The input schemas tell the LLM exactly what inputs are needed and whether they stream.
+The input schemas tell the LLM exactly what inputs are needed and whether they stream. The descriptions tell it when to pick each component, and the input descriptions say where each value comes from.
 
 ---
 
@@ -456,15 +462,10 @@ export class Chatbot {
       - Call functions to get all lights, get scenes, set a light's brightness, and apply scenes.
 
       # Rules
-      - Always use the app-markdown component for simple explanations or answers. For lists, wrap app-light-list-item/app-scene-list-item in app-card.
-      - If you want to show an example UI, use the following format:
-
-      <ui>
-        <app-card title="Bedroom Lights">
-          <app-light-list-item lightId="light-id-bedroom" />
-          <app-light-list-item lightId="living" />
-        </app-card>
-      <ui>
+      - Answer simple questions with a single app-markdown component.
+      - To show lights or scenes, even just one, render one app-card per room or
+        group, with an app-light-list-item or app-scene-list-item for each entry inside it.
+      - Put a short app-markdown summary after the cards only when there is more to say.
     `,
     components: [
       exposedMarkdownComponent,
@@ -492,7 +493,7 @@ Let's break this down:
 2. When creating `uiChatResource`, we provide:
 
 - `debugName` - Let's you debug and introspect the resource using the Redux Devtools browser extension.
-- `system` - We use the @hashbrownai/core!prompt:function to create a system instruction with a clear role, capabilities, and rules. The @hashbrownai/core!prompt:function lets us write UI examples in our system instruction (using the `<ui>` XML tag). Hashbrown will convert them into the underlying JSON representation.
+- `system` - We use a plain-string system instruction with a clear role, capabilities, and layout rules. Guidance about a single component lives in that component's description instead.
 - `components` - The list of components we want the LLM to use when generating responses.
 - `tools` - The list of tools we want to expose to the LLM in this chat. This could be a signal of tools if you want to change the list of tools dynamically.
 

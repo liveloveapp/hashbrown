@@ -165,7 +165,7 @@ Both transports forward Hashbrown's response schema to each browser's `responseC
 
 - **Tools**: not supported locally; expect `FEATURE_UNSUPPORTED`.
 - **Structured**: supported when schema is compatible.
-- **UI**: Simple user interfaces can be generated. Avoid using `children: 'any'` to prevent cycles in the underlying UI schema. Provide examples using the `prompt` helper.
+- **UI**: Simple user interfaces can be generated. Avoid using `children: 'any'` to prevent cycles in the underlying UI schema. Keep the component set small, give each component a description that says when to use it and when not to, and put layout rules in a short plain-string system prompt.
 
 ---
 

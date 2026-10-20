@@ -180,7 +180,7 @@ test('uiChatResource passes reactive options through without exposing persistenc
       threadId,
     }),
   );
-  expect(delegatedSystem).not.toBe(system);
+  expect(delegatedSystem).toBe(system);
   expect(delegatedSystem()).toBe('System prompt');
   expect(resource).not.toHaveProperty('isLoadingThread');
   expect(resource).not.toHaveProperty('isSavingThread');

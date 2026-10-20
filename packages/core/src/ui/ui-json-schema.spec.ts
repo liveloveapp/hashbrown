@@ -1,4 +1,3 @@
-import { prompt } from '../prompt/prompt';
 import { s } from '../schema';
 import { createUiKit } from './ui-kit';
 import { createUiJsonSchema } from './ui-json-schema';
@@ -40,19 +39,6 @@ test('createUiJsonSchema matches the schema a UI kit sends for the same componen
   const schema = createUiJsonSchema({ components });
 
   expect(schema).toEqual(toJson(s.toJsonSchema(kit.schema)));
-});
-
-test('createUiJsonSchema includes compiled examples in the schema description', () => {
-  const examples = prompt`
-    <ui>
-      <metric label="Revenue" value=${184302} />
-    </ui>
-  `;
-
-  const schema = createUiJsonSchema({ components: [metric], examples });
-
-  expect(schema['description']).toContain('Revenue');
-  expect(schema['description']).toContain('184302');
 });
 
 test('createUiJsonSchema matches a kit that reuses a child component at the top level', () => {
@@ -98,10 +84,12 @@ test('createUiJsonSchema rejects two different components with the same name', (
   expect(create).toThrow(/Component name collision for "metric"/);
 });
 
-test('createUiJsonSchema rejects invalid examples', () => {
-  const examples = prompt`<ui><unknown label="x" /></ui>`;
+test('createUiJsonSchema describes the response with only the base instructions', () => {
+  const components = [metric];
 
-  const create = () => createUiJsonSchema({ components: [metric], examples });
+  const schema = createUiJsonSchema({ components });
 
-  expect(create).toThrow(/Example prompt has/);
+  expect(schema['description']).toBe(
+    'Return a JSON object with a single key "ui" that matches the schema below. Use only these components.',
+  );
 });

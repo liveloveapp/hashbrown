@@ -6,12 +6,10 @@ import {
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
-  SystemPrompt,
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
 import { structuredCompletionResource } from './structured-completion-resource.fn';
-import { readReactiveOption } from '../utils';
 import {
   TAG_NAME_REGISTRY,
   UiAssistantMessage,
@@ -38,10 +36,6 @@ export interface UiCompletionResourceOptions<
    * The components to use for the UI completion resource.
    */
   components: UiKitInput<ExposedComponent<any>>[];
-  /**
-   * Optional prompt-based UI examples to include in the wrapper schema description.
-   */
-  examples?: SystemPrompt;
 
   /**
    * The signal that produces the input for the completion.
@@ -51,7 +45,7 @@ export interface UiCompletionResourceOptions<
   /**
    * The system prompt to use for the UI completion resource.
    */
-  system: ReactiveOption<string | SystemPrompt>;
+  system: ReactiveOption<string>;
 
   /** The initial shared agent state. */
   state?: State;
@@ -161,26 +155,8 @@ export function uiCompletionResource<
 ): UiCompletionResourceRef<Tools, State> {
   const uiKit = createUiKit<ExposedComponent<any>>({
     components: options.components,
-    examples: options.examples,
   });
   const internalSchema = uiKit.schema;
-  const systemAsString = computed(() => {
-    const system = readReactiveOption(options.system);
-
-    if (typeof system === 'string') {
-      return system;
-    }
-
-    const result = system.compile(uiKit.components, internalSchema);
-
-    if (system.diagnostics.length > 0) {
-      throw new Error(
-        `System prompt has ${system.diagnostics.length} errors: \n\n${system.diagnostics.map((d) => d.message).join('\n\n')}`,
-      );
-    }
-
-    return result;
-  });
 
   const completion = structuredCompletionResource<
     Input,
@@ -190,7 +166,7 @@ export function uiCompletionResource<
   >({
     input: options.input,
     schema: internalSchema,
-    system: systemAsString,
+    system: options.system,
     state: options.state,
     tools: options.tools,
     debugName: options.debugName,

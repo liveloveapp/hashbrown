@@ -7,7 +7,6 @@ import {
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
-  SystemPrompt,
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
@@ -17,7 +16,6 @@ import {
   UiAssistantMessage,
   UiChatMessage,
 } from '../utils/ui-chat.helpers';
-import { readReactiveOption } from '../utils';
 import { ReactiveOption } from '../utils/types';
 import { createUiKit, type UiKitInput } from '../utils/ui-kit.fn';
 import { createResourceSnapshot } from './create-resource-snapshot.fn';
@@ -44,15 +42,11 @@ export interface UiChatResourceOptions<
    * The components to use for the UI chat resource.
    */
   components: UiKitInput<ExposedComponent<any>>[];
-  /**
-   * Optional prompt-based UI examples to include in the wrapper schema description.
-   */
-  examples?: SystemPrompt;
 
   /**
    * The system prompt to use for the UI chat resource.
    */
-  system: ReactiveOption<string | SystemPrompt>;
+  system: ReactiveOption<string>;
 
   /**
    * The initial messages for the UI chat resource.
@@ -174,27 +168,13 @@ export function uiChatResource<Tools extends Chat.AnyTool, State = unknown>(
 ): UiChatResourceRef<Tools, State> {
   const uiKit = createUiKit<ExposedComponent<any>>({
     components: args.components,
-    examples: args.examples,
   });
   const internalSchema = uiKit.schema;
-  const systemAsString = computed(() => {
-    const system = readReactiveOption(args.system);
-    if (typeof system === 'string') {
-      return system;
-    }
-    const result = system.compile(uiKit.components, internalSchema);
-    if (system.diagnostics.length > 0) {
-      throw new Error(
-        `System prompt has ${system.diagnostics.length} errors: \n\n${system.diagnostics.map((d) => d.message).join('\n\n')}`,
-      );
-    }
-    return result;
-  });
 
   const chat = structuredChatResource({
     schema: internalSchema,
     tools: [...(args.tools ?? [])],
-    system: systemAsString,
+    system: args.system,
     state: args.state,
     messages: [...(args.messages ?? [])],
     debugName: args.debugName,

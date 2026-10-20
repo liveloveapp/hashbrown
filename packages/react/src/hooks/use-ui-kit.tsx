@@ -3,7 +3,6 @@ import {
   type ComponentTree,
   type UiKit as CoreUiKit,
   type UiKitInput as CoreUiKitInput,
-  type SystemPrompt,
   type UiWrapper,
   ɵcreateUiKit,
 } from '@hashbrownai/core';
@@ -57,10 +56,6 @@ export interface UiKitOptions<T extends ExposedComponent<any>> {
    * Components or other UiKit instances to compose.
    */
   components: readonly UiKitInput<T>[];
-  /**
-   * Optional prompt-based UI examples to include in the wrapper schema description.
-   */
-  examples?: SystemPrompt;
 }
 
 /**
@@ -87,9 +82,8 @@ export function useUiKit<T extends ExposedComponent<any>>(
     () =>
       ɵcreateUiKit<T>({
         components: options.components,
-        examples: options.examples,
       }),
-    [options.components, options.examples],
+    [options.components],
   );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const uiKit = useMemo(() => nextKit, [nextKit.serializedSchema]);
