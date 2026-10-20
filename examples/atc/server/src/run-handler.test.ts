@@ -184,7 +184,16 @@ test('limitRequest caps the output', () => {
 });
 
 test('limitRequest sends reasoning effort only to reasoning models', () => {
-  const models = ['gpt-5-mini', 'gpt-5.1', 'o4-mini', 'gpt-4.1', 'gpt-4o'];
+  const models = [
+    'gpt-5-mini',
+    'gpt-5.1',
+    'o4-mini',
+    'gpt-6',
+    'GPT-10-mini',
+    'gpt-5-chat-latest',
+    'gpt-4.1',
+    'gpt-4o',
+  ];
 
   const reasoning = models.map(
     (model) =>
@@ -200,6 +209,9 @@ test('limitRequest sends reasoning effort only to reasoning models', () => {
     { summary: 'auto', effort: 'low' },
     { summary: 'auto', effort: 'low' },
     { summary: 'auto', effort: 'low' },
+    { summary: 'auto', effort: 'low' },
+    { summary: 'auto', effort: 'low' },
+    { summary: 'auto' },
     { summary: 'auto' },
     { summary: 'auto' },
   ]);

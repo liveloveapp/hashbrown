@@ -214,8 +214,18 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   } as OpenAIHashbrownRunAgentInput;
 }
 
-/** gpt-5 and the o-series accept `reasoning.effort`; other models reject it with a 400. */
-const REASONING_MODEL = /^(gpt-5|o\d)/;
+/**
+ * The o-series and gpt-5 and later accept `reasoning.effort`. Other models,
+ * including `-chat` variants such as `gpt-5-chat-latest`, are not reasoning
+ * models and can reject it with a 400. This is the rule the OpenAI provider
+ * uses to request reasoning summaries.
+ */
+const REASONING_MODEL = /^(o\d|gpt-(?:[5-9]|\d{2,})(?!\d))/i;
+const CHAT_MODEL = /-chat(?:-|$)/i;
+
+function isReasoningModel(model: string): boolean {
+  return REASONING_MODEL.test(model) && !CHAT_MODEL.test(model);
+}
 
 /**
  * Caps the Responses request's `max_output_tokens` and adds a reasoning effort
@@ -230,7 +240,7 @@ export function limitRequest(
   return {
     ...request,
     max_output_tokens: MAX_OUTPUT_TOKENS,
-    ...(reasoningEffort !== null && REASONING_MODEL.test(request.model ?? '')
+    ...(reasoningEffort !== null && isReasoningModel(request.model ?? '')
       ? { reasoning: { ...request.reasoning, effort: reasoningEffort } }
       : {}),
   };

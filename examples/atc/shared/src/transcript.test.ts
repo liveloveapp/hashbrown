@@ -246,17 +246,19 @@ test('marks reasoning done once a later row exists or the chat is idle', () => {
   ]);
 });
 
-test('hides the thinking line while reasoning streams', () => {
+test('hides the thinking line but announces reasoning while it streams', () => {
   const messages = [
     { role: 'user', content: 'Highest?' },
     { role: 'assistant', reasoning: 'Comparing.' },
   ];
   const streaming = transcriptItems(messages, true);
+  const idle = transcriptItems(messages, false);
 
   const statuses = [
     thinkingStatus(streaming, true),
     chatStatus(streaming, true),
+    chatStatus(idle, false),
   ];
 
-  expect(statuses).toEqual([null, null]);
+  expect(statuses).toEqual([null, 'Reasoning…', null]);
 });

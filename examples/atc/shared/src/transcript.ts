@@ -156,8 +156,9 @@ export function thinkingStatus<M extends TranscriptMessageLike>(
 /**
  * What the assistant is doing now, for one persistent polite status region
  * outside the busy transcript: the running step ("Following UAL1802…", planes
- * named by `labelFor`), else {@link thinkingStatus}. Null when the chat is
- * idle or the answer is streaming.
+ * named by `labelFor`), "Reasoning…" while a reasoning row streams, else
+ * {@link thinkingStatus}. Null when the chat is idle or the answer is
+ * streaming.
  */
 export function chatStatus<M extends TranscriptMessageLike>(
   items: readonly TranscriptItem<M>[],
@@ -170,5 +171,12 @@ export function chatStatus<M extends TranscriptMessageLike>(
       ? toolRunView(last.calls, busy, labelFor).current
       : null;
 
-  return step ?? thinkingStatus(items, busy);
+  if (step !== null) {
+    return step;
+  }
+  if (busy && last?.kind === 'reasoning' && !last.done) {
+    return 'Reasoning…';
+  }
+
+  return thinkingStatus(items, busy);
 }

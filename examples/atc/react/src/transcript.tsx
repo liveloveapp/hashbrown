@@ -16,8 +16,9 @@ import { ToolChips } from './tool-chips';
  * polite live region that is busy while the answer streams, so screen readers
  * announce each new row once instead of every token. Since nothing inside a
  * busy region is announced, a visually hidden status region beside it says what
- * the assistant is doing now (the running step, else "Thinking…"); it stays
- * mounted, so each change is announced.
+ * the assistant is doing now (the running step, "Reasoning…" while a reasoning
+ * summary streams, else "Thinking…"); it stays mounted, so each change is
+ * announced.
  */
 export function Transcript({
   items,

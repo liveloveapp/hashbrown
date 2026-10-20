@@ -306,6 +306,7 @@ test('reasoning shimmers while it streams and collapses to Reasoned once done', 
   const label = text(streaming?.querySelector('.atc-shimmer'));
   const body = text(streaming?.querySelector('.atc-reasoning-text'));
   const thinking = element.querySelector('[data-testid="thinking"]');
+  const announced = text(element.querySelector('[data-testid="chat-status"]'));
   rerender(
     <AtcStoreProvider store={store}>
       <Transcript items={transcriptItems(messages, false)} busy={false} />
@@ -317,6 +318,7 @@ test('reasoning shimmers while it streams and collapses to Reasoned once done', 
   expect(label).toBe('Reasoning');
   expect(body).toBe('Comparing altitudes.');
   expect(thinking).toBeNull();
+  expect(announced).toBe('Reasoning…');
   expect(done?.querySelector('.atc-shimmer')).toBeNull();
   expect(done?.querySelector('details')?.open).toBe(false);
   expect(text(done?.querySelector('summary'))).toBe('Reasoned');
