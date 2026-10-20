@@ -158,3 +158,87 @@ test('messageText reads string content and ignores anything else', () => {
 
   expect(texts).toEqual(['hello', '', '']);
 });
+
+test("puts an assistant message's reasoning before its tool calls", () => {
+  const messages = [
+    { role: 'user', content: 'Highest?' },
+    {
+      role: 'assistant',
+      reasoning: 'Comparing altitudes.',
+      toolCalls: [call('findAircraft', 'pending')],
+    },
+  ];
+
+  const items = transcriptItems(messages, true);
+
+  expect(items).toEqual([
+    { kind: 'user', text: 'Highest?' },
+    { kind: 'reasoning', text: 'Comparing altitudes.', done: true },
+    { kind: 'tools', calls: [call('findAircraft', 'pending')] },
+  ]);
+});
+
+test('merges reasoning within one turn', () => {
+  const answer = { role: 'assistant', reasoning: 'Answering.', content: ui };
+  const messages = [
+    { role: 'user', content: 'Highest?' },
+    { role: 'assistant', reasoning: 'Looking.', toolCalls: [call('a')] },
+    { role: 'assistant', reasoning: '', toolCalls: [call('b')] },
+    { role: 'assistant', reasoning: 'Comparing.', toolCalls: [call('c')] },
+    answer,
+    { role: 'user', content: 'Lowest?' },
+    { role: 'assistant', reasoning: 'Again.' },
+  ];
+
+  const items = transcriptItems(messages);
+
+  expect(items).toEqual([
+    { kind: 'user', text: 'Highest?' },
+    {
+      kind: 'reasoning',
+      text: 'Looking.\n\nComparing.\n\nAnswering.',
+      done: true,
+    },
+    { kind: 'tools', calls: [call('a'), call('b'), call('c')] },
+    { kind: 'answer', message: answer },
+    { kind: 'user', text: 'Lowest?' },
+    { kind: 'reasoning', text: 'Again.', done: true },
+  ]);
+});
+
+test('marks reasoning done once a later row exists or the chat is idle', () => {
+  const streaming = [
+    { role: 'user', content: 'Highest?' },
+    { role: 'assistant', reasoning: 'Comparing.' },
+  ];
+  const answered = [...streaming, { role: 'assistant', content: ui }];
+
+  const done = [
+    transcriptItems(streaming, true)[1],
+    transcriptItems(streaming, false)[1],
+    transcriptItems(streaming)[1],
+    transcriptItems(answered, true)[1],
+  ];
+
+  expect(done).toEqual([
+    { kind: 'reasoning', text: 'Comparing.', done: false },
+    { kind: 'reasoning', text: 'Comparing.', done: true },
+    { kind: 'reasoning', text: 'Comparing.', done: true },
+    { kind: 'reasoning', text: 'Comparing.', done: true },
+  ]);
+});
+
+test('hides the thinking line while reasoning streams', () => {
+  const messages = [
+    { role: 'user', content: 'Highest?' },
+    { role: 'assistant', reasoning: 'Comparing.' },
+  ];
+  const streaming = transcriptItems(messages, true);
+
+  const statuses = [
+    thinkingStatus(streaming, true),
+    chatStatus(streaming, true),
+  ];
+
+  expect(statuses).toEqual([null, null]);
+});

@@ -297,3 +297,36 @@ test('a thinking line shimmers after the question until something else shows wor
   expect(element.querySelector('[data-testid="chat-status"]')).toBe(status);
   expect(text(status)).toBe('');
 });
+
+test('reasoning shimmers while it streams and collapses to Reasoned once done', () => {
+  setup();
+  const fixture = TestBed.createComponent(Transcript);
+  const element = fixture.nativeElement as HTMLElement;
+  const messages = [
+    { role: 'user', content: 'Highest?' },
+    { role: 'assistant', reasoning: 'Comparing altitudes.' },
+  ];
+  fixture.componentRef.setInput('items', transcriptItems(messages, true));
+  fixture.componentRef.setInput('busy', true);
+
+  fixture.detectChanges();
+  const streaming = element.querySelector('[data-testid="reasoning"]');
+  const label = text(streaming?.querySelector('.atc-shimmer'));
+  const body = text(streaming?.querySelector('.atc-reasoning-text'));
+  const thinking = element.querySelector('[data-testid="thinking"]');
+  fixture.componentRef.setInput('items', transcriptItems(messages, false));
+  fixture.componentRef.setInput('busy', false);
+  fixture.detectChanges();
+  const done = element.querySelector('[data-testid="reasoning"]');
+
+  expect(streaming?.classList.contains('atc-reasoning')).toBe(true);
+  expect(label).toBe('Reasoning');
+  expect(body).toBe('Comparing altitudes.');
+  expect(thinking).toBeNull();
+  expect(done?.querySelector('.atc-shimmer')).toBeNull();
+  expect(done?.querySelector('details')?.open).toBe(false);
+  expect(text(done?.querySelector('summary'))).toBe('Reasoned');
+  expect(text(done?.querySelector('details .atc-reasoning-text'))).toBe(
+    'Comparing altitudes.',
+  );
+});

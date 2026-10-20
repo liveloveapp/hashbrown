@@ -13,7 +13,7 @@ import { once } from 'node:events';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
-import { PROMPTS, scriptAtcModel } from './model';
+import { PROMPTS, REASONING, scriptAtcModel } from './model';
 import { stubAtcFeeds } from './stubs';
 import {
   CLUSTER,
@@ -548,6 +548,33 @@ test('compares the highest and the fastest aircraft', async ({
   await expect(compare).toContainText(highest.label);
   await expect(compare).toContainText(fastest.label);
   await expectOnlyCompleteIds(page);
+});
+
+test("shows the model's reasoning before its tool calls, collapsed once answered", async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+
+  await ask(page, PROMPTS.reasoned);
+
+  const reasoning = page.getByTestId('reasoning');
+  const card = page.getByTestId('flight-card');
+  await expect(card).toHaveAttribute('data-hex', highest.hex);
+  await expect(reasoning).toHaveCount(1);
+  await expect(reasoning).toContainText(REASONING);
+  await expect(reasoning.locator('summary')).toHaveText('Reasoned');
+  await expect(reasoning.locator('details')).not.toHaveAttribute('open');
+  await expect(reasoning.locator('.atc-shimmer')).toHaveCount(0);
+  const beforeTools = await reasoning.evaluate((row) => {
+    const tools = document.querySelector('[data-testid="tool-summary"]');
+    return (
+      tools !== null &&
+      Boolean(
+        row.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING,
+      )
+    );
+  });
+  expect(beforeTools).toBe(true);
 });
 
 test('each app stands alone, with no links to the other framework', async ({

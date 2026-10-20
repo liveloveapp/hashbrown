@@ -18,14 +18,14 @@ import { injectAtcState } from './store';
 import { ToolChips } from './tool-chips';
 
 /**
- * The conversation: user bubbles, tool activity lines and rendered answers,
- * plus a shimmering "Thinking…" line while the assistant works with nothing
- * else on screen saying so. The list is a polite live region that is busy
- * while the answer streams, so screen readers announce each new row once
- * instead of every token. Since nothing inside a busy region is announced,
- * a visually hidden status region beside it says what the assistant is doing
- * now (the running step, else "Thinking…"); it stays mounted, so each change
- * is announced.
+ * The conversation: user bubbles, the model's reasoning summaries, tool
+ * activity lines and rendered answers, plus a shimmering "Thinking…" line while
+ * the assistant works with nothing else on screen saying so. The list is a
+ * polite live region that is busy while the answer streams, so screen readers
+ * announce each new row once instead of every token. Since nothing inside a
+ * busy region is announced, a visually hidden status region beside it says what
+ * the assistant is doing now (the running step, else "Thinking…"); it stays
+ * mounted, so each change is announced.
  */
 @Component({
   selector: 'atc-transcript',
@@ -42,6 +42,23 @@ import { ToolChips } from './tool-chips';
         @switch (item.kind) {
           @case ('user') {
             <li class="atc-user">{{ item.text }}</li>
+          }
+          @case ('reasoning') {
+            <li class="atc-reasoning" data-testid="reasoning">
+              @if (item.done) {
+                <details>
+                  <summary class="atc-activity atc-activity-toggle">
+                    Reasoned
+                  </summary>
+                  <p class="atc-reasoning-text">{{ item.text }}</p>
+                </details>
+              } @else {
+                <span class="atc-activity">
+                  <span class="atc-activity-text atc-shimmer">Reasoning</span>
+                </span>
+                <p class="atc-reasoning-text">{{ item.text }}</p>
+              }
+            </li>
           }
           @case ('tools') {
             <li><atc-tool-chips [calls]="item.calls" [busy]="busy()" /></li>
