@@ -100,8 +100,11 @@ test('streams trusted generative UI progressively', async ({
   if (!input) {
     throw new Error('Expected one captured generative UI run input.');
   }
-  expect(input.hashbrown?.ui).toBe(true);
-  expect(input.hashbrown?.responseSchema).toEqual(statusResponseSchema);
+  expect(input.forwardedProps?.hashbrown?.ui).toBe(true);
+  expect(input.forwardedProps?.hashbrown?.responseSchema).toEqual(
+    statusResponseSchema,
+  );
+  expect(input).not.toHaveProperty('hashbrown');
   expect(input).not.toHaveProperty('responseSchema');
   expect(
     input.messages.map(({ role, content }) => ({ role, content })),

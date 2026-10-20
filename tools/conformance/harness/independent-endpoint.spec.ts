@@ -163,7 +163,7 @@ test('client disconnect aborts a blocked gate without recording a terminal', asy
   }
 });
 
-test('standard endpoint parses canonical input without depending on vendor fields', async () => {
+test('standard endpoint passes forwardedProps through without reading the extension', async () => {
   const endpoint = await startIndependentEndpoint({
     events: (request) => [
       {
@@ -185,7 +185,9 @@ test('standard endpoint parses canonical input without depending on vendor field
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...input,
-        hashbrown: { ui: true, responseSchema: { type: 'object' } },
+        forwardedProps: {
+          hashbrown: { ui: true, responseSchema: { type: 'object' } },
+        },
       }),
     });
     const wire = await response.text();
@@ -199,7 +201,15 @@ test('standard endpoint parses canonical input without depending on vendor field
     expect(endpoint.consumeTerminalRun(input.runId)).toBe(true);
     expect(endpoint.consumeTerminalRun(input.runId)).toBe(false);
     expect(response.headers.get('content-type')).toContain('text/event-stream');
-    expect(endpoint.inputs).toEqual([input]);
+    expect(endpoint.inputs).toEqual([
+      {
+        ...input,
+        forwardedProps: {
+          hashbrown: { ui: true, responseSchema: { type: 'object' } },
+        },
+      },
+    ]);
+    expect(endpoint.inputs[0]).not.toHaveProperty('hashbrown');
     expect(events.map((event) => event.type)).toEqual([
       EventType.RUN_STARTED,
       EventType.RUN_FINISHED,
@@ -226,7 +236,10 @@ test('extension-aware parsing retains and validates the response schema and UI f
     const response = await fetch(endpoint.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...input, hashbrown: extension }),
+      body: JSON.stringify({
+        ...input,
+        forwardedProps: { hashbrown: extension },
+      }),
     });
     await response.text();
 
@@ -345,6 +358,30 @@ test('unsupported paths and methods cannot invoke event generation', async () =>
     expect(events).not.toHaveBeenCalled();
     await missing.text();
     await method.text();
+  } finally {
+    await endpoint.stop();
+  }
+});
+
+test('extension-aware parsing rejects an extension sent only at the top level', async () => {
+  const endpoint = await startIndependentEndpoint({
+    extended: true,
+    events: () => [],
+  });
+
+  try {
+    const response = await fetch(endpoint.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...input,
+        hashbrown: { responseSchema: { type: 'object' }, ui: true },
+      }),
+    });
+    await response.text();
+
+    expect(response.status).toBe(400);
+    expect(endpoint.inputs).toHaveLength(0);
   } finally {
     await endpoint.stop();
   }

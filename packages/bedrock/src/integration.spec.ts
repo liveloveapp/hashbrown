@@ -154,15 +154,17 @@ test('Bedrock emits complete AG-UI tool call lifecycles', async () => {
 
 test('Bedrock maps the Hashbrown response schema to native structured output', async () => {
   const input = baseInput('return structured output');
-  input.hashbrown = {
-    responseSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string' },
-        ok: { type: 'boolean' },
+  input.forwardedProps = {
+    hashbrown: {
+      responseSchema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string' },
+          ok: { type: 'boolean' },
+        },
+        required: ['text', 'ok'],
+        additionalProperties: false,
       },
-      required: ['text', 'ok'],
-      additionalProperties: false,
     },
   };
   let outputConfig: unknown;
@@ -185,7 +187,9 @@ test('Bedrock maps the Hashbrown response schema to native structured output', a
       type: 'json_schema',
       structure: {
         jsonSchema: {
-          schema: JSON.stringify(input.hashbrown.responseSchema),
+          schema: JSON.stringify(
+            input.forwardedProps?.hashbrown?.responseSchema,
+          ),
         },
       },
     },

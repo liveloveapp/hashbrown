@@ -29,8 +29,7 @@ function createRequest(
     tools: [],
     context: [],
     state: {},
-    forwardedProps: {},
-    hashbrown: { responseSchema },
+    forwardedProps: { hashbrown: { responseSchema } },
     ...inputOverrides,
   };
 
@@ -408,7 +407,9 @@ test('maps the Hashbrown response schema to the Prompt API constraint', async ()
     const transport = new ExperimentalChromeLocalTransport({
       createSession: async () => session,
     });
-    const request = createRequest({ hashbrown: { responseSchema } });
+    const request = createRequest({
+      forwardedProps: { hashbrown: { responseSchema } },
+    });
 
     const response = await transport.send(request);
     await collectEvents(response.events);
@@ -427,7 +428,7 @@ test('does not add Hashbrown UI instructions to the text prompt', async () => {
       createSession: async () => session,
     });
     const request = createRequest({
-      hashbrown: { responseSchema, ui: true },
+      forwardedProps: { hashbrown: { responseSchema, ui: true } },
     });
 
     const response = await transport.send(request);
@@ -1540,7 +1541,6 @@ test('reads the response schema from forwardedProps.hashbrown', async () => {
     });
     const request = createRequest({
       forwardedProps: { hashbrown: { responseSchema } },
-      hashbrown: undefined,
     });
 
     const response = await transport.send(request);
@@ -1549,6 +1549,27 @@ test('reads the response schema from forwardedProps.hashbrown', async () => {
     expect(session.promptStreaming).toHaveBeenCalledWith(
       expect.any(Array),
       expect.objectContaining({ responseConstraint: responseSchema }),
+    );
+  });
+});
+
+test('ignores a top-level hashbrown key', async () => {
+  await withLanguageModel(undefined, async () => {
+    const session = createSession(createTextStream([]));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+    });
+    const request = createRequest({
+      forwardedProps: {},
+      ...({ hashbrown: { responseSchema } } as Partial<RunInput>),
+    });
+
+    const response = await transport.send(request);
+    await collectEvents(response.events);
+
+    expect(session.promptStreaming).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.not.objectContaining({ responseConstraint: expect.anything() }),
     );
   });
 });

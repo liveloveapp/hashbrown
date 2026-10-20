@@ -108,7 +108,8 @@ for (const toolRound of [false, true]) {
       expect(response.headers()['content-type']).toContain('text/event-stream');
       expect(requests).toHaveLength(toolRound ? 2 : 1);
       expect(requests[0]).not.toHaveProperty('model');
-      expect(requests[0]['hashbrown']).toMatchObject({
+      expect(requests[0]).not.toHaveProperty('hashbrown');
+      expect(requests[0].forwardedProps?.hashbrown).toMatchObject({
         ui: true,
         responseSchema: expect.any(Object),
       });
@@ -123,7 +124,7 @@ for (const toolRound of [false, true]) {
           type: 'json_schema',
           json_schema: {
             strict: true,
-            schema: requests[0].hashbrown?.responseSchema,
+            schema: requests[0].forwardedProps?.hashbrown?.responseSchema,
           },
         },
       });

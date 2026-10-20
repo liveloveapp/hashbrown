@@ -58,18 +58,20 @@ HashbrownGoogle.stream.text({
 
 The adapter maps system instructions, message history, tool definitions, tool results, and native structured output. Gemini thought parts become AG-UI reasoning records, and Gemini thought signatures are preserved for continuation. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
-Set `input.hashbrown.responseSchema` to use Gemini's native JSON schema output:
+Set `input.forwardedProps.hashbrown.responseSchema` to use Gemini's native JSON schema output:
 
 ```ts
 const input = {
   ...runInput,
-  hashbrown: {
-    responseSchema: {
-      type: 'object',
-      properties: {
-        answer: { type: 'string' },
+  forwardedProps: {
+    hashbrown: {
+      responseSchema: {
+        type: 'object',
+        properties: {
+          answer: { type: 'string' },
+        },
+        required: ['answer'],
       },
-      required: ['answer'],
     },
   },
 };
@@ -118,6 +120,212 @@ app.post('/run', async (req, res) => {
 
 app.listen(3000);
 ```
+
+</div>
+
+<div backend="fastify">
+
+```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { HashbrownGoogle } from '@hashbrownai/google';
+import Fastify from 'fastify';
+
+const fastify = Fastify();
+
+fastify.post('/run', async (request, reply) => {
+  const abortController = new AbortController();
+  request.raw.once('aborted', () => abortController.abort());
+  reply.raw.once('close', () => abortController.abort());
+  const stream = HashbrownGoogle.stream.text({
+    apiKey: process.env.GOOGLE_API_KEY!,
+    model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+    input: request.body as RunAgentInput,
+    signal: abortController.signal,
+  });
+  const encoder = new EventEncoder();
+
+  reply.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  reply.header('Content-Type', encoder.getContentType());
+  reply.header('Connection', 'keep-alive');
+
+  for await (const event of stream) {
+    reply.raw.write(encoder.encodeSSE(event));
+  }
+
+  if (!reply.raw.writableEnded) {
+    reply.raw.end();
+  }
+});
+
+fastify.listen({ port: 3000 });
+```
+
+</div>
+
+<div backend="nestjs">
+
+```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import { HashbrownGoogle } from '@hashbrownai/google';
+import type { Request, Response } from 'express';
+
+@Controller()
+export class RunController {
+  @Post('run')
+  async run(
+    @Body() input: RunAgentInput,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const abortController = new AbortController();
+    req.once('aborted', () => abortController.abort());
+    res.once('close', () => abortController.abort());
+    const stream = HashbrownGoogle.stream.text({
+      apiKey: process.env.GOOGLE_API_KEY!,
+      model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+      input,
+      signal: abortController.signal,
+    });
+    const encoder = new EventEncoder();
+
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Content-Type', encoder.getContentType());
+    res.header('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    for await (const event of stream) {
+      res.write(encoder.encodeSSE(event));
+    }
+
+    if (!res.writableEnded) {
+      res.end();
+    }
+  }
+}
+```
+
+</div>
+
+<div backend="hono">
+
+```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { HashbrownGoogle } from '@hashbrownai/google';
+import { Hono } from 'hono';
+
+const app = new Hono();
+
+app.post('/run', async (c) => {
+  const input = (await c.req.json()) as RunAgentInput;
+  const stream = HashbrownGoogle.stream.text({
+    apiKey: process.env.GOOGLE_API_KEY!,
+    model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+    input,
+    signal: c.req.raw.signal,
+  });
+  const encoder = new EventEncoder();
+  const textEncoder = new TextEncoder();
+
+  return new Response(
+    new ReadableStream({
+      async start(controller) {
+        for await (const event of stream) {
+          controller.enqueue(textEncoder.encode(encoder.encodeSSE(event)));
+        }
+        controller.close();
+      },
+    }),
+    {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Content-Type': encoder.getContentType(),
+      },
+    },
+  );
+});
+
+export default app;
+```
+
+</div>
+
+</hb-backend-code-example>
+
+### Transform Request Options
+
+`transformRequestOptions` receives the final Google SDK request after AG-UI input has been mapped. Use it for server-owned provider settings.
+
+```ts
+const stream = HashbrownGoogle.stream.text({
+  apiKey: process.env.GOOGLE_API_KEY!,
+  model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    config: {
+      ...options.config,
+      temperature: 0.2,
+      systemInstruction: {
+        parts: [{ text: 'You are a helpful assistant.' }],
+      },
+    },
+  }),
+});
+```
+
+[Learn more about transformRequestOptions](/docs/angular/concept/transform-request-options)
+
+};
+
+````
+
+### Node.js Server Integration
+
+<hb-backend-code-example>
+
+<div backend="express">
+
+```ts
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { HashbrownGoogle } from '@hashbrownai/google';
+import express from 'express';
+
+const app = express();
+app.use(express.json());
+
+app.post('/run', async (req, res) => {
+  const abortController = new AbortController();
+  req.once('aborted', () => abortController.abort());
+  res.once('close', () => abortController.abort());
+  const stream = HashbrownGoogle.stream.text({
+    apiKey: process.env.GOOGLE_API_KEY!,
+    model: process.env.GOOGLE_MODEL ?? 'gemini-2.5-flash',
+    input: req.body as RunAgentInput,
+    signal: abortController.signal,
+  });
+  const encoder = new EventEncoder();
+
+  res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.header('Content-Type', encoder.getContentType());
+  res.header('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  for await (const event of stream) {
+    res.write(encoder.encodeSSE(event));
+  }
+
+  if (!res.writableEnded) {
+    res.end();
+  }
+});
+
+app.listen(3000);
+````
 
 </div>
 

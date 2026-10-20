@@ -4755,11 +4755,14 @@ test('sends one RunAgentInput with tools, structured output, and UI metadata', a
   expect(request.input).toMatchObject({
     threadId: 'configured-thread',
     runId: request.requestId,
-    hashbrown: {
-      responseSchema: s.toJsonSchema(responseSchema),
-      ui: true,
+    forwardedProps: {
+      hashbrown: {
+        responseSchema: s.toJsonSchema(responseSchema),
+        ui: true,
+      },
     },
   });
+  expect(request.input).not.toHaveProperty('hashbrown');
   expect(request.input.messages).toHaveLength(4);
   expect(request.input.tools).toEqual([
     expect.objectContaining({ name: 'search' }),

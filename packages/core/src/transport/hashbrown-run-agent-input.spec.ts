@@ -169,10 +169,15 @@ test('adds the Hashbrown extension only for framework semantics', () => {
   const ui = createInput({ ui: true });
   const structuredUi = createInput({ responseSchema, ui: true });
 
-  expect(standard).not.toHaveProperty('hashbrown');
-  expect(structured.hashbrown).toEqual({ responseSchema });
-  expect(ui.hashbrown).toEqual({ ui: true });
-  expect(structuredUi.hashbrown).toEqual({ responseSchema, ui: true });
+  expect(standard.forwardedProps).toEqual({});
+  expect(structured.forwardedProps).toEqual({ hashbrown: { responseSchema } });
+  expect(ui.forwardedProps).toEqual({ hashbrown: { ui: true } });
+  expect(structuredUi.forwardedProps).toEqual({
+    hashbrown: { responseSchema, ui: true },
+  });
+  for (const input of [standard, structured, ui, structuredUi]) {
+    expect(input).not.toHaveProperty('hashbrown');
+  }
 });
 
 test('produces a standard portion accepted by RunAgentInputSchema', () => {
@@ -209,12 +214,10 @@ test('produces a standard portion accepted by RunAgentInputSchema', () => {
     responseSchema: { type: 'string' },
     ui: true,
   });
-  const { hashbrown, ...standard } = input;
+  const result = RunAgentInputSchema.safeParse(input);
 
-  const result = RunAgentInputSchema.safeParse(standard);
-
-  expect(hashbrown).toBeDefined();
   expect(result.success).toBe(true);
+  expect(result.data?.forwardedProps).toEqual(input.forwardedProps);
 });
 
 test('does not emit legacy or provider-specific wire keys', () => {
@@ -287,33 +290,21 @@ test('preserves omitted resume payloads and explicit empty resume arrays', () =>
   expect(createInput({ resume: [] }).resume).toEqual([]);
 });
 
-test('AG-UI 1.0 accepts the top-level hashbrown extension key as sent', () => {
-  const input = createInput({ responseSchema: { type: 'string' }, ui: true });
-
-  const result = RunAgentInputSchema.safeParse(input);
-
-  expect(result.success).toBe(true);
-  expect(result.data).toHaveProperty('hashbrown', {
-    responseSchema: { type: 'string' },
-    ui: true,
-  });
-});
-
-test('carries the Hashbrown extension in forwardedProps and, for older servers, at the top level', () => {
+test('carries the Hashbrown extension only in forwardedProps', () => {
   const responseSchema = { type: 'object' };
 
   const standard = createInput();
   const structured = createInput({ responseSchema, ui: true });
 
   expect(standard.forwardedProps).toEqual({});
-  expect(standard).not.toHaveProperty('hashbrown');
   expect(structured.forwardedProps).toEqual({
     hashbrown: { responseSchema, ui: true },
   });
-  expect(structured.hashbrown).toEqual({ responseSchema, ui: true });
+  expect(standard).not.toHaveProperty('hashbrown');
+  expect(structured).not.toHaveProperty('hashbrown');
 });
 
-test('reads the extension from forwardedProps before the deprecated top-level key', () => {
+test('ignores a top-level hashbrown key', () => {
   const base = createInput();
   const fromForwarded = {
     ...base,
@@ -324,5 +315,5 @@ test('reads the extension from forwardedProps before the deprecated top-level ke
 
   const results = [base, fromForwarded, fromLegacy].map(readHashbrownExtension);
 
-  expect(results).toEqual([undefined, { ui: true }, { ui: false }]);
+  expect(results).toEqual([undefined, { ui: true }, undefined]);
 });
