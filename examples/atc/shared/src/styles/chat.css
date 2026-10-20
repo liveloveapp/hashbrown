@@ -229,6 +229,44 @@
   }
 }
 
+/*
+ * The model's reasoning summary: quieter than an answer. While it streams, a
+ * shimmering "Reasoning" line over the muted text; once done, a "Reasoned"
+ * disclosure that expands to the same text, hung on the tool steps' rule.
+ */
+.atc-reasoning {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+.atc-reasoning details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.atc-reasoning summary {
+  list-style: none;
+}
+.atc-reasoning summary::-webkit-details-marker {
+  display: none;
+}
+.atc-reasoning details[open] > summary {
+  color: var(--atc-ink);
+}
+.atc-reasoning-text {
+  margin: 0 0 0 6px;
+  padding: 0 0 0 14px;
+  border-left: 1px solid var(--atc-border);
+  color: var(--atc-muted);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* One answer's parts (prose and cards) sit 8px apart. */
 .atc-answer,
 .atc-answer > hb-render-message {

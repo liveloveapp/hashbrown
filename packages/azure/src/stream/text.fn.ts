@@ -4,12 +4,16 @@ import { mapAzureEvents } from './azure-events';
 import { createAzureRequestOptions } from './azure-request';
 import type { AzureTextStreamOptions } from './types';
 
+const DEPLOYMENT_ERROR =
+  'Azure OpenAI clientOptions.deployment is not supported with the Responses API. ' +
+  'Remove clientOptions.deployment and pass the deployment name as `model`.';
+
 function normalizeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
 /**
- * Streams canonical AG-UI events from an Azure OpenAI chat completion.
+ * Streams canonical AG-UI events from an Azure OpenAI Responses API request.
  *
  * @param options - Azure SDK configuration and AG-UI run input.
  * @returns An asynchronous stream of canonical AG-UI events.
@@ -19,13 +23,18 @@ function normalizeError(error: unknown): string {
 export async function* text(
   options: AzureTextStreamOptions,
 ): AsyncIterable<AGUIEvent> {
-  const { clientOptions, model, input, signal, transformRequestOptions } =
-    options;
+  const {
+    clientOptions,
+    model,
+    input,
+    signal,
+    reasoning,
+    transformRequestOptions,
+  } = options;
   const { threadId, runId } = input;
   const messageId = `${runId}:assistant`;
-  let providerStream: ReturnType<
-    AzureOpenAI['chat']['completions']['stream']
-  > | null = null;
+  let providerStream: ReturnType<AzureOpenAI['responses']['stream']> | null =
+    null;
 
   yield { type: EventType.RUN_STARTED, threadId, runId };
   if (signal?.aborted) {
@@ -33,7 +42,11 @@ export async function* text(
   }
 
   try {
-    const baseRequest = createAzureRequestOptions(input, model);
+    if (clientOptions.deployment !== undefined) {
+      throw new Error(DEPLOYMENT_ERROR);
+    }
+
+    const baseRequest = createAzureRequestOptions(input, model, reasoning);
     const request = transformRequestOptions
       ? await transformRequestOptions(baseRequest)
       : baseRequest;
@@ -42,7 +55,7 @@ export async function* text(
     }
 
     const azure = new AzureOpenAI(clientOptions);
-    providerStream = azure.chat.completions.stream(request, { signal });
+    providerStream = azure.responses.stream(request, { signal });
 
     for await (const event of mapAzureEvents({
       events: providerStream,

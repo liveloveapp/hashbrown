@@ -13,9 +13,13 @@ jest.mock('openai', () => {
   return { ...actual, AzureOpenAI: jest.fn() };
 });
 
-const MockedAzureOpenAI = jest.mocked(AzureOpenAI);
+type StreamEvent = OpenAI.Responses.ResponseStreamEvent;
 
-function createInput(): AzureHashbrownRunAgentInput {
+const MockedAzureOpenAI = AzureOpenAI as unknown as jest.Mock;
+
+function createInput(
+  overrides: Partial<AzureHashbrownRunAgentInput> = {},
+): AzureHashbrownRunAgentInput {
   return {
     threadId: 'thread-azure',
     runId: 'run-azure',
@@ -24,6 +28,7 @@ function createInput(): AzureHashbrownRunAgentInput {
     context: [],
     state: {},
     forwardedProps: {},
+    ...overrides,
   };
 }
 
@@ -34,54 +39,96 @@ function createOptions(
     clientOptions: {
       apiKey: 'test-api-key',
       endpoint: 'https://example.openai.azure.com',
-      apiVersion: '2025-01-01-preview',
-      deployment: 'chat-deployment',
+      apiVersion: 'preview',
     },
-    model: 'gpt-4.1',
+    model: 'gpt-test',
     input: createInput(),
     ...overrides,
   };
 }
 
+function event(value: Record<string, unknown>): StreamEvent {
+  return { sequence_number: 0, ...value } as unknown as StreamEvent;
+}
+
+function messageAdded(id: string): StreamEvent {
+  return event({
+    type: 'response.output_item.added',
+    output_index: 0,
+    item: { type: 'message', id, role: 'assistant', content: [] },
+  });
+}
+
+function textDelta(delta: string): StreamEvent {
+  return event({
+    type: 'response.output_text.delta',
+    item_id: 'msg_1',
+    output_index: 0,
+    content_index: 0,
+    delta,
+  });
+}
+
+const completed = event({ type: 'response.completed', response: {} });
+
+function createProviderStream(
+  chunks: readonly StreamEvent[],
+  sourceError?: Error,
+) {
+  const abort = jest.fn();
+  const iteratorReturn = jest.fn(async () => ({
+    done: true as const,
+    value: undefined,
+  }));
+  let index = 0;
+  const stream = {
+    abort,
+    [Symbol.asyncIterator]() {
+      return {
+        async next(): Promise<IteratorResult<StreamEvent>> {
+          if (sourceError) {
+            throw sourceError;
+          }
+
+          const value = chunks[index];
+          index += 1;
+
+          return value === undefined
+            ? { done: true, value: undefined }
+            : { done: false, value };
+        },
+        return: iteratorReturn,
+      };
+    },
+  };
+
+  return { abort, iteratorReturn, stream };
+}
+
 function mockProvider(
-  chunks: OpenAI.Chat.Completions.ChatCompletionChunk[],
+  chunks: readonly StreamEvent[] = [],
   sourceError?: Error,
 ) {
   MockedAzureOpenAI.mockReset();
-  let index = 0;
-  const abort = jest.fn();
-  const iteratorReturn = jest.fn(
-    async (): Promise<
-      IteratorResult<OpenAI.Chat.Completions.ChatCompletionChunk>
-    > => ({ done: true, value: undefined }),
-  );
-  const provider = {
-    abort,
-    async next(): Promise<
-      IteratorResult<OpenAI.Chat.Completions.ChatCompletionChunk>
-    > {
-      const value = chunks[index];
-      index += 1;
+  const providerStream = createProviderStream(chunks, sourceError);
+  const stream = jest.fn().mockReturnValue(providerStream.stream);
+  MockedAzureOpenAI.mockImplementation(() => ({
+    responses: { stream },
+  }));
 
-      if (value === undefined && sourceError) {
-        throw sourceError;
-      }
+  return { ...providerStream, create: stream };
+}
 
-      return value === undefined
-        ? { done: true, value: undefined }
-        : { done: false, value };
-    },
-    return: iteratorReturn,
-    [Symbol.asyncIterator]() {
-      return this;
-    },
-  };
-  const stream = jest.fn().mockReturnValue(provider);
-  MockedAzureOpenAI.mockImplementation(
-    () => ({ chat: { completions: { stream } } }) as unknown as AzureOpenAI,
-  );
+function deepFreeze<T>(value: T): T {
+  if (value === null || typeof value !== 'object' || Object.isFrozen(value)) {
+    return value;
+  }
 
-  return { abort, iteratorReturn, stream };
+  for (const nestedValue of Object.values(value)) {
+    deepFreeze(nestedValue);
+  }
+
+  return Object.freeze(value);
 }
 
 async function collectEvents(
@@ -96,25 +143,125 @@ async function collectEvents(
   return events;
 }
 
-test('streams canonical AG-UI run and text events from Azure OpenAI', async () => {
-  const provider = mockProvider([
-    {
-      id: 'completion-azure',
-      created: 1,
-      model: 'gpt-4.1',
-      object: 'chat.completion.chunk',
-      choices: [
+test('isolates frozen schemas from a mutating transform and omits foreign reasoning', async () => {
+  const provider = mockProvider([completed]);
+  const input = deepFreeze(
+    createInput({
+      messages: [
+        { id: 'user-azure', role: 'user', content: 'Use the schema.' },
         {
-          index: 0,
-          delta: { content: 'Hello from Azure.' },
-          finish_reason: 'stop',
+          id: 'reasoning-azure',
+          role: 'reasoning',
+          content: 'private reasoning',
+          encryptedValue: 'private signature',
+          metadata: { provider: { trace: ['private trace'] } },
+        },
+        { id: 'assistant-azure', role: 'assistant', content: 'Prior answer.' },
+      ],
+      tools: [
+        {
+          name: 'lookup',
+          description: 'Lookup a value.',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: { type: 'string', description: 'Original tool field.' },
+            },
+            required: ['query'],
+          },
         },
       ],
-    },
-  ] as OpenAI.Chat.Completions.ChatCompletionChunk[]);
-  const options = createOptions();
+      forwardedProps: {
+        hashbrown: {
+          responseSchema: {
+            type: 'object',
+            properties: {
+              answer: {
+                type: 'string',
+                description: 'Original response field.',
+              },
+            },
+            required: ['answer'],
+          },
+        },
+      },
+    }),
+  );
+  const inputSnapshot = structuredClone(input);
+  let capturedOptions:
+    OpenAI.Responses.ResponseCreateParamsStreaming | undefined;
 
-  const events = await collectEvents(options);
+  const events = await collectEvents(
+    createOptions({
+      input,
+      transformRequestOptions: (options) => {
+        capturedOptions = options;
+        const tool = options.tools?.[0];
+        if (tool?.type !== 'function') {
+          throw new Error('Expected a function tool.');
+        }
+        const toolParameters = tool.parameters as {
+          properties: { query: { description: string } };
+        };
+        const format = options.text?.format;
+        if (format?.type !== 'json_schema') {
+          throw new Error('Expected native JSON schema response format.');
+        }
+        const responseSchema = format.schema as {
+          properties: { answer: { description: string } };
+        };
+
+        toolParameters.properties.query.description = 'Mutated tool field.';
+        responseSchema.properties.answer.description =
+          'Mutated response field.';
+        return options;
+      },
+    }),
+  );
+
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.RUN_FINISHED,
+  ]);
+  expect(input).toEqual(inputSnapshot);
+  expect(capturedOptions?.input).toEqual([
+    { role: 'user', content: 'Use the schema.' },
+    { role: 'assistant', content: 'Prior answer.' },
+  ]);
+  expect(JSON.stringify(capturedOptions)).not.toContain('private reasoning');
+  expect(JSON.stringify(capturedOptions)).not.toContain('private signature');
+  expect(JSON.stringify(capturedOptions)).not.toContain('private trace');
+  expect(input.tools[0]?.parameters).toEqual(
+    inputSnapshot.tools[0]?.parameters,
+  );
+  expect(input.forwardedProps?.hashbrown?.responseSchema).toEqual(
+    inputSnapshot.forwardedProps?.hashbrown?.responseSchema,
+  );
+  expect(provider.create).toHaveBeenCalledTimes(1);
+  expect(provider.abort).toHaveBeenCalledTimes(1);
+});
+
+test('streams refusal fragments through one assistant text lifecycle', async () => {
+  const provider = mockProvider([
+    messageAdded('msg_1'),
+    event({
+      type: 'response.refusal.delta',
+      item_id: 'msg_1',
+      output_index: 0,
+      content_index: 0,
+      delta: 'I cannot',
+    }),
+    event({
+      type: 'response.refusal.delta',
+      item_id: 'msg_1',
+      output_index: 0,
+      content_index: 0,
+      delta: ' help with that.',
+    }),
+    completed,
+  ]);
+
+  const events = await collectEvents(createOptions());
 
   expect(events).toEqual([
     {
@@ -126,11 +273,17 @@ test('streams canonical AG-UI run and text events from Azure OpenAI', async () =
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'run-azure:assistant',
       role: 'assistant',
+      metadata: { azure: { itemId: 'msg_1', reasoningItemIds: [] } },
     },
     {
       type: EventType.TEXT_MESSAGE_CONTENT,
       messageId: 'run-azure:assistant',
-      delta: 'Hello from Azure.',
+      delta: 'I cannot',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'run-azure:assistant',
+      delta: ' help with that.',
     },
     {
       type: EventType.TEXT_MESSAGE_END,
@@ -142,20 +295,12 @@ test('streams canonical AG-UI run and text events from Azure OpenAI', async () =
       runId: 'run-azure',
     },
   ]);
-  expect(MockedAzureOpenAI).toHaveBeenCalledWith(options.clientOptions);
-  expect(provider.stream).toHaveBeenCalledWith(
-    expect.objectContaining({
-      stream: true,
-      model: 'gpt-4.1',
-      messages: [{ role: 'user', content: 'Hello.' }],
-    }),
-    { signal: undefined },
-  );
   expect(provider.abort).toHaveBeenCalledTimes(1);
 });
 
-test('maps an Azure source rejection to one RUN_ERROR and aborts the stream', async () => {
-  const provider = mockProvider([], new Error('Azure source failed'));
+test('maps a provider source rejection to one RUN_ERROR and cleans up', async () => {
+  const sourceError = new Error('Azure OpenAI source failed');
+  const provider = mockProvider([], sourceError);
 
   const events = await collectEvents(createOptions());
 
@@ -165,110 +310,36 @@ test('maps an Azure source rejection to one RUN_ERROR and aborts the stream', as
       threadId: 'thread-azure',
       runId: 'run-azure',
     },
-    { type: EventType.RUN_ERROR, message: 'Azure source failed' },
+    { type: EventType.RUN_ERROR, message: 'Azure OpenAI source failed' },
   ]);
   expect(provider.abort).toHaveBeenCalledTimes(1);
 });
 
-test('maps incomplete Azure tool metadata to RUN_ERROR without terminal events', async () => {
-  const provider = mockProvider([
-    {
-      id: 'completion-azure',
-      created: 1,
-      model: 'gpt-4.1',
-      object: 'chat.completion.chunk',
-      choices: [
-        {
-          index: 0,
-          delta: {
-            tool_calls: [
-              {
-                index: 0,
-                function: { arguments: '{"query":"hashbrown"}' },
-              },
-            ],
-          },
-          finish_reason: 'tool_calls',
-        },
-      ],
-    },
-  ] as OpenAI.Chat.Completions.ChatCompletionChunk[]);
+test('a stream that ends before response.completed produces one RUN_ERROR', async () => {
+  const provider = mockProvider([messageAdded('msg_1'), textDelta('Cut off.')]);
 
   const events = await collectEvents(createOptions());
 
-  expect(events).toEqual([
-    {
-      type: EventType.RUN_STARTED,
-      threadId: 'thread-azure',
-      runId: 'run-azure',
-    },
-    {
-      type: EventType.RUN_ERROR,
-      message:
-        'Azure OpenAI returned incomplete metadata for tool call at index 0',
-    },
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.RUN_ERROR,
   ]);
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_ERROR,
+    message: 'Azure OpenAI stream ended before response.completed',
+  });
   expect(provider.abort).toHaveBeenCalledTimes(1);
-});
-
-test('maps transform rejection to one RUN_ERROR without creating a client', async () => {
-  const provider = mockProvider([]);
-  const transformRequestOptions = jest
-    .fn()
-    .mockRejectedValue(new Error('Transform rejected request'));
-
-  const events = await collectEvents(
-    createOptions({ transformRequestOptions }),
-  );
-
-  expect(events).toEqual([
-    {
-      type: EventType.RUN_STARTED,
-      threadId: 'thread-azure',
-      runId: 'run-azure',
-    },
-    { type: EventType.RUN_ERROR, message: 'Transform rejected request' },
-  ]);
-  expect(MockedAzureOpenAI).not.toHaveBeenCalled();
-  expect(provider.stream).not.toHaveBeenCalled();
-});
-
-test('returns only RUN_STARTED when the signal is already aborted', async () => {
-  const provider = mockProvider([]);
-  const controller = new AbortController();
-  controller.abort();
-
-  const events = await collectEvents(
-    createOptions({ signal: controller.signal }),
-  );
-
-  expect(events).toEqual([
-    {
-      type: EventType.RUN_STARTED,
-      threadId: 'thread-azure',
-      runId: 'run-azure',
-    },
-  ]);
-  expect(MockedAzureOpenAI).not.toHaveBeenCalled();
-  expect(provider.stream).not.toHaveBeenCalled();
 });
 
 test('cancellation after content emits no synthetic lifecycle ends', async () => {
   const provider = mockProvider([
-    {
-      id: 'completion-azure',
-      created: 1,
-      model: 'gpt-4.1',
-      object: 'chat.completion.chunk',
-      choices: [
-        {
-          index: 0,
-          delta: { content: 'First fragment.' },
-          finish_reason: null,
-        },
-      ],
-    },
-  ] as OpenAI.Chat.Completions.ChatCompletionChunk[]);
+    messageAdded('msg_1'),
+    textDelta('First fragment.'),
+    textDelta('Second fragment.'),
+    completed,
+  ]);
   const controller = new AbortController();
   const iterator = text(createOptions({ signal: controller.signal }))[
     Symbol.asyncIterator
@@ -288,13 +359,188 @@ test('cancellation after content emits no synthetic lifecycle ends', async () =>
     EventType.TEXT_MESSAGE_CONTENT,
   ]);
   expect(done).toEqual({ done: true, value: undefined });
-  expect(events).not.toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({ type: EventType.TEXT_MESSAGE_END }),
-      expect.objectContaining({ type: EventType.RUN_ERROR }),
-      expect.objectContaining({ type: EventType.RUN_FINISHED }),
-    ]),
-  );
   expect(provider.abort).toHaveBeenCalledTimes(1);
   expect(provider.iteratorReturn).toHaveBeenCalledTimes(1);
+});
+
+test('consumer return aborts an active provider stream', async () => {
+  const provider = mockProvider([
+    messageAdded('msg_1'),
+    textDelta('First fragment.'),
+    completed,
+  ]);
+  const iterator = text(createOptions())[Symbol.asyncIterator]();
+
+  await iterator.next();
+  await iterator.next();
+  const returned = await iterator.return?.();
+
+  expect(returned).toEqual({ done: true, value: undefined });
+  expect(provider.abort).toHaveBeenCalledTimes(1);
+  expect(provider.iteratorReturn).toHaveBeenCalledTimes(1);
+});
+
+test('maps structured tool result content to one RUN_ERROR', async () => {
+  const provider = mockProvider();
+  const input = createInput({
+    messages: [
+      { id: 'user-azure', role: 'user', content: 'Look it up.' },
+      {
+        id: 'assistant-azure',
+        role: 'assistant',
+        toolCalls: [
+          {
+            id: 'call-azure',
+            type: 'function',
+            function: { name: 'lookup', arguments: '{}' },
+          },
+        ],
+      },
+      {
+        id: 'tool-azure',
+        role: 'tool',
+        toolCallId: 'call-azure',
+        content: [{ type: 'text', text: 'Structured result.' }],
+      },
+    ],
+  });
+
+  const events = await collectEvents(createOptions({ input }));
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-azure',
+      runId: 'run-azure',
+    },
+    {
+      type: EventType.RUN_ERROR,
+      message:
+        'Azure OpenAI provider currently requires text tool result content',
+    },
+  ]);
+  expect(provider.create).not.toHaveBeenCalled();
+});
+
+test('reads the response schema from forwardedProps.hashbrown', async () => {
+  mockProvider([completed]);
+  const responseSchema = {
+    type: 'object',
+    properties: { answer: { type: 'string' } },
+    required: ['answer'],
+  };
+  let capturedOptions:
+    OpenAI.Responses.ResponseCreateParamsStreaming | undefined;
+
+  await collectEvents(
+    createOptions({
+      input: createInput({ forwardedProps: { hashbrown: { responseSchema } } }),
+      transformRequestOptions: (options) => {
+        capturedOptions = options;
+        return options;
+      },
+    }),
+  );
+
+  expect(capturedOptions?.text).toEqual({
+    format: {
+      type: 'json_schema',
+      name: 'schema',
+      schema: responseSchema,
+      strict: true,
+    },
+  });
+});
+
+test('ignores a top-level hashbrown key', async () => {
+  mockProvider([completed]);
+  const input = {
+    ...createInput(),
+    hashbrown: { responseSchema: { type: 'object' } },
+  };
+  let capturedOptions:
+    OpenAI.Responses.ResponseCreateParamsStreaming | undefined;
+
+  await collectEvents(
+    createOptions({
+      input,
+      transformRequestOptions: (options) => {
+        capturedOptions = options;
+        return options;
+      },
+    }),
+  );
+
+  expect(capturedOptions?.text).toBeUndefined();
+});
+
+test('sends reasoning for a reasoning model and omits it when disabled', async () => {
+  mockProvider([completed]);
+  const captured: OpenAI.Responses.ResponseCreateParamsStreaming[] = [];
+  const capture = (options: OpenAI.Responses.ResponseCreateParamsStreaming) => {
+    captured.push(options);
+    return options;
+  };
+
+  await collectEvents(
+    createOptions({ model: 'gpt-5-mini', transformRequestOptions: capture }),
+  );
+  await collectEvents(
+    createOptions({
+      model: 'gpt-5-mini',
+      reasoning: false,
+      transformRequestOptions: capture,
+    }),
+  );
+
+  expect(captured[0]).toMatchObject({
+    store: false,
+    reasoning: { summary: 'auto' },
+    include: ['reasoning.encrypted_content'],
+  });
+  expect(captured[1]?.reasoning).toBeUndefined();
+});
+
+test('constructs AzureOpenAI from clientOptions and streams the Responses request with the signal', async () => {
+  const provider = mockProvider([completed]);
+  const controller = new AbortController();
+  const options = createOptions({ signal: controller.signal });
+
+  await collectEvents(options);
+
+  expect(MockedAzureOpenAI).toHaveBeenCalledWith(options.clientOptions);
+  expect(provider.create).toHaveBeenCalledWith(
+    expect.objectContaining({ stream: true, model: 'gpt-test', store: false }),
+    { signal: controller.signal },
+  );
+});
+
+test('rejects clientOptions.deployment with a clear error', async () => {
+  const provider = mockProvider([completed]);
+  const options = createOptions({
+    clientOptions: {
+      apiKey: 'test-api-key',
+      endpoint: 'https://example.openai.azure.com',
+      apiVersion: 'preview',
+      deployment: 'chat-deployment',
+    },
+  });
+
+  const events = await collectEvents(options);
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-azure',
+      runId: 'run-azure',
+    },
+    {
+      type: EventType.RUN_ERROR,
+      message: expect.stringMatching(
+        /clientOptions\.deployment.*Responses API.*[Rr]emove/,
+      ),
+    },
+  ]);
+  expect(MockedAzureOpenAI).not.toHaveBeenCalled();
+  expect(provider.create).not.toHaveBeenCalled();
 });

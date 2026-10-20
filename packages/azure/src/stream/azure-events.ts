@@ -1,166 +1,346 @@
-import {
-  type AGUIEvent,
-  EventType,
-  type TextMessageContentEvent,
-  type TextMessageStartEvent,
-} from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import type OpenAI from 'openai';
 
-interface PendingToolCall {
-  readonly index: number;
-  readonly id?: string;
-  readonly name?: string;
-  readonly pendingArguments: string;
-  readonly started: boolean;
+type StreamEvent = OpenAI.Responses.ResponseStreamEvent;
+
+interface ReasoningItemState {
+  readonly summaryIndex?: number;
+  readonly hasContent: boolean;
 }
 
-/** Inputs for mapping Azure OpenAI chunks to canonical AG-UI events. */
+interface ToolCallState {
+  readonly toolCallId: string;
+  readonly hasArgs: boolean;
+}
+
+interface MapperState {
+  readonly textStarted: boolean;
+  readonly firstMessageItemId?: string;
+  readonly reasoningItemIds: readonly string[];
+  readonly openReasoning: ReadonlyMap<string, ReasoningItemState>;
+  readonly toolCalls: ReadonlyMap<string, ToolCallState>;
+}
+
+interface MapperStep {
+  readonly state: MapperState;
+  readonly events: readonly AGUIEvent[];
+}
+
+/** Inputs for mapping Azure OpenAI Responses stream events to AG-UI events. */
 export interface MapAzureEventsOptions {
-  events: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>;
-  messageId: string;
-  signal?: AbortSignal;
+  /** The Responses API stream. */
+  readonly events: AsyncIterable<OpenAI.Responses.ResponseStreamEvent>;
+  /** The id of the run's single assistant AG-UI message. */
+  readonly messageId: string;
+  /** Stops mapping once aborted. */
+  readonly signal?: AbortSignal;
 }
 
-function createTextDeltaEvents(
+const initialState: MapperState = {
+  textStarted: false,
+  reasoningItemIds: [],
+  openReasoning: new Map(),
+  toolCalls: new Map(),
+};
+
+function withEntry<V>(
+  map: ReadonlyMap<string, V>,
+  key: string,
+  value: V,
+): ReadonlyMap<string, V> {
+  return new Map(map).set(key, value);
+}
+
+function withoutEntry<V>(
+  map: ReadonlyMap<string, V>,
+  key: string,
+): ReadonlyMap<string, V> {
+  const next = new Map(map);
+  next.delete(key);
+  return next;
+}
+
+function mapTextDelta(
+  state: MapperState,
   messageId: string,
-  delta: string | null | undefined,
-  started: boolean,
-): Array<TextMessageStartEvent | TextMessageContentEvent> {
+  itemId: string,
+  delta: string,
+): MapperStep {
   if (!delta) {
-    return [];
+    return { state, events: [] };
   }
 
-  const contentEvent: TextMessageContentEvent = {
+  const content: AGUIEvent = {
     type: EventType.TEXT_MESSAGE_CONTENT,
     messageId,
     delta,
   };
-  return started
-    ? [contentEvent]
-    : [
-        {
-          type: EventType.TEXT_MESSAGE_START,
-          messageId,
-          role: 'assistant',
-        },
-        contentEvent,
-      ];
-}
-
-function mergeToolCall(
-  current: PendingToolCall | undefined,
-  delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall,
-): PendingToolCall {
-  return {
-    index: delta.index,
-    id: delta.id ?? current?.id,
-    name: delta.function?.name ?? current?.name,
-    pendingArguments:
-      current?.started === true
-        ? (delta.function?.arguments ?? '')
-        : `${current?.pendingArguments ?? ''}${delta.function?.arguments ?? ''}`,
-    started: current?.started ?? false,
-  };
-}
-
-function startToolCall(
-  toolCall: PendingToolCall,
-): PendingToolCall & { id: string; name: string } {
-  if (!toolCall.id || !toolCall.name) {
-    throw new Error(
-      `Azure OpenAI returned incomplete metadata for tool call at index ${toolCall.index}`,
-    );
+  if (state.textStarted) {
+    return { state, events: [content] };
   }
 
   return {
-    ...toolCall,
-    id: toolCall.id,
-    name: toolCall.name,
-    pendingArguments: '',
-    started: true,
+    state: { ...state, textStarted: true },
+    events: [
+      {
+        type: EventType.TEXT_MESSAGE_START,
+        messageId,
+        role: 'assistant',
+        metadata: {
+          azure: {
+            itemId: state.firstMessageItemId ?? itemId,
+            reasoningItemIds: [...state.reasoningItemIds],
+          },
+        },
+      },
+      content,
+    ],
   };
 }
 
+function mapItemAdded(
+  state: MapperState,
+  messageId: string,
+  item: OpenAI.Responses.ResponseOutputItem,
+): MapperStep {
+  switch (item.type) {
+    case 'reasoning':
+      return {
+        state: {
+          ...state,
+          reasoningItemIds: [...state.reasoningItemIds, item.id],
+          openReasoning: withEntry(state.openReasoning, item.id, {
+            hasContent: false,
+          }),
+        },
+        events: [
+          {
+            type: EventType.REASONING_MESSAGE_START,
+            messageId: item.id,
+            role: 'reasoning',
+            metadata: { azure: { itemId: item.id } },
+          },
+        ],
+      };
+    case 'message':
+      return {
+        state: {
+          ...state,
+          firstMessageItemId: state.firstMessageItemId ?? item.id,
+        },
+        events: [],
+      };
+    case 'function_call':
+      return {
+        state: {
+          ...state,
+          toolCalls: withEntry(state.toolCalls, item.id ?? item.call_id, {
+            toolCallId: item.call_id,
+            hasArgs: false,
+          }),
+        },
+        events: [
+          {
+            type: EventType.TOOL_CALL_START,
+            toolCallId: item.call_id,
+            toolCallName: item.name,
+            parentMessageId: messageId,
+            metadata: {
+              azure: {
+                ...(item.id === undefined ? {} : { itemId: item.id }),
+                reasoningItemIds: [...state.reasoningItemIds],
+              },
+            },
+          },
+        ],
+      };
+    default:
+      return { state, events: [] };
+  }
+}
+
+function mapItemDone(
+  state: MapperState,
+  item: OpenAI.Responses.ResponseOutputItem,
+): MapperStep {
+  if (item.type === 'reasoning') {
+    if (!state.openReasoning.has(item.id)) {
+      return { state, events: [] };
+    }
+    return {
+      state: {
+        ...state,
+        openReasoning: withoutEntry(state.openReasoning, item.id),
+      },
+      events: [
+        ...(item.encrypted_content
+          ? [
+              {
+                type: EventType.REASONING_ENCRYPTED_VALUE,
+                subtype: 'message',
+                entityId: item.id,
+                encryptedValue: item.encrypted_content,
+              } as const,
+            ]
+          : []),
+        { type: EventType.REASONING_MESSAGE_END, messageId: item.id },
+      ],
+    };
+  }
+
+  if (item.type === 'function_call') {
+    const key = item.id ?? item.call_id;
+    const toolCall = state.toolCalls.get(key);
+    if (!toolCall) {
+      return { state, events: [] };
+    }
+    // A call that streamed no argument deltas sends its arguments here.
+    const args: readonly AGUIEvent[] =
+      !toolCall.hasArgs && item.arguments
+        ? [
+            {
+              type: EventType.TOOL_CALL_ARGS,
+              toolCallId: item.call_id,
+              delta: item.arguments,
+            },
+          ]
+        : [];
+    return {
+      state: { ...state, toolCalls: withoutEntry(state.toolCalls, key) },
+      events: [
+        ...args,
+        { type: EventType.TOOL_CALL_END, toolCallId: item.call_id },
+      ],
+    };
+  }
+
+  return { state, events: [] };
+}
+
+function mapSummaryDelta(
+  state: MapperState,
+  event: OpenAI.Responses.ResponseReasoningSummaryTextDeltaEvent,
+): MapperStep {
+  const reasoning = state.openReasoning.get(event.item_id);
+  if (!reasoning || !event.delta) {
+    return { state, events: [] };
+  }
+
+  const separate =
+    reasoning.hasContent && reasoning.summaryIndex !== event.summary_index;
+  return {
+    state: {
+      ...state,
+      openReasoning: withEntry(state.openReasoning, event.item_id, {
+        summaryIndex: event.summary_index,
+        hasContent: true,
+      }),
+    },
+    events: [...(separate ? ['\n\n'] : []), event.delta].map((delta) => ({
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: event.item_id,
+      delta,
+    })),
+  };
+}
+
+function endText(state: MapperState, messageId: string): MapperStep {
+  return state.textStarted
+    ? {
+        state: { ...state, textStarted: false },
+        events: [{ type: EventType.TEXT_MESSAGE_END, messageId }],
+      }
+    : { state, events: [] };
+}
+
+function mapEvent(
+  state: MapperState,
+  messageId: string,
+  event: StreamEvent,
+): MapperStep {
+  switch (event.type) {
+    case 'response.output_item.added':
+      return mapItemAdded(state, messageId, event.item);
+    case 'response.output_item.done':
+      return mapItemDone(state, event.item);
+    case 'response.reasoning_summary_text.delta':
+      return mapSummaryDelta(state, event);
+    case 'response.output_text.delta':
+    case 'response.refusal.delta':
+      return mapTextDelta(state, messageId, event.item_id, event.delta);
+    case 'response.function_call_arguments.delta': {
+      const toolCall = state.toolCalls.get(event.item_id);
+      if (!toolCall || !event.delta) {
+        return { state, events: [] };
+      }
+      return {
+        state: {
+          ...state,
+          toolCalls: withEntry(state.toolCalls, event.item_id, {
+            ...toolCall,
+            hasArgs: true,
+          }),
+        },
+        events: [
+          {
+            type: EventType.TOOL_CALL_ARGS,
+            toolCallId: toolCall.toolCallId,
+            delta: event.delta,
+          },
+        ],
+      };
+    }
+    case 'response.completed':
+      return endText(state, messageId);
+    case 'response.failed':
+      throw new Error(
+        event.response.error?.message ?? 'Azure OpenAI response failed',
+      );
+    case 'error':
+      throw new Error(event.message);
+    case 'response.incomplete':
+      throw new Error(
+        `Azure OpenAI response incomplete: ${event.response.incomplete_details?.reason}`,
+      );
+    default:
+      return { state, events: [] };
+  }
+}
+
 /**
- * Maps Azure OpenAI streaming chunks to canonical AG-UI message events.
+ * Maps Azure OpenAI Responses stream events to AG-UI message, reasoning and tool
+ * call events.
  *
- * @param options - Azure OpenAI stream and AG-UI message identity.
- * @returns Canonical AG-UI events for the provider response.
+ * The mapper does not emit `RUN_STARTED`, `RUN_FINISHED` or `RUN_ERROR`; it
+ * throws on `response.failed`, `error` and `response.incomplete` so the
+ * caller can emit `RUN_ERROR`. All text goes into one assistant message,
+ * which stays open across tool calls and ends at `response.completed`. A
+ * stream that ends without `response.completed` also throws.
+ *
+ * @param options - Responses stream and AG-UI message identity.
+ * @returns AG-UI events for the provider response.
  *
  * @internal
  */
 export async function* mapAzureEvents(
   options: MapAzureEventsOptions,
 ): AsyncIterable<AGUIEvent> {
-  let textStarted = false;
-  const toolCalls = new Map<number, PendingToolCall>();
+  let state = initialState;
+  let completed = false;
 
-  for await (const chunk of options.events) {
+  for await (const event of options.events) {
     if (options.signal?.aborted) {
       return;
     }
 
-    for (const choice of chunk.choices) {
-      if (choice.index !== 0) {
-        continue;
-      }
+    completed = completed || event.type === 'response.completed';
 
-      for (const textDelta of [choice.delta.content, choice.delta.refusal]) {
-        const textEvents = createTextDeltaEvents(
-          options.messageId,
-          textDelta,
-          textStarted,
-        );
-        if (textEvents.length > 0) {
-          textStarted = true;
-        }
-        for (const event of textEvents) {
-          yield event;
-          if (options.signal?.aborted) {
-            return;
-          }
-        }
-      }
-
-      for (const delta of choice.delta.tool_calls ?? []) {
-        let toolCall = mergeToolCall(toolCalls.get(delta.index), delta);
-
-        if (!toolCall.started && toolCall.id && toolCall.name) {
-          const pendingArguments = toolCall.pendingArguments;
-          const startedToolCall = startToolCall(toolCall);
-          yield {
-            type: EventType.TOOL_CALL_START,
-            toolCallId: startedToolCall.id,
-            toolCallName: startedToolCall.name,
-            parentMessageId: options.messageId,
-          };
-          if (options.signal?.aborted) {
-            return;
-          }
-          if (pendingArguments) {
-            yield {
-              type: EventType.TOOL_CALL_ARGS,
-              toolCallId: startedToolCall.id,
-              delta: pendingArguments,
-            };
-            if (options.signal?.aborted) {
-              return;
-            }
-          }
-          toolCall = startedToolCall;
-        } else if (toolCall.started && toolCall.pendingArguments) {
-          yield {
-            type: EventType.TOOL_CALL_ARGS,
-            toolCallId: toolCall.id as string,
-            delta: toolCall.pendingArguments,
-          };
-          if (options.signal?.aborted) {
-            return;
-          }
-          toolCall = { ...toolCall, pendingArguments: '' };
-        }
-
-        toolCalls.set(delta.index, toolCall);
+    const step = mapEvent(state, options.messageId, event);
+    state = step.state;
+    for (const output of step.events) {
+      yield output;
+      if (options.signal?.aborted) {
+        return;
       }
     }
   }
@@ -169,33 +349,7 @@ export async function* mapAzureEvents(
     return;
   }
 
-  if (textStarted) {
-    yield { type: EventType.TEXT_MESSAGE_END, messageId: options.messageId };
-    if (options.signal?.aborted) {
-      return;
-    }
-  }
-
-  for (const pendingToolCall of toolCalls.values()) {
-    const toolCall = pendingToolCall.started
-      ? pendingToolCall
-      : startToolCall(pendingToolCall);
-    if (toolCall.pendingArguments) {
-      yield {
-        type: EventType.TOOL_CALL_ARGS,
-        toolCallId: toolCall.id as string,
-        delta: toolCall.pendingArguments,
-      };
-      if (options.signal?.aborted) {
-        return;
-      }
-    }
-    yield {
-      type: EventType.TOOL_CALL_END,
-      toolCallId: toolCall.id as string,
-    };
-    if (options.signal?.aborted) {
-      return;
-    }
+  if (!completed) {
+    throw new Error('Azure OpenAI stream ended before response.completed');
   }
 }

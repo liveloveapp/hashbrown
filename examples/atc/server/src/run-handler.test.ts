@@ -5,6 +5,7 @@ import { s } from '@hashbrownai/core';
 import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import type OpenAI from 'openai';
 import { expect, onTestFinished, test, vi } from 'vitest';
 import type { NodeHandler } from './http';
 import {
@@ -42,18 +43,24 @@ const input: RunAgentInput = {
   forwardedProps: {},
 };
 
-const request = {
-  stream: true as const,
+const request: OpenAI.Responses.ResponseCreateParamsStreaming = {
+  stream: true,
   model: 'gpt-5-mini',
-  messages: [],
+  input: [],
   tools: [
     {
-      type: 'function' as const,
-      function: { name: 'findAircraft', parameters: {} },
+      type: 'function',
+      name: 'findAircraft',
+      parameters: {},
+      strict: true,
+      description: null,
     },
     {
-      type: 'function' as const,
-      function: { name: 'writeMyEssay', parameters: {} },
+      type: 'function',
+      name: 'writeMyEssay',
+      parameters: {},
+      strict: true,
+      description: null,
     },
   ],
 };
@@ -68,6 +75,29 @@ function canonical(name: keyof typeof ATC_TOOL_DEFINITIONS) {
     description,
     parameters: JSON.parse(JSON.stringify(s.toJsonSchema(schema))),
   };
+}
+
+/**
+ * The raw JSON bodies the OpenAI client sends to `baseURL`. aimock journals
+ * Responses requests in its own chat-completions shape and drops `reasoning`,
+ * so the wire body is read from `fetch` itself.
+ */
+function captureWireBodies(baseURL: string): () => Record<string, unknown>[] {
+  const bodies: Record<string, unknown>[] = [];
+  const realFetch = globalThis.fetch;
+  const spy = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.startsWith(baseURL) && typeof init?.body === 'string') {
+        bodies.push(JSON.parse(init.body));
+      }
+
+      return realFetch(input, init);
+    });
+  onTestFinished(() => spy.mockRestore());
+
+  return () => bodies;
 }
 
 /** A mock OpenAI server that answers "say hi briefly" with `reply`. */
@@ -149,20 +179,43 @@ test('pinTools replaces atc tools with the server definitions and drops the rest
 test('limitRequest caps the output', () => {
   const limited = limitRequest(request, 'low');
 
-  expect(limited.max_completion_tokens).toBeGreaterThan(0);
+  expect(limited.max_output_tokens).toBeGreaterThan(0);
   expect(limited.tools).toBe(request.tools);
 });
 
 test('limitRequest sends reasoning effort only to reasoning models', () => {
-  const models = ['gpt-5-mini', 'gpt-5.1', 'o4-mini', 'gpt-4.1', 'gpt-4o'];
+  const models = [
+    'gpt-5-mini',
+    'gpt-5.1',
+    'o4-mini',
+    'gpt-6',
+    'GPT-10-mini',
+    'gpt-5-chat-latest',
+    'gpt-4.1',
+    'gpt-4o',
+  ];
 
-  const efforts = models.map(
-    (model) => limitRequest({ ...request, model }, 'low').reasoning_effort,
+  const reasoning = models.map(
+    (model) =>
+      limitRequest({ ...request, model, reasoning: { summary: 'auto' } }, 'low')
+        .reasoning,
   );
-  const off = limitRequest(request, null);
+  const off = limitRequest(
+    { ...request, reasoning: { summary: 'auto' } },
+    null,
+  );
 
-  expect(efforts).toEqual(['low', 'low', 'low', undefined, undefined]);
-  expect(off).not.toHaveProperty('reasoning_effort');
+  expect(reasoning).toEqual([
+    { summary: 'auto', effort: 'low' },
+    { summary: 'auto', effort: 'low' },
+    { summary: 'auto', effort: 'low' },
+    { summary: 'auto', effort: 'low' },
+    { summary: 'auto', effort: 'low' },
+    { summary: 'auto' },
+    { summary: 'auto' },
+    { summary: 'auto' },
+  ]);
+  expect(off.reasoning).toEqual({ summary: 'auto' });
 });
 
 test('the run handler streams AG-UI events from the model', async () => {
@@ -202,6 +255,7 @@ test('the run handler streams AG-UI events from the model', async () => {
 
 test("the run handler sends the server's tool definitions and caps the output", async () => {
   const model = await startModel('Hi.');
+  const wire = captureWireBodies(model.baseURL);
   const { url, server } = await listen(
     createRunHandler({
       apiKey: 'test',
@@ -224,29 +278,28 @@ test("the run handler sends the server's tool definitions and caps the output", 
     }),
   });
   await response.text();
-  const sent = model.requests()[0] as {
-    tools: {
-      function: { name: string; description: string; parameters: unknown };
-    }[];
-    max_completion_tokens: number;
-    reasoning_effort: string;
+  const sent = wire()[0] as {
+    tools: { name: string; description: string; parameters: unknown }[];
+    max_output_tokens: number;
+    reasoning: { effort: string; summary: string };
   };
 
   expect(
-    sent.tools.map(({ function: { name, description, parameters } }) => ({
+    sent.tools.map(({ name, description, parameters }) => ({
       name,
       description,
       parameters,
     })),
   ).toEqual([canonical('findAircraft')]);
-  expect(sent.max_completion_tokens).toBeGreaterThan(0);
-  expect(sent.reasoning_effort).toBe('low');
+  expect(sent.max_output_tokens).toBeGreaterThan(0);
+  expect(sent.reasoning).toEqual({ effort: 'low', summary: 'auto' });
   server.close();
   await model.stop();
 });
 
 test('the run handler sends no reasoning effort when it is turned off', async () => {
   const model = await startModel('Hi.');
+  const wire = captureWireBodies(model.baseURL);
   const { url, server } = await listen(
     createRunHandler({
       apiKey: 'test',
@@ -261,10 +314,10 @@ test('the run handler sends no reasoning effort when it is turned off', async ()
     body: JSON.stringify(input),
   });
   await response.text();
-  const sent = model.requests()[0] as Record<string, unknown>;
+  const sent = wire()[0];
 
-  expect(sent).not.toHaveProperty('reasoning_effort');
-  expect(sent['max_completion_tokens']).toBeGreaterThan(0);
+  expect(sent['reasoning']).not.toHaveProperty('effort');
+  expect(sent['max_output_tokens']).toBeGreaterThan(0);
   server.close();
   await model.stop();
 });

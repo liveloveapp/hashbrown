@@ -23,9 +23,7 @@ import {
   sendJson,
 } from './http';
 
-type ReasoningEffort = NonNullable<
-  OpenAI.Chat.ChatCompletionCreateParams['reasoning_effort']
->;
+type ReasoningEffort = NonNullable<OpenAI.ReasoningEffort>;
 
 /** Every effort the installed OpenAI types allow; the type fails on a missing or extra key. */
 const REASONING_EFFORTS: Record<ReasoningEffort, true> = {
@@ -216,23 +214,34 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   } as OpenAIHashbrownRunAgentInput;
 }
 
-/** gpt-5 and the o-series accept `reasoning_effort`; other models reject it with a 400. */
-const REASONING_MODEL = /^(gpt-5|o\d)/;
+/**
+ * The o-series and gpt-5 and later accept `reasoning.effort`. Other models,
+ * including `-chat` variants such as `gpt-5-chat-latest`, are not reasoning
+ * models and can reject it with a 400. This is the rule the OpenAI provider
+ * uses to request reasoning summaries.
+ */
+const REASONING_MODEL = /^(o\d|gpt-(?:[5-9]|\d{2,})(?!\d))/i;
+const CHAT_MODEL = /-chat(?:-|$)/i;
+
+function isReasoningModel(model: string): boolean {
+  return REASONING_MODEL.test(model) && !CHAT_MODEL.test(model);
+}
 
 /**
- * Caps the OpenAI request's output length and adds a reasoning effort for
- * models that accept one. Low effort roughly halves the time to the first
- * token for this tool-heavy prompt.
+ * Caps the Responses request's `max_output_tokens` and adds a reasoning effort
+ * for models that accept one. The effort merges into any `reasoning` the
+ * provider already set, so its summary setting survives. Low effort roughly
+ * halves the time to the first token for this tool-heavy prompt.
  */
 export function limitRequest(
-  request: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
+  request: OpenAI.Responses.ResponseCreateParamsStreaming,
   reasoningEffort: ReasoningEffort | null,
-): OpenAI.Chat.ChatCompletionCreateParamsStreaming {
+): OpenAI.Responses.ResponseCreateParamsStreaming {
   return {
     ...request,
-    max_completion_tokens: MAX_OUTPUT_TOKENS,
-    ...(reasoningEffort !== null && REASONING_MODEL.test(request.model)
-      ? { reasoning_effort: reasoningEffort }
+    max_output_tokens: MAX_OUTPUT_TOKENS,
+    ...(reasoningEffort !== null && isReasoningModel(request.model ?? '')
+      ? { reasoning: { ...request.reasoning, effort: reasoningEffort } }
       : {}),
   };
 }

@@ -132,7 +132,9 @@ export class Assistant {
     source: () => (this.chat.status() === 'error' ? null : this.chat.value()),
     computation: (value, prev): UiChatMessage[] => value ?? prev?.value ?? [],
   });
-  protected readonly items = computed(() => transcriptItems(this.messages()));
+  protected readonly items = computed(() =>
+    transcriptItems(this.messages(), this.chat.isLoading()),
+  );
 
   protected send(content: string): void {
     this.chat.sendMessage({ role: 'user', content });

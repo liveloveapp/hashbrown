@@ -117,16 +117,13 @@ for (const toolRound of [false, true]) {
       expect(
         mock.getRequests().every((entry) => entry.response.status === 200),
       ).toBe(true);
+      // The OpenAI adapter calls the Responses API. aimock journals Responses
+      // requests in Chat Completions shape and drops `text.format`, so the
+      // schema's wire mapping is covered by packages/openai's own tests.
+      expect(mock.getRequests()[0].path).toMatch(/^\/v1\/responses/);
       expect(mock.getRequests()[0].body).toMatchObject({
         model: 'gpt-4.1-mini',
         stream: true,
-        response_format: {
-          type: 'json_schema',
-          json_schema: {
-            strict: true,
-            schema: requests[0].forwardedProps?.hashbrown?.responseSchema,
-          },
-        },
       });
       if (toolRound) {
         expect(requests[1]['threadId']).toBe(requests[0]['threadId']);

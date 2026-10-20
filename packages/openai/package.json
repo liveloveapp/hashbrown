@@ -16,7 +16,7 @@
     "tslib": "^2.3.0"
   },
   "peerDependencies": {
-    "openai": "^6.9.0"
+    "openai": "^6.45.0"
   },
   "sideEffects": false,
   "publishConfig": {

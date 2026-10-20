@@ -97,8 +97,8 @@ commands to run before finishing.
 `server/src/run-handler.ts` uses `HashbrownOpenAI`. To use another provider, install its
 adapter (for example `@hashbrownai/anthropic`), replace `HashbrownOpenAI.stream.text` with
 `HashbrownAnthropic.stream.text`, and set that provider's key and model. `limitRequest`
-in the same file sets the OpenAI request's `max_completion_tokens` and
-`reasoning_effort`; rewrite it for the new provider's request shape, keeping the output
+in the same file sets the OpenAI Responses request's `max_output_tokens` and
+`reasoning.effort`; rewrite it for the new provider's request shape, keeping the output
 cap. `pinTools`, `pinResponseSchema` and `pinSystemPrompt` work on the AG-UI input and
 carry over unchanged, except that `pinResponseSchema` casts to the adapter's run input
 type (`OpenAIHashbrownRunAgentInput`; for example `AnthropicHashbrownRunAgentInput`).
