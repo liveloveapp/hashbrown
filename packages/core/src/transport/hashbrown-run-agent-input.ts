@@ -79,7 +79,21 @@ function createHashbrownExtension(
 }
 
 /**
+ * Removes activity messages from outgoing history. AG-UI activities are
+ * rendering material for the client and are never forwarded to the agent.
+ * Returns the same array when there is nothing to remove.
+ */
+function withoutActivities(
+  messages: readonly Readonly<Message>[],
+): readonly Readonly<Message>[] {
+  return messages.some((message) => message.role === 'activity')
+    ? messages.filter((message) => message.role !== 'activity')
+    : messages;
+}
+
+/**
  * Creates an AG-UI run input from an already-owned canonical checkpoint.
+ * Activity messages are stripped, as AG-UI requires.
  *
  * @internal
  */
@@ -98,7 +112,7 @@ export function createCanonicalRunAgentInput({
   return {
     threadId,
     runId,
-    messages: messages as Message[],
+    messages: withoutActivities(messages) as Message[],
     tools: tools.map(mapTool),
     context: [],
     state,
