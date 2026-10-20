@@ -22,6 +22,7 @@ import {
   selectLastAssistantMessage,
   selectLastRunResult,
   selectPendingInterrupts,
+  selectRequestResponseSchema,
   selectResponseSchema,
   selectRetries,
   selectSendingError,
@@ -94,6 +95,31 @@ export function ɵassertRuntimeMessageSchedulingAllowed(runtime: {
   const assertAllowed = runtimeMessagePreflights.get(runtime.resume);
   if (!assertAllowed) throw new Error('Unknown chat runtime.');
   assertAllowed();
+}
+
+const runtimeRequestSchemaSetters = new WeakMap<
+  object,
+  (schema: s.SchemaOutput | undefined) => void
+>();
+
+/**
+ * Narrows the response schema sent to the model on later requests, while
+ * responses and history keep being parsed with the runtime's response
+ * schema. Pass `undefined` to send the response schema again. The change
+ * applies synchronously, so a message sent right after uses it.
+ *
+ * @param runtime - The runtime or a facade forwarding its unchanged resume
+ * command.
+ * @param schema - The schema to send, or `undefined` to clear it.
+ * @internal
+ */
+export function ɵsetRequestResponseSchema(
+  runtime: { readonly resume: (options: ResumeOptions) => void },
+  schema: s.SchemaOutput | undefined,
+): void {
+  const setSchema = runtimeRequestSchemaSetters.get(runtime.resume);
+  if (!setSchema) throw new Error('Unknown chat runtime.');
+  setSchema(schema);
 }
 
 /**
@@ -414,6 +440,7 @@ export function createChatRuntime(init: {
         ? synchronousStateWrite.value
         : state.read(ɵselectCommittedAgentState),
       responseSchema: state.read(selectResponseSchema),
+      requestResponseSchema: state.read(selectRequestResponseSchema),
       debounce: state.read(selectDebounce),
       retries: state.read(selectRetries),
       internalTools: state.read(selectTools),
@@ -626,6 +653,11 @@ export function createChatRuntime(init: {
     ),
   };
   runtimeMessagePreflights.set(runtime.resume, assertMessageSchedulingAllowed);
+  runtimeRequestSchemaSetters.set(runtime.resume, (schema) => {
+    state.dispatch(
+      devActions.updateOptions({ ɵrequestResponseSchema: schema ?? null }),
+    );
+  });
   runtimeSchedulingSignals.set(
     runtime.resume,
     state.createSignal(

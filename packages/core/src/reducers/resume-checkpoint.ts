@@ -9,6 +9,8 @@ export interface ResumeCheckpoint {
   readonly messages: readonly Readonly<Message>[];
   readonly state: JsonValue | undefined;
   readonly responseSchema: s.HashbrownType | undefined;
+  /** The schema sent to the model, which may be narrower. */
+  readonly requestResponseSchema: s.HashbrownType | undefined;
   readonly debounce: number;
   readonly retries: number;
   readonly internalTools: Chat.Internal.Tool[];

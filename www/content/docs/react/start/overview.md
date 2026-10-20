@@ -23,7 +23,9 @@ Choose the right hook for the task.
 | @hashbrownai/react!useStructuredCompletion:function | ❌              | ✅                | ✅                         | ✅           | ❌                     |
 | @hashbrownai/react!useUiChat:function               | ✅              | ❌                | ✅                         | ✅           | ✅                     |
 | @hashbrownai/react!useDecision:function             | ❌              | ✅                | ✅                         | ❌           | ❌                     |
-| @hashbrownai/react!useUiDecision:function           | ❌              | ✅                | ✅                         | ❌           | ✅                     |
+| @hashbrownai/react!useUiDecision:function           | ❌¹             | ✅                | ✅                         | ❌¹          | ✅                     |
+
+¹ In chat mode, useUiDecision narrows a chat created with useUiChat, which supplies multi-turn chat and tool calling.
 
 ---
 

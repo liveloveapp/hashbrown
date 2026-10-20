@@ -505,6 +505,10 @@ export const selectResponseSchema = select(
   selectConfigState,
   fromConfig.selectResponseSchema,
 );
+export const selectRequestResponseSchema = select(
+  selectConfigState,
+  fromConfig.selectRequestResponseSchema,
+);
 export const selectTransport = select(
   selectConfigState,
   fromConfig.selectTransport,
