@@ -5,13 +5,17 @@ import {
   type ComponentNode,
   type TransportOrFactory,
   type UiWrapper,
+  ɵmergeOfferedComponents,
+  ɵsetRequestResponseSchema,
 } from '@hashbrownai/core';
 import {
   type Dispatch,
   ReactElement,
   type SetStateAction,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
@@ -89,7 +93,21 @@ export interface UiChatResult<
 > {
   /** The messages with rendered UI attached to assistant responses. */
   messages: UiChatMessage<Tools>[];
-  /** Replace the available UI components. */
+  /**
+   * The components offered to the model on the next request: the
+   * `components` option until `setComponents` replaces them.
+   */
+  readonly components: UiKitInput<ExposedComponent<any>>[];
+  /**
+   * Replace the components offered to the model on the next request.
+   *
+   * The chat keeps every component it has ever offered, one per name, with
+   * the newest definition of a name replacing older ones. Messages render
+   * with that set, so earlier answers still render after the list narrows,
+   * and new responses are parsed against it too: a provider that does not
+   * enforce the response schema strictly can still render a component that
+   * was removed.
+   */
   setComponents: Dispatch<SetStateAction<UiKitInput<ExposedComponent<any>>[]>>;
   /** The most recent assistant response, including its rendered UI. */
   lastAssistantMessage: UiAssistantMessage<Tools> | undefined;
@@ -191,13 +209,49 @@ export const useUiChat = <Tools extends Chat.AnyTool, State = unknown>(
 ): UiChatResult<Tools, State> => {
   const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
-  const uiKit = useUiKit<ExposedComponent<any>>({ components });
+  // Every component the chat has offered, one per name, the newest
+  // definition winning. Responses and history are parsed and rendered with
+  // these, so an earlier answer keeps rendering after `setComponents` removes
+  // its component.
+  const [offered, setOffered] = useState(() => ({
+    source: initialComponents,
+    components: ɵmergeOfferedComponents<ExposedComponent<any>>(
+      initialComponents,
+      [],
+    ),
+  }));
+  const current =
+    offered.source === components
+      ? offered
+      : {
+          source: components,
+          components: ɵmergeOfferedComponents<ExposedComponent<any>>(
+            components,
+            offered.components,
+          ),
+        };
+  if (current !== offered) {
+    setOffered(current);
+  }
+  const uiKit = useUiKit<ExposedComponent<any>>({
+    components: current.components,
+  });
+  const requestKit = useUiKit<ExposedComponent<any>>({ components });
   const ui = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);
   const chat = useStructuredChat<typeof ui, Tools, UiChatSchema, State>({
     ...chatOptions,
     schema: ui as any,
     ui: true,
   });
+
+  // The model is offered only the current components.
+  const narrowed = requestKit.serializedSchema !== uiKit.serializedSchema;
+  const requestSchemaSet = useRef(false);
+  useEffect(() => {
+    if (!narrowed && !requestSchemaSet.current) return;
+    requestSchemaSet.current = narrowed;
+    ɵsetRequestResponseSchema(chat, narrowed ? requestKit.schema : undefined);
+  }, [chat.resume, narrowed, requestKit.serializedSchema]);
 
   const buildContent = useCallback(
     (content: string | UiChatSchema): ReactElement<any>[] | string => {
@@ -229,6 +283,7 @@ export const useUiChat = <Tools extends Chat.AnyTool, State = unknown>(
   return {
     ...chat,
     messages: uiChatMessages,
+    components,
     setComponents,
     lastAssistantMessage,
   };

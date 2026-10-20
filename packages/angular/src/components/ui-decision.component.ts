@@ -1,19 +1,13 @@
 import { NgComponentOutlet } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  input,
-} from '@angular/core';
-import { type UiDecisionResourceRef } from '../resources/ui-decision-resource.fn';
-import { RenderMessageComponent } from './render-message.component';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { type UiDecisionResourceCandidatesRef } from '../resources/ui-decision-resource.fn';
 
 /**
- * Renders the result of `uiDecisionResource`.
+ * Renders the chosen candidates of a candidates-mode `uiDecisionResource`
+ * in order, binding each candidate's latest `inputs` (signal inputs update
+ * in place).
  *
- * In candidates mode it renders the chosen candidates in order, binding each
- * candidate's latest `inputs` (signal inputs update in place). In narrowing
- * mode it renders the UI completion's message with `hb-render-message`.
+ * Chat mode needs no component: the chat renders its own messages.
  *
  * @public
  * @example
@@ -24,38 +18,18 @@ import { RenderMessageComponent } from './render-message.component';
  */
 @Component({
   selector: 'hb-ui-decision',
-  imports: [NgComponentOutlet, RenderMessageComponent],
+  imports: [NgComponentOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { style: 'display: contents' },
   template: `
-    @if (resource().mode === 'narrowing') {
-      <hb-render-message [message]="message()" />
-    } @else {
-      @for (candidate of chosen(); track candidate.id) {
-        <ng-container
-          *ngComponentOutlet="candidate.component; inputs: candidate.inputs"
-        />
-      }
+    @for (candidate of resource().chosen(); track candidate.id) {
+      <ng-container
+        *ngComponentOutlet="candidate.component; inputs: candidate.inputs"
+      />
     }
   `,
 })
 export class UiDecisionComponent {
-  /** The resource whose decision to render. */
-  readonly resource = input.required<UiDecisionResourceRef>();
-
-  /**
-   * @internal
-   */
-  protected readonly chosen = computed(() => {
-    const resource = this.resource();
-    return resource.mode === 'candidates' ? resource.chosen() : [];
-  });
-
-  /**
-   * @internal
-   */
-  protected readonly message = computed(() => {
-    const resource = this.resource();
-    return resource.mode === 'narrowing' ? resource.value() : null;
-  });
+  /** The candidates-mode resource whose chosen candidates to render. */
+  readonly resource = input.required<UiDecisionResourceCandidatesRef>();
 }

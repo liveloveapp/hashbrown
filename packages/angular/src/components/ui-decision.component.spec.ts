@@ -2,11 +2,7 @@ import { Component, input, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { type Decision } from '@hashbrownai/core';
 import { provideHashbrown } from '../providers';
-import {
-  uiDecisionResource,
-  type UiDecisionResourceNarrowingRef,
-} from '../resources/ui-decision-resource.fn';
-import { TAG_NAME_REGISTRY } from '../utils/ui-chat.helpers';
+import { uiDecisionResource } from '../resources/ui-decision-resource.fn';
 import { UiDecisionComponent } from './ui-decision.component';
 
 @Component({ selector: 'hb-test-flight', template: 'flight {{ tail() }}' })
@@ -139,37 +135,4 @@ test('hb-ui-decision re-renders a chosen candidate when its signal inputs change
   expect(element.querySelector('hb-test-flight')).toBe(card);
   expect(card?.textContent?.trim()).toBe('flight N456');
   expect(requests).toBe(1);
-});
-
-test('hb-ui-decision delegates narrowing results to hb-render-message', () => {
-  TestBed.resetTestingModule();
-  TestBed.configureTestingModule({ imports: [UiDecisionComponent] });
-  const message = {
-    role: 'assistant' as const,
-    content: {
-      ui: [
-        {
-          'hb-test-weather': {
-            props: { complete: true, partialValue: {}, value: {} },
-          },
-        },
-      ],
-    },
-    toolCalls: [],
-    [TAG_NAME_REGISTRY]: {
-      'hb-test-weather': { props: {}, component: WeatherCard },
-    },
-  };
-  const resource = {
-    mode: 'narrowing',
-    value: signal(message),
-  } as unknown as UiDecisionResourceNarrowingRef;
-  const fixture = TestBed.createComponent(UiDecisionComponent);
-
-  fixture.componentRef.setInput('resource', resource);
-  fixture.detectChanges();
-
-  const element = fixture.nativeElement as HTMLElement;
-  expect(element.querySelector('hb-render-message')).not.toBeNull();
-  expect(element.querySelector('hb-test-weather')?.textContent).toBe('weather');
 });

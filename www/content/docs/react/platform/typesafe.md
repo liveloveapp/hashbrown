@@ -198,7 +198,7 @@ await HashbrownTypeSafe.decide({
 });
 ```
 
-For UI selection, build the schema with `createSelectionSchema` from the same candidates, components or UI kits the browser passes. See [UI Selection](/docs/react/recipes/ui-selection).
+For UI selection, build the schema with `createSelectionSchema` from the same list the browser decides over: the candidates, or the chat's components and UI kits. See [UI Selection](/docs/react/recipes/ui-selection).
 
 To call `decide` from inside an agent and get typed answers with `decodeDecision`, see [Decisions in Agents](/docs/react/recipes/decisions-in-agents).
 
