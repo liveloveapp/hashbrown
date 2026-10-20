@@ -104,6 +104,9 @@ test('OpenAI Express route streams canonical AG-UI SSE to HttpTransport', async 
         type: EventType.TEXT_MESSAGE_START,
         messageId: 'express-run:assistant',
         role: 'assistant',
+        metadata: {
+          openai: { itemId: expect.any(String), reasoningItemIds: [] },
+        },
       },
       {
         type: EventType.TEXT_MESSAGE_CONTENT,

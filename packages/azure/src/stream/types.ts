@@ -1,6 +1,7 @@
 import type { RunAgentInput } from '@ag-ui/core';
 import type { AzureClientOptions } from 'openai/azure';
 import type OpenAI from 'openai';
+import type { AzureReasoningOption } from './reasoning';
 
 /**
  * Hashbrown extensions accepted alongside a standard AG-UI run input.
@@ -8,7 +9,6 @@ import type OpenAI from 'openai';
  * @public
  */
 export interface AzureHashbrownRunAgentInput extends RunAgentInput {
-  /** Hashbrown semantics layered onto the standard AG-UI run input. */
   /**
    * AG-UI's pass-through extension point. Hashbrown's generation semantics
    * travel in `forwardedProps.hashbrown`.
@@ -24,23 +24,32 @@ export interface AzureHashbrownRunAgentInput extends RunAgentInput {
 }
 
 /**
- * Options for streaming an AG-UI run from Azure OpenAI.
+ * Options for streaming an AG-UI run from the Azure OpenAI Responses API.
  *
  * @public
  */
 export interface AzureTextStreamOptions {
-  /** Official Azure OpenAI SDK client configuration. */
+  /**
+   * Official Azure OpenAI SDK client configuration. Set `endpoint` and a
+   * Responses-capable `apiVersion`; `deployment` is not supported because the
+   * Responses API selects the deployment through `model`.
+   */
   clientOptions: AzureClientOptions;
-  /** Model selected by the server for this endpoint. */
+  /** Azure deployment name, sent as the Responses request `model`. */
   model: string;
   /** Standard AG-UI run input plus optional Hashbrown semantics. */
   input: AzureHashbrownRunAgentInput;
   /** Cancels the provider request when the HTTP request is abandoned. */
   signal?: AbortSignal;
-  /** Customize the Azure OpenAI request after AG-UI input is mapped. */
+  /**
+   * Controls the `reasoning` request parameter for reasoning models.
+   * See {@link AzureReasoningOption}.
+   */
+  reasoning?: AzureReasoningOption;
+  /** Customize the Responses request after AG-UI input has been mapped. */
   transformRequestOptions?: (
-    options: OpenAI.Chat.ChatCompletionCreateParamsStreaming,
+    options: OpenAI.Responses.ResponseCreateParamsStreaming,
   ) =>
-    | OpenAI.Chat.ChatCompletionCreateParamsStreaming
-    | Promise<OpenAI.Chat.ChatCompletionCreateParamsStreaming>;
+    | OpenAI.Responses.ResponseCreateParamsStreaming
+    | Promise<OpenAI.Responses.ResponseCreateParamsStreaming>;
 }

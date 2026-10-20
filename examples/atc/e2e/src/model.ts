@@ -25,7 +25,12 @@ export const PROMPTS = {
   cluster: 'Highlight the Horizon block near Klamath Falls.',
   redmondAirspace: 'Show the Redmond airspace.',
   hideAirports: 'Hide the airports.',
+  /** Streams a reasoning summary before its tool call. */
+  reasoned: 'Which plane is highest?',
 } as const;
+
+/** The reasoning summary the scripted model streams for {@link PROMPTS.reasoned}. */
+export const REASONING = 'Comparing altitudes across the visible traffic.';
 
 /** One tool call the scripted model makes. */
 interface ScriptedCall {
@@ -47,18 +52,23 @@ function ui(
  * request's last message, and parallel calls can finish in any order, so
  * every call id carries the same answer. That request also still holds the
  * prompt, and aimock serves the first fixture that matches, so the results
- * are registered before the prompt.
+ * are registered before the prompt. With `reasoning`, the first response
+ * streams it as a reasoning summary before the tool calls.
  */
 function scriptTurn(
   mock: LLMock,
   prompt: string,
   toolCalls: readonly ScriptedCall[],
   answer: string,
+  reasoning?: string,
 ): void {
   for (const { id } of toolCalls) {
     mock.onToolResult(id, async () => ({ content: answer }));
   }
-  mock.onMessage(prompt, { toolCalls: [...toolCalls] });
+  mock.onMessage(prompt, {
+    toolCalls: [...toolCalls],
+    ...(reasoning === undefined ? {} : { reasoning }),
+  });
 }
 
 /**
@@ -179,6 +189,19 @@ export function scriptAtcModel(mock: LLMock): void {
         },
       },
     }),
+  );
+  scriptTurn(
+    mock,
+    PROMPTS.reasoned,
+    [
+      {
+        id: 'reasoned-find',
+        name: 'findAircraft',
+        arguments: { ...NO_FILTERS, sortBy: 'altitude', limit: 1 },
+      },
+    ],
+    ui(card('The highest plane right now.', highest.hex)),
+    REASONING,
   );
   scriptTurn(
     mock,

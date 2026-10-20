@@ -118,7 +118,7 @@ export function Assistant({ onSent }: { onSent?: () => void }) {
           <EmptyState onPick={send} />
         ) : null}
         <Transcript
-          items={transcriptItems(chat.messages)}
+          items={transcriptItems(chat.messages, chat.isLoading)}
           busy={chat.isLoading}
         />
         {chat.error ? (
