@@ -18,8 +18,8 @@ export interface HashbrownRunAgentExtension {
  *
  * The extension travels in `forwardedProps.hashbrown`, AG-UI's extension
  * point for values an agent reads and intermediaries pass through untouched.
- * Clients before 0.8 sent it as a top-level `hashbrown` key; 0.8 sent both,
- * and that key is now gone.
+ * Clients before 0.8 sent it as a top-level `hashbrown` key, which servers
+ * no longer read.
  *
  * @internal
  */
