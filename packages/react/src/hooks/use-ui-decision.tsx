@@ -7,7 +7,7 @@ import {
   type Decision,
   s,
   type TransportOrFactory,
-  ɵisUiKit,
+  ɵcreateComponentSelection,
   ɵresolveSelection,
 } from '@hashbrownai/core';
 import { cloneElement, type ReactElement, useMemo, useState } from 'react';
@@ -105,8 +105,11 @@ export interface UiDecisionGenerateOptions {
  */
 export interface UseUiDecisionNarrowingOptions extends UseUiDecisionBaseOptions {
   /**
-   * The components to narrow. Exposed components are decided over by `name`
-   * and `description`; UI kits are always passed to the completion.
+   * The components to narrow. UI kits are flattened into their members
+   * (deduped by name, declared children included) and each component is
+   * decided over by `name` and `description`. A chosen component brings the
+   * components declared in its `children` with it. Use
+   * `componentSelectionOptions` to build the same options on a server.
    */
   components: UiKitInput<ExposedComponent<any>>[];
   /** The UI completion settings. */
@@ -176,8 +179,8 @@ export interface UseUiDecisionNarrowingResult extends Omit<
 const NO_COMPONENTS: UiKitInput<ExposedComponent<any>>[] = [];
 
 /**
- * Decided over when there is nothing to choose (kit-only components or no
- * candidates). The decision stays idle, so it never sends a request.
+ * Decided over when there is nothing to choose (no components after
+ * flattening, or no candidates). The decision stays idle, so it never sends a request.
  */
 const PLACEHOLDER_SCHEMA: DecidableSchema = s.object('Selection', {
   unused: s.boolean('Unused'),
@@ -219,14 +222,17 @@ export function useUiDecision(
 /**
  * Chooses UI for an input with a decision, then generates it.
  *
- * In narrowing mode the model first picks among the exposed components (by
- * name and description); a UI completion then streams props using only the
- * chosen components plus any UI kits. The completion waits until the decision
- * settles. When the decision fails or falls below `minConfidence`, the
- * completion runs with every component, and a failure is exposed as
- * `decisionError`; the same applies when the decision is stopped. With no
- * exposed components (only UI kits) there is nothing to decide, so the
- * completion runs with every component straight away. Input changes re-run
+ * In narrowing mode the model first picks among the components (by name and
+ * description), with UI kits flattened into their members; a UI completion
+ * then streams props using only the chosen components plus, recursively, the
+ * components declared in their `children`, in declared order. The completion
+ * waits until the decision settles. When the decision fails or falls below
+ * `minConfidence`, the completion runs with the original `components`
+ * unchanged (kits intact), and a failure is exposed as `decisionError`; the
+ * same applies when the decision is stopped. With no components there is
+ * nothing to decide, so the completion runs straight away. To pin the
+ * questions on a server, pass `componentSelectionOptions(components)` to
+ * `createSelectionSchema`. Input changes re-run
  * the decision before generating again.
  *
  * @public
@@ -263,16 +269,15 @@ export function useUiDecision(
   const input = options.input ?? null;
   const inputKey = input === null ? null : JSON.stringify(input);
 
+  const componentSelection = useMemo(
+    () => ɵcreateComponentSelection<ExposedComponent<any>>(components),
+    [components],
+  );
   const optionsKey = JSON.stringify({
     select,
     options: isCandidates
       ? candidates.map(({ id, description }) => ({ id, description }))
-      : components
-          .filter((entry) => !ɵisUiKit(entry))
-          .map((entry) => {
-            const { name, description } = entry as ExposedComponent<any>;
-            return { id: name, description };
-          }),
+      : componentSelection.options,
   });
   const schema = useMemo(() => {
     const parsed = JSON.parse(optionsKey) as {
@@ -379,11 +384,7 @@ export function useUiDecision(
     setAppliedKey(chosenKey);
     const chosen =
       confidentIds !== null
-        ? components.filter(
-            (entry) =>
-              ɵisUiKit(entry) ||
-              confidentIds.includes((entry as ExposedComponent<any>).name),
-          )
+        ? componentSelection.expand(confidentIds)
         : components;
     completion.setComponents(chosen);
   }

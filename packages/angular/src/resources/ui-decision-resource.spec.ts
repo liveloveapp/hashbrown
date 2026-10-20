@@ -12,7 +12,12 @@ import {
   signal,
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { type Decision } from '@hashbrownai/core';
+import {
+  componentSelectionOptions,
+  createSelectionSchema,
+  type Decision,
+  ɵcompileDecision,
+} from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { provideHashbrown } from '../providers';
 import { createUiKit } from '../utils/ui-kit.fn';
@@ -160,6 +165,20 @@ const weather = {
 };
 const ids = ['Flight', 'Airport', 'Weather'];
 
+class NoteCard {}
+class MemoCard {}
+class RowCard {}
+class TableCard {}
+const note = { component: NoteCard, name: 'Note', description: 'A note' };
+const memo = { component: MemoCard, name: 'Memo', description: 'A memo' };
+const row = { component: RowCard, name: 'Row', description: 'A table row' };
+const table = {
+  component: TableCard,
+  name: 'Table',
+  description: 'A table of rows',
+  children: [row],
+};
+
 test("uiDecisionResource candidates 'one' chooses only the picked candidate", async () => {
   const created = trackCompletions();
   const fake = createFakeTransport(() =>
@@ -296,10 +315,7 @@ test('uiDecisionResource candidates with no candidates chooses nothing without a
 
 test('uiDecisionResource narrowing holds phase 2 until phase 1 settles, then passes only the chosen components', async () => {
   const created = trackCompletions();
-  const Note = class {};
-  const kit = createUiKit<any>({
-    components: [{ component: Note, name: 'Note', description: 'A note' }],
-  });
+  const kit = createUiKit<any>({ components: [note] });
   const deferred = deferredTransport();
   configure(deferred.transport);
   const ref = TestBed.runInInjectionContext(() =>
@@ -318,16 +334,15 @@ test('uiDecisionResource narrowing holds phase 2 until phase 1 settles, then pas
   expect(created).toHaveLength(0);
   expect(ref.value()).toBeNull();
   expect(ref.isGenerating()).toBe(false);
-  const questions = JSON.stringify(deferred.calls[0].request.questions);
-  expect(questions).toContain('Airport');
-  expect(questions).not.toContain('Note');
 
-  deferred.resolve(pickResponse('Airport', 0.9, ids));
+  deferred.resolve(
+    pickResponse('Airport', 0.9, ['Flight', 'Note', 'Airport', 'Weather']),
+  );
   await settle();
 
   expect(created).toHaveLength(1);
-  expect(created[0].options.components).toEqual([kit, airport]);
-  expect(created[0].options.components[0]).toBe(kit);
+  expect(created[0].options.components).toEqual([airport]);
+  expect(created[0].options.components[0]).toBe(airport);
   expect(created[0].options.input()).toBe('show KSFO');
   expect(created[0].options.system).toBe('Render it');
   expect(ref.isDeciding()).toBe(false);
@@ -499,12 +514,66 @@ test('uiDecisionResource narrowing settles with every component after decision.s
   expect(ref.decisionError()).toBeUndefined();
 });
 
-test('uiDecisionResource narrowing with only UI kits skips the decision', async () => {
+test('uiDecisionResource narrowing with a kit decides over the kit members', async () => {
+  trackCompletions();
+  const kit = createUiKit<any>({ components: [note, table] });
+  const components = [flight, kit];
+  const deferred = deferredTransport();
+  configure(deferred.transport);
+
+  TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('show KSFO'),
+      components,
+      select: 'one',
+      generate: { system: 'Render it' },
+    }),
+  );
+  await settle();
+
+  expect(deferred.calls).toHaveLength(1);
+  const pick = deferred.calls[0].request.questions['pick'] as {
+    options: Record<string, string | null>;
+  };
+  expect(Object.keys(pick.options)).toEqual(['Flight', 'Note', 'Table', 'Row']);
+  expect(deferred.calls[0].request.questions).toEqual(
+    ɵcompileDecision(
+      createSelectionSchema(componentSelectionOptions(components), 'one'),
+    ),
+  );
+});
+
+test('uiDecisionResource narrowing passes chosen kit members with their declared children', async () => {
   const created = trackCompletions();
-  const kit = createUiKit<any>({
-    components: [{ component: class {}, name: 'Note', description: 'A note' }],
-  });
-  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
+  const kit = createUiKit<any>({ components: [note, table, memo] });
+  const fake = createFakeTransport(() =>
+    multiResponse({ Flight: 0.1, Note: 0.2, Table: 0.9, Row: 0.1, Memo: 0.8 }),
+  );
+  configure(fake.transport);
+
+  TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('list the rows'),
+      components: [flight, kit],
+      select: { max: 2 },
+      generate: { system: 'Render it' },
+    }),
+  );
+  await settle();
+
+  expect(created).toHaveLength(1);
+  expect(created[0].options.components).toEqual([table, row, memo]);
+  expect(created[0].options.components[0]).toBe(table);
+  expect(created[0].options.components[1]).toBe(row);
+  expect(created[0].options.input()).toBe('list the rows');
+});
+
+test('uiDecisionResource narrowing with only a UI kit decides over its members', async () => {
+  const created = trackCompletions();
+  const kit = createUiKit<any>({ components: [note, memo] });
+  const fake = createFakeTransport(() =>
+    pickResponse('Memo', 0.9, ['Note', 'Memo']),
+  );
   configure(fake.transport);
 
   const ref = TestBed.runInInjectionContext(() =>
@@ -517,8 +586,82 @@ test('uiDecisionResource narrowing with only UI kits skips the decision', async 
   );
   await settle();
 
+  expect(fake.calls).toHaveLength(1);
   expect(created).toHaveLength(1);
-  expect(created[0].options.components).toEqual([kit]);
+  expect(created[0].options.components).toEqual([memo]);
+  expect(created[0].options.input()).toBe('hello');
+  expect(ref.decisionError()).toBeUndefined();
+});
+
+test('uiDecisionResource narrowing with low confidence passes the original components, kit intact', async () => {
+  const created = trackCompletions();
+  const kit = createUiKit<any>({ components: [note, table] });
+  const components = [flight, kit];
+  const fake = createFakeTransport(() =>
+    pickResponse('Table', 0.4, ['Flight', 'Note', 'Table', 'Row']),
+  );
+  configure(fake.transport);
+
+  const ref = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('something'),
+      components,
+      select: 'one',
+      minConfidence: 0.7,
+      generate: { system: 'Render it' },
+    }),
+  );
+  await settle();
+
+  expect(created).toHaveLength(1);
+  expect(created[0].options.components).toEqual(components);
+  expect(created[0].options.components[1]).toBe(kit);
+  expect(ref.decisionError()).toBeUndefined();
+});
+
+test('uiDecisionResource narrowing decision error passes the original components, kit intact', async () => {
+  const created = trackCompletions();
+  const kit = createUiKit<any>({ components: [note, table] });
+  const components = [flight, kit];
+  const failure = new Error('decide failed');
+  const fake = createFakeTransport(() => {
+    throw failure;
+  });
+  configure(fake.transport);
+
+  const ref = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('something'),
+      components,
+      select: { max: 2 },
+      generate: { system: 'Render it' },
+    }),
+  );
+  await settle();
+
+  expect(created).toHaveLength(1);
+  expect(created[0].options.components).toEqual(components);
+  expect(created[0].options.components[1]).toBe(kit);
+  expect(ref.decisionError()).toBe(failure);
+});
+
+test('uiDecisionResource narrowing with no components skips the decision', async () => {
+  const created = trackCompletions();
+  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
+  configure(fake.transport);
+
+  const ref = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('hello'),
+      components: [],
+      select: 'one',
+      generate: { system: 'Render it' },
+    }),
+  );
+  await settle();
+
+  expect(created).toHaveLength(1);
+  expect(created[0].options.components).toEqual([]);
   expect(created[0].options.input()).toBe('hello');
   expect(fake.calls).toHaveLength(0);
   expect(ref.isDeciding()).toBe(false);

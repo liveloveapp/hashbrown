@@ -5,3 +5,4 @@ export { DecisionSchemaError, DecisionResponseError } from './errors';
 export { createHttpDecisionTransport } from './http-decision-transport';
 export type { HttpDecisionTransportOptions } from './http-decision-transport';
 export { createSelectionSchema } from './ui-selection';
+export { componentSelectionOptions } from './component-selection';

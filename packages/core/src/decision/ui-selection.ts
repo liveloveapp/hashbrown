@@ -15,7 +15,8 @@ const MIN_PROBABILITY = 0.5;
  * schema `useUiDecision` and `uiDecisionResource` ask, so a server can pass
  * it to a decision adapter's `schema` option to pin UI selection questions.
  * Use the same ids and descriptions, in the same order: candidate ids in
- * candidates mode, exposed component names in narrowing mode.
+ * candidates mode, and `componentSelectionOptions(components)` in narrowing
+ * mode (UI kits flattened into their members).
  *
  * @example
  * ```ts

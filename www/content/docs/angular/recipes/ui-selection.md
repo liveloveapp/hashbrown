@@ -132,14 +132,15 @@ export class AnswerComponent {
 
 </hb-code-example>
 
-1. The decision sees each exposed component's name and description.
-2. `generate` configures the UI completion that runs after it. `system` is required.
-3. UI kits in `components` always go through to the completion. Only exposed components are decided over.
-4. A list of only UI kits skips the decision and generates straight away.
+1. The decision sees each component's name and description.
+2. UI kits in `components` are decided over by member. Each kit is expanded into its components, including the children they declare, and duplicate names count once. A list of only UI kits decides over the kits' members.
+3. A chosen component brings the components declared in its `children` with it, recursively, so the completion can always render a chosen parent's children. The completion sees the chosen components in the order they were declared.
+4. `generate` configures the UI completion that runs after it. `system` is required.
+5. An empty `components` list skips the decision and generates straight away.
 
 ### Low confidence
 
-Decide when sure, generate everything otherwise. When confidence is below `minConfidence`, or the decision fails, narrowing generates with all of the components. A failure is exposed as `decisionError`.
+Decide when sure, generate everything otherwise. When confidence is below `minConfidence`, or the decision fails, narrowing generates with the `components` you passed, unchanged, with UI kits intact. A failure is exposed as `decisionError`.
 
 `isDeciding()` is true until the decision settles, `isGenerating()` while the completion runs, and `isLoading()` for either. `value()` holds the UI completion's message, which `<hb-ui-decision>` renders.
 
@@ -147,7 +148,9 @@ Decide when sure, generate everything otherwise. When confidence is below `minCo
 
 ## Pinning the Questions on the Server
 
-The browser builds the selection questions from your candidates or components. A public decision route answers whatever questions it is sent, unless the server pins them. To pin them, build the same schema on the server with `createSelectionSchema` from `@hashbrownai/core`, and pass it to the adapter's `schema` option:
+The browser builds the selection questions from your candidates or components. A public decision route answers whatever questions it is sent, unless the server pins them. To pin them, build the same schema on the server with `createSelectionSchema` from `@hashbrownai/core`, and pass it to the adapter's `schema` option. Pass the same `select` value the browser uses.
+
+In candidates mode, list the candidate ids and descriptions, in the same order:
 
 ```ts
 import { createSelectionSchema } from '@hashbrownai/core';
@@ -167,7 +170,28 @@ const decision = await HashbrownTypeSafe.decide({
 });
 ```
 
-Use the candidate ids in candidates mode, or the exposed component names in narrowing mode. Pass the same `select` value the browser uses.
+In narrowing mode, pass the same components to `componentSelectionOptions` from `@hashbrownai/core`. It flattens UI kits and declared children exactly as the resource does, and returns the options in the same order, so the server asks the same questions. It accepts component definitions (`UiComponentDefinition`), exposed components and UI kits, so share whichever your server can import:
+
+```ts
+import {
+  componentSelectionOptions,
+  createSelectionSchema,
+} from '@hashbrownai/core';
+import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
+// Shared with the browser: the components or kit passed to `components`.
+import { cards } from './cards';
+
+const decision = await HashbrownTypeSafe.decide({
+  apiKey: process.env.TYPESAFE_API_KEY!,
+  model: 'jev-1.14.0',
+  schema: createSelectionSchema(componentSelectionOptions(cards), {
+    max: 2,
+  }),
+  request,
+});
+```
+
+If the server can't import your components or kits, list each component's name as the `id` and its description, in the order `componentSelectionOptions` would give: components in the order passed, each kit's members in place, each component followed by its declared children, and every name once.
 
 ---
 

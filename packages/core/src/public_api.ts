@@ -54,6 +54,10 @@ export {
 } from './decision/compile-decision';
 export { decodeDecision as ɵdecodeDecision } from './decision/decode-decision';
 export { resolveSelection as ɵresolveSelection } from './decision/ui-selection';
+export {
+  createComponentSelection as ɵcreateComponentSelection,
+  type ComponentSelection as ɵComponentSelection,
+} from './decision/component-selection';
 export { createDecisionRuntime as ɵcreateDecisionRuntime } from './decision/decision-runtime';
 export type {
   DecisionRuntime as ɵDecisionRuntime,
