@@ -334,6 +334,12 @@ export const ɵselectAgUiMessagesProtocolError = select(
   fromAgUiMessages.ɵselectAgUiMessagesProtocolError,
 );
 
+/** Selects why the last canonical event, an `ACTIVITY_DELTA`, was dropped. @internal */
+export const ɵselectActivityDeltaDropReason = select(
+  ɵselectAgUiMessagesState,
+  fromAgUiMessages.ɵselectActivityDeltaDropReason,
+);
+
 /**
  * Messages
  */

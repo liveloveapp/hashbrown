@@ -4,6 +4,7 @@ import {
   applyCanonicalMessageEvent,
   initialAgUiMessagesState,
   reducer,
+  ɵselectActivityDeltaDropReason,
   ɵselectAgUiMessagesProtocolError,
   ɵselectAttemptStartToolCallIds,
   ɵselectCommittedAgUiMessages,
@@ -1391,45 +1392,233 @@ test('records compatibility errors while preserving the exact valid draft', () =
   );
 });
 
-test('keeps activity deltas as reference-preserving no-ops and exposes canonical selectors', () => {
-  const initialized = reducer(
-    initialAgUiMessagesState,
-    devActions.init({
-      system: 'system',
-      systemMessage: { id: 'system-1', role: 'system', content: 'system' },
-      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
-    }),
-  );
+test('activity events update the draft and record run, assistant and tool-call links', () => {
   const active = reducer(
-    initialized,
+    reducer(
+      initialAgUiMessagesState,
+      devActions.init({
+        system: '',
+        canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+      }),
+    ),
     internalActions.generationAttemptStarted(),
   );
-  const snapshotNoop = reducer(
+  const events: AGUIEvent[] = [
+    { type: EventType.RUN_STARTED, threadId: 'thread-1', runId: 'run-1' },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-early',
+      activityType: 'progress',
+      content: { percent: 0 },
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: 'Hi',
+    },
+    { type: EventType.TEXT_MESSAGE_END, messageId: 'assistant-1' },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+    },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'tool-1' },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-late',
+      activityType: 'plan',
+      content: { steps: [] },
+    },
+    {
+      type: EventType.ACTIVITY_DELTA,
+      messageId: 'activity-early',
+      activityType: 'progress',
+      patch: [{ op: 'replace', path: '/percent', value: 100 }],
+    },
+  ];
+
+  const next = events.reduce(
+    (state, event) => reducer(state, apiActions.generateMessageEvent(event)),
+    active,
+  );
+
+  expect(next.protocolError).toBeUndefined();
+  expect(next.committed).toBe(active.committed);
+  expect(next.draft.map((message) => message.id)).toEqual([
+    'user-1',
+    'activity-early',
+    'assistant-1',
+    'activity-late',
+  ]);
+  expect(next.draft[1]).toEqual({
+    id: 'activity-early',
+    role: 'activity',
+    activityType: 'progress',
+    content: { percent: 100 },
+    hashbrownLinks: { runId: 'run-1' },
+  });
+  expect(next.draft[3]).toEqual({
+    id: 'activity-late',
+    role: 'activity',
+    activityType: 'plan',
+    content: { steps: [] },
+    hashbrownLinks: {
+      runId: 'run-1',
+      assistantMessageId: 'assistant-1',
+      toolCallId: 'tool-1',
+    },
+  });
+});
+
+test('a new attempt clears the run, assistant and tool-call links', () => {
+  const first = [
+    { type: EventType.RUN_STARTED, threadId: 'thread-1', runId: 'run-1' },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+    },
+  ].reduce(
+    (state, event) =>
+      reducer(state, apiActions.generateMessageEvent(event as AGUIEvent)),
+    reducer(
+      initialAgUiMessagesState,
+      internalActions.generationAttemptStarted(),
+    ),
+  );
+
+  const retried = reducer(
+    reducer(first, internalActions.generationAttemptRolledBack()),
+    internalActions.generationAttemptStarted(),
+  );
+  const next = reducer(
+    retried,
+    apiActions.generateMessageEvent({
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      content: {},
+    }),
+  );
+
+  expect(first.currentRunId).toBe('run-1');
+  expect(first.lastToolCallId).toBe('tool-1');
+  expect(retried.currentRunId).toBeUndefined();
+  expect(retried.lastToolCallId).toBeUndefined();
+  expect(retried.activeAssistantMessageId).toBeUndefined();
+  expect(next.draft[0]).toMatchObject({ hashbrownLinks: {} });
+});
+
+test('a dropped delta records its reason and the attempt continues', () => {
+  const active = reducer(
+    initialAgUiMessagesState,
+    internalActions.generationAttemptStarted(),
+  );
+  const created = reducer(
     active,
     apiActions.generateMessageEvent({
       type: EventType.ACTIVITY_SNAPSHOT,
       messageId: 'activity-1',
-      activityType: 'progress',
+      activityType: 'plan',
       content: {},
-      replace: true,
-    }),
-  );
-  const deltaNoop = reducer(
-    active,
-    apiActions.generateMessageEvent({
-      type: EventType.ACTIVITY_DELTA,
-      messageId: 'activity-1',
-      activityType: 'progress',
-      patch: [],
     }),
   );
 
-  expect(snapshotNoop).toBe(active);
-  expect(deltaNoop).toBe(active);
-  expect(ɵselectCommittedAgUiMessages(active)).toEqual([
+  const dropped = reducer(
+    created,
+    apiActions.generateMessageEvent({
+      type: EventType.ACTIVITY_DELTA,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      patch: [{ op: 'remove', path: '/missing' }],
+    }),
+  );
+  const continued = reducer(
+    dropped,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    }),
+  );
+
+  expect(dropped.attemptActive).toBe(true);
+  expect(dropped.protocolError).toBeUndefined();
+  expect(dropped.draft).toBe(created.draft);
+  expect(ɵselectActivityDeltaDropReason(dropped)).toEqual(
+    expect.stringContaining('activity-1'),
+  );
+  expect(ɵselectActivityDeltaDropReason(continued)).toBeUndefined();
+  expect(continued.draft.map((message) => message.id)).toEqual([
+    'activity-1',
+    'assistant-1',
+  ]);
+});
+
+test('a failed attempt rolls activities back with the draft', () => {
+  const active = reducer(
+    reducer(
+      initialAgUiMessagesState,
+      devActions.init({
+        system: '',
+        canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+      }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const withActivity = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      content: {},
+    }),
+  );
+
+  const failed = reducer(
+    withActivity,
+    apiActions.generateMessageError(new Error('boom')),
+  );
+
+  expect(withActivity.draft.map((message) => message.id)).toEqual([
+    'user-1',
+    'activity-1',
+  ]);
+  expect(failed.attemptActive).toBe(false);
+  expect(ɵselectVisibleAgUiMessages(failed)).toEqual([
     { id: 'user-1', role: 'user', content: 'hello' },
   ]);
-  expect(ɵselectEffectiveCommittedAgUiMessages(active)[0]).toEqual({
+});
+
+test('exposes committed canonical selectors with the system overlay', () => {
+  const active = reducer(
+    reducer(
+      initialAgUiMessagesState,
+      devActions.init({
+        system: 'system',
+        systemMessage: { id: 'system-1', role: 'system', content: 'system' },
+        canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+      }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+
+  const committed = ɵselectCommittedAgUiMessages(active);
+  const effective = ɵselectEffectiveCommittedAgUiMessages(active);
+
+  expect(committed).toEqual([{ id: 'user-1', role: 'user', content: 'hello' }]);
+  expect(effective[0]).toEqual({
     id: 'system-1',
     role: 'system',
     content: 'system',
