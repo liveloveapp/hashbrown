@@ -53,10 +53,7 @@ export {
   type CompileDecisionOptions as ɵCompileDecisionOptions,
 } from './decision/compile-decision';
 export { decodeDecision as ɵdecodeDecision } from './decision/decode-decision';
-export {
-  createSelectionSchema as ɵcreateSelectionSchema,
-  resolveSelection as ɵresolveSelection,
-} from './decision/ui-selection';
+export { resolveSelection as ɵresolveSelection } from './decision/ui-selection';
 export { createDecisionRuntime as ɵcreateDecisionRuntime } from './decision/decision-runtime';
 export type {
   DecisionRuntime as ɵDecisionRuntime,

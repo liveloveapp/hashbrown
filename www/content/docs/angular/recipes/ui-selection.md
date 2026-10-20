@@ -25,7 +25,12 @@ uiDecisionResource has two modes. Which one you get depends on the options you p
 | Candidates | `candidates`              | Among components your code has already built | Your code               |
 | Narrowing  | `components` + `generate` | Which exposed components to use              | The model, by streaming |
 
-Both modes take `select`: `'one'` chooses one option, and `{ max: 3 }` chooses up to three. Both take `minConfidence`.
+Both modes take `select`: `'one'` chooses one option, and `{ max: 3 }` chooses up to three. Both also take:
+
+- `minConfidence`: the confidence needed to act on the choice.
+- `system`: context sent with the input, such as what your app does. Changing it asks again.
+- `optionOrder: 'shuffled'`: varies the order of the options on every request, to spread the model's bias toward the first one.
+- `debounce`: waits for the input to settle before deciding. This is separate from the debounce for generation in narrowing mode.
 
 The resource requires `provideHashbrown`. Set up the decision endpoint as described in [Decisions](/docs/angular/concept/decisions).
 
@@ -137,6 +142,32 @@ export class AnswerComponent {
 Decide when sure, generate everything otherwise. When confidence is below `minConfidence`, or the decision fails, narrowing generates with all of the components. A failure is exposed as `decisionError`.
 
 `isDeciding()` is true until the decision settles, `isGenerating()` while the completion runs, and `isLoading()` for either. `value()` holds the UI completion's message, which `<hb-ui-decision>` renders.
+
+---
+
+## Pinning the Questions on the Server
+
+The browser builds the selection questions from your candidates or components. A public decision route answers whatever questions it is sent, unless the server pins them. To pin them, build the same schema on the server with `createSelectionSchema` from `@hashbrownai/core`, and pass it to the adapter's `schema` option:
+
+```ts
+import { createSelectionSchema } from '@hashbrownai/core';
+import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
+
+// Shared with the browser: the same ids and descriptions, in the same order.
+export const cards = [
+  { id: 'flight', description: 'The user asks about one aircraft' },
+  { id: 'airport', description: 'The user asks about an airport' },
+];
+
+const decision = await HashbrownTypeSafe.decide({
+  apiKey: process.env.TYPESAFE_API_KEY!,
+  model: 'jev-1.14.0',
+  schema: createSelectionSchema(cards, 'one'),
+  request,
+});
+```
+
+Use the candidate ids in candidates mode, or the exposed component names in narrowing mode. Pass the same `select` value the browser uses.
 
 ---
 

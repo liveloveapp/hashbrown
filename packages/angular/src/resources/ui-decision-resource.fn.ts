@@ -17,11 +17,11 @@ import {
 } from '@angular/core';
 import {
   type Chat,
+  createSelectionSchema,
   type DecidableSchema,
   type Decision,
   s,
   type TransportOrFactory,
-  ɵcreateSelectionSchema,
   ɵisUiKit,
   ɵresolveSelection,
 } from '@hashbrownai/core';
@@ -93,6 +93,21 @@ export interface UiDecisionResourceBaseOptions {
   minConfidence?: number;
   /** Overrides the provider's decision transport for the selection. */
   transport?: Decision.Transport;
+  /**
+   * Context sent with the input, such as what the app does. Changing it asks
+   * again and resets the selection.
+   */
+  system?: ReactiveOption<string>;
+  /**
+   * `'shuffled'` varies the order of the options on every request, to spread
+   * the model's bias toward the first option. Defaults to `'declared'`.
+   */
+  optionOrder?: 'declared' | 'shuffled';
+  /**
+   * How long the input must stay unchanged, in milliseconds, before the
+   * selection is decided. Separate from `generate.debounce`.
+   */
+  debounce?: number;
 }
 
 /**
@@ -325,7 +340,7 @@ export function uiDecisionResource(
   const hasOptions = decisionOptions.length > 0;
   const optionIds = decisionOptions.map(({ id }) => id);
   const schema = hasOptions
-    ? ɵcreateSelectionSchema(decisionOptions, select)
+    ? createSelectionSchema(decisionOptions, select)
     : PLACEHOLDER_SCHEMA;
 
   const input = computed(() => options.input() ?? null);
@@ -333,6 +348,9 @@ export function uiDecisionResource(
     schema,
     input: computed(() => (hasOptions ? input() : null)),
     transport: options.transport,
+    system: options.system,
+    optionOrder: options.optionOrder,
+    debounce: options.debounce,
   });
 
   const selection = computed(() => {

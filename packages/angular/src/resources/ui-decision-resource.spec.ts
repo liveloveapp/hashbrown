@@ -591,3 +591,81 @@ test('uiDecisionResource narrowing creates phase 2 under the calling node inject
   expect(fixture.componentInstance.resource.isDeciding()).toBe(false);
   expect(seen).toEqual(['from-component']);
 });
+
+test('uiDecisionResource sends system with the input to the selection decision', async () => {
+  trackCompletions();
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+  configure(fake.transport);
+
+  const ref = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('show KSFO'),
+      system: 'You pick cards in a flight-tracking app.',
+      candidates,
+      select: 'one',
+    }),
+  );
+  await settle();
+
+  expect(ref.ids()).toEqual(['airport']);
+  expect(fake.calls[0].request.state).toEqual({
+    system: 'You pick cards in a flight-tracking app.',
+    input: 'show KSFO',
+  });
+});
+
+test("uiDecisionResource shuffles the selection options with optionOrder: 'shuffled'", async () => {
+  trackCompletions();
+  const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+  configure(fake.transport);
+
+  try {
+    TestBed.runInInjectionContext(() =>
+      uiDecisionResource({
+        input: signal('show KSFO'),
+        optionOrder: 'shuffled',
+        candidates,
+        select: 'one',
+      }),
+    );
+    await settle();
+  } finally {
+    random.mockRestore();
+  }
+
+  const question = fake.calls[0].request.questions['pick'] as {
+    options: Record<string, string | null>;
+  };
+  expect(Object.keys(question.options)).toEqual([
+    'airport',
+    'weather',
+    'flight',
+  ]);
+});
+
+test('uiDecisionResource debounces the selection decision with debounce', async () => {
+  trackCompletions();
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+  configure(fake.transport);
+  const input = signal('show');
+
+  const ref = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({ input, debounce: 50, candidates, select: 'one' }),
+  );
+  TestBed.tick();
+  input.set('show KSFO');
+  TestBed.tick();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  await settle();
+
+  expect(ref.ids()).toEqual(['airport']);
+  expect(fake.calls).toHaveLength(1);
+  expect(fake.calls[0].request.state).toBe('show KSFO');
+});

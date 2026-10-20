@@ -11,7 +11,21 @@ const MIN_PROBABILITY = 0.5;
  * Builds the decidable schema for selecting among UI options.
  *
  * `'one'` produces a single enumeration (`pick`) carrying each option's
- * description; `{ max }` produces one boolean per option id.
+ * description; `{ max }` produces one boolean per option id. This is the
+ * schema `useUiDecision` and `uiDecisionResource` ask, so a server can pass
+ * it to a decision adapter's `schema` option to pin UI selection questions.
+ * Use the same ids and descriptions, in the same order: candidate ids in
+ * candidates mode, exposed component names in narrowing mode.
+ *
+ * @example
+ * ```ts
+ * const cards = [
+ *   { id: 'flight', description: 'The user asks about one aircraft' },
+ *   { id: 'airport', description: 'The user asks about an airport' },
+ * ];
+ * // On the server:
+ * HashbrownTypeSafe.decide({ ..., schema: createSelectionSchema(cards, 'one') });
+ * ```
  *
  * @param options - The selectable options.
  * @param select - How many options may be selected.

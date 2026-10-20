@@ -2,11 +2,11 @@
 /* eslint-disable no-redeclare -- the core rule (the one enabled here) flags TypeScript overload signatures of useUiDecision */
 import {
   type Chat,
+  createSelectionSchema,
   type DecidableSchema,
   type Decision,
   s,
   type TransportOrFactory,
-  ɵcreateSelectionSchema,
   ɵisUiKit,
   ɵresolveSelection,
 } from '@hashbrownai/core';
@@ -50,6 +50,21 @@ export interface UseUiDecisionBaseOptions {
   minConfidence?: number;
   /** Overrides the provider's decision transport for the selection. */
   transport?: Decision.Transport;
+  /**
+   * Context sent with the input, such as what the app does. Changing it asks
+   * again.
+   */
+  system?: string;
+  /**
+   * `'shuffled'` varies the order of the options on every request, to spread
+   * the model's bias toward the first option. Defaults to `'declared'`.
+   */
+  optionOrder?: 'declared' | 'shuffled';
+  /**
+   * How long the input must stay unchanged, in milliseconds, before the
+   * selection is decided. Separate from `generate.debounceTime`.
+   */
+  debounceTime?: number;
 }
 
 /**
@@ -233,7 +248,14 @@ export function useUiDecision(
 export function useUiDecision(
   options: UseUiDecisionOptions,
 ): UseUiDecisionCandidatesResult | UseUiDecisionNarrowingResult {
-  const { select, minConfidence, transport } = options;
+  const {
+    select,
+    minConfidence,
+    transport,
+    system,
+    optionOrder,
+    debounceTime,
+  } = options;
   const candidates = options.candidates;
   const isCandidates = candidates !== undefined;
   const components = isCandidates ? NO_COMPONENTS : options.components;
@@ -259,7 +281,7 @@ export function useUiDecision(
     };
     return parsed.options.length === 0
       ? null
-      : ɵcreateSelectionSchema(parsed.options, parsed.select);
+      : createSelectionSchema(parsed.options, parsed.select);
   }, [optionsKey]);
   const hasOptions = schema !== null;
 
@@ -267,6 +289,9 @@ export function useUiDecision(
     schema: schema ?? PLACEHOLDER_SCHEMA,
     input: hasOptions ? input : null,
     transport,
+    system,
+    optionOrder,
+    debounceTime,
   });
 
   const selectKey = JSON.stringify(select);

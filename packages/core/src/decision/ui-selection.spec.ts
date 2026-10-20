@@ -3,6 +3,7 @@ import { decodeDecision } from './decode-decision';
 import type { DecidableSchema } from './decidable-schema';
 import type { Result } from './decision.types';
 import { DecisionSchemaError } from './errors';
+import * as publicApi from '../public_api';
 import { createSelectionSchema, resolveSelection } from './ui-selection';
 
 const options = [
@@ -291,4 +292,15 @@ test('never drops an option', () => {
     many.map((o) => o.id),
   );
   expect(Object.keys(multi)).toEqual(many.map((o) => o.id));
+});
+
+test('createSelectionSchema is public, so a server can pin selection questions', () => {
+  const client = compileDecision(createSelectionSchema(options, { max: 2 }));
+
+  const server = compileDecision(
+    publicApi.createSelectionSchema(options, { max: 2 }),
+  );
+
+  expect(server).toEqual(client);
+  expect('ɵcreateSelectionSchema' in publicApi).toBe(false);
 });

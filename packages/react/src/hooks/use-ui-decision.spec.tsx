@@ -490,3 +490,78 @@ test('useUiDecision candidates with no candidates renders nothing', async () => 
   expect(result.current.error).toBeUndefined();
   expect(fake.calls).toHaveLength(0);
 });
+
+test('useUiDecision sends system with the input to the selection decision', async () => {
+  withRealCompletion();
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+
+  const { result } = renderHook(
+    () =>
+      useUiDecision({
+        input: 'show KSFO',
+        system: 'You pick cards in a flight-tracking app.',
+        candidates,
+        select: 'one',
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(result.current.ids).toEqual(['airport']));
+
+  expect(fake.calls[0].request.state).toEqual({
+    system: 'You pick cards in a flight-tracking app.',
+    input: 'show KSFO',
+  });
+});
+
+test("useUiDecision shuffles the selection options with optionOrder: 'shuffled'", async () => {
+  withRealCompletion();
+  const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+
+  try {
+    const { result } = renderHook(
+      () =>
+        useUiDecision({
+          input: 'show KSFO',
+          optionOrder: 'shuffled',
+          candidates,
+          select: 'one',
+        }),
+      { wrapper: wrapperFor(fake.transport) },
+    );
+    await waitFor(() => expect(result.current.ids).toEqual(['airport']));
+  } finally {
+    random.mockRestore();
+  }
+
+  const question = fake.calls[0].request.questions['pick'] as {
+    options: Record<string, string | null>;
+  };
+  expect(Object.keys(question.options)).toEqual([
+    'airport',
+    'weather',
+    'flight',
+  ]);
+});
+
+test('useUiDecision debounces the selection decision with debounceTime', async () => {
+  withRealCompletion();
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+
+  const { result, rerender } = renderHook(
+    ({ input }: { input: string }) =>
+      useUiDecision({ input, debounceTime: 50, candidates, select: 'one' }),
+    { wrapper: wrapperFor(fake.transport), initialProps: { input: 'show' } },
+  );
+  rerender({ input: 'show KSFO' });
+  await waitFor(() => expect(result.current.ids).toEqual(['airport']));
+
+  expect(fake.calls).toHaveLength(1);
+  expect(fake.calls[0].request.state).toBe('show KSFO');
+});
