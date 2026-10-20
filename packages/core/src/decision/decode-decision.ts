@@ -58,8 +58,34 @@ function nest(flat: Record<string, unknown>): Record<string, unknown> {
  * into nested objects mirroring the schema. No partial result is ever
  * returned.
  *
- * @param schema - The decidable object schema.
- * @param response - The untrusted response from a decision endpoint.
+ * @remarks
+ * Use it on the server when an agent tool, node or route calls a decision
+ * model directly, so the agent gets the same typed answers that
+ * `useDecision` and `decisionResource` give the browser.
+ *
+ * @example
+ * ```ts
+ * import { decodeDecision, s } from '@hashbrownai/core';
+ * import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
+ *
+ * const schema = s.object('Routing', {
+ *   needsHuman: s.boolean('Does the customer ask for a person?'),
+ * });
+ *
+ * async function routeTicket(state: { ticket: string }) {
+ *   const response = await HashbrownTypeSafe.decide({
+ *     apiKey: process.env['TYPESAFE_API_KEY'] ?? '',
+ *     model: 'jev-1.14.0',
+ *     schema,
+ *     request: { state },
+ *   });
+ *   const { value, meta } = decodeDecision(schema, response);
+ *   return { needsHuman: value.needsHuman, p: meta.needsHuman.probability };
+ * }
+ * ```
+ *
+ * @param schema - The decidable object schema the questions came from.
+ * @param response - The untrusted decision response envelope.
  * @returns The typed value and its mirrored metadata.
  * @throws DecisionResponseError when the response is malformed or mismatched.
  *
