@@ -444,8 +444,8 @@ function useChatNarrowing(
   const [pending, setPending] = useState<PendingSend | null>(null);
   const sent = useRef<PendingSend | null>(null);
   const narrowing = useRef<Narrowing | null>(null);
-  // The sent turn, and whether the chat was seen loading it.
-  const turn = useRef<{ started: boolean } | null>(null);
+  // The sent turn, keyed to the narrowing it was sent with.
+  const turn = useRef<Narrowing | null>(null);
   // Bumped after a send, so the next commit checks whether the turn started.
   const [sends, setSends] = useState(0);
 
@@ -478,11 +478,14 @@ function useChatNarrowing(
   // restored before the next one starts. A turn ends when the chat stops
   // loading after it started, or at the first commit after the send when
   // the chat never started it (it refused the message).
+  // A newer narrowing (a decided message waiting to be sent, or already
+  // sent) owns the components, so an older turn ending never restores over
+  // it.
   useEffect(() => {
     const current = turn.current;
-    if (!chat || !current) return;
-    if (chatIsLoading) {
-      current.started = true;
+    if (!chat || !current || chatIsLoading) return;
+    if (narrowing.current !== current) {
+      turn.current = null;
       return;
     }
     restore(chat);
@@ -505,7 +508,7 @@ function useChatNarrowing(
       controller.fail(toError(error));
       return;
     }
-    turn.current = { started: false };
+    turn.current = narrowing.current;
     setSends((count) => count + 1);
   }, [chat, chatComponents, controller, pending, restore]);
 

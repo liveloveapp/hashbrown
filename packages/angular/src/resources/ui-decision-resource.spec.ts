@@ -797,3 +797,38 @@ test('uiDecisionResource chat mode decision.stop() still sends, with every compo
   expect(narrowing.decisionError()).toBeUndefined();
   expect(narrowing.isDeciding()).toBe(false);
 });
+
+test('uiDecisionResource chat mode sends a narrowed message even when the previous turn ends as it is applied', async () => {
+  const deferred = deferredTransport();
+  configureChat(deferred.transport, chatTransport());
+  const components = signal<any[]>(chatComponents);
+  const loading = signal(false);
+  const sent: Array<{ content: unknown; components: unknown }> = [];
+  const fakeChat = {
+    components: components.asReadonly(),
+    isLoading: loading.asReadonly(),
+    setComponents: (next: any[]) => components.set(next),
+    sendMessage: (message: { content: unknown }) => {
+      sent.push({ content: message.content, components: components() });
+      loading.set(true);
+    },
+  };
+  const narrowing = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({ chat: fakeChat, select: 'one' }),
+  );
+  narrowing.sendMessage('first');
+  await settle();
+  deferred.resolve(pickResponse('Airport', 0.9, allNames));
+  await settle();
+  narrowing.sendMessage('second');
+  await settle();
+
+  deferred.resolve(pickResponse('Note', 0.9, allNames));
+  loading.set(false);
+  await settle();
+
+  expect(sent.map((entry) => entry.content)).toEqual(['first', 'second']);
+  expect(sent[1].components).toEqual([note]);
+  expect(loading()).toBe(true);
+  expect(components()).toEqual([note]);
+});

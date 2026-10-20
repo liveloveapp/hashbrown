@@ -831,3 +831,48 @@ test('useUiDecision chat mode decision.stop() still sends, with every component'
   expect(result.current.narrowing.decisionError).toBeUndefined();
   expect(result.current.narrowing.isDeciding).toBe(false);
 });
+
+test('useUiDecision chat mode sends a narrowed message even when the previous turn ends in the same commit', async () => {
+  const deferred = deferredTransport();
+  const sent: Array<{ content: unknown; components: unknown }> = [];
+  let setLoading: (loading: boolean) => void = () => undefined;
+  const { result } = renderHook(
+    () => {
+      const [components, setComponents] = useState<any[]>(chatComponents);
+      const [isLoading, setIsLoading] = useState(false);
+      setLoading = setIsLoading;
+      const chat: UiDecisionChat = {
+        components,
+        setComponents,
+        isLoading,
+        sendMessage: (message) => {
+          sent.push({ content: message.content, components });
+          setIsLoading(true);
+        },
+      };
+      return { chat, narrowing: useUiDecision({ chat, select: 'one' }) };
+    },
+    { wrapper: wrapperFor(deferred.transport) },
+  );
+  act(() => result.current.narrowing.sendMessage('first'));
+  await act(async () => {
+    deferred.resolve(pickResponse('Airport', 0.9, allNames));
+  });
+  await waitFor(() => expect(sent).toHaveLength(1));
+  act(() => result.current.narrowing.sendMessage('second'));
+  await waitFor(() => expect(deferred.calls).toHaveLength(2));
+
+  await act(async () => {
+    deferred.resolve(pickResponse('Note', 0.9, allNames));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setLoading(false);
+  });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+
+  expect(sent.map((entry) => entry.content)).toEqual(['first', 'second']);
+  expect(sent[1].components).toEqual([note]);
+  expect(result.current.chat.isLoading).toBe(true);
+  expect(result.current.chat.components).toEqual([note]);
+});
