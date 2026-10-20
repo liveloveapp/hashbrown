@@ -215,8 +215,9 @@ test('a running step shows as one shimmering line, then folds into a summary tha
 
 test('consecutive tool calls fold into one activity line in a polite live region', () => {
   const messages: UiChatMessage<Chat.AnyTool>[] = [
-    { role: 'user', content: 'Seattle?' },
+    { id: 'user-1', role: 'user', content: 'Seattle?' },
     {
+      id: 'assistant-1',
       role: 'assistant',
       toolCalls: [
         {
@@ -231,6 +232,7 @@ test('consecutive tool calls fold into one activity line in a polite live region
       ui: null,
     },
     {
+      id: 'assistant-2',
       role: 'assistant',
       toolCalls: [
         {

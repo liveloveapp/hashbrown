@@ -92,7 +92,7 @@ export interface StructuredChatResourceRef<
    *
    * @param message - The user message to send.
    */
-  sendMessage: (message: Chat.UserMessage) => void;
+  sendMessage: (message: Chat.UserMessageInput) => void;
 
   /**
    * Cause current messages to be resent.  Can be used after an error in chat.
@@ -104,7 +104,7 @@ export interface StructuredChatResourceRef<
    *
    * @param messages - The new array of chat messages.
    */
-  setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
+  setMessages: (messages: Chat.MessageInput<Output, Tools>[]) => void;
 
   /**
    * Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed.
@@ -158,7 +158,7 @@ export interface StructuredChatResourceOptions<
   /**
    * The initial messages for the structured chat resource.
    */
-  messages?: Chat.Message<Output, Tools>[];
+  messages?: Chat.MessageInput<Output, Tools>[];
 
   /** The initial shared agent state. */
   state?: State;
@@ -412,7 +412,7 @@ export function structuredChatResource<
     );
   }
 
-  function sendMessage(message: Chat.UserMessage) {
+  function sendMessage(message: Chat.UserMessageInput) {
     syncLatestSchema();
     runtime.sendMessage(message);
   }
@@ -422,7 +422,7 @@ export function structuredChatResource<
     runtime.resendMessages();
   }
 
-  function setMessages(messages: Chat.Message<Output, Tools>[]) {
+  function setMessages(messages: Chat.MessageInput<Output, Tools>[]) {
     syncLatestSchema();
     runtime.setMessages(messages);
   }

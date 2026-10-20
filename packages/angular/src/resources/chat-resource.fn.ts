@@ -83,14 +83,14 @@ export interface ChatResourceRef<
    *
    * @param message - The user message to send.
    */
-  sendMessage: (message: Chat.UserMessage) => void;
+  sendMessage: (message: Chat.UserMessageInput) => void;
 
   /**
    * Replace the current chat message history.
    *
    * @param messages - The new array of chat messages.
    */
-  setMessages: (messages: Chat.Message<string, Tools>[]) => void;
+  setMessages: (messages: Chat.MessageInput<string, Tools>[]) => void;
 
   /**
    * Stops any currently-streaming message.
@@ -151,7 +151,8 @@ export interface ChatResourceOptions<
    * @typeParam Tools - The set of tool definitions available to the chat.
    */
   messages?:
-    Chat.Message<string, Tools>[] | Signal<Chat.Message<string, Tools>[]>;
+    | Chat.MessageInput<string, Tools>[]
+    | Signal<Chat.MessageInput<string, Tools>[]>;
 
   /** The initial shared agent state. */
   state?: State;
@@ -375,11 +376,11 @@ export function chatResource<Tools extends Chat.AnyTool, State = unknown>(
     );
   }
 
-  function sendMessage(message: Chat.UserMessage) {
+  function sendMessage(message: Chat.UserMessageInput) {
     runtime.sendMessage(message);
   }
 
-  function setMessages(messages: Chat.Message<string, Tools>[]) {
+  function setMessages(messages: Chat.MessageInput<string, Tools>[]) {
     runtime.setMessages(messages);
   }
 

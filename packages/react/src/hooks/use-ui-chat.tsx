@@ -135,7 +135,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool, State = unknown> {
    * The initial messages for the chat.
    * default: []
    */
-  messages?: Chat.Message<UiChatSchema, Tools>[];
+  messages?: Chat.MessageInput<UiChatSchema, Tools>[];
 
   /**
    * The initial shared agent state.

@@ -107,6 +107,17 @@ function normalizeAssistantContent(
 }
 
 /**
+ * Exposes the canonical id of a user or assistant message on its view.
+ *
+ * Projected messages always carry their canonical AG-UI id, so the view's
+ * `id` is always a string in the store. The id is left off only for detached
+ * internal messages that were never projected.
+ */
+function toViewId(id: string | undefined): { readonly id: string } {
+  return (id === undefined ? {} : { id }) as { readonly id: string };
+}
+
+/**
  * Converts a view message to an internal message.
  *
  * @param message - The view message to convert.
@@ -114,12 +125,13 @@ function normalizeAssistantContent(
  * @internal
  */
 export function toInternalMessagesFromView(
-  message: Chat.AnyMessage,
+  message: Chat.AnyMessageInput,
 ): Chat.Internal.Message[] {
   switch (message.role) {
     case 'user': {
       return [
         {
+          ...(message.id !== undefined ? { id: message.id } : {}),
           role: 'user',
           content: message.content,
         },
@@ -138,6 +150,7 @@ export function toInternalMessagesFromView(
       const reasoning = toInternalReasoning(message);
       return [
         {
+          ...(message.id !== undefined ? { id: message.id } : {}),
           role: 'assistant',
           content,
           contentResolved,
@@ -237,6 +250,7 @@ export function toViewMessagesFromInternal(
     case 'user': {
       return [
         {
+          ...toViewId(message.id),
           role: 'user',
           content: message.content,
         },
@@ -258,6 +272,7 @@ export function toViewMessagesFromInternal(
 
       return [
         {
+          ...toViewId(message.id),
           role: 'assistant',
           content,
           ...(message.encryptedValue !== undefined
@@ -570,7 +585,7 @@ export function toInternalToolCallsFromApiMessages(
  * @internal
  */
 export function toInternalToolCallsFromView(
-  messages: Chat.AnyMessage[],
+  messages: Chat.AnyMessageInput[],
 ): Chat.Internal.ToolCall[] {
   return messages.flatMap((message): Chat.Internal.ToolCall[] => {
     if (message.role !== 'assistant') {

@@ -160,12 +160,14 @@ export const useUiCompletion = <
       return null;
     }
 
+    // A completion's output is not a chat message, so it has no canonical
+    // AG-UI id.
     return {
       role: 'assistant' as const,
       content: rawOutput,
       toolCalls: [],
       ui: rawOutput ? buildContent(rawOutput) : null,
-    } as UiAssistantMessage<Tools>;
+    } as Omit<UiAssistantMessage<Tools>, 'id'> as UiAssistantMessage<Tools>;
   }, [rawOutput, buildContent]);
 
   return {

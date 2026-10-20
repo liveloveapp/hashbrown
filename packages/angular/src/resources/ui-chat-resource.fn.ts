@@ -63,7 +63,7 @@ export interface UiChatResourceOptions<
    *
    * @typeParam Tools - The set of tool definitions available to the chat.
    */
-  messages?: Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[];
+  messages?: Chat.MessageInput<s.Infer<UiChatMessageOutput>, Tools>[];
 
   /** The initial shared agent state. */
   state?: State;
@@ -149,11 +149,11 @@ export interface UiChatResourceRef<
    *
    * @param message - The user message to send.
    */
-  sendMessage: (message: Chat.UserMessage) => void;
+  sendMessage: (message: Chat.UserMessageInput) => void;
 
   /** Replace the current chat history. */
   setMessages: (
-    messages: Chat.Message<s.Infer<UiChatMessageOutput>, Tools>[],
+    messages: Chat.MessageInput<s.Infer<UiChatMessageOutput>, Tools>[],
   ) => void;
 
   /** Remove the last assistant response and resend the preceding history. */

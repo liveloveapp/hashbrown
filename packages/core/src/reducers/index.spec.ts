@@ -349,8 +349,8 @@ test('reconciles an earlier snapshot assistant before switching the live stream'
   );
 
   expect(selectViewMessages(store.read((state) => state))).toEqual([
-    { role: 'assistant', content: 'first!', toolCalls: [] },
-    { role: 'assistant', content: 'second', toolCalls: [] },
+    { id: 'assistant-a', role: 'assistant', content: 'first!', toolCalls: [] },
+    { id: 'assistant-b', role: 'assistant', content: 'second', toolCalls: [] },
   ]);
 
   store.dispatch(
@@ -371,9 +371,9 @@ test('reconciles an earlier snapshot assistant before switching the live stream'
   const state = store.read((current) => current);
 
   expect(selectViewMessages(state)).toEqual([
-    { role: 'assistant', content: 'first!', toolCalls: [] },
-    { role: 'assistant', content: 'second', toolCalls: [] },
-    { role: 'assistant', content: 'new', toolCalls: [] },
+    { id: 'assistant-a', role: 'assistant', content: 'first!', toolCalls: [] },
+    { id: 'assistant-b', role: 'assistant', content: 'second', toolCalls: [] },
+    { id: 'assistant-c', role: 'assistant', content: 'new', toolCalls: [] },
   ]);
   expect(state.streamingMessage.message).toMatchObject({
     role: 'assistant',
@@ -2280,6 +2280,7 @@ test('reconciles a tool stream to an earlier snapshotted assistant', () => {
 
   expect(selectViewMessages(store.read((state) => state))).toEqual([
     {
+      id: 'assistant-a',
       role: 'assistant',
       content: 'first',
       toolCalls: [
@@ -2293,7 +2294,7 @@ test('reconciles a tool stream to an earlier snapshotted assistant', () => {
         },
       ],
     },
-    { role: 'assistant', content: 'second', toolCalls: [] },
+    { id: 'assistant-b', role: 'assistant', content: 'second', toolCalls: [] },
   ]);
   store.dispatch(
     apiActions.generateMessageSuccess({
@@ -2380,9 +2381,10 @@ test('reconciles a tool stream to a new declared assistant parent', () => {
   );
 
   expect(selectViewMessages(store.read((state) => state))).toEqual([
-    { role: 'assistant', content: 'first', toolCalls: [] },
-    { role: 'assistant', content: 'second', toolCalls: [] },
+    { id: 'assistant-a', role: 'assistant', content: 'first', toolCalls: [] },
+    { id: 'assistant-b', role: 'assistant', content: 'second', toolCalls: [] },
     {
+      id: 'assistant-c',
       role: 'assistant',
       content: '',
       toolCalls: [
@@ -3761,8 +3763,9 @@ test('combined root preserves snapshot assistant and tool-call baselines through
     },
   ];
   expect(selectViewMessages(withToolDelta)).toEqual([
-    { role: 'user', content: 'hello' },
+    { id: 'user-1', role: 'user', content: 'hello' },
     {
+      id: 'assistant-1',
       role: 'assistant',
       content: 'snapshot stream',
       toolCalls: [],
@@ -3787,8 +3790,9 @@ test('combined root preserves snapshot assistant and tool-call baselines through
   );
 
   expect(selectViewMessages(succeeded)).toEqual([
-    { role: 'user', content: 'hello' },
+    { id: 'user-1', role: 'user', content: 'hello' },
     {
+      id: 'assistant-1',
       role: 'assistant',
       content: 'snapshot stream',
       toolCalls: [],
@@ -5633,7 +5637,7 @@ test('runtime keeps local tool-call values lossless through initialization and r
       handler: async () => undefined,
     },
   ];
-  const initialMessages: Chat.Message<string, Chat.AnyTool>[] = [
+  const initialMessages: Chat.MessageInput<string, Chat.AnyTool>[] = [
     {
       role: 'assistant',
       content: 'initial',
@@ -5669,7 +5673,7 @@ test('runtime keeps local tool-call values lossless through initialization and r
   const replacementValue = { temp: 24 };
   const replacementReason = new Error('replacement failed');
   const sentArgs = { city: 'Berlin' };
-  const replacementMessages: Chat.Message<string, Chat.AnyTool>[] = [
+  const replacementMessages: Chat.MessageInput<string, Chat.AnyTool>[] = [
     {
       role: 'assistant',
       content: 'replacement',

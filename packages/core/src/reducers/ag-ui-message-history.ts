@@ -15,9 +15,15 @@ export interface LowerCanonicalMessagesOptions {
   readonly createId: () => string;
 }
 
-/** Lowers Hashbrown view messages once at the runtime boundary. @internal */
+/**
+ * Lowers Hashbrown view messages once at the runtime boundary. A user or
+ * assistant message keeps its supplied `id`; `createId` mints one only when
+ * the id is absent.
+ *
+ * @internal
+ */
 export function lowerViewMessagesToAgUi(
-  messages: readonly Chat.AnyMessage[],
+  messages: readonly Chat.AnyMessageInput[],
   options: LowerCanonicalMessagesOptions,
 ): readonly Message[] {
   const lowered = messages.flatMap((message): readonly Message[] => {
@@ -28,14 +34,14 @@ export function lowerViewMessagesToAgUi(
     if (message.role === 'user') {
       return [
         {
-          id: options.createId(),
+          id: message.id ?? options.createId(),
           role: 'user',
           content: serializeContent(message.content),
         },
       ];
     }
 
-    const id = options.createId();
+    const id = message.id ?? options.createId();
     const reasoning =
       message.reasoningDetails ??
       (message.reasoning === undefined
@@ -101,7 +107,7 @@ export function lowerViewMessagesToAgUi(
 
 /** Pairs local view projections with the stable IDs assigned during lowering. @internal */
 export function ɵpairViewMessagesWithAgUi(
-  messages: readonly Chat.AnyMessage[],
+  messages: readonly Chat.AnyMessageInput[],
   canonicalMessages: readonly Readonly<Message>[],
 ): AgUiMessageProjection {
   let cursor = 0;

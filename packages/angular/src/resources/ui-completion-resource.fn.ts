@@ -190,12 +190,14 @@ export function uiCompletionResource<
 
       const tagNameRegistry = uiKit.tagNameRegistry ?? {};
 
+      // A completion's output is not a chat message, so it has no canonical
+      // AG-UI id.
       return {
         role: 'assistant',
         content,
         toolCalls: [],
         [TAG_NAME_REGISTRY]: tagNameRegistry,
-      };
+      } as Omit<UiAssistantMessage<Tools>, 'id'> as UiAssistantMessage<Tools>;
     },
     { debugName: options.debugName && `${options.debugName}.value` },
   );
