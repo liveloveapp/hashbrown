@@ -2,7 +2,11 @@ import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { Chat } from './models';
 import { type ChatRuntime, createChatRuntime } from './chat-runtime';
 import { s } from './schema';
-import type { Transport, TransportRequest } from './transport';
+import {
+  AgentRunError,
+  type Transport,
+  type TransportRequest,
+} from './transport';
 
 function successfulEvents(
   request: TransportRequest,
@@ -395,6 +399,49 @@ test('publishes rollback after a failed state synchronization attempt', async ()
     expect(runtime.error()).toBe(transportError);
   } finally {
     unsubscribe();
+    teardown();
+  }
+});
+
+test('exposes the RUN_ERROR code on the runtime error', async () => {
+  const send = jest.fn(async (request: TransportRequest) => {
+    const identity = {
+      threadId: request.input.threadId,
+      runId: request.input.runId,
+    };
+
+    return {
+      events: (async function* (): AsyncGenerator<AGUIEvent> {
+        yield { type: EventType.RUN_STARTED, ...identity };
+        yield {
+          type: EventType.RUN_ERROR,
+          message: 'rate limited',
+          code: 'hashbrown.decision.rate_limited',
+        };
+      })(),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    retries: 2,
+    system: 'test',
+    transport: { name: 'test', send },
+  });
+  const teardown = runtime.start();
+
+  try {
+    await flushTaskBoundary();
+    runtime.sendMessage({ role: 'user', content: 'Hello.' });
+    await waitForRuntimeIdle(runtime);
+
+    const error = runtime.error();
+    expect(error).toBeInstanceOf(AgentRunError);
+    expect((error as AgentRunError).code).toBe(
+      'hashbrown.decision.rate_limited',
+    );
+    expect(runtime.generatingError()).toBe(error);
+    expect(send).toHaveBeenCalledTimes(1);
+  } finally {
     teardown();
   }
 });

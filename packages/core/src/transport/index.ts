@@ -9,6 +9,7 @@ export type {
 } from './transport';
 export { resolveTransport } from './transport';
 export { TransportError } from './transport-error';
+export { AgentRunError } from './agent-run-error';
 export {
   HttpTransport,
   createHttpTransport,
