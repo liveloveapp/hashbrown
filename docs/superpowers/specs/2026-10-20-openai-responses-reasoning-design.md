@@ -1,6 +1,32 @@
 # OpenAI and Azure providers on the Responses API, with reasoning
 
-Status: design, awaiting approval (2026-10-20)
+Status: approved and implemented (2026-10-20)
+
+## Changes made during implementation
+
+The rest of this document is the approved design, unchanged. The decisions
+below override it where the two differ.
+
+- **Azure marker.** Azure writes and reads `metadata.azure`, not
+  `metadata.openai`. Encrypted reasoning is replayed only to the provider that
+  produced it.
+- **Reasoning-model check.** It excludes `-chat` variants such as
+  `gpt-5-chat-latest`.
+- **Dropped item ids.** When a turn's item ids are stripped, that turn's
+  reasoning items are dropped too.
+- **Text stays open across tool calls.** The assistant text message stays
+  open across tool calls, and `TEXT_MESSAGE_END` is emitted only at
+  `response.completed`. Core rejects reopening a finished text message.
+- **Incomplete streams fail.** A stream that ends without `response.completed`
+  produces `RUN_ERROR`.
+- **`reasoning: false`.** It only stops Hashbrown from requesting summaries. A
+  reasoning model may still return encrypted reasoning under `store: false`,
+  and that reasoning is still replayed.
+- **Azure examples.** They use `apiVersion: '2025-04-01-preview'`. The live
+  route remains unverified because the test resource no longer exists.
+- **Live tests.** They also require `HASHBROWN_LIVE_TESTS=1`, so nightly CI
+  never runs them.
+- **Changelog.** The 0.8 CHANGELOG entry belongs to the release-notes PR (#663).
 
 ## Intent
 
