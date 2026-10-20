@@ -79,9 +79,12 @@ await HashbrownTypeSafe.decide({ apiKey, model, schema, request });
 ```
 
 Without a `schema`, requests are validated (question shapes, at most 255 options
-per choice, 2 to 10 score levels, at most 64,000 characters of JSON) before any
-network call. Failures throw `DecisionError` with a `code` and an HTTP `status`.
-Requests answered with HTTP 429 or 529 are retried up to twice.
+per choice, 2 to 10 score levels) before any network call. Every request is
+capped at 256,000 characters of JSON (about Jev's 64k-token limit), or 1,048,000
+with `options.longContext`; `maxRequestChars` sets a lower cap. Failures throw
+`DecisionError` with a `code` and an HTTP `status`; for HTTP errors the message
+carries the vendor's error type and message. Requests answered with HTTP 429 or
+529 are retried up to twice.
 
 ## Vercel AI Gateway
 

@@ -200,11 +200,13 @@ await HashbrownTypeSafe.decide({
 
 The schema is your code, so it is checked when you call `decide`. An invalid schema (for example an unbounded score) rejects with the `DecisionSchemaError` from `@hashbrownai/core`, not a `DecisionError`. Treat it as a server error and don't send its details to the client.
 
-Without a `schema`, the request is validated before any network call: question shapes, at most 255 options per choice, 2 to 10 score levels, and at most 64,000 characters of JSON.
+Without a `schema`, the request is validated before any network call: question shapes, at most 255 options per choice, and 2 to 10 score levels.
+
+Every request is capped at 256,000 characters of JSON, about Jev's 64k-token limit, or 1,048,000 characters when it sets `options.longContext`. Pass `maxRequestChars` to set a lower cap for a public endpoint.
 
 ## Vercel AI Gateway
 
-Point `baseURL` at the Gateway and use your Gateway key. Nothing else changes.
+Point `baseURL` at the Gateway and use your Gateway key or a Vercel OIDC token. Nothing else changes. The Gateway serves requests only once your Vercel team has a credit card on file. Until then it answers HTTP 403, which surfaces as an `unauthorized` error whose message includes `customer_verification_required`.
 
 ```ts
 await HashbrownTypeSafe.decide({
@@ -225,13 +227,15 @@ Every failure caused by the client's request, TypeSafe, or the network throws a 
 
 The last two are server programming errors. Let them reach your error handler as HTTP 500, as the examples above do by rethrowing.
 
-| Code               | Meaning                                               |
-| ------------------ | ----------------------------------------------------- |
-| `invalid_request`  | The client's request is not valid.                    |
-| `unauthorized`     | TypeSafe rejected the API key.                        |
-| `rate_limited`     | TypeSafe is rate limiting. Retried twice before this. |
-| `upstream`         | TypeSafe or the network failed.                       |
-| `invalid_response` | TypeSafe answered with something unexpected.          |
+| Code               | Meaning                                                |
+| ------------------ | ------------------------------------------------------ |
+| `invalid_request`  | The client's request is not valid.                     |
+| `unauthorized`     | TypeSafe or the Gateway refused the request (401/403). |
+| `rate_limited`     | TypeSafe is rate limiting. Retried twice before this.  |
+| `upstream`         | TypeSafe or the network failed.                        |
+| `invalid_response` | TypeSafe answered with something unexpected.           |
+
+For HTTP errors, the message includes the status and the vendor's own error type and message, such as `TypeSafe responded with status 403 (customer_verification_required): …`. Log it on the server. Send clients only the `code` and `status`.
 
 Responses with HTTP 429 or 529 are retried up to twice.
 
