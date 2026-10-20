@@ -198,6 +198,8 @@ await HashbrownTypeSafe.decide({
 });
 ```
 
+For UI selection, build the schema with `createSelectionSchema` from the same candidates, components or UI kits the browser passes. See [UI Selection](/docs/angular/recipes/ui-selection).
+
 The schema is your code, so it is checked when you call `decide`. An invalid schema (for example an unbounded score) rejects with the `DecisionSchemaError` from `@hashbrownai/core`, not a `DecisionError`. Treat it as a server error and don't send its details to the client.
 
 Without a `schema`, the request is validated before any network call: question shapes, at most 255 options per choice, and 2 to 10 score levels.

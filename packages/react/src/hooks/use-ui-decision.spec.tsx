@@ -1,11 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
-import { type Decision, ɵcreateUiKit, ɵisUiKit } from '@hashbrownai/core';
+import {
+  createSelectionSchema,
+  type Decision,
+  DecisionSchemaError,
+  ɵcompileDecision,
+  ɵcreateUiKit,
+} from '@hashbrownai/core';
 import { HashbrownProvider } from '../hashbrown-provider';
 import { exposeComponent } from '../expose-component.fn';
 import { useUiCompletion } from './use-ui-completion';
-import { useUiDecision } from './use-ui-decision';
+import {
+  type UiDecisionGenerateOptions,
+  useUiDecision,
+} from './use-ui-decision';
 
 vi.mock('./use-ui-completion', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./use-ui-completion')>();
@@ -234,14 +243,22 @@ test('useUiDecision candidates mode keeps the UI completion idle without request
   }
 });
 
+const Note = () => null;
+const Memo = () => null;
+const Row = () => null;
+const Table = () => null;
+const note = exposeComponent(Note, { name: 'Note', description: 'A note' });
+const memo = exposeComponent(Memo, { name: 'Memo', description: 'A memo' });
+const row = exposeComponent(Row, { name: 'Row', description: 'A table row' });
+const table = exposeComponent(Table, {
+  name: 'Table',
+  description: 'A table of rows',
+  children: [row],
+});
+
 test('useUiDecision narrowing passes only the chosen components and waits for phase 1', async () => {
   const setComponents = withFakeCompletion();
-  const Note = () => null;
-  const kit = ɵcreateUiKit<any>({
-    components: [
-      exposeComponent(Note, { name: 'Note', description: 'A note' }),
-    ],
-  });
+  const kit = ɵcreateUiKit<any>({ components: [note] });
   const deferred = deferredTransport();
 
   const { result } = renderHook(
@@ -261,28 +278,176 @@ test('useUiDecision narrowing passes only the chosen components and waits for ph
   for (const [options] of useUiCompletionMock.mock.calls) {
     expect(options.input).toBeNull();
   }
-  const questions = JSON.stringify(deferred.calls[0].request.questions);
-  expect(questions).toContain('Airport');
-  expect(questions).not.toContain('Note');
 
   await act(async () => {
     deferred.resolve(
-      pickResponse('Airport', 0.9, ['Flight', 'Airport', 'Weather']),
+      pickResponse('Airport', 0.9, ['Flight', 'Note', 'Airport', 'Weather']),
     );
   });
   await waitFor(() => expect(setComponents).toHaveBeenCalled());
 
   expect(setComponents).toHaveBeenCalledTimes(1);
-  const chosen = setComponents.mock.calls[0][0];
-  expect(chosen).toHaveLength(2);
-  expect(chosen[0]).toBe(kit);
-  expect(chosen[1]).toBe(airport);
-  expect(ɵisUiKit(chosen[0])).toBe(true);
+  expect(setComponents.mock.calls[0][0]).toEqual([airport]);
+  expect(setComponents.mock.calls[0][0][0]).toBe(airport);
   const lastOptions = useUiCompletionMock.mock.lastCall?.[0];
   expect(lastOptions?.input).toBe('show KSFO');
   expect(lastOptions?.system).toBe('Render it');
   expect(result.current.isDeciding).toBe(false);
   expect(result.current.decisionError).toBeUndefined();
+});
+
+test('useUiDecision narrowing with a kit decides over the kit members', async () => {
+  withFakeCompletion();
+  const kit = ɵcreateUiKit<any>({ components: [note, table] });
+  const components = [flight, kit];
+  const deferred = deferredTransport();
+
+  renderHook(
+    () =>
+      useUiDecision({
+        input: 'show KSFO',
+        components,
+        select: 'one',
+        generate: { system: 'Render it' },
+      }),
+    { wrapper: wrapperFor(deferred.transport) },
+  );
+  await waitFor(() => expect(deferred.calls).toHaveLength(1));
+
+  const pick = deferred.calls[0].request.questions['pick'] as {
+    options: Record<string, string | null>;
+  };
+  expect(Object.keys(pick.options)).toEqual(['Flight', 'Note', 'Table', 'Row']);
+  expect(JSON.stringify(deferred.calls[0].request.questions)).toBe(
+    JSON.stringify(ɵcompileDecision(createSelectionSchema(components, 'one'))),
+  );
+});
+
+test('useUiDecision narrowing passes chosen kit members with their declared children', async () => {
+  const setComponents = withFakeCompletion();
+  const kit = ɵcreateUiKit<any>({ components: [note, table, memo] });
+  const fake = createFakeTransport(() =>
+    multiResponse({ Flight: 0.1, Note: 0.2, Table: 0.9, Row: 0.1, Memo: 0.8 }),
+  );
+
+  renderHook(
+    () =>
+      useUiDecision({
+        input: 'list the rows',
+        components: [flight, kit],
+        select: { max: 2 },
+        generate: { system: 'Render it' },
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(setComponents).toHaveBeenCalled());
+
+  const chosen = setComponents.mock.calls[0][0];
+  expect(chosen).toEqual([table, row, memo]);
+  expect(chosen[0]).toBe(table);
+  expect(chosen[1]).toBe(row);
+  expect(useUiCompletionMock.mock.lastCall?.[0].input).toBe('list the rows');
+});
+
+test('useUiDecision narrowing with only a UI kit decides over its members', async () => {
+  const setComponents = withFakeCompletion();
+  const kit = ɵcreateUiKit<any>({ components: [note, memo] });
+  const fake = createFakeTransport(() =>
+    pickResponse('Memo', 0.9, ['Note', 'Memo']),
+  );
+
+  const { result } = renderHook(
+    () =>
+      useUiDecision({
+        input: 'hello',
+        components: [kit],
+        select: 'one',
+        generate: { system: 'Render it' },
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(setComponents).toHaveBeenCalled());
+
+  expect(fake.calls).toHaveLength(1);
+  expect(setComponents.mock.calls[0][0]).toEqual([memo]);
+  expect(result.current.decisionError).toBeUndefined();
+  expect(useUiCompletionMock.mock.lastCall?.[0].input).toBe('hello');
+});
+
+test('useUiDecision narrowing with low confidence passes the original components, kit intact', async () => {
+  const setComponents = withFakeCompletion();
+  const kit = ɵcreateUiKit<any>({ components: [note, table] });
+  const components = [flight, kit];
+  const fake = createFakeTransport(() =>
+    pickResponse('Table', 0.4, ['Flight', 'Note', 'Table', 'Row']),
+  );
+
+  const { result } = renderHook(
+    () =>
+      useUiDecision({
+        input: 'something',
+        components,
+        select: 'one',
+        minConfidence: 0.7,
+        generate: { system: 'Render it' },
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(setComponents).toHaveBeenCalled());
+
+  const passed = setComponents.mock.calls[0][0];
+  expect(passed).toEqual(components);
+  expect(passed[1]).toBe(kit);
+  expect(result.current.decisionError).toBeUndefined();
+});
+
+test('useUiDecision narrowing decision error passes the original components, kit intact', async () => {
+  const setComponents = withFakeCompletion();
+  const kit = ɵcreateUiKit<any>({ components: [note, table] });
+  const components = [flight, kit];
+  const failure = new Error('decide failed');
+  const fake = createFakeTransport(() => Promise.reject(failure));
+
+  const { result } = renderHook(
+    () =>
+      useUiDecision({
+        input: 'something',
+        components,
+        select: { max: 2 },
+        generate: { system: 'Render it' },
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(setComponents).toHaveBeenCalled());
+
+  const passed = setComponents.mock.calls[0][0];
+  expect(passed).toEqual(components);
+  expect(passed[1]).toBe(kit);
+  expect(result.current.decisionError).toBe(failure);
+});
+
+test('useUiDecision narrowing with no components skips the decision', async () => {
+  const setComponents = withFakeCompletion();
+  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
+
+  const { result } = renderHook(
+    () =>
+      useUiDecision({
+        input: 'hello',
+        components: [],
+        select: 'one',
+        generate: { system: 'Render it' },
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(setComponents).toHaveBeenCalled());
+
+  expect(setComponents.mock.calls[0][0]).toEqual([]);
+  expect(fake.calls).toHaveLength(0);
+  expect(result.current.isDeciding).toBe(false);
+  expect(result.current.decisionError).toBeUndefined();
+  expect(result.current.decision.isLoading).toBe(false);
+  expect(useUiCompletionMock.mock.lastCall?.[0].input).toBe('hello');
 });
 
 test('useUiDecision narrowing with low confidence passes all components', async () => {
@@ -441,36 +606,6 @@ test('useUiDecision narrowing settles with every component after decision.stop()
   expect(useUiCompletionMock.mock.lastCall?.[0].input).toBe('two');
 });
 
-test('useUiDecision narrowing with only UI kits skips the decision', async () => {
-  const setComponents = withFakeCompletion();
-  const Note = () => null;
-  const kit = ɵcreateUiKit<any>({
-    components: [
-      exposeComponent(Note, { name: 'Note', description: 'A note' }),
-    ],
-  });
-  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
-
-  const { result } = renderHook(
-    () =>
-      useUiDecision({
-        input: 'hello',
-        components: [kit],
-        select: 'one',
-        generate: { system: 'Render it' },
-      }),
-    { wrapper: wrapperFor(fake.transport) },
-  );
-  await waitFor(() => expect(setComponents).toHaveBeenCalled());
-
-  expect(setComponents.mock.calls[0][0]).toEqual([kit]);
-  expect(fake.calls).toHaveLength(0);
-  expect(result.current.isDeciding).toBe(false);
-  expect(result.current.decisionError).toBeUndefined();
-  expect(result.current.decision.isLoading).toBe(false);
-  expect(useUiCompletionMock.mock.lastCall?.[0].input).toBe('hello');
-});
-
 test('useUiDecision candidates with no candidates renders nothing', async () => {
   withRealCompletion();
   const fake = createFakeTransport(() =>
@@ -489,4 +624,291 @@ test('useUiDecision candidates with no candidates renders nothing', async () => 
   expect(result.current.ui).toEqual([]);
   expect(result.current.error).toBeUndefined();
   expect(fake.calls).toHaveLength(0);
+});
+
+test('useUiDecision sends system with the input to the selection decision', async () => {
+  withRealCompletion();
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+
+  const { result } = renderHook(
+    () =>
+      useUiDecision({
+        input: 'show KSFO',
+        system: 'You pick cards in a flight-tracking app.',
+        candidates,
+        select: 'one',
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(result.current.ids).toEqual(['airport']));
+
+  expect(fake.calls[0].request.state).toEqual({
+    system: 'You pick cards in a flight-tracking app.',
+    input: 'show KSFO',
+  });
+});
+
+test("useUiDecision shuffles the selection options with optionOrder: 'shuffled'", async () => {
+  withRealCompletion();
+  const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+
+  try {
+    const { result } = renderHook(
+      () =>
+        useUiDecision({
+          input: 'show KSFO',
+          optionOrder: 'shuffled',
+          candidates,
+          select: 'one',
+        }),
+      { wrapper: wrapperFor(fake.transport) },
+    );
+    await waitFor(() => expect(result.current.ids).toEqual(['airport']));
+  } finally {
+    random.mockRestore();
+  }
+
+  const question = fake.calls[0].request.questions['pick'] as {
+    options: Record<string, string | null>;
+  };
+  expect(Object.keys(question.options)).toEqual([
+    'airport',
+    'weather',
+    'flight',
+  ]);
+});
+
+test('useUiDecision debounces the selection decision with debounceTime', async () => {
+  withRealCompletion();
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+
+  const { result, rerender } = renderHook(
+    ({ input }: { input: string }) =>
+      useUiDecision({ input, debounceTime: 50, candidates, select: 'one' }),
+    { wrapper: wrapperFor(fake.transport), initialProps: { input: 'show' } },
+  );
+  rerender({ input: 'show KSFO' });
+  await waitFor(() => expect(result.current.ids).toEqual(['airport']));
+
+  expect(fake.calls).toHaveLength(1);
+  expect(fake.calls[0].request.state).toBe('show KSFO');
+});
+
+test('useUiDecision narrowing waits for the new decision after system changes', async () => {
+  const setComponents = withFakeCompletion();
+  const ids = ['Flight', 'Airport', 'Weather'];
+  const fake = createFakeTransport(() => pickResponse('Flight', 0.9, ids));
+  const { rerender } = renderHook(
+    ({ system }: { system: string }) =>
+      useUiDecision({
+        input: 'show N123',
+        system,
+        debounceTime: 20,
+        components: [flight, airport, weather],
+        select: 'one',
+        generate: { system: 'Render it' },
+      }),
+    {
+      initialProps: { system: 'First context' },
+      wrapper: wrapperFor(fake.transport),
+    },
+  );
+  await waitFor(() => expect(setComponents).toHaveBeenCalledTimes(1));
+
+  rerender({ system: 'Second context' });
+  await waitFor(() => expect(fake.calls).toHaveLength(2));
+  await waitFor(() => expect(setComponents).toHaveBeenCalledTimes(2));
+
+  for (const [chosen] of setComponents.mock.calls) {
+    expect(chosen).toEqual([flight]);
+  }
+  expect(fake.calls[1].request.state).toEqual({
+    system: 'Second context',
+    input: 'show N123',
+  });
+});
+
+test('useUiDecision narrowing falls back when a kit cannot be decided over', () => {
+  const setComponents = withFakeCompletion();
+  const Bad = () => null;
+  const kit = ɵcreateUiKit<any>({
+    components: [
+      note,
+      exposeComponent(Bad, { name: 'Bad.Name', description: 'Invalid id' }),
+    ],
+  });
+  const components = [kit];
+  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
+
+  const { result } = renderHook(
+    () =>
+      useUiDecision({
+        input: 'hello',
+        components,
+        select: 'one',
+        generate: { system: 'Render it' },
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+
+  expect(setComponents.mock.calls[0][0]).toBe(components);
+  expect(result.current.decisionError).toBeInstanceOf(DecisionSchemaError);
+  expect(result.current.isDeciding).toBe(false);
+  expect(fake.calls).toHaveLength(0);
+  expect(useUiCompletionMock.mock.lastCall?.[0].input).toBe('hello');
+});
+
+test('useUiDecision narrowing asks byte-identical questions to createSelectionSchema with the same components', async () => {
+  withFakeCompletion();
+  const kit = ɵcreateUiKit<any>({ components: [table, note] });
+  const components = [flight, kit, airport, flight];
+  const fake = createFakeTransport(() =>
+    multiResponse({
+      Flight: 0.9,
+      Table: 0.1,
+      Row: 0.1,
+      Note: 0.1,
+      Airport: 0.1,
+    }),
+  );
+
+  renderHook(
+    () =>
+      useUiDecision({
+        input: 'show KSFO',
+        components,
+        select: { max: 2 },
+        generate: { system: 'Render it' },
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(fake.calls).toHaveLength(1));
+
+  const pinned = ɵcompileDecision(
+    createSelectionSchema(components, { max: 2 }),
+  );
+  expect(JSON.stringify(fake.calls[0].request.questions)).toBe(
+    JSON.stringify(pinned),
+  );
+});
+
+test('useUiDecision candidates asks byte-identical questions to createSelectionSchema with the same candidates', async () => {
+  withRealCompletion();
+  const fake = createFakeTransport(() =>
+    pickResponse('airport', 0.9, ['flight', 'airport', 'weather']),
+  );
+
+  const { result } = renderHook(
+    () => useUiDecision({ input: 'show KSFO', candidates, select: 'one' }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(result.current.ids).toEqual(['airport']));
+
+  const pinned = ɵcompileDecision(createSelectionSchema(candidates, 'one'));
+  expect(JSON.stringify(fake.calls[0].request.questions)).toBe(
+    JSON.stringify(pinned),
+  );
+});
+
+test('useUiDecision narrowing sends system to the decision and generate.system to the completion', async () => {
+  const setComponents = withFakeCompletion();
+  const fake = createFakeTransport(() =>
+    pickResponse('Airport', 0.9, ['Flight', 'Airport']),
+  );
+
+  renderHook(
+    () =>
+      useUiDecision({
+        input: 'show KSFO',
+        system: 'A flight-tracking app. The input is a search query.',
+        components: [flight, airport],
+        select: 'one',
+        generate: { system: 'Write props for the chosen cards.' },
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+  await waitFor(() => expect(setComponents).toHaveBeenCalled());
+
+  expect(fake.calls[0].request.state).toEqual({
+    system: 'A flight-tracking app. The input is a search query.',
+    input: 'show KSFO',
+  });
+  const completionOptions = useUiCompletionMock.mock.lastCall?.[0];
+  expect(completionOptions?.system).toBe('Write props for the chosen cards.');
+  expect(completionOptions?.transport).toBeUndefined();
+  expect(completionOptions?.debounceTime).toBe(0);
+});
+
+test('UiDecisionGenerateOptions accepts only system', () => {
+  const generate: UiDecisionGenerateOptions = { system: 'Render it' };
+
+  const withDebounce: UiDecisionGenerateOptions = {
+    system: 'Render it',
+    // @ts-expect-error generate.debounceTime was removed: the input is debounced before the decision
+    debounceTime: 10,
+  };
+  const withTransport: UiDecisionGenerateOptions = {
+    system: 'Render it',
+    // @ts-expect-error generate.transport was removed: generation uses the provider's chat transport
+    transport: undefined,
+  };
+
+  expect(Object.keys(generate)).toEqual(['system']);
+  expect(withDebounce.system).toBe('Render it');
+  expect(withTransport.system).toBe('Render it');
+});
+
+test('useUiDecision narrowing without a decision debounces generation with debounceTime', async () => {
+  withRealCompletion();
+  const bodies: string[] = [];
+  const fetchMock = vi.fn<typeof fetch>(async (_url, init) => {
+    bodies.push(String(init?.body));
+    return new Promise<Response>(() => undefined);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  const fake = createFakeTransport(() =>
+    pickResponse('Flight', 0.9, ['Flight']),
+  );
+  const components: never[] = [];
+
+  let unmount: () => void = () => undefined;
+  try {
+    const hook = renderHook(
+      ({ input }: { input: string }) =>
+        useUiDecision({
+          input,
+          debounceTime: 50,
+          components,
+          select: 'one',
+          generate: { system: 'Render it' },
+        }),
+      {
+        wrapper: wrapperFor(fake.transport),
+        initialProps: { input: 'show K' },
+      },
+    );
+    unmount = hook.unmount;
+    for (const input of ['show KS', 'show KSFO']) {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+      hook.rerender({ input });
+    }
+    await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  } finally {
+    unmount();
+    vi.unstubAllGlobals();
+  }
+
+  expect(fake.calls).toHaveLength(0);
+  expect(bodies).toHaveLength(1);
+  expect(bodies[0]).toContain('show KSFO');
 });

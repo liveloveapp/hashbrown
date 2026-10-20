@@ -17,16 +17,17 @@ import {
 } from '@angular/core';
 import {
   type Chat,
+  createSelectionSchema,
   type DecidableSchema,
   type Decision,
+  DecisionSchemaError,
   s,
-  type TransportOrFactory,
-  ɵcreateSelectionSchema,
-  ɵisUiKit,
+  ɵcreateComponentSelection,
   ɵresolveSelection,
 } from '@hashbrownai/core';
 import { type ExposedComponent } from '../utils/expose-component.fn';
 import { type UiAssistantMessage } from '../utils/ui-chat.helpers';
+import { readReactiveOption } from '../utils/signals';
 import { type ReactiveOption } from '../utils/types';
 import { type UiKitInput } from '../utils/ui-kit.fn';
 import {
@@ -91,8 +92,30 @@ export interface UiDecisionResourceBaseOptions {
    * needed to act on the decision. Defaults to 0.
    */
   minConfidence?: number;
-  /** Overrides the provider's decision transport for the selection. */
+  /**
+   * Overrides the provider's decision transport for the selection. Decision
+   * only: generation in narrowing mode uses the provider's chat transport.
+   */
   transport?: Decision.Transport;
+  /**
+   * Context for the decision model (what your app is, what the input
+   * means). Sent with the input in both modes, and only to the decision: in
+   * narrowing mode the model that writes props gets `generate.system`
+   * instead. Changing it asks again and resets the selection.
+   */
+  system?: ReactiveOption<string>;
+  /**
+   * `'shuffled'` varies the order of the options on every request, to spread
+   * the model's bias toward the first option. Defaults to `'declared'`.
+   */
+  optionOrder?: 'declared' | 'shuffled';
+  /**
+   * How long the input must stay unchanged, in milliseconds, before the
+   * selection is decided. In narrowing mode, generation starts as soon as
+   * the decision settles; when no decision runs, this debounces generation
+   * instead.
+   */
+  debounce?: number;
 }
 
 /**
@@ -112,17 +135,22 @@ export interface UiDecisionResourceCandidatesOptions extends UiDecisionResourceB
 
 /**
  * Settings for the UI completion that runs after the decision in narrowing
- * mode.
+ * mode. The completion uses the provider's chat transport. When a decision
+ * runs, the completion starts as soon as it settles, with no further
+ * debounce, because the input was already debounced before the decision.
+ * When no decision runs (no components, or components that break the
+ * selection limits), the completion debounces the input with the top-level
+ * `debounce` instead.
  *
  * @public
  */
 export interface UiDecisionGenerateOptions {
-  /** The system prompt for the UI completion. */
+  /**
+   * The system prompt for the model that writes the chosen components'
+   * props. Separate from the top-level `system`, which is context for the
+   * decision model only; it does not default to it.
+   */
   system: ReactiveOption<string>;
-  /** Overrides the provider's transport for the UI completion. */
-  transport?: TransportOrFactory;
-  /** Milliseconds to wait after an input change before generating. */
-  debounce?: number;
 }
 
 /**
@@ -133,11 +161,14 @@ export interface UiDecisionGenerateOptions {
  */
 export interface UiDecisionResourceNarrowingOptions extends UiDecisionResourceBaseOptions {
   /**
-   * The components to narrow. Exposed components are decided over by `name`
-   * and `description`; UI kits are always passed to the completion.
+   * The components to narrow. UI kits are flattened into their members
+   * (deduped by name, declared children included) and each component is
+   * decided over by `name` and `description`. A chosen component brings the
+   * components declared in its `children` with it. Pass the same list to
+   * `createSelectionSchema` to pin the questions on a server.
    */
   components: UiKitInput<ExposedComponent<any>>[];
-  /** The UI completion settings. */
+  /** The UI completion settings: the system prompt that writes props. */
   generate: UiDecisionGenerateOptions;
   /** Not used in narrowing mode. */
   candidates?: never;
@@ -202,7 +233,9 @@ export interface UiDecisionResourceNarrowingRef {
   error: Signal<Error | undefined>;
   /**
    * The selection decision's failure. When set, the UI completion ran with
-   * every component.
+   * every component. A `DecisionSchemaError` here means the components could
+   * not be decided over (for example more than 255 with `'one'`, or a name
+   * containing `.`), so no decision was asked.
    */
   decisionError: Signal<Error | undefined>;
   /**
@@ -224,12 +257,37 @@ export type UiDecisionResourceRef =
   UiDecisionResourceCandidatesRef | UiDecisionResourceNarrowingRef;
 
 /**
- * Decided over when there is nothing to choose (kit-only components or no
- * candidates). The decision stays idle, so it never sends a request.
+ * Decided over when there is nothing to choose (no components after
+ * flattening, or no candidates). The decision stays idle, so it never sends
+ * a request.
  */
 const PLACEHOLDER_SCHEMA: DecidableSchema = s.object('Selection', {
   unused: s.boolean('Unused'),
 });
+
+/**
+ * Builds the selection schema, or null when there is nothing to decide.
+ * Candidates are app-authored, so an invalid candidate list throws. Narrowing
+ * options come from component names, which may not fit the selection limits;
+ * then the schema error is returned and narrowing falls back to every
+ * component.
+ */
+function buildSelectionSchema(
+  options: Array<{ id: string; description: string }>,
+  select: Decision.Select,
+  isCandidates: boolean,
+): { schema: DecidableSchema | null; schemaError: Error | undefined } {
+  if (options.length === 0) return { schema: null, schemaError: undefined };
+  try {
+    return {
+      schema: createSelectionSchema(options, select),
+      schemaError: undefined,
+    };
+  } catch (error) {
+    if (isCandidates || !(error instanceof DecisionSchemaError)) throw error;
+    return { schema: null, schemaError: error };
+  }
+}
 
 interface Baseline {
   key: string | null;
@@ -274,15 +332,25 @@ export function uiDecisionResource(
 /**
  * Chooses UI for an input with a decision, then generates it.
  *
- * In narrowing mode the model first picks among the exposed components (by
- * name and description); a UI completion then streams props using only the
- * chosen components plus any UI kits. The completion waits until the decision
- * settles. When the decision fails or falls below `minConfidence`, the
- * completion runs with every component, and a failure is exposed as
- * `decisionError`; the same applies when the decision is stopped. With no
- * exposed components (only UI kits) there is nothing to decide, so the
- * completion runs with every component straight away. Input changes re-run
- * the decision before generating again.
+ * In narrowing mode the model first picks among the components (by name and
+ * description), with UI kits flattened into their members; a UI completion
+ * then streams props using only the chosen components plus, recursively, the
+ * components declared in their `children`, in declared order. The
+ * completion starts as soon as the decision settles, with no further
+ * debounce. When the decision fails or falls below `minConfidence`, the
+ * completion runs with the original `components` unchanged (kits intact),
+ * and a failure is exposed as `decisionError`; the same applies when the
+ * decision is stopped, and when the flattened components break the
+ * selection limits (exposed as a `DecisionSchemaError`). With no components
+ * there is nothing to decide, so the completion runs without a decision.
+ * Without a decision, the completion debounces the input with `debounce`.
+ * Input and `system` changes re-run the decision before generating again.
+ * To pin the questions on a server, pass the same `components` to
+ * `createSelectionSchema`.
+ *
+ * There are two prompts: `system` is context for the decision model (what
+ * your app is, what the input means), and `generate.system` is the system
+ * prompt for the model that writes the chosen components' props.
  *
  * Each distinct chosen set gets a fresh UI completion, created in a child
  * injector of the calling context; the previous one is destroyed when the
@@ -295,8 +363,9 @@ export function uiDecisionResource(
  * readonly cards = uiDecisionResource({
  *   input: this.query,
  *   select: { max: 2 },
+ *   system: 'A flight-tracking app. The input is a search query.',
  *   components: [flightCard, airportCard, weatherCard],
- *   generate: { system: 'Show the relevant cards.' },
+ *   generate: { system: 'Write props for the chosen cards.' },
  * });
  * ```
  * @param options - The narrowing-mode options.
@@ -314,25 +383,27 @@ export function uiDecisionResource(
   const isCandidates = candidates !== undefined;
   const components = isCandidates ? [] : options.components;
 
+  const componentSelection =
+    ɵcreateComponentSelection<ExposedComponent<any>>(components);
   const decisionOptions = isCandidates
     ? candidates.map(({ id, description }) => ({ id, description }))
-    : components
-        .filter((entry) => !ɵisUiKit(entry))
-        .map((entry) => {
-          const { name, description } = entry as ExposedComponent<any>;
-          return { id: name, description };
-        });
-  const hasOptions = decisionOptions.length > 0;
+    : componentSelection.options;
   const optionIds = decisionOptions.map(({ id }) => id);
-  const schema = hasOptions
-    ? ɵcreateSelectionSchema(decisionOptions, select)
-    : PLACEHOLDER_SCHEMA;
+  const { schema, schemaError } = buildSelectionSchema(
+    decisionOptions,
+    select,
+    isCandidates,
+  );
+  const hasOptions = schema !== null;
 
   const input = computed(() => options.input() ?? null);
   const decision = decisionResource({
-    schema,
+    schema: schema ?? PLACEHOLDER_SCHEMA,
     input: computed(() => (hasOptions ? input() : null)),
     transport: options.transport,
+    system: options.system,
+    optionOrder: options.optionOrder,
+    debounce: options.debounce,
   });
 
   const selection = computed(() => {
@@ -372,9 +443,20 @@ export function uiDecisionResource(
   }
 
   const generate = options.generate;
+  // A `system` change recreates the decision runtime (resetting its value),
+  // so it starts a new request too. `optionOrder` and `debounce` are static.
   const requestKey = computed(() => {
     const current = input();
-    return current === null ? null : JSON.stringify(current);
+    return current === null
+      ? null
+      : JSON.stringify([
+          current,
+          options.system === undefined
+            ? null
+            : readReactiveOption(options.system),
+          options.optionOrder ?? null,
+          options.debounce ?? null,
+        ]);
   });
 
   // Phase 1 has settled for this input once no request is in flight and
@@ -469,11 +551,7 @@ export function uiDecisionResource(
       const chosenComponents =
         confidentIds === null
           ? components
-          : components.filter(
-              (entry) =>
-                ɵisUiKit(entry) ||
-                confidentIds.includes((entry as ExposedComponent<any>).name),
-            );
+          : componentSelection.expand(confidentIds);
       // The phase-2 input carries the input only while the decision has
       // settled with this resource's set; otherwise it holds it back.
       const gatedInput = computed(() => {
@@ -488,8 +566,9 @@ export function uiDecisionResource(
           components: chosenComponents,
           input: gatedInput,
           system: generate.system,
-          transport: generate.transport,
-          debounce: generate.debounce,
+          // After a decision the input was already debounced, so generate
+          // at once. Without one (nothing to decide), debounce it here.
+          debounce: hasOptions ? 0 : options.debounce,
         }),
       );
       phase2.set({ setKey, injector: child, ref });
@@ -512,7 +591,9 @@ export function uiDecisionResource(
     isGenerating,
     isLoading: computed(() => isDeciding() || isGenerating()),
     error: computed(() => phase2()?.ref.error() ?? undefined),
-    decisionError: computed(() => (hasOptions ? decision.error() : undefined)),
+    decisionError: computed(() =>
+      hasOptions ? decision.error() : schemaError,
+    ),
     reload: () => untracked(phase2)?.ref.reload() ?? false,
     stop: () => untracked(phase2)?.ref.stop(),
   };
