@@ -7,5 +7,5 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/packages/azure',
-  testPathIgnorePatterns: ['/integration\\.spec\\.ts$'],
+  testPathIgnorePatterns: ['integration\\.spec\\.ts$'],
 };

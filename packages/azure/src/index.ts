@@ -2,6 +2,7 @@ import type { AGUIEvent } from '@ag-ui/core';
 import { text } from './stream/text.fn';
 import type { AzureTextStreamOptions } from './stream/types';
 
+export type { AzureReasoningOption } from './stream/reasoning';
 export type {
   AzureHashbrownRunAgentInput,
   AzureTextStreamOptions,
