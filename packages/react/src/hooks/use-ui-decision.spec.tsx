@@ -5,6 +5,7 @@ import {
   componentSelectionOptions,
   createSelectionSchema,
   type Decision,
+  DecisionSchemaError,
   ɵcompileDecision,
   ɵcreateUiKit,
 } from '@hashbrownai/core';
@@ -698,4 +699,68 @@ test('useUiDecision debounces the selection decision with debounceTime', async (
 
   expect(fake.calls).toHaveLength(1);
   expect(fake.calls[0].request.state).toBe('show KSFO');
+});
+
+test('useUiDecision narrowing waits for the new decision after system changes', async () => {
+  const setComponents = withFakeCompletion();
+  const ids = ['Flight', 'Airport', 'Weather'];
+  const fake = createFakeTransport(() => pickResponse('Flight', 0.9, ids));
+  const { rerender } = renderHook(
+    ({ system }: { system: string }) =>
+      useUiDecision({
+        input: 'show N123',
+        system,
+        debounceTime: 20,
+        components: [flight, airport, weather],
+        select: 'one',
+        generate: { system: 'Render it' },
+      }),
+    {
+      initialProps: { system: 'First context' },
+      wrapper: wrapperFor(fake.transport),
+    },
+  );
+  await waitFor(() => expect(setComponents).toHaveBeenCalledTimes(1));
+
+  rerender({ system: 'Second context' });
+  await waitFor(() => expect(fake.calls).toHaveLength(2));
+  await waitFor(() => expect(setComponents).toHaveBeenCalledTimes(2));
+
+  for (const [chosen] of setComponents.mock.calls) {
+    expect(chosen).toEqual([flight]);
+  }
+  expect(fake.calls[1].request.state).toEqual({
+    system: 'Second context',
+    input: 'show N123',
+  });
+});
+
+test('useUiDecision narrowing falls back when a kit cannot be decided over', () => {
+  const setComponents = withFakeCompletion();
+  const Bad = () => null;
+  const kit = ɵcreateUiKit<any>({
+    components: [
+      note,
+      exposeComponent(Bad, { name: 'Bad.Name', description: 'Invalid id' }),
+    ],
+  });
+  const components = [kit];
+  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
+
+  const { result } = renderHook(
+    () =>
+      useUiDecision({
+        input: 'hello',
+        components,
+        select: 'one',
+        generate: { system: 'Render it' },
+      }),
+    { wrapper: wrapperFor(fake.transport) },
+  );
+
+  expect(setComponents.mock.calls[0][0]).toBe(components);
+  expect(result.current.decisionError).toBeInstanceOf(DecisionSchemaError);
+  expect(result.current.isDeciding).toBe(false);
+  expect(fake.calls).toHaveLength(0);
+  expect(useUiCompletionMock.mock.lastCall?.[0].input).toBe('hello');
 });

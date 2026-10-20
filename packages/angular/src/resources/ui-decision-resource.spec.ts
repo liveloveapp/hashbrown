@@ -16,6 +16,7 @@ import {
   componentSelectionOptions,
   createSelectionSchema,
   type Decision,
+  DecisionSchemaError,
   ɵcompileDecision,
 } from '@hashbrownai/core';
 import { vi } from 'vitest';
@@ -803,12 +804,84 @@ test('uiDecisionResource debounces the selection decision with debounce', async 
     uiDecisionResource({ input, debounce: 50, candidates, select: 'one' }),
   );
   TestBed.tick();
-  input.set('show KSFO');
-  TestBed.tick();
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  vi.useFakeTimers();
+  try {
+    input.set('show KSFO');
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(60);
+  } finally {
+    vi.useRealTimers();
+  }
   await settle();
 
   expect(ref.ids()).toEqual(['airport']);
   expect(fake.calls).toHaveLength(1);
   expect(fake.calls[0].request.state).toBe('show KSFO');
+});
+
+test('uiDecisionResource narrowing waits for the new decision after system changes', async () => {
+  const created = trackCompletions();
+  const fake = createFakeTransport(() => pickResponse('Flight', 0.9, ids));
+  configure(fake.transport);
+  const system = signal('First context');
+  const ref = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('show N123'),
+      system,
+      debounce: 20,
+      components: [flight, airport, weather],
+      select: 'one',
+      generate: { system: 'Render it' },
+    }),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  await settle();
+  expect(created).toHaveLength(1);
+
+  system.set('Second context');
+  const decidingAfterChange = ref.isDeciding();
+  await settle();
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  await settle();
+
+  expect(decidingAfterChange).toBe(true);
+  expect(fake.calls).toHaveLength(2);
+  for (const entry of created) {
+    expect(entry.options.components).toEqual([flight]);
+  }
+  expect(created[created.length - 1].options.input()).toBe('show N123');
+  expect(fake.calls[1].request.state).toEqual({
+    system: 'Second context',
+    input: 'show N123',
+  });
+});
+
+test('uiDecisionResource narrowing falls back when a kit cannot be decided over', async () => {
+  const created = trackCompletions();
+  const kit = createUiKit<any>({
+    components: [
+      note,
+      { component: class {}, name: 'Bad.Name', description: 'Invalid id' },
+    ],
+  });
+  const components = [kit];
+  const fake = createFakeTransport(() => pickResponse('Note', 0.9, ['Note']));
+  configure(fake.transport);
+
+  const ref = TestBed.runInInjectionContext(() =>
+    uiDecisionResource({
+      input: signal('hello'),
+      components,
+      select: 'one',
+      generate: { system: 'Render it' },
+    }),
+  );
+  await settle();
+
+  expect(created).toHaveLength(1);
+  expect(created[0].options.components).toBe(components);
+  expect(created[0].options.input()).toBe('hello');
+  expect(ref.decisionError()).toBeInstanceOf(DecisionSchemaError);
+  expect(ref.isDeciding()).toBe(false);
+  expect(fake.calls).toHaveLength(0);
 });

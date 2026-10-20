@@ -137,6 +137,7 @@ export class AnswerComponent {
 3. A chosen component brings the components declared in its `children` with it, recursively, so the completion can always render a chosen parent's children. The completion sees the chosen components in the order they were declared.
 4. `generate` configures the UI completion that runs after it. `system` is required.
 5. An empty `components` list skips the decision and generates straight away.
+6. Component names become option ids, so the flattened list must fit the selection limits: no name may be empty or contain `.`, and `select: 'one'` allows at most 255 components. When the list breaks a limit, narrowing skips the decision, generates with every component, and exposes the `DecisionSchemaError` as `decisionError`.
 
 ### Low confidence
 
@@ -193,12 +194,15 @@ const decision = await HashbrownTypeSafe.decide({
 
 If the server can't import your components or kits, list each component's name as the `id` and its description, in the order `componentSelectionOptions` would give: components in the order passed, each kit's members in place, each component followed by its declared children, and every name once.
 
+A pinned schema replaces the questions the browser sends, so `optionOrder: 'shuffled'` has no effect once the questions are pinned. The server always asks in the order it built.
+
 ---
 
 ## Writing Good Descriptions
 
 - Describe when an option fits, not what it is. "The user asks about an airport" works better than "Airport card".
 - Keep descriptions distinct. Overlapping options split confidence between them.
+- In narrowing mode, child components are options too, and `select: 'one'` can pick a child alone. Say where a child belongs in its description, such as "A row, only inside a Table".
 - Add an option for "none of these" when it makes sense. In candidates mode, simply render nothing when confidence is low.
 - Pass short, plain input. See the model limits in [Decisions](/docs/angular/concept/decisions).
 

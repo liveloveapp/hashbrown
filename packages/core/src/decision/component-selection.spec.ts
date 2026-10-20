@@ -3,6 +3,7 @@ import { createUiKit } from '../ui/ui-kit';
 import * as publicApi from '../public_api';
 import { compileDecision } from './compile-decision';
 import {
+  type ComponentSelectionInput,
   componentSelectionOptions,
   createComponentSelection,
 } from './component-selection';
@@ -166,4 +167,59 @@ test('componentSelectionOptions is public and createComponentSelection is ɵ', (
   expect(api['componentSelectionOptions']).toBe(componentSelectionOptions);
   expect(api['ɵcreateComponentSelection']).toBe(createComponentSelection);
   expect(api['createComponentSelection']).toBeUndefined();
+});
+
+test('createComponentSelection recurses into the children of a duplicate name like createUiKit', () => {
+  const plainTable = component('Table');
+  const tableWithRows = component('Table', [row]);
+  const components = [plainTable, tableWithRows];
+  const kit = createUiKit({
+    components: [
+      { ...plainTable, component: tableWithRows.component },
+      tableWithRows,
+    ],
+  });
+
+  const selection = createComponentSelection(components);
+
+  expect(selection.options.map((option) => option.id)).toEqual([
+    'Table',
+    'Row',
+  ]);
+  expect(names(kit.components)).toEqual(['Table', 'Row']);
+  expect(names(selection.expand(['Table']))).toEqual(['Table', 'Row']);
+});
+
+test('createComponentSelection handles a component that is its own descendant', () => {
+  const tree: ExposedComponentDescriptor = {
+    component: { name: 'Tree' },
+    name: 'Tree',
+    description: 'A tree',
+    children: [],
+  };
+  const branch = component('Branch', [tree]);
+  (tree.children as unknown[]).push(branch);
+
+  const selection = createComponentSelection([tree]);
+
+  expect(selection.options.map((option) => option.id)).toEqual([
+    'Tree',
+    'Branch',
+  ]);
+  expect(names(selection.expand(['Branch']))).toEqual(['Tree', 'Branch']);
+});
+
+test('componentSelectionOptions accepts structural components and kits', () => {
+  const kit = createUiKit({ components: [airport] });
+  const inputs: ComponentSelectionInput[] = [
+    { name: 'Flight', description: 'One aircraft', children: 'text' },
+    kit,
+  ];
+
+  const options = componentSelectionOptions(inputs);
+
+  expect(options).toEqual([
+    { id: 'Flight', description: 'One aircraft' },
+    { id: 'Airport', description: 'The Airport component' },
+  ]);
 });

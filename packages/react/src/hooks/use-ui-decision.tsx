@@ -5,6 +5,7 @@ import {
   createSelectionSchema,
   type DecidableSchema,
   type Decision,
+  DecisionSchemaError,
   s,
   type TransportOrFactory,
   ɵcreateComponentSelection,
@@ -52,7 +53,7 @@ export interface UseUiDecisionBaseOptions {
   transport?: Decision.Transport;
   /**
    * Context sent with the input, such as what the app does. Changing it asks
-   * again.
+   * again and resets the selection.
    */
   system?: string;
   /**
@@ -171,7 +172,9 @@ export interface UseUiDecisionNarrowingResult extends Omit<
   error: Error | undefined;
   /**
    * The selection decision's failure. When set, the UI completion ran with
-   * every component.
+   * every component. A `DecisionSchemaError` here means the components could
+   * not be decided over (for example more than 255 with `'one'`, or a name
+   * containing `.`), so no decision was asked.
    */
   decisionError: Error | undefined;
 }
@@ -229,8 +232,11 @@ export function useUiDecision(
  * waits until the decision settles. When the decision fails or falls below
  * `minConfidence`, the completion runs with the original `components`
  * unchanged (kits intact), and a failure is exposed as `decisionError`; the
- * same applies when the decision is stopped. With no components there is
- * nothing to decide, so the completion runs straight away. To pin the
+ * same applies when the decision is stopped, and when the flattened
+ * components break the selection limits (exposed as a `DecisionSchemaError`).
+ * With no components there is nothing to decide, so the completion runs
+ * straight away. Changing `system` re-runs the decision before generating
+ * again. To pin the
  * questions on a server, pass `componentSelectionOptions(components)` to
  * `createSelectionSchema`. Input changes re-run
  * the decision before generating again.
@@ -279,15 +285,27 @@ export function useUiDecision(
       ? candidates.map(({ id, description }) => ({ id, description }))
       : componentSelection.options,
   });
-  const schema = useMemo(() => {
+  const { schema, schemaError } = useMemo(() => {
     const parsed = JSON.parse(optionsKey) as {
       select: Decision.Select;
       options: Array<{ id: string; description: string }>;
     };
-    return parsed.options.length === 0
-      ? null
-      : createSelectionSchema(parsed.options, parsed.select);
-  }, [optionsKey]);
+    if (parsed.options.length === 0) {
+      return { schema: null, schemaError: undefined };
+    }
+    try {
+      return {
+        schema: createSelectionSchema(parsed.options, parsed.select),
+        schemaError: undefined,
+      };
+    } catch (error) {
+      // Candidates are app-authored, so an invalid candidate list throws.
+      // Narrowing options come from component names, which may not fit the
+      // selection limits; then narrowing falls back to every component.
+      if (isCandidates || !(error instanceof DecisionSchemaError)) throw error;
+      return { schema: null, schemaError: error };
+    }
+  }, [optionsKey, isCandidates]);
   const hasOptions = schema !== null;
 
   const decision = useDecision({
@@ -318,8 +336,18 @@ export function useUiDecision(
   // either a request was seen in flight since the input (or options) changed,
   // or the value or error changed since then. Without options there is
   // nothing to decide, so it settles at once.
+  // A change to `system`, `optionOrder` or `debounceTime` rebuilds the
+  // decision runtime (resetting its value), so it starts a new request too.
   const requestKey =
-    inputKey === null ? null : JSON.stringify([optionsKey, inputKey]);
+    inputKey === null
+      ? null
+      : JSON.stringify([
+          optionsKey,
+          inputKey,
+          system ?? null,
+          optionOrder ?? null,
+          debounceTime ?? null,
+        ]);
   const [baseline, setBaseline] = useState<Baseline>(() => ({
     key: requestKey,
     value: decision.value,
@@ -424,6 +452,6 @@ export function useUiDecision(
     isGenerating: completion.isLoading,
     isLoading: isDeciding || completion.isLoading,
     error: completion.error,
-    decisionError: hasOptions ? decision.error : undefined,
+    decisionError: hasOptions ? decision.error : schemaError,
   };
 }
