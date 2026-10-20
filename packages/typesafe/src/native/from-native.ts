@@ -10,10 +10,11 @@ type Tree = { [key: string]: Decision.JsonValue };
  *
  * Values are nested by dotted question id; metadata stays keyed by the dotted
  * id. A choice returns its option key, a `noul` answer is true at or above 0.5,
- * and a score returns the nearest level as a number. Native score answers are
- * level indexes into the numerically ordered levels; the weighted score in the
- * metadata is mapped back to level values by linear interpolation (levels
- * `[10, 20]` with a native score of 0.8 give 18).
+ * and a score returns its most probable level as a number (ties take the
+ * lower level), the same way a choice returns its most probable option.
+ * Native score answers are level indexes into the numerically ordered levels;
+ * the weighted score in the metadata is mapped back to level values by linear
+ * interpolation (levels `[10, 20]` with a native score of 0.8 give 18).
  *
  * @param native - The native response body.
  * @param questions - The questions that were asked, keyed by dotted id.
@@ -141,11 +142,10 @@ function mapAnswer(
     }
     const score = checkNumber(id, 'score', answer.score);
     const confidence = checkNumber(id, 'confidence', answer.confidence);
-    const index = Math.min(keys.length - 1, Math.max(0, Math.round(score)));
+    const indexed = checkProbabilities(id, answer.probabilities);
+    const index = mostProbableIndex(keys.length, indexed);
     const probabilities = Object.fromEntries(
-      Object.entries(checkProbabilities(id, answer.probabilities)).map(
-        ([i, p]) => [keys[Number(i)] ?? i, p],
-      ),
+      Object.entries(indexed).map(([i, p]) => [keys[Number(i)] ?? i, p]),
     );
     return {
       value: values[index],
@@ -166,6 +166,24 @@ function mapAnswer(
   }
 
   throw new DecisionResponseError(`Unsupported answer for "${id}"`);
+}
+
+/**
+ * The level index with the highest probability. Rounding the weighted score
+ * instead would pick a level between two peaks that the model never chose.
+ * Ties take the lower level; indexes outside the levels are ignored.
+ */
+function mostProbableIndex(
+  levels: number,
+  probabilities: Record<string, number>,
+): number {
+  let best = 0;
+  for (let i = 1; i < levels; i++) {
+    if ((probabilities[String(i)] ?? 0) > (probabilities[String(best)] ?? 0)) {
+      best = i;
+    }
+  }
+  return best;
 }
 
 function setPath(tree: Tree, path: string[], value: Decision.JsonValue): Tree {

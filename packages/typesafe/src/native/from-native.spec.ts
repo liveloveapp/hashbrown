@@ -47,7 +47,7 @@ test('choice answers map to value and ChoiceMeta', () => {
   });
 });
 
-test('score answers take the nearest level for value and keep the weighted score in meta', () => {
+test('score answers take the most probable level for value and keep the weighted score in meta', () => {
   const response = fromNativeResponse(
     withAnswers(renamed(native.answers)),
     questions,
@@ -191,7 +191,7 @@ test('meta.score interpolates between non-uniform level values', () => {
 
   const response = fromNativeResponse(input, uneven);
 
-  expect(response.value).toEqual({ s: 10 });
+  expect(response.value).toEqual({ s: 1 });
   expect((response.meta['s'] as Decision.ScoreMeta).score).toBe(5.5);
 });
 
@@ -263,6 +263,91 @@ test('negative score indexes map to levels in numeric order', () => {
     '1': 0,
     '2': 0,
   });
+});
+
+test('a score value is the most probable level, not the rounded weighted score', () => {
+  const trend: Record<string, Decision.Question> = {
+    t: {
+      type: 'score',
+      instructions: 't',
+      levels: { '-2': 'a', '-1': 'b', '0': 'c', '1': 'd', '2': 'e' },
+    },
+  };
+  const input: NativeResponse = {
+    answers: {
+      t: {
+        type: 'score',
+        score: 0.84,
+        probabilities: {
+          '0': 0.63,
+          '1': 0.15,
+          '2': 0.06,
+          '3': 0.05,
+          '4': 0.11,
+        },
+        confidence: 0.28,
+      },
+    },
+  };
+
+  const response = fromNativeResponse(input, trend);
+
+  expect(response.value).toEqual({ t: -2 });
+  expect((response.meta['t'] as Decision.ScoreMeta).score).toBeCloseTo(-1.16);
+});
+
+test('a bimodal score takes the most probable level rather than a level between the peaks', () => {
+  const altitude: Record<string, Decision.Question> = {
+    a: {
+      type: 'score',
+      instructions: 'a',
+      levels: { '0': 'a', '0.25': 'b', '0.5': 'c', '0.75': 'd', '1': 'e' },
+    },
+  };
+  const input: NativeResponse = {
+    answers: {
+      a: {
+        type: 'score',
+        score: 2.57,
+        probabilities: {
+          '0': 0.19,
+          '1': 0.07,
+          '2': 0.16,
+          '3': 0.13,
+          '4': 0.45,
+        },
+        confidence: 0,
+      },
+    },
+  };
+
+  const response = fromNativeResponse(input, altitude);
+
+  expect(response.value).toEqual({ a: 1 });
+});
+
+test('tied score probabilities take the lower level', () => {
+  const tied: Record<string, Decision.Question> = {
+    s: {
+      type: 'score',
+      instructions: 's',
+      levels: { '1': 'a', '2': 'b', '3': 'c' },
+    },
+  };
+  const input: NativeResponse = {
+    answers: {
+      s: {
+        type: 'score',
+        score: 1,
+        probabilities: { '0': 0.4, '1': 0.2, '2': 0.4 },
+        confidence: 0,
+      },
+    },
+  };
+
+  const response = fromNativeResponse(input, tied);
+
+  expect(response.value).toEqual({ s: 1 });
 });
 
 test('null probabilities throw DecisionResponseError', () => {
