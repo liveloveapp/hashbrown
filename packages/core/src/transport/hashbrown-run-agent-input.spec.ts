@@ -70,13 +70,6 @@ test('passes the owned canonical message checkpoint through unchanged', () => {
       content: 'done',
       metadata,
     }),
-    Object.freeze({
-      id: 'activity-from-agent',
-      role: 'activity' as const,
-      activityType: 'lookup-progress',
-      content: { stage: 'complete' },
-      metadata,
-    }),
   ]) satisfies readonly Readonly<Message>[];
 
   const input = createInput({ messages });
@@ -90,7 +83,6 @@ test('passes the owned canonical message checkpoint through unchanged', () => {
     'user-from-agent',
     'assistant-from-agent',
     'result-from-agent',
-    'activity-from-agent',
   ]);
   expect(input.messages.map((message) => message.role)).toEqual([
     'system',
@@ -99,10 +91,35 @@ test('passes the owned canonical message checkpoint through unchanged', () => {
     'user',
     'assistant',
     'tool',
-    'activity',
   ]);
   expect(input.messages[0]?.metadata).toBe(metadata);
   expect(input.messages[2]?.metadata).toBe(metadata);
+});
+
+test('strips activity messages, which AG-UI never forwards to the agent', () => {
+  const messages = Object.freeze([
+    Object.freeze({ id: 'user-1', role: 'user' as const, content: 'hello' }),
+    Object.freeze({
+      id: 'activity-1',
+      role: 'activity' as const,
+      activityType: 'lookup-progress',
+      content: { stage: 'complete' },
+    }),
+    Object.freeze({
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: 'done',
+    }),
+  ]) satisfies readonly Readonly<Message>[];
+
+  const input = createInput({ messages });
+
+  expect(input.messages.map((message) => message.id)).toEqual([
+    'user-1',
+    'assistant-1',
+  ]);
+  expect(input.messages[0]).toBe(messages[0]);
+  expect(messages).toHaveLength(3);
 });
 
 test.each([
