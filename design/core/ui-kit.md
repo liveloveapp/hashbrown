@@ -19,7 +19,7 @@ The existing generative UI flow couples component exposure to direct LLM calls. 
 - Allow developers to render UIs from resolved JSON values using Hashbrown components.
 - Enable composition of component registries via UIKit instances and `exposeComponent(...)` entries.
 - Keep existing `useUiChat` / `useUiCompletion` APIs working unchanged.
-- Improve LLM integration by returning a full, ready-to-use schema and supporting prompt-based UI examples.
+- Improve LLM integration by returning a full, ready-to-use schema.
 
 ## Non-Goals
 
@@ -31,17 +31,14 @@ The existing generative UI flow couples component exposure to direct LLM calls. 
 
 - React usage:
   - `useUiKit({ components: [...] })` produces a UIKit instance.
-  - `useUiKit({ components: [...], examples: prompt\`...\` })` produces a UIKit instance with compiled UI examples.
   - UIKit instances can be composed and/or mixed with `exposeComponent(...)`.
   - `useUiChat({ components: [uiKit, exposeComponent(...)] })` and `useUiCompletion({ components: [uiKit] })` merge component registries.
   - `uiKit.schema` is the full schema object ready to pass to the LLM (not just the nodes array).
-  - `uiKit.examples` stores the compiled UI examples for LLM usage.
   - `uiKit.render(value)` returns React nodes ready to render, where `value` is the resolved UI JSON wrapper object (not a string).
   - Wrapper example:
     - `{ ui: [{ Button: { props: { value: { label: "Save" } } } }] }`
 - Angular usage:
   - `uiKit = createUiKit({ components: [...] })` created in a component class.
-  - `uiKit = createUiKit({ components: [...], examples: prompt\`...\` })` supports prompt-based examples.
   - `uiKit.render(value)` accepts the resolved UI JSON wrapper object and returns the same `ui` array shape used by message rendering (see Data Model & API Changes).
   - `hb-render-message` accepts either `message` or the full resolved UI wrapper object, but not both at once.
 
@@ -54,18 +51,16 @@ The existing generative UI flow couples component exposure to direct LLM calls. 
   - Composition is resolved into a single registry and schema.
 - Core: Return a full schema object (not just the UI nodes array schema).
   - The wrapper schema includes a `ui` field with a streaming array of UI nodes.
-  - The wrapper schema description embeds compiled UI examples so the LLM sees them.
+  - The wrapper schema description is a fixed instruction to return a single `ui` key using only the kit's components.
 - React: `useUiKit(...)` memoizes the computed schema using a stable serialized form of the schema and updates only when that serialized schema changes.
 - Angular: `createUiKit(...)` produces a UIKit with identical schema resolution and composition rules.
 - Schema serialization for memoization lives in core, with React/Angular building on it as needed.
-  - Example prompt compilation occurs in core against the fully resolved component registry.
-  - React/Angular pass the `prompt` template result through unchanged.
 
-### Examples for the LLM
+### Guidance for the LLM
 
-- UIKit accepts `examples` as a `prompt\`...\`` template literal.
-- Core compiles the prompt against the fully resolved UIKit component registry (including composed kits).
-- Compiled examples are injected into the wrapper schema description so they are visible to the LLM.
+- UIKits take no examples. Few-shot UI examples (the `prompt` template literal and the `examples` option) were removed before 1.0.
+- Guidance lives with each component: its description says when to use it, when not to, and how it differs from similar components, and prop descriptions and schema constraints carry value conventions. This guidance travels with the component through composed kits and `createUiJsonSchema`.
+- Layout and composition rules belong in the plain-string `system` prompt of the chat or completion.
 
 ### UI JSON shape
 
@@ -111,7 +106,6 @@ type UiArray = UiNode[];
   - Resolve schema from the normalized registry.
 - **Wrapper schema construction**
   - Build a top-level schema with a single `ui` field (streaming array of nodes).
-  - If examples are provided, compile them and append to the wrapper schema description.
 - **Schema change detection**
   - Compute a stable serialized form of the resolved schema (canonical JSON).
   - In React, memoize the UIKit instance based on this serialized form to avoid unnecessary re-renders.
@@ -159,6 +153,4 @@ type UiArray = UiNode[];
 - None. The following are explicitly decided:
   - `uiKit.schema` is the wrapper schema only (no node-only schema returned).
   - `render(...)` and `hb-render-message` accept the wrapper object only.
-  - Example prompts are concatenated with newlines and injected into the wrapper description.
-  - `createUiKit` throws if example prompt compilation reports diagnostics.
-  - System prompts may still include `<ui>...</ui>` blocks; examples are additive.
+  - The wrapper description carries no examples; `system` is always a plain string.

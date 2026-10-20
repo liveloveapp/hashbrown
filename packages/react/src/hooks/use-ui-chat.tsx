@@ -3,7 +3,6 @@
 import {
   Chat,
   type ComponentNode,
-  SystemPrompt,
   type TransportOrFactory,
   type UiWrapper,
 } from '@hashbrownai/core';
@@ -107,16 +106,12 @@ export interface UiChatOptions<Tools extends Chat.AnyTool, State = unknown> {
   /**
    * The system message to use for the chat.
    */
-  system: string | SystemPrompt;
+  system: string;
 
   /**
    * The components that can be rendered by the chat.
    */
   components: UiKitInput<ExposedComponent<any>>[];
-  /**
-   * Optional prompt-based UI examples to include in the wrapper schema description.
-   */
-  examples?: SystemPrompt;
 
   /**
    * The initial messages for the chat.
@@ -194,26 +189,13 @@ export interface UiChatOptions<Tools extends Chat.AnyTool, State = unknown> {
 export const useUiChat = <Tools extends Chat.AnyTool, State = unknown>(
   options: UiChatOptions<Tools, State>,
 ): UiChatResult<Tools, State> => {
-  const { components: initialComponents, examples, ...chatOptions } = options;
+  const { components: initialComponents, ...chatOptions } = options;
   const [components, setComponents] = useState(initialComponents);
-  const uiKit = useUiKit<ExposedComponent<any>>({ components, examples });
+  const uiKit = useUiKit<ExposedComponent<any>>({ components });
   const ui = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);
-  const systemAsString = useMemo(() => {
-    if (typeof chatOptions.system === 'string') {
-      return chatOptions.system;
-    }
-    const output = chatOptions.system.compile(uiKit.components, ui);
-    if (chatOptions.system.diagnostics.length > 0) {
-      throw new Error(
-        `System prompt has ${chatOptions.system.diagnostics.length} errors: \n\n${chatOptions.system.diagnostics.map((d) => d.message).join('\n\n')}`,
-      );
-    }
-    return output;
-  }, [chatOptions.system, ui, uiKit.components]);
   const chat = useStructuredChat<typeof ui, Tools, UiChatSchema, State>({
     ...chatOptions,
     schema: ui as any,
-    system: systemAsString,
     ui: true,
   });
 

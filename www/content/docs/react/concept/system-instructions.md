@@ -97,6 +97,8 @@ Don't:
 
 Providing a few, clear examples in your prompt is called few-shot prompting. Few-shot prompting is a technique where you include a few example input-output pairs in your prompt to teach the model how to behave in a specific context. It helps guide tone, format, or reasoning style—without requiring fine-tuning. Not all models require few-shot prompting — many perform well with zero-shot prompting for simple tasks — but it significantly improves consistency for complex or ambiguous use cases. For models like OpenAI's GPT-4.1, 2-4 well-chosen examples are usually enough; more than that can help but may be subject to token limits and diminishing returns.
 
+For generative UI, don't write sample UI answers into the system instruction. Put guidance about a component in its description and prop schemas, and keep only layout and composition rules here. See [Guide the Model](/docs/react/concept/components#guide-the-model).
+
 Example:
 
 ```markdown

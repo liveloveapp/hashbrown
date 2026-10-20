@@ -58,7 +58,10 @@ export interface ExposedComponent<T extends ComponentType<any>> {
    */
   name: string;
   /**
-   * The description of the component.  This is also used by the LLM to understand when to use the component.
+   * The description of the component. The model reads it to decide when to
+   * use the component, so say when to use it, when not to, and how it
+   * differs from similar components. Put value conventions in the prop
+   * schemas' descriptions instead.
    */
   description: string;
   /**

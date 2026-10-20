@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { s } from '../schema';
-import type { SystemPrompt } from '../prompt/types';
 import {
   ComponentTreeSchema,
   createComponentSchema,
@@ -8,6 +7,9 @@ import {
 } from './expose-component';
 
 const UI_KIT_SYMBOL = Symbol('hashbrown.uiKit');
+
+const UI_KIT_SCHEMA_DESCRIPTION =
+  'Return a JSON object with a single key "ui" that matches the schema below. Use only these components.';
 
 /**
  * @public
@@ -22,10 +24,6 @@ export interface UiKitOptions<T extends ExposedComponentDescriptor> {
    * Components or other UiKit instances to compose.
    */
   components: readonly UiKitInput<T>[];
-  /**
-   * Optional prompt-based UI examples to include in the wrapper schema description.
-   */
-  examples?: SystemPrompt;
 }
 
 /**
@@ -51,10 +49,6 @@ export interface UiKit<T extends ExposedComponentDescriptor> {
     ui: s.ArrayType<ComponentTreeSchema>;
   }>;
   /**
-   * Compiled UI examples used by the schema description.
-   */
-  readonly examples: string | null;
-  /**
    * Stable serialized form of the resolved schema.
    */
   readonly serializedSchema: string;
@@ -66,8 +60,8 @@ export interface UiKit<T extends ExposedComponentDescriptor> {
 export function isUiKit(value: unknown): value is UiKit<any> {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      (value as UiKit<any>)[UI_KIT_SYMBOL] === true,
+    typeof value === 'object' &&
+    (value as UiKit<any>)[UI_KIT_SYMBOL] === true,
   );
 }
 
@@ -79,7 +73,7 @@ export function isUiKit(value: unknown): value is UiKit<any> {
 export function createUiKit<T extends ExposedComponentDescriptor>(
   options: UiKitOptions<T>,
 ): UiKit<T> {
-  const { components, examples } = options;
+  const { components } = options;
   const registry = new Map<string, T>();
   const normalized: T[] = [];
 
@@ -93,21 +87,9 @@ export function createUiKit<T extends ExposedComponentDescriptor>(
   });
 
   const nodeSchema = createComponentSchema(normalized);
-  const baseSchema = s.object('UI', {
+  const schema = s.object(UI_KIT_SCHEMA_DESCRIPTION, {
     ui: s.streaming.array('List of elements', nodeSchema),
   });
-  const compiledExamples = examples
-    ? compileExamples(examples, normalized, baseSchema)
-    : null;
-  const description = compiledExamples
-    ? `Return a JSON object with a single key "ui" that matches the schema below. Use only these components.\n\n${compiledExamples}`
-    : 'Return a JSON object with a single key "ui" that matches the schema below. Use only these components.';
-  const schema =
-    description === 'UI'
-      ? baseSchema
-      : s.object(description, {
-          ui: s.streaming.array('List of elements', nodeSchema),
-        });
   const serializedSchema = stableSerializeSchema(schema);
 
   return {
@@ -116,7 +98,6 @@ export function createUiKit<T extends ExposedComponentDescriptor>(
     registry,
     schema,
     serializedSchema,
-    examples: compiledExamples,
   };
 
   function addComponent(component: T) {
@@ -163,20 +144,6 @@ function assertExposedComponent(
   if (typeof value.description !== 'string' || value.description.length === 0) {
     throw new Error('Invalid component entry. Missing "description".');
   }
-}
-
-function compileExamples(
-  examples: SystemPrompt,
-  components: readonly ExposedComponentDescriptor[],
-  schema: s.HashbrownType,
-): string {
-  const compiled = examples.compile(components, schema);
-  if (examples.diagnostics.length > 0) {
-    throw new Error(
-      `Example prompt has ${examples.diagnostics.length} errors: \n\n${examples.diagnostics.map((d) => d.message).join('\n\n')}`,
-    );
-  }
-  return compiled;
 }
 
 function stableSerializeSchema(schema: s.HashbrownType): string {

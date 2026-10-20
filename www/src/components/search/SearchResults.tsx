@@ -120,49 +120,67 @@ export function SearchMarkdown({ content }: { content: string }) {
 
 const docResult = exposeComponent(DocResult, {
   name: 'www-doc-result',
-  description: 'Show a documentation search result to the user',
+  description:
+    'One documentation page in the search results. Use it only inside www-doc-results, once per page. For an API symbol use www-api-result instead.',
   props: {
-    url: s.string('The url of the documentation search result.'),
-    title: s.string('The title of the documentation search result.'),
+    url: s.string(
+      'The page url exactly as the url column of the sitemap shows it, such as /docs/react/concept/components.',
+    ),
+    title: s.string("The page's title from the sitemap's title column."),
     subtitle: s.string(
-      'The subtitle or description. Leave empty if not applicable.',
+      "The page's description from the sitemap's description column. An empty string when the sitemap has none.",
     ),
   },
 });
 
 const apiResult = exposeComponent(ApiResult, {
   name: 'www-api-result',
-  description: 'Show a API reference search result to the user',
+  description:
+    'One API symbol in the search results. Use it only inside www-api-results, once per symbol. For a documentation page use www-doc-result instead.',
   props: {
-    url: s.string('The url of the API reference search result.'),
-    symbol: s.string('The API reference symbol.'),
-    kind: s.string('The API reference kind.'),
-    package: s.string('The API reference package.'),
+    url: s.string(
+      'The symbol url exactly as the url column of the API references shows it, such as /api/react/useUiChat.',
+    ),
+    symbol: s.string(
+      'The symbol name from the symbol column, such as useUiChat.',
+    ),
+    kind: s.string(
+      'The symbol kind from the kind column, such as Function or Interface.',
+    ),
+    package: s.string(
+      'The npm package from the package column, such as @hashbrownai/react.',
+    ),
   },
 });
 
 /**
  * The components the search model may render, named after the Angular
- * selectors the system prompt's examples use.
+ * selectors of the original overlay. Their descriptions tell the model when
+ * to use each one; `searchSystemPrompt` holds the ranking and layout rules.
  */
 export const SEARCH_RESULT_COMPONENTS = [
   exposeComponent(DocResults, {
     name: 'www-doc-results',
-    description: 'Show documentation search results to the user',
+    description:
+      'The group of documentation page results. Its children are only www-doc-result entries, at most 8, most relevant first. Use it once per answer, and only when at least one documentation page matches. API symbols go in www-api-results instead.',
     children: [docResult],
   }),
   docResult,
   exposeComponent(ApiResults, {
     name: 'www-api-results',
-    description: 'Show API reference search results to the user',
+    description:
+      'The group of API reference results. Its children are only www-api-result entries, at most 8, most relevant first. Use it once per answer, and only when at least one API symbol matches. Documentation pages go in www-doc-results instead.',
     children: [apiResult],
   }),
   apiResult,
   exposeComponent(SearchMarkdown, {
     name: 'www-markdown',
-    description: 'Show a message to the user using simple markdown',
+    description:
+      'A short markdown message instead of results: a kind refusal when the query is not about hashbrown, or a note that nothing matched. Use it as the only component in the answer. Never use it to list results; use www-doc-results and www-api-results for those.',
     props: {
-      content: s.streaming.string('The markdown content'),
+      content: s.streaming.string(
+        'The message in simple markdown, one or two sentences.',
+      ),
     },
   }),
 ];

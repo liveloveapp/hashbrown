@@ -40,57 +40,46 @@ Write each component's contract as a `UiComponentDefinition`: its name, a descri
 <hb-code-example header="dashboard-components.ts">
 
 ```ts
-import { prompt, s, type UiComponentDefinition } from '@hashbrownai/core';
+import { s, type UiComponentDefinition } from '@hashbrownai/core';
 
 export const metricDefinition = {
   name: 'Metric',
-  description: 'A KPI card with a label and a formatted value.',
+  description:
+    'One headline number, such as total revenue. Use it for a single value the user should notice first. For a value that changes over time, use BarChart instead.',
   props: {
-    label: s.string('The metric label'),
+    label: s.string('The metric label, such as Total revenue'),
     value: s.string('The formatted value, such as $1.2M'),
   },
 } satisfies UiComponentDefinition;
 
 export const barChartDefinition = {
   name: 'BarChart',
-  description: 'A vertical bar chart.',
+  description:
+    'A vertical bar chart comparing values across periods or categories. Use it for three or more values. For a single headline number, use Metric instead.',
   props: {
-    title: s.string('Chart title'),
+    title: s.string('Chart title, such as Monthly revenue'),
     data: s.array(
-      'One entry per bar',
+      'One entry per bar, in display order',
       s.object('Bar', {
-        label: s.string('Bar label'),
-        value: s.number('Bar value'),
+        label: s.string('Bar label, such as Oct'),
+        value: s.number('Bar value as a plain number, such as 350000'),
       }),
     ),
   },
 } satisfies UiComponentDefinition;
 
 export const dashboardDefinitions = [metricDefinition, barChartDefinition];
-
-export const dashboardExamples = prompt`
-  <ui>
-    <Metric label="Total revenue" value="$1.2M" />
-    <BarChart
-      title="Monthly revenue"
-      data=${[
-        { label: 'Oct', value: 350000 },
-        { label: 'Nov', value: 400000 },
-      ]}
-    />
-  </ui>
-`;
 ```
 
 </hb-code-example>
 
-Pass arrays and objects in examples with `${}`. A quoted attribute is a string, so `data='[...]'` would fail validation against `s.array(...)`.
+Each description says when to use the component, when not to, and how it differs from the other one. Value conventions, such as a formatted string for `Metric` and a plain number for each bar, live in the prop descriptions. Both travel with the definitions into the agent's schema. Rules that span components, such as "lead with one or two metrics, then a chart", belong in the agent's system prompt.
 
 ---
 
 ## 3. Give the Agent the Schema
 
-The agent has to answer with `{ "ui": [...] }` in exactly the shape your kit expects. Don't copy that shape into the prompt by hand. Generate it with `createUiJsonSchema()`, which returns the same JSON Schema Hashbrown itself sends to a model for this kit, examples included.
+The agent has to answer with `{ "ui": [...] }` in exactly the shape your kit expects. Don't copy that shape into the prompt by hand. Generate it with `createUiJsonSchema()`, which returns the same JSON Schema Hashbrown itself sends to a model for this kit, component and prop descriptions included.
 
 If the agent is written in JavaScript or TypeScript, import it directly. If it isn't, write it to a file as part of your build:
 
@@ -99,15 +88,9 @@ If the agent is written in JavaScript or TypeScript, import it directly. If it i
 ```ts
 import { writeFileSync } from 'node:fs';
 import { createUiJsonSchema } from '@hashbrownai/core';
-import {
-  dashboardDefinitions,
-  dashboardExamples,
-} from '../src/dashboard-components';
+import { dashboardDefinitions } from '../src/dashboard-components';
 
-const schema = createUiJsonSchema({
-  components: dashboardDefinitions,
-  examples: dashboardExamples,
-});
+const schema = createUiJsonSchema({ components: dashboardDefinitions });
 
 writeFileSync('agent/ui-schema.json', JSON.stringify(schema, null, 2));
 ```
@@ -140,7 +123,10 @@ graph = create_agent(
     ),
     tools=[],
     middleware=[CopilotKitMiddleware()],
-    system_prompt="You build sales dashboards. Answer with UI components.",
+    system_prompt=(
+        "You build sales dashboards. Answer with UI components. "
+        "Lead with one or two Metric cards, then a BarChart if there is a trend to show."
+    ),
 )
 ```
 
@@ -152,7 +138,7 @@ Structured output keeps the whole message valid JSON. If your model or framework
 
 ## 4. Render the Agent's Messages
 
-Build a kit from the same definitions and examples, then parse each assistant message with `useJsonParser()` and render it with `kit.render()`:
+Build a kit from the same definitions, then parse each assistant message with `useJsonParser()` and render it with `kit.render()`:
 
 <hb-code-example header="DashboardMessage.tsx">
 
@@ -160,11 +146,7 @@ Build a kit from the same definitions and examples, then parse each assistant me
 import { exposeComponent, useJsonParser, useUiKit } from '@hashbrownai/react';
 import { BarChart } from './BarChart';
 import { Metric } from './Metric';
-import {
-  barChartDefinition,
-  dashboardExamples,
-  metricDefinition,
-} from './dashboard-components';
+import { barChartDefinition, metricDefinition } from './dashboard-components';
 
 const components = [
   exposeComponent(Metric, metricDefinition),
@@ -172,7 +154,7 @@ const components = [
 ];
 
 export function DashboardMessage({ content }: { content: string }) {
-  const kit = useUiKit({ components, examples: dashboardExamples });
+  const kit = useUiKit({ components });
   const { value, error } = useJsonParser(content, kit.schema);
 
   if (error) {
@@ -218,7 +200,7 @@ export function Dashboard() {
 ## 5. Integration Guidelines
 
 - Keep one definitions file and generate the agent's schema from it in your build. If the browser's kit and the agent's schema drift apart, the parser rejects the agent's output.
-- Pass the same `examples` to `useUiKit()` and `createUiJsonSchema()`. They're part of the schema.
+- Write descriptions that say when to use each component, when not to, and how it differs from similar ones. They're part of the schema, so the agent sees exactly what the browser's kit describes.
 - Give the model components, not layout primitives. A few well-described components produce better UI than a generic grid with many options.
 - Model chart and table data as real arrays with `s.array()`. The parser streams arrays item by item.
 - Use CopilotKit tools for actions and reading app state. Use the UI kit for what the agent shows the user.

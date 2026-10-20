@@ -1,5 +1,4 @@
 import { s } from '../schema';
-import { prompt } from '../prompt/prompt';
 import { createUiKit } from './ui-kit';
 
 test('createUiKit composes components and UiKit instances', () => {
@@ -75,52 +74,42 @@ test('createUiKit produces stable serialized schemas for identical inputs', () =
   expect(kitA.serializedSchema).toBe(kitB.serializedSchema);
 });
 
-test('createUiKit stores compiled examples on the wrapper schema description', () => {
-  // Arrange
+test('createUiKit describes the wrapper schema with only the base instructions', () => {
   const componentA = {
     component: {},
     name: 'Card',
     description: 'Card component',
   };
-  const examples = prompt`<ui><Card /></ui>`;
 
-  // Act
-  const kit = createUiKit({ components: [componentA], examples });
+  const kit = createUiKit({ components: [componentA] });
 
-  // Assert
-  expect(kit.examples).toContain('Card');
-  const jsonSchema = s.toJsonSchema(kit.schema);
-  expect(jsonSchema.description ?? '').toMatchInlineSnapshot(`
-"Return a JSON object with a single key "ui" that matches the schema below. Use only these components.
-
-
-
-{
-  "ui": [
-    {
-      "Card": {
-        "props": {}
-      }
-    }
-  ]
-}
-
-"
-`);
+  expect(s.toJsonSchema(kit.schema).description).toBe(
+    'Return a JSON object with a single key "ui" that matches the schema below. Use only these components.',
+  );
 });
 
-test('createUiKit throws when example prompt diagnostics exist', () => {
-  // Arrange
+test('createUiKit returns no examples field', () => {
   const componentA = {
     component: {},
     name: 'Card',
     description: 'Card component',
   };
-  const examples = prompt`<ui><Unknown /></ui>`;
 
-  // Act
-  const create = () => createUiKit({ components: [componentA], examples });
+  const kit = createUiKit({ components: [componentA] });
 
-  // Assert
-  expect(create).toThrow(/Example prompt has/);
+  expect('examples' in kit).toBe(false);
+});
+
+test('createUiKit serializes the same schema it returns', () => {
+  const componentA = {
+    component: {},
+    name: 'Card',
+    description: 'Card component',
+  };
+
+  const kit = createUiKit({ components: [componentA] });
+
+  expect(JSON.parse(kit.serializedSchema)).toEqual(
+    JSON.parse(JSON.stringify(s.toJsonSchema(kit.schema))),
+  );
 });

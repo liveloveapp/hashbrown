@@ -2,7 +2,6 @@ import { renderHook } from '@testing-library/react';
 import { createElement } from 'react';
 import {
   createUiJsonSchema,
-  prompt,
   s,
   type UiComponentDefinition,
 } from '@hashbrownai/core';
@@ -81,12 +80,10 @@ test('useUiKit throws when UI does not match the schema', () => {
   expect(() => result.current.render(uiValue)).toThrow();
 });
 
-test('useUiKit compiles examples into the wrapper schema description', () => {
+test('useUiKit describes the wrapper schema without examples', () => {
   // Arrange
   const Button = ({ label }: { label: string }) =>
     createElement('button', null, label);
-
-  const examples = prompt`<ui><Button label="Save" /></ui>`;
 
   const { result } = renderHook(() =>
     useUiKit({
@@ -99,7 +96,6 @@ test('useUiKit compiles examples into the wrapper schema description', () => {
           },
         }),
       ],
-      examples,
     }),
   );
 
@@ -107,7 +103,10 @@ test('useUiKit compiles examples into the wrapper schema description', () => {
   const jsonSchema = s.toJsonSchema(result.current.schema);
 
   // Assert
-  expect(jsonSchema.description ?? '').toContain('"label": "Save"');
+  expect(jsonSchema.description).toBe(
+    'Return a JSON object with a single key "ui" that matches the schema below. Use only these components.',
+  );
+  expect('examples' in result.current).toBe(false);
 });
 
 test('useUiKit and createUiJsonSchema agree when they share component definitions', () => {
@@ -121,12 +120,11 @@ test('useUiKit and createUiJsonSchema agree when they share component definition
   } satisfies UiComponentDefinition;
   const Metric = ({ label, value }: { label: string; value: number }) =>
     createElement('div', null, label, value);
-  const examples = prompt`<ui><metric label="Revenue" value=${184302} /></ui>`;
   const { result } = renderHook(() =>
-    useUiKit({ components: [exposeComponent(Metric, metric)], examples }),
+    useUiKit({ components: [exposeComponent(Metric, metric)] }),
   );
 
-  const schema = createUiJsonSchema({ components: [metric], examples });
+  const schema = createUiJsonSchema({ components: [metric] });
 
   expect(schema).toEqual(JSON.parse(result.current.serializedSchema));
 });

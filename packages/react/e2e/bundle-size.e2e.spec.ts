@@ -8,12 +8,12 @@ const reactDistPath = join(workspaceRoot, 'dist/packages/react');
 
 /**
  * Size budgets, in bytes, for an app that only renders generative UI from a
- * streamed message. They sit a few KB above the measured sizes (104 KB / 31 KB
- * gzip with markdown, 57 KB / 16 KB gzip without) so that an accidental return
- * of the chat runtime, AG-UI or zod fails loudly.
+ * streamed message. They sit a few KB above the measured sizes (94.4 KB /
+ * 27.6 KB gzip with markdown, 46.5 KB / 12.7 KB gzip without) so that an
+ * accidental return of the chat runtime, AG-UI or zod fails loudly.
  */
-const withMarkdownBudget = { minified: 110 * 1024, gzip: 33 * 1024 };
-const withoutMarkdownBudget = { minified: 62 * 1024, gzip: 18 * 1024 };
+const withMarkdownBudget = { minified: 100 * 1024, gzip: 31 * 1024 };
+const withoutMarkdownBudget = { minified: 52 * 1024, gzip: 15 * 1024 };
 
 const metricComponent = `
   function Metric({ label, value }: { label: string; value: string }) {
@@ -22,12 +22,11 @@ const metricComponent = `
 `;
 
 const rendererWithMarkdown = `
-  import { s, prompt } from '@hashbrownai/core';
+  import { s } from '@hashbrownai/core';
   import { exposeComponent, exposeMarkdown, useUiKit, useJsonParser } from '@hashbrownai/react';
   ${metricComponent}
   export function Msg({ content }: { content: string }) {
     const kit = useUiKit({
-      examples: prompt\`<ui><metric label="Revenue" value="$1M" /></ui>\`,
       components: [
         exposeMarkdown(),
         exposeComponent(Metric, { name: 'metric', description: 'KPI', props: { label: s.string('l'), value: s.string('v') } }),
@@ -39,12 +38,11 @@ const rendererWithMarkdown = `
 `;
 
 const rendererWithoutMarkdown = `
-  import { s, prompt } from '@hashbrownai/core';
+  import { s } from '@hashbrownai/core';
   import { exposeComponent, useUiKit, useJsonParser } from '@hashbrownai/react';
   ${metricComponent}
   export function Msg({ content }: { content: string }) {
     const kit = useUiKit({
-      examples: prompt\`<ui><metric label="Revenue" value="$1M" /></ui>\`,
       components: [
         exposeComponent(Metric, { name: 'metric', description: 'KPI', props: { label: s.string('l'), value: s.string('v') } }),
       ],

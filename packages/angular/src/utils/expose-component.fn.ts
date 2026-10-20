@@ -34,6 +34,12 @@ export interface ExposedComponent<T extends { new (...args: any[]): any }> {
     partialProps?: Signal<Record<string, JsonResolvedValue>>;
   }>;
   name: string;
+  /**
+   * The description of the component. The model reads it to decide when to
+   * use the component, so say when to use it, when not to, and how it
+   * differs from similar components. Put value conventions in the input
+   * schemas' descriptions instead.
+   */
   description: string;
   children?: 'any' | 'text' | ExposedComponent<any>[] | false;
   props?: ComponentPropSchema<T>;

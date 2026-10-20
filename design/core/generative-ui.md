@@ -131,13 +131,13 @@ No new endpoints. The UI schema is attached to existing structured chat/completi
 - React rendering:
   `useUiChat` and `useUiCompletion`:
   - build an `s.object({ ui: s.streaming.array(...) })` schema,
-  - compile `SystemPrompt` with component definitions and the schema,
+  - pass the plain-string `system` prompt through unchanged,
   - transform the structured output into React elements by taking the single object key as the tag name and recursing through `children`.
 
 - Angular rendering:
   `uiChatResource` / `uiCompletionResource`:
   - build the same `ui` schema,
-  - compile `SystemPrompt`,
+  - pass the plain-string `system` prompt through unchanged,
   - attach a tag-name registry to assistant messages,
   - `hb-render-message` uses `NgComponentOutlet` to instantiate components and recursively render children.
 
@@ -224,7 +224,6 @@ Example stream lifecycle for a single node:
 ## Telemetry / Observability
 
 No custom telemetry defined. Errors surface via exceptions:
-- system prompt diagnostics at compile time
 - unknown component tags at render time (React)
 - reflection failures for Angular component selectors
 
