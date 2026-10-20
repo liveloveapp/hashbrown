@@ -18,8 +18,8 @@ export interface HashbrownRunAgentExtension {
  *
  * The extension travels in `forwardedProps.hashbrown`, AG-UI's extension
  * point for values an agent reads and intermediaries pass through untouched.
- * The top-level `hashbrown` key is the shape clients sent before 0.8 and is
- * still emitted for one release so older servers keep working.
+ * Clients before 0.8 sent it as a top-level `hashbrown` key, which servers
+ * no longer read.
  *
  * @internal
  */
@@ -28,20 +28,17 @@ export type HashbrownRunAgentInput = RunAgentInput & {
     string,
     unknown
   >;
-  /** @deprecated Read `forwardedProps.hashbrown`; removed after one release. */
-  hashbrown?: HashbrownRunAgentExtension;
 };
 
 /**
- * Reads the Hashbrown extension from a run input, preferring
- * `forwardedProps.hashbrown` over the deprecated top-level key.
+ * Reads the Hashbrown extension from a run input's `forwardedProps`.
  *
  * @internal
  */
 export function readHashbrownExtension(
   input: HashbrownRunAgentInput,
 ): HashbrownRunAgentExtension | undefined {
-  return input.forwardedProps?.hashbrown ?? input.hashbrown;
+  return input.forwardedProps?.hashbrown;
 }
 
 /**
@@ -116,6 +113,5 @@ export function createCanonicalRunAgentInput({
           })),
         }
       : {}),
-    ...(hashbrown ? { hashbrown } : {}),
   };
 }

@@ -29,8 +29,7 @@ function createRequest(
     tools: [],
     context: [],
     state: {},
-    forwardedProps: {},
-    hashbrown: { responseSchema },
+    forwardedProps: { hashbrown: { responseSchema } },
     ...inputOverrides,
   };
 
@@ -313,7 +312,9 @@ test('maps the Hashbrown response schema to the Prompt API constraint', async ()
 
   await withLanguageModel(languageModel, async () => {
     const transport = new ExperimentalEdgeLocalTransport({});
-    const request = createRequest({ hashbrown: { responseSchema } });
+    const request = createRequest({
+      forwardedProps: { hashbrown: { responseSchema } },
+    });
 
     const response = await transport.send(request);
     await collectEvents(response.events);
@@ -1035,7 +1036,6 @@ test('reads the response schema from forwardedProps.hashbrown', async () => {
     const transport = new ExperimentalEdgeLocalTransport({});
     const request = createRequest({
       forwardedProps: { hashbrown: { responseSchema } },
-      hashbrown: undefined,
     });
 
     const response = await transport.send(request);
@@ -1044,6 +1044,27 @@ test('reads the response schema from forwardedProps.hashbrown', async () => {
     expect(session.promptStreaming).toHaveBeenCalledWith(
       expect.any(Array),
       expect.objectContaining({ responseConstraint: responseSchema }),
+    );
+  });
+});
+
+test('ignores a top-level hashbrown key', async () => {
+  const session = createSession(createTextStream([]));
+  const languageModel = { create: jest.fn().mockResolvedValue(session) };
+
+  await withLanguageModel(languageModel, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({});
+    const request = createRequest({
+      forwardedProps: {},
+      ...({ hashbrown: { responseSchema } } as Partial<RunInput>),
+    });
+
+    const response = await transport.send(request);
+    await collectEvents(response.events);
+
+    expect(session.promptStreaming).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.not.objectContaining({ responseConstraint: expect.anything() }),
     );
   });
 });

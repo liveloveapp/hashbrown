@@ -195,9 +195,7 @@ const PINNED_RESPONSE_SCHEMA_JSON = JSON.stringify(PINNED_RESPONSE_SCHEMA);
  */
 export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   const { forwardedProps } = input as OpenAIHashbrownRunAgentInput;
-  const hashbrown =
-    forwardedProps?.hashbrown ??
-    (input as OpenAIHashbrownRunAgentInput).hashbrown;
+  const hashbrown = forwardedProps?.hashbrown;
   if (hashbrown?.responseSchema === undefined) {
     return input;
   }
@@ -209,12 +207,12 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
     );
   }
 
-  const pinned = { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA };
-
   return {
     ...input,
-    forwardedProps: { ...forwardedProps, hashbrown: pinned },
-    hashbrown: pinned,
+    forwardedProps: {
+      ...forwardedProps,
+      hashbrown: { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA },
+    },
   } as OpenAIHashbrownRunAgentInput;
 }
 

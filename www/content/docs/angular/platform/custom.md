@@ -26,7 +26,7 @@ Consume AG-UI types directly in the provider package. Do not duplicate or re-exp
 
 ## Input
 
-Hashbrown sends a standard AG-UI run input. For framework-specific generation modes it adds a `hashbrown` object inside `forwardedProps`, AG-UI's extension point for values the agent reads and intermediaries pass through untouched. Clients before 0.8 sent the same object as a top-level `hashbrown` key; Hashbrown still sends both for one release, and a server should prefer `forwardedProps.hashbrown`.
+Hashbrown sends a standard AG-UI run input. For framework-specific generation modes it adds a `hashbrown` object inside `forwardedProps`, AG-UI's extension point for values the agent reads and intermediaries pass through untouched.
 
 ```ts
 import type { RunAgentInput } from '@ag-ui/core';
@@ -37,11 +37,6 @@ export interface CustomHashbrownRunAgentInput extends RunAgentInput {
       responseSchema?: object;
       ui?: boolean;
     };
-  };
-  /** @deprecated Older clients; read forwardedProps.hashbrown first. */
-  hashbrown?: {
-    responseSchema?: object;
-    ui?: boolean;
   };
 }
 
@@ -91,8 +86,7 @@ export async function* text(
       model,
       messages: mapMessages(input.messages),
       tools: mapTools(input.tools),
-      responseSchema: (input.forwardedProps?.hashbrown ?? input.hashbrown)
-        ?.responseSchema,
+      responseSchema: input.forwardedProps?.hashbrown?.responseSchema,
       stream: true,
     };
     const request = transformRequestOptions

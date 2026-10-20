@@ -6,25 +6,18 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { z } from 'zod';
 
-// Validate extensions separately from AG-UI's own run input schema. The
-// extension lives in forwardedProps.hashbrown; the top-level key is the
-// deprecated pre-0.8 shape, still accepted for one release.
-const hashbrownExtensionSchema = z.object({
-  responseSchema: z.record(z.string(), z.unknown()),
-  ui: z.boolean().optional(),
-});
+// Validate the extension separately from AG-UI's own run input schema. It
+// lives in forwardedProps.hashbrown; a top-level key is not an extension.
 const inputExtensionSchema = z
   .object({
-    forwardedProps: z
-      .object({ hashbrown: hashbrownExtensionSchema.optional() })
-      .optional(),
-    hashbrown: hashbrownExtensionSchema.optional(),
+    forwardedProps: z.object({
+      hashbrown: z.object({
+        responseSchema: z.record(z.string(), z.unknown()),
+        ui: z.boolean().optional(),
+      }),
+    }),
   })
-  .transform(({ forwardedProps, hashbrown }) => {
-    const extension = forwardedProps?.hashbrown ?? hashbrown;
-    if (!extension) throw new Error('Missing Hashbrown extension');
-    return { hashbrown: extension };
-  });
+  .transform(({ forwardedProps }) => ({ hashbrown: forwardedProps.hashbrown }));
 
 /**
  * Parses a run input the way a standard AG-UI endpoint sees it: AG-UI 1.0's
@@ -37,7 +30,10 @@ function parseCanonicalRunAgentInput(payload: unknown): RunAgentInput {
   ) as RunAgentInput;
 }
 
-/** Canonical fixture input with an explicitly negotiated structured-output extension. */
+/**
+ * Canonical fixture input with the negotiated structured-output extension
+ * lifted out of `forwardedProps.hashbrown` for the fixtures' convenience.
+ */
 export type EndpointInput = RunAgentInput & {
   hashbrown?: { responseSchema: Record<string, unknown>; ui?: boolean };
 };

@@ -66,7 +66,8 @@ test('streams structured output progressively', async ({ page, aimock }) => {
   if (!input) {
     throw new Error('Expected one captured structured run input.');
   }
-  expect(input.hashbrown).toEqual({
+  expect(input).not.toHaveProperty('hashbrown');
+  expect(input.forwardedProps?.hashbrown).toEqual({
     responseSchema: answerResponseSchema,
   });
   expect(

@@ -103,7 +103,7 @@ export function createAzureRequestOptions(
             },
           })),
     response_format: createResponseFormat(
-      (input.forwardedProps?.hashbrown ?? input.hashbrown)?.responseSchema,
+      input.forwardedProps?.hashbrown?.responseSchema,
     ),
   };
 }

@@ -212,18 +212,20 @@ export default app;
 
 ## Structured Output
 
-Set `input.hashbrown.responseSchema` to use Ollama native structured output. Hashbrown forwards a cloned JSON Schema as the Ollama `format` request field; it does not emulate or prevalidate provider support.
+Set `input.forwardedProps.hashbrown.responseSchema` to use Ollama native structured output. Hashbrown forwards a cloned JSON Schema as the Ollama `format` request field; it does not emulate or prevalidate provider support.
 
 ```ts
 const input = {
   ...runInput,
-  hashbrown: {
-    responseSchema: {
-      type: 'object',
-      properties: {
-        answer: { type: 'string' },
+  forwardedProps: {
+    hashbrown: {
+      responseSchema: {
+        type: 'object',
+        properties: {
+          answer: { type: 'string' },
+        },
+        required: ['answer'],
       },
-      required: ['answer'],
     },
   },
 };
@@ -252,6 +254,70 @@ const stream = HashbrownOllama.stream.text({
   input,
 });
 ```
+
+## Thinking
+
+Use `transformRequestOptions` to enable thinking on a compatible model. Thinking chunks are emitted as AG-UI reasoning records and are included in provider continuation messages.
+
+```ts
+const stream = HashbrownOllama.stream.text({
+  model: process.env.OLLAMA_MODEL ?? 'deepseek-r1',
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    think: true,
+  }),
+});
+```
+
+## Transform Request Options
+
+`transformRequestOptions` receives the final Ollama SDK request after AG-UI input has been mapped. Use it for server-owned model settings.
+
+```ts
+const stream = HashbrownOllama.stream.text({
+  model: process.env.OLLAMA_MODEL ?? 'gemma3',
+  input,
+  transformRequestOptions: (options) => ({
+    ...options,
+    options: {
+      ...options.options,
+      temperature: 0.2,
+      num_predict: 2048,
+    },
+  }),
+});
+```
+
+[Learn more about transformRequestOptions](/docs/angular/concept/transform-request-options)
+
+};
+
+````
+
+Ollama Cloud does not currently support structured outputs. Use a local or self-hosted model that supports `format` when setting `responseSchema`.
+
+## Ollama Cloud
+
+Configure the official SDK client with the Ollama Cloud host and authorization header, then pass it to Hashbrown:
+
+```ts
+import { HashbrownOllama } from '@hashbrownai/ollama';
+import { Ollama } from 'ollama';
+
+const client = new Ollama({
+  host: 'https://ollama.com',
+  headers: {
+    Authorization: `Bearer ${process.env.OLLAMA_API_KEY!}`,
+  },
+});
+
+const stream = HashbrownOllama.stream.text({
+  client,
+  model: process.env.OLLAMA_MODEL ?? 'gpt-oss:120b',
+  input,
+});
+````
 
 ## Thinking
 

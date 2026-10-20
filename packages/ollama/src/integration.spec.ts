@@ -128,14 +128,16 @@ test('Ollama tool calling emits canonical tool-call events', async () => {
 
 test('Ollama structured output streams JSON text through AG-UI', async () => {
   const input = baseInput('return structured output');
-  input.hashbrown = {
-    responseSchema: {
-      type: 'object',
-      properties: {
-        text: { type: 'string' },
-        ok: { type: 'boolean' },
+  input.forwardedProps = {
+    hashbrown: {
+      responseSchema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string' },
+          ok: { type: 'boolean' },
+        },
+        required: ['text', 'ok'],
       },
-      required: ['text', 'ok'],
     },
   };
 

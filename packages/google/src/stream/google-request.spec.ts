@@ -3,7 +3,7 @@ import { FunctionCallingConfigMode } from '@google/genai';
 import { createGoogleRequestOptions } from './google-request';
 
 function createInput(): RunAgentInput & {
-  hashbrown: { responseSchema: object };
+  forwardedProps: { hashbrown: { responseSchema: object } };
 } {
   return {
     threadId: 'thread-google',
@@ -60,12 +60,13 @@ function createInput(): RunAgentInput & {
     ],
     context: [],
     state: {},
-    forwardedProps: {},
-    hashbrown: {
-      responseSchema: {
-        type: 'object',
-        properties: { answer: { type: 'string' } },
-        required: ['answer'],
+    forwardedProps: {
+      hashbrown: {
+        responseSchema: {
+          type: 'object',
+          properties: { answer: { type: 'string' } },
+          required: ['answer'],
+        },
       },
     },
   };
@@ -165,19 +166,24 @@ test('rejects structured tool result content', () => {
   );
 });
 
-test('reads the response schema from forwardedProps.hashbrown', () => {
-  const { hashbrown, ...standard } = createInput();
-  const input = { ...standard, forwardedProps: { hashbrown } };
+test('ignores a top-level hashbrown key', () => {
+  const { forwardedProps, ...standard } = createInput();
+  const legacy = {
+    ...standard,
+    forwardedProps: {},
+    hashbrown: forwardedProps.hashbrown,
+  };
+  const bare = { ...standard, forwardedProps: {} };
 
   const result = createGoogleRequestOptions(
-    input,
+    legacy,
     'gemini-3-flash',
     new AbortController().signal,
   );
 
   expect(result).toEqual(
     createGoogleRequestOptions(
-      createInput(),
+      bare,
       'gemini-3-flash',
       new AbortController().signal,
     ),
