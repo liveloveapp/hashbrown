@@ -201,6 +201,49 @@ test('provisionNeon returns four pooled connection strings keyed as the Vercel e
     PREVIEW_B4_DATABASE_URL: 'prev-b4',
   });
   assert.ok(calls.every((c) => c.method === 'GET'));
+  assert.equal(checklist.lines().length, 6);
+  assert.ok(checklist.lines().every((l) => /\s{2}exists(\s|$)/.test(l)));
   assert.ok(checklist.lines().every((l) => !l.includes('neon-key-secret')));
   assert.ok(checklist.lines().every((l) => !l.includes('postgres://')));
+});
+
+test('ensureNeonProject ignores a project whose name only contains the search term', async () => {
+  const { neon, calls } = clientFor({
+    'GET /api/v2/projects?search=hashbrown-growth': {
+      body: { projects: [{ id: 'old', name: 'hashbrown-growth-old' }] },
+    },
+    'POST /api/v2/projects': { body: { project: { id: 'p2' } } },
+  });
+
+  const result = await ensureNeonProject(neon, 'hashbrown-growth');
+
+  assert.deepEqual(result, { status: 'created', project: { id: 'p2' } });
+  assert.deepEqual(
+    calls.map((c) => c.method),
+    ['GET', 'POST'],
+  );
+});
+
+test('ensureBranch ignores a branch whose name only resembles the target', async () => {
+  const { neon, calls } = clientFor({
+    'GET /api/v2/projects/p1/branches': {
+      body: {
+        branches: [
+          { id: 'b1', name: 'main', default: true },
+          { id: 'bx', name: 'preview-old', default: false },
+        ],
+      },
+    },
+    'POST /api/v2/projects/p1/branches': {
+      body: { branch: { id: 'b2', name: 'preview' } },
+    },
+  });
+
+  const result = await ensureBranch(neon, 'p1', 'preview', 'b1');
+
+  assert.deepEqual(result, { status: 'created', branch: { id: 'b2' } });
+  assert.deepEqual(
+    calls.map((c) => c.method),
+    ['GET', 'POST'],
+  );
 });
