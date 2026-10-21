@@ -35,7 +35,7 @@ function mount() {
 
 const link = () =>
   document.querySelector<HTMLAnchorElement>(
-    'a[href="/blog/2026-10-20-hashbrown-v-0-8-0"]',
+    'a[href="/blog/2026-10-21-hashbrown-v-0-8-0"]',
   );
 
 test('shows when nothing has been dismissed', () => {
@@ -75,7 +75,7 @@ test('announces the date of the current announcement', () => {
 
   const iso = date.toISOString();
 
-  expect(iso).toBe('2026-10-20T18:00:00.000Z');
+  expect(iso).toBe('2026-10-21T18:00:00.000Z');
   expect(ANNOUNCEMENT_STORAGE_KEY).toBe('lastAnnouncementDateTime');
 });
 
@@ -121,7 +121,7 @@ test('dismissing stores the announcement date and hides it', () => {
   });
 
   expect(localStorage.getItem(ANNOUNCEMENT_STORAGE_KEY)).toBe(
-    '2026-10-20T18:00:00.000Z',
+    '2026-10-21T18:00:00.000Z',
   );
   expect(link()).toBeNull();
 });
