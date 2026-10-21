@@ -1,0 +1,51 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+        "model": "qwen2.5:14b",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": "{\"query\":\"hashbrown\"}"
+          }
+        ]
+      },
+      "recordedTimings": {
+        "ttftMs": 1228,
+        "interChunkDelaysMs": [171],
+        "totalDurationMs": 1399
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+        "model": "qwen2.5:14b",
+        "turnIndex": 1,
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "The code word 'hashbrown' corresponds to the color green."
+      },
+      "recordedTimings": {
+        "ttftMs": 583,
+        "interChunkDelaysMs": [
+          68, 80, 82, 87, 71, 81, 79, 72, 83, 81, 89, 82, 79
+        ],
+        "totalDurationMs": 1617
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}
