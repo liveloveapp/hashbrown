@@ -4,6 +4,7 @@ meta:
   - name: description
     content: 'The initial system-level guidance given to the language model'
 ---
+
 # System Instructions
 
 <p class="subtitle">The initial system-level guidance given to the
@@ -293,21 +294,33 @@ chat = chatResource({
 });
 ```
 
-Next, in your backend, override the client side system instruction when passing
-the completion creation params to your LLM's adapter:
+Next, in your backend, replace the system and developer messages the client sent with your own before passing the AG-UI run input to the adapter:
 
 ```ts
-const params: Chat.Api.CreateCompletionParams = req.body;
-const result = OpenAI.stream.text({
-  apiKey,
-  request: {
-    ...params,
-    system: `
-      <!-- System Instruction -->
-    `,
-  },
+import type { RunAgentInput } from '@ag-ui/core';
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+
+function pinSystemPrompt(input: RunAgentInput, prompt: string): RunAgentInput {
+  return {
+    ...input,
+    messages: [
+      { id: 'server-system', role: 'system', content: prompt },
+      ...input.messages.filter(
+        (message) => message.role !== 'system' && message.role !== 'developer',
+      ),
+    ],
+  };
+}
+
+const input: RunAgentInput = req.body;
+const events = HashbrownOpenAI.stream.text({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: 'gpt-5',
+  input: pinSystemPrompt(input, 'You are a helpful assistant.'),
 });
 ```
+
+The [public endpoint recipe](/docs/angular/recipes/public-endpoint) pins the tools and the response schema the same way.
 
 You can use this as an opportunity to handle more advanced use cases, like providing
 parts of the system instruction client-side and server-side, or using a prompt

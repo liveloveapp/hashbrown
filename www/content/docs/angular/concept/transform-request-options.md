@@ -39,7 +39,8 @@ import { HashbrownOpenAI } from '@hashbrownai/openai';
 
 const stream = HashbrownOpenAI.stream.text({
   apiKey: process.env.OPENAI_API_KEY!,
-  request: req.body,
+  model: 'gpt-5',
+  input: req.body,
   transformRequestOptions: (options) => {
     return {
       ...options,
@@ -69,7 +70,8 @@ Inject user context and application state that shouldn't be visible to the clien
 ```ts
 const stream = HashbrownOpenAI.stream.text({
   apiKey: process.env.OPENAI_API_KEY!,
-  request: req.body,
+  model: 'gpt-5',
+  input: req.body,
   transformRequestOptions: (options) => {
     const userContext = getUserContext(req.user.id);
 
@@ -102,7 +104,8 @@ Transform requests to modify message content based on business logic:
 ```ts
 const stream = HashbrownOpenAI.stream.text({
   apiKey: process.env.OPENAI_API_KEY!,
-  request: req.body,
+  model: 'gpt-5',
+  input: req.body,
   transformRequestOptions: (options) => {
     return {
       ...options,
@@ -133,7 +136,8 @@ Adjust model parameters based on runtime conditions:
 ```ts
 const stream = HashbrownOpenAI.stream.text({
   apiKey: process.env.OPENAI_API_KEY!,
-  request: req.body,
+  model: 'gpt-5',
+  input: req.body,
   transformRequestOptions: (options) => {
     const userPlan = getUserPlan(req.user.id);
 
@@ -164,7 +168,8 @@ Use async operations for database lookups or external API calls:
 ```ts
 const stream = HashbrownOpenAI.stream.text({
   apiKey: process.env.OPENAI_API_KEY!,
-  request: req.body,
+  model: 'gpt-5',
+  input: req.body,
   transformRequestOptions: async (options) => {
     const userPreferences = await fetchUserPreferences(req.user.id);
 
@@ -210,7 +215,8 @@ Always handle errors gracefully in your transform function:
 ```ts
 const stream = HashbrownOpenAI.stream.text({
   apiKey: process.env.OPENAI_API_KEY!,
-  request: req.body,
+  model: 'gpt-5',
+  input: req.body,
   transformRequestOptions: async (options) => {
     try {
       const enhancedOptions = await enhanceRequest(options);
