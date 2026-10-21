@@ -385,3 +385,91 @@ test('record options enable aimock recording with the provider upstream', async 
     ],
   });
 });
+
+test('stop scrubs the JSON-escaped form of a secret', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  const recordedRoot = join(workDir, 'recorded');
+  const secret = 'sk-fake"quoted\\secret';
+  const recordingPath = join(recordedRoot, 'escaped-test', 'openai.json');
+  let handle: AimockHandle | null = null;
+  let scrubbed = '';
+
+  try {
+    handle = await startAimock({
+      fixturePath: join(workDir, 'missing.json'),
+      record: { providers: {}, fixturePath: recordedRoot, secrets: [secret] },
+    });
+    mkdirSync(join(recordedRoot, 'escaped-test'), { recursive: true });
+    writeFileSync(
+      recordingPath,
+      JSON.stringify({
+        fixtures: [
+          {
+            match: { userMessage: 'hello' },
+            response: { content: `echo ${secret}` },
+          },
+        ],
+      }),
+    );
+
+    await handle.stop();
+    scrubbed = readFileSync(recordingPath, 'utf-8');
+  } finally {
+    await handle?.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+
+  expect(scrubbed).not.toContain(JSON.stringify(secret).slice(1, -1));
+  expect(JSON.parse(scrubbed)).toEqual({
+    fixtures: [
+      {
+        match: { userMessage: 'hello' },
+        response: { content: 'echo [REDACTED]' },
+      },
+    ],
+  });
+});
+
+test('strict replay with a miss message still serves an existing recording', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  mkdirSync(join(workDir, 'served-case'), { recursive: true });
+  const fixturePath = createFixtureFile(
+    workDir,
+    'served-case/openai.json',
+    'say hi briefly',
+  );
+  let handle: AimockHandle | null = null;
+  let status = 0;
+  let body: unknown = null;
+
+  try {
+    handle = await startAimock({
+      fixturePath,
+      strict: true,
+      strictMissMessage: 'No recorded fixture matched for test "served-case".',
+    });
+
+    const response = await fetch(`${handle.openAiBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer test-not-used',
+        'X-Test-Id': 'served-case',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4.1-mini',
+        messages: [{ role: 'user', content: 'say hi briefly' }],
+      }),
+    });
+    status = response.status;
+    body = await response.json();
+  } finally {
+    await handle?.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+
+  expect(status).toBe(200);
+  expect(body).toMatchObject({
+    choices: [{ message: { content: 'Hello from aimock.' } }],
+  });
+});

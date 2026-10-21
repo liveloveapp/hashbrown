@@ -51,17 +51,15 @@ test('recordedTestSlug matches aimock slug for the same id', () => {
 
 test('collectSecrets returns every non-empty credential value', () => {
   const env = {
-    OPENAI_API_KEY: 'sk-openai',
-    ANTHROPIC_API_KEY: 'sk-ant',
-    CLIENT_SECRET: 'client-secret',
-    CLIENT_SECRET_VALUE: 'client-secret-value',
-    GITHUB_TOKEN: 'ghp-token',
-    AWS_ACCESS_KEY_ID: 'AKIAFAKE',
-    AWS_REGION: 'us-east-1',
+    OPENAI_API_KEY: 'sk-openai-fake-0001',
+    ANTHROPIC_API_KEY: 'sk-ant-fake-00002',
+    CLIENT_SECRET: 'client-secret-fake',
+    CLIENT_SECRET_VALUE: 'client-secret-value-fake',
+    GITHUB_TOKEN: 'ghp-token-fake-0003',
+    AWS_ACCESS_KEY_ID: 'AKIAFAKEFAKEFAKE',
     AZURE_OPENAI_ENDPOINT: 'https://fake.openai.azure.com',
     EMPTY_API_KEY: '',
-    HOME: '/Users/someone',
-    OLLAMA_MODEL: 'llama3',
+    HOME: '/Users/someone-with-long-home',
     AIMOCK_RECORD: '1',
   };
 
@@ -69,16 +67,44 @@ test('collectSecrets returns every non-empty credential value', () => {
 
   expect([...secrets].sort()).toEqual(
     [
-      'sk-openai',
-      'sk-ant',
-      'client-secret',
-      'client-secret-value',
-      'ghp-token',
-      'AKIAFAKE',
-      'us-east-1',
+      'sk-openai-fake-0001',
+      'sk-ant-fake-00002',
+      'client-secret-fake',
+      'client-secret-value-fake',
+      'ghp-token-fake-0003',
+      'AKIAFAKEFAKEFAKE',
       'https://fake.openai.azure.com',
     ].sort(),
   );
+});
+
+test('collectSecrets drops region, model and API version values', () => {
+  const env = {
+    AWS_REGION: 'ap-southeast-2-long',
+    AWS_DEFAULT_REGION: 'ap-southeast-2-long',
+    BEDROCK_REGION: 'ap-southeast-2-long',
+    OLLAMA_MODEL: 'llama3.2-some-long-tag',
+    BEDROCK_MODEL_ID: 'anthropic.claude-fake-model-v1',
+    AZURE_API_VERSION: '2025-04-01-preview',
+    OPENAI_API_KEY: 'sk-openai-fake-0001',
+  };
+
+  const secrets = collectSecrets(env);
+
+  expect(secrets).toEqual(['sk-openai-fake-0001']);
+});
+
+test('collectSecrets drops values shorter than 12 characters', () => {
+  const env = {
+    SOME_KEY: '1',
+    SHORT_TOKEN: 'abcdefghijk',
+    AWS_PROFILE: 'default',
+    LONG_ENOUGH_TOKEN: 'abcdefghijkl',
+  };
+
+  const secrets = collectSecrets(env);
+
+  expect(secrets).toEqual(['abcdefghijkl']);
 });
 
 test('strict replay fails a request with no fixture and names the test', async () => {

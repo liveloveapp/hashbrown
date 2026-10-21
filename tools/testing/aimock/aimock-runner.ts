@@ -126,9 +126,14 @@ function listJsonFiles(dir: string): string[] {
   });
 }
 
-// Longer secrets go first so a secret that contains another is fully removed.
+// Each secret is matched raw and in its JSON-escaped form, as it appears in a
+// recording. Longer forms go first so a secret that contains another is fully
+// removed.
 function redactSecrets(text: string, secrets: readonly string[]): string {
-  return [...new Set(secrets.filter((secret) => secret.length > 0))]
+  const forms = secrets
+    .filter((secret) => secret.length > 0)
+    .flatMap((secret) => [secret, JSON.stringify(secret).slice(1, -1)]);
+  return [...new Set(forms)]
     .sort((a, b) => b.length - a.length)
     .reduce((result, secret) => result.split(secret).join(REDACTED), text);
 }

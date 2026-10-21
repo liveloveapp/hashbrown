@@ -26,6 +26,19 @@ const SECRET_NAME_PATTERNS: readonly RegExp[] = [
   /_ENDPOINT$/,
 ];
 
+/** Configuration, not credentials: redacting these would corrupt recordings. */
+const NON_SECRET_NAME_PATTERNS: readonly RegExp[] = [
+  /_REGION$/,
+  /_MODEL/,
+  /_API_VERSION$/,
+];
+
+/**
+ * Shorter values are too likely to appear by chance in a recording, and
+ * scrubbing rewrites every recorded file.
+ */
+const MIN_SECRET_LENGTH = 12;
+
 /**
  * Whether this run records fixtures from the real provider APIs.
  *
@@ -60,16 +73,19 @@ export function recordedTestSlug(testName: string): string {
  * Collect the credential values a recording must never contain.
  *
  * @param env - Environment to read, such as `process.env`.
- * @returns Every non-empty value of a variable named `*_KEY`, `*_SECRET*`,
- * `*_TOKEN`, `AWS_*` or `*_ENDPOINT`.
+ * @returns Every value of at least 12 characters of a variable named
+ * `*_KEY`, `*_SECRET*`, `*_TOKEN`, `AWS_*` or `*_ENDPOINT`, except
+ * configuration named `*_REGION`, `*_MODEL*` or `*_API_VERSION`.
  */
 export function collectSecrets(env: NodeJS.ProcessEnv): string[] {
   return Object.entries(env)
-    .filter(([name]) =>
-      SECRET_NAME_PATTERNS.some((pattern) => pattern.test(name)),
+    .filter(
+      ([name]) =>
+        SECRET_NAME_PATTERNS.some((pattern) => pattern.test(name)) &&
+        !NON_SECRET_NAME_PATTERNS.some((pattern) => pattern.test(name)),
     )
     .map(([, value]) => value ?? '')
-    .filter((value) => value.length > 0);
+    .filter((value) => value.length >= MIN_SECRET_LENGTH);
 }
 
 /**
