@@ -854,10 +854,10 @@ test('uiDecisionResource chat mode never asks about a non-selectable kit', async
   narrowing.sendMessage('show UA1');
   await settle();
 
-  const asked = JSON.stringify(fake.calls[0].request.questions);
-  expect(asked).toContain('Flight');
-  expect(asked).toContain('Airport');
-  expect(asked).not.toContain('Markdown');
+  const question = fake.calls[0].request.questions['pick'] as {
+    options: Record<string, unknown>;
+  };
+  expect(Object.keys(question.options)).toEqual(['Flight', 'Airport']);
 });
 
 test('uiDecisionResource chat mode always sends non-selectable members with the picks', async () => {
@@ -881,4 +881,25 @@ test('uiDecisionResource chat mode always sends non-selectable members with the 
   expect(schema).toContain('"Flight"');
   expect(schema).toContain('"Markdown"');
   expect(schema).not.toContain('"Airport"');
+});
+
+test('uiDecisionResource chat mode sends with every component when all are non-selectable', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Flight', 0.9, ['Flight', 'Airport']),
+  );
+  const chat = chatTransport(['hold']);
+  configureChat(fake.transport, chat);
+  const everything = createUiKit({
+    components: [flight, airport],
+    selectable: false,
+  });
+  const { narrowing } = narrowedChat({ components: [everything] });
+
+  narrowing.sendMessage('show UA1');
+  await settle();
+
+  expect(fake.calls).toHaveLength(0);
+  expect(chat.requests).toHaveLength(1);
+  expect(offered(chat.requests[0])).toEqual(['Flight', 'Airport']);
+  expect(narrowing.decisionError()).toBeUndefined();
 });

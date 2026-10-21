@@ -14,7 +14,11 @@ interface Selectable {
 
 /**
  * A plain group of structural members that mirrors a UI kit without
- * importing component implementations.
+ * importing component implementations. Pass it to `createSelectionSchema`
+ * in place of a UI kit; with `selectable: false` its members are never asked
+ * about.
+ *
+ * @public
  */
 export interface SelectionGroup {
   components: ReadonlyArray<{
