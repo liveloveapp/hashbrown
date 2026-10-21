@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
+import posthog from 'posthog-js';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { expect, test, vi } from 'vitest';
 import { CopyButton } from '../src/components/CopyButton';
 import { getToasts, toastService } from '../src/components/toast/toast-service';
+
+vi.mock('posthog-js', () => ({ default: { capture: vi.fn(), init: vi.fn() } }));
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -17,11 +20,13 @@ function reset() {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   toastService.dismissAll();
+  vi.mocked(posthog.capture).mockReset();
+  window.history.replaceState(null, '', '/');
   document.body.replaceChildren();
 }
 
 /** Render a code example with `code` as its content and a copy button. */
-function mount(code: string) {
+function mount(code: string, language?: string) {
   const example = document.createElement('div');
   example.dataset.component = 'code-example';
   const content = document.createElement('div');
@@ -32,7 +37,7 @@ function mount(code: string) {
   document.body.replaceChildren(example);
   const root = createRoot(container);
   mounted.push(root);
-  act(() => root.render(<CopyButton />));
+  act(() => root.render(<CopyButton language={language} />));
   return document.querySelector<HTMLButtonElement>(
     'button[aria-label="Copy code to clipboard"]',
   );
@@ -93,4 +98,67 @@ test('does nothing when there is no code to copy', async () => {
 
   expect(writeText).not.toHaveBeenCalled();
   expect(getToasts()).toEqual([]);
+});
+
+function codeCopies() {
+  return vi
+    .mocked(posthog.capture)
+    .mock.calls.filter(([event]) => event === 'docs:code_copied')
+    .map(([, props]) => props);
+}
+
+test('copy button tracks docs:code_copied with pathname, framework and language', async () => {
+  reset();
+  window.history.replaceState(null, '', '/docs/react/start/intro?q=1#install');
+  stubClipboard(async () => undefined);
+  const button = mount('const x = 1;', 'tsx');
+
+  await act(async () => button?.click());
+
+  expect(codeCopies()).toEqual([
+    {
+      source_page: '/docs/react/start/intro',
+      pathname: '/docs/react/start/intro',
+      framework: 'react',
+      language: 'tsx',
+    },
+  ]);
+});
+
+test('copy button reports an unknown language when none is passed', async () => {
+  reset();
+  window.history.replaceState(null, '', '/docs/angular/start/intro');
+  stubClipboard(async () => undefined);
+  const button = mount('const x = 1;');
+
+  await act(async () => button?.click());
+
+  expect(codeCopies()).toEqual([
+    {
+      source_page: '/docs/angular/start/intro',
+      pathname: '/docs/angular/start/intro',
+      framework: 'angular',
+      language: 'unknown',
+    },
+  ]);
+});
+
+test('copy button does not track failed copies or copies outside the docs', async () => {
+  reset();
+  window.history.replaceState(null, '', '/blog/post');
+  stubClipboard(async () => undefined);
+  const blogButton = mount('const x = 1;', 'ts');
+  await act(async () => blogButton?.click());
+  window.history.replaceState(null, '', '/docs/react/start/intro');
+  stubClipboard(async () => {
+    throw new Error('denied');
+  });
+  vi.spyOn(console, 'error').mockImplementation(() => {
+    // Silence the expected log.
+  });
+  const docsButton = mount('const x = 1;', 'ts');
+
+  await act(async () => docsButton?.click());
+
+  expect(codeCopies()).toEqual([]);
 });

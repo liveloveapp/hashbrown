@@ -1,13 +1,28 @@
 'use client';
 
+import { trackDocsCodeCopied } from '../lib/analytics/client';
+import { docsFrameworkFromPath } from '../lib/analytics/events';
 import { CopyIcon } from './icons';
 import { toastService } from './toast/toast-service';
 
+/** Track a successful docs copy; outside `/docs/<sdk>/…` nothing is sent. */
+function trackCopy(language: string) {
+  const pathname = window.location.pathname;
+  const framework = docsFrameworkFromPath(pathname);
+  if (framework) {
+    trackDocsCodeCopied({ pathname, framework, language });
+  }
+}
+
 /**
  * Copies the text of the enclosing code example's content to the clipboard
- * and confirms with a toast, like the Angular `CodeExample.onCopy`.
+ * and confirms with a toast, like the Angular `CodeExample.onCopy`. A
+ * successful copy on a framework docs page tracks `docs:code_copied` (never
+ * the code itself).
+ *
+ * @param props.language - The code block's fence language, when known.
  */
-export function CopyButton() {
+export function CopyButton({ language = 'unknown' }: { language?: string }) {
   return (
     <button
       type="button"
@@ -22,12 +37,14 @@ export function CopyButton() {
         }
         try {
           await navigator.clipboard.writeText(text);
-          toastService.success('Code copied to clipboard', {
-            position: 'top-center',
-          });
         } catch (err) {
           console.error('Copy failed', err);
+          return;
         }
+        trackCopy(language);
+        toastService.success('Code copied to clipboard', {
+          position: 'top-center',
+        });
       }}
     >
       <CopyIcon />
