@@ -14,7 +14,11 @@ const PICK_PROBABILITY = 0.5;
 /** The caret drawn after the last token of a value that is still streaming. */
 const CARET = '▍';
 
-/** The localStorage key that remembers the "Show the stream" switch. */
+/**
+ * The localStorage key that remembered the "Show the stream" switch.
+ *
+ * @deprecated Dev mode replaced the switch; removed in Task 4.
+ */
 export const SHOW_STREAM_KEY = 'atc.showStream';
 
 /** A decision's answers and their metadata, as Hashbrown returns them. */
@@ -456,12 +460,23 @@ export function toolBlocks(calls: readonly StreamToolCall[]): StreamBlock[] {
   );
 }
 
-/** The storage the switch is remembered in (`localStorage`). */
-export type ShowStreamStorage = Pick<Storage, 'getItem' | 'setItem'>;
+/** The storage the developer drawer's settings are remembered in (`localStorage`). */
+export type DevStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
 /**
- * Whether "Show the stream" is on. It is on for a first visit, and whenever
- * storage is missing or throws (private windows, blocked site data).
+ * The storage the switch was remembered in.
+ *
+ * @deprecated Use {@link DevStorage}; removed in Task 4.
+ */
+export type ShowStreamStorage = DevStorage;
+
+/**
+ * Whether "Show the stream" is on.
+ *
+ * It is on for a first visit, and whenever storage is missing or throws
+ * (private windows, blocked site data).
+ *
+ * @deprecated Use `readDevMode` from `dev-tool`; removed in Task 4.
  */
 export function readShowStream(
   storage: ShowStreamStorage | null | undefined,
@@ -473,7 +488,11 @@ export function readShowStream(
   }
 }
 
-/** Remembers the switch; a storage that throws is ignored. */
+/**
+ * Remembers the switch; a storage that throws is ignored.
+ *
+ * @deprecated Use `writeDevMode` from `dev-tool`; removed in Task 4.
+ */
 export function writeShowStream(
   storage: ShowStreamStorage | null | undefined,
   on: boolean,
@@ -486,7 +505,7 @@ export function writeShowStream(
 }
 
 /** `localStorage`, or null where reading the property itself throws. */
-export function browserStorage(): ShowStreamStorage | null {
+export function browserStorage(): DevStorage | null {
   try {
     return globalThis.localStorage ?? null;
   } catch {
