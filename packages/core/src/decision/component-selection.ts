@@ -168,8 +168,7 @@ function toOption({ name, description }: Selectable): {
  * way for servers.
  *
  * Members of a kit created with `selectable: false` are never options, but
- * `expand` still includes them when a chosen component declares them as
- * children.
+ * `expand` always includes them, whatever was chosen.
  *
  * @param components - Exposed components and/or UI kits.
  * @returns The selection options and an `expand` function.
@@ -201,6 +200,7 @@ export function createComponentSelection<T extends ExposedComponentDescriptor>(
           }
         }
       };
+      nonSelectable.forEach(include);
       ids.filter((id) => variants.has(id)).forEach(include);
       return flat.filter((entry) => included.has(entry.name));
     },

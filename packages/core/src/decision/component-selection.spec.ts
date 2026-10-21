@@ -202,3 +202,12 @@ test('a name in both a selectable and a non-selectable kit is non-selectable', (
   expect(optionIds(selection)).toEqual(['Flight']);
   expect(names(selection.expand(['Airport']))).toEqual(['Airport']);
 });
+
+test('expand includes non-selectable members even when nothing declares them', () => {
+  const kit = createUiKit({ components: [airport], selectable: false });
+
+  const selection = createComponentSelection([flight, kit]);
+  const expanded = selection.expand(['Flight']);
+
+  expect(names(expanded)).toEqual(['Flight', 'Airport']);
+});

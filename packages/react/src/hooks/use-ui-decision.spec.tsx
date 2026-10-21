@@ -876,3 +876,54 @@ test('useUiDecision chat mode sends a narrowed message even when the previous tu
   expect(result.current.chat.isLoading).toBe(true);
   expect(result.current.chat.components).toEqual([note]);
 });
+
+const Markdown = () => null;
+const markdown = exposeComponent(Markdown, {
+  name: 'Markdown',
+  description: 'Prose',
+});
+const proseKit = ɵcreateUiKit<any>({
+  components: [markdown],
+  selectable: false,
+});
+
+test('useUiDecision chat mode never asks about a non-selectable kit', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Flight', 0.9, ['Flight', 'Airport']),
+  );
+  const chat = chatTransport(['hold']);
+  const { result } = renderHook(
+    () => useNarrowedChat({ components: [flight, airport, proseKit] }),
+    { wrapper: chatWrapper(fake.transport, chat) },
+  );
+
+  act(() => result.current.narrowing.sendMessage('show UA1'));
+  await waitFor(() => expect(chat.requests).toHaveLength(1));
+
+  const asked = JSON.stringify(fake.calls[0].request.questions);
+  expect(asked).toContain('Flight');
+  expect(asked).toContain('Airport');
+  expect(asked).not.toContain('Markdown');
+});
+
+test('useUiDecision chat mode always sends non-selectable members with the picks', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Flight', 0.9, ['Flight', 'Airport']),
+  );
+  const chat = chatTransport(['hold']);
+  const { result } = renderHook(
+    () => useNarrowedChat({ components: [flight, airport, proseKit] }),
+    { wrapper: chatWrapper(fake.transport, chat) },
+  );
+
+  act(() => result.current.narrowing.sendMessage('show UA1'));
+  await waitFor(() => expect(chat.requests).toHaveLength(1));
+
+  const schema = JSON.stringify(
+    (chat.requests[0].input.forwardedProps as { hashbrown?: unknown })
+      .hashbrown,
+  );
+  expect(schema).toContain('"Flight"');
+  expect(schema).toContain('"Markdown"');
+  expect(schema).not.toContain('"Airport"');
+});
