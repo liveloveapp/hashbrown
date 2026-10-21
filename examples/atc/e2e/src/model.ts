@@ -27,6 +27,19 @@ export const PROMPTS = {
   hideAirports: 'Hide the airports.',
   /** Streams a reasoning summary before its tool call. */
   reasoned: 'Which plane is highest?',
+  /** Typed text the stubbed router sends to the map filter ({@link FILTER_JETS}). */
+  filterJets: 'jets below 10,000 ft',
+  /** Typed text the stubbed router sends to the map filter, clearing it. */
+  clearFilter: 'clear the filter',
+  /** Needs the planes a filter hides: the assistant calls clearMapFilter. */
+  highestOverall: "what's the highest plane overall?",
+} as const;
+
+/** The map filter the scripted model streams for {@link PROMPTS.filterJets}. */
+export const FILTER_JETS = {
+  ...NO_FILTERS,
+  kind: 'jet',
+  maxAltitudeFt: 10_000,
 } as const;
 
 /** The reasoning summary the scripted model streams for {@link PROMPTS.reasoned}. */
@@ -106,6 +119,17 @@ export function scriptAtcModel(mock: LLMock): void {
     arguments: { hexes: nearby.map((row) => row.hex) },
   };
 
+  // The map filter is a structured completion on /api/filter: its only user
+  // message is JSON { request, current }, which holds the typed request.
+  mock.onMessage(`"request":"${PROMPTS.filterJets}"`, {
+    content: JSON.stringify(FILTER_JETS),
+  });
+  scriptTurn(
+    mock,
+    PROMPTS.highestOverall,
+    [{ id: 'clear-filter', name: 'clearMapFilter', arguments: {} }],
+    ui(card('The highest plane overall.', highest.hex)),
+  );
   scriptTurn(
     mock,
     PROMPTS.selected,
