@@ -1,0 +1,268 @@
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import test from 'node:test';
+
+import { createVercelClient } from '../../../vercel/bootstrap.mjs';
+import { buildEnvFile, parseEnvFile, provision } from './index.mjs';
+import { assertNoSecrets, createChecklist, createJsonClient } from './lib.mjs';
+import { stubFetch } from './test-support.mjs';
+
+const SWITCHES = [
+  'CAMPAIGN_ENABLED',
+  'CAMPAIGN_ENROLLMENT_ENABLED',
+  'DELIVERY_ENABLED',
+  'LIFECYCLE_CRON_ENABLED',
+  'GROWTH_OBSERVATION_PROCESSING_ENABLED',
+  'GROWTH_INSTALL_DIGEST_ENABLED',
+  'GROWTH_INSTALL_RUNTIME_HELLO_ENABLED',
+];
+
+const NEON = {
+  DATABASE_URL: 'postgres://u:neon-main-secret@h/growth?sslmode=require',
+  B4_DATABASE_URL: 'postgres://u:neon-main-b4-secret@h/b4_state',
+  PREVIEW_DATABASE_URL: 'postgres://u:neon-prev-secret@h/growth',
+  PREVIEW_B4_DATABASE_URL: 'postgres://u:neon-prev-b4-secret@h/b4_state',
+};
+const POSTHOG = {
+  NEXT_PUBLIC_POSTHOG_TOKEN: 'phc_public_token_value',
+  NEXT_PUBLIC_POSTHOG_HOST: 'https://us.i.posthog.com',
+  POSTHOG_PROJECT_ID: '42',
+};
+const SECRETS = {
+  LIFECYCLE_SERVICE_SECRET: 'a'.repeat(64),
+  CRON_SECRET: 'b'.repeat(64),
+  GOOGLE_REPLY_HMAC_SECRET: 'c'.repeat(64),
+  GROWTH_ACTION_TOKEN_ACTIVE_SECRET: 'd'.repeat(64),
+  GROWTH_EMAIL_HMAC_ACTIVE_SECRET: 'e'.repeat(64),
+};
+
+function build(resend = { RESEND_API_KEY: 're_sending_secret_value' }) {
+  return buildEnvFile({
+    neon: NEON,
+    posthog: POSTHOG,
+    resend,
+    secrets: SECRETS,
+    founderEmail: 'brian@hashbrown.dev',
+  });
+}
+
+test('buildEnvFile sets every rollout switch to false and both HMAC versions to v1', () => {
+  const text = build();
+
+  const env = parseEnvFile(text);
+
+  for (const key of SWITCHES) assert.equal(env[key], 'false');
+  assert.equal(env.GROWTH_ACTION_TOKEN_ACTIVE_VERSION, 'v1');
+  assert.equal(env.GROWTH_EMAIL_HMAC_ACTIVE_VERSION, 'v1');
+  assert.equal(env.RESEND_SENDER_VERIFIED, 'false');
+  assert.equal(env.RESEND_TRACKING_DISABLED, 'true');
+  assert.equal(env.GROWTH_DATABASE_ENVIRONMENT, 'production');
+  assert.equal(env.PREVIEW_GROWTH_DATABASE_ENVIRONMENT, 'preview');
+  assert.equal(env.DELIVERY_ENVIRONMENT, 'production');
+  assert.equal(env.PREVIEW_DELIVERY_ENVIRONMENT, 'preview');
+  assert.equal(env.GROWTH_PUBLIC_ACTION_ORIGIN, 'https://hashbrown.dev');
+  assert.equal(env.LIFECYCLE_URL, 'https://hashbrown-lifecycle.vercel.app');
+  assert.equal(env.FOUNDER_NOTIFICATION_EMAIL, 'brian@hashbrown.dev');
+  assert.equal(env.DATABASE_URL, NEON.DATABASE_URL);
+  assert.equal(env.CRON_SECRET, SECRETS.CRON_SECRET);
+  assert.ok(!('PREVIEW_GROWTH_PUBLIC_ACTION_ORIGIN' in env));
+  assert.ok(!('PREVIEW_LIFECYCLE_URL' in env));
+});
+
+test('buildEnvFile omits RESEND_API_KEY when resend returned none', () => {
+  const text = build({});
+
+  const env = parseEnvFile(text);
+
+  assert.ok(!('RESEND_API_KEY' in env));
+});
+
+test('buildEnvFile rejects a value containing a newline', () => {
+  const act = () =>
+    buildEnvFile({
+      neon: { ...NEON, DATABASE_URL: 'postgres://x\nINJECTED=1' },
+      posthog: POSTHOG,
+      resend: {},
+      secrets: SECRETS,
+      founderEmail: 'brian@hashbrown.dev',
+    });
+
+  assert.throws(act, /DATABASE_URL/);
+});
+
+function vendorFixtures() {
+  const neonRoutes = {
+    'GET /api/v2/projects?search=hashbrown-growth': {
+      body: { projects: [{ id: 'p1', name: 'hashbrown-growth' }] },
+    },
+    'GET /api/v2/projects/p1/branches': {
+      body: {
+        branches: [
+          { id: 'b1', name: 'main', default: true },
+          { id: 'b2', name: 'preview' },
+        ],
+      },
+    },
+    'GET /api/v2/projects/p1/branches/b1/roles': {
+      body: { roles: [{ name: 'owner', protected: false }] },
+    },
+  };
+  for (const branch of ['b1', 'b2']) {
+    neonRoutes[`GET /api/v2/projects/p1/branches/${branch}/databases`] = {
+      body: { databases: [{ name: 'growth' }, { name: 'b4_state' }] },
+    };
+    for (const database of ['growth', 'b4_state']) {
+      const query = new URLSearchParams({
+        branch_id: branch,
+        database_name: database,
+        role_name: 'owner',
+        pooled: 'true',
+      });
+      neonRoutes[`GET /api/v2/projects/p1/connection_uri?${query}`] = {
+        body: { uri: `postgres://owner:secret-${branch}-${database}@h/x` },
+      };
+    }
+  }
+  const routes = {
+    ...neonRoutes,
+    'GET /api/organizations/@current/': { body: { id: 'org1' } },
+    'GET /api/organizations/org1/projects/': {
+      body: {
+        results: [{ id: 42, name: 'hashbrown', api_token: 'phc_existing' }],
+      },
+    },
+    'GET /domains': {
+      body: {
+        data: [{ id: 'd1', name: 'hashbrown.dev', status: 'verified' }],
+      },
+    },
+    'GET /domains/d1': {
+      body: {
+        id: 'd1',
+        status: 'verified',
+        records: [
+          {
+            record: 'DKIM',
+            name: 'resend._domainkey',
+            type: 'TXT',
+            value: 'p=abc',
+            ttl: 'Auto',
+          },
+        ],
+      },
+    },
+    'POST /domains/d1/verify': { body: {} },
+    'GET /api-keys': {
+      body: { data: [{ id: 'k1', name: 'hashbrown-lifecycle' }] },
+    },
+    'GET /v2/user': { body: { user: { defaultTeamId: 'team_1' } } },
+    'GET /v5/domains/hashbrown.dev/records?limit=100&teamId=team_1': {
+      body: {
+        records: [{ name: 'resend._domainkey', type: 'TXT', value: 'p=abc' }],
+      },
+    },
+  };
+  return routes;
+}
+
+test('a rerun with all-exists vendors makes no POST except Resend verify', async () => {
+  const { fetchImpl, calls } = stubFetch(vendorFixtures());
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+  const spawned = [];
+
+  await provision({
+    clients: {
+      neon: createJsonClient({
+        baseUrl: 'https://console.neon.tech/api/v2',
+        token: 'neon-token-secret',
+        fetchImpl,
+      }),
+      posthog: createJsonClient({
+        baseUrl: 'https://us.posthog.com',
+        token: 'ph-token-secret',
+        fetchImpl,
+      }),
+      resend: createJsonClient({
+        baseUrl: 'https://api.resend.com',
+        token: 're-token-secret',
+        fetchImpl,
+      }),
+      vercel: createVercelClient('vercel-token-secret', fetchImpl, {
+        teamId: 'team_1',
+      }),
+    },
+    outDir,
+    founderEmail: 'brian@hashbrown.dev',
+    checklist: createChecklist(),
+    spawnBootstrap: async (args) => {
+      spawned.push(args);
+      return 0;
+    },
+  });
+
+  const mutations = calls.filter((c) => c.method !== 'GET');
+  assert.deepEqual(
+    mutations.map((c) => `${c.method} ${c.path}`),
+    ['POST /domains/d1/verify'],
+  );
+  assert.equal(spawned.length, 1);
+  assert.ok(spawned[0].includes(join(outDir, 'growth.env')));
+  assert.ok(spawned[0].includes('--skip-workflow'));
+});
+
+test('provision writes growth.env as 0600, keeps secrets stable on rerun, and the checklist leaks none', async () => {
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+  const run = async () => {
+    const { fetchImpl } = stubFetch(vendorFixtures());
+    const checklist = createChecklist();
+    await provision({
+      clients: {
+        neon: createJsonClient({
+          baseUrl: 'https://console.neon.tech/api/v2',
+          token: 'neon-token-secret',
+          fetchImpl,
+        }),
+        posthog: createJsonClient({
+          baseUrl: 'https://us.posthog.com',
+          token: 'ph-token-secret',
+          fetchImpl,
+        }),
+        resend: createJsonClient({
+          baseUrl: 'https://api.resend.com',
+          token: 're-token-secret',
+          fetchImpl,
+        }),
+        vercel: createVercelClient('vercel-token-secret', fetchImpl, {
+          teamId: 'team_1',
+        }),
+      },
+      outDir,
+      founderEmail: 'brian@hashbrown.dev',
+      checklist,
+      spawnBootstrap: async () => 0,
+    });
+    return checklist;
+  };
+  const path = join(outDir, 'growth.env');
+
+  const checklist = await run();
+  const first = readFileSync(path, 'utf8');
+  writeFileSync(path, `${first}RESEND_API_KEY=re_kept_from_first_run\n`);
+  await run();
+  const second = parseEnvFile(readFileSync(path, 'utf8'));
+
+  assert.equal(statSync(path).mode & 0o777, 0o600);
+  assert.equal(second.CRON_SECRET, parseEnvFile(first).CRON_SECRET);
+  assert.equal(second.RESEND_API_KEY, 're_kept_from_first_run');
+  const lines = checklist.lines();
+  assertNoSecrets(lines.join('\n'), [
+    ...Object.values(SECRETS),
+    ...Object.values(parseEnvFile(first)).filter((v) => v.length > 40),
+  ]);
+  assert.deepEqual(
+    lines.slice(-3).map((l) => /\smanual\s/.test(l)),
+    [true, true, true],
+  );
+});

@@ -88,3 +88,6 @@ next-env.d.ts
 
 # Brainstorming companion mockups
 .superpowers/
+
+# Growth provisioning output (private env file)
+tools/growth/.provision/
