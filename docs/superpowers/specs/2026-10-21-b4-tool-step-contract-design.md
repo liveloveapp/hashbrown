@@ -51,8 +51,8 @@ Research behind this design, kept local and not committed:
 ## Constraints
 
 - **Repo rules.** Follow AGENTS.md: write the failing test first, use top-level `test(...)` with arrange/act/assert, add TSDoc to public API, and keep public React and Angular types free of `ɵ` types. Use `npx nx` targets, and run build, test, lint and e2e for each affected package.
-- **Dependency (user decision, 2026-10-21).** Hashbrown adds `@b4run/sdk` as a **devDependency**, used only by `tools/conformance` to run B4's published JSON Schema and fixtures. Hashbrown core parses the contract with its own small reader.
-- **B4.run conventions.** Its vendor wire names use the `b4.` prefix. All 21 packages version together in one Changesets fixed group (currently 0.14.0). Additive contract changes ship as a minor changeset, documented in `apps/web/content/docs/ag-ui.mdx`, `api/sdk.mdx` and `upgrading.mdx`.
+- **Dependency (user decision, 2026-10-21).** Hashbrown adds `@b4run/sdk` as a **devDependency**, used only by a conformance spec in `packages/core` to run B4's published JSON Schema and fixtures. Hashbrown core parses the contract with its own small reader.
+- **B4.run conventions.** Its vendor wire names use the `b4.` prefix. All 21 packages version together in one Changesets fixed group (currently 0.14.0). Additive contract changes ship as a patch changeset (B4 bumps patch on 0.x), documented in `apps/web/content/docs/ag-ui.mdx`, `api/sdk.mdx` and `upgrading.mdx`.
 - **AG-UI 1.0.**
   - Metadata merges onto a tool call or tool message key by key, without recursion.
   - The `ag-ui` key is reserved.
@@ -168,7 +168,7 @@ interface B4AnswerAnnotations {
   - the JSON Schema, exported as a const and also shipped as `tool-step.schema.json`;
   - the pure helpers `readToolStep`, `mergeToolStep` and `settleOpenSteps`;
   - the **fixture corpus** under the published `./testing` export. Each fixture is an AG-UI event stream paired with the expected per-call step view, including the ag-ui-langgraph ordering cases.
-- **Hashbrown** reads the contract with its own parser in core. `tools/conformance` runs the `@b4run/sdk` fixtures against hashbrown's reducer (as a devDependency).
+- **Hashbrown** reads the contract with its own parser in core. A conformance spec in `packages/core` runs the `@b4run/sdk` fixtures against hashbrown's reducer (as a devDependency).
 - **`@b4run/langgraph/tool-step`** (a later slice) holds the producer helpers for plain LangGraph: `emitToolStep(config, step)` and a `toolStepMiddleware({display})` built on `createAgent`'s `wrapToolCall`.
 
 ## Hashbrown's public surface
@@ -245,7 +245,7 @@ This slice shows the whole idea working across both repos with one real provider
 
 1. **B4.run: `@b4run/sdk` contract.**
    - The `B4ToolStep`, `B4StepSource` and `B4AnswerAnnotations` types, the constants, the JSON Schema and the pure merge helpers.
-   - Keep the legacy types and mark them deprecated (my call), so the minor release breaks nothing. The legacy types are `PersistedStep` (public, ISO times, `completed | failed | denied`) and `B4StepEventValue` (no `v`, `kind` or source ids). B4's emitters keep producing them in this slice.
+   - Keep the legacy types and mark them deprecated (my call), so the release breaks nothing. The legacy types are `PersistedStep` (public, ISO times, `completed | failed | denied`) and `B4StepEventValue` (no `v`, `kind` or source ids). B4's emitters keep producing them in this slice.
    - `readToolStep` accepts both v1 and legacy values and returns a `B4ToolStep`. A legacy value normalizes as follows:
      - a missing `v` becomes `1`;
      - `kind` becomes `'server'`;
@@ -253,7 +253,7 @@ This slice shows the whole idea working across both repos with one real provider
      - ISO times become epoch ms.
    - The duplicated step-event name and types in `@b4run/langchain` and `@b4run/ag-ui` import from the sdk.
    - Publish the fixture corpus under `./testing`.
-   - Ship a minor changeset with docs.
+   - Ship a patch changeset with docs.
    - **Pulled forward from slice 2 (my call), consumer side only.** `@b4run/ag-ui/view` reads `metadata["b4.step"]` first, through `readToolStep`, then the CUSTOM event, and gains `cancelled` and the hold rule for unknown ids. This lets B4 pass the whole fixture corpus in slice 1. Hashbrown's adapters will emit metadata steps that B4's CopilotKit slots should render. B4's *emitters* still change only in slice 2.
 2. **Hashbrown core reads the contract.**
    - Parse `metadata["b4.step"]` on tool calls and tool messages.
@@ -285,7 +285,7 @@ This slice shows the whole idea working across both repos with one real provider
 
      Label, sources, error and timing copy straight across.
    - Hashbrown adds `@b4run/sdk` as a devDependency.
-   - `tools/conformance` runs every sdk fixture through hashbrown's reducer and checks the derived `ServerToolCall` fields.
+   - A core conformance spec (`tool-step.conformance.spec.ts`; core rather than `tools/conformance` because it drives internal reducers) runs every sdk fixture through hashbrown's reducer and checks the derived `ServerToolCall` fields.
    - B4 runs the same fixtures against `@b4run/ag-ui/view`.
 
 **Order.** Step 1 is released (published to npm) before hashbrown takes the devDependency. Steps 2 and 3 can be built against the local schema in parallel. Step 3 needs #682's recording tooling on main, and #684's bug fixes are expected to have merged first.
