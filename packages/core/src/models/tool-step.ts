@@ -294,6 +294,9 @@ export function ɵmergeToolStep(
     return {
       ...rest,
       status,
+      ...(status === 'failed' && merged.error === undefined
+        ? { error: { message: 'Tool call did not finish' } }
+        : {}),
       ...(next.label !== undefined && status === next.status ? { label } : {}),
       ...(next.sources !== undefined && status === next.status
         ? { sources }

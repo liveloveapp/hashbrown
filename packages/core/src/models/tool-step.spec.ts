@@ -53,7 +53,7 @@ test('converts ISO timestamps to epoch milliseconds', () => {
 
   const result = readToolStep(legacy);
 
-  expect(result?.startedAt).toBe(Date.parse('2026-10-21T00:00:00.000Z'));
+  expect(result?.startedAt).toBe(1792540800000);
   expect(result?.settledAt).toBe(1792540800500);
 });
 
@@ -223,4 +223,18 @@ test('reads answer annotations', () => {
   expect(result?.citations).toEqual([{ sourceId: 's', quote: 'q', block: 0 }]);
   expect(result?.sources).toEqual([{ id: 's', kind: 'url', title: 'T' }]);
   expect(readAnswerAnnotations(7)).toBeUndefined();
+});
+
+test('a failed merge without an error gets a default error', () => {
+  const running = step();
+
+  const result = mergeToolStep(
+    running,
+    { v: 1, kind: 'server', status: 'failed' },
+    'call',
+  );
+  const fresh = mergeToolStep(undefined, { v: 1, kind: 'server' }, 'call');
+
+  expect(result.error).toEqual({ message: 'Tool call did not finish' });
+  expect(fresh.status).toBe('running');
 });
