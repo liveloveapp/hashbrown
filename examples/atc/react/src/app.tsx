@@ -1,19 +1,33 @@
 import {
+  browserStorage,
+  filterBlocks,
   focusOpensSheet,
   INITIAL_SHEET,
   nextSheet,
+  readShowStream,
+  type RouterShown,
   sheetExpanded,
   startAtcFeed,
   watchSheetEvents,
+  writeShowStream,
 } from '@atc/shared';
-import { type FocusEvent, useEffect, useReducer, useRef } from 'react';
+import {
+  type FocusEvent,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { AirspaceMap } from './airspace-map';
 import { Assistant } from './assistant';
 import { useMapFilter } from './filter';
 import { useKeyboardInset } from './keyboard-inset';
 import { PanelHeader } from './panel-header';
 import { SheetHandle } from './sheet-handle';
+import { ShowStreamProvider } from './show-stream';
 import { useAtcStore } from './store';
+import { StreamPanel } from './stream-panel';
 
 /**
  * The page: a two-panel workbench, chat on the left and the live map on the
@@ -27,6 +41,25 @@ export function App() {
   const workbench = useRef<HTMLElement>(null);
   const chatSheet = useRef<HTMLElement>(null);
   const mapFilter = useMapFilter();
+  // "Show the stream": on for a first visit, then remembered.
+  const [showStream, setShowStream] = useState(() =>
+    readShowStream(browserStorage()),
+  );
+  // The panel waits for a filter, and goes with it when it is cleared.
+  const filtered = useSyncExternalStore(
+    store.subscribe,
+    () => store.getState().mapFilter !== null,
+  );
+  // What the router decided for the latest filter request.
+  const [filterRoute, setFilterRoute] = useState<RouterShown | null>(null);
+  const changeShowStream = (on: boolean) => {
+    setShowStream(on);
+    writeShowStream(browserStorage(), on);
+  };
+  const applyFilter = (request: string, routed: RouterShown) => {
+    setFilterRoute(routed);
+    mapFilter.apply(request);
+  };
 
   useEffect(() => startAtcFeed({ store }), [store]);
   // The assistant moving the map, or a plane picked in the chat, lowers the sheet.
@@ -40,30 +73,51 @@ export function App() {
   };
 
   return (
-    <main ref={workbench} className="atc-workbench">
-      <section
-        ref={chatSheet}
-        id="atc-chat-sheet"
-        className="atc-panel atc-chat-panel"
-        data-snap={sheet.snap}
-        aria-label="Chat"
-        onFocus={openOnFocus}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            move({ type: 'escape' });
-          }
-        }}
-      >
-        <SheetHandle expanded={sheetExpanded(sheet)} onMove={move} />
-        <PanelHeader />
-        <Assistant
-          onFilter={mapFilter.apply}
-          onSent={() => move({ type: 'send' })}
-        />
-      </section>
-      <section className="atc-panel atc-map-panel" aria-label="Map">
-        <AirspaceMap obstruction={chatSheet} streaming={mapFilter.streaming} />
-      </section>
-    </main>
+    <ShowStreamProvider on={showStream}>
+      <main ref={workbench} className="atc-workbench">
+        <section
+          ref={chatSheet}
+          id="atc-chat-sheet"
+          className="atc-panel atc-chat-panel"
+          data-snap={sheet.snap}
+          aria-label="Chat"
+          onFocus={openOnFocus}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              move({ type: 'escape' });
+            }
+          }}
+        >
+          <SheetHandle expanded={sheetExpanded(sheet)} onMove={move} />
+          <PanelHeader
+            showStream={showStream}
+            onShowStream={changeShowStream}
+          />
+          <Assistant
+            onFilter={applyFilter}
+            onSent={() => move({ type: 'send' })}
+          />
+        </section>
+        <section className="atc-panel atc-map-panel" aria-label="Map">
+          <AirspaceMap
+            obstruction={chatSheet}
+            streaming={mapFilter.streaming}
+          />
+          {showStream &&
+          filterRoute !== null &&
+          (filtered || mapFilter.loading) ? (
+            <StreamPanel
+              className="atc-map-stream"
+              label="Filter stream"
+              blocks={filterBlocks(
+                filterRoute,
+                mapFilter.output,
+                mapFilter.loading,
+              )}
+            />
+          ) : null}
+        </section>
+      </main>
+    </ShowStreamProvider>
   );
 }

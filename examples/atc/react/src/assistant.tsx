@@ -1,11 +1,19 @@
 import {
+  addTurn,
   aircraftCompareContract,
   airportCardContract,
   arrivalsBoardContract,
+  CARDS_MIN_CONFIDENCE,
+  CARDS_SELECT_MAX,
   createBrowserAtcTools,
   flightCardContract,
+  observeDecisions,
+  ROUTER_SKIPPED,
+  type RouterShown,
+  settleCards,
   type Starter,
   transcriptItems,
+  type TurnShown,
 } from '@atc/shared';
 import { createHttpDecisionTransport, type Decision } from '@hashbrownai/core';
 import {
@@ -16,7 +24,7 @@ import {
   useUiDecision,
   useUiKit,
 } from '@hashbrownai/react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AircraftCompare,
   AircraftCompareFallback,
@@ -78,7 +86,8 @@ const CARDS_TRANSPORT = createHttpDecisionTransport({
 /**
  * The chat panel: components, browser-side tools and the streaming answer,
  * with the one composer that routes what is typed. `onFilter` applies a
- * natural-language map filter; `onSent` is called when the user sends
+ * natural-language map filter (with what the router decided, for "Show the
+ * stream"); `onSent` is called when the user sends
  * anything (to the chat, to the filter, or a clear).
  */
 export function Assistant({
@@ -87,7 +96,7 @@ export function Assistant({
   routeTransport,
   cardsTransport = CARDS_TRANSPORT,
 }: {
-  onFilter: (request: string) => void;
+  onFilter: (request: string, routed: RouterShown) => void;
   onSent?: () => void;
   /** Replaces the router's HTTP transport (tests). */
   routeTransport?: Decision.Transport;
@@ -138,19 +147,32 @@ export function Assistant({
   //    chat sends with only those plus Markdown. The server pins the questions
   //    (server/src/decide-handler.ts); an unsure or failed decision sends
   //    with every card.
+  // "Show the stream": each send's router decision and cards decision, kept
+  // with its answer. A starter skips the router.
+  const [turns, setTurns] = useState<readonly TurnShown[]>([]);
+  const observed = useMemo(
+    () =>
+      observeDecisions(cardsTransport, (settled) =>
+        setTurns((current) => settleCards(current, settled)),
+      ),
+    [cardsTransport],
+  );
   const narrowed = useUiDecision({
     chat,
-    select: { max: 2 },
-    minConfidence: 0.7,
+    select: { max: CARDS_SELECT_MAX },
+    minConfidence: CARDS_MIN_CONFIDENCE,
     system: 'Provided by the server.',
-    transport: cardsTransport,
+    transport: observed,
   });
-  const send = (content: string) => {
+  const send = (content: string, routed: RouterShown) => {
     narrowed.sendMessage(content);
+    // Added once the chat accepted the message: its panel keeps this send's
+    // router decision, and the cards decision joins it when it settles.
+    setTurns((current) => addTurn(current, routed));
     onSent?.();
   };
-  const filter = (request: string) => {
-    onFilter(request);
+  const filter = (request: string, routed: RouterShown) => {
+    onFilter(request, routed);
     onSent?.();
   };
   const clear = () => {
@@ -158,7 +180,9 @@ export function Assistant({
     onSent?.();
   };
   const pick = (starter: Starter) =>
-    starter.route === 'filter' ? filter(starter.text) : send(starter.text);
+    starter.route === 'filter'
+      ? filter(starter.text, ROUTER_SKIPPED)
+      : send(starter.text, ROUTER_SKIPPED);
   // Retries the last answer, or resends the first message when it never got one.
   const retry = () =>
     chat.messages.at(-1)?.role === 'assistant'
@@ -174,6 +198,7 @@ export function Assistant({
         <Transcript
           items={transcriptItems(chat.messages, chat.isLoading)}
           busy={chat.isLoading}
+          turns={turns}
         />
         {chat.error ? (
           <div className="atc-card atc-error" role="alert">

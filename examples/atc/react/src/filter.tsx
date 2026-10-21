@@ -33,6 +33,8 @@ export interface MapFilterHandle {
   readonly streaming: ReadonlySet<keyof MapFilter>;
   /** The raw structured output so far (partial while streaming). */
   readonly output: unknown;
+  /** True while the filter request is running. */
+  readonly loading: boolean;
 }
 
 /**
@@ -113,5 +115,5 @@ export function useMapFilter(
     [isLoading, output],
   );
 
-  return { apply, streaming, output };
+  return { apply, streaming, output, loading: isLoading };
 }

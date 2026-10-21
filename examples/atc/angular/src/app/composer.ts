@@ -1,4 +1,4 @@
-import { isFocusShortcut } from '@atc/shared';
+import { isFocusShortcut, type RouterShown } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -67,6 +67,11 @@ export class Composer {
   readonly chat = output<string>();
   /** Emits the trimmed text routed to the map filter. */
   readonly filter = output<string>();
+  /**
+   * Emits what the router decided, just before `chat` or `filter` emits the
+   * text it was for (for "Show the stream").
+   */
+  readonly routed = output<RouterShown>();
   /** Emits when the text asks to clear the map filter. */
   readonly clear = output();
   private readonly draft = signal('');
@@ -93,13 +98,17 @@ export class Composer {
     if (action === null) {
       return;
     }
+    // Read before clearing the draft, which resets the router's state.
+    const routed = this.router.shown();
     field.value = '';
     this.draft.set('');
     if (action.kind === 'filter') {
+      this.routed.emit(routed);
       this.filter.emit(content);
     } else if (action.kind === 'clear') {
       this.clear.emit();
     } else {
+      this.routed.emit(routed);
       this.chat.emit(content);
     }
   }

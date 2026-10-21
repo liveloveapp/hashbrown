@@ -4,9 +4,16 @@ import { FeedNotice } from './feed-notice';
 
 /**
  * The chat panel's header: lettermark, Hashbrown credit, a quiet notice
- * while the feed is degraded, and the GitHub link to atc's source.
+ * while the feed is degraded, the "Show the stream" switch and the GitHub
+ * link to atc's source.
  */
-export function PanelHeader() {
+export function PanelHeader({
+  showStream = false,
+  onShowStream,
+}: {
+  showStream?: boolean;
+  onShowStream?: (on: boolean) => void;
+}) {
   return (
     <div className="atc-panel-header">
       <AtcLogo height={15} />
@@ -19,6 +26,15 @@ export function PanelHeader() {
         built with Hashbrown
       </a>
       <FeedNotice />
+      <label className="atc-stream-switch">
+        <input
+          type="checkbox"
+          role="switch"
+          checked={showStream}
+          onChange={(event) => onShowStream?.(event.target.checked)}
+        />
+        Show the stream
+      </label>
       <a
         className="atc-source-link"
         href={ATC_SOURCE_URL}

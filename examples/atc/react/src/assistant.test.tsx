@@ -2,14 +2,18 @@ import {
   createAtcStore,
   type MapFilter,
   RESPONSE_SCHEMA_ALLOWLIST,
+  ROUTER_SKIPPED,
   STARTER_PROMPTS,
+  transcriptItems,
+  type TurnShown,
 } from '@atc/shared';
 import {
   fakeCardsTransport,
   fakeDecisionTransport,
   fakeFilterTransport,
 } from '@atc/shared/testing';
-import { HashbrownProvider } from '@hashbrownai/react';
+import type { Chat } from '@hashbrownai/core';
+import { HashbrownProvider, type UiChatMessage } from '@hashbrownai/react';
 import {
   act,
   cleanup,
@@ -17,8 +21,12 @@ import {
   render,
   waitFor,
 } from '@testing-library/react';
+import { useState } from 'react';
 import { expect, test } from 'vitest';
 import { Assistant } from './assistant';
+import { PanelHeader } from './panel-header';
+import { Transcript } from './transcript';
+import { ShowStreamProvider } from './show-stream';
 import { AtcStoreProvider } from './store';
 
 const FILTER: MapFilter = {
@@ -176,4 +184,62 @@ test('a cards decision failure sends with every card', async () => {
     'AircraftCompare',
     'AirportCard',
   ]);
+});
+
+/** The header's switch above a transcript, as the app wires them. */
+function Switched({ items, turns }: { items: never[]; turns: TurnShown[] }) {
+  const [on, setOn] = useState(true);
+
+  return (
+    <ShowStreamProvider on={on}>
+      <PanelHeader showStream={on} onShowStream={setOn} />
+      <Transcript items={items} turns={turns} />
+    </ShowStreamProvider>
+  );
+}
+
+test('the switch hides and shows the panels', () => {
+  cleanup();
+  const messages = [
+    { role: 'user', content: 'Highest?' },
+    {
+      role: 'assistant',
+      toolCalls: [],
+      content: { ui: [{ Markdown: { data: '<b>hi</b>' } }] },
+      ui: [<p key="a">hi</p>],
+    },
+  ] as UiChatMessage<Chat.AnyTool>[];
+  const turns: TurnShown[] = [{ router: ROUTER_SKIPPED }];
+  const view = render(
+    <AtcStoreProvider store={createAtcStore()}>
+      <Switched items={transcriptItems(messages) as never[]} turns={turns} />
+    </AtcStoreProvider>,
+  );
+  const element = view.container;
+  const toggle = element.querySelector(
+    'input[type="checkbox"]',
+  ) as HTMLInputElement;
+
+  const shown = element.querySelector('.atc-stream')?.textContent ?? '';
+  fireEvent.click(toggle);
+  const hidden = element.querySelectorAll('.atc-stream').length;
+  fireEvent.click(toggle);
+
+  expect(toggle.getAttribute('role')).toBe('switch');
+  expect(element.textContent).toContain('Show the stream');
+  expect(shown).toContain('routerskipped (starter)');
+  expect(shown).toContain('<b>hi</b>');
+  expect(element.querySelector('.atc-stream b')).toBeNull();
+  expect(hidden).toBe(0);
+  expect(element.querySelectorAll('.atc-stream')).toHaveLength(1);
+});
+
+test('a panel without the provider never shows', async () => {
+  const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
+  const { chat, element } = setup(() => null);
+
+  act(() => starterButton(element, starter?.text ?? '').click());
+  await waitFor(() => expect(chat.requests).toHaveLength(1));
+
+  expect(element.querySelectorAll('.atc-stream')).toHaveLength(0);
 });

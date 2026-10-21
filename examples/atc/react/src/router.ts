@@ -5,6 +5,8 @@ import {
   type RouteBadge,
   ROUTER_WAIT_MS,
   routerBadge,
+  type RouterShown,
+  routerShown,
   routeSchema,
   submitTarget,
   trackDecisionInput,
@@ -35,6 +37,12 @@ export interface Router {
   submit(): Promise<RouteAction | null>;
   /** Drops a submission that is still waiting. */
   cancel(): void;
+  /**
+   * What the router decided for the text, as it stands now, with the
+   * milliseconds the answer took; read it right after {@link Router.submit}
+   * resolves, for "Show the stream".
+   */
+  shown(): RouterShown;
 }
 
 /**
@@ -123,5 +131,10 @@ export function useRouter(
   useEffect(() => () => cancelWaiting.current(), []);
   const cancel = useCallback(() => cancelWaiting.current(), []);
 
-  return { badge: routerBadge(state), submit, cancel };
+  const shown = useCallback(
+    () => routerShown(latest.current, tracked.answeredMs()),
+    [tracked],
+  );
+
+  return { badge: routerBadge(state), submit, cancel, shown };
 }

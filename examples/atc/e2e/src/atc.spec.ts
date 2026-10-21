@@ -60,9 +60,26 @@ test.afterAll(async () => {
   await mock?.stop();
 });
 
-/** Opens one app with stubbed feeds and waits for the map to draw its first frame. */
-async function openApp(page: Page, framework: string): Promise<void> {
+/**
+ * Opens one app with stubbed feeds and waits for the map to draw its first
+ * frame. "Show the stream" is on for a first visit, and its panels repeat the
+ * answers' text, so tests turn it off unless they pass `stream: true`.
+ */
+async function openApp(
+  page: Page,
+  framework: string,
+  options: { stream?: boolean } = {},
+): Promise<void> {
   await stubAtcFeeds(page, { frames: frame, blockTiles: true });
+  if (!options.stream) {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('atc.showStream', 'off');
+      } catch {
+        // The app reads the same storage; without it the switch stays on.
+      }
+    });
+  }
   // Record every data-hex a card ever renders, not just the final DOM, so a
   // card that briefly showed a half-streamed ID is caught by expectOnlyCompleteIds.
   await page.addInitScript(() => {
@@ -780,4 +797,38 @@ test('the Layers control hides the airspace', async ({ page }, testInfo) => {
   await page.getByRole('checkbox', { name: 'Airspace' }).uncheck();
 
   await expect(page.locator('.atc-as')).toHaveCount(0);
+});
+
+test('Show the stream is on for a first visit and shows every layer', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name, { stream: true });
+  const toggle = page.getByRole('switch', { name: 'Show the stream' });
+
+  await ask(page, PROMPTS.redmondAirspace);
+
+  await expect(toggle).toBeChecked();
+  const panel = page.getByTestId('stream-panel').last();
+  await expect(panel).toContainText('router');
+  await expect(panel).toContainText('cards');
+  await expect(panel).toContainText('"Markdown"');
+  await expect(
+    page
+      .getByTestId('stream-panel')
+      .filter({ hasText: 'showAirspace' })
+      .first(),
+  ).toBeVisible();
+
+  await toggle.uncheck();
+
+  await expect(page.getByTestId('stream-panel')).toHaveCount(0);
+  await expect(
+    page.getByText('Redmond has a part-time Class D.'),
+  ).toBeVisible();
+
+  await page.reload();
+
+  await expect(
+    page.getByRole('switch', { name: 'Show the stream' }),
+  ).not.toBeChecked();
 });

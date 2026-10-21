@@ -112,6 +112,8 @@ export interface TrackedDecisionTransport {
   readonly transport: Decision.Transport;
   /** The text of the latest request that was answered or failed, or null. */
   answeredFor(): string | null;
+  /** How many milliseconds the latest answered or failed request took. */
+  answeredMs(): number | null;
 }
 
 function inputText(state: Decision.Request['state']): string | null {
@@ -134,19 +136,27 @@ export function trackDecisionInput(
   transport: Decision.Transport,
 ): TrackedDecisionTransport {
   let answered: string | null = null;
+  let answeredMs: number | null = null;
 
   return {
     transport: async (request, signal) => {
+      const started = Date.now();
+      const record = () => {
+        if (signal.aborted) return;
+        answered = inputText(request.state);
+        answeredMs = Date.now() - started;
+      };
       try {
         const response = await transport(request, signal);
-        if (!signal.aborted) answered = inputText(request.state);
+        record();
 
         return response;
       } catch (error) {
-        if (!signal.aborted) answered = inputText(request.state);
+        record();
         throw error;
       }
     },
     answeredFor: () => answered,
+    answeredMs: () => answeredMs,
   };
 }

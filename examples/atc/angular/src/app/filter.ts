@@ -38,6 +38,8 @@ export interface MapFilterHandle {
   readonly streaming: Signal<ReadonlySet<keyof MapFilter>>;
   /** The raw structured output so far (partial while streaming). */
   readonly output: Signal<unknown>;
+  /** True while the filter request is running. */
+  readonly loading: Signal<boolean>;
 }
 
 /**
@@ -122,5 +124,6 @@ export function injectMapFilter(
       resource.isLoading() ? streamingKeys(output()) : NONE,
     ),
     output,
+    loading: resource.isLoading,
   };
 }

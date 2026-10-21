@@ -1,7 +1,9 @@
 import {
+  filterBlocks,
   focusOpensSheet,
   INITIAL_SHEET,
   nextSheet,
+  type RouterShown,
   type SheetEvent,
   sheetExpanded,
   startAtcFeed,
@@ -21,7 +23,9 @@ import { injectMapFilter } from './filter';
 import { KeyboardInset } from './keyboard-inset';
 import { PanelHeader } from './panel-header';
 import { SheetHandle } from './sheet-handle';
-import { ATC_STORE } from './store';
+import { ShowStream } from './show-stream';
+import { ATC_STORE, injectAtcState } from './store';
+import { StreamPanel } from './stream-panel';
 
 /**
  * The page: a two-panel workbench, chat on the left and the live map on the
@@ -30,7 +34,14 @@ import { ATC_STORE } from './store';
  */
 @Component({
   selector: 'atc-root',
-  imports: [AirspaceMap, Assistant, PanelHeader, SheetHandle, KeyboardInset],
+  imports: [
+    AirspaceMap,
+    Assistant,
+    PanelHeader,
+    SheetHandle,
+    KeyboardInset,
+    StreamPanel,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="atc-workbench" atcKeyboardInset>
@@ -46,6 +57,7 @@ import { ATC_STORE } from './store';
         <atc-sheet-handle [expanded]="expanded()" (move)="move($event)" />
         <atc-panel-header />
         <atc-assistant
+          (filterRouted)="filterRoute.set($event)"
           (filter)="mapFilter.apply($event)"
           (sent)="move({ type: 'send' })"
         />
@@ -55,6 +67,13 @@ import { ATC_STORE } from './store';
           [obstruction]="chatSheet"
           [streaming]="mapFilter.streaming()"
         />
+        @if (filterPanel(); as blocks) {
+          <atc-stream-panel
+            class="atc-map-stream"
+            label="Filter stream"
+            [blocks]="blocks"
+          />
+        }
       </section>
     </main>
   `,
@@ -65,6 +84,29 @@ export class App {
   protected readonly expanded = computed(() => sheetExpanded(this.sheet()));
   /** The natural-language map filter; the router calls its `apply`. */
   protected readonly mapFilter = injectMapFilter();
+  /** What the router decided for the latest filter request. */
+  protected readonly filterRoute = signal<RouterShown | null>(null);
+  private readonly showStream = inject(ShowStream);
+  private readonly state = injectAtcState();
+  // The panel waits for a filter, and goes with it when it is cleared.
+  private readonly filtered = computed(() => this.state().mapFilter !== null);
+  /** The panel blocks under the filter pill, or null when there are none. */
+  protected readonly filterPanel = computed(() => {
+    const route = this.filterRoute();
+    if (
+      !this.showStream.on() ||
+      route === null ||
+      !(this.filtered() || this.mapFilter.loading())
+    ) {
+      return null;
+    }
+
+    return filterBlocks(
+      route,
+      this.mapFilter.output(),
+      this.mapFilter.loading(),
+    );
+  });
 
   constructor() {
     const store = inject(ATC_STORE);

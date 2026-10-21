@@ -6,6 +6,8 @@ import {
   ROUTER_WAIT_MS,
   routerBadge,
   type RouterInputState,
+  type RouterShown,
+  routerShown,
   routeSchema,
   submitTarget,
   trackDecisionInput,
@@ -52,6 +54,12 @@ export interface Router {
   submit(): Promise<RouteAction | null>;
   /** Drops a submission that is still waiting. */
   cancel(): void;
+  /**
+   * What the router decided for the text, as it stands now, with the
+   * milliseconds the answer took; read it right after {@link Router.submit}
+   * resolves, for "Show the stream".
+   */
+  shown(): RouterShown;
 }
 
 /**
@@ -145,5 +153,6 @@ export function injectRouter(draft: Signal<string>): Router {
       });
     },
     cancel: () => cancelWaiting(),
+    shown: () => routerShown(untracked(state), tracked.answeredMs()),
   };
 }

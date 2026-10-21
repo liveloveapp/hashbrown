@@ -1,11 +1,19 @@
 import {
+  addTurn,
   aircraftCompareContract,
   airportCardContract,
   arrivalsBoardContract,
+  CARDS_MIN_CONFIDENCE,
+  CARDS_SELECT_MAX,
   createBrowserAtcTools,
   flightCardContract,
+  observeDecisions,
+  ROUTER_SKIPPED,
+  type RouterShown,
+  settleCards,
   type Starter,
   transcriptItems,
+  type TurnShown,
 } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
@@ -15,6 +23,7 @@ import {
   InjectionToken,
   linkedSignal,
   output,
+  signal,
 } from '@angular/core';
 import {
   createTool,
@@ -109,7 +118,11 @@ export const CARDS_DECISION_TRANSPORT = new InjectionToken<Decision.Transport>(
       @if (messages().length === 0 && !chat.error()) {
         <atc-empty-state (pick)="pick($event)" />
       }
-      <atc-transcript [items]="items()" [busy]="chat.isLoading()" />
+      <atc-transcript
+        [items]="items()"
+        [busy]="chat.isLoading()"
+        [turns]="turns()"
+      />
       @if (chat.error()) {
         <div class="atc-card atc-error" role="alert">
           <span>The assistant didn't answer. Try again.</span>
@@ -119,6 +132,7 @@ export const CARDS_DECISION_TRANSPORT = new InjectionToken<Decision.Transport>(
     </div>
     <atc-composer
       [busy]="chat.isLoading()"
+      (routed)="routed.set($event)"
       (chat)="send($event)"
       (filter)="applyFilter($event)"
       (clear)="clearFilter()"
@@ -130,6 +144,8 @@ export class Assistant {
   readonly sent = output();
   /** Emits the request the user routed to the natural-language map filter. */
   readonly filter = output<string>();
+  /** Emits what the router decided, just before `filter` (for "Show the stream"). */
+  readonly filterRouted = output<RouterShown>();
   private readonly store = inject(ATC_STORE);
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
@@ -180,20 +196,32 @@ export class Assistant {
   //    the chat sends with only those plus Markdown. The server pins the
   //    questions (server/src/decide-handler.ts); an unsure or failed decision
   //    sends with every card.
+  //
+  //    "Show the stream" keeps each send's router decision and cards decision
+  //    with its answer. A starter skips the router.
+  protected readonly turns = signal<readonly TurnShown[]>([]);
+  /** What the router decided for the text the composer is sending. */
+  protected readonly routed = signal<RouterShown>(ROUTER_SKIPPED);
   private readonly narrowed = uiDecisionResource({
     chat: this.chat,
-    select: { max: 2 },
-    minConfidence: 0.7,
+    select: { max: CARDS_SELECT_MAX },
+    minConfidence: CARDS_MIN_CONFIDENCE,
     system: 'Provided by the server.',
-    transport: inject(CARDS_DECISION_TRANSPORT),
+    transport: observeDecisions(inject(CARDS_DECISION_TRANSPORT), (settled) =>
+      this.turns.update((turns) => settleCards(turns, settled)),
+    ),
   });
 
-  protected send(content: string): void {
+  protected send(content: string, routed = this.routed()): void {
     this.narrowed.sendMessage(content);
+    // Added once the chat accepted the message: its panel keeps this send's
+    // router decision, and the cards decision joins it when it settles.
+    this.turns.update((turns) => addTurn(turns, routed));
     this.sent.emit();
   }
 
-  protected applyFilter(request: string): void {
+  protected applyFilter(request: string, routed = this.routed()): void {
+    this.filterRouted.emit(routed);
     this.filter.emit(request);
     this.sent.emit();
   }
@@ -205,9 +233,9 @@ export class Assistant {
 
   protected pick(starter: Starter): void {
     if (starter.route === 'filter') {
-      this.applyFilter(starter.text);
+      this.applyFilter(starter.text, ROUTER_SKIPPED);
     } else {
-      this.send(starter.text);
+      this.send(starter.text, ROUTER_SKIPPED);
     }
   }
 
