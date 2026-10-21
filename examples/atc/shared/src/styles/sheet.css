@@ -113,11 +113,15 @@
   .atc-workbench
     .atc-chat-panel[data-snap='peek']
     .atc-empty
-    > :not(.atc-starters) {
+    > :not(.atc-starter-group),
+  .atc-workbench .atc-chat-panel[data-snap='peek'] .atc-starter-heading {
     display: none;
   }
-  .atc-workbench .atc-chat-panel[data-snap='peek'] .atc-empty .atc-starters {
+  /* The groups melt into one row: filters first, then the questions. */
+  .atc-workbench .atc-chat-panel[data-snap='peek'] .atc-empty {
+    flex-direction: row;
     flex-wrap: nowrap;
+    gap: 8px;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     scroll-padding-inline: 16px;
@@ -126,8 +130,12 @@
   }
   .atc-workbench
     .atc-chat-panel[data-snap='peek']
-    .atc-starters::-webkit-scrollbar {
+    .atc-empty::-webkit-scrollbar {
     display: none;
+  }
+  .atc-workbench .atc-chat-panel[data-snap='peek'] .atc-starter-group,
+  .atc-workbench .atc-chat-panel[data-snap='peek'] .atc-starters {
+    display: contents;
   }
   .atc-workbench .atc-chat-panel[data-snap='peek'] .atc-starters button {
     flex: none;

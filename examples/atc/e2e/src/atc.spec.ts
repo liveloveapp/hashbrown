@@ -425,7 +425,7 @@ test('shows Seattle arrivals and highlights them on the map', async ({
 }, testInfo) => {
   await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: PROMPTS.seattleArrivals }).click();
+  await ask(page, PROMPTS.seattleArrivals);
 
   await expect(page.getByTestId('arrivals-row')).toHaveCount(arrivals.length);
   await expect(page.locator('.atc-plane.is-dimmed').first()).toBeAttached();
@@ -449,7 +449,7 @@ test('the browser sends the response schema the server pins', async ({
   try {
     await openApp(page, testInfo.project.name);
 
-    await page.getByRole('button', { name: PROMPTS.seattleArrivals }).click();
+    await ask(page, PROMPTS.seattleArrivals);
     await expect(page.getByTestId('arrivals-row')).toHaveCount(arrivals.length);
   } finally {
     console.warn = warn;
@@ -492,6 +492,12 @@ test('on a phone, the starters show in the peek, a pick lowers the sheet to half
   const sheet = page.locator('#atc-chat-sheet');
   const starter = page.getByRole('button', { name: PROMPTS.nearBend });
   await expect(sheet).toHaveAttribute('data-snap', 'peek');
+  // The peek is short: the first group's first filter starter shows, and the
+  // questions below it scroll into view.
+  await expect(
+    page.getByRole('button', { name: PROMPTS.starterJets }),
+  ).toBeInViewport();
+  await starter.scrollIntoViewIfNeeded();
   await expect(starter).toBeInViewport();
 
   await starter.tap();
@@ -550,7 +556,9 @@ test('on a phone, a plane picked off screen lands mid-way between the docked car
   browser,
 }, testInfo) => {
   const { page, close } = await openPhone(browser, testInfo.project.name);
-  await page.getByRole('button', { name: PROMPTS.highestAndFastest }).tap();
+  const starter = page.getByRole('button', { name: PROMPTS.highestAndFastest });
+  await starter.scrollIntoViewIfNeeded();
+  await starter.tap();
   const pick = page.locator(
     `[data-testid="aircraft-compare"] [data-hex="${highest.hex}"]`,
   );
@@ -813,7 +821,7 @@ test('lists the aircraft inside the Portland Class C and lights its shelf', asyn
 }, testInfo) => {
   await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: PROMPTS.portlandClassC }).click();
+  await ask(page, PROMPTS.portlandClassC);
 
   await expect(page.getByTestId('arrivals-row')).toHaveCount(portland.length);
   await expect(page.locator('.atc-as.is-c.is-highlighted')).toHaveCount(1);
@@ -959,6 +967,52 @@ test('Enter on a filter streams its chips and dims the planes it hides', async (
   ]);
   await expect(page.getByTestId('flight-card')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Message' })).toHaveValue('');
+});
+
+test('each filter starter streams chips without a transcript entry', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  const pill = page.getByTestId('filter-pill');
+  const cases = [
+    { text: PROMPTS.starterJets, chips: ['Jets', 'Below 10,000 ft'] },
+    {
+      text: PROMPTS.starterAlaska,
+      chips: ['Airline Alaska Airlines', 'Within 25 nm of KSEA'],
+    },
+    { text: PROMPTS.starterHelicopters, chips: ['Helicopters'] },
+    { text: PROMPTS.starterPortland, chips: ['Approaching KPDX'] },
+  ];
+
+  for (const { text, chips } of cases) {
+    await page.getByRole('button', { name: text }).click();
+
+    await expect(pill.locator('.atc-filter-chip')).toHaveText(chips);
+    await expect(page.locator('.atc-transcript > *')).toHaveCount(0);
+  }
+  await expect(page.getByTestId('flight-card')).toHaveCount(0);
+});
+
+test('a refinement adds a chip and keeps the existing ones', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  const pill = page.getByTestId('filter-pill');
+  const refinements = page.getByTestId('refinements');
+  await expect(refinements).toBeHidden();
+  await page.getByRole('button', { name: PROMPTS.starterHelicopters }).click();
+  await expect(pill.locator('.atc-filter-chip')).toHaveText(['Helicopters']);
+
+  await refinements.getByRole('button', { name: 'Below 5,000 ft' }).click();
+
+  await expect(pill.locator('.atc-filter-chip')).toHaveText([
+    'Helicopters',
+    'Below 5,000 ft',
+  ]);
+  await expect(page.locator('.atc-transcript > *')).toHaveCount(0);
+  await expect(
+    refinements.getByRole('button', { name: 'Below 5,000 ft' }),
+  ).toHaveCount(0);
 });
 
 test('the x on the filter pill clears the filter', async ({

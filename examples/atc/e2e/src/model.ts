@@ -29,6 +29,13 @@ export const PROMPTS = {
   hideAirports: 'Hide the airports.',
   /** Streams a reasoning summary before its tool call. */
   reasoned: 'Which plane is highest?',
+  /** The filter starters, by what they ask. */
+  starterJets: STARTER_PROMPTS[0].text,
+  starterAlaska: STARTER_PROMPTS[1].text,
+  starterHelicopters: STARTER_PROMPTS[2].text,
+  starterPortland: STARTER_PROMPTS[3].text,
+  /** A refinement the app suggests once a filter has no altitude clause. */
+  belowFiveThousand: 'Below 5,000 ft',
   /** Typed text the stubbed router sends to the map filter ({@link FILTER_JETS}). */
   filterJets: 'jets below 10,000 ft',
   /** Typed text the stubbed router sends to the map filter, clearing it. */
@@ -42,6 +49,23 @@ export const FILTER_JETS = {
   ...NO_FILTERS,
   kind: 'jet',
   maxAltitudeFt: 10_000,
+} as const;
+
+/** The filters the scripted model streams for the other filter starters. */
+const FILTER_ALASKA = {
+  ...NO_FILTERS,
+  airline: 'Alaska Airlines',
+  near: { airport: 'KSEA', radiusNm: 25 },
+} as const;
+const FILTER_HELICOPTERS = { ...NO_FILTERS, kind: 'rotor' } as const;
+const FILTER_PORTLAND_ARRIVALS = {
+  ...NO_FILTERS,
+  approaching: 'KPDX',
+} as const;
+/** The helicopter filter refined: it keeps its clause and adds a ceiling. */
+const FILTER_LOW_HELICOPTERS = {
+  ...FILTER_HELICOPTERS,
+  maxAltitudeFt: 5_000,
 } as const;
 
 /** The reasoning summary the scripted model streams for {@link PROMPTS.reasoned}. */
@@ -123,9 +147,16 @@ export function scriptAtcModel(mock: LLMock): void {
 
   // The map filter is a structured completion on /api/filter: its only user
   // message is JSON { request, current }, which holds the typed request.
-  mock.onMessage(`"request":"${PROMPTS.filterJets}"`, {
-    content: JSON.stringify(FILTER_JETS),
-  });
+  const filterTurn = (request: string, filter: object) =>
+    mock.onMessage(`"request":"${request}"`, {
+      content: JSON.stringify(filter),
+    });
+  filterTurn(PROMPTS.filterJets, FILTER_JETS);
+  filterTurn(PROMPTS.starterJets, FILTER_JETS);
+  filterTurn(PROMPTS.starterAlaska, FILTER_ALASKA);
+  filterTurn(PROMPTS.starterHelicopters, FILTER_HELICOPTERS);
+  filterTurn(PROMPTS.starterPortland, FILTER_PORTLAND_ARRIVALS);
+  filterTurn(PROMPTS.belowFiveThousand, FILTER_LOW_HELICOPTERS);
   scriptTurn(
     mock,
     PROMPTS.highestOverall,

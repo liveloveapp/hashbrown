@@ -55,7 +55,15 @@ Enter will send the text.
    the planes it hides, and a later request refines it. Planes you point at (selected,
    highlighted or followed) are never dimmed. If the request fails, the map goes back to
    the filter it refined and the pill says so. See `angular/src/app/filter.ts` and
-   `react/src/filter.tsx`.
+   `react/src/filter.tsx`. The chat opens with eight starters in two groups. "Filter the
+   map" has four filters that skip the router and add nothing to the transcript: "Only
+   jets below 10,000 ft", "Alaska Airlines near Seattle", "Only helicopters" and
+   "Arrivals into Portland". "Ask a question" has four chat questions (highest and
+   fastest, follow the fastest airliner, flying near Bend, Redmond airport). Once a
+   filter is applied, a "Refine:" row above the composer offers up to two ways to narrow
+   it ("Below 5,000 ft", "Only <airline>", "Within 10 nm", "Only jets"), derived from
+   the filter and the traffic by `shared/src/refinements.ts`; a click refines the
+   filter the same way, without touching the transcript.
 3. **Generate.** A question goes to the chat, which calls browser-side tools and renders
    only the cards the decision picked, plus Markdown.
 
