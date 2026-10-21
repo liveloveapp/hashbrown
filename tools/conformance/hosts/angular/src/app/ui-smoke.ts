@@ -75,8 +75,14 @@ const components = [
       ></div>
       <div data-testid="user-message" [textContent]="submitted()"></div>
       <div data-testid="assistant"></div>
-      @for (message of assistantMessages(); track $index) {
-        <hb-render-message [message]="message" />
+      @for (message of visibleMessages(); track $index) {
+        @if (message.role === 'activity') {
+          <div [attr.data-testid]="'activity-' + message.activityType">
+            {{ activityText(message.content) }}
+          </div>
+        } @else {
+          <hb-render-message [message]="message" />
+        }
       }
       <div data-testid="error" [textContent]="errorText()"></div>
       <div data-testid="sending-error"></div>
@@ -119,10 +125,15 @@ export class UiSmoke {
     components,
     tools: this.native ? [this.selectItem] : [],
   });
-  protected readonly assistantMessages = computed(() =>
+  protected readonly visibleMessages = computed(() =>
     this.chat.status() === 'error'
       ? []
-      : this.chat.value().filter((message) => message.role === 'assistant'),
+      : this.chat
+          .value()
+          .filter(
+            (message) =>
+              message.role === 'assistant' || message.role === 'activity',
+          ),
   );
   protected readonly errorText = computed(() => {
     const error = this.chat.error();
@@ -133,6 +144,10 @@ export class UiSmoke {
         ? ''
         : String(error);
   });
+
+  protected activityText(content: Readonly<Record<string, unknown>>): string {
+    return JSON.stringify(content);
+  }
 
   protected onPromptInput(event: Event): void {
     this.prompt.set((event.currentTarget as HTMLInputElement).value);

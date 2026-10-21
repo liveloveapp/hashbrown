@@ -104,11 +104,19 @@ export function UiSmoke() {
       <div data-testid="status">{isLoading ? 'loading' : 'idle'}</div>
       <div data-testid="user-message">{submitted}</div>
       <div data-testid="assistant"></div>
-      {messages.map((message, index) =>
-        message.role === 'assistant' ? (
+      {messages.map((message, index) => {
+        if (message.role === 'activity') {
+          return (
+            <div key={index} data-testid={`activity-${message.activityType}`}>
+              {JSON.stringify(message.content)}
+            </div>
+          );
+        }
+
+        return message.role === 'assistant' ? (
           <Fragment key={index}>{message.ui}</Fragment>
-        ) : null,
-      )}
+        ) : null;
+      })}
       <div data-testid="error">{errorText(error)}</div>
       <div data-testid="sending-error">{errorText(sendingError)}</div>
       <div data-testid="generating-error">{errorText(generatingError)}</div>
