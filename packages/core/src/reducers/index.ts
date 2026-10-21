@@ -334,6 +334,12 @@ export const ɵselectAgUiMessagesProtocolError = select(
   fromAgUiMessages.ɵselectAgUiMessagesProtocolError,
 );
 
+/** Selects why the last canonical event, an `ACTIVITY_DELTA`, was dropped. @internal */
+export const ɵselectActivityDeltaDropReason = select(
+  ɵselectAgUiMessagesState,
+  fromAgUiMessages.ɵselectActivityDeltaDropReason,
+);
+
 /**
  * Messages
  */
@@ -631,7 +637,11 @@ export const selectApiMessages = select(
 export const selectShouldGenerateMessage = select(
   selectApiMessages,
   (messages) => {
-    const lastMessage = messages[messages.length - 1];
+    // API messages never carry activities; this guard stays so a trailing
+    // activity can never count as the last turn.
+    const lastMessage = messages.findLast(
+      (message: { readonly role: string }) => message.role !== 'activity',
+    );
 
     if (!lastMessage) {
       return false;

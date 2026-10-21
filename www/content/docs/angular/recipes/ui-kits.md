@@ -134,6 +134,31 @@ export const commerceUiKit = createUiKit({
 
 Component names must be unique unless they point at the same component implementation. Hashbrown throws on name collisions so a prompt cannot resolve one tag name to two different components.
 
+### Always include a kit when narrowing
+
+When `uiDecisionResource` narrows a chat, only the components it picks are sent to the model. A component that should be available on every turn, such as Markdown for prose, must not depend on being picked. Put it in its own kit with `selectable: false`.
+
+<hb-code-example header="ui-kits.ts">
+
+```ts
+import { createUiKit, exposeMarkdown } from '@hashbrownai/angular';
+
+// Offered to UI selection: the decision picks among these.
+export const cardsKit = createUiKit({
+  components: [flightCard, airportCard],
+});
+
+// Never asked about, and always sent with the picks.
+export const proseKit = createUiKit({
+  components: [exposeMarkdown({ citations: true })],
+  selectable: false,
+});
+```
+
+</hb-code-example>
+
+Components in a non-selectable kit, and the children they declare, are never options in the decision, so the model is never asked about them. They are always sent with the picks. A decision over only non-selectable components has nothing to decide, so the message is sent with every component. `createUiKit` defaults `selectable` to `true`. A component that appears in both a selectable and a non-selectable kit is treated as non-selectable.
+
 ---
 
 ## 4. Describe When to Use Each Component

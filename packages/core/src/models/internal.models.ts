@@ -2,6 +2,7 @@
 import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
 import { JsonValue } from '../utils';
+import type { ActivityLinks } from './view.models';
 
 /**
  * Internal provider-neutral representation of assistant reasoning.
@@ -96,6 +97,24 @@ export interface ErrorMessage {
 }
 
 /**
+ * An AG-UI activity message in Hashbrown's internal projection, with the
+ * links recorded on its canonical record.
+ *
  * @public
  */
-export type Message = AssistantMessage | UserMessage | ErrorMessage;
+export interface ActivityMessage {
+  /** The canonical AG-UI activity message id. */
+  readonly id: string;
+  role: 'activity';
+  activityType: string;
+  /** Deep-frozen payload shared with canonical history. */
+  content: Readonly<Record<string, unknown>>;
+  metadata?: Metadata;
+  links: ActivityLinks;
+}
+
+/**
+ * @public
+ */
+export type Message =
+  AssistantMessage | UserMessage | ErrorMessage | ActivityMessage;

@@ -13,7 +13,7 @@ import { useHashbrownSignal } from './use-hashbrown-signal';
 export function useCompletionInput<Input>(
   input: Input,
   resume: (options: ResumeOptions) => void,
-  setMessages: (messages: Chat.UserMessage[]) => void,
+  setMessages: (messages: Chat.UserMessageInput[]) => void,
 ): void {
   const runtime = { resume };
   const scheduling = ɵgetRuntimeSchedulingState(runtime);

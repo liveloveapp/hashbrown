@@ -19,6 +19,7 @@
   --atc-radius-row: 10px;
   --atc-radius-pill: 999px;
   --atc-gutter: 12px;
+  --atc-rail-width: 44px;
   --atc-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --atc-fast: 150ms;
   --atc-motion: 200ms;

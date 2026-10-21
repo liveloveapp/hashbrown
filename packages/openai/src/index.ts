@@ -2,6 +2,12 @@ import type { AGUIEvent } from '@ag-ui/core';
 import { text } from './stream/text.fn';
 import type { OpenAITextStreamOptions } from './stream/types';
 
+export type {
+  ActivityCallback,
+  ActivityContext,
+  ActivityHandle,
+  ActivityWriter,
+} from '@hashbrownai/core';
 export type { OpenAIReasoningOption } from './stream/reasoning';
 export type {
   OpenAIHashbrownRunAgentInput,

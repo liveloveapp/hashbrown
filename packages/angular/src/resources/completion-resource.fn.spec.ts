@@ -530,3 +530,76 @@ function createSignal<T>(initialValue: T) {
 
   return signal;
 }
+
+test('completionResource value and reload ignore trailing activities', () => {
+  createChatRuntimeMock.mockReset();
+  const messages = [
+    { id: 'user-1', role: 'user' as const, content: 'Summarize this' },
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: 'Completed response',
+    },
+    {
+      id: 'activity-1',
+      role: 'activity' as const,
+      activityType: 'progress',
+      content: { step: 'done' },
+      links: { assistantMessageId: 'assistant-1' },
+    },
+  ];
+  const runtime = createRuntimeStub({ messages });
+  createChatRuntimeMock.mockReturnValue(runtime);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    completionResource({
+      system: 'System A',
+      input: signal('Summarize this'),
+    }),
+  );
+  runtime.setMessages.mockClear();
+
+  const value = resource.value();
+  const reloaded = resource.reload();
+
+  expect(value).toBe('Completed response');
+  expect(reloaded).toBe(true);
+  expect(runtime.setMessages).toHaveBeenCalledWith([messages[0]]);
+  expect(runtime.resendMessages).not.toHaveBeenCalled();
+});
+
+test('completionResource retries a failed completion when an activity follows the user message', () => {
+  createChatRuntimeMock.mockReset();
+  const runtime = createRuntimeStub({
+    messages: [
+      { id: 'user-1', role: 'user', content: 'Summarize this' },
+      {
+        id: 'activity-1',
+        role: 'activity',
+        activityType: 'progress',
+        content: { step: 'searching' },
+        links: {},
+      },
+    ],
+    error: new Error('Request failed'),
+  });
+  createChatRuntimeMock.mockReturnValue(runtime);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    completionResource({
+      system: 'System A',
+      input: signal('Summarize this'),
+    }),
+  );
+  runtime.setMessages.mockClear();
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(true);
+  expect(runtime.resendMessages).toHaveBeenCalledTimes(1);
+  expect(runtime.setMessages).not.toHaveBeenCalled();
+});

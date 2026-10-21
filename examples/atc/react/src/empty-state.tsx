@@ -1,11 +1,13 @@
-import { starterPrompts } from '@atc/shared';
+import { type Starter, starterPrompts } from '@atc/shared';
 import { useAtcState } from './store';
 
 /**
  * What the chat shows before the first message: a question and starter
  * pills, led by "What's the plane I selected?" while a plane is selected.
+ * Each pill is tagged as a question (chat) or a filter (map), and `onPick`
+ * gets the starter with its route: starters skip the router.
  */
-export function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
+export function EmptyState({ onPick }: { onPick: (starter: Starter) => void }) {
   const selected = useAtcState().selectedHex !== null;
 
   return (
@@ -14,9 +16,19 @@ export function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
         Ask about the planes over the Pacific Northwest.
       </p>
       <div className="atc-starters">
-        {starterPrompts(selected).map((prompt) => (
-          <button key={prompt} type="button" onClick={() => onPick(prompt)}>
-            {prompt}
+        {starterPrompts(selected).map((starter) => (
+          <button
+            key={starter.text}
+            type="button"
+            onClick={() => onPick(starter)}
+          >
+            {starter.text}
+            <span className="atc-starter-hint">
+              {` (${starter.route === 'filter' ? 'filter' : 'question'})`}
+            </span>
+            <span className="atc-starter-kind" aria-hidden="true">
+              {starter.route === 'filter' ? 'filter' : 'question'}
+            </span>
           </button>
         ))}
       </div>

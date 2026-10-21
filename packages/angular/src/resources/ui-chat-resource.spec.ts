@@ -296,3 +296,39 @@ test('uiChatResource propagates terminal errors through value', () => {
   expect(resource.snapshot()).toEqual({ status: 'error', error: failure });
   expect(() => resource.value()).toThrow(failure);
 });
+
+test('uiChatResource passes activity messages through without throwing', () => {
+  structuredChatResourceMock.mockReset();
+  const activity = {
+    id: 'activity-1',
+    role: 'activity',
+    activityType: 'progress',
+    content: { step: 'Searching' },
+    links: { assistantMessageId: 'assistant-1' },
+  };
+  const messages = signal<any[]>([
+    { id: 'user-1', role: 'user', content: 'Find flights' },
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: { ui: [] },
+      toolCalls: [],
+    },
+    activity,
+  ]);
+  structuredChatResourceMock.mockReturnValue(createChatStub(messages));
+  const resource = uiChatResource({
+    components: [],
+    system: 'System prompt',
+  });
+
+  const value = resource.value();
+
+  expect(value.map((message) => message.role)).toEqual([
+    'user',
+    'assistant',
+    'activity',
+  ]);
+  expect(value[2]).toBe(activity);
+  expect(resource.lastAssistantMessage()?.id).toBe('assistant-1');
+});

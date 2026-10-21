@@ -2,26 +2,36 @@ import {
   ATC_SOURCE_URL,
   createAtcStore,
   SELECTED_PROMPT,
+  type Starter,
   STARTER_PROMPTS,
   transcriptItems,
 } from '@atc/shared';
-import { testAircraft } from '@atc/shared/testing';
+import { fakeDecisionTransport, testAircraft } from '@atc/shared/testing';
 import { TestBed } from '@angular/core/testing';
-import { expect, test } from 'vitest';
+import { provideHashbrown } from '@hashbrownai/angular';
+import { expect, test, vi } from 'vitest';
 import { Composer } from './composer';
 import { EmptyState } from './empty-state';
 import { PanelHeader } from './panel-header';
 import { ToolChips } from './tool-chips';
 import { Transcript } from './transcript';
+import { ROUTE_DECISION_TRANSPORT } from './router';
 import { ATC_STORE } from './store';
 
 const plane = testAircraft();
 
-function setup() {
+type Answer = Parameters<typeof fakeDecisionTransport>[0];
+
+function setup(answer: Answer = () => ({ intent: 'chat', confidence: 0.9 })) {
   const store = createAtcStore();
+  const model = fakeDecisionTransport(answer);
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
-    providers: [{ provide: ATC_STORE, useValue: store }],
+    providers: [
+      provideHashbrown({ baseUrl: '/unused' }),
+      { provide: ATC_STORE, useValue: store },
+      { provide: ROUTE_DECISION_TRANSPORT, useValue: model.transport },
+    ],
   });
 
   return store;
@@ -70,8 +80,8 @@ test('the feed notice is silent while live and quiet while delayed', () => {
 test('the empty state asks a question and offers every starter prompt', () => {
   setup();
   const fixture = TestBed.createComponent(EmptyState);
-  const picked: string[] = [];
-  fixture.componentInstance.pick.subscribe((prompt) => picked.push(prompt));
+  const picked: Starter[] = [];
+  fixture.componentInstance.pick.subscribe((starter) => picked.push(starter));
 
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
@@ -81,7 +91,21 @@ test('the empty state asks a question and offers every starter prompt', () => {
   expect(text(element.querySelector('.atc-empty-title'))).toBe(
     'Ask about the planes over the Pacific Northwest.',
   );
-  expect(buttons.map((button) => text(button))).toEqual([...STARTER_PROMPTS]);
+  expect(buttons.map((button) => nameOf(button))).toEqual(
+    STARTER_PROMPTS.map(
+      (starter) =>
+        `${starter.text} (${starter.route === 'filter' ? 'filter' : 'question'})`,
+    ),
+  );
+  expect(
+    buttons.map(
+      (button) => button.querySelector('[aria-hidden="true"]')?.textContent,
+    ),
+  ).toEqual(
+    STARTER_PROMPTS.map((starter) =>
+      starter.route === 'filter' ? 'filter' : 'question',
+    ),
+  );
   expect(picked).toEqual([STARTER_PROMPTS[1]]);
 });
 
@@ -94,24 +118,70 @@ test('the empty state offers the selected-plane question first while a plane is 
   const element = fixture.nativeElement as HTMLElement;
   const buttons = [...element.querySelectorAll('button')];
 
-  expect(buttons.map((button) => text(button))).toEqual([
-    SELECTED_PROMPT,
-    ...STARTER_PROMPTS,
-  ]);
+  expect(nameOf(buttons[0])).toBe(`${SELECTED_PROMPT} (question)`);
+  expect(buttons).toHaveLength(STARTER_PROMPTS.length + 1);
 });
 
-function composer() {
-  setup();
+/** A button's accessible text: what assistive tech reads, without aria-hidden parts. */
+function nameOf(element: Element): string {
+  const copy = element.cloneNode(true) as Element;
+  copy
+    .querySelectorAll('[aria-hidden="true"]')
+    .forEach((hidden) => hidden.remove());
+
+  return text(copy);
+}
+
+function composer(answer?: Answer) {
+  setup(answer);
   const fixture = TestBed.createComponent(Composer);
   const sent: string[] = [];
-  fixture.componentInstance.send.subscribe((message) => sent.push(message));
+  const filtered: string[] = [];
+  const cleared: string[] = [];
+  fixture.componentInstance.chat.subscribe((message) => sent.push(message));
+  fixture.componentInstance.filter.subscribe((message) =>
+    filtered.push(message),
+  );
+  fixture.componentInstance.clear.subscribe(() => cleared.push('clear'));
   fixture.detectChanges();
   document.body.appendChild(fixture.nativeElement);
-  const input = (fixture.nativeElement as HTMLElement).querySelector(
-    'input',
-  ) as HTMLInputElement;
+  const element = fixture.nativeElement as HTMLElement;
+  const input = element.querySelector('input') as HTMLInputElement;
 
-  return { fixture, input, sent };
+  return { fixture, element, input, sent, filtered, cleared };
+}
+
+async function until(check: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    TestBed.tick();
+    if (check()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('condition not met');
+}
+
+function type(input: HTMLInputElement, value: string): void {
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  TestBed.tick();
+}
+
+function enter(element: HTMLElement): void {
+  element
+    .querySelector('form')
+    ?.dispatchEvent(new Event('submit', { cancelable: true }));
+}
+
+/** Types into the composer and waits for the router's answer to show. */
+async function typeAndDecide(
+  view: ReturnType<typeof composer>,
+  value: string,
+  label: string,
+): Promise<void> {
+  type(view.input, value);
+  await until(() => text(view.element.querySelector('.atc-route')) === label);
 }
 
 function slash(target: EventTarget): KeyboardEvent {
@@ -161,21 +231,181 @@ test('pressing / inside an input, textarea or contenteditable types a slash', ()
   fixture.destroy();
 });
 
-test('submitting sends the trimmed draft, clears the input and keeps focus', () => {
-  const { fixture, input, sent } = composer();
-  input.focus();
+test('submitting sends the trimmed draft to chat, clears the input and keeps focus', async () => {
+  const view = composer();
+  view.input.focus();
 
-  input.value = '  Show me Seattle  ';
-  input.dispatchEvent(new Event('input'));
-  (fixture.nativeElement as HTMLElement)
-    .querySelector('form')
-    ?.dispatchEvent(new Event('submit', { cancelable: true }));
+  await typeAndDecide(view, '  What is highest?  ', '→ chat 0.90');
+  enter(view.element);
+  await until(() => view.sent.length === 1);
+
+  expect(view.sent).toEqual(['What is highest?']);
+  expect(view.input.value).toBe('');
+  expect(document.activeElement).toBe(view.input);
+  view.fixture.destroy();
+});
+
+test('Enter on a filter-routed text applies the filter and adds nothing to the transcript', async () => {
+  const view = composer(() => ({ intent: 'filter', confidence: 0.97 }));
+
+  await typeAndDecide(view, 'only jets below 10,000 ft', '→ filter 0.97');
+  enter(view.element);
+  await until(() => view.filtered.length === 1);
+
+  expect(view.filtered).toEqual(['only jets below 10,000 ft']);
+  expect(view.sent).toEqual([]);
+  expect(view.input.value).toBe('');
+  view.fixture.destroy();
+});
+
+test('a clear routes to clearing the filter without a filter request', async () => {
+  const view = composer(() => ({
+    intent: 'filter',
+    confidence: 0.95,
+    clear: 0.9,
+  }));
+
+  await typeAndDecide(view, 'show everything again', '→ filter 0.95');
+  enter(view.element);
+  await until(() => view.cleared.length === 1);
+
+  expect(view.filtered).toEqual([]);
+  expect(view.sent).toEqual([]);
+  view.fixture.destroy();
+});
+
+test('an unsure route is dashed and Enter goes to chat', async () => {
+  const view = composer(() => ({ intent: 'filter', confidence: 0.55 }));
+
+  await typeAndDecide(view, 'hmm', '→ filter 0.55');
+  const tone = view.element
+    .querySelector('.atc-route')
+    ?.getAttribute('data-tone');
+  enter(view.element);
+  await until(() => view.sent.length === 1);
+
+  expect(tone).toBe('unsure');
+  expect(view.filtered).toEqual([]);
+  view.fixture.destroy();
+});
+
+test('an unavailable router shows a chat badge, no error, and Enter still chats', async () => {
+  const view = composer(() => null);
+
+  await typeAndDecide(view, 'hello there', '→ chat');
+  enter(view.element);
+  await until(() => view.sent.length === 1);
+
+  expect(view.sent).toEqual(['hello there']);
+  expect(view.element.querySelector('[role="alert"]')).toBeNull();
+  view.fixture.destroy();
+});
+
+test('Enter before the router answers waits for it, then follows the route', async () => {
+  let release: (() => void) | undefined;
+  const view = composer(
+    () =>
+      new Promise((resolve) => {
+        release = () => resolve({ intent: 'filter', confidence: 0.9 });
+      }),
+  );
+
+  type(view.input, 'only jets');
+  await until(() => release !== undefined);
+  enter(view.element);
+  const early = [...view.filtered];
+  release?.();
+  await until(() => view.filtered.length === 1);
+
+  expect(early).toEqual([]);
+  expect(view.filtered).toEqual(['only jets']);
+  expect(view.sent).toEqual([]);
+  view.fixture.destroy();
+});
+
+test('typing again while Enter waits cancels that submission', async () => {
+  vi.useFakeTimers();
+  try {
+    const view = composer(() => new Promise(() => undefined));
+    type(view.input, 'first');
+    enter(view.element);
+
+    type(view.input, 'first, then more');
+    await vi.advanceTimersByTimeAsync(1500);
+
+    expect(view.sent).toEqual([]);
+    expect(view.input.value).toBe('first, then more');
+    view.fixture.destroy();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('with no answer after 1000 ms Enter goes to chat', async () => {
+  vi.useFakeTimers();
+  try {
+    const view = composer(() => new Promise(() => undefined));
+    type(view.input, 'hello');
+
+    enter(view.element);
+    await vi.advanceTimersByTimeAsync(999);
+    const early = [...view.sent];
+    await vi.advanceTimersByTimeAsync(2);
+
+    expect(early).toEqual([]);
+    expect(view.sent).toEqual(['hello']);
+    view.fixture.destroy();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('destroying while Enter waits leaves nothing to fire', async () => {
+  vi.useFakeTimers();
+  try {
+    const view = composer(() => new Promise(() => undefined));
+    type(view.input, 'hello');
+    enter(view.element);
+    await vi.advanceTimersByTimeAsync(200);
+
+    view.fixture.destroy();
+    const timers = vi.getTimerCount();
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(timers).toBe(0);
+    expect(view.sent).toEqual([]);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('the badge is described to the input and shows no route for empty text', async () => {
+  const view = composer();
+
+  const idle = text(view.element.querySelector('.atc-route'));
+  await typeAndDecide(view, 'hello', '→ chat 0.90');
+  const badge = view.element.querySelector('.atc-route') as HTMLElement;
+
+  expect(idle).toBe('');
+  expect(view.input.getAttribute('aria-describedby')).toBe(badge.id);
+  expect(badge.getAttribute('data-tone')).toBe('chat');
+  view.fixture.destroy();
+});
+
+test('starters go straight to their route', () => {
+  setup();
+  const fixture = TestBed.createComponent(EmptyState);
+  const picked: Starter[] = [];
+  fixture.componentInstance.pick.subscribe((starter) => picked.push(starter));
   fixture.detectChanges();
 
-  expect(sent).toEqual(['Show me Seattle']);
-  expect(input.value).toBe('');
-  expect(document.activeElement).toBe(input);
-  fixture.destroy();
+  const buttons = [
+    ...(fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+  ];
+  buttons.at(-1)?.click();
+  buttons[0]?.click();
+
+  expect(picked.map((starter) => starter.route)).toEqual(['filter', 'chat']);
 });
 
 test('a running step shows as one shimmering line, then folds into a summary that expands to every step', () => {
@@ -331,4 +561,45 @@ test('reasoning shimmers while it streams and collapses to Reasoned once done', 
   expect(text(done?.querySelector('details .atc-reasoning-text'))).toBe(
     'Comparing altitudes.',
   );
+});
+
+test('the header button toggles dev mode on phones', () => {
+  setup();
+  const fixture = TestBed.createComponent(PanelHeader);
+  const toggled: string[] = [];
+  fixture.componentRef.setInput('devMode', true);
+  fixture.componentInstance.toggleDevMode.subscribe(() =>
+    toggled.push('toggle'),
+  );
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  const button = element.querySelector('.atc-header-dev') as HTMLButtonElement;
+
+  button.click();
+
+  expect(button.getAttribute('aria-label')).toBe('Developer tools');
+  expect(button.getAttribute('aria-pressed')).toBe('true');
+  expect(button.getAttribute('data-testid')).toBe('dev-toggle-header');
+  expect(toggled).toEqual(['toggle']);
+  expect(text(element)).not.toContain('Show the stream');
+  expect(element.querySelector('[role="switch"]')).toBeNull();
+});
+
+test('tool lines never show arguments', () => {
+  setup();
+  const chips = TestBed.createComponent(ToolChips);
+  chips.componentRef.setInput('calls', [
+    {
+      name: 'findAircraft',
+      args: { near: 'KSEA' },
+      status: 'done',
+      result: { status: 'fulfilled' },
+    },
+  ]);
+
+  chips.detectChanges();
+  const element = chips.nativeElement as HTMLElement;
+
+  expect(text(element)).not.toContain('KSEA');
+  expect(element.querySelectorAll('[class*="atc-stream"]')).toHaveLength(0);
 });

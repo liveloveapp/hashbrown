@@ -18,7 +18,8 @@ let nextId = 0;
  * it, since this line sits in a busy list). Once the steps finish it becomes
  * a button with a check, what they did and how many there were ("Searched
  * traffic · 2 steps"), which expands to every step. A call only runs while
- * the chat is busy, so the line always settles.
+ * the chat is busy, so the line always settles. Arguments are never shown
+ * here; the developer drawer lists them.
  */
 @Component({
   selector: 'atc-tool-chips',

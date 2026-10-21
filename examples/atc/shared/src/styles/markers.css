@@ -117,6 +117,15 @@
 .atc-plane.is-dimmed:hover {
   color: var(--atc-ink);
 }
+/* Outside the map filter: faded like a dim, but selected, highlighted and followed planes never get the class. */
+.atc-plane.is-filtered-out {
+  color: var(--atc-dimmed);
+  opacity: 0.45;
+}
+.atc-plane.is-filtered-out:hover {
+  color: var(--atc-ink);
+  opacity: 1;
+}
 /* After .is-dimmed: a selected plane outside the highlight stays accent. */
 .atc-plane.is-selected,
 .atc-plane.is-followed {

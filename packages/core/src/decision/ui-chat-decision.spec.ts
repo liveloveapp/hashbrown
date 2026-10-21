@@ -211,3 +211,17 @@ test('createUiChatDecision fail exposes an error from after the decision', () =>
     error: failure,
   });
 });
+
+test('chat decision with only non-selectable components falls back without deciding', async () => {
+  const deferred = deferredTransport();
+  const decision = createUiChatDecision();
+  const kit = createUiKit({ components: [flight, airport], selectable: false });
+
+  const outcome = await decision.decide('hi', [kit], {
+    select: 'one',
+    transport: deferred.transport,
+  });
+
+  expect(outcome).toEqual({ kind: 'fallback' });
+  expect(deferred.calls).toHaveLength(0);
+});

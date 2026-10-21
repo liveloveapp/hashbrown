@@ -4,7 +4,7 @@ import type { DecidableSchema } from './decidable-schema';
 import type { ChoiceMeta, Result, Select, YesNoMeta } from './decision.types';
 import { DecisionSchemaError } from './errors';
 import type { UiKit } from '../ui/ui-kit';
-import { toSelectionOptions } from './component-selection';
+import { type SelectionGroup, toSelectionOptions } from './component-selection';
 
 const MAX_CHOICE_OPTIONS = 255;
 const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -25,7 +25,15 @@ const MIN_PROBABILITY = 0.5;
  * - a component `{ name, description, children? }`, such as an
  *   `exposeComponent` result or a definition without an implementation,
  *   whose option id is its `name`;
- * - a UI kit, flattened into its members.
+ * - a UI kit, flattened into its members;
+ * - a plain group `{ components, selectable? }`, which mirrors a UI kit
+ *   without importing component implementations. Its members are structural
+ *   `{ name, description, children? }` objects and are flattened exactly like
+ *   a kit's.
+ *
+ * Members of a kit or group that is not selectable (`selectable: false`)
+ * are never options. A name that appears in both a selectable and a
+ * non-selectable kit or group is non-selectable.
  *
  * An entry with an `id` is always a candidate item, even when it also has a
  * `name`. Components and kits are flattened as the hooks flatten them:
@@ -54,7 +62,9 @@ const MIN_PROBABILITY = 0.5;
  * @param options - Candidate items, components and/or UI kits, in order.
  * @param select - How many options may be selected.
  * @returns A decidable object schema.
- * @throws DecisionSchemaError when the options or `select` are invalid.
+ * @throws DecisionSchemaError when the options or `select` are invalid, or
+ * when every entry is non-selectable (no options are left); callers should
+ * skip the decision in that case.
  *
  * @public
  */
@@ -63,6 +73,7 @@ export function createSelectionSchema(
     | { id: string; description: string }
     | { name: string; description: string; children?: unknown }
     | UiKit<any>
+    | SelectionGroup
   >,
   select: Select,
 ): DecidableSchema {

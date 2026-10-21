@@ -1,15 +1,13 @@
 import type { RunAgentInput, Tool } from '@ag-ui/core';
 import { EventEncoder } from '@ag-ui/encoder';
 import {
-  aircraftCompareContract,
-  airportCardContract,
-  arrivalsBoardContract,
   ATC_TOOL_DEFINITIONS,
   type AtcToolName,
-  flightCardContract,
+  FULL_RESPONSE_SCHEMA,
+  RESPONSE_SCHEMA_ALLOWLIST,
   SYSTEM_PROMPT,
 } from '@atc/shared';
-import { createUiJsonSchema, markdownComponent, s } from '@hashbrownai/core';
+import { s } from '@hashbrownai/core';
 import {
   HashbrownOpenAI,
   type OpenAIHashbrownRunAgentInput,
@@ -169,27 +167,29 @@ export function pinTools(tools: readonly Tool[]): Tool[] {
 }
 
 /**
- * The UI the model may render, built from the same definitions, in the same
- * order, as the components both apps expose. Neither app passes UI examples;
- * if one ever does, pass the same ones here.
+ * The UI the model may render when every card is available (see
+ * `FULL_RESPONSE_SCHEMA`). This is also what replaces a schema that is not
+ * allowlisted.
  */
-export const PINNED_RESPONSE_SCHEMA = createUiJsonSchema({
-  components: [
-    markdownComponent(),
-    { ...flightCardContract, children: false },
-    { ...arrivalsBoardContract, children: false },
-    { ...aircraftCompareContract, children: false },
-    { ...airportCardContract, children: false },
-  ],
-});
+export const PINNED_RESPONSE_SCHEMA = FULL_RESPONSE_SCHEMA;
 
-const PINNED_RESPONSE_SCHEMA_JSON = JSON.stringify(PINNED_RESPONSE_SCHEMA);
+/** Every response schema a client may send; see `RESPONSE_SCHEMA_ALLOWLIST`. */
+export const PINNED_RESPONSE_SCHEMAS = RESPONSE_SCHEMA_ALLOWLIST;
+
+const PINNED_RESPONSE_SCHEMAS_BY_JSON: ReadonlyMap<
+  string,
+  Record<string, unknown>
+> = new Map(
+  PINNED_RESPONSE_SCHEMAS.map((schema) => [JSON.stringify(schema), schema]),
+);
 
 /**
- * Replaces the response schema the browser sent with the server's own, so
- * the model can only render atc's components. A different schema (tampering,
- * or a browser on an older build) is logged, never rejected and never echoed:
- * it is untrusted and can be large.
+ * Pins the response schema the browser sent. A schema equal to an allowlisted
+ * one (`PINNED_RESPONSE_SCHEMAS`: Markdown plus any non-empty subset of the
+ * cards) is replaced by the server's own copy; anything else (tampering, or a
+ * browser on an older build) is replaced with the full schema, so the model
+ * can only render atc's components. A different schema is logged, never
+ * rejected and never echoed: it is untrusted and can be large.
  */
 export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   const { forwardedProps } = input as OpenAIHashbrownRunAgentInput;
@@ -197,11 +197,12 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   if (hashbrown?.responseSchema === undefined) {
     return input;
   }
-  if (
-    JSON.stringify(hashbrown.responseSchema) !== PINNED_RESPONSE_SCHEMA_JSON
-  ) {
+  const allowed = PINNED_RESPONSE_SCHEMAS_BY_JSON.get(
+    JSON.stringify(hashbrown.responseSchema),
+  );
+  if (allowed === undefined) {
     console.warn(
-      '[atc] replaced a response schema that differs from the pinned one',
+      '[atc] replaced a response schema that is not an allowlisted one',
     );
   }
 
@@ -209,7 +210,10 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
     ...input,
     forwardedProps: {
       ...forwardedProps,
-      hashbrown: { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA },
+      hashbrown: {
+        ...hashbrown,
+        responseSchema: allowed ?? PINNED_RESPONSE_SCHEMA,
+      },
     },
   } as OpenAIHashbrownRunAgentInput;
 }
@@ -232,22 +236,28 @@ function isReasoningModel(model: string): boolean {
  * for models that accept one. The effort merges into any `reasoning` the
  * provider already set, so its summary setting survives. Low effort roughly
  * halves the time to the first token for this tool-heavy prompt.
+ * `maxOutputTokens` defaults to the cap for an atc answer; `/api/filter`
+ * passes a smaller one.
  */
 export function limitRequest(
   request: OpenAI.Responses.ResponseCreateParamsStreaming,
   reasoningEffort: ReasoningEffort | null,
+  maxOutputTokens: number = MAX_OUTPUT_TOKENS,
 ): OpenAI.Responses.ResponseCreateParamsStreaming {
   return {
     ...request,
-    max_output_tokens: MAX_OUTPUT_TOKENS,
+    max_output_tokens: maxOutputTokens,
     ...(reasoningEffort !== null && isReasoningModel(request.model ?? '')
       ? { reasoning: { ...request.reasoning, effort: reasoningEffort } }
       : {}),
   };
 }
 
-/** The run input of a POST body, or null once a 400 or 413 has been sent. */
-async function readRunInput(
+/**
+ * The run input of a POST body, with the run limits applied, or null once a
+ * 400 or 413 has been sent.
+ */
+export async function readRunInput(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<RunAgentInput | null> {

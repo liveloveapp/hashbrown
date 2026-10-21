@@ -4,6 +4,7 @@ import { s } from '../schema';
 import {
   type AnyTool,
   type AssistantMessage as ViewAssistantMessage,
+  type AssistantMessageInput as ViewAssistantMessageInput,
 } from './view.models';
 import {
   toApiMessagesFromInternal,
@@ -31,10 +32,40 @@ test('attaches canonical IDs to a fresh internal projection', () => {
   expect(message).toEqual({ role: 'user', content: 'Hello' });
 });
 
+test('view messages expose the canonical id of user and assistant messages', () => {
+  // Arrange
+  const user: Chat.Internal.UserMessage = {
+    id: 'user-1',
+    role: 'user',
+    content: 'Hello',
+  };
+  const assistant: Chat.Internal.AssistantMessage = {
+    id: 'assistant-1',
+    role: 'assistant',
+    content: 'Hi',
+    toolCallIds: [],
+  };
+  const error: Chat.Internal.ErrorMessage = {
+    id: 'error-1',
+    role: 'error',
+    content: 'Failed',
+  };
+
+  // Act
+  const [userView] = toViewMessagesFromInternal(user, {}, []);
+  const [assistantView] = toViewMessagesFromInternal(assistant, {}, []);
+  const [errorView] = toViewMessagesFromInternal(error, {}, []);
+
+  // Assert
+  expect(userView).toEqual({ id: 'user-1', role: 'user', content: 'Hello' });
+  expect(assistantView).toMatchObject({ id: 'assistant-1', role: 'assistant' });
+  expect(errorView).toEqual({ role: 'error', content: 'Failed' });
+});
+
 function viewAssistant(
   reasoning?: string,
   reasoningDetails?: readonly Readonly<ReasoningMessage>[],
-): ViewAssistantMessage<string, AnyTool> {
+): ViewAssistantMessageInput<string, AnyTool> {
   return {
     role: 'assistant',
     content: 'answer',
@@ -811,4 +842,35 @@ test('an unregistered call with no parsed arguments yet exposes null args', () =
       args: null,
     },
   ]);
+});
+
+test('view and internal conversions keep activity messages and API conversion drops them', () => {
+  // Arrange
+  const view: Chat.ActivityMessage = {
+    role: 'activity',
+    id: 'activity-1',
+    activityType: 'plan',
+    content: { steps: ['search', 'answer'] },
+    metadata: { source: 'agent' },
+    links: {
+      runId: 'run-1',
+      assistantMessageId: 'assistant-1',
+      toolCallId: 'call-1',
+      subagentRunId: 'subagent-1',
+    },
+  };
+
+  // Act
+  const internal = toInternalMessagesFromView(view);
+  const roundTripped = internal.flatMap((message) =>
+    toViewMessagesFromInternal(message, {}, []),
+  );
+  const api = internal.flatMap((message) =>
+    toApiMessagesFromInternal(message, []),
+  );
+
+  // Assert
+  expect(internal).toEqual([view]);
+  expect(roundTripped).toEqual([view]);
+  expect(api).toEqual([]);
 });

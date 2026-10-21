@@ -1,5 +1,6 @@
 import type { RunAgentInput } from '@ag-ui/core';
 import type { GenerateContentParameters } from '@google/genai';
+import type { ActivityCallback } from '@hashbrownai/core';
 
 /**
  * Hashbrown extensions accepted alongside a standard AG-UI run input.
@@ -68,6 +69,13 @@ export type GoogleTextStreamOptions = (
   input: GoogleHashbrownRunAgentInput;
   /** Cancels the provider request when the HTTP request is abandoned. */
   signal?: AbortSignal;
+  /**
+   * Sends AG-UI activity events alongside the model's output. The callback
+   * starts after `RUN_STARTED`, its events merge with the model's in arrival
+   * order, and the run's terminal event waits until it settles. A thrown
+   * error ends the run with `RUN_ERROR`. See {@link ActivityCallback}.
+   */
+  activities?: ActivityCallback;
   /** Customize the Google request after AG-UI input has been mapped. */
   transformRequestOptions?: (
     options: GenerateContentParameters,

@@ -302,3 +302,31 @@ test('the airspace tools have running and done labels', () => {
   expect(finished).toBe('Showed KPDX airspace, checked an airspace');
   expect(find).toBe('Finding aircraft inside Portland airspace');
 });
+
+test('chips label the new tools', () => {
+  const running = [
+    toolCallLabel('setMapFilter', {
+      kind: 'jet',
+      maxAltitudeFt: 10000,
+      near: { airport: 'KSEA', radiusNm: 25 },
+    }),
+    toolCallLabel('setMapFilter', undefined),
+    toolCallLabel('clearMapFilter', {}),
+  ];
+  const summary = toolRunView(
+    [
+      done('setMapFilter', { kind: 'jet', maxAltitudeFt: 10000 }),
+      done('clearMapFilter'),
+    ],
+    false,
+  ).summary;
+
+  expect(running).toEqual([
+    'Filtering the map to jets below 10,000 ft within 25 nm of KSEA',
+    'Filtering the map',
+    'Clearing the map filter',
+  ]);
+  expect(summary).toBe(
+    'Filtered to jets below 10,000 ft, cleared the map filter',
+  );
+});

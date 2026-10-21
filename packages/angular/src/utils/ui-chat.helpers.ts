@@ -65,9 +65,14 @@ export type UiUserMessage = Chat.UserMessage;
 export type UiErrorMessage = Chat.ErrorMessage;
 
 /**
+ * A message in the UI chat: an assistant message with its tag registry, a
+ * user message, an error message, or an AG-UI activity message. Activity
+ * messages pass through as is; they are not parsed as UI.
+ *
  * @public
  */
 export type UiChatMessage<Tools extends Chat.AnyTool = Chat.AnyTool> =
   | UiAssistantMessage<Tools>
   | UiUserMessage
-  | UiErrorMessage;
+  | UiErrorMessage
+  | Chat.ActivityMessage;
