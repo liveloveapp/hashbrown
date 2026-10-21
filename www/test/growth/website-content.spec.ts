@@ -1,10 +1,15 @@
 import { expect, test } from 'vitest';
 
+import { listBlogPosts } from '../../src/lib/content';
 import {
   isKnownWebsiteContent,
   websiteContentCatalog,
   websiteTopic,
 } from '../../src/lib/growth/website-content';
+import {
+  listApiReferenceEntries,
+  listSitemapEntries,
+} from '../../src/lib/search-index';
 
 test('the catalog holds docs pages and the home page with their topics', () => {
   const catalog = websiteContentCatalog();
@@ -30,14 +35,30 @@ test('the catalog holds every blog post under the blog topic', () => {
   expect(blogEntries.every(([, entry]) => entry.topic === 'blog')).toBe(true);
 });
 
-test('every content id matches the collection contract pattern', () => {
+test('the catalog holds the API reference pages and the api and blog index pages', () => {
   const catalog = websiteContentCatalog();
 
-  const ids = Object.values(catalog).map((entry) => entry.contentId);
-
-  expect(ids.every((id) => /^[a-z0-9][a-z0-9_/-]{0,119}$/u.test(id))).toBe(
-    true,
+  const reference = Object.values(catalog).filter((entry) =>
+    entry.contentId.startsWith('api/'),
   );
+
+  expect(reference.length).toBeGreaterThan(0);
+  expect(reference.every((entry) => entry.topic === 'reference')).toBe(true);
+  expect(catalog['/api']).toEqual({ contentId: 'api', topic: 'reference' });
+  expect(catalog['/blog']).toEqual({ contentId: 'blog', topic: 'blog' });
+});
+
+test('every known page survives the content id filter', () => {
+  const expected =
+    2 +
+    2 +
+    listSitemapEntries().length +
+    listBlogPosts().length +
+    listApiReferenceEntries().length;
+
+  const catalog = websiteContentCatalog();
+
+  expect(Object.keys(catalog).length).toBe(expected);
 });
 
 test('topics follow the path rules', () => {
@@ -50,7 +71,9 @@ test('topics follow the path rules', () => {
     '/docs/react/guide/x',
     '/docs/angular/recipes/y',
     '/api/core/s',
+    '/api',
     '/blog/post',
+    '/blog',
     '/elsewhere',
   ];
 
@@ -65,6 +88,8 @@ test('topics follow the path rules', () => {
     'react',
     'angular',
     'reference',
+    'reference',
+    'blog',
     'blog',
     'other',
   ]);

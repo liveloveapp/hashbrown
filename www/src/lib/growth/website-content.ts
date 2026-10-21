@@ -1,7 +1,7 @@
 import type { WEBSITE_TOPICS } from '@hashbrownai-internal/growth';
 
 import { listBlogPosts } from '../content';
-import { listSitemapEntries } from '../search-index';
+import { listApiReferenceEntries, listSitemapEntries } from '../search-index';
 
 /** A coarse website content topic from the collection contract. */
 export type WebsiteTopic = (typeof WEBSITE_TOPICS)[number];
@@ -31,16 +31,17 @@ export function websiteTopic(path: string): WebsiteTopic {
     if (section === 'platform') return 'platform';
     return sdk === 'react' ? 'react' : 'angular';
   }
-  if (path.startsWith('/api/')) return 'reference';
-  if (path.startsWith('/blog/')) return 'blog';
+  if (path === '/api' || path.startsWith('/api/')) return 'reference';
+  if (path === '/blog' || path.startsWith('/blog/')) return 'blog';
   return 'other';
 }
 
 let cached: WebsiteCatalog | undefined;
 
 /**
- * The pages a website collector may report: the home page, the docs index,
- * every docs page, and every blog post. Built once and memoized.
+ * The pages a website collector may report: the home page, the docs, API
+ * reference, and blog index pages, every docs page, every API reference page,
+ * and every blog post. Built once and memoized.
  */
 export function websiteContentCatalog(): WebsiteCatalog {
   if (cached) return cached;
@@ -52,7 +53,10 @@ export function websiteContentCatalog(): WebsiteCatalog {
   };
   add('/');
   add('/docs');
+  add('/api');
+  add('/blog');
   for (const entry of listSitemapEntries()) add(entry.url);
+  for (const entry of listApiReferenceEntries()) add(entry.url);
   for (const post of listBlogPosts()) add(`/blog/${post.slug}`);
   cached = Object.freeze(catalog);
   return cached;

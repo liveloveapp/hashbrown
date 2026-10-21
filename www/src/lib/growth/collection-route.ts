@@ -70,6 +70,19 @@ function response(
     },
   });
 }
+/**
+ * A bounded, value-free cause for a log line: the {@link ObservationError}
+ * code, else the error's name (never its message), at most 80 characters.
+ */
+function errorCause(error: unknown): string {
+  const cause =
+    error instanceof ObservationError
+      ? error.code
+      : error instanceof Error
+        ? error.name
+        : 'unknown';
+  return cause.slice(0, 80);
+}
 async function readCollectionBody(request: Request): Promise<string | null> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   // Cancel the reader's underlying stream on timeout rather than leave a hung body read alive.
@@ -123,7 +136,12 @@ export function createCollectionRoute(deps: CollectionRouteDependencies) {
     const start = Date.now();
     let db: SqlExecutor | undefined;
     let eventCount = 0;
-    const report = (status: number, code: string, retryAfter?: number) => {
+    const report = (
+      status: number,
+      code: string,
+      retryAfter?: number,
+      error?: unknown,
+    ) => {
       try {
         deps.log({
           event: 'growth.collection',
@@ -132,6 +150,7 @@ export function createCollectionRoute(deps: CollectionRouteDependencies) {
           status,
           eventCount,
           latencyMs: Date.now() - start,
+          ...(error === undefined ? {} : { cause: errorCause(error) }),
         });
       } catch {
         /* Diagnostics cannot change acceptance. */
@@ -146,8 +165,8 @@ export function createCollectionRoute(deps: CollectionRouteDependencies) {
           .map((v) => v.trim())
           .filter(Boolean)
           .map(collectionSource);
-      } catch {
-        return report(503, 'collection_configuration', 60);
+      } catch (error) {
+        return report(503, 'collection_configuration', 60, error);
       }
       if (!configured.includes(source))
         return report(503, 'collection_disabled', 60);
@@ -168,8 +187,8 @@ export function createCollectionRoute(deps: CollectionRouteDependencies) {
       let json: unknown;
       try {
         json = JSON.parse(raw);
-      } catch {
-        return report(400, 'invalid_payload');
+      } catch (error) {
+        return report(400, 'invalid_payload', undefined, error);
       }
       const now = deps.now();
       const batch = parseCollectionBatch(source, json, now);
@@ -216,11 +235,12 @@ export function createCollectionRoute(deps: CollectionRouteDependencies) {
       return response(200, result);
     } catch (error) {
       if (error instanceof ObservationError) {
-        if (error.code === 'event_conflict') return report(409, error.code);
+        if (error.code === 'event_conflict')
+          return report(409, error.code, undefined, error);
         if (['invalid_payload', 'unsupported_version'].includes(error.code))
-          return report(400, error.code);
+          return report(400, error.code, undefined, error);
       }
-      return report(503, 'collection_unavailable', 30);
+      return report(503, 'collection_unavailable', 30, error);
     } finally {
       await db?.close?.().catch(() => undefined);
     }

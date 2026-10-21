@@ -208,6 +208,7 @@ test('invalid JSON still consumes the source budget', async () => {
 
   expect(response.status).toBe(400);
   expect(await response.json()).toEqual({ error: 'invalid_payload' });
+  expect(deps.log.mock.calls[0]?.[0]).toMatchObject({ cause: 'SyntaxError' });
   expect(deps.sourceBudget).toHaveBeenCalledOnce();
   expect(deps.accept).not.toHaveBeenCalled();
   expect(close).toHaveBeenCalledOnce();
@@ -347,9 +348,12 @@ test('a runtime acknowledgment carries announcements after the commit and tolera
 
 test('event_conflict maps to 409 and storage errors to 503 with no detail', async () => {
   const { deps, handle } = setup();
+  const storageError = Object.assign(new Error('DO-NOT-LOG@example.invalid'), {
+    name: 'NeonDbError',
+  });
   deps.accept
     .mockRejectedValueOnce(new ObservationError('event_conflict'))
-    .mockRejectedValueOnce(new Error('DO-NOT-LOG@example.invalid'));
+    .mockRejectedValueOnce(storageError);
 
   const conflict = await handle(post('website', WEBSITE_BATCH), 'website');
   const failure = await handle(post('website', WEBSITE_BATCH), 'website');
@@ -359,6 +363,10 @@ test('event_conflict maps to 409 and storage errors to 503 with no detail', asyn
   expect(failure.status).toBe(503);
   expect(failure.headers.get('retry-after')).toBe('30');
   expect(await failure.text()).toBe('{"error":"collection_unavailable"}');
+  expect(deps.log.mock.calls.map(([event]) => event.cause)).toEqual([
+    'event_conflict',
+    storageError.name,
+  ]);
   expect(JSON.stringify(deps.log.mock.calls)).not.toContain('DO-NOT-LOG');
 });
 
