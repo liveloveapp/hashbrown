@@ -42,6 +42,21 @@ const textRun: Script = (request) => [
   } as AGUIEvent,
 ];
 
+const chunkRun: Script = (request) => [
+  { type: EventType.RUN_STARTED, ...identity(request) },
+  {
+    type: EventType.TEXT_MESSAGE_CHUNK,
+    messageId: 'm',
+    role: 'assistant',
+    delta: 'Hello',
+  },
+  {
+    type: EventType.RUN_FINISHED,
+    ...identity(request),
+    outcome: { type: 'success' },
+  } as AGUIEvent,
+];
+
 const emptyRun: Script = (request) => [
   { type: EventType.RUN_STARTED, ...identity(request) },
   {
@@ -159,6 +174,20 @@ test('the first run with text content reports a stream completion once', async (
   const [duration] = observer.streamCompleted.mock.calls[0];
   expect(Number.isFinite(duration)).toBe(true);
   expect(duration).toBeGreaterThanOrEqual(0);
+  teardown();
+  detach?.();
+});
+
+test('a run that streams only text chunks reports a stream completion', async () => {
+  const runtime = createTextRuntime([chunkRun]);
+  const observer = createObserver();
+  const detach = bindRuntime(runtime.resume, observer);
+  const teardown = runtime.start();
+
+  runtime.sendMessage({ role: 'user', content: 'Hi' });
+  await waitForIdle(runtime);
+
+  expect(observer.streamCompleted).toHaveBeenCalledTimes(1);
   teardown();
   detach?.();
 });

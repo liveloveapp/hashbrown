@@ -674,7 +674,10 @@ export function createChatRuntime(init: {
       }),
       state.when(apiActions.generateMessageEvent, (action) => {
         const event = action.payload;
-        if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
+        if (
+          event.type === EventType.TEXT_MESSAGE_CONTENT ||
+          event.type === EventType.TEXT_MESSAGE_CHUNK
+        ) {
           contentSeen = true;
           return;
         }
