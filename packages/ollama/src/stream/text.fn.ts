@@ -1,5 +1,9 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { ɵwithActivities } from '@hashbrownai/core';
+import {
+  ɵcreateRunFinishedEvent,
+  ɵforwardMapped,
+  ɵwithActivities,
+} from '@hashbrownai/core';
 import { type AbortableAsyncIterator, type ChatResponse, Ollama } from 'ollama';
 import { mapOllamaEvents } from './ollama-events';
 import { createOllamaRequestOptions } from './ollama-request';
@@ -55,21 +59,24 @@ async function* textEvents(
     }
 
     mappingStarted = true;
-    for await (const event of mapOllamaEvents({
-      events: providerStream,
-      messageId,
+    const finish = yield* ɵforwardMapped(
+      mapOllamaEvents({
+        events: providerStream,
+        messageId,
+        signal,
+      }),
       signal,
-    })) {
-      yield event;
-      if (signal?.aborted) {
-        return;
-      }
-    }
-    if (signal?.aborted) {
+    );
+    if (signal?.aborted || !finish) {
       return;
     }
 
-    yield { type: EventType.RUN_FINISHED, threadId, runId };
+    yield ɵcreateRunFinishedEvent({
+      threadId,
+      runId,
+      provider: 'ollama',
+      ...finish,
+    });
   } catch (error: unknown) {
     if (!signal?.aborted) {
       yield { type: EventType.RUN_ERROR, message: normalizeError(error) };

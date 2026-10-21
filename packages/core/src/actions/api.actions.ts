@@ -1,5 +1,6 @@
 import type { AGUIEvent } from '@ag-ui/core';
 import type { JsonValue } from '../utils/types';
+import type { FinishReason, TokenUsage } from '../models/run-finish';
 import { createActionGroup, props } from '../utils/micro-ngrx';
 import { Chat } from '../models';
 import { s } from '../schema';
@@ -16,6 +17,10 @@ type ApiActionPayloads = {
     toolCalls: Chat.Internal.ToolCall[];
     /** The owned `RUN_FINISHED.result` of a run that completed. */
     result?: JsonValue;
+    /** The owned `RUN_FINISHED.usage` of a run that completed. */
+    usage?: readonly TokenUsage[];
+    /** The normalized finish reason of a run that completed. */
+    finishReason?: FinishReason;
   };
   generateMessageError: Error;
   generateMessageExhaustedRetries: void;

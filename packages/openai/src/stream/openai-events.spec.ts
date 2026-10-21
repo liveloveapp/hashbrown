@@ -440,19 +440,29 @@ test('throws on error events', async () => {
   await expect(result).rejects.toThrow('Too many requests');
 });
 
-test('throws on response.incomplete', async () => {
+test('ends the text at response.incomplete instead of throwing', async () => {
   const input = [
     event({
+      type: 'response.output_text.delta',
+      item_id: 'msg_1',
+      delta: 'Cut',
+    }),
+    event({
       type: 'response.incomplete',
-      response: { incomplete_details: { reason: 'max_output_tokens' } },
+      response: {
+        status: 'incomplete',
+        incomplete_details: { reason: 'max_output_tokens' },
+      },
     }),
   ];
 
-  const result = collectEvents(input);
+  const events = await collectEvents(input);
 
-  await expect(result).rejects.toThrow(
-    'OpenAI response incomplete: max_output_tokens',
-  );
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.TEXT_MESSAGE_END,
+  ]);
 });
 
 test('stops yielding once aborted', async () => {

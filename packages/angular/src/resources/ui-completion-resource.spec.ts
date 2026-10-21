@@ -44,6 +44,8 @@ const createCompletionStub = (
     isSending: signal(false),
     isReceiving: signal(false),
     lastRunResult: signal<unknown>(undefined),
+    lastRunUsage: signal<unknown>(undefined),
+    lastRunFinishReason: signal<unknown>(undefined),
     hasValue: vi.fn(),
   } as ReturnType<typeof structuredCompletionResource>;
 };
@@ -86,6 +88,8 @@ test('uiCompletionResource forwards the last run result signal', () => {
   });
 
   expect(resource.lastRunResult).toBe(completion.lastRunResult);
+  expect(resource.lastRunUsage).toBe(completion.lastRunUsage);
+  expect(resource.lastRunFinishReason).toBe(completion.lastRunFinishReason);
 });
 
 test('uiCompletionResource wraps structured completion output with UI metadata', () => {

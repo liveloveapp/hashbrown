@@ -6,3 +6,4 @@ export type {
   ResumeOptions,
 } from './interrupt';
 export { groupTurns, type Turn } from './group-turns';
+export type { FinishReason, TokenUsage } from './run-finish';

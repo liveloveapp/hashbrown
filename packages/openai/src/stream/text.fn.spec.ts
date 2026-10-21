@@ -289,6 +289,7 @@ test('streams refusal fragments through one assistant text lifecycle', async () 
       type: EventType.RUN_FINISHED,
       threadId: 'thread-openai',
       runId: 'run-openai',
+      metadata: { hashbrown: { finishReason: 'refusal' } },
     },
   ]);
   expect(provider.abort).toHaveBeenCalledTimes(1);
@@ -494,4 +495,165 @@ test('sends reasoning for a reasoning model and omits it when disabled', async (
     include: ['reasoning.encrypted_content'],
   });
   expect(captured[1]?.reasoning).toBeUndefined();
+});
+
+function finished(metadata: Record<string, unknown>, usage?: unknown[]) {
+  return {
+    type: EventType.RUN_FINISHED,
+    threadId: 'thread-openai',
+    runId: 'run-openai',
+    ...(usage ? { usage } : {}),
+    metadata,
+  };
+}
+
+test('ends a completed run with its usage and a stop reason', async () => {
+  mockProvider([
+    messageAdded('msg_1'),
+    textDelta('Hello.'),
+    event({
+      type: 'response.completed',
+      response: {
+        status: 'completed',
+        model: 'gpt-test-2026',
+        usage: {
+          input_tokens: 120,
+          input_tokens_details: { cached_tokens: 100 },
+          output_tokens: 40,
+          output_tokens_details: { reasoning_tokens: 30 },
+          total_tokens: 160,
+        },
+      },
+    }),
+  ]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished(
+      {
+        hashbrown: { finishReason: 'stop' },
+        openai: { status: 'completed' },
+      },
+      [
+        {
+          provider: 'openai',
+          model: 'gpt-test-2026',
+          inputTokens: 120,
+          outputTokens: 40,
+          totalTokens: 160,
+          reasoningTokens: 30,
+          cachedInputTokens: 100,
+        },
+      ],
+    ),
+  );
+});
+
+test('reports tool_calls when the response called a function', async () => {
+  mockProvider([
+    event({
+      type: 'response.output_item.added',
+      output_index: 0,
+      item: {
+        type: 'function_call',
+        id: 'fc_1',
+        call_id: 'call_1',
+        name: 'lookup',
+        arguments: '',
+      },
+    }),
+    event({
+      type: 'response.output_item.done',
+      output_index: 0,
+      item: {
+        type: 'function_call',
+        id: 'fc_1',
+        call_id: 'call_1',
+        name: 'lookup',
+        arguments: '{}',
+      },
+    }),
+    event({ type: 'response.completed', response: { status: 'completed' } }),
+  ]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished({
+      hashbrown: { finishReason: 'tool_calls' },
+      openai: { status: 'completed' },
+    }),
+  );
+});
+
+test.each([
+  { reason: 'max_output_tokens', finishReason: 'length' },
+  { reason: 'content_filter', finishReason: 'content_filter' },
+  { reason: 'something_new', finishReason: 'other' },
+])(
+  'finishes an incomplete response ($reason) with the partial answer and $finishReason',
+  async ({ reason, finishReason }) => {
+    mockProvider([
+      messageAdded('msg_1'),
+      textDelta('Cut off'),
+      event({
+        type: 'response.incomplete',
+        response: {
+          status: 'incomplete',
+          incomplete_details: { reason },
+          usage: { input_tokens: 10, output_tokens: 300, total_tokens: 310 },
+        },
+      }),
+    ]);
+
+    const events = await collectEvents(createOptions());
+
+    expect(events.map((event) => event.type)).toEqual([
+      EventType.RUN_STARTED,
+      EventType.TEXT_MESSAGE_START,
+      EventType.TEXT_MESSAGE_CONTENT,
+      EventType.TEXT_MESSAGE_END,
+      EventType.RUN_FINISHED,
+    ]);
+    expect(events.at(-1)).toEqual(
+      finished(
+        {
+          hashbrown: { finishReason },
+          openai: { status: 'incomplete', incompleteReason: reason },
+        },
+        [
+          {
+            provider: 'openai',
+            inputTokens: 10,
+            outputTokens: 300,
+            totalTokens: 310,
+          },
+        ],
+      ),
+    );
+  },
+);
+
+test('reports a refusal when the model refused', async () => {
+  mockProvider([
+    messageAdded('msg_1'),
+    event({
+      type: 'response.refusal.delta',
+      item_id: 'msg_1',
+      output_index: 0,
+      content_index: 0,
+      delta: 'I cannot help with that.',
+    }),
+    event({ type: 'response.completed', response: { status: 'completed' } }),
+  ]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished({
+      hashbrown: { finishReason: 'refusal' },
+      openai: { status: 'completed' },
+    }),
+  );
 });
