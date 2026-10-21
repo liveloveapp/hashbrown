@@ -1,4 +1,9 @@
-import { createAtcStore, type MapFilter, STARTER_PROMPTS } from '@atc/shared';
+import {
+  createAtcStore,
+  type MapFilter,
+  RESPONSE_SCHEMA_ALLOWLIST,
+  STARTER_PROMPTS,
+} from '@atc/shared';
 import {
   fakeCardsTransport,
   fakeDecisionTransport,
@@ -130,6 +135,19 @@ test('a clear-routed Enter empties the map filter with no filter request', async
   fixture.destroy();
 });
 
+/** Whether the response schema a chat request carried is an allowlisted one. */
+function isAllowlisted(request: { input: unknown }): boolean {
+  const schema = (
+    request.input as {
+      forwardedProps?: { hashbrown?: { responseSchema?: unknown } };
+    }
+  ).forwardedProps?.hashbrown?.responseSchema;
+
+  return RESPONSE_SCHEMA_ALLOWLIST.some(
+    (entry) => JSON.stringify(entry) === JSON.stringify(schema),
+  );
+}
+
 /** The card names in the response schema a chat request carried. */
 function offeredComponents(request: { input: unknown }): string[] {
   const json = JSON.stringify(request.input);
@@ -154,6 +172,7 @@ test('a chat-routed message decides the cards, then sends the narrowed chat with
   await until(() => chat.requests.length === 1);
 
   expect(cards.requests).toEqual([starter?.text]);
+  expect(isAllowlisted(chat.requests[0])).toBe(true);
   expect(offeredComponents(chat.requests[0])).toEqual([
     'Markdown',
     'FlightCard',
@@ -173,6 +192,7 @@ test('a cards decision failure sends with every card', async () => {
   await until(() => chat.requests.length === 1);
 
   expect(cards.requests).toEqual([starter?.text]);
+  expect(isAllowlisted(chat.requests[0])).toBe(true);
   expect(offeredComponents(chat.requests[0])).toEqual([
     'Markdown',
     'FlightCard',

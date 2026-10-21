@@ -1,15 +1,13 @@
 import type { RunAgentInput, Tool } from '@ag-ui/core';
 import { EventEncoder } from '@ag-ui/encoder';
 import {
-  aircraftCompareContract,
-  airportCardContract,
-  arrivalsBoardContract,
   ATC_TOOL_DEFINITIONS,
   type AtcToolName,
-  flightCardContract,
+  FULL_RESPONSE_SCHEMA,
+  RESPONSE_SCHEMA_ALLOWLIST,
   SYSTEM_PROMPT,
 } from '@atc/shared';
-import { createUiJsonSchema, markdownComponent, s } from '@hashbrownai/core';
+import { s } from '@hashbrownai/core';
 import {
   HashbrownOpenAI,
   type OpenAIHashbrownRunAgentInput,
@@ -168,45 +166,15 @@ export function pinTools(tools: readonly Tool[]): Tool[] {
   });
 }
 
-/** The cards the model may render, in the order both apps expose them. */
-const CARD_DEFINITIONS = [
-  flightCardContract,
-  arrivalsBoardContract,
-  aircraftCompareContract,
-  airportCardContract,
-].map((contract) => ({ ...contract, children: false as const }));
-
-/** The UI response schema for Markdown and some of the cards. */
-function responseSchemaFor(
-  cards: readonly (typeof CARD_DEFINITIONS)[number][],
-) {
-  return createUiJsonSchema({ components: [markdownComponent(), ...cards] });
-}
-
 /**
- * The UI the model may render when every card is available, built from the
- * same definitions, in the same order, as the components both apps expose.
- * Neither app passes UI examples; if one ever does, pass the same ones here.
- * This is also what replaces a schema that is not allowlisted.
+ * The UI the model may render when every card is available (see
+ * `FULL_RESPONSE_SCHEMA`). This is also what replaces a schema that is not
+ * allowlisted.
  */
-export const PINNED_RESPONSE_SCHEMA = responseSchemaFor(CARD_DEFINITIONS);
+export const PINNED_RESPONSE_SCHEMA = FULL_RESPONSE_SCHEMA;
 
-/**
- * Every response schema a client may send: Markdown plus each of the 15
- * non-empty subsets of the four cards, in pinned order, the last being the
- * full schema. The apps narrow their cards with UI selection (at most two
- * per turn), and Hashbrown keeps the declared order of the components it
- * keeps, so a narrowed schema is a subset of the pinned order. A schema the
- * browser sends is kept only when it equals one of these.
- */
-export const PINNED_RESPONSE_SCHEMAS: readonly Record<string, unknown>[] =
-  Array.from({ length: 2 ** CARD_DEFINITIONS.length - 1 }, (_, index) =>
-    CARD_DEFINITIONS.filter((_card, bit) => ((index + 1) >> bit) & 1),
-  ).map((cards) =>
-    cards.length === CARD_DEFINITIONS.length
-      ? PINNED_RESPONSE_SCHEMA
-      : responseSchemaFor(cards),
-  );
+/** Every response schema a client may send; see `RESPONSE_SCHEMA_ALLOWLIST`. */
+export const PINNED_RESPONSE_SCHEMAS = RESPONSE_SCHEMA_ALLOWLIST;
 
 const PINNED_RESPONSE_SCHEMAS_BY_JSON: ReadonlyMap<
   string,

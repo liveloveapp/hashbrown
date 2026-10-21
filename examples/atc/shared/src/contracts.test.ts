@@ -113,6 +113,16 @@ test('the starters include a question for the chat and a filter for the map', ()
   expect(filter?.text).toBe('Only jets below 10,000 ft');
 });
 
+test('the prompt never shows FlightCards for a list, whichever cards are available', () => {
+  const rule = SYSTEM_PROMPT.split('\n').find((line) =>
+    line.startsWith('- Never show FlightCards for a list of aircraft.'),
+  );
+
+  expect(rule).toBeDefined();
+  expect(rule).toContain('if the ArrivalsBoard card is available, show one.');
+  expect(SYSTEM_PROMPT).not.toContain('show one and no FlightCards');
+});
+
 test('every card rule in the prompt says the card must be available', () => {
   const cards = [
     'FlightCard',
