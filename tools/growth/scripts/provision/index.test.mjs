@@ -5,7 +5,13 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import { createVercelClient } from '../../../vercel/bootstrap.mjs';
-import { buildEnvFile, parseEnvFile, provision } from './index.mjs';
+import {
+  buildEnvFile,
+  parseEnvFile,
+  provision,
+  runProvision,
+  SecretLeakError,
+} from './index.mjs';
 import { assertNoSecrets, createChecklist, createJsonClient } from './lib.mjs';
 import { stubFetch } from './test-support.mjs';
 
@@ -265,4 +271,50 @@ test('provision writes growth.env as 0600, keeps secrets stable on rerun, and th
     lines.slice(-3).map((l) => /\smanual\s/.test(l)),
     [true, true, true],
   );
+});
+
+test('runProvision prints no checklist line when the secret guard fires', async () => {
+  const routes = vendorFixtures();
+  routes['GET /domains/d1'] = {
+    body: {
+      id: 'd1',
+      status: 'postgres://owner:secret-b1-growth@h/x',
+      records: [],
+    },
+  };
+  const { fetchImpl } = stubFetch(routes);
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+  const printed = [];
+
+  const act = runProvision(
+    {
+      clients: {
+        neon: createJsonClient({
+          baseUrl: 'https://console.neon.tech/api/v2',
+          token: 'neon-token-secret',
+          fetchImpl,
+        }),
+        posthog: createJsonClient({
+          baseUrl: 'https://us.posthog.com',
+          token: 'ph-token-secret',
+          fetchImpl,
+        }),
+        resend: createJsonClient({
+          baseUrl: 'https://api.resend.com',
+          token: 're-token-secret',
+          fetchImpl,
+        }),
+        vercel: createVercelClient('vercel-token-secret', fetchImpl, {
+          teamId: 'team_1',
+        }),
+      },
+      outDir,
+      founderEmail: 'brian@hashbrown.dev',
+      spawnBootstrap: async () => 0,
+    },
+    (line) => printed.push(line),
+  );
+
+  await assert.rejects(act, SecretLeakError);
+  assert.deepEqual(printed, []);
 });

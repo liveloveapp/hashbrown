@@ -233,11 +233,48 @@ export async function provision({
   );
 
   const written = parseEnvFile(contents);
-  assertNoSecrets(
-    checklist.lines().join('\n'),
-    CREDENTIAL_KEYS.map((key) => written[key]),
-  );
+  try {
+    assertNoSecrets(
+      checklist.lines().join('\n'),
+      CREDENTIAL_KEYS.map((key) => written[key]),
+    );
+  } catch {
+    throw new SecretLeakError();
+  }
   if (code !== 0) throw new Error(`Vercel bootstrap exited with code ${code}`);
+}
+
+/**
+ * Thrown when the checklist would contain a credential value. Callers must
+ * not print the checklist when they see it.
+ */
+export class SecretLeakError extends Error {
+  constructor() {
+    super('Refusing to print the checklist: it contained a secret value.');
+    this.name = 'SecretLeakError';
+  }
+}
+
+/**
+ * Runs {@link provision} and prints the checklist, also when provisioning
+ * fails part-way, except when the secret guard fired: then only the error
+ * propagates and no checklist line is printed.
+ *
+ * @param {Parameters<typeof provision>[0] extends infer O ? Omit<O, 'checklist'> : never} options Options for `provision`.
+ * @param {(line: string) => void} [log] Line printer, `console.log` by default.
+ * @returns {Promise<void>}
+ */
+export async function runProvision(options, log = console.log) {
+  const checklist = createChecklist();
+  let leaked = false;
+  try {
+    await provision({ ...options, checklist });
+  } catch (error) {
+    leaked = error instanceof SecretLeakError;
+    throw error;
+  } finally {
+    if (!leaked) for (const line of checklist.lines()) log(line);
+  }
 }
 
 async function main() {
@@ -274,17 +311,11 @@ async function main() {
     }),
   };
 
-  const checklist = createChecklist();
-  try {
-    await provision({
-      clients,
-      outDir: resolve(values.out),
-      founderEmail,
-      checklist,
-    });
-  } finally {
-    checklist.print();
-  }
+  await runProvision({
+    clients,
+    outDir: resolve(values.out),
+    founderEmail,
+  });
 }
 
 if (
