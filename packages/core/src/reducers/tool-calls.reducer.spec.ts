@@ -1052,3 +1052,72 @@ test('a RESULT with no step completes a running step and keeps its label', () =>
     label: 'Fetching',
   });
 });
+
+test('a RESULT with an error and no step fails a running step', () => {
+  const resultEvent = {
+    type: EventType.TOOL_CALL_RESULT,
+    messageId: 'result-1',
+    toolCallId: 'c1',
+    content: 'Rate limited',
+    error: 'Rate limited',
+  } as AGUIEvent;
+  const store = createRootStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'server',
+          status: 'running',
+          label: 'Fetching',
+        },
+      },
+    } as AGUIEvent,
+  ]);
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'c1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{}' },
+              metadata: {
+                'b4.step': { v: 1, kind: 'server', status: 'running' },
+              },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  dispatchEvents(store, [resultEvent]);
+  const standalone = reducer(
+    active,
+    apiActions.generateMessageEvent(resultEvent),
+  );
+
+  const failed = {
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    error: { message: 'Rate limited' },
+  };
+  expect(readRootStep(store, 'c1')).toEqual(failed);
+  expect(standalone.entities['c1']?.metadata?.['b4.step']).toEqual(failed);
+});

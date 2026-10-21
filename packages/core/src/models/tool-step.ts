@@ -403,16 +403,19 @@ export function settleOpenSteps(
 }
 
 /**
- * Settles a still-`running` `b4.step` as `completed` once its call has a
- * result, keeping the label. Any other step, or none, is left as it is.
+ * Settles a still-`running` `b4.step` once its call has a result: `completed`
+ * with the label kept, or `failed` with `error: {message}` when the result
+ * carries an error. Any other step, or none, is left as it is.
  *
  * Internal to core: not exported from the package.
  *
  * @param metadata - A tool call's merged metadata.
- * @returns The metadata, or a copy with the step completed.
+ * @param error - The result's error string, if it failed.
+ * @returns The metadata, or a copy with the step settled.
  */
 export function completeRunningStep(
   metadata: Metadata | undefined,
+  error?: string,
 ): Metadata | undefined {
   const raw = metadata?.[ɵTOOL_STEP_METADATA_KEY];
   if (!isRecord(raw)) return metadata;
@@ -422,6 +425,18 @@ export function completeRunningStep(
   }
   return {
     ...metadata,
-    [ɵTOOL_STEP_METADATA_KEY]: { ...raw, status: 'completed' },
+    [ɵTOOL_STEP_METADATA_KEY]:
+      error === undefined
+        ? { ...raw, status: 'completed' }
+        : ɵmergeToolStep(
+            { ...step, status: 'running' },
+            {
+              v: 1,
+              kind: step.kind,
+              status: 'failed',
+              error: { message: error },
+            },
+            'message',
+          ),
   };
 }

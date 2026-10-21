@@ -888,7 +888,9 @@ function projectToolCall(
     ? toolsByName[toolCall.function.name]
     : undefined;
   const merged = mergeMetadata(toolCall.metadata, result?.metadata);
-  const metadata = result ? completeRunningStep(merged) : merged;
+  const metadata = result
+    ? completeRunningStep(merged, readResultError(result))
+    : merged;
   const encryptedValue = toolCall.encryptedValue ?? result?.encryptedValue;
   const argumentsResolved =
     tool && s.isHashbrownType(tool.schema)
@@ -937,4 +939,10 @@ function serializeResult(value: unknown): string {
   }
 
   return serializeContent(value);
+}
+
+function readResultError(
+  result: Extract<Message, { role: 'tool' }>,
+): string | undefined {
+  return typeof result.error === 'string' ? result.error : undefined;
 }

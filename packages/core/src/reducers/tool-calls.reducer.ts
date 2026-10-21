@@ -343,7 +343,10 @@ export const reducer = createReducer(
         action.payload.metadata,
         'message',
       );
-      const metadata = completeRunningStep(merged) as typeof merged;
+      const metadata = completeRunningStep(
+        merged,
+        typeof error === 'string' ? error : undefined,
+      ) as typeof merged;
       const draft = updateEntity(state.draft, action.payload.toolCallId, {
         status: 'done',
         result,

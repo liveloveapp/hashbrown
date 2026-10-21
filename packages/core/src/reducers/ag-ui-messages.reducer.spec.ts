@@ -1,4 +1,4 @@
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
 import { lowerViewMessagesToAgUi } from './ag-ui-message-history';
@@ -2855,4 +2855,109 @@ test('ignores CUSTOM events with other names', () => {
   expect(next.draft).toBe(active.draft);
   expect(next.pendingToolSteps).toBe(active.pendingToolSteps);
   expect(readStep(next, 'c1')).toBeUndefined();
+});
+
+function attemptOver(canonicalMessages: Message[]) {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages }),
+  );
+  return reducer(initialized, internalActions.generationAttemptStarted());
+}
+
+function parkedTurn(step?: Record<string, unknown>): Message[] {
+  return [
+    {
+      id: 'assistant-0',
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'c0',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+          ...(step === undefined ? {} : { metadata: { 'b4.step': step } }),
+        },
+      ],
+    },
+  ];
+}
+
+test('a committed call from a prior turn is untouched by an interrupt or a cancel', () => {
+  const running = { v: 1, kind: 'server', status: 'running', label: 'Old' };
+  const active = applyEvents(attemptOver(parkedTurn(running)), [
+    startTool('c1'),
+  ]);
+  const bare = applyEvents(attemptOver(parkedTurn()), [startTool('c1')]);
+  const finished = (outcome: Record<string, unknown>): AGUIEvent =>
+    ({
+      type: EventType.RUN_FINISHED,
+      threadId: 't',
+      runId: 'r',
+      timestamp: 9000,
+      outcome,
+    }) as AGUIEvent;
+  const interrupt = {
+    type: 'interrupt',
+    interrupts: [{ id: 'i1', reason: 'tool_approval' }],
+  };
+
+  const interrupted = applyEvents(active, [finished(interrupt)]);
+  const cancelled = applyEvents(bare, [finished({ type: 'cancelled' })]);
+
+  expect(readStep(interrupted, 'c0')).toEqual(running);
+  expect(readStep(interrupted, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    settledAt: 9000,
+  });
+  expect(readStep(cancelled, 'c0')).toBeUndefined();
+  expect(readStep(cancelled, 'c1')).toMatchObject({ status: 'cancelled' });
+});
+
+test('a parked call that gets a running step in this attempt settles on a run error', () => {
+  const running = { v: 1, kind: 'server', status: 'running' };
+  const active = applyEvents(attemptOver(parkedTurn(running)), [
+    stepEvent({ toolCallId: 'c0', status: 'running', label: 'Resumed' }),
+  ]);
+
+  const failed = applyEvents(active, [
+    {
+      type: EventType.RUN_ERROR,
+      message: 'boom',
+      timestamp: 3000,
+    } as AGUIEvent,
+  ]);
+
+  expect(readStep(failed, 'c0')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    settledAt: 3000,
+    error: { message: 'Tool call did not finish' },
+  });
+});
+
+test('CUSTOM-folded and held steps do not carry the tool call id', () => {
+  const active = applyEvents(activeAttempt(), [startTool('c1')]);
+
+  const folded = applyEvents(active, [
+    stepEvent({ toolCallId: 'c1', status: 'running', label: 'Fetching' }),
+    stepEvent({ toolCallId: 'c2', status: 'running', label: 'Queued' }),
+    startTool('c2'),
+  ]);
+
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    label: 'Fetching',
+  });
+  expect(readStep(folded, 'c2')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    label: 'Queued',
+  });
 });
