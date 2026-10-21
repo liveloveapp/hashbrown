@@ -1,4 +1,5 @@
 import type { Message } from '@ag-ui/core';
+import { ɵreadToolStep, ɵTOOL_STEP_METADATA_KEY } from '@hashbrownai/core';
 import type OpenAI from 'openai';
 
 type InputItem = OpenAI.Responses.ResponseInputItem;
@@ -46,7 +47,40 @@ type OpenAIMarker = {
  * is malformed.
  */
 export function mapInput(messages: readonly Message[]): InputItem[] {
-  return groupSegments(messages).flatMap(mapSegment);
+  return groupSegments(dropProviderResults(messages)).flatMap(mapSegment);
+}
+
+/**
+ * Drops the tool results of provider-run calls. Requests use `store: false`,
+ * so the provider keeps no item to reference, and a replayed `function_call`
+ * for a tool the request never declared is rejected.
+ */
+function dropProviderResults(messages: readonly Message[]): Message[] {
+  const providerIds = new Set(
+    messages.flatMap((message) =>
+      message.role === 'assistant'
+        ? (message.toolCalls ?? []).filter(isProviderCall).map((c) => c.id)
+        : [],
+    ),
+  );
+
+  return messages.filter(
+    (message) =>
+      !(message.role === 'tool' && providerIds.has(message.toolCallId)),
+  );
+}
+
+function isProviderCall(toolCall: ToolCall): boolean {
+  const metadata = toolCall.metadata;
+  if (!isRecord(metadata)) {
+    return false;
+  }
+
+  const marker = metadata['openai'];
+  return (
+    (isRecord(marker) && marker['itemType'] === 'web_search_call') ||
+    ɵreadToolStep(metadata[ɵTOOL_STEP_METADATA_KEY])?.kind === 'provider'
+  );
 }
 
 function groupSegments(messages: readonly Message[]): Segment[] {
@@ -133,7 +167,9 @@ function mapTurn(
     assistant.metadata,
     `OpenAI assistant message "${assistant.id}"`,
   );
-  const toolCalls = assistant.toolCalls ?? [];
+  const toolCalls = (assistant.toolCalls ?? []).filter(
+    (toolCall) => !isProviderCall(toolCall),
+  );
   const toolCallMarkers = toolCalls.map((toolCall) =>
     readMarker(toolCall.metadata, `OpenAI tool call "${toolCall.id}"`),
   );

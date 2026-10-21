@@ -895,3 +895,32 @@ test('ignores non-url annotations', async () => {
     messageId,
   });
 });
+
+test('skips a url_citation for a part with no recorded offset', async () => {
+  const input = [
+    messageAdded('msg_1'),
+    textDelta('msg_1', 'Text.'),
+    event({
+      type: 'response.output_text.annotation.added',
+      item_id: 'msg_1',
+      output_index: 0,
+      content_index: 3,
+      annotation_index: 0,
+      annotation: {
+        type: 'url_citation',
+        url: 'https://a.example',
+        title: 'A',
+        start_index: 0,
+        end_index: 4,
+      },
+    }),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(events.at(-1)).toEqual({
+    type: EventType.TEXT_MESSAGE_END,
+    messageId,
+  });
+});

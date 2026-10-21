@@ -482,3 +482,103 @@ test('drops reasoning and item ids recorded by the Azure provider', () => {
 
   expect(input).toEqual([{ role: 'assistant', content: 'Hi.' }]);
 });
+
+test('a provider web search call and its result are not replayed as function calls', () => {
+  const messages: Message[] = [
+    { id: 'u-1', role: 'user', content: 'Search' },
+    {
+      id: 'm-1',
+      role: 'assistant',
+      content: 'Here is what I found.',
+      metadata: { openai: { itemId: 'msg_1' } },
+      toolCalls: [
+        {
+          id: 'ws_1',
+          type: 'function',
+          function: { name: 'web_search', arguments: '{}' },
+          metadata: { openai: { itemType: 'web_search_call' } },
+        },
+        {
+          id: 'ws_2',
+          type: 'function',
+          function: { name: 'web_search', arguments: '{}' },
+          metadata: { 'b4.step': { v: 1, kind: 'provider' } },
+        },
+      ],
+    },
+    { id: 't-1', role: 'tool', toolCallId: 'ws_1', content: '{}' },
+    { id: 't-2', role: 'tool', toolCallId: 'ws_2', content: '{}' },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([
+    { role: 'user', content: 'Search' },
+    {
+      type: 'message',
+      id: 'msg_1',
+      role: 'assistant',
+      content: [
+        { type: 'output_text', text: 'Here is what I found.', annotations: [] },
+      ],
+      status: 'completed',
+    },
+  ]);
+});
+
+test('client function calls in the same turn still replay, with reasoning', () => {
+  const messages: Message[] = [
+    {
+      id: 'r-1',
+      role: 'reasoning',
+      content: 'Thinking.',
+      encryptedValue: 'enc-1',
+      metadata: { openai: { itemId: 'rs_1' } },
+    },
+    {
+      id: 'm-1',
+      role: 'assistant',
+      metadata: { openai: { itemId: 'msg_1', reasoningItemIds: ['rs_1'] } },
+      toolCalls: [
+        {
+          id: 'ws_1',
+          type: 'function',
+          function: { name: 'web_search', arguments: '{}' },
+          metadata: {
+            openai: {
+              itemType: 'web_search_call',
+              reasoningItemIds: ['rs_missing'],
+            },
+          },
+        },
+        {
+          id: 'call_1',
+          type: 'function',
+          function: { name: 'a', arguments: '{}' },
+          metadata: { openai: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
+        },
+      ],
+    },
+    { id: 't-1', role: 'tool', toolCallId: 'ws_1', content: '{}' },
+    { id: 't-2', role: 'tool', toolCallId: 'call_1', content: '"ok"' },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([
+    {
+      type: 'reasoning',
+      id: 'rs_1',
+      summary: [{ type: 'summary_text', text: 'Thinking.' }],
+      encrypted_content: 'enc-1',
+    },
+    {
+      type: 'function_call',
+      id: 'fc_1',
+      call_id: 'call_1',
+      name: 'a',
+      arguments: '{}',
+    },
+    { type: 'function_call_output', call_id: 'call_1', output: '"ok"' },
+  ]);
+});

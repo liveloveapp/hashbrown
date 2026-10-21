@@ -308,8 +308,13 @@ function mapAnnotation(
     return { state, events: [] };
   }
 
-  const offset =
-    state.partOffsets.get(partKey(event.item_id, event.content_index)) ?? 0;
+  const offset = state.partOffsets.get(
+    partKey(event.item_id, event.content_index),
+  );
+  if (offset === undefined) {
+    return { state, events: [] };
+  }
+
   return {
     state: {
       ...state,
