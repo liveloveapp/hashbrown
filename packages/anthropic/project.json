@@ -13,7 +13,7 @@
   },
   "tags": [],
   "targets": {
-    "build": {
+    "compile": {
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
@@ -29,6 +29,19 @@
             "output": "."
           }
         ]
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["compile"],
+      "inputs": [
+        "{workspaceRoot}/tools/growth/install/*.cjs",
+        "{workspaceRoot}/tools/growth/install/assemble-package.mjs",
+        "{projectRoot}/package.json"
+      ],
+      "outputs": ["{workspaceRoot}/dist/packages/anthropic"],
+      "options": {
+        "command": "node tools/growth/install/assemble-package.mjs anthropic"
       }
     },
     "lint": {
@@ -49,6 +62,13 @@
       "options": {
         "jestConfig": "packages/anthropic/jest.e2e.config.ts",
         "passWithNoTests": true
+      }
+    },
+    "record-fixtures": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/testing/aimock/record-fixtures.mjs anthropic"
       }
     },
     "nx-release-publish": {

@@ -274,6 +274,8 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
     return getRuntime().start();
   }, []);
 
+  useEffect(() => config.collector.attach(getRuntime()), []);
+
   useEffect(() => {
     const threadChanged =
       previousThreadOption.current.present !== hasThreadId ||

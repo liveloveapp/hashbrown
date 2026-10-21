@@ -92,3 +92,15 @@ export {
   mergeToolCalls,
   updateAssistantMessage,
 } from './utils/assistant-message';
+export {
+  createDevelopmentCollector as ɵcreateDevelopmentCollector,
+  reportMilestone as ɵreportMilestone,
+  setDevelopmentCollectionEnabled as ɵsetDevelopmentCollectionEnabled,
+  getDevelopmentCollectionDiagnostics as ɵgetDevelopmentCollectionDiagnostics,
+  type DevelopmentCollector as ɵDevelopmentCollector,
+  type DevelopmentCollectorOptions as ɵDevelopmentCollectorOptions,
+  type DevelopmentMilestone as ɵDevelopmentMilestone,
+  type DevelopmentTransportKind as ɵDevelopmentTransportKind,
+} from './growth';
+// Public: referenced by React and Angular signatures.
+export type { DevelopmentCollectionDiagnostics } from './growth';

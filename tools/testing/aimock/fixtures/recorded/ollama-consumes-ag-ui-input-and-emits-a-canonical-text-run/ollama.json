@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Say hello in three words.",
+        "model": "qwen2.5:14b",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Hello, how nice."
+      },
+      "recordedTimings": {
+        "ttftMs": 241,
+        "interChunkDelaysMs": [38, 41, 45, 36, 40],
+        "totalDurationMs": 441
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

@@ -6,7 +6,14 @@ export default defineConfig({
   // tsconfigPaths: resolve @hashbrownai/* to package source like Next does.
   resolve: {
     tsconfigPaths: true,
-    alias: { '@': resolve(import.meta.dirname, 'src') },
+    alias: {
+      '@': resolve(import.meta.dirname, 'src'),
+      // Core's subpath import; its package.json targets are build outputs.
+      '#development-install': resolve(
+        import.meta.dirname,
+        '../packages/core/src/growth/development-install.default.ts',
+      ),
+    },
   },
   // tsconfig says "preserve" for Next; tests need JSX compiled.
   oxc: { jsx: { runtime: 'automatic' } },

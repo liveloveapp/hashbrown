@@ -1,0 +1,59 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Work out which of 'stone', 'apple' and 'river' is a fruit, look that word up with the lookup tool, then answer in one short sentence.",
+        "model": "claude-haiku-5-5",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": "{\"query\": \"apple\"}",
+            "id": "toolu_01WhvwBvWS3JqJADfj5usiAm"
+          }
+        ],
+        "reasoning": "Apple is clearly the fruit among stone, apple, and river, so I'll look that word up with the tool and then give a short one-sentence answer once I get the result.\n\n",
+        "reasoningSignature": "CAQSkgYKEAgTGAI4AUIIdGhpbmtpbmcSDMLcPJi5Py6HS8LYfRoMwEM8nh4GPI4kmN9iIjDPhma8hGXeEaFnMznHGFhTcRzvgKJlAD5s8PgbRBfzPydeRxx65ZpZVXXrhA60syUqrwXnJW57w4lO1S06a/5toDjK5I7mvdXB0kGrS+WKOU7SAohYmr8r/dn0t/f6u1XHxYTNqvTuSdo7DZ1p+RTU+rC4itQV0fl9bzTmNsStGQjCfzqGnsyrrvH4PB/jH96RSh4jwSJSGiN1YHXbgzFokSn0zvB5kLyB97CPK8cHA+qLaQ/XdI2213dRo/q03wlu/OOR0pLOuDtCGTEU8SekzNb494vf1CRa1R+U8L34MEmcnron2HjCpKSHQ88xRsHpTO8l3mNpYT8J+NIqgRrPJqmAwcJErWFUCUKGYcE89JndKGNbts5rYFCp3wzZT8OhNIZQDynPIjF7nnuSUguR4tAXxvUG4pYxscBvnCCFtJ80kyZNNtJAtcHMhm9NhaKqnSwYioeuFKsYIE7um0FX4K0ReXhE6kIGZ1//M7keFsPN8O2cg28sKNKwbTSmEjUw1UeYTE7IHHlla+dk6al2v/2Ay1Y2oRgSGJ8ry1Paeyc9IKv+868iX9L9onWIr8ZIKr590SOiNhkbvTryBuTEEltEzUr5IR9+TefXc4FxF17Yh8L99aaGWaeWm7dIOuD4YlBUYvmRYpjw1q/tYofVuVPxBK/BAbwgXuRcEauR2X6u3xdfxZAeWuUNVlMxIaF5jgvC9sdce6mWYvQMDTb0AB875gpUN2LLUVCXu2uULKKUqNNqnBesw32D+N68d6eE65H00VJoE2upVzW13bHrrPXp0qcaCnUUOnZRAeuPpuifucMHUdlUcOojsW1h97X8qlOtGGyf6jnSxQEq0F1UFqtL1p9WQx2NLaWly7gfnMzbTnBqEWuqoKr8BQSShC2vdicwkUZBOiGimtOuI6OVndakkCXm35u03YX6o+qs9IkDa2SgTH9kxzbkKxs9QTYCwOLuyaCxTXNo5ElOFgdQFFIYAQ=="
+      },
+      "recordedTimings": {
+        "ttftMs": 971,
+        "interChunkDelaysMs": [
+          0, 1588, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0
+        ],
+        "totalDurationMs": 2561
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Work out which of 'stone', 'apple' and 'river' is a fruit, look that word up with the lookup tool, then answer in one short sentence.",
+        "model": "claude-haiku-5-5",
+        "turnIndex": 1,
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "Apple is the fruit of the three; the lookup returned only \"The code word is green,\" which doesn't say anything about apples.",
+        "reasoning": "The lookup result \"The code word is green\" doesn't actually describe apple and isn't an instruction to follow, so I'll just note that oddity and answer normally: apple is the fruit in question.\n\n",
+        "reasoningSignature": "CAQSpAcKEAgTGAI4AUIIdGhpbmtpbmcSDNLvCzNcA7Nj0LSYDBoMnQ2wTMimaAtcVUHfIjDxWomFIyR37EOYEc10hPWOvaQq1rIY59Tno7tCIqfmWoHKlwBAz2LqfI0woN3bTiIqwQapaE5pl/yKGKQVL7VMtgT84E6pb/xCK6n0XQ7PynjSXPIegb5a2lIBV+u9RkcIr04rs4u2rSfXPWWowbNUe9S6pK8Gw2t0fR/gcVSKjzyN0qn7C395X6kWzqIRaYUrPu7YOPsPypUpo3hM4OAjp9Z5+eMYXZ18YmANckFGdWBPiJZ+T6/pNKrl0l0yFoqvIPwbdEKnILEO0bUfJ1+PLb10B5fj86HaiTUrDuElotPYTLseML19z2k8hCKyNsz2mZoPcSH/9V6SNWPZ1Z21nTAp5JNQ80rXVAMM7u4mYUm1eZ8/H6hpqgNGLxxrv80oBouS3cndio1AFDX4zNKe0Ossq9jxGpmg4N1rZ2Diy7fQcFn4buJNhp8OuL6ro9xP7pTYKL8PZ8/auLFJl/kOdD/yu0JhI+TOHrGpUiNpFrBM+C6iMnM8lr8kVNcX1ZQCbbQheGYKYY9YE1CEHVWuDItKu3PW1mo7QvKnyI7T3sCOMxW8TybS8hajUUqv+ESOd9V0IGowlDUmxuNmBEcMSGFoCtyOH/ZUqm4C59D1T9F1wHn0WxEL6RrDuN/RYDQI3Fz8ERgtp1hXCzv5jkpYAfZtphDXl6qPTBinkPSJJPYb27Z7hiWXyMZLWk5X65C8iEoq5NsEwhjUl02CL+za2LdFlPh4iQ3YkMFDuD0V87UkqupUQhayrDvLp7QslXGx6NT2IYKixKVMvCiPvnQ7tEOa4c903WFBprTp0YDeVem684UrP34rnFSiNDjc2ERcDcT2EvK5peU1Rt/kcIoF7sC6Krzk1q7wnx8aAREM20dO6IvY6bd3utFxhFVRMbed/k5J3jrC5lXi2ERE4VCq+3jg9Hu8XoUYu0FRCMXW87ZTEWk3c0Xfb8hx2cSGEPzkdZCTeP9X6ugSU0hbLeSFes0WSmImAwIiCGHWY2bNy69J9nkgjQqiu+iJrrkMrFh3v6gt8UAWVY8eyLelzgZFNW6QDr8zaJLnBks6MEx0RXW2znwJeeHaFRaZ053vog+9+e5HFcG8EKtAOa5K5/w0upUuAHix1A2TVV23+Gcq/2m+Bv4fJj2w88Uj/2ShzmyIWpUcYMf0y9+ONElTg0P1mBor0xgB"
+      },
+      "recordedTimings": {
+        "ttftMs": 1313,
+        "interChunkDelaysMs": [
+          0, 1417, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 4, 0, 0
+        ],
+        "totalDurationMs": 2735
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Describe a hash brown as structured output.",
+        "model": "us.anthropic.claude-haiku-4-5-20251001-v1%3A0",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "{\"text\": \"A hash brown is a breakfast dish made from finely shredded or diced potatoes that are formed into a patty or block, then pan-fried until golden brown and crispy on the outside while remaining soft inside. It typically includes seasonings like salt and pepper, and is often served as a side dish with eggs and bacon. Some variations include added ingredients such as onions, cheese, or meat. Hash browns can be served as a flat patty, formed into a disk, or as individual shreds, and are popular in diners and breakfast restaurants worldwide.\", \"ok\": true}"
+      },
+      "recordedTimings": {
+        "ttftMs": 2217,
+        "interChunkDelaysMs": [
+          0, 21, 2, 30, 19, 20, 38, 23, 15, 36, 0, 52, 0, 13, 23, 21, 21, 22,
+          47, 0, 30, 21, 23, 34, 27, 0, 30, 42, 50, 3, 39, 17, 128, 0, 0, 0, 1,
+          2, 36, 24, 18, 31, 13, 23, 24, 43, 0, 20, 39, 15, 32, 15, 10, 22, 102,
+          0, 0
+        ],
+        "totalDurationMs": 3534
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+        "model": "claude-haiku-5-5",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": "{\"query\": \"hashbrown\"}",
+            "id": "toolu_012mWb1uLPSt31GaLR7D3kWa"
+          }
+        ]
+      },
+      "recordedTimings": {
+        "ttftMs": 644,
+        "interChunkDelaysMs": [0, 0, 0, 102, 0, 0, 0, 0, 0],
+        "totalDurationMs": 746
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+        "model": "claude-haiku-5-5",
+        "turnIndex": 1,
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "The code word \"hashbrown\" is green."
+      },
+      "recordedTimings": {
+        "ttftMs": 844,
+        "interChunkDelaysMs": [0, 0, 0, 24, 20, 0, 0, 0],
+        "totalDurationMs": 888
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

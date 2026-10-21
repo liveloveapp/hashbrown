@@ -1,0 +1,24 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "What colour is the code word? Answer in one word.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 2,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Blue"
+      },
+      "recordedTimings": {
+        "ttftMs": 620,
+        "interChunkDelaysMs": [1, 9, 5, 1, 183, 0, 7, 0],
+        "totalDurationMs": 826
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

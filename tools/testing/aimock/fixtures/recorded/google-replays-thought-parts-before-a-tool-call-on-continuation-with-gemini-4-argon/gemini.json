@@ -1,0 +1,50 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Ann is older than Ben. Ben is older than Cy. Dee is younger than Cy but older than Eve. Work out who is second youngest, look that name up with the lookup tool, then answer in one short sentence.",
+        "model": "gemini-4-argon",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": "{\"query\":\"Dee\"}"
+          }
+        ],
+        "reasoning": "**Ordering the Age Sequence**\n\nI've established the age order for Ann, Ben, Cy, Dee, and Eve based on the relationships provided. My current conclusion, from oldest to youngest, is Ann > Ben > Cy. I'm noting Cy is older than Dee, and Dee is older than Eve. Now, to be comprehensive, I need to integrate Dee and Eve into the sequence to produce a final order.\n\n\n"
+      },
+      "recordedTimings": {
+        "ttftMs": 7822,
+        "interChunkDelaysMs": [82, 624],
+        "totalDurationMs": 8528
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Ann is older than Ben. Ben is older than Cy. Dee is younger than Cy but older than Eve. Work out who is second youngest, look that name up with the lookup tool, then answer in one short sentence.",
+        "model": "gemini-4-argon",
+        "turnIndex": 1,
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "Dee is the second youngest, and the associated code word is green."
+      },
+      "recordedTimings": {
+        "ttftMs": 6201,
+        "interChunkDelaysMs": [28],
+        "totalDurationMs": 6229
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

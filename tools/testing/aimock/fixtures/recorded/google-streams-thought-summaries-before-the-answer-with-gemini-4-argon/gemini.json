@@ -1,0 +1,24 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Ann is older than Ben. Ben is older than Cy. Dee is younger than Cy but older than Eve. Who is the second youngest? Reply with the name only.",
+        "model": "gemini-4-argon",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Dee",
+        "reasoning": "**Deciphering the Clues**\n\nI'm working through the provided relative age statements, focusing on how each piece of information narrows down the possible age order of Ann, Ben, Cy, Dee, and Eve. My goal is to extract the definitive order to determine the identity of the second youngest person. I'm carefully analyzing the statements to ensure no detail is overlooked.\n\n\n"
+      },
+      "recordedTimings": {
+        "ttftMs": 4041,
+        "interChunkDelaysMs": [619, 33],
+        "totalDurationMs": 4693
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

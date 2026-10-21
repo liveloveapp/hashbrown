@@ -25,7 +25,7 @@ The assistant answers with the same cards, boards and map that the app already h
 - [Fly it live at atc.hashbrown.dev](https://atc.hashbrown.dev)
 - [Read the source on GitHub](https://github.com/liveloveapp/hashbrown/tree/main/examples/atc)
 
-Here's the whole thing in 45 seconds:
+Here's the whole thing in about a minute:
 
 <www-atc-demo-video>
 </www-atc-demo-video>

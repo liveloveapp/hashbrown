@@ -1,0 +1,24 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "From the lookup result above, what colour is the code word? Answer in one word without calling a tool.",
+        "model": "us.anthropic.claude-haiku-4-5-20251001-v1%3A0",
+        "turnIndex": 2,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Green."
+      },
+      "recordedTimings": {
+        "ttftMs": 746,
+        "interChunkDelaysMs": [0, 0, 11, 0, 0],
+        "totalDurationMs": 757
+      },
+      "metadata": {
+        "systemHash": "d20dbdc2",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

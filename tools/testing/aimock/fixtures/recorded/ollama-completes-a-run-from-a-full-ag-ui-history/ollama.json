@@ -1,0 +1,24 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "What colour is the code word? Answer in one word.",
+        "model": "qwen2.5:14b",
+        "turnIndex": 2,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Green"
+      },
+      "recordedTimings": {
+        "ttftMs": 80,
+        "interChunkDelaysMs": [77],
+        "totalDurationMs": 157
+      },
+      "metadata": {
+        "systemHash": "2916ffb7",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

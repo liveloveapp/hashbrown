@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Say hello in three words.",
+        "model": "claude-haiku-5-5",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Hello there, friend!"
+      },
+      "recordedTimings": {
+        "ttftMs": 585,
+        "interChunkDelaysMs": [0, 0, 0, 17, 9, 0, 1],
+        "totalDurationMs": 612
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

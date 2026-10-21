@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Say hello in three words.",
+        "model": "gemini-3.5-flash-lite",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Hello, dear user."
+      },
+      "recordedTimings": {
+        "ttftMs": 709,
+        "interChunkDelaysMs": [23, 3],
+        "totalDurationMs": 735
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

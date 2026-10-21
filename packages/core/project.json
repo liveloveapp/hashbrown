@@ -13,7 +13,7 @@
   },
   "tags": ["shared"],
   "targets": {
-    "build": {
+    "compile": {
       "outputs": ["{options.outputPath}"],
       "executor": "@nx/rollup:rollup",
       "options": {
@@ -37,7 +37,21 @@
             "glob": "README.md",
             "output": "."
           }
-        ]
+        ],
+        "external": ["#development-install"]
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["compile"],
+      "inputs": [
+        "{workspaceRoot}/tools/growth/install/*.cjs",
+        "{workspaceRoot}/tools/growth/install/assemble-package.mjs",
+        "{projectRoot}/package.json"
+      ],
+      "outputs": ["{workspaceRoot}/dist/packages/core"],
+      "options": {
+        "command": "node tools/growth/install/assemble-package.mjs core"
       }
     },
     "lint": {

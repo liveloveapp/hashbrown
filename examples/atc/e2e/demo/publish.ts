@@ -48,7 +48,7 @@ export interface AtcVideo {
   readonly height: number;
 }
 
-/** The atc demo: about 45 s of code and app, for the blog and docs. */
+/** The atc demo: about a minute of code and app, for the blog and docs. */
 export const ATC_DEMO_VIDEO: AtcVideo = {
   webm: ${url(paths.demo.webm)},
   mp4: ${url(paths.demo.mp4)},
