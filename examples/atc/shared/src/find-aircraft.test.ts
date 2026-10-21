@@ -530,26 +530,6 @@ test('findAircraftInput keeps its JSON schema', () => {
   expect(schema).toEqual(BEFORE_SCHEMA);
 });
 
-const fixtureFilters: readonly MapFilter[] = [
-  {
-    airline: null,
-    typeCode: null,
-    kind: null,
-    minAltitudeFt: null,
-    maxAltitudeFt: null,
-    approaching: null,
-    near: null,
-    inAirspace: null,
-  },
-  { ...mapAny(), airline: 'delta' },
-  { ...mapAny(), typeCode: 'a321' },
-  { ...mapAny(), kind: 'jet', minAltitudeFt: 6000 },
-  { ...mapAny(), maxAltitudeFt: 12000 },
-  { ...mapAny(), approaching: 'KRDM' },
-  { ...mapAny(), near: { airport: 'KBDN', radiusNm: 25 } },
-  { ...mapAny(), inAirspace: { airport: 'KRDM', class: 'D' } },
-];
-
 function mapAny(): MapFilter {
   return {
     airline: null,
@@ -563,16 +543,38 @@ function mapAny(): MapFilter {
   };
 }
 
+const fixtureFilters: readonly MapFilter[] = [
+  mapAny(),
+  { ...mapAny(), airline: 'delta' },
+  { ...mapAny(), typeCode: 'a321' },
+  { ...mapAny(), kind: 'jet', minAltitudeFt: 6000 },
+  { ...mapAny(), maxAltitudeFt: 12000 },
+  { ...mapAny(), approaching: 'KRDM' },
+  { ...mapAny(), near: { airport: 'KBDN', radiusNm: 25 } },
+  { ...mapAny(), inAirspace: { airport: 'KRDM', class: 'D' } },
+];
+
+const parityState = applySnapshot(
+  airspaceStore([...pdxShelves, rdmShelf]).getState(),
+  {
+    at: 1,
+    aircraft: [
+      ...state.aircraft.values(),
+      plane('dddddd', { lat: 44.25, lon: -121.15, altitudeFt: 3000 }),
+    ],
+  },
+);
+
 test('matchesResolved agrees with findAircraft for every fixture filter', () => {
-  const all = [...state.aircraft.values()];
+  const all = [...parityState.aircraft.values()];
 
   const results = fixtureFilters.map((filter) => {
-    const resolved = resolveFilter(state, filter);
+    const resolved = resolveFilter(parityState, filter);
     const viaPredicate =
       'unknownPlaces' in resolved
         ? []
         : all.filter((a) => matchesResolved(resolved, a)).map((a) => a.hex);
-    const viaFind = findAircraft(state, { ...any, ...filter })
+    const viaFind = findAircraft(parityState, { ...any, ...filter, limit: 20 })
       .map((row) => row.hex)
       .sort();
 
@@ -581,7 +583,28 @@ test('matchesResolved agrees with findAircraft for every fixture filter', () => 
 
   for (const { viaPredicate, viaFind } of results) {
     expect(viaPredicate).toEqual(viaFind);
+    expect(viaFind.length).toBeGreaterThan(0);
   }
+  expect(results[0].viaFind).toEqual(['aaaaaa', 'bbbbbb', 'cccccc', 'dddddd']);
+});
+
+test('resolveFilter and matchesResolved treat missing fields as any', () => {
+  const partial = { kind: 'jet' } as unknown as MapFilter;
+  const resolved = resolveFilter(parityState, partial);
+
+  const hexes =
+    'unknownPlaces' in resolved
+      ? []
+      : [...parityState.aircraft.values()]
+          .filter((a) => matchesResolved(resolved, a))
+          .map((a) => a.hex);
+
+  expect(hexes).toEqual(
+    findAircraft(parityState, { ...any, kind: 'jet' })
+      .map((row) => row.hex)
+      .sort(),
+  );
+  expect(hexes.length).toBeGreaterThan(0);
 });
 
 test('resolveFilter reports unknown places instead of resolving them', () => {

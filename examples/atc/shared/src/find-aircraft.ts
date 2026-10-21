@@ -173,7 +173,7 @@ function toAirspaceRow(
 }
 
 /** Lower-cased, trimmed query, or null when empty. */
-function queryText(value: string | null): string | null {
+function queryText(value: string | null | undefined): string | null {
   const trimmed = value?.trim().toLowerCase() ?? '';
 
   return trimmed === '' ? null : trimmed;
@@ -234,13 +234,13 @@ export function resolveFilter(
     ? lookupPlace(filter.approaching, directory)
     : null;
   const nearAirport: Airport | null =
-    near === null ? null : lookupPlace(near.airport, directory);
+    near == null ? null : lookupPlace(near.airport, directory);
   const airspaceAirport: Airport | null =
-    inAirspace === null ? null : lookupPlace(inAirspace.airport, directory);
+    inAirspace == null ? null : lookupPlace(inAirspace.airport, directory);
   const unknownPlaces = [
     filter.approaching && approachAirport === null ? filter.approaching : null,
-    near !== null && nearAirport === null ? near.airport : null,
-    inAirspace !== null && airspaceAirport === null ? inAirspace.airport : null,
+    near != null && nearAirport === null ? near.airport : null,
+    inAirspace != null && airspaceAirport === null ? inAirspace.airport : null,
   ].filter((code): code is string => code !== null);
   if (unknownPlaces.length > 0) {
     return { unknownPlaces };
@@ -249,20 +249,20 @@ export function resolveFilter(
   return {
     airline: queryText(filter.airline),
     type: queryText(filter.typeCode),
-    kind: filter.kind,
-    minAltitudeFt: filter.minAltitudeFt,
-    maxAltitudeFt: filter.maxAltitudeFt,
+    kind: filter.kind ?? null,
+    minAltitudeFt: filter.minAltitudeFt ?? null,
+    maxAltitudeFt: filter.maxAltitudeFt ?? null,
     approachAirport,
     nearAirport,
     airspaceAirport,
     shelves:
-      inAirspace === null || airspaceAirport === null
+      inAirspace == null || airspaceAirport === null
         ? null
         : airspaceOf(state.airspace.shelves, airspaceAirport.code).filter(
             (shelf) =>
-              inAirspace.class === null || shelf.class === inAirspace.class,
+              inAirspace.class == null || shelf.class === inAirspace.class,
           ),
-    radius: near === null ? Infinity : areaRadiusNm(near.radiusNm),
+    radius: near == null ? Infinity : areaRadiusNm(near.radiusNm),
   };
 }
 
