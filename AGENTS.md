@@ -80,6 +80,8 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx lint growth`
   - `npx nx migrate-growth growth`
   - `npx nx test-integration growth` (needs `GROWTH_INTEGRATION=1` and `TEST_DATABASE_URL`)
+  - `npx nx report growth -- <funnel|journey|health|timeline|detail> …`
+  - `npx nx observability growth -- <process|replay|redact|initialize-redactions> …`
 - `anthropic`
   - `npx nx build anthropic`
   - `npx nx test anthropic`
@@ -147,8 +149,7 @@ that protects the published packages, not examples.
 - `atc-e2e`
   - `npx nx e2e atc-e2e`
   - `npx nx prose-eval atc-e2e` (live model; needs `OPENAI_API_KEY` and the atc dev servers)
-  - `npx nx decide-eval atc-e2e` (live router and cards decisions against labelled probes; needs `TYPESAFE_API_KEY`)
-  - `npx nx test atc-e2e` (unit tests for the demo video recorder and the prose and decide evals)
+  - `npx nx test atc-e2e` (the demo video recorder's unit tests)
   - `npx nx lint atc-e2e`
   - `npx nx typecheck atc-e2e` (`tsc` over the e2e code, which Playwright and Vitest do not type-check)
   - `npx nx demo atc-e2e` (records the demo video and home page loop; needs ffmpeg)

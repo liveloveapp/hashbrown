@@ -17,6 +17,7 @@ import {
   type EmailHmacKeyring,
   normalizeEmail,
 } from './crypto.ts';
+import { redactContactObservationEvidence } from './observability/redaction.ts';
 import type {
   FormOutreachApprovedActivityData,
   GrowthEmailClassification,
@@ -191,8 +192,8 @@ export interface DeleteContactInput {
   /**
    * Redacts evidence held outside the contact tables, inside the deletion
    * transaction. Receives the transaction, the contact id, and the deletion's
-   * `occurredAt`, so redactions share the deletion's timestamp. Defaults to a
-   * no-op.
+   * `occurredAt`, so redactions share the deletion's timestamp. Defaults to
+   * {@link redactContactObservationEvidence}.
    */
   redactEvidence?: (
     transaction: SqlTransaction,
@@ -980,7 +981,11 @@ export async function deleteContact(
     }
 
     await insertActivityOnce(transaction, deletionActivity);
-    await input.redactEvidence?.(transaction, contactId, occurredAt);
+    await (input.redactEvidence ?? redactContactObservationEvidence)(
+      transaction,
+      contactId,
+      occurredAt,
+    );
 
     const jobs = await transaction.execute<{
       id: string;
