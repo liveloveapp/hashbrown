@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+
 import { expect, test } from 'vitest';
 
 import { canonicalJson } from '../activity.ts';
@@ -36,4 +38,24 @@ test('identityDigest uses the active key and fails closed without one', () => {
   expect(() =>
     identityDigest(value, { active: { version: 1, secret: 'short' } }),
   ).toThrow('identity_key_unavailable');
+});
+
+test('identityDigest matches an independently computed domain-tagged HMAC', () => {
+  const identity = { gitdisplayname: 'dev', gitemail: 'dev@example.invalid' };
+  const canonical = '{"gitdisplayname":"dev","gitemail":"dev@example.invalid"}';
+  const keyring = { active: newKey, previous: [oldKey] };
+
+  const result = identityDigest(identity, keyring);
+
+  const expected = createHmac('sha256', newKey.secret)
+    .update('growth-observation-identity-v1\0')
+    .update(canonical)
+    .digest('hex');
+  const untagged = createHmac('sha256', newKey.secret)
+    .update(canonical)
+    .digest('hex');
+  expect(canonicalJson(identity)).toBe(canonical);
+  expect(result.digest).toBe(expected);
+  expect(result.keyVersion).toBe(2);
+  expect(untagged).not.toBe(result.digest);
 });

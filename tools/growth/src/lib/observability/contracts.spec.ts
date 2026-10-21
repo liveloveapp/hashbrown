@@ -132,18 +132,19 @@ test('rejects occurredAt outside the 24h/5min window and impossible dates', () =
   const impossible = installBatch();
   impossible.events[0].occurredAt = '2026-09-31T12:00:00Z';
 
-  const results = [stale, future, impossible].map(
-    (batch) => () =>
-      parseCollectionBatch('install', batch, new Date('2026-10-01T12:00:00Z')),
-  );
-
   expect(() => parseCollectionBatch('install', stale, now)).toThrow(
     'invalid_payload',
   );
   expect(() => parseCollectionBatch('install', future, now)).toThrow(
     'invalid_payload',
   );
-  expect(results[2]).toThrow('invalid_payload');
+  expect(() =>
+    parseCollectionBatch(
+      'install',
+      impossible,
+      new Date('2026-10-01T12:00:00Z'),
+    ),
+  ).toThrow('invalid_payload');
 });
 
 test('namespace must match the source path', () => {
@@ -227,7 +228,7 @@ test('runtime requires sessionId, accepts the four runtime kinds, and allows dur
       ...runtimeEvent('runtime.session_started'),
       sessionId: undefined,
     }),
-  ).toThrow();
+  ).toThrow('invalid_payload');
   expect(() => parseRuntime(runtimeEvent('transport.connected'))).toThrow(
     'invalid_payload',
   );
