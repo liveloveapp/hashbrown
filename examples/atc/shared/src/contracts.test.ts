@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import {
   airportCardContract,
+  FILTER_SYSTEM_PROMPT,
   SELECTED_PROMPT,
   STARTER_PROMPTS,
   starterPrompts,
@@ -83,4 +84,18 @@ test('the prompt keeps the map as the answer left it unless the user asks', () =
   expect(SYSTEM_PROMPT).toContain(
     '- Leave the map as your answer set it: the highlight and any follow stay. Call clearHighlight or stopFollowing only when the user asks for that, never to tidy up an answer.',
   );
+});
+
+test('the prompt says the map filter applies and the assistant may change it', () => {
+  expect(SYSTEM_PROMPT).toContain(
+    '- The map filter limits findAircraft and the map to the same aircraft, and the result names it as mapFilter. When a question needs aircraft the filter hides, call setMapFilter or clearMapFilter, and say in one short sentence that you changed it.',
+  );
+});
+
+test('the filter prompt tells the model how to refine the current filter', () => {
+  expect(FILTER_SYSTEM_PROMPT).toContain('{ "request"');
+  expect(FILTER_SYSTEM_PROMPT).toContain('Refine current');
+  expect(FILTER_SYSTEM_PROMPT).toContain('null');
+  expect(FILTER_SYSTEM_PROMPT).toContain('ICAO');
+  expect(FILTER_SYSTEM_PROMPT).toContain('Output only the filter');
 });

@@ -49,6 +49,7 @@ dependencies); this file covers atc.
 | `shared/src/styles/atc.css`                     | Index of the stylesheet partials, in cascade order                                                                                                 |
 | `angular/src/app/`, `react/src/`                | Thin framework shells that mirror each other                                                                                                       |
 | `server/src/run-handler.ts`                     | `/api/run`: pins the system prompt, tool definitions and UI response schema, caps output                                                           |
+| `server/src/filter-handler.ts`                  | `/api/filter`: pins the filter prompt and schema, no tools, 512-token cap                                                                          |
 | `server/src/aircraft-handler.ts`                | `/api/aircraft`: cached, stripped adsb.lol                                                                                                         |
 | `server/src/chart-airports-handler.ts`          | `/api/chart/airports`: NASR airports, cached per cycle                                                                                             |
 | `server/src/chart-surfaces-handler.ts`          | `/api/chart/surfaces`: FAA and OSM taxiways, aprons, holds                                                                                         |

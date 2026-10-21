@@ -12,6 +12,8 @@ export * from './feed';
 export * from './routes';
 export * from './contracts';
 export * from './find-aircraft';
+export * from './filter-view';
+export * from './filter-sync';
 export * from './tool-definitions';
 export * from './tools';
 export * from './browser-tools';

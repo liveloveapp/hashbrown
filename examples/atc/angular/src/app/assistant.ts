@@ -115,6 +115,8 @@ export class Assistant {
     createTool(this.atcTools.showAirspace),
     createTool(this.atcTools.airspaceAt),
     createTool(this.atcTools.setLayers),
+    createTool(this.atcTools.setMapFilter),
+    createTool(this.atcTools.clearMapFilter),
   ];
 
   // 3. Render the stream.

@@ -17,6 +17,7 @@ import {
 } from '@angular/core';
 import { AirspaceMap } from './airspace-map';
 import { Assistant } from './assistant';
+import { injectMapFilter } from './filter';
 import { KeyboardInset } from './keyboard-inset';
 import { PanelHeader } from './panel-header';
 import { SheetHandle } from './sheet-handle';
@@ -47,7 +48,10 @@ import { ATC_STORE } from './store';
         <atc-assistant (sent)="move({ type: 'send' })" />
       </section>
       <section class="atc-panel atc-map-panel" aria-label="Map">
-        <atc-airspace-map [obstruction]="chatSheet" />
+        <atc-airspace-map
+          [obstruction]="chatSheet"
+          [streaming]="mapFilter.streaming()"
+        />
       </section>
     </main>
   `,
@@ -56,6 +60,8 @@ export class App {
   /** Where the phone bottom sheet rests; ignored on wide screens. */
   protected readonly sheet = signal(INITIAL_SHEET);
   protected readonly expanded = computed(() => sheetExpanded(this.sheet()));
+  /** The natural-language map filter; the router calls its `apply`. */
+  protected readonly mapFilter = injectMapFilter();
 
   constructor() {
     const store = inject(ATC_STORE);

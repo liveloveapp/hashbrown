@@ -9,6 +9,7 @@ import {
 import { type FocusEvent, useEffect, useReducer, useRef } from 'react';
 import { AirspaceMap } from './airspace-map';
 import { Assistant } from './assistant';
+import { useMapFilter } from './filter';
 import { useKeyboardInset } from './keyboard-inset';
 import { PanelHeader } from './panel-header';
 import { SheetHandle } from './sheet-handle';
@@ -25,6 +26,7 @@ export function App() {
   const [sheet, move] = useReducer(nextSheet, INITIAL_SHEET);
   const workbench = useRef<HTMLElement>(null);
   const chatSheet = useRef<HTMLElement>(null);
+  const mapFilter = useMapFilter();
 
   useEffect(() => startAtcFeed({ store }), [store]);
   // The assistant moving the map, or a plane picked in the chat, lowers the sheet.
@@ -57,7 +59,7 @@ export function App() {
         <Assistant onSent={() => move({ type: 'send' })} />
       </section>
       <section className="atc-panel atc-map-panel" aria-label="Map">
-        <AirspaceMap obstruction={chatSheet} />
+        <AirspaceMap obstruction={chatSheet} streaming={mapFilter.streaming} />
       </section>
     </main>
   );

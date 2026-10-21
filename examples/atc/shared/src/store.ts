@@ -9,6 +9,12 @@ import type {
   Surfaces,
 } from './chart';
 import { airportByCode } from './directory';
+import {
+  areaRadiusNm,
+  type MapFilter,
+  type ResolvedFilter,
+  resolveFilter,
+} from './find-aircraft';
 import type { Route } from './routes';
 
 /** How fresh the aircraft data is. */
@@ -51,6 +57,20 @@ type ViewMove =
  */
 export const DEPARTED_TTL_MS = 30 * 60 * 1000;
 
+/**
+ * The map filter as the user or model gave it, with its places resolved once.
+ * Unknown places are listed in `unknownPlaces` and left out of `resolved`, so
+ * matching ignores only those clauses.
+ */
+export interface AppliedMapFilter {
+  /** The filter as given. */
+  readonly filter: MapFilter;
+  /** The filter with places looked up, minus unknown places. Refreshed when the chart or airspace data changes. */
+  readonly resolved: ResolvedFilter;
+  /** Place codes the directory does not know. */
+  readonly unknownPlaces: string[];
+}
+
 /** Everything the map, tools and components read. Treat as immutable. */
 export interface AtcState {
   /** The FAA chart airports, once loaded. */
@@ -83,6 +103,8 @@ export interface AtcState {
   readonly updatedAt: number | null;
   /** The area the map outlines, or null. */
   readonly shownArea: ShownArea | null;
+  /** The filter applied to the aircraft shown on the map, or null. */
+  readonly mapFilter: AppliedMapFilter | null;
   /** The newest map move, or null when there is nothing to do. */
   readonly viewRequest: ViewRequest | null;
   /** The last `seq` handed out. */
@@ -106,6 +128,7 @@ export const INITIAL_STATE: AtcState = {
   feedStatus: 'connecting',
   updatedAt: null,
   shownArea: null,
+  mapFilter: null,
   viewRequest: null,
   viewSeq: 0,
 };
@@ -188,22 +211,22 @@ export function lookupAircraft(state: AtcState, hex: string): AircraftLookup {
 
 /** Marks the chart ready with the airports in `payload`. */
 export function applyChart(state: AtcState, payload: ChartAirports): AtcState {
-  return {
+  return reresolveMapFilter({
     ...state,
     chart: {
       status: 'ready',
       cycle: payload.cycle,
       airports: payload.airports,
     },
-  };
+  });
 }
 
 /** Marks the chart limited: the airport data is unavailable. */
 export function applyChartLimited(state: AtcState): AtcState {
-  return {
+  return reresolveMapFilter({
     ...state,
     chart: { status: 'limited', cycle: null, airports: [] },
-  };
+  });
 }
 
 /** Stores the surfaces (or load status) for one airport, leaving others alone. */
@@ -220,20 +243,23 @@ export function applyAirspace(
   state: AtcState,
   payload: AirspacePayload,
 ): AtcState {
-  return {
+  return reresolveMapFilter({
     ...state,
     airspace: {
       status: 'ready',
       cycle: payload.cycle,
       shelves: payload.shelves,
     },
-  };
+  });
 }
 
 /** Marks airspace failed, but only while it is still loading. */
 export function applyAirspaceFailed(state: AtcState): AtcState {
   return state.airspace.status === 'loading'
-    ? { ...state, airspace: { status: 'failed', cycle: null, shelves: [] } }
+    ? reresolveMapFilter({
+        ...state,
+        airspace: { status: 'failed', cycle: null, shelves: [] },
+      })
     : state;
 }
 
@@ -245,6 +271,95 @@ export function applyLayers(state: AtcState, patch: Partial<Layers>): AtcState {
   );
 
   return changed ? { ...state, layers } : state;
+}
+
+// --- Map filter
+
+/**
+ * Resolves `filter` against the current chart and airspace. Unknown places are
+ * listed and their clauses dropped, so `resolved` never holds them.
+ */
+function resolveApplied(state: AtcState, filter: MapFilter): AppliedMapFilter {
+  const first = resolveFilter(state, filter);
+  if (!('unknownPlaces' in first)) {
+    return { filter, resolved: first, unknownPlaces: [] };
+  }
+  const unknown = new Set(first.unknownPlaces);
+  const second = resolveFilter(state, {
+    ...filter,
+    approaching:
+      filter.approaching && unknown.has(filter.approaching)
+        ? null
+        : filter.approaching,
+    near: filter.near && unknown.has(filter.near.airport) ? null : filter.near,
+    inAirspace:
+      filter.inAirspace && unknown.has(filter.inAirspace.airport)
+        ? null
+        : filter.inAirspace,
+  });
+  if ('unknownPlaces' in second) {
+    // Unreachable: every unknown clause was dropped above.
+    throw new Error('Map filter still has unknown places after dropping them');
+  }
+
+  return { filter, resolved: second, unknownPlaces: first.unknownPlaces };
+}
+
+/**
+ * Re-resolves the applied map filter against changed chart or airspace data.
+ * Never requests a view; returns the same state when no filter is set.
+ */
+function reresolveMapFilter(state: AtcState): AtcState {
+  return state.mapFilter === null
+    ? state
+    : { ...state, mapFilter: resolveApplied(state, state.mapFilter.filter) };
+}
+
+/** The place the filter points the map at, as a comparable key, or null. */
+function placeKey(applied: AppliedMapFilter | null): string | null {
+  const resolved = applied?.resolved;
+  if (resolved?.airspaceAirport) {
+    return `airspace:${resolved.airspaceAirport.code}`;
+  }
+  if (resolved?.nearAirport) {
+    return `near:${resolved.nearAirport.code}:${resolved.radius}`;
+  }
+
+  return null;
+}
+
+/**
+ * Applies a map filter (or clears it with null). Unknown places are recorded
+ * and their clauses ignored. When the resolved place differs from the previous
+ * filter's (or there was none), the map is asked to show it: the airspace for
+ * `inAirspace` (which wins), else the area outline for `near`. A repeat of the
+ * same place, as while a filter streams, asks for nothing. Clearing leaves the
+ * view alone and returns the same state when no filter is set.
+ */
+export function applyMapFilter(
+  state: AtcState,
+  filter: MapFilter | null,
+): AtcState {
+  if (filter === null) {
+    return state.mapFilter === null ? state : { ...state, mapFilter: null };
+  }
+  const applied = resolveApplied(state, filter);
+  const next = { ...state, mapFilter: applied };
+  const { airspaceAirport, nearAirport } = applied.resolved;
+  if (placeKey(applied) === placeKey(state.mapFilter)) {
+    return next;
+  }
+  if (airspaceAirport) {
+    return requestAirspace(next, airspaceAirport.code);
+  }
+  if (nearAirport && filter.near) {
+    return requestArea(next, {
+      airport: nearAirport.code,
+      radiusNm: areaRadiusNm(filter.near.radiusNm),
+    });
+  }
+
+  return next;
 }
 
 // --- Map moves
@@ -418,6 +533,10 @@ export interface AtcStore {
   setAirspaceFailed(): void;
   /** Patches the layers ({@link applyLayers}). */
   setLayers(patch: Partial<Layers>): void;
+  /** Filters the aircraft on the map ({@link applyMapFilter}). */
+  setMapFilter(filter: MapFilter): void;
+  /** Removes the map filter ({@link applyMapFilter}). */
+  clearMapFilter(): void;
   setFeedStatus(status: FeedStatus): void;
   /** Outlines an area and fits the map to it ({@link requestArea}). */
   showArea(area: ShownArea): void;
@@ -477,6 +596,8 @@ export function createAtcStore(options: { now?: () => number } = {}): AtcStore {
     setAirspace: (payload) => update(applyAirspace(state, payload)),
     setAirspaceFailed: () => update(applyAirspaceFailed(state)),
     setLayers: (patch) => update(applyLayers(state, patch)),
+    setMapFilter: (filter) => update(applyMapFilter(state, filter)),
+    clearMapFilter: () => update(applyMapFilter(state, null)),
     setFeedStatus: (feedStatus) =>
       update(
         state.feedStatus === feedStatus ? state : { ...state, feedStatus },

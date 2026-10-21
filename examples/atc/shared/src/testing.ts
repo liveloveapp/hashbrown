@@ -1,3 +1,12 @@
+import type { Transport, TransportRequest } from '@hashbrownai/core';
+
+/** One AG-UI event, as a transport streams it. */
+type AGUIEvent =
+  Awaited<ReturnType<Transport['send']>>['events'] extends AsyncIterable<
+    infer E
+  >
+    ? E
+    : never;
 import type { Aircraft } from './aircraft';
 import type { AirspaceShelf, ChartAirport } from './chart';
 
@@ -110,5 +119,78 @@ export function testShelf(
       Math.max(...lats),
     ],
     ...overrides,
+  };
+}
+
+/** A scripted `/api/filter` transport; see {@link fakeFilterTransport}. */
+export interface FakeFilterTransport {
+  /** Pass as the hook's transport. */
+  readonly transport: Transport;
+  /** Every request the app sent, oldest first. */
+  readonly requests: TransportRequest[];
+  /** Streams more of the current answer's JSON text. */
+  push(delta: string): void;
+  /** Ends the current answer. */
+  finish(): void;
+}
+
+/**
+ * A fake model for the natural-language filter: each request starts an answer
+ * that the test streams with `push` and ends with `finish`.
+ */
+export function fakeFilterTransport(): FakeFilterTransport {
+  const requests: TransportRequest[] = [];
+  let emit: (event: AGUIEvent | null) => void = () => undefined;
+  let messageId = 0;
+
+  const transport: Transport = {
+    name: 'fake-filter',
+    send: async (request) => {
+      requests.push(request);
+      const id = `m${++messageId}`;
+      const identity = {
+        threadId: request.input.threadId,
+        runId: request.input.runId,
+      };
+      const queue: (AGUIEvent | null)[] = [
+        { type: 'RUN_STARTED', ...identity },
+        { type: 'TEXT_MESSAGE_START', messageId: id, role: 'assistant' },
+      ] as AGUIEvent[];
+      let wake: () => void = () => undefined;
+      emit = (event) => {
+        queue.push(event);
+        wake();
+      };
+
+      return {
+        events: (async function* () {
+          for (;;) {
+            while (queue.length === 0) {
+              await new Promise<void>((resolve) => (wake = resolve));
+            }
+            const event = queue.shift();
+            if (event === null || event === undefined) {
+              yield { type: 'TEXT_MESSAGE_END', messageId: id } as AGUIEvent;
+              yield { type: 'RUN_FINISHED', ...identity } as AGUIEvent;
+              return;
+            }
+            yield event;
+          }
+        })(),
+      };
+    },
+  };
+  const current = () => messageId;
+
+  return {
+    transport,
+    requests,
+    push: (delta) =>
+      emit({
+        type: 'TEXT_MESSAGE_CONTENT',
+        messageId: `m${current()}`,
+        delta,
+      } as AGUIEvent),
+    finish: () => emit(null),
   };
 }
