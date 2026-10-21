@@ -163,6 +163,17 @@ test('copy button resolves the language from the highlighted pre at click time',
   expect(codeCopies().map((props) => props?.language)).toEqual(['typescript']);
 });
 
+test('copy button reports text for a plain highlighted block', async () => {
+  reset();
+  window.history.replaceState(null, '', '/docs/react/start/intro');
+  stubClipboard(async () => undefined);
+  const button = mountHighlighted('plain words', 'text');
+
+  await act(async () => button?.click());
+
+  expect(codeCopies().map((props) => props?.language)).toEqual(['text']);
+});
+
 test('copy button does not track copies outside the docs', async () => {
   reset();
   window.history.replaceState(null, '', '/blog/post');

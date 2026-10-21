@@ -45,9 +45,10 @@ function onAuxClick(event: MouseEvent) {
 
 /**
  * Tracks `marketing:threadplane_cta_click` for every link to threadplane.ai,
- * including links rendered from markdown, with delegated `click` and middle-button
- * `auxclick` listeners on `document` (capture phase). The surface is the anchor's `data-surface` when
- * present, otherwise derived from the page's pathname. Renders nothing.
+ * including links rendered from markdown, with delegated `click` and
+ * middle-button `auxclick` listeners on `document` (capture phase). The
+ * surface is the anchor's `data-surface` when present, otherwise derived from
+ * the page's pathname. Renders nothing.
  */
 export function ThreadplaneLinkSignal() {
   useEffect(() => {
