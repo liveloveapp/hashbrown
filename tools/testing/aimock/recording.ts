@@ -1,4 +1,5 @@
-import { join, resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import {
   type AimockHandle,
   type AimockProvider,
@@ -88,6 +89,77 @@ export function collectSecrets(env: NodeJS.ProcessEnv): string[] {
     .filter((value) => value.length >= MIN_SECRET_LENGTH);
 }
 
+function hasText(value: unknown): boolean {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
+/**
+ * Find the recorded fixtures whose response carries no model output: no
+ * non-blank text, no tool calls and no reasoning. aimock records a failed
+ * upstream call (a 4xx or 5xx) this way, so such a fixture means the
+ * recording is unusable.
+ *
+ * @param recording - A parsed recording file, `{ fixtures: [...] }`.
+ * @returns The indexes of the empty fixtures; `[0]` when the file holds no
+ * fixtures at all.
+ */
+export function emptyRecordedResponses(recording: unknown): number[] {
+  const fixtures =
+    recording !== null &&
+    typeof recording === 'object' &&
+    'fixtures' in recording &&
+    Array.isArray(recording.fixtures)
+      ? (recording.fixtures as unknown[])
+      : [];
+  if (fixtures.length === 0) {
+    return [0];
+  }
+
+  return fixtures.flatMap((fixture, index) => {
+    const response =
+      fixture !== null && typeof fixture === 'object' && 'response' in fixture
+        ? (fixture.response as Record<string, unknown> | null)
+        : null;
+    const hasOutput =
+      hasText(response?.['content']) ||
+      hasText(response?.['reasoning']) ||
+      (Array.isArray(response?.['toolCalls']) &&
+        response['toolCalls'].length > 0);
+    return hasOutput ? [] : [index];
+  });
+}
+
+/**
+ * Delete a recording that holds an empty response and throw, so a record run
+ * that captured an upstream failure fails instead of committing it.
+ */
+function rejectEmptyRecording(
+  fixturePath: string,
+  slug: string,
+  provider: AimockProvider,
+): void {
+  if (!existsSync(fixturePath)) {
+    return;
+  }
+  const empty = emptyRecordedResponses(
+    JSON.parse(readFileSync(fixturePath, 'utf8')),
+  );
+  if (empty.length === 0) {
+    return;
+  }
+
+  rmSync(fixturePath);
+  const slugDir = dirname(fixturePath);
+  if (readdirSync(slugDir).length === 0) {
+    rmSync(slugDir, { recursive: true });
+  }
+  throw new Error(
+    `Recorded an empty ${provider} response for "${slug}" ` +
+      `(fixture ${empty.join(', ')}); the upstream call probably failed. ` +
+      `Deleted ${fixturePath}.`,
+  );
+}
+
 /**
  * Options for {@link startRecordedAimock}.
  */
@@ -135,7 +207,9 @@ export interface RecordedAimock {
  * strictly: a request with no recording gets a 503 naming the missing file,
  * and responses stream without the recorded latency.
  * With `AIMOCK_RECORD=1`, unmatched requests go to `upstream` and are recorded
- * there, with secrets scrubbed when the handle stops.
+ * there, with secrets scrubbed when the handle stops. Stopping then fails, and
+ * deletes the recording, when it holds a response with no text, tool calls or
+ * reasoning (see {@link emptyRecordedResponses}).
  *
  * @param options - The test, provider and upstream to record from.
  * @returns The running aimock plus the headers and key the client must use.
@@ -170,8 +244,18 @@ export async function startRecordedAimock(
         },
   );
 
+  const guardedAimock: AimockHandle = recording
+    ? {
+        ...aimock,
+        async stop() {
+          await aimock.stop();
+          rejectEmptyRecording(fixturePath, slug, options.provider);
+        },
+      }
+    : aimock;
+
   return {
-    aimock,
+    aimock: guardedAimock,
     recording,
     headers: { 'X-Test-Id': slug },
     apiKey(realKey) {

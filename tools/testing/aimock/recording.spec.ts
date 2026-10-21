@@ -1,5 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import * as http from 'node:http';
 import * as https from 'node:https';
 import { tmpdir } from 'node:os';
@@ -8,6 +14,7 @@ import * as aimockRunner from './aimock-runner';
 import type { AimockHandle } from './aimock-runner';
 import {
   collectSecrets,
+  emptyRecordedResponses,
   isRecording,
   RECORDED_FIXTURES_ROOT,
   type RecordedAimock,
@@ -220,6 +227,109 @@ test('startRecordedAimock replays without pacing recorded timings', async () => 
   }
 
   expect(options).toMatchObject({ strict: true, ignoreRecordedTimings: true });
+});
+
+test('emptyRecordedResponses flags fixtures with no content, tool calls or reasoning', () => {
+  const recording = {
+    fixtures: [
+      { match: {}, response: { content: 'Hello.' } },
+      { match: {}, response: { content: '' } },
+      { match: {}, response: { content: '  \n' } },
+      {
+        match: {},
+        response: { toolCalls: [{ name: 'lookup', arguments: '{}' }] },
+      },
+      { match: {}, response: { content: '', toolCalls: [] } },
+      { match: {}, response: { content: '', reasoning: 'Thinking.' } },
+      { match: {}, response: {} },
+    ],
+  };
+
+  const empty = emptyRecordedResponses(recording);
+
+  expect(empty).toEqual([1, 2, 4, 6]);
+});
+
+test('emptyRecordedResponses treats a file without fixtures as empty', () => {
+  const recordings = [{}, { fixtures: [] }, null];
+
+  const results = recordings.map((recording) =>
+    emptyRecordedResponses(recording),
+  );
+
+  expect(results).toEqual([[0], [0], [0]]);
+});
+
+async function stopAfterRecording(
+  testName: string,
+  recordedFile: object,
+): Promise<{ error: unknown; fileExists: boolean; slugDir: string }> {
+  const previousRecord = process.env['AIMOCK_RECORD'];
+  process.env['AIMOCK_RECORD'] = '1';
+  const slugDir = join(RECORDED_FIXTURES_ROOT, recordedTestSlug(testName));
+  const startAimock = jest
+    .spyOn(aimockRunner, 'startAimock')
+    .mockImplementation(async (options) => {
+      return {
+        stop: async () => {
+          mkdirSync(dirname(options.fixturePath), { recursive: true });
+          writeFileSync(options.fixturePath, JSON.stringify(recordedFile));
+        },
+      } as AimockHandle;
+    });
+  let error: unknown;
+
+  try {
+    const recorded = await startRecordedAimock({
+      testName,
+      provider: 'gemini',
+      upstream: 'https://generativelanguage.googleapis.com',
+      secrets: [],
+    });
+    await recorded.aimock.stop().catch((caught: unknown) => {
+      error = caught;
+    });
+    return {
+      error,
+      fileExists: existsSync(join(slugDir, 'gemini.json')),
+      slugDir,
+    };
+  } finally {
+    startAimock.mockRestore();
+    rmSync(slugDir, { recursive: true, force: true });
+    if (previousRecord === undefined) {
+      delete process.env['AIMOCK_RECORD'];
+    } else {
+      process.env['AIMOCK_RECORD'] = previousRecord;
+    }
+  }
+}
+
+test('record mode fails and deletes a recording with an empty response', async () => {
+  const testName = 'recording guard empty response';
+
+  const { error, fileExists, slugDir } = await stopAfterRecording(testName, {
+    fixtures: [{ match: { userMessage: 'hi' }, response: { content: '' } }],
+  });
+
+  expect(error).toBeInstanceOf(Error);
+  expect((error as Error).message).toContain(recordedTestSlug(testName));
+  expect((error as Error).message).toContain('gemini');
+  expect(fileExists).toBe(false);
+  expect(existsSync(slugDir)).toBe(false);
+});
+
+test('record mode keeps a recording whose responses have output', async () => {
+  const testName = 'recording guard with output';
+
+  const { error, fileExists } = await stopAfterRecording(testName, {
+    fixtures: [
+      { match: { userMessage: 'hi' }, response: { content: 'Hello.' } },
+    ],
+  });
+
+  expect(error).toBeUndefined();
+  expect(fileExists).toBe(true);
 });
 
 function runClearRecordings(root: string, args: string[]): string[] {
