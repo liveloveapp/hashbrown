@@ -249,7 +249,12 @@ async function recordDemo(context: BrowserContext, origin: string) {
       }
       await wait(beat.holdMs);
       if (beat.clearFilter) {
-        await app.getByRole('button', { name: 'Clear filter' }).click();
+        // The camera may have zoomed the pill out of the frame, where a real
+        // click lands outside the iframe and is lost, so dispatch it instead.
+        await app
+          .getByRole('button', { name: 'Clear filter' })
+          .dispatchEvent('click');
+        await app.getByTestId('filter-pill').waitFor({ state: 'hidden' });
       }
     });
   }
