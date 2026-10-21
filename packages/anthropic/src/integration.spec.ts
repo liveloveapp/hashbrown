@@ -1,11 +1,36 @@
 import { resolve } from 'node:path';
-import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { runProviderAGUIWithAimock } from '@hashbrownai/testing/aimock';
+import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
+import { EventSchemas } from '@ag-ui/core/schemas';
+import {
+  runProviderAGUIWithAimock,
+  startRecordedAimock,
+} from '@hashbrownai/testing/aimock';
 import type Anthropic from '@anthropic-ai/sdk';
 import { type ActivityCallback, HashbrownAnthropic } from './index';
 import type { AnthropicHashbrownRunAgentInput } from './stream/types';
 
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+// The cheapest current Claude with thinking. It thinks adaptively (no
+// `budget_tokens`), so recorded cases turn thinking off unless they test it.
+const ANTHROPIC_MODEL = 'claude-haiku-5-5';
+const ANTHROPIC_UPSTREAM = 'https://api.anthropic.com';
+
+// Recorded cases replay `tools/testing/aimock/fixtures/recorded/<slug>/anthropic.json`
+// and re-record from the live API with `npx nx record-fixtures anthropic`. They
+// assert structure only, so a re-record with different wording still passes.
+const RECORDED_TIMEOUT_MS = 180_000;
+const MAX_OUTPUT_TOKENS = 300;
+const MAX_THINKING_OUTPUT_TOKENS = 4_000;
+
+const LOOKUP_TOOL = {
+  name: 'lookup',
+  description: 'Looks up a short fact about a code word.',
+  parameters: {
+    type: 'object',
+    properties: { query: { type: 'string' } },
+    required: ['query'],
+    additionalProperties: false,
+  },
+};
 
 function fixturePath(name: string): string {
   return resolve(__dirname, '../../../tools/testing/aimock/fixtures', name);
@@ -51,6 +76,89 @@ async function runFixture(
   });
 }
 
+interface RecordedRunOptions {
+  /** Request summarized adaptive thinking instead of turning thinking off. */
+  readonly thinking?: boolean;
+  readonly transformRequestOptions?: (
+    options: Anthropic.Messages.MessageCreateParamsStreaming,
+  ) => Anthropic.Messages.MessageCreateParamsStreaming;
+}
+
+type RecordedRun = (
+  input: AnthropicHashbrownRunAgentInput,
+  options?: RecordedRunOptions,
+) => Promise<AGUIEvent[]>;
+
+/**
+ * Runs `body` against the current test's recording: replayed strictly by
+ * default, recorded from the live API with `AIMOCK_RECORD=1`. The provider
+ * builds its own Anthropic client, so the `X-Test-Id` header that names the
+ * recording is added to its requests by wrapping `fetch` for this test only.
+ */
+async function withRecording<T>(
+  body: (run: RecordedRun) => Promise<T>,
+  replay: { readonly chunkSize?: number } = {},
+): Promise<T> {
+  const recorded = await startRecordedAimock({
+    testName: expect.getState().currentTestName ?? '',
+    provider: 'anthropic',
+    upstream: ANTHROPIC_UPSTREAM,
+    chunkSize: replay.chunkSize,
+  });
+  const realFetch = globalThis.fetch;
+  const fetchSpy = jest
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation((url, init) => {
+      // `init.headers` replaces a Request's own headers, so merge both.
+      const headers = new Headers(
+        url instanceof Request ? url.headers : undefined,
+      );
+      new Headers(init?.headers).forEach((value, name) => {
+        headers.set(name, value);
+      });
+      for (const [name, value] of Object.entries(recorded.headers)) {
+        headers.set(name, value);
+      }
+      return realFetch(url, { ...init, headers });
+    });
+  const run: RecordedRun = (input, options = {}) =>
+    Array.fromAsync(
+      HashbrownAnthropic.stream.text({
+        apiKey: recorded.apiKey(process.env['ANTHROPIC_API_KEY']),
+        baseURL: recorded.aimock.anthropicBaseUrl,
+        model: ANTHROPIC_MODEL,
+        input,
+        transformRequestOptions: (request) => {
+          const transformed =
+            options.transformRequestOptions?.(request) ?? request;
+
+          return options.thinking
+            ? {
+                ...transformed,
+                max_tokens: MAX_THINKING_OUTPUT_TOKENS,
+                thinking: { type: 'adaptive', display: 'summarized' },
+                // Adaptive thinking may skip easy prompts; high effort keeps
+                // the recorded thinking block.
+                output_config: { ...transformed.output_config, effort: 'high' },
+              }
+            : {
+                ...transformed,
+                max_tokens: MAX_OUTPUT_TOKENS,
+                thinking: { type: 'disabled' },
+              };
+        },
+      }),
+      (event) => EventSchemas.parse(event),
+    );
+
+  try {
+    return await body(run);
+  } finally {
+    fetchSpy.mockRestore();
+    await recorded.aimock.stop();
+  }
+}
+
 function contentEvents(events: AGUIEvent[]) {
   return events.filter(
     (event) => event.type === EventType.TEXT_MESSAGE_CONTENT,
@@ -63,6 +171,10 @@ function streamedContent(events: AGUIEvent[]): string {
     .join('');
 }
 
+function eventTypes(events: readonly AGUIEvent[]): EventType[] {
+  return events.map((event) => event.type);
+}
+
 function expectNoTerminalEvents(events: AGUIEvent[]): void {
   expect(events).not.toEqual(
     expect.arrayContaining([
@@ -72,422 +184,468 @@ function expectNoTerminalEvents(events: AGUIEvent[]): void {
   );
 }
 
-function reasoningContent(events: AGUIEvent[]): string {
-  return events
-    .filter((event) => event.type === EventType.REASONING_MESSAGE_CONTENT)
-    .map((event) => event.delta)
-    .join('');
-}
-
-test('Anthropic consumes AG-UI input and emits a canonical text run', async () => {
-  const events = await runFixture('text.json', baseInput('say hi briefly'));
-
-  expect(events).toEqual([
-    {
-      type: EventType.RUN_STARTED,
-      threadId: 'thread-anthropic',
-      runId: 'run-anthropic',
-    },
-    {
-      type: EventType.TEXT_MESSAGE_START,
-      messageId: 'run-anthropic:assistant',
-      role: 'assistant',
-    },
-    {
-      type: EventType.TEXT_MESSAGE_CONTENT,
-      messageId: 'run-anthropic:assistant',
-      delta: 'Hello from aimock.',
-    },
-    {
-      type: EventType.TEXT_MESSAGE_END,
-      messageId: 'run-anthropic:assistant',
-    },
-    {
-      type: EventType.RUN_FINISHED,
-      threadId: 'thread-anthropic',
-      runId: 'run-anthropic',
-    },
-  ]);
-});
-
-test('Anthropic preserves deterministic multi-chunk AG-UI text', async () => {
-  const events = await runFixture(
-    'streaming.json',
-    baseInput('stream deterministic text'),
+/**
+ * Asserts a run that started and finished for `input`, with no error, and
+ * streamed one non-empty assistant text message.
+ */
+function expectCanonicalTextRun(
+  events: AGUIEvent[],
+  input: AnthropicHashbrownRunAgentInput,
+): void {
+  const messageId = `${input.runId}:assistant`;
+  const textTypes = eventTypes(events).filter((type) =>
+    [
+      EventType.TEXT_MESSAGE_START,
+      EventType.TEXT_MESSAGE_CONTENT,
+      EventType.TEXT_MESSAGE_END,
+    ].includes(type),
   );
 
-  expect(contentEvents(events).length).toBeGreaterThan(1);
-  expect(streamedContent(events)).toBe(
-    'Streaming fixture response with enough text to cross several deterministic chunk boundaries.',
-  );
+  expect(eventTypes(events)).not.toContain(EventType.RUN_ERROR);
+  expect(events[0]).toEqual({
+    type: EventType.RUN_STARTED,
+    threadId: input.threadId,
+    runId: input.runId,
+  });
   expect(events.at(-1)).toEqual({
     type: EventType.RUN_FINISHED,
-    threadId: 'thread-anthropic',
-    runId: 'run-anthropic',
+    threadId: input.threadId,
+    runId: input.runId,
   });
-});
-
-test('Anthropic emits balanced reasoning before assistant text', async () => {
-  const input = baseInput('reason before answering');
-
-  const events = await runProviderAGUIWithAimock({
-    fixturePath: fixturePath('anthropic/reasoning.json'),
-    createStream: (aimock, signal) =>
-      HashbrownAnthropic.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.anthropicBaseUrl,
-        model: ANTHROPIC_MODEL,
-        input,
-        signal,
-        transformRequestOptions: (options) => ({
-          ...options,
-          thinking: { type: 'enabled', budget_tokens: 1024 },
-        }),
-      }),
+  expect(textTypes[0]).toBe(EventType.TEXT_MESSAGE_START);
+  expect(textTypes.at(-1)).toBe(EventType.TEXT_MESSAGE_END);
+  expect(
+    textTypes
+      .slice(1, -1)
+      .every((type) => type === EventType.TEXT_MESSAGE_CONTENT),
+  ).toBe(true);
+  expect(
+    events.find((event) => event.type === EventType.TEXT_MESSAGE_START),
+  ).toEqual({
+    type: EventType.TEXT_MESSAGE_START,
+    messageId,
+    role: 'assistant',
   });
+  expect(
+    contentEvents(events).every((event) => event.messageId === messageId),
+  ).toBe(true);
+  expect(streamedContent(events).trim()).not.toBe('');
+}
 
-  expect(events).toEqual([
-    {
-      type: EventType.RUN_STARTED,
-      threadId: input.threadId,
-      runId: input.runId,
-    },
-    {
-      type: EventType.REASONING_MESSAGE_START,
-      messageId: 'run-anthropic:assistant:reasoning:0',
-      role: 'reasoning',
-      metadata: { anthropic: { blockType: 'thinking' } },
-    },
-    {
-      type: EventType.REASONING_MESSAGE_CONTENT,
-      messageId: 'run-anthropic:assistant:reasoning:0',
-      delta: 'I will answer deterministically.',
-    },
-    {
-      type: EventType.REASONING_ENCRYPTED_VALUE,
-      subtype: 'message',
-      entityId: 'run-anthropic:assistant:reasoning:0',
-      encryptedValue: 'signature_reasoning_fixture',
-    },
-    {
-      type: EventType.REASONING_MESSAGE_END,
-      messageId: 'run-anthropic:assistant:reasoning:0',
-    },
-    {
-      type: EventType.TEXT_MESSAGE_START,
-      messageId: 'run-anthropic:assistant',
-      role: 'assistant',
-    },
-    {
-      type: EventType.TEXT_MESSAGE_CONTENT,
-      messageId: 'run-anthropic:assistant',
-      delta: 'Reasoned answer from aimock.',
-    },
-    {
-      type: EventType.TEXT_MESSAGE_END,
-      messageId: 'run-anthropic:assistant',
-    },
-    {
-      type: EventType.RUN_FINISHED,
-      threadId: input.threadId,
-      runId: input.runId,
-    },
-  ]);
-});
+/**
+ * Asserts a run that finished after calling `toolName` at least once, each
+ * call with a complete lifecycle and JSON object arguments.
+ */
+function expectToolRound(
+  events: AGUIEvent[],
+  input: AnthropicHashbrownRunAgentInput,
+  toolName: string,
+): void {
+  const starts = events.flatMap((event) =>
+    event.type === EventType.TOOL_CALL_START ? [event] : [],
+  );
 
-test('Anthropic replays signed reasoning before a tool on continuation', async () => {
-  const fixture = fixturePath('anthropic/reasoning-tool-call.json');
-  const firstInput = baseInput('reason before calling lookup');
-  firstInput.tools = [
-    {
-      name: 'lookup',
-      description: 'Lookup deterministic fixture data.',
-      parameters: {
-        type: 'object',
-        properties: { query: { type: 'string' } },
-        required: ['query'],
-      },
-    },
-  ];
-  let firstRequest: Anthropic.Messages.MessageCreateParamsStreaming | undefined;
-
-  const firstEvents = await runProviderAGUIWithAimock({
-    fixturePath: fixture,
-    createStream: (aimock, signal) =>
-      HashbrownAnthropic.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.anthropicBaseUrl,
-        model: ANTHROPIC_MODEL,
-        input: firstInput,
-        signal,
-        transformRequestOptions: (options) => {
-          firstRequest = {
-            ...options,
-            thinking: { type: 'enabled', budget_tokens: 1024 },
-          };
-          return firstRequest;
-        },
-      }),
+  expect(eventTypes(events)).not.toContain(EventType.RUN_ERROR);
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_FINISHED,
+    threadId: input.threadId,
+    runId: input.runId,
   });
-  const reasoningStart = firstEvents.find(
+  expect(starts.length).toBeGreaterThanOrEqual(1);
+  for (const start of starts) {
+    const args = events
+      .flatMap((event) =>
+        event.type === EventType.TOOL_CALL_ARGS &&
+        event.toolCallId === start.toolCallId
+          ? [event.delta]
+          : [],
+      )
+      .join('');
+    const endIndex = events.findIndex(
+      (event) =>
+        event.type === EventType.TOOL_CALL_END &&
+        event.toolCallId === start.toolCallId,
+    );
+
+    expect(start).toMatchObject({
+      toolCallName: toolName,
+      parentMessageId: `${input.runId}:assistant`,
+    });
+    expect(JSON.parse(args)).toEqual({ query: expect.any(String) });
+    expect(endIndex).toBeGreaterThan(events.indexOf(start));
+  }
+}
+
+/**
+ * Asserts that thinking streamed before any text or tool call, as at least
+ * one balanced `thinking` block with non-empty summary text and a signature.
+ */
+function expectThinking(events: AGUIEvent[]): void {
+  const types = eventTypes(events);
+  const start = events.find(
     (event) => event.type === EventType.REASONING_MESSAGE_START,
   );
-  const reasoningEncryptedValue = firstEvents.find(
-    (event) => event.type === EventType.REASONING_ENCRYPTED_VALUE,
+  const firstReasoning = types.indexOf(EventType.REASONING_MESSAGE_START);
+  const firstOutput = types.findIndex(
+    (type) =>
+      type === EventType.TEXT_MESSAGE_START ||
+      type === EventType.TOOL_CALL_START,
   );
-  const toolStart = firstEvents.find(
-    (event) => event.type === EventType.TOOL_CALL_START,
-  );
-  const toolArguments = firstEvents
-    .filter((event) => event.type === EventType.TOOL_CALL_ARGS)
-    .map((event) => event.delta)
-    .join('');
 
-  expect(firstRequest).toEqual({
-    stream: true,
-    model: ANTHROPIC_MODEL,
-    max_tokens: 4096,
-    system: 'You are a deterministic test assistant.',
-    messages: [{ role: 'user', content: 'reason before calling lookup' }],
-    tools: [
-      {
-        name: 'lookup',
-        description: 'Lookup deterministic fixture data.',
-        input_schema: {
-          type: 'object',
-          properties: { query: { type: 'string' } },
-          required: ['query'],
-        },
-      },
-    ],
-    thinking: { type: 'enabled', budget_tokens: 1024 },
+  expect(start).toMatchObject({
+    role: 'reasoning',
+    metadata: { anthropic: { blockType: 'thinking' } },
   });
-  expect(firstEvents.map((event) => event.type)).toEqual([
-    EventType.RUN_STARTED,
-    EventType.REASONING_MESSAGE_START,
-    EventType.REASONING_MESSAGE_CONTENT,
-    EventType.REASONING_ENCRYPTED_VALUE,
-    EventType.REASONING_MESSAGE_END,
-    EventType.TOOL_CALL_START,
-    EventType.TOOL_CALL_ARGS,
-    EventType.TOOL_CALL_END,
-    EventType.RUN_FINISHED,
-  ]);
-  expect(reasoningStart).toBeDefined();
-  expect(reasoningEncryptedValue).toBeDefined();
-  expect(toolStart).toBeDefined();
-  if (
-    reasoningStart?.type !== EventType.REASONING_MESSAGE_START ||
-    reasoningEncryptedValue?.type !== EventType.REASONING_ENCRYPTED_VALUE ||
-    toolStart?.type !== EventType.TOOL_CALL_START
-  ) {
-    throw new Error('Expected reasoning and tool events from the first run.');
-  }
+  expect(firstReasoning).toBeGreaterThan(0);
+  expect(firstReasoning).toBeLessThan(firstOutput);
+  expect(types).toContain(EventType.REASONING_MESSAGE_END);
+  expect(
+    events
+      .flatMap((event) =>
+        event.type === EventType.REASONING_MESSAGE_CONTENT ? [event.delta] : [],
+      )
+      .join('')
+      .trim(),
+  ).not.toBe('');
+  expect(
+    events.find(
+      (event) =>
+        event.type === EventType.REASONING_ENCRYPTED_VALUE &&
+        start?.type === EventType.REASONING_MESSAGE_START &&
+        event.entityId === start.messageId,
+    ),
+  ).toMatchObject({ subtype: 'message', encryptedValue: expect.any(String) });
+}
 
-  const secondInput: AnthropicHashbrownRunAgentInput = {
-    ...firstInput,
-    runId: 'run-anthropic-continuation',
-    messages: [
-      ...firstInput.messages,
+/**
+ * Builds the next run's AG-UI history from a run's events the way a client
+ * would: one reasoning message per thinking block (summary, signature and
+ * block metadata), the assistant message with its text and tool calls, then
+ * one tool result per call.
+ */
+function historyFromEvents(
+  previous: readonly Message[],
+  runId: string,
+  events: readonly AGUIEvent[],
+  toolResult: string,
+): Message[] {
+  const deltasFor = (type: EventType, id: string): string =>
+    events
+      .flatMap((event) =>
+        event.type === type &&
+        (('messageId' in event && event.messageId === id) ||
+          ('toolCallId' in event && event.toolCallId === id)) &&
+        'delta' in event
+          ? [event.delta]
+          : [],
+      )
+      .join('');
+  const reasoning: Message[] = events.flatMap((event) => {
+    if (event.type !== EventType.REASONING_MESSAGE_START) {
+      return [];
+    }
+    const encrypted = events.find(
+      (candidate) =>
+        candidate.type === EventType.REASONING_ENCRYPTED_VALUE &&
+        candidate.entityId === event.messageId,
+    );
+
+    return [
       {
-        id: reasoningStart.messageId,
+        id: event.messageId,
         role: 'reasoning',
-        content: reasoningContent(firstEvents),
-        encryptedValue: reasoningEncryptedValue.encryptedValue,
-        metadata: reasoningStart.metadata,
+        content: deltasFor(
+          EventType.REASONING_MESSAGE_CONTENT,
+          event.messageId,
+        ),
+        ...(encrypted?.type === EventType.REASONING_ENCRYPTED_VALUE
+          ? { encryptedValue: encrypted.encryptedValue }
+          : {}),
+        metadata: event.metadata,
+      },
+    ];
+  });
+  const toolCalls = events.flatMap((event) =>
+    event.type === EventType.TOOL_CALL_START
+      ? [
+          {
+            id: event.toolCallId,
+            type: 'function' as const,
+            function: {
+              name: event.toolCallName,
+              arguments: deltasFor(EventType.TOOL_CALL_ARGS, event.toolCallId),
+            },
+          },
+        ]
+      : [],
+  );
+  const text = streamedContent([...events]);
+  const assistant: Message = {
+    id: `${runId}:assistant`,
+    role: 'assistant',
+    ...(text ? { content: text } : {}),
+    ...(toolCalls.length > 0 ? { toolCalls } : {}),
+  };
+  const toolResults: Message[] = toolCalls.map((toolCall) => ({
+    id: `${toolCall.id}:result`,
+    role: 'tool',
+    toolCallId: toolCall.id,
+    content: toolResult,
+  }));
+
+  return [...previous, ...reasoning, assistant, ...toolResults];
+}
+
+function lookupResult(): string {
+  return JSON.stringify({ fact: 'The code word is green.' });
+}
+
+test(
+  'Anthropic consumes AG-UI input and emits a canonical text run',
+  async () => {
+    const input = baseInput('Say hello in three words.');
+
+    const events = await withRecording((run) => run(input));
+
+    expectCanonicalTextRun(events, input);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'Anthropic preserves streamed text across multiple AG-UI events',
+  async () => {
+    const input = baseInput('Write two short sentences about potatoes.');
+
+    const events = await withRecording((run) => run(input), { chunkSize: 8 });
+
+    expectCanonicalTextRun(events, input);
+    expect(contentEvents(events).length).toBeGreaterThan(1);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'Anthropic emits tool call lifecycles and continues after the tool result',
+  async () => {
+    const first = baseInput(
+      "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+    );
+    first.tools = [LOOKUP_TOOL];
+
+    const { firstEvents, second, secondEvents } = await withRecording(
+      async (run) => {
+        const firstEvents = await run(first);
+        const second: AnthropicHashbrownRunAgentInput = {
+          ...first,
+          runId: 'run-anthropic-2',
+          messages: historyFromEvents(
+            first.messages,
+            first.runId,
+            firstEvents,
+            lookupResult(),
+          ),
+        };
+        return { firstEvents, second, secondEvents: await run(second) };
+      },
+    );
+
+    expectToolRound(firstEvents, first, 'lookup');
+    expectCanonicalTextRun(secondEvents, second);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'Anthropic maps the Hashbrown response schema to native structured output',
+  async () => {
+    const input = baseInput('Describe a potato as structured output.');
+    const responseSchema = {
+      type: 'object',
+      properties: {
+        text: { type: 'string' },
+        ok: { type: 'boolean' },
+      },
+      required: ['text', 'ok'],
+      additionalProperties: false,
+    };
+    input.forwardedProps = { hashbrown: { responseSchema, ui: true } };
+    let captured: Anthropic.Messages.MessageCreateParamsStreaming | undefined;
+
+    const events = await withRecording((run) =>
+      run(input, {
+        transformRequestOptions: (options) => {
+          captured = options;
+          return options;
+        },
+      }),
+    );
+
+    expect(captured?.output_config).toEqual({
+      format: { type: 'json_schema', schema: responseSchema },
+    });
+    expect(captured).not.toHaveProperty('response_format');
+    expect(captured?.tools).toBeUndefined();
+    expectCanonicalTextRun(events, input);
+    expect(JSON.parse(streamedContent(events))).toEqual({
+      text: expect.any(String),
+      ok: expect.any(Boolean),
+    });
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'Anthropic completes a run from a full AG-UI history',
+  async () => {
+    const input = baseInput(
+      'What colour is the code word? Answer in one word.',
+    );
+    input.tools = [LOOKUP_TOOL];
+    input.messages = [
+      input.messages[0],
+      {
+        id: 'developer-previous',
+        role: 'developer',
+        content: 'Keep answers short.',
       },
       {
-        id: 'run-anthropic:assistant',
+        id: 'user-previous',
+        role: 'user',
+        content: "Look up the code word 'potato'.",
+      },
+      {
+        id: 'assistant-previous',
         role: 'assistant',
-        content: '',
+        content: 'I will look it up.',
         toolCalls: [
           {
-            id: toolStart.toolCallId,
+            id: 'toolu_previous',
             type: 'function',
-            function: {
-              name: toolStart.toolCallName,
-              arguments: toolArguments,
-            },
+            function: { name: 'lookup', arguments: '{"query":"potato"}' },
           },
         ],
       },
       {
-        id: 'tool-result-reasoning-fixture',
+        id: 'tool-previous',
         role: 'tool',
-        toolCallId: toolStart.toolCallId,
-        content: '{"answer":"fixture continuation result"}',
+        toolCallId: 'toolu_previous',
+        content: lookupResult(),
       },
-    ],
-  };
-  let secondRequest:
-    Anthropic.Messages.MessageCreateParamsStreaming | undefined;
-
-  const secondEvents = await runProviderAGUIWithAimock({
-    fixturePath: fixture,
-    createStream: (aimock, signal) =>
-      HashbrownAnthropic.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.anthropicBaseUrl,
-        model: ANTHROPIC_MODEL,
-        input: secondInput,
-        signal,
-        transformRequestOptions: (options) => {
-          secondRequest = {
-            ...options,
-            thinking: { type: 'enabled', budget_tokens: 1024 },
-          };
-          return secondRequest;
-        },
-      }),
-  });
-
-  expect(secondRequest?.messages).toEqual([
-    { role: 'user', content: 'reason before calling lookup' },
-    {
-      role: 'assistant',
-      content: [
-        {
-          type: 'thinking',
-          thinking: 'I need the lookup result.',
-          signature: 'signature_tool_fixture',
-        },
-        {
-          type: 'tool_use',
-          id: 'call_reasoning_lookup_fixture',
-          name: 'lookup',
-          input: { query: 'hashbrown' },
-        },
-      ],
-    },
-    {
-      role: 'user',
-      content: [
-        {
-          type: 'tool_result',
-          tool_use_id: 'call_reasoning_lookup_fixture',
-          content: '{"answer":"fixture continuation result"}',
-        },
-      ],
-    },
-  ]);
-  expect(secondEvents.map((event) => event.type)).toEqual([
-    EventType.RUN_STARTED,
-    EventType.TEXT_MESSAGE_START,
-    EventType.TEXT_MESSAGE_CONTENT,
-    EventType.TEXT_MESSAGE_END,
-    EventType.RUN_FINISHED,
-  ]);
-  expect(streamedContent(secondEvents)).toBe('Continued answer from aimock.');
-});
-
-test('Anthropic emits complete tool events with streamed arguments', async () => {
-  const input = baseInput('call the lookup tool');
-  input.tools = [
-    {
-      name: 'lookup',
-      description: 'Lookup deterministic fixture data.',
-      parameters: {
-        type: 'object',
-        properties: { query: { type: 'string' } },
-        required: ['query'],
+      {
+        id: 'assistant-previous-answer',
+        role: 'assistant',
+        content: 'I looked up the code word.',
       },
-    },
-  ];
-
-  const events = await runFixture('tool-call.json', input);
-  const toolEvents = events.filter((event) =>
-    [
-      EventType.TOOL_CALL_START,
-      EventType.TOOL_CALL_ARGS,
-      EventType.TOOL_CALL_END,
-    ].includes(event.type),
-  );
-  const start = toolEvents.find(
-    (event) => event.type === EventType.TOOL_CALL_START,
-  );
-  const args = toolEvents
-    .filter((event) => event.type === EventType.TOOL_CALL_ARGS)
-    .map((event) => event.delta)
-    .join('');
-  const end = toolEvents.find(
-    (event) => event.type === EventType.TOOL_CALL_END,
-  );
-
-  expect(start).toEqual({
-    type: EventType.TOOL_CALL_START,
-    toolCallId: 'call_lookup_fixture',
-    toolCallName: 'lookup',
-    parentMessageId: 'run-anthropic:assistant',
-  });
-  expect(args).toBe('{"query":"hashbrown"}');
-  expect(end).toEqual({
-    type: EventType.TOOL_CALL_END,
-    toolCallId: 'call_lookup_fixture',
-  });
-  expect(events.at(-1)?.type).toBe(EventType.RUN_FINISHED);
-});
-
-test('Anthropic streams structured-output JSON without hidden emulation', async () => {
-  const input = baseInput('return structured output');
-  input.forwardedProps = {
-    hashbrown: {
-      responseSchema: {
-        type: 'object',
-        properties: {
-          text: { type: 'string' },
-          ok: { type: 'boolean' },
-        },
-        required: ['text', 'ok'],
+      {
+        id: 'reasoning-previous',
+        role: 'reasoning',
+        content: 'display-only reasoning',
       },
-      ui: true,
-    },
-  };
-  let capturedOptions:
-    Anthropic.Messages.MessageCreateParamsStreaming | undefined;
+      {
+        id: 'activity-previous',
+        role: 'activity',
+        activityType: 'progress',
+        content: { label: 'display-only activity' },
+      },
+      input.messages[1],
+    ];
 
-  const events = await runProviderAGUIWithAimock({
-    fixturePath: fixturePath('structured-output.json'),
-    createStream: (aimock, signal) =>
-      HashbrownAnthropic.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.anthropicBaseUrl,
-        model: ANTHROPIC_MODEL,
-        input,
-        signal,
-        transformRequestOptions: (options) => {
-          capturedOptions = options;
-          return options;
-        },
-      }),
-  });
+    const events = await withRecording((run) => run(input));
 
-  expect(capturedOptions).toEqual({
-    stream: true,
-    model: ANTHROPIC_MODEL,
-    max_tokens: 4096,
-    system: 'You are a deterministic test assistant.',
-    messages: [{ role: 'user', content: 'return structured output' }],
-    output_config: {
-      format: {
-        type: 'json_schema',
-        schema: {
-          type: 'object',
-          properties: {
-            text: { type: 'string' },
-            ok: { type: 'boolean' },
+    expectCanonicalTextRun(events, input);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'Anthropic streams summarized thinking with a signature before the answer',
+  async () => {
+    const input = baseInput(
+      'Ann is older than Ben. Ben is older than Cy. Dee is younger than Cy but older than Eve. Who is the second youngest? Reply with the name only.',
+    );
+
+    const events = await withRecording((run) => run(input, { thinking: true }));
+
+    expectThinking(events);
+    expectCanonicalTextRun(events, input);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'Anthropic replays signed thinking before a tool call on continuation',
+  async () => {
+    const first = baseInput(
+      "Work out which of 'stone', 'apple' and 'river' is a fruit, look that word up with the lookup tool, then answer in one short sentence.",
+    );
+    first.tools = [LOOKUP_TOOL];
+    let continuation: Anthropic.Messages.MessageParam[] = [];
+
+    const { firstEvents, second, secondEvents } = await withRecording(
+      async (run) => {
+        const firstEvents = await run(first, { thinking: true });
+        const second: AnthropicHashbrownRunAgentInput = {
+          ...first,
+          runId: 'run-anthropic-2',
+          messages: historyFromEvents(
+            first.messages,
+            first.runId,
+            firstEvents,
+            lookupResult(),
+          ),
+        };
+        const secondEvents = await run(second, {
+          thinking: true,
+          transformRequestOptions: (options) => {
+            continuation = options.messages;
+            return options;
           },
-          required: ['text', 'ok'],
-        },
+        });
+        return { firstEvents, second, secondEvents };
       },
-    },
-  });
-  expect(capturedOptions).not.toHaveProperty('response_format');
-  expect(capturedOptions?.tools).toBeUndefined();
-  expect(JSON.parse(streamedContent(events))).toEqual({
-    text: 'Hello from structured aimock.',
-    ok: true,
-  });
-});
+    );
+    const signature = firstEvents.find(
+      (event) => event.type === EventType.REASONING_ENCRYPTED_VALUE,
+    );
+    const replayedAssistant = continuation[1];
+
+    expectThinking(firstEvents);
+    expectToolRound(firstEvents, first, 'lookup');
+    expect(second.messages.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+      'reasoning',
+      'assistant',
+      'tool',
+    ]);
+    expect(continuation.map((message) => message.role)).toEqual([
+      'user',
+      'assistant',
+      'user',
+    ]);
+    expect(signature).toBeDefined();
+    expect(Array.isArray(replayedAssistant?.content)).toBe(true);
+    expect(replayedAssistant?.content[0]).toEqual({
+      type: 'thinking',
+      thinking: expect.any(String),
+      signature:
+        signature?.type === EventType.REASONING_ENCRYPTED_VALUE
+          ? signature.encryptedValue
+          : undefined,
+    });
+    expect(replayedAssistant?.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'tool_use', name: 'lookup' }),
+      ]),
+    );
+    expectCanonicalTextRun(secondEvents, second);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+// Hand-written fixtures below: request shapes, provider errors, cancellation
+// and activity ordering are Hashbrown behaviour, not model output.
 
 test('Anthropic maps complete AG-UI request history for aimock', async () => {
   const input = baseInput('say hi briefly');

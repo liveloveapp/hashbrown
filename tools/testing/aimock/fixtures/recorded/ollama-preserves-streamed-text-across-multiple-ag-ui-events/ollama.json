@@ -1,0 +1,26 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Write two short sentences about potatoes.",
+        "model": "qwen2.5:14b",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Potatoes are a versatile vegetable used in many cuisines around the world.\nThey are known for their ability to be prepared in numerous ways, from frying to boiling."
+      },
+      "recordedTimings": {
+        "ttftMs": 172,
+        "interChunkDelaysMs": [
+          46, 39, 50, 38, 38, 48, 50, 43, 47, 59, 40, 52, 49, 53, 47, 39, 56,
+          48, 48, 52, 42, 42, 41, 51, 47, 39, 41, 41, 40, 45, 54, 40, 40
+        ],
+        "totalDurationMs": 1677
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

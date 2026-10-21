@@ -1,0 +1,26 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Write two short sentences about potatoes.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Potatoes are root vegetables that are rich in carbohydrates. They can be cooked in many ways, such as boiling, baking, or frying."
+      },
+      "recordedTimings": {
+        "ttftMs": 1005,
+        "interChunkDelaysMs": [
+          0, 0, 0, 0, 0, 0, 7, 1, 9, 3, 115, 0, 15, 2, 0, 1, 23, 1, 0, 1, 4, 0,
+          20, 0, 8, 16, 32, 11, 0, 0, 0, 0, 0, 1, 12
+        ],
+        "totalDurationMs": 1287
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

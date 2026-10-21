@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Say hello in three words.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Hello there, friend."
+      },
+      "recordedTimings": {
+        "ttftMs": 1777,
+        "interChunkDelaysMs": [1, 0, 0, 0, 0, 0, 7, 0, 94, 1, 7, 18],
+        "totalDurationMs": 1905
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

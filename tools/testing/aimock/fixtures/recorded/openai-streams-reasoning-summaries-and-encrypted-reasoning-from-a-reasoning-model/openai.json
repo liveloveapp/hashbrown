@@ -1,0 +1,31 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "A train leaves at 9:40 and the trip takes 2 hours 35 minutes. When does it arrive? Reply with the time only.",
+        "model": "gpt-5-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "12:15",
+        "reasoning": "**Calculating arrival time**\n\nI need to add 2 hours and 35 minutes to 9:40. First, adding the 2 hours gives me 11:40, and then adding the 35 minutes takes it to 12:15. The instruction was clear about replying with the time only, but should I include AM/PM? The typical assumption might be 12:15 PM, but since it specifically asks for just the time, I’ll provide \"12:15\". Keeping it minimal, I’ll just say that."
+      },
+      "recordedTimings": {
+        "ttftMs": 595,
+        "interChunkDelaysMs": [
+          0, 201, 1547, 0, 42, 0, 80, 0, 0, 0, 0, 0, 0, 0, 1, 7, 10, 3, 9, 4,
+          14, 47, 0, 0, 19, 0, 14, 1, 7, 19, 0, 1, 7, 13, 6, 63, 0, 0, 0, 0, 0,
+          0, 4, 9, 8, 8, 6, 11, 8, 6, 14, 62, 0, 0, 0, 1, 1, 0, 0, 3, 29, 4, 12,
+          15, 0, 8, 32, 4, 10, 6, 54, 9, 12, 7, 6, 5, 7, 7, 11, 3, 12, 5, 10, 7,
+          9, 9, 9, 8, 3, 9, 1, 12, 7, 6, 9, 4, 9, 4, 9, 32, 2, 5, 23, 15, 13,
+          10, 0, 0, 0, 0, 26
+        ],
+        "totalDurationMs": 3360
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

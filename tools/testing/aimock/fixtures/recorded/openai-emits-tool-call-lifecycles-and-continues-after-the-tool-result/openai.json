@@ -1,0 +1,52 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": "{\"query\":\"hashbrown\"}",
+            "id": "call_yIZ8fy1DupO29WtYUnC90NwQ"
+          }
+        ]
+      },
+      "recordedTimings": {
+        "ttftMs": 1351,
+        "interChunkDelaysMs": [12, 165, 6, 9, 18, 5, 15, 54, 78, 9, 23],
+        "totalDurationMs": 1745
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 1,
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "The code word 'hashbrown' means green."
+      },
+      "recordedTimings": {
+        "ttftMs": 653,
+        "interChunkDelaysMs": [
+          0, 18, 1, 0, 2, 0, 0, 11, 5, 87, 0, 24, 7, 74, 0, 2, 16
+        ],
+        "totalDurationMs": 900
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

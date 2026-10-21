@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Greet a Bedrock tester in three words.",
+        "model": "us.anthropic.claude-haiku-4-5-20251001-v1%3A0",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Hello, Bedrock tester!"
+      },
+      "recordedTimings": {
+        "ttftMs": 911,
+        "interChunkDelaysMs": [0, 53, 0, 0, 0],
+        "totalDurationMs": 964
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

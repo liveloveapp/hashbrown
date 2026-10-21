@@ -1,0 +1,27 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Describe an onion as structured output.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "{\"text\":\"An onion is a bulbous vegetable composed of multiple layers of fleshy, swollen leaves. It has a papery outer skin that can be white, yellow, or red. The edible layers inside are typically white or translucent and are arranged concentrically around a central core. Onions have a pungent flavor and aroma, which intensifies when cut, and are widely used in cooking for their distinctive taste.\",\"ok\":true}"
+      },
+      "recordedTimings": {
+        "ttftMs": 703,
+        "interChunkDelaysMs": [
+          1, 18, 2, 2, 8, 0, 0, 7, 0, 1, 7, 51, 2, 2, 6, 4, 1, 10, 20, 40, 4,
+          21, 35, 15, 11, 32, 11, 23, 22, 26, 25, 128, 0, 0, 148, 0, 0, 151, 0,
+          0, 134, 4, 0, 0, 1
+        ],
+        "totalDurationMs": 1676
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

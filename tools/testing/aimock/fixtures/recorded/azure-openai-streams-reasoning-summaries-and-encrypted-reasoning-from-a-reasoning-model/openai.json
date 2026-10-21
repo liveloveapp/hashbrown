@@ -1,0 +1,31 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Find the smallest positive integer that leaves remainder 2 when divided by 3, remainder 3 when divided by 5 and remainder 2 when divided by 7. Reply with the number only.",
+        "model": "gpt-5-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "23",
+        "reasoning": "**Calculating smallest integer n**\n\nI'm trying to find the smallest positive integer \\( n \\) that meets the following conditions: \\( n \\equiv 2 \\mod 3 \\), \\( n \\equiv 3 \\mod 5 \\), and \\( n \\equiv 2 \\mod 7 \\). \n\nI computed using the Chinese Remainder Theorem: coming to \\( n = 23 \\) after checking all necessary conditions. The computations check out. So, I'll provide the answer simply as \"23\" since that’s what the user requested."
+      },
+      "recordedTimings": {
+        "ttftMs": 938,
+        "interChunkDelaysMs": [
+          0, 97, 4172, 0, 211, 1, 11, 2, 9, 41, 40, 5, 2, 21, 1, 3, 3, 5, 41,
+          56, 11, 27, 4, 22, 59, 17, 263, 7, 1271, 3, 4, 568, 234, 0, 447, 0, 0,
+          0, 0, 0, 0, 131, 0, 107, 1, 0, 0, 0, 102, 0, 0, 0, 0, 0, 0, 0, 153,
+          158, 0, 0, 0, 0, 82, 0, 0, 0, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          155, 0, 0, 0, 0, 138, 0, 0, 0, 153, 0, 0, 105, 101, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 2115, 0, 146, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ],
+        "totalDurationMs": 12351
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

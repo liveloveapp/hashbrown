@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Describe a potato as structured output.",
+        "model": "gemini-3.5-flash-lite",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "{\n  \"text\": \"A potato is a starchy root vegetable native to the Americas that is widely consumed around the world.\",\n  \"ok\": true\n}"
+      },
+      "recordedTimings": {
+        "ttftMs": 761,
+        "interChunkDelaysMs": [65, 12],
+        "totalDurationMs": 838
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

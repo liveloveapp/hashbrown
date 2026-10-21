@@ -53,6 +53,13 @@
         "passWithNoTests": true
       }
     },
+    "record-fixtures": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/testing/aimock/record-fixtures.mjs bedrock"
+      }
+    },
     "runtime-verification": {
       "executor": "@nx/jest:jest",
       "options": {
