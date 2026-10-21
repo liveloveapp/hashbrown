@@ -178,6 +178,26 @@ export class AssistantComponent {
 5. A chosen component brings the components declared in its `children` with it, recursively, so the chat can always render a chosen parent's children. The chat sees the chosen components in the order they were declared.
 6. Component names become option ids, so the flattened list must fit the selection limits: no name may be empty, contain `.`, or be `__proto__`, `constructor` or `prototype`, and `select: 'one'` allows at most 255 components.
 
+### Always-on components
+
+Some components, such as Markdown for prose, should be available on every turn. Put them in a kit created with `selectable: false`, next to the kit the decision picks from.
+
+```ts
+const cards = createUiKit({ components: [flightCard, airportCard] });
+const prose = createUiKit({
+  components: [exposeMarkdown({ citations: true })],
+  selectable: false,
+});
+
+const chat = uiChatResource({
+  system: 'Answer questions about live flights.',
+  components: [cards, prose],
+});
+const narrowing = uiDecisionResource({ chat, select: { max: 2 } });
+```
+
+The decision is asked only about `cards`: `FlightCard` and `AirportCard`. Markdown is never an option, and it is always sent with whatever is picked. If every component is non-selectable, there is nothing to decide and the message is sent with all of them.
+
 ### Two prompts
 
 Chat mode uses two models, and each one has its own prompt. Neither prompt defaults to the other.
@@ -240,6 +260,21 @@ const decision = await HashbrownTypeSafe.decide({
   request,
 });
 ```
+
+`createSelectionSchema` skips non-selectable members, so pass the same kits the browser passes. To pin the questions without sharing the kits, use a plain group, `{ components, selectable? }`. A group is treated like a kit: its members are flattened in place, and with `selectable: false` they are never asked about.
+
+```ts
+const schema = createSelectionSchema(
+  [
+    flightCard,
+    airportCard,
+    { components: [markdownDefinition], selectable: false },
+  ],
+  { max: 2 },
+);
+```
+
+A group is recognized only when its keys are exactly `components` and, optionally, `selectable`.
 
 For candidates mode, pass the candidates (or just their `{ id, description }` items), such as `createSelectionSchema(cards, 'one')`. If the server can't import your components or kits, pass `{ name, description, children? }` definitions with the same names, descriptions and children, in the same order.
 

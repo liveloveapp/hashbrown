@@ -128,3 +128,20 @@ test('useUiKit and createUiJsonSchema agree when they share component definition
 
   expect(schema).toEqual(JSON.parse(result.current.serializedSchema));
 });
+
+test('useUiKit re-creates the kit when selectable changes', () => {
+  const Note = () => createElement('p', null, 'note');
+  const note = exposeComponent(Note, { name: 'Note', description: 'A note' });
+  const components = [note];
+  const { result, rerender } = renderHook(
+    ({ selectable }: { selectable: boolean }) =>
+      useUiKit({ components, selectable }),
+    { initialProps: { selectable: true } },
+  );
+  const before = Array.from(result.current.ɵnonSelectable);
+
+  rerender({ selectable: false });
+
+  expect(before).toEqual([]);
+  expect(Array.from(result.current.ɵnonSelectable)).toEqual(['Note']);
+});

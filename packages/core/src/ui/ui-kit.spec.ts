@@ -113,3 +113,62 @@ test('createUiKit serializes the same schema it returns', () => {
     JSON.parse(JSON.stringify(s.toJsonSchema(kit.schema))),
   );
 });
+
+test('a non-selectable kit marks every member, including children, as non-selectable', () => {
+  const row = { component: {}, name: 'Row', description: 'Row' };
+  const table = {
+    component: {},
+    name: 'Table',
+    description: 'Table',
+    children: [row],
+  };
+  const markdown = { component: {}, name: 'Markdown', description: 'Md' };
+
+  const kit = createUiKit({
+    components: [table, markdown],
+    selectable: false,
+  });
+
+  expect([...kit.ɵnonSelectable].sort()).toEqual(['Markdown', 'Row', 'Table']);
+});
+
+test('a nested non-selectable kit carries into a selectable outer kit', () => {
+  const table = { component: {}, name: 'Table', description: 'Table' };
+  const card = { component: {}, name: 'Card', description: 'Card' };
+  const inner = createUiKit({ components: [table], selectable: false });
+
+  const outer = createUiKit({ components: [inner, card] });
+
+  expect([...outer.ɵnonSelectable]).toEqual(['Table']);
+  expect(outer.registry.size).toBe(2);
+});
+
+test('a name in both a selectable and a non-selectable kit is non-selectable', () => {
+  const shared = {};
+  const a = { component: shared, name: 'Card', description: 'Card' };
+  const b = { component: shared, name: 'Card', description: 'Card' };
+  const hidden = createUiKit({ components: [b], selectable: false });
+
+  const first = createUiKit({ components: [a, hidden] });
+  const second = createUiKit({ components: [hidden, a] });
+
+  expect([...first.ɵnonSelectable]).toEqual(['Card']);
+  expect([...second.ɵnonSelectable]).toEqual(['Card']);
+});
+
+test('kits are selectable by default', () => {
+  const card = { component: {}, name: 'Card', description: 'Card' };
+
+  const kit = createUiKit({ components: [card] });
+
+  expect(kit.ɵnonSelectable.size).toBe(0);
+});
+
+test('selectable does not change the schema', () => {
+  const card = { component: {}, name: 'Card', description: 'Card' };
+
+  const plain = createUiKit({ components: [card] });
+  const hidden = createUiKit({ components: [card], selectable: false });
+
+  expect(hidden.serializedSchema).toBe(plain.serializedSchema);
+});
