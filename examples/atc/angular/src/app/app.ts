@@ -1,8 +1,7 @@
 import {
   type AtcState,
+  devFilter,
   FILTER_FAILED_NOTICE,
-  filterBlocks,
-  filterPanelVisible,
   focusOpensSheet,
   INITIAL_SHEET,
   nextSheet,
@@ -24,32 +23,36 @@ import {
 } from '@angular/core';
 import { AirspaceMap } from './airspace-map';
 import { Assistant } from './assistant';
+import { DevDrawer } from './dev-drawer';
+import { DevMode } from './dev-mode';
 import { injectMapFilter } from './filter';
 import { KeyboardInset } from './keyboard-inset';
 import { PanelHeader } from './panel-header';
+import { Rail } from './rail';
 import { SheetHandle } from './sheet-handle';
-import { ShowStream } from './show-stream';
 import { ATC_STORE, injectAtcState } from './store';
-import { StreamPanel } from './stream-panel';
 
 /**
  * The page: a two-panel workbench, chat on the left and the live map on the
- * right. On phones and upright tablets the map fills the screen and the chat
- * is a bottom sheet.
+ * right, with a thin rail at the far left that opens the developer drawer
+ * under the map. On phones and upright tablets the map fills the screen, the
+ * chat is a bottom sheet and the drawer opens as a sheet from the header.
  */
 @Component({
   selector: 'atc-root',
   imports: [
     AirspaceMap,
     Assistant,
+    DevDrawer,
     PanelHeader,
+    Rail,
     SheetHandle,
     KeyboardInset,
-    StreamPanel,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="atc-workbench" atcKeyboardInset>
+      <atc-rail [on]="dev.on()" (toggleDevMode)="dev.toggle()" />
       <section
         #chatSheet
         id="atc-chat-sheet"
@@ -60,28 +63,26 @@ import { StreamPanel } from './stream-panel';
         (keydown.escape)="move({ type: 'escape' })"
       >
         <atc-sheet-handle [expanded]="expanded()" (move)="move($event)" />
-        <atc-panel-header />
+        <atc-panel-header [devMode]="dev.on()" (toggleDevMode)="dev.toggle()" />
         <atc-assistant
           (filterRouted)="startRun($event)"
           (filter)="mapFilter.apply($event)"
           (sent)="move({ type: 'send' })"
         />
       </section>
-      <section class="atc-panel atc-map-panel" aria-label="Map">
-        <atc-airspace-map
-          [obstruction]="chatSheet"
-          [streaming]="mapFilter.streaming()"
-          [notice]="filterNotice()"
-          (clearFilter)="mapFilter.dismissError()"
-        />
-        @if (filterPanel(); as blocks) {
-          <atc-stream-panel
-            class="atc-map-stream"
-            label="Filter stream"
-            [blocks]="blocks"
+      <div class="atc-map-column">
+        <section class="atc-panel atc-map-panel" aria-label="Map">
+          <atc-airspace-map
+            [obstruction]="chatSheet"
+            [streaming]="mapFilter.streaming()"
+            [notice]="filterNotice()"
+            (clearFilter)="mapFilter.dismissError()"
           />
+        </section>
+        @if (dev.on()) {
+          <atc-dev-drawer [filter]="devFilter()" />
         }
-      </section>
+      </div>
     </main>
   `,
 })
@@ -93,11 +94,11 @@ export class App {
   protected readonly mapFilter = injectMapFilter();
   /** What the router decided for the latest filter request. */
   protected readonly filterRoute = signal<RouterShown | null>(null);
-  private readonly showStream = inject(ShowStream);
+  protected readonly dev = inject(DevMode);
   private readonly state = injectAtcState();
-  // The filter on the map. The panel shows only while a run streams, or while
-  // the map still holds what the last run produced: the assistant's filter
-  // tool, a clear or the pill's x all replace it, and the panel goes.
+  // What the last filter run left on the map. The drawer shows the run only
+  // while it streams or the map still holds this: the assistant's filter
+  // tool, a clear or the pill's x replace it.
   private readonly produced = signal<AtcState['mapFilter']>(null);
   private ran = false;
   private readonly settleRun = effect(() => {
@@ -115,28 +116,16 @@ export class App {
   protected readonly filterNotice = computed(() =>
     this.mapFilter.error() ? FILTER_FAILED_NOTICE : null,
   );
-  /** The panel blocks under the filter pill, or null when there are none. */
-  protected readonly filterPanel = computed(() => {
-    const route = this.filterRoute();
-    if (
-      !this.showStream.on() ||
-      this.mapFilter.error() !== null ||
-      !filterPanelVisible({
-        route,
-        loading: this.mapFilter.loading(),
-        current: this.state().mapFilter,
-        produced: this.produced(),
-      })
-    ) {
-      return null;
-    }
-
-    return filterBlocks(
-      route as RouterShown,
-      this.mapFilter.output(),
-      this.mapFilter.loading(),
-    );
-  });
+  /** The drawer's Filter tab: the latest run while it counts, and the map's filter. */
+  protected readonly devFilter = computed(() =>
+    devFilter({
+      route: this.filterRoute(),
+      loading: this.mapFilter.loading(),
+      current: this.state().mapFilter,
+      produced: this.produced(),
+      output: this.mapFilter.output(),
+    }),
+  );
 
   constructor() {
     const store = inject(ATC_STORE);
