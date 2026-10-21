@@ -1,6 +1,6 @@
 # atc: dev tool drawer and filter starters (US-wide traffic deferred)
 
-Date: 2026-10-21. Status: draft for review.
+Date: 2026-10-21. Status: approved 2026-10-21 (parts 1 and 2; US-wide traffic deferred).
 
 ## Why
 
@@ -102,7 +102,8 @@ Half filters, half questions, and clearly different from each other:
 - **Filters** say what to show and never ask:
   - "Only jets below 10,000 ft"
   - "Alaska Airlines near Seattle"
-  - "Helicopters and small planes"
+  - "Only helicopters" (my call: replaces the agreed "Helicopters and small planes", because
+    the filter's `kind` takes one value of jet, twin, single or rotor)
   - "Arrivals into Portland"
 - **Questions** ask about particular aircraft or airports:
   - "What's the highest plane right now? And the fastest?"
@@ -135,9 +136,7 @@ visual treatment is the builder's call.
   the stubs (`scriptedCards` depends on the Seattle-arrivals starter), the demo storyboard,
   `e2e/decide/probes.ts` and the decide-eval probe sets must follow. The probe sets keep
   the removed phrasings as typed inputs.
-- `FILTER_SYSTEM_PROMPT` gets a line making sure "helicopters and small planes" maps to
-  the existing `kind` values (check `shared/src/kinds.ts`). If no single kind fits, the
-  starter changes; it is not acceptable to fake it.
+- `FILTER_SYSTEM_PROMPT` maps "helicopters" to `kind: rotor` (check `shared/src/kinds.ts`).
 
 ---
 
