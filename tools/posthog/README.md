@@ -56,6 +56,14 @@ tools/posthog/
 └── *.spec.ts
 ```
 
+Insights (all daily trends over the last 30 days): `pageviews-by-path`,
+`engaged-sessions`, `docs-reading-by-framework`, `code-copies-by-framework`,
+`cta-clicks-by-id`, `threadplane-handoff-by-surface`, `ai-crawlers` (crawler
+visits by `ai_crawler`), `ai-referrals` (referral visits by `ai_source`), and
+`pre-analytics-exits-by-trigger`. The two AI traffic insights are separate
+because PostHog applies one breakdown to every series of an insight; they sit
+on no dashboard.
+
 ## JSON
 
 ```jsonc
