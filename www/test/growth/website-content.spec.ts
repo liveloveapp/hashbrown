@@ -4,8 +4,8 @@ import { listBlogPosts } from '../../src/lib/content';
 import {
   isKnownWebsiteContent,
   websiteContentCatalog,
-  websiteTopic,
 } from '../../src/lib/growth/website-content';
+import { websiteTopic } from '../../src/lib/growth/website-metadata';
 import {
   listApiReferenceEntries,
   listSitemapEntries,
@@ -113,4 +113,15 @@ test('the catalog is memoized', () => {
   const second = websiteContentCatalog();
 
   expect(second).toBe(first);
+});
+
+test('the server catalog and websiteTopic agree on every catalog path', () => {
+  const catalog = websiteContentCatalog();
+
+  const mismatches = Object.entries(catalog).filter(
+    ([path, entry]) => entry.topic !== websiteTopic(path),
+  );
+
+  expect(Object.keys(catalog).length).toBeGreaterThan(0);
+  expect(mismatches).toEqual([]);
 });

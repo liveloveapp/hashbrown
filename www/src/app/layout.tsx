@@ -6,6 +6,7 @@ import { EngagedTimeSignal } from '../components/site/EngagedTimeSignal';
 import { PreAnalyticsBeacon } from '../components/site/PreAnalyticsBeacon';
 import { RememberSdk } from '../components/site/RememberSdk';
 import { ThreadplaneLinkSignal } from '../components/site/ThreadplaneLinkSignal';
+import { WebsiteCollectorSignal } from '../components/site/WebsiteCollectorSignal';
 import { ToastContainer } from '../components/toast/ToastContainer';
 import { pageMetadata } from '../lib/site-metadata';
 import './globals.css';
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <RememberSdk />
         <EngagedTimeSignal />
         <ThreadplaneLinkSignal />
+        <WebsiteCollectorSignal />
         {children}
         <Announcement />
         <SearchOverlay />
