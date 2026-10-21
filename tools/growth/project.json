@@ -17,7 +17,7 @@
       "options": {
         "parallel": false,
         "commands": [
-          "node --test tools/growth/scripts/**/*.test.mjs",
+          "node --test \"tools/growth/scripts/**/*.test.mjs\" \"tools/growth/install/*.test.mjs\"",
           "vitest run --config tools/growth/vitest.config.mts"
         ]
       }
