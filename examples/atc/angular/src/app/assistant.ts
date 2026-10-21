@@ -8,6 +8,7 @@ import {
   createBrowserAtcTools,
   flightCardContract,
   observeDecisions,
+  refinements,
   ROUTER_SKIPPED,
   type RouterShown,
   settleCards,
@@ -52,7 +53,7 @@ import { AutoScroll } from './auto-scroll';
 import { Composer } from './composer';
 import { publishDev } from './dev-mode';
 import { EmptyState } from './empty-state';
-import { ATC_STORE } from './store';
+import { ATC_STORE, injectAtcState } from './store';
 import { Transcript } from './transcript';
 
 // 1. Expose your components, in two kits. The model can only render these, and
@@ -134,6 +135,19 @@ export const CARDS_DECISION_TRANSPORT = new InjectionToken<Decision.Transport>(
         </div>
       }
     </div>
+    @if (suggestions().length > 0) {
+      <div class="atc-refinements" data-testid="refinements">
+        @for (suggestion of suggestions(); track suggestion.text) {
+          <button
+            type="button"
+            class="atc-refinement"
+            (click)="applyFilter(suggestion.text, skipped)"
+          >
+            {{ suggestion.text }}
+          </button>
+        }
+      </div>
+    }
     <atc-composer
       [busy]="chat.isLoading()"
       (routed)="routed.set($event)"
@@ -188,6 +202,14 @@ export class Assistant {
   protected readonly messages = linkedSignal({
     source: () => (this.chat.status() === 'error' ? null : this.chat.value()),
     computation: (value, prev): UiChatMessage[] => value ?? prev?.value ?? [],
+  });
+  protected readonly skipped = ROUTER_SKIPPED;
+  // Ways to narrow the filter on the map, derived from it and the traffic.
+  private readonly atcState = injectAtcState();
+  protected readonly suggestions = computed(() => {
+    const state = this.atcState();
+
+    return refinements(state.mapFilter, [...state.aircraft.values()]);
   });
   protected readonly items = computed(() =>
     transcriptItems(this.messages(), this.chat.isLoading()),

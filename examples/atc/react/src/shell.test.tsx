@@ -100,14 +100,49 @@ test('the empty state asks a question and offers every starter prompt', () => {
   expect(picked).toEqual([STARTER_PROMPTS[1]]);
 });
 
+test('starters are grouped as filters and questions', () => {
+  const { element } = setup(<EmptyState onPick={() => undefined} />);
+
+  const groups = [...element.querySelectorAll('[role="group"]')].map(
+    (group) => ({
+      label: group.getAttribute('aria-label'),
+      heading: text(group.querySelector('h2')),
+      starters: [...group.querySelectorAll('button')].map((button) =>
+        button.firstChild?.textContent?.trim(),
+      ),
+    }),
+  );
+
+  expect(groups).toEqual([
+    {
+      label: 'Filter the map',
+      heading: 'Filter the map',
+      starters: STARTER_PROMPTS.filter((s) => s.route === 'filter').map(
+        (s) => s.text,
+      ),
+    },
+    {
+      label: 'Ask a question',
+      heading: 'Ask a question',
+      starters: STARTER_PROMPTS.filter((s) => s.route !== 'filter').map(
+        (s) => s.text,
+      ),
+    },
+  ]);
+});
+
 test('the empty state offers the selected-plane question first while a plane is selected', () => {
   const { store, element } = setup(<EmptyState onPick={() => undefined} />);
 
   act(() => store.select('aaaaaa'));
-  const buttons = [...element.querySelectorAll('button')];
+  const buttons = [
+    ...element.querySelectorAll('[aria-label="Ask a question"] button'),
+  ];
 
   expect(nameOf(buttons[0])).toBe(`${SELECTED_PROMPT} (question)`);
-  expect(buttons).toHaveLength(STARTER_PROMPTS.length + 1);
+  expect(element.querySelectorAll('button')).toHaveLength(
+    STARTER_PROMPTS.length + 1,
+  );
 });
 
 type Answer = Parameters<typeof fakeDecisionTransport>[0];

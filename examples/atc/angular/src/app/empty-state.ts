@@ -9,7 +9,8 @@ import { injectAtcState } from './store';
 
 /**
  * What the chat shows before the first message: a question and starter
- * pills, led by "What's the plane I selected?" while a plane is selected.
+ * pills in two groups, "Filter the map" first and then "Ask a question",
+ * which leads with "What's the plane I selected?" while a plane is selected.
  * Each pill is tagged as a question (chat) or a filter (map), and `pick`
  * emits the starter with its route: starters skip the router.
  */
@@ -21,26 +22,48 @@ import { injectAtcState } from './store';
     <p class="atc-empty-title">
       Ask about the planes over the Pacific Northwest.
     </p>
-    <div class="atc-starters">
-      @for (starter of starters(); track starter.text) {
-        <button type="button" (click)="pick.emit(starter)">
-          {{ starter.text }}
-          <span class="atc-starter-hint"
-            >({{ starter.route === 'filter' ? 'filter' : 'question' }})</span
-          >
-          <span class="atc-starter-kind" aria-hidden="true">{{
-            starter.route === 'filter' ? 'filter' : 'question'
-          }}</span>
-        </button>
-      }
-    </div>
+    @for (group of groups(); track group.label) {
+      <div
+        class="atc-starter-group"
+        role="group"
+        [attr.aria-label]="group.label"
+      >
+        <h2 class="atc-starter-heading">{{ group.label }}</h2>
+        <div class="atc-starters">
+          @for (starter of group.starters; track starter.text) {
+            <button type="button" (click)="pick.emit(starter)">
+              {{ starter.text }}
+              <span class="atc-starter-hint"
+                >({{
+                  starter.route === 'filter' ? 'filter' : 'question'
+                }})</span
+              >
+              <span class="atc-starter-kind" aria-hidden="true">{{
+                starter.route === 'filter' ? 'filter' : 'question'
+              }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    }
   `,
 })
 export class EmptyState {
   /** Emits the starter the user picked, with its route. */
   readonly pick = output<Starter>();
   private readonly state = injectAtcState();
-  protected readonly starters = computed(() =>
-    starterPrompts(this.state().selectedHex !== null),
-  );
+  protected readonly groups = computed(() => {
+    const starters = starterPrompts(this.state().selectedHex !== null);
+
+    return [
+      {
+        label: 'Filter the map',
+        starters: starters.filter((starter) => starter.route === 'filter'),
+      },
+      {
+        label: 'Ask a question',
+        starters: starters.filter((starter) => starter.route !== 'filter'),
+      },
+    ];
+  });
 }

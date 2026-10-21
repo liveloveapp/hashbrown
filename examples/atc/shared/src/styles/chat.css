@@ -93,6 +93,47 @@
   text-align: left;
 }
 
+.atc-starter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.atc-starter-heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atc-muted);
+}
+
+/*
+ * Refinements: ways to narrow the filter on the map, in the flow just above
+ * the composer, which is absolutely positioned over the bottom of the panel.
+ */
+.atc-refinements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 16px;
+  margin-bottom: var(--atc-composer-height);
+}
+.atc-refinement {
+  border: 1px solid var(--atc-border);
+  background: var(--atc-surface);
+  border-radius: var(--atc-radius-pill);
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color var(--atc-fast) var(--atc-ease);
+}
+.atc-refinement:hover {
+  border-color: var(--atc-muted);
+}
+@media (pointer: coarse) {
+  .atc-refinement {
+    min-height: 44px;
+  }
+}
+
 .atc-tool-run {
   display: flex;
   flex-direction: column;

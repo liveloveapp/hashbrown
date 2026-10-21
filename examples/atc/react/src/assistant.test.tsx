@@ -12,6 +12,7 @@ import {
   fakeCardsTransport,
   fakeDecisionTransport,
   fakeFilterTransport,
+  testAircraft,
 } from '@atc/shared/testing';
 import type { Chat } from '@hashbrownai/core';
 import { HashbrownProvider, type UiChatMessage } from '@hashbrownai/react';
@@ -85,6 +86,58 @@ test('the filter starter applies the filter once, sends no chat request and leav
   expect(route.requests).toHaveLength(0);
   expect(element.querySelectorAll('.atc-message, [data-role]')).toHaveLength(0);
   expect(element.querySelector('ol')?.children.length ?? 0).toBe(0);
+});
+
+function refinementTexts(element: HTMLElement) {
+  return [
+    ...element.querySelectorAll('[data-testid="refinements"] button'),
+  ].map((button) => button.textContent);
+}
+
+test('a refinement appears once a filter is applied and refines it without a transcript entry', async () => {
+  const { store, chat, route, filtered, element } = setup(() => null);
+  act(() => {
+    store.applySnapshot({
+      at: 1,
+      aircraft: [testAircraft({ callsign: 'ASA1' })],
+    });
+  });
+  const before = element.querySelector('[data-testid="refinements"]');
+
+  act(() => store.setMapFilter(FILTER));
+  const texts = refinementTexts(element);
+  act(() =>
+    (
+      element.querySelector(
+        '[data-testid="refinements"] button',
+      ) as HTMLButtonElement
+    ).click(),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  expect(before).toBeNull();
+  expect(texts).toEqual(['Below 5,000 ft', 'Only jets']);
+  expect(filtered).toEqual(['Below 5,000 ft']);
+  expect(chat.requests).toHaveLength(0);
+  expect(route.requests).toHaveLength(0);
+  expect(element.querySelector('ol')?.children.length ?? 0).toBe(0);
+});
+
+test('refinements disappear when the filter is cleared', () => {
+  const { store, element } = setup(() => null);
+  act(() => {
+    store.applySnapshot({
+      at: 1,
+      aircraft: [testAircraft({ callsign: 'ASA1' })],
+    });
+    store.setMapFilter(FILTER);
+  });
+  const shown = refinementTexts(element).length;
+
+  act(() => store.clearMapFilter());
+
+  expect(shown).toBeGreaterThan(0);
+  expect(element.querySelector('[data-testid="refinements"]')).toBeNull();
 });
 
 test('a chat starter sends a chat message', async () => {

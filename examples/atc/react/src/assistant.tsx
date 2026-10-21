@@ -8,6 +8,7 @@ import {
   createBrowserAtcTools,
   flightCardContract,
   observeDecisions,
+  refinements,
   ROUTER_SKIPPED,
   type RouterShown,
   settleCards,
@@ -25,7 +26,7 @@ import {
   useUiDecision,
   useUiKit,
 } from '@hashbrownai/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   AircraftCompare,
   AircraftCompareFallback,
@@ -206,6 +207,19 @@ export function Assistant({
     store.clearMapFilter();
     onSent?.();
   };
+  // Ways to narrow the filter on the map, derived from it and the traffic.
+  const applied = useSyncExternalStore(
+    store.subscribe,
+    () => store.getState().mapFilter,
+  );
+  const aircraft = useSyncExternalStore(
+    store.subscribe,
+    () => store.getState().aircraft,
+  );
+  const suggestions = useMemo(
+    () => refinements(applied, [...aircraft.values()]),
+    [applied, aircraft],
+  );
   const pick = (starter: Starter) =>
     starter.route === 'filter'
       ? filter(starter.text, ROUTER_SKIPPED)
@@ -232,6 +246,20 @@ export function Assistant({
           </div>
         ) : null}
       </div>
+      {suggestions.length > 0 ? (
+        <div className="atc-refinements" data-testid="refinements">
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion.text}
+              type="button"
+              className="atc-refinement"
+              onClick={() => filter(suggestion.text, ROUTER_SKIPPED)}
+            >
+              {suggestion.text}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <Composer
         busy={chat.isLoading}
         onChat={send}

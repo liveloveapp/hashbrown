@@ -12,6 +12,7 @@ import {
   fakeCardsTransport,
   fakeDecisionTransport,
   fakeFilterTransport,
+  testAircraft,
 } from '@atc/shared/testing';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -100,6 +101,57 @@ test('the filter starter applies the filter once, sends no chat request and leav
   expect(chat.requests).toHaveLength(0);
   expect(route.requests).toHaveLength(0);
   expect(element.querySelector('ol')?.children.length ?? 0).toBe(0);
+  fixture.destroy();
+});
+
+function refinementTexts(element: HTMLElement) {
+  return [
+    ...element.querySelectorAll('[data-testid="refinements"] button'),
+  ].map((button) => button.textContent?.trim());
+}
+
+test('a refinement appears once a filter is applied and refines it without a transcript entry', async () => {
+  const { store, chat, route, filtered, fixture, element } = setup(() => null);
+  store.applySnapshot({
+    at: 1,
+    aircraft: [testAircraft({ callsign: 'ASA1' })],
+  });
+  fixture.detectChanges();
+  const before = element.querySelector('[data-testid="refinements"]');
+
+  store.setMapFilter(FILTER);
+  fixture.detectChanges();
+  const texts = refinementTexts(element);
+  (
+    element.querySelector('[data-testid="refinements"] button') as HTMLElement
+  ).click();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  fixture.detectChanges();
+
+  expect(before).toBeNull();
+  expect(texts).toEqual(['Below 5,000 ft', 'Only jets']);
+  expect(filtered).toEqual(['Below 5,000 ft']);
+  expect(chat.requests).toHaveLength(0);
+  expect(route.requests).toHaveLength(0);
+  expect(element.querySelector('ol')?.children.length ?? 0).toBe(0);
+  fixture.destroy();
+});
+
+test('refinements disappear when the filter is cleared', () => {
+  const { store, fixture, element } = setup(() => null);
+  store.applySnapshot({
+    at: 1,
+    aircraft: [testAircraft({ callsign: 'ASA1' })],
+  });
+  store.setMapFilter(FILTER);
+  fixture.detectChanges();
+  const shown = refinementTexts(element).length;
+
+  store.clearMapFilter();
+  fixture.detectChanges();
+
+  expect(shown).toBeGreaterThan(0);
+  expect(element.querySelector('[data-testid="refinements"]')).toBeNull();
   fixture.destroy();
 });
 
