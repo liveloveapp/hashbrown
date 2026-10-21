@@ -1,0 +1,24 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "What colour is the code word? Answer in one word.",
+        "model": "gemini-3.5-flash-lite",
+        "turnIndex": 2,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Green."
+      },
+      "recordedTimings": {
+        "ttftMs": 572,
+        "interChunkDelaysMs": [2],
+        "totalDurationMs": 574
+      },
+      "metadata": {
+        "systemHash": "d20dbdc2",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}
