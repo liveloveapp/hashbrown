@@ -2,7 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useLayoutEffect,
+  useEffect,
   useMemo,
   useRef,
 } from 'react';
@@ -93,7 +93,7 @@ export const HashbrownProvider = (
   // Read through a ref so `collectionEnabled`, and so the collector, stay
   // stable across renders.
   const telemetryRef = useRef(telemetry);
-  useLayoutEffect(() => {
+  useEffect(() => {
     telemetryRef.current = telemetry;
   });
   const collectionEnabled = useCallback(

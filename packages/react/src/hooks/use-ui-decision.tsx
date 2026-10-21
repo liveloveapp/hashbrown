@@ -436,6 +436,8 @@ function useChatNarrowing(
     throw new Error('HashbrownContext not found');
   }
 
+  // `component.first_rendered` is reported by the chat's `useUiChat` render
+  // path, so chat mode reports nothing itself.
   const [controller] = useState(() => ɵcreateUiChatDecision());
   const state = useSyncExternalStore(
     controller.subscribe,
