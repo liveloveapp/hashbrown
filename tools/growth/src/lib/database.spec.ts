@@ -58,5 +58,8 @@ test('privacyLock takes the shared lock by default and the exclusive one on requ
   expect(calls[0].sql).toContain('pg_advisory_xact_lock_shared');
   expect(calls[1].sql).toContain('pg_advisory_xact_lock(');
   expect(calls[1].sql).not.toContain('_shared');
+  expect(calls.every((call) => call.sql.includes("'growth-privacy-v1'"))).toBe(
+    true,
+  );
   expect(calls.every((call) => call.sql.includes('/* growth:'))).toBe(true);
 });
