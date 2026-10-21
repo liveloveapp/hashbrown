@@ -241,33 +241,33 @@ const single = testAircraft({ hex: 'bbbbbb', kind: 'single' });
 const rotor = testAircraft({ hex: 'cccccc', kind: 'rotor' });
 
 test('planes outside the filter are filtered out except selected, highlighted and followed planes', () => {
-  const snapshot = applySnapshot(INITIAL_STATE, {
-    at: 1,
-    aircraft: [jet, single, rotor],
-  });
-  const filtered = applyMapFilter(snapshot, filterOf({ kind: 'jet' }));
+  const planes = ['aaaaaa', 'bbbbbb', 'cccccc', 'dddddd', 'eeeeee'].map(
+    (hex, index) =>
+      testAircraft({
+        hex,
+        label: `SGL${index}`,
+        kind: index === 0 ? 'jet' : 'single',
+      }),
+  );
+  const snapshot = applySnapshot(INITIAL_STATE, { at: 1, aircraft: planes });
   const state = {
-    ...filtered,
+    ...applyMapFilter(snapshot, filterOf({ kind: 'jet' })),
     selectedHex: 'bbbbbb',
     followingHex: 'cccccc',
+    highlighted: new Set(['dddddd']),
   };
+
   const outside = filteredOutHexes(state);
 
-  const classes = ['aaaaaa', 'bbbbbb', 'cccccc'].map((hex) =>
-    markerClassName(state, hex, outside),
+  expect([...outside]).toEqual(['eeeeee']);
+  expect(markerClassName(state, 'eeeeee', outside)).toContain(
+    'is-filtered-out',
   );
-  const highlighted = markerClassName(
-    { ...filtered, highlighted: new Set(['bbbbbb']) },
-    'bbbbbb',
-    filteredOutHexes({ ...filtered, highlighted: new Set(['bbbbbb']) }),
-  );
-  const plain = markerClassName(filtered, 'bbbbbb', filteredOutHexes(filtered));
-
-  expect(classes[0]).not.toContain('is-filtered-out');
-  expect(classes[1]).not.toContain('is-filtered-out');
-  expect(classes[2]).not.toContain('is-filtered-out');
-  expect(highlighted).not.toContain('is-filtered-out');
-  expect(plain).toContain('is-filtered-out');
+  for (const hex of ['aaaaaa', 'bbbbbb', 'cccccc', 'dddddd']) {
+    expect(markerClassName(state, hex, outside)).not.toContain(
+      'is-filtered-out',
+    );
+  }
 });
 
 test('a plane that starts matching after a new snapshot loses is-filtered-out', () => {

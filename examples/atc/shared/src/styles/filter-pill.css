@@ -39,6 +39,15 @@
 .atc-filter-note {
   font-weight: 400;
 }
+/* Read by assistive tech only: a streaming chip is still pending. */
+.atc-filter-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .atc-filter button {
   flex: none;
   min-width: 28px;
@@ -53,6 +62,7 @@
 .atc-filter button:hover {
   border-color: var(--atc-muted);
 }
+/* A docked detail card would cover the pill anyway, so it waits. */
 .atc-map:has(.atc-detail.is-docked.is-open) .atc-filter {
   display: none;
 }

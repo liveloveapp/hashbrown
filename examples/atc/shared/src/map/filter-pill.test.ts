@@ -37,7 +37,11 @@ test('the pill shows chips and calls onClear on the x', () => {
     'streaming',
     'unknown',
   ]);
+  expect(chips[1]?.textContent).toContain('pending');
   expect(chips[2]?.textContent).toContain('unknown place');
+  expect(pill.element.getAttribute('role')).toBe('group');
+  expect(pill.element.getAttribute('aria-label')).toBe('Map filter');
+  expect(pill.element.hasAttribute('aria-live')).toBe(false);
   expect(button?.getAttribute('aria-label')).toBe('Clear filter');
   expect(cleared).toBe(1);
 });

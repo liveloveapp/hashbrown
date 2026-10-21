@@ -26,7 +26,8 @@ export function createFilterPill(
   const element = doc.createElement('div');
   element.className = 'atc-filter';
   element.setAttribute('data-testid', 'filter-pill');
-  element.setAttribute('role', 'status');
+  element.setAttribute('role', 'group');
+  element.setAttribute('aria-label', 'Map filter');
   element.addEventListener('click', (event) => {
     event.stopPropagation();
     if (event.target instanceof Element && event.target.closest('button')) {
@@ -56,10 +57,13 @@ export function createFilterPill(
         node.className = 'atc-filter-chip';
         node.setAttribute('data-state', chip.state);
         node.append(doc.createTextNode(chip.label));
-        if (chip.state === 'unknown') {
+        if (chip.state !== 'set') {
+          const unknown = chip.state === 'unknown';
           const note = doc.createElement('span');
-          note.className = 'atc-filter-note';
-          note.append(doc.createTextNode('unknown place'));
+          note.className = unknown ? 'atc-filter-note' : 'atc-filter-hint';
+          note.append(
+            doc.createTextNode(unknown ? 'unknown place' : 'pending'),
+          );
           node.append(doc.createTextNode(' '), note);
         }
 
