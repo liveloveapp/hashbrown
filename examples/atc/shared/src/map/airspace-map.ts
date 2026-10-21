@@ -34,7 +34,10 @@ const NO_STREAMING: ReadonlySet<keyof MapFilter> = new Set();
 export interface AirspaceMapHandle {
   /** Stops syncing with the store and removes the map. */
   destroy(): void;
-  /** Redraws the filter pill, for when only the streaming key set changed. */
+  /**
+   * Redraws the filter pill, for when only the streaming key set or the
+   * notice changed.
+   */
   syncFilterPill(): void;
 }
 
@@ -91,10 +94,16 @@ export async function createAirspaceMap(options: {
    * (or `AirspaceMapHandle.syncFilterPill`) after the set changes.
    */
   streamingFilter?: () => ReadonlySet<keyof MapFilter>;
+  /**
+   * Text the filter pill shows after its chips (a failed filter request), or
+   * null. Read like `streamingFilter`; call `syncFilterPill` after it changes.
+   */
+  filterNotice?: () => string | null;
 }): Promise<AirspaceMapHandle> {
   const { element, store, area, signal } = options;
   const onClearFilter = options.onClearFilter ?? (() => store.clearMapFilter());
   const streamingFilter = options.streamingFilter ?? (() => NO_STREAMING);
+  const filterNotice = options.filterNotice ?? (() => null);
   const obstruction = options.obstruction ?? (() => null);
   const module = await import('leaflet');
   if (signal?.aborted) {
@@ -229,7 +238,7 @@ export async function createAirspaceMap(options: {
   element.append(filterPill.element);
   L.DomEvent.disableClickPropagation(filterPill.element);
   const syncFilterPill = () =>
-    filterPill.sync(store.getState(), streamingFilter());
+    filterPill.sync(store.getState(), streamingFilter(), filterNotice());
 
   const outline = createAreaOutline({ L, map, store });
 

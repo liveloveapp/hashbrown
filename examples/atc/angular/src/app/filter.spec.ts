@@ -180,3 +180,37 @@ test('the last chunk of a superseded run never lands, and the new run still appl
   await until(() => store.getState().mapFilter?.filter.airline === 'Delta');
   expect(kindAfterOldRun).toBeNull();
 });
+
+test('a run that fails mid-stream restores the filter it refined and reports the error', async () => {
+  const { store, model, filter } = setup();
+  const base = filterOf({ airline: 'Alaska' });
+  store.setMapFilter(base);
+  filter.apply('only jets');
+  await until(() => model.requests.length === 1);
+  model.push('{"kind":"jet","airline":null,');
+  await until(() => store.getState().mapFilter?.filter.kind === 'jet');
+
+  model.fail();
+
+  await until(() => filter.error() !== null);
+  expect(store.getState().mapFilter?.filter).toEqual(base);
+  expect(filter.loading()).toBe(false);
+});
+
+test('the error clears on the next apply and on dismiss', async () => {
+  const { model, filter } = setup();
+  filter.apply('Alaska');
+  await until(() => model.requests.length === 1);
+  model.fail();
+  await until(() => filter.error() !== null);
+
+  filter.apply('Delta');
+  const afterApply = filter.error();
+  await until(() => model.requests.length === 2);
+  model.fail();
+  await until(() => filter.error() !== null);
+  filter.dismissError();
+
+  expect(afterApply).toBeNull();
+  expect(filter.error()).toBeNull();
+});

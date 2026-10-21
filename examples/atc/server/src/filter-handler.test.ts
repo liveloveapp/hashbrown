@@ -6,7 +6,7 @@ import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { expect, onTestFinished, test, vi } from 'vitest';
-import { createFilterHandler } from './filter-handler';
+import { createFilterHandler, limitFilterRequest } from './filter-handler';
 import type { NodeHandler } from './http';
 
 async function listen(
@@ -205,4 +205,32 @@ test('filter handler sends only the last user message and ignores other client f
   expect(wireBody.reasoning.effort).toBe('minimal');
   server.close();
   await model.stop();
+});
+
+test('limitFilterRequest asks for minimal reasoning only from the gpt-5 base family', () => {
+  const request = (model: string) =>
+    limitFilterRequest({ model, input: 'x', stream: true });
+
+  const efforts = [
+    'gpt-5',
+    'gpt-5-mini',
+    'gpt-5-nano',
+    'gpt-5-mini-2025-08-07',
+    'gpt-5.1',
+    'gpt-5.2-mini',
+    'o4-mini',
+  ].map((model) => request(model).reasoning?.effort);
+  const plain = request('gpt-4.1');
+
+  expect(efforts).toEqual([
+    'minimal',
+    'minimal',
+    'minimal',
+    'minimal',
+    'low',
+    'low',
+    'low',
+  ]);
+  expect(plain).not.toHaveProperty('reasoning');
+  expect(plain.max_output_tokens).toBe(512);
 });

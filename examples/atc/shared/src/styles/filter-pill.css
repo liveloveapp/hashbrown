@@ -36,6 +36,13 @@
   border-style: dashed;
   color: var(--atc-muted);
 }
+.atc-filter-notice {
+  min-width: 0;
+  padding-inline: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--atc-muted);
+}
 .atc-filter-note {
   font-weight: 400;
 }

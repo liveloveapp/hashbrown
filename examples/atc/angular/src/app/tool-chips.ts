@@ -1,12 +1,20 @@
-import { labelForHex, type ToolCallLike, toolRunView } from '@atc/shared';
+import {
+  labelForHex,
+  toolBlocks,
+  type ToolCallLike,
+  toolRunView,
+} from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  inject,
   input,
   signal,
 } from '@angular/core';
+import { ShowStream } from './show-stream';
 import { injectAtcState } from './store';
+import { StreamPanel } from './stream-panel';
 
 // Unique ids for aria-controls (React uses useId).
 let nextId = 0;
@@ -18,10 +26,12 @@ let nextId = 0;
  * it, since this line sits in a busy list). Once the steps finish it becomes
  * a button with a check, what they did and how many there were ("Searched
  * traffic · 2 steps"), which expands to every step. A call only runs while
- * the chat is busy, so the line always settles.
+ * the chat is busy, so the line always settles. With "Show the stream" on,
+ * a panel under the line shows each real call with its arguments as JSON.
  */
 @Component({
   selector: 'atc-tool-chips',
+  imports: [StreamPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'atc-tool-run' },
   template: `
@@ -92,6 +102,9 @@ let nextId = 0;
         }
       </ol>
     }
+    @if (panel().length > 0) {
+      <atc-stream-panel label="Tool calls" [blocks]="panel()" />
+    }
   `,
 })
 export class ToolChips {
@@ -103,6 +116,10 @@ export class ToolChips {
   protected readonly open = signal(false);
   protected readonly stepsId = `atc-tool-steps-${nextId++}`;
   private readonly state = injectAtcState();
+  private readonly stream = inject(ShowStream);
+  protected readonly panel = computed(() =>
+    this.stream.on() ? toolBlocks(this.calls()) : [],
+  );
   protected readonly view = computed(() =>
     toolRunView(this.calls(), this.busy(), labelForHex(this.state())),
   );

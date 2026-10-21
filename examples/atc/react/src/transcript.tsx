@@ -1,12 +1,18 @@
 import {
+  alignTurns,
+  answerBlocks,
+  answerTurns,
   chatStatus,
   labelForHex,
   thinkingStatus,
   type TranscriptItem,
+  type TurnShown,
 } from '@atc/shared';
 import type { Chat } from '@hashbrownai/core';
 import type { UiChatMessage } from '@hashbrownai/react';
+import { useShowStream } from './show-stream';
 import { useAtcState } from './store';
+import { StreamPanel } from './stream-panel';
 import { ToolChips } from './tool-chips';
 
 /**
@@ -18,15 +24,24 @@ import { ToolChips } from './tool-chips';
  * busy region is announced, a visually hidden status region beside it says what
  * the assistant is doing now (the running step, "Reasoning…" while a reasoning
  * summary streams, else "Thinking…"); it stays mounted, so each change is
- * announced.
+ * announced. With "Show the stream" on, each send's last answer carries a
+ * panel with the decisions (`turns`, matched to user rows by the text sent) and the streaming JSON.
  */
 export function Transcript({
   items,
   busy = false,
+  turns = [],
 }: {
   items: readonly TranscriptItem<UiChatMessage<Chat.AnyTool>>[];
   busy?: boolean;
+  turns?: readonly TurnShown[];
 }) {
+  const showStream = useShowStream();
+  const answers = answerTurns(items);
+  const aligned = alignTurns(
+    turns,
+    items.flatMap((item) => (item.kind === 'user' ? [item.text] : [])),
+  );
   const thinking = thinkingStatus(items, busy);
   const status = chatStatus(items, busy, labelForHex(useAtcState()));
 
@@ -39,7 +54,19 @@ export function Transcript({
         aria-busy={busy}
       >
         {items.map((item, index) => (
-          <TranscriptRow key={index} item={item} busy={busy} />
+          <TranscriptRow
+            key={index}
+            item={item}
+            busy={busy}
+            stream={
+              showStream && answers[index] !== null
+                ? {
+                    turn: aligned[answers[index] ?? 0],
+                    streaming: busy && index === items.length - 1,
+                  }
+                : null
+            }
+          />
         ))}
         {thinking === null ? null : (
           <li className="atc-activity" data-testid="thinking">
@@ -66,9 +93,12 @@ export function Transcript({
 function TranscriptRow({
   item,
   busy,
+  stream,
 }: {
   item: TranscriptItem<UiChatMessage<Chat.AnyTool>>;
   busy: boolean;
+  /** The panel under an answer, or null. */
+  stream: { turn: TurnShown | undefined; streaming: boolean } | null;
 }) {
   switch (item.kind) {
     case 'user':
@@ -100,6 +130,20 @@ function TranscriptRow({
         </li>
       );
     case 'answer':
-      return <li className="atc-answer">{item.message.ui}</li>;
+      return (
+        <li className="atc-answer">
+          {item.message.ui}
+          {stream === null ? null : (
+            <StreamPanel
+              label="Answer stream"
+              blocks={answerBlocks(
+                stream.turn,
+                item.message.content,
+                stream.streaming,
+              )}
+            />
+          )}
+        </li>
+      );
   }
 }

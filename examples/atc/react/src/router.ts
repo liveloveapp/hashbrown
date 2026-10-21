@@ -5,6 +5,9 @@ import {
   type RouteBadge,
   ROUTER_WAIT_MS,
   routerBadge,
+  routerDecisionInput,
+  type RouterShown,
+  routerShown,
   routeSchema,
   submitTarget,
   trackDecisionInput,
@@ -35,11 +38,18 @@ export interface Router {
   submit(): Promise<RouteAction | null>;
   /** Drops a submission that is still waiting. */
   cancel(): void;
+  /**
+   * What the router decided for the text, as it stands now, with the
+   * milliseconds the answer took; read it right after {@link Router.submit}
+   * resolves, for "Show the stream".
+   */
+  shown(): RouterShown;
 }
 
 /**
  * Routes `draft` with a decision: `useDecision` against
- * `/api/decide?kind=route`, debounced by 150 ms. `transport` replaces the HTTP
+ * `/api/decide?kind=route`, debounced by 150 ms. Text under three characters
+ * is not decided and goes to chat. `transport` replaces the HTTP
  * transport (tests). A failed decision, such as the 503 without a key, is a
  * plain chat route.
  */
@@ -54,7 +64,7 @@ export function useRouter(
   );
   const decision = useDecision({
     schema: routeSchema,
-    input: text === '' ? null : text,
+    input: routerDecisionInput(text),
     system: ROUTE_CONTEXT,
     debounceTime: 150,
     transport: tracked.transport,
@@ -123,5 +133,16 @@ export function useRouter(
   useEffect(() => () => cancelWaiting.current(), []);
   const cancel = useCallback(() => cancelWaiting.current(), []);
 
-  return { badge: routerBadge(state), submit, cancel };
+  const shown = useCallback(
+    () =>
+      routerShown(
+        latest.current,
+        tracked.answeredFor() === latest.current.text
+          ? tracked.answeredMs()
+          : null,
+      ),
+    [tracked],
+  );
+
+  return { badge: routerBadge(state), submit, cancel, shown };
 }

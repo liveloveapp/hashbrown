@@ -136,7 +136,9 @@ async function ask(app: FrameLocator | Page, prompt: string): Promise<void> {
   const input = app.getByRole('textbox', { name: 'Message' });
   await input.click();
   await input.pressSequentially(prompt, { delay: TYPE_DELAY_MS });
-  await wait(250);
+  // The router's badge shows where Enter will send the text.
+  await app.locator('.atc-route', { hasText: '→' }).waitFor();
+  await wait(700);
   await app.getByRole('button', { name: 'Send' }).click();
 }
 
@@ -158,6 +160,12 @@ const ANSWERED: Readonly<
       .getByTestId('arrivals-row')
       .nth(arrivals.length - 1)
       .waitFor(),
+  filter: async (app) => {
+    await app.getByTestId('filter-pill').getByText('Below 10,000 ft').waitFor();
+    await app
+      .locator(`.atc-plane[data-hex="${scenario.highest.hex}"].is-filtered-out`)
+      .waitFor();
+  },
   follow: (app) =>
     app
       .locator(`[data-testid="flight-card"][data-hex="${fastest.hex}"]`)
@@ -170,6 +178,8 @@ async function answered(
   prompt: DemoPrompt,
 ): Promise<void> {
   await ANSWERED[prompt](app);
+  // A filter adds nothing to the transcript, which stays hidden.
+  if (prompt === 'filter') return;
   await app.locator('.atc-transcript[aria-busy="false"]').waitFor();
 }
 
@@ -238,6 +248,9 @@ async function recordDemo(context: BrowserContext, origin: string) {
         }
       }
       await wait(beat.holdMs);
+      if (beat.clearFilter) {
+        await app.getByRole('button', { name: 'Clear filter' }).click();
+      }
     });
   }
   const timeline = await take.stop();

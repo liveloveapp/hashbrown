@@ -1,5 +1,5 @@
 import { parseStreamedFilter } from './filter-view';
-import type { MapFilter } from './find-aircraft';
+import { isEmptyMapFilter, type MapFilter } from './find-aircraft';
 import type { AtcStore } from './store';
 
 // The framework-free half of the natural-language map filter: what the apps
@@ -16,6 +16,13 @@ export function filterRequestInput(
 ): string {
   return JSON.stringify({ request, current });
 }
+
+/**
+ * What the filter pill says when a filter run fails (an HTTP error, the
+ * network, the model). Text only; it clears on the next request or the pill's
+ * x.
+ */
+export const FILTER_FAILED_NOTICE = "Couldn't filter. Try again.";
 
 /** A filter with every field "any". */
 const EMPTY_FILTER: MapFilter = {
@@ -59,13 +66,21 @@ export interface FilterSync {
    * omitted are dropped.
    */
   finish(partial: unknown): void;
+  /**
+   * Ends the run after an error and puts back the filter it refined (the
+   * `begin` base, or no filter), so a half-applied answer never lingers.
+   * Returns true when a run was live; false when it had already finished,
+   * been cancelled or been superseded, and nothing changed.
+   */
+  fail(): boolean;
   /** Stops listening to the store. */
   dispose(): void;
 }
 
 /**
- * Creates a {@link FilterSync}. If the filter is cleared (the pill's ✕, or
- * the assistant) while a run is live, the run stops being authoritative:
+ * Creates a {@link FilterSync}. If anything else changes the map filter while
+ * a run is live (the pill's x, a typed clear, the assistant's
+ * `setMapFilter` or `clearMapFilter`), the run stops being authoritative:
  * later output is ignored and `onCancel` is called once so the caller can
  * stop the stream.
  */
@@ -75,23 +90,28 @@ export function createFilterSync(
 ): FilterSync {
   let live = false;
   let base: MapFilter = EMPTY_FILTER;
+  // The filter the run started from, as `begin` received it.
+  let start: MapFilter | null = null;
   let applied: string | null = null;
-  // Whether a filter was on the map after the last store change.
-  let shown = false;
+  // The filter object the store holds while the run owns it: the base, then
+  // each filter the run applied. The store keeps the object it was given, even
+  // when it re-resolves for chart or airspace data, so identity tells the
+  // run's own writes from anyone else's.
+  let expected: MapFilter | null = null;
 
   const unsubscribe = store.subscribe(() => {
-    const now = store.getState().mapFilter !== null;
-    if (live && shown && !now) {
+    if (live && (store.getState().mapFilter?.filter ?? null) !== expected) {
       live = false;
       onCancel();
     }
-    shown = now;
   });
 
   const apply = (next: MapFilter) => {
     const key = JSON.stringify(next);
     if (key !== applied) {
       applied = key;
+      // A filter that keeps nothing is a clear; the store holds null for it.
+      expected = isEmptyMapFilter(next) ? null : next;
       store.setMapFilter(next);
     }
   };
@@ -99,9 +119,10 @@ export function createFilterSync(
   return {
     begin(current) {
       live = true;
+      start = current;
       base = current ?? EMPTY_FILTER;
       applied = current === null ? null : JSON.stringify(current);
-      shown = current !== null;
+      expected = store.getState().mapFilter?.filter ?? null;
     },
     update(partial) {
       if (!live) {
@@ -126,6 +147,19 @@ export function createFilterSync(
         apply(parsed.filter);
       }
       live = false;
+    },
+    fail() {
+      if (!live) {
+        return false;
+      }
+      live = false;
+      if (start === null) {
+        store.clearMapFilter();
+      } else {
+        store.setMapFilter(start);
+      }
+
+      return true;
     },
     dispose: unsubscribe,
   };

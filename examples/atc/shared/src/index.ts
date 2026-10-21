@@ -12,6 +12,7 @@ export * from './feed';
 export * from './routes';
 export * from './route';
 export * from './router-input';
+export * from './stream-view';
 export * from './contracts';
 export * from './response-schemas';
 export * from './find-aircraft';

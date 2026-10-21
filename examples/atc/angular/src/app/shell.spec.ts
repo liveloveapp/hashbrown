@@ -13,6 +13,7 @@ import { expect, test, vi } from 'vitest';
 import { Composer } from './composer';
 import { EmptyState } from './empty-state';
 import { PanelHeader } from './panel-header';
+import { ShowStream } from './show-stream';
 import { ToolChips } from './tool-chips';
 import { Transcript } from './transcript';
 import { ROUTE_DECISION_TRANSPORT } from './router';
@@ -561,4 +562,58 @@ test('reasoning shimmers while it streams and collapses to Reasoned once done', 
   expect(text(done?.querySelector('details .atc-reasoning-text'))).toBe(
     'Comparing altitudes.',
   );
+});
+
+test('the switch hides and shows the panels and remembers the choice', () => {
+  localStorage.clear();
+  setup();
+  const header = TestBed.createComponent(PanelHeader);
+  const chips = TestBed.createComponent(ToolChips);
+  chips.componentRef.setInput('calls', [
+    {
+      name: 'findAircraft',
+      args: { near: '<b>KSEA</b>' },
+      status: 'done',
+      result: { status: 'fulfilled' },
+    },
+  ]);
+  // A click only fires its change event on an element that is in the document.
+  document.body.append(header.nativeElement);
+  header.detectChanges();
+  chips.detectChanges();
+  const toggle = (header.nativeElement as HTMLElement).querySelector(
+    'input[type="checkbox"]',
+  ) as HTMLInputElement;
+  const panel = () =>
+    (chips.nativeElement as HTMLElement).querySelector('.atc-stream');
+
+  const shownPanel = panel();
+  const shown = shownPanel?.textContent ?? '';
+  toggle.click();
+  header.detectChanges();
+  chips.detectChanges();
+  const hidden = panel();
+  const stored = localStorage.getItem('atc.showStream');
+  const remembered = TestBed.runInInjectionContext(() =>
+    new (ShowStream as unknown as new () => ShowStream)().on(),
+  );
+  toggle.click();
+  header.detectChanges();
+  chips.detectChanges();
+
+  (header.nativeElement as HTMLElement).remove();
+
+  expect(toggle.getAttribute('role')).toBe('switch');
+  expect(text(header.nativeElement)).toContain('Show the stream');
+  expect(shown).toContain('findAircraft');
+  expect(shownPanel?.getAttribute('aria-live')).toBe('off');
+  expect(shownPanel?.getAttribute('tabindex')).toBe('0');
+  expect(shownPanel?.querySelectorAll('[tabindex]')).toHaveLength(0);
+  expect(shown).toContain('<b>KSEA</b>');
+  expect(panel()?.querySelector('b')).toBeNull();
+  expect(hidden).toBeNull();
+  expect(stored).toBe('off');
+  expect(remembered).toBe(false);
+  expect(panel()).not.toBeNull();
+  localStorage.clear();
 });

@@ -12,6 +12,7 @@ import {
   inject,
   type Signal,
   signal,
+  untracked,
 } from '@angular/core';
 import {
   createHttpTransport,
@@ -38,6 +39,16 @@ export interface MapFilterHandle {
   readonly streaming: Signal<ReadonlySet<keyof MapFilter>>;
   /** The raw structured output so far (partial while streaming). */
   readonly output: Signal<unknown>;
+  /** True while the filter request is running. */
+  readonly loading: Signal<boolean>;
+  /**
+   * Why the latest filter request failed (HTTP, network or model), or null.
+   * The map is back on the filter that request refined. Cleared by the next
+   * {@link MapFilterHandle.apply} and by {@link MapFilterHandle.dismissError}.
+   */
+  readonly error: Signal<Error | null>;
+  /** Clears {@link MapFilterHandle.error}; the pill's x calls it. */
+  dismissError(): void;
 }
 
 /**
@@ -68,6 +79,23 @@ export function injectMapFilter(
   const output = computed<unknown>(() =>
     resource.status() === 'error' ? null : resource.value(),
   );
+  const failure = signal<Error | null>(null);
+  // The completion error already handled, so a lingering one is not re-read.
+  let seenError: Error | undefined;
+  // A failed run puts back the filter it refined and reports the error, once.
+  effect(() => {
+    const error =
+      resource.status() === 'error'
+        ? (resource.error() as Error | undefined)
+        : undefined;
+    if (error === seenError) {
+      return;
+    }
+    seenError = error;
+    if (error && untracked(() => sync.fail())) {
+      failure.set(error);
+    }
+  });
   // False from `apply` until Hashbrown clears the previous run's output, so a
   // last chunk of a superseded run is never applied for the new one.
   let armed = true;
@@ -110,6 +138,7 @@ export function injectMapFilter(
       const current = store.getState().mapFilter?.filter ?? null;
       const next = filterRequestInput(request, current);
       armed = output() === null;
+      failure.set(null);
       sync.begin(current);
       if (next === input()) {
         queued.set(next);
@@ -122,5 +151,8 @@ export function injectMapFilter(
       resource.isLoading() ? streamingKeys(output()) : NONE,
     ),
     output,
+    loading: resource.isLoading,
+    error: failure.asReadonly(),
+    dismissError: () => failure.set(null),
   };
 }

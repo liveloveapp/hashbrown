@@ -5,7 +5,10 @@ import {
   type RouteBadge,
   ROUTER_WAIT_MS,
   routerBadge,
+  routerDecisionInput,
   type RouterInputState,
+  type RouterShown,
+  routerShown,
   routeSchema,
   submitTarget,
   trackDecisionInput,
@@ -52,11 +55,18 @@ export interface Router {
   submit(): Promise<RouteAction | null>;
   /** Drops a submission that is still waiting. */
   cancel(): void;
+  /**
+   * What the router decided for the text, as it stands now, with the
+   * milliseconds the answer took; read it right after {@link Router.submit}
+   * resolves, for "Show the stream".
+   */
+  shown(): RouterShown;
 }
 
 /**
  * Routes `draft` with a decision: `decisionResource` against
- * `/api/decide?kind=route`, debounced by 150 ms. A failed decision, such as
+ * `/api/decide?kind=route`, debounced by 150 ms. Text under three characters
+ * is not decided and goes to chat. A failed decision, such as
  * the 503 without a key, is a plain chat route. Call in an injection context.
  */
 export function injectRouter(draft: Signal<string>): Router {
@@ -64,7 +74,7 @@ export function injectRouter(draft: Signal<string>): Router {
   const tracked = trackDecisionInput(inject(ROUTE_DECISION_TRANSPORT));
   const decision = decisionResource({
     schema: routeSchema,
-    input: computed(() => (text() === '' ? null : text())),
+    input: computed(() => routerDecisionInput(text())),
     system: ROUTE_CONTEXT,
     debounce: 150,
     transport: tracked.transport,
@@ -145,5 +155,12 @@ export function injectRouter(draft: Signal<string>): Router {
       });
     },
     cancel: () => cancelWaiting(),
+    shown: () =>
+      routerShown(
+        untracked(state),
+        tracked.answeredFor() === untracked(state).text
+          ? tracked.answeredMs()
+          : null,
+      ),
   };
 }

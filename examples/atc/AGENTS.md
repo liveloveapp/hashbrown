@@ -13,56 +13,71 @@ dependencies); this file covers atc.
 - `shared/src/store.ts`: `AtcState` and its pure reducers. The map, the tools and the
   components all read this one store.
 - `shared/src/tools.ts`: the tools the model calls. They run in the browser.
+- `shared/src/find-aircraft.ts`: the filter fields, defined once and used four ways
+  (the `findAircraft` tool, the streamed filter, `setMapFilter`, the pinned schemas).
+- `angular/src/app/router.ts`, `filter.ts` and `react/src/router.ts`, `filter.tsx`: the
+  decide and filter steps.
 
 ## File map
 
-| Path                                            | What it holds                                                                                                                                      |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `shared/src/aircraft.ts`                        | adsb.lol to `Aircraft`: validation and the privacy whitelist                                                                                       |
-| `shared/src/store.ts`, `feed.ts`                | State, reducers, view requests; polling `/api/aircraft`                                                                                            |
-| `shared/src/tools.ts`, `find-aircraft.ts`       | Tool handlers; the pure aircraft query                                                                                                             |
-| `shared/src/tool-definitions.ts`                | Tool names, descriptions and schemas, pinned by the server                                                                                         |
-| `shared/src/browser-tools.ts`                   | The tools wired to routes and surfaces, for both apps                                                                                              |
-| `shared/src/contracts.ts`                       | Component contracts (Skillet) and `SYSTEM_PROMPT`                                                                                                  |
-| `shared/src/places.ts`, `directory.ts`          | Built-in airports and areas (`lookupPlace`, `AREAS`); the chart airport directory (`airportByCode`)                                                |
-| `shared/src/views.ts`, `detail-view.ts`         | Pure view models for cards and the map's detail card                                                                                               |
-| `shared/src/tool-chips.ts`, `transcript.ts`     | Tool call labels and transcript rows                                                                                                               |
-| `shared/src/sheet.ts`, `dom.ts`                 | The phone sheet's snaps; the `/` shortcut and keyboard inset                                                                                       |
-| `shared/src/testing.ts`                         | Test fixtures, imported as `@atc/shared/testing`                                                                                                   |
-| `shared/src/chart/`                             | Chart types, AIRAC cycle, parsing, runway geometry, browser feed                                                                                   |
-| `shared/src/chart/airspace-query.ts`            | Pure airspace queries: `shelvesAt`, `altitudeMslFt`, `airspaceTypes`                                                                               |
-| `shared/src/map/airspace-map.ts`                | `createAirspaceMap`: composes the modules below                                                                                                    |
-| `shared/src/map/plane-marker.ts`                | Marker HTML, updated in place                                                                                                                      |
-| `shared/src/map/motion-loop.ts`, `tween.ts`     | Dead reckoning and turns between snapshots, at sub-pixel positions                                                                                 |
-| `shared/src/map/pixels.ts`                      | Pixel points and rects: overlap and containment tests                                                                                              |
-| `shared/src/map/tag-*.ts`                       | Data tags that never overlap: layout, obstacle grid, widths, sync                                                                                  |
-| `shared/src/map/view-controller.ts`, `fit.ts`   | Applying view requests (fits, areas, reveals)                                                                                                      |
-| `shared/src/map/area-outline.ts`                | The faint circle around the shown area                                                                                                             |
-| `shared/src/map/card-sync.ts`, `detail-card.ts` | The floating detail card                                                                                                                           |
-| `shared/src/map/follow.ts`, `follow-pill.ts`    | Follow mode and its pill                                                                                                                           |
-| `shared/src/map/testing.ts`                     | Map test helpers: Leaflet, canvas, media and frame stubs                                                                                           |
-| `shared/src/map/chart/`                         | Ink airports, the shared label placer, diagrams, Layers control                                                                                    |
-| `shared/src/map/chart/chart-layers.ts`          | The chart panes and layers `createAirspaceMap` adds                                                                                                |
-| `shared/src/map/chart/airspace-layer.ts`        | Class B, C, D and E shelves on the map, with highlight and labels                                                                                  |
-| `shared/src/map/chart/airspace-labels.ts`       | Shelf altitude labels and their anchors                                                                                                            |
-| `shared/src/map/tiles.ts`                       | Tile URL and attribution                                                                                                                           |
-| `shared/src/styles/atc.css`                     | Index of the stylesheet partials, in cascade order                                                                                                 |
-| `angular/src/app/`, `react/src/`                | Thin framework shells that mirror each other                                                                                                       |
-| `server/src/run-handler.ts`                     | `/api/run`: pins the system prompt, tool definitions and UI response schema, caps output                                                           |
-| `server/src/filter-handler.ts`                  | `/api/filter`: pins the filter prompt and schema, no tools, 512-token cap                                                                          |
-| `server/src/decide-handler.ts`                  | `/api/decide?kind=route\|cards`: TypeSafe Jev with the questions and context pinned per kind; 503 without a key                                    |
-| `server/src/aircraft-handler.ts`                | `/api/aircraft`: cached, stripped adsb.lol                                                                                                         |
-| `server/src/chart-airports-handler.ts`          | `/api/chart/airports`: NASR airports, cached per cycle                                                                                             |
-| `server/src/chart-surfaces-handler.ts`          | `/api/chart/surfaces`: FAA and OSM taxiways, aprons, holds                                                                                         |
-| `server/src/chart-airspace-handler.ts`          | `/api/chart/airspace`: FAA class airspace, cached per cycle                                                                                        |
-| `server/src/chart/`                             | NASR zip and CSV readers, upstream fetches, surfaces merge, cache                                                                                  |
-| `e2e/src/`                                      | Playwright for both apps: `atc.spec.ts`, the scripted model turns in `model.ts`, the traffic and chart fixtures, and `stubs.ts`, which serves them |
-| `e2e/demo/`                                     | The demo video: storyboard, director page, recorder, ffmpeg encoding                                                                               |
-| `e2e/prose/`                                    | Live prose eval: real model answers checked for leaked rules, extra cards and the highlight they leave on the map                                  |
+| Path                                                                                                 | What it holds                                                                                                                                      |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared/src/aircraft.ts`                                                                             | adsb.lol to `Aircraft`: validation and the privacy whitelist                                                                                       |
+| `shared/src/store.ts`, `feed.ts`                                                                     | State, reducers, view requests; polling `/api/aircraft`                                                                                            |
+| `shared/src/tools.ts`, `find-aircraft.ts`                                                            | Tool handlers; the pure aircraft query                                                                                                             |
+| `shared/src/tool-definitions.ts`                                                                     | Tool names, descriptions and schemas, pinned by the server                                                                                         |
+| `shared/src/browser-tools.ts`                                                                        | The tools wired to routes and surfaces, for both apps                                                                                              |
+| `shared/src/contracts.ts`                                                                            | Component contracts (Skillet) and `SYSTEM_PROMPT`                                                                                                  |
+| `shared/src/places.ts`, `directory.ts`                                                               | Built-in airports and areas (`lookupPlace`, `AREAS`); the chart airport directory (`airportByCode`)                                                |
+| `shared/src/views.ts`, `detail-view.ts`                                                              | Pure view models for cards and the map's detail card                                                                                               |
+| `shared/src/route.ts`, `router-input.ts`                                                             | `routeSchema` decoding: where Enter sends typed text, and the router's debounced input                                                             |
+| `shared/src/filter-view.ts`, `filter-sync.ts`                                                        | The filter pill's chips (a streaming field is dashed); the request `/api/filter` takes                                                             |
+| `shared/src/stream-view.ts`                                                                          | "Show the stream" panels: router and cards decisions, `CARDS_SELECT_MAX`, `CARDS_MIN_CONFIDENCE`                                                   |
+| `angular/src/app/filter.ts`, `react/src/filter.tsx`                                                  | The filter pill: structured completion against `/api/filter`                                                                                       |
+| `angular/src/app/stream-panel.ts`, `show-stream.ts`, `react/src/stream-panel.tsx`, `show-stream.tsx` | The dark JSON panels and the header switch                                                                                                         |
+| `shared/src/tool-chips.ts`, `transcript.ts`                                                          | Tool call labels and transcript rows                                                                                                               |
+| `shared/src/sheet.ts`, `dom.ts`                                                                      | The phone sheet's snaps; the `/` shortcut and keyboard inset                                                                                       |
+| `shared/src/testing.ts`                                                                              | Test fixtures, imported as `@atc/shared/testing`                                                                                                   |
+| `shared/src/chart/`                                                                                  | Chart types, AIRAC cycle, parsing, runway geometry, browser feed                                                                                   |
+| `shared/src/chart/airspace-query.ts`                                                                 | Pure airspace queries: `shelvesAt`, `altitudeMslFt`, `airspaceTypes`                                                                               |
+| `shared/src/map/airspace-map.ts`                                                                     | `createAirspaceMap`: composes the modules below                                                                                                    |
+| `shared/src/map/plane-marker.ts`                                                                     | Marker HTML, updated in place                                                                                                                      |
+| `shared/src/map/motion-loop.ts`, `tween.ts`                                                          | Dead reckoning and turns between snapshots, at sub-pixel positions                                                                                 |
+| `shared/src/map/pixels.ts`                                                                           | Pixel points and rects: overlap and containment tests                                                                                              |
+| `shared/src/map/tag-*.ts`                                                                            | Data tags that never overlap: layout, obstacle grid, widths, sync                                                                                  |
+| `shared/src/map/view-controller.ts`, `fit.ts`                                                        | Applying view requests (fits, areas, reveals)                                                                                                      |
+| `shared/src/map/area-outline.ts`                                                                     | The faint circle around the shown area                                                                                                             |
+| `shared/src/map/card-sync.ts`, `detail-card.ts`                                                      | The floating detail card                                                                                                                           |
+| `shared/src/map/follow.ts`, `follow-pill.ts`                                                         | Follow mode and its pill                                                                                                                           |
+| `shared/src/map/testing.ts`                                                                          | Map test helpers: Leaflet, canvas, media and frame stubs                                                                                           |
+| `shared/src/map/chart/`                                                                              | Ink airports, the shared label placer, diagrams, Layers control                                                                                    |
+| `shared/src/map/chart/chart-layers.ts`                                                               | The chart panes and layers `createAirspaceMap` adds                                                                                                |
+| `shared/src/map/chart/airspace-layer.ts`                                                             | Class B, C, D and E shelves on the map, with highlight and labels                                                                                  |
+| `shared/src/map/chart/airspace-labels.ts`                                                            | Shelf altitude labels and their anchors                                                                                                            |
+| `shared/src/map/tiles.ts`                                                                            | Tile URL and attribution                                                                                                                           |
+| `shared/src/styles/atc.css`                                                                          | Index of the stylesheet partials, in cascade order                                                                                                 |
+| `angular/src/app/`, `react/src/`                                                                     | Thin framework shells that mirror each other                                                                                                       |
+| `server/src/run-handler.ts`                                                                          | `/api/run`: pins the system prompt, tool definitions and UI response schema, caps output                                                           |
+| `server/src/filter-handler.ts`                                                                       | `/api/filter`: pins the filter prompt and schema, no tools, 512-token cap                                                                          |
+| `server/src/decide-handler.ts`                                                                       | `/api/decide?kind=route\|cards`: TypeSafe Jev with the questions and context pinned per kind; 503 without a key                                    |
+| `server/src/aircraft-handler.ts`                                                                     | `/api/aircraft`: cached, stripped adsb.lol                                                                                                         |
+| `server/src/chart-airports-handler.ts`                                                               | `/api/chart/airports`: NASR airports, cached per cycle                                                                                             |
+| `server/src/chart-surfaces-handler.ts`                                                               | `/api/chart/surfaces`: FAA and OSM taxiways, aprons, holds                                                                                         |
+| `server/src/chart-airspace-handler.ts`                                                               | `/api/chart/airspace`: FAA class airspace, cached per cycle                                                                                        |
+| `server/src/chart/`                                                                                  | NASR zip and CSV readers, upstream fetches, surfaces merge, cache                                                                                  |
+| `e2e/src/`                                                                                           | Playwright for both apps: `atc.spec.ts`, the scripted model turns in `model.ts`, the traffic and chart fixtures, and `stubs.ts`, which serves them |
+| `e2e/demo/`                                                                                          | The demo video: storyboard, director page, recorder, ffmpeg encoding                                                                               |
+| `e2e/prose/`                                                                                         | Live prose eval: real model answers checked for leaked rules, extra cards and the highlight they leave on the map                                  |
 
 ## Add a component or a tool
 
-- Component: README, "Add a component".
+- Component: README, "Add a component". A new card goes in five places, in the same
+  position in each: the `cards` kit in both core files (`angular/src/app/assistant.ts`,
+  `react/src/assistant.tsx`), `CARD_DEFINITIONS` in `shared/src/response-schemas.ts`,
+  `cardGroups` in `shared/src/contracts.ts`, and an "If the X card is available" rule
+  in `SYSTEM_PROMPT`. Missing from `CARD_DEFINITIONS`, any schema with the card falls back
+  to the full one, which lacks it; missing from `cardGroups`, the cards decision never
+  picks it and it is never offered.
 - Tool: the comment on `createAtcTools` in `shared/src/tools.ts`. Its name,
   description and schema go in `ATC_TOOL_DEFINITIONS` (`shared/src/tool-definitions.ts`),
   which the server sends to the model; a tool missing there is dropped.
@@ -72,6 +87,14 @@ dependencies); this file covers atc.
 - Only fields validated in `shared/src/aircraft.ts` (hex, label, kind, numbers) go into
   marker HTML. Everything else is rendered as text.
 - `normalizeAdsbLol` copies whitelisted fields only; never spread adsb.lol entries.
+- The server pins all three model routes: `/api/run`, `/api/filter` and `/api/decide` each
+  fix their prompt or questions, schemas and output cap, and ignore what a client sends
+  for them. A new model route pins the same things.
+- The map filter is state (`AtcState.mapFilter`), not a chat message: the filter route
+  adds nothing to the transcript, the map and `findAircraft` share one predicate, and
+  planes the user points at (selected, highlighted, followed) are never dimmed.
+- Without `TYPESAFE_API_KEY`, `/api/decide` answers 503 and everything routes to chat with
+  all cards; a failed or unsure decision must never block a send.
 - The system prompt, the tool definitions, the UI response schema and the output cap are
   fixed on the server; clients cannot change them. The one exception: the assistant narrows
   its cards per turn, so the server keeps a response schema that equals an entry of

@@ -44,6 +44,8 @@ export type Beat =
       readonly prompt: DemoPrompt | null;
       /** Where the camera moves once the answer has rendered, if anywhere. */
       readonly then?: FocusName;
+      /** Clears the map filter after the hold, so later beats see every plane. */
+      readonly clearFilter?: boolean;
       readonly holdMs: number;
     }
   | {
@@ -59,6 +61,7 @@ export const DEMO_PROMPTS = {
   near: PROMPTS.nearBend,
   arrivals: PROMPTS.seattleArrivals,
   follow: PROMPTS.followFastest,
+  filter: PROMPTS.filterJets,
 } as const;
 
 /** The name of one of {@link DEMO_PROMPTS}. */
@@ -79,6 +82,48 @@ export const STORYBOARD: readonly Beat[] = [
     headline: 'The sky, live.',
     focus: 'map',
     prompt: null,
+    holdMs: 2600,
+  },
+  {
+    id: 'decide',
+    kind: 'code',
+    headline: 'Decide where it goes.',
+    panes: [
+      {
+        path: 'angular/src/app/router.ts',
+        focal: /const decision = decisionResource\(\{/,
+      },
+      {
+        path: 'react/src/router.ts',
+        focal: /const decision = useDecision\(\{/,
+      },
+    ],
+    holdMs: 2400,
+  },
+  {
+    id: 'filter',
+    kind: 'app',
+    headline: 'Filter the map in plain words.',
+    focus: 'rest',
+    prompt: 'filter',
+    then: 'map',
+    clearFilter: true,
+    holdMs: 2600,
+  },
+  {
+    id: 'schema',
+    kind: 'code',
+    headline: 'One schema, four uses.',
+    panes: [
+      {
+        path: 'shared/src/find-aircraft.ts',
+        focal: /^export const mapFilterSchema = /,
+      },
+      {
+        path: 'angular/src/app/filter.ts',
+        focal: /const resource = structuredCompletionResource\(\{/,
+      },
+    ],
     holdMs: 2600,
   },
   {
@@ -116,9 +161,25 @@ export const STORYBOARD: readonly Beat[] = [
     holdMs: 2600,
   },
   {
+    id: 'narrow',
+    kind: 'code',
+    headline: 'Narrow the cards.',
+    panes: [
+      {
+        path: 'angular/src/app/assistant.ts',
+        focal: /private readonly narrowed = uiDecisionResource\(\{/,
+      },
+      {
+        path: 'react/src/assistant.tsx',
+        focal: /const narrowed = useUiDecision\(\{/,
+      },
+    ],
+    holdMs: 2400,
+  },
+  {
     id: 'arrivals',
     kind: 'app',
-    headline: 'The map answers too.',
+    headline: 'Two cards, not four.',
     focus: 'rest',
     prompt: 'arrivals',
     then: 'map',

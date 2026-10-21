@@ -8,9 +8,14 @@ export interface FilterPill {
   /**
    * Shows the state's current map filter as chips, or hides the pill when
    * there is none. `streaming` names the fields still arriving, drawn dashed.
-   * Rebuilds only when the chips changed.
+   * `notice` (a failed filter request, say) is shown as text after the chips
+   * and keeps the pill open on its own. Rebuilds only when either changed.
    */
-  sync(state: AtcState, streaming: ReadonlySet<keyof MapFilter>): void;
+  sync(
+    state: AtcState,
+    streaming: ReadonlySet<keyof MapFilter>,
+    notice?: string | null,
+  ): void;
 }
 
 /**
@@ -38,17 +43,18 @@ export function createFilterPill(
 
   return {
     element,
-    sync(state, streaming) {
+    sync(state, streaming, notice = null) {
       const applied = state.mapFilter;
       const chips =
         applied === null ? [] : filterChips(state, applied.filter, streaming);
-      element.classList.toggle('is-open', chips.length > 0);
-      const next = JSON.stringify(chips);
+      const open = chips.length > 0 || notice !== null;
+      element.classList.toggle('is-open', open);
+      const next = JSON.stringify([chips, notice]);
       if (next === key) {
         return;
       }
       key = next;
-      if (chips.length === 0) {
+      if (!open) {
         element.replaceChildren();
         return;
       }
@@ -69,6 +75,13 @@ export function createFilterPill(
 
         return node;
       });
+      if (notice !== null) {
+        const node = doc.createElement('span');
+        node.className = 'atc-filter-notice';
+        node.setAttribute('role', 'status');
+        node.append(doc.createTextNode(notice));
+        nodes.push(node);
+      }
       const button = doc.createElement('button');
       button.type = 'button';
       button.setAttribute('aria-label', 'Clear filter');
