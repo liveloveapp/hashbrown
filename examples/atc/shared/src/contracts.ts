@@ -117,14 +117,29 @@ Rules:
 - Start with the answer. No lead-ins such as "Here are", "Here's", "Sure" or "Let me". No exclamation marks, emoji, em-dashes or en-dashes; use a comma, colon or full stop.
 - Routes are scheduled routes from public data and can be wrong. Call them scheduled.`;
 
-/** Starter prompts shown before the first message. */
-export const STARTER_PROMPTS: readonly string[] = [
-  "What's flying near Bend?",
-  'Show me everything landing at Seattle.',
-  "What's the highest plane right now? And the fastest?",
-  'Follow the fastest airliner.',
-  'Show me Redmond airport.',
-  'Which planes are inside the Portland Class C?',
+/** Where a starter goes: the chat, or straight to the map filter. */
+export type StarterRoute = 'chat' | 'filter';
+
+/** One starter button: its words and the route it is sent straight to. */
+export interface Starter {
+  /** The words on the button, also what is sent. */
+  readonly text: string;
+  /** `chat` asks the assistant a question; `filter` changes what the map shows. */
+  readonly route: StarterRoute;
+}
+
+/** Starter prompts shown before the first message. They skip the router. */
+export const STARTER_PROMPTS: readonly Starter[] = [
+  { text: "What's flying near Bend?", route: 'chat' },
+  { text: 'Show me everything landing at Seattle.', route: 'chat' },
+  {
+    text: "What's the highest plane right now? And the fastest?",
+    route: 'chat',
+  },
+  { text: 'Follow the fastest airliner.', route: 'chat' },
+  { text: 'Show me Redmond airport.', route: 'chat' },
+  { text: 'Which planes are inside the Portland Class C?', route: 'chat' },
+  { text: 'Only jets below 10,000 ft', route: 'filter' },
 ];
 
 /** The starter offered first while the user has a plane selected. */
@@ -134,8 +149,10 @@ export const SELECTED_PROMPT = "What's the plane I selected?";
  * The starters to show: the selected-plane question first while a plane is
  * selected (it has nothing to answer otherwise), then {@link STARTER_PROMPTS}.
  */
-export function starterPrompts(selected: boolean): readonly string[] {
-  return selected ? [SELECTED_PROMPT, ...STARTER_PROMPTS] : STARTER_PROMPTS;
+export function starterPrompts(selected: boolean): readonly Starter[] {
+  return selected
+    ? [{ text: SELECTED_PROMPT, route: 'chat' }, ...STARTER_PROMPTS]
+    : STARTER_PROMPTS;
 }
 
 /** The atc example's source on GitHub, linked from the chat header. */

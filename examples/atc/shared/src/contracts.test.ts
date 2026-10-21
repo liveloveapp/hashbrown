@@ -13,12 +13,15 @@ test('the selected-plane starter appears only while a plane is selected', () => 
   const selected = starterPrompts(true);
 
   expect(none).toEqual(STARTER_PROMPTS);
-  expect(none).not.toContain(SELECTED_PROMPT);
-  expect(selected).toEqual([SELECTED_PROMPT, ...STARTER_PROMPTS]);
+  expect(none.map((starter) => starter.text)).not.toContain(SELECTED_PROMPT);
+  expect(selected).toEqual([
+    { text: SELECTED_PROMPT, route: 'chat' },
+    ...STARTER_PROMPTS,
+  ]);
 });
 
 test('the starters lead with the nearby-traffic flow', () => {
-  expect(STARTER_PROMPTS[0]).toBe("What's flying near Bend?");
+  expect(STARTER_PROMPTS[0].text).toBe("What's flying near Bend?");
 });
 
 test('the prompt only promises interactions the app has, in touch-friendly words', () => {
@@ -37,7 +40,9 @@ test('AirportCard takes a whole airport code, never a streaming one', () => {
 test('the prompt covers the airport tools, and a starter shows Redmond', () => {
   expect(SYSTEM_PROMPT).toContain('showAirport');
   expect(SYSTEM_PROMPT).toContain('setLayers');
-  expect(STARTER_PROMPTS).toContain('Show me Redmond airport.');
+  expect(STARTER_PROMPTS.map((starter) => starter.text)).toContain(
+    'Show me Redmond airport.',
+  );
 });
 
 test('the prompt covers the airspace tools, and a starter asks about Portland', () => {
@@ -50,7 +55,7 @@ test('the prompt covers the airspace tools, and a starter asks about Portland', 
   expect(SYSTEM_PROMPT).toContain(
     '- Airspace answers come only from tool results. Use checkedAltitudeFt, the altitude the airspace check used, only to explain why an aircraft near a floor or ceiling is in or out; otherwise don\'t mention it. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Airspace whose partTime is true (on a shelf or an aircraft row) is in effect only during hours set by NOTAM, which the tools don\'t know: whenever a result has partTime true, end with one short sentence saying the airspace is part-time and may not be active now. Never say that when partTime is false. Never write a field name such as partTime or checkedAltitudeFt in the answer.',
   );
-  expect(STARTER_PROMPTS.at(-1)).toBe(
+  expect(STARTER_PROMPTS.map((starter) => starter.text)).toContain(
     'Which planes are inside the Portland Class C?',
   );
 });
@@ -98,4 +103,12 @@ test('the filter prompt tells the model how to refine the current filter', () =>
   expect(FILTER_SYSTEM_PROMPT).toContain('null');
   expect(FILTER_SYSTEM_PROMPT).toContain('ICAO');
   expect(FILTER_SYSTEM_PROMPT).toContain('Output only the filter');
+});
+
+test('the starters include a question for the chat and a filter for the map', () => {
+  const routes = new Set(STARTER_PROMPTS.map((starter) => starter.route));
+  const filter = STARTER_PROMPTS.find((starter) => starter.route === 'filter');
+
+  expect(routes).toEqual(new Set(['chat', 'filter']));
+  expect(filter?.text).toBe('Only jets below 10,000 ft');
 });

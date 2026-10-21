@@ -45,7 +45,10 @@ import { ATC_STORE } from './store';
       >
         <atc-sheet-handle [expanded]="expanded()" (move)="move($event)" />
         <atc-panel-header />
-        <atc-assistant (sent)="move({ type: 'send' })" />
+        <atc-assistant
+          (filter)="mapFilter.apply($event)"
+          (sent)="move({ type: 'send' })"
+        />
       </section>
       <section class="atc-panel atc-map-panel" aria-label="Map">
         <atc-airspace-map

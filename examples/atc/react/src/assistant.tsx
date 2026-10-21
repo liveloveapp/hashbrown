@@ -4,6 +4,7 @@ import {
   arrivalsBoardContract,
   createBrowserAtcTools,
   flightCardContract,
+  type Starter,
   transcriptItems,
 } from '@atc/shared';
 import {
@@ -64,10 +65,18 @@ const components = [
 ];
 
 /**
- * The chat panel: components, browser-side tools and the streaming answer.
- * `onSent` is called when the user sends a message.
+ * The chat panel: components, browser-side tools and the streaming answer,
+ * with the one composer that routes what is typed. `onFilter` applies a
+ * natural-language map filter; `onSent` is called when the user sends
+ * anything (to the chat, to the filter, or a clear).
  */
-export function Assistant({ onSent }: { onSent?: () => void }) {
+export function Assistant({
+  onFilter,
+  onSent,
+}: {
+  onFilter: (request: string) => void;
+  onSent?: () => void;
+}) {
   const store = useAtcStore();
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
@@ -107,6 +116,19 @@ export function Assistant({ onSent }: { onSent?: () => void }) {
     chat.sendMessage({ role: 'user', content });
     onSent?.();
   };
+  // 4. Decide: route what the user typed. The composer asks a Jev decision
+  //    (react/src/router.ts) and calls one of these; the filter route adds
+  //    nothing to the transcript.
+  const filter = (request: string) => {
+    onFilter(request);
+    onSent?.();
+  };
+  const clear = () => {
+    store.clearMapFilter();
+    onSent?.();
+  };
+  const pick = (starter: Starter) =>
+    starter.route === 'filter' ? filter(starter.text) : send(starter.text);
   // Retries the last answer, or resends the first message when it never got one.
   const retry = () =>
     chat.messages.at(-1)?.role === 'assistant'
@@ -117,7 +139,7 @@ export function Assistant({ onSent }: { onSent?: () => void }) {
     <div className="atc-chat">
       <div className="atc-chat-body" {...scroller}>
         {chat.messages.length === 0 && !chat.error ? (
-          <EmptyState onPick={send} />
+          <EmptyState onPick={pick} />
         ) : null}
         <Transcript
           items={transcriptItems(chat.messages, chat.isLoading)}
@@ -132,7 +154,12 @@ export function Assistant({ onSent }: { onSent?: () => void }) {
           </div>
         ) : null}
       </div>
-      <Composer busy={chat.isLoading} onSend={send} />
+      <Composer
+        busy={chat.isLoading}
+        onChat={send}
+        onFilter={filter}
+        onClear={clear}
+      />
     </div>
   );
 }

@@ -94,3 +94,19 @@ test('cardGroups flatten in the pinned order with Markdown non-selectable', () =
   expect(positions.every((p) => p >= 0)).toBe(true);
   expect([...positions].sort((a, b) => a - b)).toEqual(positions);
 });
+
+test('a filter intent at exactly 0.7 confidence goes to the filter', () => {
+  const boundary = decision('filter', 0.7);
+
+  const action = routeAction(boundary);
+  const badge = routeBadge(boundary, false);
+
+  expect(action).toEqual({ kind: 'filter' });
+  expect(badge).toEqual({ label: '→ filter 0.70', tone: 'filter' });
+});
+
+test('routeBadge shows a failed decision as a plain chat route', () => {
+  const failed = routeBadge(null, false, true);
+
+  expect(failed).toEqual({ label: '→ chat', tone: 'chat' });
+});

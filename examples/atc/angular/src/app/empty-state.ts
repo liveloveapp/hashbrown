@@ -1,4 +1,4 @@
-import { starterPrompts } from '@atc/shared';
+import { type Starter, starterPrompts } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -10,6 +10,8 @@ import { injectAtcState } from './store';
 /**
  * What the chat shows before the first message: a question and starter
  * pills, led by "What's the plane I selected?" while a plane is selected.
+ * Each pill is tagged as a question (chat) or a filter (map), and `pick`
+ * emits the starter with its route: starters skip the router.
  */
 @Component({
   selector: 'atc-empty-state',
@@ -20,15 +22,20 @@ import { injectAtcState } from './store';
       Ask about the planes over the Pacific Northwest.
     </p>
     <div class="atc-starters">
-      @for (prompt of starters(); track prompt) {
-        <button type="button" (click)="pick.emit(prompt)">{{ prompt }}</button>
+      @for (starter of starters(); track starter.text) {
+        <button type="button" (click)="pick.emit(starter)">
+          {{ starter.text }}
+          <span class="atc-starter-kind">{{
+            starter.route === 'filter' ? 'filter' : 'question'
+          }}</span>
+        </button>
       }
     </div>
   `,
 })
 export class EmptyState {
-  /** Emits the starter prompt the user picked. */
-  readonly pick = output<string>();
+  /** Emits the starter the user picked, with its route. */
+  readonly pick = output<Starter>();
   private readonly state = injectAtcState();
   protected readonly starters = computed(() =>
     starterPrompts(this.state().selectedHex !== null),

@@ -4,6 +4,7 @@ import {
   arrivalsBoardContract,
   createBrowserAtcTools,
   flightCardContract,
+  type Starter,
   transcriptItems,
 } from '@atc/shared';
 import {
@@ -71,7 +72,10 @@ const components = [
   }),
 ];
 
-/** The chat panel: components, browser-side tools and the streaming answer. */
+/**
+ * The chat panel: components, browser-side tools and the streaming answer,
+ * with the one composer that routes what is typed.
+ */
 @Component({
   selector: 'atc-assistant',
   imports: [AutoScroll, Composer, EmptyState, Transcript],
@@ -80,7 +84,7 @@ const components = [
   template: `
     <div class="atc-chat-body" atcAutoScroll>
       @if (messages().length === 0 && !chat.error()) {
-        <atc-empty-state (pick)="send($event)" />
+        <atc-empty-state (pick)="pick($event)" />
       }
       <atc-transcript [items]="items()" [busy]="chat.isLoading()" />
       @if (chat.error()) {
@@ -90,16 +94,24 @@ const components = [
         </div>
       }
     </div>
-    <atc-composer [busy]="chat.isLoading()" (send)="send($event)" />
+    <atc-composer
+      [busy]="chat.isLoading()"
+      (chat)="send($event)"
+      (filter)="applyFilter($event)"
+      (clear)="clearFilter()"
+    />
   `,
 })
 export class Assistant {
-  /** Emits when the user sends a message. */
+  /** Emits when the user sends anything (to the chat, to the filter, or a clear). */
   readonly sent = output();
+  /** Emits the request the user routed to the natural-language map filter. */
+  readonly filter = output<string>();
+  private readonly store = inject(ATC_STORE);
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
   //    already on the map; no plane list goes to the server.
-  private readonly atcTools = createBrowserAtcTools(inject(ATC_STORE));
+  private readonly atcTools = createBrowserAtcTools(this.store);
   private readonly tools = [
     createTool(this.atcTools.findAircraft),
     createTool(this.atcTools.getSelectedAircraft),
@@ -141,6 +153,27 @@ export class Assistant {
   protected send(content: string): void {
     this.chat.sendMessage({ role: 'user', content });
     this.sent.emit();
+  }
+
+  // 4. Decide: route what the user typed. The composer asks a Jev decision
+  //    (angular/src/app/router.ts) and emits one of these; the filter route
+  //    adds nothing to the transcript.
+  protected applyFilter(request: string): void {
+    this.filter.emit(request);
+    this.sent.emit();
+  }
+
+  protected clearFilter(): void {
+    this.store.clearMapFilter();
+    this.sent.emit();
+  }
+
+  protected pick(starter: Starter): void {
+    if (starter.route === 'filter') {
+      this.applyFilter(starter.text);
+    } else {
+      this.send(starter.text);
+    }
   }
 
   /** Retries the last answer, or resends the first message when it never got one. */

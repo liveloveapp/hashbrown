@@ -1,4 +1,4 @@
-import type { Transport, TransportRequest } from '@hashbrownai/core';
+import type { Decision, Transport, TransportRequest } from '@hashbrownai/core';
 
 /** One AG-UI event, as a transport streams it. */
 type AGUIEvent =
@@ -193,4 +193,60 @@ export function fakeFilterTransport(): FakeFilterTransport {
       } as AGUIEvent),
     finish: () => emit(null),
   };
+}
+
+/** What a scripted router answers for some text. */
+export interface FakeRouteAnswer {
+  readonly intent: 'filter' | 'chat' | 'other';
+  readonly confidence: number;
+  /** The probability of the `clear` answer; defaults to 0.05. */
+  readonly clear?: number;
+}
+
+/** A scripted `/api/decide?kind=route` transport; see {@link fakeDecisionTransport}. */
+export interface FakeDecisionTransport {
+  /** Pass as the decision transport. */
+  readonly transport: Decision.Transport;
+  /** The text of every request the app sent, oldest first. */
+  readonly requests: string[];
+}
+
+/**
+ * A fake router. `answer` gets the text of each request and returns the
+ * decision (or a promise of one, so a test can hold it back); `null` fails
+ * the request the way a 503 without a key does.
+ */
+export function fakeDecisionTransport(
+  answer: (
+    text: string,
+  ) => FakeRouteAnswer | null | Promise<FakeRouteAnswer | null>,
+): FakeDecisionTransport {
+  const requests: string[] = [];
+  const transport: Decision.Transport = async (request) => {
+    const state = request.state;
+    const text =
+      typeof state === 'string'
+        ? state
+        : String((state as { input?: unknown }).input);
+    requests.push(text);
+    const decided = await answer(text);
+    if (decided === null) {
+      throw new Error('Decision request failed with status 503');
+    }
+
+    return {
+      kind: 'hashbrown.decision',
+      version: 1,
+      value: { intent: decided.intent, clear: (decided.clear ?? 0.05) >= 0.5 },
+      meta: {
+        intent: {
+          confidence: decided.confidence,
+          probabilities: { [decided.intent]: decided.confidence },
+        },
+        clear: { probability: decided.clear ?? 0.05 },
+      },
+    };
+  };
+
+  return { transport, requests };
 }

@@ -12,12 +12,12 @@ const { selected, highest, fastest, arrivals, nearby, portland } = scenario;
 
 /** The app's starter questions by what they ask, plus the typed questions the suite scripts. */
 export const PROMPTS = {
-  nearBend: STARTER_PROMPTS[0],
-  seattleArrivals: STARTER_PROMPTS[1],
-  highestAndFastest: STARTER_PROMPTS[2],
-  followFastest: STARTER_PROMPTS[3],
-  redmondAirport: STARTER_PROMPTS[4],
-  portlandClassC: STARTER_PROMPTS[5],
+  nearBend: STARTER_PROMPTS[0].text,
+  seattleArrivals: STARTER_PROMPTS[1].text,
+  highestAndFastest: STARTER_PROMPTS[2].text,
+  followFastest: STARTER_PROMPTS[3].text,
+  redmondAirport: STARTER_PROMPTS[4].text,
+  portlandClassC: STARTER_PROMPTS[5].text,
   selected: SELECTED_PROMPT,
   /** Outlines KBDN with showArea before listing the traffic. */
   nearKbdn: "What's flying near KBDN?",
