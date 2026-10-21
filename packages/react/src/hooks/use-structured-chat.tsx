@@ -304,6 +304,8 @@ export function useStructuredChat<
     return getRuntime().start();
   }, []);
 
+  useEffect(() => config.collector.attach(getRuntime()), []);
+
   useEffect(() => {
     const threadChanged =
       previousThreadOption.current.present !== hasThreadId ||

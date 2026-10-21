@@ -5,7 +5,12 @@ import { validateResumeOptions } from './transport/interrupt-validation';
  * Core entry point for the Hashbrown framework.
  * Provides state management and messaging utilities for integrating LLM-based chat interactions into frontend applications.
  */
-import { devActions, internalActions } from './actions';
+import { EventType } from '@ag-ui/core';
+import { apiActions, devActions, internalActions } from './actions';
+import {
+  classifyTransport,
+  registerRuntimeBinder,
+} from './growth/runtime-binding';
 import effects from './effects';
 import { Chat } from './models';
 import {
@@ -653,6 +658,54 @@ export function createChatRuntime(init: {
     ),
   };
   runtimeMessagePreflights.set(runtime.resume, assertMessageSchedulingAllowed);
+  registerRuntimeBinder(runtime.resume, (observer) => {
+    observer.sessionStarted(() =>
+      classifyTransport(state.read(selectTransport)),
+    );
+
+    let runStartedAt: number | undefined;
+    let contentSeen = false;
+    let streamReported = false;
+    const startedToolTurns = new Set<string>();
+    let toolReported = false;
+
+    const unsubscribers = [
+      state.when(apiActions.generateMessageStart, () => {
+        runStartedAt = Date.now();
+        contentSeen = false;
+      }),
+      state.when(apiActions.generateMessageEvent, (action) => {
+        const event = action.payload;
+        if (
+          event.type === EventType.TEXT_MESSAGE_CONTENT ||
+          event.type === EventType.TEXT_MESSAGE_CHUNK
+        ) {
+          contentSeen = true;
+          return;
+        }
+        if (event.type !== EventType.RUN_FINISHED || streamReported) return;
+        const outcome = (event as { outcome?: { type?: unknown } }).outcome;
+        if (outcome?.type === 'interrupt' || !contentSeen) return;
+        streamReported = true;
+        observer.streamCompleted(
+          runStartedAt === undefined ? undefined : Date.now() - runStartedAt,
+        );
+      }),
+      state.when(internalActions.toolTurnStarted, (action) => {
+        startedToolTurns.add(action.payload.toolTurnId);
+      }),
+      state.when(internalActions.toolTurnSettled, (action) => {
+        const started = startedToolTurns.delete(action.payload.toolTurnId);
+        if (!started || toolReported) return;
+        toolReported = true;
+        observer.toolExecuted();
+      }),
+    ];
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  });
   runtimeRequestSchemaSetters.set(runtime.resume, (schema) => {
     state.dispatch(
       devActions.updateOptions({ ɵrequestResponseSchema: schema ?? null }),

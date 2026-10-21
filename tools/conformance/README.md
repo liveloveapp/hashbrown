@@ -16,6 +16,8 @@ independent AG-UI endpoint started by the test.
 - `harness`: the shared Playwright driver, aimock worker, AG-UI helpers and
   event gate. Its own unit tests are the `*.spec.ts` files beside it.
 - `specs`: the browser conformance specs. Each one runs once per framework.
+  `collection.spec.ts` checks that the production hosts send no growth
+  collection requests and keep no `hashbrown.growth` storage.
 - `provider`: native-provider checks. `native-ui.spec.ts` drives both hosts
   through the real OpenAI adapter and SSE transport with an aimock upstream.
   `routes.spec.ts` covers the Node and Worker route fixtures under Jest. A

@@ -69,6 +69,11 @@ export function Footer({ sdk }: { sdk?: Sdk } = {}) {
                   Blog
                 </Link>
               </li>
+              <li>
+                <Link href="/privacy" className="underline">
+                  Privacy
+                </Link>
+              </li>
             </ul>
           </div>
           <div className={styles.team}>
