@@ -4,6 +4,18 @@
   "sourceRoot": "tools/growth",
   "projectType": "library",
   "tags": [],
+  "implicitDependencies": [
+    "core",
+    "react",
+    "angular",
+    "openai",
+    "anthropic",
+    "azure",
+    "bedrock",
+    "google",
+    "ollama",
+    "typesafe"
+  ],
   "targets": {
     "lint": {
       "executor": "nx:run-commands",
@@ -60,6 +72,30 @@
       "options": {
         "command": "node --import tsx tools/growth/scripts/growth-observability.mts",
         "forwardAllArgs": true
+      }
+    },
+    "install-pack-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": [
+            "core",
+            "react",
+            "angular",
+            "openai",
+            "anthropic",
+            "azure",
+            "bedrock",
+            "google",
+            "ollama",
+            "typesafe"
+          ],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "node tools/growth/install/verify-pack.mjs"
       }
     }
   }
