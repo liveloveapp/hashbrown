@@ -104,3 +104,23 @@ test('dependency-checks reads the compile target, not the assemble step', () => 
 
   expect(missing).toEqual([]);
 });
+
+test('core keeps null token modules in the repo so any resolver can load it', () => {
+  const files = {
+    'development-install.mjs': 'export const installationToken = null;\n',
+    'development-install.null.mjs': 'export const installationToken = null;\n',
+    'development-install.cjs':
+      "'use strict';\nexports.installationToken = null;\n",
+    'development-install.null.cjs':
+      "'use strict';\nexports.installationToken = null;\n",
+  };
+
+  const contents = Object.fromEntries(
+    Object.keys(files).map((name) => [
+      name,
+      readFileSync(resolve(root, 'packages/core', name), 'utf8'),
+    ]),
+  );
+
+  expect(contents).toEqual(files);
+});
