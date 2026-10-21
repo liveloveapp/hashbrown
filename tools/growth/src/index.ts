@@ -17,3 +17,4 @@ export * from './lib/observability/ingest';
 export * from './lib/observability/store';
 export * from './lib/observability/projection';
 export * from './lib/observability/replay';
+export * from './lib/observability/redaction';

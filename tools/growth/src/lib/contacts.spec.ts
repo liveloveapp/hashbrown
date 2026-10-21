@@ -477,6 +477,82 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
   expect(harness.calls[0]?.sql).toContain('pg_advisory_xact_lock(');
 });
 
+test('deleteContact runs the observation redaction inside its transaction', async () => {
+  const deletedRow = contactRow({
+    deleted_at: occurredAt,
+    latest_hard_stop_kind: 'deletion',
+    latest_hard_stop_at: occurredAt,
+  });
+  const storedRow = contactRow();
+  const harness = executorWith({
+    'lock-contact': () => ({ rows: [storedRow] }),
+    'insert-activity': () => ({ rows: [{ event_key: 'founder:delete:1' }] }),
+    'observation-read-contact-identity': () => ({
+      rows: [
+        {
+          email_normalized: 'person@example.com',
+          email_lookup_hmac: storedRow['email_lookup_hmac'],
+          email_hmac_key_version: 2,
+        },
+      ],
+    }),
+    'observation-read-contact-aliases': emptyRows,
+    'observation-select-redaction-targets': emptyRows,
+    'observation-insert-fence': emptyRows,
+    'observation-lock-redaction-work': emptyRows,
+    'observation-delete-identities': emptyRows,
+    'observation-redact-observations': emptyRows,
+    'observation-delete-redacted-facts': emptyRows,
+    'observation-reset-redacted-work': emptyRows,
+    'cancel-and-scrub-jobs': emptyRows,
+    'delete-artifacts': emptyRows,
+    'unlink-projects': emptyRows,
+    'delete-private-activity': emptyRows,
+    'scrub-retained-activity': emptyRows,
+    'scrub-contact': () => ({ rows: [deletedRow] }),
+    'read-control-state': () => ({ rows: [deletedRow] }),
+  });
+
+  const result = await deleteContact(harness.executor, deleteInput);
+
+  expect(result.deleted).toBe(true);
+  expect(harness.calls.map(({ marker }) => marker)).toEqual([
+    'privacy-lock',
+    'lock-contact',
+    'insert-activity',
+    'privacy-lock',
+    'observation-read-contact-identity',
+    'observation-read-contact-aliases',
+    'observation-select-redaction-targets',
+    'observation-insert-fence',
+    'observation-lock-redaction-work',
+    'observation-delete-identities',
+    'observation-redact-observations',
+    'observation-delete-redacted-facts',
+    'observation-reset-redacted-work',
+    'cancel-and-scrub-jobs',
+    'delete-artifacts',
+    'unlink-projects',
+    'delete-private-activity',
+    'scrub-retained-activity',
+    'scrub-contact',
+    'read-control-state',
+  ]);
+  expect(harness.calls[4]?.params).toEqual([contactId]);
+  expect(harness.calls[6]?.params).toEqual([
+    null,
+    'person@example.com',
+    [2],
+    [storedRow['email_lookup_hmac']],
+  ]);
+  expect(harness.calls[7]?.params).toEqual([
+    storedRow['email_lookup_hmac'],
+    2,
+    occurredAt,
+  ]);
+  expect(harness.calls[12]?.params).toEqual([[], occurredAt]);
+});
+
 test('deleteContact is inert for an already deleted contact and rejects an altered replay', async () => {
   const deletedRow = contactRow({ deleted_at: occurredAt });
   const stored = {
