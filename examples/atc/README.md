@@ -251,15 +251,17 @@ there). The React app is built and tested in this repository but not hosted;
 - `OPENAI_API_KEY`: a dedicated OpenAI project key with a hard monthly budget.
 - `TYPESAFE_API_KEY`: set on the `hashbrown-atc` Vercel project. Optional: without it
   `/api/decide` answers 503 and atc routes everything to chat with all cards.
-- A Vercel Firewall rate-limit rule on `POST /api/run`. `hashbrown-atc` allows 40 requests
-  per minute per IP (fixed window, 429 above it). One question makes 3 to 5 requests, one
-  per tool round trip, so that is about ten questions a minute.
-- The same rule on `POST /api/filter` and `POST /api/decide`, which are not configured
-  yet. Configure 40 requests per minute per IP on `/api/filter`: a filter is one request,
-  capped at 512 output tokens. Configure 300 requests per minute per IP on `/api/decide`:
-  the router asks once per typing pause (150 ms, for text of three characters or more) and
-  the cards decision once per chat turn, so a fast typist makes far more decisions than
-  questions. A decision is one small TypeSafe call, capped at 4,000 characters of request.
+- One Vercel Firewall rate-limit rule on `POST /api/run` and `POST /api/filter`:
+  60 requests per minute per IP, shared between the two (fixed window, 429 above it). It
+  is one rule because the Hobby plan allows one rate-limit rule per project. One question
+  makes 3 to 5 `/api/run` requests, one per tool round trip, and a filter is one
+  `/api/filter` request capped at 512 output tokens, so the shared budget is about ten
+  questions a minute.
+- `/api/decide` has no firewall rule. It caps itself in code at 300 requests per minute per
+  IP, per server instance (a soft cap: instances count separately). The router asks once
+  per typing pause (150 ms, for text of three characters or more) and the cards decision
+  once per chat turn, so a fast typist makes far more decisions than questions. A decision
+  is one small TypeSafe call, capped at 4,000 characters of request.
 - A look at tile traffic: past light use, point `TILE_LAYER` at a commercial tile provider
   (see "Data and attribution").
 
