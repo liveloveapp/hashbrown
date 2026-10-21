@@ -201,6 +201,49 @@ test('maps tool errors without wrapping valid JSON results', () => {
   });
 });
 
+test('merges parallel tool results and a following user message into one user turn', () => {
+  const input = createInput();
+  input.messages = [
+    { id: 'user-bedrock', role: 'user', content: 'Look up two things.' },
+    {
+      id: 'assistant-bedrock',
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'call-1',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{"query":"a"}' },
+        },
+        {
+          id: 'call-2',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{"query":"b"}' },
+        },
+      ],
+    },
+    { id: 'tool-1', role: 'tool', toolCallId: 'call-1', content: '"A"' },
+    { id: 'tool-2', role: 'tool', toolCallId: 'call-2', content: '"B"' },
+    { id: 'user-2', role: 'user', content: 'Now compare them.' },
+  ];
+
+  const result = createBedrockRequestOptions(input, 'bedrock-model');
+
+  expect(result.messages?.map((message) => message.role)).toEqual([
+    'user',
+    'assistant',
+    'user',
+  ]);
+  expect(result.messages?.[2]).toEqual({
+    role: 'user',
+    content: [
+      { toolResult: { toolUseId: 'call-1', content: [{ text: 'A' }] } },
+      { toolResult: { toolUseId: 'call-2', content: [{ text: 'B' }] } },
+      { text: 'Now compare them.' },
+    ],
+  });
+});
+
 test('does not mutate AG-UI input while constructing a Bedrock request', () => {
   const input = createInput();
   const before = structuredClone(input);

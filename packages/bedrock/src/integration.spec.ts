@@ -505,6 +505,56 @@ test(
 );
 
 test(
+  'Bedrock continues after parallel tool calls in one user turn',
+  async () => {
+    const first = baseInput(
+      "Call the lookup tool twice in parallel, once for the code word 'alpha' and once for 'beta', then answer in one short sentence.",
+    );
+    first.tools = [LOOKUP_TOOL];
+    let continuation: ConverseStreamCommandInput['messages'] = [];
+
+    const { firstEvents, second, secondEvents } = await withRecording(
+      async (run) => {
+        const firstEvents = await run(first);
+        const second: BedrockHashbrownRunAgentInput = {
+          ...first,
+          runId: 'run-bedrock-2',
+          messages: historyFromEvents(
+            first.messages,
+            first.runId,
+            firstEvents,
+            lookupResult(),
+          ),
+        };
+        const secondEvents = await run(second, {
+          transformRequestOptions: (options) => {
+            continuation = options.messages;
+            return options;
+          },
+        });
+        return { firstEvents, second, secondEvents };
+      },
+    );
+    const toolCallIds = firstEvents.flatMap((event) =>
+      event.type === EventType.TOOL_CALL_START ? [event.toolCallId] : [],
+    );
+
+    expectToolRound(firstEvents, first, 'lookup');
+    expect(toolCallIds.length).toBeGreaterThanOrEqual(2);
+    expect(continuation?.map((message) => message.role)).toEqual([
+      'user',
+      'assistant',
+      'user',
+    ]);
+    expect(
+      continuation?.[2]?.content?.map((block) => block.toolResult?.toolUseId),
+    ).toEqual(toolCallIds);
+    expectCanonicalTextRun(secondEvents, second);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
   'Bedrock maps the Hashbrown response schema to native structured output',
   async () => {
     const input = baseInput('Describe a hash brown as structured output.');
