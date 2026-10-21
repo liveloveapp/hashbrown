@@ -185,6 +185,10 @@ function findCanonicalAssistantIdForEvent(
       if (message.role === 'assistant' && messageId && pending.has(messageId)) {
         return message.id;
       }
+      if (message.role === 'activity') {
+        // An activity never separates reasoning from its assistant message.
+        continue;
+      }
       pending.clear();
     }
     return undefined;

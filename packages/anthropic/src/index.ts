@@ -3,6 +3,12 @@ import { text } from './stream/text.fn';
 import type { AnthropicTextStreamOptions } from './stream/types';
 
 export type {
+  ActivityCallback,
+  ActivityContext,
+  ActivityHandle,
+  ActivityWriter,
+} from '@hashbrownai/core';
+export type {
   AnthropicHashbrownRunAgentInput,
   AnthropicTextStreamOptions,
 } from './stream/types';

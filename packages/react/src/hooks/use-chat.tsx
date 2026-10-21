@@ -29,7 +29,7 @@ export interface UseChatOptions<Tools extends Chat.AnyTool, State = unknown> {
    * The initial messages for the chat.
    * default: 1.0
    */
-  messages?: Chat.Message<string, Tools>[];
+  messages?: Chat.MessageInput<string, Tools>[];
 
   /**
    * The initial shared agent state.
@@ -106,13 +106,13 @@ export interface UseChatResult<Tools extends Chat.AnyTool, State = unknown> {
    * Function to update the chat messages.
    * @param messages - The new array of chat messages.
    */
-  setMessages: (messages: Chat.Message<string, Tools>[]) => void;
+  setMessages: (messages: Chat.MessageInput<string, Tools>[]) => void;
 
   /**
    * Function to send a new chat message.
    * @param message - The chat message to send.
    */
-  sendMessage: (message: Chat.Message<string, Tools>) => void;
+  sendMessage: (message: Chat.MessageInput<string, Tools>) => void;
 
   /**
    * Function to stop the chat.
@@ -333,13 +333,19 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
   const lastAssistantMessage = useHashbrownSignal<
     Chat.AssistantMessage<string, Tools> | undefined
   >(getRuntime().lastAssistantMessage);
-  const sendMessage = useCallback((message: Chat.Message<string, Tools>) => {
-    getRuntime().sendMessage(message);
-  }, []);
+  const sendMessage = useCallback(
+    (message: Chat.MessageInput<string, Tools>) => {
+      getRuntime().sendMessage(message);
+    },
+    [],
+  );
 
-  const setMessages = useCallback((messages: Chat.Message<string, Tools>[]) => {
-    getRuntime().setMessages(messages);
-  }, []);
+  const setMessages = useCallback(
+    (messages: Chat.MessageInput<string, Tools>[]) => {
+      getRuntime().setMessages(messages);
+    },
+    [],
+  );
 
   const setState = useCallback((state: State) => {
     getRuntime().setState(state);
@@ -347,10 +353,15 @@ export function useChat<Tools extends Chat.AnyTool, State = unknown>(
 
   const reload = useCallback(() => {
     ɵassertRuntimeMessageSchedulingAllowed(getRuntime());
-    const lastMessage = internalMessages[internalMessages.length - 1];
+    // Activities never count as the last message: they trail the turn that
+    // produced them, so reload drops them along with that turn's answer.
+    const lastIndex = internalMessages.findLastIndex(
+      (message) => message.role !== 'activity',
+    );
+    const lastMessage = internalMessages[lastIndex];
 
     if (lastMessage?.role === 'assistant') {
-      getRuntime().setMessages(internalMessages.slice(0, -1));
+      getRuntime().setMessages(internalMessages.slice(0, lastIndex));
 
       return true;
     }

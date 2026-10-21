@@ -55,14 +55,15 @@ HashbrownAzure.stream.text({
 
 ### API Reference
 
-| Name                      | Type                                    | Description                                                                                      |
-| ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `clientOptions`           | `AzureClientOptions`                    | Official Azure OpenAI SDK configuration, passed through unchanged.                               |
-| `model`                   | `string`                                | Azure deployment name, sent as the Responses request `model`.                                    |
-| `input`                   | `AzureHashbrownRunAgentInput`           | AG-UI run input, including messages and tools.                                                   |
-| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Azure OpenAI request when the HTTP client disconnects.                  |
-| `reasoning`               | `false \| { effort?, summary? }`        | _(Optional)_ Controls the `reasoning` request parameter. See [Reasoning](#reasoning).            |
-| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Responses request (`ResponseCreateParamsStreaming`). |
+| Name                      | Type                                    | Description                                                                                                |
+| ------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `clientOptions`           | `AzureClientOptions`                    | Official Azure OpenAI SDK configuration, passed through unchanged.                                         |
+| `model`                   | `string`                                | Azure deployment name, sent as the Responses request `model`.                                              |
+| `input`                   | `AzureHashbrownRunAgentInput`           | AG-UI run input, including messages and tools.                                                             |
+| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Azure OpenAI request when the HTTP client disconnects.                            |
+| `activities`              | `ActivityCallback`                      | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities). |
+| `reasoning`               | `false \| { effort?, summary? }`        | _(Optional)_ Controls the `reasoning` request parameter. See [Reasoning](#reasoning).                      |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Responses request (`ResponseCreateParamsStreaming`).           |
 
 The adapter maps system and developer instructions, message history, tool definitions, tool results, and native structured output. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
@@ -317,7 +318,46 @@ export default app;
 
 </hb-backend-code-example>
 
-### Transform Request Options
+### Sending Activities
+
+Pass `activities` to send AG-UI activities alongside the model's output. Activities are display-only progress, such as a plan or a progress report, and the model never sees them. See [Activities](/docs/react/concept/activities) for how the client renders them.
+
+```ts
+import { HashbrownAzure } from '@hashbrownai/azure';
+
+const stream = HashbrownAzure.stream.text({
+  clientOptions: {
+    apiKey: process.env.AZURE_API_KEY!,
+    endpoint: process.env.AZURE_ENDPOINT!,
+    apiVersion: '2025-04-01-preview',
+  },
+  model: process.env.AZURE_MODEL!,
+  input,
+  signal,
+  activities: async ({ activity, model }) => {
+    const plan = activity.snapshot(`plan-${input.runId}`, 'plan', {
+      steps: ['Read the question', 'Answer'],
+      done: 0,
+    });
+
+    await model;
+
+    plan.patch([{ op: 'replace', path: '/done', value: 2 }]);
+  },
+});
+```
+
+The callback receives an `activity` writer, a `model` promise, and the run's `signal`:
+
+- `activity.snapshot(id, activityType, content)` sends an `ACTIVITY_SNAPSHOT` and returns a handle. The handle's `patch(operations)` sends an `ACTIVITY_DELTA` with RFC 6902 JSON Patch operations, and `replace(content)` sends a new snapshot.
+- Activity ids must be unique within the thread. Reusing an id from an earlier turn updates that turn's activity in place, so the example builds the id from `input.runId` to give each run its own plan.
+- `model` resolves when the model stream ends, before the run finishes, and rejects if the model call fails.
+- Activity events and model events are sent in the order they happen. The callback starts after `RUN_STARTED`, and the terminal event waits until the callback settles. Model text streams as it arrives and is never held back.
+- If the callback throws while the model is streaming, Hashbrown aborts the model and ends the run with one `RUN_ERROR`. If it throws after the model has finished, `RUN_ERROR` replaces `RUN_FINISHED`. If the model fails too, the model's error wins.
+- When the client disconnects, `signal` aborts. No terminal event is sent, and writes become no-ops.
+- A write after the run has closed throws, as does a second snapshot that reuses an id with a different `activityType`.
+
+## Transform Request Options
 
 `transformRequestOptions` receives the final Responses API request (`ResponseCreateParamsStreaming`) after AG-UI input has been mapped. Use it for server-owned provider settings.
 
