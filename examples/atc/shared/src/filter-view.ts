@@ -1,5 +1,5 @@
 import { airportDirectory } from './directory';
-import type { MapFilter } from './find-aircraft';
+import { areaRadiusNm, type MapFilter } from './find-aircraft';
 import { isRecord } from './json';
 import { type AircraftKind, KINDS } from './kinds';
 import { lookupPlace } from './places';
@@ -69,6 +69,11 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+/** True for a string with something in it, the only usable place code. */
+function isPlaceCode(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
 function isKind(value: unknown): value is AircraftKind {
   return (
     typeof value === 'string' && (KINDS as readonly string[]).includes(value)
@@ -87,7 +92,10 @@ function formed(key: FilterKey, value: unknown): unknown {
     case 'airline':
     case 'typeCode':
     case 'approaching':
-      return typeof value === 'string' ? value : undefined;
+      return typeof value === 'string' &&
+        (key !== 'approaching' || value.trim() !== '')
+        ? value
+        : undefined;
     case 'kind':
       return isKind(value) ? value : undefined;
     case 'minAltitudeFt':
@@ -95,12 +103,12 @@ function formed(key: FilterKey, value: unknown): unknown {
       return isFiniteNumber(value) ? value : undefined;
     case 'near':
       return isRecord(value) &&
-        typeof value['airport'] === 'string' &&
+        isPlaceCode(value['airport']) &&
         isFiniteNumber(value['radiusNm'])
         ? { airport: value['airport'], radiusNm: value['radiusNm'] }
         : undefined;
     case 'inAirspace': {
-      if (!isRecord(value) || typeof value['airport'] !== 'string') {
+      if (!isRecord(value) || !isPlaceCode(value['airport'])) {
         return undefined;
       }
       const cls = value['class'];
@@ -221,7 +229,7 @@ function labelOf(key: FilterKey, value: unknown): string | null {
       const radius = near['radiusNm'];
 
       return isFiniteNumber(radius)
-        ? `Within ${Math.round(radius)} nm of ${code}`
+        ? `Within ${areaRadiusNm(radius)} nm of ${code}`
         : `Near ${code}`;
     }
     case 'inAirspace': {
@@ -323,4 +331,22 @@ export function filterSummary(filter: MapFilter): string {
     .join(' ');
 
   return [subject, ...clauses].join(' ');
+}
+
+/**
+ * The chips for a parse result, with its pending (still arriving) fields
+ * shown as streaming chips and its complete fields as set or unknown chips.
+ * Use this instead of merging `filter` and `pending` by hand.
+ */
+export function streamingChips(
+  state: AtcState,
+  parsed: ParsedFilter,
+): FilterChip[] {
+  const streaming = new Set(Object.keys(parsed.pending) as FilterKey[]);
+  const merged: Record<string, unknown> = {
+    ...parsed.filter,
+    ...parsed.pending,
+  };
+
+  return filterChips(state, merged as unknown as MapFilter, streaming);
 }

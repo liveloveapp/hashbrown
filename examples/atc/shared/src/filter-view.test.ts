@@ -1,7 +1,12 @@
 import { expect, test } from 'vitest';
 import type { MapFilter } from './find-aircraft';
 import { resolveFilter } from './find-aircraft';
-import { filterChips, filterSummary, parseStreamedFilter } from './filter-view';
+import {
+  filterChips,
+  filterSummary,
+  parseStreamedFilter,
+  streamingChips,
+} from './filter-view';
 import { INITIAL_STATE } from './store';
 
 /** A filter with every field "any", overridden by `overrides`. */
@@ -22,11 +27,7 @@ function filterOf(overrides: Partial<MapFilter> = {}): MapFilter {
 test('a half-streamed airport code is a streaming chip and never resolves', () => {
   const parsed = parseStreamedFilter({ near: { airport: 'KSE' } });
 
-  const chips = filterChips(
-    INITIAL_STATE,
-    { ...parsed.filter, ...parsed.pending } as MapFilter,
-    new Set(Object.keys(parsed.pending) as (keyof MapFilter)[]),
-  );
+  const chips = streamingChips(INITIAL_STATE, parsed);
 
   expect(parsed.complete.has('near')).toBe(false);
   expect(parsed.filter.near).toBeNull();
@@ -170,4 +171,26 @@ test('a malformed field is pending, not complete, and null in the filter', () =>
   expect(parsed.complete.has('kind')).toBe(false);
   expect(parsed.pending).toEqual({ kind: 'blimp' });
   expect(parsed.complete.has('airline')).toBe(true);
+});
+
+test('the near label shows the clamped radius the filter applies', () => {
+  const far = filterOf({ near: { airport: 'KSEA', radiusNm: 500 } });
+  const close = filterOf({ near: { airport: 'KSEA', radiusNm: 1 } });
+
+  expect(filterChips(INITIAL_STATE, far, new Set())[0].label).toBe(
+    'Within 150 nm of KSEA',
+  );
+  expect(filterSummary(close)).toBe('aircraft within 5 nm of KSEA');
+});
+
+test('a blank place code is not formed, so it is null and never resolves', () => {
+  const parsed = parseStreamedFilter({
+    approaching: '  ',
+    near: { airport: '', radiusNm: 25 },
+    inAirspace: { airport: ' ', class: null },
+  });
+
+  expect(parsed.filter).toEqual(filterOf());
+  expect(parsed.complete.size).toBe(0);
+  expect(() => resolveFilter(INITIAL_STATE, parsed.filter)).not.toThrow();
 });
