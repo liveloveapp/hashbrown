@@ -711,6 +711,42 @@ test('setMessages round-trips user and assistant ids', async () => {
   }
 });
 
+test('setMessages accepts an activity without links and links it from position', () => {
+  // Arrange
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'test',
+    transport: { name: 'test', send: jest.fn() },
+  });
+  const saved: Chat.MessageInput<string, Chat.AnyTool>[] = [
+    { id: 'user-1', role: 'user', content: 'Question' },
+    { id: 'assistant-1', role: 'assistant', content: 'Answer', toolCalls: [] },
+    {
+      id: 'activity-1',
+      role: 'activity',
+      activityType: 'plan',
+      content: { steps: [] },
+    },
+  ];
+  const teardown = runtime.start();
+
+  try {
+    // Act
+    runtime.setMessages(saved);
+
+    // Assert
+    expect(runtime.messages().at(-1)).toEqual({
+      id: 'activity-1',
+      role: 'activity',
+      activityType: 'plan',
+      content: { steps: [] },
+      links: { assistantMessageId: 'assistant-1' },
+    });
+  } finally {
+    teardown();
+  }
+});
+
 test('the streaming assistant message keeps the id it has after commit', async () => {
   // Arrange
   let release: () => void = () => undefined;

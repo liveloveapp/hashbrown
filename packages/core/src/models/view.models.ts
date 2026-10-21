@@ -231,7 +231,15 @@ export type AnyMessage = Message<string | object, AnyTool>;
  * @public
  */
 export type UserMessageInput = Prettify<
-  Omit<UserMessage, 'id'> & { readonly id?: string }
+  Omit<UserMessage, 'id'> & {
+    /**
+     * The canonical AG-UI message id, when the app already has one. Hashbrown
+     * mints one when it is absent. Ids must be unique within the thread:
+     * `sendMessage` refuses, and does not send, a message whose id (or one of
+     * whose tool-call ids) already exists in the message history.
+     */
+    readonly id?: string;
+  }
 >;
 
 /**
@@ -245,17 +253,34 @@ export interface AssistantMessageInput<
   Output,
   ToolUnion extends AnyTool,
 > extends Omit<AssistantMessage<Output, ToolUnion>, 'id'> {
-  /** The canonical AG-UI message id, when the app already has one. */
+  /**
+   * The canonical AG-UI message id, when the app already has one. Hashbrown
+   * mints one when it is absent. Ids must be unique within the thread:
+   * `sendMessage` refuses, and does not send, a message whose id (or one of
+   * whose tool-call ids) already exists in the message history.
+   */
   readonly id?: string;
 }
+
+/**
+ * An activity message as an app supplies it, for example in a saved
+ * transcript passed to `setMessages`. The `id` is required. `links` is
+ * optional and, when present, only its `subagentRunId` is kept: the other
+ * links are recomputed from the activity's position in the list.
+ *
+ * @public
+ */
+export type ActivityMessageInput = Prettify<
+  Omit<ActivityMessage, 'links'> & { links?: ActivityLinks }
+>;
 
 /**
  * A message as an app supplies it to `setMessages`, initial `messages` or
  * `sendMessage`. It is a {@link Message} whose `id` is optional: Hashbrown
  * keeps a supplied id, so a saved transcript restores with the same ids, and
- * mints one only when the id is absent. An {@link ActivityMessage} keeps its
- * required `id`; its `links` are recomputed from position, except
- * `subagentRunId`, which is kept.
+ * mints one only when the id is absent. An {@link ActivityMessageInput} keeps
+ * its required `id`; its optional `links` are recomputed from position,
+ * except `subagentRunId`, which is kept.
  *
  * @public
  */
@@ -263,7 +288,7 @@ export type MessageInput<Output, Tools extends AnyTool> =
   | UserMessageInput
   | AssistantMessageInput<Output, Tools>
   | ErrorMessage
-  | ActivityMessage;
+  | ActivityMessageInput;
 
 /**
  * A {@link MessageInput} for any output and tool set.

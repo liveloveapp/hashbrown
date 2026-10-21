@@ -637,9 +637,10 @@ export const selectApiMessages = select(
 export const selectShouldGenerateMessage = select(
   selectApiMessages,
   (messages) => {
-    // Trailing activities are display material, never the last turn.
+    // API messages never carry activities; this guard stays so a trailing
+    // activity can never count as the last turn.
     const lastMessage = messages.findLast(
-      (message) => message.role !== 'activity',
+      (message: { readonly role: string }) => message.role !== 'activity',
     );
 
     if (!lastMessage) {

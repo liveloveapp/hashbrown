@@ -7,7 +7,7 @@ import type { ActivityLinks } from '../models/view.models';
 import { applyJsonPatch } from '../utils/json-patch';
 import { cloneAndFreezeOptionalJsonValue } from '../utils/json-value';
 import type { JsonValue } from '../utils/types';
-import { ɵownAgUiJsonValue } from './ag-ui-message-history';
+import { ɵownAgUiJsonValue } from './ag-ui-json-value';
 
 /**
  * Run facts current when an activity event arrives, used to link a new
@@ -103,7 +103,9 @@ export function applyActivitySnapshot(
  * The RFC 6902 patch is applied all-or-nothing to a copy of the content, so
  * earlier history is never mutated. A delta for an unknown id is dropped. A
  * delta whose patch fails is dropped, but any valid `metadata` it carries is
- * kept. A drop never throws; the caller decides how to report it.
+ * kept. A drop never throws; the caller decides how to report it. The
+ * activity keeps the `activityType` it already has; a delta naming a different
+ * type does not change it.
  *
  * @param messages - Canonical history the delta applies to.
  * @param event - The activity delta.
@@ -160,14 +162,7 @@ export function applyActivityDelta(
     messages: replaceAt(
       messages,
       index,
-      withMetadata(
-        {
-          ...current,
-          activityType: event.activityType ?? current.activityType,
-          content,
-        },
-        metadata,
-      ),
+      withMetadata({ ...current, content }, metadata),
     ),
   };
 }

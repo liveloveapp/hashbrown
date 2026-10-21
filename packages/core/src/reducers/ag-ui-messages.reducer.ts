@@ -41,6 +41,11 @@ export interface AgUiMessagesState {
   readonly currentRunId: string | undefined;
   /** The latest tool call of any kind started in the current attempt. */
   readonly lastToolCallId: string | undefined;
+  /**
+   * The last assistant message started in the current attempt, by text or by
+   * a tool call's parent. Used only to link activities.
+   */
+  readonly lastAssistantMessageId: string | undefined;
   /** Why the last event, an `ACTIVITY_DELTA`, was dropped; logged by the effect. */
   readonly activityDeltaDropReason: string | undefined;
 }
@@ -73,6 +78,7 @@ export const initialAgUiMessagesState: AgUiMessagesState = Object.freeze({
   activeAssistantMessageId: undefined,
   currentRunId: undefined,
   lastToolCallId: undefined,
+  lastAssistantMessageId: undefined,
   activityDeltaDropReason: undefined,
 });
 
@@ -276,7 +282,7 @@ export function ɵdecideAgUiMessageEvent(
         finishedTextMessageIds: state.draftFinishedTextMessageIds,
         activityArrival: {
           runId: state.currentRunId,
-          assistantMessageId: state.activeAssistantMessageId,
+          assistantMessageId: state.lastAssistantMessageId,
           toolCallId: state.lastToolCallId,
         },
       });
@@ -491,6 +497,7 @@ function inactiveAttempt() {
     ...inactiveLifecycle(),
     currentRunId: undefined,
     lastToolCallId: undefined,
+    lastAssistantMessageId: undefined,
     activityDeltaDropReason: undefined,
   } as const;
 }
@@ -568,6 +575,9 @@ function nextLifecycle(
           (event.role ?? 'assistant') === 'assistant'
             ? event.messageId
             : undefined,
+        ...((event.role ?? 'assistant') === 'assistant'
+          ? { lastAssistantMessageId: event.messageId }
+          : {}),
       };
     case EventType.TEXT_MESSAGE_END:
       return event.messageId === state.activeTextMessageId
@@ -581,6 +591,9 @@ function nextLifecycle(
               (event.role ?? 'assistant') === 'assistant'
                 ? event.messageId
                 : state.activeAssistantMessageId,
+            ...((event.role ?? 'assistant') === 'assistant'
+              ? { lastAssistantMessageId: event.messageId }
+              : {}),
           }
         : {};
     case EventType.REASONING_MESSAGE_START:
@@ -598,6 +611,9 @@ function nextLifecycle(
         activeToolCallId: event.toolCallId,
         activeToolCallName: event.toolCallName,
         lastToolCallId: event.toolCallId,
+        ...(event.parentMessageId
+          ? { lastAssistantMessageId: event.parentMessageId }
+          : {}),
       };
     case EventType.TOOL_CALL_END:
       return event.toolCallId === state.activeToolCallId
@@ -610,7 +626,12 @@ function nextLifecycle(
             activeToolCallName: event.toolCallName,
             ...(findToolCall(state.draft, event.toolCallId)
               ? {}
-              : { lastToolCallId: event.toolCallId }),
+              : {
+                  lastToolCallId: event.toolCallId,
+                  ...(event.parentMessageId
+                    ? { lastAssistantMessageId: event.parentMessageId }
+                    : {}),
+                }),
           }
         : {};
     default:

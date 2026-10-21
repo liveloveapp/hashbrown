@@ -229,6 +229,23 @@ test('a delta applies an RFC 6902 patch copy-on-write and freezes the result', (
   ).toBe(true);
 });
 
+test('a delta keeps the activity type the activity already has', () => {
+  const messages = seed();
+
+  const result = applyActivityDelta(messages, {
+    type: EventType.ACTIVITY_DELTA,
+    messageId: 'activity-1',
+    activityType: 'progress',
+    patch: [{ op: 'add', path: '/steps/-', value: 'b' }],
+  });
+
+  expect(result.dropped).toBeUndefined();
+  expect(result.messages[1]).toMatchObject({
+    activityType: 'plan',
+    content: { steps: ['a', 'b'] },
+  });
+});
+
 test('a delta for an unknown id is dropped', () => {
   const messages = seed();
 

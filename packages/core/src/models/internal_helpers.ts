@@ -118,12 +118,12 @@ function toViewId(id: string | undefined): { readonly id: string } {
 }
 
 /**
- * Copies an activity message between the view, internal and API models. The
+ * Copies an activity message between the view and internal models. The
  * content and metadata are shared, not cloned: canonical activity content is
  * deep-frozen, and every update produces new objects.
  */
 function copyActivityMessage(
-  message: Chat.ActivityMessage | Chat.Internal.ActivityMessage,
+  message: Chat.ActivityMessageInput | Chat.Internal.ActivityMessage,
 ): Chat.ActivityMessage {
   return {
     role: 'activity',
@@ -469,11 +469,9 @@ export function toApiMessagesFromInternal(
       ];
     }
 
-    case 'activity': {
-      return [copyActivityMessage(message)];
-    }
-
+    case 'activity':
     case 'error': {
+      // Activities are display material and never reach the agent.
       return [];
     }
   }
@@ -686,10 +684,6 @@ export function toInternalMessagesFromApi(
         content: message.content,
       },
     ];
-  }
-
-  if (message.role === 'activity') {
-    return [copyActivityMessage(message)];
   }
 
   const rawContent = message.content;

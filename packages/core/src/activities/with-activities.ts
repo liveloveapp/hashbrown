@@ -38,7 +38,10 @@ export interface ActivityWriter {
    * Creates or replaces an activity. Sends `ACTIVITY_SNAPSHOT`
    * (`replace: true`).
    *
-   * @param messageId - The activity message's id.
+   * @param messageId - The activity message's id. It must be unique within
+   * the thread: reusing an id sent in an earlier run updates that earlier
+   * activity in place. Derive it from the run (for example
+   * `` `plan-${input.runId}` ``) to give each run its own activity.
    * @param activityType - The kind of activity. A later snapshot for the same
    * id must use the same type.
    * @param content - The activity's content.

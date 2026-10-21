@@ -844,7 +844,7 @@ test('an unregistered call with no parsed arguments yet exposes null args', () =
   ]);
 });
 
-test('view, internal and API conversions keep activity messages without dropping them', () => {
+test('view and internal conversions keep activity messages and API conversion drops them', () => {
   // Arrange
   const view: Chat.ActivityMessage = {
     role: 'activity',
@@ -868,11 +868,9 @@ test('view, internal and API conversions keep activity messages without dropping
   const api = internal.flatMap((message) =>
     toApiMessagesFromInternal(message, []),
   );
-  const fromApi = api.flatMap(toInternalMessagesFromApi);
 
   // Assert
   expect(internal).toEqual([view]);
   expect(roundTripped).toEqual([view]);
-  expect(api).toEqual([view]);
-  expect(fromApi).toEqual([view]);
+  expect(api).toEqual([]);
 });

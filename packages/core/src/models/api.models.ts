@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { DeepPartial } from '../utils';
-import type { ActivityLinks } from './view.models';
 
 /**
  * @public
@@ -92,26 +91,10 @@ export interface ToolMessage {
 }
 
 /**
- * An AG-UI activity message. It is display material only: Hashbrown never
- * sends activities to the agent, and they never count as the last user or
- * assistant message.
- *
- * @public
- */
-export interface ActivityMessage {
-  role: 'activity';
-  id: string;
-  activityType: string;
-  content: Readonly<Record<string, unknown>>;
-  metadata?: Metadata;
-  links: ActivityLinks;
-}
-
-/**
  * @public
  */
 export type Message =
-  UserMessage | ErrorMessage | AssistantMessage | ToolMessage | ActivityMessage;
+  UserMessage | ErrorMessage | AssistantMessage | ToolMessage;
 
 /**
  * @public

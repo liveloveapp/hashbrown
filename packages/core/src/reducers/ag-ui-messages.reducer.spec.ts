@@ -1,6 +1,6 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
-import { readActivityLinks } from './ag-ui-activity';
+import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
 import { lowerViewMessagesToAgUi } from './ag-ui-message-history';
 import {
   applyCanonicalMessageEvent,
@@ -1476,6 +1476,92 @@ test('activity events update the draft and record run, assistant and tool-call l
       assistantMessageId: 'assistant-1',
       toolCallId: 'tool-1',
     },
+  });
+});
+
+test('an activity after a tool-only assistant links to that assistant', () => {
+  const active = reducer(
+    reducer(
+      initialAgUiMessagesState,
+      devActions.init({
+        system: '',
+        canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+      }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const events: AGUIEvent[] = [
+    { type: EventType.RUN_STARTED, threadId: 'thread-1', runId: 'run-1' },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'a1',
+    },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'tool-1', delta: '{}' },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'tool-1' },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      content: { steps: [] },
+    },
+  ];
+
+  const next = events.reduce(
+    (state, event) => reducer(state, apiActions.generateMessageEvent(event)),
+    active,
+  );
+
+  const activity = next.draft[next.draft.length - 1];
+  const restored = recomputeActivityLinks(next.draft, 'run-1');
+  const restoredActivity = restored[restored.length - 1];
+
+  expect(next.protocolError).toBeUndefined();
+  expect(activity && readActivityLinks(activity)).toEqual({
+    runId: 'run-1',
+    assistantMessageId: 'a1',
+    toolCallId: 'tool-1',
+  });
+  expect(restoredActivity && readActivityLinks(restoredActivity)).toEqual(
+    activity && readActivityLinks(activity),
+  );
+});
+
+test('an activity after a chunked tool-only assistant links to that assistant', () => {
+  const active = reducer(
+    initialAgUiMessagesState,
+    internalActions.generationAttemptStarted(),
+  );
+  const events: AGUIEvent[] = [
+    { type: EventType.RUN_STARTED, threadId: 'thread-1', runId: 'run-1' },
+    {
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'a1',
+      delta: '{}',
+    },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      content: { steps: [] },
+    },
+  ];
+
+  const next = events.reduce(
+    (state, event) => reducer(state, apiActions.generateMessageEvent(event)),
+    active,
+  );
+
+  const activity = next.draft[next.draft.length - 1];
+
+  expect(next.protocolError).toBeUndefined();
+  expect(activity && readActivityLinks(activity)).toEqual({
+    runId: 'run-1',
+    assistantMessageId: 'a1',
+    toolCallId: 'tool-1',
   });
 });
 
