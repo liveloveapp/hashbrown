@@ -38,8 +38,11 @@ WITH subject_days AS (
     min(f.active_day) FILTER (WHERE f.milestone_kind = 'tool.first_call_executed') AS tool_day,
     min(f.active_day) FILTER (WHERE f.milestone_kind = 'component.first_rendered') AS component_day
   FROM growth_observation_subjects s
-  LEFT JOIN growth_observation_facts f ON f.subject_id = s.id
-  LEFT JOIN growth_observations o ON o.id = f.observation_id
+  LEFT JOIN (
+    growth_observation_facts f
+    JOIN growth_observations o
+      ON o.id = f.observation_id AND o.redacted_at IS NULL
+  ) ON f.subject_id = s.id
   WHERE s.namespace = 'development_browser'
   GROUP BY s.id
 )
@@ -59,7 +62,7 @@ SELECT
     streamed_day IS NOT NULL
       AND (tool_day IS NULL OR tool_day > streamed_day + 7)
       AND (component_day IS NULL OR component_day > streamed_day + 7)
-      AND current_date > streamed_day + 7
+      AND (now() AT TIME ZONE 'utc')::date > streamed_day + 7
   ) AS stalled_after_hello_world
 FROM subject_days;
 
@@ -69,12 +72,12 @@ WITH installs AS (
     i.id AS observation_id,
     i.subject_id,
     i.properties->>'packageName' AS package_name,
-    date(least(i.occurred_at, i.received_at)) AS installed_day,
+    (least(i.occurred_at, i.received_at) AT TIME ZONE 'utc')::date AS installed_day,
     i.installation_token_digest
   FROM growth_observations i
   WHERE i.source = 'install'
     AND i.kind = 'package.installed'
-    AND i.properties->>'environment' <> 'ci'
+    AND i.properties->>'environment' IS DISTINCT FROM 'ci'
     AND i.redacted_at IS NULL
 ),
 reached AS (
@@ -84,10 +87,11 @@ reached AS (
     installs.package_name,
     installs.installed_day,
     (
-      SELECT min(date(least(r.occurred_at, r.received_at)))
+      SELECT min((least(r.occurred_at, r.received_at) AT TIME ZONE 'utc')::date)
       FROM growth_observations r
       WHERE r.source = 'runtime'
         AND r.installation_token_digest = installs.installation_token_digest
+        AND r.redacted_at IS NULL
     ) AS first_runtime_day
   FROM installs
 )
@@ -99,7 +103,7 @@ SELECT
   first_runtime_day,
   (
     (first_runtime_day IS NULL OR first_runtime_day > installed_day + 3)
-      AND current_date > installed_day + 3
+      AND (now() AT TIME ZONE 'utc')::date > installed_day + 3
   ) AS stalled_before_first_request
 FROM reached;
 

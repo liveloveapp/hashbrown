@@ -160,5 +160,17 @@ test('views migration defines exactly six views', async () => {
     "count(DISTINCT (f.milestone_kind,o.properties->>'integration'))",
   );
   expect(sql).toContain("namespace = 'development_browser'");
-  expect(sql).toContain("properties->>'environment' <> 'ci'");
+  expect(sql).toContain("properties->>'environment' IS DISTINCT FROM 'ci'");
+  expect(sql).toContain('o.redacted_at IS NULL');
+  expect(sql).toContain('r.redacted_at IS NULL');
+});
+
+test('observability views compute days in UTC, never in the session time zone', async () => {
+  const sql = await read('0004_growth_observability_views.sql');
+
+  const utcDays = sql.match(/AT TIME ZONE 'utc'\)::date/g) ?? [];
+
+  expect(sql).not.toMatch(/\bdate\(/i);
+  expect(sql).not.toMatch(/current_date/i);
+  expect(utcDays.length).toBe(4);
 });
