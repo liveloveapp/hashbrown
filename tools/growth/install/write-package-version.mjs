@@ -1,4 +1,8 @@
-// Writes packages/<name>/src/package-version.ts from that package's package.json.
+/**
+ * Writes packages/<name>/src/package-version.ts from that package's package.json.
+ * Releases must rerun `npx nx run-many -t prepare -p react angular` after
+ * `nx release version` bumps package.json, then commit the regenerated files.
+ */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 

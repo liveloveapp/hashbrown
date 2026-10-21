@@ -70,11 +70,35 @@ test('react and angular embed their published version', () => {
       'utf8',
     );
 
-    expect(source).toContain(
-      `export const PACKAGE_VERSION = ${JSON.stringify(version)};`,
-    );
+    expect(
+      source,
+      'run: npx nx run-many -t prepare -p react angular, then commit',
+    ).toContain(`export const PACKAGE_VERSION = ${JSON.stringify(version)};`);
     expect(
       json(`packages/${name}/project.json`).targets.compile.dependsOn,
     ).toContain('prepare');
   }
+});
+
+test('dependency-checks reads the compile target, not the assemble step', () => {
+  const configured = [
+    'core',
+    'angular',
+    'openai',
+    'anthropic',
+    'azure',
+    'bedrock',
+    'google',
+    'typesafe',
+  ];
+
+  const missing = configured.filter(
+    (name) =>
+      !readFileSync(
+        resolve(root, `packages/${name}/eslint.config.mjs`),
+        'utf8',
+      ).includes("buildTargets: ['compile']"),
+  );
+
+  expect(missing).toEqual([]);
 });
