@@ -13,10 +13,13 @@ const collectPath = '/growth/collect/';
 const toolPrompt = 'Get the weather for Paris.';
 const toolResponse = 'Paris is 21 C and sunny.';
 
-/** Records every request whose URL targets a growth collection endpoint. */
+/**
+ * Records every request whose URL targets a growth collection endpoint, from
+ * any page or worker of the browser context.
+ */
 function recordCollectRequests(page: Page): string[] {
   const urls: string[] = [];
-  page.on('request', (request) => {
+  page.context().on('request', (request) => {
     if (request.url().includes(collectPath)) urls.push(request.url());
   });
   return urls;
@@ -91,6 +94,11 @@ test('production hosts send no collection requests and keep no growth storage', 
   page,
   aimock,
 }) => {
+  // Turn the automated-browser gate off so only the production-build gate
+  // can keep the collector inert.
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, 'webdriver', { get: () => false }),
+  );
   const collectRequests = recordCollectRequests(page);
   const toolInputs: HashbrownRunInput[] = [];
   const uiInputs: HashbrownRunInput[] = [];
@@ -114,6 +122,7 @@ test('production hosts send no collection requests and keep no growth storage', 
   await driver.expectIdle();
   await expect(driver.toolCount()).toHaveText('1');
   const toolKeys = await growthStorageKeys(page);
+  const webdriver = await page.evaluate(() => navigator.webdriver);
   await toolHygiene.assertClean();
 
   const uiHygiene = await openScenario(page, aimock, {
@@ -135,6 +144,7 @@ test('production hosts send no collection requests and keep no growth storage', 
   const uiKeys = await growthStorageKeys(page);
   await uiHygiene.assertClean();
 
+  expect(webdriver).toBe(false);
   expect(toolInputs).toHaveLength(2);
   expect(uiInputs).toHaveLength(1);
   expect(collectRequests).toEqual([]);

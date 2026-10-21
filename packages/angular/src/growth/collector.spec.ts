@@ -2,6 +2,7 @@ import {
   createEnvironmentInjector,
   EnvironmentInjector,
   isDevMode,
+  NgZone,
   runInInjectionContext,
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -140,4 +141,19 @@ test('rendering a component reports component.first_rendered once', () => {
     expect.anything(),
     'component.first_rendered',
   );
+});
+
+test('the collector runs its work outside the Angular zone', () => {
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/zone' })],
+  });
+  const zone = TestBed.inject(NgZone);
+  const outside = vi.spyOn(zone, 'runOutsideAngular');
+  const work = vi.fn();
+  TestBed.runInInjectionContext(() => ɵinjectDevelopmentCollector());
+
+  lastCreated().options.run?.(work);
+
+  expect(outside).toHaveBeenCalledWith(work);
+  expect(work).toHaveBeenCalledTimes(1);
 });

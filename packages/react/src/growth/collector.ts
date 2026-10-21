@@ -9,14 +9,16 @@ import { PACKAGE_VERSION } from '../package-version';
 
 /**
  * Returns true when the application was built for development. A page
- * without `process` (a browser without a bundler) counts as not development.
+ * without `process` (a browser without a bundler) counts as not development,
+ * and so does a test runner (`NODE_ENV=test`).
  *
  * @returns Whether `process.env.NODE_ENV` is set to something other than
- * `production`.
+ * `production` or `test`.
  */
 export function isDevelopmentBuild(): boolean {
   try {
-    return process.env.NODE_ENV !== 'production';
+    const mode = process.env.NODE_ENV;
+    return mode !== 'production' && mode !== 'test';
   } catch {
     return false;
   }

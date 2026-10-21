@@ -30,9 +30,11 @@ export const DEVELOPMENT_INSTALL_IMPORT = {
   development: {
     import: './development-install.mjs',
     require: './development-install.cjs',
+    default: './development-install.mjs',
   },
   import: './development-install.null.mjs',
   require: './development-install.null.cjs',
+  default: './development-install.null.mjs',
 };
 
 const PACKAGES = new Set([

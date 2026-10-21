@@ -25,6 +25,14 @@ export interface DevelopmentCollectorOptions {
   isDevelopment: () => boolean;
   /** Optional application switch; returning false turns the collector off. */
   enabled?: () => boolean;
+  /**
+   * Runs the collector's timers and requests; frameworks pass a scheduler that
+   * keeps them out of change detection, e.g. Angular's
+   * `NgZone.runOutsideAngular`.
+   *
+   * @param work - The work to run synchronously.
+   */
+  run?: (work: () => void) => void;
 }
 
 /**

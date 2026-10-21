@@ -145,7 +145,7 @@ test('binding a runtime reports the session start with its transport', () => {
 
   expect(detach).toEqual(expect.any(Function));
   expect(observer.sessionStarted).toHaveBeenCalledTimes(1);
-  expect(observer.sessionStarted).toHaveBeenCalledWith('custom');
+  expect(observer.sessionStarted.mock.calls[0][0]()).toBe('custom');
   detach?.();
 });
 
@@ -155,7 +155,7 @@ test('binding a runtime without a transport reports an http session', () => {
 
   const detach = bindRuntime(runtime.resume, observer);
 
-  expect(observer.sessionStarted).toHaveBeenCalledWith('http');
+  expect(observer.sessionStarted.mock.calls[0][0]()).toBe('http');
   detach?.();
 });
 

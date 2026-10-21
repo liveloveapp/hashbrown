@@ -47,8 +47,11 @@ function browserAllowed(): boolean {
   if (!enabled) return false;
   if (typeof window === 'undefined' || typeof document === 'undefined')
     return false;
-  if (typeof navigator !== 'undefined' && navigator.webdriver === true)
-    return false;
+  if (typeof navigator !== 'undefined') {
+    if (navigator.webdriver === true) return false;
+    // Test runners emulate a browser; they are never an interactive page.
+    if (/jsdom|HappyDOM/i.test(navigator.userAgent ?? '')) return false;
+  }
   const page = window as unknown as {
     __HASHBROWN_TELEMETRY_DISABLED__?: unknown;
   };
@@ -72,7 +75,8 @@ function valid(options: DevelopmentCollectorOptions): boolean {
     typeof options.packageVersion === 'string' &&
     VERSION.test(options.packageVersion) &&
     typeof options.isDevelopment === 'function' &&
-    (options.enabled === undefined || typeof options.enabled === 'function')
+    (options.enabled === undefined || typeof options.enabled === 'function') &&
+    (options.run === undefined || typeof options.run === 'function')
   );
 }
 
@@ -94,6 +98,7 @@ export function createDevelopmentCollector(
   options: DevelopmentCollectorOptions,
 ): DevelopmentCollector {
   let disposed = false;
+  let transportSource: (() => DevelopmentTransportKind) | undefined;
   let lastTransport: DevelopmentTransportKind | undefined;
   const bindings = new Set<() => void>();
   let accepted = false;
@@ -122,10 +127,25 @@ export function createDevelopmentCollector(
       return false;
     }
   };
+  /**
+   * Classifies the most recently bound runtime's transport on first use. The
+   * queue only asks after `allowed()` returned true, so a transport factory is
+   * never invoked for an application that does not collect.
+   */
+  const boundTransport = (): DevelopmentTransportKind => {
+    if (lastTransport === undefined && transportSource) {
+      try {
+        lastTransport = transportSource();
+      } catch {
+        lastTransport = 'custom';
+      }
+    }
+    return lastTransport ?? 'http';
+  };
   const owner = (transport?: DevelopmentTransportKind): RuntimeOwner => ({
     options: ownerOptions,
     allowed,
-    transport: () => transport ?? lastTransport ?? 'http',
+    transport: () => transport ?? boundTransport(),
   });
   const touch = (
     runtimeOwner: RuntimeOwner,
@@ -146,7 +166,8 @@ export function createDevelopmentCollector(
         if (disposed || !accepted) return noop;
         const detach = bindRuntime(runtime.resume, {
           sessionStarted(transport) {
-            lastTransport = transport;
+            transportSource = transport;
+            lastTransport = undefined;
             touch(owner());
           },
           streamCompleted(durationMs) {

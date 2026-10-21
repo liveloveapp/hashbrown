@@ -134,6 +134,19 @@ test('isDevelopmentBuild is false when process is undefined', () => {
   expect(result).toBe(false);
 });
 
+test('isDevelopmentBuild is false in a test runner', () => {
+  vi.stubEnv('NODE_ENV', 'test');
+  let result: boolean;
+
+  try {
+    result = isDevelopmentBuild();
+  } finally {
+    vi.unstubAllEnvs();
+  }
+
+  expect(result).toBe(false);
+});
+
 test('rendering a component through useUiChat reports component.first_rendered once', async () => {
   reportMilestoneMock.mockClear();
   createCollectorMock.mockClear();
@@ -181,7 +194,9 @@ test('a confident useUiDecision candidate reports component.first_rendered once'
     () => useUiDecision({ input: 'show KSFO', candidates, select: 'one' }),
     {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <HashbrownProvider decision={{ transport }}>{children}</HashbrownProvider>
+        <HashbrownProvider decision={{ transport }}>
+          {children}
+        </HashbrownProvider>
       ),
     },
   );

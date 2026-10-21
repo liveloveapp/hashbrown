@@ -31,7 +31,7 @@ Every package reads or creates the random id in `~/.hashbrown/installation-id` (
 
 ## While you develop
 
-In a development build running in a browser, Hashbrown reports a few milestones, each once per session. A development build is one where `process.env.NODE_ENV` is not `'production'`. Production builds, server rendering, and automated browsers (where `navigator.webdriver` is set) send nothing.
+In a development build running in a browser, Hashbrown reports a few milestones, each once per session. A development build is one where `process.env.NODE_ENV` is not `'production'`. Production builds, server rendering, and automated browsers (where `navigator.webdriver` is set) send nothing. Test runners (Vitest or Jest with jsdom or happy-dom, `NODE_ENV=test`) send nothing either.
 
 | Event                            | When                                            | Fields                                                                                     |
 | -------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
@@ -41,6 +41,10 @@ In a development build running in a browser, Hashbrown reports a few milestones,
 | `component.first_rendered`       | The first component the model chose is rendered | Package name and version, framework, transport kind                                        |
 
 The framework is `react` or `angular`. The transport kind is `http`, `local`, `delegating`, or `custom`. Every event also carries a random browser id, a session id that rolls over after 30 minutes without activity, and, when the browser can read it from `@hashbrownai/core`, the random installation id written at install time.
+
+## Toolchain
+
+`@hashbrownai/core` 0.8 reads its installation id through a package `imports` entry (`#development-install`), so your bundler and test runner must support package imports. Node 20 and later, Vite, webpack 5, Next.js, the Angular CLI, Jest 29.4 and later, and Vitest all do. Older toolchains, such as webpack 4 or Jest before 29.4, cannot load `@hashbrownai/core` 0.8.
 
 ## Turning it off
 

@@ -157,6 +157,8 @@ export class DevelopmentCollector {
   private nextAllowed = 0;
   private generation = 0;
   private readonly counts = { discarded: 0, failures: 0, acknowledged: 0 };
+  /** Scheduler of the most recent allowed owner, from its `run` option. */
+  private run?: (work: () => void) => void;
 
   /**
    * @param dependencies - Optional replacements for `fetch`, the clock and the
@@ -171,6 +173,28 @@ export class DevelopmentCollector {
       ((callback, ms) => globalThis.setTimeout(callback, ms));
     this.clearTimer =
       dependencies.clearTimeout ?? ((timer) => globalThis.clearTimeout(timer));
+  }
+
+  /**
+   * Performs `work` through the current owner's scheduler, so timers and
+   * requests stay outside a framework's change detection. Falls back to a
+   * direct call when there is no scheduler or it did not run the work.
+   */
+  private within<T>(work: () => T): T {
+    const run = this.run;
+    let done = false;
+    let result: T | undefined;
+    if (run) {
+      try {
+        run(() => {
+          result = work();
+          done = true;
+        });
+      } catch {
+        // A failing scheduler falls back to a direct call below.
+      }
+    }
+    return done ? (result as T) : work();
   }
 
   /**
@@ -240,6 +264,7 @@ export class DevelopmentCollector {
       this.prune();
       return;
     }
+    this.run = owner.options.run;
     const now = this.now();
     const transport = owner.transport();
     const { options } = owner;
@@ -319,12 +344,14 @@ export class DevelopmentCollector {
       this.nextAllowed,
       Math.min(...this.pending.map((pending) => pending.nextAt)),
     );
-    this.timer = this.setTimer(
-      () => {
-        this.timer = undefined;
-        void this.send();
-      },
-      Math.min(MAX_DELAY, Math.max(0, at - this.now())),
+    this.timer = this.within(() =>
+      this.setTimer(
+        () => {
+          this.timer = undefined;
+          void this.send();
+        },
+        Math.min(MAX_DELAY, Math.max(0, at - this.now())),
+      ),
     );
   }
 
@@ -347,10 +374,12 @@ export class DevelopmentCollector {
       const body = await Promise.race([
         this.exchange(batch, controller),
         new Promise<never>((_, reject) => {
-          deadline = this.setTimer(() => {
-            controller.abort();
-            reject(new Error('timeout'));
-          }, DEADLINE);
+          deadline = this.within(() =>
+            this.setTimer(() => {
+              controller.abort();
+              reject(new Error('timeout'));
+            }, DEADLINE),
+          );
         }),
       ]);
       if (generation !== this.generation || controller.signal.aborted) return;
@@ -416,18 +445,20 @@ export class DevelopmentCollector {
     batch: Pending[],
     controller: AbortController,
   ): Promise<unknown> {
-    const response = await this.fetch(ENDPOINT, {
-      method: 'POST',
-      credentials: 'omit',
-      redirect: 'error',
-      referrerPolicy: 'no-referrer',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        schemaVersion: 1,
-        events: batch.map((pending) => pending.event),
+    const response = await this.within(() =>
+      this.fetch(ENDPOINT, {
+        method: 'POST',
+        credentials: 'omit',
+        redirect: 'error',
+        referrerPolicy: 'no-referrer',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemaVersion: 1,
+          events: batch.map((pending) => pending.event),
+        }),
+        signal: controller.signal,
       }),
-      signal: controller.signal,
-    });
+    );
     if (controller.signal.aborted) {
       void response.body?.cancel().catch(() => undefined);
       throw new Error('cancelled');

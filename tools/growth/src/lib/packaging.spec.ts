@@ -46,9 +46,11 @@ test('core reads the installation token through the imports map', () => {
     development: {
       import: './development-install.mjs',
       require: './development-install.cjs',
+      default: './development-install.mjs',
     },
     import: './development-install.null.mjs',
     require: './development-install.null.cjs',
+    default: './development-install.null.mjs',
   });
   expect(pkg.files).toEqual(
     expect.arrayContaining(['install/*.cjs', 'development-install.*']),

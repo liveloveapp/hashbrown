@@ -6,9 +6,9 @@ This page explains what Hashbrown collects, who processes it, how long we keep i
 
 **Visits to hashbrown.dev.** We record website visits and page views on hashbrown.dev so we can see which docs and posts people read.
 
-**Install and development observations from the packages.** When you install a `@hashbrownai/*` package, a postinstall step sends one `package.installed` event describing the package, your operating system, CPU architecture, Node version, package manager, and whether the install ran in CI, together with a random per-user id that each package reads from or creates in `~/.hashbrown/installation-id` so repeat installs on one machine are counted once. Outside CI, when Git is configured, it also sends your Git `user.name`, `user.email`, and the owner of the `origin` remote on GitHub, GitLab, or Bitbucket. In a development build in a browser, the packages report when a chat runtime starts, the first completed stream, the first tool call, and the first rendered component, once per session. Production builds, server rendering, and automated browsers send nothing. None of these observations include prompts, messages, schemas, tool arguments, component props, URLs, or thread identifiers. The full field list is in the docs at [What Hashbrown Sends](/docs/react/platform/collection).
+**Install and development observations from the packages.** When you install a `@hashbrownai/*` package, a postinstall step sends one `package.installed` event describing the package, your operating system, CPU architecture, Node version, package manager, and whether the install ran in CI, together with a random per-user id that each package reads from or creates in `~/.hashbrown/installation-id` so repeat installs on one machine are counted once. Outside CI, when Git is configured, it also sends your Git `user.name`, `user.email`, and the owner of the `origin` remote on GitHub, GitLab, or Bitbucket. In a development build in a browser, the packages report when a chat runtime starts, the first completed stream, the first tool call, and the first rendered component, once per session. Production builds, server rendering, automated browsers, and test runners send nothing. None of these observations include prompts, messages, schemas, tool arguments, component props, URLs, or thread identifiers. The full field list is in the docs at [What Hashbrown Sends](/docs/react/platform/collection).
 
-**The Get unstuck form and email replies.** When you fill in the Get unstuck form or reply to one of our emails, we keep what you wrote and the address you wrote from so we can answer you.
+**The Get unstuck form and email replies.** When the Get unstuck form launches and you fill it in, or when you reply to one of our emails, we keep what you wrote and the address you wrote from so we can answer you.
 
 ## Who processes it
 
@@ -26,7 +26,7 @@ We keep this data indefinitely by default, until you ask us to delete it.
 
 ## Email
 
-If you opt in through the Get unstuck form or the install digest, you receive one short sequence of emails from the founder. Every email has an unsubscribe link, and replies go to a human.
+The Get unstuck form and the founder install digest are upcoming. When they launch, opting in through either one sends you one short sequence of emails from the founder. Every email has an unsubscribe link, and replies go to a human.
 
 ## Your choices
 

@@ -2,6 +2,7 @@ import {
   inject,
   InjectionToken,
   isDevMode,
+  NgZone,
   type Provider,
 } from '@angular/core';
 import {
@@ -64,6 +65,7 @@ export function ɵprovideCollectionEnabled(
 export function ɵinjectDevelopmentCollector(): ɵDevelopmentCollector {
   const enabled =
     inject(ɵHASHBROWN_COLLECTION_ENABLED, { optional: true }) ?? alwaysEnabled;
+  const zone = inject(NgZone, { optional: true });
   let collector = collectors.get(enabled);
   if (!collector) {
     collector = ɵcreateDevelopmentCollector({
@@ -72,6 +74,8 @@ export function ɵinjectDevelopmentCollector(): ɵDevelopmentCollector {
       packageVersion: PACKAGE_VERSION,
       isDevelopment: isDevMode,
       enabled,
+      // Timers and requests stay out of change detection.
+      run: (work) => (zone ? zone.runOutsideAngular(work) : work()),
     });
     collectors.set(enabled, collector);
   }

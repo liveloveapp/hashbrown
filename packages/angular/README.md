@@ -103,7 +103,8 @@ browser can cite the same install.
 when a chat runtime starts, the first completed stream, the first tool call,
 and the first rendered component, once per session, with the package name and
 version, the framework, and the transport kind. Production builds, server
-rendering, and automated browsers send nothing.
+rendering, automated browsers, and test runners (jsdom, happy-dom,
+`NODE_ENV=test`) send nothing.
 
 Turn it off:
 

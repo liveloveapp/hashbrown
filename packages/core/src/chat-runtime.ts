@@ -659,7 +659,9 @@ export function createChatRuntime(init: {
   };
   runtimeMessagePreflights.set(runtime.resume, assertMessageSchedulingAllowed);
   registerRuntimeBinder(runtime.resume, (observer) => {
-    observer.sessionStarted(classifyTransport(state.read(selectTransport)));
+    observer.sessionStarted(() =>
+      classifyTransport(state.read(selectTransport)),
+    );
 
     let runStartedAt: number | undefined;
     let contentSeen = false;

@@ -126,8 +126,11 @@ async function collectInstall({
       manager.packageManager,
     );
     let installationToken;
+    // A write this close to the deadline could be cut off and leave a token
+    // the install event never cites; the null bridge stays in place instead.
     if (
       bridgeReset &&
+      deadline - Date.now() >= 200 &&
       installEnvironment.environment !== 'ci' &&
       !truthy(env.HASHBROWN_TELEMETRY_DEBUG)
     ) {

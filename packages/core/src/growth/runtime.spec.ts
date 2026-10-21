@@ -1,4 +1,5 @@
 import { createChatRuntime } from '../chat-runtime';
+import { createHttpTransport, type TransportOrFactory } from '../transport';
 import {
   createDevelopmentCollector,
   getDevelopmentCollectionDiagnostics,
@@ -57,6 +58,8 @@ function setup(
     webdriver?: boolean;
     windowOptOut?: boolean;
     storageOptOut?: boolean;
+    userAgent?: string;
+    transport?: TransportOrFactory;
   } = {},
 ) {
   jest.useFakeTimers({
@@ -80,10 +83,16 @@ function setup(
     restorers.push(
       stubs.restore,
       setGlobal('document', {}),
-      setGlobal('navigator', { webdriver: options.webdriver ?? false }),
+      setGlobal('navigator', {
+        webdriver: options.webdriver ?? false,
+        userAgent: options.userAgent ?? 'Mozilla/5.0 (darwin) Chrome/130.0.0.0',
+      }),
     );
   }
-  const runtime = createChatRuntime({ system: 'test' });
+  const runtime = createChatRuntime({
+    system: 'test',
+    ...(options.transport ? { transport: options.transport } : {}),
+  });
   const sent = (index = 0): Sent =>
     JSON.parse(String(fetch.mock.calls[index][1].body)) as Sent;
   return {
@@ -129,6 +138,55 @@ test('the collector is inert when webdriver is true', async () => {
     expect(getDevelopmentCollectionDiagnostics()).toEqual(ZERO);
   } finally {
     restore();
+  }
+});
+
+test('the collector is inert in a jsdom test runner', async () => {
+  const { runtime, fetch, restore } = setup({
+    userAgent:
+      'Mozilla/5.0 (darwin) AppleWebKit/537.36 (KHTML, like Gecko) jsdom/24.0.0',
+  });
+  try {
+    const collector = createDevelopmentCollector(OPTIONS);
+
+    collector.attach(runtime);
+    reportMilestone(collector, 'component.first_rendered');
+    await jest.advanceTimersByTimeAsync(60_000);
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(getDevelopmentCollectionDiagnostics()).toEqual(ZERO);
+  } finally {
+    restore();
+  }
+});
+
+test('the transport factory is only invoked once collection is allowed', async () => {
+  const factory = jest.fn(() => createHttpTransport({}));
+  const inert = setup({ transport: factory });
+  try {
+    const collector = createDevelopmentCollector({
+      ...OPTIONS,
+      isDevelopment: () => false,
+    });
+
+    collector.attach(inert.runtime);
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(factory).not.toHaveBeenCalled();
+  } finally {
+    inert.restore();
+  }
+  const allowed = setup({ transport: factory });
+  try {
+    const collector = createDevelopmentCollector(OPTIONS);
+
+    collector.attach(allowed.runtime);
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(factory).toHaveBeenCalledTimes(1);
+    expect(allowed.sent().events[0].properties['transport']).toBe('http');
+  } finally {
+    allowed.restore();
   }
 });
 

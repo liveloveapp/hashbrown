@@ -361,3 +361,34 @@ test('a disallowed owner sends nothing', async () => {
     restore();
   }
 });
+
+test("the owner's run option schedules the timer and sends the request", async () => {
+  let inside = false;
+  const fetchedInside: boolean[] = [];
+  const { collector, fetch, restore } = setup((init) => {
+    fetchedInside.push(inside);
+    return acknowledge(init);
+  });
+  const run = jest.fn((work: () => void) => {
+    inside = true;
+    try {
+      work();
+    } finally {
+      inside = false;
+    }
+  });
+  const runtime = owner();
+  runtime.options = { ...runtime.options, run };
+  try {
+    collector.touch(runtime);
+    const scheduled = run.mock.calls.length;
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(scheduled).toBe(1);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetchedInside).toEqual([true]);
+    expect(run.mock.calls.length).toBeGreaterThanOrEqual(2);
+  } finally {
+    restore();
+  }
+});

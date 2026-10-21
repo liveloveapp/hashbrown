@@ -9,9 +9,11 @@ export interface RuntimeGrowthObserver {
   /**
    * Called once when the observer binds to the runtime.
    *
-   * @param transport - Kind of transport the runtime is configured with.
+   * @param transport - Returns the kind of transport the runtime is
+   *   configured with. It is a thunk so that classifying the transport, which
+   *   may invoke a transport factory, only happens once collection is allowed.
    */
-  sessionStarted(transport: DevelopmentTransportKind): void;
+  sessionStarted(transport: () => DevelopmentTransportKind): void;
   /**
    * Called once, after the first run that streamed text content and finished
    * without an interrupt.

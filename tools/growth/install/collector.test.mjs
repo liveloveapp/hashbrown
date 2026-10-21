@@ -298,3 +298,26 @@ test('sendBatch posts JSON to the endpoint with no redirect following', async ()
   assert.equal(seen[0].headers.authorization, undefined);
   assert.equal(seen[0].headers.cookie, undefined);
 });
+
+test('collectInstall skips the token write when the deadline is near', async () => {
+  const root = await dirOf('@hashbrownai/core', '0.7.0');
+  const sent = [];
+
+  await collectInstall({
+    packageRoot: root,
+    env: npmEnv,
+    interactive: true,
+    identify,
+    discover,
+    deadline: Date.now() + 100,
+    send: async (batch) => {
+      sent.push(batch);
+    },
+  });
+
+  assert.equal(
+    await readFile(join(root, 'development-install.mjs'), 'utf8'),
+    'export const installationToken = null;\n',
+  );
+  assert.ok(sent.every((batch) => !batch.events[0].installationToken));
+});
