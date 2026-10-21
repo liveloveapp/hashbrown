@@ -56,14 +56,14 @@ function build(resend = { RESEND_API_KEY: 're_sending_secret_value' }) {
   });
 }
 
-test('buildEnvFile sets every rollout switch to false and both HMAC versions to v1', () => {
+test('buildEnvFile sets every rollout switch to false and both key versions to the integer 1', () => {
   const text = build();
 
   const env = parseEnvFile(text);
 
   for (const key of SWITCHES) assert.equal(env[key], 'false');
-  assert.equal(env.GROWTH_ACTION_TOKEN_ACTIVE_VERSION, 'v1');
-  assert.equal(env.GROWTH_EMAIL_HMAC_ACTIVE_VERSION, 'v1');
+  assert.equal(env.GROWTH_ACTION_TOKEN_ACTIVE_VERSION, '1');
+  assert.equal(env.GROWTH_EMAIL_HMAC_ACTIVE_VERSION, '1');
   assert.equal(env.RESEND_SENDER_VERIFIED, 'false');
   assert.equal(env.RESEND_TRACKING_DISABLED, 'true');
   assert.equal(env.GROWTH_DATABASE_ENVIRONMENT, 'production');
