@@ -12,16 +12,20 @@ import {
   Component,
   computed,
   inject,
+  InjectionToken,
   linkedSignal,
   output,
 } from '@angular/core';
 import {
   createTool,
+  createUiKit,
   exposeComponent,
   exposeMarkdown,
   type UiChatMessage,
   uiChatResource,
+  uiDecisionResource,
 } from '@hashbrownai/angular';
+import { createHttpDecisionTransport, type Decision } from '@hashbrownai/core';
 import {
   AircraftCompare,
   AircraftCompareFallback,
@@ -38,39 +42,58 @@ import { EmptyState } from './empty-state';
 import { ATC_STORE } from './store';
 import { Transcript } from './transcript';
 
-// 1. Expose your components. The model can only render these, and Skillet
-//    validates every input. IDs never stream, so a card never shows the wrong plane.
-const components = [
-  exposeMarkdown({ className: 'atc-prose' }),
-  exposeComponent(FlightCard, {
-    name: flightCardContract.name,
-    description: flightCardContract.description,
-    input: flightCardContract.props,
-    fallback: FlightCardFallback,
-    children: false,
-  }),
-  exposeComponent(ArrivalsBoard, {
-    name: arrivalsBoardContract.name,
-    description: arrivalsBoardContract.description,
-    input: arrivalsBoardContract.props,
-    fallback: ArrivalsBoardFallback,
-    children: false,
-  }),
-  exposeComponent(AircraftCompare, {
-    name: aircraftCompareContract.name,
-    description: aircraftCompareContract.description,
-    input: aircraftCompareContract.props,
-    fallback: AircraftCompareFallback,
-    children: false,
-  }),
-  exposeComponent(AirportCard, {
-    name: airportCardContract.name,
-    description: airportCardContract.description,
-    input: airportCardContract.props,
-    fallback: AirportCardFallback,
-    children: false,
-  }),
-];
+// 1. Expose your components, in two kits. The model can only render these, and
+//    Skillet validates every input. IDs never stream, so a card never shows the
+//    wrong plane. Prose (Markdown) is never asked about and always sent; the
+//    cards are narrowed per turn in step 4. The order, prose then cards, is the
+//    server's pinned order (server/src/run-handler.ts), so a narrowed schema is
+//    one the server accepts.
+const proseKit = createUiKit({
+  components: [exposeMarkdown({ className: 'atc-prose' })],
+  selectable: false,
+});
+const cardsKit = createUiKit({
+  components: [
+    exposeComponent(FlightCard, {
+      name: flightCardContract.name,
+      description: flightCardContract.description,
+      input: flightCardContract.props,
+      fallback: FlightCardFallback,
+      children: false,
+    }),
+    exposeComponent(ArrivalsBoard, {
+      name: arrivalsBoardContract.name,
+      description: arrivalsBoardContract.description,
+      input: arrivalsBoardContract.props,
+      fallback: ArrivalsBoardFallback,
+      children: false,
+    }),
+    exposeComponent(AircraftCompare, {
+      name: aircraftCompareContract.name,
+      description: aircraftCompareContract.description,
+      input: aircraftCompareContract.props,
+      fallback: AircraftCompareFallback,
+      children: false,
+    }),
+    exposeComponent(AirportCard, {
+      name: airportCardContract.name,
+      description: airportCardContract.description,
+      input: airportCardContract.props,
+      fallback: AirportCardFallback,
+      children: false,
+    }),
+  ],
+});
+
+/** The transport the cards decision asks; tests provide a fake. */
+export const CARDS_DECISION_TRANSPORT = new InjectionToken<Decision.Transport>(
+  'atc cards decision transport',
+  {
+    providedIn: 'root',
+    factory: () =>
+      createHttpDecisionTransport({ url: '/api/decide?kind=cards' }),
+  },
+);
 
 /**
  * The chat panel: components, browser-side tools and the streaming answer,
@@ -136,7 +159,7 @@ export class Assistant {
     // Required by Hashbrown; the server replaces it with SYSTEM_PROMPT
     // (server/src/run-handler.ts), so the browser cannot change the rules.
     system: 'Provided by the server.',
-    components,
+    components: [proseKit, cardsKit],
     tools: this.tools,
   });
 
@@ -150,14 +173,26 @@ export class Assistant {
     transcriptItems(this.messages(), this.chat.isLoading()),
   );
 
+  // 4. Decide: route what the user typed, then narrow the cards. The composer
+  //    asks a Jev decision (angular/src/app/router.ts) and emits one of these;
+  //    the filter route adds nothing to the transcript. A chat message first
+  //    asks which of the cards fit it (at most two, with confidence 0.7), and
+  //    the chat sends with only those plus Markdown. The server pins the
+  //    questions (server/src/decide-handler.ts); an unsure or failed decision
+  //    sends with every card.
+  private readonly narrowed = uiDecisionResource({
+    chat: this.chat,
+    select: { max: 2 },
+    minConfidence: 0.7,
+    system: 'Provided by the server.',
+    transport: inject(CARDS_DECISION_TRANSPORT),
+  });
+
   protected send(content: string): void {
-    this.chat.sendMessage({ role: 'user', content });
+    this.narrowed.sendMessage(content);
     this.sent.emit();
   }
 
-  // 4. Decide: route what the user typed. The composer asks a Jev decision
-  //    (angular/src/app/router.ts) and emits one of these; the filter route
-  //    adds nothing to the transcript.
   protected applyFilter(request: string): void {
     this.filter.emit(request);
     this.sent.emit();

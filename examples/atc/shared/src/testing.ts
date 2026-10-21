@@ -250,3 +250,54 @@ export function fakeDecisionTransport(
 
   return { transport, requests };
 }
+
+/**
+ * A fake `/api/decide?kind=cards` transport. `answer` gets the text of each
+ * request and returns the probability of each card (a missing card counts as
+ * 0.01); `null` fails the request the way a 503 without a key does. The
+ * answer is shaped like the pinned `createSelectionSchema(cardGroups, { max: 2 })`.
+ */
+export function fakeCardsTransport(
+  answer: (
+    text: string,
+  ) => Record<string, number> | null | Promise<Record<string, number> | null>,
+): FakeDecisionTransport {
+  const requests: string[] = [];
+  const transport: Decision.Transport = async (request) => {
+    const state = request.state;
+    const text =
+      typeof state === 'string'
+        ? state
+        : String((state as { input?: unknown }).input);
+    requests.push(text);
+    const decided = await answer(text);
+    if (decided === null) {
+      throw new Error('Decision request failed with status 503');
+    }
+    const cards = [
+      'FlightCard',
+      'ArrivalsBoard',
+      'AircraftCompare',
+      'AirportCard',
+    ];
+    const probabilities = Object.fromEntries(
+      cards.map((card) => [card, decided[card] ?? 0.01]),
+    );
+
+    return {
+      kind: 'hashbrown.decision',
+      version: 1,
+      value: Object.fromEntries(
+        Object.entries(probabilities).map(([card, p]) => [card, p >= 0.5]),
+      ),
+      meta: Object.fromEntries(
+        Object.entries(probabilities).map(([card, p]) => [
+          card,
+          { probability: p },
+        ]),
+      ),
+    };
+  };
+
+  return { transport, requests };
+}

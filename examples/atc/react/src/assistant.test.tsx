@@ -1,5 +1,6 @@
 import { createAtcStore, type MapFilter, STARTER_PROMPTS } from '@atc/shared';
 import {
+  fakeCardsTransport,
   fakeDecisionTransport,
   fakeFilterTransport,
 } from '@atc/shared/testing';
@@ -26,24 +27,29 @@ const FILTER: MapFilter = {
   inAirspace: null,
 };
 
-function setup(answer: Parameters<typeof fakeDecisionTransport>[0]) {
+function setup(
+  answer: Parameters<typeof fakeDecisionTransport>[0],
+  cardsAnswer: Parameters<typeof fakeCardsTransport>[0] = () => null,
+) {
   cleanup();
   const store = createAtcStore();
   const chat = fakeFilterTransport();
   const route = fakeDecisionTransport(answer);
+  const cards = fakeCardsTransport(cardsAnswer);
   const filtered: string[] = [];
   const view = render(
     <HashbrownProvider url="/unused" transport={chat.transport}>
       <AtcStoreProvider store={store}>
         <Assistant
           routeTransport={route.transport}
+          cardsTransport={cards.transport}
           onFilter={(request) => filtered.push(request)}
         />
       </AtcStoreProvider>
     </HashbrownProvider>,
   );
 
-  return { store, chat, route, filtered, element: view.container };
+  return { store, chat, route, cards, filtered, element: view.container };
 }
 
 function starterButton(element: HTMLElement, text: string) {
@@ -99,4 +105,55 @@ test('a clear-routed Enter empties the map filter with no filter request', async
 
   expect(filtered).toEqual([]);
   expect(chat.requests).toHaveLength(0);
+});
+
+/** The card names in the response schema a chat request carried. */
+function offeredComponents(request: { input: unknown }): string[] {
+  const json = JSON.stringify(request.input);
+
+  return [
+    'Markdown',
+    'FlightCard',
+    'ArrivalsBoard',
+    'AircraftCompare',
+    'AirportCard',
+  ].filter((name) => json.includes(`"${name}":{"type":"object"`));
+}
+
+test('a chat-routed message decides the cards, then sends the narrowed chat with Markdown', async () => {
+  const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
+  const { chat, cards, element } = setup(
+    () => null,
+    () => ({ FlightCard: 0.9, AirportCard: 0.8 }),
+  );
+
+  act(() => starterButton(element, starter?.text ?? '').click());
+  await waitFor(() => expect(chat.requests).toHaveLength(1));
+
+  expect(cards.requests).toEqual([starter?.text]);
+  expect(offeredComponents(chat.requests[0])).toEqual([
+    'Markdown',
+    'FlightCard',
+    'AirportCard',
+  ]);
+});
+
+test('a cards decision failure sends with every card', async () => {
+  const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
+  const { chat, cards, element } = setup(
+    () => null,
+    () => null,
+  );
+
+  act(() => starterButton(element, starter?.text ?? '').click());
+  await waitFor(() => expect(chat.requests).toHaveLength(1));
+
+  expect(cards.requests).toEqual([starter?.text]);
+  expect(offeredComponents(chat.requests[0])).toEqual([
+    'Markdown',
+    'FlightCard',
+    'ArrivalsBoard',
+    'AircraftCompare',
+    'AirportCard',
+  ]);
 });

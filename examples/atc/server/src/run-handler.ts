@@ -168,28 +168,60 @@ export function pinTools(tools: readonly Tool[]): Tool[] {
   });
 }
 
+/** The cards the model may render, in the order both apps expose them. */
+const CARD_DEFINITIONS = [
+  flightCardContract,
+  arrivalsBoardContract,
+  aircraftCompareContract,
+  airportCardContract,
+].map((contract) => ({ ...contract, children: false as const }));
+
+/** The UI response schema for Markdown and some of the cards. */
+function responseSchemaFor(
+  cards: readonly (typeof CARD_DEFINITIONS)[number][],
+) {
+  return createUiJsonSchema({ components: [markdownComponent(), ...cards] });
+}
+
 /**
- * The UI the model may render, built from the same definitions, in the same
- * order, as the components both apps expose. Neither app passes UI examples;
- * if one ever does, pass the same ones here.
+ * The UI the model may render when every card is available, built from the
+ * same definitions, in the same order, as the components both apps expose.
+ * Neither app passes UI examples; if one ever does, pass the same ones here.
+ * This is also what replaces a schema that is not allowlisted.
  */
-export const PINNED_RESPONSE_SCHEMA = createUiJsonSchema({
-  components: [
-    markdownComponent(),
-    { ...flightCardContract, children: false },
-    { ...arrivalsBoardContract, children: false },
-    { ...aircraftCompareContract, children: false },
-    { ...airportCardContract, children: false },
-  ],
-});
-
-const PINNED_RESPONSE_SCHEMA_JSON = JSON.stringify(PINNED_RESPONSE_SCHEMA);
+export const PINNED_RESPONSE_SCHEMA = responseSchemaFor(CARD_DEFINITIONS);
 
 /**
- * Replaces the response schema the browser sent with the server's own, so
- * the model can only render atc's components. A different schema (tampering,
- * or a browser on an older build) is logged, never rejected and never echoed:
- * it is untrusted and can be large.
+ * Every response schema a client may send: Markdown plus each of the 15
+ * non-empty subsets of the four cards, in pinned order, the last being the
+ * full schema. The apps narrow their cards with UI selection (at most two
+ * per turn), and Hashbrown keeps the declared order of the components it
+ * keeps, so a narrowed schema is a subset of the pinned order. A schema the
+ * browser sends is kept only when it equals one of these.
+ */
+export const PINNED_RESPONSE_SCHEMAS: readonly Record<string, unknown>[] =
+  Array.from({ length: 2 ** CARD_DEFINITIONS.length - 1 }, (_, index) =>
+    CARD_DEFINITIONS.filter((_card, bit) => ((index + 1) >> bit) & 1),
+  ).map((cards) =>
+    cards.length === CARD_DEFINITIONS.length
+      ? PINNED_RESPONSE_SCHEMA
+      : responseSchemaFor(cards),
+  );
+
+const PINNED_RESPONSE_SCHEMAS_BY_JSON: ReadonlyMap<
+  string,
+  Record<string, unknown>
+> = new Map(
+  PINNED_RESPONSE_SCHEMAS.map((schema) => [JSON.stringify(schema), schema]),
+);
+
+/**
+ * Pins the response schema the browser sent. A schema equal to an allowlisted
+ * one (`PINNED_RESPONSE_SCHEMAS`: Markdown plus any non-empty subset of the
+ * cards) is replaced by the server's own copy; anything else (tampering, or a
+ * browser on an older build) is replaced with the full schema, so the model
+ * can only render atc's components. A different schema is logged, never
+ * rejected and never echoed: it is untrusted and can be large.
  */
 export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   const { forwardedProps } = input as OpenAIHashbrownRunAgentInput;
@@ -197,11 +229,12 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   if (hashbrown?.responseSchema === undefined) {
     return input;
   }
-  if (
-    JSON.stringify(hashbrown.responseSchema) !== PINNED_RESPONSE_SCHEMA_JSON
-  ) {
+  const allowed = PINNED_RESPONSE_SCHEMAS_BY_JSON.get(
+    JSON.stringify(hashbrown.responseSchema),
+  );
+  if (allowed === undefined) {
     console.warn(
-      '[atc] replaced a response schema that differs from the pinned one',
+      '[atc] replaced a response schema that is not an allowlisted one',
     );
   }
 
@@ -209,7 +242,10 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
     ...input,
     forwardedProps: {
       ...forwardedProps,
-      hashbrown: { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA },
+      hashbrown: {
+        ...hashbrown,
+        responseSchema: allowed ?? PINNED_RESPONSE_SCHEMA,
+      },
     },
   } as OpenAIHashbrownRunAgentInput;
 }

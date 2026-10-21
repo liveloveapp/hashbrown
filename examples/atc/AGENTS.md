@@ -73,7 +73,10 @@ dependencies); this file covers atc.
   marker HTML. Everything else is rendered as text.
 - `normalizeAdsbLol` copies whitelisted fields only; never spread adsb.lol entries.
 - The system prompt, the tool definitions, the UI response schema and the output cap are
-  fixed on the server; clients cannot change them. A request that omits the response
+  fixed on the server; clients cannot change them. The one exception: the assistant narrows
+  its cards per turn, so the server keeps a response schema that equals an entry of
+  `PINNED_RESPONSE_SCHEMAS` (Markdown plus any non-empty subset of the cards, in pinned
+  order) and replaces anything else with the full schema. A request that omits the response
   schema gets free-form text, still under the pinned prompt, tools and cap.
 - The map moves only through store view requests: the newest wins, follow mode wins over
   all, a user drag or zoom cancels.

@@ -1,7 +1,21 @@
 import type { RunAgentInput } from '@ag-ui/core';
 import { LLMock } from '@copilotkit/aimock';
-import { ATC_TOOL_DEFINITIONS, cardGroups, SYSTEM_PROMPT } from '@atc/shared';
-import { createUiJsonSchema, s } from '@hashbrownai/core';
+import {
+  aircraftCompareContract,
+  airportCardContract,
+  arrivalsBoardContract,
+  ATC_TOOL_DEFINITIONS,
+  cardGroups,
+  flightCardContract,
+  SYSTEM_PROMPT,
+} from '@atc/shared';
+import {
+  createUiJsonSchema,
+  markdownComponent,
+  s,
+  ɵcreateComponentSelection,
+  ɵcreateUiKit,
+} from '@hashbrownai/core';
 import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -12,6 +26,7 @@ import {
   createRunHandler,
   limitRequest,
   PINNED_RESPONSE_SCHEMA,
+  PINNED_RESPONSE_SCHEMAS,
   pinResponseSchema,
   pinSystemPrompt,
   pinTools,
@@ -529,4 +544,140 @@ test('cardGroups flatten to exactly the pinned response schema, Markdown first',
   });
 
   expect(JSON.stringify(schema)).toBe(JSON.stringify(PINNED_RESPONSE_SCHEMA));
+});
+
+/** The kits both apps expose, built from the definitions: prose, then cards. */
+function browserKits() {
+  const kit = (
+    definitions: readonly (object & { name: string })[],
+    selectable: boolean,
+  ) =>
+    ɵcreateUiKit({
+      components: definitions.map((definition) => ({
+        ...definition,
+        component: () => null,
+      })) as never,
+      selectable,
+    });
+
+  return [
+    kit([markdownComponent() as never], false),
+    kit(
+      [
+        flightCardContract,
+        arrivalsBoardContract,
+        aircraftCompareContract,
+        airportCardContract,
+      ].map((contract) => ({ ...contract, children: false })),
+      true,
+    ),
+  ];
+}
+
+/** The response schema the browser sends for these components. */
+function browserSchema(components: readonly object[]): Record<string, unknown> {
+  const kit = ɵcreateUiKit({ components: components as never });
+
+  return JSON.parse(JSON.stringify(s.toJsonSchema(kit.schema)));
+}
+
+test('every narrowing the browser can make is an allowlisted response schema', () => {
+  const kits = browserKits();
+  const selection = ɵcreateComponentSelection(kits as never);
+  const ids = selection.options.map((option) => option.id);
+  const subsets = Array.from({ length: 2 ** ids.length - 1 }, (_, index) =>
+    ids.filter((_id, bit) => ((index + 1) >> bit) & 1),
+  );
+
+  const narrowed = subsets.map((subset) =>
+    JSON.stringify(browserSchema(selection.expand(subset))),
+  );
+
+  expect(ids).toEqual([
+    'FlightCard',
+    'ArrivalsBoard',
+    'AircraftCompare',
+    'AirportCard',
+  ]);
+  expect(PINNED_RESPONSE_SCHEMAS).toHaveLength(15);
+  const allowed = PINNED_RESPONSE_SCHEMAS.map((schema) =>
+    JSON.stringify(schema),
+  );
+  expect(narrowed.filter((json) => !allowed.includes(json))).toEqual([]);
+  expect(new Set(allowed).size).toBe(15);
+});
+
+test('the full, un-narrowed response schema is allowlisted', () => {
+  const full = browserSchema(
+    ɵcreateComponentSelection(browserKits() as never).expand([
+      'FlightCard',
+      'ArrivalsBoard',
+      'AircraftCompare',
+      'AirportCard',
+    ]),
+  );
+
+  const allowed = PINNED_RESPONSE_SCHEMAS.map((schema) =>
+    JSON.stringify(schema),
+  );
+
+  expect(allowed).toContain(JSON.stringify(full));
+  expect(allowed).toContain(JSON.stringify(PINNED_RESPONSE_SCHEMA));
+});
+
+test('pinResponseSchema keeps an allowlisted narrowed schema', () => {
+  const warnings = captureWarnings();
+  const narrowed = PINNED_RESPONSE_SCHEMAS[0];
+  const sent = withSchema(JSON.parse(JSON.stringify(narrowed)));
+
+  const pinned = pinResponseSchema(sent) as RunAgentInput & {
+    forwardedProps: { hashbrown: { responseSchema: object } };
+  };
+
+  expect(pinned.forwardedProps.hashbrown.responseSchema).toBe(narrowed);
+  expect(pinned.forwardedProps.hashbrown.responseSchema).not.toBe(
+    PINNED_RESPONSE_SCHEMA,
+  );
+  expect(warnings).toEqual([]);
+});
+
+test('pinResponseSchema replaces a schema that drops Markdown', () => {
+  const warnings = captureWarnings();
+  const withoutMarkdown = browserSchema([
+    { ...flightCardContract, children: false, component: () => null },
+  ]);
+
+  const pinned = pinResponseSchema(
+    withSchema(withoutMarkdown),
+  ) as RunAgentInput & {
+    forwardedProps: { hashbrown: { responseSchema: object } };
+  };
+
+  expect(pinned.forwardedProps.hashbrown.responseSchema).toBe(
+    PINNED_RESPONSE_SCHEMA,
+  );
+  expect(warnings).toHaveLength(1);
+});
+
+test('pinResponseSchema replaces a schema with an unknown component', () => {
+  const warnings = captureWarnings();
+  const unknown = browserSchema([
+    { ...markdownComponent(), component: () => null },
+    {
+      name: 'Surprise',
+      description: 'Not an atc card',
+      props: { text: s.string('Text') },
+      children: false,
+      component: () => null,
+    },
+  ]);
+
+  const pinned = pinResponseSchema(withSchema(unknown)) as RunAgentInput & {
+    forwardedProps: { hashbrown: { responseSchema: object } };
+  };
+
+  expect(pinned.forwardedProps.hashbrown.responseSchema).toBe(
+    PINNED_RESPONSE_SCHEMA,
+  );
+  expect(warnings).toHaveLength(1);
 });

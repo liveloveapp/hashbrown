@@ -47,7 +47,7 @@ test('the prompt covers the airport tools, and a starter shows Redmond', () => {
 
 test('the prompt covers the airspace tools, and a starter asks about Portland', () => {
   expect(SYSTEM_PROMPT).toContain(
-    "- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then show one ArrivalsBoard. To only show a place's airspace, call showAirspace.",
+    "- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then, if the ArrivalsBoard card is available, show one. To only show a place's airspace, call showAirspace.",
   );
   expect(SYSTEM_PROMPT).toContain(
     '- For which airspace one aircraft is in, call airspaceAt.',
@@ -111,4 +111,22 @@ test('the starters include a question for the chat and a filter for the map', ()
 
   expect(routes).toEqual(new Set(['chat', 'filter']));
   expect(filter?.text).toBe('Only jets below 10,000 ft');
+});
+
+test('every card rule in the prompt says the card must be available', () => {
+  const cards = [
+    'FlightCard',
+    'ArrivalsBoard',
+    'AircraftCompare',
+    'AirportCard',
+  ];
+
+  const rules = cards.map((card) =>
+    SYSTEM_PROMPT.match(new RegExp(`[Ii]f the ${card} card is available`, 'g')),
+  );
+
+  expect(rules.map((matches) => matches?.length ?? 0)).toEqual([2, 3, 1, 1]);
+  expect(SYSTEM_PROMPT).toContain(
+    'A card that is not available this turn cannot be shown: answer in prose instead.',
+  );
 });

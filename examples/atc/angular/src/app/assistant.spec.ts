@@ -1,12 +1,13 @@
 import { createAtcStore, type MapFilter, STARTER_PROMPTS } from '@atc/shared';
 import {
+  fakeCardsTransport,
   fakeDecisionTransport,
   fakeFilterTransport,
 } from '@atc/shared/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideHashbrown } from '@hashbrownai/angular';
 import { expect, test } from 'vitest';
-import { Assistant } from './assistant';
+import { Assistant, CARDS_DECISION_TRANSPORT } from './assistant';
 import { ROUTE_DECISION_TRANSPORT } from './router';
 import { ATC_STORE } from './store';
 
@@ -21,16 +22,21 @@ const FILTER: MapFilter = {
   inAirspace: null,
 };
 
-function setup(answer: Parameters<typeof fakeDecisionTransport>[0]) {
+function setup(
+  answer: Parameters<typeof fakeDecisionTransport>[0],
+  cardsAnswer: Parameters<typeof fakeCardsTransport>[0] = () => null,
+) {
   const store = createAtcStore();
   const chat = fakeFilterTransport();
   const route = fakeDecisionTransport(answer);
+  const cards = fakeCardsTransport(cardsAnswer);
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
       provideHashbrown({ baseUrl: '/unused', transport: chat.transport }),
       { provide: ATC_STORE, useValue: store },
       { provide: ROUTE_DECISION_TRANSPORT, useValue: route.transport },
+      { provide: CARDS_DECISION_TRANSPORT, useValue: cards.transport },
     ],
   });
   const fixture = TestBed.createComponent(Assistant);
@@ -45,6 +51,7 @@ function setup(answer: Parameters<typeof fakeDecisionTransport>[0]) {
     store,
     chat,
     route,
+    cards,
     filtered,
     fixture,
     element: fixture.nativeElement as HTMLElement,
@@ -120,5 +127,58 @@ test('a clear-routed Enter empties the map filter with no filter request', async
 
   expect(filtered).toEqual([]);
   expect(chat.requests).toHaveLength(0);
+  fixture.destroy();
+});
+
+/** The card names in the response schema a chat request carried. */
+function offeredComponents(request: { input: unknown }): string[] {
+  const json = JSON.stringify(request.input);
+
+  return [
+    'Markdown',
+    'FlightCard',
+    'ArrivalsBoard',
+    'AircraftCompare',
+    'AirportCard',
+  ].filter((name) => json.includes(`"${name}":{"type":"object"`));
+}
+
+test('a chat-routed message decides the cards, then sends the narrowed chat with Markdown', async () => {
+  const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
+  const { chat, cards, fixture, element } = setup(
+    () => null,
+    () => ({ FlightCard: 0.9, AirportCard: 0.8 }),
+  );
+
+  starterButton(element, starter?.text ?? '').click();
+  await until(() => chat.requests.length === 1);
+
+  expect(cards.requests).toEqual([starter?.text]);
+  expect(offeredComponents(chat.requests[0])).toEqual([
+    'Markdown',
+    'FlightCard',
+    'AirportCard',
+  ]);
+  fixture.destroy();
+});
+
+test('a cards decision failure sends with every card', async () => {
+  const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
+  const { chat, cards, fixture, element } = setup(
+    () => null,
+    () => null,
+  );
+
+  starterButton(element, starter?.text ?? '').click();
+  await until(() => chat.requests.length === 1);
+
+  expect(cards.requests).toEqual([starter?.text]);
+  expect(offeredComponents(chat.requests[0])).toEqual([
+    'Markdown',
+    'FlightCard',
+    'ArrivalsBoard',
+    'AircraftCompare',
+    'AirportCard',
+  ]);
   fixture.destroy();
 });
