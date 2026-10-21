@@ -1,23 +1,12 @@
 import { canonicalJson } from './activity.ts';
 import { nestedExecutor, type SqlExecutor } from './database.ts';
 import type { GrowthDeliveryStatus } from './models.ts';
+import { type DeliveryEnvironment, isCampaignTemplateId } from './resend.ts';
 import type {
   CanonicalStopReason,
   StopContactInput,
   StopContactResult,
 } from './stops.ts';
-
-/** The environment a send, and the database that records it, belongs to. */
-type DeliveryEnvironment = 'production' | 'preview' | 'test';
-
-const CAMPAIGN_TEMPLATE_IDS: ReadonlySet<string> = new Set([
-  'immediate',
-  'day-3',
-  'day-8',
-  'streaming_foundation',
-  'debugging_layers',
-  'event_state_boundary',
-]);
 
 const PROVIDER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u;
 const ISO_TIMESTAMP_PATTERN =
@@ -465,7 +454,7 @@ function isHashbrownGrowthSend(tags: Record<string, string>): boolean {
     (tags['campaign_step'] === '1' ||
       tags['campaign_step'] === '2' ||
       tags['campaign_step'] === '3') &&
-    (template === undefined || CAMPAIGN_TEMPLATE_IDS.has(template))
+    (template === undefined || isCampaignTemplateId(template))
   );
 }
 
