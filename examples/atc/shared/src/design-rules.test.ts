@@ -445,3 +445,22 @@ test('the casing is 2 px wider than its shelf and keeps the shelf dashes', () =>
   expect(strokes).toHaveLength(12);
   expect(broken).toEqual([]);
 });
+
+test('atc.css imports the rail and the dev drawer in cascade order', () => {
+  const css = readFileSync(
+    join(ATC, 'shared', 'src', 'styles', 'atc.css'),
+    'utf8',
+  );
+
+  const imports = [...css.matchAll(/@import '\.\/([\w-]+)\.css'/g)].map(
+    (match) => match[1],
+  );
+
+  expect(imports).toContain('rail');
+  expect(imports).toContain('dev-drawer');
+  expect(imports.indexOf('rail')).toBeGreaterThan(imports.indexOf('shell'));
+  expect(imports.indexOf('dev-drawer')).toBeGreaterThan(
+    imports.indexOf('rail'),
+  );
+  expect(imports.indexOf('dev-drawer')).toBeLessThan(imports.indexOf('sheet'));
+});

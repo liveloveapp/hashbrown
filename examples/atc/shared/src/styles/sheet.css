@@ -33,6 +33,39 @@
   .atc-workbench:has(.atc-chat-panel[data-snap='half']) {
     --atc-sheet: var(--atc-half);
   }
+  .atc-rail {
+    display: none;
+  }
+  .atc-header-dev {
+    display: grid;
+  }
+  /* The map column dissolves so the map panel still fills the screen. */
+  .atc-workbench .atc-map-column {
+    display: contents;
+  }
+  /* A full-width sheet over the map (and the chat sheet), with a close button. */
+  .atc-workbench .atc-dev-drawer {
+    position: fixed;
+    z-index: 2100;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: min(var(--atc-drawer-height, 280px), 70dvh);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-radius: var(--atc-radius) var(--atc-radius) 0 0;
+  }
+  .atc-dev-close {
+    display: grid;
+  }
+  .atc-dev-resize {
+    display: none;
+  }
+  .atc-dev-tabs {
+    padding-right: 52px;
+  }
+  .atc-dev-tab {
+    min-height: 44px;
+  }
   .atc-workbench .atc-map-panel {
     position: absolute;
     inset: 0;
@@ -179,6 +212,9 @@
 @media (max-height: 500px) and (orientation: landscape) {
   .atc-workbench {
     grid-template-columns: 320px minmax(0, 1fr);
+  }
+  .atc-workbench:has(> .atc-rail) {
+    grid-template-columns: 44px 320px minmax(0, 1fr);
   }
   .atc-panel-header {
     height: 40px;
