@@ -1,13 +1,10 @@
 import {
   browserStorage,
   type DevRow,
-  type DevSelection,
   type DevStorage,
-  followLatest,
   readDevMode,
   recordRoute,
   type RouteSend,
-  selectSend,
   type TurnShown,
   TYPING_EMPTY,
   type TypingShown,
@@ -30,12 +27,6 @@ export interface DevMode {
   readonly on: boolean;
   /** Opens or closes the drawer, and remembers it. */
   toggle(): void;
-  /** Which send the drawer shows. */
-  readonly selection: DevSelection;
-  /** Shows send `turn`, an index into the recorded turns (not a row). */
-  select(turn: number): void;
-  /** Goes back to following the newest send. */
-  follow(): void;
   /** Where dev mode and the drawer height are remembered. */
   readonly storage: DevStorage | null;
 }
@@ -90,9 +81,6 @@ function createFeedStore(): FeedStore {
 const OFF: DevMode = {
   on: false,
   toggle: () => undefined,
-  selection: followLatest(),
-  select: () => undefined,
-  follow: () => undefined,
   storage: null,
 };
 
@@ -100,8 +88,7 @@ const DevModeContext = createContext<DevMode>(OFF);
 const FeedContext = createContext<FeedStore | null>(null);
 
 /**
- * Holds dev mode (off for a first visit, then remembered in `storage`), the
- * send the drawer shows, and what the chat publishes for it. Without a
+ * Holds dev mode (off for a first visit, then remembered in `storage`) and what the chat publishes for it. Without a
  * provider dev mode is off, so components render without technical UI.
  */
 export function DevModeProvider({
@@ -112,7 +99,6 @@ export function DevModeProvider({
   children: ReactNode;
 }) {
   const [on, setOn] = useState(() => readDevMode(storage));
-  const [selection, setSelection] = useState(followLatest);
   const [feed] = useState(createFeedStore);
   const mode = useMemo<DevMode>(
     () => ({
@@ -120,14 +106,10 @@ export function DevModeProvider({
       toggle: () => {
         writeDevMode(storage, !on);
         setOn(!on);
-        setSelection(followLatest());
       },
-      selection,
-      select: (turn) => setSelection(selectSend(turn)),
-      follow: () => setSelection(followLatest()),
       storage,
     }),
-    [on, selection, storage],
+    [on, storage],
   );
 
   return (

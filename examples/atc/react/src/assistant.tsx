@@ -261,7 +261,7 @@ export function Assistant({
         {chat.messages.length === 0 && !chat.error ? (
           <EmptyState onPick={pick} />
         ) : null}
-        <Transcript items={items} busy={chat.isLoading} turns={turns} />
+        <Transcript items={items} busy={chat.isLoading} />
         {chat.error ? (
           <div className="atc-card atc-error" role="alert">
             <span>The assistant didn&apos;t answer. Try again.</span>

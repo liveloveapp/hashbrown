@@ -79,8 +79,7 @@ assistant always agree.
 no technical panels. Press the `{ }` button on the rail (in the header on phones, where
 the drawer opens as a sheet with a close button) to open the developer drawer under the
 map; the choice is remembered. Its tabs are Router, Cards, Filter, UI stream and Tools,
-and show each layer's JSON as it arrives for the shown send (the newest, or the answer
-you picked with the `{ }` button beside it until "Latest"). The drawer only reports;
+and show each layer's JSON as it arrives for the newest send. The drawer only reports;
 nothing in it changes the app.
 
 ```text

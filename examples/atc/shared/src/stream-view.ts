@@ -274,32 +274,6 @@ export interface TurnShown {
   readonly cards?: CardsShown;
 }
 
-/**
- * For each transcript row, the send it is the last answer of, or null. Sends
- * are numbered by the user rows; only the last answer row of each send gets a
- * number, so a send with tool steps is marked once, on the final answer (where
- * dev mode puts its inspect button).
- */
-export function answerTurns(
-  kinds: readonly { readonly kind: string }[],
-): (number | null)[] {
-  const turns = kinds.map(() => null as number | null);
-  let turn = -1;
-  let last = -1;
-  kinds.forEach((item, index) => {
-    if (item.kind === 'user') {
-      turn += 1;
-      last = -1;
-    } else if (item.kind === 'answer' && turn >= 0) {
-      if (last >= 0) turns[last] = null;
-      turns[index] = turn;
-      last = index;
-    }
-  });
-
-  return turns;
-}
-
 /** Appends the send that just started (its cards decision is pending). */
 export function addTurn(
   turns: readonly TurnShown[],

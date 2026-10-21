@@ -1,13 +1,10 @@
 import {
   browserStorage,
   type DevRow,
-  type DevSelection,
   type DevStorage,
-  followLatest,
   readDevMode,
   recordRoute,
   type RouteSend,
-  selectSend,
   type TurnShown,
   TYPING_EMPTY,
   type TypingShown,
@@ -52,21 +49,18 @@ type FeedSources = { readonly [K in keyof DevFeed]?: Signal<DevFeed[K]> };
 
 /**
  * Dev mode, as the rail, the header, the transcript and the drawer see it:
- * off for a first visit, then remembered in {@link DEV_STORAGE}; the send the
- * drawer shows; and what the chat publishes for it ({@link publishDev}).
+ * off for a first visit, then remembered in {@link DEV_STORAGE}; and what the
+ * chat publishes for it ({@link publishDev}).
  */
 @Injectable({ providedIn: 'root' })
 export class DevMode {
   /** Where dev mode and the drawer height are remembered. */
   readonly storage = inject(DEV_STORAGE);
   private readonly state = signal(readDevMode(this.storage));
-  private readonly chosen = signal<DevSelection>(followLatest());
   private readonly sources = signal<FeedSources>({});
   private readonly logged = signal<readonly RouteSend[]>([]);
   /** True while the developer drawer is open. */
   readonly on = this.state.asReadonly();
-  /** Which send the drawer shows. */
-  readonly selection = this.chosen.asReadonly();
   /** Every submission and its route, newest first (see {@link recordRoute}). */
   readonly routes = this.logged.asReadonly();
   /** What the router makes of the text being typed. */
@@ -76,22 +70,11 @@ export class DevMode {
   /** The chat, as the assistant published it. */
   readonly chat = computed(() => this.sources().chat?.() ?? EMPTY_FEED.chat);
 
-  /** Opens or closes the drawer, remembers it, and follows the newest send. */
+  /** Opens or closes the drawer, and remembers it. */
   toggle(): void {
     const on = !this.state();
     writeDevMode(this.storage, on);
     this.state.set(on);
-    this.chosen.set(followLatest());
-  }
-
-  /** Shows send `turn`, an index into the recorded turns (not a row). */
-  select(turn: number): void {
-    this.chosen.set(selectSend(turn));
-  }
-
-  /** Goes back to following the newest send. */
-  follow(): void {
-    this.chosen.set(followLatest());
   }
 
   /**

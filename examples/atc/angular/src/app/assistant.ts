@@ -131,11 +131,7 @@ let nextRefineId = 0;
       @if (messages().length === 0 && !chat.error()) {
         <atc-empty-state (pick)="pick($event)" />
       }
-      <atc-transcript
-        [items]="items()"
-        [busy]="chat.isLoading()"
-        [turns]="turns()"
-      />
+      <atc-transcript [items]="items()" [busy]="chat.isLoading()" />
       @if (chat.error()) {
         <div class="atc-card atc-error" role="alert">
           <span>The assistant didn't answer. Try again.</span>

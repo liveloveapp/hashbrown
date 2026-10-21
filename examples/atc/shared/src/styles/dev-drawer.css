@@ -122,42 +122,6 @@
   margin: 0;
   color: var(--atc-dimmed);
 }
-.atc-dev-title::after {
-  content: ':';
-}
-/* Shown only while an earlier send is selected; returns to following. */
-.atc-dev-latest {
-  margin-left: auto;
-  color: var(--atc-surface);
-}
-/* Dev mode only: the button under an answer that shows its send. */
-.atc-dev-inspect {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  margin-top: 4px;
-  padding: 0;
-  border: 1px solid var(--atc-border);
-  border-radius: var(--atc-radius-row);
-  background: none;
-  color: var(--atc-muted);
-  cursor: pointer;
-}
-.atc-dev-inspect:is(:hover, :focus-visible) {
-  color: var(--atc-ink);
-}
-.atc-dev-inspect[aria-pressed='true'] {
-  border-color: var(--atc-ink);
-  background: var(--atc-ink);
-  color: var(--atc-surface);
-}
-@media (pointer: coarse) {
-  .atc-dev-inspect {
-    width: 44px;
-    height: 44px;
-  }
-}
 /* Phone only: closes the sheet. */
 .atc-dev-close {
   display: none;

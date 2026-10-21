@@ -7,15 +7,11 @@ import {
   devTabBlocks,
   type DevToolInput,
   DRAWER_HEIGHT_KEY,
-  followLatest,
   readDevMode,
   readDrawerHeight,
   routerTyping,
   rowTurns,
-  selectedTurn,
-  selectSend,
   sendActivity,
-  shownTurn,
   TYPING_EMPTY,
   wireUi,
   writeDevMode,
@@ -53,17 +49,11 @@ const ROUTE = {
 const EMPTY: DevToolInput = {
   typing: TYPING_EMPTY,
   turn: undefined,
-  following: true,
   routes: [],
   answer: null,
   tools: [],
   filter: { run: null, applied: null },
 };
-
-const TURNS: TurnShown[] = [
-  { text: 'one', router: ROUTER_SKIPPED },
-  { text: 'two', router: ROUTER_SKIPPED },
-];
 
 test('dev mode is off by default and survives a throwing storage', () => {
   const storage = memoryStorage();
@@ -119,35 +109,10 @@ test('clampDrawerHeight defaults to 35% and clamps to 160 px and 60%', () => {
   expect(short).toBe(120);
 });
 
-test('selection follows the newest send until an earlier one is selected', () => {
-  const following = followLatest();
-
-  const newest = selectedTurn(TURNS, following);
-  const earlier = selectedTurn(TURNS, selectSend(0));
-
-  expect(following).toEqual({ follow: true, index: null });
-  expect(newest).toBe(1);
-  expect(earlier).toBe(0);
-  expect(selectedTurn([], following)).toBeNull();
-  expect(selectedTurn(TURNS, selectSend(5))).toBeNull();
-});
-
-test('a selected send is kept while a newer one streams', () => {
-  const selection = selectSend(0);
-  const more = [...TURNS, { text: 'three', router: ROUTER_SKIPPED }];
-
-  const kept = selectedTurn(more, selection);
-  const latest = selectedTurn(more, followLatest());
-
-  expect(kept).toBe(0);
-  expect(latest).toBe(2);
-});
-
 test('each tab lists its blocks in order', () => {
   const input: DevToolInput = {
     typing: { kind: 'decided', result: ROUTE, ms: 10 },
     turn: { text: 'x', router: ROUTER_SKIPPED },
-    following: false,
     routes: [],
     answer: { content: { a: 1 }, streaming: false },
     tools: [{ name: 'findAircraft', args: { q: 1 }, status: 'done' }],
@@ -170,7 +135,7 @@ test('each tab lists its blocks in order', () => {
     'UI stream',
     'Tools',
   ]);
-  expect(titles('router')).toEqual(['typing', 'sent: "x" → chat']);
+  expect(titles('router')).toEqual(['typing', 'sent "x" → chat']);
   expect(devTabBlocks('router', input)[0].text).toContain('chat');
   expect(devTabBlocks('router', input)[1].text).toBe('skipped (starter)');
   expect(titles('cards')).toEqual(['cards']);
@@ -249,16 +214,6 @@ test('sendActivity reads one send: its last answer and every tool call', () => {
     tools: [],
   });
   expect(none).toEqual({ answer: null, tools: [] });
-});
-
-test('shownTurn falls back to the newest send when the chosen one is gone', () => {
-  const kept = shownTurn(TURNS, selectSend(0));
-  const gone = shownTurn(TURNS, selectSend(7));
-  const empty = shownTurn([], selectSend(0));
-
-  expect(kept).toBe(0);
-  expect(gone).toBe(1);
-  expect(empty).toBeNull();
 });
 
 test('routerTyping shows the live decision, empty for an empty box, or waiting while none is in', () => {
@@ -415,7 +370,6 @@ test('the cards tab settles when a finished answer never had a decision', () => 
   const base: DevToolInput = {
     typing: null,
     turn: { text: 'x', router: ROUTER_SKIPPED },
-    following: true,
     routes: [],
     answer: { content: { a: 1 }, streaming: false },
     tools: [],
@@ -482,7 +436,7 @@ test('after a filter send the router tab shows that send, then earlier ones on o
 
   expect(blocks.map((block) => block.title)).toEqual([
     'typing',
-    'sent: "only jets below 8000 ft" → filter',
+    'sent "only jets below 8000 ft" → filter',
     'earlier',
   ]);
   expect(blocks[1].text).toContain('→ filter');
@@ -497,25 +451,17 @@ test('after a filter send the router tab shows that send, then earlier ones on o
   );
 });
 
-test('a selected chat send is still shown, whatever was sent after it', () => {
-  const routes: RouteSend[] = [
-    {
-      text: 'only jets below 8000 ft',
-      router: FILTER_ROUTE,
-      outcome: 'filter',
-    },
-  ];
+test('before any submission is logged, the newest chat send stands in', () => {
   const input: DevToolInput = {
     ...EMPTY,
     turn: { text: 'Seattle?', router: ROUTER_SKIPPED },
-    following: false,
-    routes,
+    routes: [],
   };
 
   const blocks = devTabBlocks('router', input);
 
   expect(blocks).toEqual([
     { title: 'typing', text: 'type to see where it goes' },
-    { title: 'sent: "Seattle?" → chat', text: 'skipped (starter)' },
+    { title: 'sent "Seattle?" → chat', text: 'skipped (starter)' },
   ]);
 });

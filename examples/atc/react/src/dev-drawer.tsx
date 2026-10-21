@@ -7,7 +7,6 @@ import {
   type DevTabId,
   readDrawerHeight,
   sendActivity,
-  shownTurn,
   writeDrawerHeight,
 } from '@atc/shared';
 import {
@@ -30,9 +29,8 @@ const NO_FILTER: DevFilter = { run: null, applied: null };
 
 /**
  * The developer drawer under the map: tabs for the router, the cards
- * decision, the filter, the streaming UI JSON and the tool calls of the shown
- * send (the newest, or an answer picked in the chat until "Latest"). It only
- * reports; nothing in it changes the app. Everything is text (never HTML) and
+ * decision, the filter, the streaming UI JSON and the tool calls of the
+ * newest send. It only reports; nothing in it changes the app. Everything is text (never HTML) and
  * the drawer is not a live region. Its top edge drags to resize it, clamped
  * to its column and remembered. `filter` is the Filter tab's input
  * (`devFilter`), from the app. Renders nothing while dev mode is off.
@@ -49,15 +47,14 @@ function DrawerPanel({ filter }: { filter: DevFilter }) {
   const tabsRef = useRef<HTMLDivElement>(null);
 
   const { items, turns, busy } = feed.chat;
-  const shown = shownTurn(turns, dev.selection);
+  const newest = turns.length === 0 ? null : turns.length - 1;
   const activity = useMemo(
-    () => sendActivity(items, turns, shown, busy),
-    [items, turns, shown, busy],
+    () => sendActivity(items, turns, newest, busy),
+    [items, turns, newest, busy],
   );
   const blocks = devTabBlocks(tab, {
     typing: feed.typing,
-    turn: shown === null ? undefined : turns[shown],
-    following: dev.selection.follow,
+    turn: newest === null ? undefined : turns[newest],
     routes: feed.routes,
     answer: activity.answer,
     tools: activity.tools,
@@ -124,15 +121,6 @@ function DrawerPanel({ filter }: { filter: DevFilter }) {
             </button>
           ))}
         </div>
-        {dev.selection.follow ? null : (
-          <button
-            type="button"
-            className="atc-dev-tab atc-dev-latest"
-            onClick={dev.follow}
-          >
-            Latest
-          </button>
-        )}
       </div>
       <div
         className="atc-dev-body"

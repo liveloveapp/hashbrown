@@ -335,14 +335,13 @@ test('a cards decision failure sends with every card', async () => {
   fixture.destroy();
 });
 
-test('without dev mode an answer is not selectable', async () => {
+test('without dev mode no technical panels render', async () => {
   const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
   const { chat, fixture, element } = setup(() => null);
 
   starterButton(element, starter?.text ?? '').click();
   await until(() => chat.requests.length === 1);
 
-  expect(element.querySelectorAll('.atc-dev-inspect')).toHaveLength(0);
   expect(element.querySelectorAll('[class*="atc-stream"]')).toHaveLength(0);
   fixture.destroy();
 });
@@ -391,7 +390,7 @@ function answer(text: string) {
   ],
   template: `
     <atc-test-published [chat]="chat" />
-    <atc-transcript [items]="chat.items" [turns]="chat.turns" />
+    <atc-transcript [items]="chat.items" />
     <atc-dev-drawer />
   `,
 })
@@ -412,32 +411,26 @@ class Superseded {
   };
 }
 
-test('a superseded send does not shift later answers onto the wrong decisions', () => {
+test('a superseded send does not shift the newest answer onto the wrong decision', () => {
   setup(() => null);
   const fixture = TestBed.createComponent(Superseded);
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
-  const answers = element.querySelectorAll<HTMLElement>('.atc-answer');
-  const inspect = () =>
-    element.querySelectorAll<HTMLButtonElement>('.atc-dev-inspect');
-  const router = () => {
+  const panel = () => {
     fixture.detectChanges();
     return element.querySelector('[role="tabpanel"]')?.textContent ?? '';
   };
 
-  answers[0]?.click();
-  const unchanged = router();
-  inspect()[0]?.click();
-  const first = router();
-  inspect()[1]?.click();
-  const second = router();
+  const router = panel();
+  [...element.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
+    .find((entry) => entry.textContent?.trim() === 'UI stream')
+    ?.click();
+  const ui = panel();
 
-  expect(unchanged).toContain('→ chat (unavailable)');
-  expect(first).toContain('skipped (starter)');
-  expect(first).not.toContain('superseded');
-  expect(inspect()[0]?.getAttribute('aria-pressed')).toBe('false');
-  expect(second).toContain('→ chat (unavailable)');
-  expect(inspect()[1]?.getAttribute('aria-pressed')).toBe('true');
+  expect(router).toContain('→ chat (unavailable)');
+  expect(router).not.toContain('superseded');
+  expect(ui).toContain('second');
+  expect(ui).not.toContain('first');
   fixture.destroy();
 });
 
@@ -505,7 +498,7 @@ test('the router tab keeps what a filter send decided after the box clears', asy
   const sent = router();
 
   expect(empty).toContain('type to see where it goes');
-  expect(sent).toContain('sent: "only jets below 8000 ft" → filter');
+  expect(sent).toContain('sent "only jets below 8000 ft" → filter');
   expect(sent).toContain('intent: filter 0.97');
   expect(sent).toContain('type to see where it goes');
   fixture.destroy();
@@ -518,7 +511,7 @@ test('the router tab shows a filter starter as skipped', () => {
   starterButton(element, starter?.text ?? '').click();
   const shown = router();
 
-  expect(shown).toContain(`sent: "${starter?.text}" → filter`);
+  expect(shown).toContain(`sent "${starter?.text}" → filter`);
   expect(shown).toContain('skipped (starter)');
   fixture.destroy();
 });

@@ -246,7 +246,7 @@ const TOOL_MESSAGES = [
   template: `
     <atc-test-feed [chat]="chat" />
     <atc-rail [on]="dev.on()" (toggleDevMode)="dev.toggle()" />
-    <atc-transcript [items]="chat.items" [turns]="chat.turns" />
+    <atc-transcript [items]="chat.items" />
     @if (dev.on()) {
       <atc-dev-drawer />
     }
@@ -301,7 +301,7 @@ test('with dev mode off there is no technical UI', async () => {
 })
 class ChatHarness {}
 
-test('the drawer follows the newest send and keeps a clicked earlier answer', async () => {
+test('the drawer always follows the newest send', async () => {
   const { chat } = configure(memoryStorage({ [DEV_MODE_KEY]: 'on' }));
   const { fixture, element, unmount } = mount(ChatHarness);
   const input = element.querySelector('input') as HTMLInputElement;
@@ -326,44 +326,21 @@ test('the drawer follows the newest send and keeps a clicked earlier answer', as
     fixture.detectChanges();
     return text(element.querySelector('[role="tabpanel"]'));
   };
-  const latest = () =>
-    element.querySelector<HTMLButtonElement>('.atc-dev-latest');
-  const inspect = () => [
-    ...element.querySelectorAll<HTMLButtonElement>('.atc-dev-inspect'),
-  ];
   const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
 
   starterButton(element, starter?.text ?? '').click();
   await answer(1, 'First answer');
   await ask('What about Bend?', 2, 'Second answer');
   click(fixture, tab(element, 'UI stream'));
-  const following = shown();
-  const pressedBefore = inspect().map((button) =>
-    button.getAttribute('aria-pressed'),
-  );
-  click(fixture, inspect()[0] ?? null);
-  const picked = shown();
-  const pressedAfter = inspect().map((button) =>
-    button.getAttribute('aria-pressed'),
-  );
-  const latestInTabs = element.querySelector(
-    '[role="tablist"] .atc-dev-latest',
-  );
+  const second = shown();
   await ask('And Redmond?', 3, 'Third answer');
-  const kept = shown();
-  click(fixture, latest());
+  const third = shown();
 
-  expect(following).toContain('Second answer');
-  expect(pressedBefore).toEqual(['false', 'true']);
-  expect(inspect()[0]?.getAttribute('aria-label')).toBe(
-    'Show this answer in developer tools',
-  );
-  expect(picked).toContain('First answer');
-  expect(pressedAfter).toEqual(['true', 'false']);
-  expect(latestInTabs).toBeNull();
-  expect(kept).toContain('First answer');
-  expect(shown()).toContain('Third answer');
-  expect(latest()).toBeNull();
+  expect(second).toContain('Second answer');
+  expect(third).toContain('Third answer');
+  expect(third).not.toContain('Second answer');
+  expect(element.querySelector('.atc-dev-latest')).toBeNull();
+  expect(element.querySelector('.atc-dev-inspect')).toBeNull();
   unmount();
 });
 

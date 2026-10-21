@@ -105,44 +105,6 @@ export const DEV_TABS: readonly { id: DevTabId; label: string }[] = [
   { id: 'tools', label: 'Tools' },
 ];
 
-/** Which send the drawer shows: the newest (`follow`) or a chosen one. */
-export interface DevSelection {
-  /** True while the drawer shows the newest send. */
-  readonly follow: boolean;
-  /** The chosen send, or null while following. */
-  readonly index: number | null;
-}
-
-/**
- * Selects an earlier send; it stays selected as newer sends arrive. `index`
- * is an index into the recorded turns (append-only, superseded sends kept),
- * not a transcript row: map a clicked row with {@link rowTurns}.
- */
-export function selectSend(index: number): DevSelection {
-  return { follow: false, index };
-}
-
-/** Follows the newest send. */
-export function followLatest(): DevSelection {
-  return { follow: true, index: null };
-}
-
-/**
- * The index of the send to show, or null when there is none (no sends, or the
- * chosen one is gone). Following means the newest; a chosen send is kept
- * however many newer ones follow.
- */
-export function selectedTurn(
-  turns: readonly TurnShown[],
-  selection: DevSelection,
-): number | null {
-  if (turns.length === 0) return null;
-  if (selection.follow) return turns.length - 1;
-  const index = selection.index;
-
-  return index !== null && index >= 0 && index < turns.length ? index : null;
-}
-
 /** The composer is empty, so there is nothing for the router to decide. */
 export const TYPING_EMPTY = { kind: 'empty' } as const;
 
@@ -167,17 +129,6 @@ export function routerTyping(
   if (state.pending && routerDecisionInput(state.text) !== null) return null;
 
   return routerShown(state, ms);
-}
-
-/**
- * The send to show: the selected one, or the newest when following or when
- * the chosen send is gone (the thread was reset). Null with no sends.
- */
-export function shownTurn(
-  turns: readonly TurnShown[],
-  selection: DevSelection,
-): number | null {
-  return selectedTurn(turns, selection) ?? selectedTurn(turns, followLatest());
 }
 
 /** The parts of a transcript row that the drawer reads. */
@@ -246,15 +197,13 @@ export function sendActivity(
 export interface DevToolInput {
   /** What the router makes of the text being typed. */
   typing: TypingShown;
-  /** The shown send, if any. */
+  /** The newest send, if any. */
   turn: TurnShown | undefined;
-  /** True while the drawer follows the newest send (no answer picked). */
-  following: boolean;
   /** Every submission and its route, newest first (`recordRoute`). */
   routes: readonly RouteSend[];
-  /** The shown send's answer, as it streams. */
+  /** The newest send's answer, as it streams. */
   answer: { content: unknown; streaming: boolean } | null;
-  /** The shown send's tool calls. */
+  /** The newest send's tool calls. */
   tools: readonly StreamToolCall[];
   /** The filter step: see {@link devFilter}. */
   filter: DevFilter;
@@ -349,20 +298,17 @@ function typingBlock(typing: TypingShown): StreamBlock {
 }
 
 /**
- * The Router tab's sent blocks. With an answer picked in the chat (or no
- * submission logged yet), that chat send's router; otherwise the newest
- * submission of any route (chat, filter, clear, starter, refinement) in
- * full, then up to four earlier ones, one line each.
+ * The Router tab's sent blocks: the newest submission of any route (chat,
+ * filter, clear, starter, refinement) in full, then up to four earlier ones,
+ * one line each. Before any submission is logged, the newest chat send stands
+ * in.
  */
 function sentBlocks(input: DevToolInput): StreamBlock[] {
   // Before any submission is logged, the shown chat send stands in.
-  if (
-    input.turn !== undefined &&
-    (!input.following || input.routes.length === 0)
-  ) {
+  if (input.turn !== undefined && input.routes.length === 0) {
     return [
       {
-        title: `sent: ${quotedSend(input.turn.text)} → chat`,
+        title: `sent ${quotedSend(input.turn.text)} → chat`,
         text: routerBlock(input.turn.router).text,
       },
     ];
@@ -375,7 +321,7 @@ function sentBlocks(input: DevToolInput): StreamBlock[] {
 
   return [
     {
-      title: `sent: ${quotedSend(newest.text)} → ${newest.outcome}`,
+      title: `sent ${quotedSend(newest.text)} → ${newest.outcome}`,
       text: routerBlock(newest.router).text,
     },
     ...(lines.length === 0

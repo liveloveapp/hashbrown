@@ -2,7 +2,6 @@ import { expect, test } from 'vitest';
 import {
   addTurn,
   alignTurns,
-  answerTurns,
   cardPicks,
   cardsBlock,
   decisionView,
@@ -191,21 +190,6 @@ test('cardsBlock names the fallback when unsure, failed or pending', () => {
     'all (fallback: status 503)',
   );
   expect(cardsBlock(undefined).text).toBe('deciding…');
-});
-
-test('answerTurns puts the panel on the last answer of each send', () => {
-  const kinds = [
-    { kind: 'user' },
-    { kind: 'tools' },
-    { kind: 'answer' },
-    { kind: 'answer' },
-    { kind: 'user' },
-    { kind: 'answer' },
-  ];
-
-  const turns = answerTurns(kinds);
-
-  expect(turns).toEqual([null, null, null, 0, null, 1]);
 });
 
 test('filterBlocks orders the layers', () => {

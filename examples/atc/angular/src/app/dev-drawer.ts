@@ -6,7 +6,6 @@ import {
   type DevTabId,
   readDrawerHeight,
   sendActivity,
-  shownTurn,
   writeDrawerHeight,
 } from '@atc/shared';
 import {
@@ -33,9 +32,8 @@ let nextId = 0;
 
 /**
  * The developer drawer under the map: tabs for the router, the cards
- * decision, the filter, the streaming UI JSON and the tool calls of the shown
- * send (the newest, or an answer picked in the chat until "Latest"). It only
- * reports; nothing in it changes the app. Everything is text (never HTML) and
+ * decision, the filter, the streaming UI JSON and the tool calls of the
+ * newest send. It only reports; nothing in it changes the app. Everything is text (never HTML) and
  * the drawer is not a live region. Its top edge drags to resize it, clamped
  * to its column and remembered. `filter` is the Filter tab's input
  * (`devFilter`), from the app. The parent renders it only while dev mode is on.
@@ -86,15 +84,6 @@ let nextId = 0;
           </button>
         }
       </div>
-      @if (!dev.selection().follow) {
-        <button
-          type="button"
-          class="atc-dev-tab atc-dev-latest"
-          (click)="dev.follow()"
-        >
-          Latest
-        </button>
-      }
     </div>
     <div
       class="atc-dev-body"
@@ -138,22 +127,23 @@ export class DevDrawer {
   private readonly host =
     inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
-  private readonly shown = computed(() =>
-    shownTurn(this.dev.chat().turns, this.dev.selection()),
-  );
+  private readonly newest = computed(() => {
+    const { length } = this.dev.chat().turns;
+
+    return length === 0 ? null : length - 1;
+  });
   private readonly activity = computed(() => {
     const { items, turns, busy } = this.dev.chat();
 
-    return sendActivity(items, turns, this.shown(), busy);
+    return sendActivity(items, turns, this.newest(), busy);
   });
   protected readonly blocks = computed(() => {
-    const shown = this.shown();
+    const newest = this.newest();
     const activity = this.activity();
 
     return devTabBlocks(this.tab(), {
       typing: this.dev.typing(),
-      turn: shown === null ? undefined : this.dev.chat().turns[shown],
-      following: this.dev.selection().follow,
+      turn: newest === null ? undefined : this.dev.chat().turns[newest],
       routes: this.dev.routes(),
       answer: activity.answer,
       tools: activity.tools,

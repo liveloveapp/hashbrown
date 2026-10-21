@@ -898,7 +898,7 @@ test('the dev tool opens from the rail, shows each tab, and is remembered', asyn
   await expect(drawer).toBeVisible();
   await drawer.getByRole('tab', { name: 'Router' }).click();
   await expect(drawer).toContainText(
-    `sent: "${PROMPTS.redmondAirspace}" → chat`,
+    `sent "${PROMPTS.redmondAirspace}" → chat`,
   );
   await expect(drawer).toContainText('type to see where it goes');
   await drawer.getByRole('tab', { name: 'Cards' }).click();
@@ -938,7 +938,6 @@ test('with dev mode off the map and transcript have no technical panels', async 
     'false',
   );
   await expect(page.getByTestId('dev-drawer')).toHaveCount(0);
-  await expect(page.locator('.atc-dev-inspect')).toHaveCount(0);
   await expect(page.getByTestId('stream-panel')).toHaveCount(0);
   await expect(
     page.getByRole('switch', { name: 'Show the stream' }),

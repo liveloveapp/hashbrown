@@ -349,18 +349,17 @@ test('the header button toggles dev mode on phones', () => {
   expect(view.container.querySelector('[role="switch"]')).toBeNull();
 });
 
-test('without dev mode an answer is not selectable', async () => {
+test('without dev mode no technical panels render', async () => {
   const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
   const { chat, element } = setup(() => null);
 
   act(() => starterButton(element, starter?.text ?? '').click());
   await waitFor(() => expect(chat.requests).toHaveLength(1));
 
-  expect(element.querySelectorAll('.atc-dev-inspect')).toHaveLength(0);
   expect(element.querySelectorAll('[class*="atc-stream"]')).toHaveLength(0);
 });
 
-test('a superseded send does not shift later answers onto the wrong decisions', () => {
+test('a superseded send does not shift the newest answer onto the wrong decision', () => {
   cleanup();
   const answer = (text: string) => ({
     role: 'assistant',
@@ -384,30 +383,26 @@ test('a superseded send does not shift later answers onto the wrong decisions', 
     <AtcStoreProvider store={createAtcStore()}>
       <DevModeProvider storage={onStorage()}>
         <Published items={items} turns={turns} />
-        <Transcript items={items} turns={turns} />
+        <Transcript items={items} />
         <DevDrawer />
       </DevModeProvider>
     </AtcStoreProvider>,
   );
-  const answers = view.container.querySelectorAll('.atc-answer');
-  const inspect =
-    view.container.querySelectorAll<HTMLButtonElement>('.atc-dev-inspect');
-  const router = () =>
+  const panel = () =>
     view.container.querySelector('[role="tabpanel"]')?.textContent ?? '';
 
-  fireEvent.click(answers[0] as HTMLElement);
-  const unchanged = router();
-  fireEvent.click(inspect[0] as HTMLElement);
-  const first = router();
-  fireEvent.click(inspect[1] as HTMLElement);
-  const second = router();
+  const router = panel();
+  fireEvent.click(
+    [...view.container.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+      (entry) => entry.textContent === 'UI stream',
+    ) as HTMLElement,
+  );
+  const ui = panel();
 
-  expect(unchanged).toContain('→ chat (unavailable)');
-  expect(first).toContain('skipped (starter)');
-  expect(first).not.toContain('superseded');
-  expect(inspect[0]?.getAttribute('aria-pressed')).toBe('false');
-  expect(second).toContain('→ chat (unavailable)');
-  expect(inspect[1]?.getAttribute('aria-pressed')).toBe('true');
+  expect(router).toContain('→ chat (unavailable)');
+  expect(router).not.toContain('superseded');
+  expect(ui).toContain('second');
+  expect(ui).not.toContain('first');
 });
 
 /** A storage with dev mode on. */
@@ -471,7 +466,7 @@ test('the router tab keeps what a filter send decided after the box clears', asy
   await waitFor(() => expect(input.value).toBe(''));
 
   expect(empty).toContain('type to see where it goes');
-  expect(router()).toContain('sent: "only jets below 8000 ft" → filter');
+  expect(router()).toContain('sent "only jets below 8000 ft" → filter');
   expect(router()).toContain('intent: filter 0.97');
   expect(router()).toContain('type to see where it goes');
 });
@@ -482,6 +477,6 @@ test('the router tab shows a filter starter as skipped', () => {
 
   act(() => starterButton(element, starter?.text ?? '').click());
 
-  expect(router()).toContain(`sent: "${starter?.text}" → filter`);
+  expect(router()).toContain(`sent "${starter?.text}" → filter`);
   expect(router()).toContain('skipped (starter)');
 });

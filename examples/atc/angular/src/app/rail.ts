@@ -6,8 +6,8 @@ import {
 } from '@angular/core';
 
 /**
- * The `{ }` icon of the developer tools toggle, for the rail, the phone
- * header and the transcript's inspect buttons.
+ * The `{ }` icon of the developer tools toggle, for the rail and the phone
+ * header.
  */
 @Component({
   selector: 'atc-dev-icon',
