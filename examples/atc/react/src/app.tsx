@@ -1,5 +1,5 @@
 import {
-  type DevToolInput,
+  devFilter,
   FILTER_FAILED_NOTICE,
   focusOpensSheet,
   INITIAL_SHEET,
@@ -51,26 +51,40 @@ function Workbench() {
   const chatSheet = useRef<HTMLElement>(null);
   const mapFilter = useMapFilter();
   // The filter on the map, whoever applied it.
-  const applied = useSyncExternalStore(
+  const current = useSyncExternalStore(
     store.subscribe,
     () => store.getState().mapFilter,
   );
+  // What the last filter run left on the map. The drawer shows the run only
+  // while it streams or the map still holds this: the assistant's filter
+  // tool, a clear or the pill's x replace it.
+  const [produced, setProduced] = useState<typeof current>(null);
+  const ran = useRef(false);
   // What the router decided for the latest filter request.
   const [filterRoute, setFilterRoute] = useState<RouterShown | null>(null);
   const applyFilter = (request: string, routed: RouterShown) => {
     setFilterRoute(routed);
+    setProduced(null);
     mapFilter.apply(request);
   };
-  // The drawer's Filter tab: the latest run and the filter on the map.
-  const filter: DevToolInput['filter'] =
-    filterRoute === null && applied === null
-      ? null
-      : {
-          router: filterRoute,
-          output: mapFilter.output,
-          streaming: mapFilter.loading,
-          applied: applied?.filter ?? null,
-        };
+  const loading = mapFilter.loading;
+  const filter = devFilter({
+    route: filterRoute,
+    loading,
+    current,
+    produced,
+    output: mapFilter.output,
+  });
+
+  // The hook applies a run's last chunk in its own effect, which runs first.
+  useEffect(() => {
+    if (loading) {
+      ran.current = true;
+    } else if (ran.current) {
+      ran.current = false;
+      setProduced(store.getState().mapFilter);
+    }
+  }, [loading, store]);
 
   useEffect(() => startAtcFeed({ store }), [store]);
   // The assistant moving the map, or a plane picked in the chat, lowers the sheet.

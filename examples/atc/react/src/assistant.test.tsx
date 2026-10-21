@@ -216,7 +216,7 @@ test('without dev mode an answer is not selectable', async () => {
   act(() => starterButton(element, starter?.text ?? '').click());
   await waitFor(() => expect(chat.requests).toHaveLength(1));
 
-  expect(element.querySelectorAll('[data-dev-shown]')).toHaveLength(0);
+  expect(element.querySelectorAll('.atc-dev-inspect')).toHaveLength(0);
   expect(element.querySelectorAll('[class*="atc-stream"]')).toHaveLength(0);
 });
 
@@ -245,24 +245,29 @@ test('a superseded send does not shift later answers onto the wrong decisions', 
       <DevModeProvider storage={onStorage()}>
         <Published items={items} turns={turns} />
         <Transcript items={items} turns={turns} />
-        <DevDrawer filter={null} />
+        <DevDrawer />
       </DevModeProvider>
     </AtcStoreProvider>,
   );
   const answers = view.container.querySelectorAll('.atc-answer');
+  const inspect =
+    view.container.querySelectorAll<HTMLButtonElement>('.atc-dev-inspect');
   const router = () =>
     view.container.querySelector('[role="tabpanel"]')?.textContent ?? '';
 
   fireEvent.click(answers[0] as HTMLElement);
+  const unchanged = router();
+  fireEvent.click(inspect[0] as HTMLElement);
   const first = router();
-  fireEvent.click(answers[1] as HTMLElement);
+  fireEvent.click(inspect[1] as HTMLElement);
   const second = router();
 
+  expect(unchanged).toContain('→ chat (unavailable)');
   expect(first).toContain('skipped (starter)');
   expect(first).not.toContain('superseded');
-  expect(answers[0]?.getAttribute('data-dev-shown')).toBe('false');
+  expect(inspect[0]?.getAttribute('aria-pressed')).toBe('false');
   expect(second).toContain('→ chat (unavailable)');
-  expect(answers[1]?.getAttribute('data-dev-shown')).toBe('true');
+  expect(inspect[1]?.getAttribute('aria-pressed')).toBe('true');
 });
 
 /** A storage with dev mode on. */

@@ -1,9 +1,10 @@
 import {
   clampDrawerHeight,
   DEV_TABS,
+  type DevFilter,
+  type DevStorage,
   devTabBlocks,
   type DevTabId,
-  type DevToolInput,
   readDrawerHeight,
   sendActivity,
   shownTurn,
@@ -24,20 +25,23 @@ import { useDevFeed, useDevMode } from './dev-mode';
 /** How far an arrow key moves the drag handle, in pixels. */
 const KEY_STEP = 24;
 
+/** No filter run and nothing on the map. */
+const NO_FILTER: DevFilter = { run: null, applied: null };
+
 /**
  * The developer drawer under the map: tabs for the router, the cards
  * decision, the filter, the streaming UI JSON and the tool calls of the shown
- * send (the newest, or an answer clicked in the chat until "Latest"). It only
+ * send (the newest, or an answer picked in the chat until "Latest"). It only
  * reports; nothing in it changes the app. Everything is text (never HTML) and
  * the drawer is not a live region. Its top edge drags to resize it, clamped
- * to its column and remembered. `filter` is the filter step, from the app.
- * Renders nothing while dev mode is off.
+ * to its column and remembered. `filter` is the Filter tab's input
+ * (`devFilter`), from the app. Renders nothing while dev mode is off.
  */
-export function DevDrawer({ filter }: { filter: DevToolInput['filter'] }) {
+export function DevDrawer({ filter = NO_FILTER }: { filter?: DevFilter }) {
   return useDevMode().on ? <DrawerPanel filter={filter} /> : null;
 }
 
-function DrawerPanel({ filter }: { filter: DevToolInput['filter'] }) {
+function DrawerPanel({ filter }: { filter: DevFilter }) {
   const dev = useDevMode();
   const feed = useDevFeed();
   const [tab, setTab] = useState<DevTabId>('router');
@@ -99,23 +103,25 @@ function DrawerPanel({ filter }: { filter: DevToolInput['filter'] }) {
         tabIndex={0}
         {...size.handlers}
       />
-      <div className="atc-dev-tabs" role="tablist" ref={tabsRef}>
-        {DEV_TABS.map((entry, index) => (
-          <button
-            key={entry.id}
-            type="button"
-            role="tab"
-            id={`${ids}-${entry.id}`}
-            className="atc-dev-tab"
-            aria-selected={tab === entry.id}
-            aria-controls={`${ids}-panel`}
-            tabIndex={tab === entry.id ? 0 : -1}
-            onClick={() => setTab(entry.id)}
-            onKeyDown={(event) => moveTab(event, index)}
-          >
-            {entry.label}
-          </button>
-        ))}
+      <div className="atc-dev-tabs">
+        <div className="atc-dev-tablist" role="tablist" ref={tabsRef}>
+          {DEV_TABS.map((entry, index) => (
+            <button
+              key={entry.id}
+              type="button"
+              role="tab"
+              id={`${ids}-${entry.id}`}
+              className="atc-dev-tab"
+              aria-selected={tab === entry.id}
+              aria-controls={`${ids}-panel`}
+              tabIndex={tab === entry.id ? 0 : -1}
+              onClick={() => setTab(entry.id)}
+              onKeyDown={(event) => moveTab(event, index)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
         {dev.selection.follow ? null : (
           <button
             type="button"
@@ -160,49 +166,84 @@ function DrawerPanel({ filter }: { filter: DevToolInput['filter'] }) {
   );
 }
 
+/** The height of the column the drawer sits in, or 0 when it has none. */
+function columnHeight(drawer: HTMLElement | null): number {
+  return drawer?.parentElement?.getBoundingClientRect().height ?? 0;
+}
+
 /**
  * The drawer's height: the remembered one (or the default share), clamped to
- * the column the drawer sits in. The column is measured on mount, on every
- * drag and on window resize; a column with no height (phones, where the
- * drawer is a sheet) leaves the height to the stylesheet. The height is
- * remembered when a drag ends or a key moves it.
+ * the column the drawer sits in. The column is measured on mount, whenever it
+ * resizes (a ResizeObserver, plus window resize), and on every drag; a column
+ * with no height (phones, where the drawer is a sheet) leaves the height to
+ * the stylesheet. A drag uses the primary button only and stops text
+ * selection while it runs; the height is remembered when a drag ends or is
+ * cancelled, or a key moves it (arrows step, Home and End go to the limits).
  */
-function useDrawerHeight(storage: Parameters<typeof readDrawerHeight>[0]) {
+function useDrawerHeight(storage: DevStorage | null) {
   const ref = useRef<HTMLElement>(null);
   const [wanted, setWanted] = useState(() => readDrawerHeight(storage));
   const [column, setColumn] = useState(0);
   const drag = useRef<{ y: number; from: number; to: number } | null>(null);
 
-  const measure = () => {
-    const height =
-      ref.current?.parentElement?.getBoundingClientRect().height ?? 0;
-    setColumn(height);
-
-    return height;
-  };
   useEffect(() => {
-    const onResize = () => {
-      const height =
-        ref.current?.parentElement?.getBoundingClientRect().height ?? 0;
-      setColumn(height);
-    };
-    onResize();
-    window.addEventListener('resize', onResize);
+    const measure = () => setColumn(columnHeight(ref.current));
+    measure();
+    const parent = ref.current?.parentElement;
+    const observer =
+      typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    if (parent) observer?.observe(parent);
+    window.addEventListener('resize', measure);
 
-    return () => window.removeEventListener('resize', onResize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
   }, []);
+  // A drag in progress when the drawer closes must not leave selection off.
+  useEffect(
+    () => () => {
+      if (drag.current !== null) endSelectionBlock();
+    },
+    [],
+  );
 
   const height = column > 0 ? clampDrawerHeight(wanted, column) : null;
   const style =
     height === null
       ? undefined
       : ({ '--atc-drawer-height': `${height}px` } as CSSProperties);
+  const measureNow = () => {
+    const px = columnHeight(ref.current);
+    setColumn(px);
+
+    return px;
+  };
+  const finish = (event: PointerEvent<HTMLElement>) => {
+    const end = drag.current;
+    if (end === null) return;
+    drag.current = null;
+    endSelectionBlock();
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    writeDrawerHeight(storage, end.to);
+  };
+  const keyTo = (event: KeyboardEvent<HTMLElement>, px: number) => {
+    event.preventDefault();
+    const next = clampDrawerHeight(px, measureNow());
+    setWanted(next);
+    writeDrawerHeight(storage, next);
+  };
 
   const handlers = {
     onPointerDown: (event: PointerEvent<HTMLElement>) => {
-      const columnPx = measure();
+      if (event.button !== 0) return;
+      const columnPx = measureNow();
       if (columnPx <= 0) return;
+      event.preventDefault();
       event.currentTarget.setPointerCapture?.(event.pointerId);
+      document.body.style.userSelect = 'none';
       const from = clampDrawerHeight(wanted, columnPx);
       drag.current = { y: event.clientY, from, to: from };
     },
@@ -211,33 +252,19 @@ function useDrawerHeight(storage: Parameters<typeof readDrawerHeight>[0]) {
       if (start === null) return;
       const to = clampDrawerHeight(
         start.from + (start.y - event.clientY),
-        measure(),
+        measureNow(),
       );
       drag.current = { ...start, to };
       setWanted(to);
     },
-    onPointerUp: (event: PointerEvent<HTMLElement>) => {
-      const end = drag.current;
-      if (end === null) return;
-      drag.current = null;
-      event.currentTarget.releasePointerCapture?.(event.pointerId);
-      writeDrawerHeight(storage, end.to);
-    },
-    onPointerCancel: () => {
-      drag.current = null;
-    },
+    onPointerUp: finish,
+    onPointerCancel: finish,
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-      const step =
-        event.key === 'ArrowUp'
-          ? KEY_STEP
-          : event.key === 'ArrowDown'
-            ? -KEY_STEP
-            : 0;
-      if (step === 0 || height === null) return;
-      event.preventDefault();
-      const next = clampDrawerHeight(height + step, measure());
-      setWanted(next);
-      writeDrawerHeight(storage, next);
+      if (height === null) return;
+      if (event.key === 'ArrowUp') keyTo(event, height + KEY_STEP);
+      else if (event.key === 'ArrowDown') keyTo(event, height - KEY_STEP);
+      else if (event.key === 'Home') keyTo(event, 0);
+      else if (event.key === 'End') keyTo(event, Number.MAX_SAFE_INTEGER);
     },
   };
 
@@ -249,4 +276,9 @@ function useDrawerHeight(storage: Parameters<typeof readDrawerHeight>[0]) {
     max: column > 0 ? clampDrawerHeight(Number.MAX_SAFE_INTEGER, column) : null,
     handlers,
   };
+}
+
+/** Lets the page select text again after a drag. */
+function endSelectionBlock(): void {
+  document.body.style.userSelect = '';
 }

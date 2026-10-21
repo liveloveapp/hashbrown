@@ -1,4 +1,5 @@
 import {
+  answerTurns,
   chatStatus,
   labelForHex,
   rowTurns,
@@ -10,6 +11,7 @@ import {
 import type { Chat } from '@hashbrownai/core';
 import type { UiChatMessage } from '@hashbrownai/react';
 import { useDevMode } from './dev-mode';
+import { DevIcon } from './rail';
 import { useAtcState } from './store';
 import { ToolChips } from './tool-chips';
 
@@ -22,9 +24,9 @@ import { ToolChips } from './tool-chips';
  * busy region is announced, a visually hidden status region beside it says what
  * the assistant is doing now (the running step, "Reasoning…" while a reasoning
  * summary streams, else "Thinking…"); it stays mounted, so each change is
- * announced. While dev mode is on, clicking an answer shows its send in the
- * developer drawer (`turns` are the recorded sends, matched to user rows by
- * the text sent), and the shown send's answers are marked.
+ * announced. While dev mode is on, each answer has a small button that shows
+ * its send in the developer drawer (`turns` are the recorded sends, matched
+ * to user rows by the text sent); it is pressed for the shown send.
  */
 export function Transcript({
   items,
@@ -37,6 +39,8 @@ export function Transcript({
 }) {
   const dev = useDevMode();
   const owners = dev.on ? rowTurns(items, turns) : [];
+  // One button per send, on its last answer.
+  const lastAnswers = dev.on ? answerTurns(items) : [];
   const shown = dev.on ? shownTurn(turns, dev.selection) : null;
   const thinking = thinkingStatus(items, busy);
   const status = chatStatus(items, busy, labelForHex(useAtcState()));
@@ -55,7 +59,10 @@ export function Transcript({
             item={item}
             busy={busy}
             dev={
-              dev.on && owners[index] !== null && owners[index] !== undefined
+              dev.on &&
+              lastAnswers[index] !== null &&
+              owners[index] !== null &&
+              owners[index] !== undefined
                 ? {
                     shown: owners[index] === shown,
                     select: () => dev.select(owners[index] as number),
@@ -127,12 +134,19 @@ function TranscriptRow({
       );
     case 'answer':
       return (
-        <li
-          className="atc-answer"
-          data-dev-shown={dev === null ? undefined : String(dev.shown)}
-          onClick={dev?.select}
-        >
+        <li className="atc-answer">
           {item.message.ui}
+          {dev === null ? null : (
+            <button
+              type="button"
+              className="atc-dev-inspect"
+              aria-label="Show this answer in developer tools"
+              aria-pressed={dev.shown}
+              onClick={dev.select}
+            >
+              <DevIcon />
+            </button>
+          )}
         </li>
       );
   }

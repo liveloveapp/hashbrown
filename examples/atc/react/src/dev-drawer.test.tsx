@@ -246,7 +246,7 @@ function ToolsHarness({
         <Feed chat={{ items, turns, busy: false }} />
         <HarnessRail />
         <Transcript items={items} turns={turns} />
-        <DevDrawer filter={null} />
+        <DevDrawer />
       </DevModeProvider>
     </AtcStoreProvider>
   );
@@ -275,7 +275,7 @@ test('the drawer follows the newest send and keeps a clicked earlier answer', as
             cardsTransport={cards.transport}
             onFilter={() => undefined}
           />
-          <DevDrawer filter={null} />
+          <DevDrawer />
         </DevModeProvider>
       </AtcStoreProvider>
     </HashbrownProvider>,
@@ -306,14 +306,32 @@ test('the drawer follows the newest send and keeps a clicked earlier answer', as
   await ask('What about Bend?', 2, 'Second answer');
   fireEvent.click(tab(element, 'UI stream'));
   const following = shown();
-  fireEvent.click(element.querySelectorAll('.atc-answer')[0] as HTMLElement);
+  const inspect = () => [
+    ...element.querySelectorAll<HTMLButtonElement>('.atc-dev-inspect'),
+  ];
+  const pressedBefore = inspect().map((button) =>
+    button.getAttribute('aria-pressed'),
+  );
+  act(() => inspect()[0]?.click());
   const picked = shown();
+  const pressedAfter = inspect().map((button) =>
+    button.getAttribute('aria-pressed'),
+  );
+  const latestInTabs = element.querySelector(
+    '[role="tablist"] .atc-dev-latest',
+  );
   await ask('And Redmond?', 3, 'Third answer');
   const kept = shown();
   act(() => latest()?.click());
 
   expect(following).toContain('Second answer');
+  expect(pressedBefore).toEqual(['false', 'true']);
+  expect(inspect()[0]?.getAttribute('aria-label')).toBe(
+    'Show this answer in developer tools',
+  );
   expect(picked).toContain('First answer');
+  expect(pressedAfter).toEqual(['true', 'false']);
+  expect(latestInTabs).toBeNull();
   expect(kept).toContain('First answer');
   expect(shown()).toContain('Third answer');
   expect(latest()).toBeNull();
@@ -330,7 +348,7 @@ test('dragging the handle resizes within the clamp and is remembered', () => {
   );
   const ui = (
     <div data-testid="column">
-      <DevDrawer filter={null} />
+      <DevDrawer />
     </div>
   );
   const { storage, element, unmount } = inDevMode(ui);
@@ -339,7 +357,15 @@ test('dragging the handle resizes within the clamp and is remembered', () => {
   const handle = element.querySelector('.atc-dev-resize') as HTMLElement;
 
   const initial = height();
-  fireEvent.pointerDown(handle, { clientY: 500, pointerId: 1 });
+  fireEvent.pointerDown(handle, { clientY: 500, pointerId: 1, button: 2 });
+  fireEvent.pointerMove(handle, { clientY: 300, pointerId: 1 });
+  const ignored = height();
+  const down = fireEvent.pointerDown(handle, {
+    clientY: 500,
+    pointerId: 1,
+    button: 0,
+  });
+  const selecting = document.body.style.userSelect;
   fireEvent.pointerMove(handle, { clientY: 300, pointerId: 1 });
   const dragged = height();
   fireEvent.pointerMove(handle, { clientY: -1000, pointerId: 1 });
@@ -347,6 +373,15 @@ test('dragging the handle resizes within the clamp and is remembered', () => {
   const unsaved = storage.data.get(DRAWER_HEIGHT_KEY);
   fireEvent.pointerUp(handle, { clientY: -1000, pointerId: 1 });
   const saved = storage.data.get(DRAWER_HEIGHT_KEY);
+  const selectingAfter = document.body.style.userSelect;
+  fireEvent.pointerDown(handle, { clientY: 500, pointerId: 2, button: 0 });
+  fireEvent.pointerMove(handle, { clientY: 700, pointerId: 2 });
+  fireEvent.pointerCancel(handle, { pointerId: 2 });
+  const cancelled = storage.data.get(DRAWER_HEIGHT_KEY);
+  fireEvent.keyDown(handle, { key: 'Home' });
+  const home = height();
+  fireEvent.keyDown(handle, { key: 'End' });
+  const end = height();
   column = 500;
   act(() => window.dispatchEvent(new Event('resize')));
   const reclamped = height();
@@ -359,12 +394,20 @@ test('dragging the handle resizes within the clamp and is remembered', () => {
   vi.restoreAllMocks();
 
   expect(initial).toBe('350px');
+  expect(ignored).toBe('350px');
+  expect(down).toBe(false);
+  expect(selecting).toBe('none');
+  expect(selectingAfter).toBe('');
+  expect(cancelled).toBe('400');
+  expect(home).toBe('160px');
+  expect(end).toBe('600px');
   expect(dragged).toBe('550px');
   expect(capped).toBe('600px');
   expect(unsaved).toBeUndefined();
   expect(saved).toBe('600');
   expect(reclamped).toBe('300px');
   expect(restored).toBe('600px');
+  expect(storage.data.get(DRAWER_HEIGHT_KEY)).toBe('600');
 });
 
 test('JSON renders as text', () => {
@@ -385,7 +428,7 @@ test('JSON renders as text', () => {
   const { element } = inDevMode(
     <>
       <Feed chat={chat} />
-      <DevDrawer filter={null} />
+      <DevDrawer />
     </>,
   );
 
@@ -397,7 +440,7 @@ test('JSON renders as text', () => {
 });
 
 test('the drawer is aria-live off', () => {
-  const { element } = inDevMode(<DevDrawer filter={null} />);
+  const { element } = inDevMode(<DevDrawer />);
 
   const panel = drawer(element);
   const tabs = [...element.querySelectorAll('[role="tab"]')];
@@ -414,4 +457,40 @@ test('the drawer is aria-live off', () => {
   ]);
   expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
   expect(body?.getAttribute('aria-labelledby')).toBe(tabs[0]?.id);
+});
+
+test('a publisher that unmounts clears what it published', () => {
+  const messages = [
+    { id: 'u-1', role: 'user', content: 'Highest?' },
+    {
+      role: 'assistant',
+      toolCalls: [],
+      content: { ui: [{ Markdown: { props: { children: 'Gone soon' } } }] },
+      ui: [<p key="a">Gone soon</p>],
+    },
+  ] as UiChatMessage<Chat.AnyTool>[];
+  const chat: DevChat = {
+    items: transcriptItems(messages),
+    turns: [{ text: 'Highest?', router: ROUTER_SKIPPED }],
+    busy: false,
+  };
+  const storage = memoryStorage({ [DEV_MODE_KEY]: 'on' });
+  const tree = (published: boolean) => (
+    <AtcStoreProvider store={createAtcStore()}>
+      <DevModeProvider storage={storage}>
+        {published ? <Feed chat={chat} /> : null}
+        <DevDrawer />
+      </DevModeProvider>
+    </AtcStoreProvider>
+  );
+  cleanup();
+  const view = render(tree(true));
+  fireEvent.click(tab(view.container, 'UI stream'));
+
+  const before = text(view.container.querySelector('[role="tabpanel"]'));
+  view.rerender(tree(false));
+  const after = text(view.container.querySelector('[role="tabpanel"]'));
+
+  expect(before).toContain('Gone soon');
+  expect(after).not.toContain('Gone soon');
 });

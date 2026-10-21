@@ -138,7 +138,7 @@ export function useDevMode(): DevMode {
 /**
  * Publishes `value` as the feed's `key` for the drawer. Only the drawer
  * subscribes, so publishing never re-renders the publisher. Memoize `value`:
- * a new object each render republishes each render.
+ * a new object each render republishes each render. Unmounting resets `key`.
  */
 export function usePublishDev<K extends keyof DevFeed>(
   key: K,
@@ -148,6 +148,8 @@ export function usePublishDev<K extends keyof DevFeed>(
   useEffect(() => {
     feed?.set(key, value);
   }, [feed, key, value]);
+  // An unmounted publisher leaves nothing stale behind.
+  useEffect(() => () => feed?.set(key, EMPTY_FEED[key]), [feed, key]);
 }
 
 /** What the chat published, for the drawer. */

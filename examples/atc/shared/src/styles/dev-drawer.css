@@ -68,6 +68,11 @@
   scrollbar-width: none;
   border-bottom: 1px solid var(--atc-muted);
 }
+.atc-dev-tablist {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
 .atc-dev-tabs::-webkit-scrollbar {
   display: none;
 }
@@ -125,14 +130,33 @@
   margin-left: auto;
   color: var(--atc-surface);
 }
-/* Dev mode only: answers select their send, and the shown send is marked. */
-.atc-answer[data-dev-shown] {
+/* Dev mode only: the button under an answer that shows its send. */
+.atc-dev-inspect {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-top: 4px;
+  padding: 0;
+  border: 1px solid var(--atc-border);
+  border-radius: var(--atc-radius-row);
+  background: none;
+  color: var(--atc-muted);
   cursor: pointer;
 }
-.atc-answer[data-dev-shown='true'] {
-  outline: 1px dashed var(--atc-muted);
-  outline-offset: 4px;
-  border-radius: var(--atc-radius-row);
+.atc-dev-inspect:is(:hover, :focus-visible) {
+  color: var(--atc-ink);
+}
+.atc-dev-inspect[aria-pressed='true'] {
+  border-color: var(--atc-ink);
+  background: var(--atc-ink);
+  color: var(--atc-surface);
+}
+@media (pointer: coarse) {
+  .atc-dev-inspect {
+    width: 44px;
+    height: 44px;
+  }
 }
 /* Phone only: closes the sheet. */
 .atc-dev-close {

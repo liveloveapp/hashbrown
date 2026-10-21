@@ -3,6 +3,7 @@ import {
   clampDrawerHeight,
   DEV_MODE_KEY,
   DEV_TABS,
+  devFilter,
   devTabBlocks,
   type DevToolInput,
   DRAWER_HEIGHT_KEY,
@@ -15,6 +16,7 @@ import {
   selectSend,
   sendActivity,
   shownTurn,
+  wireUi,
   writeDevMode,
   writeDrawerHeight,
 } from './dev-tool';
@@ -51,7 +53,7 @@ const EMPTY: DevToolInput = {
   turn: undefined,
   answer: null,
   tools: [],
-  filter: null,
+  filter: { run: null, applied: null },
 };
 
 const TURNS: TurnShown[] = [
@@ -144,9 +146,11 @@ test('each tab lists its blocks in order', () => {
     answer: { content: { a: 1 }, streaming: false },
     tools: [{ name: 'findAircraft', args: { q: 1 }, status: 'done' }],
     filter: {
-      router: ROUTER_SKIPPED,
-      output: { airline: 'UAL' },
-      streaming: true,
+      run: {
+        router: ROUTER_SKIPPED,
+        output: { airline: 'UAL' },
+        streaming: true,
+      },
       applied: { airline: 'UAL' },
     },
   };
@@ -160,7 +164,7 @@ test('each tab lists its blocks in order', () => {
     'UI stream',
     'Tools',
   ]);
-  expect(titles('router')).toEqual(['typing', 'router']);
+  expect(titles('router')).toEqual(['typing', 'last chat send']);
   expect(devTabBlocks('router', input)[0].text).toContain('chat');
   expect(devTabBlocks('router', input)[1].text).toBe('skipped (starter)');
   expect(titles('cards')).toEqual(['cards']);
@@ -178,22 +182,13 @@ test('each tab lists its blocks in order', () => {
 });
 
 test('empty tabs say so instead of rendering nothing', () => {
-  const filtered: DevToolInput = {
-    ...EMPTY,
-    filter: { router: null, output: null, streaming: false, applied: null },
-  };
-
   expect(devTabBlocks('router', EMPTY)).toEqual([
     { title: 'typing', text: 'waiting' },
-    { title: 'router', text: 'waiting' },
+    { title: 'last chat send', text: 'waiting' },
   ]);
   expect(devTabBlocks('cards', EMPTY)).toEqual([
     { title: 'cards', text: 'deciding…' },
   ]);
-  expect(devTabBlocks('filter', filtered).at(-1)).toEqual({
-    title: 'applied',
-    text: 'no filter',
-  });
   expect(devTabBlocks('tools', EMPTY)).toEqual([
     { title: 'tools', text: 'no tool calls' },
   ]);
@@ -279,4 +274,133 @@ test('routerTyping shows the live decision, or waiting while none is in', () => 
   expect(waiting).toBeNull();
   expect(live).toEqual({ kind: 'decided', result: ROUTE, ms: 40 });
   expect(tooShort).toEqual({ kind: 'fallback', reason: 'too short' });
+});
+
+test('wireUi shows the UI as the model wrote it, without parse wrappers', () => {
+  const parsed = {
+    ui: [
+      {
+        Card: {
+          props: {
+            complete: true,
+            partialValue: { title: 'Two' },
+            value: { title: 'Two' },
+          },
+          children: [
+            {
+              Markdown: {
+                props: { complete: false, partialValue: { children: 'Fl' } },
+              },
+            },
+          ],
+        },
+      },
+      { Plain: { props: { title: 'kept' } } },
+    ],
+  };
+
+  const wire = wireUi(parsed);
+
+  expect(wire).toEqual({
+    ui: [
+      {
+        Card: {
+          props: { title: 'Two' },
+          children: [{ Markdown: { props: { children: 'Fl' } } }],
+        },
+      },
+      { Plain: { props: { title: 'kept' } } },
+    ],
+  });
+  expect(wireUi('text')).toBe('text');
+  expect(wireUi(undefined)).toBeUndefined();
+  expect(
+    devTabBlocks('ui', {
+      ...EMPTY,
+      answer: { content: parsed, streaming: false },
+    })[0].text,
+  ).not.toContain('partialValue');
+});
+
+const ALASKA = { filter: { airline: 'Alaska' } };
+const JETS = { filter: { kind: 'jet' } };
+
+test('the filter tab shows a run only while the map holds what it produced', () => {
+  const route = ROUTER_SKIPPED;
+
+  const streaming = devFilter({
+    route,
+    loading: true,
+    current: null,
+    produced: null,
+    output: { airline: 'Al' },
+  });
+  const settled = devFilter({
+    route,
+    loading: false,
+    current: ALASKA,
+    produced: ALASKA,
+    output: ALASKA.filter,
+  });
+
+  expect(streaming).toEqual({
+    run: { router: route, output: { airline: 'Al' }, streaming: true },
+    applied: null,
+  });
+  expect(settled.run?.output).toEqual(ALASKA.filter);
+  expect(
+    devTabBlocks('filter', { ...EMPTY, filter: settled }).map(
+      (block) => block.title,
+    ),
+  ).toEqual(['router', 'filter', 'applied']);
+});
+
+test('a filter the assistant applied shows as applied with no run', () => {
+  const filter = devFilter({
+    route: null,
+    loading: false,
+    current: JETS,
+    produced: null,
+    output: null,
+  });
+
+  const blocks = devTabBlocks('filter', { ...EMPTY, filter });
+
+  expect(filter.run).toBeNull();
+  expect(blocks).toEqual([
+    {
+      title: 'applied',
+      text: 'applied by the assistant or the pill (no filter run)\n{\n  "kind": "jet"\n}',
+    },
+  ]);
+});
+
+test('the pill clearing a run leaves no filter', () => {
+  const filter = devFilter({
+    route: ROUTER_SKIPPED,
+    loading: false,
+    current: null,
+    produced: ALASKA,
+    output: ALASKA.filter,
+  });
+
+  const blocks = devTabBlocks('filter', { ...EMPTY, filter });
+
+  expect(blocks).toEqual([{ title: 'applied', text: 'no filter' }]);
+});
+
+test('a tool replacing a run hides the run', () => {
+  const filter = devFilter({
+    route: ROUTER_SKIPPED,
+    loading: false,
+    current: JETS,
+    produced: ALASKA,
+    output: ALASKA.filter,
+  });
+
+  const blocks = devTabBlocks('filter', { ...EMPTY, filter });
+
+  expect(filter.run).toBeNull();
+  expect(blocks.map((block) => block.title)).toEqual(['applied']);
+  expect(blocks[0].text).toContain('"kind": "jet"');
 });

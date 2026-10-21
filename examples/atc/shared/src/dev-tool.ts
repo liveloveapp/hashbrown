@@ -4,6 +4,7 @@ import {
   cardsBlock,
   type DevStorage,
   filterBlocks,
+  filterPanelVisible,
   jsonBlock,
   routerBlock,
   type RouterShown,
@@ -239,13 +240,86 @@ export interface DevToolInput {
   answer: { content: unknown; streaming: boolean } | null;
   /** The shown send's tool calls. */
   tools: readonly StreamToolCall[];
-  /** The filter step, or null when there is none. */
-  filter: {
-    router: RouterShown | null;
-    output: unknown;
-    streaming: boolean;
-    applied: unknown;
+  /** The filter step: see {@link devFilter}. */
+  filter: DevFilter;
+}
+
+/** The Filter tab: the latest filter run while it still counts, and the map's filter. */
+export interface DevFilter {
+  /** The run, while it streams or the map still holds what it produced; else null. */
+  readonly run: {
+    readonly router: RouterShown | null;
+    readonly output: unknown;
+    readonly streaming: boolean;
   } | null;
+  /** The filter on the map, whoever applied it, or null. */
+  readonly applied: unknown;
+}
+
+/** The note on a map filter that no filter run produced. */
+const APPLIED_ELSEWHERE =
+  'applied by the assistant or the pill (no filter run)';
+
+/**
+ * The Filter tab's input. The run shows only while `filterPanelVisible`
+ * holds: while it streams (`loading`), or while the map's filter (`current`)
+ * is still the one the run produced (`produced`, recorded when the run
+ * settles). The assistant's filter tool, a clear or the pill's x replace it,
+ * and only the applied filter shows.
+ */
+export function devFilter(options: {
+  readonly route: RouterShown | null;
+  readonly loading: boolean;
+  readonly current: { readonly filter: unknown } | null;
+  readonly produced: { readonly filter: unknown } | null;
+  readonly output: unknown;
+}): DevFilter {
+  const visible = filterPanelVisible(options);
+
+  return {
+    run: visible
+      ? {
+          router: options.route,
+          output: options.output,
+          streaming: options.loading,
+        }
+      : null,
+    applied: options.current?.filter ?? null,
+  };
+}
+
+function isRecordValue(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Whether `value` is Hashbrown's parsed node: `{ complete, partialValue, value? }`. */
+function isNodeWrapper(value: unknown): value is { partialValue: unknown } {
+  return (
+    isRecordValue(value) &&
+    typeof value['complete'] === 'boolean' &&
+    'partialValue' in value &&
+    Object.keys(value).every((key) =>
+      ['complete', 'partialValue', 'value'].includes(key),
+    )
+  );
+}
+
+/**
+ * The UI JSON as the model wrote it. Hashbrown's parsed answer wraps each
+ * component's props as `{ complete, partialValue, value }`; this replaces
+ * every such wrapper with its `partialValue` (what has streamed so far),
+ * through children too, and leaves everything else as it is.
+ */
+export function wireUi(content: unknown): unknown {
+  if (isNodeWrapper(content)) return wireUi(content.partialValue);
+  if (Array.isArray(content)) return content.map(wireUi);
+  if (isRecordValue(content)) {
+    return Object.fromEntries(
+      Object.entries(content).map(([key, value]) => [key, wireUi(value)]),
+    );
+  }
+
+  return content;
 }
 
 /**
@@ -260,29 +334,33 @@ export function devTabBlocks(
     case 'router':
       return [
         { ...routerBlock(input.typing), title: 'typing' },
-        routerBlock(input.turn?.router ?? null),
+        // Filter sends are not recorded turns: this is the chat's.
+        { ...routerBlock(input.turn?.router ?? null), title: 'last chat send' },
       ];
     case 'cards':
       return [cardsBlock(input.turn?.cards)];
     case 'filter': {
-      const filter = input.filter;
-      const applied: StreamBlock =
-        filter?.applied === null || filter?.applied === undefined
+      const { run, applied } = input.filter;
+      const json = jsonBlock('applied', applied, false);
+      const appliedBlock: StreamBlock =
+        applied === null || applied === undefined
           ? { title: 'applied', text: 'no filter' }
-          : jsonBlock('applied', filter.applied, false);
+          : run === null
+            ? { title: 'applied', text: `${APPLIED_ELSEWHERE}\n${json.text}` }
+            : json;
 
       return [
-        ...(filter === null
+        ...(run === null
           ? []
-          : filterBlocks(filter.router, filter.output, filter.streaming)),
-        applied,
+          : filterBlocks(run.router, run.output, run.streaming)),
+        appliedBlock,
       ];
     }
     case 'ui':
       return [
         jsonBlock(
           'ui',
-          input.answer?.content,
+          wireUi(input.answer?.content),
           input.answer?.streaming ?? false,
         ),
       ];
