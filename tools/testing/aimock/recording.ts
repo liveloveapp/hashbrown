@@ -180,6 +180,14 @@ export interface RecordedAimockOptions {
    * across several events; defaults to aimock-runner's default.
    */
   readonly chunkSize?: number;
+  /**
+   * Recordings root to read from and record into; defaults to
+   * {@link RECORDED_FIXTURES_ROOT}. Lets helper tests use a temporary
+   * directory instead of the committed recordings.
+   *
+   * @internal
+   */
+  readonly root?: string;
 }
 
 /**
@@ -208,7 +216,11 @@ export interface RecordedAimock {
  * strictly: a request with no recording gets a 503 naming the missing file,
  * and responses stream without the recorded latency.
  * With `AIMOCK_RECORD=1`, unmatched requests go to `upstream` and are recorded
- * there, with secrets scrubbed when the handle stops. Stopping then fails, and
+ * there, with secrets scrubbed when the handle stops. Record mode still loads
+ * the existing recording, so a request it matches replays instead of going
+ * upstream, and aimock appends new recordings to the file; `record-fixtures`
+ * (with or without `--only`) deletes the file first, so a re-record always
+ * reaches the real provider. Stopping then fails, and
  * deletes the recording, when it holds a response with no text, tool calls or
  * reasoning (see {@link emptyRecordedResponses}). Bedrock records through a
  * local proxy that works around an aimock framing bug (see
@@ -223,7 +235,8 @@ export async function startRecordedAimock(
   const recording = isRecording();
   const slug = recordedTestSlug(options.testName);
   const fileName = options.fileName ?? `${options.provider}.json`;
-  const fixturePath = join(RECORDED_FIXTURES_ROOT, slug, fileName);
+  const root = options.root ?? RECORDED_FIXTURES_ROOT;
+  const fixturePath = join(root, slug, fileName);
   // Workaround for aimock recording Bedrock Converse streams as empty; see
   // bedrock-converse-shim.ts. Record mode only.
   const bedrockShim =
@@ -246,7 +259,7 @@ export async function startRecordedAimock(
             providers: {
               [options.provider]: bedrockShim?.url ?? options.upstream,
             },
-            fixturePath: RECORDED_FIXTURES_ROOT,
+            fixturePath: root,
             secrets: options.secrets ?? collectSecrets(process.env),
           },
         }

@@ -1,3 +1,6 @@
+import { readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
 /** A credential found in recorded text; never carries the value itself. */
 export interface CredentialLeak {
   /** `secret` for a configured value, `pattern` for a key shape. */
@@ -53,4 +56,38 @@ export function parseEnvFile(source: string): Record<string, string> {
       return [[match[1], value]];
     }),
   );
+}
+
+function isMissing(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException | null)?.code === 'ENOENT';
+}
+
+/**
+ * List every file under a recordings directory, recursively.
+ *
+ * Entries that disappear while listing (a missing root, or a file or slug
+ * directory deleted between `readdir` and `stat` by a concurrent run) are
+ * skipped instead of failing the scan.
+ *
+ * @param dir - The recordings root, such as `RECORDED_FIXTURES_ROOT`.
+ * @returns Absolute paths of the files found.
+ */
+export function listRecordingFiles(dir: string): string[] {
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch (error) {
+    if (isMissing(error)) return [];
+    throw error;
+  }
+
+  return entries.flatMap((entry) => {
+    const path = join(dir, entry);
+    try {
+      return statSync(path).isDirectory() ? listRecordingFiles(path) : [path];
+    } catch (error) {
+      if (isMissing(error)) return [];
+      throw error;
+    }
+  });
 }

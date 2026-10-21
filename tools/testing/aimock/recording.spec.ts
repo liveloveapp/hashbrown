@@ -337,7 +337,10 @@ async function stopAfterRecording(
 ): Promise<{ error: unknown; fileExists: boolean; slugDir: string }> {
   const previousRecord = process.env['AIMOCK_RECORD'];
   process.env['AIMOCK_RECORD'] = '1';
-  const slugDir = join(RECORDED_FIXTURES_ROOT, recordedTestSlug(testName));
+  // A private root, so this never touches the committed recordings that the
+  // credential scan reads in another Jest worker.
+  const root = mkdtempSync(join(tmpdir(), 'recorded-'));
+  const slugDir = join(root, recordedTestSlug(testName));
   const startAimock = jest
     .spyOn(aimockRunner, 'startAimock')
     .mockImplementation(async (options) => {
@@ -356,6 +359,7 @@ async function stopAfterRecording(
       provider: 'gemini',
       upstream: 'https://generativelanguage.googleapis.com',
       secrets: [],
+      root,
     });
     await recorded.aimock.stop().catch((caught: unknown) => {
       error = caught;
@@ -367,7 +371,7 @@ async function stopAfterRecording(
     };
   } finally {
     startAimock.mockRestore();
-    rmSync(slugDir, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
     if (previousRecord === undefined) {
       delete process.env['AIMOCK_RECORD'];
     } else {
@@ -375,6 +379,49 @@ async function stopAfterRecording(
     }
   }
 }
+
+test('startRecordedAimock reads and records under an overridden root', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'recorded-'));
+  const previousRecord = process.env['AIMOCK_RECORD'];
+  const startAimock = jest
+    .spyOn(aimockRunner, 'startAimock')
+    .mockResolvedValue({ stop: async () => undefined } as AimockHandle);
+  const calls: Array<aimockRunner.AimockStartOptions | undefined> = [];
+
+  try {
+    for (const record of [undefined, '1']) {
+      if (record === undefined) {
+        delete process.env['AIMOCK_RECORD'];
+      } else {
+        process.env['AIMOCK_RECORD'] = record;
+      }
+      await startRecordedAimock({
+        testName: 'root override',
+        provider: 'openai',
+        upstream: 'https://api.openai.com',
+        secrets: [],
+        root,
+      });
+      calls.push(startAimock.mock.calls.at(-1)?.[0]);
+    }
+  } finally {
+    startAimock.mockRestore();
+    rmSync(root, { recursive: true, force: true });
+    if (previousRecord === undefined) {
+      delete process.env['AIMOCK_RECORD'];
+    } else {
+      process.env['AIMOCK_RECORD'] = previousRecord;
+    }
+  }
+
+  const fixturePath = join(root, 'root-override', 'openai.json');
+  expect(calls[0]).toMatchObject({ fixturePath, strict: true });
+  expect(calls[0]?.strictMissMessage).toContain(fixturePath);
+  expect(calls[1]).toMatchObject({
+    fixturePath,
+    record: { fixturePath: root },
+  });
+});
 
 test('record mode fails and deletes a recording with an empty response', async () => {
   const testName = 'recording guard empty response';

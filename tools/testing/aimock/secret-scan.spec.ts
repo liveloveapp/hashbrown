@@ -1,4 +1,17 @@
-import { findCredentialLeaks, parseEnvFile } from './secret-scan';
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  findCredentialLeaks,
+  listRecordingFiles,
+  parseEnvFile,
+} from './secret-scan';
 
 test('reports a planted sk- key shape by pattern name', () => {
   const text = JSON.stringify({ note: 'sk-' + 'a1B2c3D4e5F6g7H8i9J0' });
@@ -61,4 +74,19 @@ test('parses KEY=VALUE lines, ignoring comments, export and quotes', () => {
   const env = parseEnvFile(source);
 
   expect(env).toEqual({ A: '1', B: 'two', C: 'three' });
+});
+
+test('listRecordingFiles lists nested files and skips entries that vanish', () => {
+  const root = mkdtempSync(join(tmpdir(), 'recorded-scan-'));
+  mkdirSync(join(root, 'slug-a'));
+  writeFileSync(join(root, 'slug-a', 'openai.json'), '{}');
+  // A dangling link stats as ENOENT, like a file deleted between readdir and stat.
+  symlinkSync(join(root, 'gone'), join(root, 'slug-gone'));
+
+  const files = listRecordingFiles(root);
+  const missingRoot = listRecordingFiles(join(root, 'missing'));
+  rmSync(root, { recursive: true, force: true });
+
+  expect(files).toEqual([join(root, 'slug-a', 'openai.json')]);
+  expect(missingRoot).toEqual([]);
 });

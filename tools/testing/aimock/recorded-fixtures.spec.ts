@@ -1,11 +1,15 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import {
   collectSecrets,
   RECORDED_FIXTURES_ROOT,
   recordedTestSlug,
 } from './recording';
-import { findCredentialLeaks, parseEnvFile } from './secret-scan';
+import {
+  findCredentialLeaks,
+  listRecordingFiles,
+  parseEnvFile,
+} from './secret-scan';
 
 const WORKSPACE_ROOT = resolve(__dirname, '..', '..', '..');
 
@@ -27,14 +31,6 @@ function findEnvFile(): string | undefined {
   }
 }
 
-function listFiles(dir: string): string[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir).flatMap((entry) => {
-    const path = join(dir, entry);
-    return statSync(path).isDirectory() ? listFiles(path) : [path];
-  });
-}
-
 test('committed recorded fixtures contain no credentials', () => {
   const envFile = findEnvFile();
   const env = envFile ? parseEnvFile(readFileSync(envFile, 'utf8')) : {};
@@ -42,7 +38,7 @@ test('committed recorded fixtures contain no credentials', () => {
   const secrets = Object.fromEntries(
     Object.entries(env).filter(([, value]) => secretValues.includes(value)),
   );
-  const files = listFiles(RECORDED_FIXTURES_ROOT);
+  const files = listRecordingFiles(RECORDED_FIXTURES_ROOT);
 
   const failures = files.flatMap((file) =>
     findCredentialLeaks(readFileSync(file, 'utf8'), secrets).map(
