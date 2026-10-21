@@ -1,9 +1,9 @@
 import {
-  alignTurns,
-  answerBlocks,
   answerTurns,
   chatStatus,
   labelForHex,
+  rowTurns,
+  shownTurn,
   thinkingStatus,
   type TranscriptItem,
   type TurnShown,
@@ -19,9 +19,9 @@ import {
   RenderMessageComponent,
   type UiChatMessage,
 } from '@hashbrownai/angular';
-import { ShowStream } from './show-stream';
+import { DevMode } from './dev-mode';
+import { DevIcon } from './rail';
 import { injectAtcState } from './store';
-import { StreamPanel } from './stream-panel';
 import { ToolChips } from './tool-chips';
 
 /**
@@ -33,12 +33,13 @@ import { ToolChips } from './tool-chips';
  * busy region is announced, a visually hidden status region beside it says what
  * the assistant is doing now (the running step, "Reasoning…" while a reasoning
  * summary streams, else "Thinking…"); it stays mounted, so each change is
- * announced. With "Show the stream" on, each send's last answer carries a
- * panel with the decisions (`turns`, matched to user rows by the text sent) and the streaming JSON.
+ * announced. While dev mode is on, each answer has a small button that shows
+ * its send in the developer drawer (`turns` are the recorded sends, matched
+ * to user rows by the text sent); it is pressed for the shown send.
  */
 @Component({
   selector: 'atc-transcript',
-  imports: [RenderMessageComponent, StreamPanel, ToolChips],
+  imports: [DevIcon, RenderMessageComponent, ToolChips],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ol
@@ -75,8 +76,16 @@ import { ToolChips } from './tool-chips';
           @case ('answer') {
             <li class="atc-answer">
               <hb-render-message [message]="item.message" />
-              @if (panels()[$index]; as blocks) {
-                <atc-stream-panel label="Answer stream" [blocks]="blocks" />
+              @if (inspect()[$index]; as send) {
+                <button
+                  type="button"
+                  class="atc-dev-inspect"
+                  aria-label="Show this answer in developer tools"
+                  [attr.aria-pressed]="send.shown"
+                  (click)="dev.select(send.turn)"
+                >
+                  <atc-dev-icon />
+                </button>
               }
             </li>
           }
@@ -103,9 +112,9 @@ export class Transcript {
   readonly items = input.required<readonly TranscriptItem<UiChatMessage>[]>();
   /** Whether the chat is still running. */
   readonly busy = input(false);
-  /** What each send recorded for its answer's panel, one per user row. */
+  /** The recorded sends, matched to user rows by the text sent. */
   readonly turns = input<readonly TurnShown[]>([]);
-  private readonly showStream = inject(ShowStream);
+  protected readonly dev = inject(DevMode);
   private readonly state = injectAtcState();
   protected readonly thinking = computed(() =>
     thinkingStatus(this.items(), this.busy()),
@@ -113,26 +122,25 @@ export class Transcript {
   protected readonly status = computed(() =>
     chatStatus(this.items(), this.busy(), labelForHex(this.state())),
   );
-  /** The panel blocks under each row, null where there is no panel. */
-  protected readonly panels = computed(() => {
+  /**
+   * In dev mode, for each send's last answer, the send (an index into
+   * `turns`) and whether the drawer shows it; null elsewhere.
+   */
+  protected readonly inspect = computed(() => {
     const items = this.items();
-    const answers = answerTurns(items);
-    const aligned = alignTurns(
-      this.turns(),
-      items.flatMap((item) => (item.kind === 'user' ? [item.text] : [])),
-    );
+    if (!this.dev.on()) return items.map(() => null);
+    const turns = this.turns();
+    const owners = rowTurns(items, turns);
+    // One button per send, on its last answer.
+    const lastAnswers = answerTurns(items);
+    const shown = shownTurn(turns, this.dev.selection());
 
-    return items.map((item, index) => {
-      const turn = answers[index];
-      if (!this.showStream.on() || item.kind !== 'answer' || turn === null) {
-        return null;
-      }
+    return items.map((_, index) => {
+      const turn = owners[index];
 
-      return answerBlocks(
-        aligned[turn],
-        item.message.content,
-        this.busy() && index === items.length - 1,
-      );
+      return lastAnswers[index] === null || turn === null || turn === undefined
+        ? null
+        : { turn, shown: turn === shown };
     });
   });
 }

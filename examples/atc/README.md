@@ -65,8 +65,13 @@ the arguments of `setMapFilter`, and the schemas the server pins. One pure predi
 applies a filter to an aircraft for both the map and `findAircraft`, so the map and the
 assistant always agree.
 
-Turn on "Show the stream" in the header to see each route's JSON as it arrives: the
-router's decision, the streaming filter, the cards decision and the tool calls.
+**Developer tools.** Dev mode is off on a first visit, so the map and the chat show
+no technical panels. Press the `{ }` button on the rail (in the header on phones, where
+the drawer opens as a sheet with a close button) to open the developer drawer under the
+map; the choice is remembered. Its tabs are Router, Cards, Filter, UI stream and Tools,
+and show each layer's JSON as it arrives for the shown send (the newest, or the answer
+you picked with the `{ }` button beside it until "Latest"). The drawer only reports;
+nothing in it changes the app.
 
 ```text
 atc/
@@ -79,7 +84,7 @@ atc/
     src/find-aircraft.ts The filter fields (one schema, four uses) and the findAircraft query
     src/route.ts, router-input.ts   Where Enter sends typed text; the router's input
     src/filter-view.ts, filter-sync.ts   Filter chips; the request `/api/filter` takes
-    src/stream-view.ts   The "Show the stream" panels and the cards decision
+    src/stream-view.ts, dev-tool.ts   The developer drawer's view model and the cards decision
     src/contracts.ts     Component contracts (Skillet schemas) and the system prompt
     src/views.ts, detail-view.ts, tool-chips.ts   Pure view models for the UI
     src/chart/           Chart types, cycle, browser chart feed

@@ -8,13 +8,15 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { publishDev } from './dev-mode';
 import { injectRouter } from './router';
 
 /**
  * The one input, a pill floating over the bottom of the transcript. As you
  * type, a badge shows where Enter will send the text (`→ filter 0.97`): the
- * map filter (`filter`), clearing it (`clear`), or the chat (`chat`). `/`
- * focuses the pill from anywhere outside another field.
+ * map filter (`filter`), clearing it (`clear`), or the chat (`chat`). The
+ * router's live decision goes to the developer drawer. `/` focuses the pill
+ * from anywhere outside another field.
  */
 @Component({
   selector: 'atc-composer',
@@ -69,7 +71,7 @@ export class Composer {
   readonly filter = output<string>();
   /**
    * Emits what the router decided, just before `chat` or `filter` emits the
-   * text it was for (for "Show the stream").
+   * text it was for (for the developer drawer).
    */
   readonly routed = output<RouterShown>();
   /** Emits when the text asks to clear the map filter. */
@@ -78,6 +80,10 @@ export class Composer {
   protected readonly router = injectRouter(this.draft);
   private readonly field =
     viewChild.required<ElementRef<HTMLInputElement>>('field');
+
+  constructor() {
+    publishDev('typing', this.router.typing);
+  }
 
   protected typed(value: string): void {
     this.router.cancel();

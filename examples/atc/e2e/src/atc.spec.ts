@@ -63,24 +63,10 @@ test.afterAll(async () => {
 
 /**
  * Opens one app with stubbed feeds and waits for the map to draw its first
- * frame. "Show the stream" is on for a first visit, and its panels repeat the
- * answers' text, so tests turn it off unless they pass `stream: true`.
+ * frame. Dev mode is off on a first visit, so the developer drawer is absent.
  */
-async function openApp(
-  page: Page,
-  framework: string,
-  options: { stream?: boolean } = {},
-): Promise<void> {
+async function openApp(page: Page, framework: string): Promise<void> {
   await stubAtcFeeds(page, { frames: frame, blockTiles: true });
-  if (!options.stream) {
-    await page.addInitScript(() => {
-      try {
-        localStorage.setItem('atc.showStream', 'off');
-      } catch {
-        // The app reads the same storage; without it the switch stays on.
-      }
-    });
-  }
   // Record every data-hex a card ever renders, not just the final DOM, so a
   // card that briefly showed a half-streamed ID is caught by expectOnlyCompleteIds.
   await page.addInitScript(() => {
@@ -865,43 +851,84 @@ test('the Layers control hides the airspace', async ({ page }, testInfo) => {
   await expect(page.locator('.atc-as')).toHaveCount(0);
 });
 
-test('Show the stream is on for a first visit and shows every layer', async ({
+test('the dev tool opens from the rail, shows each tab, and is remembered', async ({
   page,
 }, testInfo) => {
-  await openApp(page, testInfo.project.name, { stream: true });
-  const toggle = page.getByRole('switch', { name: 'Show the stream' });
+  await openApp(page, testInfo.project.name);
+  const toggle = page.getByTestId('dev-toggle');
+  const drawer = page.getByTestId('dev-drawer');
 
+  await toggle.click();
   await ask(page, PROMPTS.redmondAirspace);
 
-  await expect(toggle).toBeChecked();
-  const panel = page.getByTestId('stream-panel').last();
-  await expect(panel).toContainText('router');
-  await expect(panel).toContainText('cards');
-  await expect(panel).toContainText('"Markdown"');
-  await expect(
-    page
-      .getByTestId('stream-panel')
-      .filter({ hasText: 'showAirspace' })
-      .first(),
-  ).toBeVisible();
-
-  await toggle.uncheck();
-
-  await expect(page.getByTestId('stream-panel')).toHaveCount(0);
-  await expect(
-    page.getByText('Redmond has a part-time Class D.'),
-  ).toBeVisible();
-
-  await toggle.check();
-
-  await expect(page.getByTestId('stream-panel').last()).toContainText('cards');
-  await toggle.uncheck();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole('tab', { name: 'Router' }).click();
+  await expect(drawer).toContainText('last chat send');
+  await drawer.getByRole('tab', { name: 'Cards' }).click();
+  await expect(drawer).toContainText('cards');
+  await drawer.getByRole('tab', { name: 'Filter' }).click();
+  await expect(drawer).toContainText('applied');
+  await drawer.getByRole('tab', { name: 'UI stream' }).click();
+  await expect(drawer).toContainText('"Markdown"');
+  await drawer.getByRole('tab', { name: 'Tools' }).click();
+  await expect(drawer).toContainText('showAirspace');
 
   await page.reload();
 
+  await expect(page.getByTestId('dev-drawer')).toBeVisible();
+  await page.getByTestId('dev-toggle').click();
+  await expect(page.getByTestId('dev-drawer')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId('airspace-map')).toHaveAttribute(
+    'data-ready',
+    '',
+  );
+  await expect(page.getByTestId('dev-drawer')).toHaveCount(0);
+});
+
+test('with dev mode off the map and transcript have no technical panels', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+
+  await ask(page, PROMPTS.redmondAirspace);
+
+  await expect(
+    page.getByText('Redmond has a part-time Class D.'),
+  ).toBeVisible();
+  await expect(page.getByTestId('dev-toggle')).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(page.getByTestId('dev-drawer')).toHaveCount(0);
+  await expect(page.locator('.atc-dev-inspect')).toHaveCount(0);
+  await expect(page.getByTestId('stream-panel')).toHaveCount(0);
   await expect(
     page.getByRole('switch', { name: 'Show the stream' }),
-  ).not.toBeChecked();
+  ).toHaveCount(0);
+});
+
+test('at 375 px the header button opens the drawer as a sheet and closes it', async ({
+  browser,
+}, testInfo) => {
+  const { page, close } = await openPhone(browser, testInfo.project.name, {
+    width: 375,
+    height: 700,
+  });
+  const drawer = page.getByTestId('dev-drawer');
+
+  await page.locator('.atc-header-dev').click();
+
+  await expect(drawer).toBeVisible();
+  const box = await drawer.boundingBox();
+  expect((box?.x ?? -1) + (box?.width ?? 0)).toBeLessThanOrEqual(375);
+  await expect(page.getByTestId('airspace-map')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Close developer tools' }).click();
+
+  await expect(drawer).toHaveCount(0);
+  await close();
 });
 
 test('typing shows where Enter will send the text', async ({
@@ -1047,9 +1074,7 @@ for (const width of [320, 375]) {
     const link = await page
       .getByRole('link', { name: 'atc source on GitHub' })
       .boundingBox();
-    const switchBox = await page
-      .getByRole('switch', { name: 'Show the stream' })
-      .boundingBox();
+    const devBox = await page.locator('.atc-header-dev').boundingBox();
     const credit = await page
       .getByRole('link', { name: 'built with Hashbrown' })
       .boundingBox();
@@ -1061,7 +1086,7 @@ for (const width of [320, 375]) {
     expect((link?.x ?? 0) + (link?.width ?? 0)).toBeLessThanOrEqual(width);
     expect(credit?.width ?? 0).toBeGreaterThan(0);
     expect((credit?.x ?? 0) + (credit?.width ?? 0)).toBeLessThanOrEqual(width);
-    expect(switchBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect(devBox?.x ?? -1).toBeGreaterThanOrEqual(0);
     expect(overflow).toBeLessThanOrEqual(0);
     await close();
   });

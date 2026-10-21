@@ -8,6 +8,7 @@ import {
   routerDecisionInput,
   type RouterShown,
   routerShown,
+  routerTyping,
   routeSchema,
   submitTarget,
   trackDecisionInput,
@@ -41,9 +42,11 @@ export interface Router {
   /**
    * What the router decided for the text, as it stands now, with the
    * milliseconds the answer took; read it right after {@link Router.submit}
-   * resolves, for "Show the stream".
+   * resolves, for the developer drawer.
    */
   shown(): RouterShown;
+  /** What the router makes of the text as it is typed, for the developer drawer. */
+  readonly typing: RouterShown | null;
 }
 
 /**
@@ -144,5 +147,15 @@ export function useRouter(
     [tracked],
   );
 
-  return { badge: routerBadge(state), submit, cancel, shown };
+  // The answer's milliseconds are recorded before the reducer hears of it.
+  const typing = useMemo(
+    () =>
+      routerTyping(
+        state,
+        tracked.answeredFor() === state.text ? tracked.answeredMs() : null,
+      ),
+    [state, tracked],
+  );
+
+  return { badge: routerBadge(state), submit, cancel, shown, typing };
 }

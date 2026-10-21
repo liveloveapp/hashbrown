@@ -1,18 +1,26 @@
 import {
   createAtcStore,
+  DEV_MODE_KEY,
   type MapFilter,
   RESPONSE_SCHEMA_ALLOWLIST,
+  ROUTER_SKIPPED,
   STARTER_PROMPTS,
+  transcriptItems,
+  type TurnShown,
 } from '@atc/shared';
 import {
   fakeCardsTransport,
   fakeDecisionTransport,
   fakeFilterTransport,
 } from '@atc/shared/testing';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideHashbrown } from '@hashbrownai/angular';
+import { provideHashbrown, type UiChatMessage } from '@hashbrownai/angular';
 import { expect, test } from 'vitest';
 import { Assistant, CARDS_DECISION_TRANSPORT } from './assistant';
+import { DevDrawer } from './dev-drawer';
+import { DEV_STORAGE, type DevChat, DevMode, publishDev } from './dev-mode';
+import { Transcript } from './transcript';
 import { ROUTE_DECISION_TRANSPORT } from './router';
 import { ATC_STORE } from './store';
 
@@ -200,5 +208,111 @@ test('a cards decision failure sends with every card', async () => {
     'AircraftCompare',
     'AirportCard',
   ]);
+  fixture.destroy();
+});
+
+test('without dev mode an answer is not selectable', async () => {
+  const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
+  const { chat, fixture, element } = setup(() => null);
+
+  starterButton(element, starter?.text ?? '').click();
+  await until(() => chat.requests.length === 1);
+
+  expect(element.querySelectorAll('.atc-dev-inspect')).toHaveLength(0);
+  expect(element.querySelectorAll('[class*="atc-stream"]')).toHaveLength(0);
+  fixture.destroy();
+});
+
+/** Publishes a transcript to the drawer, as the assistant does. */
+@Component({
+  selector: 'atc-test-published',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: '',
+})
+class Published {
+  readonly chat = input.required<DevChat>();
+
+  constructor() {
+    publishDev('chat', this.chat);
+  }
+}
+
+function answer(text: string) {
+  return {
+    role: 'assistant',
+    toolCalls: [],
+    content: { ui: [{ Markdown: { data: text } }] },
+    ui: [],
+  };
+}
+
+/** A transcript whose first send was superseded, with the drawer, in dev mode. */
+@Component({
+  selector: 'atc-test-superseded',
+  imports: [Published, Transcript, DevDrawer],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [
+    DevMode,
+    {
+      provide: DEV_STORAGE,
+      useFactory: () => {
+        const data = new Map([[DEV_MODE_KEY, 'on']]);
+
+        return {
+          getItem: (key: string) => data.get(key) ?? null,
+          setItem: (key: string, value: string) => void data.set(key, value),
+        };
+      },
+    },
+  ],
+  template: `
+    <atc-test-published [chat]="chat" />
+    <atc-transcript [items]="chat.items" [turns]="chat.turns" />
+    <atc-dev-drawer />
+  `,
+})
+class Superseded {
+  protected readonly chat = {
+    items: transcriptItems([
+      { id: 'u-jets', role: 'user', content: 'jets' },
+      answer('first'),
+      { id: 'u-Seattle?', role: 'user', content: 'Seattle?' },
+      answer('second'),
+    ] as unknown as UiChatMessage[]),
+    turns: [
+      { text: 'jets', router: { kind: 'fallback', reason: 'superseded' } },
+      { text: 'jets', router: ROUTER_SKIPPED },
+      { text: 'Seattle?', router: { kind: 'fallback', reason: 'unavailable' } },
+    ] as TurnShown[],
+    busy: false,
+  };
+}
+
+test('a superseded send does not shift later answers onto the wrong decisions', () => {
+  setup(() => null);
+  const fixture = TestBed.createComponent(Superseded);
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  const answers = element.querySelectorAll<HTMLElement>('.atc-answer');
+  const inspect = () =>
+    element.querySelectorAll<HTMLButtonElement>('.atc-dev-inspect');
+  const router = () => {
+    fixture.detectChanges();
+    return element.querySelector('[role="tabpanel"]')?.textContent ?? '';
+  };
+
+  answers[0]?.click();
+  const unchanged = router();
+  inspect()[0]?.click();
+  const first = router();
+  inspect()[1]?.click();
+  const second = router();
+
+  expect(unchanged).toContain('→ chat (unavailable)');
+  expect(first).toContain('skipped (starter)');
+  expect(first).not.toContain('superseded');
+  expect(inspect()[0]?.getAttribute('aria-pressed')).toBe('false');
+  expect(second).toContain('→ chat (unavailable)');
+  expect(inspect()[1]?.getAttribute('aria-pressed')).toBe('true');
   fixture.destroy();
 });

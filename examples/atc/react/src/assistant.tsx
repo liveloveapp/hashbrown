@@ -37,6 +37,7 @@ import {
 } from './components/arrivals-board';
 import { FlightCard, FlightCardFallback } from './components/flight-card';
 import { Composer } from './composer';
+import { usePublishDev } from './dev-mode';
 import { useAutoScroll } from './auto-scroll';
 import { EmptyState } from './empty-state';
 import { useAtcStore } from './store';
@@ -87,8 +88,8 @@ const CARDS_TRANSPORT = createHttpDecisionTransport({
 /**
  * The chat panel: components, browser-side tools and the streaming answer,
  * with the one composer that routes what is typed. `onFilter` applies a
- * natural-language map filter (with what the router decided, for "Show the
- * stream"); `onSent` is called when the user sends
+ * natural-language map filter (with what the router decided, for the
+ * developer drawer); `onSent` is called when the user sends
  * anything (to the chat, to the filter, or a clear).
  */
 export function Assistant({
@@ -141,6 +142,10 @@ export function Assistant({
     tools,
   });
   const scroller = useAutoScroll<HTMLDivElement>();
+  const items = useMemo(
+    () => transcriptItems(chat.messages, chat.isLoading),
+    [chat.messages, chat.isLoading],
+  );
   // 4. Decide: route what the user typed, then narrow the cards. The composer
   //    asks a Jev decision (react/src/router.ts) and calls one of these; the
   //    filter route adds nothing to the transcript. A chat message first asks
@@ -148,8 +153,8 @@ export function Assistant({
   //    chat sends with only those plus Markdown. The server pins the questions
   //    (server/src/decide-handler.ts); an unsure or failed decision sends
   //    with every card.
-  // "Show the stream": each send's router decision and cards decision, kept
-  // with its answer. A starter skips the router.
+  // The developer drawer: each send's router decision and cards decision,
+  // recorded in order (superseded sends stay). A starter skips the router.
   const [turns, setTurns] = useState<readonly TurnShown[]>([]);
   const observed = useMemo(
     () =>
@@ -166,7 +171,7 @@ export function Assistant({
     transport: observed,
   });
   // Once the decision settles, the hook's decoded value (or its error) is
-  // what the chat acted on, so the panel shows that.
+  // what the chat acted on, so the drawer shows that.
   const { isDeciding, decisionError, decision } = narrowed;
   useEffect(() => {
     if (isDeciding) {
@@ -180,9 +185,15 @@ export function Assistant({
       );
     }
   }, [isDeciding, decisionError, decision.value, decision.meta]);
+  // The drawer reads the chat as it streams.
+  const devChat = useMemo(
+    () => ({ items, turns, busy: chat.isLoading }),
+    [items, turns, chat.isLoading],
+  );
+  usePublishDev('chat', devChat);
   const send = (content: string, routed: RouterShown) => {
     narrowed.sendMessage(content);
-    // Added once the chat accepted the message: its panel keeps this send's
+    // Added once the chat accepted the message: the drawer keeps this send's
     // router decision, and the cards decision joins it when it settles.
     setTurns((current) => addTurn(current, routed, content));
     onSent?.();
@@ -211,11 +222,7 @@ export function Assistant({
         {chat.messages.length === 0 && !chat.error ? (
           <EmptyState onPick={pick} />
         ) : null}
-        <Transcript
-          items={transcriptItems(chat.messages, chat.isLoading)}
-          busy={chat.isLoading}
-          turns={turns}
-        />
+        <Transcript items={items} busy={chat.isLoading} turns={turns} />
         {chat.error ? (
           <div className="atc-card atc-error" role="alert">
             <span>The assistant didn&apos;t answer. Try again.</span>
