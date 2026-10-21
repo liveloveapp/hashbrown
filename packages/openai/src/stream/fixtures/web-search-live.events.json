@@ -1,0 +1,1191 @@
+[
+  {
+    "type": "response.created",
+    "response": {
+      "id": "resp_0152c7f830321922016ad9509b3e8c87d087373a46be4cfec3",
+      "object": "response",
+      "created_at": 1792626843,
+      "status": "in_progress",
+      "access_programs": null,
+      "background": false,
+      "completed_at": null,
+      "error": null,
+      "frequency_penalty": 0,
+      "incomplete_details": null,
+      "instructions": null,
+      "max_output_tokens": 400,
+      "max_tool_calls": null,
+      "model": "gpt-4.1-mini-2025-04-14",
+      "moderation": null,
+      "output": [],
+      "parallel_tool_calls": true,
+      "presence_penalty": 0,
+      "previous_response_id": null,
+      "prompt_cache_key": null,
+      "prompt_cache_retention": "in_memory",
+      "reasoning": {
+        "context": null,
+        "effort": null,
+        "summary": null
+      },
+      "safety_identifier": null,
+      "service_tier": "auto",
+      "store": false,
+      "temperature": 1,
+      "text": {
+        "format": {
+          "type": "text"
+        },
+        "verbosity": "medium"
+      },
+      "tool_choice": "auto",
+      "tool_usage": {
+        "image_gen": {
+          "input_tokens": 0,
+          "input_tokens_details": {
+            "image_tokens": 0,
+            "text_tokens": 0
+          },
+          "output_tokens": 0,
+          "output_tokens_details": {
+            "image_tokens": 0,
+            "text_tokens": 0
+          },
+          "total_tokens": 0
+        },
+        "web_search": {
+          "num_requests": 0
+        }
+      },
+      "tools": [
+        {
+          "type": "web_search",
+          "return_token_budget": "default",
+          "search_content_types": ["text"],
+          "search_context_size": "medium",
+          "user_location": {
+            "type": "approximate",
+            "city": null,
+            "country": "US",
+            "region": null,
+            "timezone": null
+          }
+        }
+      ],
+      "top_logprobs": 0,
+      "top_p": 1,
+      "truncation": "disabled",
+      "usage": null,
+      "user": null,
+      "metadata": {}
+    },
+    "sequence_number": 0
+  },
+  {
+    "type": "response.in_progress",
+    "response": {
+      "id": "resp_0152c7f830321922016ad9509b3e8c87d087373a46be4cfec3",
+      "object": "response",
+      "created_at": 1792626843,
+      "status": "in_progress",
+      "access_programs": null,
+      "background": false,
+      "completed_at": null,
+      "error": null,
+      "frequency_penalty": 0,
+      "incomplete_details": null,
+      "instructions": null,
+      "max_output_tokens": 400,
+      "max_tool_calls": null,
+      "model": "gpt-4.1-mini-2025-04-14",
+      "moderation": null,
+      "output": [],
+      "parallel_tool_calls": true,
+      "presence_penalty": 0,
+      "previous_response_id": null,
+      "prompt_cache_key": null,
+      "prompt_cache_retention": "in_memory",
+      "reasoning": {
+        "context": null,
+        "effort": null,
+        "summary": null
+      },
+      "safety_identifier": null,
+      "service_tier": "auto",
+      "store": false,
+      "temperature": 1,
+      "text": {
+        "format": {
+          "type": "text"
+        },
+        "verbosity": "medium"
+      },
+      "tool_choice": "auto",
+      "tool_usage": {
+        "image_gen": {
+          "input_tokens": 0,
+          "input_tokens_details": {
+            "image_tokens": 0,
+            "text_tokens": 0
+          },
+          "output_tokens": 0,
+          "output_tokens_details": {
+            "image_tokens": 0,
+            "text_tokens": 0
+          },
+          "total_tokens": 0
+        },
+        "web_search": {
+          "num_requests": 0
+        }
+      },
+      "tools": [
+        {
+          "type": "web_search",
+          "return_token_budget": "default",
+          "search_content_types": ["text"],
+          "search_context_size": "medium",
+          "user_location": {
+            "type": "approximate",
+            "city": null,
+            "country": "US",
+            "region": null,
+            "timezone": null
+          }
+        }
+      ],
+      "top_logprobs": 0,
+      "top_p": 1,
+      "truncation": "disabled",
+      "usage": null,
+      "user": null,
+      "metadata": {}
+    },
+    "sequence_number": 1
+  },
+  {
+    "type": "response.output_item.added",
+    "item": {
+      "id": "ws_0152c7f830321922016ad9509bc4ec87d08b8afdc925f1d815",
+      "type": "web_search_call",
+      "status": "in_progress",
+      "action": {
+        "type": "search"
+      }
+    },
+    "output_index": 0,
+    "sequence_number": 2
+  },
+  {
+    "type": "response.web_search_call.in_progress",
+    "item_id": "ws_0152c7f830321922016ad9509bc4ec87d08b8afdc925f1d815",
+    "output_index": 0,
+    "sequence_number": 3
+  },
+  {
+    "type": "response.web_search_call.searching",
+    "item_id": "ws_0152c7f830321922016ad9509bc4ec87d08b8afdc925f1d815",
+    "output_index": 0,
+    "sequence_number": 4
+  },
+  {
+    "type": "response.web_search_call.completed",
+    "item_id": "ws_0152c7f830321922016ad9509bc4ec87d08b8afdc925f1d815",
+    "output_index": 0,
+    "sequence_number": 5
+  },
+  {
+    "type": "response.output_item.done",
+    "item": {
+      "id": "ws_0152c7f830321922016ad9509bc4ec87d08b8afdc925f1d815",
+      "type": "web_search_call",
+      "status": "completed",
+      "action": {
+        "type": "search",
+        "queries": ["current stable version of Node.js"],
+        "query": "current stable version of Node.js",
+        "sources": [
+          {
+            "type": "url",
+            "url": "https://www.what-version.com/versions/nodejs/?utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://compathub.com/software/nodejs?utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://nodejs.org/en/download/current?utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://nodejs.org/en/download?utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://eosl.date/eol/product/nodejs/?utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://versionlog.com/nodejs/?utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://patchletter.com/en/software/nodejs?utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://sivo.it.com/node-js-versions/what-is-the-latest-node-js-version/?utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://www.nodesource.com/blog/nodejs-versions-lts-eol-outdated-release-risks?utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://panaches.app/outils/node-js/?lang=en&utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://josenobile.co/guides/nodejs/?utm_source=openai"
+          },
+          {
+            "type": "url",
+            "url": "https://stackchief.com/blog/Which%20Version%20of%20Node.js%20Should%20You%20Use%3F?utm_source=openai"
+          }
+        ]
+      }
+    },
+    "output_index": 0,
+    "sequence_number": 6
+  },
+  {
+    "type": "response.output_item.added",
+    "item": {
+      "id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+      "type": "message",
+      "status": "in_progress",
+      "content": [],
+      "role": "assistant"
+    },
+    "output_index": 1,
+    "sequence_number": 7
+  },
+  {
+    "type": "response.content_part.added",
+    "content_index": 0,
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "output_index": 1,
+    "part": {
+      "type": "output_text",
+      "annotations": [],
+      "logprobs": [],
+      "text": ""
+    },
+    "sequence_number": 8
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "As",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "wIhHlfjn2390Zp",
+    "output_index": 1,
+    "sequence_number": 9
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " of",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "jcGAJABED4Y2b",
+    "output_index": 1,
+    "sequence_number": 10
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " October",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "9qPSxSYh",
+    "output_index": 1,
+    "sequence_number": 11
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "SC4C4jVtzfLUFJa",
+    "output_index": 1,
+    "sequence_number": 12
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "21",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "H4bhTJgWfAYO7Z",
+    "output_index": 1,
+    "sequence_number": 13
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ",",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "EYnLOn26TeHz8zW",
+    "output_index": 1,
+    "sequence_number": 14
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "ghM4dtlxEO4FaF2",
+    "output_index": 1,
+    "sequence_number": 15
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "202",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "dzgAZgN0egtAw",
+    "output_index": 1,
+    "sequence_number": 16
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "6",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "bB0XgrHbhdxwzaW",
+    "output_index": 1,
+    "sequence_number": 17
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ",",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "qybcfIdER8lTq9x",
+    "output_index": 1,
+    "sequence_number": 18
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " the",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "knrDRDdHG4fa",
+    "output_index": 1,
+    "sequence_number": 19
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " current",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "CqYLsMs7",
+    "output_index": 1,
+    "sequence_number": 20
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " stable",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "SNqbwEEND",
+    "output_index": 1,
+    "sequence_number": 21
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " version",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "E6KTFy5b",
+    "output_index": 1,
+    "sequence_number": 22
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " of",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "D40j52JF4CljD",
+    "output_index": 1,
+    "sequence_number": 23
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " Node",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "uIdZFNhZH2h",
+    "output_index": 1,
+    "sequence_number": 24
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ".js",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "5ArRPArAX13mu",
+    "output_index": 1,
+    "sequence_number": 25
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " is",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "1BLKcXPFKnpv5",
+    "output_index": 1,
+    "sequence_number": 26
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "p70pxZyXeqBHrzI",
+    "output_index": 1,
+    "sequence_number": 27
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "26",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "W2ppkj7Xad65xo",
+    "output_index": 1,
+    "sequence_number": 28
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ".",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "KcdjgTRI9fqKOlq",
+    "output_index": 1,
+    "sequence_number": 29
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "12",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "P2XvzDSCWsA1Pc",
+    "output_index": 1,
+    "sequence_number": 30
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ".",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "iXD36o0wqSxJ65U",
+    "output_index": 1,
+    "sequence_number": 31
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "0",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "eoLaA2CABmQ67ou",
+    "output_index": 1,
+    "sequence_number": 32
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ",",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "dqRDr14dWmJttYz",
+    "output_index": 1,
+    "sequence_number": 33
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " released",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "HU3lHMG",
+    "output_index": 1,
+    "sequence_number": 34
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " on",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "RCxYqLcjqhgQU",
+    "output_index": 1,
+    "sequence_number": 35
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " October",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "5iryhujB",
+    "output_index": 1,
+    "sequence_number": 36
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "LFNq0m93Jd7wKHJ",
+    "output_index": 1,
+    "sequence_number": 37
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "14",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "acvbUknEOe889Y",
+    "output_index": 1,
+    "sequence_number": 38
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ",",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "R7ITmUdkhn4HW2N",
+    "output_index": 1,
+    "sequence_number": 39
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "Xvy0TBiXjWPWeib",
+    "output_index": 1,
+    "sequence_number": 40
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "202",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "m4s3NNKGlNvk2",
+    "output_index": 1,
+    "sequence_number": 41
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "6",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "EDzPXihSPdXsz0q",
+    "output_index": 1,
+    "sequence_number": 42
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ".",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "PNr1cJXyVms3SvL",
+    "output_index": 1,
+    "sequence_number": 43
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "FSTWbyN0B224N5t",
+    "output_index": 1,
+    "sequence_number": 44
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai))",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "WW638aO5gd",
+    "output_index": 1,
+    "sequence_number": 45
+  },
+  {
+    "type": "response.output_text.annotation.added",
+    "annotation": {
+      "type": "url_citation",
+      "end_index": 174,
+      "start_index": 104,
+      "title": "Node.js End of Life (EOL) Dates and End of Support (EOS) Dates | 26.12.0 - October 2026 Release",
+      "url": "https://eosl.date/eol/product/nodejs/?utm_source=openai"
+    },
+    "annotation_index": 0,
+    "content_index": 0,
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "output_index": 1,
+    "sequence_number": 46
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "iQO9ZsFZqmD6Ftp",
+    "output_index": 1,
+    "sequence_number": 47
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "This",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "2Cgz5PiXukWA",
+    "output_index": 1,
+    "sequence_number": 48
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " version",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "huKpKjKN",
+    "output_index": 1,
+    "sequence_number": 49
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " is",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "LmNBKONdF9Ksd",
+    "output_index": 1,
+    "sequence_number": 50
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " in",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "yZvumFrWm69ti",
+    "output_index": 1,
+    "sequence_number": 51
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " the",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "jMRshnjmLPyC",
+    "output_index": 1,
+    "sequence_number": 52
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " Current",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "I1t0LUQH",
+    "output_index": 1,
+    "sequence_number": 53
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " release",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "LoWjsDZc",
+    "output_index": 1,
+    "sequence_number": 54
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " line",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "CKYHzAKMfH7",
+    "output_index": 1,
+    "sequence_number": 55
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ",",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "iuTcokIcwrPZNkS",
+    "output_index": 1,
+    "sequence_number": 56
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " which",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "oWq2X10jnQ",
+    "output_index": 1,
+    "sequence_number": 57
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " is",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "fEZj1zcUT7eI7",
+    "output_index": 1,
+    "sequence_number": 58
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " supported",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "VbrlSd",
+    "output_index": 1,
+    "sequence_number": 59
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " until",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "fy49bJFpZS",
+    "output_index": 1,
+    "sequence_number": 60
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " April",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "3KIHWvtefc",
+    "output_index": 1,
+    "sequence_number": 61
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "Lp2aO4rQDfgvw43",
+    "output_index": 1,
+    "sequence_number": 62
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "30",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "ZtyHSh4ErietkB",
+    "output_index": 1,
+    "sequence_number": 63
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ",",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "U1uDd0lm4StOgKY",
+    "output_index": 1,
+    "sequence_number": 64
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "Jli019GBu2iNZru",
+    "output_index": 1,
+    "sequence_number": 65
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "202",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "QCYU6ZVXJBanf",
+    "output_index": 1,
+    "sequence_number": 66
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "9",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "PQaB8yr0Em41Gjz",
+    "output_index": 1,
+    "sequence_number": 67
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": ".",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "btmIkqGQnsDHtVo",
+    "output_index": 1,
+    "sequence_number": 68
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "lkSqAGxGcXIj0Gj",
+    "output_index": 1,
+    "sequence_number": 69
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": "([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai))",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "cZu86VlP4o",
+    "output_index": 1,
+    "sequence_number": 70
+  },
+  {
+    "type": "response.output_text.annotation.added",
+    "annotation": {
+      "type": "url_citation",
+      "end_index": 331,
+      "start_index": 261,
+      "title": "Node.js End of Life (EOL) Dates and End of Support (EOS) Dates | 26.12.0 - October 2026 Release",
+      "url": "https://eosl.date/eol/product/nodejs/?utm_source=openai"
+    },
+    "annotation_index": 1,
+    "content_index": 0,
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "output_index": 1,
+    "sequence_number": 71
+  },
+  {
+    "type": "response.output_text.delta",
+    "content_index": 0,
+    "delta": " ",
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "obfuscation": "WfOxi0AB4Co62qp",
+    "output_index": 1,
+    "sequence_number": 72
+  },
+  {
+    "type": "response.output_text.done",
+    "content_index": 0,
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "logprobs": [],
+    "output_index": 1,
+    "sequence_number": 73,
+    "text": "As of October 21, 2026, the current stable version of Node.js is 26.12.0, released on October 14, 2026. ([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai)) This version is in the Current release line, which is supported until April 30, 2029. ([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai)) "
+  },
+  {
+    "type": "response.content_part.done",
+    "content_index": 0,
+    "item_id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+    "output_index": 1,
+    "part": {
+      "type": "output_text",
+      "annotations": [
+        {
+          "type": "url_citation",
+          "end_index": 174,
+          "start_index": 104,
+          "title": "Node.js End of Life (EOL) Dates and End of Support (EOS) Dates | 26.12.0 - October 2026 Release",
+          "url": "https://eosl.date/eol/product/nodejs/?utm_source=openai"
+        },
+        {
+          "type": "url_citation",
+          "end_index": 331,
+          "start_index": 261,
+          "title": "Node.js End of Life (EOL) Dates and End of Support (EOS) Dates | 26.12.0 - October 2026 Release",
+          "url": "https://eosl.date/eol/product/nodejs/?utm_source=openai"
+        }
+      ],
+      "logprobs": [],
+      "text": "As of October 21, 2026, the current stable version of Node.js is 26.12.0, released on October 14, 2026. ([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai)) This version is in the Current release line, which is supported until April 30, 2029. ([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai)) "
+    },
+    "sequence_number": 74
+  },
+  {
+    "type": "response.output_item.done",
+    "item": {
+      "id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [
+            {
+              "type": "url_citation",
+              "end_index": 174,
+              "start_index": 104,
+              "title": "Node.js End of Life (EOL) Dates and End of Support (EOS) Dates | 26.12.0 - October 2026 Release",
+              "url": "https://eosl.date/eol/product/nodejs/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 331,
+              "start_index": 261,
+              "title": "Node.js End of Life (EOL) Dates and End of Support (EOS) Dates | 26.12.0 - October 2026 Release",
+              "url": "https://eosl.date/eol/product/nodejs/?utm_source=openai"
+            }
+          ],
+          "logprobs": [],
+          "text": "As of October 21, 2026, the current stable version of Node.js is 26.12.0, released on October 14, 2026. ([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai)) This version is in the Current release line, which is supported until April 30, 2029. ([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai)) "
+        }
+      ],
+      "role": "assistant"
+    },
+    "output_index": 1,
+    "sequence_number": 75
+  },
+  {
+    "type": "response.completed",
+    "response": {
+      "id": "resp_0152c7f830321922016ad9509b3e8c87d087373a46be4cfec3",
+      "object": "response",
+      "created_at": 1792626843,
+      "status": "completed",
+      "access_programs": null,
+      "background": false,
+      "completed_at": 1792626846,
+      "error": null,
+      "frequency_penalty": 0,
+      "incomplete_details": null,
+      "instructions": null,
+      "max_output_tokens": 400,
+      "max_tool_calls": null,
+      "model": "gpt-4.1-mini-2025-04-14",
+      "moderation": null,
+      "output": [
+        {
+          "id": "ws_0152c7f830321922016ad9509bc4ec87d08b8afdc925f1d815",
+          "type": "web_search_call",
+          "status": "completed",
+          "action": {
+            "type": "search",
+            "queries": ["current stable version of Node.js"],
+            "query": "current stable version of Node.js",
+            "sources": [
+              {
+                "type": "url",
+                "url": "https://www.what-version.com/versions/nodejs/?utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://compathub.com/software/nodejs?utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://nodejs.org/en/download/current?utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://nodejs.org/en/download?utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://eosl.date/eol/product/nodejs/?utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://versionlog.com/nodejs/?utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://patchletter.com/en/software/nodejs?utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://sivo.it.com/node-js-versions/what-is-the-latest-node-js-version/?utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://www.nodesource.com/blog/nodejs-versions-lts-eol-outdated-release-risks?utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://panaches.app/outils/node-js/?lang=en&utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://josenobile.co/guides/nodejs/?utm_source=openai"
+              },
+              {
+                "type": "url",
+                "url": "https://stackchief.com/blog/Which%20Version%20of%20Node.js%20Should%20You%20Use%3F?utm_source=openai"
+              }
+            ]
+          }
+        },
+        {
+          "id": "msg_0152c7f830321922016ad9509cd6d887d0b063e4031b639d53",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [
+                {
+                  "type": "url_citation",
+                  "end_index": 174,
+                  "start_index": 104,
+                  "title": "Node.js End of Life (EOL) Dates and End of Support (EOS) Dates | 26.12.0 - October 2026 Release",
+                  "url": "https://eosl.date/eol/product/nodejs/?utm_source=openai"
+                },
+                {
+                  "type": "url_citation",
+                  "end_index": 331,
+                  "start_index": 261,
+                  "title": "Node.js End of Life (EOL) Dates and End of Support (EOS) Dates | 26.12.0 - October 2026 Release",
+                  "url": "https://eosl.date/eol/product/nodejs/?utm_source=openai"
+                }
+              ],
+              "logprobs": [],
+              "text": "As of October 21, 2026, the current stable version of Node.js is 26.12.0, released on October 14, 2026. ([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai)) This version is in the Current release line, which is supported until April 30, 2029. ([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai)) "
+            }
+          ],
+          "role": "assistant"
+        }
+      ],
+      "parallel_tool_calls": true,
+      "presence_penalty": 0,
+      "previous_response_id": null,
+      "prompt_cache_key": null,
+      "prompt_cache_retention": "in_memory",
+      "reasoning": {
+        "context": null,
+        "effort": null,
+        "summary": null
+      },
+      "safety_identifier": null,
+      "service_tier": "default",
+      "store": false,
+      "temperature": 1,
+      "text": {
+        "format": {
+          "type": "text"
+        },
+        "verbosity": "medium"
+      },
+      "tool_choice": "auto",
+      "tool_usage": {
+        "image_gen": {
+          "input_tokens": 0,
+          "input_tokens_details": {
+            "image_tokens": 0,
+            "text_tokens": 0
+          },
+          "output_tokens": 0,
+          "output_tokens_details": {
+            "image_tokens": 0,
+            "text_tokens": 0
+          },
+          "total_tokens": 0
+        },
+        "web_search": {
+          "num_requests": 1
+        }
+      },
+      "tools": [
+        {
+          "type": "web_search",
+          "return_token_budget": "default",
+          "search_content_types": ["text"],
+          "search_context_size": "medium",
+          "user_location": {
+            "type": "approximate",
+            "city": null,
+            "country": "US",
+            "region": null,
+            "timezone": null
+          }
+        }
+      ],
+      "top_logprobs": 0,
+      "top_p": 1,
+      "truncation": "disabled",
+      "usage": {
+        "input_tokens": 8174,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 116,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 8290
+      },
+      "user": null,
+      "metadata": {}
+    },
+    "sequence_number": 76
+  }
+]

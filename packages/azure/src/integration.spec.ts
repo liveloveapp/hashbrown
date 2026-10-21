@@ -9,7 +9,10 @@ import {
 import OpenAI from 'openai';
 import { type ActivityCallback, HashbrownAzure } from './index';
 import { historyFromEvents } from './testing/history-from-events';
-import type { AzureHashbrownRunAgentInput } from './stream/types';
+import type {
+  AzureBuiltInTools,
+  AzureHashbrownRunAgentInput,
+} from './stream/types';
 
 // AzureOpenAI without a `deployment` posts to
 // `{endpoint}/openai/responses?api-version=…`. aimock serves that route with
@@ -95,6 +98,7 @@ async function runFixture(
 
 interface RecordedRunOptions {
   readonly model?: string;
+  readonly builtInTools?: AzureBuiltInTools;
   readonly transformRequestOptions?: (
     options: OpenAI.Responses.ResponseCreateParamsStreaming,
   ) => OpenAI.Responses.ResponseCreateParamsStreaming;
@@ -154,6 +158,7 @@ async function withRecording<T>(
         },
         model,
         input,
+        ...(options.builtInTools ? { builtInTools: options.builtInTools } : {}),
         transformRequestOptions: (request) => ({
           ...(options.transformRequestOptions?.(request) ?? request),
           max_output_tokens: reasoningModel
@@ -318,6 +323,72 @@ function expectReasoning(events: AGUIEvent[]): void {
 
 function lookupResult(): string {
   return JSON.stringify({ fact: 'The code word is blue.' });
+}
+
+const WEB_SEARCH_PROMPT =
+  'Search the web for the current stable version of Node.js. Answer in one short sentence and cite your source.';
+
+/**
+ * Asserts one `web_search` call that ran on the provider: a running
+ * `b4.step` on its start and a completed step with its queries on its result.
+ * Returns the call id.
+ *
+ * aimock's recorder keeps only each search's query, so recorded cases cannot
+ * replay sources or `url_citation` annotations; those are covered by the
+ * live-captured event fixture in `openai-events.spec.ts`.
+ */
+function expectWebSearchStep(events: AGUIEvent[]): string {
+  const starts = events.flatMap((event) =>
+    event.type === EventType.TOOL_CALL_START ? [event] : [],
+  );
+  const start = starts[0];
+  const result = events.find(
+    (event) =>
+      event.type === EventType.TOOL_CALL_RESULT &&
+      event.toolCallId === start?.toolCallId,
+  );
+
+  expect(starts).toHaveLength(1);
+  expect(start).toMatchObject({
+    toolCallName: 'web_search',
+    metadata: {
+      'b4.step': {
+        v: 1,
+        kind: 'provider',
+        builtin: 'web_search',
+        status: 'running',
+        label: expect.any(String),
+      },
+    },
+  });
+  expect(result).toMatchObject({
+    metadata: {
+      'b4.step': {
+        v: 1,
+        kind: 'provider',
+        builtin: 'web_search',
+        status: 'completed',
+        label: expect.stringMatching(/^Searched/),
+        queries: [expect.any(String)],
+      },
+    },
+  });
+
+  return start?.toolCallId ?? '';
+}
+
+/** Returns the provider's own result content for each call in `events`. */
+function recordedResult(events: AGUIEvent[]) {
+  return ({ id }: { readonly id: string }): string => {
+    const result = events.find(
+      (event) =>
+        event.type === EventType.TOOL_CALL_RESULT && event.toolCallId === id,
+    );
+    return result?.type === EventType.TOOL_CALL_RESULT &&
+      typeof result.content === 'string'
+      ? result.content
+      : '';
+  };
 }
 
 test(
@@ -543,6 +614,91 @@ test(
         }),
         expect.objectContaining({ type: 'function_call', name: 'lookup' }),
         expect.objectContaining({ type: 'function_call_output' }),
+      ]),
+    );
+    expectCanonicalTextRun(secondEvents, second);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'Azure OpenAI web search streams a provider step with its query',
+  async () => {
+    const input = baseInput(WEB_SEARCH_PROMPT);
+
+    const events = await withRecording((run) =>
+      run(input, { builtInTools: { webSearch: true } }),
+    );
+
+    expectWebSearchStep(events);
+    expectCanonicalTextRun(events, input);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'Azure OpenAI web search follow-up replays the history without the provider call',
+  async () => {
+    const first = baseInput(WEB_SEARCH_PROMPT);
+    let capturedInput: OpenAI.Responses.ResponseCreateParamsStreaming['input'];
+
+    const { firstEvents, second, secondEvents } = await withRecording(
+      async (run) => {
+        const firstEvents = await run(first, {
+          builtInTools: { webSearch: true },
+        });
+        const second: AzureHashbrownRunAgentInput = {
+          ...first,
+          runId: 'run-azure-2',
+          messages: [
+            ...historyFromEvents(
+              first.messages,
+              first.runId,
+              firstEvents,
+              recordedResult(firstEvents),
+            ),
+            {
+              id: 'user-follow-up',
+              role: 'user',
+              content:
+                'Without searching again, repeat that version number only.',
+            },
+          ],
+        };
+        const secondEvents = await run(second, {
+          builtInTools: { webSearch: true },
+          transformRequestOptions: (options) => {
+            capturedInput = options.input;
+            return options;
+          },
+        });
+        return { firstEvents, second, secondEvents };
+      },
+    );
+
+    const toolCallId = expectWebSearchStep(firstEvents);
+    expect(second.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'assistant',
+          toolCalls: [
+            expect.objectContaining({
+              id: toolCallId,
+              function: expect.objectContaining({ name: 'web_search' }),
+            }),
+          ],
+        }),
+        expect.objectContaining({ role: 'tool', toolCallId }),
+      ]),
+    );
+    expect(Array.isArray(capturedInput) ? capturedInput : []).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'function_call', name: 'web_search' }),
+      ]),
+    );
+    expect(Array.isArray(capturedInput) ? capturedInput : []).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ call_id: toolCallId }),
       ]),
     );
     expectCanonicalTextRun(secondEvents, second);

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import type OpenAI from 'openai';
@@ -923,4 +925,61 @@ test('skips a url_citation for a part with no recorded offset', async () => {
     type: EventType.TEXT_MESSAGE_END,
     messageId,
   });
+});
+
+test('maps a live-captured web search turn to a provider step, sources and citations', async () => {
+  // Responses SSE events captured once from the live API (gpt-4.1-mini with
+  // web_search and `web_search_call.action.sources`). aimock's recorder keeps
+  // only search queries, so sources and citations are proven here.
+  const input = JSON.parse(
+    readFileSync(
+      resolve(__dirname, 'fixtures/web-search-live.events.json'),
+      'utf8',
+    ),
+  ) as StreamEvent[];
+
+  const events = await collectEvents(input);
+
+  const text = events
+    .flatMap((output) =>
+      output.type === EventType.TEXT_MESSAGE_CONTENT ? [output.delta] : [],
+    )
+    .join('');
+  const result = events.find(
+    (output) => output.type === EventType.TOOL_CALL_RESULT,
+  );
+  const step = (result?.metadata as Record<string, unknown> | undefined)?.[
+    'b4.step'
+  ] as { sources?: { id: string; href?: string }[] } | undefined;
+  const end = events.find(
+    (output) => output.type === EventType.TEXT_MESSAGE_END,
+  );
+  const answer = (end?.metadata as Record<string, unknown> | undefined)?.[
+    'b4.answer'
+  ] as
+    | {
+        citations?: {
+          sourceId: string;
+          quote?: string;
+          start?: number;
+          end?: number;
+        }[];
+        sources?: { id: string }[];
+      }
+    | undefined;
+  const sourceIds = new Set(
+    [...(step?.sources ?? []), ...(answer?.sources ?? [])].map(
+      (source) => source.id,
+    ),
+  );
+
+  expect(step?.sources?.length ?? 0).toBeGreaterThanOrEqual(1);
+  expect(
+    step?.sources?.every((source) => typeof source.href === 'string'),
+  ).toBe(true);
+  expect(answer?.citations?.length ?? 0).toBeGreaterThanOrEqual(1);
+  for (const citation of answer?.citations ?? []) {
+    expect(sourceIds.has(citation.sourceId)).toBe(true);
+    expect(citation.quote).toBe(text.slice(citation.start, citation.end));
+  }
 });
