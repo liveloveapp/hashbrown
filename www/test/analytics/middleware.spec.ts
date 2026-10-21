@@ -23,6 +23,8 @@ const included = [
   '/api',
   '/api/core/chatResource',
   '/other',
+  '/blog/og-images',
+  '/docs/react/og',
 ];
 const excluded = [
   '/_/ingest/e',

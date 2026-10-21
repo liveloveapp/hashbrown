@@ -110,7 +110,7 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
 
 /**
  * Routes observed: pages plus the files written for AI consumers. Excluded:
- * `/_` (PostHog proxy and growth routes, the only route handlers), `_next`
+ * `/_` (the PostHog proxy and growth route handlers), `_next`
  * assets, `favicon.ico`, any path with a file extension, and the
  * extension-less image routes: `/og/*`, `/github-card`, and
  * `opengraph-image` / `twitter-image` (anchored to a segment boundary).

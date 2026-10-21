@@ -100,8 +100,15 @@ test('deduplicates crawler events per crawler, path and hour and caps keys at 20
     now: 0,
     seen,
   });
+  const middle = shouldEmitCrawlerEvent({
+    crawler: 'ccbot',
+    path: '/p/1000',
+    now: 0,
+    seen,
+  });
   expect(newest).toBe(false);
   expect(oldest).toBe(true);
+  expect(middle).toBe(false);
 });
 
 test('token bucket refuses the 501st emission in an hour', () => {
