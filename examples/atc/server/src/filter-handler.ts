@@ -17,31 +17,35 @@ import {
 /** A filter is a small JSON object; this leaves room for reasoning too. */
 const FILTER_MAX_OUTPUT_TOKENS = 512;
 
+/**
+ * Reasoning tokens count against the cap, so the filter reasons as little as
+ * the model allows, whatever effort `/api/run` is configured with.
+ */
+const FILTER_REASONING_EFFORT = 'minimal';
+
 /** The response schema for a map filter, as Hashbrown's client builds it. */
 const FILTER_RESPONSE_SCHEMA = s.toJsonSchema(mapFilterSchema);
 
 /**
- * The run input the model sees: the client's user messages only, no tools,
- * and the server's response schema. Whatever the client sent as system
- * messages, tools or a schema is ignored.
+ * The run input the model sees, built from scratch: the client's last user
+ * message (the `{ request, current }` contract) and nothing else. Its other
+ * messages, tools, context, state and props are ignored.
  */
 function pinFilterInput(input: RunAgentInput): RunAgentInput {
-  const pinned = pinSystemPrompt(
+  const last = input.messages.findLast((message) => message.role === 'user');
+
+  return pinSystemPrompt(
     {
-      ...input,
-      messages: input.messages.filter((message) => message.role === 'user'),
+      threadId: input.threadId,
+      runId: input.runId,
+      messages: last === undefined ? [] : [last],
       tools: [],
-    },
+      context: [],
+      state: {},
+      forwardedProps: { hashbrown: { responseSchema: FILTER_RESPONSE_SCHEMA } },
+    } as OpenAIHashbrownRunAgentInput,
     FILTER_SYSTEM_PROMPT,
   );
-
-  return {
-    ...pinned,
-    forwardedProps: {
-      ...pinned.forwardedProps,
-      hashbrown: { responseSchema: FILTER_RESPONSE_SCHEMA },
-    },
-  } as OpenAIHashbrownRunAgentInput;
 }
 
 /**
@@ -52,9 +56,6 @@ function pinFilterInput(input: RunAgentInput): RunAgentInput {
  * `{ request, current }` as the user message.
  */
 export function createFilterHandler(options: RunHandlerOptions): NodeHandler {
-  const reasoningEffort =
-    options.reasoningEffort === undefined ? 'low' : options.reasoningEffort;
-
   return async (req, res) => {
     if (req.method !== 'POST') {
       return sendJson(res, 405, { error: 'Use POST' });
@@ -74,7 +75,11 @@ export function createFilterHandler(options: RunHandlerOptions): NodeHandler {
         input: pinFilterInput(input),
         signal: abortController.signal,
         transformRequestOptions: (request) =>
-          limitRequest(request, reasoningEffort, FILTER_MAX_OUTPUT_TOKENS),
+          limitRequest(
+            request,
+            FILTER_REASONING_EFFORT,
+            FILTER_MAX_OUTPUT_TOKENS,
+          ),
       });
       res.writeHead(200, {
         'Content-Type': encoder.getContentType(),

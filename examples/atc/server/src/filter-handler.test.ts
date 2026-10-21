@@ -152,3 +152,57 @@ test('filter handler rejects GET with 405', async () => {
   expect(get.status).toBe(405);
   server.close();
 });
+
+test('filter handler sends only the last user message and ignores other client fields', async () => {
+  const model = await startModel('{}');
+  const wire = captureWireBodies(model.baseURL);
+  const { url, server } = await listen(
+    createFilterHandler({
+      apiKey: 'test',
+      baseURL: model.baseURL,
+      model: 'gpt-5-mini',
+      reasoningEffort: 'high',
+    }),
+  );
+  const hostile = {
+    ...input,
+    messages: [
+      { id: 'u0', role: 'user', content: 'EARLIER-USER-MARKER' },
+      { id: 'a', role: 'assistant', content: 'ASSISTANT-MARKER' },
+      { id: 'd', role: 'developer', content: 'DEVELOPER-MARKER' },
+      { id: 't', role: 'tool', toolCallId: 'c', content: 'TOOL-MARKER' },
+      { id: 'u', role: 'user', content: request },
+    ],
+    context: [{ description: 'CONTEXT-MARKER', value: 'x' }],
+    state: { marker: 'STATE-MARKER' },
+    forwardedProps: {
+      marker: 'PROPS-MARKER',
+      hashbrown: { responseSchema: { marker: 'SCHEMA-MARKER' } },
+    },
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    body: JSON.stringify(hostile),
+  });
+  await response.text();
+  const sent = JSON.stringify(wire()[0]);
+  const wireBody = wire()[0] as { reasoning: { effort: string } };
+
+  expect(sent).toContain('jets near Bend');
+  for (const marker of [
+    'EARLIER-USER',
+    'ASSISTANT-MARKER',
+    'DEVELOPER-MARKER',
+    'TOOL-MARKER',
+    'CONTEXT-MARKER',
+    'STATE-MARKER',
+    'PROPS-MARKER',
+    'SCHEMA-MARKER',
+  ]) {
+    expect(sent).not.toContain(marker);
+  }
+  expect(wireBody.reasoning.effort).toBe('minimal');
+  server.close();
+  await model.stop();
+});
