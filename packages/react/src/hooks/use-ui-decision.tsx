@@ -8,6 +8,7 @@ import {
   s,
   ɵassertRuntimeMessageSchedulingAllowed,
   ɵcreateUiChatDecision,
+  ɵreportMilestone,
   ɵresolveSelection,
 } from '@hashbrownai/core';
 import {
@@ -370,6 +371,13 @@ function useCandidates(
         : [],
     [hasOptions, selection],
   );
+  const collector = useContext(HashbrownContext)?.collector;
+  const rendersCandidate = ids.length > 0;
+  useEffect(() => {
+    if (rendersCandidate && collector) {
+      ɵreportMilestone(collector, 'component.first_rendered');
+    }
+  }, [rendersCandidate, collector]);
   const ui = useMemo(
     () =>
       ids.flatMap((id) => {

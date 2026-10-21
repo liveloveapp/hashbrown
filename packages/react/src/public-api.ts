@@ -8,6 +8,11 @@ export {
   type ExposedComponent,
 } from './expose-component.fn';
 export {
+  getDevelopmentCollectionDiagnostics,
+  setDevelopmentCollectionEnabled,
+} from './growth/collector';
+export type { DevelopmentCollectionDiagnostics } from '@hashbrownai/core';
+export {
   HashbrownProvider,
   type HashbrownProviderOptions,
 } from './hashbrown-provider';

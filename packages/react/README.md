@@ -36,6 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 - `url` (required): Base URL of your Hashbrown API endpoint.
 - `middleware` (optional): Functions to transform requests before they are sent.
 - `transport` (optional): Custom AG-UI transport for descendant hooks.
+- `telemetry` (optional): Set to `false` to turn off Hashbrown's development-only collection for every descendant hook.
 
 Expose your components and give the model tools. The model only renders components you register, and Skillet validates their props. Tools run in the browser, with your app's state and services.
 

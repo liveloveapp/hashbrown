@@ -52,7 +52,11 @@ export interface DevelopmentCollector {
   dispose(): void;
 }
 
-/** Counters describing the collector's delivery state. */
+/**
+ * Counters describing the collector's delivery state.
+ *
+ * @public
+ */
 export interface DevelopmentCollectionDiagnostics {
   /** Events the endpoint acknowledged. */
   acknowledged: number;
