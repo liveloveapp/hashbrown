@@ -15,3 +15,5 @@ export * from './lib/observability/canonical';
 export * from './lib/observability/contracts';
 export * from './lib/observability/ingest';
 export * from './lib/observability/store';
+export * from './lib/observability/projection';
+export * from './lib/observability/replay';
