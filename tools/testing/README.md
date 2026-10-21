@@ -40,6 +40,14 @@ To re-record one test without clearing the provider's other recordings (its old 
 | Azure     | `AZURE_ENDPOINT`, `AZURE_API_KEY`, `AZURE_API_VERSION` and the deployment names |
 | Bedrock   | AWS credentials, `BEDROCK_REGION`, `BEDROCK_MODEL_ID`                           |
 
+Bedrock signs each request for the real regional endpoint and then sends it to
+aimock, so recording needs `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (plus
+`AWS_SESSION_TOKEN` for temporary credentials) in `.env`; a named `AWS_PROFILE`
+is not used. aimock records Bedrock through a local proxy
+(`aimock/bedrock-converse-shim.ts`) that works around an aimock bug that saves
+Converse streams as empty; delete it once aimock reads Converse events by their
+`:event-type` header.
+
 ## Cost
 
 Recording makes real, billed API calls: one per recorded case, using the

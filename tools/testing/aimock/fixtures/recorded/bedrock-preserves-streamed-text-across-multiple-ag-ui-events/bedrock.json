@@ -1,0 +1,26 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Write two short sentences about hash browns.",
+        "model": "us.anthropic.claude-haiku-4-5-20251001-v1%3A0",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Hash browns are a crispy, golden breakfast favorite made from shredded or diced potatoes that are pan-fried until they develop a delicious crust. They pair perfectly with eggs and toast for a classic American breakfast."
+      },
+      "recordedTimings": {
+        "ttftMs": 673,
+        "interChunkDelaysMs": [
+          0, 178, 0, 0, 0, 0, 0, 0, 0, 197, 3, 0, 0, 0, 0, 0, 0, 76, 0, 0, 0,
+          19, 0, 0
+        ],
+        "totalDurationMs": 1146
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}
