@@ -21,11 +21,24 @@ interface Selectable {
  * @public
  */
 export interface SelectionGroup {
+  /**
+   * The group's members, in the order their kit lists them. Each needs only
+   * the `name` and `description` the model reads; `children`, when it is an
+   * array of members, adds those members after their parent.
+   */
   components: ReadonlyArray<{
+    /** The component name, as the UI kit exposes it. */
     name: string;
+    /** What the component shows, as the model reads it. */
     description: string;
+    /** Nested members, or anything else (such as `false`) for none. */
     children?: unknown;
   }>;
+  /**
+   * Whether selection may choose among the group's members. Defaults to
+   * `true`. When `false`, the members and their children are never asked
+   * about, and a name non-selectable here is non-selectable in every group.
+   */
   selectable?: boolean;
 }
 

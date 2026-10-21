@@ -26,9 +26,12 @@ export interface UiKitOptions<T extends ExposedComponentDescriptor> {
   components: readonly UiKitInput<T>[];
   /**
    * Whether UI selection may choose among this kit's components. Defaults to
-   * `true`. When `false`, every component in the kit, including children, is
-   * still rendered and described to the model, but is excluded from selection.
-   * Nested kits keep their own non-selectable components.
+   * `true`. When `false`, every component in the kit is still rendered and
+   * described to the model but is excluded from selection, and that includes
+   * their children and every member of a kit nested in this one, even a nested
+   * kit that is itself selectable. When `true`, a nested kit with
+   * `selectable: false` keeps its members non-selectable. A component
+   * non-selectable in any kit is non-selectable everywhere.
    */
   selectable?: boolean;
 }
