@@ -13,6 +13,7 @@
 }
 .atc-map-column > .atc-map-panel {
   flex: 1 1 0;
+  min-height: 120px;
 }
 .atc-dev-drawer {
   position: relative;
@@ -22,7 +23,7 @@
   box-sizing: border-box;
   min-width: 0;
   height: var(--atc-drawer-height, 280px);
-  max-height: 100%;
+  max-height: 60%;
   overflow: hidden;
   background: var(--atc-ink);
   color: var(--atc-surface);
@@ -49,10 +50,10 @@
   height: 3px;
   margin: 4px auto 0;
   border-radius: var(--atc-radius-pill);
-  background: var(--atc-muted);
+  background: var(--atc-dimmed);
 }
 .atc-dev-resize:is(:hover, :focus-visible)::after {
-  background: var(--atc-dimmed);
+  background: var(--atc-surface);
 }
 .atc-dev-resize:focus-visible {
   outline-color: var(--atc-surface);
@@ -133,4 +134,16 @@
 .atc-dev-close:focus-visible {
   outline-color: var(--atc-surface);
   outline-offset: -4px;
+}
+/* Touch screens: a taller drag handle and 44px tabs. */
+@media (pointer: coarse) {
+  .atc-dev-resize {
+    height: 24px;
+  }
+  .atc-dev-resize::after {
+    margin-top: 10px;
+  }
+  .atc-dev-tab {
+    min-height: 44px;
+  }
 }

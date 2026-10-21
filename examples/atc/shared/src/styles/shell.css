@@ -17,7 +17,10 @@
 }
 /* The rail column exists only when the apps render the rail. */
 .atc-workbench:has(> .atc-rail) {
-  grid-template-columns: 44px minmax(360px, 400px) minmax(0, 1fr);
+  grid-template-columns: var(--atc-rail-width) minmax(360px, 400px) minmax(
+      0,
+      1fr
+    );
 }
 .atc-panel {
   position: relative;

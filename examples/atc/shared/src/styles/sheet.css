@@ -214,7 +214,7 @@
     grid-template-columns: 320px minmax(0, 1fr);
   }
   .atc-workbench:has(> .atc-rail) {
-    grid-template-columns: 44px 320px minmax(0, 1fr);
+    grid-template-columns: var(--atc-rail-width) 320px minmax(0, 1fr);
   }
   .atc-panel-header {
     height: 40px;
