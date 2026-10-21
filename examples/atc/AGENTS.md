@@ -67,7 +67,7 @@ dependencies); this file covers atc.
 | `server/src/chart-surfaces-handler.ts`                 | `/api/chart/surfaces`: FAA and OSM taxiways, aprons, holds                                                                                         |
 | `server/src/chart-airspace-handler.ts`                 | `/api/chart/airspace`: FAA class airspace, cached per cycle                                                                                        |
 | `server/src/chart/`                                    | NASR zip and CSV readers, upstream fetches, surfaces merge, cache                                                                                  |
-| `e2e/src/`                                             | Playwright for both apps: `atc.spec.ts`, the scripted model turns in `model.ts`, the traffic and chart fixtures, and `stubs.ts`, which serves them |
+| `e2e/src/`                                             | Playwright for both apps (including the dev drawer): `atc.spec.ts`, the scripted model turns in `model.ts`, the traffic and chart fixtures, and `stubs.ts`, which serves them |
 | `e2e/demo/`                                            | The demo video: storyboard, director page, recorder, ffmpeg encoding                                                                               |
 | `e2e/prose/`                                           | Live prose eval: real model answers checked for leaked rules, extra cards and the highlight they leave on the map                                  |
 | `e2e/decide/`                                          | Live decide eval: labelled router and cards probes sent to TypeSafe Jev, scored the way the apps act                                               |
