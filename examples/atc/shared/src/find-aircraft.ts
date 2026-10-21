@@ -97,6 +97,11 @@ export type FindAircraftInput = s.Infer<typeof findAircraftInput>;
 /** The filter fields of {@link FindAircraftInput}, without sorting or a limit. */
 export type MapFilter = Omit<FindAircraftInput, 'sortBy' | 'limit'>;
 
+/** True when every field of `filter` is null ("any"): it filters nothing. */
+export function isEmptyMapFilter(filter: MapFilter): boolean {
+  return Object.values(filter).every((value) => value === null);
+}
+
 /** A compact aircraft row returned to the model. */
 export interface AircraftRow {
   readonly hex: string;

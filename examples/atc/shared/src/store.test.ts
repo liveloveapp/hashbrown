@@ -546,6 +546,22 @@ test('clearMapFilter returns the same state when nothing is set', () => {
   expect(store.getState().mapFilter).toBeNull();
 });
 
+test('a filter with every field "any" is a clear', () => {
+  const store = createAtcStore();
+  const before = store.getState();
+  store.setMapFilter({ ...anyFilter, kind: 'jet' });
+  const listener = vi.fn();
+  store.subscribe(listener);
+
+  store.setMapFilter({ ...anyFilter });
+  const unchanged = applyMapFilter(before, { ...anyFilter });
+
+  expect(store.getState().mapFilter).toBeNull();
+  expect(store.getState().viewRequest).toBeNull();
+  expect(listener).toHaveBeenCalledTimes(1);
+  expect(unchanged).toBe(before);
+});
+
 test('a near filter issues one view request and a user drag cancels it', () => {
   const store = createAtcStore();
   const filter = { ...anyFilter, near: { airport: 'KBDN', radiusNm: 25 } };

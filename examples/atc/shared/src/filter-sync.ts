@@ -1,5 +1,5 @@
 import { parseStreamedFilter } from './filter-view';
-import type { MapFilter } from './find-aircraft';
+import { isEmptyMapFilter, type MapFilter } from './find-aircraft';
 import type { AtcStore } from './store';
 
 // The framework-free half of the natural-language map filter: what the apps
@@ -110,7 +110,8 @@ export function createFilterSync(
     const key = JSON.stringify(next);
     if (key !== applied) {
       applied = key;
-      expected = next;
+      // A filter that keeps nothing is a clear; the store holds null for it.
+      expected = isEmptyMapFilter(next) ? null : next;
       store.setMapFilter(next);
     }
   };

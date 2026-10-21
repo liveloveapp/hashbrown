@@ -124,7 +124,7 @@ test('a refinement keeps the current clauses the answer has not reached yet', ()
 
 test('an explicit null in the answer removes a current clause', () => {
   const store = createAtcStore();
-  const base = filterOf({ airline: 'Alaska' });
+  const base = filterOf({ airline: 'Alaska', kind: 'jet' });
   store.setMapFilter(base);
   const sync = createFilterSync(store, () => undefined);
   sync.begin(base);
@@ -246,4 +246,22 @@ test('a filter set from outside before the first update cancels the run', () => 
 
   expect(onCancel).toHaveBeenCalledTimes(1);
   expect(store.getState().mapFilter?.filter.airline).toBe('Delta');
+});
+
+test('an answer that keeps nothing clears the filter, and the run is not cancelled by it', () => {
+  const store = createAtcStore();
+  const base = filterOf({ airline: 'Alaska' });
+  store.setMapFilter(base);
+  const onCancel = vi.fn();
+  const sync = createFilterSync(store, onCancel);
+  sync.begin(base);
+
+  sync.update({ airline: null });
+  const midway = store.getState().mapFilter;
+  sync.update({ airline: null, kind: 'jet' });
+  sync.finish(filterOf());
+
+  expect(midway).toBeNull();
+  expect(onCancel).not.toHaveBeenCalled();
+  expect(store.getState().mapFilter).toBeNull();
 });

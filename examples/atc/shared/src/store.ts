@@ -11,6 +11,7 @@ import type {
 import { airportByCode } from './directory';
 import {
   areaRadiusNm,
+  isEmptyMapFilter,
   type MapFilter,
   type ResolvedFilter,
   resolveFilter,
@@ -329,7 +330,8 @@ function placeKey(applied: AppliedMapFilter | null): string | null {
 }
 
 /**
- * Applies a map filter (or clears it with null). Unknown places are recorded
+ * Applies a map filter (or clears it with null, or with a filter whose every
+ * field is null, which filters nothing). Unknown places are recorded
  * and their clauses ignored. When the resolved place differs from the previous
  * filter's (or there was none), the map is asked to show it: the airspace for
  * `inAirspace` (which wins), else the area outline for `near`. A repeat of the
@@ -340,7 +342,7 @@ export function applyMapFilter(
   state: AtcState,
   filter: MapFilter | null,
 ): AtcState {
-  if (filter === null) {
+  if (filter === null || isEmptyMapFilter(filter)) {
     return state.mapFilter === null ? state : { ...state, mapFilter: null };
   }
   const applied = resolveApplied(state, filter);
