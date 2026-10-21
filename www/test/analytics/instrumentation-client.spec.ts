@@ -1,12 +1,6 @@
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 vi.mock('posthog-js', () => ({ default: { init: vi.fn() } }));
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
-  vi.resetModules();
-});
 
 async function load(host: string, token: string, captureLocal?: string) {
   vi.resetModules();

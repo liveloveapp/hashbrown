@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import posthog from 'posthog-js';
 import { act, type ReactNode } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, expect, test, vi } from 'vitest';
+import { createRoot } from 'react-dom/client';
+import { expect, test, vi } from 'vitest';
 import { ClosingCta } from '../../src/components/home/ClosingCta';
 import { HomeHero } from '../../src/components/home/HomeHero';
 import { InstallCommand } from '../../src/components/home/InstallCommand';
@@ -18,25 +18,22 @@ vi.mock('next/link', () => ({
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-const mounted: Root[] = [];
-
-afterEach(() => {
-  act(() => mounted.splice(0).forEach((root) => root.unmount()));
-  vi.mocked(posthog.capture).mockReset();
-  vi.unstubAllGlobals();
+function mount(node: ReactNode) {
   localStorage.clear();
-  document.body.replaceChildren();
-});
-
-function mount(node: ReactNode): HTMLElement {
   const container = document.createElement('div');
   document.body.replaceChildren(container);
   // jsdom cannot navigate; stop link clicks after React has seen them.
   container.addEventListener('click', (event) => event.preventDefault());
   const root = createRoot(container);
-  mounted.push(root);
   act(() => root.render(node));
-  return container;
+  return {
+    container,
+    cleanup: () => {
+      act(() => root.unmount());
+      localStorage.clear();
+      document.body.replaceChildren();
+    },
+  };
 }
 
 function byText(container: HTMLElement, selector: string, text: string) {
@@ -53,75 +50,91 @@ function ctaClicks() {
 }
 
 test('hero quick start tracks hero_quick_start on home', () => {
-  const container = mount(<HomeHero codeHtml={{ react: '', angular: '' }} />);
+  const view = mount(<HomeHero codeHtml={{ react: '', angular: '' }} />);
+  const { container } = view;
+  try {
+    act(() => byText(container, 'a', 'Quick start →').click());
 
-  act(() => byText(container, 'a', 'Quick start →').click());
-
-  expect(ctaClicks()).toEqual([
-    {
-      source_page: '/',
-      cta_id: 'hero_quick_start',
-      surface: 'home',
-      destination_url: '/docs/angular/start/quick',
-    },
-  ]);
+    expect(ctaClicks()).toEqual([
+      {
+        source_page: '/',
+        cta_id: 'hero_quick_start',
+        surface: 'home',
+        destination_url: '/docs/angular/start/quick',
+      },
+    ]);
+  } finally {
+    view.cleanup();
+  }
 });
 
 test('hero copy prompt tracks copy_prompt on home', async () => {
   vi.stubGlobal('navigator', {
     clipboard: { writeText: vi.fn(async () => undefined) },
   });
-  const container = mount(<HomeHero codeHtml={{ react: '', angular: '' }} />);
+  const view = mount(<HomeHero codeHtml={{ react: '', angular: '' }} />);
+  const { container } = view;
+  try {
+    await act(async () =>
+      byText(container, 'button', 'Copy agent prompt').click(),
+    );
 
-  await act(async () =>
-    byText(container, 'button', 'Copy agent prompt').click(),
-  );
-
-  expect(ctaClicks()).toEqual([
-    { source_page: '/', cta_id: 'copy_prompt', surface: 'home' },
-  ]);
+    expect(ctaClicks()).toEqual([
+      { source_page: '/', cta_id: 'copy_prompt', surface: 'home' },
+    ]);
+  } finally {
+    view.cleanup();
+  }
 });
 
 test('closing quick start and GitHub track their ids on home', () => {
-  const container = mount(<ClosingCta />);
+  const view = mount(<ClosingCta />);
+  const { container } = view;
+  try {
+    act(() => byText(container, 'a', 'Quick start →').click());
+    act(() => byText(container, 'a', 'Star on GitHub').click());
 
-  act(() => byText(container, 'a', 'Quick start →').click());
-  act(() => byText(container, 'a', 'Star on GitHub').click());
-
-  expect(ctaClicks()).toEqual([
-    {
-      source_page: '/',
-      cta_id: 'closing_quick_start',
-      surface: 'home',
-      destination_url: '/docs/angular/start/quick',
-    },
-    {
-      source_page: '/',
-      cta_id: 'closing_github',
-      surface: 'home',
-      destination_url: 'https://github.com/liveloveapp/hashbrown',
-    },
-  ]);
+    expect(ctaClicks()).toEqual([
+      {
+        source_page: '/',
+        cta_id: 'closing_quick_start',
+        surface: 'home',
+        destination_url: '/docs/angular/start/quick',
+      },
+      {
+        source_page: '/',
+        cta_id: 'closing_github',
+        surface: 'home',
+        destination_url: 'https://github.com/liveloveapp/hashbrown',
+      },
+    ]);
+  } finally {
+    view.cleanup();
+  }
 });
 
 test('install copy and SDK switches track their ids on home', async () => {
   vi.stubGlobal('navigator', {
     clipboard: { writeText: vi.fn(async () => undefined) },
   });
-  const container = mount(<InstallCommand />);
+  const view = mount(<InstallCommand />);
+  const { container } = view;
+  try {
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>('[aria-label="Copy install command"]')
+        ?.click(),
+    );
+    act(() => byText(container, '[role="radio"]', 'React').click());
+    act(() => byText(container, '[role="radio"]', 'React').click());
+    act(() => byText(container, '[role="radio"]', 'Angular').click());
 
-  await act(async () =>
-    container
-      .querySelector<HTMLButtonElement>('[aria-label="Copy install command"]')
-      ?.click(),
-  );
-  act(() => byText(container, '[role="radio"]', 'React').click());
-  act(() => byText(container, '[role="radio"]', 'React').click());
-  act(() => byText(container, '[role="radio"]', 'Angular').click());
-
-  expect(ctaClicks()).toEqual([
-    { source_page: '/', cta_id: 'install_copy', surface: 'home' },
-    { source_page: '/', cta_id: 'sdk_switch_react', surface: 'home' },
-    { source_page: '/', cta_id: 'sdk_switch_angular', surface: 'home' },
-  ]);
+    expect(ctaClicks()).toEqual([
+      { source_page: '/', cta_id: 'install_copy', surface: 'home' },
+      { source_page: '/', cta_id: 'sdk_switch_react', surface: 'home' },
+      { source_page: '/', cta_id: 'sdk_switch_angular', surface: 'home' },
+    ]);
+  } finally {
+    view.cleanup();
+  }
 });

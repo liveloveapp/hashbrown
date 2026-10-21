@@ -2,7 +2,7 @@
 import posthog from 'posthog-js';
 import { act, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { DocsPageViewSignal } from '../../src/components/docs/DocsPageViewSignal';
 
 vi.mock('posthog-js', () => ({ default: { capture: vi.fn(), init: vi.fn() } }));
@@ -13,11 +13,6 @@ vi.mock('next/navigation', () => ({ usePathname: () => navigation.pathname }));
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-afterEach(() => {
-  vi.mocked(posthog.capture).mockReset();
-  navigation.pathname = '/';
-});
 
 function pageViews() {
   return vi

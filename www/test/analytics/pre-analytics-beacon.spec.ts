@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import {
   installPreAnalyticsBeacon,
   PRE_ANALYTICS_EVENT,
@@ -44,10 +44,8 @@ async function sent(call = 0) {
   return { url, type: blob.type, body: JSON.parse(await blob.text()) };
 }
 
-beforeEach(() => setup('hashbrown.dev', '/docs'));
-afterEach(() => vi.unstubAllGlobals());
-
 test('beacon fires once on pagehide and is disarmed after init', async () => {
+  setup('hashbrown.dev', '/docs');
   installPreAnalyticsBeacon(CONFIG);
 
   win.dispatch('pagehide');
@@ -77,6 +75,7 @@ test('beacon fires once on pagehide and is disarmed after init', async () => {
 });
 
 test('a hidden page sends once with the visibilitychange trigger', async () => {
+  setup('hashbrown.dev', '/docs');
   installPreAnalyticsBeacon(CONFIG);
 
   doc.dispatch('visibilitychange');
@@ -89,6 +88,7 @@ test('a hidden page sends once with the visibilitychange trigger', async () => {
 });
 
 test('disarm stops the beacon from sending', () => {
+  setup('hashbrown.dev', '/docs');
   installPreAnalyticsBeacon(CONFIG);
   const handle = win.__hashbrownPreAnalytics as { disarm(): void };
 
@@ -99,6 +99,7 @@ test('disarm stops the beacon from sending', () => {
 });
 
 test('installs nothing without a token or on local hosts without capture-local', () => {
+  setup('hashbrown.dev', '/docs');
   installPreAnalyticsBeacon({ ...CONFIG, token: '' });
   const noToken = win.__hashbrownPreAnalytics;
   setup('localhost:3000');
@@ -113,6 +114,7 @@ test('installs nothing without a token or on local hosts without capture-local',
 });
 
 test('the shipped script string is self-contained and its event matches the constant', async () => {
+  setup('hashbrown.dev', '/docs');
   const script = preAnalyticsBeaconScript(CONFIG);
 
   new Function(script)();

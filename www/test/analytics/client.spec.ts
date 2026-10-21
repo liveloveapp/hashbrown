@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import posthog from 'posthog-js';
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import {
   getSourcePage,
   track,
@@ -13,11 +13,9 @@ import {
 
 vi.mock('posthog-js', () => ({ default: { capture: vi.fn(), init: vi.fn() } }));
 
-afterEach(() => {
-  vi.mocked(posthog.capture).mockReset();
-  vi.restoreAllMocks();
-  window.history.replaceState(null, '', '/');
-});
+function visit(path: string) {
+  window.history.replaceState(null, '', path);
+}
 
 test('getSourcePage keeps the pathname only', () => {
   const href = 'https://hashbrown.dev/docs/react/start/intro?email=a@b.co#x';
@@ -28,7 +26,7 @@ test('getSourcePage keeps the pathname only', () => {
 });
 
 test('track adds source_page as the pathname only and swallows capture errors', () => {
-  window.history.replaceState(null, '', '/blog/post?utm_source=x#top');
+  visit('/blog/post?utm_source=x#top');
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
     // Silence the expected log.
   });
@@ -55,7 +53,7 @@ test('track adds source_page as the pathname only and swallows capture errors', 
 });
 
 test('track keeps the real pathname when a caller passes source_page', () => {
-  window.history.replaceState(null, '', '/blog/post?q=1');
+  visit('/blog/post?q=1');
 
   track('marketing:cta_click', { source_page: '/evil?q=1' });
 
@@ -65,6 +63,7 @@ test('track keeps the real pathname when a caller passes source_page', () => {
 });
 
 test('trackCtaClick sends cta_click with the id and surface', () => {
+  visit('/');
   const props = { cta_id: 'install_copy', surface: 'home' } as const;
 
   trackCtaClick(props);
@@ -76,6 +75,7 @@ test('trackCtaClick sends cta_click with the id and surface', () => {
 });
 
 test('trackThreadplaneCtaClick sends surface and destination_url', () => {
+  visit('/');
   const destination =
     'https://threadplane.ai/?utm_source=hashbrown&utm_medium=footer';
 
@@ -92,7 +92,7 @@ test('trackThreadplaneCtaClick sends surface and destination_url', () => {
 });
 
 test('engaged time, page viewed and code copied carry their properties', () => {
-  window.history.replaceState(null, '', '/docs/angular/start/intro');
+  visit('/docs/angular/start/intro');
 
   trackEngagedTime(30);
   trackDocsPageViewed({
