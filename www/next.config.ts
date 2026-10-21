@@ -22,6 +22,37 @@ const nextConfig: NextConfig = {
   },
   // The repo keeps its own AGENTS.md; don't let `next dev` write copies here.
   agentRules: false,
+  // PostHog is proxied first-party under /_/ingest; its API paths end in a
+  // slash, which Next would otherwise redirect away.
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return [
+      {
+        source: '/_/ingest/static/:path*',
+        destination: 'https://us-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/_/ingest/:path*',
+        destination: 'https://us.i.posthog.com/:path*',
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: '/_/ingest/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'POST, OPTIONS' },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization',
+          },
+          { key: 'Access-Control-Max-Age', value: '86400' },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       // The migration guides moved to /docs/<sdk>/migrations in #579.
