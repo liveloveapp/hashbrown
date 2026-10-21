@@ -214,6 +214,7 @@ export const reducer = createReducer(
               name: action.payload.toolCallName,
               arguments: '',
               status: 'pending',
+              arrivedAt: action.payload.timestamp ?? Date.now(),
               ...(metadata === undefined ? {} : { metadata }),
             },
           ]);

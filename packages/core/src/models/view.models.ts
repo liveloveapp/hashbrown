@@ -85,6 +85,32 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
 export type AnyToolCall = ToolCall<AnyTool>;
 
 /**
+ * A source a server tool call produced, such as a web page a search found.
+ * Citations in an answer refer to a source by its `id`.
+ *
+ * @public
+ */
+export type ServerToolCallSource = {
+  id: string;
+  kind: 'url' | 'file' | 'document' | 'record';
+  title: string;
+  href?: string;
+  snippet?: string;
+  fileId?: string;
+  containerId?: string;
+  /** Whether the answer cited this source. */
+  cited?: boolean;
+};
+
+/**
+ * How a settled server tool call ended.
+ *
+ * @public
+ */
+export type ServerToolCallOutcome =
+  'success' | 'failure' | 'denied' | 'cancelled';
+
+/**
  * A tool call the agent server executes itself, surfaced for display only.
  *
  * Hashbrown never runs these: the client has no tool of that name. The
@@ -113,6 +139,47 @@ export type ServerToolCall = {
 
   /** Provider metadata preserved across AG-UI runs. */
   metadata?: Metadata;
+
+  /**
+   * How the call ended. Absent while it runs. A call that failed, was denied
+   * or was cancelled is `complete` with the matching outcome, even when the
+   * server sent no result.
+   */
+  outcome?: ServerToolCallOutcome;
+
+  /** A short human-readable description of what the call is doing or did. */
+  label?: string;
+
+  /** A generic icon name for the call, such as `search`. */
+  icon?: string;
+
+  /**
+   * `provider` when the model provider ran the tool itself (for example web
+   * search), `server` when the agent server did. A provider call is never
+   * dispatched to a client tool, even one with the same name.
+   */
+  kind?: 'server' | 'provider';
+
+  /** The provider built-in tool this call ran, such as `web_search`. */
+  builtin?: string;
+
+  /** The queries the call ran, such as search terms. */
+  queries?: readonly string[];
+
+  /** The sources the call produced. */
+  sources?: readonly ServerToolCallSource[];
+
+  /** Why the call failed. */
+  error?: { message: string; code?: string };
+
+  /**
+   * Epoch milliseconds when the call started and, once it ended, settled.
+   * Absent when neither time is known.
+   */
+  timing?: { startedAt: number; settledAt?: number };
+
+  /** The id of the tool call that spawned this one, when nested. */
+  parentToolCallId?: string;
 };
 
 /**

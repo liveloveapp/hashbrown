@@ -2,6 +2,7 @@ import * as Chat from './public_api';
 import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
 import { JsonValue, resolveWithSchema } from '../utils';
+import { ɵreadToolStep, ɵTOOL_STEP_METADATA_KEY } from './tool-step';
 
 type ReasoningInput = {
   readonly reasoning?: string;
@@ -203,6 +204,15 @@ function parseArguments(rawArguments: string): JsonValue | null {
   }
 }
 
+const STEP_OUTCOMES: Readonly<
+  Record<string, Chat.ServerToolCallOutcome | undefined>
+> = {
+  completed: 'success',
+  failed: 'failure',
+  denied: 'denied',
+  cancelled: 'cancelled',
+};
+
 /**
  * Project the tool calls the client has no tool for, which the agent server
  * executes itself, to the display-only `serverToolCalls` field. Returns an
@@ -216,15 +226,42 @@ function toServerToolCalls(
   const serverToolCalls = toolCallIds.flatMap(
     (toolCallId): Chat.ServerToolCall[] => {
       const toolCall = toolCalls[toolCallId];
-      if (!toolCall || tools.some((tool) => tool.name === toolCall.name)) {
+      if (!toolCall) {
         return [];
       }
+      const step = ɵreadToolStep(toolCall.metadata?.[ɵTOOL_STEP_METADATA_KEY]);
+      if (
+        step?.kind !== 'provider' &&
+        tools.some((tool) => tool.name === toolCall.name)
+      ) {
+        return [];
+      }
+      const rejectedReason =
+        toolCall.result?.status === 'rejected'
+          ? toolCall.result.reason
+          : undefined;
+      const sentinel = step === undefined && rejectedReason === 'error';
+      const outcome: Chat.ServerToolCallOutcome | undefined = sentinel
+        ? 'failure'
+        : step?.status === undefined || step.status === 'running'
+          ? undefined
+          : STEP_OUTCOMES[step.status];
+      const settled = outcome !== undefined;
       const status =
-        toolCall.status === 'done'
+        settled || toolCall.status === 'done'
           ? 'complete'
           : toolCall.argumentsComplete
             ? 'executing'
             : 'inProgress';
+      const error = sentinel ? { message: 'error' } : step?.error;
+      const startedAt =
+        step === undefined ? undefined : (step.startedAt ?? toolCall.arrivedAt);
+      const result: PromiseSettledResult<unknown> | undefined =
+        outcome === 'failure' && step?.error !== undefined
+          ? { status: 'rejected', reason: step.error }
+          : toolCall.status === 'done'
+            ? toolCall.result
+            : undefined;
       return [
         {
           toolCallId,
@@ -232,9 +269,7 @@ function toServerToolCalls(
           status,
           args:
             toolCall.argumentsResolved ?? parseArguments(toolCall.arguments),
-          ...(toolCall.status === 'done' && toolCall.result !== undefined
-            ? { result: toolCall.result }
-            : {}),
+          ...(result !== undefined ? { result } : {}),
           ...(toolCall.progress !== undefined
             ? { progress: toolCall.progress }
             : {}),
@@ -243,6 +278,31 @@ function toServerToolCalls(
             : {}),
           ...(toolCall.metadata !== undefined
             ? { metadata: cloneMetadata(toolCall.metadata) }
+            : {}),
+          ...(outcome !== undefined ? { outcome } : {}),
+          ...(step?.label !== undefined ? { label: step.label } : {}),
+          ...(step?.icon !== undefined ? { icon: step.icon } : {}),
+          ...(step !== undefined ? { kind: step.kind } : {}),
+          ...(step?.builtin !== undefined ? { builtin: step.builtin } : {}),
+          ...(step?.queries !== undefined
+            ? { queries: [...step.queries] }
+            : {}),
+          ...(step?.sources !== undefined
+            ? { sources: step.sources.map((source) => ({ ...source })) }
+            : {}),
+          ...(error !== undefined ? { error: { ...error } } : {}),
+          ...(startedAt !== undefined
+            ? {
+                timing: {
+                  startedAt,
+                  ...(step?.settledAt !== undefined
+                    ? { settledAt: step.settledAt }
+                    : {}),
+                },
+              }
+            : {}),
+          ...(step?.parentToolCallId !== undefined
+            ? { parentToolCallId: step.parentToolCallId }
             : {}),
         },
       ];

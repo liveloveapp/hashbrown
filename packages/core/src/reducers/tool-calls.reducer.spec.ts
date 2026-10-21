@@ -220,6 +220,7 @@ test('merges success tool decorations without replacing a canonical settled resu
 
   expect(committed.entities['tool-1']).toEqual({
     ...successTool,
+    arrivedAt: expect.any(Number),
     status: 'done',
     result: { status: 'fulfilled', value: 'canonical result' },
   });
@@ -776,6 +777,7 @@ test('TOOL_CALL_END records that the arguments are complete, once', () => {
     name: 'render',
     arguments: '{"text":"hi"}',
     status: 'pending',
+    arrivedAt: expect.any(Number),
     argumentsComplete: true,
   });
   expect(endedAgain).toBe(ended);
@@ -1120,4 +1122,36 @@ test('a RESULT with an error and no step fails a running step', () => {
   };
   expect(readRootStep(store, 'c1')).toEqual(failed);
   expect(standalone.entities['c1']?.metadata?.['b4.step']).toEqual(failed);
+});
+
+test('records the arrival time at TOOL_CALL_START from the event timestamp, else the clock', () => {
+  // Arrange
+  const initialized = reducer(undefined, { type: '@@init' } as never);
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  // Act
+  const stamped = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'a',
+      toolCallName: 'web_search',
+      timestamp: 1234,
+    }),
+  );
+  const clocked = reducer(
+    stamped,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'b',
+      toolCallName: 'web_search',
+    }),
+  );
+
+  // Assert
+  expect(stamped.draft.entities['a']?.arrivedAt).toBe(1234);
+  expect(typeof clocked.draft.entities['b']?.arrivedAt).toBe('number');
 });

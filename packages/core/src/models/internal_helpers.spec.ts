@@ -874,3 +874,228 @@ test('view and internal conversions keep activity messages and API conversion dr
   expect(roundTripped).toEqual([view]);
   expect(api).toEqual([]);
 });
+
+function stepCall(
+  step: Record<string, unknown>,
+  extra: Partial<Chat.Internal.ToolCall> = {},
+): Record<string, Chat.Internal.ToolCall> {
+  return {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'web_search',
+      arguments: '{"q":"x"}',
+      argumentsResolved: { q: 'x' },
+      argumentsComplete: true,
+      status: 'pending',
+      metadata: { 'b4.step': { v: 1, kind: 'server', ...step } },
+      ...extra,
+    },
+  };
+}
+
+function serverCallsOf(
+  toolCalls: Record<string, Chat.Internal.ToolCall>,
+  tools: AnyTool[] = [],
+) {
+  const [view] = toViewMessagesFromInternal(
+    internalAssistantWithCalls(['call-ws']),
+    toolCalls,
+    tools,
+  );
+  return (view as ViewAssistantMessage<string, AnyTool>).serverToolCalls;
+}
+
+test('a completed step gives outcome success with label and sources', () => {
+  // Arrange
+  const sources = [
+    { id: 's1', kind: 'url', title: 'A', href: 'https://a.test' },
+  ];
+  const toolCalls = stepCall(
+    {
+      kind: 'provider',
+      builtin: 'web_search',
+      status: 'completed',
+      label: "Searched 'x' · 1 source",
+      icon: 'search',
+      queries: ['x'],
+      sources,
+      startedAt: 100,
+      settledAt: 250,
+      parentToolCallId: 'parent',
+    },
+    {
+      status: 'done',
+      result: { status: 'fulfilled', value: 'ok' },
+      arrivedAt: 90,
+    },
+  );
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call).toEqual(
+    expect.objectContaining({
+      status: 'complete',
+      outcome: 'success',
+      label: "Searched 'x' · 1 source",
+      icon: 'search',
+      kind: 'provider',
+      builtin: 'web_search',
+      queries: ['x'],
+      sources,
+      parentToolCallId: 'parent',
+      timing: { startedAt: 100, settledAt: 250 },
+      result: { status: 'fulfilled', value: 'ok' },
+    }),
+  );
+});
+
+test('timing falls back to the arrival time and is omitted when nothing is known', () => {
+  // Arrange
+  const running = stepCall({ status: 'running' }, { arrivedAt: 77 });
+  const unknown = stepCall({ status: 'running' });
+
+  // Act
+  const [withArrival] = serverCallsOf(running) ?? [];
+  const [without] = serverCallsOf(unknown) ?? [];
+
+  // Assert
+  expect(withArrival.timing).toEqual({ startedAt: 77 });
+  expect(withArrival).not.toHaveProperty('outcome');
+  expect(without).not.toHaveProperty('timing');
+});
+
+test('a failed step completes the call with a rejected result', () => {
+  // Arrange
+  const toolCalls = stepCall({
+    status: 'failed',
+    error: { message: 'boom' },
+  });
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.status).toBe('complete');
+  expect(call.outcome).toBe('failure');
+  expect(call.error).toEqual({ message: 'boom' });
+  expect(call.result).toEqual({
+    status: 'rejected',
+    reason: { message: 'boom' },
+  });
+});
+
+test('a later successful result never un-fails a failed step', () => {
+  // Arrange
+  const toolCalls = stepCall(
+    { status: 'failed', error: { message: 'boom' } },
+    { status: 'done', result: { status: 'fulfilled', value: 'late' } },
+  );
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.outcome).toBe('failure');
+  expect(call.result).toEqual({
+    status: 'rejected',
+    reason: { message: 'boom' },
+  });
+});
+
+test('a denied step without a result completes with no result', () => {
+  // Arrange
+  const toolCalls = stepCall({ status: 'denied' });
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.status).toBe('complete');
+  expect(call.outcome).toBe('denied');
+  expect(call).not.toHaveProperty('result');
+});
+
+test('a cancelled step without a result completes with no result', () => {
+  // Arrange
+  const toolCalls = stepCall({ status: 'cancelled' });
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.status).toBe('complete');
+  expect(call.outcome).toBe('cancelled');
+  expect(call).not.toHaveProperty('result');
+});
+
+test('a provider step is server-run even when a client tool shares its name', () => {
+  // Arrange
+  const clientTool: AnyTool = {
+    name: 'web_search',
+    description: '',
+    schema: s.object('arguments', { q: s.string('q') }),
+    handler: async () => undefined,
+  };
+  const provider = stepCall({ kind: 'provider', status: 'running' });
+  const server = stepCall({ kind: 'server', status: 'running' });
+
+  // Act
+  const providerCalls = serverCallsOf(provider, [clientTool]);
+  const serverCalls = serverCallsOf(server, [clientTool]);
+
+  // Assert
+  expect(providerCalls).toHaveLength(1);
+  expect(serverCalls).toBeUndefined();
+});
+
+test('the ag-ui-langgraph error sentinel reads as a failure', () => {
+  // Arrange
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'render',
+      arguments: '{}',
+      argumentsComplete: true,
+      status: 'done',
+      result: { status: 'rejected', reason: 'error' },
+    },
+  };
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.outcome).toBe('failure');
+  expect(call.error).toEqual({ message: 'error' });
+  expect(call.status).toBe('complete');
+});
+
+test('calls without a step keep todays fields only', () => {
+  // Arrange
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'render',
+      arguments: '{"a":1}',
+      argumentsResolved: { a: 1 },
+      argumentsComplete: true,
+      status: 'pending',
+      arrivedAt: 5,
+    },
+  };
+
+  // Act
+  const calls = serverCallsOf(toolCalls);
+
+  // Assert
+  expect(calls).toEqual([
+    {
+      toolCallId: 'call-ws',
+      name: 'render',
+      status: 'executing',
+      args: { a: 1 },
+    },
+  ]);
+});

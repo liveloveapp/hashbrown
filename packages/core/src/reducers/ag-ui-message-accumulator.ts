@@ -631,6 +631,7 @@ function startToolCall(
       name: event.toolCallName,
       arguments: '',
       status: 'pending' as const,
+      arrivedAt: event.timestamp ?? Date.now(),
       ...(metadata !== undefined ? { metadata } : {}),
     },
   ];
