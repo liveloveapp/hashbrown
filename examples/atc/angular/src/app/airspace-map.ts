@@ -1,10 +1,11 @@
-import { AREAS } from '@atc/shared';
+import { AREAS, type MapFilter } from '@atc/shared';
 import { type AirspaceMapHandle, createAirspaceMap } from '@atc/shared/map';
 import {
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  effect,
   ElementRef,
   inject,
   input,
@@ -13,7 +14,8 @@ import { ATC_STORE } from './store';
 
 /**
  * The live Leaflet map. `obstruction` is the element that covers the map's
- * lower part on phones (the chat's bottom sheet).
+ * lower part on phones (the chat's bottom sheet). `streaming` is the set of
+ * filter fields the model is still writing, shown on the filter pill.
  */
 @Component({
   selector: 'atc-airspace-map',
@@ -23,6 +25,7 @@ import { ATC_STORE } from './store';
 })
 export class AirspaceMap {
   readonly obstruction = input<HTMLElement | null>(null);
+  readonly streaming = input<ReadonlySet<keyof MapFilter>>(new Set());
 
   constructor() {
     const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -36,6 +39,7 @@ export class AirspaceMap {
         store,
         area: AREAS.pnw,
         obstruction: () => this.obstruction(),
+        streamingFilter: () => this.streaming(),
         signal: controller.signal,
       }).then((created) => {
         if (controller.signal.aborted) {
@@ -44,6 +48,11 @@ export class AirspaceMap {
           handle = created;
         }
       });
+    });
+    // The pill reads the streaming set through the input; redraw it on change.
+    effect(() => {
+      this.streaming();
+      handle?.syncFilterPill();
     });
     inject(DestroyRef).onDestroy(() => {
       controller.abort();
