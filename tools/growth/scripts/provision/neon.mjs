@@ -68,15 +68,67 @@ export async function findNeonConfiguration(vercel) {
   return neon.id;
 }
 
+const AUTHORIZATION_POLL_MS = 2000;
+const AUTHORIZATION_MAX_POLLS = 15;
+
+function defaultSleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
- * Finds a Neon integration store by name, creating it on the free plan in
- * `iad1` when absent.
+ * Creates the billing authorization Vercel requires before it will create a
+ * marketplace store, and waits for it to succeed (polling every 2 seconds, up
+ * to 15 times).
  *
  * @param {VercelClient} vercel Vercel client (team scoped).
- * @param {{ name: string, configurationId: string }} options Store name and the Neon configuration id.
+ * @param {{ configurationId: string, sleep?: (ms: number) => Promise<void> }} options Neon configuration id and an injectable sleep.
+ * @returns {Promise<string>} The authorization id.
+ * @throws When the authorization fails or does not succeed in time.
+ */
+export async function createBillingAuthorization(
+  vercel,
+  { configurationId, sleep = defaultSleep },
+) {
+  const unwrap = (response) => response?.authorization ?? response;
+  let authorization = unwrap(
+    await vercel('POST', '/v1/integrations/billing/authorization', {
+      integrationIdOrSlug: 'neon',
+      productId: 'neon',
+      billingPlanId: 'free_v3',
+      integrationConfigurationId: configurationId,
+      metadata: JSON.stringify({ region: 'iad1' }),
+    }),
+  );
+  const id = authorization.id;
+  for (let tries = 0; ; tries += 1) {
+    if (authorization.status === 'succeeded') return id;
+    if (authorization.status === 'failed') {
+      throw new Error(
+        `Neon billing authorization failed: ${authorization.reason ?? 'no reason given'}`,
+      );
+    }
+    if (tries >= AUTHORIZATION_MAX_POLLS) {
+      throw new Error(
+        'Neon billing authorization did not succeed in time; rerun to continue.',
+      );
+    }
+    await sleep(AUTHORIZATION_POLL_MS);
+    authorization = unwrap(
+      await vercel('GET', `/v1/integrations/billing/authorization/${id}`),
+    );
+  }
+}
+
+/**
+ * Finds a Neon integration store by name, creating it on the free plan in
+ * `iad1` when absent. Creation first obtains a billing authorization; an
+ * existing store makes no authorization call.
+ *
+ * @param {VercelClient} vercel Vercel client (team scoped).
+ * @param {{ name: string, configurationId: string, sleep?: (ms: number) => Promise<void> }} options Store name, the Neon configuration id, and an injectable sleep.
  * @returns {Promise<{ status: 'created' | 'exists', store: { id: string, name: string, projectsMetadata: any[] } }>}
  */
-export async function ensureStore(vercel, { name, configurationId }) {
+export async function ensureStore(vercel, { name, configurationId, sleep }) {
   const { stores = [] } = await vercel('GET', '/v1/storage/stores');
   const match = stores.find((s) => s.name === name);
   if (match) {
@@ -90,12 +142,17 @@ export async function ensureStore(vercel, { name, configurationId }) {
     };
   }
 
+  const authorizationId = await createBillingAuthorization(vercel, {
+    configurationId,
+    sleep,
+  });
   const { store } = await vercel('POST', '/v1/storage/stores/integration', {
     integrationConfigurationId: configurationId,
     integrationProductIdOrSlug: 'neon',
     billingPlanId: 'free_v3',
     name,
     metadata: { region: 'iad1' },
+    authorizationId,
   });
   return {
     status: 'created',
@@ -141,15 +198,16 @@ export async function ensureConnection(
  *
  * @param {VercelClient} vercel Vercel client (team scoped).
  * @param {{ add: (step: string, outcome: string, detail?: string) => void }} checklist Step recorder.
- * @param {{ projectIds: { www: string, lifecycle: string } }} options Vercel project ids.
+ * @param {{ projectIds: { www: string, lifecycle: string }, sleep?: (ms: number) => Promise<void> }} options Vercel project ids and an injectable sleep.
  * @returns {Promise<{}>}
  */
-export async function provisionNeon(vercel, checklist, { projectIds }) {
+export async function provisionNeon(vercel, checklist, { projectIds, sleep }) {
   const configurationId = await findNeonConfiguration(vercel);
   for (const plan of STORE_PLAN) {
     const { status, store } = await ensureStore(vercel, {
       name: plan.name,
       configurationId,
+      sleep,
     });
     checklist.add(`Neon store ${plan.name}`, status, 'Vercel integration');
     for (const key of plan.projects) {

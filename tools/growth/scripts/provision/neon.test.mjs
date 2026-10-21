@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createVercelClient } from '../../../vercel/bootstrap.mjs';
 import { createChecklist } from './lib.mjs';
 import {
+  createBillingAuthorization,
   ensureConnection,
   ensureStore,
   findNeonConfiguration,
@@ -14,6 +15,7 @@ import { stubFetch } from './test-support.mjs';
 const CONFIGS =
   'GET /v1/integrations/configurations?view=account&teamId=team_1';
 const STORES = 'GET /v1/storage/stores?teamId=team_1';
+const AUTH = 'POST /v1/integrations/billing/authorization?teamId=team_1';
 const CREATE = 'POST /v1/storage/stores/integration?teamId=team_1';
 const PROJECT_IDS = { www: 'prj_www', lifecycle: 'prj_lc' };
 
@@ -91,6 +93,7 @@ test('findNeonConfiguration fails clearly when Neon is not installed', async () 
 test('ensureStore creates the store with the exact body when absent', async () => {
   const { vercel, calls } = clientFor({
     [STORES]: { body: { stores: [] } },
+    [AUTH]: { body: { authorization: { id: 'mba_1', status: 'succeeded' } } },
     [CREATE]: { body: { store: { id: 'store_1', name: 'growth-x' } } },
   });
 
@@ -103,13 +106,90 @@ test('ensureStore creates the store with the exact body when absent', async () =
     status: 'created',
     store: { id: 'store_1', name: 'growth-x', projectsMetadata: [] },
   });
-  assert.deepEqual(calls[1].body, {
+  assert.deepEqual(calls[2].body, {
+    authorizationId: 'mba_1',
     integrationConfigurationId: 'icfg_neon',
     integrationProductIdOrSlug: 'neon',
     billingPlanId: 'free_v3',
     name: 'growth-x',
     metadata: { region: 'iad1' },
   });
+});
+
+test('createBillingAuthorization posts the exact body with metadata as a string', async () => {
+  const { vercel, calls } = clientFor({
+    [AUTH]: { body: { id: 'mba_2', status: 'succeeded' } },
+  });
+  const sleeps = [];
+
+  const id = await createBillingAuthorization(vercel, {
+    configurationId: 'icfg_neon',
+    sleep: async (ms) => sleeps.push(ms),
+  });
+
+  assert.equal(id, 'mba_2');
+  assert.deepEqual(calls[0].body, {
+    integrationIdOrSlug: 'neon',
+    productId: 'neon',
+    billingPlanId: 'free_v3',
+    integrationConfigurationId: 'icfg_neon',
+    metadata: '{"region":"iad1"}',
+  });
+  assert.deepEqual(sleeps, []);
+});
+
+test('createBillingAuthorization polls a pending authorization until it succeeds', async () => {
+  const statuses = ['pending', 'succeeded'];
+  const { vercel, calls } = clientFor({
+    [AUTH]: { body: { authorization: { id: 'mba_3', status: 'pending' } } },
+    'GET /v1/integrations/billing/authorization/mba_3?teamId=team_1': () => ({
+      body: { authorization: { id: 'mba_3', status: statuses.shift() } },
+    }),
+  });
+  const sleeps = [];
+
+  const id = await createBillingAuthorization(vercel, {
+    configurationId: 'icfg_neon',
+    sleep: async (ms) => sleeps.push(ms),
+  });
+
+  assert.equal(id, 'mba_3');
+  assert.deepEqual(sleeps, [2000, 2000]);
+  assert.equal(calls.filter((c) => c.method === 'GET').length, 2);
+});
+
+test('createBillingAuthorization throws the reason when the authorization fails', async () => {
+  const { vercel } = clientFor({
+    [AUTH]: {
+      body: {
+        authorization: { id: 'mba_4', status: 'failed', reason: 'no card' },
+      },
+    },
+  });
+
+  const act = createBillingAuthorization(vercel, {
+    configurationId: 'icfg_neon',
+    sleep: () => Promise.resolve(),
+  });
+
+  await assert.rejects(act, /no card/);
+});
+
+test('createBillingAuthorization gives up after 15 polls', async () => {
+  const { vercel, calls } = clientFor({
+    [AUTH]: { body: { authorization: { id: 'mba_5', status: 'pending' } } },
+    'GET /v1/integrations/billing/authorization/mba_5?teamId=team_1': {
+      body: { authorization: { id: 'mba_5', status: 'pending' } },
+    },
+  });
+
+  const act = createBillingAuthorization(vercel, {
+    configurationId: 'icfg_neon',
+    sleep: () => Promise.resolve(),
+  });
+
+  await assert.rejects(act, /did not succeed in time/);
+  assert.equal(calls.filter((c) => c.method === 'GET').length, 15);
 });
 
 test('ensureStore reports exists and makes no POST when the name is listed', async () => {
@@ -201,6 +281,7 @@ test('provisionNeon creates four stores and six connections on a first run', asy
   const routes = {
     [CONFIGS]: { body: [{ id: 'icfg_neon', slug: 'neon' }] },
     [STORES]: { body: { stores: [] } },
+    [AUTH]: { body: { authorization: { id: 'mba_x', status: 'succeeded' } } },
     [CREATE]: () => {
       created += 1;
       return { body: { store: { id: `s${created}`, name: `n${created}` } } };
@@ -239,6 +320,11 @@ test('provisionNeon creates four stores and six connections on a first run', asy
     'b4-production-target-01',
     'b4-preview-target-01',
   ]);
+  assert.equal(
+    calls.filter((c) => c.path.startsWith('/v1/integrations/billing')).length,
+    4,
+  );
+  assert.ok(stores.every((c) => c.body.authorizationId === 'mba_x'));
   assert.equal(connections.length, 6);
   assert.deepEqual(
     connections.map((c) => [c.path.split('/')[4], c.body]),

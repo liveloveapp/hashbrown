@@ -421,6 +421,9 @@ test('a first run creates four Neon stores and six connections after the bootstr
   const order = [];
   const routes = vendorFixtures();
   routes['GET /v1/storage/stores?teamId=team_1'] = { body: { stores: [] } };
+  routes['POST /v1/integrations/billing/authorization?teamId=team_1'] = {
+    body: { authorization: { id: 'mba_1', status: 'succeeded' } },
+  };
   let n = 0;
   routes['POST /v1/storage/stores/integration?teamId=team_1'] = () => {
     n += 1;
@@ -450,6 +453,13 @@ test('a first run creates four Neon stores and six connections after the bootstr
   );
   const connects = calls.filter((c) => c.path.includes('/connections'));
   assert.equal(creates.length, 4);
+  assert.equal(
+    calls.filter(
+      (c) => c.path === '/v1/integrations/billing/authorization?teamId=team_1',
+    ).length,
+    4,
+  );
+  assert.ok(creates.every((c) => c.body.authorizationId === 'mba_1'));
   assert.deepEqual(
     creates.map((c) => c.body.name),
     [
