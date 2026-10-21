@@ -337,8 +337,25 @@ export function devTabBlocks(
         // Filter sends are not recorded turns: this is the chat's.
         { ...routerBlock(input.turn?.router ?? null), title: 'last chat send' },
       ];
-    case 'cards':
-      return [cardsBlock(input.turn?.cards)];
+    case 'cards': {
+      // A settled send whose decision never reported (none was asked) reads
+      // as the fallback instead of "deciding…" forever.
+      const settled =
+        input.turn !== undefined &&
+        input.answer !== null &&
+        input.answer.content !== undefined &&
+        input.answer.content !== null &&
+        !input.answer.streaming;
+
+      return [
+        cardsBlock(
+          input.turn?.cards ??
+            (settled
+              ? { result: null, ms: null, error: 'not asked' }
+              : undefined),
+        ),
+      ];
+    }
     case 'filter': {
       const { run, applied } = input.filter;
       const json = jsonBlock('applied', applied, false);

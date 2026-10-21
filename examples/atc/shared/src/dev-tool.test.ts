@@ -404,3 +404,23 @@ test('a tool replacing a run hides the run', () => {
   expect(blocks.map((block) => block.title)).toEqual(['applied']);
   expect(blocks[0].text).toContain('"kind": "jet"');
 });
+
+test('the cards tab settles when a finished answer never had a decision', () => {
+  const base: DevToolInput = {
+    typing: null,
+    turn: { text: 'x', router: ROUTER_SKIPPED },
+    answer: { content: { a: 1 }, streaming: false },
+    tools: [],
+    filter: { run: null, applied: null },
+  };
+  const streaming = { ...base, answer: { content: { a: 1 }, streaming: true } };
+  const absent = { ...base, answer: { content: undefined, streaming: false } };
+
+  const settled = devTabBlocks('cards', base)[0].text;
+  const whileStreaming = devTabBlocks('cards', streaming)[0].text;
+  const noAnswer = devTabBlocks('cards', absent)[0].text;
+
+  expect(settled).toBe('all (fallback: not asked)');
+  expect(whileStreaming).toBe('deciding…');
+  expect(noAnswer).toBe('deciding…');
+});
