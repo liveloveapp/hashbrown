@@ -133,7 +133,10 @@ test('collectInstall in CI resets the core token to null and sends no identity',
     env: { ...npmEnv, GITHUB_ACTIONS: 'true' },
     interactive: false,
     identify,
-    discover: async () => ({ consumerContext: 'checkout', identity: {} }),
+    discover: async () => ({
+      consumerContext: 'checkout',
+      identity: { gitEmail: 'ci@example.com', gitConfigOrigin: 'global' },
+    }),
     send: async (batch) => {
       sent.push(batch);
     },
@@ -219,7 +222,7 @@ test('collectInstall sends nothing for an unknown package name', async () => {
 });
 
 test('collectInstall in debug mode logs the payload and sends nothing', async () => {
-  const root = await dirOf('@hashbrownai/openai', '0.7.0');
+  const root = await dirOf('@hashbrownai/core', '0.7.0');
   const sent = [];
   const logged = [];
 
@@ -236,6 +239,10 @@ test('collectInstall in debug mode logs the payload and sends nothing', async ()
   });
 
   assert.equal(sent.length, 0);
+  assert.equal(
+    await readFile(join(root, 'development-install.mjs'), 'utf8'),
+    'export const installationToken = null;\n',
+  );
   assert.equal(logged.length, 1);
   assert.match(logged[0], /"endpoint"/);
   assert.match(logged[0], /package\.installed/);

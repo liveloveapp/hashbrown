@@ -126,7 +126,11 @@ async function collectInstall({
       manager.packageManager,
     );
     let installationToken;
-    if (bridgeReset && installEnvironment.environment !== 'ci') {
+    if (
+      bridgeReset &&
+      installEnvironment.environment !== 'ci' &&
+      !truthy(env.HASHBROWN_TELEMETRY_DEBUG)
+    ) {
       const candidate = randomUUID();
       if (await writeBridge(packageRoot, candidate))
         installationToken = candidate;
@@ -150,7 +154,10 @@ async function collectInstall({
         consumerContext: context.consumerContext,
       },
     };
-    if (Object.keys(context.identity ?? {}).length)
+    if (
+      installEnvironment.environment !== 'ci' &&
+      Object.keys(context.identity ?? {}).length
+    )
       event.identity = context.identity;
     const batch = { schemaVersion: 1, events: [event] };
     const target = endpoint(env);
