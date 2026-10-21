@@ -158,13 +158,14 @@ export const routeSchema = s.object('Where to send what the user typed', {
 });
 
 /**
- * The cards the chat can render, as plain selection groups for
- * `createSelectionSchema`: the four cards first, in the order
- * `PINNED_RESPONSE_SCHEMA` lists them, then Markdown, which is never an option
- * (`selectable: false`) and is always sent. `children: false` matches the
- * server's pinned definitions.
+ * The components the chat can render, as plain selection groups for
+ * `createSelectionSchema`, in the order `PINNED_RESPONSE_SCHEMA` lists them:
+ * Markdown first, in a group that is never an option (`selectable: false`) and
+ * is always sent, then the four cards. `children: false` matches the server's
+ * pinned definitions. Pass kits in the same order (prose, then cards).
  */
 export const cardGroups: readonly SelectionGroup[] = [
+  { components: [markdownComponent()], selectable: false },
   {
     components: [
       { ...flightCardContract, children: false },
@@ -173,7 +174,6 @@ export const cardGroups: readonly SelectionGroup[] = [
       { ...airportCardContract, children: false },
     ],
   },
-  { components: [markdownComponent()], selectable: false },
 ];
 
 /** The context the router decision reads alongside the typed text. */

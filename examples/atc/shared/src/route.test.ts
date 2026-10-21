@@ -73,25 +73,24 @@ test('routeBadge keeps the last result while a new decision is pending', () => {
 });
 
 test('cardGroups flatten in the pinned order with Markdown non-selectable', () => {
-  const schema = createSelectionSchema(cardGroups, { max: 2 });
+  const names = cardGroups.flatMap((group) =>
+    group.components.map((component) => component.name),
+  );
 
+  const schema = createSelectionSchema(cardGroups, { max: 2 });
   const json = JSON.stringify(schema);
 
-  const positions = [
+  expect(names).toEqual([
+    'Markdown',
     'FlightCard',
     'ArrivalsBoard',
     'AircraftCompare',
     'AirportCard',
-  ].map((name) => json.indexOf(`"${name}"`));
+  ]);
+  expect(cardGroups[0].selectable).toBe(false);
+  expect(cardGroups[1].selectable).toBeUndefined();
+  expect(json).not.toContain('Markdown');
+  const positions = names.slice(1).map((name) => json.indexOf(`"${name}"`));
   expect(positions.every((p) => p >= 0)).toBe(true);
   expect([...positions].sort((a, b) => a - b)).toEqual(positions);
-  expect(json).not.toContain('Markdown');
-  expect(
-    cardGroups.map((group) => group.components.map((c) => c.name)),
-  ).toEqual([
-    ['FlightCard', 'ArrivalsBoard', 'AircraftCompare', 'AirportCard'],
-    ['Markdown'],
-  ]);
-  expect(cardGroups[1].selectable).toBe(false);
-  expect(cardGroups[0].selectable).toBeUndefined();
 });

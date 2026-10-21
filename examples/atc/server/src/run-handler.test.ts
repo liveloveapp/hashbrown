@@ -1,7 +1,7 @@
 import type { RunAgentInput } from '@ag-ui/core';
 import { LLMock } from '@copilotkit/aimock';
-import { ATC_TOOL_DEFINITIONS, SYSTEM_PROMPT } from '@atc/shared';
-import { s } from '@hashbrownai/core';
+import { ATC_TOOL_DEFINITIONS, cardGroups, SYSTEM_PROMPT } from '@atc/shared';
+import { createUiJsonSchema, s } from '@hashbrownai/core';
 import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -517,4 +517,12 @@ test('a request without a response schema is left alone', () => {
 
   expect(results).toEqual([input, uiOnly]);
   expect(warnings).toEqual([]);
+});
+
+test('cardGroups flatten to exactly the pinned response schema, Markdown first', () => {
+  const components = cardGroups.flatMap((group) => group.components);
+
+  const schema = createUiJsonSchema({ components });
+
+  expect(JSON.stringify(schema)).toBe(JSON.stringify(PINNED_RESPONSE_SCHEMA));
 });
