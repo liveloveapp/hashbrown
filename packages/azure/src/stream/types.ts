@@ -2,6 +2,7 @@ import type { RunAgentInput } from '@ag-ui/core';
 import type { AzureClientOptions } from 'openai/azure';
 import type OpenAI from 'openai';
 import type { AzureReasoningOption } from './reasoning';
+import type { ActivityCallback } from '@hashbrownai/core';
 
 /**
  * Hashbrown extensions accepted alongside a standard AG-UI run input.
@@ -41,6 +42,13 @@ export interface AzureTextStreamOptions {
   input: AzureHashbrownRunAgentInput;
   /** Cancels the provider request when the HTTP request is abandoned. */
   signal?: AbortSignal;
+  /**
+   * Sends AG-UI activity events alongside the model's output. The callback
+   * starts after `RUN_STARTED`, its events merge with the model's in arrival
+   * order, and the run's terminal event waits until it settles. A thrown
+   * error ends the run with `RUN_ERROR`. See {@link ActivityCallback}.
+   */
+  activities?: ActivityCallback;
   /**
    * Controls the `reasoning` request parameter for reasoning models.
    * See {@link AzureReasoningOption}.

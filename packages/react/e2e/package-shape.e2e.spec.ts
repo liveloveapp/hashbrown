@@ -333,6 +333,7 @@ test('packed React and core packages install and load in a clean consumer', () =
       'use-completion.d.ts',
       'use-structured-chat.d.ts',
       'use-structured-completion.d.ts',
+      'use-structured-completion-with-message.d.ts',
       'use-ui-chat.d.ts',
       'use-ui-completion.d.ts',
     ]

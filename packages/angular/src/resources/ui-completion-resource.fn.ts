@@ -9,7 +9,7 @@ import {
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
-import { structuredCompletionResource } from './structured-completion-resource.fn';
+import { structuredCompletionResourceWithMessage } from './structured-completion-resource-with-message.fn';
 import {
   TAG_NAME_REGISTRY,
   UiAssistantMessage,
@@ -158,39 +158,42 @@ export function uiCompletionResource<
   });
   const internalSchema = uiKit.schema;
 
-  const completion = structuredCompletionResource<
-    Input,
-    typeof internalSchema,
-    s.Infer<UiChatMessageOutput>,
-    State
-  >({
-    input: options.input,
-    schema: internalSchema,
-    system: options.system,
-    state: options.state,
-    tools: options.tools,
-    debugName: options.debugName,
-    apiUrl: options.apiUrl,
-    retries: options.retries,
-    debounce: options.debounce,
-    transport: options.transport,
-    ui: true,
-    ...(Object.hasOwn(options, 'threadId')
-      ? { threadId: options.threadId }
-      : {}),
-  });
+  const { ref: completion, message: completionMessage } =
+    structuredCompletionResourceWithMessage<
+      Input,
+      typeof internalSchema,
+      s.Infer<UiChatMessageOutput>,
+      State
+    >({
+      input: options.input,
+      schema: internalSchema,
+      system: options.system,
+      state: options.state,
+      tools: options.tools,
+      debugName: options.debugName,
+      apiUrl: options.apiUrl,
+      retries: options.retries,
+      debounce: options.debounce,
+      transport: options.transport,
+      ui: true,
+      ...(Object.hasOwn(options, 'threadId')
+        ? { threadId: options.threadId }
+        : {}),
+    });
 
   const value = computed(
     (): UiAssistantMessage<Tools> | null => {
       const content = completion.value();
+      const message = completionMessage();
 
-      if (!content) {
+      if (!content || !message) {
         return null;
       }
 
       const tagNameRegistry = uiKit.tagNameRegistry ?? {};
 
       return {
+        id: message.id,
         role: 'assistant',
         content,
         toolCalls: [],

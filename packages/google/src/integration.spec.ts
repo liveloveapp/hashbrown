@@ -4,7 +4,7 @@ import {
   type AimockHandle,
   runProviderAGUIWithAimock,
 } from '@hashbrownai/testing/aimock';
-import { HashbrownGoogle } from './index';
+import { type ActivityCallback, HashbrownGoogle } from './index';
 import type { GoogleHashbrownRunAgentInput } from './stream/types';
 
 const GOOGLE_MODEL = 'gemini-2.5-flash';
@@ -41,6 +41,7 @@ async function* googleTextWithAimock(
   aimock: AimockHandle,
   signal: AbortSignal,
   input: GoogleHashbrownRunAgentInput,
+  activities?: ActivityCallback,
 ): AsyncIterable<AGUIEvent> {
   const previousBaseUrl = process.env[GOOGLE_BASE_URL_ENV];
   process.env[GOOGLE_BASE_URL_ENV] = aimock.url;
@@ -51,6 +52,7 @@ async function* googleTextWithAimock(
       model: GOOGLE_MODEL,
       input,
       signal,
+      activities,
     });
   } finally {
     if (previousBaseUrl === undefined) {
@@ -298,4 +300,51 @@ test('Google provider errors emit a canonical run error', async () => {
       message: expect.stringContaining('Deterministic provider error'),
     }),
   ]);
+});
+
+test('Google sends callback activities inside the run', async () => {
+  const activities: ActivityCallback = async ({ activity, model }) => {
+    const plan = activity.snapshot('plan-1', 'plan', { status: 'running' });
+    await model;
+    plan.patch([{ op: 'replace', path: '/status', value: 'done' }]);
+  };
+
+  const events = await runProviderAGUIWithAimock({
+    fixturePath: fixturePath('text.json'),
+    createStream: (aimock, signal) =>
+      googleTextWithAimock(
+        aimock,
+        signal,
+        baseInput('say hi briefly'),
+        activities,
+      ),
+  });
+
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.ACTIVITY_SNAPSHOT,
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.TEXT_MESSAGE_END,
+    EventType.ACTIVITY_DELTA,
+    EventType.RUN_FINISHED,
+  ]);
+  expect(events[1]).toEqual({
+    type: EventType.ACTIVITY_SNAPSHOT,
+    messageId: 'plan-1',
+    activityType: 'plan',
+    content: { status: 'running' },
+    replace: true,
+  });
+  expect(events.at(-2)).toEqual({
+    type: EventType.ACTIVITY_DELTA,
+    messageId: 'plan-1',
+    activityType: 'plan',
+    patch: [{ op: 'replace', path: '/status', value: 'done' }],
+  });
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_FINISHED,
+    threadId: 'thread-google',
+    runId: 'run-google',
+  });
 });

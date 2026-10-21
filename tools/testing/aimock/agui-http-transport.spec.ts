@@ -637,6 +637,7 @@ test('createChatRuntime adopts a generated thread identity and reuses it on the 
     await waitForIdle(runtime);
 
     expect(secondResponse).toEqual({
+      id: expect.any(String),
       role: 'assistant',
       content: 'Second response.',
       toolCalls: [],
@@ -950,8 +951,13 @@ test('createChatRuntime cancels a delayed SSE run after the first content withou
         ),
     );
     expect(messagesBeforeCancellation).toEqual([
-      { role: 'user', content: 'Start a delayed response' },
       {
+        id: expect.any(String),
+        role: 'user',
+        content: 'Start a delayed response',
+      },
+      {
+        id: expect.any(String),
         role: 'assistant',
         content: 'Accepted content.',
         toolCalls: [],
@@ -971,7 +977,11 @@ test('createChatRuntime cancels a delayed SSE run after the first content withou
     await testAimock.stop();
 
     expect(messagesAfterCancellation).toEqual([
-      { role: 'user', content: 'Start a delayed response' },
+      {
+        id: expect.any(String),
+        role: 'user',
+        content: 'Start a delayed response',
+      },
     ]);
     expect(runtime.messages()).toEqual(messagesAfterCancellation);
     expect(capturedInputs).toHaveLength(1);
@@ -1066,7 +1076,11 @@ test('createChatRuntime surfaces one server run error and closes the SSE respons
       'Deterministic server failure',
     ]);
     expect(runtime.messages()).toEqual([
-      { role: 'user', content: 'Trigger the server error' },
+      {
+        id: expect.any(String),
+        role: 'user',
+        content: 'Trigger the server error',
+      },
       { role: 'error', content: 'Deterministic server failure' },
     ]);
     expect(
@@ -1273,8 +1287,13 @@ test('createChatRuntime executes and continues an AG-UI tool call over real SSE'
     await waitForIdle(runtime);
 
     expect(messages).toEqual([
-      { role: 'user', content: 'What is the weather in Paris?' },
       {
+        id: expect.any(String),
+        role: 'user',
+        content: 'What is the weather in Paris?',
+      },
+      {
+        id: expect.any(String),
         role: 'assistant',
         content: '',
         toolCalls: [
@@ -1296,6 +1315,7 @@ test('createChatRuntime executes and continues an AG-UI tool call over real SSE'
         ],
       },
       {
+        id: expect.any(String),
         role: 'assistant',
         content: 'It is 21 C and sunny in Paris.',
         toolCalls: [],

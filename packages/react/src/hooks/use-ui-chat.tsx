@@ -70,13 +70,17 @@ export type UiErrorMessage = Chat.ErrorMessage;
 
 /**
  * Union type of all possible message types in the UI chat.
- * Can be an assistant message with UI components, a user message, or an error message.
+ * Can be an assistant message with UI components, a user message, an error
+ * message, or an AG-UI activity message.
  *
  * @public
  * @typeParam Tools - The set of tool definitions available to the chat.
  */
 export type UiChatMessage<Tools extends Chat.AnyTool> =
-  UiAssistantMessage<Tools> | UiErrorMessage | UiUserMessage;
+  | UiAssistantMessage<Tools>
+  | UiErrorMessage
+  | UiUserMessage
+  | Chat.ActivityMessage;
 
 /**
  * Chat state and commands with rendered UI messages.
@@ -135,7 +139,7 @@ export interface UiChatOptions<Tools extends Chat.AnyTool, State = unknown> {
    * The initial messages for the chat.
    * default: []
    */
-  messages?: Chat.Message<UiChatSchema, Tools>[];
+  messages?: Chat.MessageInput<UiChatSchema, Tools>[];
 
   /**
    * The initial shared agent state.
@@ -272,6 +276,8 @@ export const useUiChat = <Tools extends Chat.AnyTool, State = unknown>(
         } as UiAssistantMessage<Tools>;
       }
 
+      // User, error and activity messages pass through as is; activities are
+      // rendered by the app, not parsed as UI.
       return message;
     });
   }, [buildContent, chat.messages]);

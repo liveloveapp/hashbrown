@@ -293,7 +293,7 @@ test('allows an immediate write when a loading subscriber synchronously stops ge
 test('an output-free resend preserves the lossless local message projection', async () => {
   // Arrange
   const structuredContent = { prompt: 'Preserve this value.' };
-  const initialMessages: Chat.Message<string, Chat.AnyTool>[] = [
+  const initialMessages: Chat.MessageInput<string, Chat.AnyTool>[] = [
     { role: 'user', content: structuredContent },
     { role: 'error', content: 'local error' },
   ];
@@ -319,7 +319,10 @@ test('an output-free resend preserves the lossless local message projection', as
     // Assert
     expect(send).toHaveBeenCalledTimes(1);
     expect(resentProjection).toBe(initialProjection);
-    expect(resentProjection).toEqual(initialMessages);
+    expect(resentProjection).toEqual([
+      { ...initialMessages[0], id: expect.any(String) },
+      initialMessages[1],
+    ]);
     expect(resentProjection[0]?.content).toBe(structuredContent);
   } finally {
     teardown();
@@ -661,6 +664,144 @@ test('ɵsetRequestResponseSchema with undefined sends the response schema again'
       (input?.forwardedProps as { hashbrown: { responseSchema: unknown } })
         .hashbrown.responseSchema,
     ).toEqual(s.toJsonSchema(full));
+  } finally {
+    teardown();
+  }
+});
+
+test('setMessages round-trips user and assistant ids', async () => {
+  // Arrange
+  const send = jest.fn(async (request: TransportRequest) => ({
+    events: successfulEvents(request),
+  }));
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'test',
+    transport: { name: 'test', send },
+  });
+  const saved: Chat.MessageInput<string, Chat.AnyTool>[] = [
+    { id: 'user-1', role: 'user', content: 'Question' },
+    { id: 'assistant-1', role: 'assistant', content: 'Answer', toolCalls: [] },
+    { role: 'user', content: 'Follow-up' },
+  ];
+  const teardown = runtime.start();
+
+  try {
+    // Act
+    runtime.setMessages(saved);
+    const restored = runtime.messages();
+    runtime.setMessages(restored);
+    await waitForRuntimeIdle(runtime);
+    const sentIds = send.mock.calls
+      .at(-1)?.[0]
+      .input.messages.filter((message) => message.role !== 'system')
+      .map((message) => message.id);
+
+    // Assert
+    const restoredIds = restored.map((message) =>
+      message.role === 'error' ? undefined : message.id,
+    );
+
+    // Assert
+    expect(restoredIds).toEqual(['user-1', 'assistant-1', expect.any(String)]);
+    expect(runtime.messages()).toEqual(restored);
+    expect(sentIds).toEqual(restoredIds);
+  } finally {
+    teardown();
+  }
+});
+
+test('setMessages accepts an activity without links and links it from position', () => {
+  // Arrange
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'test',
+    transport: { name: 'test', send: jest.fn() },
+  });
+  const saved: Chat.MessageInput<string, Chat.AnyTool>[] = [
+    { id: 'user-1', role: 'user', content: 'Question' },
+    { id: 'assistant-1', role: 'assistant', content: 'Answer', toolCalls: [] },
+    {
+      id: 'activity-1',
+      role: 'activity',
+      activityType: 'plan',
+      content: { steps: [] },
+    },
+  ];
+  const teardown = runtime.start();
+
+  try {
+    // Act
+    runtime.setMessages(saved);
+
+    // Assert
+    expect(runtime.messages().at(-1)).toEqual({
+      id: 'activity-1',
+      role: 'activity',
+      activityType: 'plan',
+      content: { steps: [] },
+      links: { assistantMessageId: 'assistant-1' },
+    });
+  } finally {
+    teardown();
+  }
+});
+
+test('the streaming assistant message keeps the id it has after commit', async () => {
+  // Arrange
+  let release: () => void = () => undefined;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const send = jest.fn(async (request: TransportRequest) => {
+    const identity = {
+      threadId: request.input.threadId,
+      runId: request.input.runId,
+    };
+
+    return {
+      events: (async function* (): AsyncGenerator<AGUIEvent> {
+        yield { type: EventType.RUN_STARTED, ...identity };
+        yield {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'answer',
+          role: 'assistant',
+        };
+        yield {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'answer',
+          delta: 'one',
+        };
+        await released;
+        yield { type: EventType.TEXT_MESSAGE_END, messageId: 'answer' };
+        yield { type: EventType.RUN_FINISHED, ...identity };
+      })(),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'test',
+    transport: { name: 'test', send },
+  });
+  const teardown = runtime.start();
+
+  try {
+    // Act
+    await flushTaskBoundary();
+    runtime.sendMessage({ role: 'user', content: 'Question' });
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if (runtime.messages().some((message) => message.role === 'assistant'))
+        break;
+      await flushTaskBoundary();
+    }
+    const streaming = runtime.lastAssistantMessage();
+    release();
+    await waitForRuntimeIdle(runtime);
+    const committed = runtime.lastAssistantMessage();
+
+    // Assert
+    expect(streaming).toMatchObject({ id: 'answer', content: 'one' });
+    expect(committed).toMatchObject({ id: 'answer', content: 'one' });
   } finally {
     teardown();
   }

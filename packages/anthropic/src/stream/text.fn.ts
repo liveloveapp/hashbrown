@@ -1,4 +1,5 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { ɵwithActivities } from '@hashbrownai/core';
 import Anthropic from '@anthropic-ai/sdk';
 import { mapAnthropicEvents } from './anthropic-events';
 import { createAnthropicRequestOptions } from './anthropic-request';
@@ -14,14 +15,9 @@ function normalizeError(error: unknown): string {
 }
 
 /**
- * Streams canonical AG-UI events from an Anthropic message request.
- *
- * @param options - Provider configuration and AG-UI run input.
- * @returns An asynchronous stream of canonical AG-UI events.
- *
- * @public
+ * Streams the provider's AG-UI events for one run, without activities.
  */
-export async function* text(
+async function* textEvents(
   options: AnthropicTextStreamOptions,
 ): AsyncIterable<AGUIEvent> {
   const { apiKey, baseURL, model, input, signal, transformRequestOptions } =
@@ -83,4 +79,22 @@ export async function* text(
   } finally {
     providerStream?.controller.abort();
   }
+}
+
+/**
+ * Streams canonical AG-UI events from an Anthropic message request.
+ *
+ * @param options - Provider configuration and AG-UI run input.
+ * @returns An asynchronous stream of canonical AG-UI events.
+ *
+ * @public
+ */
+export function text(
+  options: AnthropicTextStreamOptions,
+): AsyncIterable<AGUIEvent> {
+  return ɵwithActivities(
+    (signal) => textEvents({ ...options, signal }),
+    options.activities,
+    options.signal,
+  );
 }
