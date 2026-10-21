@@ -10,3 +10,6 @@ export * from './lib/resend';
 export * from './lib/stops';
 export * from './lib/tokens';
 export * from './lib/webhooks';
+export * from './lib/observability/admission';
+export * from './lib/observability/canonical';
+export * from './lib/observability/contracts';
