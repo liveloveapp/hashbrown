@@ -2,7 +2,7 @@
 /**
  * One-time, re-runnable provisioning for Hashbrown's Vercel deployment.
  *
- *   node tools/vercel/bootstrap.mjs --env-file /path/to/.env [--dns-records records.json] [--skip-workflow]
+ *   node tools/vercel/bootstrap.mjs --env-file /path/to/.env [--dns-records records.json] [--skip-workflow] [--skip-token-secrets]
  *
  * Environment (from --env-file or the process):
  *   VERCEL_TOKEN or VERCEL_API_TOKEN   required
@@ -585,6 +585,7 @@ async function main() {
       'env-file': { type: 'string' },
       'dns-records': { type: 'string' },
       'skip-workflow': { type: 'boolean', default: false },
+      'skip-token-secrets': { type: 'boolean', default: false },
     },
   });
 
@@ -709,9 +710,13 @@ async function main() {
     log(`secret ${target.secret}`, 'set');
   }
 
-  await setSecret('VERCEL_TOKEN', token);
-  await setSecret('VERCEL_ORG_ID', teamId ?? user.id);
-  log('secrets VERCEL_*', 'set');
+  if (values['skip-token-secrets']) {
+    log('secrets VERCEL_*', 'skipped');
+  } else {
+    await setSecret('VERCEL_TOKEN', token);
+    await setSecret('VERCEL_ORG_ID', teamId ?? user.id);
+    log('secrets VERCEL_*', 'set');
+  }
 
   if (!values['skip-workflow']) {
     await gh([

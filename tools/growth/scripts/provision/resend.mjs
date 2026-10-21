@@ -93,6 +93,8 @@ export async function verifyDomain(resend, domainId) {
 
 /**
  * Provisions the Resend domain, its Vercel DNS records, and the sending key.
+ * The verify request is sent only when the domain is not yet verified, so a
+ * rerun on a provisioned account makes no writes.
  * Records steps on the checklist (never a token) and returns the env values
  * for the Vercel project; `RESEND_API_KEY` is absent when the key already
  * existed, since Resend shows a token only once.
@@ -117,12 +119,16 @@ export async function provisionResend(resend, vercel, checklist) {
     `${dns.created} created, ${dns.existing} existing`,
   );
 
-  const verified = await verifyDomain(resend, domain.id);
-  checklist.add(
-    'Resend domain verification',
-    verified === domain.status ? 'exists' : 'updated',
-    `status: ${verified}`,
-  );
+  if (domain.status === 'verified') {
+    checklist.add('Resend domain verification', 'exists', 'verified');
+  } else {
+    const verified = await verifyDomain(resend, domain.id);
+    checklist.add(
+      'Resend domain verification',
+      verified === domain.status ? 'exists' : 'updated',
+      `status: ${verified}`,
+    );
+  }
 
   const key = await ensureSendingKey(resend, KEY_NAME, domain.id);
   checklist.add(`Resend sending key ${KEY_NAME}`, key.status);

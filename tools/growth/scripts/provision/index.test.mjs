@@ -1,14 +1,22 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
 import { createVercelClient } from '../../../vercel/bootstrap.mjs';
 import {
+  buildBootstrapEnv,
   buildEnvFile,
   parseEnvFile,
   provision,
+  resolveOutDir,
   runProvision,
   SecretLeakError,
 } from './index.mjs';
@@ -98,6 +106,29 @@ test('buildEnvFile rejects a value containing a newline', () => {
   assert.throws(act, /DATABASE_URL/);
 });
 
+function clientsFor(fetchImpl) {
+  return {
+    neon: createJsonClient({
+      baseUrl: 'https://console.neon.tech/api/v2',
+      token: 'neon-token-secret',
+      fetchImpl,
+    }),
+    posthog: createJsonClient({
+      baseUrl: 'https://us.posthog.com',
+      token: 'ph-token-secret',
+      fetchImpl,
+    }),
+    resend: createJsonClient({
+      baseUrl: 'https://api.resend.com',
+      token: 're-token-secret',
+      fetchImpl,
+    }),
+    vercel: createVercelClient('vercel-token-secret', fetchImpl, {
+      teamId: 'team_1',
+    }),
+  };
+}
+
 function vendorFixtures() {
   const neonRoutes = {
     'GET /api/v2/projects?search=hashbrown-growth': {
@@ -173,7 +204,7 @@ function vendorFixtures() {
   return routes;
 }
 
-test('a rerun with all-exists vendors makes no POST except Resend verify', async () => {
+test('a rerun with all-exists vendors makes no vendor mutation', async () => {
   const { fetchImpl, calls } = stubFetch(vendorFixtures());
   const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
   const spawned = [];
@@ -208,14 +239,93 @@ test('a rerun with all-exists vendors makes no POST except Resend verify', async
     },
   });
 
-  const mutations = calls.filter((c) => c.method !== 'GET');
   assert.deepEqual(
-    mutations.map((c) => `${c.method} ${c.path}`),
-    ['POST /domains/d1/verify'],
+    calls.filter((c) => c.method !== 'GET'),
+    [],
   );
   assert.equal(spawned.length, 1);
-  assert.ok(spawned[0].includes(join(outDir, 'growth.env')));
-  assert.ok(spawned[0].includes('--skip-workflow'));
+  assert.deepEqual(spawned[0], [
+    '--env-file',
+    join(outDir, 'growth.env'),
+    '--skip-workflow',
+    '--skip-token-secrets',
+  ]);
+});
+
+test('the bootstrap child env drops provisioned keys and keeps tokens', async () => {
+  const { fetchImpl } = stubFetch(vendorFixtures());
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+  const before = { ...process.env };
+  process.env.DATABASE_URL = 'postgres://shell';
+  process.env.PREVIEW_DATABASE_URL = 'postgres://shell-preview';
+  process.env.VERCEL_TOKEN = 'vercel-token-secret';
+  let childEnv;
+
+  try {
+    await provision({
+      clients: clientsFor(fetchImpl),
+      outDir,
+      founderEmail: 'brian@hashbrown.dev',
+      checklist: createChecklist(),
+      spawnBootstrap: async (_args, env) => {
+        childEnv = env;
+        return 0;
+      },
+    });
+  } finally {
+    for (const key of [
+      'DATABASE_URL',
+      'PREVIEW_DATABASE_URL',
+      'VERCEL_TOKEN',
+    ]) {
+      if (key in before) process.env[key] = before[key];
+      else delete process.env[key];
+    }
+  }
+
+  assert.ok(!('DATABASE_URL' in childEnv));
+  assert.ok(!('PREVIEW_DATABASE_URL' in childEnv));
+  assert.equal(childEnv.VERCEL_TOKEN, 'vercel-token-secret');
+  assert.equal(buildBootstrapEnv({ A: '1', B: '2' }, 'A=x\n').B, '2');
+});
+
+test('a second identical run reports the env file as exists and leaves it untouched', async () => {
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+  const run = async () => {
+    const { fetchImpl } = stubFetch(vendorFixtures());
+    const checklist = createChecklist();
+    await provision({
+      clients: clientsFor(fetchImpl),
+      outDir,
+      founderEmail: 'brian@hashbrown.dev',
+      checklist,
+      spawnBootstrap: async () => 0,
+    });
+    return checklist.lines().find((l) => l.startsWith('Env file'));
+  };
+
+  const first = await run();
+  const second = await run();
+
+  assert.match(first, /\screated\s/);
+  assert.match(second, /\sexists\s/);
+});
+
+test('resolveOutDir defaults to the repo folder whatever the cwd is', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'growth-cwd-'));
+  const sub = join(dir, 'sub');
+  mkdirSync(sub);
+  const cwd = process.cwd();
+  process.chdir(sub);
+
+  try {
+    const resolved = resolveOutDir(undefined);
+
+    assert.ok(resolved.endsWith(join('tools', 'growth', '.provision')));
+    assert.ok(!resolved.startsWith(sub));
+  } finally {
+    process.chdir(cwd);
+  }
 });
 
 test('provision writes growth.env as 0600, keeps secrets stable on rerun, and the checklist leaks none', async () => {

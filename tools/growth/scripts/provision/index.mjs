@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import {
-  chmodSync,
   existsSync,
   mkdirSync,
   readFileSync,
+  renameSync,
   writeFileSync,
 } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -26,11 +26,41 @@ import { provisionResend } from './resend.mjs';
 const NEON_BASE_URL = 'https://console.neon.tech/api/v2';
 const POSTHOG_BASE_URL = 'https://us.posthog.com';
 const RESEND_BASE_URL = 'https://api.resend.com';
-const DEFAULT_OUT_DIR = 'tools/growth/.provision';
 const ENV_FILE_NAME = 'growth.env';
 const BOOTSTRAP_PATH = fileURLToPath(
   new URL('../../../vercel/bootstrap.mjs', import.meta.url),
 );
+
+/**
+ * Resolves the output folder. Without `out` it is `tools/growth/.provision`
+ * inside this repository, whatever the current working directory is.
+ *
+ * @param {string} [out] Value of `--out`, resolved against the cwd when given.
+ * @returns {string} Absolute path.
+ */
+export function resolveOutDir(out) {
+  return out
+    ? resolve(out)
+    : fileURLToPath(new URL('../../.provision', import.meta.url));
+}
+
+/**
+ * Builds the environment for the bootstrap child: a copy of `base` without
+ * any key present in the provisioned env file (plain or `PREVIEW_`), so the
+ * child's own env-file loading reads the provisioned values instead of
+ * stale shell ones. Other variables (tokens, PATH, HOME, gh auth) survive.
+ *
+ * @param {NodeJS.ProcessEnv} base Environment to copy, usually `process.env`.
+ * @param {string} envFileContents Contents of the written `growth.env`.
+ * @returns {NodeJS.ProcessEnv}
+ */
+export function buildBootstrapEnv(base, envFileContents) {
+  const env = { ...base };
+  for (const key of Object.keys(parseEnvFile(envFileContents))) {
+    delete env[key];
+  }
+  return env;
+}
 
 /** Secrets generated once and kept stable across reruns. */
 const SECRET_KEYS = [
@@ -126,16 +156,17 @@ export function buildEnvFile({ neon, posthog, resend, secrets, founderEmail }) {
 
 /**
  * Runs `node tools/vercel/bootstrap.mjs` with inherited stdio and resolves
- * with its exit code. The Vercel token reaches it through the inherited
- * process environment.
+ * with its exit code. The Vercel token reaches it through the environment.
  *
  * @param {string[]} args Arguments after the script path.
+ * @param {NodeJS.ProcessEnv} [env] Child environment, the current one by default.
  * @returns {Promise<number>}
  */
-export function spawnBootstrapProcess(args) {
+export function spawnBootstrapProcess(args, env = process.env) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(process.execPath, [BOOTSTRAP_PATH, ...args], {
       stdio: 'inherit',
+      env,
     });
     child.on('error', reject);
     child.on('close', (code) => resolvePromise(code ?? 1));
@@ -143,7 +174,8 @@ export function spawnBootstrapProcess(args) {
 }
 
 /**
- * Runs the three vendor provisioners, writes `<outDir>/growth.env` (mode 0600),
+ * Runs the three vendor provisioners, writes `<outDir>/growth.env` (mode 0600,
+ * atomically, and only when its contents change),
  * runs the Vercel bootstrap against it, and records everything on the
  * checklist. Reruns reuse the generated secrets and the Resend key from an
  * existing env file, so Vercel values are not rotated. Manual steps are moved
@@ -154,7 +186,7 @@ export function spawnBootstrapProcess(args) {
  * @param {string} options.outDir Directory for `growth.env`.
  * @param {string} options.founderEmail Address for founder notifications.
  * @param {ReturnType<typeof createChecklist>} options.checklist Step recorder.
- * @param {(args: string[]) => Promise<number>} [options.spawnBootstrap] Injectable bootstrap runner.
+ * @param {(args: string[], env: NodeJS.ProcessEnv) => Promise<number>} [options.spawnBootstrap] Injectable bootstrap runner.
  * @returns {Promise<void>}
  * @throws When the bootstrap exits non-zero or the checklist would leak a secret.
  */
@@ -174,9 +206,8 @@ export async function provision({
   };
 
   const envPath = join(outDir, ENV_FILE_NAME);
-  const existing = existsSync(envPath)
-    ? parseEnvFile(readFileSync(envPath, 'utf8'))
-    : {};
+  const hadFile = existsSync(envPath);
+  const existing = hadFile ? parseEnvFile(readFileSync(envPath, 'utf8')) : {};
 
   const neon = await provisionNeon(clients.neon, steps);
   const posthog = await provisionPosthog(clients.posthog, steps);
@@ -203,15 +234,22 @@ export async function provision({
     founderEmail,
   });
   mkdirSync(outDir, { recursive: true });
-  writeFileSync(envPath, contents, { mode: 0o600 });
-  chmodSync(envPath, 0o600);
+  const unchanged = hadFile && readFileSync(envPath, 'utf8') === contents;
+  if (!unchanged) {
+    const tmpPath = `${envPath}.tmp`;
+    writeFileSync(tmpPath, contents, { mode: 0o600 });
+    renameSync(tmpPath, envPath);
+  }
   checklist.add(
     `Env file ${envPath}`,
-    existing.CRON_SECRET ? 'updated' : 'created',
+    unchanged ? 'exists' : hadFile ? 'updated' : 'created',
     'mode 0600',
   );
 
-  const code = await spawnBootstrap(['--env-file', envPath, '--skip-workflow']);
+  const code = await spawnBootstrap(
+    ['--env-file', envPath, '--skip-workflow', '--skip-token-secrets'],
+    buildBootstrapEnv(process.env, contents),
+  );
   checklist.add(
     'Vercel bootstrap (www, hashbrown-lifecycle)',
     code === 0 ? 'updated' : 'skipped',
@@ -281,7 +319,7 @@ async function main() {
   const { values } = parseArgs({
     options: {
       'env-file': { type: 'string' },
-      out: { type: 'string', default: DEFAULT_OUT_DIR },
+      out: { type: 'string' },
     },
   });
   if (values['env-file']) loadEnvFile(values['env-file']);
@@ -313,7 +351,7 @@ async function main() {
 
   await runProvision({
     clients,
-    outDir: resolve(values.out),
+    outDir: resolveOutDir(values.out),
     founderEmail,
   });
 }

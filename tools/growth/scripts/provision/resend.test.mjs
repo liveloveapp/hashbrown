@@ -199,7 +199,9 @@ const EXISTING_ROUTES = {
     body: { id: 'd1', status: 'verified', records: RECORDS },
   },
   'POST /domains/d1/verify': { body: { object: 'domain', id: 'd1' } },
-  'GET /api-keys': { body: { data: [{ id: 'k1', name: 'hashbrown-lifecycle' }] } },
+  'GET /api-keys': {
+    body: { data: [{ id: 'k1', name: 'hashbrown-lifecycle' }] },
+  },
   ...VERCEL_EXISTING,
 };
 
@@ -236,8 +238,31 @@ test('provisionResend returns the new sending key on first run', async () => {
   );
 });
 
-test('a rerun makes only GET calls to Resend except verify, and reports exists', async () => {
+test('a rerun of a verified domain makes only GET calls and reports exists', async () => {
   const { resend, vercel, calls } = clientsFor(EXISTING_ROUTES);
+  const checklist = createChecklist();
+
+  await provisionResend(resend, vercel, checklist);
+
+  const mutations = calls.filter((c) => c.method !== 'GET');
+  assert.deepEqual(mutations, []);
+  const lines = checklist.lines();
+  const resendLines = lines.filter((l) => !/\smanual(\s|$)/.test(l));
+  assert.ok(resendLines.length >= 3);
+  assert.ok(resendLines.every((l) => /\s{2}exists(\s|$)/.test(l)));
+  assert.equal(lines.filter((l) => /\smanual(\s|$)/.test(l)).length, 1);
+});
+
+test('a pending domain is verified with exactly one POST', async () => {
+  const { resend, vercel, calls } = clientsFor({
+    ...EXISTING_ROUTES,
+    'GET /domains': {
+      body: { data: [{ id: 'd1', name: 'hashbrown.dev', status: 'pending' }] },
+    },
+    'GET /domains/d1': {
+      body: { id: 'd1', status: 'pending', records: RECORDS },
+    },
+  });
   const checklist = createChecklist();
 
   await provisionResend(resend, vercel, checklist);
@@ -247,11 +272,6 @@ test('a rerun makes only GET calls to Resend except verify, and reports exists',
     mutations.map((c) => `${c.method} ${c.path}`),
     ['POST /domains/d1/verify'],
   );
-  const lines = checklist.lines();
-  const resendLines = lines.filter((l) => !/\smanual(\s|$)/.test(l));
-  assert.ok(resendLines.length >= 3);
-  assert.ok(resendLines.every((l) => /\s{2}exists(\s|$)/.test(l)));
-  assert.equal(lines.filter((l) => /\smanual(\s|$)/.test(l)).length, 1);
 });
 
 test('the checklist never contains a token', async () => {

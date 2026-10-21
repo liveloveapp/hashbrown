@@ -103,3 +103,53 @@ test('assertNoSecrets throws when a secret appears in text', () => {
   assert.doesNotThrow(() => assertNoSecrets('clean', ['abcdefghijk']));
   assert.doesNotThrow(() => assertNoSecrets('short abc', ['abc']));
 });
+
+function retryClient(statuses, headers = {}) {
+  const delays = [];
+  let calls = 0;
+  const client = createJsonClient({
+    baseUrl: 'https://api.example.com',
+    token: 'tok',
+    sleep: async (ms) => {
+      delays.push(ms);
+    },
+    fetchImpl: async () => {
+      const status = statuses[Math.min(calls, statuses.length - 1)];
+      calls += 1;
+      return new Response(JSON.stringify({ ok: true }), { status, headers });
+    },
+  });
+  return { client, delays, count: () => calls };
+}
+
+test('createJsonClient retries a 423 with backoff and then succeeds', async () => {
+  const { client, delays, count } = retryClient([423, 423, 200]);
+
+  const result = await client('GET', '/busy');
+
+  assert.deepEqual(result, { ok: true });
+  assert.equal(count(), 3);
+  assert.deepEqual(delays, [1000, 2000]);
+});
+
+test('createJsonClient honours Retry-After on a 429', async () => {
+  const { client, delays } = retryClient([429, 200], { 'retry-after': '3' });
+
+  await client('GET', '/limited');
+
+  assert.deepEqual(delays, [3000]);
+});
+
+test('createJsonClient gives up after five attempts on 423', async () => {
+  const { client, delays, count } = retryClient([423]);
+
+  await assert.rejects(
+    () => client('GET', '/busy'),
+    (error) => {
+      assert.equal(error.status, 423);
+      return true;
+    },
+  );
+  assert.equal(count(), 5);
+  assert.deepEqual(delays, [1000, 2000, 4000, 8000]);
+});
