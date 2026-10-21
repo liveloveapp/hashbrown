@@ -292,3 +292,41 @@ test('structuredCompletionResource propagates terminal errors through value', ()
   expect(resource.snapshot()).toEqual({ status: 'error', error: failure });
   expect(() => resource.value()).toThrow(failure);
 });
+
+test('structuredCompletionResource keeps its value when an activity trails the answer', () => {
+  structuredChatResourceMock.mockReset();
+  const assistant = {
+    id: 'assistant-1',
+    role: 'assistant',
+    content: { summary: 'Completed response' },
+    toolCalls: [],
+  };
+  structuredChatResourceMock.mockReturnValue(
+    createChatStub(
+      signal<any[]>([
+        { id: 'user-1', role: 'user', content: 'Summarize this' },
+        assistant,
+        {
+          id: 'activity-1',
+          role: 'activity',
+          activityType: 'progress',
+          content: { step: 'done' },
+          links: { assistantMessageId: 'assistant-1' },
+        },
+      ]),
+    ),
+  );
+
+  const { ref, message } = TestBed.runInInjectionContext(() =>
+    ɵstructuredCompletionResourceWithMessage({
+      system: 'System prompt',
+      input: signal('Summarize this'),
+      schema: s.object('summary', {
+        summary: s.string('Summary'),
+      }),
+    }),
+  );
+
+  expect(message()).toBe(assistant);
+  expect(ref.value()).toBe(assistant.content);
+});

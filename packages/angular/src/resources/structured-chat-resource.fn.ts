@@ -393,11 +393,16 @@ export function structuredChatResource<
   function reload() {
     ɵassertRuntimeMessageSchedulingAllowed(runtime);
     const messages = rawValue();
-    const lastMessage = messages[messages.length - 1];
+    // Activities never count as the last message: they trail the turn that
+    // produced them, so reload drops them along with that turn's answer.
+    const lastIndex = messages.findLastIndex(
+      (message) => message.role !== 'activity',
+    );
+    const lastMessage = messages[lastIndex];
 
     if (lastMessage?.role === 'assistant') {
       syncLatestSchema();
-      runtime.setMessages(messages.slice(0, -1));
+      runtime.setMessages(messages.slice(0, lastIndex));
 
       return true;
     }

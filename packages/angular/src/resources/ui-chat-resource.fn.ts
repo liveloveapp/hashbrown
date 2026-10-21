@@ -275,6 +275,10 @@ export function uiChatResource<Tools extends Chat.AnyTool, State = unknown>(
         if (message.role === 'error') {
           return message;
         }
+        if (message.role === 'activity') {
+          // Activities are rendered by the app, not parsed as UI.
+          return message;
+        }
 
         throw new Error(`Unknown message role`);
       });

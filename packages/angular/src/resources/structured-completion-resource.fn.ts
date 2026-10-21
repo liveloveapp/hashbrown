@@ -207,8 +207,9 @@ export function ɵstructuredCompletionResourceWithMessage<
 
   const message = computed(
     (): Chat.AssistantMessage<Output, Chat.AnyTool> | null => {
-      const messages = resource.value();
-      const lastMessage = messages[messages.length - 1];
+      const lastMessage = resource
+        .value()
+        .findLast((message) => message.role !== 'activity');
       if (
         lastMessage &&
         lastMessage.role === 'assistant' &&

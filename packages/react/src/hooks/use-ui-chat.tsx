@@ -276,6 +276,8 @@ export const useUiChat = <Tools extends Chat.AnyTool, State = unknown>(
         } as UiAssistantMessage<Tools>;
       }
 
+      // User, error and activity messages pass through as is; activities are
+      // rendered by the app, not parsed as UI.
       return message;
     });
   }, [buildContent, chat.messages]);

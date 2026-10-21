@@ -292,8 +292,9 @@ test('a thinking line shimmers after the question until something else shows wor
 
 test('reasoning shimmers while it streams and collapses to Reasoned once done', () => {
   const messages: UiChatMessage<Chat.AnyTool>[] = [
-    { role: 'user', content: 'Highest?' },
+    { id: 'user-1', role: 'user', content: 'Highest?' },
     {
+      id: 'assistant-1',
       role: 'assistant',
       reasoning: 'Comparing altitudes.',
       toolCalls: [],

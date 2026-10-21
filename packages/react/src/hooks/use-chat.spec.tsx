@@ -1,7 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { HashbrownProvider } from '../hashbrown-provider';
+import { s } from '@hashbrownai/core';
 import { useChat } from './use-chat';
+import { useStructuredChat } from './use-structured-chat';
 
 const createChatRuntimeMock = vi.hoisted(() => vi.fn());
 const createHttpTransportMock = vi.hoisted(() => vi.fn());
@@ -199,6 +201,59 @@ test('useChat exposes the last run result from the runtime', () => {
   // Assert
   expect(before).toBeUndefined();
   expect(result.current.lastRunResult).toEqual({ verdict: 'approved' });
+});
+
+test('useChat and useStructuredChat reload ignore trailing activities', () => {
+  const messages = [
+    { id: 'user-1', role: 'user' as const, content: 'Summarize this' },
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: 'Completed response',
+      toolCalls: [],
+    },
+    {
+      id: 'activity-1',
+      role: 'activity' as const,
+      activityType: 'progress',
+      content: { step: 'done' },
+      links: { assistantMessageId: 'assistant-1' },
+    },
+  ];
+  const chatRuntime = createRuntimeStub({ messages });
+  const structuredRuntime = createRuntimeStub({ messages });
+  createChatRuntimeMock.mockReset();
+  createChatRuntimeMock
+    .mockReturnValueOnce(chatRuntime)
+    .mockReturnValueOnce(structuredRuntime);
+  const { result } = renderHook(
+    () => ({
+      chat: useChat({ system: 'System A' }),
+      structured: useStructuredChat({
+        system: 'System A',
+        schema: s.string('Answer'),
+      }),
+    }),
+    { wrapper: ProviderWrapper },
+  );
+
+  let chatReloaded = false;
+  let structuredReloaded = false;
+  act(() => {
+    chatReloaded = result.current.chat.reload();
+    structuredReloaded = result.current.structured.reload();
+  });
+
+  expect(chatReloaded).toBe(true);
+  expect(structuredReloaded).toBe(true);
+  expect(
+    (chatRuntime as unknown as { setMessages: ReturnType<typeof vi.fn> })
+      .setMessages,
+  ).toHaveBeenCalledWith([messages[0]]);
+  expect(
+    (structuredRuntime as unknown as { setMessages: ReturnType<typeof vi.fn> })
+      .setMessages,
+  ).toHaveBeenCalledWith([messages[0]]);
 });
 
 function ProviderWrapper({ children }: { children: ReactNode }) {
