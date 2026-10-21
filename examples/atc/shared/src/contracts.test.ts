@@ -184,10 +184,17 @@ test('the router context sends picks, follows and airports to chat, and only sta
 
 test('the router context tells a named set of arrivals from asking to see them', () => {
   expect(ROUTE_CONTEXT).toContain('"arrivals into Portland"');
+  expect(ROUTE_CONTEXT).toContain('"planes landing at Seattle"');
   expect(ROUTE_CONTEXT).toContain(
-    'A bare phrase that names a set of aircraft, with no question and no "show me", is a filter.',
+    'A bare phrase that names a set of aircraft, with no question and no "show me", is a filter, even when it names arrivals or landings at an airport.',
   );
+  expect(ROUTE_CONTEXT).toContain('or starts with "show me"');
   expect(ROUTE_CONTEXT).not.toContain('its airspace or its arrivals');
+});
+
+test('the router context keeps departures in chat, since the filter has no departing field', () => {
+  expect(ROUTE_CONTEXT).toContain('or approaching an airport)');
+  expect(ROUTE_CONTEXT).toContain('asks about departures');
 });
 
 test('the cards context and descriptions tell one aircraft from two superlatives', () => {

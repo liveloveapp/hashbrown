@@ -142,7 +142,7 @@ dependencies); this file covers atc.
   than the prompt asks for; and answers that show aircraft but leave none highlighted.
 - After changing `ROUTE_CONTEXT`, `CARDS_CONTEXT`, `routeSchema` or a card description, run
   `npx nx decide-eval atc-e2e` (live decisions, needs `TYPESAFE_API_KEY`, no servers). It
-  fails when the router gets fewer than 28 of its 34 labelled probes (or 16 of 17 held-out
+  fails when the router gets fewer than 37 of its 45 labelled probes (or 16 of 17 held-out
   ones) right, or fewer than 7 of 8 cards probes narrow confidently to the expected card.
 - Builds stay free of warnings. Leaflet 1.x ships only CommonJS, so the Angular build
   lists it in `allowedCommonJsDependencies` (`angular/project.json`); the React build
