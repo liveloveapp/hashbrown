@@ -201,7 +201,7 @@ function Switched({ items, turns }: { items: never[]; turns: TurnShown[] }) {
 test('the switch hides and shows the panels', () => {
   cleanup();
   const messages = [
-    { role: 'user', content: 'Highest?' },
+    { id: 'u-Highest?', role: 'user', content: 'Highest?' },
     {
       role: 'assistant',
       toolCalls: [],
@@ -257,9 +257,9 @@ test('a superseded send does not shift later answers onto the wrong decisions', 
     ui: [<p key={text}>{text}</p>],
   });
   const messages = [
-    { role: 'user', content: 'jets' },
+    { id: 'u-jets', role: 'user', content: 'jets' },
     answer('first'),
-    { role: 'user', content: 'Seattle?' },
+    { id: 'u-Seattle?', role: 'user', content: 'Seattle?' },
     answer('second'),
   ] as UiChatMessage<Chat.AnyTool>[];
   const turns: TurnShown[] = [
