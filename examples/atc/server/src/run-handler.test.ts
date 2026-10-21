@@ -522,7 +522,11 @@ test('a request without a response schema is left alone', () => {
 test('cardGroups flatten to exactly the pinned response schema, Markdown first', () => {
   const components = cardGroups.flatMap((group) => group.components);
 
-  const schema = createUiJsonSchema({ components });
+  const schema = createUiJsonSchema({
+    components: components as Parameters<
+      typeof createUiJsonSchema
+    >[0]['components'],
+  });
 
   expect(JSON.stringify(schema)).toBe(JSON.stringify(PINNED_RESPONSE_SCHEMA));
 });

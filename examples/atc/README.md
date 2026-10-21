@@ -30,13 +30,14 @@ switcher between them.
 
 The server reads these variables (from `.env` or the environment):
 
-| Variable                  | Default      | Notes                                                                                                 |
-| ------------------------- | ------------ | ----------------------------------------------------------------------------------------------------- |
-| `OPENAI_API_KEY`          | none         | Required. The server will not start without it, even though the map alone needs none.                 |
-| `OPENAI_MODEL`            | `gpt-5-mini` | Any OpenAI chat model.                                                                                |
-| `OPENAI_BASE_URL`         | OpenAI       | For an OpenAI-compatible endpoint.                                                                    |
-| `OPENAI_REASONING_EFFORT` | `low`        | Sent to gpt-5 and o-series models only. Set it empty to send none. An unknown value stops the server. |
-| `PORT`                    | `4340`       | The dev servers' `/api` proxy expects 4340.                                                           |
+| Variable                  | Default      | Notes                                                                                                    |
+| ------------------------- | ------------ | -------------------------------------------------------------------------------------------------------- |
+| `OPENAI_API_KEY`          | none         | Required. The server will not start without it, even though the map alone needs none.                    |
+| `OPENAI_MODEL`            | `gpt-5-mini` | Any OpenAI chat model.                                                                                   |
+| `OPENAI_BASE_URL`         | OpenAI       | For an OpenAI-compatible endpoint.                                                                       |
+| `OPENAI_REASONING_EFFORT` | `low`        | Sent to gpt-5 and o-series models only. Set it empty to send none. An unknown value stops the server.    |
+| `TYPESAFE_API_KEY`        | none         | Optional. Enables `/api/decide` (TypeSafe Jev). Without it the router falls back to chat with all cards. |
+| `PORT`                    | `4340`       | The dev servers' `/api` proxy expects 4340.                                                              |
 
 ## How this example is built
 
@@ -176,15 +177,18 @@ there). The React app is built and tested in this repository but not hosted;
 `HOSTED_APPS` in `tools/build-vercel-output.mts` is the one line to change to host it.
 
 `npx nx build atc` writes `.vercel/output`, with functions for `/api/run`,
-`/api/filter`, `/api/aircraft`, `/api/chart/airports`, `/api/chart/surfaces` and
+`/api/filter`, `/api/decide`, `/api/aircraft`, `/api/chart/airports`, `/api/chart/surfaces` and
 `/api/chart/airspace`. The hosted project (`hashbrown-atc`) needs:
 
 - `OPENAI_API_KEY`: a dedicated OpenAI project key with a hard monthly budget.
+- `TYPESAFE_API_KEY`: set on the `hashbrown-atc` Vercel project. Optional: without it `/api/decide` answers 503 and the router falls back to chat with all cards.
 - A Vercel Firewall rate-limit rule on `POST /api/run`. `hashbrown-atc` allows 40 requests
   per minute per IP (fixed window, 429 above it). One question makes 3 to 5 requests, one
   per tool round trip, so that is about ten questions a minute.
 - The same rule on `POST /api/filter`: 40 requests per minute per IP. A filter is one
   request, capped at 512 output tokens.
+- The same rule on `POST /api/decide`: 40 requests per minute per IP. A decision is one
+  small TypeSafe call, capped at 4,000 characters of request.
 - A look at tile traffic: past light use, point `TILE_LAYER` at a commercial tile provider
   (see "Data and attribution").
 
