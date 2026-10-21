@@ -4,11 +4,13 @@ import {
   ROUTE_CONTEXT,
   routeSchema,
 } from '@atc/shared';
+import type { Decision } from '@hashbrownai/core';
 import { createSelectionSchema, ɵcompileDecision } from '@hashbrownai/core';
 import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { expect, onTestFinished, test } from 'vitest';
+import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
+import { expect, onTestFinished, test, vi } from 'vitest';
 import { createDecideHandler } from './decide-handler';
 
 interface Wire {
@@ -201,9 +203,7 @@ test('decide maps a TypeSafe failure to its code and status', async () => {
 });
 
 test('decide hides the details of an unexpected failure', async () => {
-  const quiet = (await import('vitest')).vi
-    .spyOn(console, 'error')
-    .mockImplementation(() => undefined);
+  const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
   onTestFinished(() => quiet.mockRestore());
   const base = await serve(KEY, (async () => {
     throw new TypeError('secret detail');
@@ -215,16 +215,87 @@ test('decide hides the details of an unexpected failure', async () => {
   expect(JSON.stringify(await response.json())).not.toContain('secret');
 });
 
-test('the pinned cards questions equal what the browser sends', async () => {
+/** The TypeSafe dialect of compiled questions, as `toNativeRequest` writes it. */
+function toWire(questions: Record<string, Decision.Question>) {
+  return Object.fromEntries(
+    Object.entries(questions).map(([id, q]) => {
+      if (q.type === 'choice') {
+        return [
+          id,
+          { type: 'choice', instructions: q.instructions, criteria: q.options },
+        ];
+      }
+      if (q.type === 'score') {
+        const keys = Object.keys(q.levels).sort(
+          (a, b) => Number(a) - Number(b),
+        );
+
+        return [
+          id,
+          {
+            type: 'score',
+            instructions: q.instructions,
+            criteria: keys.map((key) => q.levels[key]),
+          },
+        ];
+      }
+
+      return [id, { type: 'noul', instructions: q.instructions }];
+    }),
+  );
+}
+
+test('the pinned cards questions equal what the browser compiles', async () => {
   const model = fakeTypeSafe();
   const base = await serve(KEY, model.fetchFn);
   const browser = ɵcompileDecision(
     createSelectionSchema(cardGroups, { max: 2 }),
   );
 
-  await post(base, 'cards', { state: 'q' });
+  await post(base, 'cards', { state: 'q', questions: browser });
 
-  const sent = Object.keys(model.calls[0].body.questions).sort();
-  expect(sent).toEqual(Object.keys(browser).sort());
-  expect(sent.length).toBeGreaterThan(0);
+  expect(model.calls[0].body.questions).toEqual(toWire(browser));
+  expect(Object.keys(browser).length).toBeGreaterThan(0);
+});
+
+test('the pinned route questions equal what the browser compiles', async () => {
+  const model = fakeTypeSafe();
+  const base = await serve(KEY, model.fetchFn);
+  const browser = ɵcompileDecision(routeSchema);
+
+  await post(base, 'route', { state: 'q', questions: browser });
+
+  expect(model.calls[0].body.questions).toEqual(toWire(browser));
+  expect(Object.keys(browser).length).toBeGreaterThan(0);
+});
+
+test('decide treats inherited object keys as unknown kinds', async () => {
+  const model = fakeTypeSafe();
+  const base = await serve(KEY, model.fetchFn);
+
+  const constructor = await post(base, 'constructor', { state: 'hi' });
+  const proto = await post(base, '__proto__', { state: 'hi' });
+
+  expect(constructor.status).toBe(400);
+  expect(proto.status).toBe(400);
+  expect(model.calls).toHaveLength(0);
+});
+
+test('decide answers 500 internal for a non-DecisionError, without leaking it', async () => {
+  const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const decide = vi
+    .spyOn(HashbrownTypeSafe, 'decide')
+    .mockRejectedValue(new Error('secret detail'));
+  onTestFinished(() => {
+    quiet.mockRestore();
+    decide.mockRestore();
+  });
+  const base = await serve(KEY);
+
+  const response = await post(base, 'route', { state: 'hi' });
+  const text = await response.text();
+
+  expect(response.status).toBe(500);
+  expect(JSON.parse(text)).toEqual({ code: 'internal' });
+  expect(text).not.toContain('secret');
 });

@@ -82,7 +82,8 @@ export function createDecideHandler(
     if (!apiKey) {
       return sendJson(res, 503, { code: 'unavailable' });
     }
-    const pinned = KINDS[queryParam(req, 'kind')];
+    const kind = queryParam(req, 'kind');
+    const pinned = Object.hasOwn(KINDS, kind) ? KINDS[kind] : undefined;
     if (pinned === undefined) {
       return sendJson(res, 400, { code: 'invalid_request' });
     }
