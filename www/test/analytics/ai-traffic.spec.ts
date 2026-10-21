@@ -3,6 +3,7 @@ import {
   buildCapturePayload,
   classifyAiCrawler,
   classifyAiReferrer,
+  classifyRequest,
   createEmissionBudget,
   EMISSION_BUCKET_CAPACITY,
   shouldEmitCrawlerEvent,
@@ -87,9 +88,20 @@ test('deduplicates crawler events per crawler, path and hour and caps keys at 20
 
   expect([first, repeat, nextHour]).toEqual([true, false, true]);
   expect(seen.size).toBeLessThanOrEqual(2000);
-  expect(
-    shouldEmitCrawlerEvent({ crawler: 'ccbot', path: '/p/2499', now: 0, seen }),
-  ).toBe(false);
+  const newest = shouldEmitCrawlerEvent({
+    crawler: 'ccbot',
+    path: '/p/2499',
+    now: 0,
+    seen,
+  });
+  const oldest = shouldEmitCrawlerEvent({
+    crawler: 'ccbot',
+    path: '/p/0',
+    now: 0,
+    seen,
+  });
+  expect(newest).toBe(false);
+  expect(oldest).toBe(true);
 });
 
 test('token bucket refuses the 501st emission in an hour', () => {
@@ -130,4 +142,28 @@ test('payload carries no person profile, no ip, and the middleware lib tag', () 
       $lib: 'hashbrown-middleware',
     },
   });
+});
+
+test('classifyRequest emits the right event shape for each kind of visit', () => {
+  const longAgent = `GPTBot/1.2 ${'x'.repeat(400)}`;
+  const base = { path: '/docs', now: 0 };
+  const run = (userAgent: string | null, referrer: string | null) =>
+    classifyRequest({
+      ...base,
+      userAgent,
+      referrer,
+      seen: new Set<string>(),
+      budget: createEmissionBudget(0),
+    });
+
+  const referral = run('Mozilla/5.0 Safari', 'https://chatgpt.com/c/1');
+  const crawler = run(longAgent, null);
+  const both = run(longAgent, 'https://chatgpt.com/c/1');
+  const plain = run('Mozilla/5.0 Safari', 'https://example.com/');
+
+  expect(referral?.event).toBe('marketing:ai_referral_visit');
+  expect(referral?.properties).not.toHaveProperty('user_agent');
+  expect(crawler?.properties.user_agent).toHaveLength(200);
+  expect(both?.event).toBe('marketing:ai_crawler_visit');
+  expect(plain).toBeNull();
 });

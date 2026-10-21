@@ -57,7 +57,7 @@ export async function sendToPostHog(capture: PendingCapture): Promise<void> {
 
 /** Paths observed by the middleware, mirroring `config.matcher` below. */
 const MATCHER_SOURCES = [
-  '/((?!_|api|_next/static|_next/image|favicon\\.ico|.*opengraph-image(?:/|$)|.*twitter-image(?:/|$)|.*\\.[^/]*$).*)',
+  '/((?!_|_next/static|_next/image|favicon\\.ico|og(?:/|$)|github-card(?:/|$)|.*opengraph-image(?:/|$)|.*twitter-image(?:/|$)|.*\\.[^/]*$).*)',
   '/llms.txt',
   '/llms-full.txt',
   '/sitemap.xml',
@@ -110,14 +110,16 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
 
 /**
  * Routes observed: pages plus the files written for AI consumers. Excluded:
- * `/_` (PostHog proxy and growth routes), `/api`, `_next` assets,
- * `favicon.ico`, any path with a file extension, and the extension-less
- * `opengraph-image` / `twitter-image` routes (anchored to a segment boundary).
+ * `/_` (PostHog proxy and growth routes, the only route handlers), `_next`
+ * assets, `favicon.ico`, any path with a file extension, and the
+ * extension-less image routes: `/og/*`, `/github-card`, and
+ * `opengraph-image` / `twitter-image` (anchored to a segment boundary).
+ * `/api` and `/api/[pkg]/[symbol]` are HTML API-reference pages and ARE seen.
  * Must stay literal: Next reads it statically.
  */
 export const config = {
   matcher: [
-    '/((?!_|api|_next/static|_next/image|favicon\\.ico|.*opengraph-image(?:/|$)|.*twitter-image(?:/|$)|.*\\.[^/]*$).*)',
+    '/((?!_|_next/static|_next/image|favicon\\.ico|og(?:/|$)|github-card(?:/|$)|.*opengraph-image(?:/|$)|.*twitter-image(?:/|$)|.*\\.[^/]*$).*)',
     '/llms.txt',
     '/llms-full.txt',
     '/sitemap.xml',
