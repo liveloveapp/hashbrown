@@ -77,7 +77,10 @@ const components = [
       <div data-testid="assistant"></div>
       @for (message of visibleMessages(); track $index) {
         @if (message.role === 'activity') {
-          <div [attr.data-testid]="'activity-' + message.activityType">
+          <div
+            [attr.data-testid]="'activity-' + message.activityType"
+            [attr.data-activity-id]="message.id"
+          >
             {{ activityText(message.content) }}
           </div>
         } @else {

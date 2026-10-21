@@ -107,7 +107,11 @@ export function UiSmoke() {
       {messages.map((message, index) => {
         if (message.role === 'activity') {
           return (
-            <div key={index} data-testid={`activity-${message.activityType}`}>
+            <div
+              key={index}
+              data-testid={`activity-${message.activityType}`}
+              data-activity-id={message.id}
+            >
               {JSON.stringify(message.content)}
             </div>
           );

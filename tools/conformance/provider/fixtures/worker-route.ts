@@ -2,7 +2,7 @@ import type { RunAgentInput } from '@ag-ui/core';
 import { EventEncoder } from '@ag-ui/encoder';
 import { HashbrownOpenAI } from '@hashbrownai/openai';
 import type { ProviderRouteOptions } from './options';
-import { planActivity } from './plan-activity';
+import { createPlanActivity } from './plan-activity';
 
 /** Handles a Worker request using injected provider settings and native AG-UI SSE. */
 export async function handleWorkerRequest({
@@ -16,7 +16,7 @@ export async function handleWorkerRequest({
   const input = (await request.json()) as RunAgentInput;
   const stream = HashbrownOpenAI.stream.text({
     ...providerOptions,
-    activities: activities ? planActivity : undefined,
+    activities: activities ? createPlanActivity(input) : undefined,
     input,
     signal: request.signal,
   });

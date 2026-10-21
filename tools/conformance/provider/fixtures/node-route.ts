@@ -4,7 +4,7 @@ import { HashbrownOpenAI } from '@hashbrownai/openai';
 import cors from 'cors';
 import express from 'express';
 import type { ProviderRouteOptions } from './options';
-import { planActivity } from './plan-activity';
+import { createPlanActivity } from './plan-activity';
 
 /** Creates an injectable Node route using the native OpenAI provider and AG-UI SSE. */
 export function createApi(options: ProviderRouteOptions) {
@@ -19,10 +19,11 @@ export function createApi(options: ProviderRouteOptions) {
     res.once('close', () => abortController.abort());
 
     try {
+      const input = req.body as RunAgentInput;
       const stream = HashbrownOpenAI.stream.text({
         ...providerOptions,
-        activities: activities ? planActivity : undefined,
-        input: req.body as RunAgentInput,
+        activities: activities ? createPlanActivity(input) : undefined,
+        input,
         signal: abortController.signal,
       });
       const encoder = new EventEncoder();
