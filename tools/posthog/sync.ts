@@ -7,7 +7,11 @@
 import { readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createPosthogClient, type PosthogClient } from './client.ts';
+import {
+  createPosthogClient,
+  type PosthogClient,
+  type QueryParams,
+} from './client.ts';
 import {
   type DashboardLocal,
   type InsightLocal,
@@ -207,7 +211,11 @@ export async function computePlan({
  * @returns The create/update body.
  */
 export function toPostHogInsight(local: InsightLocal) {
-  const base = { name: local.name, description: local.description };
+  const base = {
+    saved: true,
+    name: local.name,
+    description: local.description,
+  };
   const dateRange = { date_from: local.date_from };
 
   if (local.kind === 'funnel') {
@@ -233,32 +241,18 @@ export function toPostHogInsight(local: InsightLocal) {
     };
   }
 
-  const breakdowns =
-    local.breakdown === undefined ? [] : [local.breakdown].flat();
-  const limit =
-    local.breakdown_limit === undefined
-      ? {}
-      : { breakdown_limit: local.breakdown_limit };
   const breakdownFilter =
-    typeof local.breakdown === 'string'
-      ? {
+    local.breakdown === undefined
+      ? {}
+      : {
           breakdownFilter: {
             breakdown_type: 'event',
             breakdown: local.breakdown,
-            ...limit,
+            ...(local.breakdown_limit === undefined
+              ? {}
+              : { breakdown_limit: local.breakdown_limit }),
           },
-        }
-      : breakdowns.length > 0
-        ? {
-            breakdownFilter: {
-              breakdowns: breakdowns.map((property) => ({
-                property,
-                type: 'event',
-              })),
-              ...limit,
-            },
-          }
-        : {};
+        };
 
   return {
     ...base,
@@ -550,11 +544,13 @@ export async function fetchAllPages<T>(
  * @returns The sync operations.
  */
 export function createSyncClient(client: PosthogClient): SyncClient {
-  const listAll = <T>(path: string) =>
-    fetchAllPages<T>((offset, limit) => client.get(path, { limit, offset }));
+  const listAll = <T>(path: string, filters: QueryParams = {}) =>
+    fetchAllPages<T>((offset, limit) =>
+      client.get(path, { ...filters, limit, offset }),
+    );
   return {
     listDashboards: () => listAll<RemoteDashboard>('/dashboards/'),
-    listInsights: () => listAll<RemoteInsight>('/insights/'),
+    listInsights: () => listAll<RemoteInsight>('/insights/', { saved: true }),
     createDashboard: (body) =>
       client.post<RemoteDashboard>('/dashboards/', body),
     createInsight: (body) => client.post<RemoteInsight>('/insights/', body),

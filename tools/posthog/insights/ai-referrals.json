@@ -1,0 +1,18 @@
+{
+  "slug": "ai-referrals",
+  "posthog_id": null,
+  "kind": "trends",
+  "name": "AI referral visits",
+  "description": "Visitors arriving from AI answer engines, observed by Edge middleware, not posthog-js. Counted by referrer host.",
+  "events": [
+    {
+      "event": "marketing:ai_referral_visit",
+      "name": "AI referral visits",
+      "math": "total"
+    }
+  ],
+  "breakdown": "ai_source",
+  "breakdown_limit": 20,
+  "interval": "day",
+  "date_from": "-30d"
+}

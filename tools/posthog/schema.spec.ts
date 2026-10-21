@@ -81,6 +81,9 @@ test('schema applies defaults and rejects malformed slugs and kinds', () => {
   });
   expect(dashboard.tags).toEqual([]);
   expect(() => parseInsight({ ...minimal, slug: 'Bad_Slug' })).toThrow(/slug/);
+  expect(() =>
+    parseInsight({ ...minimal, breakdown: ['ai_crawler', 'ai_source'] }),
+  ).toThrow(/breakdown/);
   expect(() => parseInsight({ ...minimal, kind: 'retention' })).toThrow(/kind/);
   expect(() => parseInsight({ ...minimal, events: [] })).toThrow(/events/);
   expect(() => parseInsight({ ...minimal, posthog_id: 'x' })).toThrow(

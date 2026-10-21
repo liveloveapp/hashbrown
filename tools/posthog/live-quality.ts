@@ -112,7 +112,8 @@ function looksLikeEmail(property: string, value: unknown): boolean {
 
 /**
  * Checks sampled events against the contract. Events outside the contract are
- * skipped. Ignored properties are never inspected.
+ * skipped. Ignored properties are never required or contract-checked; an
+ * email-shaped value in one is a warning.
  *
  * @param events - Sampled events.
  * @param contract - The contract; defaults to {@link TELEMETRY_EVENT_CONTRACT}.
@@ -157,7 +158,19 @@ export function analyzeTelemetryEvents(
     }
     const allowed = new Set(eventContract.allowedProperties);
     for (const [property, value] of Object.entries(item.properties)) {
-      if (isIgnoredProperty(property)) continue;
+      if (isIgnoredProperty(property)) {
+        // Never required or contract-checked, but a value must not leak a
+        // contact address. Not blocking: the browser, not the contract, set it.
+        if (typeof value === 'string' && EMAIL_SHAPE.test(value)) {
+          finding(
+            'warning',
+            'email_shaped_value',
+            property,
+            `${item.event} carries an email-shaped value in ${property}`,
+          );
+        }
+        continue;
+      }
       if (forbidden.has(property)) {
         finding(
           'error',

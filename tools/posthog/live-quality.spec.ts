@@ -24,7 +24,7 @@ function summary(events: LiveTelemetryEvent[]) {
   );
 }
 
-test('quality flags a cta_click missing cta_id and a page_viewed with an email-shaped property, ignores utm_* and $*', () => {
+test('quality flags a cta_click missing cta_id and a page_viewed with an email-shaped property, does not require utm_* and $*, and only warns about their email-shaped values', () => {
   const events: LiveTelemetryEvent[] = [
     {
       event: 'marketing:cta_click',
@@ -62,10 +62,28 @@ test('quality flags a cta_click missing cta_id and a page_viewed with an email-s
       property: 'cta_id',
     },
     {
+      severity: 'warning',
+      kind: 'email_shaped_value',
+      event: 'marketing:cta_click',
+      property: '$current_url',
+    },
+    {
       severity: 'error',
       kind: 'email_shaped_value',
       event: 'docs:page_viewed',
       property: 'contact',
+    },
+    {
+      severity: 'warning',
+      kind: 'email_shaped_value',
+      event: 'docs:page_viewed',
+      property: '$referrer',
+    },
+    {
+      severity: 'warning',
+      kind: 'email_shaped_value',
+      event: 'docs:page_viewed',
+      property: 'utm_campaign',
     },
   ]);
   expect(hasBlockingFindings(analyzeTelemetryEvents(events))).toBe(true);
@@ -258,4 +276,53 @@ test('quality report and arguments', () => {
   });
   expect(() => parseQualityArgs(['--days', '0'])).toThrow(/--days/);
   expect(() => parseQualityArgs(['--bogus'])).toThrow(/Unknown argument/);
+});
+
+test('an email-shaped utm value is a warning, not a blocking error', () => {
+  const events: LiveTelemetryEvent[] = [
+    {
+      event: 'docs:page_viewed',
+      timestamp: at,
+      properties: {
+        pathname: '/docs',
+        framework: 'react',
+        source_page: '/docs',
+        utm_campaign: 'jane@example.com',
+      },
+    },
+  ];
+
+  const findings = analyzeTelemetryEvents(events);
+
+  expect(summary(events)).toEqual([
+    {
+      severity: 'warning',
+      kind: 'email_shaped_value',
+      event: 'docs:page_viewed',
+      property: 'utm_campaign',
+    },
+  ]);
+  expect(JSON.stringify(findings)).not.toContain('jane@example.com');
+  expect(hasBlockingFindings(findings)).toBe(false);
+});
+
+test('a redacted crawler user agent raises no email_shaped_value', () => {
+  const events: LiveTelemetryEvent[] = [
+    {
+      event: 'marketing:ai_crawler_visit',
+      timestamp: at,
+      properties: {
+        ai_crawler: 'bytespider',
+        source_page: '/docs',
+        user_agent:
+          'Mozilla/5.0 (Linux; Android 5.0) AppleWebKit/537.36 (KHTML, like Gecko) Mobile Safari/537.36 (compatible; Bytespider; [email])',
+      },
+    },
+  ];
+
+  const findings = analyzeTelemetryEvents(events);
+
+  expect(findings.map((finding) => finding.kind)).not.toContain(
+    'email_shaped_value',
+  );
 });

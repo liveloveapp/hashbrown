@@ -42,8 +42,7 @@ function contractViolations(insight: InsightLocal): string[] {
       properties: [],
     })),
   ];
-  const breakdowns =
-    insight.breakdown === undefined ? [] : [insight.breakdown].flat();
+  const breakdown = insight.breakdown;
   for (const item of series) {
     const contract = TELEMETRY_EVENT_CONTRACT[item.event];
     if (!contract) {
@@ -57,26 +56,17 @@ function contractViolations(insight: InsightLocal): string[] {
         );
       }
     }
-    // A single breakdown applies to every series. A multi-property breakdown
-    // must give each series at least one property it carries.
+    // A breakdown applies to every series.
     if (
-      breakdowns.length === 1 &&
-      !contract.allowedBreakdowns.includes(breakdowns[0])
+      breakdown !== undefined &&
+      !contract.allowedBreakdowns.includes(breakdown)
     ) {
       violations.push(
-        `${insight.slug}: ${item.event} breaks down by ${breakdowns[0]}`,
-      );
-    }
-    if (
-      breakdowns.length > 1 &&
-      !breakdowns.some((b) => contract.allowedBreakdowns.includes(b))
-    ) {
-      violations.push(
-        `${insight.slug}: ${item.event} allows none of ${breakdowns.join(', ')}`,
+        `${insight.slug}: ${item.event} breaks down by ${breakdown}`,
       );
     }
   }
-  for (const breakdown of breakdowns) {
+  if (breakdown !== undefined) {
     const usedBySomeSeries = series.some((item) =>
       TELEMETRY_EVENT_CONTRACT[item.event]?.allowedBreakdowns.includes(
         breakdown,
@@ -111,7 +101,7 @@ test('every insight event, breakdown and filter is allowed by the contract', asy
     }),
   );
 
-  expect(all.length).toBe(8);
+  expect(all.length).toBe(9);
   expect(violations).toEqual([]);
   expect(probe).toEqual([
     'probe: marketing:cta_click filters by prompt',

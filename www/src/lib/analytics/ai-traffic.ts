@@ -191,6 +191,14 @@ export type PendingCapture = {
   properties: AnalyticsProperties;
 };
 
+/** Replaces every email-shaped substring with `[email]`. */
+function redactEmails(value: string): string {
+  return value.replace(
+    /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
+    '[email]',
+  );
+}
+
 /**
  * Classifies a request. Cheap and synchronous.
  *
@@ -222,7 +230,7 @@ export function classifyRequest({
       properties: {
         ai_crawler: crawler,
         source_page: path,
-        user_agent: (userAgent ?? '').trim().slice(0, 200),
+        user_agent: redactEmails((userAgent ?? '').trim()).slice(0, 200),
       },
     };
   }
@@ -243,7 +251,7 @@ export function classifyRequest({
 
 /**
  * The exact PostHog wire payload: anonymous (no person profile), no GeoIP
- * (`$ip: null`), tagged `hashbrown-middleware`.
+ * (`$ip: null`), tagged `hashbrown-website-middleware`.
  *
  * @param capture - The pending event.
  * @param apiKey - The PostHog project token.
@@ -263,7 +271,7 @@ export function buildCapturePayload(
       ...capture.properties,
       $process_person_profile: false,
       $ip: null,
-      $lib: 'hashbrown-middleware',
+      $lib: 'hashbrown-website-middleware',
     },
   };
 }

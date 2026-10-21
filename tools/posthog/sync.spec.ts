@@ -2,9 +2,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
+import type { PosthogClient } from './client.ts';
 import {
   applyPlan,
   computePlan,
+  createSyncClient,
   fetchAllPages,
   type RemoteInsight,
   runSync,
@@ -330,7 +332,7 @@ test('fetchAllPages follows next links and refuses a stalled page', async () => 
   await expect(stalled).rejects.toThrow(/did not advance/);
 });
 
-test('toPostHogInsight maps trends, filters and single or multiple breakdowns', () => {
+test('toPostHogInsight maps trends, filters and a breakdown', () => {
   const single = toPostHogInsight({
     slug: 'x',
     posthog_id: null,
@@ -350,22 +352,9 @@ test('toPostHogInsight maps trends, filters and single or multiple breakdowns', 
     interval: 'day',
     date_from: '-30d',
   });
-  const multiple = toPostHogInsight({
-    slug: 'ai',
-    posthog_id: null,
-    kind: 'trends',
-    name: 'AI',
-    description: '',
-    events: [
-      { event: 'marketing:ai_crawler_visit', math: 'total', properties: [] },
-      { event: 'marketing:ai_referral_visit', math: 'total', properties: [] },
-    ],
-    breakdown: ['ai_crawler', 'ai_source'],
-    interval: 'day',
-    date_from: '-30d',
-  });
 
   expect(single).toEqual({
+    saved: true,
     name: 'X',
     description: 'd',
     query: {
@@ -393,18 +382,6 @@ test('toPostHogInsight maps trends, filters and single or multiple breakdowns', 
       },
     },
   });
-  expect(multiple).toMatchObject({
-    query: {
-      source: {
-        breakdownFilter: {
-          breakdowns: [
-            { property: 'ai_crawler', type: 'event' },
-            { property: 'ai_source', type: 'event' },
-          ],
-        },
-      },
-    },
-  });
 });
 
 test('toPostHogDashboard drops slug, tiles and posthog_id', () => {
@@ -420,4 +397,20 @@ test('toPostHogDashboard drops slug, tiles and posthog_id', () => {
   const body = toPostHogDashboard(local);
 
   expect(body).toEqual({ name: 'D', description: 'x', tags: ['growth'] });
+});
+
+test('the sync client lists only saved insights', async () => {
+  const requests: string[] = [];
+  const client = {
+    get: async (path: string, query?: Record<string, unknown>) => {
+      requests.push(`${path} ${JSON.stringify(query)}`);
+      return { results: [], next: null };
+    },
+  } as unknown as PosthogClient;
+
+  await createSyncClient(client).listInsights();
+
+  expect(requests).toEqual([
+    '/insights/ {"saved":true,"limit":100,"offset":0}',
+  ]);
 });

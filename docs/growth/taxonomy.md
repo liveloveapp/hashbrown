@@ -78,4 +78,4 @@ Dashboards and insights are code in `tools/posthog/dashboards` and
 | Website · Developer funnel     | pageviews by path, docs reading by framework, code copies by framework, CTA clicks by id         |
 | Website · Threadplane hand-off | threadplane hand-off by surface, CTA clicks by id                                                |
 
-The `ai-traffic` insight is synced but on no dashboard.
+The `ai-crawlers` and `ai-referrals` insights are synced but on no dashboard.

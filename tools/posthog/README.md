@@ -80,7 +80,7 @@ tools/posthog/
     { "event": "marketing:cta_click", "name": "CTA clicks", "math": "total",
       "properties": [{ "key": "surface", "operator": "exact", "value": "home" }] }
   ],
-  "breakdown": "cta_id",       // or a list for a multi-property breakdown
+  "breakdown": "cta_id",       // one event property
   "breakdown_limit": 20,
   "interval": "day",
   "date_from": "-30d"
@@ -89,8 +89,7 @@ tools/posthog/
 
 Filter operators are `exact`, `is_not`, `icontains` (need a `value`),
 `is_set` and `is_not_set` (no value). Every event, filter key and breakdown
-must be allowed by `telemetry-contract.ts`; a multi-property breakdown must
-give each series at least one property it carries.
+must be allowed by `telemetry-contract.ts`. A breakdown is one property name.
 
 ## Sync semantics
 
@@ -108,12 +107,14 @@ give each series at least one property it carries.
 
 ## Report
 
-Sums additive daily totals over the 28 completed UTC days before today.
-Funnels, unique counts (`dau`, `unique_session`), breakdowns, and missing,
-stale, gapped or partial results render as `Unavailable` with a reason, never
-as zero. Every current insight has a breakdown, so today the report is a list
-of reasons to open the dashboards; it becomes numeric as soon as an
-unbroken-down daily total is added.
+Sums additive daily totals over the 28 completed UTC days before today. A
+breakdown whose series all use `math: total` is summed per day across its
+values (PostHog includes the "Other" and null buckets, so the sum is the exact
+total) and gains a "Top values" cell with the three biggest labels this week.
+Funnels, unique counts (`dau`, `unique_session`), other non-total math,
+breakdowns that hide "Other" (`breakdown_hide_other_aggregation`), and
+missing, stale, gapped or partial results render as `Unavailable` with a
+reason, never as zero.
 
 ## Live quality
 
@@ -135,3 +136,16 @@ zero samples do not prove collection works.
 `settings:plan` / `settings:apply` keep `autocapture_opt_out: false` on the
 project. When the project opts out, posthog-js's `autocapture: true` is
 ignored, and PostHog's bounce rate depends on autocapture events.
+
+## Live checks for Task 7
+
+Not verified against PostHog yet; check these on the first live run:
+
+- Soft delete works via `PATCH { deleted: true }` on dashboards and insights.
+- `autocapture_opt_out` is set with `PATCH /api/projects/{id}/`; it may need
+  `/api/environments/{id}/` instead.
+- `/events/` is legacy; fall back to HogQL `/query/` if it is gone.
+- POST retries on 502/503/504 can duplicate a create. Accepted, as in
+  threadplane.
+- `--delete-orphans` soft-deletes every unmanaged dashboard and insight; read
+  the plan first.

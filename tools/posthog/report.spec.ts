@@ -20,7 +20,7 @@ const daily = {
   series: [{ math: 'total' }],
 };
 
-test('report marks funnels, unique counts, breakdowns and stale data Unavailable', () => {
+test('report marks funnels, unique counts, hidden-Other breakdowns and stale data Unavailable', () => {
   const staleDays = days.map((day) =>
     new Date(Date.parse(day) - dayMs).toISOString().slice(0, 10),
   );
@@ -39,19 +39,26 @@ test('report marks funnels, unique counts, breakdowns and stale data Unavailable
     },
     {
       id: 3,
-      name: 'Breakdown',
-      query: {
-        source: { ...daily, breakdownFilter: { breakdown: '$pathname' } },
-      },
-      result: [{ days, data: Array(28).fill(1) }],
-    },
-    {
-      id: 4,
-      name: 'Multi breakdown',
+      name: 'Hidden other',
       query: {
         source: {
           ...daily,
-          breakdownFilter: { breakdowns: [{ property: 'ai_crawler' }] },
+          breakdownFilter: {
+            breakdown: '$pathname',
+            breakdown_hide_other_aggregation: true,
+          },
+        },
+      },
+      result: [{ days, data: Array(28).fill(1), breakdown_value: '/' }],
+    },
+    {
+      id: 4,
+      name: 'Breakdown unique',
+      query: {
+        source: {
+          ...daily,
+          series: [{ math: 'dau' }],
+          breakdownFilter: { breakdown: '$pathname' },
         },
       },
       result: [{ days, data: Array(28).fill(1) }],
@@ -80,8 +87,8 @@ test('report marks funnels, unique counts, breakdowns and stale data Unavailable
   expect(rows.map((row) => row.unavailable)).toEqual([
     expect.stringMatching(/funnel/i),
     expect.stringMatching(/unique/i),
-    expect.stringMatching(/breakdown/i),
-    expect.stringMatching(/breakdown/i),
+    expect.stringMatching(/other/i),
+    expect.stringMatching(/unique/i),
     expect.stringMatching(/stale/i),
     expect.stringMatching(/stale/i),
     expect.stringMatching(/missing/i),
@@ -190,4 +197,68 @@ test('report formatting helpers', () => {
 
   expect(cells).toEqual(['+5 (new)', '+20 (+20%)', '-20 (-20%)']);
   expect(bars).toEqual(['—', '▁▂▃▅█']);
+});
+
+test('report sums a total breakdown across values, including Other, and lists the top values', () => {
+  const series = (label: string, perDay: number) => ({
+    days,
+    data: Array(28).fill(perDay),
+    breakdown_value: label,
+    label,
+    action: { order: 0 },
+  });
+  const insight = {
+    id: 1,
+    name: 'By path',
+    query: {
+      source: {
+        ...daily,
+        breakdownFilter: { breakdown: '$pathname', breakdown_limit: 3 },
+      },
+    },
+    result: [
+      series('/a', 4),
+      series('/b', 3),
+      series('/c', 2),
+      series('$$_posthog_breakdown_other_$$', 1),
+      series('$$_posthog_breakdown_null_$$', 1),
+    ],
+  };
+
+  const rows = insightReportRows(insight, asOf);
+
+  expect(rows).toEqual([
+    {
+      metric: 'By path',
+      thisWeek: 77,
+      lastWeek: 77,
+      weeks: [77, 77, 77, 77],
+      topValues: '/a, /b, /c',
+    },
+  ]);
+});
+
+test('report renders the Top values cell', () => {
+  const markdown = renderReport(
+    [
+      {
+        name: 'Website',
+        rows: [
+          {
+            metric: 'By path',
+            thisWeek: 10,
+            lastWeek: 5,
+            weeks: [1, 2, 5, 10],
+            topValues: '/a, /b',
+          },
+        ],
+      },
+    ],
+    '2026-10-21',
+  );
+
+  expect(markdown).toMatch(
+    /\| By path \| 10 \| 5 \| \+5 \(\+100%\) \| .* \| \/a, \/b \|/,
+  );
+  expect(markdown).toMatch(/Top values/);
 });

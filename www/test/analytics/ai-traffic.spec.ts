@@ -146,7 +146,7 @@ test('payload carries no person profile, no ip, and the middleware lib tag', () 
       source_page: '/docs',
       $process_person_profile: false,
       $ip: null,
-      $lib: 'hashbrown-middleware',
+      $lib: 'hashbrown-website-middleware',
     },
   });
 });
@@ -173,4 +173,24 @@ test('classifyRequest emits the right event shape for each kind of visit', () =>
   expect(crawler?.properties.user_agent).toHaveLength(200);
   expect(both?.event).toBe('marketing:ai_crawler_visit');
   expect(plain).toBeNull();
+});
+
+test('classifyRequest redacts email addresses from the crawler user agent', () => {
+  const userAgent =
+    'Mozilla/5.0 (Linux; Android 5.0) AppleWebKit/537.36 (KHTML, like Gecko) Mobile Safari/537.36 (compatible; Bytespider; spider-feedback@bytedance.com)';
+
+  const crawler = classifyRequest({
+    path: '/docs',
+    now: 0,
+    userAgent,
+    referrer: null,
+    seen: new Set<string>(),
+    budget: createEmissionBudget(0),
+  });
+
+  expect(crawler?.properties).toMatchObject({
+    ai_crawler: 'bytespider',
+    user_agent:
+      'Mozilla/5.0 (Linux; Android 5.0) AppleWebKit/537.36 (KHTML, like Gecko) Mobile Safari/537.36 (compatible; Bytespider; [email])',
+  });
 });

@@ -62,8 +62,8 @@ export interface InsightLocal {
   name: string;
   description: string;
   events: InsightSeries[];
-  /** One event property, or several for a multi-property breakdown. */
-  breakdown?: string | string[];
+  /** One event property to break the series down by. */
+  breakdown?: string;
   breakdown_limit?: number;
   interval: Interval;
   window_minutes?: number;
@@ -232,16 +232,8 @@ export function parseInsight(value: unknown): InsightLocal {
   }
 
   const breakdown = value['breakdown'];
-  const breakdownValid =
-    breakdown === undefined ||
-    nonEmptyString(breakdown) ||
-    (Array.isArray(breakdown) &&
-      breakdown.length > 0 &&
-      breakdown.every(nonEmptyString));
-  if (!breakdownValid)
-    problems.push(
-      'breakdown must be a property name or a non-empty list of them',
-    );
+  if (breakdown !== undefined && !nonEmptyString(breakdown))
+    problems.push('breakdown must be a property name');
   if (
     value['breakdown_limit'] !== undefined &&
     !positiveInteger(value['breakdown_limit'])
@@ -273,9 +265,7 @@ export function parseInsight(value: unknown): InsightLocal {
     name: value['name'] as string,
     description: description as string,
     events,
-    ...(breakdown === undefined
-      ? {}
-      : { breakdown: breakdown as string | string[] }),
+    ...(breakdown === undefined ? {} : { breakdown: breakdown as string }),
     ...(value['breakdown_limit'] === undefined
       ? {}
       : { breakdown_limit: value['breakdown_limit'] as number }),

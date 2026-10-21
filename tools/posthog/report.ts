@@ -1,6 +1,8 @@
 /**
  * Weekly snapshot of the repository-managed dashboards as markdown. Only
- * additive daily totals are summed. Funnels, unique counts, breakdowns, and
+ * additive daily totals are summed. A breakdown of total series is summed
+ * across its values (PostHog includes the "Other" and null buckets, so the sum
+ * is exact). Funnels, unique counts, breakdowns that hide "Other", and
  * missing, stale or incomplete results render as `Unavailable` with a reason;
  * they are never shown as zero.
  */
@@ -56,6 +58,8 @@ export interface ReportRow {
   unavailable?: string;
   /** Four consecutive 7-day totals, oldest first. */
   weeks: readonly number[];
+  /** The biggest breakdown labels this week, for a broken-down insight. */
+  topValues?: string;
 }
 
 /** One dashboard's rows. */
@@ -84,18 +88,18 @@ export function renderReport(
   for (const section of sections) {
     lines.push(`## ${section.name}`, '');
     lines.push(
-      '| Metric | Last 7 complete UTC days | Preceding 7 UTC days | Δ | 4 periods |',
+      '| Metric | Last 7 complete UTC days | Preceding 7 UTC days | Δ | 4 periods | Top values |',
     );
-    lines.push('|--------|----------:|----------:|--:|------|');
+    lines.push('|--------|----------:|----------:|--:|------|------|');
     for (const row of section.rows) {
       if (row.thisWeek === null || row.lastWeek === null) {
         lines.push(
-          `| ${row.metric} | Unavailable: ${row.unavailable ?? 'no complete result'} | — | — | — |`,
+          `| ${row.metric} | Unavailable: ${row.unavailable ?? 'no complete result'} | — | — | — | — |`,
         );
         continue;
       }
       lines.push(
-        `| ${row.metric} | ${row.thisWeek.toLocaleString('en-US')} | ${row.lastWeek.toLocaleString('en-US')} | ${formatDeltaCell({ thisWeek: row.thisWeek, lastWeek: row.lastWeek })} | ${sparkline(row.weeks)} |`,
+        `| ${row.metric} | ${row.thisWeek.toLocaleString('en-US')} | ${row.lastWeek.toLocaleString('en-US')} | ${formatDeltaCell({ thisWeek: row.thisWeek, lastWeek: row.lastWeek })} | ${sparkline(row.weeks)} | ${row.topValues ?? '—'} |`,
       );
     }
     lines.push('');
@@ -129,6 +133,18 @@ function trendsSource(query: unknown): Json | undefined {
   if (query['kind'] === 'TrendsQuery') return query;
   const source = query['source'];
   return isRecord(source) ? source : undefined;
+}
+
+/** PostHog's catch-all "Other" and null breakdown buckets. */
+function isSyntheticBucket(label: unknown): boolean {
+  return typeof label === 'string' && label.startsWith('$$_posthog_breakdown_');
+}
+
+function hidesOther(source: Json): boolean {
+  const filter = source['breakdownFilter'];
+  return (
+    isRecord(filter) && filter['breakdown_hide_other_aggregation'] === true
+  );
 }
 
 function hasBreakdown(source: Json): boolean {
@@ -183,13 +199,34 @@ export function insightReportRows(
       'unique or non-additive series cannot be summed into weekly counts',
     );
   }
-  if (hasBreakdown(source))
+  const broken = hasBreakdown(source);
+  if (broken && hidesOther(source))
     return unavailable(
-      'breakdown results may be truncated; inspect the dashboard',
+      '"Other" is hidden, so the breakdown values do not add up to the total',
     );
 
   const results = insight.result;
-  if (!Array.isArray(results) || results.length !== series.length)
+  if (!Array.isArray(results))
+    return unavailable('missing or incomplete result series');
+  if (!broken && results.length !== series.length)
+    return unavailable('missing or incomplete result series');
+  // One group of result items per series: a breakdown returns one item per
+  // value, each tagged with its series in `action.order`.
+  const groups: Json[][] = series.map(() => []);
+  for (const [index, item] of results.entries()) {
+    if (!isRecord(item))
+      return unavailable('missing or incomplete result series');
+    const action = item['action'];
+    const order = broken
+      ? isRecord(action)
+        ? action['order']
+        : undefined
+      : index;
+    if (typeof order !== 'number' || !groups[order])
+      return unavailable('missing or incomplete result series');
+    groups[order].push(item);
+  }
+  if (groups.some((group) => group.length === 0))
     return unavailable('missing or incomplete result series');
 
   const today = Date.UTC(
@@ -203,45 +240,57 @@ export function insightReportRows(
   );
 
   const rows: ReportRow[] = [];
-  for (const [index, item] of results.entries()) {
-    if (!isRecord(item))
-      return unavailable('missing or incomplete result series');
-    const data = item['data'];
-    const days = item['days'];
-    if (
-      !Array.isArray(data) ||
-      data.some(
-        (value) =>
-          typeof value !== 'number' || !Number.isFinite(value) || value < 0,
-      )
-    ) {
-      return unavailable('missing complete numeric results');
-    }
-    if (!Array.isArray(days) || days.length !== data.length)
-      return unavailable('missing or mismatched daily result dates');
-    const byDay = new Map<string, number>();
-    for (const [position, day] of days.entries()) {
-      if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day))
-        return unavailable('invalid or partial daily result dates');
-      const timestamp = Date.parse(`${day}T00:00:00Z`);
+  for (const [index, group] of groups.entries()) {
+    const total = new Array<number>(28).fill(0);
+    const byLabel = new Map<string, number>();
+    for (const item of group) {
+      const data = item['data'];
+      const days = item['days'];
       if (
-        !Number.isFinite(timestamp) ||
-        new Date(timestamp).toISOString().slice(0, 10) !== day ||
-        timestamp > today ||
-        byDay.has(day)
+        !Array.isArray(data) ||
+        data.some(
+          (value) =>
+            typeof value !== 'number' || !Number.isFinite(value) || value < 0,
+        )
       ) {
-        return unavailable('invalid or duplicate daily result dates');
+        return unavailable('missing complete numeric results');
       }
-      byDay.set(day, data[position] as number);
+      if (!Array.isArray(days) || days.length !== data.length)
+        return unavailable('missing or mismatched daily result dates');
+      const byDay = new Map<string, number>();
+      for (const [position, day] of days.entries()) {
+        if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day))
+          return unavailable('invalid or partial daily result dates');
+        const timestamp = Date.parse(`${day}T00:00:00Z`);
+        if (
+          !Number.isFinite(timestamp) ||
+          new Date(timestamp).toISOString().slice(0, 10) !== day ||
+          timestamp > today ||
+          byDay.has(day)
+        ) {
+          return unavailable('invalid or duplicate daily result dates');
+        }
+        byDay.set(day, data[position] as number);
+      }
+      if (expectedDays.some((day) => !byDay.has(day))) {
+        return unavailable(
+          'missing the complete 28-day UTC window ending yesterday; cached data may be stale',
+        );
+      }
+      const window = expectedDays.map((day) => byDay.get(day) as number);
+      for (const [position, value] of window.entries())
+        total[position] += value;
+      const label = item['breakdown_value'] ?? item['label'];
+      if (broken && label !== undefined && !isSyntheticBucket(label)) {
+        const thisWeek = window.slice(21).reduce((sum, v) => sum + v, 0);
+        byLabel.set(
+          String(label),
+          (byLabel.get(String(label)) ?? 0) + thisWeek,
+        );
+      }
     }
-    if (expectedDays.some((day) => !byDay.has(day))) {
-      return unavailable(
-        'missing the complete 28-day UTC window ending yesterday; cached data may be stale',
-      );
-    }
-    const window = expectedDays.map((day) => byDay.get(day) as number);
     const weeks = [0, 1, 2, 3].map((week) =>
-      window
+      total
         .slice(week * 7, (week + 1) * 7)
         .reduce((sum, value) => sum + value, 0),
     );
@@ -249,15 +298,22 @@ export function insightReportRows(
     const named = isRecord(definition)
       ? (definition['custom_name'] ?? definition['name'])
       : undefined;
-    const label = named ?? item['label'] ?? `series ${index + 1}`;
+    const label =
+      named ??
+      (broken ? undefined : group[0]['label']) ??
+      `series ${index + 1}`;
+    const top = [...byLabel.entries()]
+      .filter(([, count]) => count > 0)
+      .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
+      .slice(0, 3)
+      .map(([name]) => name);
     rows.push({
       metric:
-        results.length > 1
-          ? `${insight.name} — ${String(label)}`
-          : insight.name,
+        series.length > 1 ? `${insight.name} — ${String(label)}` : insight.name,
       thisWeek: weeks[3],
       lastWeek: weeks[2],
       weeks,
+      ...(broken ? { topValues: top.length > 0 ? top.join(', ') : '—' } : {}),
     });
   }
   return rows;
