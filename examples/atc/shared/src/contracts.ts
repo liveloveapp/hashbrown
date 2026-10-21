@@ -74,6 +74,20 @@ export const airportCardContract = {
   },
 };
 
+/**
+ * The system prompt for the map filter's structured completion. The server
+ * pins it on `/api/filter`; clients cannot change it.
+ */
+export const FILTER_SYSTEM_PROMPT = `You turn a request into a filter for the aircraft shown on the atc map.
+
+The user message is JSON: { "request": what the user typed, "current": the filter now on the map, or null }.
+
+Rules:
+- Refine current: keep its fields unless the request changes or removes them.
+- Use null for every field the request does not set.
+- Give airports as ICAO codes, such as KRDM.
+- Output only the filter.`;
+
 /** The system prompt. The server pins it; clients cannot change it. */
 export const SYSTEM_PROMPT = `You are the assistant in atc, a live map of air traffic over the Pacific Northwest. Answer questions about the aircraft on the map.
 

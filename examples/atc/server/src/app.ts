@@ -4,6 +4,7 @@ import { createAircraftHandler } from './aircraft-handler';
 import { createChartAirportsHandler } from './chart-airports-handler';
 import { createChartAirspaceHandler } from './chart-airspace-handler';
 import { createChartSurfacesHandler } from './chart-surfaces-handler';
+import { createFilterHandler } from './filter-handler';
 import type { NodeHandler } from './http';
 import { createRunHandler, type RunHandlerOptions } from './run-handler';
 
@@ -18,6 +19,7 @@ export function createApp(options: {
   const app = express();
   const routes: [string, NodeHandler][] = [
     ['/api/run', createRunHandler(options.run)],
+    ['/api/filter', createFilterHandler(options.run)],
     ['/api/aircraft', createAircraftHandler()],
     ['/api/chart/airports', createChartAirportsHandler()],
     ['/api/chart/surfaces', createChartSurfacesHandler()],

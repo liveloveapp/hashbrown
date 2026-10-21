@@ -176,13 +176,15 @@ there). The React app is built and tested in this repository but not hosted;
 `HOSTED_APPS` in `tools/build-vercel-output.mts` is the one line to change to host it.
 
 `npx nx build atc` writes `.vercel/output`, with functions for `/api/run`,
-`/api/aircraft`, `/api/chart/airports`, `/api/chart/surfaces` and
+`/api/filter`, `/api/aircraft`, `/api/chart/airports`, `/api/chart/surfaces` and
 `/api/chart/airspace`. The hosted project (`hashbrown-atc`) needs:
 
 - `OPENAI_API_KEY`: a dedicated OpenAI project key with a hard monthly budget.
 - A Vercel Firewall rate-limit rule on `POST /api/run`. `hashbrown-atc` allows 40 requests
   per minute per IP (fixed window, 429 above it). One question makes 3 to 5 requests, one
   per tool round trip, so that is about ten questions a minute.
+- The same rule on `POST /api/filter`: 40 requests per minute per IP. A filter is one
+  request, capped at 512 output tokens.
 - A look at tile traffic: past light use, point `TILE_LAYER` at a commercial tile provider
   (see "Data and attribution").
 

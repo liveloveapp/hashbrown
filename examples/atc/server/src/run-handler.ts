@@ -232,22 +232,25 @@ function isReasoningModel(model: string): boolean {
  * for models that accept one. The effort merges into any `reasoning` the
  * provider already set, so its summary setting survives. Low effort roughly
  * halves the time to the first token for this tool-heavy prompt.
+ * `maxOutputTokens` defaults to the cap for an atc answer; `/api/filter`
+ * passes a smaller one.
  */
 export function limitRequest(
   request: OpenAI.Responses.ResponseCreateParamsStreaming,
   reasoningEffort: ReasoningEffort | null,
+  maxOutputTokens: number = MAX_OUTPUT_TOKENS,
 ): OpenAI.Responses.ResponseCreateParamsStreaming {
   return {
     ...request,
-    max_output_tokens: MAX_OUTPUT_TOKENS,
+    max_output_tokens: maxOutputTokens,
     ...(reasoningEffort !== null && isReasoningModel(request.model ?? '')
       ? { reasoning: { ...request.reasoning, effort: reasoningEffort } }
       : {}),
   };
 }
 
-/** The run input of a POST body, or null once a 400 or 413 has been sent. */
-async function readRunInput(
+/** The run input of a POST body, with the run limits applied, or null once a 400 or 413 has been sent. */
+export async function readRunInput(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<RunAgentInput | null> {
