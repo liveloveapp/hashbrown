@@ -6,6 +6,7 @@ import {
   type OpenAIHashbrownRunAgentInput,
 } from '@hashbrownai/openai';
 import type { RunAgentInput } from '@ag-ui/core';
+import type OpenAI from 'openai';
 import { type NodeHandler, sendJson } from './http';
 import {
   limitRequest,
@@ -18,10 +19,28 @@ import {
 const FILTER_MAX_OUTPUT_TOKENS = 512;
 
 /**
- * Reasoning tokens count against the cap, so the filter reasons as little as
- * the model allows, whatever effort `/api/run` is configured with.
+ * The gpt-5 base family (gpt-5, gpt-5-mini, gpt-5-nano and their dated
+ * snapshots) is the only one that accepts `minimal`; gpt-5.1 and later and
+ * the o-series reject it with a 400.
  */
-const FILTER_REASONING_EFFORT = 'minimal';
+const MINIMAL_EFFORT_MODEL =
+  /^gpt-5(?:-(?:mini|nano))?(?:-\d{4}-\d{2}-\d{2})?$/i;
+
+/**
+ * Caps a `/api/filter` Responses request. Reasoning tokens count against the
+ * cap, so the filter reasons as little as its model allows, whatever effort
+ * `/api/run` is configured with: `minimal` for the gpt-5 base family, `low`
+ * for other reasoning models, and no effort for models that do not reason.
+ */
+export function limitFilterRequest(
+  request: OpenAI.Responses.ResponseCreateParamsStreaming,
+): OpenAI.Responses.ResponseCreateParamsStreaming {
+  const effort = MINIMAL_EFFORT_MODEL.test(request.model ?? '')
+    ? 'minimal'
+    : 'low';
+
+  return limitRequest(request, effort, FILTER_MAX_OUTPUT_TOKENS);
+}
 
 /** The response schema for a map filter, as Hashbrown's client builds it. */
 const FILTER_RESPONSE_SCHEMA = s.toJsonSchema(mapFilterSchema);
@@ -74,12 +93,7 @@ export function createFilterHandler(options: RunHandlerOptions): NodeHandler {
         model: options.model,
         input: pinFilterInput(input),
         signal: abortController.signal,
-        transformRequestOptions: (request) =>
-          limitRequest(
-            request,
-            FILTER_REASONING_EFFORT,
-            FILTER_MAX_OUTPUT_TOKENS,
-          ),
+        transformRequestOptions: limitFilterRequest,
       });
       res.writeHead(200, {
         'Content-Type': encoder.getContentType(),
