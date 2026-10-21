@@ -2,7 +2,7 @@
   "name": "growth",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "tools/growth",
-  "projectType": "application",
+  "projectType": "library",
   "tags": [],
   "targets": {
     "lint": {
@@ -15,7 +15,35 @@
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node --test tools/growth/scripts/**/*.test.mjs"
+        "parallel": false,
+        "commands": [
+          "node --test tools/growth/scripts/**/*.test.mjs",
+          "vitest run --config tools/growth/vitest.config.mts"
+        ]
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "parallel": false,
+        "commands": [
+          "tsc --noEmit -p tools/growth/tsconfig.json",
+          "tsc --noEmit -p tools/growth/tsconfig.spec.json"
+        ]
+      }
+    },
+    "migrate-growth": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/apply-migrations.mts"
+      }
+    },
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/growth-database-preflight.mts integration"
       }
     }
   }

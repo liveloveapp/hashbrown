@@ -74,6 +74,12 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx lint typesafe`
   - `npx nx build-api-report typesafe`
   - `npx nx nx-release-publish typesafe`
+- `growth`
+  - `npx nx build growth`
+  - `npx nx test growth`
+  - `npx nx lint growth`
+  - `npx nx migrate-growth growth`
+  - `npx nx test-integration growth` (needs `GROWTH_INTEGRATION=1` and `TEST_DATABASE_URL`)
 - `anthropic`
   - `npx nx build anthropic`
   - `npx nx test anthropic`

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "scripts/**/*.mts",
+    "scripts/**/*.spec.ts",
+    "test/**/*.ts",
+    "vitest*.mts"
+  ],
+  "exclude": []
+}
