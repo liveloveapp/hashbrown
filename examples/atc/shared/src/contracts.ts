@@ -87,6 +87,7 @@ Rules:
 - Refine current: keep its fields unless the request changes or removes them.
 - Use null for every field the request does not set.
 - Give airports as ICAO codes, such as KRDM.
+- "Helicopters" means kind: rotor.
 - Output only the filter.`;
 
 /** The system prompt. The server pins it; clients cannot change it. */
@@ -130,18 +131,19 @@ export interface Starter {
   readonly route: StarterRoute;
 }
 
-/** Starter prompts shown before the first message. They skip the router. */
+/** Starter prompts shown before the first message: four map filters, then four questions. They skip the router. */
 export const STARTER_PROMPTS: readonly Starter[] = [
-  { text: "What's flying near Bend?", route: 'chat' },
-  { text: 'Show me everything landing at Seattle.', route: 'chat' },
+  { text: 'Only jets below 10,000 ft', route: 'filter' },
+  { text: 'Alaska Airlines near Seattle', route: 'filter' },
+  { text: 'Only helicopters', route: 'filter' },
+  { text: 'Arrivals into Portland', route: 'filter' },
   {
     text: "What's the highest plane right now? And the fastest?",
     route: 'chat',
   },
   { text: 'Follow the fastest airliner.', route: 'chat' },
+  { text: "What's flying near Bend?", route: 'chat' },
   { text: 'Show me Redmond airport.', route: 'chat' },
-  { text: 'Which planes are inside the Portland Class C?', route: 'chat' },
-  { text: 'Only jets below 10,000 ft', route: 'filter' },
 ];
 
 /** The starter offered first while the user has a plane selected. */

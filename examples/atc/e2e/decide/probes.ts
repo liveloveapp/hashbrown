@@ -28,16 +28,19 @@ export interface CardsProbe {
  * superlative is chat; the same set phrased as a restriction is filter.
  */
 export const ROUTE_PROBES: readonly RouteProbe[] = [
-  { input: "What's flying near Bend?", expected: 'chat' },
-  { input: 'Show me everything landing at Seattle.', expected: 'chat' },
+  { input: 'Only jets below 10,000 ft', expected: 'filter' },
+  { input: 'Alaska Airlines near Seattle', expected: 'filter' },
+  { input: 'Only helicopters', expected: 'filter' },
+  { input: 'Arrivals into Portland', expected: 'filter' },
   {
     input: "What's the highest plane right now? And the fastest?",
     expected: 'chat',
   },
   { input: 'Follow the fastest airliner.', expected: 'chat' },
+  { input: "What's flying near Bend?", expected: 'chat' },
   { input: 'Show me Redmond airport.', expected: 'chat' },
+  { input: 'Show me everything landing at Seattle.', expected: 'chat' },
   { input: 'Which planes are inside the Portland Class C?', expected: 'chat' },
-  { input: 'Only jets below 10,000 ft', expected: 'filter' },
   { input: "What's the plane I selected?", expected: 'chat' },
   { input: 'Follow N484SJ', expected: 'chat' },
   { input: 'Compare the two fastest jets', expected: 'chat' },

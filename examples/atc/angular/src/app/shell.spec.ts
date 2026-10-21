@@ -405,7 +405,7 @@ test('starters go straight to their route', () => {
   buttons.at(-1)?.click();
   buttons[0]?.click();
 
-  expect(picked.map((starter) => starter.route)).toEqual(['filter', 'chat']);
+  expect(picked.map((starter) => starter.route)).toEqual(['chat', 'filter']);
 });
 
 test('a running step shows as one shimmering line, then folds into a summary that expands to every step', () => {

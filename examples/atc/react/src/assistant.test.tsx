@@ -88,7 +88,7 @@ test('the filter starter applies the filter once, sends no chat request and leav
 });
 
 test('a chat starter sends a chat message', async () => {
-  const starter = STARTER_PROMPTS[0];
+  const starter = STARTER_PROMPTS[4];
   const { chat, filtered, element } = setup(() => null);
 
   act(() => starterButton(element, starter.text).click());
