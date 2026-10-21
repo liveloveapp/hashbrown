@@ -81,6 +81,7 @@ test('redact reads the email from stdin and never echoes it', async () => {
 
   expect(deps.readEmail).toHaveBeenCalledOnce();
   expect(code).toBe(1);
+  expect(close).toHaveBeenCalledOnce();
   expect(JSON.stringify(deps.writeError.mock.calls)).not.toContain(email);
   expect(JSON.stringify(deps.writeOutput.mock.calls)).not.toContain(email);
 });
