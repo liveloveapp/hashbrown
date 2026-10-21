@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 
 import { createFounderStopRoute } from '../../src/app/%5F/growth/stop/route';
-import { mintToken, TEST_NOW, TEST_TOKEN_KEYRING } from './_keys';
+import { mintToken, tamperToken, TEST_NOW, TEST_TOKEN_KEYRING } from './_keys';
 
 const ORIGIN = 'https://hashbrown.dev/_/growth/stop';
 const FORM = { 'content-type': 'application/x-www-form-urlencoded' };
@@ -80,6 +80,24 @@ test('founder stop POST rejects any query string', async () => {
     }),
   );
 
+  expect(response.status).toBe(400);
+  expect(stopContact).not.toHaveBeenCalled();
+});
+
+test('founder stop rejects a tampered signature on GET and POST', async () => {
+  const { route, stopContact } = setup();
+  const token = tamperToken(mintToken('founder_stop'));
+
+  const page = await route.GET(new Request(`${ORIGIN}?token=${token}`));
+  const response = await route.POST(
+    new Request(ORIGIN, {
+      method: 'POST',
+      headers: FORM,
+      body: new URLSearchParams({ token }).toString(),
+    }),
+  );
+
+  expect(page.status).toBe(400);
   expect(response.status).toBe(400);
   expect(stopContact).not.toHaveBeenCalled();
 });

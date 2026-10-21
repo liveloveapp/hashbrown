@@ -5,7 +5,7 @@ import {
 } from '@hashbrownai-internal/growth';
 
 import { createUnsubscribeRoute } from '../../src/app/%5F/unsubscribe/route';
-import { mintToken, TEST_NOW, TEST_TOKEN_KEYRING } from './_keys';
+import { mintToken, tamperToken, TEST_NOW, TEST_TOKEN_KEYRING } from './_keys';
 
 const ORIGIN = 'https://hashbrown.dev/_/unsubscribe';
 const FORM = { 'content-type': 'application/x-www-form-urlencoded' };
@@ -165,4 +165,22 @@ test('legacy GET ?email= answers 200 and 503 on a database fault', async () => {
   expect(fault.status).toBe(503);
   expect(fault.headers.get('retry-after')).toBe('30');
   expect(close).toHaveBeenCalledTimes(2);
+});
+
+test('unsubscribe rejects a tampered signature on GET and POST', async () => {
+  const { route, stopContact } = setup();
+  const token = tamperToken(mintToken('unsubscribe'));
+
+  const page = await route.GET(new Request(`${ORIGIN}?token=${token}`));
+  const response = await route.POST(
+    new Request(ORIGIN, {
+      method: 'POST',
+      headers: FORM,
+      body: new URLSearchParams({ token }).toString(),
+    }),
+  );
+
+  expect(page.status).toBe(400);
+  expect(response.status).toBe(400);
+  expect(stopContact).not.toHaveBeenCalled();
 });

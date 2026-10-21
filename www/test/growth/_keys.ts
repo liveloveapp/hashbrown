@@ -23,3 +23,10 @@ export function mintToken(
     TEST_TOKEN_KEYRING.active,
   );
 }
+
+/** Flips the first character of the signature segment of a token. */
+export function tamperToken(token: string): string {
+  const cut = token.lastIndexOf('.') + 1;
+  const flipped = token[cut] === 'A' ? 'B' : 'A';
+  return token.slice(0, cut) + flipped + token.slice(cut + 1);
+}

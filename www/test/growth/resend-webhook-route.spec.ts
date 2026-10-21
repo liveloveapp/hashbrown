@@ -1,9 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import {
-  processVerifiedResendWebhook,
-  ResendWebhookPayloadError,
-  stopContact,
-} from '@hashbrownai-internal/growth';
+import { ResendWebhookPayloadError } from '@hashbrownai-internal/growth';
 
 import { createResendWebhookRoute } from '../../src/app/%5F/webhooks/resend/route';
 
@@ -15,7 +11,7 @@ const HEADERS = {
 
 function setup(overrides: Record<string, unknown> = {}) {
   const close = vi.fn(async () => undefined);
-  const process = vi.fn(async () => ({
+  const processEvent = vi.fn(async () => ({
     applied: true as const,
     activityKind: 'email.delivered',
     deliveryStatus: 'delivered',
@@ -26,10 +22,10 @@ function setup(overrides: Record<string, unknown> = {}) {
     loadDatabaseEnvironment: () => 'test',
     verify,
     createDatabase: () => ({ close }) as never,
-    processVerifiedResendWebhook: process as never,
+    processVerifiedResendWebhook: processEvent as never,
     ...overrides,
   } as never);
-  return { route, close, process, verify };
+  return { route, close, processEvent, verify };
 }
 
 function request(body: string, headers: Record<string, string> = HEADERS) {
@@ -85,7 +81,7 @@ test('webhook returns 503 for retryable_unmatched_job and 200 otherwise', async 
   expect(accepted.status).toBe(200);
   expect(await accepted.text()).toBe('Accepted');
   expect(accepted.headers.get('cache-control')).toBe('no-store');
-  expect(ok.process).toHaveBeenCalledWith(
+  expect(ok.processEvent).toHaveBeenCalledWith(
     expect.anything(),
     { providerEventId: 'msg_1', payload: { type: 'email.delivered' } },
     expect.objectContaining({ databaseEnvironment: 'test' }),
@@ -120,28 +116,32 @@ test('mismatched environment returns 200 and writes nothing', async () => {
   const execute = vi.fn();
   const transaction = vi.fn();
   const close = vi.fn(async () => undefined);
+  const routeStopContact = vi.fn();
+  const processor = vi.fn(async () => ({
+    applied: false as const,
+    reason: 'environment_mismatch' as const,
+  }));
   const { route } = setup({
     loadDatabaseEnvironment: () => 'production',
     createDatabase: () => ({ execute, transaction, close }),
-    processVerifiedResendWebhook,
-    stopContact,
-    verify: () => ({
-      type: 'email.delivered',
-      created_at: '2026-10-21T12:00:00.000Z',
-      data: {
-        created_at: '2026-10-21T12:00:00.000Z',
-        from: 'Hashbrown <hello@example.com>',
-        subject: 'Hello',
-        to: ['a@example.com'],
-        email_id: 'em_1',
-        tags: { environment: 'test' },
-      },
-    }),
+    processVerifiedResendWebhook: processor,
+    stopContact: routeStopContact,
   });
 
   const response = await route.POST(request('{}'));
 
   expect(response.status).toBe(200);
+  expect(await response.text()).toBe('Accepted');
+  expect(processor).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.anything(),
+    expect.objectContaining({
+      databaseEnvironment: 'production',
+      stopContact: expect.any(Function),
+    }),
+  );
+  expect(routeStopContact).not.toHaveBeenCalled();
+  expect(execute).not.toHaveBeenCalled();
   expect(transaction).not.toHaveBeenCalled();
   expect(close).toHaveBeenCalledTimes(1);
 });
