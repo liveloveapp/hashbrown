@@ -141,8 +141,8 @@ zero samples do not prove collection works.
 
 ## Project settings
 
-`settings:plan` / `settings:apply` keep `autocapture_opt_out: false` on the
-project. When the project opts out, posthog-js's `autocapture: true` is
+`settings:plan` / `settings:apply` keep `autocapture_opt_out: false` and
+`anonymize_ips: true` on the project. When the project opts out, posthog-js's `autocapture: true` is
 ignored, and PostHog's bounce rate depends on autocapture events.
 
 ## Live checks for Task 7

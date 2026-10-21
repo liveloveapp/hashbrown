@@ -1,4 +1,8 @@
-import posthog, { type PostHogConfig } from 'posthog-js';
+import posthog, {
+  type BeforeSendFn,
+  type CaptureResult,
+  type PostHogConfig,
+} from 'posthog-js';
 import { shouldCaptureAnalytics } from './src/lib/analytics/capture-gate';
 // Type-only: brings in the `window.__hashbrownPreAnalytics` declaration without
 // bundling the beacon, which app/layout.tsx already inlines into the HTML.
@@ -8,6 +12,48 @@ const token = process.env.NEXT_PUBLIC_POSTHOG_TOKEN;
 const captureLocal = process.env.NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL === 'true';
 const browserHost =
   typeof window === 'undefined' ? undefined : window.location.host;
+
+const URL_PROPERTIES = [
+  '$current_url',
+  '$referrer',
+  '$initial_current_url',
+  '$initial_referrer',
+] as const;
+
+function stripUrl(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const end = value.search(/[?#]/);
+  return end === -1 ? value : value.slice(0, end);
+}
+
+function stripBag<T extends Record<string, unknown> | undefined>(bag: T): T {
+  if (!bag) return bag;
+  const next: Record<string, unknown> = { ...bag };
+  for (const key of URL_PROPERTIES) {
+    if (key in next) next[key] = stripUrl(next[key]);
+  }
+  return next as T;
+}
+
+/**
+ * posthog-js `before_send` hook: removes the query string and hash from the
+ * URL properties (`$current_url`, `$referrer`, and their `$initial_*`
+ * counterparts under `$set_once`) so a link's parameters never reach PostHog.
+ * Everything else is left untouched and the input is not mutated.
+ *
+ * @param event - The event about to be sent, or `null` if already dropped.
+ * @returns The event with URL properties reduced to origin and path.
+ */
+export const stripUrlQuery: BeforeSendFn = (
+  event: CaptureResult | null,
+): CaptureResult | null => {
+  if (!event) return event;
+  return {
+    ...event,
+    properties: stripBag(event.properties),
+    ...(event.$set_once ? { $set_once: stripBag(event.$set_once) } : {}),
+  };
+};
 
 /**
  * Every option is stated, including ones that match a posthog-js default.
@@ -37,6 +83,7 @@ export const POSTHOG_INIT_OPTIONS = {
   capture_performance: { web_vitals: true },
   person_profiles: 'always',
   disable_surveys: true,
+  before_send: stripUrlQuery,
 } satisfies Partial<PostHogConfig>;
 
 if (

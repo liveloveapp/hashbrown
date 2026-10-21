@@ -11,6 +11,7 @@ import { createPosthogClient } from './client.ts';
 /** The desired values, keyed by PostHog project field. */
 export const DESIRED_PROJECT_SETTINGS: Readonly<Record<string, unknown>> = {
   autocapture_opt_out: false,
+  anonymize_ips: true,
 };
 
 /** One drifted setting. */

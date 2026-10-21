@@ -26,18 +26,28 @@ test('settings plan reports drift and apply patches only drifted keys', async ()
     autocapture_opt_out: true,
     name: 'hashbrown',
   });
-  const clean = fakeProject({ id: 1, autocapture_opt_out: false });
+  const clean = fakeProject({
+    id: 1,
+    autocapture_opt_out: false,
+    anonymize_ips: true,
+  });
 
   const plan = await planSettings(drifted);
   const applied = await applySettings(drifted);
   const noop = await applySettings(clean);
 
-  expect(DESIRED_PROJECT_SETTINGS).toEqual({ autocapture_opt_out: false });
+  expect(DESIRED_PROJECT_SETTINGS).toEqual({
+    autocapture_opt_out: false,
+    anonymize_ips: true,
+  });
   expect(plan).toEqual([
     { key: 'autocapture_opt_out', current: true, desired: false },
+    { key: 'anonymize_ips', current: undefined, desired: true },
   ]);
   expect(applied).toEqual(plan);
-  expect(drifted.patches).toEqual([{ autocapture_opt_out: false }]);
+  expect(drifted.patches).toEqual([
+    { autocapture_opt_out: false, anonymize_ips: true },
+  ]);
   expect(noop).toEqual([]);
   expect(clean.patches).toEqual([]);
 });

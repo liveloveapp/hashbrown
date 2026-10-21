@@ -96,10 +96,10 @@ no local file. Run `sync:plan` and read the orphan list first.
 
 The sync tool manages dashboards and insights only. Project-level settings are
 not in git, except what `settings:apply` patches: `autocapture_opt_out: false`
-(autocapture must stay on, see "Bounce rate"). Everything else is set in the
+(autocapture must stay on, see "Bounce rate") and `anonymize_ips: true`. Everything else is set in the
 PostHog UI and a change there is not caught by CI: session replay and its
 sampling, web vitals and performance capture, the authorized URLs and
-domains, data retention, IP capture, internal and
+domains, data retention, internal and
 test user filters, and cookieless mode. When a number looks wrong, check those
 before the code. Use `settings:plan` to see drift on the managed setting.
 
@@ -122,7 +122,9 @@ It requires `NEXT_PUBLIC_GROWTH_COLLECTION === 'true'` and a non-loopback host,
 even with `NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL=true`. It is off when
 `window.__HASHBROWN_TELEMETRY_DISABLED__` is set, the
 `HASHBROWN_TELEMETRY_DISABLED` localStorage flag is set, or
-`navigator.webdriver` is true. A local check must therefore use a non-loopback
+`navigator.webdriver` is true. Those three gate only the website collector;
+PostHog capture ignores them, so automated runs against previews do produce
+PostHog events. A local check must therefore use a non-loopback
 hostname such as `http://www.localhost:3000`; `isLocalAnalyticsHost` treats only
 the exact hostnames `localhost` and `127.0.0.1` and `::1` as loopback.
 
@@ -134,16 +136,5 @@ To turn it off, unset `NEXT_PUBLIC_GROWTH_COLLECTION` and redeploy; removing
 
 ## Before the live check
 
-Before the first live run (Task 7 of the plan), work through "Live checks for Task 7" in `tools/posthog/README.md`:
-
-1. Soft delete via `PATCH { deleted: true }` on dashboards and insights.
-2. `autocapture_opt_out` via `PATCH /api/projects/{id}/` (it may need
-   `/api/environments/{id}/`).
-3. `/events/` is legacy; fall back to HogQL `/query/` if it is gone.
-4. POST retries can duplicate a create (accepted).
-5. `--delete-orphans` soft-deletes every unmanaged dashboard and insight.
-
-Then, in order: `settings:plan`, `sync:plan`, `sync:apply`, commit the
-written-back ids, `quality:live`, and `report`. Create the two Actions secrets
-(a read-only key with query-read scopes) before expecting the daily workflow
-to pass.
+See "Live checks for Task 7" in `tools/posthog/README.md`. The first live run
+happened on 2026-10-21.

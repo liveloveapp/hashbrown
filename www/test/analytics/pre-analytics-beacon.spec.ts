@@ -1,7 +1,9 @@
 import { expect, test, vi } from 'vitest';
+import { isLocalAnalyticsHost } from '../../src/lib/analytics/capture-gate';
 import {
   installPreAnalyticsBeacon,
   PRE_ANALYTICS_EVENT,
+  PRE_ANALYTICS_GLOBAL,
   preAnalyticsBeaconScript,
 } from '../../src/lib/analytics/pre-analytics-beacon';
 
@@ -132,4 +134,36 @@ test('beacon script escapes < as \\u003c', () => {
 
   expect(script).not.toContain('</script>');
   expect(script).toContain('\\u003c/script>');
+});
+
+test('the beacon arms exactly where the capture gate is not local', () => {
+  const hosts = [
+    'localhost',
+    'localhost:3000',
+    '127.0.0.1',
+    '[::1]:3000',
+    '::1',
+    'www.localhost:3000',
+    'hashbrown.dev',
+    'preview-x.vercel.app',
+  ];
+
+  const armed = hosts.map((host) => {
+    setup(host);
+    installPreAnalyticsBeacon(CONFIG);
+    return win.__hashbrownPreAnalytics !== undefined;
+  });
+
+  expect(armed).toEqual(hosts.map((host) => !isLocalAnalyticsHost(host)));
+});
+
+test('the beacon publishes its disarm handle under PRE_ANALYTICS_GLOBAL', () => {
+  setup('hashbrown.dev');
+
+  installPreAnalyticsBeacon(CONFIG);
+
+  expect(PRE_ANALYTICS_GLOBAL).toBe('__hashbrownPreAnalytics');
+  expect(typeof (win[PRE_ANALYTICS_GLOBAL] as { disarm: unknown }).disarm).toBe(
+    'function',
+  );
 });
