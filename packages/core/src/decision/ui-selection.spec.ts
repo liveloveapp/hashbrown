@@ -506,6 +506,8 @@ test('createSelectionSchema rejects an entry that is not an item, a component or
 test('createSelectionSchema rejects a kit from another copy of core', () => {
   const foreignKit = {
     components: [component('Flight')],
+    registry: new Map(),
+    ɵnonSelectable: new Set<string>(),
   } as unknown as Parameters<typeof createSelectionSchema>[0][number];
 
   const error = catchError(() => createSelectionSchema([foreignKit], 'one'));
@@ -521,4 +523,57 @@ test('createSelectionSchema rejects a declared child without a name', () => {
 
   expect(error).toBeInstanceOf(DecisionSchemaError);
   expect((error as DecisionSchemaError).message).toContain('No name');
+});
+
+test('createSelectionSchema skips a non-selectable kit and a non-selectable plain group', () => {
+  const hiddenKit = createUiKit({
+    components: [component('Hidden')],
+    selectable: false,
+  });
+  const hiddenGroup = {
+    components: [{ name: 'Ghost', description: 'A ghost' }],
+    selectable: false,
+  };
+
+  const schema = createSelectionSchema(
+    [{ id: 'map', description: 'A map' }, hiddenKit, hiddenGroup],
+    'one',
+  );
+
+  expect(compileDecision(schema)).toEqual(
+    compileDecision(
+      createSelectionSchema([{ id: 'map', description: 'A map' }], 'one'),
+    ),
+  );
+});
+
+test('createSelectionSchema plain groups produce the same questions as the equivalent kits', () => {
+  const parent = component('Parent', [component('Kid')]);
+  const kit = createUiKit({ components: [parent, component('Other')] });
+  const group = {
+    components: [
+      {
+        name: 'Parent',
+        description: 'The Parent component',
+        children: [{ name: 'Kid', description: 'The Kid component' }],
+      },
+      { name: 'Other', description: 'The Other component' },
+    ],
+  };
+
+  const fromKit = createSelectionSchema([kit], { max: 2 });
+  const fromGroup = createSelectionSchema([group], { max: 2 });
+
+  expect(compileDecision(fromGroup)).toEqual(compileDecision(fromKit));
+});
+
+test('createSelectionSchema rejects a malformed plain group naming the index', () => {
+  const bad = { components: [{ name: 'NoDescription' }] };
+
+  const error = catchError(() =>
+    createSelectionSchema([{ id: 'a', description: 'A' }, bad as never], 'one'),
+  );
+
+  expect(error).toBeInstanceOf(DecisionSchemaError);
+  expect((error as Error).message).toContain('index 1');
 });

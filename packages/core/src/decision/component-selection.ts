@@ -13,6 +13,15 @@ interface Selectable {
 }
 
 /**
+ * A plain group of structural members that mirrors a UI kit without
+ * importing component implementations.
+ */
+interface SelectionGroup {
+  components: ReadonlyArray<Selectable>;
+  selectable?: boolean;
+}
+
+/**
  * A candidate item: an option id and the description the model reads.
  */
 interface SelectionItem {
@@ -59,14 +68,17 @@ export interface ComponentSelection<T extends ExposedComponentDescriptor> {
  * every object seen with that name.
  */
 function flattenSelectable<T extends Selectable>(
-  entries: ReadonlyArray<T | UiKit<any> | SelectionItem>,
+  entries: ReadonlyArray<T | UiKit<any> | SelectionGroup | SelectionItem>,
   acceptItems: boolean,
 ): {
   flat: T[];
   ordered: Array<OrderedEntry<T>>;
   variants: Map<string, Selectable[]>;
+  nonSelectable: ReadonlySet<string>;
 } {
   const visited = new Set<object>();
+  const nonSelectable = new Set<string>();
+  const hiddenVisited = new Set<object>();
   const variants = new Map<string, Selectable[]>();
   const flat: T[] = [];
   const ordered: Array<OrderedEntry<T>> = [];
@@ -87,8 +99,28 @@ function flattenSelectable<T extends Selectable>(
     }
   }
 
+  function hide(entry: Selectable): void {
+    if (hiddenVisited.has(entry)) return;
+    hiddenVisited.add(entry);
+    nonSelectable.add(entry.name);
+    if (Array.isArray(entry.children)) {
+      (entry.children as Selectable[]).forEach(hide);
+    }
+  }
+
+  // A name that is non-selectable anywhere is non-selectable everywhere.
   for (const entry of entries) {
     if (isUiKit(entry)) {
+      entry.ɵnonSelectable.forEach((name) => nonSelectable.add(name));
+    } else if (isSelectionGroup(entry) && entry.selectable === false) {
+      entry.components.forEach(hide);
+    }
+  }
+
+  for (const entry of entries) {
+    if (isUiKit(entry)) {
+      (entry.components as unknown as T[]).forEach(add);
+    } else if (isSelectionGroup(entry)) {
       (entry.components as unknown as T[]).forEach(add);
     } else if (acceptItems && 'id' in entry) {
       ordered.push({ kind: 'item', item: entry });
@@ -96,7 +128,21 @@ function flattenSelectable<T extends Selectable>(
       add(entry as T);
     }
   }
-  return { flat, ordered, variants };
+  return { flat, ordered, variants, nonSelectable };
+}
+
+function isSelectionGroup(value: unknown): value is SelectionGroup {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !('id' in value) &&
+    !('name' in value) &&
+    // A kit from another copy of core carries more keys; it is not a group.
+    Object.keys(value).every(
+      (key) => key === 'components' || key === 'selectable',
+    ) &&
+    Array.isArray((value as { components?: unknown }).components)
+  );
 }
 
 function toOption({ name, description }: Selectable): {
@@ -117,6 +163,10 @@ function toOption({ name, description }: Selectable): {
  * `uiDecisionResource`; `createSelectionSchema` flattens components the same
  * way for servers.
  *
+ * Members of a kit created with `selectable: false` are never options, but
+ * `expand` still includes them when a chosen component declares them as
+ * children.
+ *
  * @param components - Exposed components and/or UI kits.
  * @returns The selection options and an `expand` function.
  *
@@ -125,10 +175,15 @@ function toOption({ name, description }: Selectable): {
 export function createComponentSelection<T extends ExposedComponentDescriptor>(
   components: ReadonlyArray<UiKitInput<T>>,
 ): ComponentSelection<T> {
-  const { flat, variants } = flattenSelectable<T>(components, false);
+  const { flat, variants, nonSelectable } = flattenSelectable<T>(
+    components,
+    false,
+  );
 
   return {
-    options: flat.map(toOption),
+    options: flat
+      .filter((entry) => !nonSelectable.has(entry.name))
+      .map(toOption),
     expand: (ids) => {
       const included = new Set<string>();
       const include = (name: string): void => {
@@ -161,13 +216,35 @@ function describeEntry(value: unknown): string {
 }
 
 /**
- * Checks that a top-level entry is a UI kit, a candidate item
+ * Checks that a top-level entry is a UI kit, a plain group
+ * `{ components, selectable? }`, a candidate item
  * `{ id, description }` or a component `{ name, description }`.
  *
  * @throws DecisionSchemaError naming the entry when it matches no shape.
  */
 function assertSelectionEntry(entry: unknown, index: number): void {
   if (isUiKit(entry)) return;
+  if (isSelectionGroup(entry)) {
+    const group = entry as unknown as Record<string, unknown>;
+    const members = group['components'] as unknown[];
+    const membersValid = members.every(
+      (member) =>
+        isRecord(member) &&
+        typeof member['name'] === 'string' &&
+        typeof member['description'] === 'string',
+    );
+    if (
+      !membersValid ||
+      (group['selectable'] !== undefined &&
+        typeof group['selectable'] !== 'boolean')
+    ) {
+      throw new DecisionSchemaError(
+        `Selection group at index ${index} must have components { name, description } and a boolean selectable (found ${describeEntry(entry)})`,
+        '',
+      );
+    }
+    return;
+  }
   const valid =
     isRecord(entry) &&
     typeof entry['description'] === 'string' &&
@@ -199,11 +276,17 @@ export function toSelectionOptions(
   entries: ReadonlyArray<unknown>,
 ): SelectionItem[] {
   entries.forEach(assertSelectionEntry);
-  const { ordered } = flattenSelectable<Selectable>(
-    entries as ReadonlyArray<Selectable | UiKit<any> | SelectionItem>,
+  const { ordered, nonSelectable } = flattenSelectable<Selectable>(
+    entries as ReadonlyArray<
+      Selectable | UiKit<any> | SelectionGroup | SelectionItem
+    >,
     true,
   );
-  return ordered.map((entry) => {
+  const visible = ordered.filter(
+    (entry) =>
+      entry.kind === 'item' || !nonSelectable.has(entry.component.name),
+  );
+  return visible.map((entry) => {
     if (entry.kind === 'item') {
       return { id: entry.item.id, description: entry.item.description };
     }
