@@ -1,5 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from './aircraft';
+import type { MapFilter } from './find-aircraft';
+import { matchesResolved } from './find-aircraft';
 import { AIRPORTS } from './places';
 import {
   applyAirspace,
@@ -9,6 +11,7 @@ import {
   applyFollow,
   applyHighlight,
   applyLayers,
+  applyMapFilter,
   applySnapshot,
   applySurfaces,
   cancelViewRequest,
@@ -503,4 +506,90 @@ test('the store applies airspace and its failure', () => {
 
   expect(failed).toBe('failed');
   expect(store.getState().airspace.status).toBe('ready');
+});
+
+const anyFilter: MapFilter = {
+  airline: null,
+  typeCode: null,
+  kind: null,
+  minAltitudeFt: null,
+  maxAltitudeFt: null,
+  approaching: null,
+  near: null,
+  inAirspace: null,
+};
+
+test('setMapFilter stores the filter and its resolution', () => {
+  const store = createAtcStore();
+  const filter = { ...anyFilter, airline: 'UAL', minAltitudeFt: 10000 };
+
+  store.setMapFilter(filter);
+
+  const applied = store.getState().mapFilter;
+  expect(applied?.filter).toBe(filter);
+  expect(applied?.unknownPlaces).toEqual([]);
+  expect(applied?.resolved?.airline).toBe('ual');
+  expect(applied?.resolved?.minAltitudeFt).toBe(10000);
+  expect(store.getState().viewRequest).toBeNull();
+});
+
+test('clearMapFilter returns the same state when nothing is set', () => {
+  const store = createAtcStore();
+  const before = store.getState();
+
+  store.clearMapFilter();
+  const cleared = applyMapFilter(before, null);
+  store.setMapFilter({ ...anyFilter, kind: 'jet' });
+  store.clearMapFilter();
+
+  expect(cleared).toBe(before);
+  expect(store.getState().mapFilter).toBeNull();
+});
+
+test('a near filter issues one view request and a later user drag still cancels it', () => {
+  const store = createAtcStore();
+  const filter = { ...anyFilter, near: { airport: 'KBDN', radiusNm: 25 } };
+
+  store.setMapFilter(filter);
+  const first = store.getState().viewRequest;
+  store.setMapFilter({ ...filter, airline: 'UAL' });
+  const second = store.getState().viewRequest;
+  store.cancelViewRequest();
+
+  expect(first).toEqual({
+    kind: 'area',
+    area: { airport: 'KBDN', radiusNm: 25 },
+    seq: 1,
+  });
+  expect(second).toBe(first);
+  expect(store.getState().viewSeq).toBe(1);
+  expect(store.getState().viewRequest).toBeNull();
+});
+
+test('an unknown place is kept in unknownPlaces and ignored when matching', () => {
+  const store = createAtcStore();
+  const filter = {
+    ...anyFilter,
+    kind: 'jet' as const,
+    near: { airport: 'ZZZZ', radiusNm: 25 },
+  };
+
+  store.setMapFilter(filter);
+
+  const applied = store.getState().mapFilter;
+  const resolved = applied?.resolved;
+  expect(applied?.filter).toBe(filter);
+  expect(applied?.unknownPlaces).toEqual(['ZZZZ']);
+  expect(resolved).not.toBeNull();
+  expect(resolved?.nearAirport).toBeNull();
+  expect(store.getState().viewRequest).toBeNull();
+  expect(
+    resolved &&
+      matchesResolved(resolved, {
+        ...aircraft('aaaaaa'),
+        kind: 'jet',
+        lat: AIRPORTS.KSEA.lat,
+        lon: AIRPORTS.KSEA.lon,
+      }),
+  ).toBe(true);
 });

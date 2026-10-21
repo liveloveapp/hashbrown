@@ -9,6 +9,12 @@ import type {
   Surfaces,
 } from './chart';
 import { airportByCode } from './directory';
+import {
+  areaRadiusNm,
+  type MapFilter,
+  type ResolvedFilter,
+  resolveFilter,
+} from './find-aircraft';
 import type { Route } from './routes';
 
 /** How fresh the aircraft data is. */
@@ -51,6 +57,20 @@ type ViewMove =
  */
 export const DEPARTED_TTL_MS = 30 * 60 * 1000;
 
+/**
+ * The map filter as the user or model gave it, with its places resolved once.
+ * Unknown places are listed in `unknownPlaces` and left out of `resolved`, so
+ * matching ignores only those clauses.
+ */
+export interface AppliedMapFilter {
+  /** The filter as given. */
+  readonly filter: MapFilter;
+  /** The filter with places looked up, minus unknown places; null never when applied. */
+  readonly resolved: ResolvedFilter | null;
+  /** Place codes the directory does not know. */
+  readonly unknownPlaces: string[];
+}
+
 /** Everything the map, tools and components read. Treat as immutable. */
 export interface AtcState {
   /** The FAA chart airports, once loaded. */
@@ -83,6 +103,8 @@ export interface AtcState {
   readonly updatedAt: number | null;
   /** The area the map outlines, or null. */
   readonly shownArea: ShownArea | null;
+  /** The filter applied to the aircraft shown on the map, or null. */
+  readonly mapFilter: AppliedMapFilter | null;
   /** The newest map move, or null when there is nothing to do. */
   readonly viewRequest: ViewRequest | null;
   /** The last `seq` handed out. */
@@ -106,6 +128,7 @@ export const INITIAL_STATE: AtcState = {
   feedStatus: 'connecting',
   updatedAt: null,
   shownArea: null,
+  mapFilter: null,
   viewRequest: null,
   viewSeq: 0,
 };
@@ -245,6 +268,71 @@ export function applyLayers(state: AtcState, patch: Partial<Layers>): AtcState {
   );
 
   return changed ? { ...state, layers } : state;
+}
+
+// --- Map filter
+
+/**
+ * Applies a map filter (or clears it with null). Unknown places are recorded
+ * and their clauses ignored. A place that resolved asks the map to outline its
+ * area (`near`) or show its airspace (`inAirspace`, which wins), unless the map
+ * already shows it. Clearing leaves the view alone and returns the same state
+ * when no filter is set.
+ */
+export function applyMapFilter(
+  state: AtcState,
+  filter: MapFilter | null,
+): AtcState {
+  if (filter === null) {
+    return state.mapFilter === null ? state : { ...state, mapFilter: null };
+  }
+  const first = resolveFilter(state, filter);
+  let unknownPlaces: string[] = [];
+  let usable = filter;
+  if ('unknownPlaces' in first) {
+    unknownPlaces = first.unknownPlaces;
+    const unknown = new Set(unknownPlaces);
+    usable = {
+      ...filter,
+      approaching:
+        filter.approaching && unknown.has(filter.approaching)
+          ? null
+          : filter.approaching,
+      near:
+        filter.near && unknown.has(filter.near.airport) ? null : filter.near,
+      inAirspace:
+        filter.inAirspace && unknown.has(filter.inAirspace.airport)
+          ? null
+          : filter.inAirspace,
+    };
+  }
+  const second =
+    'unknownPlaces' in first ? resolveFilter(state, usable) : first;
+  const resolved = 'unknownPlaces' in second ? null : second;
+  const next = {
+    ...state,
+    mapFilter: { filter, resolved, unknownPlaces },
+  };
+  if (resolved?.airspaceAirport) {
+    const code = resolved.airspaceAirport.code;
+
+    return state.highlightedAirspace === code
+      ? next
+      : requestAirspace(next, code);
+  }
+  if (resolved?.nearAirport && usable.near) {
+    const area = {
+      airport: resolved.nearAirport.code,
+      radiusNm: areaRadiusNm(usable.near.radiusNm),
+    };
+    const shown = state.shownArea;
+
+    return shown?.airport === area.airport && shown.radiusNm === area.radiusNm
+      ? next
+      : requestArea(next, area);
+  }
+
+  return next;
 }
 
 // --- Map moves
@@ -418,6 +506,10 @@ export interface AtcStore {
   setAirspaceFailed(): void;
   /** Patches the layers ({@link applyLayers}). */
   setLayers(patch: Partial<Layers>): void;
+  /** Filters the aircraft on the map ({@link applyMapFilter}). */
+  setMapFilter(filter: MapFilter): void;
+  /** Removes the map filter ({@link applyMapFilter}). */
+  clearMapFilter(): void;
   setFeedStatus(status: FeedStatus): void;
   /** Outlines an area and fits the map to it ({@link requestArea}). */
   showArea(area: ShownArea): void;
@@ -477,6 +569,8 @@ export function createAtcStore(options: { now?: () => number } = {}): AtcStore {
     setAirspace: (payload) => update(applyAirspace(state, payload)),
     setAirspaceFailed: () => update(applyAirspaceFailed(state)),
     setLayers: (patch) => update(applyLayers(state, patch)),
+    setMapFilter: (filter) => update(applyMapFilter(state, filter)),
+    clearMapFilter: () => update(applyMapFilter(state, null)),
     setFeedStatus: (feedStatus) =>
       update(
         state.feedStatus === feedStatus ? state : { ...state, feedStatus },
