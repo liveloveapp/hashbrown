@@ -7,9 +7,13 @@ import {
 } from '@ag-ui/core';
 import { MessageSchema } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
-import { completeRunningStep, ɵmergeStepMetadata } from '../models/tool-step';
+import {
+  completeRunningStep,
+  isProviderToolCall,
+  ɵmergeStepMetadata,
+} from '../models/tool-step';
 import { s } from '../schema';
-import { resolveWithSchema } from '../utils';
+import { type JsonValue, resolveWithSchema } from '../utils';
 import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
 import { cloneAgUiValue } from './ag-ui-json-value';
 
@@ -884,9 +888,11 @@ function projectToolCall(
   result: Extract<Message, { role: 'tool' }> | undefined,
   toolsByName: Readonly<Record<string, Chat.Internal.Tool>>,
 ): Chat.Internal.ToolCall {
-  const tool = Object.hasOwn(toolsByName, toolCall.function.name)
-    ? toolsByName[toolCall.function.name]
-    : undefined;
+  const tool =
+    !isProviderToolCall(toolCall) &&
+    Object.hasOwn(toolsByName, toolCall.function.name)
+      ? toolsByName[toolCall.function.name]
+      : undefined;
   const merged = mergeMetadata(toolCall.metadata, result?.metadata);
   const metadata = result
     ? completeRunningStep(merged, readResultError(result))
@@ -895,7 +901,9 @@ function projectToolCall(
   const argumentsResolved =
     tool && s.isHashbrownType(tool.schema)
       ? resolveWithSchema(tool.schema, toolCall.function.arguments)
-      : undefined;
+      : isProviderToolCall(toolCall)
+        ? parseJsonOrUndefined(toolCall.function.arguments)
+        : undefined;
 
   return {
     id: toolCall.id,
@@ -945,4 +953,13 @@ function readResultError(
   result: Extract<Message, { role: 'tool' }>,
 ): string | undefined {
   return typeof result.error === 'string' ? result.error : undefined;
+}
+
+/** The text parsed as plain JSON, or undefined when it is not valid JSON. */
+function parseJsonOrUndefined(text: string): JsonValue | undefined {
+  try {
+    return JSON.parse(text) as JsonValue;
+  } catch {
+    return undefined;
+  }
 }

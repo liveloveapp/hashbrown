@@ -372,7 +372,9 @@ export function toViewMessagesFromInternal(
           toolCalls: message.toolCallIds.flatMap(
             (toolCallId): Chat.AnyToolCall[] => {
               const toolCall = toolCalls[toolCallId];
-              const tool = tools.find((tool) => tool.name === toolCall.name);
+              const tool = isProviderToolCall(toolCall)
+                ? undefined
+                : tools.find((tool) => tool.name === toolCall.name);
 
               if (!tool) {
                 return [];
@@ -615,7 +617,9 @@ export function toInternalToolCallsFromApiMessages(
           typeof toolCall.function.arguments === 'string'
             ? toolCall.function.arguments
             : JSON.stringify(toolCall.function.arguments);
-        const tool = toolsByName[toolCall.function.name];
+        const tool = isProviderToolCall(toolCall)
+          ? undefined
+          : toolsByName[toolCall.function.name];
         const argumentsResolved =
           tool && s.isHashbrownType(tool.schema)
             ? resolveWithSchema(tool.schema, rawArguments)
@@ -629,7 +633,9 @@ export function toInternalToolCallsFromApiMessages(
             argumentsResolved ??
             (typeof toolCall.function.arguments === 'object'
               ? toolCall.function.arguments
-              : undefined),
+              : isProviderToolCall(toolCall)
+                ? (parseArguments(rawArguments) ?? undefined)
+                : undefined),
           status: 'pending',
           ...(toolCall.encryptedValue !== undefined
             ? { encryptedValue: toolCall.encryptedValue }

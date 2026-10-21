@@ -1048,6 +1048,47 @@ test('a provider step is server-run even when a client tool shares its name', ()
   // Assert
   expect(providerCalls).toHaveLength(1);
   expect(serverCalls).toBeUndefined();
+  const [view] = toViewMessagesFromInternal(
+    internalAssistantWithCalls(['call-ws']),
+    provider,
+    [clientTool],
+  );
+  expect((view as ViewAssistantMessage<string, AnyTool>).toolCalls).toEqual([]);
+});
+
+test('hydrating a provider call does not resolve its arguments against a client schema', () => {
+  // Arrange
+  const clientTool = {
+    name: 'web_search',
+    description: '',
+    schema: s.object('arguments', { q: s.string('q') }),
+    handler: async () => undefined,
+  };
+  const apiMessages: Chat.Api.Message[] = [
+    {
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'call-ws',
+          index: 0,
+          type: 'function',
+          function: { name: 'web_search', arguments: '{"other":1}' },
+          metadata: {
+            'b4.step': { v: 1, kind: 'provider', status: 'running' },
+          },
+        },
+      ],
+    },
+  ];
+
+  // Act
+  const calls = toInternalToolCallsFromApiMessages(apiMessages, {
+    web_search: clientTool,
+  });
+
+  // Assert
+  expect(calls[0].argumentsResolved).toEqual({ other: 1 });
 });
 
 test('the ag-ui-langgraph error sentinel reads as a failure', () => {

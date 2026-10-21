@@ -1186,3 +1186,51 @@ test('a TOOL_CALL_START for a cancelled step reopens it as running', () => {
   expect(step).not.toHaveProperty('label');
   expect(step).not.toHaveProperty('settledAt');
 });
+
+test('a failed step after a RESULT completed the step replaces its label and sources', () => {
+  const store = createRootStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'server',
+          status: 'running',
+          label: 'Searching',
+          icon: 'search',
+          sources: [{ id: 's1', kind: 'url', title: 'A' }],
+        },
+      },
+    } as AGUIEvent,
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: {
+        toolCallId: 'c1',
+        status: 'failed',
+        label: 'Search failed',
+        icon: 'alert',
+      },
+    } as AGUIEvent,
+  ]);
+
+  const step = readRootStep(store, 'c1');
+
+  expect(step).toMatchObject({
+    status: 'failed',
+    label: 'Search failed',
+    icon: 'alert',
+  });
+  expect(step).not.toHaveProperty('sources');
+});
