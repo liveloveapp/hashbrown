@@ -431,3 +431,41 @@ function createSignal<T>(initialValue: T) {
 
   return signal;
 }
+
+test('structuredChatResource reload ignores trailing activities', () => {
+  createChatRuntimeMock.mockReset();
+  const messages = [
+    { id: 'user-1', role: 'user' as const, content: 'Summarize this' },
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: { risk: 'low' },
+      toolCalls: [],
+    },
+    {
+      id: 'activity-1',
+      role: 'activity' as const,
+      activityType: 'progress',
+      content: { step: 'done' },
+      links: { assistantMessageId: 'assistant-1' },
+    },
+  ];
+  const runtime = createRuntimeStub({ messages });
+  createChatRuntimeMock.mockReturnValue(runtime);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    structuredChatResource({
+      system: 'System A',
+      schema: s.object('risk summary', {
+        risk: s.string('Risk level'),
+      }),
+    }),
+  );
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(true);
+  expect(runtime.setMessages).toHaveBeenCalledWith([messages[0]]);
+});

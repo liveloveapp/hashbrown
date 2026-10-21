@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { runProviderAGUIWithAimock } from '@hashbrownai/testing/aimock';
 import type Anthropic from '@anthropic-ai/sdk';
-import { HashbrownAnthropic } from './index';
+import { type ActivityCallback, HashbrownAnthropic } from './index';
 import type { AnthropicHashbrownRunAgentInput } from './stream/types';
 
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
@@ -765,4 +765,53 @@ test('Anthropic abort after TEXT_MESSAGE_END suppresses RUN_FINISHED', async () 
   expect(streamedContent(events)).toBe('Hello from aimock.');
   expect(events.at(-1)?.type).toBe(EventType.TEXT_MESSAGE_END);
   expectNoTerminalEvents(events);
+});
+
+test('Anthropic sends callback activities inside the run', async () => {
+  const activities: ActivityCallback = async ({ activity, model }) => {
+    const plan = activity.snapshot('plan-1', 'plan', { status: 'running' });
+    await model;
+    plan.patch([{ op: 'replace', path: '/status', value: 'done' }]);
+  };
+
+  const events = await runProviderAGUIWithAimock({
+    fixturePath: fixturePath('text.json'),
+    createStream: (aimock, signal) =>
+      HashbrownAnthropic.stream.text({
+        apiKey: 'test-not-used',
+        baseURL: aimock.anthropicBaseUrl,
+        model: ANTHROPIC_MODEL,
+        input: baseInput('say hi briefly'),
+        signal,
+        activities,
+      }),
+  });
+
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.ACTIVITY_SNAPSHOT,
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.TEXT_MESSAGE_END,
+    EventType.ACTIVITY_DELTA,
+    EventType.RUN_FINISHED,
+  ]);
+  expect(events[1]).toEqual({
+    type: EventType.ACTIVITY_SNAPSHOT,
+    messageId: 'plan-1',
+    activityType: 'plan',
+    content: { status: 'running' },
+    replace: true,
+  });
+  expect(events.at(-2)).toEqual({
+    type: EventType.ACTIVITY_DELTA,
+    messageId: 'plan-1',
+    activityType: 'plan',
+    patch: [{ op: 'replace', path: '/status', value: 'done' }],
+  });
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_FINISHED,
+    threadId: 'thread-anthropic',
+    runId: 'run-anthropic',
+  });
 });

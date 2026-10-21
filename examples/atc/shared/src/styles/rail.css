@@ -1,0 +1,59 @@
+/*
+ * The rail: a thin column at the far left of the workbench that opens the
+ * developer drawer. Flat, text and icons only. Phones hide it (sheet.css) and
+ * use the header button instead.
+ */
+.atc-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  padding-top: 4px;
+}
+.atc-rail-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--atc-radius-row);
+  background: none;
+  color: var(--atc-muted);
+  cursor: pointer;
+  transition:
+    color var(--atc-fast) var(--atc-ease),
+    background-color var(--atc-fast) var(--atc-ease);
+}
+.atc-rail-button:is(:hover, :focus-visible) {
+  color: var(--atc-ink);
+}
+.atc-rail-button[aria-pressed='true'] {
+  background: var(--atc-ink);
+  color: var(--atc-surface);
+}
+.atc-rail-button svg {
+  display: block;
+}
+
+/* The header button that replaces the rail on phones. */
+.atc-header-dev {
+  display: none;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--atc-radius-row);
+  background: none;
+  color: var(--atc-muted);
+  cursor: pointer;
+}
+.atc-header-dev:is(:hover, :focus-visible),
+.atc-header-dev[aria-pressed='true'] {
+  color: var(--atc-ink);
+}

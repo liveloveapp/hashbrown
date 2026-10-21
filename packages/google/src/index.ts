@@ -3,6 +3,12 @@ import { text } from './stream/text.fn';
 import type { GoogleTextStreamOptions } from './stream/types';
 
 export type {
+  ActivityCallback,
+  ActivityContext,
+  ActivityHandle,
+  ActivityWriter,
+} from '@hashbrownai/core';
+export type {
   GoogleApiKeyAuthOptions,
   GoogleHashbrownRunAgentInput,
   GoogleTextStreamOptions,

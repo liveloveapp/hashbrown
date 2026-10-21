@@ -7,6 +7,7 @@
  * (`angular`, `react`) opens the app at its own path.
  */
 import { createApp } from '@atc/server';
+import { RESPONSE_SCHEMA_ALLOWLIST } from '@atc/shared';
 import { LLMock } from '@copilotkit/aimock';
 import { type Browser, expect, type Page, test } from '@playwright/test';
 import { once } from 'node:events';
@@ -14,7 +15,7 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 import { PROMPTS, REASONING, scriptAtcModel } from './model';
-import { stubAtcFeeds } from './stubs';
+import { stubAtcFeeds, stubDecideUnavailable } from './stubs';
 import {
   CLUSTER,
   frame,
@@ -60,7 +61,10 @@ test.afterAll(async () => {
   await mock?.stop();
 });
 
-/** Opens one app with stubbed feeds and waits for the map to draw its first frame. */
+/**
+ * Opens one app with stubbed feeds and waits for the map to draw its first
+ * frame. Dev mode is off on a first visit, so the developer drawer is absent.
+ */
 async function openApp(page: Page, framework: string): Promise<void> {
   await stubAtcFeeds(page, { frames: frame, blockTiles: true });
   // Record every data-hex a card ever renders, not just the final DOM, so a
@@ -104,6 +108,71 @@ async function openPhone(
 async function ask(page: Page, prompt: string): Promise<void> {
   await page.getByRole('textbox', { name: 'Message' }).fill(prompt);
   await page.getByRole('button', { name: 'Send' }).click();
+}
+
+/** The router badge beside the composer's input. */
+function routeBadge(page: Page) {
+  return page.locator('.atc-route');
+}
+
+/** The plane marker of `hex`, which carries `is-filtered-out` while a map filter hides it. */
+function plane(page: Page, hex: string) {
+  return page.locator(`.atc-plane[data-hex="${hex}"]`);
+}
+
+/** Types `text` and presses Enter, which sends it where the router's badge says. */
+async function submit(page: Page, text: string): Promise<void> {
+  const field = page.getByRole('textbox', { name: 'Message' });
+  await field.fill(text);
+  await field.press('Enter');
+}
+
+/**
+ * Applies the scripted jets filter by typing it, and waits until its chips
+ * are on the pill and the highest plane (above the filter's ceiling) is dimmed.
+ */
+async function applyJetsFilter(page: Page): Promise<void> {
+  await submit(page, PROMPTS.filterJets);
+  await expect(page.getByTestId('filter-pill')).toContainText('Jets');
+  await expect(page.getByTestId('filter-pill')).toContainText(
+    'Below 10,000 ft',
+  );
+  await expect(plane(page, highest.hex)).toHaveClass(/is-filtered-out/);
+}
+
+/**
+ * Runs `act` and returns the server's warnings about a response schema. The
+ * atc server runs in this process, so it warns on this console.
+ */
+async function schemaWarnings(act: () => Promise<void>): Promise<string[]> {
+  const warnings: string[] = [];
+  const warn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map(String).join(' '));
+    warn.apply(console, args);
+  };
+  try {
+    await act();
+  } finally {
+    console.warn = warn;
+  }
+
+  return warnings.filter((line) => line.includes('response schema'));
+}
+
+/** Records the response schema of every `/api/run` request the page sends. */
+function recordRunSchemas(page: Page): () => unknown[] {
+  const schemas: unknown[] = [];
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/run')) {
+      const body = request.postDataJSON() as {
+        forwardedProps?: { hashbrown?: { responseSchema?: unknown } };
+      };
+      schemas.push(body.forwardedProps?.hashbrown?.responseSchema);
+    }
+  });
+
+  return () => schemas;
 }
 
 /**
@@ -781,3 +850,244 @@ test('the Layers control hides the airspace', async ({ page }, testInfo) => {
 
   await expect(page.locator('.atc-as')).toHaveCount(0);
 });
+
+test('the dev tool opens from the rail, shows each tab, and is remembered', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  const toggle = page.getByTestId('dev-toggle');
+  const drawer = page.getByTestId('dev-drawer');
+
+  await toggle.click();
+  await ask(page, PROMPTS.redmondAirspace);
+
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole('tab', { name: 'Router' }).click();
+  await expect(drawer).toContainText('last chat send');
+  await drawer.getByRole('tab', { name: 'Cards' }).click();
+  await expect(drawer).toContainText('cards');
+  await drawer.getByRole('tab', { name: 'Filter' }).click();
+  await expect(drawer).toContainText('applied');
+  await drawer.getByRole('tab', { name: 'UI stream' }).click();
+  await expect(drawer).toContainText('"Markdown"');
+  await drawer.getByRole('tab', { name: 'Tools' }).click();
+  await expect(drawer).toContainText('showAirspace');
+
+  await page.reload();
+
+  await expect(page.getByTestId('dev-drawer')).toBeVisible();
+  await page.getByTestId('dev-toggle').click();
+  await expect(page.getByTestId('dev-drawer')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId('airspace-map')).toHaveAttribute(
+    'data-ready',
+    '',
+  );
+  await expect(page.getByTestId('dev-drawer')).toHaveCount(0);
+});
+
+test('with dev mode off the map and transcript have no technical panels', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+
+  await ask(page, PROMPTS.redmondAirspace);
+
+  await expect(
+    page.getByText('Redmond has a part-time Class D.'),
+  ).toBeVisible();
+  await expect(page.getByTestId('dev-toggle')).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(page.getByTestId('dev-drawer')).toHaveCount(0);
+  await expect(page.locator('.atc-dev-inspect')).toHaveCount(0);
+  await expect(page.getByTestId('stream-panel')).toHaveCount(0);
+  await expect(
+    page.getByRole('switch', { name: 'Show the stream' }),
+  ).toHaveCount(0);
+});
+
+test('at 375 px the header button opens the drawer as a sheet and closes it', async ({
+  browser,
+}, testInfo) => {
+  const { page, close } = await openPhone(browser, testInfo.project.name, {
+    width: 375,
+    height: 700,
+  });
+  const drawer = page.getByTestId('dev-drawer');
+
+  await page.locator('.atc-header-dev').click();
+
+  await expect(drawer).toBeVisible();
+  const box = await drawer.boundingBox();
+  expect((box?.x ?? -1) + (box?.width ?? 0)).toBeLessThanOrEqual(375);
+  await expect(page.getByTestId('airspace-map')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Close developer tools' }).click();
+
+  await expect(drawer).toHaveCount(0);
+  await close();
+});
+
+test('typing shows where Enter will send the text', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  const field = page.getByRole('textbox', { name: 'Message' });
+
+  await field.fill(PROMPTS.filterJets);
+  await expect(routeBadge(page)).toHaveText('→ filter 0.97');
+  await field.fill(PROMPTS.highestOverall);
+
+  await expect(routeBadge(page)).toHaveText('→ chat 0.91');
+});
+
+test('Enter on a filter streams its chips and dims the planes it hides', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  const pill = page.getByTestId('filter-pill');
+  await expect(pill).toBeHidden();
+
+  await applyJetsFilter(page);
+
+  await expect(pill.locator('.atc-filter-chip')).toHaveText([
+    'Jets',
+    'Below 10,000 ft',
+  ]);
+  await expect(page.getByTestId('flight-card')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Message' })).toHaveValue('');
+});
+
+test('the x on the filter pill clears the filter', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  await applyJetsFilter(page);
+
+  await page.getByRole('button', { name: 'Clear filter' }).click();
+
+  await expect(page.getByTestId('filter-pill')).toBeHidden();
+  await expect(page.locator('.atc-plane.is-filtered-out')).toHaveCount(0);
+});
+
+test('a failed filter request says so on the pill and the x dismisses it', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  await page.route('**/api/filter**', (route) =>
+    route.fulfill({ status: 500, json: { error: 'Filter failed' } }),
+  );
+  const pill = page.getByTestId('filter-pill');
+
+  await submit(page, PROMPTS.filterJets);
+
+  await expect(pill).toContainText("Couldn't filter. Try again.");
+  await expect(pill.locator('.atc-filter-chip')).toHaveCount(0);
+  await expect(page.locator('.atc-plane.is-filtered-out')).toHaveCount(0);
+  await pill.getByRole('button', { name: 'Clear filter' }).click();
+  await expect(pill).toBeHidden();
+});
+
+test('typing a clear request removes the filter without a model', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  await applyJetsFilter(page);
+  const field = page.getByRole('textbox', { name: 'Message' });
+  await field.fill(PROMPTS.clearFilter);
+  await expect(routeBadge(page)).toHaveText('→ filter 0.90');
+
+  await field.press('Enter');
+
+  await expect(page.getByTestId('filter-pill')).toBeHidden();
+  await expect(page.locator('.atc-plane.is-filtered-out')).toHaveCount(0);
+});
+
+test('Enter on a question narrows the cards to the ones the decision picks', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  const schemas = recordRunSchemas(page);
+
+  const warnings = await schemaWarnings(async () => {
+    await submit(page, PROMPTS.reasoned);
+    await expect(page.getByTestId('flight-card')).toContainText(highest.label);
+  });
+
+  const [sent] = schemas();
+  const text = JSON.stringify(sent);
+  expect(text).toContain('FlightCard');
+  expect(text).not.toContain('ArrivalsBoard');
+  expect(text).not.toContain('AirportCard');
+  expect(sent).toEqual(RESPONSE_SCHEMA_ALLOWLIST[0]);
+  expect(warnings).toEqual([]);
+});
+
+test('the assistant clears the map filter when a question needs the planes it hides', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  await applyJetsFilter(page);
+
+  await submit(page, PROMPTS.highestOverall);
+
+  await expect(page.getByTestId('flight-card')).toContainText(highest.label);
+  await expect(page.getByTestId('filter-pill')).toBeHidden();
+  await expect(plane(page, highest.hex)).not.toHaveClass(/is-filtered-out/);
+  await expect(page.locator('.atc-plane.is-filtered-out')).toHaveCount(0);
+});
+
+test('a failed decision sends the question to chat with every card', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  const decisions = await stubDecideUnavailable(page);
+  const schemas = recordRunSchemas(page);
+  const field = page.getByRole('textbox', { name: 'Message' });
+
+  const warnings = await schemaWarnings(async () => {
+    await field.fill(PROMPTS.reasoned);
+    await expect(routeBadge(page)).toHaveText('→ chat');
+    await field.press('Enter');
+    await expect(page.getByTestId('flight-card')).toContainText(highest.label);
+  });
+
+  expect(decisions.count()).toBeGreaterThan(0);
+  const [sent] = schemas();
+  expect(sent).toEqual(RESPONSE_SCHEMA_ALLOWLIST.at(-1));
+  expect(warnings).toEqual([]);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+for (const width of [320, 375]) {
+  test(`the header fits at ${width}px: the source link is not clipped and the page does not scroll sideways`, async ({
+    browser,
+  }, testInfo) => {
+    const { page, close } = await openPhone(browser, testInfo.project.name, {
+      width,
+      height: 700,
+    });
+
+    const link = await page
+      .getByRole('link', { name: 'atc source on GitHub' })
+      .boundingBox();
+    const devBox = await page.locator('.atc-header-dev').boundingBox();
+    const credit = await page
+      .getByRole('link', { name: 'built with Hashbrown' })
+      .boundingBox();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
+
+    expect(link).not.toBeNull();
+    expect((link?.x ?? 0) + (link?.width ?? 0)).toBeLessThanOrEqual(width);
+    expect(credit?.width ?? 0).toBeGreaterThan(0);
+    expect((credit?.x ?? 0) + (credit?.width ?? 0)).toBeLessThanOrEqual(width);
+    expect(devBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect(overflow).toBeLessThanOrEqual(0);
+    await close();
+  });
+}

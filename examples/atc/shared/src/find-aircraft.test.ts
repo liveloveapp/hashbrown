@@ -1,7 +1,15 @@
+import { s } from '@hashbrownai/core';
 import { expect, test } from 'vitest';
 import type { Aircraft } from './aircraft';
 import type { AirspaceShelf } from './chart';
-import { findAircraft, type FindAircraftInput } from './find-aircraft';
+import {
+  findAircraft,
+  findAircraftInput,
+  type FindAircraftInput,
+  type MapFilter,
+  matchesResolved,
+  resolveFilter,
+} from './find-aircraft';
 import { applySnapshot, createAtcStore, INITIAL_STATE } from './store';
 import {
   squareRing,
@@ -351,4 +359,262 @@ test('findAircraft without inAirspace adds no airspace fields to rows', () => {
     expect(row).not.toHaveProperty('checkedAltitudeFt');
     expect(row).not.toHaveProperty('altitudeSource');
   }
+});
+
+const BEFORE_SCHEMA = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  type: 'object',
+  properties: {
+    airline: {
+      anyOf: [
+        {
+          type: 'string',
+          description:
+            'Airline ICAO code such as UAL, or a name such as United',
+        },
+        {
+          type: 'null',
+          description: '',
+        },
+      ],
+    },
+    typeCode: {
+      anyOf: [
+        {
+          type: 'string',
+          description: 'ICAO type code such as B738, or a family such as 737',
+        },
+        {
+          type: 'null',
+          description: '',
+        },
+      ],
+    },
+    kind: {
+      anyOf: [
+        {
+          type: 'string',
+          enum: ['jet', 'twin', 'single', 'rotor'],
+          description:
+            'Only this kind of aircraft: jet, twin (twin-engine prop), single (single-engine prop) or rotor (helicopter)',
+        },
+        {
+          type: 'null',
+          description: '',
+        },
+      ],
+    },
+    minAltitudeFt: {
+      anyOf: [
+        {
+          type: 'number',
+          description: 'Minimum altitude in feet',
+        },
+        {
+          type: 'null',
+          description: '',
+        },
+      ],
+    },
+    maxAltitudeFt: {
+      anyOf: [
+        {
+          type: 'number',
+          description: 'Maximum altitude in feet',
+        },
+        {
+          type: 'null',
+          description: '',
+        },
+      ],
+    },
+    approaching: {
+      anyOf: [
+        {
+          type: 'string',
+          description:
+            'Only aircraft on approach to this airport: ICAO code from lookupPlace',
+        },
+        {
+          type: 'null',
+          description: '',
+        },
+      ],
+    },
+    near: {
+      anyOf: [
+        {
+          type: 'object',
+          properties: {
+            airport: {
+              type: 'string',
+              description: 'ICAO code from lookupPlace, such as KBDN',
+            },
+            radiusNm: {
+              type: 'number',
+              description: 'Radius in nautical miles, 5 to 150',
+            },
+          },
+          required: ['airport', 'radiusNm'],
+          additionalProperties: false,
+          description: 'Only aircraft within radiusNm of an airport',
+        },
+        {
+          type: 'null',
+          description: '',
+        },
+      ],
+    },
+    inAirspace: {
+      anyOf: [
+        {
+          type: 'object',
+          properties: {
+            airport: {
+              type: 'string',
+              description: 'ICAO code from lookupPlace',
+            },
+            class: {
+              anyOf: [
+                {
+                  type: 'string',
+                  enum: ['B', 'C', 'D', 'E'],
+                  description: 'Airspace class',
+                },
+                {
+                  type: 'null',
+                  description: '',
+                },
+              ],
+            },
+          },
+          required: ['airport', 'class'],
+          additionalProperties: false,
+          description: "Only aircraft inside this airport's airspace",
+        },
+        {
+          type: 'null',
+          description: '',
+        },
+      ],
+    },
+    sortBy: {
+      type: 'string',
+      enum: ['altitude', 'speed', 'distance'],
+      description: 'Sort order',
+    },
+    limit: {
+      type: 'integer',
+      description: 'Maximum rows, 1 to 20',
+    },
+  },
+  required: [
+    'airline',
+    'typeCode',
+    'kind',
+    'minAltitudeFt',
+    'maxAltitudeFt',
+    'approaching',
+    'near',
+    'inAirspace',
+    'sortBy',
+    'limit',
+  ],
+  additionalProperties: false,
+  description: 'Filters for aircraft currently on the map',
+};
+
+test('findAircraftInput keeps its JSON schema', () => {
+  const schema = s.toJsonSchema(findAircraftInput);
+
+  expect(schema).toEqual(BEFORE_SCHEMA);
+});
+
+function mapAny(): MapFilter {
+  return {
+    airline: null,
+    typeCode: null,
+    kind: null,
+    minAltitudeFt: null,
+    maxAltitudeFt: null,
+    approaching: null,
+    near: null,
+    inAirspace: null,
+  };
+}
+
+const fixtureFilters: readonly MapFilter[] = [
+  mapAny(),
+  { ...mapAny(), airline: 'delta' },
+  { ...mapAny(), typeCode: 'a321' },
+  { ...mapAny(), kind: 'jet', minAltitudeFt: 6000 },
+  { ...mapAny(), maxAltitudeFt: 12000 },
+  { ...mapAny(), approaching: 'KRDM' },
+  { ...mapAny(), near: { airport: 'KBDN', radiusNm: 25 } },
+  { ...mapAny(), inAirspace: { airport: 'KRDM', class: 'D' } },
+];
+
+const parityState = applySnapshot(
+  airspaceStore([...pdxShelves, rdmShelf]).getState(),
+  {
+    at: 1,
+    aircraft: [
+      ...state.aircraft.values(),
+      plane('dddddd', { lat: 44.25, lon: -121.15, altitudeFt: 3000 }),
+    ],
+  },
+);
+
+test('matchesResolved agrees with findAircraft for every fixture filter', () => {
+  const all = [...parityState.aircraft.values()];
+
+  const results = fixtureFilters.map((filter) => {
+    const resolved = resolveFilter(parityState, filter);
+    const viaPredicate =
+      'unknownPlaces' in resolved
+        ? []
+        : all.filter((a) => matchesResolved(resolved, a)).map((a) => a.hex);
+    const viaFind = findAircraft(parityState, { ...any, ...filter, limit: 20 })
+      .map((row) => row.hex)
+      .sort();
+
+    return { viaPredicate: viaPredicate.sort(), viaFind };
+  });
+
+  for (const { viaPredicate, viaFind } of results) {
+    expect(viaPredicate).toEqual(viaFind);
+    expect(viaFind.length).toBeGreaterThan(0);
+  }
+  expect(results[0].viaFind).toEqual(['aaaaaa', 'bbbbbb', 'cccccc', 'dddddd']);
+});
+
+test('resolveFilter and matchesResolved treat missing fields as any', () => {
+  const partial = { kind: 'jet' } as unknown as MapFilter;
+  const resolved = resolveFilter(parityState, partial);
+
+  const hexes =
+    'unknownPlaces' in resolved
+      ? []
+      : [...parityState.aircraft.values()]
+          .filter((a) => matchesResolved(resolved, a))
+          .map((a) => a.hex);
+
+  expect(hexes).toEqual(
+    findAircraft(parityState, { ...any, kind: 'jet' })
+      .map((row) => row.hex)
+      .sort(),
+  );
+  expect(hexes.length).toBeGreaterThan(0);
+});
+
+test('resolveFilter reports unknown places instead of resolving them', () => {
+  const filter: MapFilter = {
+    ...mapAny(),
+    near: { airport: 'ZZZZ', radiusNm: 25 },
+    approaching: 'QQQQ',
+  };
+
+  const resolved = resolveFilter(state, filter);
+
+  expect(resolved).toEqual({ unknownPlaces: ['QQQQ', 'ZZZZ'] });
 });

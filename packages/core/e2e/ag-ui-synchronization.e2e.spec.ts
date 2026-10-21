@@ -130,8 +130,13 @@ test('built HTTP runtime synchronizes and commits state and canonical messages',
     ]);
     expect(runtime.state()).toEqual({ count: 2, status: 'ready' });
     expect(runtime.messages()).toEqual([
-      { role: 'user', content: 'Synchronize.' },
-      { role: 'assistant', content: 'Synchronized.', toolCalls: [] },
+      { id: 'user-snapshot', role: 'user', content: 'Synchronize.' },
+      {
+        id: 'assistant-snapshot',
+        role: 'assistant',
+        content: 'Synchronized.',
+        toolCalls: [],
+      },
     ]);
     expect(messageValues).toContainEqual(runtime.messages());
     expect(responseEvents).toEqual(originalEvents);
