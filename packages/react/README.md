@@ -89,7 +89,7 @@ Hashbrown is headless. [threadplane](https://threadplane.ai) is the full agent U
 
 ## What this package sends
 
-Hashbrown sends two kinds of anonymous usage observations so we can see where
+Hashbrown sends two kinds of usage observations so we can see where
 developers get stuck. Neither includes prompts, messages, schemas, tool
 arguments, component props, URLs, or thread identifiers.
 
@@ -98,9 +98,12 @@ the package name and version, your operating system, CPU architecture, Node
 version, package manager, whether the install ran in CI, and, when Git is
 configured in the installing checkout or globally and the install is not in CI,
 your Git `user.name`, `user.email`, and the owner of the `origin` remote on
-GitHub, GitLab, or Bitbucket. It finishes within five seconds and never fails
-an installation. `@hashbrownai/core` also writes a random installation id into
-its own package folder so a development browser can cite the same install.
+GitHub, GitLab, or Bitbucket. Every package reads or creates a random id in
+`~/.hashbrown/installation-id` and sends it with the event, so repeat installs
+on one machine are counted once. It finishes within five seconds and never
+fails an installation. `@hashbrownai/core` also writes a random installation id
+into its own package folder and sends it with its event so a development
+browser can cite the same install.
 
 **While you develop.** In a development build in a browser, Hashbrown reports
 when a chat runtime starts, the first completed stream, the first tool call,

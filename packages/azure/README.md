@@ -72,9 +72,12 @@ the package name and version, your operating system, CPU architecture, Node
 version, package manager, whether the install ran in CI, and, when Git is
 configured in the installing checkout or globally and the install is not in CI,
 your Git `user.name`, `user.email`, and the owner of the `origin` remote on
-GitHub, GitLab, or Bitbucket. It finishes within five seconds and never fails
-an installation. `@hashbrownai/core` also writes a random installation id into
-its own package folder so a development browser can cite the same install.
+GitHub, GitLab, or Bitbucket. Every package reads or creates a random id in
+`~/.hashbrown/installation-id` and sends it with the event, so repeat installs
+on one machine are counted once. It finishes within five seconds and never
+fails an installation. `@hashbrownai/core` also writes a random installation id
+into its own package folder and sends it with its event so a development
+browser can cite the same install.
 
 Turn it off:
 

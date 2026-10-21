@@ -2,30 +2,32 @@
 title: 'What Hashbrown Sends: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'The anonymous usage observations Hashbrown sends, and every way to turn them off.'
+    content: 'The usage observations Hashbrown sends, and every way to turn them off.'
 ---
 
 # What Hashbrown Sends
 
-Hashbrown sends two kinds of anonymous usage observations so we can see where developers get stuck: one when a package is installed, and a few while you develop in a browser. Neither includes prompts, messages, schemas, tool arguments, component props, URLs, or thread identifiers.
+Hashbrown sends two kinds of usage observations so we can see where developers get stuck: one when a package is installed, and a few while you develop in a browser. Neither includes prompts, messages, schemas, tool arguments, component props, URLs, or thread identifiers.
 
 ## When you install
 
 Every `@hashbrownai/*` package runs a postinstall step that sends one `package.installed` event for that package. The event carries:
 
-| Field                                     | What it holds                                                                      |
-| ----------------------------------------- | ---------------------------------------------------------------------------------- |
-| `packageName`, `packageVersion`           | The package that was installed                                                     |
-| `osFamily`, `architecture`                | Your operating system family and CPU architecture                                  |
-| `nodeVersion`                             | The Node version that ran the install                                              |
-| `packageManager`, `packageManagerVersion` | The package manager and its version, when known                                    |
-| `environment`                             | `local`, `ci`, or `unknown`                                                        |
-| `environmentEvidence`, `ciProvider`       | Why the environment was classified that way, and the CI provider when there is one |
-| `consumerContext`                         | Whether the install ran inside a Git checkout                                      |
+| Field                                     | What it holds                                                                                      |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `packageName`, `packageVersion`           | The package that was installed                                                                     |
+| `osFamily`, `architecture`                | Your operating system family and CPU architecture                                                  |
+| `nodeVersion`                             | The Node version that ran the install                                                              |
+| `packageManager`, `packageManagerVersion` | The package manager and its version, when known                                                    |
+| `environment`                             | `local`, `ci`, or `unknown`                                                                        |
+| `environmentEvidence`, `ciProvider`       | Why the environment was classified that way, and the CI provider when there is one                 |
+| `consumerContext`                         | Whether the install ran inside a Git checkout                                                      |
+| `subject`                                 | A random per-user id read from or created in `~/.hashbrown/installation-id`                        |
+| `installationToken`                       | `@hashbrownai/core` only, outside CI: the random installation id it writes into its package folder |
 
 Outside CI, when Git is configured in the installing checkout or globally, the event also carries your Git `user.name`, your Git `user.email`, and the owner of the checkout's `origin` remote when it is hosted on GitHub, GitLab, or Bitbucket. Nothing from Git is sent from CI.
 
-The step finishes within five seconds and never fails an installation. `@hashbrownai/core` also writes a random installation id into its own package folder (`development-install.mjs` and `development-install.cjs`) so a development browser can cite the same install.
+Every package reads or creates the random id in `~/.hashbrown/installation-id` (or uses a one-off random id when it cannot write there) and sends it with the event, so repeat installs on one machine are counted once. The step finishes within five seconds and never fails an installation. `@hashbrownai/core` also writes a random installation id into its own package folder (`development-install.mjs` and `development-install.cjs`) and sends it with its event as `installationToken`, so a development browser can cite the same install.
 
 ## While you develop
 
