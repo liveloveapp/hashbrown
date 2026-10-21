@@ -79,6 +79,9 @@ export function createAtcTools(context: AtcToolContext) {
   const { store, chartWaitMs = CHART_WAIT_MS } = context;
   const chartSettled = () => whenChartSettled(store, chartWaitMs);
   const airspaceSettled = () => whenAirspaceSettled(store, chartWaitMs);
+  // Bumped by every map filter tool call, so a waiting setMapFilter can tell
+  // that a newer one ran.
+  let filterVersion = 0;
 
   return {
     findAircraft: {
@@ -138,7 +141,21 @@ export function createAtcTools(context: AtcToolContext) {
     setMapFilter: {
       ...ATC_TOOL_DEFINITIONS.setMapFilter,
       handler: async (input: ToolInput<'setMapFilter'>) => {
+        // The chart wait can outlast a newer change; that change wins.
+        const before = store.getState().mapFilter?.filter ?? null;
+        filterVersion += 1;
+        const mine = filterVersion;
         await chartSettled();
+        const current = store.getState().mapFilter;
+        if (filterVersion !== mine || (current?.filter ?? null) !== before) {
+          const stale = current === null ? '' : filterSummary(current.filter);
+
+          return {
+            applied: false as const,
+            mapFilter: stale === '' ? null : stale,
+            unknownPlaces: [] as string[],
+          };
+        }
         store.setMapFilter(input);
         const applied = store.getState().mapFilter;
         const summary = applied === null ? '' : filterSummary(applied.filter);
@@ -153,6 +170,7 @@ export function createAtcTools(context: AtcToolContext) {
     clearMapFilter: {
       ...ATC_TOOL_DEFINITIONS.clearMapFilter,
       handler: async () => {
+        filterVersion += 1;
         store.clearMapFilter();
 
         return { cleared: true as const };

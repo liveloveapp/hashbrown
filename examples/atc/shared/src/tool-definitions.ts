@@ -19,7 +19,7 @@ export const ATC_TOOL_DEFINITIONS = {
   setMapFilter: {
     name: 'setMapFilter' as const,
     description:
-      'Filter the aircraft shown on the map, replacing any filter already set. findAircraft applies this filter too, and its result names it. Use it when a question needs a different filter, and tell the user when you change it. Returns the filter in words and any airport codes it does not know.',
+      'Filter the aircraft shown on the map, replacing any filter already set. findAircraft applies this filter too, and its result names it. Use it when a question needs a different filter, and tell the user when you change it. Returns applied true with the filter in words and any airport codes it does not know; or applied false, with the filter now in effect, when a newer change to the filter happened while this one waited. In that case do not retry unless the user still wants it.',
     schema: s.object('The map filter', aircraftFilterFields),
   },
   clearMapFilter: {

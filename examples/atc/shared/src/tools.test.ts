@@ -392,6 +392,49 @@ test('setMapFilter applies a validated filter and reports unknown places', async
   expect(store.getState().mapFilter?.filter.kind).toBe('jet');
 });
 
+test('setMapFilter replaces an existing filter', async () => {
+  const store = readyStore();
+  store.setMapFilter({ ...NO_MAP_FILTER, kind: 'jet' });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.setMapFilter.handler({
+    ...NO_MAP_FILTER,
+    kind: 'rotor',
+  });
+
+  expect(result).toMatchObject({ applied: true, mapFilter: 'helicopters' });
+  expect(store.getState().mapFilter?.filter.kind).toBe('rotor');
+});
+
+test('a setMapFilter waiting for the chart never overwrites a newer filter', async () => {
+  vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+  const store = createAtcStore();
+  store.setMapFilter({ ...NO_MAP_FILTER, kind: 'jet' });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const pending = tools.setMapFilter.handler({
+    ...NO_MAP_FILTER,
+    kind: 'rotor',
+  });
+  await tools.clearMapFilter.handler();
+  store.setChart({
+    cycle: '2610',
+    effective: '2026-10-08',
+    airports: [testChartAirport()],
+  });
+  const result = await pending;
+
+  expect(result).toEqual({
+    applied: false,
+    mapFilter: null,
+    unknownPlaces: [],
+  });
+  expect(store.getState().mapFilter).toBeNull();
+});
+
 test('clearMapFilter removes the filter', async () => {
   const store = readyStore();
   store.setMapFilter({ ...NO_MAP_FILTER, kind: 'jet' });
