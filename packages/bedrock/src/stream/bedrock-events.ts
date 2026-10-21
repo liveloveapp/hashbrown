@@ -156,7 +156,14 @@ export async function* mapBedrockEvents(
       if (event.contentBlockStart) {
         const index = event.contentBlockStart.contentBlockIndex;
         const toolUse = event.contentBlockStart.start?.toolUse;
-        if (index !== undefined && toolUse?.toolUseId && toolUse.name) {
+        // Server tools run on Bedrock and never get a client toolResult, so
+        // they stay raw like their results instead of becoming tool calls.
+        if (
+          index !== undefined &&
+          toolUse?.toolUseId &&
+          toolUse.name &&
+          toolUse.type !== 'server_tool_use'
+        ) {
           activeBlocks.set(index, {
             kind: 'tool',
             id: toolUse.toolUseId,
