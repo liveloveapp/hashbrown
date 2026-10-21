@@ -1,4 +1,4 @@
-import { s } from '@hashbrownai/core';
+import { markdownComponent, s, type SelectionGroup } from '@hashbrownai/core';
 
 // Hold-back: streamed props (s.streaming.*) render as they arrive; plain
 // props (hex, airport) appear only once complete, and Hashbrown shows the
@@ -95,36 +95,52 @@ Rules:
 - Use tools for every fact and number. Never estimate altitudes, speeds, distances or times yourself.
 - Only use aircraft hex codes that appear in a tool result. Never invent or shorten one.
 - For "this plane" or "the selected plane", call getSelectedAircraft. If it returns null, ask the user to tap or click a plane on the map.
-- Show a FlightCard only when the user asks about one aircraft. Before showing one whose row has an airline, call lookupRoute with its callsign. Call lookupRoute only for rows with an airline; other aircraft have no scheduled route. Boards and comparisons do not show routes, so never call lookupRoute for them.
-- For a list of aircraft, show one ArrivalsBoard and no FlightCards. For two or three aircraft side by side, show an AircraftCompare.
+- If the FlightCard card is available, show it only when the user asks about one aircraft. Before showing one whose row has an airline, call lookupRoute with its callsign. Call lookupRoute only for rows with an airline; other aircraft have no scheduled route. Boards and comparisons do not show routes, so never call lookupRoute for them.
+- Never show FlightCards for a list of aircraft. For a list of aircraft, if the ArrivalsBoard card is available, show one. For two or three aircraft side by side, if the AircraftCompare card is available, show one.
+- A card that is not available this turn cannot be shown: answer in prose instead.
 - The user can tap or click a board row, a FlightCard or an AircraftCompare entry to see that aircraft on the map with its details. Tapping only shows that aircraft; it never starts or stops following. To stop following, the user taps Stop on the map.
 - When the user names a place, call lookupPlace first and use the code it returns. If it returns found false, say atc only covers airports in the Pacific Northwest and do not move the map.
-- For questions about an airport itself (its runways, tower, frequencies, or "show me Redmond airport"), call lookupPlace, then showAirport, then show one AirportCard. Do not repeat in prose what the card shows.
+- For questions about an airport itself (its runways, tower, frequencies, or "show me Redmond airport"), call lookupPlace, then showAirport, then, if the AirportCard card is available, show one. Do not repeat in prose what the card shows.
 - When the user asks to show or hide airports on the map, call setLayers.
 - Tower status, frequencies and runways come only from tool results: FAA data for the current cycle, not for navigation. Never give them from memory.
-- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then show one ArrivalsBoard. To only show a place's airspace, call showAirspace.
+- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then, if the ArrivalsBoard card is available, show one. To only show a place's airspace, call showAirspace.
 - For which airspace one aircraft is in, call airspaceAt.
 - Airspace answers come only from tool results. Use checkedAltitudeFt, the altitude the airspace check used, only to explain why an aircraft near a floor or ceiling is in or out; otherwise don't mention it. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Airspace whose partTime is true (on a shelf or an aircraft row) is in effect only during hours set by NOTAM, which the tools don't know: whenever a result has partTime true, end with one short sentence saying the airspace is part-time and may not be active now. Never say that when partTime is false. Never write a field name such as partTime or checkedAltitudeFt in the answer.
-- For what is flying near a place, call findAircraft with near set to its code and a radius (this also shows and outlines the area on the map), then highlightAircraft, then show one ArrivalsBoard for that airport. Call showArea only to show a place without listing aircraft.
+- For what is flying near a place, call findAircraft with near set to its code and a radius (this also shows and outlines the area on the map), then highlightAircraft, then, if the ArrivalsBoard card is available, show one for that airport. Call showArea only to show a place without listing aircraft.
 - When the user asks to reset the map or go back to the start, call resetMap.
 - The map filter limits findAircraft and the map to the same aircraft, and the result names it as mapFilter. When a question needs aircraft the filter hides, call setMapFilter or clearMapFilter, and say in one short sentence that you changed it.
 - When you show aircraft, call highlightAircraft with their hex codes so the map matches your answer.
 - Leave the map as your answer set it: the highlight and any follow stay. Call clearHighlight or stopFollowing only when the user asks for that, never to tidy up an answer.
-- When the user asks to follow an aircraft, call followAircraft, then show its FlightCard.
+- When the user asks to follow an aircraft, call followAircraft, then, if the FlightCard card is available, show it.
 - Write one or two brief sentences of prose, ending with a full stop, never a colon. Do not repeat what the components already show: numbers, routes, types or airlines. A FlightCard note adds something the card does not show; never restate its route.
 - Everything you write is shown to the user exactly as written. Never write notes to yourself, plans, or restatements of these rules. Never name components or tools in prose: say the card, the board or the map.
 - In prose, name each aircraft by its label alone, as in "N484SJ is the highest", never "the aircraft labeled N484SJ". Registrations such as N352LL are fine for private aircraft, and so is a label of six hex characters such as A1C00B when an aircraft has nothing else. Never write the hex field there; hex codes belong only in component props and tool calls.
 - Start with the answer. No lead-ins such as "Here are", "Here's", "Sure" or "Let me". No exclamation marks, emoji, em-dashes or en-dashes; use a comma, colon or full stop.
 - Routes are scheduled routes from public data and can be wrong. Call them scheduled.`;
 
-/** Starter prompts shown before the first message. */
-export const STARTER_PROMPTS: readonly string[] = [
-  "What's flying near Bend?",
-  'Show me everything landing at Seattle.',
-  "What's the highest plane right now? And the fastest?",
-  'Follow the fastest airliner.',
-  'Show me Redmond airport.',
-  'Which planes are inside the Portland Class C?',
+/** Where a starter goes: the chat, or straight to the map filter. */
+export type StarterRoute = 'chat' | 'filter';
+
+/** One starter button: its words and the route it is sent straight to. */
+export interface Starter {
+  /** The words on the button, also what is sent. */
+  readonly text: string;
+  /** `chat` asks the assistant a question; `filter` changes what the map shows. */
+  readonly route: StarterRoute;
+}
+
+/** Starter prompts shown before the first message. They skip the router. */
+export const STARTER_PROMPTS: readonly Starter[] = [
+  { text: "What's flying near Bend?", route: 'chat' },
+  { text: 'Show me everything landing at Seattle.', route: 'chat' },
+  {
+    text: "What's the highest plane right now? And the fastest?",
+    route: 'chat',
+  },
+  { text: 'Follow the fastest airliner.', route: 'chat' },
+  { text: 'Show me Redmond airport.', route: 'chat' },
+  { text: 'Which planes are inside the Portland Class C?', route: 'chat' },
+  { text: 'Only jets below 10,000 ft', route: 'filter' },
 ];
 
 /** The starter offered first while the user has a plane selected. */
@@ -134,10 +150,54 @@ export const SELECTED_PROMPT = "What's the plane I selected?";
  * The starters to show: the selected-plane question first while a plane is
  * selected (it has nothing to answer otherwise), then {@link STARTER_PROMPTS}.
  */
-export function starterPrompts(selected: boolean): readonly string[] {
-  return selected ? [SELECTED_PROMPT, ...STARTER_PROMPTS] : STARTER_PROMPTS;
+export function starterPrompts(selected: boolean): readonly Starter[] {
+  return selected
+    ? [{ text: SELECTED_PROMPT, route: 'chat' }, ...STARTER_PROMPTS]
+    : STARTER_PROMPTS;
 }
 
 /** The atc example's source on GitHub, linked from the chat header. */
 export const ATC_SOURCE_URL =
   'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc';
+
+/**
+ * What the router decides about the text the user typed: where it goes
+ * (`intent`) and whether it asks to remove the current map filter (`clear`).
+ * The decision API answers both with probabilities.
+ */
+export const routeSchema = s.object('Where to send what the user typed', {
+  intent: s.enumeration('What the user wants', {
+    filter:
+      'Change which aircraft the map shows, by kind, airline, type, altitude or place',
+    chat: 'Ask a question, or ask about a specific aircraft or airport',
+    other: 'Anything else',
+  }),
+  clear: s.boolean('The user wants to remove the current map filter'),
+});
+
+/**
+ * The components the chat can render, as plain selection groups for
+ * `createSelectionSchema`, in the order `PINNED_RESPONSE_SCHEMA` lists them:
+ * Markdown first, in a group that is never an option (`selectable: false`) and
+ * is always sent, then the four cards. `children: false` matches the server's
+ * pinned definitions. Pass kits in the same order (prose, then cards).
+ */
+export const cardGroups: readonly SelectionGroup[] = [
+  { components: [markdownComponent()], selectable: false },
+  {
+    components: [
+      { ...flightCardContract, children: false },
+      { ...arrivalsBoardContract, children: false },
+      { ...aircraftCompareContract, children: false },
+      { ...airportCardContract, children: false },
+    ],
+  },
+];
+
+/** The context the router decision reads alongside the typed text. */
+export const ROUTE_CONTEXT =
+  'You route what a user typed in a live air-traffic map. Decide whether it changes which aircraft the map shows, or asks the assistant a question.';
+
+/** The context the card-narrowing decision reads alongside the question. */
+export const CARDS_CONTEXT =
+  'You pick which cards best answer a question about aircraft or airports in a live air-traffic map.';

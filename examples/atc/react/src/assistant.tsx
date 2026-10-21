@@ -4,13 +4,17 @@ import {
   arrivalsBoardContract,
   createBrowserAtcTools,
   flightCardContract,
+  type Starter,
   transcriptItems,
 } from '@atc/shared';
+import { createHttpDecisionTransport, type Decision } from '@hashbrownai/core';
 import {
   exposeComponent,
   exposeMarkdown,
   useTool,
   useUiChat,
+  useUiDecision,
+  useUiKit,
 } from '@hashbrownai/react';
 import { useMemo } from 'react';
 import {
@@ -29,10 +33,14 @@ import { EmptyState } from './empty-state';
 import { useAtcStore } from './store';
 import { Transcript } from './transcript';
 
-// 1. Expose your components. The model can only render these, and Skillet
-//    validates every prop. IDs never stream, so a card never shows the wrong plane.
-const components = [
-  exposeMarkdown({ className: 'atc-prose' }),
+// 1. Expose your components, in two kits. The model can only render these, and
+//    Skillet validates every prop. IDs never stream, so a card never shows the
+//    wrong plane. Prose (Markdown) is never asked about and always sent; the
+//    cards are narrowed per turn in step 4. The order, prose then cards, is the
+//    server's pinned order (server/src/run-handler.ts), so a narrowed schema is
+//    one the server accepts.
+const prose = [exposeMarkdown({ className: 'atc-prose' })];
+const cards = [
   exposeComponent(FlightCard, {
     name: flightCardContract.name,
     description: flightCardContract.description,
@@ -63,11 +71,29 @@ const components = [
   }),
 ];
 
+const CARDS_TRANSPORT = createHttpDecisionTransport({
+  url: '/api/decide?kind=cards',
+});
+
 /**
- * The chat panel: components, browser-side tools and the streaming answer.
- * `onSent` is called when the user sends a message.
+ * The chat panel: components, browser-side tools and the streaming answer,
+ * with the one composer that routes what is typed. `onFilter` applies a
+ * natural-language map filter; `onSent` is called when the user sends
+ * anything (to the chat, to the filter, or a clear).
  */
-export function Assistant({ onSent }: { onSent?: () => void }) {
+export function Assistant({
+  onFilter,
+  onSent,
+  routeTransport,
+  cardsTransport = CARDS_TRANSPORT,
+}: {
+  onFilter: (request: string) => void;
+  onSent?: () => void;
+  /** Replaces the router's HTTP transport (tests). */
+  routeTransport?: Decision.Transport;
+  /** Replaces the cards decision's HTTP transport (tests). */
+  cardsTransport?: Decision.Transport;
+}) {
   const store = useAtcStore();
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
@@ -95,18 +121,44 @@ export function Assistant({ onSent }: { onSent?: () => void }) {
   ];
 
   // 3. Render the stream.
+  const proseKit = useUiKit({ components: prose, selectable: false });
+  const cardsKit = useUiKit({ components: cards });
   const chat = useUiChat({
     // Required by Hashbrown; the server replaces it with SYSTEM_PROMPT
     // (server/src/run-handler.ts), so the browser cannot change the rules.
     system: 'Provided by the server.',
-    components,
+    components: [proseKit, cardsKit],
     tools,
   });
   const scroller = useAutoScroll<HTMLDivElement>();
+  // 4. Decide: route what the user typed, then narrow the cards. The composer
+  //    asks a Jev decision (react/src/router.ts) and calls one of these; the
+  //    filter route adds nothing to the transcript. A chat message first asks
+  //    which of the cards fit it (at most two, with confidence 0.7), and the
+  //    chat sends with only those plus Markdown. The server pins the questions
+  //    (server/src/decide-handler.ts); an unsure or failed decision sends
+  //    with every card.
+  const narrowed = useUiDecision({
+    chat,
+    select: { max: 2 },
+    minConfidence: 0.7,
+    system: 'Provided by the server.',
+    transport: cardsTransport,
+  });
   const send = (content: string) => {
-    chat.sendMessage({ role: 'user', content });
+    narrowed.sendMessage(content);
     onSent?.();
   };
+  const filter = (request: string) => {
+    onFilter(request);
+    onSent?.();
+  };
+  const clear = () => {
+    store.clearMapFilter();
+    onSent?.();
+  };
+  const pick = (starter: Starter) =>
+    starter.route === 'filter' ? filter(starter.text) : send(starter.text);
   // Retries the last answer, or resends the first message when it never got one.
   const retry = () =>
     chat.messages.at(-1)?.role === 'assistant'
@@ -117,7 +169,7 @@ export function Assistant({ onSent }: { onSent?: () => void }) {
     <div className="atc-chat">
       <div className="atc-chat-body" {...scroller}>
         {chat.messages.length === 0 && !chat.error ? (
-          <EmptyState onPick={send} />
+          <EmptyState onPick={pick} />
         ) : null}
         <Transcript
           items={transcriptItems(chat.messages, chat.isLoading)}
@@ -132,7 +184,13 @@ export function Assistant({ onSent }: { onSent?: () => void }) {
           </div>
         ) : null}
       </div>
-      <Composer busy={chat.isLoading} onSend={send} />
+      <Composer
+        busy={chat.isLoading}
+        onChat={send}
+        onFilter={filter}
+        onClear={clear}
+        transport={routeTransport}
+      />
     </div>
   );
 }

@@ -50,6 +50,7 @@ dependencies); this file covers atc.
 | `angular/src/app/`, `react/src/`                | Thin framework shells that mirror each other                                                                                                       |
 | `server/src/run-handler.ts`                     | `/api/run`: pins the system prompt, tool definitions and UI response schema, caps output                                                           |
 | `server/src/filter-handler.ts`                  | `/api/filter`: pins the filter prompt and schema, no tools, 512-token cap                                                                          |
+| `server/src/decide-handler.ts`                  | `/api/decide?kind=route\|cards`: TypeSafe Jev with the questions and context pinned per kind; 503 without a key                                    |
 | `server/src/aircraft-handler.ts`                | `/api/aircraft`: cached, stripped adsb.lol                                                                                                         |
 | `server/src/chart-airports-handler.ts`          | `/api/chart/airports`: NASR airports, cached per cycle                                                                                             |
 | `server/src/chart-surfaces-handler.ts`          | `/api/chart/surfaces`: FAA and OSM taxiways, aprons, holds                                                                                         |
@@ -72,7 +73,10 @@ dependencies); this file covers atc.
   marker HTML. Everything else is rendered as text.
 - `normalizeAdsbLol` copies whitelisted fields only; never spread adsb.lol entries.
 - The system prompt, the tool definitions, the UI response schema and the output cap are
-  fixed on the server; clients cannot change them. A request that omits the response
+  fixed on the server; clients cannot change them. The one exception: the assistant narrows
+  its cards per turn, so the server keeps a response schema that equals an entry of
+  `PINNED_RESPONSE_SCHEMAS` (Markdown plus any non-empty subset of the cards, in pinned
+  order) and replaces anything else with the full schema. A request that omits the response
   schema gets free-form text, still under the pinned prompt, tools and cap.
 - The map moves only through store view requests: the newest wins, follow mode wins over
   all, a user drag or zoom cancels.

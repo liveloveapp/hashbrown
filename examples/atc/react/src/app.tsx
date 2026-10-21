@@ -56,7 +56,10 @@ export function App() {
       >
         <SheetHandle expanded={sheetExpanded(sheet)} onMove={move} />
         <PanelHeader />
-        <Assistant onSent={() => move({ type: 'send' })} />
+        <Assistant
+          onFilter={mapFilter.apply}
+          onSent={() => move({ type: 'send' })}
+        />
       </section>
       <section className="atc-panel atc-map-panel" aria-label="Map">
         <AirspaceMap obstruction={chatSheet} streaming={mapFilter.streaming} />
