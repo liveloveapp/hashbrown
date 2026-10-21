@@ -1,7 +1,12 @@
 import { expect, test } from 'vitest';
 import {
+  aircraftCompareContract,
   airportCardContract,
+  arrivalsBoardContract,
+  CARDS_CONTEXT,
   FILTER_SYSTEM_PROMPT,
+  flightCardContract,
+  ROUTE_CONTEXT,
   SELECTED_PROMPT,
   STARTER_PROMPTS,
   starterPrompts,
@@ -47,7 +52,7 @@ test('the prompt covers the airport tools, and a starter shows Redmond', () => {
 
 test('the prompt covers the airspace tools, and a starter asks about Portland', () => {
   expect(SYSTEM_PROMPT).toContain(
-    "- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then, if the ArrivalsBoard card is available, show one. To only show a place's airspace, call showAirspace.",
+    "- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then show one ArrivalsBoard. To only show a place's airspace, call showAirspace.",
   );
   expect(SYSTEM_PROMPT).toContain(
     '- For which airspace one aircraft is in, call airspaceAt.',
@@ -113,30 +118,55 @@ test('the starters include a question for the chat and a filter for the map', ()
   expect(filter?.text).toBe('Only jets below 10,000 ft');
 });
 
-test('the prompt never shows FlightCards for a list, whichever cards are available', () => {
+test('the prompt never shows FlightCards for a list, whichever cards are offered', () => {
   const rule = SYSTEM_PROMPT.split('\n').find((line) =>
     line.startsWith('- Never show FlightCards for a list of aircraft.'),
   );
 
-  expect(rule).toBeDefined();
-  expect(rule).toContain('if the ArrivalsBoard card is available, show one.');
-  expect(SYSTEM_PROMPT).not.toContain('show one and no FlightCards');
+  expect(rule).toBe(
+    '- Never show FlightCards for a list of aircraft. For a list of aircraft, show one ArrivalsBoard. For two or three aircraft side by side, including a question with two or three answers such as the highest and the fastest, show one AircraftCompare.',
+  );
 });
 
-test('every card rule in the prompt says the card must be available', () => {
-  const cards = [
-    'FlightCard',
-    'ArrivalsBoard',
-    'AircraftCompare',
-    'AirportCard',
-  ];
+test('the card rules are direct, with one line for cards a turn does not offer', () => {
+  const offered =
+    '- Each turn offers only some cards. Show the card a rule names whenever it is offered; only when it is not offered, answer in prose instead.';
 
-  const rules = cards.map((card) =>
-    SYSTEM_PROMPT.match(new RegExp(`[Ii]f the ${card} card is available`, 'g')),
-  );
+  const lines = SYSTEM_PROMPT.split('\n');
 
-  expect(rules.map((matches) => matches?.length ?? 0)).toEqual([2, 3, 1, 1]);
+  expect(SYSTEM_PROMPT).not.toMatch(/card is available/);
+  expect(lines.filter((line) => line === offered)).toHaveLength(1);
   expect(SYSTEM_PROMPT).toContain(
-    'A card that is not available this turn cannot be shown: answer in prose instead.',
+    '- Show a FlightCard only when the user asks about one aircraft.',
+  );
+  expect(SYSTEM_PROMPT).toContain('then show one AirportCard.');
+  expect(SYSTEM_PROMPT).toContain(
+    'call followAircraft, then show its FlightCard.',
+  );
+});
+
+test('the router context sends picks, follows and airports to chat, and only standing limits to filter', () => {
+  expect(ROUTE_CONTEXT).toContain(
+    'Choose filter only when the whole request is a standing limit on which aircraft are visible',
+  );
+  expect(ROUTE_CONTEXT).toContain('and needs no reply.');
+  expect(ROUTE_CONTEXT).toContain(
+    'Choose chat when it asks a question, picks out particular aircraft',
+  );
+  expect(ROUTE_CONTEXT).toContain('"show me everything landing at Seattle"');
+});
+
+test('the cards context and descriptions tell one aircraft from two superlatives', () => {
+  expect(CARDS_CONTEXT).toContain(
+    'AircraftCompare fits when the answer is two or three aircraft, such as a comparison or two superlatives like the highest and the fastest.',
+  );
+  expect(flightCardContract.description).toContain(
+    'Not for two or more aircraft.',
+  );
+  expect(aircraftCompareContract.description).toContain(
+    'such as the highest and the fastest',
+  );
+  expect(arrivalsBoardContract.description).toContain(
+    'inside an airport or its airspace',
   );
 });

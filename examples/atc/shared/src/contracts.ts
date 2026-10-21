@@ -9,7 +9,7 @@ import { markdownComponent, s, type SelectionGroup } from '@hashbrownai/core';
 export const flightCardContract = {
   name: 'FlightCard',
   description:
-    'One aircraft on the map, with live altitude, speed, heading and its scheduled route if looked up.',
+    'Exactly one aircraft on the map, with live altitude, speed, heading and its scheduled route if looked up. Not for two or more aircraft.',
   props: {
     note: s.streaming.string(
       'One or two sentences for the user about this flight',
@@ -27,7 +27,7 @@ export const flightCardContract = {
 export const arrivalsBoardContract = {
   name: 'ArrivalsBoard',
   description:
-    'A live table of aircraft approaching or near an airport, nearest first.',
+    'A live table of aircraft approaching, near or inside an airport or its airspace, nearest first.',
   props: {
     title: s.streaming.string(
       'A short label with no dashes, such as "Arrivals at Seattle" or "Near Bend"',
@@ -45,7 +45,8 @@ export const arrivalsBoardContract = {
 /** AircraftCompare: two or three aircraft side by side. */
 export const aircraftCompareContract = {
   name: 'AircraftCompare',
-  description: 'Two or three aircraft side by side with live stats.',
+  description:
+    'Two or three aircraft side by side with live stats, for a comparison or a question with two or three answers, such as the highest and the fastest.',
   props: {
     takeaway: s.streaming.string('One sentence comparing them'),
     hexes: s.array(
@@ -95,23 +96,23 @@ Rules:
 - Use tools for every fact and number. Never estimate altitudes, speeds, distances or times yourself.
 - Only use aircraft hex codes that appear in a tool result. Never invent or shorten one.
 - For "this plane" or "the selected plane", call getSelectedAircraft. If it returns null, ask the user to tap or click a plane on the map.
-- If the FlightCard card is available, show it only when the user asks about one aircraft. Before showing one whose row has an airline, call lookupRoute with its callsign. Call lookupRoute only for rows with an airline; other aircraft have no scheduled route. Boards and comparisons do not show routes, so never call lookupRoute for them.
-- Never show FlightCards for a list of aircraft. For a list of aircraft, if the ArrivalsBoard card is available, show one. For two or three aircraft side by side, if the AircraftCompare card is available, show one.
-- A card that is not available this turn cannot be shown: answer in prose instead.
+- Show a FlightCard only when the user asks about one aircraft. Before showing one whose row has an airline, call lookupRoute with its callsign. Call lookupRoute only for rows with an airline; other aircraft have no scheduled route. Boards and comparisons do not show routes, so never call lookupRoute for them.
+- Never show FlightCards for a list of aircraft. For a list of aircraft, show one ArrivalsBoard. For two or three aircraft side by side, including a question with two or three answers such as the highest and the fastest, show one AircraftCompare.
+- Each turn offers only some cards. Show the card a rule names whenever it is offered; only when it is not offered, answer in prose instead.
 - The user can tap or click a board row, a FlightCard or an AircraftCompare entry to see that aircraft on the map with its details. Tapping only shows that aircraft; it never starts or stops following. To stop following, the user taps Stop on the map.
 - When the user names a place, call lookupPlace first and use the code it returns. If it returns found false, say atc only covers airports in the Pacific Northwest and do not move the map.
-- For questions about an airport itself (its runways, tower, frequencies, or "show me Redmond airport"), call lookupPlace, then showAirport, then, if the AirportCard card is available, show one. Do not repeat in prose what the card shows.
+- For questions about an airport itself (its runways, tower, frequencies, or "show me Redmond airport"), call lookupPlace, then showAirport, then show one AirportCard. Do not repeat in prose what the card shows.
 - When the user asks to show or hide airports on the map, call setLayers.
 - Tower status, frequencies and runways come only from tool results: FAA data for the current cycle, not for navigation. Never give them from memory.
-- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then, if the ArrivalsBoard card is available, show one. To only show a place's airspace, call showAirspace.
+- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then show one ArrivalsBoard. To only show a place's airspace, call showAirspace.
 - For which airspace one aircraft is in, call airspaceAt.
 - Airspace answers come only from tool results. Use checkedAltitudeFt, the altitude the airspace check used, only to explain why an aircraft near a floor or ceiling is in or out; otherwise don't mention it. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Airspace whose partTime is true (on a shelf or an aircraft row) is in effect only during hours set by NOTAM, which the tools don't know: whenever a result has partTime true, end with one short sentence saying the airspace is part-time and may not be active now. Never say that when partTime is false. Never write a field name such as partTime or checkedAltitudeFt in the answer.
-- For what is flying near a place, call findAircraft with near set to its code and a radius (this also shows and outlines the area on the map), then highlightAircraft, then, if the ArrivalsBoard card is available, show one for that airport. Call showArea only to show a place without listing aircraft.
+- For what is flying near a place, call findAircraft with near set to its code and a radius (this also shows and outlines the area on the map), then highlightAircraft, then show one ArrivalsBoard for that airport. Call showArea only to show a place without listing aircraft.
 - When the user asks to reset the map or go back to the start, call resetMap.
 - The map filter limits findAircraft and the map to the same aircraft, and the result names it as mapFilter. When a question needs aircraft the filter hides, call setMapFilter or clearMapFilter, and say in one short sentence that you changed it.
 - When you show aircraft, call highlightAircraft with their hex codes so the map matches your answer.
 - Leave the map as your answer set it: the highlight and any follow stay. Call clearHighlight or stopFollowing only when the user asks for that, never to tidy up an answer.
-- When the user asks to follow an aircraft, call followAircraft, then, if the FlightCard card is available, show it.
+- When the user asks to follow an aircraft, call followAircraft, then show its FlightCard.
 - Write one or two brief sentences of prose, ending with a full stop, never a colon. Do not repeat what the components already show: numbers, routes, types or airlines. A FlightCard note adds something the card does not show; never restate its route.
 - Everything you write is shown to the user exactly as written. Never write notes to yourself, plans, or restatements of these rules. Never name components or tools in prose: say the card, the board or the map.
 - In prose, name each aircraft by its label alone, as in "N484SJ is the highest", never "the aircraft labeled N484SJ". Registrations such as N352LL are fine for private aircraft, and so is a label of six hex characters such as A1C00B when an aircraft has nothing else. Never write the hex field there; hex codes belong only in component props and tool calls.
@@ -196,8 +197,8 @@ export const cardGroups: readonly SelectionGroup[] = [
 
 /** The context the router decision reads alongside the typed text. */
 export const ROUTE_CONTEXT =
-  'You route what a user typed in a live air-traffic map. Decide whether it changes which aircraft the map shows, or asks the assistant a question.';
+  'You route what a user typed into atc, a live air-traffic map with an assistant. Choose filter only when the whole request is a standing limit on which aircraft are visible (kind, airline, type, altitude or place), such as "only jets", "below 10,000 ft" or "Alaska flights near Seattle", or asks to show every aircraft again, and needs no reply. Choose chat when it asks a question, picks out particular aircraft (the fastest, the highest, a callsign, the selected plane), asks to follow, compare, highlight or explain aircraft, or is about an airport, its airspace or its arrivals, such as "show me Redmond airport" or "show me everything landing at Seattle".';
 
 /** The context the card-narrowing decision reads alongside the question. */
 export const CARDS_CONTEXT =
-  'You pick which cards best answer a question about aircraft or airports in a live air-traffic map.';
+  'You pick which cards best answer a message typed in atc, a live air-traffic map. FlightCard fits when the answer is exactly one aircraft: the selected plane, a callsign, or one plane to follow. AircraftCompare fits when the answer is two or three aircraft, such as a comparison or two superlatives like the highest and the fastest. ArrivalsBoard fits a list of aircraft near, landing at or inside an airport or its airspace. AirportCard fits a question about an airport itself.';

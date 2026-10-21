@@ -129,10 +129,14 @@ available from the chat.
 5. Add it to the cards group of `cardGroups` in `shared/src/contracts.ts`, in the same
    position. The server pins the cards decision's questions from it; skip it and the
    decision never picks the card, so it is never offered.
-6. Tell the model when to use it in `SYSTEM_PROMPT`, as an "If the X card is available"
-   rule like the others. A card is offered only on turns the decision picks it; without
-   the rule the model has no guidance for those turns, and nothing tells it the card may
-   be missing on the others.
+6. Tell the model when to use it in `SYSTEM_PROMPT`, as a direct rule like the others
+   ("show one AirportCard"). One line already covers turns that do not offer it: the
+   model shows a card a rule names whenever it is offered, and answers in prose only when
+   it is not. Without the rule the model has no guidance on the turns the decision picks
+   it.
+7. Say when it fits in `CARDS_CONTEXT`, one sentence like the others. The cards
+   decision reads it with the descriptions; check the pick with
+   `npx nx decide-eval atc-e2e`.
 
 ### Add a tool
 
