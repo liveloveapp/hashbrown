@@ -24,6 +24,13 @@ export interface UiKitOptions<T extends ExposedComponent<any>> {
    * Components or other UiKit instances to compose.
    */
   components: readonly UiKitInput<T>[];
+
+  /**
+   * Whether the kit's components are offered to UI selection. Set `false` for
+   * always-on components such as prose; they are never asked about and are
+   * always sent with the picks. Defaults to `true`.
+   */
+  selectable?: boolean;
 }
 
 /**
@@ -48,6 +55,7 @@ export function createUiKit<T extends ExposedComponent<any>>(
 ): UiKit<T> {
   const uiKit = createCoreUiKit<T>({
     components: options.components,
+    selectable: options.selectable,
   });
 
   const tagNameRegistry = Array.from(uiKit.registry.values()).reduce(

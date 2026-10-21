@@ -1,5 +1,5 @@
 import { s } from '@hashbrownai/core';
-import { findAircraftInput } from './find-aircraft';
+import { aircraftFilterFields, findAircraftInput } from './find-aircraft';
 
 const noInput = s.object('No input', {});
 
@@ -15,6 +15,18 @@ export const ATC_TOOL_DEFINITIONS = {
     description:
       "Find aircraft on the map by airline, type, kind, altitude, approach or distance from an airport, or keep only aircraft inside an airport's airspace (optionally of one class). With near, the map also shows and outlines that area; with inAirspace, it highlights that airspace; with both, the airspace highlight is shown. Returns compact rows.",
     schema: findAircraftInput,
+  },
+  setMapFilter: {
+    name: 'setMapFilter' as const,
+    description:
+      'Filter the aircraft shown on the map, replacing any filter already set. findAircraft applies this filter too, and its result names it. Use it when a question needs a different filter, and tell the user when you change it. Returns applied true with the filter in words and any airport codes it does not know; or applied false, with the filter now in effect, when a newer change to the filter happened while this one waited. In that case do not retry unless the user still wants it.',
+    schema: s.object('The map filter', aircraftFilterFields),
+  },
+  clearMapFilter: {
+    name: 'clearMapFilter' as const,
+    description:
+      'Remove the map filter so every aircraft shows again. Only when the question needs aircraft the filter hides, or the user asks for all traffic.',
+    schema: noInput,
   },
   getSelectedAircraft: {
     name: 'getSelectedAircraft' as const,

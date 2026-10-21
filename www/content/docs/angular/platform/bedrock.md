@@ -21,14 +21,15 @@ The model or inference profile is server configuration and is not read from the 
 
 ### API Reference
 
-| Name                      | Type                                    | Description                                                                    |
-| ------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
-| `model`                   | `string`                                | Server-selected Bedrock model or inference profile ID.                         |
-| `input`                   | `BedrockHashbrownRunAgentInput`         | AG-UI run input, including messages and tools.                                 |
-| `clientOptions`           | `BedrockRuntimeClientConfig`            | _(Optional)_ AWS SDK client configuration. Mutually exclusive with `client`.   |
-| `client`                  | `BedrockRuntimeClient`                  | _(Optional)_ Reusable AWS SDK client. Mutually exclusive with `clientOptions`. |
-| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Bedrock request when the HTTP client disconnects.     |
-| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final Bedrock `ConverseStreamCommandInput`.        |
+| Name                      | Type                                    | Description                                                                                                |
+| ------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `model`                   | `string`                                | Server-selected Bedrock model or inference profile ID.                                                     |
+| `input`                   | `BedrockHashbrownRunAgentInput`         | AG-UI run input, including messages and tools.                                                             |
+| `clientOptions`           | `BedrockRuntimeClientConfig`            | _(Optional)_ AWS SDK client configuration. Mutually exclusive with `client`.                               |
+| `client`                  | `BedrockRuntimeClient`                  | _(Optional)_ Reusable AWS SDK client. Mutually exclusive with `clientOptions`.                             |
+| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Bedrock request when the HTTP client disconnects.                                 |
+| `activities`              | `ActivityCallback`                      | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities). |
+| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final Bedrock `ConverseStreamCommandInput`.                                    |
 
 The adapter maps system and developer instructions, message history, tools, tool results, and native structured output. Bedrock reasoning text, signatures, and redacted reasoning become AG-UI reasoning records that can be sent back on continuation. Citations, images, response metadata, and unsupported native blocks are preserved as AG-UI `RAW` events. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
@@ -245,6 +246,41 @@ const stream = HashbrownBedrock.stream.text({
 ```
 
 Pass a configured `BedrockRuntimeClient` through `client` when you need to reuse connections, retries, or middleware. Hashbrown destroys clients it creates from `clientOptions`; it never destroys a client supplied through `client`.
+
+## Sending Activities
+
+Pass `activities` to send AG-UI activities alongside the model's output. Activities are display-only progress, such as a plan or a progress report, and the model never sees them. See [Activities](/docs/angular/concept/activities) for how the client renders them.
+
+```ts
+import { HashbrownBedrock } from '@hashbrownai/bedrock';
+
+const stream = HashbrownBedrock.stream.text({
+  clientOptions: { region: process.env.AWS_REGION ?? 'us-east-1' },
+  model: process.env.BEDROCK_MODEL_ID!,
+  input,
+  signal,
+  activities: async ({ activity, model }) => {
+    const plan = activity.snapshot(`plan-${input.runId}`, 'plan', {
+      steps: ['Read the question', 'Answer'],
+      done: 0,
+    });
+
+    await model;
+
+    plan.patch([{ op: 'replace', path: '/done', value: 2 }]);
+  },
+});
+```
+
+The callback receives an `activity` writer, a `model` promise, and the run's `signal`:
+
+- `activity.snapshot(id, activityType, content)` sends an `ACTIVITY_SNAPSHOT` and returns a handle. The handle's `patch(operations)` sends an `ACTIVITY_DELTA` with RFC 6902 JSON Patch operations, and `replace(content)` sends a new snapshot.
+- Activity ids must be unique within the thread. Reusing an id from an earlier turn updates that turn's activity in place, so the example builds the id from `input.runId` to give each run its own plan.
+- `model` resolves when the model stream ends, before the run finishes, and rejects if the model call fails.
+- Activity events and model events are sent in the order they happen. The callback starts after `RUN_STARTED`, and the terminal event waits until the callback settles. Model text streams as it arrives and is never held back.
+- If the callback throws while the model is streaming, Hashbrown aborts the model and ends the run with one `RUN_ERROR`. If it throws after the model has finished, `RUN_ERROR` replaces `RUN_FINISHED`. If the model fails too, the model's error wins.
+- When the client disconnects, `signal` aborts. No terminal event is sent, and writes become no-ops.
+- A write after the run has closed throws, as does a second snapshot that reuses an id with a different `activityType`.
 
 ## Transform Request Options
 

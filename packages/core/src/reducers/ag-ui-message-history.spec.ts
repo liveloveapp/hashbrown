@@ -146,6 +146,32 @@ test('lowers locally created user messages with stable supplied IDs', () => {
   expect(createId).toHaveBeenCalledTimes(1);
 });
 
+test('lowering keeps a supplied id and mints one only when absent', () => {
+  // Arrange
+  const messages: Chat.AnyMessageInput[] = [
+    { id: 'user-1', role: 'user', content: 'First' },
+    { role: 'user', content: 'Second' },
+    { id: 'assistant-1', role: 'assistant', content: 'One', toolCalls: [] },
+    { role: 'assistant', content: 'Two', toolCalls: [] },
+  ];
+  const createId = jest
+    .fn()
+    .mockReturnValueOnce('minted-1')
+    .mockReturnValueOnce('minted-2');
+
+  // Act
+  const lowered = lowerViewMessagesToAgUi(messages, { createId });
+
+  // Assert
+  expect(lowered.map((message) => message.id)).toEqual([
+    'user-1',
+    'minted-1',
+    'assistant-1',
+    'minted-2',
+  ]);
+  expect(createId).toHaveBeenCalledTimes(2);
+});
+
 test('lowers assistant turns with tool results and opaque protocol fields', () => {
   // Arrange
   const metadata = { provider: { cursor: 'initial' } };
@@ -160,7 +186,7 @@ test('lowers assistant turns with tool results and opaque protocol fields', () =
     allocatedIds.push(id);
     return id;
   });
-  const messages: readonly Chat.AnyMessage[] = [
+  const messages: readonly Chat.AnyMessageInput[] = [
     {
       role: 'assistant',
       content: { answer: 'Hashbrown' },
@@ -251,7 +277,7 @@ test('lowers assistant turns with tool results and opaque protocol fields', () =
 
 test('pairs view messages with canonical IDs without shifting across reasoning or tool results', () => {
   // Arrange
-  const messages: readonly Chat.AnyMessage[] = [
+  const messages: readonly Chat.AnyMessageInput[] = [
     { role: 'user', content: 'question' },
     {
       role: 'assistant',
@@ -346,7 +372,7 @@ test('pairs view messages with canonical IDs without shifting across reasoning o
 test('preserves detailed reasoning identities without generating extra IDs', () => {
   // Arrange
   const createId = jest.fn(() => 'assistant-1');
-  const messages: readonly Chat.AnyMessage[] = [
+  const messages: readonly Chat.AnyMessageInput[] = [
     {
       role: 'assistant',
       content: 'answer',
@@ -824,6 +850,13 @@ test('projects canonical messages into typed messages and stitched tool calls', 
 
   // Assert
   expect(projection.messages).toEqual([
+    {
+      id: 'activity-1',
+      role: 'activity',
+      activityType: 'progress',
+      content: { phase: 'searching' },
+      links: {},
+    },
     {
       id: 'user-1',
       role: 'user',

@@ -1,3 +1,5 @@
+import { type MapFilter } from './find-aircraft';
+import { filterSummary } from './filter-view';
 import { isRecord, numberOrNull } from './json';
 import type { AircraftKind } from './kinds';
 import { AIRPORTS } from './places';
@@ -148,6 +150,11 @@ function findSummary(args: Record<string, unknown>): string {
   return `${[...before, 'aircraft'].join(' ')}${tail}`;
 }
 
+/** The summary of a filter's streamed or complete arguments, or '' when empty. */
+function filterWords(args: Record<string, unknown>): string {
+  return filterSummary(args as unknown as MapFilter);
+}
+
 function hexCount(args: Record<string, unknown>): number | null {
   return Array.isArray(args['hexes']) ? args['hexes'].length : null;
 }
@@ -172,6 +179,12 @@ const RUNNING: Record<
   (args: Record<string, unknown>, labelFor: HexLabel) => string
 > = {
   findAircraft: (args) => `Finding ${findSummary(args)}`,
+  setMapFilter: (args) => {
+    const words = filterWords(args);
+
+    return words === '' ? 'Filtering the map' : `Filtering the map to ${words}`;
+  },
+  clearMapFilter: () => 'Clearing the map filter',
   lookupRoute: (args) => {
     const callsign = code(args['callsign']);
 
@@ -290,6 +303,12 @@ const DONE: Record<
     calls.length === 1
       ? 'searched traffic'
       : `searched traffic ${calls.length} times`,
+  setMapFilter: (calls) => {
+    const words = filterWords(calls.at(-1) ?? {});
+
+    return words === '' ? 'filtered the map' : `filtered to ${words}`;
+  },
+  clearMapFilter: () => 'cleared the map filter',
   lookupRoute: (calls) =>
     `looked up ${plural(calls.length, 'route', 'routes')}`,
   highlightAircraft: (calls) => {

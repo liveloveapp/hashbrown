@@ -650,3 +650,67 @@ function createSignal<T>(initialValue: T) {
 
   return signal;
 }
+
+test('reload regenerates from the last user message when activities trail', () => {
+  createChatRuntimeMock.mockReset();
+  const messages = [
+    { id: 'user-1', role: 'user' as const, content: 'Summarize this' },
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: 'Completed response',
+      toolCalls: [],
+    },
+    {
+      id: 'activity-1',
+      role: 'activity' as const,
+      activityType: 'progress',
+      content: { step: 'done' },
+      links: { assistantMessageId: 'assistant-1' },
+    },
+  ];
+  const runtime = createRuntimeStub({ messages });
+  createChatRuntimeMock.mockReturnValue(runtime);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    chatResource({
+      system: 'System A',
+    }),
+  );
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(true);
+  expect(runtime.setMessages).toHaveBeenCalledWith([messages[0]]);
+});
+
+test('chatResource reload returns false when only activities follow the user message', () => {
+  createChatRuntimeMock.mockReset();
+  const messages = [
+    { id: 'user-1', role: 'user' as const, content: 'Summarize this' },
+    {
+      id: 'activity-1',
+      role: 'activity' as const,
+      activityType: 'progress',
+      content: { step: 'searching' },
+      links: {},
+    },
+  ];
+  const runtime = createRuntimeStub({ messages });
+  createChatRuntimeMock.mockReturnValue(runtime);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+  const resource = TestBed.runInInjectionContext(() =>
+    chatResource({
+      system: 'System A',
+    }),
+  );
+
+  const reloaded = resource.reload();
+
+  expect(reloaded).toBe(false);
+  expect(runtime.setMessages).not.toHaveBeenCalled();
+});

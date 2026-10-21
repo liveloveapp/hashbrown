@@ -1,9 +1,12 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
+import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
+import { lowerViewMessagesToAgUi } from './ag-ui-message-history';
 import {
   applyCanonicalMessageEvent,
   initialAgUiMessagesState,
   reducer,
+  ɵselectActivityDeltaDropReason,
   ɵselectAgUiMessagesProtocolError,
   ɵselectAttemptStartToolCallIds,
   ɵselectCommittedAgUiMessages,
@@ -839,6 +842,7 @@ test('retains synchronized system echoes and replaces them in place in the effec
       activityType: 'progress',
       content: { count: 1 },
       metadata: { arbitrary: { value: true } },
+      hashbrownLinks: {},
     },
   ]);
   expect(Object.isFrozen(state.draft[3])).toBe(true);
@@ -852,6 +856,7 @@ test('retains synchronized system echoes and replaces them in place in the effec
       activityType: 'progress',
       content: { count: 1 },
       metadata: { arbitrary: { value: true } },
+      hashbrownLinks: {},
     },
   ]);
   expect(appended.committed).toEqual(
@@ -1391,45 +1396,319 @@ test('records compatibility errors while preserving the exact valid draft', () =
   );
 });
 
-test('keeps activity deltas as reference-preserving no-ops and exposes canonical selectors', () => {
-  const initialized = reducer(
-    initialAgUiMessagesState,
-    devActions.init({
-      system: 'system',
-      systemMessage: { id: 'system-1', role: 'system', content: 'system' },
-      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
-    }),
-  );
+test('activity events update the draft and record run, assistant and tool-call links', () => {
   const active = reducer(
-    initialized,
+    reducer(
+      initialAgUiMessagesState,
+      devActions.init({
+        system: '',
+        canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+      }),
+    ),
     internalActions.generationAttemptStarted(),
   );
-  const snapshotNoop = reducer(
+  const events: AGUIEvent[] = [
+    { type: EventType.RUN_STARTED, threadId: 'thread-1', runId: 'run-1' },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-early',
+      activityType: 'progress',
+      content: { percent: 0 },
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: 'Hi',
+    },
+    { type: EventType.TEXT_MESSAGE_END, messageId: 'assistant-1' },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+    },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'tool-1' },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-late',
+      activityType: 'plan',
+      content: { steps: [] },
+    },
+    {
+      type: EventType.ACTIVITY_DELTA,
+      messageId: 'activity-early',
+      activityType: 'progress',
+      patch: [{ op: 'replace', path: '/percent', value: 100 }],
+    },
+  ];
+
+  const next = events.reduce(
+    (state, event) => reducer(state, apiActions.generateMessageEvent(event)),
+    active,
+  );
+
+  expect(next.protocolError).toBeUndefined();
+  expect(next.committed).toBe(active.committed);
+  expect(next.draft.map((message) => message.id)).toEqual([
+    'user-1',
+    'activity-early',
+    'assistant-1',
+    'activity-late',
+  ]);
+  expect(next.draft[1]).toEqual({
+    id: 'activity-early',
+    role: 'activity',
+    activityType: 'progress',
+    content: { percent: 100 },
+    hashbrownLinks: { runId: 'run-1' },
+  });
+  expect(next.draft[3]).toEqual({
+    id: 'activity-late',
+    role: 'activity',
+    activityType: 'plan',
+    content: { steps: [] },
+    hashbrownLinks: {
+      runId: 'run-1',
+      assistantMessageId: 'assistant-1',
+      toolCallId: 'tool-1',
+    },
+  });
+});
+
+test('an activity after a tool-only assistant links to that assistant', () => {
+  const active = reducer(
+    reducer(
+      initialAgUiMessagesState,
+      devActions.init({
+        system: '',
+        canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+      }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const events: AGUIEvent[] = [
+    { type: EventType.RUN_STARTED, threadId: 'thread-1', runId: 'run-1' },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'a1',
+    },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'tool-1', delta: '{}' },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'tool-1' },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      content: { steps: [] },
+    },
+  ];
+
+  const next = events.reduce(
+    (state, event) => reducer(state, apiActions.generateMessageEvent(event)),
+    active,
+  );
+
+  const activity = next.draft[next.draft.length - 1];
+  const restored = recomputeActivityLinks(next.draft, 'run-1');
+  const restoredActivity = restored[restored.length - 1];
+
+  expect(next.protocolError).toBeUndefined();
+  expect(activity && readActivityLinks(activity)).toEqual({
+    runId: 'run-1',
+    assistantMessageId: 'a1',
+    toolCallId: 'tool-1',
+  });
+  expect(restoredActivity && readActivityLinks(restoredActivity)).toEqual(
+    activity && readActivityLinks(activity),
+  );
+});
+
+test('an activity after a chunked tool-only assistant links to that assistant', () => {
+  const active = reducer(
+    initialAgUiMessagesState,
+    internalActions.generationAttemptStarted(),
+  );
+  const events: AGUIEvent[] = [
+    { type: EventType.RUN_STARTED, threadId: 'thread-1', runId: 'run-1' },
+    {
+      type: EventType.TOOL_CALL_CHUNK,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'a1',
+      delta: '{}',
+    },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      content: { steps: [] },
+    },
+  ];
+
+  const next = events.reduce(
+    (state, event) => reducer(state, apiActions.generateMessageEvent(event)),
+    active,
+  );
+
+  const activity = next.draft[next.draft.length - 1];
+
+  expect(next.protocolError).toBeUndefined();
+  expect(activity && readActivityLinks(activity)).toEqual({
+    runId: 'run-1',
+    assistantMessageId: 'a1',
+    toolCallId: 'tool-1',
+  });
+});
+
+test('a new attempt clears the run, assistant and tool-call links', () => {
+  const first = [
+    { type: EventType.RUN_STARTED, threadId: 'thread-1', runId: 'run-1' },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'lookup',
+    },
+  ].reduce(
+    (state, event) =>
+      reducer(state, apiActions.generateMessageEvent(event as AGUIEvent)),
+    reducer(
+      initialAgUiMessagesState,
+      internalActions.generationAttemptStarted(),
+    ),
+  );
+
+  const retried = reducer(
+    reducer(first, internalActions.generationAttemptRolledBack()),
+    internalActions.generationAttemptStarted(),
+  );
+  const next = reducer(
+    retried,
+    apiActions.generateMessageEvent({
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      content: {},
+    }),
+  );
+
+  expect(first.currentRunId).toBe('run-1');
+  expect(first.lastToolCallId).toBe('tool-1');
+  expect(retried.currentRunId).toBeUndefined();
+  expect(retried.lastToolCallId).toBeUndefined();
+  expect(retried.activeAssistantMessageId).toBeUndefined();
+  expect(next.draft[0]).toMatchObject({ hashbrownLinks: {} });
+});
+
+test('a dropped delta records its reason and the attempt continues', () => {
+  const active = reducer(
+    initialAgUiMessagesState,
+    internalActions.generationAttemptStarted(),
+  );
+  const created = reducer(
     active,
     apiActions.generateMessageEvent({
       type: EventType.ACTIVITY_SNAPSHOT,
       messageId: 'activity-1',
-      activityType: 'progress',
+      activityType: 'plan',
       content: {},
-      replace: true,
-    }),
-  );
-  const deltaNoop = reducer(
-    active,
-    apiActions.generateMessageEvent({
-      type: EventType.ACTIVITY_DELTA,
-      messageId: 'activity-1',
-      activityType: 'progress',
-      patch: [],
     }),
   );
 
-  expect(snapshotNoop).toBe(active);
-  expect(deltaNoop).toBe(active);
-  expect(ɵselectCommittedAgUiMessages(active)).toEqual([
+  const dropped = reducer(
+    created,
+    apiActions.generateMessageEvent({
+      type: EventType.ACTIVITY_DELTA,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      patch: [{ op: 'remove', path: '/missing' }],
+    }),
+  );
+  const continued = reducer(
+    dropped,
+    apiActions.generateMessageEvent({
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    }),
+  );
+
+  expect(dropped.attemptActive).toBe(true);
+  expect(dropped.protocolError).toBeUndefined();
+  expect(dropped.draft).toBe(created.draft);
+  expect(ɵselectActivityDeltaDropReason(dropped)).toEqual(
+    expect.stringContaining('activity-1'),
+  );
+  expect(ɵselectActivityDeltaDropReason(continued)).toBeUndefined();
+  expect(continued.draft.map((message) => message.id)).toEqual([
+    'activity-1',
+    'assistant-1',
+  ]);
+});
+
+test('a failed attempt rolls activities back with the draft', () => {
+  const active = reducer(
+    reducer(
+      initialAgUiMessagesState,
+      devActions.init({
+        system: '',
+        canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+      }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const withActivity = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      content: {},
+    }),
+  );
+
+  const failed = reducer(
+    withActivity,
+    apiActions.generateMessageError(new Error('boom')),
+  );
+
+  expect(withActivity.draft.map((message) => message.id)).toEqual([
+    'user-1',
+    'activity-1',
+  ]);
+  expect(failed.attemptActive).toBe(false);
+  expect(ɵselectVisibleAgUiMessages(failed)).toEqual([
     { id: 'user-1', role: 'user', content: 'hello' },
   ]);
-  expect(ɵselectEffectiveCommittedAgUiMessages(active)[0]).toEqual({
+});
+
+test('exposes committed canonical selectors with the system overlay', () => {
+  const active = reducer(
+    reducer(
+      initialAgUiMessagesState,
+      devActions.init({
+        system: 'system',
+        systemMessage: { id: 'system-1', role: 'system', content: 'system' },
+        canonicalMessages: [{ id: 'user-1', role: 'user', content: 'hello' }],
+      }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+
+  const committed = ɵselectCommittedAgUiMessages(active);
+  const effective = ɵselectEffectiveCommittedAgUiMessages(active);
+
+  expect(committed).toEqual([{ id: 'user-1', role: 'user', content: 'hello' }]);
+  expect(effective[0]).toEqual({
     id: 'system-1',
     role: 'system',
     content: 'system',
@@ -2156,4 +2435,251 @@ test('starts a text message after an end that matched no canonical message', () 
   expect(started.draft).toEqual([
     { id: 'answer', role: 'assistant', content: '' },
   ]);
+});
+
+test('snapshot activities get links from position, ignoring incoming hashbrownLinks', () => {
+  const active = reducer(
+    reducer(
+      initialAgUiMessagesState,
+      devActions.init({ system: '', canonicalMessages: [] }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+  const forged = {
+    runId: 'forged-run',
+    assistantMessageId: 'forged-assistant',
+    toolCallId: 'forged-tool',
+  };
+
+  const snapshotted = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'user-1', role: 'user', content: 'hello' },
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: 'Looking.',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{}' },
+            },
+          ],
+        },
+        {
+          id: 'activity-1',
+          role: 'activity',
+          activityType: 'plan',
+          content: { steps: [] },
+          hashbrownLinks: forged,
+        } as never,
+      ],
+    }),
+  );
+  const resnapshotted = reducer(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'user-1', role: 'user', content: 'hello' },
+        { id: 'assistant-1', role: 'assistant', content: 'Looking.' },
+        { id: 'user-2', role: 'user', content: 'again' },
+      ],
+    }),
+  );
+
+  expect(snapshotted.protocolError).toBeUndefined();
+  expect(readActivityLinks(snapshotted.draft[2])).toEqual({
+    runId: 'run-1',
+    assistantMessageId: 'assistant-1',
+    toolCallId: 'tool-1',
+  });
+  expect(resnapshotted.draft.map((message) => message.id)).toEqual([
+    'user-1',
+    'assistant-1',
+    'activity-1',
+    'user-2',
+  ]);
+  expect(resnapshotted.draft[2]).toBe(snapshotted.draft[2]);
+});
+
+test('setMessages lowers activity messages and recomputes their links', () => {
+  const canonicalMessages = lowerViewMessagesToAgUi(
+    [
+      { id: 'user-1', role: 'user', content: 'hello' },
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        content: 'Done.',
+        toolCalls: [
+          {
+            role: 'tool',
+            toolCallId: 'tool-1',
+            name: 'lookup',
+            args: {},
+            status: 'done',
+            result: { status: 'fulfilled', value: 'ok' },
+          },
+        ],
+      },
+      {
+        id: 'activity-1',
+        role: 'activity',
+        activityType: 'plan',
+        content: { steps: ['a'] },
+        metadata: { source: 'agent' },
+        links: {
+          runId: 'forged-run',
+          assistantMessageId: 'forged-assistant',
+          toolCallId: 'forged-tool',
+          subagentRunId: 'subagent-1',
+        },
+      },
+    ],
+    { createId: () => 'minted' },
+  );
+
+  const next = reducer(
+    initialAgUiMessagesState,
+    devActions.setMessages({ messages: [], canonicalMessages }),
+  );
+
+  expect(next.protocolError).toBeUndefined();
+  expect(next.committed.at(-1)).toEqual({
+    id: 'activity-1',
+    role: 'activity',
+    activityType: 'plan',
+    content: { steps: ['a'] },
+    metadata: { source: 'agent' },
+    subagentRunId: 'subagent-1',
+    hashbrownLinks: {
+      assistantMessageId: 'assistant-1',
+      toolCallId: 'tool-1',
+      subagentRunId: 'subagent-1',
+    },
+  });
+});
+
+test('a saved transcript restored with setMessages keeps ids and activity links', () => {
+  const saved = [
+    { id: 'user-1', role: 'user' as const, content: 'Plan my trip.' },
+    {
+      id: 'activity-early',
+      role: 'activity' as const,
+      activityType: 'progress',
+      content: { percent: 100 },
+      links: { runId: 'run-1' },
+    },
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: 'Here is a plan.',
+      toolCalls: [],
+    },
+    {
+      id: 'activity-plan',
+      role: 'activity' as const,
+      activityType: 'plan',
+      content: { steps: ['fly'] },
+      links: {
+        runId: 'run-1',
+        assistantMessageId: 'assistant-1',
+        subagentRunId: 'subagent-1',
+      },
+    },
+    { id: 'user-2', role: 'user' as const, content: 'Thanks.' },
+    {
+      id: 'assistant-2',
+      role: 'assistant' as const,
+      content: 'Anytime.',
+      toolCalls: [],
+    },
+  ];
+  let minted = 0;
+
+  const restored = reducer(
+    initialAgUiMessagesState,
+    devActions.setMessages({
+      messages: [],
+      canonicalMessages: lowerViewMessagesToAgUi(saved, {
+        createId: () => `minted-${++minted}`,
+      }),
+    }),
+  );
+
+  expect(minted).toBe(0);
+  expect(restored.committed.map((message) => message.id)).toEqual(
+    saved.map((message) => message.id),
+  );
+  expect(restored.committed.map(readActivityLinks)).toEqual([
+    undefined,
+    {},
+    undefined,
+    { assistantMessageId: 'assistant-1', subagentRunId: 'subagent-1' },
+    undefined,
+    undefined,
+  ]);
+  expect(restored.committed[3]).toMatchObject({ subagentRunId: 'subagent-1' });
+});
+
+test('a snapshot stamps its run only on activities after the last user message', () => {
+  const started = reducer(
+    reducer(
+      reducer(
+        initialAgUiMessagesState,
+        devActions.init({ system: '', canonicalMessages: [] }),
+      ),
+      internalActions.generationAttemptStarted(),
+    ),
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-2',
+    }),
+  );
+
+  const snapshotted = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'user-1', role: 'user', content: 'first' },
+        { id: 'assistant-1', role: 'assistant', content: 'One.' },
+        {
+          id: 'activity-old',
+          role: 'activity',
+          activityType: 'plan',
+          content: {},
+        },
+        { id: 'user-2', role: 'user', content: 'second' },
+        { id: 'assistant-2', role: 'assistant', content: 'Two.' },
+        {
+          id: 'activity-new',
+          role: 'activity',
+          activityType: 'plan',
+          content: {},
+        },
+      ],
+    }),
+  );
+
+  expect(snapshotted.protocolError).toBeUndefined();
+  expect(readActivityLinks(snapshotted.draft[2])).toEqual({
+    assistantMessageId: 'assistant-1',
+  });
+  expect(readActivityLinks(snapshotted.draft[5])).toEqual({
+    runId: 'run-2',
+    assistantMessageId: 'assistant-2',
+  });
 });

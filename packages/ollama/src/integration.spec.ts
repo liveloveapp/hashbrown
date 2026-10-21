@@ -1,7 +1,11 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { resolve } from 'node:path';
 import { runProviderAGUIWithAimock } from '@hashbrownai/testing/aimock';
-import { HashbrownOllama, type OllamaHashbrownRunAgentInput } from './index';
+import {
+  type ActivityCallback,
+  HashbrownOllama,
+  type OllamaHashbrownRunAgentInput,
+} from './index';
 
 const OLLAMA_MODEL = 'gpt-oss:120b';
 
@@ -293,4 +297,53 @@ test('Ollama sends tool calls and named tool results back on continuation', asyn
   expect(
     secondEvents.some((event) => event.type === EventType.RUN_FINISHED),
   ).toBe(true);
+});
+
+test('Ollama sends callback activities inside the run', async () => {
+  const activities: ActivityCallback = async ({ activity, model }) => {
+    const plan = activity.snapshot('plan-1', 'plan', { status: 'running' });
+    await model;
+    plan.patch([{ op: 'replace', path: '/status', value: 'done' }]);
+  };
+
+  const events = await runProviderAGUIWithAimock({
+    fixturePath: fixturePath('text.json'),
+    createStream: (aimock, signal) =>
+      HashbrownOllama.stream.text({
+        host: aimock.ollamaHost,
+        model: OLLAMA_MODEL,
+        input: baseInput('say hi briefly'),
+        signal,
+        activities,
+      }),
+  });
+
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.ACTIVITY_SNAPSHOT,
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.RAW,
+    EventType.TEXT_MESSAGE_END,
+    EventType.ACTIVITY_DELTA,
+    EventType.RUN_FINISHED,
+  ]);
+  expect(events[1]).toEqual({
+    type: EventType.ACTIVITY_SNAPSHOT,
+    messageId: 'plan-1',
+    activityType: 'plan',
+    content: { status: 'running' },
+    replace: true,
+  });
+  expect(events.at(-2)).toEqual({
+    type: EventType.ACTIVITY_DELTA,
+    messageId: 'plan-1',
+    activityType: 'plan',
+    patch: [{ op: 'replace', path: '/status', value: 'done' }],
+  });
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_FINISHED,
+    threadId: 'thread-ollama',
+    runId: 'run-ollama',
+  });
 });

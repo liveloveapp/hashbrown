@@ -20,6 +20,7 @@ import {
   selectTools,
   selectTransport,
   selectUiRequested,
+  ɵselectActivityDeltaDropReason,
   ɵselectAgentStateProtocolError,
   ɵselectAgUiMessagesProtocolError,
   ɵselectAttemptOwnedPendingToolCalls,
@@ -39,6 +40,7 @@ import { sleep } from '../utils/async';
 import { cloneAndFreezeOptionalJsonValue } from '../utils/json-value';
 import { updateAssistantMessage } from '../utils/assistant-message';
 import { createEffect } from '../utils/micro-ngrx';
+import { Logger, WARN_LEVEL } from '../logger/logger';
 import {
   type AssistantTurnCoordinator,
   type AssistantTurnToolSnapshot,
@@ -637,6 +639,11 @@ export const generateMessage = createEffect((store) => {
                 if (event.type === EventType.RUN_FINISHED) {
                   return;
                 }
+                if (event.type === EventType.ACTIVITY_DELTA) {
+                  warnDroppedActivityDelta(
+                    store.read(ɵselectActivityDeltaDropReason),
+                  );
+                }
                 if (!ownsAttempt(generation, context)) {
                   return;
                 }
@@ -936,4 +943,19 @@ export function _updateMessagesWithDelta(
   delta: Chat.Api.CompletionChunk,
 ): Chat.Api.AssistantMessage | null {
   return updateAssistantMessage(message, delta);
+}
+
+const activityLogger = new Logger({ all: WARN_LEVEL }).for('activities');
+
+/**
+ * Warns that an `ACTIVITY_DELTA` was dropped. A dropped delta never fails the
+ * run, unlike `STATE_DELTA`, so the warning is the only trace it leaves.
+ */
+function warnDroppedActivityDelta(reason: string | undefined): void {
+  if (reason !== undefined) {
+    activityLogger.warn(
+      'Hashbrown dropped an AG-UI ACTIVITY_DELTA event.',
+      reason,
+    );
+  }
 }

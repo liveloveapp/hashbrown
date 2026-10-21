@@ -20,7 +20,7 @@ export default createActionGroup('dev', {
     /** Stable configured-system overlay. @internal */
     systemMessage?: Readonly<SystemMessage>;
     debounce?: number;
-    messages?: Chat.AnyMessage[];
+    messages?: Chat.AnyMessageInput[];
     tools?: Chat.AnyTool[];
     responseSchema?: s.SchemaOutput;
     retries?: number;
@@ -39,7 +39,7 @@ export default createActionGroup('dev', {
     state: JsonValue | undefined;
   }>(),
   setMessages: props<{
-    messages: Chat.AnyMessage[];
+    messages: Chat.AnyMessageInput[];
     /** Runtime-lowered AG-UI replacement history. @internal */
     canonicalMessages: readonly Readonly<Message>[];
     /** Lossless local projection paired with canonical IDs. @internal */
@@ -51,7 +51,7 @@ export default createActionGroup('dev', {
     toolsByName?: Record<string, Chat.Internal.Tool>;
   }>(),
   sendMessage: props<{
-    message: Chat.AnyMessage;
+    message: Chat.AnyMessageInput;
     /** Runtime-lowered AG-UI message history addition. @internal */
     canonicalMessages: readonly Readonly<Message>[];
     /** Lossless local projection paired with canonical IDs. @internal */

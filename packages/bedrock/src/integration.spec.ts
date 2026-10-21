@@ -6,7 +6,7 @@ import {
   type AimockHandle,
   runProviderAGUIWithAimock,
 } from '@hashbrownai/testing/aimock';
-import { HashbrownBedrock } from './index';
+import { type ActivityCallback, HashbrownBedrock } from './index';
 import type { BedrockHashbrownRunAgentInput } from './stream/types';
 
 const BEDROCK_MODEL = 'anthropic.claude-3-5-sonnet-20240620-v1:0';
@@ -240,4 +240,54 @@ test('Bedrock cancellation stops without synthetic terminal events', async () =>
       expect.objectContaining({ type: EventType.RUN_ERROR }),
     ]),
   );
+});
+
+test('Bedrock sends callback activities inside the run', async () => {
+  const activities: ActivityCallback = async ({ activity, model }) => {
+    const plan = activity.snapshot('plan-1', 'plan', { status: 'running' });
+    await model;
+    plan.patch([{ op: 'replace', path: '/status', value: 'done' }]);
+  };
+
+  const events = await runProviderAGUIWithAimock({
+    fixturePath: fixturePath('text.json'),
+    createStream: (aimock, signal) =>
+      HashbrownBedrock.stream.text({
+        client: createBedrockClient(aimock),
+        model: BEDROCK_MODEL,
+        input: baseInput('say hi briefly'),
+        signal,
+        activities,
+      }),
+  });
+
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.ACTIVITY_SNAPSHOT,
+    EventType.RAW,
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.TEXT_MESSAGE_END,
+    EventType.RAW,
+    EventType.ACTIVITY_DELTA,
+    EventType.RUN_FINISHED,
+  ]);
+  expect(events[1]).toEqual({
+    type: EventType.ACTIVITY_SNAPSHOT,
+    messageId: 'plan-1',
+    activityType: 'plan',
+    content: { status: 'running' },
+    replace: true,
+  });
+  expect(events.at(-2)).toEqual({
+    type: EventType.ACTIVITY_DELTA,
+    messageId: 'plan-1',
+    activityType: 'plan',
+    patch: [{ op: 'replace', path: '/status', value: 'done' }],
+  });
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_FINISHED,
+    threadId: 'thread-bedrock',
+    runId: 'run-bedrock',
+  });
 });

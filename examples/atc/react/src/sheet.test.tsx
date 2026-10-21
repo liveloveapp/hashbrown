@@ -4,7 +4,15 @@ import {
   nextSheet,
   sheetExpanded,
 } from '@atc/shared';
-import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { fakeDecisionTransport } from '@atc/shared/testing';
+import { HashbrownProvider } from '@hashbrownai/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/react';
 import { useReducer } from 'react';
 import { expect, test } from 'vitest';
 import { Composer } from './composer';
@@ -125,6 +133,11 @@ test('focusing the composer opens the sheet fully', () => {
   expect(expanded()).toBe(true);
 });
 
+const model = fakeDecisionTransport(() => ({
+  intent: 'chat',
+  confidence: 0.9,
+}));
+
 /** The app's sheet around the real composer: focus opens it, sending lowers it. */
 function ComposerSheet() {
   const [sheet, move] = useReducer(nextSheet, INITIAL_SHEET);
@@ -138,7 +151,14 @@ function ComposerSheet() {
         }
       }}
     >
-      <Composer onSend={() => move({ type: 'send' })} />
+      <HashbrownProvider url="/unused">
+        <Composer
+          transport={model.transport}
+          onChat={() => move({ type: 'send' })}
+          onFilter={() => move({ type: 'send' })}
+          onClear={() => move({ type: 'send' })}
+        />
+      </HashbrownProvider>
     </section>
   );
 }
@@ -150,7 +170,7 @@ function composerSheet() {
   return container;
 }
 
-test('tapping Send lowers the sheet to half, though the composer takes focus back', () => {
+test('tapping Send lowers the sheet to half, though the composer takes focus back', async () => {
   const container = composerSheet();
   const field = container.querySelector('input') as HTMLInputElement;
   const send = container.querySelector('.atc-send') as HTMLButtonElement;
@@ -160,9 +180,11 @@ test('tapping Send lowers the sheet to half, though the composer takes focus bac
   act(() => send.focus());
 
   fireEvent.click(send);
-
-  expect(container.querySelector('section')?.getAttribute('data-snap')).toBe(
-    'half',
+  await waitFor(() =>
+    expect(container.querySelector('section')?.getAttribute('data-snap')).toBe(
+      'half',
+    ),
   );
+
   expect(document.activeElement).toBe(field);
 });
