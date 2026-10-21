@@ -83,11 +83,9 @@ export const TARGETS = Object.freeze([
       'NEXT_PUBLIC_POSTHOG_TOKEN',
       'NEXT_PUBLIC_POSTHOG_HOST',
     ],
-    envPerTarget: [
-      'DATABASE_URL',
-      'GROWTH_DATABASE_ENVIRONMENT',
-      'LIFECYCLE_URL',
-    ],
+    // DATABASE_URL is injected by the Neon Marketplace integration; the
+    // bootstrap must never upsert it.
+    envPerTarget: ['GROWTH_DATABASE_ENVIRONMENT', 'LIFECYCLE_URL'],
     requiredEnv: ['OPENAI_API_KEY'],
     build: {
       framework: 'nextjs',
@@ -121,21 +119,16 @@ export const TARGETS = Object.freeze([
       'GROWTH_INSTALL_DIGEST_ENABLED',
       'GROWTH_INSTALL_RUNTIME_HELLO_ENABLED',
     ],
+    // DATABASE_URL and B4_DATABASE_URL are injected by the Neon Marketplace
+    // integration; the bootstrap must never upsert them.
     envPerTarget: [
-      'DATABASE_URL',
-      'B4_DATABASE_URL',
       'GROWTH_DATABASE_ENVIRONMENT',
       'DELIVERY_ENVIRONMENT',
       'GROWTH_PUBLIC_ACTION_ORIGIN',
       'RESEND_NON_PRODUCTION_ALLOWLIST',
       'RESEND_NON_PRODUCTION_REDIRECT_TO',
     ],
-    requiredEnv: [
-      'DATABASE_URL',
-      'B4_DATABASE_URL',
-      'LIFECYCLE_SERVICE_SECRET',
-      'RESEND_API_KEY',
-    ],
+    requiredEnv: ['LIFECYCLE_SERVICE_SECRET', 'RESEND_API_KEY'],
     resources: { fluid: true, functionDefaultTimeout: 60 },
   }),
 ]);

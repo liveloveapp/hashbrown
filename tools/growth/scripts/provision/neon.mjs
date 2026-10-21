@@ -1,195 +1,197 @@
 #!/usr/bin/env node
 import { pathToFileURL } from 'node:url';
 
-import { createChecklist, createJsonClient } from './lib.mjs';
-
-const NEON_BASE_URL = 'https://console.neon.tech/api/v2';
-const PROJECT_NAME = 'hashbrown-growth';
-const DATABASES = { app: 'growth', b4: 'b4_state' };
+import { createVercelClient } from '../../../vercel/bootstrap.mjs';
+import { createChecklist } from './lib.mjs';
 
 /**
- * Finds the Neon project with this name, creating it when absent.
- *
- * @param {(method: string, path: string, body?: unknown) => Promise<any>} neon JSON client for the Neon API.
- * @param {string} name Project name.
- * @returns {Promise<{ status: 'created' | 'exists', project: { id: string } }>}
+ * Vercel client from `createVercelClient`.
+ * @typedef {(method: string, path: string, body?: unknown) => Promise<any>} VercelClient
  */
-export async function ensureNeonProject(neon, name) {
-  const found = await neon(
+
+const PROJECT_PRODUCTION = 'production';
+const PROJECT_PREVIEW = 'preview';
+
+/**
+ * The stores and the connections each one needs. Vercel injects
+ * `DATABASE_URL` and the `POSTGRES_*` family into the connected projects,
+ * prefixed when `envVarPrefix` is set (so `B4_DATABASE_URL` on lifecycle).
+ */
+const STORE_PLAN = [
+  {
+    name: 'growth-production-target-01',
+    environment: PROJECT_PRODUCTION,
+    envVarPrefix: null,
+    projects: ['www', 'lifecycle'],
+  },
+  {
+    name: 'growth-preview-target-01',
+    environment: PROJECT_PREVIEW,
+    envVarPrefix: null,
+    projects: ['www', 'lifecycle'],
+  },
+  {
+    name: 'b4-production-target-01',
+    environment: PROJECT_PRODUCTION,
+    envVarPrefix: 'B4_',
+    projects: ['lifecycle'],
+  },
+  {
+    name: 'b4-preview-target-01',
+    environment: PROJECT_PREVIEW,
+    envVarPrefix: 'B4_',
+    projects: ['lifecycle'],
+  },
+];
+
+/**
+ * Finds the id of the team's installed Neon integration configuration.
+ *
+ * @param {VercelClient} vercel Vercel client (team scoped).
+ * @returns {Promise<string>} The configuration id.
+ * @throws When the Neon integration is not installed on the team.
+ */
+export async function findNeonConfiguration(vercel) {
+  const listing = await vercel(
     'GET',
-    `/projects?search=${encodeURIComponent(name)}`,
+    '/v1/integrations/configurations?view=account',
   );
-  const match = (found.projects ?? []).find((p) => p.name === name);
-  if (match) return { status: 'exists', project: { id: match.id } };
-
-  const created = await neon('POST', '/projects', {
-    project: { name, region_id: 'aws-us-east-1', pg_version: 17 },
-  });
-  return { status: 'created', project: { id: created.project.id } };
+  const configurations = Array.isArray(listing)
+    ? listing
+    : (listing?.configurations ?? []);
+  const neon = configurations.find((c) => c.slug === 'neon');
+  if (!neon) {
+    throw new Error(
+      'The Neon integration is not installed on this Vercel team; install it from the Vercel Marketplace and rerun.',
+    );
+  }
+  return neon.id;
 }
 
 /**
- * Reads the default branch and its first unprotected role, so reruns do not
- * depend on the project creation response.
+ * Finds a Neon integration store by name, creating it on the free plan in
+ * `iad1` when absent.
  *
- * @param {(method: string, path: string, body?: unknown) => Promise<any>} neon JSON client for the Neon API.
- * @param {string} projectId Neon project id.
- * @returns {Promise<{ branchId: string, roleName: string }>}
+ * @param {VercelClient} vercel Vercel client (team scoped).
+ * @param {{ name: string, configurationId: string }} options Store name and the Neon configuration id.
+ * @returns {Promise<{ status: 'created' | 'exists', store: { id: string, name: string, projectsMetadata: any[] } }>}
  */
-export async function defaultBranchAndRole(neon, projectId) {
-  const { branches } = await neon('GET', `/projects/${projectId}/branches`);
-  const main = branches.find((b) => b.default);
-  if (!main) throw new Error(`Project ${projectId} has no default branch`);
-  const { roles } = await neon(
-    'GET',
-    `/projects/${projectId}/branches/${main.id}/roles`,
-  );
-  const role = roles.find((r) => !r.protected);
-  if (!role) throw new Error(`Project ${projectId} has no unprotected role`);
-  return { branchId: main.id, roleName: role.name };
-}
+export async function ensureStore(vercel, { name, configurationId }) {
+  const { stores = [] } = await vercel('GET', '/v1/storage/stores');
+  const match = stores.find((s) => s.name === name);
+  if (match) {
+    return {
+      status: 'exists',
+      store: {
+        id: match.id,
+        name: match.name,
+        projectsMetadata: match.projectsMetadata ?? [],
+      },
+    };
+  }
 
-/**
- * Finds a branch by name, creating it (with a read-write endpoint) when absent.
- *
- * @param {(method: string, path: string, body?: unknown) => Promise<any>} neon JSON client for the Neon API.
- * @param {string} projectId Neon project id.
- * @param {string} name Branch name.
- * @param {string} parentId Parent branch id used on creation.
- * @returns {Promise<{ status: 'created' | 'exists', branch: { id: string } }>}
- */
-export async function ensureBranch(neon, projectId, name, parentId) {
-  const { branches } = await neon('GET', `/projects/${projectId}/branches`);
-  const match = branches.find((b) => b.name === name);
-  if (match) return { status: 'exists', branch: { id: match.id } };
-
-  const created = await neon('POST', `/projects/${projectId}/branches`, {
-    branch: { name, parent_id: parentId },
-    endpoints: [{ type: 'read_write' }],
+  const { store } = await vercel('POST', '/v1/storage/stores/integration', {
+    integrationConfigurationId: configurationId,
+    integrationProductIdOrSlug: 'neon',
+    billingPlanId: 'free_v3',
+    name,
+    metadata: { region: 'iad1' },
   });
-  return { status: 'created', branch: { id: created.branch.id } };
+  return {
+    status: 'created',
+    store: { id: store.id, name: store.name, projectsMetadata: [] },
+  };
 }
 
 /**
- * Ensures a database exists on a branch, creating it when absent.
+ * Connects a store to a project for one environment, unless the store's
+ * `projectsMetadata` already shows that project, environment and prefix.
  *
- * @param {(method: string, path: string, body?: unknown) => Promise<any>} neon JSON client for the Neon API.
- * @param {string} projectId Neon project id.
- * @param {string} branchId Branch id.
- * @param {string} name Database name.
- * @param {string} ownerName Owning role name.
+ * @param {VercelClient} vercel Vercel client (team scoped).
+ * @param {{ id: string, projectsMetadata?: any[] }} store Store from {@link ensureStore}.
+ * @param {{ projectId: string, environment: 'production' | 'preview', envVarPrefix?: string | null }} options Connection to ensure.
  * @returns {Promise<'created' | 'exists'>}
  */
-export async function ensureDatabase(
-  neon,
-  projectId,
-  branchId,
-  name,
-  ownerName,
+export async function ensureConnection(
+  vercel,
+  store,
+  { projectId, environment, envVarPrefix = null },
 ) {
-  const base = `/projects/${projectId}/branches/${branchId}/databases`;
-  const { databases } = await neon('GET', base);
-  if (databases.some((d) => d.name === name)) return 'exists';
+  const connected = (store.projectsMetadata ?? []).some(
+    (entry) =>
+      entry.projectId === projectId &&
+      (entry.environments ?? []).includes(environment) &&
+      (entry.envVarPrefix ?? null) === envVarPrefix,
+  );
+  if (connected) return 'exists';
 
-  await neon('POST', base, { database: { name, owner_name: ownerName } });
+  await vercel('POST', `/v1/storage/stores/${store.id}/connections`, {
+    projectId,
+    envVarEnvironments: [environment],
+    ...(envVarPrefix ? { envVarPrefix } : {}),
+  });
   return 'created';
 }
 
 /**
- * Fetches the pooled connection string for a database. The value is a secret;
- * callers must not log it.
+ * Provisions the Neon stores through the Vercel Marketplace integration and
+ * connects them to `hashbrown-www` and `hashbrown-lifecycle`. Vercel injects
+ * the connection strings, so nothing is returned for the env file and no
+ * value reaches the checklist.
  *
- * @param {(method: string, path: string, body?: unknown) => Promise<any>} neon JSON client for the Neon API.
- * @param {string} projectId Neon project id.
- * @param {string} branchId Branch id.
- * @param {string} databaseName Database name.
- * @param {string} roleName Role name.
- * @returns {Promise<string>}
- */
-export async function connectionUri(
-  neon,
-  projectId,
-  branchId,
-  databaseName,
-  roleName,
-) {
-  const query = new URLSearchParams({
-    branch_id: branchId,
-    database_name: databaseName,
-    role_name: roleName,
-    pooled: 'true',
-  });
-  const { uri } = await neon(
-    'GET',
-    `/projects/${projectId}/connection_uri?${query}`,
-  );
-  return uri;
-}
-
-/**
- * Provisions the growth Neon project: `main` and `preview` branches, each with
- * the `growth` and `b4_state` databases. Records each step on the checklist
- * (never a connection string) and returns the pooled URLs keyed as the Vercel
- * environment expects.
- *
- * @param {(method: string, path: string, body?: unknown) => Promise<any>} neon JSON client for the Neon API.
+ * @param {VercelClient} vercel Vercel client (team scoped).
  * @param {{ add: (step: string, outcome: string, detail?: string) => void }} checklist Step recorder.
- * @returns {Promise<{ DATABASE_URL: string, B4_DATABASE_URL: string, PREVIEW_DATABASE_URL: string, PREVIEW_B4_DATABASE_URL: string }>}
+ * @param {{ projectIds: { www: string, lifecycle: string } }} options Vercel project ids.
+ * @returns {Promise<{}>}
  */
-export async function provisionNeon(neon, checklist) {
-  const { status, project } = await ensureNeonProject(neon, PROJECT_NAME);
-  checklist.add(`Neon project ${PROJECT_NAME}`, status);
-
-  const { branchId: mainId, roleName } = await defaultBranchAndRole(
-    neon,
-    project.id,
-  );
-  const preview = await ensureBranch(neon, project.id, 'preview', mainId);
-  checklist.add('Neon branch preview', preview.status);
-
-  const branches = [
-    { label: 'main', id: mainId },
-    { label: 'preview', id: preview.branch.id },
-  ];
-  const urls = {};
-  for (const branch of branches) {
-    for (const database of Object.values(DATABASES)) {
-      const dbStatus = await ensureDatabase(
-        neon,
-        project.id,
-        branch.id,
-        database,
-        roleName,
-      );
-      checklist.add(`Neon database ${database} on ${branch.label}`, dbStatus);
-      urls[`${branch.label}:${database}`] = await connectionUri(
-        neon,
-        project.id,
-        branch.id,
-        database,
-        roleName,
+export async function provisionNeon(vercel, checklist, { projectIds }) {
+  const configurationId = await findNeonConfiguration(vercel);
+  for (const plan of STORE_PLAN) {
+    const { status, store } = await ensureStore(vercel, {
+      name: plan.name,
+      configurationId,
+    });
+    checklist.add(`Neon store ${plan.name}`, status, 'Vercel integration');
+    for (const key of plan.projects) {
+      const outcome = await ensureConnection(vercel, store, {
+        projectId: projectIds[key],
+        environment: plan.environment,
+        envVarPrefix: plan.envVarPrefix,
+      });
+      const project = key === 'www' ? 'hashbrown-www' : 'hashbrown-lifecycle';
+      const prefix = plan.envVarPrefix ? `, prefix ${plan.envVarPrefix}` : '';
+      checklist.add(
+        `Neon store ${plan.name} -> ${project}`,
+        outcome,
+        `${plan.environment}${prefix}`,
       );
     }
   }
-
-  return {
-    DATABASE_URL: urls[`main:${DATABASES.app}`],
-    B4_DATABASE_URL: urls[`main:${DATABASES.b4}`],
-    PREVIEW_DATABASE_URL: urls[`preview:${DATABASES.app}`],
-    PREVIEW_B4_DATABASE_URL: urls[`preview:${DATABASES.b4}`],
-  };
+  return {};
 }
 
 async function main() {
-  const token = process.env.NEON_API_KEY;
-  if (!token) throw new Error('NEON_API_KEY is required');
-  const neon = createJsonClient({ baseUrl: NEON_BASE_URL, token });
+  const vercelToken = process.env.VERCEL_TOKEN ?? process.env.VERCEL_API_TOKEN;
+  if (!vercelToken) throw new Error('VERCEL_TOKEN is required');
+  const { user } = await createVercelClient(vercelToken)('GET', '/v2/user');
+  const vercel = createVercelClient(vercelToken, fetch, {
+    teamId: user.defaultTeamId ?? undefined,
+  });
+  const [www, lifecycle] = await Promise.all([
+    vercel('GET', '/v9/projects/hashbrown-www'),
+    vercel('GET', '/v9/projects/hashbrown-lifecycle'),
+  ]);
   const checklist = createChecklist();
-  await provisionNeon(neon, checklist);
+  await provisionNeon(vercel, checklist, {
+    projectIds: { www: www.id, lifecycle: lifecycle.id },
+  });
   checklist.print();
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   main().catch((error) => {
     console.error(error.message);
     process.exit(1);

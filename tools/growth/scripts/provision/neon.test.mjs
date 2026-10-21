@@ -1,249 +1,289 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createChecklist, createJsonClient } from './lib.mjs';
+import { createVercelClient } from '../../../vercel/bootstrap.mjs';
+import { createChecklist } from './lib.mjs';
 import {
-  connectionUri,
-  defaultBranchAndRole,
-  ensureBranch,
-  ensureDatabase,
-  ensureNeonProject,
+  ensureConnection,
+  ensureStore,
+  findNeonConfiguration,
   provisionNeon,
 } from './neon.mjs';
 import { stubFetch } from './test-support.mjs';
 
-const BASE = 'https://console.neon.tech/api/v2';
+const CONFIGS =
+  'GET /v1/integrations/configurations?view=account&teamId=team_1';
+const STORES = 'GET /v1/storage/stores?teamId=team_1';
+const CREATE = 'POST /v1/storage/stores/integration?teamId=team_1';
+const PROJECT_IDS = { www: 'prj_www', lifecycle: 'prj_lc' };
 
 function clientFor(routes) {
   const { fetchImpl, calls } = stubFetch(routes);
-  const neon = createJsonClient({
-    baseUrl: BASE,
-    token: 'neon-key-secret',
-    fetchImpl,
+  const vercel = createVercelClient('vercel-token-secret', fetchImpl, {
+    teamId: 'team_1',
   });
-  return { neon, calls };
+  return { vercel, calls };
 }
 
-test('ensureNeonProject creates the project when the search is empty', async () => {
-  const { neon, calls } = clientFor({
-    'GET /api/v2/projects?search=hashbrown-growth': { body: { projects: [] } },
-    'POST /api/v2/projects': { body: { project: { id: 'p1' } } },
+const SIX_ROWS = [
+  ['growth-production-target-01', 'prj_www', 'production', null],
+  ['growth-production-target-01', 'prj_lc', 'production', null],
+  ['growth-preview-target-01', 'prj_www', 'preview', null],
+  ['growth-preview-target-01', 'prj_lc', 'preview', null],
+  ['b4-production-target-01', 'prj_lc', 'production', 'B4_'],
+  ['b4-preview-target-01', 'prj_lc', 'preview', 'B4_'],
+];
+
+function existingStores() {
+  const names = [...new Set(SIX_ROWS.map(([name]) => name))];
+  return names.map((name) => ({
+    id: `store_${name}`,
+    name,
+    type: 'integration',
+    projectsMetadata: SIX_ROWS.filter(([n]) => n === name).map(
+      ([, projectId, environment, envVarPrefix]) => ({
+        projectId,
+        name: projectId,
+        environments: [environment],
+        envVarPrefix,
+      }),
+    ),
+  }));
+}
+
+test('findNeonConfiguration picks the entry whose slug is neon', async () => {
+  const { vercel } = clientFor({
+    [CONFIGS]: {
+      body: [
+        { id: 'icfg_other', slug: 'resend' },
+        { id: 'icfg_neon', slug: 'neon' },
+      ],
+    },
   });
 
-  const result = await ensureNeonProject(neon, 'hashbrown-growth');
+  const id = await findNeonConfiguration(vercel);
 
-  assert.deepEqual(result, { status: 'created', project: { id: 'p1' } });
-  assert.deepEqual(calls[1].body, {
-    project: {
-      name: 'hashbrown-growth',
-      region_id: 'aws-us-east-1',
-      pg_version: 17,
+  assert.equal(id, 'icfg_neon');
+});
+
+test('findNeonConfiguration accepts a configurations envelope', async () => {
+  const { vercel } = clientFor({
+    [CONFIGS]: {
+      body: { configurations: [{ id: 'icfg_neon', slug: 'neon' }] },
     },
+  });
+
+  const id = await findNeonConfiguration(vercel);
+
+  assert.equal(id, 'icfg_neon');
+});
+
+test('findNeonConfiguration fails clearly when Neon is not installed', async () => {
+  const { vercel } = clientFor({
+    [CONFIGS]: { body: [{ id: 'icfg_other', slug: 'resend' }] },
+  });
+
+  const act = findNeonConfiguration(vercel);
+
+  await assert.rejects(act, /Neon integration is not installed/);
+});
+
+test('ensureStore creates the store with the exact body when absent', async () => {
+  const { vercel, calls } = clientFor({
+    [STORES]: { body: { stores: [] } },
+    [CREATE]: { body: { store: { id: 'store_1', name: 'growth-x' } } },
+  });
+
+  const result = await ensureStore(vercel, {
+    name: 'growth-x',
+    configurationId: 'icfg_neon',
+  });
+
+  assert.deepEqual(result, {
+    status: 'created',
+    store: { id: 'store_1', name: 'growth-x', projectsMetadata: [] },
+  });
+  assert.deepEqual(calls[1].body, {
+    integrationConfigurationId: 'icfg_neon',
+    integrationProductIdOrSlug: 'neon',
+    billingPlanId: 'free_v3',
+    name: 'growth-x',
+    metadata: { region: 'iad1' },
   });
 });
 
-test('ensureNeonProject reports exists and makes no POST when found', async () => {
-  const { neon, calls } = clientFor({
-    'GET /api/v2/projects?search=hashbrown-growth': {
-      body: { projects: [{ id: 'p9', name: 'hashbrown-growth' }] },
+test('ensureStore reports exists and makes no POST when the name is listed', async () => {
+  const { vercel, calls } = clientFor({
+    [STORES]: {
+      body: {
+        stores: [{ id: 'store_9', name: 'growth-x', projectsMetadata: [] }],
+      },
     },
   });
 
-  const result = await ensureNeonProject(neon, 'hashbrown-growth');
+  const result = await ensureStore(vercel, {
+    name: 'growth-x',
+    configurationId: 'icfg_neon',
+  });
 
-  assert.deepEqual(result, { status: 'exists', project: { id: 'p9' } });
+  assert.equal(result.status, 'exists');
+  assert.equal(result.store.id, 'store_9');
   assert.deepEqual(
     calls.map((c) => c.method),
     ['GET'],
   );
 });
 
-test('defaultBranchAndRole reads the default branch and first unprotected role', async () => {
-  const { neon } = clientFor({
-    'GET /api/v2/projects/p1/branches': {
-      body: {
-        branches: [
-          { id: 'b2', name: 'preview', default: false },
-          { id: 'b1', name: 'main', default: true },
-        ],
-      },
-    },
-    'GET /api/v2/projects/p1/branches/b1/roles': {
-      body: {
-        roles: [
-          { name: 'cloud_admin', protected: true },
-          { name: 'owner', protected: false },
-        ],
-      },
-    },
+test('ensureConnection posts the exact body, with the prefix when set', async () => {
+  const { vercel, calls } = clientFor({
+    'POST /v1/storage/stores/store_1/connections?teamId=team_1': { body: {} },
+  });
+  const store = { id: 'store_1', name: 's', projectsMetadata: [] };
+
+  const plain = await ensureConnection(vercel, store, {
+    projectId: 'prj_www',
+    environment: 'production',
+    envVarPrefix: null,
+  });
+  const prefixed = await ensureConnection(vercel, store, {
+    projectId: 'prj_lc',
+    environment: 'preview',
+    envVarPrefix: 'B4_',
   });
 
-  const result = await defaultBranchAndRole(neon, 'p1');
-
-  assert.deepEqual(result, { branchId: 'b1', roleName: 'owner' });
-});
-
-test('ensureBranch creates preview from the default branch', async () => {
-  const { neon, calls } = clientFor({
-    'GET /api/v2/projects/p1/branches': {
-      body: { branches: [{ id: 'b1', name: 'main', default: true }] },
-    },
-    'POST /api/v2/projects/p1/branches': {
-      body: { branch: { id: 'b2', name: 'preview' } },
-    },
+  assert.equal(plain, 'created');
+  assert.equal(prefixed, 'created');
+  assert.deepEqual(calls[0].body, {
+    projectId: 'prj_www',
+    envVarEnvironments: ['production'],
   });
-
-  const result = await ensureBranch(neon, 'p1', 'preview', 'b1');
-
-  assert.deepEqual(result, { status: 'created', branch: { id: 'b2' } });
   assert.deepEqual(calls[1].body, {
-    branch: { name: 'preview', parent_id: 'b1' },
-    endpoints: [{ type: 'read_write' }],
+    projectId: 'prj_lc',
+    envVarEnvironments: ['preview'],
+    envVarPrefix: 'B4_',
   });
 });
 
-test('ensureBranch reports exists when the branch is present', async () => {
-  const { neon, calls } = clientFor({
-    'GET /api/v2/projects/p1/branches': {
-      body: { branches: [{ id: 'b2', name: 'preview', default: false }] },
-    },
+test('ensureConnection reports exists only when project, environment and prefix all match', async () => {
+  const { vercel, calls } = clientFor({
+    'POST /v1/storage/stores/store_1/connections?teamId=team_1': { body: {} },
+  });
+  const store = {
+    id: 'store_1',
+    name: 's',
+    projectsMetadata: [
+      {
+        projectId: 'prj_lc',
+        environments: ['production'],
+        envVarPrefix: 'B4_',
+      },
+    ],
+  };
+
+  const same = await ensureConnection(vercel, store, {
+    projectId: 'prj_lc',
+    environment: 'production',
+    envVarPrefix: 'B4_',
+  });
+  const otherPrefix = await ensureConnection(vercel, store, {
+    projectId: 'prj_lc',
+    environment: 'production',
+    envVarPrefix: null,
   });
 
-  const result = await ensureBranch(neon, 'p1', 'preview', 'b1');
-
-  assert.deepEqual(result, { status: 'exists', branch: { id: 'b2' } });
+  assert.equal(same, 'exists');
+  assert.equal(otherPrefix, 'created');
   assert.equal(calls.length, 1);
 });
 
-test('ensureDatabase is a no-op when the database exists', async () => {
-  const { neon, calls } = clientFor({
-    'GET /api/v2/projects/p1/branches/b1/databases': {
-      body: { databases: [{ name: 'growth' }] },
+test('provisionNeon creates four stores and six connections on a first run', async () => {
+  let created = 0;
+  const routes = {
+    [CONFIGS]: { body: [{ id: 'icfg_neon', slug: 'neon' }] },
+    [STORES]: { body: { stores: [] } },
+    [CREATE]: () => {
+      created += 1;
+      return { body: { store: { id: `s${created}`, name: `n${created}` } } };
     },
-  });
-
-  const status = await ensureDatabase(neon, 'p1', 'b1', 'growth', 'owner');
-
-  assert.equal(status, 'exists');
-  assert.deepEqual(
-    calls.map((c) => c.method),
-    ['GET'],
+  };
+  const names = [];
+  const { fetchImpl, calls } = stubFetch(
+    new Proxy(routes, {
+      get(target, key) {
+        if (key in target) return target[key];
+        if (/^POST \/v1\/storage\/stores\/s\d\/connections/.test(key)) {
+          return { body: {} };
+        }
+        return undefined;
+      },
+    }),
   );
-});
-
-test('ensureDatabase creates the database with its owner', async () => {
-  const { neon, calls } = clientFor({
-    'GET /api/v2/projects/p1/branches/b1/databases': {
-      body: { databases: [] },
-    },
-    'POST /api/v2/projects/p1/branches/b1/databases': {
-      body: { database: { name: 'growth' } },
-    },
-  });
-
-  const status = await ensureDatabase(neon, 'p1', 'b1', 'growth', 'owner');
-
-  assert.equal(status, 'created');
-  assert.deepEqual(calls[1].body, {
-    database: { name: 'growth', owner_name: 'owner' },
-  });
-});
-
-test('connectionUri requests a pooled URI', async () => {
-  const { neon, calls } = clientFor({
-    'GET /api/v2/projects/p1/connection_uri?branch_id=b1&database_name=growth&role_name=owner&pooled=true':
-      { body: { uri: 'postgres://pooled' } },
-  });
-
-  const uri = await connectionUri(neon, 'p1', 'b1', 'growth', 'owner');
-
-  assert.equal(uri, 'postgres://pooled');
-  assert.equal(calls.length, 1);
-});
-
-test('provisionNeon returns four pooled connection strings keyed as the Vercel env expects', async () => {
-  const uri = (b, d) =>
-    `/api/v2/projects/p1/connection_uri?branch_id=${b}&database_name=${d}&role_name=owner&pooled=true`;
-  const { neon, calls } = clientFor({
-    'GET /api/v2/projects?search=hashbrown-growth': {
-      body: { projects: [{ id: 'p1', name: 'hashbrown-growth' }] },
-    },
-    'GET /api/v2/projects/p1/branches': {
-      body: {
-        branches: [
-          { id: 'b1', name: 'main', default: true },
-          { id: 'b2', name: 'preview', default: false },
-        ],
-      },
-    },
-    'GET /api/v2/projects/p1/branches/b1/roles': {
-      body: { roles: [{ name: 'owner', protected: false }] },
-    },
-    'GET /api/v2/projects/p1/branches/b1/databases': {
-      body: { databases: [{ name: 'growth' }, { name: 'b4_state' }] },
-    },
-    'GET /api/v2/projects/p1/branches/b2/databases': {
-      body: { databases: [{ name: 'growth' }, { name: 'b4_state' }] },
-    },
-    [`GET ${uri('b1', 'growth')}`]: { body: { uri: 'main-growth' } },
-    [`GET ${uri('b1', 'b4_state')}`]: { body: { uri: 'main-b4' } },
-    [`GET ${uri('b2', 'growth')}`]: { body: { uri: 'prev-growth' } },
-    [`GET ${uri('b2', 'b4_state')}`]: { body: { uri: 'prev-b4' } },
+  const vercel = createVercelClient('vercel-token-secret', fetchImpl, {
+    teamId: 'team_1',
   });
   const checklist = createChecklist();
 
-  const env = await provisionNeon(neon, checklist);
-
-  assert.deepEqual(env, {
-    DATABASE_URL: 'main-growth',
-    B4_DATABASE_URL: 'main-b4',
-    PREVIEW_DATABASE_URL: 'prev-growth',
-    PREVIEW_B4_DATABASE_URL: 'prev-b4',
+  const result = await provisionNeon(vercel, checklist, {
+    projectIds: PROJECT_IDS,
   });
-  assert.ok(calls.every((c) => c.method === 'GET'));
-  assert.equal(checklist.lines().length, 6);
-  assert.ok(checklist.lines().every((l) => /\s{2}exists(\s|$)/.test(l)));
-  assert.ok(checklist.lines().every((l) => !l.includes('neon-key-secret')));
-  assert.ok(checklist.lines().every((l) => !l.includes('postgres://')));
+
+  const stores = calls.filter((c) =>
+    c.path.startsWith('/v1/storage/stores/integration'),
+  );
+  const connections = calls.filter((c) => c.path.includes('/connections'));
+  names.push(...stores.map((c) => c.body.name));
+  assert.deepEqual(result, {});
+  assert.deepEqual(names, [
+    'growth-production-target-01',
+    'growth-preview-target-01',
+    'b4-production-target-01',
+    'b4-preview-target-01',
+  ]);
+  assert.equal(connections.length, 6);
+  assert.deepEqual(
+    connections.map((c) => [c.path.split('/')[4], c.body]),
+    [
+      ['s1', { projectId: 'prj_www', envVarEnvironments: ['production'] }],
+      ['s1', { projectId: 'prj_lc', envVarEnvironments: ['production'] }],
+      ['s2', { projectId: 'prj_www', envVarEnvironments: ['preview'] }],
+      ['s2', { projectId: 'prj_lc', envVarEnvironments: ['preview'] }],
+      [
+        's3',
+        {
+          projectId: 'prj_lc',
+          envVarEnvironments: ['production'],
+          envVarPrefix: 'B4_',
+        },
+      ],
+      [
+        's4',
+        {
+          projectId: 'prj_lc',
+          envVarEnvironments: ['preview'],
+          envVarPrefix: 'B4_',
+        },
+      ],
+    ],
+  );
+  assert.ok(!checklist.lines().join('\n').includes('vercel-token-secret'));
 });
 
-test('ensureNeonProject ignores a project whose name only contains the search term', async () => {
-  const { neon, calls } = clientFor({
-    'GET /api/v2/projects?search=hashbrown-growth': {
-      body: { projects: [{ id: 'old', name: 'hashbrown-growth-old' }] },
-    },
-    'POST /api/v2/projects': { body: { project: { id: 'p2' } } },
+test('provisionNeon on a rerun logs exists for every row and makes no POST', async () => {
+  const { vercel, calls } = clientFor({
+    [CONFIGS]: { body: [{ id: 'icfg_neon', slug: 'neon' }] },
+    [STORES]: { body: { stores: existingStores() } },
   });
+  const checklist = createChecklist();
 
-  const result = await ensureNeonProject(neon, 'hashbrown-growth');
+  await provisionNeon(vercel, checklist, { projectIds: PROJECT_IDS });
 
-  assert.deepEqual(result, { status: 'created', project: { id: 'p2' } });
   assert.deepEqual(
-    calls.map((c) => c.method),
-    ['GET', 'POST'],
+    calls.filter((c) => c.method !== 'GET'),
+    [],
   );
-});
-
-test('ensureBranch ignores a branch whose name only resembles the target', async () => {
-  const { neon, calls } = clientFor({
-    'GET /api/v2/projects/p1/branches': {
-      body: {
-        branches: [
-          { id: 'b1', name: 'main', default: true },
-          { id: 'bx', name: 'preview-old', default: false },
-        ],
-      },
-    },
-    'POST /api/v2/projects/p1/branches': {
-      body: { branch: { id: 'b2', name: 'preview' } },
-    },
-  });
-
-  const result = await ensureBranch(neon, 'p1', 'preview', 'b1');
-
-  assert.deepEqual(result, { status: 'created', branch: { id: 'b2' } });
-  assert.deepEqual(
-    calls.map((c) => c.method),
-    ['GET', 'POST'],
-  );
+  const lines = checklist.lines();
+  assert.equal(lines.length, 10);
+  assert.ok(lines.every((line) => /\sexists\s/.test(line)));
+  assert.ok(lines.some((line) => line.includes('b4-preview-target-01')));
+  assert.ok(lines.some((line) => line.includes('B4_')));
 });

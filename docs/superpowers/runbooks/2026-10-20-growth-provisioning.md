@@ -1,6 +1,6 @@
 # Growth provisioning runbook
 
-Provisions the growth layer's vendors (Neon, PostHog, Resend, Vercel) and
+Provisions the growth layer's vendors (Neon through the Vercel Marketplace, PostHog, Resend, Vercel) and
 writes the environment variables to the `hashbrown-www` and
 `hashbrown-lifecycle` Vercel projects. Design: section 14 of
 `docs/superpowers/specs/2026-10-20-growth-lifecycle-design.md`.
@@ -11,7 +11,6 @@ Put these in the repo-root `.env` (gitignored), or in any private file you
 point `--env-file` at:
 
 ```
-NEON_API_KEY=
 POSTHOG_PERSONAL_API_KEY=
 RESEND_PROVISION_API_KEY=
 VERCEL_API_TOKEN=
@@ -22,15 +21,20 @@ Prerequisite: `gh auth login` with permission to set repository secrets on
 `liveloveapp/hashbrown` (the bootstrap runs `gh secret set` for the
 `VERCEL_PROJECT_ID_*` secrets).
 
-- **Neon**: an API key for the account that will own the `hashbrown-growth`
-  project (Account settings, API keys).
+- **Neon**: no key. The stores are created on the Vercel team through its
+  existing Neon integration (installed from the Vercel Marketplace), using
+  the Vercel token. Vercel injects the connection strings
+  (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, and the `POSTGRES_*`/`PG*`
+  family) into the connected projects; nothing is written to `growth.env`.
+  Pull them locally with `vercel env pull`.
 - **PostHog**: a personal API key with the `organization:read` and
   `project:write` scopes.
 - **Resend**: a full-access API key (it creates the domain and the
   sending-only key).
 - **Vercel**: the CI deploy token for the team that owns the hashbrown
   projects (`VERCEL_API_TOKEN` in the root `.env`; `VERCEL_TOKEN` also works).
-  It is the token CI deploys with, so never revoke it. The run does not
+  It also creates and connects the Neon integration stores (storage
+  access on the team). It is the token CI deploys with, so never revoke it. The run does not
   replace the `VERCEL_TOKEN` or `VERCEL_ORG_ID` GitHub secrets.
 
 Tokens are read only from `--env-file` or the process environment. They are
@@ -46,17 +50,23 @@ node tools/growth/scripts/provision/index.mjs --env-file .env
 `tools/growth/.provision` in this repository, whatever the current
 directory; gitignored). The script:
 
-1. Provisions the Neon project, branches, and databases.
-2. Provisions the PostHog project.
-3. Provisions the Resend domain, its DNS records on Vercel, and a
+1. Provisions the PostHog project.
+2. Provisions the Resend domain, its DNS records on Vercel, and a
    sending-only key.
-4. Writes `<out>/growth.env` (mode 0600, atomically, and only when its
+3. Writes `<out>/growth.env` (mode 0600, atomically, and only when its
    contents change) with the generated secrets, the vendor values, and every
    rollout switch set to `false`.
-5. Runs `tools/vercel/bootstrap.mjs --env-file <out>/growth.env
+4. Runs `tools/vercel/bootstrap.mjs --env-file <out>/growth.env
 --skip-workflow --skip-token-secrets`, which upserts production values and `PREVIEW_`-prefixed
    preview values on both Vercel projects. The `OPENAI_*` keys are not in
    that file, so the www target reports them `missing`; that is expected.
+5. After the bootstrap exits 0 (the lifecycle project must exist), creates
+   four Neon stores through the Vercel Marketplace integration and connects
+   them: `growth-production-target-01` and `growth-preview-target-01` to
+   `hashbrown-www` and `hashbrown-lifecycle` (production and preview, no
+   prefix), and `b4-production-target-01` and `b4-preview-target-01` to
+   `hashbrown-lifecycle` with the prefix `B4_`, so `B4_DATABASE_URL` appears
+   on lifecycle. The bootstrap never upserts the database variables.
 6. Prints the checklist.
 
 ## Manual steps
@@ -84,17 +94,17 @@ shows a key only once.
 
 Rerunning is safe. Every step looks up the existing resource before creating
 one, and the generated secrets and the Resend key are reused from an existing
-`<out>/growth.env`, so Vercel values are not rotated. The vendor steps make
-no writes on a rerun. The Vercel bootstrap re-applies env vars and project
+`<out>/growth.env`, so Vercel values are not rotated. The vendor steps and the
+Neon stores and connections make no writes on a rerun. The Vercel bootstrap re-applies env vars and project
 settings on every run (idempotent upserts) and re-sets the
 `VERCEL_PROJECT_ID_*` GitHub secrets.
 
-A 423 (Neon operation in progress) or 429 (Resend rate limit) is retried
+A 423 or 429 from PostHog or Resend is retried
 automatically; if the run still fails, rerun it.
 
 ## Clean up
 
-Revoke the Neon, PostHog, and Resend provisioning tokens when you are done,
+Revoke the PostHog and Resend provisioning tokens when you are done,
 and remove them from the `.env` you used. Do not revoke the Vercel token: it
 is the CI deploy token. Keep `<out>/growth.env` private; it holds
 live secrets and is gitignored.

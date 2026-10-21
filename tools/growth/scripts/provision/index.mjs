@@ -23,7 +23,6 @@ import { provisionNeon } from './neon.mjs';
 import { provisionPosthog } from './posthog.mjs';
 import { provisionResend } from './resend.mjs';
 
-const NEON_BASE_URL = 'https://console.neon.tech/api/v2';
 const POSTHOG_BASE_URL = 'https://us.posthog.com';
 const RESEND_BASE_URL = 'https://api.resend.com';
 const ENV_FILE_NAME = 'growth.env';
@@ -75,10 +74,6 @@ const SECRET_KEYS = [
 const CREDENTIAL_KEYS = [
   ...SECRET_KEYS,
   'RESEND_API_KEY',
-  'DATABASE_URL',
-  'B4_DATABASE_URL',
-  'PREVIEW_DATABASE_URL',
-  'PREVIEW_B4_DATABASE_URL',
   'NEXT_PUBLIC_POSTHOG_TOKEN',
 ];
 
@@ -118,7 +113,6 @@ export function parseEnvFile(text) {
  * the manual step.
  *
  * @param {object} input
- * @param {Record<string, string>} input.neon Output of `provisionNeon`.
  * @param {Record<string, string>} input.posthog Output of `provisionPosthog`.
  * @param {{ RESEND_API_KEY?: string }} input.resend Output of `provisionResend`.
  * @param {Record<string, string>} input.secrets Generated secrets, one per secret key.
@@ -126,9 +120,8 @@ export function parseEnvFile(text) {
  * @returns {string} `KEY=value` lines, newline terminated.
  * @throws When a value contains a newline.
  */
-export function buildEnvFile({ neon, posthog, resend, secrets, founderEmail }) {
+export function buildEnvFile({ posthog, resend, secrets, founderEmail }) {
   const entries = {
-    ...neon,
     ...posthog,
     ...resend,
     ...secrets,
@@ -174,15 +167,17 @@ export function spawnBootstrapProcess(args, env = process.env) {
 }
 
 /**
- * Runs the three vendor provisioners, writes `<outDir>/growth.env` (mode 0600,
+ * Runs the PostHog and Resend provisioners, writes `<outDir>/growth.env` (mode 0600,
  * atomically, and only when its contents change),
- * runs the Vercel bootstrap against it, and records everything on the
- * checklist. Reruns reuse the generated secrets and the Resend key from an
+ * runs the Vercel bootstrap against it, then (once the bootstrap exited 0 and
+ * the lifecycle project exists) creates the Neon stores through the Vercel
+ * Marketplace integration and connects them to both projects. Everything is
+ * recorded on the checklist. Reruns reuse the generated secrets and the Resend key from an
  * existing env file, so Vercel values are not rotated. Manual steps are moved
  * to the end of the checklist.
  *
  * @param {object} options
- * @param {{ neon: Function, posthog: Function, resend: Function, vercel: Function }} options.clients Vendor clients.
+ * @param {{ posthog: Function, resend: Function, vercel: Function }} options.clients Vendor clients.
  * @param {string} options.outDir Directory for `growth.env`.
  * @param {string} options.founderEmail Address for founder notifications.
  * @param {ReturnType<typeof createChecklist>} options.checklist Step recorder.
@@ -209,7 +204,6 @@ export async function provision({
   const hadFile = existsSync(envPath);
   const existing = hadFile ? parseEnvFile(readFileSync(envPath, 'utf8')) : {};
 
-  const neon = await provisionNeon(clients.neon, steps);
   const posthog = await provisionPosthog(clients.posthog, steps);
   const resend = await provisionResend(clients.resend, clients.vercel, steps);
   if (!resend.RESEND_API_KEY && existing.RESEND_API_KEY) {
@@ -227,7 +221,6 @@ export async function provision({
     SECRET_KEYS.map((key) => [key, existing[key] || randomSecret()]),
   );
   const contents = buildEnvFile({
-    neon,
     posthog,
     resend,
     secrets,
@@ -255,6 +248,16 @@ export async function provision({
     code === 0 ? 'updated' : 'skipped',
     code === 0 ? '' : `exited with code ${code}`,
   );
+
+  if (code === 0) {
+    const [www, lifecycle] = await Promise.all([
+      clients.vercel('GET', '/v9/projects/hashbrown-www'),
+      clients.vercel('GET', '/v9/projects/hashbrown-lifecycle'),
+    ]);
+    await provisionNeon(clients.vercel, steps, {
+      projectIds: { www: www.id, lifecycle: lifecycle.id },
+    });
+  }
 
   for (const [step, outcome, detail] of manual) {
     checklist.add(step, outcome, detail);
@@ -329,7 +332,6 @@ async function main() {
     if (!value) throw new Error(`${name} is required`);
     return value;
   };
-  const neonToken = required('NEON_API_KEY');
   const posthogToken = required('POSTHOG_PERSONAL_API_KEY');
   const resendToken = required('RESEND_PROVISION_API_KEY');
   const founderEmail = required('FOUNDER_NOTIFICATION_EMAIL');
@@ -338,7 +340,6 @@ async function main() {
 
   const { user } = await createVercelClient(vercelToken)('GET', '/v2/user');
   const clients = {
-    neon: createJsonClient({ baseUrl: NEON_BASE_URL, token: neonToken }),
     posthog: createJsonClient({
       baseUrl: POSTHOG_BASE_URL,
       token: posthogToken,

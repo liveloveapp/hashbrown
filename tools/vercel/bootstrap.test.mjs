@@ -643,12 +643,11 @@ test('TARGETS includes hashbrown-lifecycle with no domains and a 60 second fluid
     functionDefaultTimeout: 60,
   });
   assert.deepEqual(target?.requiredEnv, [
-    'DATABASE_URL',
-    'B4_DATABASE_URL',
     'LIFECYCLE_SERVICE_SECRET',
     'RESEND_API_KEY',
   ]);
-  assert.ok(target?.envPerTarget.includes('DATABASE_URL'));
+  assert.ok(!target?.envPerTarget.includes('DATABASE_URL'));
+  assert.ok(!target?.envPerTarget.includes('B4_DATABASE_URL'));
   assert.ok(target?.env.includes('RESEND_API_KEY'));
 });
 
@@ -666,7 +665,6 @@ test('TARGETS www lists the growth env keys', () => {
     assert.ok(target?.env.includes(key), key);
   }
   assert.deepEqual(target?.envPerTarget, [
-    'DATABASE_URL',
     'GROWTH_DATABASE_ENVIRONMENT',
     'LIFECYCLE_URL',
   ]);

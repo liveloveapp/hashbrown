@@ -33,12 +33,6 @@ const SWITCHES = [
   'GROWTH_INSTALL_RUNTIME_HELLO_ENABLED',
 ];
 
-const NEON = {
-  DATABASE_URL: 'postgres://u:neon-main-secret@h/growth?sslmode=require',
-  B4_DATABASE_URL: 'postgres://u:neon-main-b4-secret@h/b4_state',
-  PREVIEW_DATABASE_URL: 'postgres://u:neon-prev-secret@h/growth',
-  PREVIEW_B4_DATABASE_URL: 'postgres://u:neon-prev-b4-secret@h/b4_state',
-};
 const POSTHOG = {
   NEXT_PUBLIC_POSTHOG_TOKEN: 'phc_public_token_value',
   NEXT_PUBLIC_POSTHOG_HOST: 'https://us.i.posthog.com',
@@ -54,7 +48,6 @@ const SECRETS = {
 
 function build(resend = { RESEND_API_KEY: 're_sending_secret_value' }) {
   return buildEnvFile({
-    neon: NEON,
     posthog: POSTHOG,
     resend,
     secrets: SECRETS,
@@ -79,7 +72,14 @@ test('buildEnvFile sets every rollout switch to false and both HMAC versions to 
   assert.equal(env.GROWTH_PUBLIC_ACTION_ORIGIN, 'https://hashbrown.dev');
   assert.equal(env.LIFECYCLE_URL, 'https://hashbrown-lifecycle.vercel.app');
   assert.equal(env.FOUNDER_NOTIFICATION_EMAIL, 'brian@hashbrown.dev');
-  assert.equal(env.DATABASE_URL, NEON.DATABASE_URL);
+  for (const key of [
+    'DATABASE_URL',
+    'B4_DATABASE_URL',
+    'PREVIEW_DATABASE_URL',
+    'PREVIEW_B4_DATABASE_URL',
+  ]) {
+    assert.ok(!(key in env), key);
+  }
   assert.equal(env.CRON_SECRET, SECRETS.CRON_SECRET);
   assert.ok(!('PREVIEW_GROWTH_PUBLIC_ACTION_ORIGIN' in env));
   assert.ok(!('PREVIEW_LIFECYCLE_URL' in env));
@@ -96,23 +96,17 @@ test('buildEnvFile omits RESEND_API_KEY when resend returned none', () => {
 test('buildEnvFile rejects a value containing a newline', () => {
   const act = () =>
     buildEnvFile({
-      neon: { ...NEON, DATABASE_URL: 'postgres://x\nINJECTED=1' },
-      posthog: POSTHOG,
+      posthog: { ...POSTHOG, POSTHOG_PROJECT_ID: '42\nINJECTED=1' },
       resend: {},
       secrets: SECRETS,
       founderEmail: 'brian@hashbrown.dev',
     });
 
-  assert.throws(act, /DATABASE_URL/);
+  assert.throws(act, /POSTHOG_PROJECT_ID/);
 });
 
 function clientsFor(fetchImpl) {
   return {
-    neon: createJsonClient({
-      baseUrl: 'https://console.neon.tech/api/v2',
-      token: 'neon-token-secret',
-      fetchImpl,
-    }),
     posthog: createJsonClient({
       baseUrl: 'https://us.posthog.com',
       token: 'ph-token-secret',
@@ -129,41 +123,46 @@ function clientsFor(fetchImpl) {
   };
 }
 
-function vendorFixtures() {
-  const neonRoutes = {
-    'GET /api/v2/projects?search=hashbrown-growth': {
-      body: { projects: [{ id: 'p1', name: 'hashbrown-growth' }] },
+const NEON_STORES = [
+  ['growth-production-target-01', 'prj_www', 'production', null],
+  ['growth-production-target-01', 'prj_lc', 'production', null],
+  ['growth-preview-target-01', 'prj_www', 'preview', null],
+  ['growth-preview-target-01', 'prj_lc', 'preview', null],
+  ['b4-production-target-01', 'prj_lc', 'production', 'B4_'],
+  ['b4-preview-target-01', 'prj_lc', 'preview', 'B4_'],
+];
+
+function neonFixtures() {
+  const names = [...new Set(NEON_STORES.map(([name]) => name))];
+  return {
+    'GET /v9/projects/hashbrown-www?teamId=team_1': { body: { id: 'prj_www' } },
+    'GET /v9/projects/hashbrown-lifecycle?teamId=team_1': {
+      body: { id: 'prj_lc' },
     },
-    'GET /api/v2/projects/p1/branches': {
+    'GET /v1/integrations/configurations?view=account&teamId=team_1': {
+      body: [{ id: 'icfg_neon', slug: 'neon' }],
+    },
+    'GET /v1/storage/stores?teamId=team_1': {
       body: {
-        branches: [
-          { id: 'b1', name: 'main', default: true },
-          { id: 'b2', name: 'preview' },
-        ],
+        stores: names.map((name) => ({
+          id: `store_${name}`,
+          name,
+          projectsMetadata: NEON_STORES.filter(([n]) => n === name).map(
+            ([, projectId, environment, envVarPrefix]) => ({
+              projectId,
+              environments: [environment],
+              envVarPrefix,
+            }),
+          ),
+        })),
       },
     },
-    'GET /api/v2/projects/p1/branches/b1/roles': {
-      body: { roles: [{ name: 'owner', protected: false }] },
-    },
   };
-  for (const branch of ['b1', 'b2']) {
-    neonRoutes[`GET /api/v2/projects/p1/branches/${branch}/databases`] = {
-      body: { databases: [{ name: 'growth' }, { name: 'b4_state' }] },
-    };
-    for (const database of ['growth', 'b4_state']) {
-      const query = new URLSearchParams({
-        branch_id: branch,
-        database_name: database,
-        role_name: 'owner',
-        pooled: 'true',
-      });
-      neonRoutes[`GET /api/v2/projects/p1/connection_uri?${query}`] = {
-        body: { uri: `postgres://owner:secret-${branch}-${database}@h/x` },
-      };
-    }
-  }
+}
+
+function vendorFixtures() {
   const routes = {
-    ...neonRoutes,
+    ...neonFixtures(),
     'GET /api/organizations/@current/': { body: { id: 'org1' } },
     'GET /api/organizations/org1/projects/': {
       body: {
@@ -211,11 +210,6 @@ test('a rerun with all-exists vendors makes no vendor mutation', async () => {
 
   await provision({
     clients: {
-      neon: createJsonClient({
-        baseUrl: 'https://console.neon.tech/api/v2',
-        token: 'neon-token-secret',
-        fetchImpl,
-      }),
       posthog: createJsonClient({
         baseUrl: 'https://us.posthog.com',
         token: 'ph-token-secret',
@@ -243,6 +237,10 @@ test('a rerun with all-exists vendors makes no vendor mutation', async () => {
     calls.filter((c) => c.method !== 'GET'),
     [],
   );
+  assert.ok(
+    calls.some((c) => c.path === '/v1/storage/stores?teamId=team_1'),
+    'lists the stores',
+  );
   assert.equal(spawned.length, 1);
   assert.deepEqual(spawned[0], [
     '--env-file',
@@ -256,8 +254,8 @@ test('the bootstrap child env drops provisioned keys and keeps tokens', async ()
   const { fetchImpl } = stubFetch(vendorFixtures());
   const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
   const before = { ...process.env };
-  process.env.DATABASE_URL = 'postgres://shell';
-  process.env.PREVIEW_DATABASE_URL = 'postgres://shell-preview';
+  process.env.LIFECYCLE_URL = 'https://shell.example';
+  process.env.PREVIEW_DELIVERY_ENVIRONMENT = 'shell-preview';
   process.env.VERCEL_TOKEN = 'vercel-token-secret';
   let childEnv;
 
@@ -274,8 +272,8 @@ test('the bootstrap child env drops provisioned keys and keeps tokens', async ()
     });
   } finally {
     for (const key of [
-      'DATABASE_URL',
-      'PREVIEW_DATABASE_URL',
+      'LIFECYCLE_URL',
+      'PREVIEW_DELIVERY_ENVIRONMENT',
       'VERCEL_TOKEN',
     ]) {
       if (key in before) process.env[key] = before[key];
@@ -283,8 +281,8 @@ test('the bootstrap child env drops provisioned keys and keeps tokens', async ()
     }
   }
 
-  assert.ok(!('DATABASE_URL' in childEnv));
-  assert.ok(!('PREVIEW_DATABASE_URL' in childEnv));
+  assert.ok(!('LIFECYCLE_URL' in childEnv));
+  assert.ok(!('PREVIEW_DELIVERY_ENVIRONMENT' in childEnv));
   assert.equal(childEnv.VERCEL_TOKEN, 'vercel-token-secret');
   assert.equal(buildBootstrapEnv({ A: '1', B: '2' }, 'A=x\n').B, '2');
 });
@@ -335,11 +333,6 @@ test('provision writes growth.env as 0600, keeps secrets stable on rerun, and th
     const checklist = createChecklist();
     await provision({
       clients: {
-        neon: createJsonClient({
-          baseUrl: 'https://console.neon.tech/api/v2',
-          token: 'neon-token-secret',
-          fetchImpl,
-        }),
         posthog: createJsonClient({
           baseUrl: 'https://us.posthog.com',
           token: 'ph-token-secret',
@@ -388,7 +381,7 @@ test('runProvision prints no checklist line when the secret guard fires', async 
   routes['GET /domains/d1'] = {
     body: {
       id: 'd1',
-      status: 'postgres://owner:secret-b1-growth@h/x',
+      status: 'phc_existing',
       records: [],
     },
   };
@@ -399,11 +392,6 @@ test('runProvision prints no checklist line when the secret guard fires', async 
   const act = runProvision(
     {
       clients: {
-        neon: createJsonClient({
-          baseUrl: 'https://console.neon.tech/api/v2',
-          token: 'neon-token-secret',
-          fetchImpl,
-        }),
         posthog: createJsonClient({
           baseUrl: 'https://us.posthog.com',
           token: 'ph-token-secret',
@@ -427,4 +415,91 @@ test('runProvision prints no checklist line when the secret guard fires', async 
 
   await assert.rejects(act, SecretLeakError);
   assert.deepEqual(printed, []);
+});
+
+test('a first run creates four Neon stores and six connections after the bootstrap', async () => {
+  const order = [];
+  const routes = vendorFixtures();
+  routes['GET /v1/storage/stores?teamId=team_1'] = { body: { stores: [] } };
+  let n = 0;
+  routes['POST /v1/storage/stores/integration?teamId=team_1'] = () => {
+    n += 1;
+    return { body: { store: { id: `s${n}`, name: `n${n}` } } };
+  };
+  for (let i = 1; i <= 4; i += 1) {
+    routes[`POST /v1/storage/stores/s${i}/connections?teamId=team_1`] = {
+      body: {},
+    };
+  }
+  const { fetchImpl, calls } = stubFetch(routes);
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+
+  await provision({
+    clients: clientsFor(fetchImpl),
+    outDir,
+    founderEmail: 'brian@hashbrown.dev',
+    checklist: createChecklist(),
+    spawnBootstrap: async () => {
+      order.push(calls.length);
+      return 0;
+    },
+  });
+
+  const creates = calls.filter(
+    (c) => c.path === '/v1/storage/stores/integration?teamId=team_1',
+  );
+  const connects = calls.filter((c) => c.path.includes('/connections'));
+  assert.equal(creates.length, 4);
+  assert.deepEqual(
+    creates.map((c) => c.body.name),
+    [
+      'growth-production-target-01',
+      'growth-preview-target-01',
+      'b4-production-target-01',
+      'b4-preview-target-01',
+    ],
+  );
+  assert.deepEqual(
+    connects.map((c) => [c.path.split('/')[4], c.body]),
+    [
+      ['s1', { projectId: 'prj_www', envVarEnvironments: ['production'] }],
+      ['s1', { projectId: 'prj_lc', envVarEnvironments: ['production'] }],
+      ['s2', { projectId: 'prj_www', envVarEnvironments: ['preview'] }],
+      ['s2', { projectId: 'prj_lc', envVarEnvironments: ['preview'] }],
+      [
+        's3',
+        {
+          projectId: 'prj_lc',
+          envVarEnvironments: ['production'],
+          envVarPrefix: 'B4_',
+        },
+      ],
+      [
+        's4',
+        {
+          projectId: 'prj_lc',
+          envVarEnvironments: ['preview'],
+          envVarPrefix: 'B4_',
+        },
+      ],
+    ],
+  );
+  const bootstrapAt = order[0];
+  assert.ok(calls.indexOf(creates[0]) >= bootstrapAt);
+});
+
+test('the Neon step is skipped when the bootstrap exits non-zero', async () => {
+  const { fetchImpl, calls } = stubFetch(vendorFixtures());
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+
+  const act = provision({
+    clients: clientsFor(fetchImpl),
+    outDir,
+    founderEmail: 'brian@hashbrown.dev',
+    checklist: createChecklist(),
+    spawnBootstrap: async () => 1,
+  });
+
+  await assert.rejects(act, /bootstrap exited with code 1/);
+  assert.ok(!calls.some((c) => c.path.startsWith('/v1/storage')));
 });
