@@ -284,7 +284,7 @@ const stream = HashbrownOllama.stream.text({
   input,
   signal,
   activities: async ({ activity, model }) => {
-    const plan = activity.snapshot('plan-1', 'plan', {
+    const plan = activity.snapshot(`plan-${input.runId}`, 'plan', {
       steps: ['Read the question', 'Answer'],
       done: 0,
     });
@@ -299,6 +299,7 @@ const stream = HashbrownOllama.stream.text({
 The callback receives an `activity` writer, a `model` promise, and the run's `signal`:
 
 - `activity.snapshot(id, activityType, content)` sends an `ACTIVITY_SNAPSHOT` and returns a handle. The handle's `patch(operations)` sends an `ACTIVITY_DELTA` with RFC 6902 JSON Patch operations, and `replace(content)` sends a new snapshot.
+- Activity ids must be unique within the thread. Reusing an id from an earlier turn updates that turn's activity in place, so the example builds the id from `input.runId` to give each run its own plan.
 - `model` resolves when the model stream ends, before the run finishes, and rejects if the model call fails.
 - Activity events and model events are sent in the order they happen. The callback starts after `RUN_STARTED`, and the terminal event waits until the callback settles. Model text streams as it arrives and is never held back.
 - If the callback throws while the model is streaming, Hashbrown aborts the model and ends the run with one `RUN_ERROR`. If it throws after the model has finished, `RUN_ERROR` replaces `RUN_FINISHED`. If the model fails too, the model's error wins.

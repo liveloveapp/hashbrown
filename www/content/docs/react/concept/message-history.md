@@ -22,7 +22,7 @@ Use message history when you want to:
 
 ## Public History and AG-UI Checkpoints
 
-`chat.messages` remains Hashbrown's opinionated public view of the conversation. When an AG-UI agent sends a message checkpoint, Hashbrown retains the complete canonical AG-UI history internally and uses it for subsequent requests. Stable message IDs, metadata, and roles that do not have a Hashbrown public representation remain in that internal checkpoint.
+`chat.messages` remains Hashbrown's opinionated public view of the conversation. When an AG-UI agent sends a message checkpoint, Hashbrown retains the complete canonical AG-UI history internally and uses it for subsequent requests. User and assistant messages expose their stable canonical `id` in the public view. Metadata and roles that do not have a Hashbrown public representation remain in that internal checkpoint.
 
 The public view continues to use Hashbrown's existing message shapes: user and assistant messages remain familiar, reasoning is correlated with assistant messages, and tool results settle their corresponding tool calls. Canonical system and developer messages are not added to `chat.messages`. Activity messages are: each one appears in `chat.messages` as a `role: 'activity'` message, in the position where it arrived. See [Activities](/docs/react/concept/activities). The internal canonical history is not exposed as a separate public API.
 

@@ -42,7 +42,7 @@ type ActivityMessage = {
 };
 ```
 
-- `id` is the AG-UI activity message id. Later events for the same id update the same message.
+- `id` is the AG-UI activity message id. Later events for the same id update the same message. Ids must be unique within the thread: reusing one, even in a later run, updates the earlier activity in place instead of adding a new one.
 - `activityType` is the producer's kind, for example `plan` or `progress`. Switch on it to choose a component.
 - `content` is untyped. Narrow it by `activityType` in your app. Hashbrown deeply freezes it and replaces it with a new object on every update, so a signal or `computed` over `chat.value()` sees each change.
 
@@ -63,7 +63,9 @@ Each activity records what it belonged to when it first arrived.
 | `toolCallId`         | The most recent tool call of any kind in that run, if any. |
 | `subagentRunId`      | The subagent run that sent it, if the agent reports one.   |
 
-An activity sent after the model's answer links to that answer. One sent before any assistant text has no `assistantMessageId`. Later snapshots and deltas keep the links, and incoming links are never trusted: activities restored with `setMessages` or a `MESSAGES_SNAPSHOT` get their links recomputed from their position.
+An activity sent after the model's answer links to that answer, including an answer that only calls tools. One sent before any assistant message has started has no `assistantMessageId`. Later snapshots and deltas keep the links, and incoming links are never trusted: activities restored with `setMessages` or a `MESSAGES_SNAPSHOT` get their links recomputed from their position. `subagentRunId` is the exception. It is kept on restore, not recomputed, because position cannot tell which subagent sent an activity.
+
+`reload` keeps the activities the reloaded turn sent before its answer and drops the ones that came after it. The kept activities are relinked from their position, like any restored activity.
 
 User and assistant messages expose a stable `id`, so a link always has something to point at. The streaming assistant message keeps the id it has once it is committed.
 
