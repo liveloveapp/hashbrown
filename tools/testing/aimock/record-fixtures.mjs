@@ -1,23 +1,35 @@
 #!/usr/bin/env node
 // Re-record one provider's fixtures from the live API.
 //
-// Usage: record-fixtures.mjs <provider> [--dry-run]
+// Usage: record-fixtures.mjs <provider> [--only "<test name>"] [--dry-run]
 //
 // 1. loads the developer .env (HASHBROWN_ENV_FILE, else the nearest .env
 //    walking up from the workspace root; git worktrees sit below the main
 //    checkout, which holds the real file),
-// 2. deletes that provider's recorded fixtures,
-// 3. runs `nx e2e <provider> --skip-nx-cache` with AIMOCK_RECORD=1,
+// 2. deletes that provider's recorded fixtures (with --only, just that test's
+//    recording),
+// 3. runs `nx e2e <provider> --skip-nx-cache` with AIMOCK_RECORD=1 (with
+//    --only, limited to that test by an exact --testNamePattern),
 // 4. runs the credential scan over every recorded fixture.
+//
+// The recording is deleted first because aimock replays a request the file
+// already matches instead of recording it, and appends to the file.
 //
 // Env values are never printed.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmdirSync,
+  rmSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(here, '..', '..', '..');
+const recordedRoot = join(here, 'fixtures', 'recorded');
 
 /** Recording file name and slug filters per provider. */
 const PROVIDERS = {
@@ -28,6 +40,25 @@ const PROVIDERS = {
   bedrock: { file: 'bedrock.json' },
   ollama: { file: 'ollama.json' },
 };
+
+// An exact copy of recordedTestSlug in recording.ts (itself a copy of aimock's
+// slugifyTestId); recording.spec.ts checks the two agree.
+function recordedTestSlug(testName) {
+  return testName
+    .replace(
+      /^.*?\.(?:spec|test|e2e)\.(?:tsx|ts|jsx|js|mjs|cjs)(?=\s|›|$)\s*›?\s*/i,
+      '',
+    )
+    .replace(/\s*[›>]\s*/g, '--')
+    .replace(/[^\w-]/g, '-')
+    .replace(/-{3,}/g, '--')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function findEnvFile() {
   const explicit = process.env.HASHBROWN_ENV_FILE;
@@ -65,14 +96,37 @@ function run(command, commandArgs, env) {
   }
 }
 
-const [provider] = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
-const dryRun = process.argv.includes('--dry-run');
+const args = process.argv.slice(2);
+const onlyIndex = args.indexOf('--only');
+const only = onlyIndex === -1 ? undefined : args[onlyIndex + 1];
+const [provider] = args.filter(
+  (arg, index) =>
+    !arg.startsWith('--') && (onlyIndex === -1 || index !== onlyIndex + 1),
+);
+const dryRun = args.includes('--dry-run');
 const config = PROVIDERS[provider];
-if (!config) {
+if (!config || (onlyIndex !== -1 && !only)) {
   console.error(
-    `Usage: record-fixtures.mjs <${Object.keys(PROVIDERS).join('|')}> [--dry-run]`,
+    `Usage: record-fixtures.mjs <${Object.keys(PROVIDERS).join('|')}> ` +
+      '[--only "<test name>"] [--dry-run]',
   );
   process.exit(2);
+}
+
+const onlySlug = only === undefined ? undefined : recordedTestSlug(only);
+if (onlySlug !== undefined) {
+  const wrongPrefix =
+    (config.slugPrefix && !onlySlug.startsWith(config.slugPrefix)) ||
+    (config.excludeSlugPrefix && onlySlug.startsWith(config.excludeSlugPrefix));
+  if (wrongPrefix) {
+    console.error(
+      `"${only}" records under slug ${onlySlug}, which belongs to ` +
+        `${config.slugPrefix ? 'another provider' : 'azure'}: ${provider} ` +
+        `tests ${config.slugPrefix ? 'must' : 'must not'} have the ` +
+        `${config.slugPrefix ?? config.excludeSlugPrefix} slug prefix.`,
+    );
+    process.exit(2);
+  }
 }
 
 const envFile = findEnvFile();
@@ -97,7 +151,17 @@ const clearArgs = [
     : []),
   ...(dryRun ? ['--dry-run'] : []),
 ];
-const e2eArgs = ['nx', 'e2e', provider, '--skip-nx-cache'];
+const onlyFile =
+  onlySlug === undefined
+    ? undefined
+    : join(recordedRoot, onlySlug, config.file);
+const e2eArgs = [
+  'nx',
+  'e2e',
+  provider,
+  '--skip-nx-cache',
+  ...(only === undefined ? [] : [`--testNamePattern=^${escapeRegExp(only)}$`]),
+];
 const scanArgs = [
   'nx',
   'test',
@@ -108,14 +172,33 @@ const scanArgs = [
 
 if (dryRun) {
   console.log('[dry-run] recordings that would be deleted:');
-  run(process.execPath, clearArgs, env);
+  if (onlyFile === undefined) {
+    run(process.execPath, clearArgs, env);
+  } else {
+    console.log(
+      `${onlySlug}/${config.file}${existsSync(onlyFile) ? '' : ' (not recorded yet)'}`,
+    );
+  }
   console.log(`[dry-run] would run: AIMOCK_RECORD=1 npx ${e2eArgs.join(' ')}`);
   console.log(`[dry-run] would run: npx ${scanArgs.join(' ')}`);
   process.exit(0);
 }
 
-run(process.execPath, clearArgs, env);
+if (onlyFile === undefined) {
+  run(process.execPath, clearArgs, env);
+} else if (existsSync(onlyFile)) {
+  rmSync(onlyFile);
+  const slugDir = dirname(onlyFile);
+  if (readdirSync(slugDir).length === 0) rmdirSync(slugDir);
+}
 run('npx', e2eArgs, env);
+if (onlyFile !== undefined && !existsSync(onlyFile)) {
+  console.error(
+    `No recording was written to ${onlySlug}/${config.file}. ` +
+      `Check that "${only}" is the exact name of a ${provider} test.`,
+  );
+  process.exit(1);
+}
 run('npx', scanArgs, env);
 console.log(
   `Recorded ${provider}. Review the diff of tools/testing/aimock/fixtures/recorded before committing.`,

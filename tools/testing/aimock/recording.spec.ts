@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
@@ -511,4 +511,80 @@ test('clear-recordings does nothing when the recordings root is missing', () => 
   const removed = runClearRecordings(root, ['openai.json']);
 
   expect(removed).toEqual([]);
+});
+
+interface RecordFixturesRun {
+  readonly status: number;
+  readonly output: string;
+}
+
+function runRecordFixtures(args: string[]): RecordFixturesRun {
+  const script = join(__dirname, 'record-fixtures.mjs');
+  const result = spawnSync(process.execPath, [script, ...args], {
+    encoding: 'utf8',
+    env: {
+      PATH: process.env['PATH'],
+      HASHBROWN_ENV_FILE: join(tmpdir(), 'no-such-hashbrown.env'),
+      AZURE_API_KEY: 'azure-key-that-must-never-print',
+    },
+  });
+  return {
+    status: result.status ?? -1,
+    output: `${result.stdout}${result.stderr}`,
+  };
+}
+
+test('record-fixtures --only dry run names one recording and the jest pattern', () => {
+  const testName =
+    'Azure OpenAI consumes AG-UI input and emits a canonical text run';
+  const slug = recordedTestSlug(testName);
+
+  const { status, output } = runRecordFixtures([
+    'azure',
+    '--only',
+    testName,
+    '--dry-run',
+  ]);
+
+  expect(status).toBe(0);
+  expect(output).toContain(`${slug}/openai.json`);
+  expect(output).toContain(
+    '--testNamePattern=^Azure OpenAI consumes AG-UI input and emits a canonical text run$',
+  );
+  expect(output).not.toContain('azure-key-that-must-never-print');
+});
+
+test('record-fixtures --only escapes regex characters in the test name', () => {
+  const testName = 'Google streams (thinking) text?';
+
+  const { status, output } = runRecordFixtures([
+    'google',
+    '--only',
+    testName,
+    '--dry-run',
+  ]);
+
+  expect(status).toBe(0);
+  expect(output).toContain(`${recordedTestSlug(testName)}/gemini.json`);
+  expect(output).toContain(
+    '--testNamePattern=^Google streams \\(thinking\\) text\\?$',
+  );
+});
+
+test('record-fixtures --only rejects a name owned by the other openai.json provider', () => {
+  const azureName = 'Azure OpenAI streams text';
+  const openaiName = 'OpenAI streams text';
+
+  const openai = runRecordFixtures([
+    'openai',
+    '--only',
+    azureName,
+    '--dry-run',
+  ]);
+  const azure = runRecordFixtures(['azure', '--only', openaiName, '--dry-run']);
+
+  expect(openai.status).not.toBe(0);
+  expect(openai.output).toContain('azure-');
+  expect(azure.status).not.toBe(0);
+  expect(azure.output).toContain('azure-');
 });
