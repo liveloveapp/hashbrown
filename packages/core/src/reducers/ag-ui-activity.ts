@@ -208,9 +208,11 @@ export function readActivityLinks(
  *
  * Used for activities that arrive through `MESSAGES_SNAPSHOT`, `setMessages`
  * or initial `messages`, whose incoming `hashbrownLinks` are never trusted.
- * `assistantMessageId` is the nearest assistant message before the activity,
- * `toolCallId` is that assistant's last tool call, and `subagentRunId` comes
- * from the activity message itself.
+ * `assistantMessageId` is the nearest assistant message before the activity
+ * in the same turn (a user message clears it), `toolCallId` is that
+ * assistant's last tool call, and `subagentRunId` comes from the activity
+ * message itself. `runId` is stamped only on activities after the last user
+ * message; the run of earlier turns is unknown.
  *
  * @param messages - Canonical history whose activities arrived together.
  * @param runId - The run that delivered the list, if any.
@@ -225,9 +227,16 @@ export function recomputeActivityLinks(
   if (!messages.some((message) => message.role === 'activity')) {
     return messages;
   }
+  const lastUserIndex = messages.findLastIndex(
+    (message) => message.role === 'user',
+  );
   let assistant: Extract<Message, { role: 'assistant' }> | undefined;
   return Object.freeze(
-    messages.map((message) => {
+    messages.map((message, index) => {
+      if (message.role === 'user') {
+        assistant = undefined;
+        return message;
+      }
       if (message.role === 'assistant') {
         assistant = message;
         return message;
@@ -241,7 +250,7 @@ export function recomputeActivityLinks(
           ...record,
           hashbrownLinks: createLinks(
             {
-              runId,
+              runId: index > lastUserIndex ? runId : undefined,
               assistantMessageId: assistant?.id,
               toolCallId: assistant?.toolCalls?.at(-1)?.id,
             },

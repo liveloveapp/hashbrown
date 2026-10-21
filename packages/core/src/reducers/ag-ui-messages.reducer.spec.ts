@@ -2457,7 +2457,7 @@ test('setMessages lowers activity messages and recomputes their links', () => {
           runId: 'forged-run',
           assistantMessageId: 'forged-assistant',
           toolCallId: 'forged-tool',
-          subagentRunId: 'forged-subagent',
+          subagentRunId: 'subagent-1',
         },
       },
     ],
@@ -2476,7 +2476,12 @@ test('setMessages lowers activity messages and recomputes their links', () => {
     activityType: 'plan',
     content: { steps: ['a'] },
     metadata: { source: 'agent' },
-    hashbrownLinks: { assistantMessageId: 'assistant-1', toolCallId: 'tool-1' },
+    subagentRunId: 'subagent-1',
+    hashbrownLinks: {
+      assistantMessageId: 'assistant-1',
+      toolCallId: 'tool-1',
+      subagentRunId: 'subagent-1',
+    },
   });
 });
 
@@ -2501,7 +2506,11 @@ test('a saved transcript restored with setMessages keeps ids and activity links'
       role: 'activity' as const,
       activityType: 'plan',
       content: { steps: ['fly'] },
-      links: { runId: 'run-1', assistantMessageId: 'assistant-1' },
+      links: {
+        runId: 'run-1',
+        assistantMessageId: 'assistant-1',
+        subagentRunId: 'subagent-1',
+      },
     },
     { id: 'user-2', role: 'user' as const, content: 'Thanks.' },
     {
@@ -2531,8 +2540,60 @@ test('a saved transcript restored with setMessages keeps ids and activity links'
     undefined,
     {},
     undefined,
-    { assistantMessageId: 'assistant-1' },
+    { assistantMessageId: 'assistant-1', subagentRunId: 'subagent-1' },
     undefined,
     undefined,
   ]);
+  expect(restored.committed[3]).toMatchObject({ subagentRunId: 'subagent-1' });
+});
+
+test('a snapshot stamps its run only on activities after the last user message', () => {
+  const started = reducer(
+    reducer(
+      reducer(
+        initialAgUiMessagesState,
+        devActions.init({ system: '', canonicalMessages: [] }),
+      ),
+      internalActions.generationAttemptStarted(),
+    ),
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-2',
+    }),
+  );
+
+  const snapshotted = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'user-1', role: 'user', content: 'first' },
+        { id: 'assistant-1', role: 'assistant', content: 'One.' },
+        {
+          id: 'activity-old',
+          role: 'activity',
+          activityType: 'plan',
+          content: {},
+        },
+        { id: 'user-2', role: 'user', content: 'second' },
+        { id: 'assistant-2', role: 'assistant', content: 'Two.' },
+        {
+          id: 'activity-new',
+          role: 'activity',
+          activityType: 'plan',
+          content: {},
+        },
+      ],
+    }),
+  );
+
+  expect(snapshotted.protocolError).toBeUndefined();
+  expect(readActivityLinks(snapshotted.draft[2])).toEqual({
+    assistantMessageId: 'assistant-1',
+  });
+  expect(readActivityLinks(snapshotted.draft[5])).toEqual({
+    runId: 'run-2',
+    assistantMessageId: 'assistant-2',
+  });
 });

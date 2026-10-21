@@ -493,7 +493,7 @@ test('recomputeActivityLinks links each activity to the nearest assistant before
   const next = recomputeActivityLinks(messages, 'run-9');
 
   expect(next.map(readActivityLinks)).toEqual([
-    { runId: 'run-9' },
+    {},
     undefined,
     undefined,
     undefined,
@@ -510,4 +510,41 @@ test('recomputeActivityLinks links each activity to the nearest assistant before
   expect(Object.isFrozen(next)).toBe(true);
   expect(Object.isFrozen(next[4])).toBe(true);
   expect(recomputeActivityLinks([user], 'run-9')).toEqual([user]);
+});
+
+test('a user message clears the nearest assistant for later activities', () => {
+  const messages = Object.freeze([
+    user,
+    assistant('assistant-1', ['tool-1']),
+    { id: 'user-2', role: 'user', content: 'next' } as Message,
+    activity('activity-x', { assistantMessageId: 'assistant-1' }),
+  ]);
+
+  const next = recomputeActivityLinks(messages, 'run-9');
+
+  expect(readActivityLinks(next[3])).toEqual({ runId: 'run-9' });
+});
+
+test('only activities after the last user message get the run id', () => {
+  const messages = Object.freeze([
+    user,
+    activity('activity-a'),
+    assistant('assistant-1'),
+    activity('activity-b'),
+    { id: 'user-2', role: 'user', content: 'next' } as Message,
+    assistant('assistant-2'),
+    activity('activity-c'),
+  ]);
+
+  const next = recomputeActivityLinks(messages, 'run-9');
+
+  expect(next.map(readActivityLinks)).toEqual([
+    undefined,
+    {},
+    undefined,
+    { assistantMessageId: 'assistant-1' },
+    undefined,
+    undefined,
+    { runId: 'run-9', assistantMessageId: 'assistant-2' },
+  ]);
 });

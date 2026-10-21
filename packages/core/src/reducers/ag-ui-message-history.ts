@@ -17,7 +17,8 @@ export interface LowerCanonicalMessagesOptions {
 
 /**
  * An activity view message as lowering accepts it. Its `links` are never
- * trusted; the reducer recomputes them from position.
+ * trusted, and the reducer recomputes them from position. The one exception is
+ * `subagentRunId`, which is protocol attribution rather than a derived link.
  *
  * @internal
  */
@@ -27,14 +28,14 @@ export interface ɵActivityMessageInput {
   readonly activityType: string;
   readonly content: Readonly<Record<string, unknown>>;
   readonly metadata?: Readonly<Record<string, unknown>>;
-  readonly links?: unknown;
+  readonly links?: Readonly<Record<string, unknown>>;
 }
 
 /**
  * Lowers Hashbrown view messages once at the runtime boundary. A user or
  * assistant message keeps its supplied `id`; `createId` mints one only when
  * the id is absent. An activity message lowers to an AG-UI activity message
- * without its links.
+ * that keeps only `links.subagentRunId`, as the message's `subagentRunId`.
  *
  * @internal
  */
@@ -54,6 +55,9 @@ export function lowerViewMessagesToAgUi(
           role: 'activity',
           activityType: message.activityType,
           content: message.content as Record<string, unknown>,
+          ...(typeof message.links?.['subagentRunId'] === 'string'
+            ? { subagentRunId: message.links['subagentRunId'] }
+            : {}),
           ...(message.metadata !== undefined
             ? { metadata: message.metadata as Record<string, unknown> }
             : {}),
