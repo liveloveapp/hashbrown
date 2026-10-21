@@ -2,121 +2,158 @@ import {
   type Aircraft,
   aircraftKind,
   type AircraftSnapshot,
-  AIRPORTS,
+  applyAirspace,
   deadReckon,
   displayLabel,
+  type FindAircraftInput,
+  INITIAL_STATE,
+  matchesResolved,
+  type ResolvedFilter,
+  resolveFilter,
 } from '@atc/shared';
-import { frame, FRAME_MS } from '../src/traffic-fixtures';
+import { CHART_AIRSPACE } from '../src/chart-fixtures';
+import {
+  frame,
+  FRAME_MS,
+  NEAR_BEND,
+  NO_FILTERS,
+  PORTLAND_CLASS_C,
+  scenario,
+} from '../src/traffic-fixtures';
+import snapshot from './live-snapshot.json';
 
-/** A small seeded PRNG (mulberry32), so every recording shows the same sky. */
-export function seededRandom(seed: number): () => number {
-  let a = seed >>> 0;
+/** One aircraft as `live-snapshot.json` stores it: an {@link Aircraft} without its derived label and kind. */
+type StoredAircraft = Omit<Aircraft, 'label' | 'kind'>;
 
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+/** A capture of real traffic, with where and when it came from. */
+export interface LiveSnapshot {
+  /** The attribution the data needs: "Aircraft data adsb.lol (ODbL)". */
+  readonly source: string;
+  /** The URL it was fetched from. */
+  readonly capturedFrom: string;
+  /** When adsb.lol reported it, as an ISO 8601 timestamp. */
+  readonly capturedAt: string;
+  readonly aircraft: readonly Aircraft[];
+}
 
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+/**
+ * Real Pacific Northwest traffic, captured once from production
+ * (`GET https://atc.hashbrown.dev/api/aircraft?area=pnw`) and checked in, so
+ * every recording shows the same sky. Aircraft data adsb.lol (ODbL). The
+ * file keeps only the fields {@link Aircraft} needs; the label and kind are
+ * derived here the way the server derives them.
+ */
+export const LIVE_SNAPSHOT: LiveSnapshot = {
+  source: snapshot.source,
+  capturedFrom: snapshot.capturedFrom,
+  capturedAt: snapshot.capturedAt,
+  aircraft: (snapshot.aircraft as readonly StoredAircraft[]).map(
+    (aircraft) => ({
+      ...aircraft,
+      label: displayLabel(aircraft),
+      kind: aircraftKind(aircraft),
+    }),
+  ),
+};
+
+/**
+ * How many frames the filler flies for (10 minutes, longer than a
+ * recording); after that it holds still, so the checks in {@link liveFiller}
+ * cover every frame.
+ */
+export const LIVE_FRAMES = 200;
+
+/** Where an aircraft is in demo frame `n`: dead-reckoned along its track. */
+function fly(aircraft: Aircraft, n: number): Aircraft {
+  const seconds = (Math.min(n, LIVE_FRAMES - 1) * FRAME_MS) / 1000;
+
+  return {
+    ...aircraft,
+    ...deadReckon(
+      aircraft,
+      aircraft.trackDeg ?? 0,
+      aircraft.groundSpeedKt ?? 0,
+      seconds,
+    ),
   };
 }
 
-/** Where filler traffic flies, and how much of it. */
-const REGIONS = [
-  // Central Oregon, around the home view but outside the 25 nm Bend ring.
-  { lat: 44.2, lon: -121.2, spreadLat: 0.75, spreadLon: 1.9, count: 26 },
-  // The Seattle and Portland areas.
-  { lat: 47.3, lon: -122.3, spreadLat: 0.7, spreadLon: 0.9, count: 12 },
-  { lat: 45.6, lon: -122.6, spreadLat: 0.5, spreadLon: 0.8, count: 8 },
-] as const;
+/** The scripted answers' searches, resolved against the chart fixtures. */
+const ANSWER_FILTERS: readonly ResolvedFilter[] = (() => {
+  const state = applyAirspace(INITIAL_STATE, CHART_AIRSPACE);
+  const queries: FindAircraftInput[] = [
+    { ...NO_FILTERS, near: NEAR_BEND, sortBy: 'distance', limit: 20 },
+    { ...NO_FILTERS, approaching: 'KSEA', sortBy: 'distance', limit: 10 },
+    {
+      ...NO_FILTERS,
+      inAirspace: PORTLAND_CLASS_C,
+      sortBy: 'distance',
+      limit: 20,
+    },
+  ];
 
-const AIRLINES = ['ASA', 'UAL', 'DAL', 'SWA', 'AAL', 'SKW', 'QXE', 'JBU'];
-const JETS = ['B738', 'A320', 'E75L', 'B39M', 'A321', 'CRJ9', 'B739', 'A20N'];
-const PROPS = ['C172', 'PA28', 'SR22', 'C182', 'BE36'];
-
-/** Filler stays this far from KBDN (about 33 nm), outside the 25 nm ring the near-Bend answer lists. */
-const BEND = AIRPORTS.KBDN;
-const CLEAR_OF_BEND_DEG = 0.55;
-
-/**
- * Filler aircraft at frame 0: airliners at cruise and light aircraft, level
- * (never descending, so none is "approaching" an airport), slower and lower
- * than the scenario's fastest and highest planes, and clear of the Bend ring,
- * so the scripted answers stay true. Light aircraft fly at 4,500 ft or
- * higher, above the Portland Class C's 4,000 ft ceiling, so none joins the
- * Portland answer.
- */
-export const FILLER: readonly Aircraft[] = (() => {
-  const random = seededRandom(0xa7c);
-  const pick = <T>(items: readonly T[]) =>
-    items[Math.floor(random() * items.length)];
-  const aircraft: Aircraft[] = [];
-  let serial = 0;
-  for (const region of REGIONS) {
-    let placed = 0;
-    while (placed < region.count) {
-      const lat = region.lat + (random() * 2 - 1) * region.spreadLat;
-      const lon = region.lon + (random() * 2 - 1) * region.spreadLon;
-      const fromBend = Math.hypot(
-        lat - BEND.lat,
-        (lon - BEND.lon) * Math.cos((lat * Math.PI) / 180),
-      );
-      if (fromBend < CLEAR_OF_BEND_DEG) continue;
-      const jet = random() < 0.72;
-      const hex = `c0${(0x1000 + serial++).toString(16)}`;
-      const callsign = jet
-        ? `${pick(AIRLINES)}${100 + Math.floor(random() * 3800)}`
-        : null;
-      const registration = jet
-        ? null
-        : `N${1 + Math.floor(random() * 9)}${Math.floor(random() * 900 + 100)}${String.fromCharCode(65 + Math.floor(random() * 26))}`;
-      const typeCode = jet ? pick(JETS) : pick(PROPS);
-      aircraft.push({
-        hex,
-        label: displayLabel({ hex, callsign, registration }),
-        callsign,
-        registration,
-        typeCode,
-        category: null,
-        kind: aircraftKind({ typeCode, category: null }),
-        lat,
-        lon,
-        altitudeFt: jet
-          ? 1000 * Math.round(18 + random() * 20)
-          : 500 * Math.round(9 + random() * 10),
-        onGround: false,
-        groundSpeedKt: jet
-          ? Math.round(360 + random() * 120)
-          : Math.round(95 + random() * 45),
-        trackDeg: Math.round(random() * 360),
-        verticalRateFpm: 0,
-      });
-      placed++;
+  return queries.map((query) => {
+    const resolved = resolveFilter(state, query);
+    if ('unknownPlaces' in resolved) {
+      throw new Error(`Unknown places: ${resolved.unknownPlaces.join(', ')}`);
     }
-  }
 
-  return aircraft;
+    return resolved;
+  });
 })();
 
-/** Demo frame `n`: the e2e scenario's frame plus the filler, flown forward. */
+/**
+ * The aircraft from `candidates` that never change a scripted answer, in any
+ * frame up to {@link LIVE_FRAMES}: lower than the scenario's highest plane,
+ * slower than its fastest, never within 25 nm of KBDN (the near-Bend board),
+ * never approaching KSEA (the Seattle arrivals) and never inside the Portland
+ * Class C below its ceiling. Any that shares a hex, callsign, registration or
+ * label with a scenario aircraft is dropped too, so cards and highlights name
+ * one plane.
+ */
+export function liveFiller(candidates: readonly Aircraft[]): Aircraft[] {
+  const scripted = frame(0).aircraft;
+  const taken = new Set(
+    scripted.flatMap((aircraft) =>
+      [aircraft.hex, aircraft.label, aircraft.callsign, aircraft.registration]
+        .filter((name): name is string => name !== null)
+        .map((name) => name.toUpperCase()),
+    ),
+  );
+  const ceilingFt = scenario.highest.altitudeFt ?? 0;
+  const topSpeedKt = scenario.fastest.groundSpeedKt ?? 0;
+  const frames = Array.from({ length: LIVE_FRAMES }, (_, n) => n);
+
+  return candidates.filter(
+    (aircraft) =>
+      [aircraft.hex, aircraft.label, aircraft.callsign, aircraft.registration]
+        .filter((name): name is string => name !== null)
+        .every((name) => !taken.has(name.toUpperCase())) &&
+      (aircraft.altitudeFt ?? 0) < ceilingFt &&
+      (aircraft.groundSpeedKt ?? 0) < topSpeedKt &&
+      frames.every((n) => {
+        const flown = fly(aircraft, n);
+
+        return ANSWER_FILTERS.every(
+          (filter) => !matchesResolved(filter, flown),
+        );
+      }),
+  );
+}
+
+/**
+ * The traffic around the scenario: every aircraft of {@link LIVE_SNAPSHOT}
+ * that {@link liveFiller} keeps, so the map is full of real planes while the
+ * scripted answers stay true.
+ */
+export const FILLER: readonly Aircraft[] = liveFiller(LIVE_SNAPSHOT.aircraft);
+
+/** Demo frame `n`: the e2e scenario's frame plus the live filler, flown forward. */
 export function demoFrame(n: number): AircraftSnapshot {
   const base = frame(n);
-  const seconds = (n * FRAME_MS) / 1000;
 
   return {
     at: base.at,
-    aircraft: [
-      ...base.aircraft,
-      ...FILLER.map((aircraft) => ({
-        ...aircraft,
-        ...deadReckon(
-          aircraft,
-          aircraft.trackDeg ?? 0,
-          aircraft.groundSpeedKt ?? 0,
-          seconds,
-        ),
-      })),
-    ],
+    aircraft: [...base.aircraft, ...FILLER.map((aircraft) => fly(aircraft, n))],
   };
 }

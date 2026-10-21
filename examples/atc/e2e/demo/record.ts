@@ -44,9 +44,9 @@ import { demoFrame } from './traffic';
 /*
  * Records the atc demo video and the home page loop, then encodes them with
  * ffmpeg into dist/examples/atc/demo/. Deterministic and keyless: aimock
- * scripts every model turn (the e2e suite's script), synthetic frames stand
- * in for adsb.lol and the chart fixtures for the FAA data; map tiles stay
- * live. Needs a built atc-angular and ffmpeg.
+ * scripts every model turn (the e2e suite's script), the e2e scenario plus a
+ * checked-in capture of real adsb.lol traffic stand in for the live feed, and
+ * the chart fixtures for the FAA data; map tiles stay live. Needs a built atc-angular and ffmpeg.
  *
  * Runs headed, off screen: headless Chrome's screencast ignores the device
  * scale factor, and the 2x frames are what keep text crisp after scaling.
