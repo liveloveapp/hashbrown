@@ -173,13 +173,13 @@ test('routerBlock shows the answers, the skipped starter and the fallbacks', () 
 
 test('routerShown reads the router state at send time', () => {
   const input = createRouterInput();
-  const typed = input.reduce(input.initial, { type: 'typed', text: 'hi' });
+  const typed = input.reduce(input.initial, { type: 'typed', text: 'hello' });
   const decided = input.reduce(typed, {
     type: 'decided',
-    text: 'hi',
+    text: 'hello',
     result: ROUTE as never,
   });
-  const failed = input.reduce(typed, { type: 'failed', text: 'hi' });
+  const failed = input.reduce(typed, { type: 'failed', text: 'hello' });
 
   expect(routerShown(decided, 50)).toEqual({
     kind: 'decided',
@@ -190,6 +190,17 @@ test('routerShown reads the router state at send time', () => {
   expect(routerShown(typed, null)).toEqual({
     kind: 'fallback',
     reason: 'no answer in time',
+  });
+});
+
+test('routerShown says why text too short to decide went to chat', () => {
+  const input = createRouterInput();
+
+  const typed = input.reduce(input.initial, { type: 'typed', text: 'hi' });
+
+  expect(routerShown(typed, null)).toEqual({
+    kind: 'fallback',
+    reason: 'too short',
   });
 });
 

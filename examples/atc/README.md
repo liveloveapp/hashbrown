@@ -46,7 +46,8 @@ Enter will send the text.
 1. **Decide.** A TypeSafe Jev decision reads what you typed and routes it: to the map
    filter, to clearing the filter, or to the chat. For a chat question, a second decision
    picks which of the four cards fit (at most two, at 0.7 confidence). Below that
-   confidence, or if the decision fails, the chat gets every card.
+   confidence, or if the decision fails, the chat gets every card. Text under three
+   characters is not decided; Enter sends it to chat.
    See `angular/src/app/router.ts`, `react/src/router.ts` and the `uiDecisionResource` /
    `useUiDecision` call in each core file.
 2. **Filter.** A filter request goes to a structured completion that streams a
@@ -225,9 +226,11 @@ there). The React app is built and tested in this repository but not hosted;
   per minute per IP (fixed window, 429 above it). One question makes 3 to 5 requests, one
   per tool round trip, so that is about ten questions a minute.
 - The same rule on `POST /api/filter` and `POST /api/decide`, which are not configured
-  yet: configure 40 requests per minute per IP on each. A filter is one request, capped at
-  512 output tokens. A decision is one small TypeSafe call, capped at 4,000 characters of
-  request.
+  yet. Configure 40 requests per minute per IP on `/api/filter`: a filter is one request,
+  capped at 512 output tokens. Configure 300 requests per minute per IP on `/api/decide`:
+  the router asks once per typing pause (150 ms, for text of three characters or more) and
+  the cards decision once per chat turn, so a fast typist makes far more decisions than
+  questions. A decision is one small TypeSafe call, capped at 4,000 characters of request.
 - A look at tile traffic: past light use, point `TILE_LAYER` at a commercial tile provider
   (see "Data and attribution").
 

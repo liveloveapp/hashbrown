@@ -12,6 +12,23 @@ type RouteResult = Decision.Result<typeof routeSchema>;
 /** How long Enter waits for the router to answer for the current text. */
 export const ROUTER_WAIT_MS = 1000;
 
+/**
+ * Typed text shorter than this (trimmed) is not decided: it is too short to
+ * mean a filter, and the router would otherwise ask `/api/decide` on every
+ * typing pause from the first keystroke. Enter sends it to chat.
+ */
+export const ROUTER_MIN_CHARS = 3;
+
+/**
+ * The input to decide for `draft`: the trimmed text, or null (no decision)
+ * when it is shorter than {@link ROUTER_MIN_CHARS}.
+ */
+export function routerDecisionInput(draft: string): string | null {
+  const text = draft.trim();
+
+  return text.length < ROUTER_MIN_CHARS ? null : text;
+}
+
 /** What the composer knows about the text and the router's answer for it. */
 export interface RouterInputState {
   /** The trimmed text in the composer. */
@@ -58,6 +75,8 @@ function reduce(
   if (event.type === 'typed') {
     if (text === '') return INITIAL;
     if (text === state.text) return state;
+    // Never decided (see ROUTER_MIN_CHARS): an idle badge, nothing pending.
+    if (text.length < ROUTER_MIN_CHARS) return { ...INITIAL, text };
 
     return { ...state, text, pending: state.decidedFor !== text };
   }
@@ -86,14 +105,18 @@ export function createRouterInput(): RouterInput {
 }
 
 /**
- * What Enter does now. `'wait'` until the answer belongs to the current text
- * or `waitedMs` reaches {@link ROUTER_WAIT_MS}; then the route, or chat when
- * the decision failed or never came.
+ * What Enter does now. Text shorter than {@link ROUTER_MIN_CHARS} is never
+ * decided, so it goes to chat at once. Otherwise `'wait'` until the answer
+ * belongs to the current text or `waitedMs` reaches {@link ROUTER_WAIT_MS};
+ * then the route, or chat when the decision failed or never came.
  */
 export function submitTarget(
   state: RouterInputState,
   waitedMs: number,
 ): 'wait' | RouteAction {
+  if (state.text !== '' && routerDecisionInput(state.text) === null) {
+    return { kind: 'chat' };
+  }
   if (state.text !== '' && state.decidedFor === state.text) {
     return state.failed ? { kind: 'chat' } : routeAction(state.result);
   }

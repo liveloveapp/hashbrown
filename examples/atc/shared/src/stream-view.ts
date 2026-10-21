@@ -1,6 +1,6 @@
 import type { Decision } from '@hashbrownai/core';
 import { routeAction } from './route';
-import type { RouterInputState } from './router-input';
+import { routerDecisionInput, type RouterInputState } from './router-input';
 
 /** The most cards a turn is narrowed to; the apps pass it to the decision. */
 export const CARDS_SELECT_MAX = 2;
@@ -148,12 +148,16 @@ export const ROUTER_SKIPPED: RouterShown = {
 /**
  * What the router decided for the text being sent, from its state at send
  * time and the milliseconds its last answer took. Anything but an answer for
- * this very text is shown as a fallback to chat, with the reason.
+ * this very text is shown as a fallback to chat, with the reason; text too
+ * short to decide says so.
  */
 export function routerShown(
   state: RouterInputState,
   ms: number | null,
 ): RouterShown {
+  if (state.text !== '' && routerDecisionInput(state.text) === null) {
+    return { kind: 'fallback', reason: 'too short' };
+  }
   if (state.failed) {
     return { kind: 'fallback', reason: 'unavailable' };
   }

@@ -4,6 +4,7 @@ import type { routeSchema } from './contracts';
 import {
   createRouterInput,
   routerBadge,
+  routerDecisionInput,
   submitTarget,
   trackDecisionInput,
 } from './router-input';
@@ -116,4 +117,22 @@ test('trackDecisionInput remembers the text each answer was for', async () => {
   expect(first).toBe('hello');
   expect(tracked.answeredFor()).toBe('bad');
   expect(calls).toHaveLength(2);
+});
+
+test('text shorter than three characters is not decided and Enter sends it to chat at once', () => {
+  const typed = reduce(initial, { type: 'typed', text: 'hel' });
+  const decided = reduce(typed, {
+    type: 'decided',
+    text: 'hel',
+    result: decision('filter', 0.97),
+  });
+
+  const short = reduce(decided, { type: 'typed', text: ' hi ' });
+
+  expect(routerDecisionInput(' hi ')).toBeNull();
+  expect(routerDecisionInput('   ')).toBeNull();
+  expect(routerDecisionInput(' hey ')).toBe('hey');
+  expect(short.pending).toBe(false);
+  expect(routerBadge(short)).toEqual({ label: '', tone: 'idle' });
+  expect(submitTarget(short, 0)).toEqual({ kind: 'chat' });
 });
