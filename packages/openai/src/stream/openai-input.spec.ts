@@ -582,3 +582,94 @@ test('client function calls in the same turn still replay, with reasoning', () =
     { type: 'function_call_output', call_id: 'call_1', output: '"ok"' },
   ]);
 });
+
+test('reasoning referenced only by a dropped provider call is not replayed', () => {
+  const messages: Message[] = [
+    {
+      id: 'r-1',
+      role: 'reasoning',
+      content: 'Thinking.',
+      encryptedValue: 'enc-1',
+      metadata: { openai: { itemId: 'rs_1' } },
+    },
+    {
+      id: 'm-1',
+      role: 'assistant',
+      content: 'Found it.',
+      metadata: { openai: { itemId: 'msg_1' } },
+      toolCalls: [
+        {
+          id: 'ws_1',
+          type: 'function',
+          function: { name: 'web_search', arguments: '{}' },
+          metadata: {
+            openai: { itemType: 'web_search_call', reasoningItemIds: ['rs_1'] },
+          },
+        },
+      ],
+    },
+    { id: 't-1', role: 'tool', toolCallId: 'ws_1', content: '{}' },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([
+    {
+      type: 'message',
+      id: 'msg_1',
+      role: 'assistant',
+      content: [{ type: 'output_text', text: 'Found it.', annotations: [] }],
+      status: 'completed',
+    },
+  ]);
+});
+
+test('reasoning referenced by a dropped call and a kept call is still replayed', () => {
+  const messages: Message[] = [
+    {
+      id: 'r-1',
+      role: 'reasoning',
+      content: 'Thinking.',
+      encryptedValue: 'enc-1',
+      metadata: { openai: { itemId: 'rs_1' } },
+    },
+    {
+      id: 'm-1',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'ws_1',
+          type: 'function',
+          function: { name: 'web_search', arguments: '{}' },
+          metadata: {
+            openai: { itemType: 'web_search_call', reasoningItemIds: ['rs_1'] },
+          },
+        },
+        {
+          id: 'call_1',
+          type: 'function',
+          function: { name: 'a', arguments: '{}' },
+          metadata: { openai: { itemId: 'fc_1', reasoningItemIds: ['rs_1'] } },
+        },
+      ],
+    },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([
+    {
+      type: 'reasoning',
+      id: 'rs_1',
+      summary: [{ type: 'summary_text', text: 'Thinking.' }],
+      encrypted_content: 'enc-1',
+    },
+    {
+      type: 'function_call',
+      id: 'fc_1',
+      call_id: 'call_1',
+      name: 'a',
+      arguments: '{}',
+    },
+  ]);
+});

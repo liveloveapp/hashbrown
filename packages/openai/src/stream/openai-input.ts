@@ -161,13 +161,14 @@ function mapTurn(
   reasoning: readonly ReasoningMessage[],
   assistant: AssistantMessage,
 ): InputItem[] {
-  const reasoningItems = reasoning.flatMap(mapReasoningMessage);
-  const replayedIds = new Set(reasoningItems.map((item) => item.id));
+  const allReasoningItems = reasoning.flatMap(mapReasoningMessage);
+  const replayedIds = new Set(allReasoningItems.map((item) => item.id));
   const assistantMarker = readMarker(
     assistant.metadata,
     `OpenAI assistant message "${assistant.id}"`,
   );
-  const toolCalls = (assistant.toolCalls ?? []).filter(
+  const allToolCalls = assistant.toolCalls ?? [];
+  const toolCalls = allToolCalls.filter(
     (toolCall) => !isProviderCall(toolCall),
   );
   const toolCallMarkers = toolCalls.map((toolCall) =>
@@ -176,6 +177,18 @@ function mapTurn(
   const keepIds = [assistantMarker, ...toolCallMarkers].every((marker) =>
     marker.reasoningItemIds.every((id) => replayedIds.has(id)),
   );
+
+  // Reasoning that only a dropped provider call referenced has no item left to
+  // pair with, and an unpaired reasoning item can be rejected.
+  const referencedIds = new Set(
+    [assistantMarker, ...toolCallMarkers].flatMap(
+      (marker) => marker.reasoningItemIds,
+    ),
+  );
+  const reasoningItems =
+    toolCalls.length === allToolCalls.length
+      ? allReasoningItems
+      : allReasoningItems.filter((item) => referencedIds.has(item.id));
 
   const turnItems = [
     ...mapAssistantText(
