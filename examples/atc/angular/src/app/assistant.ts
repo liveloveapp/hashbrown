@@ -3,15 +3,20 @@ import {
   aircraftCompareContract,
   airportCardContract,
   arrivalsBoardContract,
+  type AtcState,
   CARDS_MIN_CONFIDENCE,
   CARDS_SELECT_MAX,
   createBrowserAtcTools,
   flightCardContract,
+  focusComposerAfterRefinement,
+  NO_REFINEMENTS,
   observeDecisions,
-  refinements,
   ROUTER_SKIPPED,
+  ROUTER_SKIPPED_REFINEMENT,
   type RouterShown,
   settleCards,
+  stableRefinements,
+  type StableRefinements,
   type Starter,
   transcriptItems,
   type TurnShown,
@@ -24,6 +29,7 @@ import {
   effect,
   inject,
   InjectionToken,
+  input,
   linkedSignal,
   output,
   signal,
@@ -149,7 +155,7 @@ let nextRefineId = 0;
           <button
             type="button"
             class="atc-refinement"
-            (click)="applyFilter(suggestion.text, skipped)"
+            (click)="refine(suggestion.text, $event)"
           >
             {{ suggestion.text }}
           </button>
@@ -166,6 +172,8 @@ let nextRefineId = 0;
   `,
 })
 export class Assistant {
+  /** True while a map filter run streams; the "Refine:" row waits for it. */
+  readonly filterLoading = input(false);
   /** Emits when the user sends anything (to the chat, to the filter, or a clear). */
   readonly sent = output();
   /** Emits the request the user routed to the natural-language map filter. */
@@ -211,15 +219,28 @@ export class Assistant {
     source: () => (this.chat.status() === 'error' ? null : this.chat.value()),
     computation: (value, prev): UiChatMessage[] => value ?? prev?.value ?? [],
   });
-  protected readonly skipped = ROUTER_SKIPPED;
   protected readonly refineLabelId = `atc-refine-${nextRefineId++}`;
-  // Ways to narrow the filter on the map, derived from it and the traffic.
+  // Ways to narrow the filter on the map, from it and the traffic: computed
+  // once per filter after its run settles, so they hold still as planes move.
   private readonly atcState = injectAtcState();
-  protected readonly suggestions = computed(() => {
-    const state = this.atcState();
+  private readonly held = linkedSignal<
+    { loading: boolean; state: AtcState },
+    StableRefinements
+  >({
+    source: () => ({ loading: this.filterLoading(), state: this.atcState() }),
+    computation: ({ loading, state }, prev) => {
+      const held = prev?.value ?? NO_REFINEMENTS;
 
-    return refinements(state.mapFilter, [...state.aircraft.values()]);
+      return loading
+        ? held
+        : stableRefinements(held, state.mapFilter, [
+            ...state.aircraft.values(),
+          ]);
+    },
   });
+  protected readonly suggestions = computed(() =>
+    this.filterLoading() ? [] : this.held().list,
+  );
   protected readonly items = computed(() =>
     transcriptItems(this.messages(), this.chat.isLoading()),
   );
@@ -294,6 +315,13 @@ export class Assistant {
   protected clearFilter(): void {
     this.store.clearMapFilter();
     this.sent.emit();
+  }
+
+  protected refine(text: string, event: MouseEvent): void {
+    this.applyFilter(text, ROUTER_SKIPPED_REFINEMENT);
+    if (event.currentTarget instanceof Element) {
+      focusComposerAfterRefinement(event.currentTarget, event.detail);
+    }
   }
 
   protected pick(starter: Starter): void {

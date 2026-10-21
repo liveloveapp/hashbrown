@@ -7,11 +7,14 @@ import {
   CARDS_SELECT_MAX,
   createBrowserAtcTools,
   flightCardContract,
+  focusComposerAfterRefinement,
+  NO_REFINEMENTS,
   observeDecisions,
-  refinements,
   ROUTER_SKIPPED,
+  ROUTER_SKIPPED_REFINEMENT,
   type RouterShown,
   settleCards,
+  stableRefinements,
   type Starter,
   transcriptItems,
   type TurnShown,
@@ -97,16 +100,20 @@ const CARDS_TRANSPORT = createHttpDecisionTransport({
  * with the one composer that routes what is typed. `onFilter` applies a
  * natural-language map filter (with what the router decided, for the
  * developer drawer); `onSent` is called when the user sends
- * anything (to the chat, to the filter, or a clear).
+ * anything (to the chat, to the filter, or a clear). `filterLoading` is true
+ * while a filter run streams; the "Refine:" row waits for it to settle.
  */
 export function Assistant({
   onFilter,
   onSent,
+  filterLoading = false,
   routeTransport,
   cardsTransport = CARDS_TRANSPORT,
 }: {
   onFilter: (request: string, routed: RouterShown) => void;
   onSent?: () => void;
+  /** True while a map filter run streams. */
+  filterLoading?: boolean;
   /** Replaces the router's HTTP transport (tests). */
   routeTransport?: Decision.Transport;
   /** Replaces the cards decision's HTTP transport (tests). */
@@ -213,7 +220,8 @@ export function Assistant({
     store.clearMapFilter();
     onSent?.();
   };
-  // Ways to narrow the filter on the map, derived from it and the traffic.
+  // Ways to narrow the filter on the map, from it and the traffic: computed
+  // once per filter after its run settles, so they hold still as planes move.
   const applied = useSyncExternalStore(
     store.subscribe,
     () => store.getState().mapFilter,
@@ -222,10 +230,15 @@ export function Assistant({
     store.subscribe,
     () => store.getState().aircraft,
   );
-  const suggestions = useMemo(
-    () => refinements(applied, [...aircraft.values()]),
-    [applied, aircraft],
-  );
+  const [held, setHeld] = useState(NO_REFINEMENTS);
+  const next = filterLoading
+    ? held
+    : stableRefinements(held, applied, [...aircraft.values()]);
+  if (next !== held) {
+    // React's pattern for state that depends on earlier renders.
+    setHeld(next);
+  }
+  const suggestions = filterLoading ? [] : next.list;
   const refineLabelId = useId();
   const pick = (starter: Starter) =>
     starter.route === 'filter'
@@ -268,7 +281,10 @@ export function Assistant({
               key={suggestion.text}
               type="button"
               className="atc-refinement"
-              onClick={() => filter(suggestion.text, ROUTER_SKIPPED)}
+              onClick={(event) => {
+                filter(suggestion.text, ROUTER_SKIPPED_REFINEMENT);
+                focusComposerAfterRefinement(event.currentTarget, event.detail);
+              }}
             >
               {suggestion.text}
             </button>

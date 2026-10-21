@@ -142,6 +142,12 @@ export const ROUTER_SKIPPED: RouterShown = {
   reason: 'starter',
 };
 
+/** What the router did for a refinement: nothing, refinements go to the filter. */
+export const ROUTER_SKIPPED_REFINEMENT: RouterShown = {
+  kind: 'skipped',
+  reason: 'refinement',
+};
+
 /**
  * What the router decided for the text being sent, from its state at send
  * time and the milliseconds its last answer took. Anything but an answer for

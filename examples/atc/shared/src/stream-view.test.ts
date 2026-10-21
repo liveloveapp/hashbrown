@@ -10,6 +10,7 @@ import {
   filterPanelVisible,
   observeDecisions,
   ROUTER_SKIPPED,
+  ROUTER_SKIPPED_REFINEMENT,
   routerBlock,
   routerShown,
   settleCards,
@@ -125,6 +126,9 @@ test('routerBlock shows the answers, the skipped starter and the fallbacks', () 
     '→ filter\nintent: filter 0.97\nclear: no 0.88\nms: 184',
   );
   expect(routerBlock(ROUTER_SKIPPED).text).toBe('skipped (starter)');
+  expect(routerBlock(ROUTER_SKIPPED_REFINEMENT).text).toBe(
+    'skipped (refinement)',
+  );
   expect(routerBlock({ kind: 'fallback', reason: 'unavailable' }).text).toBe(
     '→ chat (unavailable)',
   );

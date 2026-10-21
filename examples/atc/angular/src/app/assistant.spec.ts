@@ -4,6 +4,8 @@ import {
   type MapFilter,
   RESPONSE_SCHEMA_ALLOWLIST,
   ROUTER_SKIPPED,
+  ROUTER_SKIPPED_REFINEMENT,
+  type RouterShown,
   STARTER_PROMPTS,
   transcriptItems,
   type TurnShown,
@@ -39,6 +41,7 @@ const FILTER: MapFilter = {
 function setup(
   answer: Parameters<typeof fakeDecisionTransport>[0],
   cardsAnswer: Parameters<typeof fakeCardsTransport>[0] = () => null,
+  filterLoading = false,
 ) {
   const store = createAtcStore();
   const chat = fakeFilterTransport();
@@ -55,9 +58,14 @@ function setup(
   });
   const fixture = TestBed.createComponent(Assistant);
   const filtered: string[] = [];
+  const routes: RouterShown[] = [];
   fixture.componentInstance.filter.subscribe((request) =>
     filtered.push(request),
   );
+  fixture.componentInstance.filterRouted.subscribe((routed) =>
+    routes.push(routed),
+  );
+  fixture.componentRef.setInput('filterLoading', filterLoading);
   fixture.detectChanges();
   document.body.append(fixture.nativeElement);
 
@@ -67,6 +75,7 @@ function setup(
     route,
     cards,
     filtered,
+    routes,
     fixture,
     element: fixture.nativeElement as HTMLElement,
   };
@@ -110,12 +119,22 @@ function refinementTexts(element: HTMLElement) {
   ].map((button) => button.textContent?.trim());
 }
 
+/** Two Alaska flights: one low jet, one higher single-engine prop. */
+const ALASKA = [
+  testAircraft({ hex: 'a00001', callsign: 'ASA1', altitudeFt: 3000 }),
+  testAircraft({
+    hex: 'a00002',
+    callsign: 'ASA2',
+    altitudeFt: 9000,
+    kind: 'single',
+  }),
+];
+
 test('a refinement appears once a filter is applied and refines it without a transcript entry', async () => {
-  const { store, chat, route, filtered, fixture, element } = setup(() => null);
-  store.applySnapshot({
-    at: 1,
-    aircraft: [testAircraft({ callsign: 'ASA1' })],
-  });
+  const { store, chat, route, filtered, routes, fixture, element } = setup(
+    () => null,
+  );
+  store.applySnapshot({ at: 1, aircraft: ALASKA });
   fixture.detectChanges();
   const before = element.querySelector('[data-testid="refinements"]');
 
@@ -137,6 +156,7 @@ test('a refinement appears once a filter is applied and refines it without a tra
   expect(row?.getAttribute('aria-labelledby')).toBe(label?.id);
   expect(label?.id).not.toBe('');
   expect(filtered).toEqual(['Below 5,000 ft']);
+  expect(routes).toEqual([ROUTER_SKIPPED_REFINEMENT]);
   expect(chat.requests).toHaveLength(0);
   expect(route.requests).toHaveLength(0);
   expect(element.querySelector('ol')?.children.length ?? 0).toBe(0);
@@ -145,10 +165,7 @@ test('a refinement appears once a filter is applied and refines it without a tra
 
 test('refinements disappear when the filter is cleared', () => {
   const { store, fixture, element } = setup(() => null);
-  store.applySnapshot({
-    at: 1,
-    aircraft: [testAircraft({ callsign: 'ASA1' })],
-  });
+  store.applySnapshot({ at: 1, aircraft: ALASKA });
   store.setMapFilter(FILTER);
   fixture.detectChanges();
   const shown = refinementTexts(element).length;
@@ -158,6 +175,55 @@ test('refinements disappear when the filter is cleared', () => {
 
   expect(shown).toBeGreaterThan(0);
   expect(element.querySelector('[data-testid="refinements"]')).toBeNull();
+  fixture.destroy();
+});
+
+test('no refinements show while a filter run streams', () => {
+  const { store, fixture, element } = setup(() => null, undefined, true);
+  store.applySnapshot({ at: 1, aircraft: ALASKA });
+  store.setMapFilter(FILTER);
+  fixture.detectChanges();
+  const streaming = element.querySelector('[data-testid="refinements"]');
+
+  fixture.componentRef.setInput('filterLoading', false);
+  fixture.detectChanges();
+
+  expect(streaming).toBeNull();
+  expect(refinementTexts(element)).toEqual(['Below 5,000 ft', 'Only jets']);
+  fixture.destroy();
+});
+
+test('refinements stay put while traffic changes under the same filter', () => {
+  const { store, fixture, element } = setup(() => null);
+  store.applySnapshot({ at: 1, aircraft: ALASKA });
+  store.setMapFilter(FILTER);
+  fixture.detectChanges();
+  const before = refinementTexts(element);
+
+  store.applySnapshot({
+    at: 2,
+    aircraft: ALASKA.map((a) => ({ ...a, altitudeFt: 2000 })),
+  });
+  fixture.detectChanges();
+
+  expect(before).toEqual(['Below 5,000 ft', 'Only jets']);
+  expect(refinementTexts(element)).toEqual(before);
+  fixture.destroy();
+});
+
+test('a refinement picked from the keyboard moves focus to the message field', () => {
+  const { store, fixture, element } = setup(() => null);
+  store.applySnapshot({ at: 1, aircraft: ALASKA });
+  store.setMapFilter(FILTER);
+  fixture.detectChanges();
+  const button = element.querySelector(
+    '[data-testid="refinements"] button',
+  ) as HTMLButtonElement;
+  button.focus();
+
+  button.click();
+
+  expect(document.activeElement).toBe(element.querySelector('input'));
   fixture.destroy();
 });
 

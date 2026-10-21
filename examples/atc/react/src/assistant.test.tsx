@@ -4,6 +4,8 @@ import {
   type MapFilter,
   RESPONSE_SCHEMA_ALLOWLIST,
   ROUTER_SKIPPED,
+  ROUTER_SKIPPED_REFINEMENT,
+  type RouterShown,
   STARTER_PROMPTS,
   transcriptItems,
   type TurnShown,
@@ -46,6 +48,7 @@ const FILTER: MapFilter = {
 function setup(
   answer: Parameters<typeof fakeDecisionTransport>[0],
   cardsAnswer: Parameters<typeof fakeCardsTransport>[0] = () => null,
+  filterLoading = false,
 ) {
   cleanup();
   const store = createAtcStore();
@@ -53,19 +56,36 @@ function setup(
   const route = fakeDecisionTransport(answer);
   const cards = fakeCardsTransport(cardsAnswer);
   const filtered: string[] = [];
-  const view = render(
+  const routes: RouterShown[] = [];
+  const tree = (loading: boolean) => (
     <HashbrownProvider url="/unused" transport={chat.transport}>
       <AtcStoreProvider store={store}>
         <Assistant
           routeTransport={route.transport}
           cardsTransport={cards.transport}
-          onFilter={(request) => filtered.push(request)}
+          filterLoading={loading}
+          onFilter={(request, routed) => {
+            filtered.push(request);
+            routes.push(routed);
+          }}
         />
       </AtcStoreProvider>
-    </HashbrownProvider>,
+    </HashbrownProvider>
   );
+  const view = render(tree(filterLoading));
+  const setFilterLoading = (loading: boolean) =>
+    act(() => view.rerender(tree(loading)));
 
-  return { store, chat, route, cards, filtered, element: view.container };
+  return {
+    store,
+    chat,
+    route,
+    cards,
+    filtered,
+    routes,
+    setFilterLoading,
+    element: view.container,
+  };
 }
 
 function starterButton(element: HTMLElement, text: string) {
@@ -94,13 +114,21 @@ function refinementTexts(element: HTMLElement) {
   ].map((button) => button.textContent);
 }
 
+/** Two Alaska flights: one low jet, one higher single-engine prop. */
+const ALASKA = [
+  testAircraft({ hex: 'a00001', callsign: 'ASA1', altitudeFt: 3000 }),
+  testAircraft({
+    hex: 'a00002',
+    callsign: 'ASA2',
+    altitudeFt: 9000,
+    kind: 'single',
+  }),
+];
+
 test('a refinement appears once a filter is applied and refines it without a transcript entry', async () => {
-  const { store, chat, route, filtered, element } = setup(() => null);
+  const { store, chat, route, filtered, routes, element } = setup(() => null);
   act(() => {
-    store.applySnapshot({
-      at: 1,
-      aircraft: [testAircraft({ callsign: 'ASA1' })],
-    });
+    store.applySnapshot({ at: 1, aircraft: ALASKA });
   });
   const before = element.querySelector('[data-testid="refinements"]');
 
@@ -124,6 +152,7 @@ test('a refinement appears once a filter is applied and refines it without a tra
   expect(row?.getAttribute('aria-labelledby')).toBe(label?.id);
   expect(label?.id).not.toBe('');
   expect(filtered).toEqual(['Below 5,000 ft']);
+  expect(routes).toEqual([ROUTER_SKIPPED_REFINEMENT]);
   expect(chat.requests).toHaveLength(0);
   expect(route.requests).toHaveLength(0);
   expect(element.querySelector('ol')?.children.length ?? 0).toBe(0);
@@ -132,10 +161,7 @@ test('a refinement appears once a filter is applied and refines it without a tra
 test('refinements disappear when the filter is cleared', () => {
   const { store, element } = setup(() => null);
   act(() => {
-    store.applySnapshot({
-      at: 1,
-      aircraft: [testAircraft({ callsign: 'ASA1' })],
-    });
+    store.applySnapshot({ at: 1, aircraft: ALASKA });
     store.setMapFilter(FILTER);
   });
   const shown = refinementTexts(element).length;
@@ -144,6 +170,61 @@ test('refinements disappear when the filter is cleared', () => {
 
   expect(shown).toBeGreaterThan(0);
   expect(element.querySelector('[data-testid="refinements"]')).toBeNull();
+});
+
+test('no refinements show while a filter run streams', () => {
+  const { store, element, setFilterLoading } = setup(
+    () => null,
+    undefined,
+    true,
+  );
+  act(() => {
+    store.applySnapshot({ at: 1, aircraft: ALASKA });
+    store.setMapFilter(FILTER);
+  });
+  const streaming = element.querySelector('[data-testid="refinements"]');
+
+  setFilterLoading(false);
+
+  expect(streaming).toBeNull();
+  expect(refinementTexts(element)).toEqual(['Below 5,000 ft', 'Only jets']);
+});
+
+test('refinements stay put while traffic changes under the same filter', () => {
+  const { store, element } = setup(() => null);
+  act(() => {
+    store.applySnapshot({ at: 1, aircraft: ALASKA });
+    store.setMapFilter(FILTER);
+  });
+  const before = refinementTexts(element);
+
+  act(() => {
+    store.applySnapshot({
+      at: 2,
+      aircraft: ALASKA.map((a) => ({ ...a, altitudeFt: 2000 })),
+    });
+  });
+
+  expect(before).toEqual(['Below 5,000 ft', 'Only jets']);
+  expect(refinementTexts(element)).toEqual(before);
+});
+
+test('a refinement picked from the keyboard moves focus to the message field', () => {
+  const { store, element } = setup(() => null);
+  act(() => {
+    store.applySnapshot({ at: 1, aircraft: ALASKA });
+    store.setMapFilter(FILTER);
+  });
+  const button = element.querySelector(
+    '[data-testid="refinements"] button',
+  ) as HTMLButtonElement;
+  button.focus();
+
+  act(() => button.click());
+
+  expect(document.activeElement).toBe(
+    element.querySelector('input[aria-label="Message"]'),
+  );
 });
 
 test('a chat starter sends a chat message', async () => {
