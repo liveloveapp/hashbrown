@@ -66,6 +66,13 @@ export interface InstallFunnelCounts {
   stalled_before_first_request: number;
 }
 
+/** Non-CI, non-redacted installs of one package in the window. */
+export interface PackageInstallCounts {
+  package_name: string;
+  installs: number;
+  subjects: number;
+}
+
 /** One row of `growth_observation_funnel_daily_v1`; `day` is `YYYY-MM-DD` UTC. */
 export interface FunnelDay {
   day: string;
@@ -91,6 +98,11 @@ export interface GrowthFunnelReport {
   observationProcessing: { unit: string; rows: Record<string, unknown>[] };
   runtimeFunnel: { unit: string; window: string } & RuntimeFunnelCounts;
   installFunnel: { unit: string; window: string } & InstallFunnelCounts;
+  installedByPackage: {
+    unit: string;
+    window: string;
+    rows: PackageInstallCounts[];
+  };
   daily: FunnelDay[];
   unavailable: string[];
 }
@@ -99,14 +111,16 @@ export interface GrowthFunnelReport {
  * Reports the growth funnel for a window. Independent signals are not a
  * conversion denominator. The runtime funnel counts development-browser
  * subjects whose `started_day` falls in the window, the install funnel counts
- * non-CI installs whose `installed_day` falls in it, and `daily` is the daily
- * view's rows for days in it; a UTC day falls in the window when its midnight
- * does. Activation links, forms, and the campaign cohort are not reported yet.
+ * token-bearing (`@hashbrownai/core`) non-CI installs whose `installed_day`
+ * falls in it, `installedByPackage` counts every package's non-CI installs by
+ * the same day, and `daily` is the daily view's rows for days in it; a UTC day
+ * falls in the window when its midnight does. Activation links, forms, and the
+ * campaign cohort are not reported yet.
  *
  * @param db - The growth database executor.
  * @param input - The window `[from, to)`; `to` after `from`, at most 31 days.
  * @returns The report sections.
- * @throws ObservationError `invalid_arguments` for a bad window.
+ * @throws ObservationError `invalid_payload` for a bad window.
  */
 export async function readGrowthFunnel(
   db: SqlExecutor,
@@ -118,7 +132,7 @@ export async function readGrowthFunnel(
     input.to <= input.from ||
     input.to.getTime() - input.from.getTime() > 31 * 86400000
   )
-    throw new ObservationError('invalid_arguments');
+    throw new ObservationError('invalid_payload');
   const parameters = [input.from, input.to];
   const signals = await db.execute(
     `/* growth:observation-read-independent-signals */ select source,kind,case when source='install' then properties->>'environment' end as environment,
@@ -154,6 +168,19 @@ export async function readGrowthFunnel(
     from growth_observation_install_funnel_v1 where ${dayInWindow('installed_day')}`,
     parameters,
   );
+  const installedDay =
+    "(least(occurred_at,received_at) at time zone 'utc')::date";
+  const byPackage = await db.execute<
+    Record<string, unknown> & PackageInstallCounts
+  >(
+    `/* growth:observation-read-installs-by-package */ select properties->>'packageName' as package_name,
+    count(*)::int as installs,count(distinct subject_id)::int as subjects
+    from growth_observations where source='install' and kind='package.installed'
+    and properties->>'environment' is distinct from 'ci' and redacted_at is null
+    and ${dayInWindow(installedDay)}
+    group by properties->>'packageName' order by package_name`,
+    parameters,
+  );
   const daily = await db.execute<Record<string, unknown> & FunnelDay>(
     `/* growth:observation-read-funnel-daily */ select to_char(day,'YYYY-MM-DD') as day,installed::int,started::int,streamed::int,tool_used::int,
     component_rendered::int,activated::int,stalled_before_first_request::int,stalled_after_hello_world::int
@@ -179,9 +206,14 @@ export async function readGrowthFunnel(
       ...runtime.rows[0],
     },
     installFunnel: {
-      unit: 'non-CI install observations by install day; reached_runtime means a runtime observation shares the installation token',
+      unit: 'token-bearing (@hashbrownai/core) non-CI install observations by install day; reached_runtime means a runtime observation shares the installation token',
       window: `installed_day in ${dayWindow}`,
       ...install.rows[0],
+    },
+    installedByPackage: {
+      unit: 'non-CI, non-redacted package.installed observations by package, all packages',
+      window: `installed_day in ${dayWindow}`,
+      rows: byPackage.rows,
     },
     daily: daily.rows,
     unavailable: [

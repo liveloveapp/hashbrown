@@ -105,25 +105,47 @@ async function runtimeJourney(
   return ids;
 }
 
-/** A fresh install for `environment` on `day`; returns its observation id. */
+/**
+ * A fresh install for `environment` on `day`, of `@hashbrownai/core` with a
+ * fresh installation token unless `packageName` or `token` (`null` for a
+ * tokenless install) say otherwise; returns its observation id and token.
+ */
 async function install(
   environment: 'local' | 'ci',
   day: Date,
-): Promise<string> {
-  const template = evidenceFixture().install.events[0];
+  options: { packageName?: string; token?: string | null } = {},
+): Promise<{ id: string; token: string | undefined }> {
+  const { installationToken, ...template } =
+    evidenceFixture().install.events[0];
+  const token =
+    options.token === null ? undefined : (options.token ?? installationToken);
   subjects.push(template.subject.id);
   if (template.identity?.gitEmail) emails.push(template.identity.gitEmail);
-  return observe(
+  const id = await observe(
     'install',
     {
       ...template,
+      ...(token ? { installationToken: token } : {}),
       properties: {
         ...template.properties,
+        packageName: options.packageName ?? template.properties.packageName,
         environment,
         environmentEvidence:
           environment === 'ci' ? 'generic_ci' : 'interactive_package_manager',
       },
     },
+    noon(day),
+  );
+  return { id, token };
+}
+
+/** A runtime session start on `day` carrying `token`; returns its id. */
+async function runtimeWithToken(token: string, day: Date): Promise<string> {
+  const template = evidenceFixture().runtime.events[0];
+  subjects.push(template.subject.id);
+  return observe(
+    'runtime',
+    { ...template, installationToken: token },
     noon(day),
   );
 }
@@ -194,29 +216,51 @@ test('a streamed-only subject becomes stalled_after_hello_world on day 8', async
   });
 });
 
-test('a non-CI install with no runtime within 3 days is stalled_before_first_request, a CI install is not', async () => {
+test('the install funnel counts token-bearing non-CI installs; stalls need 3 runtime-free days', async () => {
   const installDay = utcDay(-4);
-  const ids = [
-    await install('local', installDay),
-    await install('ci', installDay),
-  ];
-  await project(ids);
+  const stalled = await install('local', installDay);
+  const ci = await install('ci', installDay);
+  const tokenless = await install('local', installDay, {
+    packageName: '@hashbrownai/react',
+    token: null,
+  });
+  const boundary = await install('local', utcDay(-3));
+  const reached = await install('local', installDay);
+  const runtime = await runtimeWithToken(reached.token as string, utcDay(-3));
+  await project([
+    stalled.id,
+    ci.id,
+    tokenless.id,
+    boundary.id,
+    reached.id,
+    runtime,
+  ]);
 
   const funnel = await readGrowthFunnel(db, {
     from: installDay,
     to: utcDay(0),
   });
 
+  expect(tokenless.token).toBeUndefined();
   expect(funnel.installFunnel).toMatchObject({
-    installed: 1,
-    reached_runtime: 0,
+    installed: 3,
+    reached_runtime: 1,
     stalled_before_first_request: 1,
   });
+  expect(funnel.installedByPackage.rows).toEqual([
+    { package_name: '@hashbrownai/core', installs: 3, subjects: 3 },
+    { package_name: '@hashbrownai/react', installs: 1, subjects: 1 },
+  ]);
   expect(funnel.daily).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
         day: installDay.toISOString().slice(0, 10),
+        installed: 2,
+      }),
+      expect.objectContaining({
+        day: utcDay(-3).toISOString().slice(0, 10),
         installed: 1,
+        stalled_before_first_request: 0,
       }),
       expect.objectContaining({
         day: utcDay(-1).toISOString().slice(0, 10),

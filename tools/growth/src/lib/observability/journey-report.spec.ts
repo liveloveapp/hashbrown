@@ -38,6 +38,11 @@ test('readGrowthFunnel reads the runtime, install, and daily funnel views', asyn
     stalled_before_first_request: 1,
   };
   const day = { day: '2026-10-02', installed: 2, started: 3 };
+  const packageRow = {
+    package_name: '@hashbrownai/react',
+    installs: 4,
+    subjects: 3,
+  };
   const { executor, calls } = executorWith({
     'observation-read-independent-signals': () => ({
       rows: [{ source: 'runtime', observations: '3' }],
@@ -47,6 +52,7 @@ test('readGrowthFunnel reads the runtime, install, and daily funnel views', asyn
     }),
     'observation-read-runtime-funnel': () => ({ rows: [runtime] }),
     'observation-read-install-funnel': () => ({ rows: [install] }),
+    'observation-read-installs-by-package': () => ({ rows: [packageRow] }),
     'observation-read-funnel-daily': () => ({ rows: [day] }),
   });
 
@@ -57,6 +63,7 @@ test('readGrowthFunnel reads the runtime, install, and daily funnel views', asyn
     'observation-read-processing-states',
     'observation-read-runtime-funnel',
     'observation-read-install-funnel',
+    'observation-read-installs-by-package',
     'observation-read-funnel-daily',
   ]);
   expect(calls.every((c) => c.params[0] === from && c.params[1] === to)).toBe(
@@ -66,7 +73,15 @@ test('readGrowthFunnel reads the runtime, install, and daily funnel views', asyn
   expect(calls[2].sql).toContain('started_day');
   expect(calls[3].sql).toContain('from growth_observation_install_funnel_v1');
   expect(calls[3].sql).toContain('installed_day');
-  expect(calls[4].sql).toContain('from growth_observation_funnel_daily_v1');
+  expect(calls[4].sql).toContain('from growth_observations');
+  expect(calls[4].sql).toContain("kind='package.installed'");
+  expect(calls[4].sql).toContain(
+    "properties->>'environment' is distinct from 'ci'",
+  );
+  expect(calls[4].sql).toContain('redacted_at is null');
+  expect(calls[4].sql).toContain("group by properties->>'packageName'");
+  expect(calls[4].sql).not.toContain('installation_token_digest');
+  expect(calls[5].sql).toContain('from growth_observation_funnel_daily_v1');
   expect(funnel).toMatchObject({
     from: from.toISOString(),
     to: to.toISOString(),
@@ -75,7 +90,15 @@ test('readGrowthFunnel reads the runtime, install, and daily funnel views', asyn
       rows: [{ status: 'completed', observations: '3' }],
     },
     runtimeFunnel: runtime,
-    installFunnel: install,
+    installFunnel: {
+      ...install,
+      unit: expect.stringContaining('token-bearing'),
+    },
+    installedByPackage: {
+      unit: 'non-CI, non-redacted package.installed observations by package, all packages',
+      window: 'installed_day in UTC days whose midnight is in [from,to)',
+      rows: [packageRow],
+    },
     daily: [day],
   });
   expect(funnel).not.toHaveProperty('activationDecisions');

@@ -7,6 +7,28 @@ and subject journey, and reports the activation funnel. It lives in
 `www/src/app/%5F/growth/collect/v1/`. See the control plane runbook
 (`2026-10-21-growth-control-plane.md`) for connection strings and migrations.
 
+## Enabling collection in production
+
+Work through this list in order before (and while) collection is on:
+
+1. Add a Vercel Firewall per-IP rate rule on `/_/growth/collect/*` before
+   setting `GROWTH_COLLECTION_SOURCES`. The source budget is global: one client
+   at about 20 requests per second exhausts it and denies everyone.
+2. Set `GROWTH_OBSERVATION_PROCESSING_ENABLED=true` together with collection
+   and run `process` (below) on a schedule until PR 5's cron arrives. Subject
+   id churn can write about 24k rows a minute; projection and the budget
+   garbage collection keep up only if they run. Every `process` call that
+   reaches the library collects old budget rows first, but the CLI prints
+   `disabled` and stops before the database while the switch is off.
+3. If any contact was deleted under PR 1, run `initialize-redactions` (see
+   "After a contact deletion") first, or install events carrying identity
+   fail with `redaction_initialization_required` (answered as 503
+   `collection_unavailable`; the code shows as the log line's `cause`).
+4. Run the post-deploy smoke check (end of this runbook).
+5. Never remove a key from `GROWTH_EMAIL_HMAC_PREVIOUS_KEYS` while a
+   redaction fence uses its version. Deleted contacts cannot be re-fenced, so
+   coverage fails closed.
+
 ## Collection route
 
 `POST /_/growth/collect/v1/{website|install|runtime}` with
@@ -28,7 +50,10 @@ unlisted source answers 503 `collection_disabled`.
 | 503    | `collection_disabled`, `collection_configuration` | Source not enabled, or `GROWTH_COLLECTION_SOURCES` names an unknown source. |
 | 503    | `collection_unavailable`                          | Storage or catalog failure; retry after `Retry-After`.                      |
 
-Responses carry `{ error: code }` and never echo payload values. Budgets are
+Responses carry `{ error: code }` and never echo payload values. Each
+non-2xx answer caused by a thrown error also logs a `cause` (the
+`ObservationError` code, else the error's name, at most 80 characters); the
+cause is never in the response. Budgets are
 1,200 requests per minute per source and 120 events per minute per subject.
 The runtime source also returns `announcements` (empty when selection fails;
 it never fails a committed batch).
@@ -68,17 +93,29 @@ personal data and must not be pasted into tickets or logs.
 All days are UTC. The runtime funnel covers the `development_browser`
 namespace only.
 
-- **Started**: the contact's first `runtime.session_started`.
+The runtime funnel reads projected facts, so it shows zeros until `process`
+has run; the install funnel reads raw observations.
+
+- **Started**: the subject's first `runtime.session_started`.
 - **Activated**: all three runtime milestones within 30 days of started, day 30
   inclusive.
 - **Stalled after hello world**: streamed, and the tool call or the component
   day is missing or later than the streamed day plus 7, and today (UTC) is past
   the streamed day plus 7. The window runs from the streamed day, not from
-  started.
-- **Stalled before first request**: a non-CI install with no runtime
-  observation sharing its install token within 3 days, and the 3-day window has
-  passed. Any non-redacted runtime observation carrying the token counts, not
-  only session starts.
+  started. A subject can be both stalled after hello world and activated (a
+  late milestone inside the 30-day window).
+- **Installed** (install funnel unit): token-bearing (`@hashbrownai/core`)
+  installs, that is non-CI, non-redacted `package.installed` observations that
+  carry an installation token. A reinstall writes a fresh token, so it can
+  leave an orphan core row that never reaches runtime (known noise).
+- **Installed by package**: every package's non-CI, non-redacted installs by
+  install day, tokenless or not. This section is where vendor and framework
+  choice shows (`@hashbrownai/openai` against `@hashbrownai/anthropic`, react
+  against angular); it is not a conversion denominator.
+- **Stalled before first request**: a token-bearing non-CI install with no
+  runtime observation sharing its install token within 3 days, and the 3-day
+  window has passed. Any non-redacted runtime observation carrying the token
+  counts, not only session starts.
 
 ## Redaction
 
@@ -95,8 +132,8 @@ resume); use a fresh id for a new request. Redaction takes an exclusive lock
 that excludes projection (which holds a shared lock); `replay` takes no privacy
 lock, so it is not excluded. It deletes identity rows, nulls identity digests,
 sets `redacted_at`, and deletes facts. `growth_observations.properties` are
-untouched. Collection of events carrying a redacted email answers 200 with
-disposition `redacted`.
+untouched. Collection of events carrying a redacted email, or from a subject
+redacted with `redact --subject`, answers 200 with disposition `redacted`.
 
 ## Replay
 
@@ -107,8 +144,9 @@ npx nx observability growth -- replay --source runtime --from <iso> --to <iso> -
 
 Pick a subject, or a source with a window of at most one day (not both).
 `--max-events` is 1 to 1,000. If more observations match than the cap, replay
-throws `selection_overflow`: raise the cap or narrow the window (a narrower
-window also needs a new operation id). Replay only resets work rows and deletes
+throws `selection_overflow`: raise the cap or narrow the window. No operation
+row is recorded on overflow, so the same operation id may be reused for the
+retry. Replay only resets work rows and deletes
 facts. Nothing is re-projected until `process` runs, which needs
 `GROWTH_OBSERVATION_PROCESSING_ENABLED=true`.
 

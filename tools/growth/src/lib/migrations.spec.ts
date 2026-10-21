@@ -163,6 +163,7 @@ test('views migration defines exactly six views', async () => {
   expect(sql).toContain("properties->>'environment' IS DISTINCT FROM 'ci'");
   expect(sql).toContain('o.redacted_at IS NULL');
   expect(sql).toContain('r.redacted_at IS NULL');
+  expect(sql).toContain('AND i.installation_token_digest IS NOT NULL');
 });
 
 test('observability views compute days in UTC, never in the session time zone', async () => {

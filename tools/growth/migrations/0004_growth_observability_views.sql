@@ -66,6 +66,10 @@ SELECT
   ) AS stalled_after_hello_world
 FROM subject_days;
 
+-- The install funnel's unit is token-bearing (@hashbrownai/core) installs:
+-- non-CI, non-redacted package.installed observations that carry an
+-- installation token. Tokenless installs (other packages) cannot reach a
+-- runtime observation, so they are reported per package, not here.
 CREATE VIEW growth_observation_install_funnel_v1 AS
 WITH installs AS (
   SELECT
@@ -79,6 +83,7 @@ WITH installs AS (
     AND i.kind = 'package.installed'
     AND i.properties->>'environment' IS DISTINCT FROM 'ci'
     AND i.redacted_at IS NULL
+    AND i.installation_token_digest IS NOT NULL
 ),
 reached AS (
   SELECT

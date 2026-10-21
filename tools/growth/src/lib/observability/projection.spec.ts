@@ -344,7 +344,7 @@ test('a failure whose lease was lost counts as lease_lost', async () => {
   expect(counts).toMatchObject({ leaseLost: 1, retryScheduled: 0, failed: 0 });
 });
 
-test('processObservations claims in chunks of at most 20 and then collects old budgets', async () => {
+test('processObservations collects old budgets and then claims in chunks of at most 20', async () => {
   const claimLimits: unknown[] = [];
   const { executor, calls } = executorWith(
     projectionHandlers({
@@ -378,9 +378,12 @@ test('processObservations claims in chunks of at most 20 and then collects old b
     failed: 0,
     disabled: false,
   });
-  expect(calls.at(-1)?.marker).toBe('observation-gc-budgets');
-  expect(calls.at(-1)?.params).toEqual([new Date('2026-10-21T10:00:00.000Z')]);
-  expect(calls.at(-1)?.sql).toContain('limit 1000');
+  expect(calls[0].marker).toBe('observation-gc-budgets');
+  expect(calls[0].params).toEqual([new Date('2026-10-21T10:00:00.000Z')]);
+  expect(calls[0].sql).toContain('limit 1000');
+  expect(
+    calls.filter((c) => c.marker === 'observation-gc-budgets').length,
+  ).toBe(1);
 });
 
 test('processObservations stops when nothing is claimable and counts exhausted items', async () => {
@@ -403,17 +406,18 @@ test('processObservations stops when nothing is claimable and counts exhausted i
 
   expect(counts).toMatchObject({ failed: 2, completed: 0 });
   expect(calls.map((c) => c.marker)).toEqual([
-    'observation-claim-work',
     'observation-gc-budgets',
+    'observation-claim-work',
   ]);
 });
 
-test('processObservations does nothing when disabled and validates its limit', async () => {
-  const { executor, calls } = executorWith({});
+test('processObservations only collects old budgets when disabled and validates its limit', async () => {
+  const { executor, calls } = executorWith({ 'observation-gc-budgets': none });
 
   const counts = await processObservations(executor, {
     enabled: false,
     limit: 100,
+    now: () => now,
   });
   const invalid = await processObservations(executor, {
     enabled: true,
@@ -428,5 +432,6 @@ test('processObservations does nothing when disabled and validates its limit', a
     disabled: true,
   });
   expect(invalid).toBe('invalid_payload');
-  expect(calls).toEqual([]);
+  expect(calls.map((c) => c.marker)).toEqual(['observation-gc-budgets']);
+  expect(calls[0].params).toEqual([new Date('2026-10-21T10:00:00.000Z')]);
 });

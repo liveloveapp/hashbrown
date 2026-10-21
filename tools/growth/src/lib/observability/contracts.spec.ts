@@ -327,3 +327,33 @@ test('batch rejects more than 20 events and duplicate eventIds', () => {
     'unsupported_version',
   );
 });
+
+test('version and platform fields accept only version-like tokens', () => {
+  const emailNode = installBatch();
+  emailNode.events[0].properties.nodeVersion = 'person@example.org';
+  const spaced = installBatch();
+  spaced.events[0].properties.osFamily = 'mac os';
+  const scopedPackageVersion = installBatch();
+  scopedPackageVersion.events[0].properties.packageVersion = 'npm:@x/y@1';
+  const longCollector = installBatch();
+  longCollector.events[0].collectorVersion = '1'.repeat(65);
+  const runtimeVersion = runtimeEvent('runtime.session_started');
+  runtimeVersion.properties.packageVersion = 'a b';
+  const live = installBatch();
+  Object.assign(live.events[0], { collectorVersion: '0.0.1' });
+  Object.assign(live.events[0].properties, {
+    packageVersion: '0.7.0',
+    osFamily: 'darwin',
+    architecture: 'arm64',
+    nodeVersion: '24.0.0',
+  });
+
+  const parsed = parseCollectionBatch('install', live, now);
+
+  expect(parsed.events[0].properties.nodeVersion).toBe('24.0.0');
+  for (const batch of [emailNode, spaced, scopedPackageVersion, longCollector])
+    expect(() => parseCollectionBatch('install', batch, now)).toThrow(
+      'invalid_payload',
+    );
+  expect(() => parseRuntime(runtimeVersion)).toThrow('invalid_payload');
+});

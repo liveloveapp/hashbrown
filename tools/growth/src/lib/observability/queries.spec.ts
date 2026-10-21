@@ -91,8 +91,8 @@ test('readObservationHealth and readGrowthFunnel reject ranges over 31 days', as
   const backwards = readGrowthFunnel(executor, { from, to: from });
 
   await expect(health).rejects.toMatchObject({ code: 'invalid_payload' });
-  await expect(funnel).rejects.toMatchObject({ code: 'invalid_arguments' });
-  await expect(backwards).rejects.toMatchObject({ code: 'invalid_arguments' });
+  await expect(funnel).rejects.toMatchObject({ code: 'invalid_payload' });
+  await expect(backwards).rejects.toMatchObject({ code: 'invalid_payload' });
   expect(calls).toEqual([]);
 });
 

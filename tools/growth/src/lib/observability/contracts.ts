@@ -174,13 +174,19 @@ const campaignToken: PropertyValidator = (value) => {
   if (!/^[a-z0-9][a-z0-9_-]{0,119}$/u.test(token)) invalid();
   return token;
 };
+/** Version and platform tokens: no spaces, `@`, or other identity-shaped text. */
+function versionToken(value: unknown): string {
+  const token = text(value, 64);
+  if (!/^[0-9A-Za-z._+-]{1,64}$/u.test(token)) invalid();
+  return token;
+}
 const enumeration =
   (values: readonly string[]): PropertyValidator =>
   (v) =>
     oneOf(v, values);
 const packageRules: Record<string, PropertyRule> = {
   packageName: [enumeration(PACKAGE_NAMES)],
-  packageVersion: [string(64)],
+  packageVersion: [versionToken],
 };
 function properties(
   value: unknown,
@@ -281,7 +287,7 @@ function parseEvent(
     eventId: uuid(record.eventId),
     kind: text(record.kind, 100),
     occurredAt: new Date(time).toISOString(),
-    collectorVersion: text(record.collectorVersion, 64),
+    collectorVersion: versionToken(record.collectorVersion),
     subject: {
       id: uuid(subject.id),
       namespace: oneOf(subject.namespace, [namespace[source]]),
@@ -302,9 +308,9 @@ function parseEvent(
     if (event.kind !== INSTALL_KIND || event.sessionId) invalid();
     event.properties = properties(record.properties, {
       ...packageRules,
-      osFamily: [string(64)],
-      architecture: [string(64)],
-      nodeVersion: [string(64)],
+      osFamily: [versionToken],
+      architecture: [versionToken],
+      nodeVersion: [versionToken],
       environment: [enumeration(['local', 'ci', 'unknown'])],
       environmentEvidence: [
         enumeration([...ciProviders, 'interactive_package_manager', 'unknown']),

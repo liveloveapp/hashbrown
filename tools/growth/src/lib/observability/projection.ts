@@ -202,15 +202,16 @@ export interface ObservationProcessingCounts {
   disabled: boolean;
 }
 /**
- * Runs one projection pass: claims work in chunks of at most 20 up to
- * `limit`, projects each lease with per-item containment (a failure backs off
- * 1, 5, then 30 minutes and fails after the fifth attempt), then garbage
- * collects up to 1000 collection budget rows older than two hours.
+ * Runs one projection pass. Every call first garbage collects up to 1000
+ * collection budget rows older than two hours, even when projection is
+ * disabled. When enabled, it then claims work in chunks of at most 20 up to
+ * `limit` and projects each lease with per-item containment (a failure backs
+ * off 1, 5, then 30 minutes and fails after the fifth attempt).
  *
  * @param db - The growth database executor.
  * @param input - Whether projection is enabled, the most items to process
  *   (1..100), and the clock.
- * @returns The per-outcome counts; `disabled` when nothing ran.
+ * @returns The per-outcome counts; `disabled` when no projection ran.
  * @throws ObservationError `invalid_payload` for a bad limit.
  */
 export async function processObservations(
@@ -226,8 +227,12 @@ export async function processObservations(
     failed: 0,
     disabled: !input.enabled,
   };
-  if (!input.enabled) return counts;
   const now = input.now ?? (() => new Date());
+  await db.execute(
+    `/* growth:observation-gc-budgets */ delete from growth_collection_budgets where (bucket_key,window_start) in (select bucket_key,window_start from growth_collection_budgets where window_start<$1 order by window_start limit 1000)`,
+    [new Date(now().getTime() - 7200000)],
+  );
+  if (!input.enabled) return counts;
   let remaining = input.limit;
   while (remaining > 0) {
     const claimed = await claimObservationWork(db, {
@@ -251,9 +256,5 @@ export async function processObservations(
       }
     }
   }
-  await db.execute(
-    `/* growth:observation-gc-budgets */ delete from growth_collection_budgets where (bucket_key,window_start) in (select bucket_key,window_start from growth_collection_budgets where window_start<$1 order by window_start limit 1000)`,
-    [new Date(now().getTime() - 7200000)],
-  );
   return counts;
 }
