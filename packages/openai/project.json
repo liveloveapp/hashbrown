@@ -51,6 +51,13 @@
         "passWithNoTests": true
       }
     },
+    "record-fixtures": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/testing/aimock/record-fixtures.mjs openai"
+      }
+    },
     "nx-release-publish": {
       "executor": "@nx/js:release-publish",
       "dependsOn": ["^nx-release-publish"],

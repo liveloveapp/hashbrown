@@ -1,5 +1,8 @@
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import * as http from 'node:http';
 import * as https from 'node:https';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
   collectSecrets,
@@ -162,4 +165,67 @@ test('strict replay fails a request with no fixture and names the test', async (
   expect(body).toContain(slug);
   expect(body).toContain(join(RECORDED_FIXTURES_ROOT, slug, 'openai.json'));
   expect(outboundCalls).toBe(0);
+});
+
+function runClearRecordings(root: string, args: string[]): string[] {
+  const script = join(__dirname, 'clear-recordings.mjs');
+  const output = execFileSync(
+    process.execPath,
+    [script, '--root', root, ...args],
+    { encoding: 'utf8' },
+  );
+  return output.split('\n').filter(Boolean).sort();
+}
+
+function seedRecordings(root: string, files: string[]): void {
+  for (const file of files) {
+    mkdirSync(dirname(join(root, file)), { recursive: true });
+    writeFileSync(join(root, file), '{}');
+  }
+}
+
+test('clear-recordings removes only the given provider files', () => {
+  const root = mkdtempSync(join(tmpdir(), 'recordings-'));
+  seedRecordings(root, [
+    'openai-a/openai.json',
+    'openai-b/openai.json',
+    'openai-b/anthropic.json',
+    'anthropic-a/anthropic.json',
+  ]);
+
+  const removed = runClearRecordings(root, ['openai.json']);
+
+  expect(removed).toEqual(['openai-a/openai.json', 'openai-b/openai.json']);
+  expect(existsSync(join(root, 'openai-a'))).toBe(false);
+  expect(existsSync(join(root, 'openai-b/anthropic.json'))).toBe(true);
+  expect(existsSync(join(root, 'anthropic-a/anthropic.json'))).toBe(true);
+});
+
+test('clear-recordings keeps Azure and OpenAI recordings apart by slug prefix', () => {
+  const root = mkdtempSync(join(tmpdir(), 'recordings-'));
+  const files = ['openai-text/openai.json', 'azure-openai-text/openai.json'];
+  seedRecordings(root, files);
+
+  const openai = runClearRecordings(root, [
+    'openai.json',
+    '--exclude-slug-prefix',
+    'azure-',
+  ]);
+  seedRecordings(root, files);
+  const azure = runClearRecordings(root, [
+    'openai.json',
+    '--slug-prefix',
+    'azure-',
+  ]);
+
+  expect(openai).toEqual(['openai-text/openai.json']);
+  expect(azure).toEqual(['azure-openai-text/openai.json']);
+});
+
+test('clear-recordings does nothing when the recordings root is missing', () => {
+  const root = join(tmpdir(), 'recordings-missing-root');
+
+  const removed = runClearRecordings(root, ['openai.json']);
+
+  expect(removed).toEqual([]);
 });
