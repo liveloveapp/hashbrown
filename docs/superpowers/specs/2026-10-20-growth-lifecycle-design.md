@@ -522,7 +522,7 @@ emails the installer and never creates a contact.
   columns), `growth_campaign_performance_v1`, `growth_job_health_v1`,
   `growth_observation_source_health_v1`, `growth_observation_subject_overview_v1`,
   `growth_observation_work_health_v1`.
-- Operator commands: `npx nx report growth -- funnel --from <UTC> --to <UTC>`
+- Operator commands: `npx nx run growth:report -- funnel --from <UTC> --to <UTC>`
   (at most 31 days), `-- journey --contact <uuid>`, `-- health`, `-- timeline`,
   `-- detail`; `npx nx control growth -- status|approve|stop|delete --email <addr>`;
   `npx nx observability growth -- initialize-redactions`.

@@ -82,6 +82,7 @@ export function Footer({ sdk }: { sdk?: Sdk } = {}) {
               <li>
                 <a
                   href="https://threadplane.ai/?utm_source=hashbrown&utm_medium=footer"
+                  data-surface="footer"
                   {...external}
                   className="underline"
                 >

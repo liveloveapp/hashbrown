@@ -2,7 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { SearchOverlay } from '../components/search/SearchOverlay';
 import { Announcement } from '../components/site/Announcement';
+import { EngagedTimeSignal } from '../components/site/EngagedTimeSignal';
+import { PreAnalyticsBeacon } from '../components/site/PreAnalyticsBeacon';
 import { RememberSdk } from '../components/site/RememberSdk';
+import { ThreadplaneLinkSignal } from '../components/site/ThreadplaneLinkSignal';
+import { WebsiteCollectorSignal } from '../components/site/WebsiteCollectorSignal';
 import { ToastContainer } from '../components/toast/ToastContainer';
 import { pageMetadata } from '../lib/site-metadata';
 import './globals.css';
@@ -55,7 +59,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body>
+        <PreAnalyticsBeacon />
         <RememberSdk />
+        <EngagedTimeSignal />
+        <ThreadplaneLinkSignal />
+        <WebsiteCollectorSignal />
         {children}
         <Announcement />
         <SearchOverlay />

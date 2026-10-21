@@ -7,7 +7,7 @@ import {
 import {
   type CollectionRouteDependencies,
   createCollectionRoute,
-  validateWebsiteCollection,
+  filterWebsiteCollection,
 } from '../../src/lib/growth/collection-route';
 import type { RuntimeAnnouncement } from '../../src/lib/growth/runtime-announcements';
 import { TEST_NOW } from './_keys';
@@ -126,7 +126,7 @@ function setup(sources = 'website,install,runtime') {
     accept: vi.fn<CollectionRouteDependencies['accept']>(
       async () => ACKNOWLEDGMENT,
     ),
-    validateWebsite: validateWebsiteCollection,
+    filterWebsite: filterWebsiteCollection,
     runtimeAnnouncements: vi.fn<
       CollectionRouteDependencies['runtimeAnnouncements']
     >(() => [ANNOUNCEMENT]),
@@ -264,7 +264,39 @@ test('oversize and stalled bodies return 413', async () => {
   expect(deps.accept).not.toHaveBeenCalled();
 });
 
-test('website events with an unknown contentId are rejected', async () => {
+test('a batch with one known and one unknown view admits only the known one', async () => {
+  const { deps, handle } = setup();
+  const known = websiteEvent('website.content_viewed', {
+    contentId: 'docs/react/concept/components',
+    topic: 'concepts',
+  });
+  const unknown = {
+    ...websiteEvent('website.content_viewed', {
+      contentId: 'unknown-private-page',
+      topic: 'other',
+    }),
+    eventId: '44444444-4444-4444-8444-444444444444',
+  };
+
+  const response = await handle(
+    post('website', { schemaVersion: 1, events: [known, unknown] }),
+    'website',
+  );
+
+  expect(response.status).toBe(200);
+  const admitted = (deps.accept.mock.calls[0] as unknown[])[2] as {
+    events: { eventId: string }[];
+  };
+  expect(admitted.events.map((e) => e.eventId)).toEqual([EVENT_ID]);
+  expect(deps.log).toHaveBeenCalledWith(
+    expect.objectContaining({ code: 'committed', droppedUnknownContent: 1 }),
+  );
+  expect(JSON.stringify(deps.log.mock.calls)).not.toContain(
+    'unknown-private-page',
+  );
+});
+
+test('a batch of only unknown or wrong-topic views is accepted with zero admitted', async () => {
   const { deps, handle } = setup();
   const viewed = (properties: Record<string, string>) => ({
     schemaVersion: 1,
@@ -286,9 +318,18 @@ test('website events with an unknown contentId are rejected', async () => {
     'website',
   );
 
-  expect(unknown.status).toBe(400);
-  expect(wrongTopic.status).toBe(400);
+  expect(unknown.status).toBe(200);
+  expect(wrongTopic.status).toBe(200);
+  expect(await unknown.json()).toEqual({ schemaVersion: 1, events: [] });
   expect(deps.accept).not.toHaveBeenCalled();
+  expect(deps.log).toHaveBeenCalledWith(
+    expect.objectContaining({
+      code: 'committed',
+      eventCount: 0,
+      accepted: 0,
+      droppedUnknownContent: 1,
+    }),
+  );
 });
 
 test('website events with a known contentId and its topic are accepted', async () => {

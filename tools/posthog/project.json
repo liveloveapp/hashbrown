@@ -1,0 +1,80 @@
+{
+  "name": "posthog",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/posthog",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint tools/posthog",
+        "forwardAllArgs": false
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config tools/posthog/vitest.config.mts"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "parallel": false,
+        "commands": [
+          "tsc --noEmit -p tools/posthog/tsconfig.json",
+          "tsc --noEmit -p tools/posthog/tsconfig.spec.json"
+        ]
+      }
+    },
+    "sync:plan": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/posthog/sync.ts --plan",
+        "forwardAllArgs": true
+      }
+    },
+    "sync:apply": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/posthog/sync.ts --apply",
+        "forwardAllArgs": true
+      }
+    },
+    "report": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/posthog/report.ts",
+        "forwardAllArgs": true
+      }
+    },
+    "quality:live": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/posthog/live-quality.ts",
+        "forwardAllArgs": true
+      }
+    },
+    "settings:plan": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/posthog/settings.ts --plan",
+        "forwardAllArgs": true
+      }
+    },
+    "settings:apply": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/posthog/settings.ts --apply",
+        "forwardAllArgs": true
+      }
+    }
+  }
+}

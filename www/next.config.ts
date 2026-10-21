@@ -5,7 +5,12 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
 
+// Reported as the collectorVersion: the deployed commit, or `www-dev` locally.
+const version = `www-${(process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 7) || 'dev'}`;
+
 const nextConfig: NextConfig = {
+  // The website collector reports this as its collectorVersion.
+  env: { NEXT_PUBLIC_WWW_VERSION: version },
   // Workspace packages (and the monorepo tracing root) live outside www.
   turbopack: { root: repoRoot },
   outputFileTracingRoot: repoRoot,
@@ -22,6 +27,37 @@ const nextConfig: NextConfig = {
   },
   // The repo keeps its own AGENTS.md; don't let `next dev` write copies here.
   agentRules: false,
+  // PostHog is proxied first-party under /_/ingest; its API paths end in a
+  // slash, which Next would otherwise redirect away.
+  skipTrailingSlashRedirect: true,
+  async rewrites() {
+    return [
+      {
+        source: '/_/ingest/static/:path*',
+        destination: 'https://us-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/_/ingest/:path*',
+        destination: 'https://us.i.posthog.com/:path*',
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: '/_/ingest/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'POST, OPTIONS' },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization',
+          },
+          { key: 'Access-Control-Max-Age', value: '86400' },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       // The migration guides moved to /docs/<sdk>/migrations in #579.

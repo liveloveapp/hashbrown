@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { TrackedLink } from '../site/TrackedLink';
 import { CopyPromptButton } from './CopyPromptButton';
 import { bySdk, HERO_CODE, quickStartUrl, type Sdk } from './home.content';
 import { InstallCommand } from './InstallCommand';
@@ -25,9 +25,14 @@ export function HomeHero({ codeHtml }: { codeHtml: Record<Sdk, string> }) {
         <div className={styles.actions}>
           <SdkSwitch
             {...bySdk((sdk) => (
-              <Link className="hb-btn primary" href={quickStartUrl(sdk)}>
+              <TrackedLink
+                className="hb-btn primary"
+                href={quickStartUrl(sdk)}
+                ctaId="hero_quick_start"
+                surface="home"
+              >
                 Quick start →
-              </Link>
+              </TrackedLink>
             ))}
           />
           <CopyPromptButton className="hb-btn" />

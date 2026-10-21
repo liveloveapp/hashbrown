@@ -1,0 +1,18 @@
+{
+  "slug": "ai-crawlers",
+  "posthog_id": 13138899,
+  "kind": "trends",
+  "name": "AI crawler visits",
+  "description": "Observed by Edge middleware, not posthog-js. Crawler visits are deduplicated per crawler, path and hour and capped at 500 per hour per isolate, so they are a floor, not a census.",
+  "events": [
+    {
+      "event": "marketing:ai_crawler_visit",
+      "name": "AI crawler visits",
+      "math": "total"
+    }
+  ],
+  "breakdown": "ai_crawler",
+  "breakdown_limit": 20,
+  "interval": "day",
+  "date_from": "-30d"
+}

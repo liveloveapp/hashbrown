@@ -1,10 +1,12 @@
-import type { WEBSITE_TOPICS } from '@hashbrownai-internal/growth';
-
 import { listBlogPosts } from '../content';
 import { listApiReferenceEntries, listSitemapEntries } from '../search-index';
+import {
+  contentIdFor,
+  type WebsiteTopic,
+  websiteTopic,
+} from './website-metadata';
 
-/** A coarse website content topic from the collection contract. */
-export type WebsiteTopic = (typeof WEBSITE_TOPICS)[number];
+export type { WebsiteTopic };
 
 /** One known page: the id a collector reports for it and its topic. */
 export interface WebsiteContent {
@@ -14,27 +16,6 @@ export interface WebsiteContent {
 
 /** Known pages keyed by their site path. */
 export type WebsiteCatalog = Readonly<Record<string, WebsiteContent>>;
-
-/**
- * Maps a site path to its coarse topic.
- *
- * @param path - A site path such as `/docs/react/concept/components`.
- * @returns The topic a `website.content_viewed` event must report.
- */
-export function websiteTopic(path: string): WebsiteTopic {
-  if (path === '/' || path === '/docs') return 'getting_started';
-  const docs = /^\/docs\/(react|angular)\/([^/]+)\//u.exec(path);
-  if (docs) {
-    const [, sdk, section] = docs;
-    if (section === 'start') return 'getting_started';
-    if (section === 'concept') return 'concepts';
-    if (section === 'platform') return 'platform';
-    return sdk === 'react' ? 'react' : 'angular';
-  }
-  if (path === '/api' || path.startsWith('/api/')) return 'reference';
-  if (path === '/blog' || path.startsWith('/blog/')) return 'blog';
-  return 'other';
-}
 
 let cached: WebsiteCatalog | undefined;
 
@@ -47,9 +28,8 @@ export function websiteContentCatalog(): WebsiteCatalog {
   if (cached) return cached;
   const catalog: Record<string, WebsiteContent> = {};
   const add = (path: string) => {
-    const contentId = path === '/' ? 'home' : path.slice(1).toLowerCase();
-    if (/^[a-z0-9][a-z0-9_/-]{0,119}$/u.test(contentId))
-      catalog[path] = { contentId, topic: websiteTopic(path) };
+    const contentId = contentIdFor(path);
+    if (contentId) catalog[path] = { contentId, topic: websiteTopic(path) };
   };
   add('/');
   add('/docs');

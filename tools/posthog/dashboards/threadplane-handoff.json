@@ -1,0 +1,15 @@
+{
+  "slug": "threadplane-handoff",
+  "posthog_id": 2242198,
+  "name": "Website · Threadplane hand-off",
+  "description": "Clicks from hashbrown.dev to threadplane by surface, beside all CTA clicks for scale. What happens after the hand-off is measured in threadplane. Managed in tools/posthog; edit the JSON, not the UI.",
+  "tags": ["growth", "website"],
+  "tiles": [
+    {
+      "insight": "threadplane-handoff-by-surface"
+    },
+    {
+      "insight": "cta-clicks-by-id"
+    }
+  ]
+}
