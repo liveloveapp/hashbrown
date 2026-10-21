@@ -1,0 +1,24 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "What colour is the code word? Answer in one word.",
+        "model": "claude-haiku-5-5",
+        "turnIndex": 2,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Green"
+      },
+      "recordedTimings": {
+        "ttftMs": 879,
+        "interChunkDelaysMs": [0, 0, 0, 5, 20, 0],
+        "totalDurationMs": 904
+      },
+      "metadata": {
+        "systemHash": "cbfbf20a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}
