@@ -185,10 +185,12 @@ async function* runWithActivities(
   model.catch(() => undefined);
 
   let cancelled = false;
+  let consumerStopped = false;
   let closed = false;
   let callbackStarted = false;
   let callbackSettled = false;
   let callbackError: string | undefined;
+  let modelEnded = false;
   let providerDone = false;
   let heldTerminal: AGUIEvent | undefined;
 
@@ -210,14 +212,20 @@ async function* runWithActivities(
     cancelled = true;
     rejectModel(createAbortError());
     controller.abort(signal?.reason);
+    finishIfReady();
   };
 
-  const finishIfReady = () => {
-    if (!providerDone || (callbackStarted && !callbackSettled)) {
+  function finishIfReady() {
+    if (!providerDone) {
       return;
     }
     if (cancelled) {
+      // Every write is a no-op and no terminal is sent, so there is nothing
+      // to wait for: end without waiting for the callback.
       close(undefined);
+      return;
+    }
+    if (callbackStarted && !callbackSettled) {
       return;
     }
     if (
@@ -230,7 +238,7 @@ async function* runWithActivities(
       return;
     }
     close(heldTerminal);
-  };
+  }
 
   const write = (event: AGUIEvent): boolean => {
     if (cancelled) {
@@ -308,7 +316,7 @@ async function* runWithActivities(
       },
       (error: unknown) => {
         callbackSettled = true;
-        if (!providerDone && !cancelled) {
+        if (!modelEnded && !cancelled) {
           // The model is still streaming: stop it and end the run now.
           callbackError = errorMessage(error);
           rejectModel(createAbortError());
@@ -322,14 +330,35 @@ async function* runWithActivities(
     );
   };
 
+  const endModel = (terminal: AGUIEvent | undefined) => {
+    if (modelEnded) {
+      return;
+    }
+    modelEnded = true;
+    heldTerminal = terminal;
+    if (cancelled || controller.signal.aborted) {
+      rejectModel(createAbortError());
+    } else if (terminal?.type === EventType.RUN_ERROR) {
+      rejectModel(new Error(terminal.message));
+    } else {
+      resolveModel();
+    }
+  };
+
   const pump = async () => {
     try {
+      // Breaking out of `for await` calls the provider iterator's `return()`.
       for await (const event of createEvents(controller.signal)) {
-        if (closed) {
-          return;
+        // After a caller abort the provider stops on its own, and what it
+        // yields until then is forwarded as it is today. Once the run has
+        // closed or nobody is reading, stop pulling.
+        if (closed || consumerStopped) {
+          break;
         }
         if (isTerminal(event)) {
-          heldTerminal = event;
+          // Settle `model` before awaiting the provider's `return()`, so a
+          // callback settling in that gap sees the model as ended.
+          endModel(event);
           break;
         }
         queue.push(event);
@@ -343,20 +372,11 @@ async function* runWithActivities(
       }
     } catch (error: unknown) {
       if (!cancelled && !controller.signal.aborted) {
-        heldTerminal = {
-          type: EventType.RUN_ERROR,
-          message: errorMessage(error),
-        };
+        endModel({ type: EventType.RUN_ERROR, message: errorMessage(error) });
       }
     }
+    endModel(undefined);
     providerDone = true;
-    if (cancelled || controller.signal.aborted) {
-      rejectModel(createAbortError());
-    } else if (heldTerminal?.type === EventType.RUN_ERROR) {
-      rejectModel(new Error(heldTerminal.message));
-    } else {
-      resolveModel();
-    }
     finishIfReady();
   };
 
@@ -380,6 +400,7 @@ async function* runWithActivities(
     signal?.removeEventListener('abort', cancel);
     if (!closed) {
       // The consumer stopped early: treat it as an abort.
+      consumerStopped = true;
       cancel();
     }
   }

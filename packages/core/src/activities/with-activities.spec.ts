@@ -495,3 +495,176 @@ test('patch emits ACTIVITY_DELTA with activityType', async () => {
   ]);
   await verify(events);
 });
+
+async function captureUnhandledRejections(run: () => Promise<void>) {
+  const reasons: unknown[] = [];
+  const listener = (reason: unknown) => reasons.push(reason);
+  process.on('unhandledRejection', listener);
+  try {
+    await run();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  } finally {
+    process.off('unhandledRejection', listener);
+  }
+  return reasons;
+}
+
+test('abort ends the run even while the callback never settles', async () => {
+  const controller = new AbortController();
+  const neverEnds = createDeferred();
+  const provider = fakeProvider([textStart, () => neverEnds.promise]);
+  const stream = ɵwithActivities(
+    provider,
+    () => new Promise<void>(() => undefined),
+    controller.signal,
+  );
+  const iterator = stream[Symbol.asyncIterator]();
+  await iterator.next();
+  await iterator.next();
+
+  controller.abort();
+  const end = await iterator.next();
+
+  expect(end.done).toBe(true);
+});
+
+test('a model failure and a callback error emit one RUN_ERROR with the model message', async () => {
+  const provider = fakeProvider([
+    textStart,
+    () => Promise.reject(new Error('model failed')),
+  ]);
+
+  const stream = ɵwithActivities(
+    provider,
+    async ({ model }) => {
+      await model.catch(() => undefined);
+      throw new Error('callback failed too');
+    },
+    undefined,
+  );
+  const events = await collect(stream);
+
+  expect(
+    events.filter(
+      (event) =>
+        event.type === EventType.RUN_ERROR ||
+        event.type === EventType.RUN_FINISHED,
+    ),
+  ).toEqual([{ type: EventType.RUN_ERROR, message: 'model failed' }]);
+  await verify(events);
+});
+
+test('a callback rejecting while the provider closes still sees the model as ended', async () => {
+  const providerClosing = createDeferred();
+  const releaseClose = createDeferred();
+  async function* provider(): AsyncIterable<AGUIEvent> {
+    try {
+      yield runStarted;
+      yield { type: EventType.RUN_ERROR, message: 'model failed' };
+    } finally {
+      providerClosing.resolve();
+      await releaseClose.promise;
+    }
+  }
+  let modelError: unknown;
+
+  const stream = ɵwithActivities(
+    provider,
+    async ({ model }) => {
+      model.catch((error) => (modelError = error));
+      await providerClosing.promise;
+      throw new Error('callback failed');
+    },
+    undefined,
+  );
+  const pending = collect(stream);
+  await providerClosing.promise;
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  releaseClose.resolve();
+  const events = await pending;
+
+  expect(modelError).toEqual(new Error('model failed'));
+  expect(events).toEqual([
+    runStarted,
+    { type: EventType.RUN_ERROR, message: 'model failed' },
+  ]);
+  await verify(events);
+});
+
+test('an already aborted signal never starts the callback and sends no terminal', async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const callback = jest.fn();
+  const seen: { signal?: AbortSignal; closed?: boolean } = {};
+  const provider = fakeProvider([textStart, textEnd], seen);
+  let events: AGUIEvent[] = [];
+
+  const unhandled = await captureUnhandledRejections(async () => {
+    events = await collect(
+      ɵwithActivities(provider, callback, controller.signal),
+    );
+  });
+
+  expect(events).toEqual([runStarted]);
+  expect(callback).not.toHaveBeenCalled();
+  expect(seen.signal?.aborted).toBe(true);
+  expect(unhandled).toEqual([]);
+  await verify(events);
+});
+
+test('a consumer that stops early aborts and closes the provider and silences writes', async () => {
+  const seen: { signal?: AbortSignal; returned?: boolean } = {};
+  async function* provider(
+    signal: AbortSignal | undefined,
+  ): AsyncIterable<AGUIEvent> {
+    seen.signal = signal;
+    try {
+      yield runStarted;
+      yield textStart;
+      // Ignores the signal on purpose: only return() can stop it.
+      for (;;) {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        yield textContent('x');
+      }
+    } finally {
+      seen.returned = true;
+    }
+  }
+  const callbackDone = createDeferred();
+  let context: ActivityContext | undefined;
+  let writeError: unknown;
+  let modelError: unknown;
+
+  const unhandled = await captureUnhandledRejections(async () => {
+    for await (const event of ɵwithActivities(
+      provider,
+      async (ctx) => {
+        context = ctx;
+        try {
+          await ctx.model;
+        } catch (error) {
+          modelError = error;
+        }
+        try {
+          ctx.activity.snapshot('late', 'PLAN', {});
+        } catch (error) {
+          writeError = error;
+        }
+        callbackDone.resolve();
+      },
+      undefined,
+    )) {
+      if (event.type === EventType.TEXT_MESSAGE_START) {
+        break;
+      }
+    }
+    await callbackDone.promise;
+  });
+
+  expect(seen.signal?.aborted).toBe(true);
+  expect(context?.signal.aborted).toBe(true);
+  expect(seen.returned).toBe(true);
+  expect((modelError as Error).name).toBe('AbortError');
+  expect(writeError).toBeUndefined();
+  expect(unhandled).toEqual([]);
+});
