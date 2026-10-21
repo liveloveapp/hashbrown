@@ -103,6 +103,42 @@ export type ServerToolCallSource = {
 };
 
 /**
+ * A reference from an answer to one of its sources.
+ *
+ * @public
+ */
+export type Citation = {
+  /** The `id` of the {@link ServerToolCallSource} being cited. */
+  sourceId: string;
+  /** The cited text, the most reliable anchor into the answer. */
+  quote?: string;
+  /** Index of the text block the citation belongs to. */
+  block?: number;
+  /** Character span, present only when the provider gives true offsets. */
+  start?: number;
+  end?: number;
+};
+
+/**
+ * Attribution a provider requires an app to show with an answer, such as
+ * Google's search suggestions.
+ *
+ * @public
+ */
+export type Attribution = {
+  provider: 'google';
+  kind: 'search-suggestions' | 'maps';
+  /** Provider-rendered markup, to be shown verbatim. */
+  html?: string;
+  widgetToken?: string;
+  /**
+   * Always true: show it unmodified, adjacent to the answer, at full width,
+   * without link tracking.
+   */
+  mustRender: true;
+};
+
+/**
  * How a settled server tool call ended.
  *
  * @public
@@ -201,6 +237,15 @@ export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
    * at least one.
    */
   readonly serverToolCalls?: readonly ServerToolCall[];
+
+  /** Which sources the answer cites, and where. */
+  readonly citations?: readonly Citation[];
+
+  /** Sources the answer drew on that came with no tool call. */
+  readonly sources?: readonly ServerToolCallSource[];
+
+  /** Attribution the provider requires an app to show with the answer. */
+  readonly attribution?: readonly Attribution[];
 
   /**
    * Opaque provider continuation data preserved across AG-UI runs.

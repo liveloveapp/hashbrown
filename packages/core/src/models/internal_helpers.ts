@@ -4,6 +4,8 @@ import { s } from '../schema';
 import { JsonValue, resolveWithSchema } from '../utils';
 import {
   isProviderToolCall,
+  ɵANSWER_METADATA_KEY,
+  ɵreadAnswerAnnotations,
   ɵreadToolStep,
   ɵTOOL_STEP_METADATA_KEY,
 } from './tool-step';
@@ -315,6 +317,26 @@ function toServerToolCalls(
   return serverToolCalls.length > 0 ? { serverToolCalls } : {};
 }
 
+function toAnswerAnnotations(
+  metadata: Metadata | undefined,
+): Pick<
+  Chat.AssistantMessage<unknown, Chat.AnyTool>,
+  'citations' | 'sources' | 'attribution'
+> {
+  const answer = ɵreadAnswerAnnotations(metadata?.[ɵANSWER_METADATA_KEY]);
+  return {
+    ...(answer?.citations !== undefined
+      ? { citations: answer.citations.map((c) => ({ ...c })) }
+      : {}),
+    ...(answer?.sources !== undefined
+      ? { sources: answer.sources.map((s) => ({ ...s })) }
+      : {}),
+    ...(answer?.attribution !== undefined
+      ? { attribution: answer.attribution.map((a) => ({ ...a })) }
+      : {}),
+  };
+}
+
 /**
  * Converts an internal message to a view message.
  *
@@ -368,6 +390,7 @@ export function toViewMessagesFromInternal(
             ? { metadata: cloneMetadata(message.metadata) }
             : {}),
           ...toReasoningOutput(message.reasoning),
+          ...toAnswerAnnotations(message.metadata),
           ...toServerToolCalls(message.toolCallIds, toolCalls, tools),
           toolCalls: message.toolCallIds.flatMap(
             (toolCallId): Chat.AnyToolCall[] => {

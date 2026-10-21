@@ -25,6 +25,7 @@ export {
   type ɵToolStepStatus,
   type ɵAnswerAnnotations,
 } from './models/tool-step';
+export { ɵbuiltInToolLabel } from './models/built-in-tool-labels';
 export {
   type ActivityCallback,
   type ActivityContext,

@@ -1162,3 +1162,57 @@ test('lowering a call that carries arrivedAt leaves the key out of the API messa
   // Assert
   expect(JSON.stringify(api)).not.toContain('arrivedAt');
 });
+
+test('assistant messages expose b4.answer citations and call-less sources', () => {
+  // Arrange
+  const message: Chat.Internal.AssistantMessage = {
+    id: 'assistant-1',
+    role: 'assistant',
+    content: 'Answer',
+    toolCallIds: [],
+    metadata: {
+      'b4.answer': {
+        v: 1,
+        citations: [{ sourceId: 's1', quote: 'cited text', block: 0 }],
+        sources: [
+          { id: 's1', kind: 'url', title: 'Site', href: 'https://a.b' },
+        ],
+        attribution: [
+          {
+            provider: 'google',
+            kind: 'search-suggestions',
+            html: '<div/>',
+            mustRender: true,
+          },
+        ],
+      },
+    },
+  };
+  const plain: Chat.Internal.AssistantMessage = {
+    id: 'assistant-2',
+    role: 'assistant',
+    content: 'Plain',
+    toolCallIds: [],
+  };
+
+  // Act
+  const [view] = toViewMessagesFromInternal(message, {}, []);
+  const [plainView] = toViewMessagesFromInternal(plain, {}, []);
+
+  // Assert
+  expect(view).toMatchObject({
+    citations: [{ sourceId: 's1', quote: 'cited text', block: 0 }],
+    sources: [{ id: 's1', kind: 'url', title: 'Site', href: 'https://a.b' }],
+    attribution: [
+      {
+        provider: 'google',
+        kind: 'search-suggestions',
+        html: '<div/>',
+        mustRender: true,
+      },
+    ],
+  });
+  expect(plainView).not.toHaveProperty('citations');
+  expect(plainView).not.toHaveProperty('sources');
+  expect(plainView).not.toHaveProperty('attribution');
+});
