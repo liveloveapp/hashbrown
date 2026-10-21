@@ -12,6 +12,20 @@ export {
 } from './chat-runtime';
 export * from './models';
 export {
+  ɵTOOL_STEP_METADATA_KEY,
+  ɵANSWER_METADATA_KEY,
+  ɵTOOL_STEP_EVENT_NAME,
+  ɵreadToolStep,
+  ɵreadAnswerAnnotations,
+  ɵmergeToolStep,
+  ɵmergeStepMetadata,
+  type ɵToolStep,
+  type ɵToolStepRead,
+  type ɵToolStepSource,
+  type ɵToolStepStatus,
+  type ɵAnswerAnnotations,
+} from './models/tool-step';
+export {
   type ActivityCallback,
   type ActivityContext,
   type ActivityHandle,
