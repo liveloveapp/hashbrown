@@ -91,10 +91,19 @@ test('the empty state asks a question and offers every starter prompt', () => {
   expect(text(element.querySelector('.atc-empty-title'))).toBe(
     'Ask about the planes over the Pacific Northwest.',
   );
-  expect(buttons.map((button) => text(button))).toEqual(
+  expect(buttons.map((button) => nameOf(button))).toEqual(
     STARTER_PROMPTS.map(
       (starter) =>
-        `${starter.text} ${starter.route === 'filter' ? 'filter' : 'question'}`,
+        `${starter.text} (${starter.route === 'filter' ? 'filter' : 'question'})`,
+    ),
+  );
+  expect(
+    buttons.map(
+      (button) => button.querySelector('[aria-hidden="true"]')?.textContent,
+    ),
+  ).toEqual(
+    STARTER_PROMPTS.map((starter) =>
+      starter.route === 'filter' ? 'filter' : 'question',
     ),
   );
   expect(picked).toEqual([STARTER_PROMPTS[1]]);
@@ -109,9 +118,19 @@ test('the empty state offers the selected-plane question first while a plane is 
   const element = fixture.nativeElement as HTMLElement;
   const buttons = [...element.querySelectorAll('button')];
 
-  expect(text(buttons[0])).toBe(`${SELECTED_PROMPT} question`);
+  expect(nameOf(buttons[0])).toBe(`${SELECTED_PROMPT} (question)`);
   expect(buttons).toHaveLength(STARTER_PROMPTS.length + 1);
 });
+
+/** A button's accessible text: what assistive tech reads, without aria-hidden parts. */
+function nameOf(element: Element): string {
+  const copy = element.cloneNode(true) as Element;
+  copy
+    .querySelectorAll('[aria-hidden="true"]')
+    .forEach((hidden) => hidden.remove());
+
+  return text(copy);
+}
 
 function composer(answer?: Answer) {
   setup(answer);
@@ -336,6 +355,25 @@ test('with no answer after 1000 ms Enter goes to chat', async () => {
     expect(early).toEqual([]);
     expect(view.sent).toEqual(['hello']);
     view.fixture.destroy();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('destroying while Enter waits leaves nothing to fire', async () => {
+  vi.useFakeTimers();
+  try {
+    const view = composer(() => new Promise(() => undefined));
+    type(view.input, 'hello');
+    enter(view.element);
+    await vi.advanceTimersByTimeAsync(200);
+
+    view.fixture.destroy();
+    const timers = vi.getTimerCount();
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(timers).toBe(0);
+    expect(view.sent).toEqual([]);
   } finally {
     vi.useRealTimers();
   }

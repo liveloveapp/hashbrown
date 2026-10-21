@@ -33,3 +33,12 @@
   color: var(--atc-muted);
   font-size: 12px;
 }
+/* Read by assistive tech only: the visible tag above is aria-hidden. */
+.atc-starter-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

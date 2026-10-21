@@ -25,7 +25,10 @@ import { injectAtcState } from './store';
       @for (starter of starters(); track starter.text) {
         <button type="button" (click)="pick.emit(starter)">
           {{ starter.text }}
-          <span class="atc-starter-kind">{{
+          <span class="atc-starter-hint"
+            >({{ starter.route === 'filter' ? 'filter' : 'question' }})</span
+          >
+          <span class="atc-starter-kind" aria-hidden="true">{{
             starter.route === 'filter' ? 'filter' : 'question'
           }}</span>
         </button>

@@ -119,6 +119,8 @@ export function useRouter(
       check();
     });
   }, []);
+  // Nothing fires after unmount: a waiting Enter is dropped with its timer.
+  useEffect(() => () => cancelWaiting.current(), []);
   const cancel = useCallback(() => cancelWaiting.current(), []);
 
   return { badge: routerBadge(state), submit, cancel };

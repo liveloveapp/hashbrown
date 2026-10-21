@@ -12,6 +12,7 @@ import {
 } from '@atc/shared';
 import {
   computed,
+  DestroyRef,
   effect,
   inject,
   InjectionToken,
@@ -107,6 +108,8 @@ export function injectRouter(draft: Signal<string>): Router {
   // What a waiting Enter re-checks when the state changes.
   const listeners = new Set<() => void>();
   let cancelWaiting: () => void = () => undefined;
+  // Nothing fires after destroy: a waiting Enter is dropped with its timer.
+  inject(DestroyRef).onDestroy(() => cancelWaiting());
   effect(() => {
     state();
     untracked(() => listeners.forEach((listener) => listener()));

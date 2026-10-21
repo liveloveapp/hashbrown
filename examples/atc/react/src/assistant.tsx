@@ -7,6 +7,7 @@ import {
   type Starter,
   transcriptItems,
 } from '@atc/shared';
+import type { Decision } from '@hashbrownai/core';
 import {
   exposeComponent,
   exposeMarkdown,
@@ -73,9 +74,12 @@ const components = [
 export function Assistant({
   onFilter,
   onSent,
+  routeTransport,
 }: {
   onFilter: (request: string) => void;
   onSent?: () => void;
+  /** Replaces the router's HTTP transport (tests). */
+  routeTransport?: Decision.Transport;
 }) {
   const store = useAtcStore();
 
@@ -159,6 +163,7 @@ export function Assistant({
         onChat={send}
         onFilter={filter}
         onClear={clear}
+        transport={routeTransport}
       />
     </div>
   );

@@ -23,7 +23,10 @@ export function EmptyState({ onPick }: { onPick: (starter: Starter) => void }) {
             onClick={() => onPick(starter)}
           >
             {starter.text}
-            <span className="atc-starter-kind">
+            <span className="atc-starter-hint">
+              {` (${starter.route === 'filter' ? 'filter' : 'question'})`}
+            </span>
+            <span className="atc-starter-kind" aria-hidden="true">
               {starter.route === 'filter' ? 'filter' : 'question'}
             </span>
           </button>
