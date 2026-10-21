@@ -61,6 +61,27 @@ app.post('/run', async (req, res) => {
 
 [Read the docs for the Hashbrown OpenAI adapter](https://hashbrown.dev/docs/react/platform/openai).
 
+## What this package sends
+
+**When you install.** A postinstall step sends one `package.installed` event:
+the package name and version, your operating system, CPU architecture, Node
+version, package manager, whether the install ran in CI, and, when Git is
+configured in the installing checkout or globally and the install is not in CI,
+your Git `user.name`, `user.email`, and the owner of the `origin` remote on
+GitHub, GitLab, or Bitbucket. It finishes within five seconds and never fails
+an installation. `@hashbrownai/core` also writes a random installation id into
+its own package folder so a development browser can cite the same install.
+
+Turn it off:
+
+- `DO_NOT_TRACK=1` or `HASHBROWN_TELEMETRY_DISABLED=1` in the environment stops
+  the install step. `HASHBROWN_TELEMETRY_DEBUG=1` prints what would be sent and
+  sends nothing.
+
+Details, the full field list, and how to ask for deletion are at
+[hashbrown.dev/docs/react/platform/collection](https://hashbrown.dev/docs/react/platform/collection)
+and [hashbrown.dev/privacy](https://hashbrown.dev/privacy).
+
 ## Contributing
 
 Hashbrown is a community-driven project. Read our [contributing guidelines](https://github.com/liveloveapp/hashbrown?tab=contributing-ov-file) on how to get involved.

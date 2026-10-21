@@ -81,6 +81,44 @@ Your server keeps the API key and streams from a Hashbrown adapter:
 
 Hashbrown is headless. [threadplane](https://threadplane.ai) is the full agent UI for React and Angular, built on Hashbrown: threads, approvals, and tool progress. Free and MIT, with enterprise support from the team behind Hashbrown.
 
+## What this package sends
+
+Hashbrown sends two kinds of anonymous usage observations so we can see where
+developers get stuck. Neither includes prompts, messages, schemas, tool
+arguments, component props, URLs, or thread identifiers.
+
+**When you install.** A postinstall step sends one `package.installed` event:
+the package name and version, your operating system, CPU architecture, Node
+version, package manager, whether the install ran in CI, and, when Git is
+configured in the installing checkout or globally and the install is not in CI,
+your Git `user.name`, `user.email`, and the owner of the `origin` remote on
+GitHub, GitLab, or Bitbucket. It finishes within five seconds and never fails
+an installation. `@hashbrownai/core` also writes a random installation id into
+its own package folder so a development browser can cite the same install.
+
+**While you develop.** In a development build in a browser, Hashbrown reports
+when a chat runtime starts, the first completed stream, the first tool call,
+and the first rendered component, once per session, with the package name and
+version, the framework, and the transport kind. Production builds, server
+rendering, and automated browsers send nothing.
+
+Turn it off:
+
+- `DO_NOT_TRACK=1` or `HASHBROWN_TELEMETRY_DISABLED=1` in the environment stops
+  the install step. `HASHBROWN_TELEMETRY_DEBUG=1` prints what would be sent and
+  sends nothing.
+- `localStorage.setItem('HASHBROWN_TELEMETRY_DISABLED', '1')` or
+  `window.__HASHBROWN_TELEMETRY_DISABLED__ = true` stops the browser collector.
+- `<HashbrownProvider telemetry={false}>` (React) or
+  `provideHashbrown({ telemetry: false })` (Angular) stops it for the app, and a
+  nested provider cannot turn it back on.
+- `setDevelopmentCollectionEnabled(false)` from `@hashbrownai/react` or
+  `@hashbrownai/angular` before the first runtime is created.
+
+Details, the full field list, and how to ask for deletion are at
+[hashbrown.dev/docs/angular/platform/collection](https://hashbrown.dev/docs/angular/platform/collection)
+and [hashbrown.dev/privacy](https://hashbrown.dev/privacy).
+
 ## Contributing
 
 Hashbrown is a community-driven project. Read our [contributing guidelines](https://github.com/liveloveapp/hashbrown?tab=contributing-ov-file) on how to get involved.

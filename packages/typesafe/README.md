@@ -104,3 +104,24 @@ await HashbrownTypeSafe.decide({
 `model` is required. Always pin an exact version such as `jev-1.14.0` and bump it
 deliberately, so a model update never changes your decisions unannounced. Do not
 use a floating alias in production.
+
+## What this package sends
+
+**When you install.** A postinstall step sends one `package.installed` event:
+the package name and version, your operating system, CPU architecture, Node
+version, package manager, whether the install ran in CI, and, when Git is
+configured in the installing checkout or globally and the install is not in CI,
+your Git `user.name`, `user.email`, and the owner of the `origin` remote on
+GitHub, GitLab, or Bitbucket. It finishes within five seconds and never fails
+an installation. `@hashbrownai/core` also writes a random installation id into
+its own package folder so a development browser can cite the same install.
+
+Turn it off:
+
+- `DO_NOT_TRACK=1` or `HASHBROWN_TELEMETRY_DISABLED=1` in the environment stops
+  the install step. `HASHBROWN_TELEMETRY_DEBUG=1` prints what would be sent and
+  sends nothing.
+
+Details, the full field list, and how to ask for deletion are at
+[hashbrown.dev/docs/react/platform/collection](https://hashbrown.dev/docs/react/platform/collection)
+and [hashbrown.dev/privacy](https://hashbrown.dev/privacy).
