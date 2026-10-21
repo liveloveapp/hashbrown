@@ -3,20 +3,17 @@ import { computed, ResourceStatus, signal, type Signal } from '@angular/core';
 import { s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { uiCompletionResource } from './ui-completion-resource.fn';
-import {
-  structuredCompletionResource,
-  ɵstructuredCompletionResourceWithMessage,
-} from './structured-completion-resource.fn';
+import type { structuredCompletionResource } from './structured-completion-resource.fn';
+import { structuredCompletionResourceWithMessage } from './structured-completion-resource-with-message.fn';
 import { TAG_NAME_REGISTRY } from '../utils';
 import { createUiKit } from '../utils/ui-kit.fn';
 
-vi.mock('./structured-completion-resource.fn', () => ({
-  structuredCompletionResource: vi.fn(),
-  ɵstructuredCompletionResourceWithMessage: vi.fn(),
+vi.mock('./structured-completion-resource-with-message.fn', () => ({
+  structuredCompletionResourceWithMessage: vi.fn(),
 }));
 
 const structuredCompletionResourceMock = vi.mocked(
-  ɵstructuredCompletionResourceWithMessage,
+  structuredCompletionResourceWithMessage,
 );
 
 const assistantMessage = (id: string) =>

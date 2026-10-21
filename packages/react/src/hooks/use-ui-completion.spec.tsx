@@ -2,18 +2,16 @@ import { renderHook } from '@testing-library/react';
 import { createElement } from 'react';
 import { expect, test, vi } from 'vitest';
 import { s, ɵcreateUiKit } from '@hashbrownai/core';
-import {
-  type UseStructuredCompletionResult,
-  ɵuseStructuredCompletionWithMessage,
-} from './use-structured-completion';
+import type { UseStructuredCompletionResult } from './use-structured-completion';
+import { useStructuredCompletionWithMessage } from './use-structured-completion-with-message';
 import { useUiCompletion } from './use-ui-completion';
 
-vi.mock('./use-structured-completion', () => ({
-  ɵuseStructuredCompletionWithMessage: vi.fn(),
+vi.mock('./use-structured-completion-with-message', () => ({
+  useStructuredCompletionWithMessage: vi.fn(),
 }));
 
 const useStructuredCompletionMock = vi.mocked(
-  ɵuseStructuredCompletionWithMessage,
+  useStructuredCompletionWithMessage,
 );
 
 const assistantMessage = (id: string, content: unknown) => ({

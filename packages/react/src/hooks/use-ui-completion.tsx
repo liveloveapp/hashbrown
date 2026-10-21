@@ -10,10 +10,8 @@ import {
 import { ExposedComponent } from '../expose-component.fn';
 import { UiAssistantMessage, UiChatSchema } from './use-ui-chat';
 import { type UiKitInput, useUiKit } from './use-ui-kit';
-import {
-  type UseStructuredCompletionResult,
-  ɵuseStructuredCompletionWithMessage,
-} from './use-structured-completion';
+import type { UseStructuredCompletionResult } from './use-structured-completion';
+import { useStructuredCompletionWithMessage } from './use-structured-completion-with-message';
 
 /**
  * Options for the `useUiCompletion` hook.
@@ -135,7 +133,7 @@ export const useUiCompletion = <
   const uiSchema = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);
 
   const { result: structured, message: completionMessage } =
-    ɵuseStructuredCompletionWithMessage<Input, typeof uiSchema, State>({
+    useStructuredCompletionWithMessage<Input, typeof uiSchema, State>({
       ...completionOptions,
       schema: uiSchema as any,
       system,

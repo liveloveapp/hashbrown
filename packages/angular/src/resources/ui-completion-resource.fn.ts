@@ -9,7 +9,7 @@ import {
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
-import { ɵstructuredCompletionResourceWithMessage } from './structured-completion-resource.fn';
+import { structuredCompletionResourceWithMessage } from './structured-completion-resource-with-message.fn';
 import {
   TAG_NAME_REGISTRY,
   UiAssistantMessage,
@@ -159,7 +159,7 @@ export function uiCompletionResource<
   const internalSchema = uiKit.schema;
 
   const { ref: completion, message: completionMessage } =
-    ɵstructuredCompletionResourceWithMessage<
+    structuredCompletionResourceWithMessage<
       Input,
       typeof internalSchema,
       s.Infer<UiChatMessageOutput>,

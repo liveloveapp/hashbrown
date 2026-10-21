@@ -3,10 +3,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { s, type TransportRequest } from '@hashbrownai/core';
 import { HashbrownProvider } from '../hashbrown-provider';
-import {
-  useStructuredCompletion,
-  ɵuseStructuredCompletionWithMessage,
-} from './use-structured-completion';
+import { useStructuredCompletion } from './use-structured-completion';
+import { useStructuredCompletionWithMessage } from './use-structured-completion-with-message';
 
 test('useStructuredCompletion exposes runtime-owned shared agent state', () => {
   // Arrange
@@ -107,7 +105,7 @@ test('the completion exposes the assistant message its output comes from', async
   // Act
   const { result } = renderHook(
     () =>
-      ɵuseStructuredCompletionWithMessage({
+      useStructuredCompletionWithMessage({
         input: 'Summarize this account.',
         system: 'Return a concise account summary.',
         schema: s.object('summary', { value: s.string('value') }),

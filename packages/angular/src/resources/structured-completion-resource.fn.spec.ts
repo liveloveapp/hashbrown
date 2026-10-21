@@ -4,10 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import { s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { structuredChatResource } from './structured-chat-resource.fn';
-import {
-  structuredCompletionResource,
-  ɵstructuredCompletionResourceWithMessage,
-} from './structured-completion-resource.fn';
+import { structuredCompletionResource } from './structured-completion-resource.fn';
+import { structuredCompletionResourceWithMessage } from './structured-completion-resource-with-message.fn';
 
 vi.mock('@hashbrownai/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@hashbrownai/core')>();
@@ -211,7 +209,7 @@ test('the completion exposes the assistant message its value comes from', () => 
 
   // Act
   const { ref, message } = TestBed.runInInjectionContext(() =>
-    ɵstructuredCompletionResourceWithMessage({
+    structuredCompletionResourceWithMessage({
       system: 'System prompt',
       input: signal('Summarize this'),
       schema: s.object('summary', {
@@ -318,7 +316,7 @@ test('structuredCompletionResource keeps its value when an activity trails the a
   );
 
   const { ref, message } = TestBed.runInInjectionContext(() =>
-    ɵstructuredCompletionResourceWithMessage({
+    structuredCompletionResourceWithMessage({
       system: 'System prompt',
       input: signal('Summarize this'),
       schema: s.object('summary', {
