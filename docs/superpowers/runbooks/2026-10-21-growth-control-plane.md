@@ -18,6 +18,17 @@ Never commit it or print it into logs or PR text.
 - `tools/growth/.provision/` is gitignored. It holds `test-database.env` with
   `TEST_DATABASE_URL='...'` single-quoted, because the URL contains `&`.
 
+`TEST_DATABASE_URL` points at the preview store, the same database that preview
+deployments use; there is no separate test store yet. Only migrations already
+on `main` may be applied there. An integration run from a branch with an
+unmerged migration records it in the ledger, and any later edit to that
+migration makes `migrate-growth` abort with a checksum mismatch. A run that
+crashes can leave fixture contacts keyed with email HMAC key version 1 behind.
+A dedicated test store is planned before PR 2.
+
+Nx loads the repo-root `.env` into every target, so a `DATABASE_URL` there
+silently becomes the migration target. Check it before running anything below.
+
 ## Run migrations
 
 ```
@@ -28,6 +39,10 @@ Idempotent: applied migrations are recorded in the ledger table
 `growth_schema_migrations`, and a second run applies nothing. A migration whose
 checksum changed after it was applied aborts the run.
 
+The preflight requires Node 24 or newer and refuses to run when
+`TEST_DATABASE_URL` is set in the same shell (or `B4_DATABASE_URL`). Against the
+preview store, apply only migrations that are already on `main`.
+
 ## Run the integration specs
 
 ```
@@ -35,7 +50,11 @@ set -a; . tools/growth/.provision/test-database.env; set +a
 GROWTH_INTEGRATION=1 npx nx test-integration growth
 ```
 
-`DATABASE_URL` and `B4_DATABASE_URL` must be unset. The specs clean up their rows.
+`DATABASE_URL` and `B4_DATABASE_URL` must be unset, including in the repo-root
+`.env`, and Node must be 24 or newer. The specs clean up their rows, but this is
+the preview store (see above): never run them from a branch that adds or edits
+a migration not yet on `main`, and after a crashed run look for leftover
+key-version-1 fixture contacts.
 
 ## Switches and environment variables
 
@@ -43,7 +62,7 @@ GROWTH_INTEGRATION=1 npx nx test-integration growth
 | --- | --- |
 | `DATABASE_URL` | Postgres connection; set by the Vercel Neon integration on deployments |
 | `GROWTH_DATABASE_ENVIRONMENT` | `production`, `preview` or `test`; which environment this database is |
-| `DELIVERY_ENVIRONMENT` | Environment this deployment sends from |
+| `DELIVERY_ENVIRONMENT` | `production`, `preview` or `test`; the environment this deployment sends from |
 | `GROWTH_EMAIL_HMAC_ACTIVE_SECRET` / `_ACTIVE_VERSION` / `_PREVIOUS_KEYS` | Keyring for email hashes; previous keys are a JSON array of `{version, secret}` |
 | `GROWTH_ACTION_TOKEN_ACTIVE_SECRET` / `_ACTIVE_VERSION` / `_PREVIOUS_KEYS` | Keyring for signed action tokens, same shape |
 | `GROWTH_PUBLIC_ACTION_ORIGIN` | Bare https origin for action links |
@@ -53,10 +72,12 @@ GROWTH_INTEGRATION=1 npx nx test-integration growth
 | `RESEND_SENDER_VERIFIED` | Sending domain verified |
 | `RESEND_NON_PRODUCTION_ALLOWLIST` | Recipients permitted outside production |
 | `RESEND_NON_PRODUCTION_REDIRECT_TO` | Redirect target for non-production mail |
-| `TEST_DATABASE_URL`, `GROWTH_INTEGRATION` | Integration specs only |
+| `TEST_DATABASE_URL`, `GROWTH_INTEGRATION` | Integration specs only; today `TEST_DATABASE_URL` is the preview store |
 
 The sender refuses to send unless `DELIVERY_ENVIRONMENT === GROWTH_DATABASE_ENVIRONMENT`
-and `RESEND_TRACKING_DISABLED=true`. Webhooks whose `environment` tag differs
+and `RESEND_TRACKING_DISABLED=true`. These refusals are enforced on the delivery
+policy object the caller builds from these variables; that caller is the
+lifecycle service in PR 5. Webhooks whose `environment` tag differs
 from `GROWTH_DATABASE_ENVIRONMENT` are acknowledged with 200 and ignored.
 
 ## Routes
@@ -64,12 +85,18 @@ from `GROWTH_DATABASE_ENVIRONMENT` are acknowledged with 200 and ignored.
 - `/_/unsubscribe`: GET with a token shows a confirmation form (400 with a
   generic body if the token is invalid); POST with the token records the
   unsubscribe stop (200), 400 on an invalid token, 503 on a retryable failure.
-  Legacy email-based requests are still handled.
+  A GET without a token gets 400.
 - `/_/growth/stop`: founder stop. GET with a token shows a confirmation form;
-  POST records the contact stop (200) or returns a generic 400.
+  POST records the contact stop (200), returns a generic 400 on an invalid
+  token, or 503 with `Retry-After: 30` on a database fault.
 - `/_/webhooks/resend`: Svix-verified Resend events update delivery status by
   precedence and apply bounce and complaint stops; events tagged for another
   environment get 200 and are ignored.
+
+  The Resend account is shared with threadplane, so both products' webhook
+  events reach both products' endpoints. Events whose sender address is not on
+  `hashbrown.dev` are acknowledged with 200 (`foreign_sender`) and ignored
+  before any database access.
 
 ## Not in PR 1
 
