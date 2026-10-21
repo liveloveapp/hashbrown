@@ -102,6 +102,11 @@ export interface RecordedAimockOptions {
   readonly fileName?: string;
   /** Values scrubbed from recordings; defaults to `collectSecrets(process.env)`. */
   readonly secrets?: readonly string[];
+  /**
+   * Characters per streamed chunk in replay, for cases that need text split
+   * across several events; defaults to aimock-runner's default.
+   */
+  readonly chunkSize?: number;
 }
 
 /**
@@ -145,6 +150,7 @@ export async function startRecordedAimock(
     recording
       ? {
           fixturePath,
+          chunkSize: options.chunkSize,
           record: {
             providers: { [options.provider]: options.upstream },
             fixturePath: RECORDED_FIXTURES_ROOT,
@@ -153,6 +159,7 @@ export async function startRecordedAimock(
         }
       : {
           fixturePath,
+          chunkSize: options.chunkSize,
           strict: true,
           strictMissMessage:
             `No recorded fixture matched for test "${slug}" ` +

@@ -1,9 +1,10 @@
 import { resolve } from 'node:path';
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import {
   runProviderAGUIWithAimock,
   startAimock,
+  startRecordedAimock,
 } from '@hashbrownai/testing/aimock';
 import OpenAI from 'openai';
 import { type ActivityCallback, HashbrownOpenAI } from './index';
@@ -11,6 +12,26 @@ import { historyFromEvents } from './testing/history-from-events';
 import type { OpenAIHashbrownRunAgentInput } from './stream/types';
 
 const OPENAI_MODEL = 'gpt-4.1-mini';
+const OPENAI_REASONING_MODEL = 'gpt-5-mini';
+const OPENAI_UPSTREAM = 'https://api.openai.com';
+
+// Recorded cases replay `tools/testing/aimock/fixtures/recorded/<slug>/openai.json`
+// and re-record from the live API with `npx nx record-fixtures openai`. They
+// assert structure only, so a re-record with different wording still passes.
+const RECORDED_TIMEOUT_MS = 180_000;
+const MAX_OUTPUT_TOKENS = 300;
+const MAX_REASONING_OUTPUT_TOKENS = 4_000;
+
+const LOOKUP_TOOL = {
+  name: 'lookup',
+  description: 'Looks up a short fact about a code word.',
+  parameters: {
+    type: 'object',
+    properties: { query: { type: 'string' } },
+    required: ['query'],
+    additionalProperties: false,
+  },
+};
 
 function fixturePath(name: string): string {
   return resolve(__dirname, '../../../tools/testing/aimock/fixtures', name);
@@ -56,6 +77,74 @@ async function runFixture(
   });
 }
 
+interface RecordedRunOptions {
+  readonly model?: string;
+  readonly transformRequestOptions?: (
+    options: OpenAI.Responses.ResponseCreateParamsStreaming,
+  ) => OpenAI.Responses.ResponseCreateParamsStreaming;
+}
+
+type RecordedRun = (
+  input: OpenAIHashbrownRunAgentInput,
+  options?: RecordedRunOptions,
+) => Promise<AGUIEvent[]>;
+
+/**
+ * Runs `body` against the current test's recording: replayed strictly by
+ * default, recorded from the live API with `AIMOCK_RECORD=1`. The provider
+ * builds its own OpenAI client, so the `X-Test-Id` header that names the
+ * recording is added to its requests by wrapping `fetch` for this test only.
+ */
+async function withRecording<T>(
+  body: (run: RecordedRun) => Promise<T>,
+  replay: { readonly chunkSize?: number } = {},
+): Promise<T> {
+  const recorded = await startRecordedAimock({
+    testName: expect.getState().currentTestName ?? '',
+    provider: 'openai',
+    upstream: OPENAI_UPSTREAM,
+    chunkSize: replay.chunkSize,
+  });
+  const realFetch = globalThis.fetch;
+  const fetchSpy = jest
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation((url, init) => {
+      const headers = new Headers(init?.headers);
+      for (const [name, value] of Object.entries(recorded.headers)) {
+        headers.set(name, value);
+      }
+      return realFetch(url, { ...init, headers });
+    });
+  const run: RecordedRun = (input, options = {}) => {
+    const model = options.model ?? OPENAI_MODEL;
+    const maxOutputTokens =
+      model === OPENAI_REASONING_MODEL
+        ? MAX_REASONING_OUTPUT_TOKENS
+        : MAX_OUTPUT_TOKENS;
+
+    return Array.fromAsync(
+      HashbrownOpenAI.stream.text({
+        apiKey: recorded.apiKey(process.env['OPENAI_API_KEY']),
+        baseURL: recorded.aimock.openAiBaseUrl,
+        model,
+        input,
+        transformRequestOptions: (request) => ({
+          ...(options.transformRequestOptions?.(request) ?? request),
+          max_output_tokens: maxOutputTokens,
+        }),
+      }),
+      (event) => EventSchemas.parse(event),
+    );
+  };
+
+  try {
+    return await body(run);
+  } finally {
+    fetchSpy.mockRestore();
+    await recorded.aimock.stop();
+  }
+}
+
 function contentEvents(events: AGUIEvent[]) {
   return events.filter(
     (event) => event.type === EventType.TEXT_MESSAGE_CONTENT,
@@ -68,149 +157,369 @@ function streamedContent(events: AGUIEvent[]): string {
     .join('');
 }
 
-test('OpenAI consumes AG-UI input and emits a canonical text run', async () => {
-  const events = await runFixture('text.json', baseInput('say hi briefly'));
+function eventTypes(events: readonly AGUIEvent[]): EventType[] {
+  return events.map((event) => event.type);
+}
 
-  expect(events).toEqual([
-    {
-      type: EventType.RUN_STARTED,
-      threadId: 'thread-openai',
-      runId: 'run-openai',
-    },
-    {
-      type: EventType.TEXT_MESSAGE_START,
-      messageId: 'run-openai:assistant',
-      role: 'assistant',
-      metadata: {
-        openai: { itemId: expect.any(String), reasoningItemIds: [] },
-      },
-    },
-    {
-      type: EventType.TEXT_MESSAGE_CONTENT,
-      messageId: 'run-openai:assistant',
-      delta: 'Hello from aimock.',
-    },
-    {
-      type: EventType.TEXT_MESSAGE_END,
-      messageId: 'run-openai:assistant',
-    },
-    {
-      type: EventType.RUN_FINISHED,
-      threadId: 'thread-openai',
-      runId: 'run-openai',
-    },
-  ]);
-});
-
-test('OpenAI preserves streamed text across multiple AG-UI events', async () => {
-  const events = await runFixture(
-    'streaming.json',
-    baseInput('stream deterministic text'),
-  );
-
-  expect(contentEvents(events).length).toBeGreaterThan(1);
-  expect(streamedContent(events)).toContain(
-    'Streaming fixture response with enough text',
-  );
-});
-
-test('OpenAI emits complete AG-UI tool call lifecycles', async () => {
-  const input = baseInput('call the lookup tool');
-  input.tools = [
-    {
-      name: 'lookup',
-      description: 'Lookup deterministic fixture data.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string' },
-        },
-        required: ['query'],
-      },
-    },
-  ];
-
-  const events = await runFixture('tool-call.json', input);
-  const toolEvents = events.filter((event) =>
+/**
+ * Asserts a run that started and finished for `input`, with no error, and
+ * streamed one non-empty assistant text message.
+ */
+function expectCanonicalTextRun(
+  events: AGUIEvent[],
+  input: OpenAIHashbrownRunAgentInput,
+): void {
+  const messageId = `${input.runId}:assistant`;
+  const textTypes = eventTypes(events).filter((type) =>
     [
-      EventType.TOOL_CALL_START,
-      EventType.TOOL_CALL_ARGS,
-      EventType.TOOL_CALL_END,
-    ].includes(event.type),
-  );
-  const start = toolEvents.find(
-    (event) => event.type === EventType.TOOL_CALL_START,
-  );
-  const args = toolEvents
-    .filter((event) => event.type === EventType.TOOL_CALL_ARGS)
-    .map((event) => event.delta)
-    .join('');
-  const end = toolEvents.find(
-    (event) => event.type === EventType.TOOL_CALL_END,
+      EventType.TEXT_MESSAGE_START,
+      EventType.TEXT_MESSAGE_CONTENT,
+      EventType.TEXT_MESSAGE_END,
+    ].includes(type),
   );
 
-  expect(start).toMatchObject({
-    type: EventType.TOOL_CALL_START,
-    toolCallName: 'lookup',
-    parentMessageId: 'run-openai:assistant',
-  });
-  expect(args).toContain('"query":"hashbrown"');
-  expect(end).toMatchObject({
-    type: EventType.TOOL_CALL_END,
-    toolCallId:
-      start?.type === EventType.TOOL_CALL_START
-        ? start.toolCallId
-        : 'missing-tool-call',
+  expect(eventTypes(events)).not.toContain(EventType.RUN_ERROR);
+  expect(events[0]).toEqual({
+    type: EventType.RUN_STARTED,
+    threadId: input.threadId,
+    runId: input.runId,
   });
   expect(events.at(-1)).toEqual({
     type: EventType.RUN_FINISHED,
     threadId: input.threadId,
     runId: input.runId,
   });
-});
-
-test('OpenAI maps the Hashbrown response schema to native structured output', async () => {
-  const input = baseInput('return structured output');
-  input.forwardedProps = {
-    hashbrown: {
-      responseSchema: {
-        type: 'object',
-        properties: {
-          text: { type: 'string' },
-          ok: { type: 'boolean' },
-        },
-        required: ['text', 'ok'],
+  expect(textTypes[0]).toBe(EventType.TEXT_MESSAGE_START);
+  expect(textTypes.at(-1)).toBe(EventType.TEXT_MESSAGE_END);
+  expect(
+    textTypes
+      .slice(1, -1)
+      .every((type) => type === EventType.TEXT_MESSAGE_CONTENT),
+  ).toBe(true);
+  expect(
+    events.find((event) => event.type === EventType.TEXT_MESSAGE_START),
+  ).toEqual({
+    type: EventType.TEXT_MESSAGE_START,
+    messageId,
+    role: 'assistant',
+    metadata: {
+      openai: {
+        itemId: expect.any(String),
+        reasoningItemIds: expect.any(Array),
       },
     },
-  };
-  let capturedTextFormat: unknown;
-  const events = await runProviderAGUIWithAimock({
-    fixturePath: fixturePath('structured-output.json'),
-    createStream: (aimock, signal) =>
-      HashbrownOpenAI.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.openAiBaseUrl,
-        model: OPENAI_MODEL,
-        input,
-        signal,
+  });
+  expect(
+    contentEvents(events).every((event) => event.messageId === messageId),
+  ).toBe(true);
+  expect(streamedContent(events).trim()).not.toBe('');
+}
+
+/**
+ * Asserts a run that finished after calling `toolName` at least once, each
+ * call with a complete lifecycle and JSON object arguments.
+ */
+function expectToolRound(
+  events: AGUIEvent[],
+  input: OpenAIHashbrownRunAgentInput,
+  toolName: string,
+): void {
+  const starts = events.flatMap((event) =>
+    event.type === EventType.TOOL_CALL_START ? [event] : [],
+  );
+
+  expect(eventTypes(events)).not.toContain(EventType.RUN_ERROR);
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_FINISHED,
+    threadId: input.threadId,
+    runId: input.runId,
+  });
+  expect(starts.length).toBeGreaterThanOrEqual(1);
+  for (const start of starts) {
+    const args = events
+      .flatMap((event) =>
+        event.type === EventType.TOOL_CALL_ARGS &&
+        event.toolCallId === start.toolCallId
+          ? [event.delta]
+          : [],
+      )
+      .join('');
+    const endIndex = events.findIndex(
+      (event) =>
+        event.type === EventType.TOOL_CALL_END &&
+        event.toolCallId === start.toolCallId,
+    );
+
+    expect(start).toMatchObject({
+      toolCallName: toolName,
+      parentMessageId: `${input.runId}:assistant`,
+    });
+    expect(JSON.parse(args)).toEqual({ query: expect.any(String) });
+    expect(endIndex).toBeGreaterThan(events.indexOf(start));
+  }
+}
+
+/**
+ * Asserts that reasoning streamed before any text or tool call, as at least
+ * one message with non-empty summary text and an encrypted value.
+ */
+function expectReasoning(events: AGUIEvent[]): void {
+  const types = eventTypes(events);
+  const firstReasoning = types.indexOf(EventType.REASONING_MESSAGE_START);
+  const firstOutput = types.findIndex(
+    (type) =>
+      type === EventType.TEXT_MESSAGE_START ||
+      type === EventType.TOOL_CALL_START,
+  );
+
+  expect(firstReasoning).toBeGreaterThan(0);
+  expect(firstReasoning).toBeLessThan(firstOutput);
+  expect(types).toContain(EventType.REASONING_MESSAGE_END);
+  expect(
+    events
+      .flatMap((event) =>
+        event.type === EventType.REASONING_MESSAGE_CONTENT ? [event.delta] : [],
+      )
+      .join('')
+      .trim(),
+  ).not.toBe('');
+  expect(
+    events.find((event) => event.type === EventType.REASONING_ENCRYPTED_VALUE),
+  ).toMatchObject({ encryptedValue: expect.any(String) });
+}
+
+function lookupResult(): string {
+  return JSON.stringify({ fact: 'The code word is green.' });
+}
+
+test(
+  'OpenAI consumes AG-UI input and emits a canonical text run',
+  async () => {
+    const input = baseInput('Say hello in three words.');
+
+    const events = await withRecording((run) => run(input));
+
+    expectCanonicalTextRun(events, input);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'OpenAI preserves streamed text across multiple AG-UI events',
+  async () => {
+    const input = baseInput('Write two short sentences about potatoes.');
+
+    const events = await withRecording((run) => run(input), { chunkSize: 8 });
+
+    expectCanonicalTextRun(events, input);
+    expect(contentEvents(events).length).toBeGreaterThan(1);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'OpenAI emits tool call lifecycles and continues after the tool result',
+  async () => {
+    const first = baseInput(
+      "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+    );
+    first.tools = [LOOKUP_TOOL];
+
+    const { firstEvents, second, secondEvents } = await withRecording(
+      async (run) => {
+        const firstEvents = await run(first);
+        const second: OpenAIHashbrownRunAgentInput = {
+          ...first,
+          runId: 'run-openai-2',
+          messages: historyFromEvents(
+            first.messages,
+            first.runId,
+            firstEvents,
+            lookupResult,
+          ),
+        };
+        return { firstEvents, second, secondEvents: await run(second) };
+      },
+    );
+
+    expectToolRound(firstEvents, first, 'lookup');
+    expectCanonicalTextRun(secondEvents, second);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'OpenAI maps the Hashbrown response schema to native structured output',
+  async () => {
+    const input = baseInput('Describe a potato as structured output.');
+    const responseSchema = {
+      type: 'object',
+      properties: {
+        text: { type: 'string' },
+        ok: { type: 'boolean' },
+      },
+      required: ['text', 'ok'],
+      additionalProperties: false,
+    };
+    input.forwardedProps = { hashbrown: { responseSchema } };
+    let capturedTextFormat: unknown;
+
+    const events = await withRecording((run) =>
+      run(input, {
         transformRequestOptions: (options) => {
           capturedTextFormat = options.text?.format;
           return options;
         },
       }),
-  });
+    );
 
-  expect(capturedTextFormat).toEqual({
-    type: 'json_schema',
-    name: 'schema',
-    schema: input.forwardedProps?.hashbrown?.responseSchema,
-    strict: true,
-  });
-  expect(JSON.parse(streamedContent(events))).toEqual({
-    text: 'Hello from structured aimock.',
-    ok: true,
-  });
-});
+    expect(capturedTextFormat).toEqual({
+      type: 'json_schema',
+      name: 'schema',
+      schema: responseSchema,
+      strict: true,
+    });
+    expectCanonicalTextRun(events, input);
+    expect(JSON.parse(streamedContent(events))).toEqual({
+      text: expect.any(String),
+      ok: expect.any(Boolean),
+    });
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'OpenAI completes a run from a full AG-UI history',
+  async () => {
+    const input = baseInput(
+      'What colour is the code word? Answer in one word.',
+    );
+    input.tools = [LOOKUP_TOOL];
+    const history: Message[] = [
+      input.messages[0],
+      {
+        id: 'user-previous',
+        role: 'user',
+        content: "Look up the code word 'potato'.",
+      },
+      {
+        id: 'assistant-previous',
+        role: 'assistant',
+        toolCalls: [
+          {
+            id: 'call-previous',
+            type: 'function',
+            function: { name: 'lookup', arguments: '{"query":"potato"}' },
+          },
+        ],
+      },
+      {
+        id: 'call-previous',
+        role: 'tool',
+        toolCallId: 'call-previous',
+        content: lookupResult(),
+      },
+      {
+        id: 'assistant-previous-answer',
+        role: 'assistant',
+        content: 'I looked up the code word.',
+      },
+      {
+        id: 'reasoning-previous',
+        role: 'reasoning',
+        content: 'display-only reasoning',
+      },
+      {
+        id: 'activity-previous',
+        role: 'activity',
+        activityType: 'progress',
+        content: { label: 'display-only activity' },
+      },
+      input.messages[1],
+    ];
+    input.messages = history;
+
+    const events = await withRecording((run) => run(input));
+
+    expectCanonicalTextRun(events, input);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'OpenAI streams reasoning summaries and encrypted reasoning from a reasoning model',
+  async () => {
+    const input = baseInput(
+      'A train leaves at 9:40 and the trip takes 2 hours 35 minutes. When does it arrive? Reply with the time only.',
+    );
+
+    const events = await withRecording((run) =>
+      run(input, { model: OPENAI_REASONING_MODEL }),
+    );
+
+    expectReasoning(events);
+    expectCanonicalTextRun(events, input);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+test(
+  'OpenAI replays reasoning across a tool round trip',
+  async () => {
+    const first = baseInput(
+      "Work out which of 'stone', 'apple' and 'river' is a fruit, look that word up with the lookup tool, then answer in one short sentence.",
+    );
+    first.tools = [LOOKUP_TOOL];
+    let capturedInput: OpenAI.Responses.ResponseCreateParamsStreaming['input'];
+
+    const { firstEvents, second, secondEvents } = await withRecording(
+      async (run) => {
+        const firstEvents = await run(first, {
+          model: OPENAI_REASONING_MODEL,
+        });
+        const second: OpenAIHashbrownRunAgentInput = {
+          ...first,
+          runId: 'run-openai-2',
+          messages: historyFromEvents(
+            first.messages,
+            first.runId,
+            firstEvents,
+            lookupResult,
+          ),
+        };
+        const secondEvents = await run(second, {
+          model: OPENAI_REASONING_MODEL,
+          transformRequestOptions: (options) => {
+            capturedInput = options.input;
+            return options;
+          },
+        });
+        return { firstEvents, second, secondEvents };
+      },
+    );
+
+    expectReasoning(firstEvents);
+    expectToolRound(firstEvents, first, 'lookup');
+    expect(second.messages.map((message) => message.role)).toEqual(
+      expect.arrayContaining(['reasoning', 'assistant', 'tool']),
+    );
+    expect(Array.isArray(capturedInput) ? capturedInput : []).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'reasoning',
+          encrypted_content: expect.any(String),
+        }),
+        expect.objectContaining({ type: 'function_call', name: 'lookup' }),
+        expect.objectContaining({ type: 'function_call_output' }),
+      ]),
+    );
+    expectCanonicalTextRun(secondEvents, second);
+  },
+  RECORDED_TIMEOUT_MS,
+);
+
+// Hand-written fixtures below: request shapes, provider errors, cancellation
+// and activity ordering are Hashbrown behaviour, not model output.
 
 test('OpenAI maps complete AG-UI history without provider-specific wire keys', async () => {
   const input = baseInput('new question');
@@ -278,112 +587,6 @@ test('OpenAI maps complete AG-UI history without provider-specific wire keys', a
     },
     { role: 'user', content: 'new question' },
   ]);
-});
-
-const LOOKUP_TOOL = {
-  name: 'lookup',
-  description: 'Lookup deterministic fixture data.',
-  parameters: {
-    type: 'object',
-    properties: { query: { type: 'string' } },
-    required: ['query'],
-  },
-};
-
-test('OpenAI streams reasoning summaries and encrypted reasoning from a reasoning model', async () => {
-  const events = await runProviderAGUIWithAimock({
-    fixturePath: fixturePath('openai/reasoning.json'),
-    createStream: (aimock, signal) =>
-      HashbrownOpenAI.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.openAiBaseUrl,
-        model: 'gpt-5-mini',
-        input: baseInput('reason before answering'),
-        signal,
-      }),
-  });
-
-  const types = events.map((event) => event.type);
-  expect(types.slice(0, 6)).toEqual([
-    EventType.RUN_STARTED,
-    EventType.REASONING_MESSAGE_START,
-    EventType.REASONING_MESSAGE_CONTENT,
-    EventType.REASONING_ENCRYPTED_VALUE,
-    EventType.REASONING_MESSAGE_END,
-    EventType.TEXT_MESSAGE_START,
-  ]);
-  expect(
-    events
-      .filter((event) => event.type === EventType.REASONING_MESSAGE_CONTENT)
-      .map((event) => event.delta)
-      .join(''),
-  ).toBe('I will answer deterministically.');
-  expect(streamedContent(events)).toBe('Reasoned answer from aimock.');
-  expect(events.at(-1)?.type).toBe(EventType.RUN_FINISHED);
-});
-
-test('OpenAI replays reasoning across a tool round trip', async () => {
-  const first = baseInput('reason before calling lookup');
-  first.tools = [LOOKUP_TOOL];
-  const firstEvents = await runProviderAGUIWithAimock({
-    fixturePath: fixturePath('openai/reasoning-tool-call.json'),
-    createStream: (aimock, signal) =>
-      HashbrownOpenAI.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.openAiBaseUrl,
-        model: 'gpt-5-mini',
-        input: first,
-        signal,
-      }),
-  });
-  const history = historyFromEvents(
-    first.messages,
-    first.runId,
-    firstEvents,
-    () => 'fixture continuation result',
-  );
-  const second: OpenAIHashbrownRunAgentInput = {
-    ...first,
-    runId: 'run-openai-2',
-    messages: history,
-  };
-  let capturedInput: OpenAI.Responses.ResponseCreateParamsStreaming['input'];
-
-  const secondEvents = await runProviderAGUIWithAimock({
-    fixturePath: fixturePath('openai/reasoning-tool-call.json'),
-    createStream: (aimock, signal) =>
-      HashbrownOpenAI.stream.text({
-        apiKey: 'test-not-used',
-        baseURL: aimock.openAiBaseUrl,
-        model: 'gpt-5-mini',
-        input: second,
-        signal,
-        transformRequestOptions: (options) => {
-          capturedInput = options.input;
-          return options;
-        },
-      }),
-  });
-
-  expect(history.map((message) => message.role)).toEqual([
-    'system',
-    'user',
-    'reasoning',
-    'assistant',
-    'tool',
-  ]);
-  expect(Array.isArray(capturedInput) ? capturedInput : []).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        type: 'reasoning',
-        encrypted_content: expect.any(String),
-      }),
-      expect.objectContaining({ type: 'function_call', name: 'lookup' }),
-      expect.objectContaining({ type: 'function_call_output' }),
-    ]),
-  );
-  expect(streamedContent(secondEvents)).toBe('Continued answer from aimock.');
-  expect(secondEvents.at(-1)?.type).toBe(EventType.RUN_FINISHED);
 });
 
 test('transformRequestOptions receives Responses params', async () => {

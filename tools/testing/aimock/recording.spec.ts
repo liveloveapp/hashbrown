@@ -4,6 +4,8 @@ import * as http from 'node:http';
 import * as https from 'node:https';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import * as aimockRunner from './aimock-runner';
+import type { AimockHandle } from './aimock-runner';
 import {
   collectSecrets,
   isRecording,
@@ -165,6 +167,33 @@ test('strict replay fails a request with no fixture and names the test', async (
   expect(body).toContain(slug);
   expect(body).toContain(join(RECORDED_FIXTURES_ROOT, slug, 'openai.json'));
   expect(outboundCalls).toBe(0);
+});
+
+test('startRecordedAimock passes chunkSize through to aimock', async () => {
+  const previousRecord = process.env['AIMOCK_RECORD'];
+  delete process.env['AIMOCK_RECORD'];
+  const startAimock = jest
+    .spyOn(aimockRunner, 'startAimock')
+    .mockResolvedValue({} as AimockHandle);
+  let options: unknown;
+
+  try {
+    await startRecordedAimock({
+      testName: 'chunk size passthrough',
+      provider: 'openai',
+      upstream: 'https://api.openai.com',
+      chunkSize: 7,
+      secrets: [],
+    });
+    options = startAimock.mock.calls[0]?.[0];
+  } finally {
+    startAimock.mockRestore();
+    if (previousRecord !== undefined) {
+      process.env['AIMOCK_RECORD'] = previousRecord;
+    }
+  }
+
+  expect(options).toMatchObject({ chunkSize: 7, strict: true });
 });
 
 function runClearRecordings(root: string, args: string[]): string[] {
