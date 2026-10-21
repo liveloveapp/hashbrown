@@ -119,9 +119,20 @@ available from the chat.
 1. Add a contract (name, description, Skillet props) to `shared/src/contracts.ts`. Keep
    IDs as plain `s.string` so they are held back until complete.
 2. Build its view model in `shared/src/views.ts` and test it.
-3. Write the Angular and React components and a fallback for each, and add them to
-   `components` in both core files.
-4. Tell the model when to use it in `SYSTEM_PROMPT`.
+3. Write the Angular and React components and a fallback for each, and add them to the
+   `cards` kit in both core files (`cardsKit` in `angular/src/app/assistant.ts`, `cards`
+   in `react/src/assistant.tsx`).
+4. Add the contract to `CARD_DEFINITIONS` in `shared/src/response-schemas.ts`, in the
+   same position as in the kits. Skip it and any schema with the new card in it matches
+   no pinned one, so the server falls back to the full schema, which does not include
+   the card: the model can never render it.
+5. Add it to the cards group of `cardGroups` in `shared/src/contracts.ts`, in the same
+   position. The server pins the cards decision's questions from it; skip it and the
+   decision never picks the card, so it is never offered.
+6. Tell the model when to use it in `SYSTEM_PROMPT`, as an "If the X card is available"
+   rule like the others. A card is offered only on turns the decision picks it; without
+   the rule the model has no guidance for those turns, and nothing tells it the card may
+   be missing on the others.
 
 ### Add a tool
 
