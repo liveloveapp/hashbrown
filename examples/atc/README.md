@@ -62,8 +62,10 @@ Enter will send the text.
    fastest, follow the fastest airliner, flying near Bend, Redmond airport). Once a
    filter is applied, a "Refine:" row above the composer offers up to two ways to narrow
    it ("Below 5,000 ft", "Only <airline>", "Within 10 nm", "Only jets"), derived from
-   the filter and the traffic by `shared/src/refinements.ts`; a click refines the
-   filter the same way, without touching the transcript.
+   the filter and the traffic by `shared/src/refinements.ts`. Each keeps some of the
+   matches and drops some; they are worked out once the filter run settles and hold
+   still while the planes move. A click refines the filter the same way, without
+   touching the transcript.
 3. **Generate.** A question goes to the chat, which calls browser-side tools and renders
    only the cards the decision picked, plus Markdown.
 

@@ -27,12 +27,12 @@ dependencies); this file covers atc.
 | `shared/src/tools.ts`, `find-aircraft.ts`              | Tool handlers; the pure aircraft query                                                                                                                                        |
 | `shared/src/tool-definitions.ts`                       | Tool names, descriptions and schemas, pinned by the server                                                                                                                    |
 | `shared/src/browser-tools.ts`                          | The tools wired to routes and surfaces, for both apps                                                                                                                         |
-| `shared/src/contracts.ts`                              | Component contracts (Skillet) and `SYSTEM_PROMPT`                                                                                                                             |
+| `shared/src/contracts.ts`                              | Component contracts (Skillet), `SYSTEM_PROMPT`, `FILTER_SYSTEM_PROMPT`, `ROUTE_CONTEXT`, and `STARTER_PROMPTS`: four filter starters, then four questions                     |
 | `shared/src/places.ts`, `directory.ts`                 | Built-in airports and areas (`lookupPlace`, `AREAS`); the chart airport directory (`airportByCode`)                                                                           |
 | `shared/src/views.ts`, `detail-view.ts`                | Pure view models for cards and the map's detail card                                                                                                                          |
 | `shared/src/route.ts`, `router-input.ts`               | `routeSchema` decoding: where Enter sends typed text, and the router's debounced input                                                                                        |
 | `shared/src/filter-view.ts`, `filter-sync.ts`          | The filter pill's chips (a streaming field is dashed); the request `/api/filter` takes                                                                                        |
-| `shared/src/refinements.ts`                            | The "Refine:" row: up to two suggestions that narrow the applied filter; and `STARTER_PROMPTS` (contracts.ts): four filter starters, then four questions                      |
+| `shared/src/refinements.ts`                            | The "Refine:" row: up to two suggestions that narrow the applied filter without emptying it, held per filter (`stableRefinements`)                                            |
 | `shared/src/stream-view.ts`                            | The drawer's text blocks: router and cards decisions, `CARDS_SELECT_MAX`, `CARDS_MIN_CONFIDENCE`                                                                              |
 | `angular/src/app/filter.ts`, `react/src/filter.tsx`    | The filter pill: structured completion against `/api/filter`                                                                                                                  |
 | `shared/src/dev-tool.ts`                               | The developer drawer's view model: dev mode and height storage, tabs, the shown send (`rowTurns`, `sendActivity`)                                                             |
@@ -141,7 +141,7 @@ dependencies); this file covers atc.
   than the prompt asks for; and answers that show aircraft but leave none highlighted.
 - After changing `ROUTE_CONTEXT`, `CARDS_CONTEXT`, `routeSchema` or a card description, run
   `npx nx decide-eval atc-e2e` (live decisions, needs `TYPESAFE_API_KEY`, no servers). It
-  fails when the router gets fewer than 28 of its 30 labelled probes (or 16 of 17 held-out
+  fails when the router gets fewer than 28 of its 34 labelled probes (or 16 of 17 held-out
   ones) right, or fewer than 7 of 8 cards probes narrow confidently to the expected card.
 - Builds stay free of warnings. Leaflet 1.x ships only CommonJS, so the Angular build
   lists it in `allowedCommonJsDependencies` (`angular/project.json`); the React build
