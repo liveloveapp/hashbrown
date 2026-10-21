@@ -1,4 +1,5 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { ɵwithActivities } from '@hashbrownai/core';
 import {
   BedrockRuntimeClient,
   ConverseStreamCommand,
@@ -12,14 +13,9 @@ function normalizeError(error: unknown): string {
 }
 
 /**
- * Streams canonical AG-UI events from an Amazon Bedrock Converse request.
- *
- * @param options - Provider configuration and AG-UI run input.
- * @returns An asynchronous stream of canonical AG-UI events.
- *
- * @public
+ * Streams the provider's AG-UI events for one run, without activities.
  */
-export async function* text(
+async function* textEvents(
   options: BedrockTextStreamOptions,
 ): AsyncIterable<AGUIEvent> {
   const { model, input, signal, transformRequestOptions } = options;
@@ -77,4 +73,22 @@ export async function* text(
   } finally {
     ownedClient?.destroy();
   }
+}
+
+/**
+ * Streams canonical AG-UI events from an Amazon Bedrock Converse request.
+ *
+ * @param options - Provider configuration and AG-UI run input.
+ * @returns An asynchronous stream of canonical AG-UI events.
+ *
+ * @public
+ */
+export function text(
+  options: BedrockTextStreamOptions,
+): AsyncIterable<AGUIEvent> {
+  return ɵwithActivities(
+    (signal) => textEvents({ ...options, signal }),
+    options.activities,
+    options.signal,
+  );
 }
