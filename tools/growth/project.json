@@ -1,0 +1,22 @@
+{
+  "name": "growth",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/growth",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint tools/growth",
+        "forwardAllArgs": false
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node --test tools/growth/scripts/**/*.test.mjs"
+      }
+    }
+  }
+}
