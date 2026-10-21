@@ -39,9 +39,19 @@ export async function ensureResendDomain(resend, name) {
 }
 
 /**
+ * Vercel stores MX and CNAME values as absolute names with a trailing dot, so
+ * the wanted value must carry exactly one to compare equal on a rerun.
+ */
+function withZoneDot(type, value) {
+  if (type !== 'MX' && type !== 'CNAME') return value;
+  return value.endsWith('.') ? value : `${value}.`;
+}
+
+/**
  * Converts Resend DNS records to the shape `ensureDnsRecords` expects. Resend
  * names are relative to the zone and used as-is; `priority` becomes
- * `mxPriority` and the `Auto` ttl becomes 3600.
+ * `mxPriority` and every ttl (`Auto` or numeric) becomes 3600. MX and CNAME
+ * values gain a single trailing dot to match how Vercel stores them.
  *
  * @param {Array<{ name: string, type: string, value: string, ttl?: string | number, priority?: number }>} records Records from the Resend API.
  * @returns {Array<{ name: string, type: string, value: string, ttl: number, mxPriority?: number }>}
@@ -50,7 +60,7 @@ export function toVercelDnsRecords(records) {
   return records.map(({ name, type, value, priority }) => ({
     name,
     type,
-    value,
+    value: withZoneDot(type, value),
     ttl: DNS_TTL,
     ...(priority === undefined ? {} : { mxPriority: priority }),
   }));

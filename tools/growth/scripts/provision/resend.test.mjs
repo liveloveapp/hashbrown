@@ -52,7 +52,7 @@ const VERCEL_EXISTING = {
         {
           name: 'send',
           type: 'MX',
-          value: 'feedback-smtp.us-east-1.amazonses.com',
+          value: 'feedback-smtp.us-east-1.amazonses.com.',
         },
         { name: 'resend._domainkey', type: 'TXT', value: 'p=abc' },
       ],
@@ -112,7 +112,7 @@ test('ensureResendDomain reports exists when listed', async () => {
   assert.ok(calls.every((c) => c.method === 'GET'));
 });
 
-test('toVercelDnsRecords maps MX priority and Auto ttl', () => {
+test('toVercelDnsRecords maps MX priority, ttl, and trailing dots', () => {
   const input = [
     {
       record: 'MX',
@@ -127,6 +127,13 @@ test('toVercelDnsRecords maps MX priority and Auto ttl', () => {
       name: 'resend._domainkey',
       type: 'TXT',
       value: 'p=abc',
+      ttl: 60,
+    },
+    {
+      record: 'Tracking',
+      name: 'links',
+      type: 'CNAME',
+      value: 'track.rmta.net',
       ttl: 'Auto',
     },
   ];
@@ -137,14 +144,35 @@ test('toVercelDnsRecords maps MX priority and Auto ttl', () => {
     {
       name: 'send',
       type: 'MX',
-      value: 'feedback-smtp.us-east-1.amazonses.com',
+      value: 'feedback-smtp.us-east-1.amazonses.com.',
       ttl: 3600,
       mxPriority: 10,
     },
     { name: 'resend._domainkey', type: 'TXT', value: 'p=abc', ttl: 3600 },
+    { name: 'links', type: 'CNAME', value: 'track.rmta.net.', ttl: 3600 },
   ]);
   assert.ok(!('priority' in result[0]));
   assert.ok(!('mxPriority' in result[1]));
+});
+
+test('toVercelDnsRecords does not double an existing trailing dot', () => {
+  const input = [
+    {
+      name: 'send',
+      type: 'MX',
+      value: 'mx.example.com.',
+      priority: 10,
+      ttl: 60,
+    },
+    { name: 'links', type: 'CNAME', value: 'track.rmta.net.', ttl: 60 },
+  ];
+
+  const result = toVercelDnsRecords(input);
+
+  assert.deepEqual(
+    result.map((r) => r.value),
+    ['mx.example.com.', 'track.rmta.net.'],
+  );
 });
 
 test('ensureSendingKey creates a sending-only key and returns its token', async () => {
