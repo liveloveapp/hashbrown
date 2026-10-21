@@ -122,6 +122,8 @@ test('a refinement appears once a filter is applied and refines it without a tra
   store.setMapFilter(FILTER);
   fixture.detectChanges();
   const texts = refinementTexts(element);
+  const row = element.querySelector('[data-testid="refinements"]');
+  const label = element.querySelector('.atc-refinements-label');
   (
     element.querySelector('[data-testid="refinements"] button') as HTMLElement
   ).click();
@@ -130,6 +132,10 @@ test('a refinement appears once a filter is applied and refines it without a tra
 
   expect(before).toBeNull();
   expect(texts).toEqual(['Below 5,000 ft', 'Only jets']);
+  expect(row?.getAttribute('role')).toBe('group');
+  expect(label?.textContent?.trim()).toBe('Refine:');
+  expect(row?.getAttribute('aria-labelledby')).toBe(label?.id);
+  expect(label?.id).not.toBe('');
   expect(filtered).toEqual(['Below 5,000 ft']);
   expect(chat.requests).toHaveLength(0);
   expect(route.requests).toHaveLength(0);

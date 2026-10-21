@@ -26,7 +26,13 @@ import {
   useUiDecision,
   useUiKit,
 } from '@hashbrownai/react';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   AircraftCompare,
   AircraftCompareFallback,
@@ -220,6 +226,7 @@ export function Assistant({
     () => refinements(applied, [...aircraft.values()]),
     [applied, aircraft],
   );
+  const refineLabelId = useId();
   const pick = (starter: Starter) =>
     starter.route === 'filter'
       ? filter(starter.text, ROUTER_SKIPPED)
@@ -247,7 +254,15 @@ export function Assistant({
         ) : null}
       </div>
       {suggestions.length > 0 ? (
-        <div className="atc-refinements" data-testid="refinements">
+        <div
+          className="atc-refinements"
+          data-testid="refinements"
+          role="group"
+          aria-labelledby={refineLabelId}
+        >
+          <span id={refineLabelId} className="atc-refinements-label">
+            Refine:
+          </span>
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.text}

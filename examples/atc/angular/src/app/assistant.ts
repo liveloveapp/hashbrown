@@ -109,6 +109,8 @@ export const CARDS_DECISION_TRANSPORT = new InjectionToken<Decision.Transport>(
   },
 );
 
+let nextRefineId = 0;
+
 /**
  * The chat panel: components, browser-side tools and the streaming answer,
  * with the one composer that routes what is typed.
@@ -136,7 +138,13 @@ export const CARDS_DECISION_TRANSPORT = new InjectionToken<Decision.Transport>(
       }
     </div>
     @if (suggestions().length > 0) {
-      <div class="atc-refinements" data-testid="refinements">
+      <div
+        class="atc-refinements"
+        data-testid="refinements"
+        role="group"
+        [attr.aria-labelledby]="refineLabelId"
+      >
+        <span [id]="refineLabelId" class="atc-refinements-label">Refine:</span>
         @for (suggestion of suggestions(); track suggestion.text) {
           <button
             type="button"
@@ -204,6 +212,7 @@ export class Assistant {
     computation: (value, prev): UiChatMessage[] => value ?? prev?.value ?? [],
   });
   protected readonly skipped = ROUTER_SKIPPED;
+  protected readonly refineLabelId = `atc-refine-${nextRefineId++}`;
   // Ways to narrow the filter on the map, derived from it and the traffic.
   private readonly atcState = injectAtcState();
   protected readonly suggestions = computed(() => {

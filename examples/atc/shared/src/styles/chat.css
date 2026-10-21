@@ -112,9 +112,15 @@
 .atc-refinements {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   padding: 8px 16px;
   margin-bottom: var(--atc-composer-height);
+}
+.atc-refinements-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atc-muted);
 }
 .atc-refinement {
   border: 1px solid var(--atc-border);
