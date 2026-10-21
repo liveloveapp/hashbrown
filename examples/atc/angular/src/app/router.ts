@@ -153,6 +153,12 @@ export function injectRouter(draft: Signal<string>): Router {
       });
     },
     cancel: () => cancelWaiting(),
-    shown: () => routerShown(untracked(state), tracked.answeredMs()),
+    shown: () =>
+      routerShown(
+        untracked(state),
+        tracked.answeredFor() === untracked(state).text
+          ? tracked.answeredMs()
+          : null,
+      ),
   };
 }

@@ -832,3 +832,30 @@ test('Show the stream is on for a first visit and shows every layer', async ({
     page.getByRole('switch', { name: 'Show the stream' }),
   ).not.toBeChecked();
 });
+
+for (const width of [320, 375]) {
+  test(`the header fits at ${width}px: the source link is not clipped and the page does not scroll sideways`, async ({
+    browser,
+  }, testInfo) => {
+    const { page, close } = await openPhone(browser, testInfo.project.name, {
+      width,
+      height: 700,
+    });
+
+    const link = await page
+      .getByRole('link', { name: 'atc source on GitHub' })
+      .boundingBox();
+    const switchBox = await page
+      .getByRole('switch', { name: 'Show the stream' })
+      .boundingBox();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
+
+    expect(link).not.toBeNull();
+    expect((link?.x ?? 0) + (link?.width ?? 0)).toBeLessThanOrEqual(width);
+    expect(switchBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect(overflow).toBeLessThanOrEqual(0);
+    await close();
+  });
+}

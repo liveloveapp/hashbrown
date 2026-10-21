@@ -12,6 +12,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   host: {
     class: 'atc-stream',
     role: 'group',
+    'aria-live': 'off',
+    tabindex: '0',
     'data-testid': 'stream-panel',
     '[attr.aria-label]': 'label()',
   },
@@ -19,7 +21,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     @for (block of blocks(); track $index) {
       <section class="atc-stream-block">
         <p class="atc-stream-title">{{ block.title }}</p>
-        <pre class="atc-stream-text" tabindex="0">{{ block.text }}</pre>
+        <pre class="atc-stream-text">{{ block.text }}</pre>
       </section>
     }
   `,

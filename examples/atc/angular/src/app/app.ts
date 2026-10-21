@@ -1,5 +1,6 @@
 import {
   filterBlocks,
+  filterPanelVisible,
   focusOpensSheet,
   INITIAL_SHEET,
   nextSheet,
@@ -14,8 +15,10 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { AirspaceMap } from './airspace-map';
 import { Assistant } from './assistant';
@@ -57,7 +60,7 @@ import { StreamPanel } from './stream-panel';
         <atc-sheet-handle [expanded]="expanded()" (move)="move($event)" />
         <atc-panel-header />
         <atc-assistant
-          (filterRouted)="filterRoute.set($event)"
+          (filterRouted)="startRun($event)"
           (filter)="mapFilter.apply($event)"
           (sent)="move({ type: 'send' })"
         />
@@ -88,21 +91,39 @@ export class App {
   protected readonly filterRoute = signal<RouterShown | null>(null);
   private readonly showStream = inject(ShowStream);
   private readonly state = injectAtcState();
-  // The panel waits for a filter, and goes with it when it is cleared.
-  private readonly filtered = computed(() => this.state().mapFilter !== null);
+  // The filter on the map. The panel shows only while a run streams, or while
+  // the map still holds what the last run produced: the assistant's filter
+  // tool, a clear or the pill's x all replace it, and the panel goes.
+  private readonly produced = signal<unknown>(null);
+  private ran = false;
+  private readonly settleRun = effect(() => {
+    const loading = this.mapFilter.loading();
+    untracked(() => {
+      if (loading) {
+        this.ran = true;
+      } else if (this.ran) {
+        this.ran = false;
+        this.produced.set(this.state().mapFilter);
+      }
+    });
+  });
   /** The panel blocks under the filter pill, or null when there are none. */
   protected readonly filterPanel = computed(() => {
     const route = this.filterRoute();
     if (
       !this.showStream.on() ||
-      route === null ||
-      !(this.filtered() || this.mapFilter.loading())
+      !filterPanelVisible({
+        route,
+        loading: this.mapFilter.loading(),
+        current: this.state().mapFilter,
+        produced: this.produced(),
+      })
     ) {
       return null;
     }
 
     return filterBlocks(
-      route,
+      route as RouterShown,
       this.mapFilter.output(),
       this.mapFilter.loading(),
     );
@@ -117,6 +138,11 @@ export class App {
       stopFeed();
       stopWatching();
     });
+  }
+
+  protected startRun(routed: RouterShown): void {
+    this.filterRoute.set(routed);
+    this.produced.set(null);
   }
 
   protected move(event: SheetEvent): void {

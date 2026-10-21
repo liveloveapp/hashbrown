@@ -48,6 +48,8 @@
   font-family: var(--atc-mono);
   font-size: 12px;
   line-height: 1.5;
+  /* The one scroll container: long lines scroll here, never the page. */
+  overflow-x: auto;
 }
 .atc-stream-block {
   min-width: 0;
@@ -61,9 +63,6 @@
 }
 .atc-stream-text {
   margin: 0;
-  /* Long lines scroll inside the panel; the page never scrolls sideways. */
-  max-width: 100%;
-  overflow-x: auto;
   font: inherit;
   white-space: pre;
   tab-size: 2;
@@ -81,6 +80,13 @@
   overflow-y: auto;
   margin-top: 0;
 }
+/* The pill's buttons are 44px on touch screens, so the pill is taller. */
+@media (pointer: coarse) {
+  .atc-map-stream {
+    top: 124px;
+    max-height: calc(100% - 148px);
+  }
+}
 /* A docked detail card covers the pill, so the panel waits with it. */
 .atc-map-panel:has(.atc-detail.is-docked.is-open) .atc-map-stream {
   display: none;
@@ -92,4 +98,11 @@
 }
 .atc-answer .atc-stream {
   margin-top: 10px;
+}
+
+/* Narrow headers: the credit gives way so the source link is never clipped. */
+@media (max-width: 430px) {
+  .atc-panel-header .atc-credit {
+    display: none;
+  }
 }

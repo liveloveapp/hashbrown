@@ -577,6 +577,8 @@ test('the switch hides and shows the panels and remembers the choice', () => {
       result: { status: 'fulfilled' },
     },
   ]);
+  // A click only fires its change event on an element that is in the document.
+  document.body.append(header.nativeElement);
   header.detectChanges();
   chips.detectChanges();
   const toggle = (header.nativeElement as HTMLElement).querySelector(
@@ -585,9 +587,9 @@ test('the switch hides and shows the panels and remembers the choice', () => {
   const panel = () =>
     (chips.nativeElement as HTMLElement).querySelector('.atc-stream');
 
-  const shown = panel()?.textContent ?? '';
+  const shownPanel = panel();
+  const shown = shownPanel?.textContent ?? '';
   toggle.click();
-  toggle.dispatchEvent(new Event('change'));
   header.detectChanges();
   chips.detectChanges();
   const hidden = panel();
@@ -596,13 +598,17 @@ test('the switch hides and shows the panels and remembers the choice', () => {
     new (ShowStream as unknown as new () => ShowStream)().on(),
   );
   toggle.click();
-  toggle.dispatchEvent(new Event('change'));
   header.detectChanges();
   chips.detectChanges();
+
+  (header.nativeElement as HTMLElement).remove();
 
   expect(toggle.getAttribute('role')).toBe('switch');
   expect(text(header.nativeElement)).toContain('Show the stream');
   expect(shown).toContain('findAircraft');
+  expect(shownPanel?.getAttribute('aria-live')).toBe('off');
+  expect(shownPanel?.getAttribute('tabindex')).toBe('0');
+  expect(shownPanel?.querySelectorAll('[tabindex]')).toHaveLength(0);
   expect(shown).toContain('<b>KSEA</b>');
   expect(panel()?.querySelector('b')).toBeNull();
   expect(hidden).toBeNull();

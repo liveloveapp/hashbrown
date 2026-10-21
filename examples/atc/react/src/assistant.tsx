@@ -14,6 +14,7 @@ import {
   type Starter,
   transcriptItems,
   type TurnShown,
+  withDecoded,
 } from '@atc/shared';
 import { createHttpDecisionTransport, type Decision } from '@hashbrownai/core';
 import {
@@ -24,7 +25,7 @@ import {
   useUiDecision,
   useUiKit,
 } from '@hashbrownai/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AircraftCompare,
   AircraftCompareFallback,
@@ -164,11 +165,26 @@ export function Assistant({
     system: 'Provided by the server.',
     transport: observed,
   });
+  // Once the decision settles, the hook's decoded value (or its error) is
+  // what the chat acted on, so the panel shows that.
+  const { isDeciding, decisionError, decision } = narrowed;
+  useEffect(() => {
+    if (isDeciding) {
+      return;
+    }
+    if (decisionError) {
+      setTurns((current) => withDecoded(current, decisionError));
+    } else if (decision.value && decision.meta) {
+      setTurns((current) =>
+        withDecoded(current, { value: decision.value, meta: decision.meta }),
+      );
+    }
+  }, [isDeciding, decisionError, decision.value, decision.meta]);
   const send = (content: string, routed: RouterShown) => {
     narrowed.sendMessage(content);
     // Added once the chat accepted the message: its panel keeps this send's
     // router decision, and the cards decision joins it when it settles.
-    setTurns((current) => addTurn(current, routed));
+    setTurns((current) => addTurn(current, routed, content));
     onSent?.();
   };
   const filter = (request: string, routed: RouterShown) => {

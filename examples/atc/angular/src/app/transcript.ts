@@ -1,4 +1,5 @@
 import {
+  alignTurns,
   answerBlocks,
   answerTurns,
   chatStatus,
@@ -33,7 +34,7 @@ import { ToolChips } from './tool-chips';
  * the assistant is doing now (the running step, "Reasoning…" while a reasoning
  * summary streams, else "Thinking…"); it stays mounted, so each change is
  * announced. With "Show the stream" on, each send's last answer carries a
- * panel with the decisions (`turns`, one per user row) and the streaming JSON.
+ * panel with the decisions (`turns`, matched to user rows by the text sent) and the streaming JSON.
  */
 @Component({
   selector: 'atc-transcript',
@@ -116,6 +117,10 @@ export class Transcript {
   protected readonly panels = computed(() => {
     const items = this.items();
     const answers = answerTurns(items);
+    const aligned = alignTurns(
+      this.turns(),
+      items.flatMap((item) => (item.kind === 'user' ? [item.text] : [])),
+    );
 
     return items.map((item, index) => {
       const turn = answers[index];
@@ -124,7 +129,7 @@ export class Transcript {
       }
 
       return answerBlocks(
-        this.turns()[turn],
+        aligned[turn],
         item.message.content,
         this.busy() && index === items.length - 1,
       );

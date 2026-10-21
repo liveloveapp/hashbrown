@@ -209,7 +209,7 @@ test('the switch hides and shows the panels', () => {
       ui: [<p key="a">hi</p>],
     },
   ] as UiChatMessage<Chat.AnyTool>[];
-  const turns: TurnShown[] = [{ router: ROUTER_SKIPPED }];
+  const turns: TurnShown[] = [{ text: 'Highest?', router: ROUTER_SKIPPED }];
   const view = render(
     <AtcStoreProvider store={createAtcStore()}>
       <Switched items={transcriptItems(messages) as never[]} turns={turns} />
@@ -230,6 +230,10 @@ test('the switch hides and shows the panels', () => {
   expect(shown).toContain('routerskipped (starter)');
   expect(shown).toContain('<b>hi</b>');
   expect(element.querySelector('.atc-stream b')).toBeNull();
+  expect(element.querySelector('.atc-stream')?.getAttribute('aria-live')).toBe(
+    'off',
+  );
+  expect(element.querySelectorAll('.atc-stream [tabindex]')).toHaveLength(0);
   expect(hidden).toBe(0);
   expect(element.querySelectorAll('.atc-stream')).toHaveLength(1);
 });
@@ -242,4 +246,41 @@ test('a panel without the provider never shows', async () => {
   await waitFor(() => expect(chat.requests).toHaveLength(1));
 
   expect(element.querySelectorAll('.atc-stream')).toHaveLength(0);
+});
+
+test('a superseded send does not shift later answers onto the wrong decisions', () => {
+  cleanup();
+  const answer = (text: string) => ({
+    role: 'assistant',
+    toolCalls: [],
+    content: { ui: [{ Markdown: { data: text } }] },
+    ui: [<p key={text}>{text}</p>],
+  });
+  const messages = [
+    { role: 'user', content: 'jets' },
+    answer('first'),
+    { role: 'user', content: 'Seattle?' },
+    answer('second'),
+  ] as UiChatMessage<Chat.AnyTool>[];
+  const turns: TurnShown[] = [
+    { text: 'jets', router: { kind: 'fallback', reason: 'superseded' } },
+    { text: 'jets', router: ROUTER_SKIPPED },
+    { text: 'Seattle?', router: { kind: 'fallback', reason: 'unavailable' } },
+  ];
+
+  const view = render(
+    <ShowStreamProvider on>
+      <AtcStoreProvider store={createAtcStore()}>
+        <Transcript items={transcriptItems(messages)} turns={turns} />
+      </AtcStoreProvider>
+    </ShowStreamProvider>,
+  );
+  const panels = [...view.container.querySelectorAll('.atc-stream')].map(
+    (panel) => panel.textContent ?? '',
+  );
+
+  expect(panels).toHaveLength(2);
+  expect(panels[0]).toContain('skipped (starter)');
+  expect(panels[0]).not.toContain('superseded');
+  expect(panels[1]).toContain('→ chat (unavailable)');
 });

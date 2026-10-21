@@ -1,4 +1,5 @@
 import type { Decision } from '@hashbrownai/core';
+import { routeAction } from './route';
 import type { RouterInputState } from './router-input';
 
 /** The most cards a turn is narrowed to; the apps pass it to the decision. */
@@ -154,7 +155,7 @@ export function routerShown(
   ms: number | null,
 ): RouterShown {
   if (state.failed) {
-    return { kind: 'fallback', reason: 'router unavailable' };
+    return { kind: 'fallback', reason: 'unavailable' };
   }
   if (state.result !== null && state.decidedFor === state.text) {
     return { kind: 'decided', result: state.result, ms };
@@ -171,12 +172,20 @@ export function routerBlock(shown: RouterShown | null): StreamBlock {
     return { title, text: `skipped (${shown.reason})` };
   }
   if (shown.kind === 'fallback') {
-    return { title, text: `chat (fallback: ${shown.reason})` };
+    return { title, text: `→ chat (${shown.reason})` };
   }
+  const action = routeAction(shown.result as Parameters<typeof routeAction>[0]);
+  const intent = (shown.result.value as { intent?: unknown } | null)?.intent;
+  const head =
+    action.kind === 'chat' && intent !== 'chat'
+      ? '→ chat (unsure)'
+      : `→ ${action.kind}`;
 
   return {
     title,
-    text: decisionView(shown.result, shown.ms).map(rowLine).join('\n'),
+    text: [head, ...decisionView(shown.result, shown.ms).map(rowLine)].join(
+      '\n',
+    ),
   };
 }
 
@@ -192,22 +201,31 @@ export interface CardsShown {
 
 /**
  * The cards the decision picked: probability at least 0.5, best first, at
- * most {@link CARDS_SELECT_MAX}; empty when none, or when the best is below
- * {@link CARDS_MIN_CONFIDENCE} (then the chat sends every card).
+ * most {@link CARDS_SELECT_MAX}; `confident` is false when none, or when the
+ * best is below {@link CARDS_MIN_CONFIDENCE} (then the chat sends every
+ * card). This mirrors core's `resolveSelection` for `{ max }`, which reads
+ * each option's probability from the metadata whatever its boolean value
+ * says, so a card at exactly 0.5 counts.
  */
 export function cardPicks(result: DecisionResultLike): {
   readonly picks: readonly string[];
   readonly confident: boolean;
 } {
-  const rows = decisionView(result, null)
-    .filter((row) => row.answer === 'yes' && row.probability !== null)
+  const meta = isRecord(result.meta) ? result.meta : {};
+  const kept = Object.keys(meta)
+    .map((id) => ({
+      id,
+      probability: numberOf(
+        (meta[id] as { probability?: unknown })?.probability,
+      ),
+    }))
+    .filter((entry) => (entry.probability ?? 0) >= PICK_PROBABILITY)
     .sort((a, b) => (b.probability ?? 0) - (a.probability ?? 0))
-    .filter((row) => (row.probability ?? 0) >= PICK_PROBABILITY)
     .slice(0, CARDS_SELECT_MAX);
 
   return {
-    picks: rows.map((row) => row.key),
-    confident: (rows[0]?.probability ?? 0) >= CARDS_MIN_CONFIDENCE,
+    picks: kept.map((entry) => entry.id),
+    confident: (kept[0]?.probability ?? 0) >= CARDS_MIN_CONFIDENCE,
   };
 }
 
@@ -242,6 +260,8 @@ export function jsonBlock(
 
 /** What a send recorded for its answer's panel. */
 export interface TurnShown {
+  /** The text that was sent, to find the send's user row. */
+  readonly text: string;
   readonly router: RouterShown;
   /** Undefined until the cards decision settles. */
   readonly cards?: CardsShown;
@@ -277,8 +297,60 @@ export function answerTurns(
 export function addTurn(
   turns: readonly TurnShown[],
   router: RouterShown,
+  text: string,
 ): TurnShown[] {
-  return [...turns, { router }];
+  return [...turns, { text, router }];
+}
+
+/**
+ * Finds the send behind each user row, by the text sent. A send that was
+ * superseded while its cards decision was pending, or that the chat refused,
+ * has no user row; scanning from the newest, each row takes the latest unused
+ * send with its text, so duplicates resolve to the one that really ran and
+ * orphans are dropped. A row with no send (undefined) gets no panel.
+ */
+export function alignTurns(
+  turns: readonly TurnShown[],
+  userTexts: readonly string[],
+): (TurnShown | undefined)[] {
+  const used = new Set<number>();
+
+  return userTexts
+    .map((text, row) => ({ text, row }))
+    .reverse()
+    .map(({ text, row }) => {
+      const at = turns.findLastIndex(
+        (turn, index) => !used.has(index) && turn.text === text,
+      );
+      if (at >= 0) used.add(at);
+
+      return { row, turn: at >= 0 ? turns[at] : undefined };
+    })
+    .sort((a, b) => a.row - b.row)
+    .map(({ turn }) => turn);
+}
+
+/**
+ * Prefers what the decision hook decoded: replaces the newest send's result
+ * with the hook's `value` and `meta`, or, given an error (a failed or
+ * stopped decision), empties the cards with the error's message. Does
+ * nothing until the transport has reported the send.
+ */
+export function withDecoded(
+  turns: readonly TurnShown[],
+  decoded: DecisionResultLike | Error,
+): TurnShown[] {
+  const last = turns.at(-1);
+  if (last?.cards === undefined) return [...turns];
+  const cards: CardsShown =
+    decoded instanceof Error
+      ? { result: null, ms: last.cards.ms, error: decoded.message }
+      : {
+          result: { value: decoded.value, meta: decoded.meta },
+          ms: last.cards.ms,
+        };
+
+  return [...turns.slice(0, -1), { ...last, cards }];
 }
 
 /**
@@ -325,6 +397,26 @@ export function answerBlocks(
     ),
     jsonBlock('ui', content, streaming),
   ];
+}
+
+/**
+ * Whether the panel under the filter pill shows: only with a router decision
+ * for a run, and then only while that run streams (`loading`), or while the
+ * map's filter (`current`) is still the object the run produced. The
+ * assistant's filter tool, a clear and the pill's x all replace it, so the
+ * panel never describes a filter that is no longer on the map.
+ */
+export function filterPanelVisible(options: {
+  readonly route: RouterShown | null;
+  readonly loading: boolean;
+  readonly current: unknown;
+  readonly produced: unknown;
+}): boolean {
+  return (
+    options.route !== null &&
+    (options.loading ||
+      (options.current !== null && options.current === options.produced))
+  );
 }
 
 /** The panel blocks under the filter pill: the router, then the filter. */

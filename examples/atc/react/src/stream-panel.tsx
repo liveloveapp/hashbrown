@@ -18,15 +18,15 @@ export function StreamPanel({
     <div
       className={`atc-stream ${className}`.trim()}
       role="group"
+      aria-live="off"
+      tabIndex={0}
       aria-label={label}
       data-testid="stream-panel"
     >
       {blocks.map((block, index) => (
         <section key={index} className="atc-stream-block">
           <p className="atc-stream-title">{block.title}</p>
-          <pre className="atc-stream-text" tabIndex={0}>
-            {block.text}
-          </pre>
+          <pre className="atc-stream-text">{block.text}</pre>
         </section>
       ))}
     </div>

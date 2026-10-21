@@ -14,16 +14,19 @@ import {
   type Starter,
   transcriptItems,
   type TurnShown,
+  withDecoded,
 } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   InjectionToken,
   linkedSignal,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import {
   createTool,
@@ -212,11 +215,32 @@ export class Assistant {
     ),
   });
 
+  constructor() {
+    // Once the decision settles, the hook's decoded value (or its error) is
+    // what the chat acted on, so the panel shows that.
+    effect(() => {
+      const deciding = this.narrowed.isDeciding();
+      const error = this.narrowed.decisionError();
+      const value = this.narrowed.decision.value();
+      const meta = this.narrowed.decision.meta();
+      if (deciding) {
+        return;
+      }
+      untracked(() => {
+        if (error) {
+          this.turns.update((turns) => withDecoded(turns, error));
+        } else if (value && meta) {
+          this.turns.update((turns) => withDecoded(turns, { value, meta }));
+        }
+      });
+    });
+  }
+
   protected send(content: string, routed = this.routed()): void {
     this.narrowed.sendMessage(content);
     // Added once the chat accepted the message: its panel keeps this send's
     // router decision, and the cards decision joins it when it settles.
-    this.turns.update((turns) => addTurn(turns, routed));
+    this.turns.update((turns) => addTurn(turns, routed, content));
     this.sent.emit();
   }
 

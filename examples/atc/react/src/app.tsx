@@ -1,6 +1,7 @@
 import {
   browserStorage,
   filterBlocks,
+  filterPanelVisible,
   focusOpensSheet,
   INITIAL_SHEET,
   nextSheet,
@@ -45,11 +46,15 @@ export function App() {
   const [showStream, setShowStream] = useState(() =>
     readShowStream(browserStorage()),
   );
-  // The panel waits for a filter, and goes with it when it is cleared.
-  const filtered = useSyncExternalStore(
+  // The filter on the map. The panel shows only while a run streams, or
+  // while the map still holds what the last run produced: the assistant's
+  // filter tool, a clear or the pill's x all replace it, and the panel goes.
+  const current = useSyncExternalStore(
     store.subscribe,
-    () => store.getState().mapFilter !== null,
+    () => store.getState().mapFilter,
   );
+  const [produced, setProduced] = useState<typeof current>(null);
+  const ran = useRef(false);
   // What the router decided for the latest filter request.
   const [filterRoute, setFilterRoute] = useState<RouterShown | null>(null);
   const changeShowStream = (on: boolean) => {
@@ -58,8 +63,20 @@ export function App() {
   };
   const applyFilter = (request: string, routed: RouterShown) => {
     setFilterRoute(routed);
+    setProduced(null);
     mapFilter.apply(request);
   };
+
+  // The hook applies a run's last chunk in its own effect, which runs first.
+  const loading = mapFilter.loading;
+  useEffect(() => {
+    if (loading) {
+      ran.current = true;
+    } else if (ran.current) {
+      ran.current = false;
+      setProduced(store.getState().mapFilter);
+    }
+  }, [loading, store]);
 
   useEffect(() => startAtcFeed({ store }), [store]);
   // The assistant moving the map, or a plane picked in the chat, lowers the sheet.
@@ -105,7 +122,12 @@ export function App() {
           />
           {showStream &&
           filterRoute !== null &&
-          (filtered || mapFilter.loading) ? (
+          filterPanelVisible({
+            route: filterRoute,
+            loading,
+            current,
+            produced,
+          }) ? (
             <StreamPanel
               className="atc-map-stream"
               label="Filter stream"

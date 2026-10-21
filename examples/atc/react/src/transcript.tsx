@@ -1,4 +1,5 @@
 import {
+  alignTurns,
   answerBlocks,
   answerTurns,
   chatStatus,
@@ -24,7 +25,7 @@ import { ToolChips } from './tool-chips';
  * the assistant is doing now (the running step, "Reasoning…" while a reasoning
  * summary streams, else "Thinking…"); it stays mounted, so each change is
  * announced. With "Show the stream" on, each send's last answer carries a
- * panel with the decisions (`turns`, one per user row) and the streaming JSON.
+ * panel with the decisions (`turns`, matched to user rows by the text sent) and the streaming JSON.
  */
 export function Transcript({
   items,
@@ -37,6 +38,10 @@ export function Transcript({
 }) {
   const showStream = useShowStream();
   const answers = answerTurns(items);
+  const aligned = alignTurns(
+    turns,
+    items.flatMap((item) => (item.kind === 'user' ? [item.text] : [])),
+  );
   const thinking = thinkingStatus(items, busy);
   const status = chatStatus(items, busy, labelForHex(useAtcState()));
 
@@ -56,7 +61,7 @@ export function Transcript({
             stream={
               showStream && answers[index] !== null
                 ? {
-                    turn: turns[answers[index] ?? 0],
+                    turn: aligned[answers[index] ?? 0],
                     streaming: busy && index === items.length - 1,
                   }
                 : null

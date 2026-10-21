@@ -132,7 +132,13 @@ export function useRouter(
   const cancel = useCallback(() => cancelWaiting.current(), []);
 
   const shown = useCallback(
-    () => routerShown(latest.current, tracked.answeredMs()),
+    () =>
+      routerShown(
+        latest.current,
+        tracked.answeredFor() === latest.current.text
+          ? tracked.answeredMs()
+          : null,
+      ),
     [tracked],
   );
 

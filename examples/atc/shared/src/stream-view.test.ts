@@ -1,11 +1,14 @@
 import { expect, test } from 'vitest';
 import {
   addTurn,
+  alignTurns,
   answerBlocks,
   answerTurns,
+  cardPicks,
   cardsBlock,
   decisionView,
   filterBlocks,
+  filterPanelVisible,
   observeDecisions,
   readShowStream,
   ROUTER_SKIPPED,
@@ -15,6 +18,7 @@ import {
   SHOW_STREAM_KEY,
   streamJson,
   toolBlocks,
+  withDecoded,
   writeShowStream,
 } from './stream-view';
 import { createRouterInput } from './router-input';
@@ -141,11 +145,16 @@ test('writeShowStream remembers the switch', () => {
 test('routerBlock shows the answers, the skipped starter and the fallbacks', () => {
   const decided = routerBlock({ kind: 'decided', result: ROUTE, ms: 184 });
 
-  expect(decided.text).toBe('intent: filter 0.97\nclear: no 0.88\nms: 184');
+  expect(decided.text).toBe(
+    '→ filter\nintent: filter 0.97\nclear: no 0.88\nms: 184',
+  );
   expect(routerBlock(ROUTER_SKIPPED).text).toBe('skipped (starter)');
+  expect(routerBlock({ kind: 'fallback', reason: 'unavailable' }).text).toBe(
+    '→ chat (unavailable)',
+  );
   expect(
     routerBlock({ kind: 'fallback', reason: 'router unavailable' }).text,
-  ).toBe('chat (fallback: router unavailable)');
+  ).toBe('→ chat (router unavailable)');
 });
 
 test('routerShown reads the router state at send time', () => {
@@ -209,7 +218,11 @@ test('answerTurns puts the panel on the last answer of each send', () => {
 });
 
 test('answerBlocks and filterBlocks order the layers', () => {
-  const answer = answerBlocks({ router: ROUTER_SKIPPED }, { ui: [] }, true);
+  const answer = answerBlocks(
+    { text: 'a', router: ROUTER_SKIPPED },
+    { ui: [] },
+    true,
+  );
   const filter = filterBlocks(null, { airline: 'Alaska' }, false);
 
   expect(answer.map((block) => block.title)).toEqual(['router', 'cards', 'ui']);
@@ -260,8 +273,8 @@ test('observeDecisions reports settled and failed requests but not aborted ones'
 });
 
 test('settleCards records the decision on the newest send only', () => {
-  const first = addTurn([], ROUTER_SKIPPED);
-  const two = addTurn(first, { kind: 'fallback', reason: 'x' });
+  const first = addTurn([], ROUTER_SKIPPED, 'a');
+  const two = addTurn(first, { kind: 'fallback', reason: 'x' }, 'b');
 
   const settled = settleCards(two, {
     response: {
@@ -283,11 +296,114 @@ test('settleCards records the decision on the newest send only', () => {
 });
 
 test('an answer whose cards decision never ran says so once it is not streaming', () => {
-  const turn = { router: ROUTER_SKIPPED };
+  const turn = { text: 'a', router: ROUTER_SKIPPED };
 
   const done = answerBlocks(turn, { ui: [] }, false);
   const live = answerBlocks(turn, { ui: [] }, true);
 
   expect(done[1].text).toBe('all (fallback: not asked)');
   expect(live[1].text).toBe('deciding…');
+});
+
+test('routerBlock states the outcome: filter, clear, chat, and chat when unsure', () => {
+  const route = (intent: string, confidence: number, clear: number) => ({
+    value: { intent, clear: clear >= 0.5 },
+    meta: {
+      intent: { confidence, probabilities: { [intent]: confidence } },
+      clear: { probability: clear },
+    },
+  });
+  const head = (result: unknown) =>
+    routerBlock({ kind: 'decided', result: result as never, ms: 1 }).text.split(
+      '\n',
+    )[0];
+
+  expect(head(route('filter', 0.9, 0.1))).toBe('→ filter');
+  expect(head(route('filter', 0.9, 0.9))).toBe('→ clear');
+  expect(head(route('chat', 0.9, 0.1))).toBe('→ chat');
+  expect(head(route('filter', 0.4, 0.1))).toBe('→ chat (unsure)');
+  expect(head(route('other', 0.9, 0.1))).toBe('→ chat (unsure)');
+});
+
+test('alignTurns drops a superseded send so later answers keep their own decisions', () => {
+  const first = addTurn([], ROUTER_SKIPPED, 'jets');
+  const second = addTurn(first, { kind: 'fallback', reason: 'x' }, 'jets');
+  const third = addTurn(second, ROUTER_SKIPPED, 'Seattle?');
+
+  const aligned = alignTurns(third, ['jets', 'Seattle?']);
+
+  expect(aligned[0]).toBe(third[1]);
+  expect(aligned[1]).toBe(third[2]);
+});
+
+test('alignTurns gives a user row without a send no panel, and ignores refused sends', () => {
+  const turns = addTurn(
+    addTurn([], ROUTER_SKIPPED, 'refused'),
+    ROUTER_SKIPPED,
+    'b',
+  );
+
+  const aligned = alignTurns(turns, ['b', 'typed elsewhere']);
+
+  expect(aligned[0]).toBe(turns[1]);
+  expect(aligned[1]).toBeUndefined();
+});
+
+test('cardPicks keeps probability at least 0.5 whatever the value says, like core', () => {
+  const result = {
+    value: { A: false, B: true, C: true },
+    meta: {
+      A: { probability: 0.5 },
+      B: { probability: 0.49 },
+      C: { probability: 0.9 },
+    },
+  };
+
+  const { picks, confident } = cardPicks(result);
+
+  expect(picks).toEqual(['C', 'A']);
+  expect(confident).toBe(true);
+});
+
+test('withDecoded prefers the hook decision, and an error empties the cards', () => {
+  const turns = settleCards(addTurn([], ROUTER_SKIPPED, 'a'), {
+    response: {
+      kind: 'hashbrown.decision',
+      version: 1,
+      value: {},
+      meta: {},
+    },
+    error: null,
+    ms: 40,
+  });
+
+  const decoded = withDecoded(turns, { value: CARDS.value, meta: CARDS.meta });
+  const failed = withDecoded(turns, new Error('stopped'));
+
+  expect(decoded[0].cards).toEqual({ result: CARDS, ms: 40 });
+  expect(failed[0].cards).toEqual({ result: null, ms: 40, error: 'stopped' });
+  expect(withDecoded([], new Error('x'))).toEqual([]);
+});
+
+test('the filter panel goes when another writer or a clear replaces the filter', () => {
+  const run = { filter: { airline: 'Alaska' } };
+  const base = {
+    route: ROUTER_SKIPPED,
+    loading: false,
+    current: run,
+    produced: run,
+  };
+
+  expect(
+    filterPanelVisible({
+      ...base,
+      loading: true,
+      current: null,
+      produced: null,
+    }),
+  ).toBe(true);
+  expect(filterPanelVisible(base)).toBe(true);
+  expect(filterPanelVisible({ ...base, current: { filter: {} } })).toBe(false);
+  expect(filterPanelVisible({ ...base, current: null })).toBe(false);
+  expect(filterPanelVisible({ ...base, route: null })).toBe(false);
 });
