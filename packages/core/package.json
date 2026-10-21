@@ -13,8 +13,20 @@
     "**/*.cjs.js.map",
     "LICENSE",
     "package.json",
-    "README.md"
+    "README.md",
+    "install/*.cjs",
+    "development-install.*"
   ],
+  "imports": {
+    "#development-install": {
+      "development": {
+        "import": "./development-install.mjs",
+        "require": "./development-install.cjs"
+      },
+      "import": "./development-install.null.mjs",
+      "require": "./development-install.null.cjs"
+    }
+  },
   "publishConfig": {
     "access": "public"
   },

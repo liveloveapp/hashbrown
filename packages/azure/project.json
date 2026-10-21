@@ -13,7 +13,7 @@
   },
   "tags": [],
   "targets": {
-    "build": {
+    "compile": {
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
@@ -29,6 +29,19 @@
             "output": "."
           }
         ]
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["compile"],
+      "inputs": [
+        "{workspaceRoot}/tools/growth/install/*.cjs",
+        "{workspaceRoot}/tools/growth/install/assemble-package.mjs",
+        "{projectRoot}/package.json"
+      ],
+      "outputs": ["{workspaceRoot}/dist/packages/azure"],
+      "options": {
+        "command": "node tools/growth/install/assemble-package.mjs azure"
       }
     },
     "lint": {
