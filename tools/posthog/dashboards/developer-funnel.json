@@ -1,0 +1,21 @@
+{
+  "slug": "developer-funnel",
+  "posthog_id": null,
+  "name": "Website · Developer funnel",
+  "description": "Independent counts along the developer path: pageviews, docs reading, code copies, and CTA clicks. Not a joined conversion funnel; a code copy is not an install. Managed in tools/posthog; edit the JSON, not the UI.",
+  "tags": ["growth", "website"],
+  "tiles": [
+    {
+      "insight": "pageviews-by-path"
+    },
+    {
+      "insight": "docs-reading-by-framework"
+    },
+    {
+      "insight": "code-copies-by-framework"
+    },
+    {
+      "insight": "cta-clicks-by-id"
+    }
+  ]
+}

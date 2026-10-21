@@ -1,0 +1,18 @@
+{
+  "slug": "cta-clicks-by-id",
+  "posthog_id": null,
+  "kind": "trends",
+  "name": "CTA clicks by id",
+  "description": "marketing:cta_click by its stable cta_id.",
+  "events": [
+    {
+      "event": "marketing:cta_click",
+      "name": "CTA clicks",
+      "math": "total"
+    }
+  ],
+  "breakdown": "cta_id",
+  "breakdown_limit": 20,
+  "interval": "day",
+  "date_from": "-30d"
+}

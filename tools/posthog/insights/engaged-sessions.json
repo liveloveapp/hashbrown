@@ -1,0 +1,17 @@
+{
+  "slug": "engaged-sessions",
+  "posthog_id": null,
+  "kind": "trends",
+  "name": "Engaged page views by threshold",
+  "description": "marketing:engaged_time fires once per pathname when visible time crosses 10 s and again at 30 s. Counts page views that crossed each threshold, not unique sessions.",
+  "events": [
+    {
+      "event": "marketing:engaged_time",
+      "name": "Engaged page views",
+      "math": "total"
+    }
+  ],
+  "breakdown": "engaged_seconds",
+  "interval": "day",
+  "date_from": "-30d"
+}

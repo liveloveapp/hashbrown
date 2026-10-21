@@ -1,0 +1,18 @@
+{
+  "slug": "pageviews-by-path",
+  "posthog_id": null,
+  "kind": "trends",
+  "name": "Pageviews by path",
+  "description": "Every $pageview, including App Router soft navigations, by pathname.",
+  "events": [
+    {
+      "event": "$pageview",
+      "name": "Pageviews",
+      "math": "total"
+    }
+  ],
+  "breakdown": "$pathname",
+  "breakdown_limit": 20,
+  "interval": "day",
+  "date_from": "-30d"
+}
