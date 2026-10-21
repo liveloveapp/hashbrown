@@ -22,16 +22,23 @@ function trackCopy(language: string) {
  *
  * @param props.language - The code block's fence language, when known.
  */
-export function CopyButton({ language = 'unknown' }: { language?: string }) {
+export function CopyButton({ language }: { language?: string }) {
   return (
     <button
       type="button"
       aria-label="Copy code to clipboard"
       onClick={async (event) => {
+        const example = event.currentTarget.closest(
+          '[data-component="code-example"]',
+        );
         const text =
-          event.currentTarget
-            .closest('[data-component="code-example"]')
-            ?.querySelector('[data-content]')?.textContent ?? '';
+          example?.querySelector('[data-content]')?.textContent ?? '';
+        const resolvedLanguage =
+          language ??
+          example
+            ?.querySelector('pre[data-language]')
+            ?.getAttribute('data-language') ??
+          'unknown';
         if (!text) {
           return;
         }
@@ -41,7 +48,7 @@ export function CopyButton({ language = 'unknown' }: { language?: string }) {
           console.error('Copy failed', err);
           return;
         }
-        trackCopy(language);
+        trackCopy(resolvedLanguage);
         toastService.success('Code copied to clipboard', {
           position: 'top-center',
         });

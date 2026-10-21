@@ -54,6 +54,16 @@ test('track adds source_page as the pathname only and swallows capture errors', 
   );
 });
 
+test('track keeps the real pathname when a caller passes source_page', () => {
+  window.history.replaceState(null, '', '/blog/post?q=1');
+
+  track('marketing:cta_click', { source_page: '/evil?q=1' });
+
+  expect(posthog.capture).toHaveBeenCalledWith('marketing:cta_click', {
+    source_page: '/blog/post',
+  });
+});
+
 test('trackCtaClick sends cta_click with the id and surface', () => {
   const props = { cta_id: 'install_copy', surface: 'home' } as const;
 

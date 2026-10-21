@@ -29,8 +29,16 @@ export type AnalyticsSurface =
   'home' | 'nav' | 'footer' | 'docs' | 'blog' | 'unstuck';
 
 /** Where a `marketing:threadplane_cta_click` hand-off link lives. */
-export type ThreadplaneSurface =
-  'homepage_banner' | 'footer' | 'docs_platforms' | 'blog' | 'email';
+export const threadplaneSurfaces = [
+  'homepage_banner',
+  'footer',
+  'docs_platforms',
+  'blog',
+  'email',
+] as const;
+
+/** One of {@link threadplaneSurfaces}. */
+export type ThreadplaneSurface = (typeof threadplaneSurfaces)[number];
 
 /**
  * Stable identifiers for marketing CTAs. New CTAs are added here so a typo is

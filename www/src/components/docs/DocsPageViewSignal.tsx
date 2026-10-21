@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { trackDocsPageViewed } from '../../lib/analytics/client';
 import type { DocsFramework } from '../../lib/analytics/events';
 
@@ -14,9 +14,11 @@ import type { DocsFramework } from '../../lib/analytics/events';
  */
 export function DocsPageViewSignal({ sdk }: { sdk: DocsFramework }) {
   const pathname = usePathname();
+  const lastTracked = useRef<string | null>(null);
 
   useEffect(() => {
-    if (pathname) {
+    if (pathname && pathname !== lastTracked.current) {
+      lastTracked.current = pathname;
       trackDocsPageViewed({ pathname, framework: sdk });
     }
   }, [pathname, sdk]);

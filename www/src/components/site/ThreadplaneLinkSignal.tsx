@@ -5,17 +5,12 @@ import { trackThreadplaneCtaClick } from '../../lib/analytics/client';
 import {
   type ThreadplaneSurface,
   threadplaneSurfaceForPath,
+  threadplaneSurfaces,
 } from '../../lib/analytics/events';
 
 const THREADPLANE_HOSTS = new Set(['threadplane.ai', 'www.threadplane.ai']);
 
-const SURFACES = new Set<string>([
-  'homepage_banner',
-  'footer',
-  'docs_platforms',
-  'blog',
-  'email',
-]);
+const SURFACES = new Set<string>(threadplaneSurfaces);
 
 function isThreadplaneSurface(value: string): value is ThreadplaneSurface {
   return SURFACES.has(value);
@@ -43,16 +38,25 @@ function onClick(event: MouseEvent) {
   trackThreadplaneCtaClick({ surface, destination_url: anchor.href });
 }
 
+/** Middle-clicks open a new tab without firing `click`; count only those. */
+function onAuxClick(event: MouseEvent) {
+  if (event.button === 1) onClick(event);
+}
+
 /**
  * Tracks `marketing:threadplane_cta_click` for every link to threadplane.ai,
- * including links rendered from markdown, with one delegated click listener on
- * `document` (capture phase). The surface is the anchor's `data-surface` when
+ * including links rendered from markdown, with delegated `click` and middle-button
+ * `auxclick` listeners on `document` (capture phase). The surface is the anchor's `data-surface` when
  * present, otherwise derived from the page's pathname. Renders nothing.
  */
 export function ThreadplaneLinkSignal() {
   useEffect(() => {
     document.addEventListener('click', onClick, true);
-    return () => document.removeEventListener('click', onClick, true);
+    document.addEventListener('auxclick', onAuxClick, true);
+    return () => {
+      document.removeEventListener('click', onClick, true);
+      document.removeEventListener('auxclick', onAuxClick, true);
+    };
   }, []);
 
   return null;

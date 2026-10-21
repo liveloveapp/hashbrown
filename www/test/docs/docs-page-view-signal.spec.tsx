@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import posthog from 'posthog-js';
-import { act } from 'react';
+import { act, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, test, vi } from 'vitest';
 import { DocsPageViewSignal } from '../../src/components/docs/DocsPageViewSignal';
@@ -31,16 +31,40 @@ function pageViews() {
 
 test('DocsPageViewSignal fires docs:page_viewed once per pathname with the framework', () => {
   const root = createRoot(document.createElement('div'));
-  navigation.pathname = '/docs/angular/start/intro';
+  try {
+    navigation.pathname = '/docs/angular/start/intro';
 
-  act(() => root.render(<DocsPageViewSignal sdk="angular" />));
-  act(() => root.render(<DocsPageViewSignal sdk="angular" />));
-  navigation.pathname = '/docs/angular/concept/components';
-  act(() => root.render(<DocsPageViewSignal sdk="angular" />));
+    act(() => root.render(<DocsPageViewSignal sdk="angular" />));
+    act(() => root.render(<DocsPageViewSignal sdk="angular" />));
+    navigation.pathname = '/docs/angular/concept/components';
+    act(() => root.render(<DocsPageViewSignal sdk="angular" />));
 
-  expect(pageViews()).toEqual([
-    { pathname: '/docs/angular/start/intro', framework: 'angular' },
-    { pathname: '/docs/angular/concept/components', framework: 'angular' },
-  ]);
-  act(() => root.unmount());
+    expect(pageViews()).toEqual([
+      { pathname: '/docs/angular/start/intro', framework: 'angular' },
+      { pathname: '/docs/angular/concept/components', framework: 'angular' },
+    ]);
+  } finally {
+    act(() => root.unmount());
+  }
+});
+
+test('DocsPageViewSignal fires once under StrictMode double effects', () => {
+  const root = createRoot(document.createElement('div'));
+  try {
+    navigation.pathname = '/docs/react/start/intro';
+
+    act(() =>
+      root.render(
+        <StrictMode>
+          <DocsPageViewSignal sdk="react" />
+        </StrictMode>,
+      ),
+    );
+
+    expect(pageViews()).toEqual([
+      { pathname: '/docs/react/start/intro', framework: 'react' },
+    ]);
+  } finally {
+    act(() => root.unmount());
+  }
 });

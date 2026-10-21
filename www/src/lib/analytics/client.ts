@@ -52,8 +52,8 @@ export function track(
 
   try {
     posthog.capture(event, {
-      source_page: getSourcePage(window.location.href),
       ...properties,
+      source_page: getSourcePage(window.location.href),
     });
   } catch (err) {
     console.error('[posthog] client capture failed:', err);

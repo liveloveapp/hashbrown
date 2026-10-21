@@ -43,6 +43,15 @@ function mount(code: string, language?: string) {
   );
 }
 
+/** Like `mount`, with a highlighted `pre` carrying `data-language`. */
+function mountHighlighted(code: string, language: string) {
+  const button = mount(code);
+  const pre = document.createElement('pre');
+  pre.dataset.language = language;
+  document.querySelector('[data-component="code-example"]')?.appendChild(pre);
+  return button;
+}
+
 function stubClipboard(writeText: (text: string) => Promise<void>) {
   const mock = vi.fn(writeText);
   vi.stubGlobal('navigator', { clipboard: { writeText: mock } });
@@ -143,12 +152,30 @@ test('copy button reports an unknown language when none is passed', async () => 
   ]);
 });
 
-test('copy button does not track failed copies or copies outside the docs', async () => {
+test('copy button resolves the language from the highlighted pre at click time', async () => {
+  reset();
+  window.history.replaceState(null, '', '/docs/react/start/intro');
+  stubClipboard(async () => undefined);
+  const button = mountHighlighted('const x = 1;', 'typescript');
+
+  await act(async () => button?.click());
+
+  expect(codeCopies().map((props) => props?.language)).toEqual(['typescript']);
+});
+
+test('copy button does not track copies outside the docs', async () => {
   reset();
   window.history.replaceState(null, '', '/blog/post');
   stubClipboard(async () => undefined);
-  const blogButton = mount('const x = 1;', 'ts');
-  await act(async () => blogButton?.click());
+  const button = mount('const x = 1;', 'ts');
+
+  await act(async () => button?.click());
+
+  expect(codeCopies()).toEqual([]);
+});
+
+test('copy button does not track failed copies', async () => {
+  reset();
   window.history.replaceState(null, '', '/docs/react/start/intro');
   stubClipboard(async () => {
     throw new Error('denied');
@@ -156,9 +183,9 @@ test('copy button does not track failed copies or copies outside the docs', asyn
   vi.spyOn(console, 'error').mockImplementation(() => {
     // Silence the expected log.
   });
-  const docsButton = mount('const x = 1;', 'ts');
+  const button = mount('const x = 1;', 'ts');
 
-  await act(async () => docsButton?.click());
+  await act(async () => button?.click());
 
   expect(codeCopies()).toEqual([]);
 });
