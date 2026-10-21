@@ -65,6 +65,7 @@ import { ATC_STORE, injectAtcState } from './store';
         <atc-sheet-handle [expanded]="expanded()" (move)="move($event)" />
         <atc-panel-header [devMode]="dev.on()" (toggleDevMode)="dev.toggle()" />
         <atc-assistant
+          [filterLoading]="mapFilter.loading()"
           (filterRouted)="startRun($event)"
           (filter)="mapFilter.apply($event)"
           (sent)="move({ type: 'send' })"

@@ -245,7 +245,7 @@ function ToolsHarness({
       <DevModeProvider storage={memoryStorage({ [DEV_MODE_KEY]: 'on' })}>
         <Feed chat={{ items, turns, busy: false }} />
         <HarnessRail />
-        <Transcript items={items} turns={turns} />
+        <Transcript items={items} />
         <DevDrawer />
       </DevModeProvider>
     </AtcStoreProvider>
@@ -258,7 +258,7 @@ function HarnessRail() {
   return <Rail on={dev.on} onToggle={dev.toggle} />;
 }
 
-test('the drawer follows the newest send and keeps a clicked earlier answer', async () => {
+test('the drawer always follows the newest send', async () => {
   cleanup();
   const chat = fakeFilterTransport();
   const route = fakeDecisionTransport(() => ({
@@ -297,44 +297,21 @@ test('the drawer follows the newest send and keeps a clicked earlier answer', as
     await answer(sent, words);
   };
   const shown = () => text(element.querySelector('[role="tabpanel"]'));
-  const latest = () =>
-    element.querySelector<HTMLButtonElement>('.atc-dev-latest');
   const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
 
   act(() => starterButton(element, starter?.text ?? '').click());
   await answer(1, 'First answer');
   await ask('What about Bend?', 2, 'Second answer');
   fireEvent.click(tab(element, 'UI stream'));
-  const following = shown();
-  const inspect = () => [
-    ...element.querySelectorAll<HTMLButtonElement>('.atc-dev-inspect'),
-  ];
-  const pressedBefore = inspect().map((button) =>
-    button.getAttribute('aria-pressed'),
-  );
-  act(() => inspect()[0]?.click());
-  const picked = shown();
-  const pressedAfter = inspect().map((button) =>
-    button.getAttribute('aria-pressed'),
-  );
-  const latestInTabs = element.querySelector(
-    '[role="tablist"] .atc-dev-latest',
-  );
+  const second = shown();
   await ask('And Redmond?', 3, 'Third answer');
-  const kept = shown();
-  act(() => latest()?.click());
+  const third = shown();
 
-  expect(following).toContain('Second answer');
-  expect(pressedBefore).toEqual(['false', 'true']);
-  expect(inspect()[0]?.getAttribute('aria-label')).toBe(
-    'Show this answer in developer tools',
-  );
-  expect(picked).toContain('First answer');
-  expect(pressedAfter).toEqual(['true', 'false']);
-  expect(latestInTabs).toBeNull();
-  expect(kept).toContain('First answer');
-  expect(shown()).toContain('Third answer');
-  expect(latest()).toBeNull();
+  expect(second).toContain('Second answer');
+  expect(third).toContain('Third answer');
+  expect(third).not.toContain('Second answer');
+  expect(element.querySelector('.atc-dev-latest')).toBeNull();
+  expect(element.querySelector('.atc-dev-inspect')).toBeNull();
 });
 
 test('dragging the handle resizes within the clamp and is remembered', () => {

@@ -39,6 +39,29 @@ export function focusOpensSheet(target: EventTarget | null): boolean {
   return isTyping(target);
 }
 
+/**
+ * After a refinement is picked from the keyboard, moves focus to the
+ * composer's field: the "Refine:" row empties while the filter run streams,
+ * which would otherwise drop focus to the page. A pointer click (or a tap,
+ * where focusing the field would open the on-screen keyboard) leaves focus
+ * alone. Keyboard activation is a click whose `detail` is 0.
+ *
+ * @param button - The refinement button that was clicked.
+ * @param detail - The click's `detail` (its click count).
+ */
+export function focusComposerAfterRefinement(
+  button: Element,
+  detail: number,
+): void {
+  if (detail !== 0) {
+    return;
+  }
+  button
+    .closest('.atc-chat')
+    ?.querySelector<HTMLInputElement>('.atc-composer input')
+    ?.focus();
+}
+
 /** Scroll metrics of an element, as read from the DOM. */
 export interface ScrollMetrics {
   scrollTop: number;

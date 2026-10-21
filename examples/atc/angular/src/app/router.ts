@@ -7,12 +7,13 @@ import {
   routerBadge,
   routerDecisionInput,
   type RouterInputState,
-  type RouterShown,
   routerShown,
+  type RouterShown,
   routerTyping,
   routeSchema,
   submitTarget,
   trackDecisionInput,
+  type TypingShown,
 } from '@atc/shared';
 import {
   computed,
@@ -63,7 +64,7 @@ export interface Router {
    */
   shown(): RouterShown;
   /** What the router makes of the text as it is typed, for the developer drawer. */
-  readonly typing: Signal<RouterShown | null>;
+  readonly typing: Signal<TypingShown>;
 }
 
 /**

@@ -1,18 +1,19 @@
 import {
   browserStorage,
   type DevRow,
-  type DevSelection,
   type DevStorage,
-  followLatest,
   readDevMode,
-  type RouterShown,
-  selectSend,
+  recordRoute,
+  type RouteSend,
   type TurnShown,
+  TYPING_EMPTY,
+  type TypingShown,
   writeDevMode,
 } from '@atc/shared';
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -26,12 +27,6 @@ export interface DevMode {
   readonly on: boolean;
   /** Opens or closes the drawer, and remembers it. */
   toggle(): void;
-  /** Which send the drawer shows. */
-  readonly selection: DevSelection;
-  /** Shows send `turn`, an index into the recorded turns (not a row). */
-  select(turn: number): void;
-  /** Goes back to following the newest send. */
-  follow(): void;
   /** Where dev mode and the drawer height are remembered. */
   readonly storage: DevStorage | null;
 }
@@ -45,9 +40,11 @@ export interface DevChat {
 
 /** What the chat publishes for the drawer. */
 export interface DevFeed {
-  /** What the router makes of the text being typed, or null. */
-  readonly typing: RouterShown | null;
+  /** What the router makes of the text being typed. */
+  readonly typing: TypingShown;
   readonly chat: DevChat;
+  /** Every submission and its route, newest first (see {@link useRecordRoute}). */
+  readonly routes: readonly RouteSend[];
 }
 
 interface FeedStore {
@@ -57,8 +54,9 @@ interface FeedStore {
 }
 
 const EMPTY_FEED: DevFeed = {
-  typing: null,
+  typing: TYPING_EMPTY,
   chat: { items: [], turns: [], busy: false },
+  routes: [],
 };
 
 function createFeedStore(): FeedStore {
@@ -83,9 +81,6 @@ function createFeedStore(): FeedStore {
 const OFF: DevMode = {
   on: false,
   toggle: () => undefined,
-  selection: followLatest(),
-  select: () => undefined,
-  follow: () => undefined,
   storage: null,
 };
 
@@ -93,8 +88,7 @@ const DevModeContext = createContext<DevMode>(OFF);
 const FeedContext = createContext<FeedStore | null>(null);
 
 /**
- * Holds dev mode (off for a first visit, then remembered in `storage`), the
- * send the drawer shows, and what the chat publishes for it. Without a
+ * Holds dev mode (off for a first visit, then remembered in `storage`) and what the chat publishes for it. Without a
  * provider dev mode is off, so components render without technical UI.
  */
 export function DevModeProvider({
@@ -105,7 +99,6 @@ export function DevModeProvider({
   children: ReactNode;
 }) {
   const [on, setOn] = useState(() => readDevMode(storage));
-  const [selection, setSelection] = useState(followLatest);
   const [feed] = useState(createFeedStore);
   const mode = useMemo<DevMode>(
     () => ({
@@ -113,14 +106,10 @@ export function DevModeProvider({
       toggle: () => {
         writeDevMode(storage, !on);
         setOn(!on);
-        setSelection(followLatest());
       },
-      selection,
-      select: (turn) => setSelection(selectSend(turn)),
-      follow: () => setSelection(followLatest()),
       storage,
     }),
-    [on, selection, storage],
+    [on, storage],
   );
 
   return (
@@ -150,6 +139,22 @@ export function usePublishDev<K extends keyof DevFeed>(
   }, [feed, key, value]);
   // An unmounted publisher leaves nothing stale behind.
   useEffect(() => () => feed?.set(key, EMPTY_FEED[key]), [feed, key]);
+}
+
+/**
+ * A function that logs a submission and the route it took for the drawer's
+ * Router tab. It logs whether or not dev mode is on (the log is capped), so
+ * the drawer shows recent sends when opened later; without a provider it does
+ * nothing.
+ */
+export function useRecordRoute(): (send: RouteSend) => void {
+  const feed = useContext(FeedContext);
+
+  return useCallback(
+    (send: RouteSend) =>
+      feed?.set('routes', recordRoute(feed.get().routes, send)),
+    [feed],
+  );
 }
 
 /** What the chat published, for the drawer. */

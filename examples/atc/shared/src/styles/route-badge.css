@@ -26,19 +26,3 @@
 .atc-route[data-tone='unsure'] {
   border-style: dashed;
 }
-
-/* A starter says whether it asks the assistant or filters the map. */
-.atc-starter-kind {
-  margin-left: 8px;
-  color: var(--atc-muted);
-  font-size: 12px;
-}
-/* Read by assistive tech only: the visible tag above is aria-hidden. */
-.atc-starter-hint {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}

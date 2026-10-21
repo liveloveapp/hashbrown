@@ -25,8 +25,27 @@ test('the selected-plane starter appears only while a plane is selected', () => 
   ]);
 });
 
-test('the starters lead with the nearby-traffic flow', () => {
-  expect(STARTER_PROMPTS[0].text).toBe("What's flying near Bend?");
+test('starters are four filters then four questions, verbatim', () => {
+  const starters = STARTER_PROMPTS.map((starter) => [
+    starter.route,
+    starter.text,
+  ]);
+
+  expect(starters).toEqual([
+    ['filter', 'Only jets below 10,000 ft'],
+    ['filter', 'Alaska Airlines near Seattle'],
+    ['filter', 'Only helicopters'],
+    ['filter', 'Arrivals into Portland'],
+    ['chat', "What's the highest plane right now? And the fastest?"],
+    ['chat', 'Follow the fastest airliner.'],
+    ['chat', "What's flying near Bend?"],
+    ['chat', 'Show me Redmond airport.'],
+  ]);
+});
+
+test('the filter prompt maps helicopters to the rotor kind', () => {
+  expect(FILTER_SYSTEM_PROMPT).toContain('Helicopters');
+  expect(FILTER_SYSTEM_PROMPT).toContain('kind: rotor');
 });
 
 test('the prompt only promises interactions the app has, in touch-friendly words', () => {
@@ -50,7 +69,7 @@ test('the prompt covers the airport tools, and a starter shows Redmond', () => {
   );
 });
 
-test('the prompt covers the airspace tools, and a starter asks about Portland', () => {
+test('the prompt covers the airspace tools', () => {
   expect(SYSTEM_PROMPT).toContain(
     "- For aircraft inside a place's airspace, call lookupPlace, then findAircraft with inAirspace, then highlightAircraft, then show one ArrivalsBoard. To only show a place's airspace, call showAirspace.",
   );
@@ -59,9 +78,6 @@ test('the prompt covers the airspace tools, and a starter asks about Portland', 
   );
   expect(SYSTEM_PROMPT).toContain(
     '- Airspace answers come only from tool results. Use checkedAltitudeFt, the altitude the airspace check used, only to explain why an aircraft near a floor or ceiling is in or out; otherwise don\'t mention it. ADS-B altitudes can be off by a few hundred feet, so say "about" near a floor or ceiling. Airspace whose partTime is true (on a shelf or an aircraft row) is in effect only during hours set by NOTAM, which the tools don\'t know: whenever a result has partTime true, end with one short sentence saying the airspace is part-time and may not be active now. Never say that when partTime is false. Never write a field name such as partTime or checkedAltitudeFt in the answer.',
-  );
-  expect(STARTER_PROMPTS.map((starter) => starter.text)).toContain(
-    'Which planes are inside the Portland Class C?',
   );
 });
 
@@ -110,12 +126,22 @@ test('the filter prompt tells the model how to refine the current filter', () =>
   expect(FILTER_SYSTEM_PROMPT).toContain('Output only the filter');
 });
 
+test('the filter prompt gives near a default distance and places a region', () => {
+  expect(FILTER_SYSTEM_PROMPT).toContain('- Near with no distance: 25 nm.');
+  expect(FILTER_SYSTEM_PROMPT).toContain(
+    '- Places are in the Pacific Northwest.',
+  );
+});
+
 test('the starters include a question for the chat and a filter for the map', () => {
   const routes = new Set(STARTER_PROMPTS.map((starter) => starter.route));
   const filter = STARTER_PROMPTS.find((starter) => starter.route === 'filter');
 
   expect(routes).toEqual(new Set(['chat', 'filter']));
   expect(filter?.text).toBe('Only jets below 10,000 ft');
+  expect(STARTER_PROMPTS.slice(0, 4).every((s) => s.route === 'filter')).toBe(
+    true,
+  );
 });
 
 test('the prompt never shows FlightCards for a list, whichever cards are offered', () => {
@@ -154,6 +180,21 @@ test('the router context sends picks, follows and airports to chat, and only sta
     'Choose chat when it asks a question, picks out particular aircraft',
   );
   expect(ROUTE_CONTEXT).toContain('"show me everything landing at Seattle"');
+});
+
+test('the router context tells a named set of arrivals from asking to see them', () => {
+  expect(ROUTE_CONTEXT).toContain('"arrivals into Portland"');
+  expect(ROUTE_CONTEXT).toContain('"planes landing at Seattle"');
+  expect(ROUTE_CONTEXT).toContain(
+    'A bare phrase that names a set of aircraft, with no question and no "show me", is a filter, even when it names arrivals or landings at an airport.',
+  );
+  expect(ROUTE_CONTEXT).toContain('or starts with "show me"');
+  expect(ROUTE_CONTEXT).not.toContain('its airspace or its arrivals');
+});
+
+test('the router context keeps departures in chat, since the filter has no departing field', () => {
+  expect(ROUTE_CONTEXT).toContain('or approaching an airport)');
+  expect(ROUTE_CONTEXT).toContain('asks about departures');
 });
 
 test('the cards context and descriptions tell one aircraft from two superlatives', () => {
