@@ -10,7 +10,7 @@ import { createChecklist, createJsonClient } from './lib.mjs';
 
 const RESEND_BASE_URL = 'https://api.resend.com';
 const REGION = 'us-east-1';
-const KEY_NAME = 'hashbrown-www';
+const KEY_NAME = 'hashbrown-lifecycle';
 const DNS_TTL = 3600;
 const WEBHOOK_STEP =
   'create a webhook at https://resend.com/webhooks for https://hashbrown.dev/_/webhooks/resend (events email.sent, delivered, delivery_delayed, bounced, complained, suppressed, failed) and set RESEND_WEBHOOK_SECRET on hashbrown-www and hashbrown-lifecycle';

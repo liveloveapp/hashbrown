@@ -153,11 +153,11 @@ test('ensureSendingKey creates a sending-only key and returns its token', async 
     'POST /api-keys': { body: { id: 'k1', token: SENDING_TOKEN } },
   });
 
-  const result = await ensureSendingKey(resend, 'hashbrown-www', 'd1');
+  const result = await ensureSendingKey(resend, 'hashbrown-lifecycle', 'd1');
 
   assert.deepEqual(result, { status: 'created', token: SENDING_TOKEN });
   assert.deepEqual(calls[1].body, {
-    name: 'hashbrown-www',
+    name: 'hashbrown-lifecycle',
     permission: 'sending_access',
     domain_id: 'd1',
   });
@@ -166,11 +166,11 @@ test('ensureSendingKey creates a sending-only key and returns its token', async 
 test('ensureSendingKey does not create a second key with the same name and returns no token', async () => {
   const { resend, calls } = clientsFor({
     'GET /api-keys': {
-      body: { data: [{ id: 'k1', name: 'hashbrown-www' }] },
+      body: { data: [{ id: 'k1', name: 'hashbrown-lifecycle' }] },
     },
   });
 
-  const result = await ensureSendingKey(resend, 'hashbrown-www', 'd1');
+  const result = await ensureSendingKey(resend, 'hashbrown-lifecycle', 'd1');
 
   assert.deepEqual(result, { status: 'exists' });
   assert.ok(calls.every((c) => c.method === 'GET'));
@@ -199,7 +199,7 @@ const EXISTING_ROUTES = {
     body: { id: 'd1', status: 'verified', records: RECORDS },
   },
   'POST /domains/d1/verify': { body: { object: 'domain', id: 'd1' } },
-  'GET /api-keys': { body: { data: [{ id: 'k1', name: 'hashbrown-www' }] } },
+  'GET /api-keys': { body: { data: [{ id: 'k1', name: 'hashbrown-lifecycle' }] } },
   ...VERCEL_EXISTING,
 };
 
