@@ -108,7 +108,13 @@
 /*
  * Refinements: ways to narrow the filter on the map, in the flow just above
  * the composer, which is absolutely positioned over the bottom of the panel.
+ * The row reserves the composer's height below it, so the body above it
+ * needs no bottom padding of its own.
  */
+.atc-chat-body:has(+ .atc-refinements) {
+  padding-bottom: 0;
+  scroll-padding-bottom: 0;
+}
 .atc-refinements {
   display: flex;
   flex-wrap: wrap;

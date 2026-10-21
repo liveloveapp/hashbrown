@@ -1,4 +1,4 @@
-import { type Starter, starterPrompts } from '@atc/shared';
+import { SELECTED_PROMPT, type Starter, starterPrompts } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -12,7 +12,8 @@ let nextId = 0;
 /**
  * What the chat shows before the first message: a question and starter
  * pills in two groups, "Filter the map" first and then "Ask a question",
- * which leads with "What's the plane I selected?" while a plane is selected.
+ * which leads with "What's the plane I selected?" while a plane is selected
+ * (marked `data-lead`, so the phone peek's single row shows it first).
  * `pick` emits the starter with its route: starters skip the router.
  */
 @Component({
@@ -21,7 +22,7 @@ let nextId = 0;
   host: { class: 'atc-empty' },
   template: `
     <p class="atc-empty-title">
-      Ask about the planes over the Pacific Northwest.
+      Filter the map or ask about the planes overhead.
     </p>
     @for (group of groups(); track group.label) {
       <div
@@ -32,7 +33,11 @@ let nextId = 0;
         <h2 [id]="group.id" class="atc-starter-heading">{{ group.label }}</h2>
         <div class="atc-starters">
           @for (starter of group.starters; track starter.text) {
-            <button type="button" (click)="pick.emit(starter)">
+            <button
+              type="button"
+              [attr.data-lead]="starter.text === selectedPrompt ? '' : null"
+              (click)="pick.emit(starter)"
+            >
               {{ starter.text }}
             </button>
           }
@@ -44,6 +49,7 @@ let nextId = 0;
 export class EmptyState {
   /** Emits the starter the user picked, with its route. */
   readonly pick = output<Starter>();
+  protected readonly selectedPrompt = SELECTED_PROMPT;
   private readonly uid = `atc-starters-${nextId++}`;
   private readonly state = injectAtcState();
   protected readonly groups = computed(() => {

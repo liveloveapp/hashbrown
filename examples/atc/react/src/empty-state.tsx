@@ -1,4 +1,4 @@
-import { type Starter, starterPrompts } from '@atc/shared';
+import { SELECTED_PROMPT, type Starter, starterPrompts } from '@atc/shared';
 import { useId } from 'react';
 import { useAtcState } from './store';
 
@@ -24,6 +24,7 @@ function StarterGroup({
           <button
             key={starter.text}
             type="button"
+            data-lead={starter.text === SELECTED_PROMPT ? '' : undefined}
             onClick={() => onPick(starter)}
           >
             {starter.text}
@@ -37,7 +38,8 @@ function StarterGroup({
 /**
  * What the chat shows before the first message: a question and starter
  * pills in two groups, "Filter the map" first and then "Ask a question",
- * which leads with "What's the plane I selected?" while a plane is selected.
+ * which leads with "What's the plane I selected?" while a plane is selected
+ * (marked `data-lead`, so the phone peek's single row shows it first).
  * `onPick` gets the starter with its route: starters skip the router.
  */
 export function EmptyState({ onPick }: { onPick: (starter: Starter) => void }) {
@@ -47,7 +49,7 @@ export function EmptyState({ onPick }: { onPick: (starter: Starter) => void }) {
   return (
     <div className="atc-empty">
       <p className="atc-empty-title">
-        Ask about the planes over the Pacific Northwest.
+        Filter the map or ask about the planes overhead.
       </p>
       <StarterGroup
         label="Filter the map"

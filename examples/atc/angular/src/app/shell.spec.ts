@@ -105,7 +105,7 @@ test('the empty state asks a question and offers every starter prompt', () => {
   buttons[1]?.click();
 
   expect(text(element.querySelector('.atc-empty-title'))).toBe(
-    'Ask about the planes over the Pacific Northwest.',
+    'Filter the map or ask about the planes overhead.',
   );
   expect(buttons.map((button) => text(button))).toEqual(
     STARTER_PROMPTS.map((starter) => starter.text),
@@ -150,6 +150,10 @@ test('the empty state offers the selected-plane question first while a plane is 
   expect(element.querySelectorAll('button')).toHaveLength(
     STARTER_PROMPTS.length + 1,
   );
+  // The phone peek's single row puts the marked starter first.
+  expect(
+    [...element.querySelectorAll('button[data-lead]')].map((b) => text(b)),
+  ).toEqual([SELECTED_PROMPT]);
 });
 
 function composer(answer?: Answer) {

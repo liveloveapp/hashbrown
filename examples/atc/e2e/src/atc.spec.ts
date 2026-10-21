@@ -518,6 +518,31 @@ test('on a phone, the starters show in the peek, a pick lowers the sheet to half
   await close();
 });
 
+test('on a phone, the refine row shows at half and the peek still shows the starters and the composer', async ({
+  browser,
+}, testInfo) => {
+  const { page, close } = await openPhone(browser, testInfo.project.name, {
+    width: 375,
+    height: 812,
+  });
+  const sheet = page.locator('#atc-chat-sheet');
+  const first = page.getByRole('button', { name: PROMPTS.starterJets });
+  const field = page.getByRole('textbox', { name: 'Message' });
+  const row = page.getByTestId('refinements');
+
+  await page.getByRole('button', { name: PROMPTS.starterHelicopters }).tap();
+  await expect(sheet).toHaveAttribute('data-snap', 'half');
+  await expect(row.getByRole('button').first()).toBeInViewport();
+  await expect(field).toBeInViewport();
+  await first.press('Escape');
+
+  await expect(sheet).toHaveAttribute('data-snap', 'peek');
+  await expect(first).toBeInViewport();
+  await expect(field).toBeInViewport();
+  await expect(row).toBeHidden();
+  await close();
+});
+
 test('the data tags of a tight block of highlighted planes overlap no tag and no tagged icon, and sit above untagged icons', async ({
   page,
 }, testInfo) => {

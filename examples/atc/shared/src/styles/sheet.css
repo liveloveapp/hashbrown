@@ -142,6 +142,23 @@
     white-space: nowrap;
     scroll-snap-align: start;
   }
+  /* The selected-plane question still leads the row. */
+  .atc-workbench
+    .atc-chat-panel[data-snap='peek']
+    .atc-starters
+    button[data-lead] {
+    order: -1;
+  }
+  /*
+   * The peek has no room for the "Refine:" row; it shows from half up. The
+   * body then keeps its own composer padding.
+   */
+  .atc-workbench .atc-chat-panel[data-snap='peek'] .atc-refinements {
+    display: none;
+  }
+  .atc-workbench .atc-chat-panel[data-snap='peek'] .atc-chat-body {
+    padding-bottom: var(--atc-composer-height);
+  }
   .atc-workbench .atc-chat {
     --atc-composer-height: calc(80px + env(safe-area-inset-bottom, 0px));
   }
