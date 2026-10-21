@@ -43,7 +43,7 @@ function commonAirline(matches: readonly Aircraft[]): string | null {
  * Up to two ways to narrow the applied map filter, in a fixed priority order:
  * an altitude ceiling, the airline that dominates the matches, a tighter
  * radius, then jets only. A clause the filter already has is never suggested.
- * Returns an empty list when no filter is applied.
+ * Returns an empty list when no filter is applied or it matches no aircraft.
  *
  * @param applied - The filter on the map, or null.
  * @param aircraft - The aircraft on the map before filtering.
@@ -57,6 +57,9 @@ export function refinements(
   }
   const { filter, resolved } = applied;
   const matches = aircraft.filter((a) => matchesResolved(resolved, a));
+  if (matches.length === 0) {
+    return [];
+  }
   const hasAltitude =
     filter.minAltitudeFt != null || filter.maxAltitudeFt != null;
   const airline = filter.airline == null ? commonAirline(matches) : null;

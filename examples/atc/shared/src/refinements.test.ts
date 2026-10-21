@@ -54,7 +54,11 @@ test('refinements follow the rules in order and never repeat a clause', () => {
     airline: 'United',
     near: { airport: 'KBDN', radiusNm: 5 },
   });
-  const wide = apply({ near: { airport: 'KBDN', radiusNm: 40 }, kind: 'jet' });
+  const wide = apply({
+    near: { airport: 'KSEA', radiusNm: 40 },
+    kind: 'jet',
+    airline: 'United',
+  });
 
   const first = refinements(none, mixed);
   const second = refinements(altitude, mixed);
@@ -94,4 +98,40 @@ test('an airline is suggested only when it is common among the matches', () => {
   expect(tooFew).toEqual([]);
   expect(tooSpread).toEqual([]);
   expect(common).toEqual([{ text: 'Only United Airlines' }]);
+});
+
+test('no refinements when the applied filter matches no aircraft', () => {
+  const applied = apply({ airline: 'Alaska' });
+
+  const result = refinements(applied, mixed);
+
+  expect(result).toEqual([]);
+});
+
+test('a tie between airlines goes to the first name alphabetically', () => {
+  const applied = apply({ minAltitudeFt: 1000, kind: 'jet' });
+  const tied = [
+    plane('UAL1', 'd00001'),
+    plane('UAL2', 'd00002'),
+    plane('UAL3', 'd00003'),
+    plane('DAL1', 'd00004'),
+    plane('DAL2', 'd00005'),
+    plane('DAL3', 'd00006'),
+  ];
+
+  const result = refinements(applied, tied);
+
+  expect(result).toEqual([{ text: 'Only Delta Air Lines' }]);
+});
+
+test('no airline is suggested when the filter already names one', () => {
+  const applied = apply({
+    airline: 'United',
+    minAltitudeFt: 1000,
+    kind: 'jet',
+  });
+
+  const result = refinements(applied, mixed);
+
+  expect(result).toEqual([]);
 });
