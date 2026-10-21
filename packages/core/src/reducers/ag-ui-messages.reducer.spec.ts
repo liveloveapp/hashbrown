@@ -3020,3 +3020,26 @@ test('a TOOL_CALL_START for a cancelled step reopens it as running', () => {
   expect(step).not.toHaveProperty('label');
   expect(step).not.toHaveProperty('settledAt');
 });
+
+test('a bad settle without an icon keeps the previous icon but drops label and sources', () => {
+  const active = activeAttempt();
+
+  const denied = applyEvents(active, [
+    startTool('c1', {
+      'b4.step': {
+        v: 1,
+        kind: 'server',
+        status: 'running',
+        label: 'Searching',
+        icon: 'search',
+        sources: [{ id: 's1', kind: 'url', title: 'A' }],
+      },
+    }),
+    stepEvent({ toolCallId: 'c1', status: 'denied' }),
+  ]);
+
+  const step = readStep(denied, 'c1') as Record<string, unknown>;
+  expect(step).toMatchObject({ status: 'denied', icon: 'search' });
+  expect(step).not.toHaveProperty('label');
+  expect(step).not.toHaveProperty('sources');
+});

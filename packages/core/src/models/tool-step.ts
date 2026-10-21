@@ -263,8 +263,8 @@ const BAD = ['failed', 'denied', 'cancelled'];
  * settle the step unless it has failed. `running` only lifts an unsettled
  * step, and a read without a status keeps the current one. When both sides
  * are settled, a step from a message beats one from a call. A step
- * that moves into a different bad settle loses its label, icon and sources
- * unless the new step supplies them. A failed step with no error gets a default one.
+ * that moves into a different bad settle loses its label and sources unless
+ * the new step supplies them; its icon is kept unless the new step has one. A failed step with no error gets a default one.
  *
  * @param previous - The step held so far, if any.
  * @param next - The incoming step.
@@ -305,12 +305,11 @@ function mergeSteps(
   const defined = compact({ ...next }) as ɵToolStepRead;
   const merged: ɵToolStep = { ...previous, ...defined, status };
   if (BAD.includes(status) && status !== previous.status) {
-    const { label, icon, sources, ...rest } = merged;
+    const { label, sources, ...rest } = merged;
     return {
       ...rest,
       status,
       ...(next.label !== undefined ? { label } : {}),
-      ...(next.icon !== undefined ? { icon } : {}),
       ...(next.sources !== undefined ? { sources } : {}),
     };
   }

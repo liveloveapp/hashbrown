@@ -1574,3 +1574,33 @@ test('leaves malformed unregistered tool call arguments unresolved without a str
   expect(next.toolCalls[0]?.argumentsComplete).toBe(true);
   expect(next.error).toBeUndefined();
 });
+
+test('a TOOL_CALL_START for a cancelled step reopens it as running', () => {
+  // Arrange
+  const cancelled = {
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    label: 'Waiting',
+    settledAt: 99,
+  };
+  const state = createState();
+
+  // Act
+  const next = accumulateEvents(state, [
+    {
+      ...toolStart('c1', 'lookup'),
+      metadata: { 'b4.step': cancelled },
+    } as AGUIEvent,
+    toolStart('c1', 'lookup'),
+  ]);
+
+  // Assert
+  const step = next.toolCalls[0]?.metadata?.['b4.step'] as Record<
+    string,
+    unknown
+  >;
+  expect(step).toMatchObject({ status: 'running' });
+  expect(step).not.toHaveProperty('label');
+  expect(step).not.toHaveProperty('settledAt');
+});
