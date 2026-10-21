@@ -337,3 +337,15 @@ test('an unreadable first step is left out', () => {
 
   expect(result).toEqual({ openai: { id: 1 } });
 });
+
+test('an invalid kind in the next value does not count as stated', () => {
+  const provider = { 'b4.step': step({ kind: 'provider', label: 'a' }) };
+  const bogus = { 'b4.step': { v: 1, kind: 'bogus', status: 'completed' } };
+  const nulled = { 'b4.step': { v: 1, kind: null, status: 'completed' } };
+
+  const fromBogus = mergeStepMetadata(provider, bogus, 'call');
+  const fromNull = mergeStepMetadata(provider, nulled, 'call');
+
+  expect((fromBogus?.['b4.step'] as ToolStep).kind).toBe('provider');
+  expect((fromNull?.['b4.step'] as ToolStep).kind).toBe('provider');
+});

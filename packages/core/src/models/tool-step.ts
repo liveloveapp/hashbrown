@@ -347,7 +347,9 @@ export function ɵmergeStepMetadata(
         delete merged[ɵTOOL_STEP_METADATA_KEY];
       }
     } else {
-      const statedKind = isRecord(rawNext) && 'kind' in rawNext;
+      const statedKind =
+        isRecord(rawNext) &&
+        (rawNext['kind'] === 'server' || rawNext['kind'] === 'provider');
       merged[ɵTOOL_STEP_METADATA_KEY] = ɵmergeToolStep(
         heldStep,
         heldStep !== undefined && !statedKind
