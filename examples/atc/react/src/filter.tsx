@@ -4,13 +4,14 @@ import {
   type FilterSync,
   type MapFilter,
   mapFilterSchema,
+  streamingKeys,
 } from '@atc/shared';
 import {
   createHttpTransport,
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { useStructuredCompletion } from '@hashbrownai/react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useAtcStore } from './store';
 
@@ -19,13 +20,6 @@ import { useAtcStore } from './store';
 
 const FILTER_TRANSPORT = createHttpTransport({ baseUrl: '/api/filter' });
 const NONE: ReadonlySet<keyof MapFilter> = new Set();
-
-function sameKeys(
-  a: ReadonlySet<keyof MapFilter>,
-  b: ReadonlySet<keyof MapFilter>,
-): boolean {
-  return a.size === b.size && [...a].every((key) => b.has(key));
-}
 
 /** The natural-language map filter. */
 export interface MapFilterHandle {
@@ -51,8 +45,13 @@ export function useMapFilter(
 ): MapFilterHandle {
   const store = useAtcStore();
   const [input, setInput] = useState<string | null>(null);
-  const [streamingKeys, setStreamingKeys] = useState(NONE);
+  // What `input` holds, for `apply`, which must not change identity.
+  const inputRef = useRef<string | null>(null);
   const sync = useRef<FilterSync | null>(null);
+  const stopRef = useRef<() => void>(() => undefined);
+  // The output of the run before this one, which must not be applied.
+  const latest = useRef<unknown>(null);
+  const stale = useRef<unknown>(null);
   const completion = useStructuredCompletion({
     input,
     // Required by Hashbrown; the server replaces it with the filter prompt
@@ -62,12 +61,8 @@ export function useMapFilter(
     transport: options.transport ?? FILTER_TRANSPORT,
     debounceTime: 0,
   });
-  const { output, stop } = completion;
-  const stopRef = useRef(stop);
+  const { output, stop, isLoading, error } = completion;
 
-  useEffect(() => {
-    stopRef.current = stop;
-  }, [stop]);
   useEffect(() => {
     const created = createFilterSync(store, () => stopRef.current());
     sync.current = created;
@@ -77,31 +72,40 @@ export function useMapFilter(
       sync.current = null;
     };
   }, [store]);
-  // Each streamed update: complete fields to the store, the rest to the pill.
+  // Each streamed update goes to the store; the final one is applied whole.
   useEffect(() => {
-    const keys = sync.current?.update(output) ?? NONE;
-    setStreamingKeys((previous) =>
-      sameKeys(previous, keys) ? previous : keys,
-    );
-  }, [output]);
-
-  const apply = (request: string) => {
-    const next = filterRequestInput(
-      request,
-      store.getState().mapFilter?.filter ?? null,
-    );
-    sync.current?.begin();
-    if (next === input) {
-      // Hashbrown sends when the input changes; blank it first so the same
-      // words (after a clear, say) are sent again.
-      flushSync(() => setInput(null));
+    stopRef.current = stop;
+    latest.current = output;
+    if (output === null || output === stale.current) {
+      return;
     }
-    setInput(next);
-  };
+    if (isLoading) {
+      sync.current?.update(output);
+    } else if (!error) {
+      sync.current?.finish(output);
+    }
+  }, [output, stop, isLoading, error]);
 
-  return {
-    apply,
-    streaming: completion.isLoading ? streamingKeys : NONE,
-    output,
-  };
+  const apply = useCallback(
+    (request: string) => {
+      const current = store.getState().mapFilter?.filter ?? null;
+      const next = filterRequestInput(request, current);
+      stale.current = latest.current;
+      sync.current?.begin(current);
+      if (next === inputRef.current) {
+        // Hashbrown sends when the input changes; blank it first so the same
+        // words (after a clear, say) are sent again.
+        flushSync(() => setInput(null));
+      }
+      inputRef.current = next;
+      setInput(next);
+    },
+    [store],
+  );
+  const streaming = useMemo(
+    () => (isLoading ? streamingKeys(output) : NONE),
+    [isLoading, output],
+  );
+
+  return { apply, streaming, output };
 }

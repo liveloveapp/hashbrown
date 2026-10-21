@@ -17,63 +17,115 @@ export function filterRequestInput(
   return JSON.stringify({ request, current });
 }
 
+/** A filter with every field "any". */
+const EMPTY_FILTER: MapFilter = {
+  airline: null,
+  typeCode: null,
+  kind: null,
+  minAltitudeFt: null,
+  maxAltitudeFt: null,
+  approaching: null,
+  near: null,
+  inAirspace: null,
+};
+
+const NONE: ReadonlySet<keyof MapFilter> = new Set();
+
+/** The fields of a partial answer that are present but not yet whole. */
+export function streamingKeys(partial: unknown): ReadonlySet<keyof MapFilter> {
+  const pending = Object.keys(parseStreamedFilter(partial).pending);
+
+  return pending.length === 0
+    ? NONE
+    : (new Set(pending) as ReadonlySet<keyof MapFilter>);
+}
+
 /** Applies a streaming filter answer to the store, one run at a time. */
 export interface FilterSync {
-  /** Starts a run. Any run in flight is superseded; the newest wins. */
-  begin(): void;
   /**
-   * Applies the latest partial output of the current run: the fields that
-   * are complete go to the store, once per distinct filter.
-   * @returns The fields still streaming, empty when no run is live.
+   * Starts a run that refines `base`, the filter the request was sent with
+   * (null for a fresh one). Any run in flight is superseded; newest wins.
    */
-  update(partial: unknown): ReadonlySet<keyof MapFilter>;
+  begin(base: MapFilter | null): void;
+  /**
+   * Applies the latest partial output of the current run. Only fields the
+   * answer has decided (present, whole, or an explicit null) replace the
+   * base's, so a refinement never flickers; each distinct filter reaches the
+   * store once.
+   */
+  update(partial: unknown): void;
+  /**
+   * Ends the run with its final output, applied whole: clauses the answer
+   * omitted are dropped.
+   */
+  finish(partial: unknown): void;
   /** Stops listening to the store. */
   dispose(): void;
 }
 
-const NONE: ReadonlySet<keyof MapFilter> = new Set();
-
 /**
  * Creates a {@link FilterSync}. If the filter is cleared (the pill's ✕, or
- * the assistant) after the run applied something, the run stops being
- * authoritative: later output is ignored and `onCancel` is called once so the
- * caller can stop the stream.
+ * the assistant) while a run is live, the run stops being authoritative:
+ * later output is ignored and `onCancel` is called once so the caller can
+ * stop the stream.
  */
 export function createFilterSync(
   store: AtcStore,
   onCancel: () => void,
 ): FilterSync {
   let live = false;
+  let base: MapFilter = EMPTY_FILTER;
   let applied: string | null = null;
+  // Whether a filter was on the map after the last store change.
+  let shown = false;
 
   const unsubscribe = store.subscribe(() => {
-    if (live && applied !== null && store.getState().mapFilter === null) {
+    const now = store.getState().mapFilter !== null;
+    if (live && shown && !now) {
       live = false;
       onCancel();
     }
+    shown = now;
   });
 
+  const apply = (next: MapFilter) => {
+    const key = JSON.stringify(next);
+    if (key !== applied) {
+      applied = key;
+      store.setMapFilter(next);
+    }
+  };
+
   return {
-    begin() {
+    begin(current) {
       live = true;
-      applied = null;
+      base = current ?? EMPTY_FILTER;
+      applied = current === null ? null : JSON.stringify(current);
+      shown = current !== null;
     },
     update(partial) {
       if (!live) {
-        return NONE;
+        return;
+      }
+      const parsed = parseStreamedFilter(partial);
+      if (parsed.complete.size === 0) {
+        return;
+      }
+      const next: Record<string, unknown> = { ...base };
+      for (const key of parsed.complete) {
+        next[key] = parsed.filter[key];
+      }
+      apply(next as unknown as MapFilter);
+    },
+    finish(partial) {
+      if (!live) {
+        return;
       }
       const parsed = parseStreamedFilter(partial);
       if (parsed.complete.size > 0) {
-        const key = JSON.stringify(parsed.filter);
-        if (key !== applied) {
-          applied = key;
-          store.setMapFilter(parsed.filter);
-        }
+        apply(parsed.filter);
       }
-
-      return new Set(Object.keys(parsed.pending)) as ReadonlySet<
-        keyof MapFilter
-      >;
+      live = false;
     },
     dispose: unsubscribe,
   };

@@ -108,4 +108,53 @@ test('the same words sent again after a clear ask the model again', async () => 
   await waitFor(() =>
     expect(store.getState().mapFilter?.filter.airline).toBe('Alaska'),
   );
+  expect(model.requests).toHaveLength(2);
+});
+
+test('a refinement keeps the current clauses until the answer decides them', async () => {
+  const { store, model, hook } = setup();
+  act(() => store.setMapFilter(filterOf({ airline: 'Alaska' })));
+
+  act(() => hook.result.current.apply('only jets'));
+  await waitFor(() => expect(model.requests).toHaveLength(1));
+  act(() => model.push('{"kind":"jet",'));
+  await waitFor(() =>
+    expect(store.getState().mapFilter?.filter.kind).toBe('jet'),
+  );
+  const kept = store.getState().mapFilter?.filter.airline;
+  act(() => model.push('"airline":null,'));
+  await waitFor(() =>
+    expect(store.getState().mapFilter?.filter.airline).toBeNull(),
+  );
+
+  expect(kept).toBe('Alaska');
+});
+
+test('a second apply mid-stream supersedes the first', async () => {
+  const { store, model, hook } = setup();
+  act(() => hook.result.current.apply('Alaska'));
+  await waitFor(() => expect(model.requests).toHaveLength(1));
+  act(() => model.push('{"airline":"Alaska",'));
+  await waitFor(() => expect(store.getState().mapFilter).not.toBeNull());
+
+  act(() => hook.result.current.apply('Delta'));
+  await waitFor(() => expect(model.requests).toHaveLength(2));
+  act(() => model.push('{"airline":"Delta",'));
+
+  await waitFor(() =>
+    expect(store.getState().mapFilter?.filter.airline).toBe('Delta'),
+  );
+});
+
+test('clearing before the first field arrives still cancels the run', async () => {
+  const { store, model, hook } = setup();
+  act(() => store.setMapFilter(filterOf({ airline: 'Alaska' })));
+  act(() => hook.result.current.apply('only jets'));
+  await waitFor(() => expect(model.requests).toHaveLength(1));
+
+  act(() => store.clearMapFilter());
+  act(() => model.push('{"kind":"jet",'));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  expect(store.getState().mapFilter).toBeNull();
 });

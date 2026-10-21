@@ -3,6 +3,7 @@ import {
   filterRequestInput,
   type MapFilter,
   mapFilterSchema,
+  streamingKeys,
 } from '@atc/shared';
 import {
   computed,
@@ -24,13 +25,6 @@ import { ATC_STORE } from './store';
 
 const FILTER_TRANSPORT = createHttpTransport({ baseUrl: '/api/filter' });
 const NONE: ReadonlySet<keyof MapFilter> = new Set();
-
-function sameKeys(
-  a: ReadonlySet<keyof MapFilter>,
-  b: ReadonlySet<keyof MapFilter>,
-): boolean {
-  return a.size === b.size && [...a].every((key) => b.has(key));
-}
 
 /** The natural-language map filter. */
 export interface MapFilterHandle {
@@ -74,11 +68,29 @@ export function injectMapFilter(
   const output = computed<unknown>(() =>
     resource.status() === 'error' ? null : resource.value(),
   );
-  const streamingKeys = signal(NONE, { equal: sameKeys });
-  // Each streamed update: complete fields to the store, the rest to the pill.
-  effect(() => streamingKeys.set(sync.update(output())));
-  // Hashbrown sends when the input changes; `apply` blanks it first so the
-  // same words (after a clear, say) are sent again.
+  // The output of the run before this one, which must not be applied.
+  let stale: unknown = null;
+  // Each streamed update goes to the store; the final one is applied whole.
+  effect(() => {
+    const value = output();
+    const loading = resource.isLoading();
+    if (value === null || value === stale) {
+      return;
+    }
+    if (loading) {
+      sync.update(value);
+    } else if (resource.status() !== 'error') {
+      sync.finish(value);
+    }
+  });
+  // Hashbrown sends when the input changes, so `apply` blanks it first to send
+  // the same words again (after a clear, say). `apply` sets `input` to null
+  // and `queued` to the real value together; every effect then runs once and
+  // sees null (the completion's input effect resets its ownership). This
+  // effect then sets the real input, which schedules a second pass where the
+  // completion sees a changed input and sends. That holds whatever order the
+  // effects were created in, because the real input is only set after the
+  // first pass has read null.
   effect(() => {
     const next = queued();
     if (next !== null && input() === null) {
@@ -89,11 +101,10 @@ export function injectMapFilter(
 
   return {
     apply(request) {
-      const next = filterRequestInput(
-        request,
-        store.getState().mapFilter?.filter ?? null,
-      );
-      sync.begin();
+      const current = store.getState().mapFilter?.filter ?? null;
+      const next = filterRequestInput(request, current);
+      stale = output();
+      sync.begin(current);
       if (next === input()) {
         queued.set(next);
         input.set(null);
@@ -101,7 +112,9 @@ export function injectMapFilter(
         input.set(next);
       }
     },
-    streaming: computed(() => (resource.isLoading() ? streamingKeys() : NONE)),
+    streaming: computed(() =>
+      resource.isLoading() ? streamingKeys(output()) : NONE,
+    ),
     output,
   };
 }

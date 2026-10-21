@@ -1,5 +1,9 @@
 import { expect, test, vi } from 'vitest';
-import { createFilterSync, filterRequestInput } from './filter-sync';
+import {
+  createFilterSync,
+  filterRequestInput,
+  streamingKeys,
+} from './filter-sync';
 import type { MapFilter } from './find-aircraft';
 import { createAtcStore } from './store';
 
@@ -30,12 +34,11 @@ test('the request input is the JSON the server pins, with the current filter or 
 test('updates apply the complete fields to the store and report the pending ones', () => {
   const store = createAtcStore();
   const sync = createFilterSync(store, () => undefined);
-  sync.begin();
+  sync.begin(null);
 
-  const streaming = sync.update({
-    airline: 'Alaska',
-    near: { airport: 'KSE' },
-  });
+  const partial = { airline: 'Alaska', near: { airport: 'KSE' } };
+  sync.update(partial);
+  const streaming = streamingKeys(partial);
 
   expect(store.getState().mapFilter?.filter.airline).toBe('Alaska');
   expect(store.getState().mapFilter?.filter.near).toBeNull();
@@ -46,7 +49,7 @@ test('an identical update does not touch the store again', () => {
   const store = createAtcStore();
   const sync = createFilterSync(store, () => undefined);
   const listener = vi.fn();
-  sync.begin();
+  sync.begin(null);
   sync.update({ airline: 'Alaska' });
   store.subscribe(listener);
 
@@ -60,7 +63,7 @@ test('nothing applies before a run begins, or when no field is decided yet', () 
   const sync = createFilterSync(store, () => undefined);
 
   sync.update({ airline: 'Alaska' });
-  sync.begin();
+  sync.begin(null);
   sync.update({});
 
   expect(store.getState().mapFilter).toBeNull();
@@ -70,24 +73,23 @@ test('clearing the filter during a run cancels it and ignores later output', () 
   const store = createAtcStore();
   const onCancel = vi.fn();
   const sync = createFilterSync(store, onCancel);
-  sync.begin();
+  sync.begin(null);
   sync.update({ airline: 'Alaska' });
 
   store.clearMapFilter();
-  const streaming = sync.update({ airline: 'Alaska', kind: 'jet' });
+  sync.update({ airline: 'Alaska', kind: 'jet' });
 
   expect(onCancel).toHaveBeenCalledTimes(1);
   expect(store.getState().mapFilter).toBeNull();
-  expect(streaming.size).toBe(0);
 });
 
 test('a new run supersedes the one in flight', () => {
   const store = createAtcStore();
   const sync = createFilterSync(store, () => undefined);
-  sync.begin();
+  sync.begin(null);
   sync.update({ airline: 'Alaska' });
 
-  sync.begin();
+  sync.begin(null);
   sync.update({ airline: 'Delta' });
 
   expect(store.getState().mapFilter?.filter.airline).toBe('Delta');
@@ -97,11 +99,80 @@ test('disposing stops listening to the store', () => {
   const store = createAtcStore();
   const onCancel = vi.fn();
   const sync = createFilterSync(store, onCancel);
-  sync.begin();
+  sync.begin(null);
   sync.update({ airline: 'Alaska' });
 
   sync.dispose();
   store.clearMapFilter();
 
   expect(onCancel).not.toHaveBeenCalled();
+});
+
+test('a refinement keeps the current clauses the answer has not reached yet', () => {
+  const store = createAtcStore();
+  const base = filterOf({ airline: 'Alaska' });
+  store.setMapFilter(base);
+  const sync = createFilterSync(store, () => undefined);
+  sync.begin(base);
+
+  sync.update({ kind: 'jet' });
+
+  expect(store.getState().mapFilter?.filter).toEqual(
+    filterOf({ airline: 'Alaska', kind: 'jet' }),
+  );
+});
+
+test('an explicit null in the answer removes a current clause', () => {
+  const store = createAtcStore();
+  const base = filterOf({ airline: 'Alaska' });
+  store.setMapFilter(base);
+  const sync = createFilterSync(store, () => undefined);
+  sync.begin(base);
+
+  sync.update({ airline: null });
+
+  expect(store.getState().mapFilter?.filter.airline).toBeNull();
+});
+
+test('finishing applies the whole answer, so absent clauses are dropped', () => {
+  const store = createAtcStore();
+  const base = filterOf({ airline: 'Alaska' });
+  store.setMapFilter(base);
+  const sync = createFilterSync(store, () => undefined);
+  sync.begin(base);
+  sync.update({ kind: 'jet' });
+
+  sync.finish({ kind: 'jet' });
+
+  expect(store.getState().mapFilter?.filter).toEqual(filterOf({ kind: 'jet' }));
+});
+
+test('clearing before the first update cancels the run and nothing is applied', () => {
+  const store = createAtcStore();
+  const base = filterOf({ airline: 'Alaska' });
+  store.setMapFilter(base);
+  const onCancel = vi.fn();
+  const sync = createFilterSync(store, onCancel);
+  sync.begin(base);
+
+  store.clearMapFilter();
+  sync.update({ kind: 'jet' });
+
+  expect(onCancel).toHaveBeenCalledTimes(1);
+  expect(store.getState().mapFilter).toBeNull();
+});
+
+test('store changes that leave a filter on the map do not cancel', () => {
+  const store = createAtcStore();
+  const base = filterOf({ airline: 'Alaska' });
+  store.setMapFilter(base);
+  const onCancel = vi.fn();
+  const sync = createFilterSync(store, onCancel);
+  sync.begin(base);
+
+  store.applySnapshot({ at: 1, aircraft: [] });
+  sync.update({ kind: 'jet' });
+
+  expect(onCancel).not.toHaveBeenCalled();
+  expect(store.getState().mapFilter?.filter.kind).toBe('jet');
 });

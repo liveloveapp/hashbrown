@@ -115,4 +115,48 @@ test('the same words sent again after a clear ask the model again', async () => 
   model.push('{"airline":"Alaska",');
 
   await until(() => store.getState().mapFilter?.filter.airline === 'Alaska');
+  expect(model.requests).toHaveLength(2);
+});
+
+test('a refinement keeps the current clauses until the answer decides them', async () => {
+  const { store, model, filter } = setup();
+  store.setMapFilter(filterOf({ airline: 'Alaska' }));
+
+  filter.apply('only jets');
+  await until(() => model.requests.length === 1);
+  model.push('{"kind":"jet",');
+  await until(() => store.getState().mapFilter?.filter.kind === 'jet');
+  const kept = store.getState().mapFilter?.filter.airline;
+  model.push('"airline":null,');
+  await until(() => store.getState().mapFilter?.filter.airline === null);
+
+  expect(kept).toBe('Alaska');
+});
+
+test('a second apply mid-stream supersedes the first', async () => {
+  const { store, model, filter } = setup();
+  filter.apply('Alaska');
+  await until(() => model.requests.length === 1);
+  model.push('{"airline":"Alaska",');
+  await until(() => store.getState().mapFilter !== null);
+
+  filter.apply('Delta');
+  await until(() => model.requests.length === 2);
+  model.push('{"airline":"Delta",');
+
+  await until(() => store.getState().mapFilter?.filter.airline === 'Delta');
+});
+
+test('clearing before the first field arrives still cancels the run', async () => {
+  const { store, model, filter } = setup();
+  store.setMapFilter(filterOf({ airline: 'Alaska' }));
+  filter.apply('only jets');
+  await until(() => model.requests.length === 1);
+
+  store.clearMapFilter();
+  model.push('{"kind":"jet",');
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  TestBed.tick();
+
+  expect(store.getState().mapFilter).toBeNull();
 });
