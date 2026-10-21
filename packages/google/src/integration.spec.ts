@@ -18,6 +18,10 @@ import type { GoogleHashbrownRunAgentInput } from './stream/types';
 // keys). Gemini 3 cannot turn thinking off, so recorded cases think at the
 // minimal level, without thought summaries.
 const GOOGLE_MODEL = 'gemini-3.5-flash-lite';
+// Recorded cases also run against gemini-4-argon. Its tests carry the model in
+// their names, so each model has its own recordings; flash-lite's names, and
+// so its recordings, are unchanged.
+const ARGON_MODEL = 'gemini-4-argon';
 const GOOGLE_UPSTREAM = 'https://generativelanguage.googleapis.com';
 const GOOGLE_BASE_URL_ENV = 'HASHBROWN_GOOGLE_API_BASE_URL';
 
@@ -26,12 +30,35 @@ const GOOGLE_BASE_URL_ENV = 'HASHBROWN_GOOGLE_API_BASE_URL';
 // assert structure only, so a re-record with different wording still passes.
 // Thought signatures may be missing from recordings, so nothing depends on them.
 //
-// The thinking cases stay on hand-written fixtures: recorded through aimock,
-// neither gemini-3.5-flash-lite nor gemini-3.1-flash-lite streamed any thought
-// part (with `includeThoughts: true` and thinkingLevel HIGH), although the
-// same request body sent directly to the API returned thought summaries.
+// Flash-lite's thinking cases stay on hand-written fixtures: recorded through
+// aimock, neither gemini-3.5-flash-lite nor gemini-3.1-flash-lite streamed any
+// thought part (with `includeThoughts: true` and thinkingLevel HIGH), although
+// the same request body sent directly to the API returned thought summaries.
+// gemini-4-argon does stream them, so its thinking cases are recorded.
 const RECORDED_TIMEOUT_MS = 180_000;
 const MAX_OUTPUT_TOKENS = 300;
+const MAX_THINKING_OUTPUT_TOKENS = 2_000;
+
+/** A model the recorded cases run against, and the suffix its test names carry. */
+interface RecordedModel {
+  readonly model: string;
+  readonly suffix: string;
+  /** The lowest thinking level the model accepts, used unless a case tests thinking. */
+  readonly minimalThinking: ThinkingLevel;
+}
+
+const FLASH_LITE: RecordedModel = {
+  model: GOOGLE_MODEL,
+  suffix: '',
+  minimalThinking: ThinkingLevel.MINIMAL,
+};
+// gemini-4-argon rejects thinking level MINIMAL.
+const ARGON: RecordedModel = {
+  model: ARGON_MODEL,
+  suffix: ` with ${ARGON_MODEL}`,
+  minimalThinking: ThinkingLevel.LOW,
+};
+const RECORDED_MODELS: readonly RecordedModel[] = [FLASH_LITE, ARGON];
 
 const LOOKUP_TOOL = {
   name: 'lookup',
@@ -141,6 +168,8 @@ async function runFixture(
 }
 
 interface RecordedRunOptions {
+  /** Request thought summaries instead of minimal thinking. */
+  readonly thinking?: boolean;
   readonly transformRequestOptions?: (
     options: GenerateContentParameters,
   ) => GenerateContentParameters;
@@ -158,6 +187,7 @@ type RecordedRun = (
  * recording is added to its requests by wrapping `fetch` for this test only.
  */
 async function withRecording<T>(
+  target: RecordedModel,
   body: (run: RecordedRun) => Promise<T>,
   replay: { readonly chunkSize?: number } = {},
 ): Promise<T> {
@@ -187,7 +217,7 @@ async function withRecording<T>(
     Array.fromAsync(
       HashbrownGoogle.stream.text({
         apiKey: recorded.apiKey(process.env['GOOGLE_API_KEY']),
-        model: GOOGLE_MODEL,
+        model: target.model,
         input,
         transformRequestOptions: (request) => {
           const transformed =
@@ -197,8 +227,18 @@ async function withRecording<T>(
             ...transformed,
             config: {
               ...transformed.config,
-              maxOutputTokens: MAX_OUTPUT_TOKENS,
-              thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+              ...(options.thinking
+                ? {
+                    maxOutputTokens: MAX_THINKING_OUTPUT_TOKENS,
+                    thinkingConfig: {
+                      thinkingLevel: ThinkingLevel.HIGH,
+                      includeThoughts: true,
+                    },
+                  }
+                : {
+                    maxOutputTokens: MAX_OUTPUT_TOKENS,
+                    thinkingConfig: { thinkingLevel: target.minimalThinking },
+                  }),
             },
           };
         },
@@ -447,42 +487,201 @@ function lookupResult(): string {
   return JSON.stringify({ fact: 'The code word is green.' });
 }
 
+for (const target of RECORDED_MODELS) {
+  test(
+    `Google consumes AG-UI input and emits a canonical text run${target.suffix}`,
+    async () => {
+      const input = baseInput('Say hello in three words.');
+
+      const events = await withRecording(target, (run) => run(input));
+
+      expectCanonicalTextRun(events, input);
+    },
+    RECORDED_TIMEOUT_MS,
+  );
+
+  test(
+    `Google preserves streamed text across multiple AG-UI events${target.suffix}`,
+    async () => {
+      const input = baseInput('Write two short sentences about potatoes.');
+
+      const events = await withRecording(target, (run) => run(input), {
+        chunkSize: 8,
+      });
+
+      expectCanonicalTextRun(events, input);
+      expect(contentEvents(events).length).toBeGreaterThan(1);
+    },
+    RECORDED_TIMEOUT_MS,
+  );
+
+  test(
+    `Google emits tool call lifecycles and continues after the tool result${target.suffix}`,
+    async () => {
+      const first = baseInput(
+        "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+      );
+      first.tools = [LOOKUP_TOOL];
+
+      const { firstEvents, second, secondEvents } = await withRecording(
+        target,
+        async (run) => {
+          const firstEvents = await run(first);
+          const second: GoogleHashbrownRunAgentInput = {
+            ...first,
+            runId: 'run-google-2',
+            messages: historyFromEvents(
+              first.messages,
+              first.runId,
+              firstEvents,
+              lookupResult(),
+            ),
+          };
+          return { firstEvents, second, secondEvents: await run(second) };
+        },
+      );
+
+      expectToolRound(firstEvents, first, 'lookup');
+      expectCanonicalTextRun(secondEvents, second);
+    },
+    RECORDED_TIMEOUT_MS,
+  );
+
+  test(
+    `Google maps the Hashbrown response schema to native structured output${target.suffix}`,
+    async () => {
+      const input = baseInput('Describe a potato as structured output.');
+      const responseSchema = {
+        type: 'object',
+        properties: {
+          text: { type: 'string' },
+          ok: { type: 'boolean' },
+        },
+        required: ['text', 'ok'],
+      };
+      input.forwardedProps = { hashbrown: { responseSchema } };
+      let capturedConfig: GenerateContentParameters['config'];
+
+      const events = await withRecording(target, (run) =>
+        run(input, {
+          transformRequestOptions: (options) => {
+            capturedConfig = options.config;
+            return options;
+          },
+        }),
+      );
+
+      expect(capturedConfig).toEqual(
+        expect.objectContaining({
+          responseMimeType: 'application/json',
+          responseJsonSchema: responseSchema,
+        }),
+      );
+      expectCanonicalTextRun(events, input);
+      expect(JSON.parse(streamedContent(events))).toEqual({
+        text: expect.any(String),
+        ok: expect.any(Boolean),
+      });
+    },
+    RECORDED_TIMEOUT_MS,
+  );
+
+  test(
+    `Google completes a run from a full AG-UI history${target.suffix}`,
+    async () => {
+      const input = baseInput(
+        'What colour is the code word? Answer in one word.',
+      );
+      input.tools = [LOOKUP_TOOL];
+      input.messages = [
+        input.messages[0],
+        {
+          id: 'developer-previous',
+          role: 'developer',
+          content: 'Keep answers short.',
+        },
+        {
+          id: 'user-previous',
+          role: 'user',
+          content: "Look up the code word 'potato'.",
+        },
+        {
+          id: 'assistant-previous',
+          role: 'assistant',
+          content: 'I will look it up.',
+          toolCalls: [
+            {
+              id: 'call_previous',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{"query":"potato"}' },
+            },
+          ],
+        },
+        {
+          id: 'tool-previous',
+          role: 'tool',
+          toolCallId: 'call_previous',
+          content: lookupResult(),
+        },
+        {
+          id: 'assistant-previous-answer',
+          role: 'assistant',
+          content: 'I looked up the code word.',
+        },
+        {
+          id: 'reasoning-previous',
+          role: 'reasoning',
+          content: 'display-only reasoning',
+        },
+        {
+          id: 'activity-previous',
+          role: 'activity',
+          activityType: 'progress',
+          content: { label: 'display-only activity' },
+        },
+        input.messages[1],
+      ];
+
+      const events = await withRecording(target, (run) => run(input));
+
+      expectCanonicalTextRun(events, input);
+    },
+    RECORDED_TIMEOUT_MS,
+  );
+}
+
+// gemini-4-argon streamed its thought parts through aimock, so its thinking
+// cases are recorded (flash-lite's stay hand-written, below).
 test(
-  'Google consumes AG-UI input and emits a canonical text run',
+  `Google streams thought summaries before the answer with ${ARGON_MODEL}`,
   async () => {
-    const input = baseInput('Say hello in three words.');
+    const input = baseInput(
+      'Ann is older than Ben. Ben is older than Cy. Dee is younger than Cy but older than Eve. Who is the second youngest? Reply with the name only.',
+    );
 
-    const events = await withRecording((run) => run(input));
+    const events = await withRecording(ARGON, (run) =>
+      run(input, { thinking: true }),
+    );
 
+    expectThoughts(events);
     expectCanonicalTextRun(events, input);
   },
   RECORDED_TIMEOUT_MS,
 );
 
 test(
-  'Google preserves streamed text across multiple AG-UI events',
-  async () => {
-    const input = baseInput('Write two short sentences about potatoes.');
-
-    const events = await withRecording((run) => run(input), { chunkSize: 8 });
-
-    expectCanonicalTextRun(events, input);
-    expect(contentEvents(events).length).toBeGreaterThan(1);
-  },
-  RECORDED_TIMEOUT_MS,
-);
-
-test(
-  'Google emits tool call lifecycles and continues after the tool result',
+  `Google replays thought parts before a tool call on continuation with ${ARGON_MODEL}`,
   async () => {
     const first = baseInput(
-      "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+      'Ann is older than Ben. Ben is older than Cy. Dee is younger than Cy but older than Eve. Work out who is second youngest, look that name up with the lookup tool, then answer in one short sentence.',
     );
     first.tools = [LOOKUP_TOOL];
+    let continuation: Content[] = [];
 
     const { firstEvents, second, secondEvents } = await withRecording(
+      ARGON,
       async (run) => {
-        const firstEvents = await run(first);
+        const firstEvents = await run(first, { thinking: true });
         const second: GoogleHashbrownRunAgentInput = {
           ...first,
           runId: 'run-google-2',
@@ -493,114 +692,44 @@ test(
             lookupResult(),
           ),
         };
-        return { firstEvents, second, secondEvents: await run(second) };
-      },
-    );
-
-    expectToolRound(firstEvents, first, 'lookup');
-    expectCanonicalTextRun(secondEvents, second);
-  },
-  RECORDED_TIMEOUT_MS,
-);
-
-test(
-  'Google maps the Hashbrown response schema to native structured output',
-  async () => {
-    const input = baseInput('Describe a potato as structured output.');
-    const responseSchema = {
-      type: 'object',
-      properties: {
-        text: { type: 'string' },
-        ok: { type: 'boolean' },
-      },
-      required: ['text', 'ok'],
-    };
-    input.forwardedProps = { hashbrown: { responseSchema } };
-    let capturedConfig: GenerateContentParameters['config'];
-
-    const events = await withRecording((run) =>
-      run(input, {
-        transformRequestOptions: (options) => {
-          capturedConfig = options.config;
-          return options;
-        },
-      }),
-    );
-
-    expect(capturedConfig).toEqual(
-      expect.objectContaining({
-        responseMimeType: 'application/json',
-        responseJsonSchema: responseSchema,
-      }),
-    );
-    expectCanonicalTextRun(events, input);
-    expect(JSON.parse(streamedContent(events))).toEqual({
-      text: expect.any(String),
-      ok: expect.any(Boolean),
-    });
-  },
-  RECORDED_TIMEOUT_MS,
-);
-
-test(
-  'Google completes a run from a full AG-UI history',
-  async () => {
-    const input = baseInput(
-      'What colour is the code word? Answer in one word.',
-    );
-    input.tools = [LOOKUP_TOOL];
-    input.messages = [
-      input.messages[0],
-      {
-        id: 'developer-previous',
-        role: 'developer',
-        content: 'Keep answers short.',
-      },
-      {
-        id: 'user-previous',
-        role: 'user',
-        content: "Look up the code word 'potato'.",
-      },
-      {
-        id: 'assistant-previous',
-        role: 'assistant',
-        content: 'I will look it up.',
-        toolCalls: [
-          {
-            id: 'call_previous',
-            type: 'function',
-            function: { name: 'lookup', arguments: '{"query":"potato"}' },
+        const secondEvents = await run(second, {
+          thinking: true,
+          transformRequestOptions: (options) => {
+            continuation = Array.isArray(options.contents)
+              ? (options.contents as Content[])
+              : [];
+            return options;
           },
-        ],
+        });
+        return { firstEvents, second, secondEvents };
       },
-      {
-        id: 'tool-previous',
-        role: 'tool',
-        toolCallId: 'call_previous',
-        content: lookupResult(),
-      },
-      {
-        id: 'assistant-previous-answer',
-        role: 'assistant',
-        content: 'I looked up the code word.',
-      },
-      {
-        id: 'reasoning-previous',
-        role: 'reasoning',
-        content: 'display-only reasoning',
-      },
-      {
-        id: 'activity-previous',
-        role: 'activity',
-        activityType: 'progress',
-        content: { label: 'display-only activity' },
-      },
-      input.messages[1],
-    ];
+    );
+    const replayedModel = continuation[1];
 
-    const events = await withRecording((run) => run(input));
-
-    expectCanonicalTextRun(events, input);
+    expectThoughts(firstEvents);
+    expectToolRound(firstEvents, first, 'lookup');
+    expect(continuation.map((content) => content.role)).toEqual([
+      'user',
+      'model',
+      'user',
+    ]);
+    expect(replayedModel?.parts?.[0]).toMatchObject({
+      text: expect.any(String),
+      thought: true,
+    });
+    expect(replayedModel?.parts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          functionCall: expect.objectContaining({ name: 'lookup' }),
+        }),
+      ]),
+    );
+    expect(continuation[2]?.parts).toEqual([
+      expect.objectContaining({
+        functionResponse: expect.objectContaining({ name: 'lookup' }),
+      }),
+    ]);
+    expectCanonicalTextRun(secondEvents, second);
   },
   RECORDED_TIMEOUT_MS,
 );

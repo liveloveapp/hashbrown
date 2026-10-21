@@ -1,0 +1,49 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+        "model": "gemini-4-argon",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": "{\"query\":\"hashbrown\"}"
+          }
+        ]
+      },
+      "recordedTimings": {
+        "ttftMs": 3824,
+        "interChunkDelaysMs": [683],
+        "totalDurationMs": 4507
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+        "model": "gemini-4-argon",
+        "turnIndex": 1,
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "The code word for hashbrown is green."
+      },
+      "recordedTimings": {
+        "ttftMs": 1892,
+        "interChunkDelaysMs": [205],
+        "totalDurationMs": 2097
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}
