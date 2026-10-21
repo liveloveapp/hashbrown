@@ -15,16 +15,17 @@ Never commit it or print it into logs or PR text.
   `vercel env pull --environment=preview <private file>` and read `DATABASE_URL`.
 - Or the Vercel API single-env endpoint for the project's `DATABASE_URL` with
   `decrypt=true`.
-- `tools/growth/.provision/` is gitignored. It holds `test-database.env` with
-  `TEST_DATABASE_URL='...'` single-quoted, because the URL contains `&`.
+- `tools/growth/.provision/` is gitignored. Provisioning writes
+  `test-database.env` there (mode 0600) with `TEST_DATABASE_URL='...'`
+  single-quoted, because the URL contains `&`.
 
-`TEST_DATABASE_URL` points at the preview store, the same database that preview
-deployments use; there is no separate test store yet. Only migrations already
-on `main` may be applied there. An integration run from a branch with an
-unmerged migration records it in the ledger, and any later edit to that
-migration makes `migrate-growth` abort with a checksum mismatch. A run that
-crashes can leave fixture contacts keyed with email HMAC key version 1 behind.
-A dedicated test store is planned before PR 2.
+`TEST_DATABASE_URL` points at the dedicated test store
+`growth-test-target-01`, which nothing but the integration specs uses. Only
+migrations already on `main` may be applied to the preview store, which preview
+deployments share: a migration recorded in the ledger from a branch makes
+`migrate-growth` abort with a checksum mismatch after any later edit. A run
+that crashes can leave fixture contacts keyed with email HMAC key version 1
+behind in the test store.
 
 Nx loads the repo-root `.env` into every target, so a `DATABASE_URL` there
 silently becomes the migration target. Check it before running anything below.
@@ -51,28 +52,28 @@ GROWTH_INTEGRATION=1 npx nx test-integration growth
 ```
 
 `DATABASE_URL` and `B4_DATABASE_URL` must be unset, including in the repo-root
-`.env`, and Node must be 24 or newer. The specs clean up their rows, but this is
-the preview store (see above): never run them from a branch that adds or edits
-a migration not yet on `main`, and after a crashed run look for leftover
-key-version-1 fixture contacts.
+`.env`, and Node must be 24 or newer. The specs clean up their rows, and they
+run against the dedicated test store, so a branch with an unmerged migration is
+safe to test; after a crashed run look for leftover key-version-1 fixture
+contacts.
 
 ## Switches and environment variables
 
-| Variable | Meaning |
-| --- | --- |
-| `DATABASE_URL` | Postgres connection; set by the Vercel Neon integration on deployments |
-| `GROWTH_DATABASE_ENVIRONMENT` | `production`, `preview` or `test`; which environment this database is |
-| `DELIVERY_ENVIRONMENT` | `production`, `preview` or `test`; the environment this deployment sends from |
-| `GROWTH_EMAIL_HMAC_ACTIVE_SECRET` / `_ACTIVE_VERSION` / `_PREVIOUS_KEYS` | Keyring for email hashes; previous keys are a JSON array of `{version, secret}` |
-| `GROWTH_ACTION_TOKEN_ACTIVE_SECRET` / `_ACTIVE_VERSION` / `_PREVIOUS_KEYS` | Keyring for signed action tokens, same shape |
-| `GROWTH_PUBLIC_ACTION_ORIGIN` | Bare https origin for action links |
-| `RESEND_API_KEY` | Resend sending key |
-| `RESEND_WEBHOOK_SECRET` | Webhook signing secret |
-| `RESEND_TRACKING_DISABLED` | Must be `true` |
-| `RESEND_SENDER_VERIFIED` | Sending domain verified |
-| `RESEND_NON_PRODUCTION_ALLOWLIST` | Recipients permitted outside production |
-| `RESEND_NON_PRODUCTION_REDIRECT_TO` | Redirect target for non-production mail |
-| `TEST_DATABASE_URL`, `GROWTH_INTEGRATION` | Integration specs only; today `TEST_DATABASE_URL` is the preview store |
+| Variable                                                                   | Meaning                                                                         |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                             | Postgres connection; set by the Vercel Neon integration on deployments          |
+| `GROWTH_DATABASE_ENVIRONMENT`                                              | `production`, `preview` or `test`; which environment this database is           |
+| `DELIVERY_ENVIRONMENT`                                                     | `production`, `preview` or `test`; the environment this deployment sends from   |
+| `GROWTH_EMAIL_HMAC_ACTIVE_SECRET` / `_ACTIVE_VERSION` / `_PREVIOUS_KEYS`   | Keyring for email hashes; previous keys are a JSON array of `{version, secret}` |
+| `GROWTH_ACTION_TOKEN_ACTIVE_SECRET` / `_ACTIVE_VERSION` / `_PREVIOUS_KEYS` | Keyring for signed action tokens, same shape                                    |
+| `GROWTH_PUBLIC_ACTION_ORIGIN`                                              | Bare https origin for action links                                              |
+| `RESEND_API_KEY`                                                           | Resend sending key                                                              |
+| `RESEND_WEBHOOK_SECRET`                                                    | Webhook signing secret                                                          |
+| `RESEND_TRACKING_DISABLED`                                                 | Must be `true`                                                                  |
+| `RESEND_SENDER_VERIFIED`                                                   | Sending domain verified                                                         |
+| `RESEND_NON_PRODUCTION_ALLOWLIST`                                          | Recipients permitted outside production                                         |
+| `RESEND_NON_PRODUCTION_REDIRECT_TO`                                        | Redirect target for non-production mail                                         |
+| `TEST_DATABASE_URL`, `GROWTH_INTEGRATION`                                  | Integration specs only; `TEST_DATABASE_URL` is the dedicated test store         |
 
 The sender refuses to send unless `DELIVERY_ENVIRONMENT === GROWTH_DATABASE_ENVIRONMENT`
 and `RESEND_TRACKING_DISABLED=true`. These refusals are enforced on the delivery

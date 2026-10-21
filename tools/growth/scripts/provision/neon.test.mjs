@@ -27,22 +27,23 @@ function clientFor(routes) {
   return { vercel, calls };
 }
 
-const SIX_ROWS = [
+const ROWS = [
   ['growth-production-target-01', 'prj_www', 'production', null],
   ['growth-production-target-01', 'prj_lc', 'production', null],
   ['growth-preview-target-01', 'prj_www', 'preview', null],
   ['growth-preview-target-01', 'prj_lc', 'preview', null],
   ['b4-production-target-01', 'prj_lc', 'production', 'B4_'],
   ['b4-preview-target-01', 'prj_lc', 'preview', 'B4_'],
+  ['growth-test-target-01', 'prj_lc', 'development', 'TEST_'],
 ];
 
 function existingStores() {
-  const names = [...new Set(SIX_ROWS.map(([name]) => name))];
+  const names = [...new Set(ROWS.map(([name]) => name))];
   return names.map((name) => ({
     id: `store_${name}`,
     name,
     type: 'integration',
-    projectsMetadata: SIX_ROWS.filter(([n]) => n === name).map(
+    projectsMetadata: ROWS.filter(([n]) => n === name).map(
       ([, projectId, environment, envVarPrefix]) => ({
         projectId,
         name: projectId,
@@ -276,7 +277,7 @@ test('ensureConnection reports exists only when project, environment and prefix 
   assert.equal(calls.length, 1);
 });
 
-test('provisionNeon creates four stores and six connections on a first run', async () => {
+test('provisionNeon creates five stores and seven connections on a first run', async () => {
   let created = 0;
   const routes = {
     [CONFIGS]: { body: [{ id: 'icfg_neon', slug: 'neon' }] },
@@ -319,13 +320,14 @@ test('provisionNeon creates four stores and six connections on a first run', asy
     'growth-preview-target-01',
     'b4-production-target-01',
     'b4-preview-target-01',
+    'growth-test-target-01',
   ]);
   assert.equal(
     calls.filter((c) => c.path.startsWith('/v1/integrations/billing')).length,
-    4,
+    5,
   );
   assert.ok(stores.every((c) => c.body.authorizationId === 'mba_x'));
-  assert.equal(connections.length, 6);
+  assert.equal(connections.length, 7);
   assert.deepEqual(
     connections.map((c) => [c.path.split('/')[4], c.body]),
     [
@@ -349,6 +351,14 @@ test('provisionNeon creates four stores and six connections on a first run', asy
           envVarPrefix: 'B4_',
         },
       ],
+      [
+        's5',
+        {
+          projectId: 'prj_lc',
+          envVarEnvironments: ['development'],
+          envVarPrefix: 'TEST_',
+        },
+      ],
     ],
   );
   assert.ok(!checklist.lines().join('\n').includes('vercel-token-secret'));
@@ -368,8 +378,10 @@ test('provisionNeon on a rerun logs exists for every row and makes no POST', asy
     [],
   );
   const lines = checklist.lines();
-  assert.equal(lines.length, 10);
+  assert.equal(lines.length, 12);
   assert.ok(lines.every((line) => /\sexists\s/.test(line)));
   assert.ok(lines.some((line) => line.includes('b4-preview-target-01')));
   assert.ok(lines.some((line) => line.includes('B4_')));
+  assert.ok(lines.some((line) => line.includes('growth-test-target-01')));
+  assert.ok(lines.some((line) => line.includes('TEST_')));
 });

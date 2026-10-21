@@ -11,11 +11,23 @@ import { createChecklist } from './lib.mjs';
 
 const PROJECT_PRODUCTION = 'production';
 const PROJECT_PREVIEW = 'preview';
+const PROJECT_DEVELOPMENT = 'development';
 
 /**
  * The stores and the connections each one needs. Vercel injects
  * `DATABASE_URL` and the `POSTGRES_*` family into the connected projects,
  * prefixed when `envVarPrefix` is set (so `B4_DATABASE_URL` on lifecycle).
+ *
+ * | store                         | environment | prefix | projects        |
+ * | ----------------------------- | ----------- | ------ | --------------- |
+ * | `growth-production-target-01` | production  |        | www, lifecycle  |
+ * | `growth-preview-target-01`    | preview     |        | www, lifecycle  |
+ * | `b4-production-target-01`     | production  | `B4_`  | lifecycle       |
+ * | `b4-preview-target-01`        | preview     | `B4_`  | lifecycle       |
+ * | `growth-test-target-01`       | development | `TEST_`| lifecycle       |
+ *
+ * The test store serves only the integration specs; its connection string is
+ * read back as `TEST_DATABASE_URL` for the development environment.
  */
 const STORE_PLAN = [
   {
@@ -40,6 +52,12 @@ const STORE_PLAN = [
     name: 'b4-preview-target-01',
     environment: PROJECT_PREVIEW,
     envVarPrefix: 'B4_',
+    projects: ['lifecycle'],
+  },
+  {
+    name: 'growth-test-target-01',
+    environment: PROJECT_DEVELOPMENT,
+    envVarPrefix: 'TEST_',
     projects: ['lifecycle'],
   },
 ];
@@ -166,7 +184,7 @@ export async function ensureStore(vercel, { name, configurationId, sleep }) {
  *
  * @param {VercelClient} vercel Vercel client (team scoped).
  * @param {{ id: string, projectsMetadata?: any[] }} store Store from {@link ensureStore}.
- * @param {{ projectId: string, environment: 'production' | 'preview', envVarPrefix?: string | null }} options Connection to ensure.
+ * @param {{ projectId: string, environment: 'production' | 'preview' | 'development', envVarPrefix?: string | null }} options Connection to ensure.
  * @returns {Promise<'created' | 'exists'>}
  */
 export async function ensureConnection(
