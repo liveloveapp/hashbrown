@@ -365,7 +365,9 @@ let installed: WebsiteCollector | undefined;
 
 /**
  * The browser's collector: created on first use from the environment, or
- * `undefined` when collection is off. Flushes when the page is hidden.
+ * `undefined` when collection is off. One per page load: the singleton guard
+ * registers the `pagehide` flush exactly once, and the listener lives as long
+ * as the page does, so there is deliberately no uninstall.
  */
 export function installWebsiteCollector(): WebsiteCollector | undefined {
   if (installed) return installed;
