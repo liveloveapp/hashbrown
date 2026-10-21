@@ -4,8 +4,7 @@ A live map of air traffic over the Pacific Northwest with an assistant that
 answers in your own components. Hashbrown's flagship example, in Angular and React.
 
 Start with the core files, `angular/src/app/assistant.ts` and `react/src/assistant.tsx`.
-They show Hashbrown's three steps: expose your components, give the model tools, render
-the stream. Everything else is ordinary app code reading one store.
+Everything else is ordinary app code reading one store.
 
 ## Run locally
 
@@ -30,16 +29,42 @@ switcher between them.
 
 The server reads these variables (from `.env` or the environment):
 
-| Variable                  | Default      | Notes                                                                                                    |
-| ------------------------- | ------------ | -------------------------------------------------------------------------------------------------------- |
-| `OPENAI_API_KEY`          | none         | Required. The server will not start without it, even though the map alone needs none.                    |
-| `OPENAI_MODEL`            | `gpt-5-mini` | Any OpenAI chat model.                                                                                   |
-| `OPENAI_BASE_URL`         | OpenAI       | For an OpenAI-compatible endpoint.                                                                       |
-| `OPENAI_REASONING_EFFORT` | `low`        | Sent to gpt-5 and o-series models only. Set it empty to send none. An unknown value stops the server.    |
-| `TYPESAFE_API_KEY`        | none         | Optional. Enables `/api/decide` (TypeSafe Jev). Without it the router falls back to chat with all cards. |
-| `PORT`                    | `4340`       | The dev servers' `/api` proxy expects 4340.                                                              |
+| Variable                  | Default      | Notes                                                                                                                                      |
+| ------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `OPENAI_API_KEY`          | none         | Required. The server will not start without it, even though the map alone needs none.                                                      |
+| `OPENAI_MODEL`            | `gpt-5-mini` | Any OpenAI chat model.                                                                                                                     |
+| `OPENAI_BASE_URL`         | OpenAI       | For an OpenAI-compatible endpoint.                                                                                                         |
+| `OPENAI_REASONING_EFFORT` | `low`        | Sent to gpt-5 and o-series models only. Set it empty to send none. An unknown value stops the server.                                      |
+| `TYPESAFE_API_KEY`        | none         | Optional. Enables `/api/decide` (TypeSafe Jev). Without it `/api/decide` answers 503, and atc sends every question to chat with all cards. |
+| `PORT`                    | `4340`       | The dev servers' `/api` proxy expects 4340.                                                                                                |
 
 ## How this example is built
+
+atc shows Hashbrown in three steps. Type in the one composer and a badge shows where
+Enter will send the text.
+
+1. **Decide.** A TypeSafe Jev decision reads what you typed and routes it: to the map
+   filter, to clearing the filter, or to the chat. For a chat question, a second decision
+   picks which of the four cards fit (at most two, at 0.7 confidence). Below that
+   confidence, or if the decision fails, the chat gets every card.
+   See `angular/src/app/router.ts`, `react/src/router.ts` and the `uiDecisionResource` /
+   `useUiDecision` call in each core file.
+2. **Filter.** A filter request goes to a structured completion that streams a
+   `MapFilter` field by field into a pill of chips. The filter is app state: the map dims
+   the planes it hides, and a later request refines it. Planes you point at (selected,
+   highlighted or followed) are never dimmed. See `angular/src/app/filter.ts` and
+   `react/src/filter.tsx`.
+3. **Generate.** A question goes to the chat, which calls browser-side tools and renders
+   only the cards the decision picked, plus Markdown.
+
+**One schema, four uses.** `shared/src/find-aircraft.ts` defines the filter fields once.
+They are the `findAircraft` tool's arguments, the filter's streamed structured output,
+the arguments of `setMapFilter`, and the schemas the server pins. One pure predicate
+applies a filter to an aircraft for both the map and `findAircraft`, so the map and the
+assistant always agree.
+
+Turn on "Show the stream" in the header to see each route's JSON as it arrives: the
+router's decision, the streaming filter, the cards decision and the tool calls.
 
 ```text
 atc/
@@ -49,7 +74,10 @@ atc/
     src/tools.ts         The browser-side tools the model calls
     src/tool-definitions.ts  Tool names, descriptions and schemas, pinned by the server
     src/browser-tools.ts The tools wired to the app's data, used by both core files
-    src/find-aircraft.ts The query behind the findAircraft tool
+    src/find-aircraft.ts The filter fields (one schema, four uses) and the findAircraft query
+    src/route.ts, router-input.ts   Where Enter sends typed text; the router's input
+    src/filter-view.ts, filter-sync.ts   Filter chips; the request `/api/filter` takes
+    src/stream-view.ts   The "Show the stream" panels and the cards decision
     src/contracts.ts     Component contracts (Skillet schemas) and the system prompt
     src/views.ts, detail-view.ts, tool-chips.ts   Pure view models for the UI
     src/chart/           Chart types, cycle, browser chart feed
@@ -57,7 +85,8 @@ atc/
     src/map/chart/       Ink airports (runways, rings, labels), airspace shelves, diagrams, Layers control
     src/styles/atc.css   One stylesheet for both apps, as ordered partials
   angular/  react/       Thin shells: components and the core file
-  server/                /api/run (model and system prompt pinned) and /api/aircraft (cached adsb.lol)
+  server/                /api/run, /api/filter and /api/decide (model, prompts and schemas pinned)
+                         and /api/aircraft (cached adsb.lol)
                          /api/chart/airports, /api/chart/surfaces and /api/chart/airspace (cached FAA and OSM data)
   e2e/                   Playwright against both apps with a mocked model, the demo video recorder
                          and the live prose eval
@@ -68,9 +97,17 @@ Data flow: `shared/src/feed.ts` polls `/api/aircraft`, `store.applySnapshot` tak
 snapshot, and the map and components re-render. The model's tools read the same store in
 the browser, so the server never sees the plane list.
 
-`/api/run` is public, so the server replaces the system prompt, the tool definitions
-(with its own copies from `shared/src/tool-definitions.ts`) and the UI response schema,
-drops unknown tools, and caps the answer's length and each message's size.
+All three model routes are public, so the server pins what the model sees:
+
+- `/api/run` replaces the system prompt, the tool definitions (with its own copies from
+  `shared/src/tool-definitions.ts`) and the UI response schema, drops unknown tools, and
+  caps the answer's length and each message's size. The one thing a client may change is
+  to narrow the cards: a schema that equals a pinned subset is kept, anything else is
+  replaced with the full one.
+- `/api/filter` pins its own system prompt and `mapFilterSchema`, sends no tools, and
+  caps the output at 512 tokens.
+- `/api/decide?kind=route|cards` pins the questions and the decision context for each
+  kind. The client's questions are ignored. Without `TYPESAFE_API_KEY` it answers 503.
 
 The map is pointer-only (planes are not keyboard-focusable); every map action is also
 available from the chat.
@@ -119,7 +156,7 @@ npx nx e2e atc-e2e
 
 ## Demo video
 
-`npx nx demo atc-e2e` records the demo video (about 45 s of code and app, used on the
+`npx nx demo atc-e2e` records the demo video (about a minute of code and app, used on the
 blog) and the home page loop into `dist/examples/atc/demo/`, with a contact sheet for
 review. It is deterministic and keyless, like the e2e suite: aimock answers every
 question, synthetic traffic stands in for adsb.lol, with extra aircraft from
@@ -181,14 +218,15 @@ there). The React app is built and tested in this repository but not hosted;
 `/api/chart/airspace`. The hosted project (`hashbrown-atc`) needs:
 
 - `OPENAI_API_KEY`: a dedicated OpenAI project key with a hard monthly budget.
-- `TYPESAFE_API_KEY`: set on the `hashbrown-atc` Vercel project. Optional: without it `/api/decide` answers 503 and the router falls back to chat with all cards.
+- `TYPESAFE_API_KEY`: set on the `hashbrown-atc` Vercel project. Optional: without it
+  `/api/decide` answers 503 and atc routes everything to chat with all cards.
 - A Vercel Firewall rate-limit rule on `POST /api/run`. `hashbrown-atc` allows 40 requests
   per minute per IP (fixed window, 429 above it). One question makes 3 to 5 requests, one
   per tool round trip, so that is about ten questions a minute.
-- The same rule on `POST /api/filter`: 40 requests per minute per IP. A filter is one
-  request, capped at 512 output tokens.
-- The same rule on `POST /api/decide`: 40 requests per minute per IP. A decision is one
-  small TypeSafe call, capped at 4,000 characters of request.
+- The same rule on `POST /api/filter` and `POST /api/decide`, which are not configured
+  yet: configure 40 requests per minute per IP on each. A filter is one request, capped at
+  512 output tokens. A decision is one small TypeSafe call, capped at 4,000 characters of
+  request.
 - A look at tile traffic: past light use, point `TILE_LAYER` at a commercial tile provider
   (see "Data and attribution").
 

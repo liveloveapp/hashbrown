@@ -36,6 +36,8 @@ We'll go from the transponder in an airplane all the way to a streamed React or 
 
 Ok, let's dive in. ✈️
 
+> **Update, October 20, 2026.** atc now shows Hashbrown in three steps: decide (a TypeSafe Jev decision routes what you type and narrows the cards), filter (a structured completion streams a map filter that the map keeps as state) and generate (the chat, as described below). A "Show the stream" switch shows each route's JSON as it arrives. The code in this post is from the first version; for the current design, read [How this example is built](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/README.md#how-this-example-is-built) and the [hosting notes](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/README.md#hosting).
+
 ---
 
 ## What is atc?
