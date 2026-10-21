@@ -12,12 +12,12 @@ const { selected, highest, fastest, arrivals, nearby, portland } = scenario;
 
 /** The app's starter questions by what they ask, plus the typed questions the suite scripts. */
 export const PROMPTS = {
-  nearBend: STARTER_PROMPTS[0],
-  seattleArrivals: STARTER_PROMPTS[1],
-  highestAndFastest: STARTER_PROMPTS[2],
-  followFastest: STARTER_PROMPTS[3],
-  redmondAirport: STARTER_PROMPTS[4],
-  portlandClassC: STARTER_PROMPTS[5],
+  nearBend: STARTER_PROMPTS[0].text,
+  seattleArrivals: STARTER_PROMPTS[1].text,
+  highestAndFastest: STARTER_PROMPTS[2].text,
+  followFastest: STARTER_PROMPTS[3].text,
+  redmondAirport: STARTER_PROMPTS[4].text,
+  portlandClassC: STARTER_PROMPTS[5].text,
   selected: SELECTED_PROMPT,
   /** Outlines KBDN with showArea before listing the traffic. */
   nearKbdn: "What's flying near KBDN?",
@@ -27,6 +27,19 @@ export const PROMPTS = {
   hideAirports: 'Hide the airports.',
   /** Streams a reasoning summary before its tool call. */
   reasoned: 'Which plane is highest?',
+  /** Typed text the stubbed router sends to the map filter ({@link FILTER_JETS}). */
+  filterJets: 'jets below 10,000 ft',
+  /** Typed text the stubbed router sends to the map filter, clearing it. */
+  clearFilter: 'clear the filter',
+  /** Needs the planes a filter hides: the assistant calls clearMapFilter. */
+  highestOverall: "what's the highest plane overall?",
+} as const;
+
+/** The map filter the scripted model streams for {@link PROMPTS.filterJets}. */
+export const FILTER_JETS = {
+  ...NO_FILTERS,
+  kind: 'jet',
+  maxAltitudeFt: 10_000,
 } as const;
 
 /** The reasoning summary the scripted model streams for {@link PROMPTS.reasoned}. */
@@ -106,6 +119,17 @@ export function scriptAtcModel(mock: LLMock): void {
     arguments: { hexes: nearby.map((row) => row.hex) },
   };
 
+  // The map filter is a structured completion on /api/filter: its only user
+  // message is JSON { request, current }, which holds the typed request.
+  mock.onMessage(`"request":"${PROMPTS.filterJets}"`, {
+    content: JSON.stringify(FILTER_JETS),
+  });
+  scriptTurn(
+    mock,
+    PROMPTS.highestOverall,
+    [{ id: 'clear-filter', name: 'clearMapFilter', arguments: {} }],
+    ui(card('The highest plane overall.', highest.hex)),
+  );
   scriptTurn(
     mock,
     PROMPTS.selected,

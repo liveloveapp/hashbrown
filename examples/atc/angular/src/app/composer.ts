@@ -1,18 +1,20 @@
-import { isFocusShortcut } from '@atc/shared';
+import { isFocusShortcut, type RouterShown } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
   type ElementRef,
   input,
   output,
+  signal,
   viewChild,
 } from '@angular/core';
+import { injectRouter } from './router';
 
 /**
- * The message pill, floating over the bottom of the transcript. `/` focuses
- * the pill from anywhere outside another field. The field is uncontrolled
- * (read on submit) because nothing else needs the draft; React's composer
- * keeps it in state, the idiomatic choice there.
+ * The one input, a pill floating over the bottom of the transcript. As you
+ * type, a badge shows where Enter will send the text (`→ filter 0.97`): the
+ * map filter (`filter`), clearing it (`clear`), or the chat (`chat`). `/`
+ * focuses the pill from anywhere outside another field.
  */
 @Component({
   selector: 'atc-composer',
@@ -28,7 +30,15 @@ import {
         aria-label="Message"
         placeholder="Ask about the planes"
         autocomplete="off"
+        aria-describedby="atc-route-badge"
+        (input)="typed(field.value)"
       />
+      <span
+        id="atc-route-badge"
+        class="atc-route"
+        [attr.data-tone]="router.badge().tone"
+        >{{ router.badge().label }}</span
+      >
       <kbd class="atc-kbd" aria-hidden="true">/</kbd>
       <button
         type="submit"
@@ -53,21 +63,53 @@ import {
 export class Composer {
   /** Disables sending while the assistant is answering. */
   readonly busy = input(false);
-  /** Emits the trimmed message text. */
-  readonly send = output<string>();
+  /** Emits the trimmed text routed to the chat. */
+  readonly chat = output<string>();
+  /** Emits the trimmed text routed to the map filter. */
+  readonly filter = output<string>();
+  /**
+   * Emits what the router decided, just before `chat` or `filter` emits the
+   * text it was for (for "Show the stream").
+   */
+  readonly routed = output<RouterShown>();
+  /** Emits when the text asks to clear the map filter. */
+  readonly clear = output();
+  private readonly draft = signal('');
+  protected readonly router = injectRouter(this.draft);
   private readonly field =
     viewChild.required<ElementRef<HTMLInputElement>>('field');
 
-  protected submit(event: Event): void {
+  protected typed(value: string): void {
+    this.router.cancel();
+    this.draft.set(value);
+  }
+
+  protected async submit(event: Event): Promise<void> {
     event.preventDefault();
     const field = this.field().nativeElement;
     const content = field.value.trim();
     // Focus first: a tap on Send moved focus to the button, and taking it
     // back opens a phone's sheet, so sending must come after to lower it.
     field.focus();
-    if (content) {
-      this.send.emit(content);
-      field.value = '';
+    if (!content) {
+      return;
+    }
+    const action = await this.router.submit();
+    if (action === null) {
+      return;
+    }
+    // Read before clearing the draft, which resets the router's state.
+    const routed = this.router.shown();
+    field.value = '';
+    this.draft.set('');
+    if (action.kind === 'filter') {
+      this.routed.emit(routed);
+      this.filter.emit(content);
+    } else if (action.kind === 'clear') {
+      this.clear.emit();
+    } else {
+      this.routed.emit(routed);
+      this.chat.emit(content);
     }
   }
 

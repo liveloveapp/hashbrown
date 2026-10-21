@@ -169,3 +169,45 @@ test('createComponentSelection is ɵ', () => {
   expect(exported).toBe(createComponentSelection);
   expect(api['createComponentSelection']).toBeUndefined();
 });
+
+function optionIds(selection: { options: Array<{ id: string }> }): string[] {
+  return selection.options.map((option) => option.id);
+}
+
+test('options skip non-selectable kit members', () => {
+  const kit = createUiKit({ components: [airport, row], selectable: false });
+
+  const selection = createComponentSelection([flight, kit]);
+
+  expect(optionIds(selection)).toEqual(['Flight']);
+});
+
+test('expand always includes non-selectable members in declared order', () => {
+  const kit = createUiKit({ components: [airport], selectable: false });
+  const holder = component('Holder', [airport]);
+
+  const selection = createComponentSelection([flight, kit, holder]);
+  const expanded = selection.expand(['Holder', 'Flight']);
+
+  expect(optionIds(selection)).toEqual(['Flight', 'Holder']);
+  expect(names(expanded)).toEqual(['Flight', 'Airport', 'Holder']);
+});
+
+test('a name in both a selectable and a non-selectable kit is non-selectable', () => {
+  const open = createUiKit({ components: [flight, airport] });
+  const hidden = createUiKit({ components: [airport], selectable: false });
+
+  const selection = createComponentSelection([open, hidden]);
+
+  expect(optionIds(selection)).toEqual(['Flight']);
+  expect(names(selection.expand(['Airport']))).toEqual(['Airport']);
+});
+
+test('expand includes non-selectable members even when nothing declares them', () => {
+  const kit = createUiKit({ components: [airport], selectable: false });
+
+  const selection = createComponentSelection([flight, kit]);
+  const expanded = selection.expand(['Flight']);
+
+  expect(names(expanded)).toEqual(['Flight', 'Airport']);
+});

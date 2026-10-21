@@ -124,9 +124,12 @@ async function ask(browser: Browser, prompt: string): Promise<Answer> {
 
 /** Asks every starter `runs` times, reports issues and sets the exit code. */
 async function main(): Promise<void> {
-  const prompts = STARTER_PROMPTS.filter((prompt) =>
-    prompt.toLowerCase().includes(values.only.toLowerCase()),
-  );
+  // Only the questions: a filter starter never reaches the chat.
+  const prompts = STARTER_PROMPTS.filter((starter) => starter.route === 'chat')
+    .map((starter) => starter.text)
+    .filter((prompt) =>
+      prompt.toLowerCase().includes(values.only.toLowerCase()),
+    );
   const queue = Array.from({ length: Number(values.runs) }).flatMap(
     () => prompts,
   );

@@ -832,3 +832,74 @@ test('uiDecisionResource chat mode sends a narrowed message even when the previo
   expect(loading()).toBe(true);
   expect(components()).toEqual([note]);
 });
+
+class MarkdownCard {}
+const markdown = {
+  component: MarkdownCard,
+  name: 'Markdown',
+  description: 'Prose',
+};
+
+test('uiDecisionResource chat mode never asks about a non-selectable kit', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Flight', 0.9, ['Flight', 'Airport']),
+  );
+  const chat = chatTransport(['hold']);
+  configureChat(fake.transport, chat);
+  const proseKit = createUiKit({ components: [markdown], selectable: false });
+  const { narrowing } = narrowedChat({
+    components: [flight, airport, proseKit],
+  });
+
+  narrowing.sendMessage('show UA1');
+  await settle();
+
+  const question = fake.calls[0].request.questions['pick'] as {
+    options: Record<string, unknown>;
+  };
+  expect(Object.keys(question.options)).toEqual(['Flight', 'Airport']);
+});
+
+test('uiDecisionResource chat mode always sends non-selectable members with the picks', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Flight', 0.9, ['Flight', 'Airport']),
+  );
+  const chat = chatTransport(['hold']);
+  configureChat(fake.transport, chat);
+  const proseKit = createUiKit({ components: [markdown], selectable: false });
+  const { narrowing } = narrowedChat({
+    components: [flight, airport, proseKit],
+  });
+
+  narrowing.sendMessage('show UA1');
+  await settle();
+
+  const schema = JSON.stringify(
+    (chat.requests[0].input.forwardedProps as { hashbrown?: unknown })
+      .hashbrown,
+  );
+  expect(schema).toContain('"Flight"');
+  expect(schema).toContain('"Markdown"');
+  expect(schema).not.toContain('"Airport"');
+});
+
+test('uiDecisionResource chat mode sends with every component when all are non-selectable', async () => {
+  const fake = createFakeTransport(() =>
+    pickResponse('Flight', 0.9, ['Flight', 'Airport']),
+  );
+  const chat = chatTransport(['hold']);
+  configureChat(fake.transport, chat);
+  const everything = createUiKit({
+    components: [flight, airport],
+    selectable: false,
+  });
+  const { narrowing } = narrowedChat({ components: [everything] });
+
+  narrowing.sendMessage('show UA1');
+  await settle();
+
+  expect(fake.calls).toHaveLength(0);
+  expect(chat.requests).toHaveLength(1);
+  expect(offered(chat.requests[0])).toEqual(['Flight', 'Airport']);
+  expect(narrowing.decisionError()).toBeUndefined();
+});

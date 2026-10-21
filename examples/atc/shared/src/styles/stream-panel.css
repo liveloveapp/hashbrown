@@ -1,0 +1,121 @@
+/*
+ * "Show the stream": the dark JSON panels that show every layer a developer
+ * would otherwise not see (the router, the cards decision, the streaming UI
+ * JSON, the filter, tool arguments), and the header switch that shows them.
+ * One visual language: an ink panel in the mono font, flat, text only.
+ */
+.atc-stream-switch {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  min-height: 44px;
+  font-size: 12px;
+  color: var(--atc-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.atc-feed-notice ~ .atc-stream-switch {
+  margin-left: 0;
+}
+.atc-panel-header:has(.atc-stream-switch) .atc-source-link {
+  margin-left: 0;
+}
+.atc-stream-switch input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--atc-ink);
+  cursor: pointer;
+}
+.atc-stream-switch:has(input:checked) {
+  color: var(--atc-ink);
+}
+
+.atc-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--atc-ink);
+  color: var(--atc-surface);
+  border-radius: var(--atc-radius-row);
+  font-family: var(--atc-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  /* The one scroll container: long lines scroll here, never the page. */
+  overflow-x: auto;
+}
+.atc-stream-block {
+  min-width: 0;
+}
+.atc-stream-title {
+  margin: 0;
+  color: var(--atc-dimmed);
+}
+.atc-stream-title::after {
+  content: ':';
+}
+.atc-stream-text {
+  margin: 0;
+  font: inherit;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* On the map, under the filter pill. */
+.atc-map-stream {
+  position: absolute;
+  z-index: 1050;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 24px));
+  max-height: calc(100% - 124px);
+  overflow-y: auto;
+  margin-top: 0;
+}
+/* The pill's buttons are 44px on touch screens, so the pill is taller. */
+@media (pointer: coarse) {
+  .atc-map-stream {
+    top: 124px;
+    max-height: calc(100% - 148px);
+  }
+}
+/* A docked detail card covers the pill, so the panel waits with it. */
+.atc-map-panel:has(.atc-detail.is-docked.is-open) .atc-map-stream {
+  display: none;
+}
+
+/* Tool arguments sit under the tool line, inside the transcript. */
+.atc-tool-run .atc-stream {
+  margin-top: 6px;
+}
+.atc-answer .atc-stream {
+  margin-top: 10px;
+}
+
+/*
+ * Narrow headers: the credit shortens to "Hashbrown" (its lead stays for
+ * assistive tech) and the gaps tighten, so the credit, the switch and the
+ * source link all fit.
+ */
+@media (max-width: 430px) {
+  .atc-panel-header {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+  .atc-credit-lead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

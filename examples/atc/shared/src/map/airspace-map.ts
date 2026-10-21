@@ -1,15 +1,18 @@
 import type { Map as LeafletMap, Marker } from 'leaflet';
 import { isTyping, prefersReducedMotion } from '../dom';
+import type { MapFilter } from '../find-aircraft';
 import type { Area, LatLon } from '../places';
 import type { AtcState, AtcStore } from '../store';
 import { createAreaOutline } from './area-outline';
 import { createCardSync } from './card-sync';
 import { createChartLayers } from './chart/chart-layers';
 import { createLayersControl } from './chart/layers-control';
+import { createFilterPill } from './filter-pill';
 import { createFollowController } from './follow';
 import { createMotionLoop } from './motion-loop';
 import { createTagSync } from './tag-sync';
 import {
+  filteredOutHexes,
   markerClassName,
   planeElementOf,
   planeIconHtml,
@@ -25,10 +28,17 @@ const LOW_ZOOM = 6;
 /** At this zoom and below, airspace draws its thinner overview lines. */
 const OVERVIEW_ZOOM = 8;
 
+const NO_STREAMING: ReadonlySet<keyof MapFilter> = new Set();
+
 /** A mounted map. */
 export interface AirspaceMapHandle {
   /** Stops syncing with the store and removes the map. */
   destroy(): void;
+  /**
+   * Redraws the filter pill, for when only the streaming key set or the
+   * notice changed.
+   */
+  syncFilterPill(): void;
 }
 
 /**
@@ -73,13 +83,35 @@ export async function createAirspaceMap(options: {
   area: Area;
   obstruction?: () => HTMLElement | null;
   signal?: AbortSignal;
+  /**
+   * Called when the filter pill's x is pressed; hosts wire it to
+   * `store.clearMapFilter`.
+   */
+  onClearFilter?: () => void;
+  /**
+   * The filter fields still streaming in, for the pill's dashed chips. Read
+   * on every render; a host that streams a filter calls its store update
+   * (or `AirspaceMapHandle.syncFilterPill`) after the set changes.
+   */
+  streamingFilter?: () => ReadonlySet<keyof MapFilter>;
+  /**
+   * Text the filter pill shows after its chips (a failed filter request), or
+   * null. Read like `streamingFilter`; call `syncFilterPill` after it changes.
+   */
+  filterNotice?: () => string | null;
 }): Promise<AirspaceMapHandle> {
   const { element, store, area, signal } = options;
+  const onClearFilter = options.onClearFilter ?? (() => store.clearMapFilter());
+  const streamingFilter = options.streamingFilter ?? (() => NO_STREAMING);
+  const filterNotice = options.filterNotice ?? (() => null);
   const obstruction = options.obstruction ?? (() => null);
   const module = await import('leaflet');
   if (signal?.aborted) {
     return {
       destroy() {
+        // Nothing was created.
+      },
+      syncFilterPill() {
         // Nothing was created.
       },
     };
@@ -202,6 +234,12 @@ export async function createAirspaceMap(options: {
   };
   doc.addEventListener('keydown', onKeydown);
 
+  const filterPill = createFilterPill(doc, onClearFilter);
+  element.append(filterPill.element);
+  L.DomEvent.disableClickPropagation(filterPill.element);
+  const syncFilterPill = () =>
+    filterPill.sync(store.getState(), streamingFilter(), filterNotice());
+
   const outline = createAreaOutline({ L, map, store });
 
   const icon = (html: string) =>
@@ -227,8 +265,10 @@ export async function createAirspaceMap(options: {
     }
     // A stable hook for tests and tools: the first snapshot is on the map.
     element.toggleAttribute('data-ready', state.updatedAt !== null);
+    // Once per render; dimming follows every snapshot and filter change.
+    const filteredOut = filteredOutHexes(state);
     for (const aircraft of state.aircraft.values()) {
-      const className = markerClassName(state, aircraft.hex);
+      const className = markerClassName(state, aircraft.hex, filteredOut);
       const existing = markers.get(aircraft.hex);
       if (existing) {
         updatePlane(existing.getElement(), aircraft, className);
@@ -253,6 +293,7 @@ export async function createAirspaceMap(options: {
     chart.sync(state);
     cards.sync(state);
     follow.syncPill();
+    syncFilterPill();
     outline.sync(state.shownArea);
     view.applyWhenSettled(state);
     follow.panToFollowed(true);
@@ -294,7 +335,9 @@ export async function createAirspaceMap(options: {
   win?.visualViewport?.addEventListener('resize', onResize);
 
   return {
+    syncFilterPill,
     destroy() {
+      filterPill.element.remove();
       view.destroy();
       resizeObserver?.disconnect();
       unsubscribe();

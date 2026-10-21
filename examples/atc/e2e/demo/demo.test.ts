@@ -65,6 +65,17 @@ test('the storyboard opens with a title and ends with a close', () => {
   expect(ends).toEqual(['title', 'close']);
 });
 
+test('the storyboard shows deciding, filtering and narrowing', () => {
+  const ids = STORYBOARD.map((beat) => beat.id);
+
+  const shown = ['decide', 'filter', 'narrow'].map((id) => ids.indexOf(id));
+
+  expect(shown.every((index) => index > 0)).toBe(true);
+  expect(shown).toEqual([...shown].sort((a, b) => a - b));
+  const filter = STORYBOARD[ids.indexOf('filter')];
+  expect(filter.kind === 'app' && filter.prompt).toBe('filter');
+});
+
 test('a code pane refuses a pattern that matches no line', () => {
   const pane = { path: 'x.ts', focal: /nope/ };
 

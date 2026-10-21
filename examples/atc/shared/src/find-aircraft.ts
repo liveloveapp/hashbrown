@@ -28,57 +28,79 @@ export function areaRadiusNm(radiusNm: number | null): number {
     : Math.min(150, Math.max(5, Math.round(radiusNm)));
 }
 
+/**
+ * The filter fields shared by `findAircraft` and the map filter. Every field is
+ * required; null means "any".
+ */
+export const aircraftFilterFields = {
+  airline: s.anyOf([
+    s.string('Airline ICAO code such as UAL, or a name such as United'),
+    s.nullish(),
+  ]),
+  typeCode: s.anyOf([
+    s.string('ICAO type code such as B738, or a family such as 737'),
+    s.nullish(),
+  ]),
+  kind: s.anyOf([
+    s.enumeration(
+      'Only this kind of aircraft: jet, twin (twin-engine prop), single (single-engine prop) or rotor (helicopter)',
+      [...KINDS],
+    ),
+    s.nullish(),
+  ]),
+  minAltitudeFt: s.anyOf([s.number('Minimum altitude in feet'), s.nullish()]),
+  maxAltitudeFt: s.anyOf([s.number('Maximum altitude in feet'), s.nullish()]),
+  approaching: s.anyOf([
+    s.string(
+      'Only aircraft on approach to this airport: ICAO code from lookupPlace',
+    ),
+    s.nullish(),
+  ]),
+  near: s.anyOf([
+    s.object('Only aircraft within radiusNm of an airport', {
+      airport: s.string('ICAO code from lookupPlace, such as KBDN'),
+      radiusNm: s.number('Radius in nautical miles, 5 to 150'),
+    }),
+    s.nullish(),
+  ]),
+  inAirspace: s.anyOf([
+    s.object("Only aircraft inside this airport's airspace", {
+      airport: s.string('ICAO code from lookupPlace'),
+      class: s.anyOf([
+        s.enumeration('Airspace class', ['B', 'C', 'D', 'E']),
+        s.nullish(),
+      ]),
+    }),
+    s.nullish(),
+  ]),
+};
+
 /** Input schema for `findAircraft`. Every field is required; null means "any". */
 export const findAircraftInput = s.object(
   'Filters for aircraft currently on the map',
   {
-    airline: s.anyOf([
-      s.string('Airline ICAO code such as UAL, or a name such as United'),
-      s.nullish(),
-    ]),
-    typeCode: s.anyOf([
-      s.string('ICAO type code such as B738, or a family such as 737'),
-      s.nullish(),
-    ]),
-    kind: s.anyOf([
-      s.enumeration(
-        'Only this kind of aircraft: jet, twin (twin-engine prop), single (single-engine prop) or rotor (helicopter)',
-        [...KINDS],
-      ),
-      s.nullish(),
-    ]),
-    minAltitudeFt: s.anyOf([s.number('Minimum altitude in feet'), s.nullish()]),
-    maxAltitudeFt: s.anyOf([s.number('Maximum altitude in feet'), s.nullish()]),
-    approaching: s.anyOf([
-      s.string(
-        'Only aircraft on approach to this airport: ICAO code from lookupPlace',
-      ),
-      s.nullish(),
-    ]),
-    near: s.anyOf([
-      s.object('Only aircraft within radiusNm of an airport', {
-        airport: s.string('ICAO code from lookupPlace, such as KBDN'),
-        radiusNm: s.number('Radius in nautical miles, 5 to 150'),
-      }),
-      s.nullish(),
-    ]),
-    inAirspace: s.anyOf([
-      s.object("Only aircraft inside this airport's airspace", {
-        airport: s.string('ICAO code from lookupPlace'),
-        class: s.anyOf([
-          s.enumeration('Airspace class', ['B', 'C', 'D', 'E']),
-          s.nullish(),
-        ]),
-      }),
-      s.nullish(),
-    ]),
+    ...aircraftFilterFields,
     sortBy: s.enumeration('Sort order', ['altitude', 'speed', 'distance']),
     limit: s.integer('Maximum rows, 1 to 20'),
   },
 );
 
+/** Streaming schema for the filter applied to the aircraft shown on the map. */
+export const mapFilterSchema = s.streaming.object(
+  'A filter for the aircraft shown on the map',
+  aircraftFilterFields,
+);
+
 /** The parsed input of `findAircraft`. */
 export type FindAircraftInput = s.Infer<typeof findAircraftInput>;
+
+/** The filter fields of {@link FindAircraftInput}, without sorting or a limit. */
+export type MapFilter = Omit<FindAircraftInput, 'sortBy' | 'limit'>;
+
+/** True when every field of `filter` is null ("any"): it filters nothing. */
+export function isEmptyMapFilter(filter: MapFilter): boolean {
+  return Object.values(filter).every((value) => value === null);
+}
 
 /** A compact aircraft row returned to the model. */
 export interface AircraftRow {
@@ -156,7 +178,7 @@ function toAirspaceRow(
 }
 
 /** Lower-cased, trimmed query, or null when empty. */
-function queryText(value: string | null): string | null {
+function queryText(value: string | null | undefined): string | null {
   const trimmed = value?.trim().toLowerCase() ?? '';
 
   return trimmed === '' ? null : trimmed;
@@ -184,79 +206,129 @@ const SORTS: Record<
 };
 
 /**
+ * A {@link MapFilter} with its places and airspace looked up once, ready to
+ * test many aircraft with {@link matchesResolved}.
+ */
+export interface ResolvedFilter {
+  readonly airline: string | null;
+  readonly type: string | null;
+  readonly kind: AircraftKind | null;
+  readonly minAltitudeFt: number | null;
+  readonly maxAltitudeFt: number | null;
+  readonly approachAirport: Airport | null;
+  readonly nearAirport: Airport | null;
+  readonly airspaceAirport: Airport | null;
+  /** Shelves of the `inAirspace` airport (of one class when given), else null. */
+  readonly shelves: readonly AirspaceShelf[] | null;
+  /** Radius of `near` in nm, or Infinity without one. */
+  readonly radius: number;
+}
+
+/**
+ * Looks up the places and airspace of `filter` once. Returns the codes that
+ * are not in the directory (approaching, near, then inAirspace) when any is
+ * unknown.
+ */
+export function resolveFilter(
+  state: AtcState,
+  filter: MapFilter,
+): ResolvedFilter | { unknownPlaces: string[] } {
+  const directory = airportDirectory(state);
+  const { near, inAirspace } = filter;
+  const approachAirport = filter.approaching
+    ? lookupPlace(filter.approaching, directory)
+    : null;
+  const nearAirport: Airport | null =
+    near == null ? null : lookupPlace(near.airport, directory);
+  const airspaceAirport: Airport | null =
+    inAirspace == null ? null : lookupPlace(inAirspace.airport, directory);
+  const unknownPlaces = [
+    filter.approaching && approachAirport === null ? filter.approaching : null,
+    near != null && nearAirport === null ? near.airport : null,
+    inAirspace != null && airspaceAirport === null ? inAirspace.airport : null,
+  ].filter((code): code is string => code !== null);
+  if (unknownPlaces.length > 0) {
+    return { unknownPlaces };
+  }
+
+  return {
+    airline: queryText(filter.airline),
+    type: queryText(filter.typeCode),
+    kind: filter.kind ?? null,
+    minAltitudeFt: filter.minAltitudeFt ?? null,
+    maxAltitudeFt: filter.maxAltitudeFt ?? null,
+    approachAirport,
+    nearAirport,
+    airspaceAirport,
+    shelves:
+      inAirspace == null || airspaceAirport === null
+        ? null
+        : airspaceOf(state.airspace.shelves, airspaceAirport.code).filter(
+            (shelf) =>
+              inAirspace.class == null || shelf.class === inAirspace.class,
+          ),
+    radius: near == null ? Infinity : areaRadiusNm(near.radiusNm),
+  };
+}
+
+/** True when `aircraft` passes every part of a filter from {@link resolveFilter}. */
+export function matchesResolved(
+  resolved: ResolvedFilter,
+  aircraft: Aircraft,
+): boolean {
+  const { airline, type, kind, minAltitudeFt, maxAltitudeFt } = resolved;
+  const { approachAirport, nearAirport, shelves, radius } = resolved;
+
+  return (
+    (airline === null || matchesAirline(aircraft, airline)) &&
+    (type === null ||
+      (aircraft.typeCode ?? '').toLowerCase() === type ||
+      aircraftTypeName(aircraft.typeCode).toLowerCase().includes(type)) &&
+    (kind === null || aircraft.kind === kind) &&
+    (minAltitudeFt === null ||
+      (aircraft.altitudeFt !== null && aircraft.altitudeFt >= minAltitudeFt)) &&
+    (maxAltitudeFt === null ||
+      (aircraft.altitudeFt !== null && aircraft.altitudeFt <= maxAltitudeFt)) &&
+    (approachAirport === null || isApproaching(aircraft, approachAirport)) &&
+    (nearAirport === null || distanceNm(aircraft, nearAirport) <= radius) &&
+    (shelves === null || shelvesAt(shelves, aircraft).length > 0)
+  );
+}
+
+/**
  * Filters and sorts the aircraft on the map. Distances are measured from the
  * airport in `near`, else `inAirspace`, else the one in `approaching`, else
- * the area centre. A `near`, `inAirspace` or `approaching` airport outside the
- * directory matches nothing, and `inAirspace` keeps aircraft inside any shelf
- * of that airport (of one class when given). Those rows also carry the altitude
- * the check used.
+ * the area centre. When `also` is given (the map filter), a row must pass it
+ * as well, before sorting and the limit. A `near`, `inAirspace` or
+ * `approaching` airport outside the directory matches nothing, and
+ * `inAirspace` keeps aircraft inside any shelf of that airport (of one class
+ * when given). Those rows also carry the altitude the check used.
  */
 export function findAircraft(
   state: AtcState,
   input: FindAircraftInput,
   area: Area = AREAS.pnw,
+  also: ResolvedFilter | null = null,
 ): AircraftRow[] {
-  const airline = queryText(input.airline);
-  const type = queryText(input.typeCode);
-  const directory = airportDirectory(state);
-  const approachAirport = input.approaching
-    ? lookupPlace(input.approaching, directory)
-    : null;
-  if (input.approaching && approachAirport === null) {
+  const resolved = resolveFilter(state, input);
+  if ('unknownPlaces' in resolved) {
     return [];
   }
-  const { near, inAirspace } = input;
-  const nearAirport: Airport | null =
-    near === null ? null : lookupPlace(near.airport, directory);
-  if (near !== null && nearAirport === null) {
-    return [];
-  }
-  const airspaceAirport: Airport | null =
-    inAirspace === null ? null : lookupPlace(inAirspace.airport, directory);
-  if (inAirspace !== null && airspaceAirport === null) {
-    return [];
-  }
-  const shelves =
-    inAirspace === null || airspaceAirport === null
-      ? null
-      : airspaceOf(state.airspace.shelves, airspaceAirport.code).filter(
-          (shelf) =>
-            inAirspace.class === null || shelf.class === inAirspace.class,
-        );
-  const radius = near === null ? Infinity : areaRadiusNm(near.radiusNm);
+  const { nearAirport, airspaceAirport, approachAirport, shelves } = resolved;
+  const from = nearAirport ?? airspaceAirport ?? approachAirport ?? area;
   const limit = Math.min(20, Math.max(1, Math.round(input.limit)));
 
   return [...state.aircraft.values()]
-    .filter((a) => airline === null || matchesAirline(a, airline))
     .filter(
       (a) =>
-        type === null ||
-        (a.typeCode ?? '').toLowerCase() === type ||
-        aircraftTypeName(a.typeCode).toLowerCase().includes(type),
+        matchesResolved(resolved, a) &&
+        (also === null || matchesResolved(also, a)),
     )
-    .filter((a) => input.kind === null || a.kind === input.kind)
-    .filter(
-      (a) =>
-        input.minAltitudeFt === null ||
-        (a.altitudeFt !== null && a.altitudeFt >= input.minAltitudeFt),
-    )
-    .filter(
-      (a) =>
-        input.maxAltitudeFt === null ||
-        (a.altitudeFt !== null && a.altitudeFt <= input.maxAltitudeFt),
-    )
-    .filter(
-      (a) => approachAirport === null || isApproaching(a, approachAirport),
-    )
-    .filter((a) => nearAirport === null || distanceNm(a, nearAirport) <= radius)
-    .filter((a) => shelves === null || shelvesAt(shelves, a).length > 0)
-    .map((a) => {
-      const from = nearAirport ?? airspaceAirport ?? approachAirport ?? area;
-
-      return shelves === null
+    .map((a) =>
+      shelves === null
         ? toRow(a, from)
-        : toAirspaceRow(a, from, shelvesAt(shelves, a));
-    })
+        : toAirspaceRow(a, from, shelvesAt(shelves, a)),
+    )
     .sort(SORTS[input.sortBy])
     .slice(0, limit);
 }

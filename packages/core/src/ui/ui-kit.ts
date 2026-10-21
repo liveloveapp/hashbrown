@@ -24,6 +24,16 @@ export interface UiKitOptions<T extends ExposedComponentDescriptor> {
    * Components or other UiKit instances to compose.
    */
   components: readonly UiKitInput<T>[];
+  /**
+   * Whether UI selection may choose among this kit's components. Defaults to
+   * `true`. When `false`, every component in the kit is still rendered and
+   * described to the model but is excluded from selection, and that includes
+   * their children and every member of a kit nested in this one, even a nested
+   * kit that is itself selectable. When `true`, a nested kit with
+   * `selectable: false` keeps its members non-selectable. A component
+   * non-selectable in any kit is non-selectable everywhere.
+   */
+  selectable?: boolean;
 }
 
 /**
@@ -52,6 +62,13 @@ export interface UiKit<T extends ExposedComponentDescriptor> {
    * Stable serialized form of the resolved schema.
    */
   readonly serializedSchema: string;
+  /**
+   * Names of components that UI selection must never choose among. A name
+   * that appears in both a selectable and a non-selectable kit is included.
+   *
+   * @internal
+   */
+  readonly ɵnonSelectable: ReadonlySet<string>;
 }
 
 /**
@@ -73,13 +90,15 @@ export function isUiKit(value: unknown): value is UiKit<any> {
 export function createUiKit<T extends ExposedComponentDescriptor>(
   options: UiKitOptions<T>,
 ): UiKit<T> {
-  const { components } = options;
+  const { components, selectable = true } = options;
+  const nonSelectable = new Set<string>();
   const registry = new Map<string, T>();
   const normalized: T[] = [];
 
   components.forEach((component) => {
     if (isUiKit(component)) {
       component.components.forEach((entry) => addComponent(entry));
+      component.ɵnonSelectable.forEach((name) => nonSelectable.add(name));
       return;
     }
 
@@ -98,10 +117,15 @@ export function createUiKit<T extends ExposedComponentDescriptor>(
     registry,
     schema,
     serializedSchema,
+    ɵnonSelectable: nonSelectable,
   };
 
   function addComponent(component: T) {
     assertExposedComponent(component);
+
+    if (!selectable) {
+      nonSelectable.add(component.name);
+    }
 
     const existing = registry.get(component.name);
     if (existing && existing.component !== component.component) {

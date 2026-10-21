@@ -1,11 +1,13 @@
 import { ATC_SOURCE_URL, GITHUB_MARK_PATH } from '@atc/shared';
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AtcLogo } from './atc-logo';
 import { FeedNotice } from './feed-notice';
+import { ShowStream } from './show-stream';
 
 /**
  * The chat panel's header: lettermark, Hashbrown credit, a quiet notice
- * while the feed is degraded, and the GitHub link to atc's source.
+ * while the feed is degraded, the "Show the stream" switch and the GitHub
+ * link to atc's source.
  */
 @Component({
   selector: 'atc-panel-header',
@@ -19,9 +21,19 @@ import { FeedNotice } from './feed-notice';
       href="https://hashbrown.dev"
       target="_blank"
       rel="noreferrer"
-      >built with Hashbrown</a
+      ><span class="atc-credit-lead">built with </span>Hashbrown</a
     >
     <atc-feed-notice />
+    <label class="atc-stream-switch">
+      <input
+        #box
+        type="checkbox"
+        role="switch"
+        [checked]="stream.on()"
+        (change)="stream.set(box.checked)"
+      />
+      Show the stream
+    </label>
     <a
       class="atc-source-link"
       [href]="sourceUrl"
@@ -36,6 +48,7 @@ import { FeedNotice } from './feed-notice';
   `,
 })
 export class PanelHeader {
+  protected readonly stream = inject(ShowStream);
   protected readonly sourceUrl = ATC_SOURCE_URL;
   protected readonly githubMark = GITHUB_MARK_PATH;
 }
