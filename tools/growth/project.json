@@ -32,11 +32,18 @@
         ]
       }
     },
+    "migrate-growth": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/apply-migrations.mts"
+      }
+    },
     "test-integration": {
       "executor": "nx:run-commands",
       "cache": false,
       "options": {
-        "command": "vitest run --config tools/growth/vitest.integration.config.mts --passWithNoTests"
+        "command": "node --import tsx tools/growth/scripts/growth-database-preflight.mts integration"
       }
     }
   }
