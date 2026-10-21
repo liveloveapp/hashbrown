@@ -26,6 +26,7 @@ import { provisionResend } from './resend.mjs';
 const POSTHOG_BASE_URL = 'https://us.posthog.com';
 const RESEND_BASE_URL = 'https://api.resend.com';
 const ENV_FILE_NAME = 'growth.env';
+const TEST_ENV_FILE_NAME = 'test-database.env';
 const BOOTSTRAP_PATH = fileURLToPath(
   new URL('../../../vercel/bootstrap.mjs', import.meta.url),
 );
@@ -148,6 +149,48 @@ export function buildEnvFile({ posthog, resend, secrets, founderEmail }) {
 }
 
 /**
+ * Writes a secret file with mode 0600 through a temporary file and a rename,
+ * and only when the contents change.
+ *
+ * @param {string} path Destination file.
+ * @param {string} contents Full file contents.
+ * @returns {'created' | 'exists' | 'updated'}
+ */
+function writeSecretFile(path, contents) {
+  const hadFile = existsSync(path);
+  if (hadFile && readFileSync(path, 'utf8') === contents) return 'exists';
+  const tmpPath = `${path}.tmp`;
+  writeFileSync(tmpPath, contents, { mode: 0o600 });
+  renameSync(tmpPath, path);
+  return hadFile ? 'updated' : 'created';
+}
+
+/**
+ * Reads the decrypted `TEST_DATABASE_URL` that Vercel injected into the
+ * lifecycle project's development environment.
+ *
+ * @param {Function} vercel Vercel client (team scoped).
+ * @param {string} projectId Lifecycle project id.
+ * @returns {Promise<string | null>} The value, or null when it is not there.
+ */
+async function readTestDatabaseUrl(vercel, projectId) {
+  const { envs = [] } = await vercel('GET', `/v9/projects/${projectId}/env`);
+  const entry = envs.find(
+    (env) =>
+      env.key === 'TEST_DATABASE_URL' &&
+      Array.isArray(env.target) &&
+      env.target.length === 1 &&
+      env.target[0] === 'development',
+  );
+  if (!entry) return null;
+  const { value } = await vercel(
+    'GET',
+    `/v1/projects/${projectId}/env/${entry.id}?decrypt=true`,
+  );
+  return typeof value === 'string' ? value : null;
+}
+
+/**
  * Runs `node tools/vercel/bootstrap.mjs` with inherited stdio and resolves
  * with its exit code. The Vercel token reaches it through the environment.
  *
@@ -257,6 +300,26 @@ export async function provision({
     await provisionNeon(clients.vercel, steps, {
       projectIds: { www: www.id, lifecycle: lifecycle.id },
     });
+
+    const testUrl = await readTestDatabaseUrl(clients.vercel, lifecycle.id);
+    if (testUrl?.startsWith('postgres') && !/[\r\n']/.test(testUrl)) {
+      const testEnvPath = join(outDir, TEST_ENV_FILE_NAME);
+      const outcome = writeSecretFile(
+        testEnvPath,
+        `TEST_DATABASE_URL='${testUrl}'\n`,
+      );
+      checklist.add(
+        `Test database env file ${testEnvPath}`,
+        outcome,
+        'mode 0600',
+      );
+    } else {
+      steps.add(
+        'Test database connection string',
+        'manual',
+        'TEST_DATABASE_URL was not readable from hashbrown-lifecycle (development); copy it from the growth-test-target-01 store in Vercel into tools/growth/.provision/test-database.env',
+      );
+    }
   }
 
   for (const [step, outcome, detail] of manual) {

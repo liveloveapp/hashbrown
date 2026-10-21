@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -130,7 +131,34 @@ const NEON_STORES = [
   ['growth-preview-target-01', 'prj_lc', 'preview', null],
   ['b4-production-target-01', 'prj_lc', 'production', 'B4_'],
   ['b4-preview-target-01', 'prj_lc', 'preview', 'B4_'],
+  ['growth-test-target-01', 'prj_lc', 'development', 'TEST_'],
 ];
+
+const TEST_URL =
+  'postgresql://user:pw-secret@host.neon.tech/db?sslmode=require&channel_binding=require';
+
+function testEnvFixtures(value) {
+  return {
+    'GET /v9/projects/prj_lc/env?teamId=team_1': {
+      body: {
+        envs: [
+          { id: 'env_other', key: 'DATABASE_URL', target: ['production'] },
+          { id: 'env_prev', key: 'TEST_DATABASE_URL', target: ['preview'] },
+          { id: 'env_test', key: 'TEST_DATABASE_URL', target: ['development'] },
+        ],
+      },
+    },
+    'GET /v1/projects/prj_lc/env/env_test?decrypt=true&teamId=team_1': {
+      body: {
+        id: 'env_test',
+        key: 'TEST_DATABASE_URL',
+        value,
+        target: ['development'],
+        type: 'encrypted',
+      },
+    },
+  };
+}
 
 function neonFixtures() {
   const names = [...new Set(NEON_STORES.map(([name]) => name))];
@@ -142,6 +170,7 @@ function neonFixtures() {
     'GET /v1/integrations/configurations?view=account&teamId=team_1': {
       body: [{ id: 'icfg_neon', slug: 'neon' }],
     },
+    ...testEnvFixtures(TEST_URL),
     'GET /v1/storage/stores?teamId=team_1': {
       body: {
         stores: names.map((name) => ({
@@ -417,7 +446,7 @@ test('runProvision prints no checklist line when the secret guard fires', async 
   assert.deepEqual(printed, []);
 });
 
-test('a first run creates four Neon stores and six connections after the bootstrap', async () => {
+test('a first run creates five Neon stores and seven connections after the bootstrap', async () => {
   const order = [];
   const routes = vendorFixtures();
   routes['GET /v1/storage/stores?teamId=team_1'] = { body: { stores: [] } };
@@ -429,7 +458,7 @@ test('a first run creates four Neon stores and six connections after the bootstr
     n += 1;
     return { body: { store: { id: `s${n}`, name: `n${n}` } } };
   };
-  for (let i = 1; i <= 4; i += 1) {
+  for (let i = 1; i <= 5; i += 1) {
     routes[`POST /v1/storage/stores/s${i}/connections?teamId=team_1`] = {
       body: {},
     };
@@ -452,12 +481,12 @@ test('a first run creates four Neon stores and six connections after the bootstr
     (c) => c.path === '/v1/storage/stores/integration?teamId=team_1',
   );
   const connects = calls.filter((c) => c.path.includes('/connections'));
-  assert.equal(creates.length, 4);
+  assert.equal(creates.length, 5);
   assert.equal(
     calls.filter(
       (c) => c.path === '/v1/integrations/billing/authorization?teamId=team_1',
     ).length,
-    4,
+    5,
   );
   assert.ok(creates.every((c) => c.body.authorizationId === 'mba_1'));
   assert.deepEqual(
@@ -467,6 +496,7 @@ test('a first run creates four Neon stores and six connections after the bootstr
       'growth-preview-target-01',
       'b4-production-target-01',
       'b4-preview-target-01',
+      'growth-test-target-01',
     ],
   );
   assert.deepEqual(
@@ -492,6 +522,14 @@ test('a first run creates four Neon stores and six connections after the bootstr
           envVarPrefix: 'B4_',
         },
       ],
+      [
+        's5',
+        {
+          projectId: 'prj_lc',
+          envVarEnvironments: ['development'],
+          envVarPrefix: 'TEST_',
+        },
+      ],
     ],
   );
   const bootstrapAt = order[0];
@@ -512,4 +550,83 @@ test('the Neon step is skipped when the bootstrap exits non-zero', async () => {
 
   await assert.rejects(act, /bootstrap exited with code 1/);
   assert.ok(!calls.some((c) => c.path.startsWith('/v1/storage')));
+});
+
+async function runWith(routes, outDir, checklist = createChecklist()) {
+  const { fetchImpl, calls } = stubFetch(routes);
+  await provision({
+    clients: clientsFor(fetchImpl),
+    outDir,
+    founderEmail: 'brian@hashbrown.dev',
+    checklist,
+    spawnBootstrap: async () => 0,
+  });
+  return { calls, checklist };
+}
+
+test('provision writes test-database.env as 0600 from the decrypted development value', async () => {
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+  const path = join(outDir, 'test-database.env');
+
+  const { checklist, calls } = await runWith(vendorFixtures(), outDir);
+
+  assert.equal(readFileSync(path, 'utf8'), `TEST_DATABASE_URL='${TEST_URL}'\n`);
+  assert.equal(statSync(path).mode & 0o777, 0o600);
+  const lines = checklist.lines();
+  assert.ok(
+    lines.some(
+      (l) =>
+        l.includes(`Test database env file ${path}`) &&
+        /\screated\s/.test(l) &&
+        l.includes('mode 0600'),
+    ),
+  );
+  assert.ok(!lines.join('\n').includes('pw-secret'));
+  assert.ok(!lines.join('\n').includes('host.neon.tech'));
+  assert.deepEqual(
+    calls.filter((c) => c.method !== 'GET'),
+    [],
+  );
+});
+
+test('a rerun reports test-database.env as exists and a changed value as updated', async () => {
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+  await runWith(vendorFixtures(), outDir);
+
+  const same = await runWith(vendorFixtures(), outDir);
+  const changedRoutes = {
+    ...vendorFixtures(),
+    ...testEnvFixtures('postgresql://other@host/db?a=1&b=2'),
+  };
+  const changed = await runWith(changedRoutes, outDir);
+
+  assert.ok(
+    same.checklist
+      .lines()
+      .some((l) => /Test database env file.*\sexists\s/.test(l)),
+  );
+  assert.ok(
+    changed.checklist
+      .lines()
+      .some((l) => /Test database env file.*\supdated\s/.test(l)),
+  );
+});
+
+test('a non-postgres readback is a manual step, writes no file, and stays last', async () => {
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+  const routes = {
+    ...vendorFixtures(),
+    ...testEnvFixtures('not-a-database-url-secret'),
+  };
+
+  const { checklist } = await runWith(routes, outDir);
+
+  assert.equal(existsSync(join(outDir, 'test-database.env')), false);
+  const lines = checklist.lines();
+  const index = lines.findIndex((l) =>
+    l.includes('Test database connection string'),
+  );
+  assert.ok(index >= lines.length - 3);
+  assert.match(lines[index], /\smanual\s/);
+  assert.ok(!lines.join('\n').includes('not-a-database-url-secret'));
 });

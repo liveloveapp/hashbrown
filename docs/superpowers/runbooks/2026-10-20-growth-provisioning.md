@@ -61,13 +61,20 @@ directory; gitignored). The script:
    preview values on both Vercel projects. The `OPENAI_*` keys are not in
    that file, so the www target reports them `missing`; that is expected.
 5. After the bootstrap exits 0 (the lifecycle project must exist), creates
-   four Neon stores through the Vercel Marketplace integration and connects
+   five Neon stores through the Vercel Marketplace integration and connects
    them: `growth-production-target-01` and `growth-preview-target-01` to
    `hashbrown-www` and `hashbrown-lifecycle` (production and preview, no
    prefix), and `b4-production-target-01` and `b4-preview-target-01` to
    `hashbrown-lifecycle` with the prefix `B4_`, so `B4_DATABASE_URL` appears
-   on lifecycle. The bootstrap never upserts the database variables.
-6. Prints the checklist.
+   on lifecycle. The fifth store, `growth-test-target-01`, serves only the
+   integration specs: it is connected to `hashbrown-lifecycle` for the
+   `development` environment with the prefix `TEST_`, so `TEST_DATABASE_URL`
+   appears there. The bootstrap never upserts the database variables.
+6. Reads that `TEST_DATABASE_URL` back from Vercel (decrypted) and writes
+   `<out>/test-database.env` (mode 0600, atomically, only when it changes) as
+   `TEST_DATABASE_URL='...'`. When the value is not readable the checklist
+   gets a manual line and no file is written. The value is never printed.
+7. Prints the checklist.
 
 ## Manual steps
 
