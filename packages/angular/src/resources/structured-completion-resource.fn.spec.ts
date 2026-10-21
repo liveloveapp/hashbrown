@@ -5,6 +5,7 @@ import { s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { structuredChatResource } from './structured-chat-resource.fn';
 import { structuredCompletionResource } from './structured-completion-resource.fn';
+import { structuredCompletionResourceWithMessage } from './structured-completion-resource-with-message.fn';
 
 vi.mock('@hashbrownai/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@hashbrownai/core')>();
@@ -188,6 +189,40 @@ test('structuredCompletionResource snapshot uses the exposed completion value', 
   });
 });
 
+test('the completion exposes the assistant message its value comes from', () => {
+  // Arrange
+  structuredChatResourceMock.mockReset();
+  const assistant = {
+    id: 'assistant-7',
+    role: 'assistant',
+    content: { summary: 'Completed response' },
+    toolCalls: [],
+  };
+  structuredChatResourceMock.mockReturnValue(
+    createChatStub(
+      signal<any[]>([
+        { id: 'user-1', role: 'user', content: 'Summarize this' },
+        assistant,
+      ]),
+    ),
+  );
+
+  // Act
+  const { ref, message } = TestBed.runInInjectionContext(() =>
+    structuredCompletionResourceWithMessage({
+      system: 'System prompt',
+      input: signal('Summarize this'),
+      schema: s.object('summary', {
+        summary: s.string('Summary'),
+      }),
+    }),
+  );
+
+  // Assert
+  expect(message()).toBe(assistant);
+  expect(ref.value()).toBe(assistant.content);
+});
+
 test.each([
   { label: 'false', output: false },
   { label: 'zero', output: 0 },
@@ -254,4 +289,42 @@ test('structuredCompletionResource propagates terminal errors through value', ()
 
   expect(resource.snapshot()).toEqual({ status: 'error', error: failure });
   expect(() => resource.value()).toThrow(failure);
+});
+
+test('structuredCompletionResource keeps its value when an activity trails the answer', () => {
+  structuredChatResourceMock.mockReset();
+  const assistant = {
+    id: 'assistant-1',
+    role: 'assistant',
+    content: { summary: 'Completed response' },
+    toolCalls: [],
+  };
+  structuredChatResourceMock.mockReturnValue(
+    createChatStub(
+      signal<any[]>([
+        { id: 'user-1', role: 'user', content: 'Summarize this' },
+        assistant,
+        {
+          id: 'activity-1',
+          role: 'activity',
+          activityType: 'progress',
+          content: { step: 'done' },
+          links: { assistantMessageId: 'assistant-1' },
+        },
+      ]),
+    ),
+  );
+
+  const { ref, message } = TestBed.runInInjectionContext(() =>
+    structuredCompletionResourceWithMessage({
+      system: 'System prompt',
+      input: signal('Summarize this'),
+      schema: s.object('summary', {
+        summary: s.string('Summary'),
+      }),
+    }),
+  );
+
+  expect(message()).toBe(assistant);
+  expect(ref.value()).toBe(assistant.content);
 });

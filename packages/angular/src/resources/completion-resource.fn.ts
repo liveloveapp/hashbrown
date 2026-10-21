@@ -223,7 +223,9 @@ export function completionResource<Input, State = unknown>(
 
   const rawValue = computed(
     () => {
-      const lastMessage = messages()[messages().length - 1];
+      const lastMessage = messages().findLast(
+        (message) => message.role !== 'activity',
+      );
 
       if (
         lastMessage &&
@@ -267,7 +269,10 @@ export function completionResource<Input, State = unknown>(
   const reload = () => {
     ɵassertRuntimeMessageSchedulingAllowed(runtime);
     const currentMessages = messages();
-    const lastMessage = currentMessages[currentMessages.length - 1];
+    const lastIndex = currentMessages.findLastIndex(
+      (message) => message.role !== 'activity',
+    );
+    const lastMessage = currentMessages[lastIndex];
 
     if (!lastMessage) {
       return false;
@@ -275,10 +280,10 @@ export function completionResource<Input, State = unknown>(
 
     const requestMessages =
       lastMessage.role === 'assistant'
-        ? currentMessages.slice(0, -1)
+        ? currentMessages.slice(0, lastIndex)
         : currentMessages;
     const lastRequestMessage = requestMessages.findLast(
-      (message) => message.role !== 'error',
+      (message) => message.role !== 'error' && message.role !== 'activity',
     );
 
     if (lastRequestMessage?.role !== 'user') {

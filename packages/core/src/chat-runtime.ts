@@ -178,10 +178,10 @@ export interface ChatRuntime<
   threadId: StateSignal<string | undefined>;
 
   /** Replace the current set of messages in the chat state. */
-  setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
+  setMessages: (messages: Chat.MessageInput<Output, Tools>[]) => void;
 
   /** Send a new message to the LLM and update state. */
-  sendMessage: (message: Chat.Message<Output, Tools>) => void;
+  sendMessage: (message: Chat.MessageInput<Output, Tools>) => void;
   /** Resend messages and update state. Often used manually after an error.*/
   resendMessages: () => void;
 
@@ -227,7 +227,7 @@ export function createChatRuntime<
   debugName?: string;
   system: string;
   state?: State;
-  messages?: Chat.Message<string, Tools>[];
+  messages?: Chat.MessageInput<string, Tools>[];
   tools?: Tools[];
   debounce?: number;
   retries?: number;
@@ -260,7 +260,7 @@ export function createChatRuntime<
   debugName?: string;
   system: string;
   state?: State;
-  messages?: Chat.Message<Output, Tools>[];
+  messages?: Chat.MessageInput<Output, Tools>[];
   tools?: Tools[];
   responseSchema: Schema;
   debounce?: number;
@@ -276,7 +276,7 @@ export function createChatRuntime(init: {
   debugName?: string;
   system: string;
   state?: unknown;
-  messages?: Chat.Message<string, Chat.AnyTool>[];
+  messages?: Chat.MessageInput<string, Chat.AnyTool>[];
   tools?: Chat.AnyTool[];
   responseSchema?: s.SchemaOutput;
   debounce?: number;
@@ -293,9 +293,9 @@ export function createChatRuntime(init: {
       ? crypto.randomUUID()
       : `hashbrown-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const systemMessageId = createCanonicalId();
-  const lower = (messages: readonly Chat.AnyMessage[]) =>
+  const lower = (messages: readonly Chat.AnyMessageInput[]) =>
     lowerViewMessagesToAgUi(messages, { createId: createCanonicalId });
-  const lowerWithProjection = (messages: readonly Chat.AnyMessage[]) => {
+  const lowerWithProjection = (messages: readonly Chat.AnyMessageInput[]) => {
     const canonicalMessages = lower(messages);
     return {
       canonicalMessages,
@@ -330,7 +330,7 @@ export function createChatRuntime(init: {
   state.dispatch(
     devActions.init({
       system: init.system,
-      messages: init.messages as Chat.AnyMessage[],
+      messages: init.messages as Chat.AnyMessageInput[],
       canonicalMessages: initial.canonicalMessages,
       localProjection: initial.localProjection,
       systemMessage: createSystemMessage(systemMessageId, init.system),
@@ -471,14 +471,14 @@ export function createChatRuntime(init: {
     }
   }
 
-  function setMessages(messages: Chat.Message<any, Chat.AnyTool>[]) {
+  function setMessages(messages: Chat.MessageInput<any, Chat.AnyTool>[]) {
     assertMessageSchedulingAllowed();
     const responseSchema = state.read(selectResponseSchema);
     const toolsByName = state.read(selectToolEntities);
-    const lowered = lowerWithProjection(messages as Chat.AnyMessage[]);
+    const lowered = lowerWithProjection(messages as Chat.AnyMessageInput[]);
     dispatchGenerationSchedulingAction(
       devActions.setMessages({
-        messages: messages as Chat.AnyMessage[],
+        messages: messages as Chat.AnyMessageInput[],
         canonicalMessages: lowered.canonicalMessages,
         localProjection: lowered.localProjection,
         responseSchema,
@@ -487,9 +487,9 @@ export function createChatRuntime(init: {
     );
   }
 
-  function sendMessage(message: Chat.Message<any, Chat.AnyTool>) {
+  function sendMessage(message: Chat.MessageInput<any, Chat.AnyTool>) {
     assertMessageSchedulingAllowed();
-    const lowered = lowerWithProjection([message as Chat.AnyMessage]);
+    const lowered = lowerWithProjection([message as Chat.AnyMessageInput]);
     const canonicalAppendCompatible = (() => {
       try {
         ɵassertAgUiMessageAppendCompatibility(
@@ -506,7 +506,7 @@ export function createChatRuntime(init: {
     }
     dispatchGenerationSchedulingAction(
       devActions.sendMessage({
-        message: message as Chat.AnyMessage,
+        message: message as Chat.AnyMessageInput,
         canonicalMessages: lowered.canonicalMessages,
         localProjection: lowered.localProjection,
         canonicalAppendCompatible,

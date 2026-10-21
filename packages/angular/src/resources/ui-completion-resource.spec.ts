@@ -3,17 +3,26 @@ import { computed, ResourceStatus, signal, type Signal } from '@angular/core';
 import { s } from '@hashbrownai/core';
 import { vi } from 'vitest';
 import { uiCompletionResource } from './ui-completion-resource.fn';
-import { structuredCompletionResource } from './structured-completion-resource.fn';
+import type { structuredCompletionResource } from './structured-completion-resource.fn';
+import { structuredCompletionResourceWithMessage } from './structured-completion-resource-with-message.fn';
 import { TAG_NAME_REGISTRY } from '../utils';
 import { createUiKit } from '../utils/ui-kit.fn';
 
-vi.mock('./structured-completion-resource.fn', () => ({
-  structuredCompletionResource: vi.fn(),
+vi.mock('./structured-completion-resource-with-message.fn', () => ({
+  structuredCompletionResourceWithMessage: vi.fn(),
 }));
 
 const structuredCompletionResourceMock = vi.mocked(
-  structuredCompletionResource,
+  structuredCompletionResourceWithMessage,
 );
+
+const assistantMessage = (id: string) =>
+  signal({ id, role: 'assistant' as const, toolCalls: [] });
+
+const withMessage = (
+  ref: ReturnType<typeof structuredCompletionResource>,
+  message: Signal<any | null> = assistantMessage('assistant-1'),
+) => ({ ref, message });
 
 const createCompletionStub = (
   valueSignal: Signal<any | null>,
@@ -45,7 +54,7 @@ test('uiCompletionResource preserves shared state signal and setter identity', (
   const setState = vi.fn();
   const completion = createCompletionStub(signal<any | null>(null));
   Object.assign(completion, { state, setState });
-  structuredCompletionResourceMock.mockReturnValue(completion);
+  structuredCompletionResourceMock.mockReturnValue(withMessage(completion));
   const initialState = { panelId: 'main' };
 
   const resource = uiCompletionResource({
@@ -68,7 +77,7 @@ test('uiCompletionResource preserves shared state signal and setter identity', (
 test('uiCompletionResource forwards the last run result signal', () => {
   structuredCompletionResourceMock.mockReset();
   const completion = createCompletionStub(signal<any | null>(null));
-  structuredCompletionResourceMock.mockReturnValue(completion);
+  structuredCompletionResourceMock.mockReturnValue(withMessage(completion));
 
   const resource = uiCompletionResource({
     components: [],
@@ -85,7 +94,7 @@ test('uiCompletionResource wraps structured completion output with UI metadata',
 
   const completionValue = signal<any | null>(null);
   structuredCompletionResourceMock.mockReturnValue(
-    createCompletionStub(completionValue),
+    withMessage(createCompletionStub(completionValue)),
   );
 
   class TestComponent {}
@@ -143,13 +152,35 @@ test('uiCompletionResource wraps structured completion output with UI metadata',
   );
 });
 
+test('uiCompletionResource output carries the id of the assistant message behind it', () => {
+  // Arrange
+  structuredCompletionResourceMock.mockReset();
+  const completionValue = signal<any | null>({ ui: [] });
+  structuredCompletionResourceMock.mockReturnValue(
+    withMessage(
+      createCompletionStub(completionValue),
+      assistantMessage('assistant-42'),
+    ),
+  );
+
+  // Act
+  const resource = uiCompletionResource({
+    components: [],
+    input: signal('Describe a component'),
+    system: 'System prompt',
+  });
+
+  // Assert
+  expect(resource.value()?.id).toBe('assistant-42');
+});
+
 test('uiCompletionResource accepts UiKit inputs', () => {
   // Arrange
   structuredCompletionResourceMock.mockReset();
 
   const completionValue = signal<any | null>(null);
   structuredCompletionResourceMock.mockReturnValue(
-    createCompletionStub(completionValue),
+    withMessage(createCompletionStub(completionValue)),
   );
 
   class TileComponent {}
@@ -195,7 +226,7 @@ test('uiCompletionResource passes reactive options through to structuredCompleti
   // Arrange
   structuredCompletionResourceMock.mockReset();
   structuredCompletionResourceMock.mockReturnValue(
-    createCompletionStub(signal<any | null>(null)),
+    withMessage(createCompletionStub(signal<any | null>(null))),
   );
   const apiUrl = signal('/ui-completion');
   const system = signal('System prompt');
@@ -239,7 +270,7 @@ test('uiCompletionResource snapshot uses the exposed assistant message', () => {
   const status = signal<ResourceStatus>('resolved');
   const error = signal<Error | undefined>(undefined);
   structuredCompletionResourceMock.mockReturnValue(
-    createCompletionStub(signal({ ui: [] }), status, error),
+    withMessage(createCompletionStub(signal({ ui: [] }), status, error)),
   );
 
   const resource = uiCompletionResource({
@@ -280,7 +311,7 @@ test('uiCompletionResource propagates terminal errors through value', () => {
     return completionValue();
   });
   structuredCompletionResourceMock.mockReturnValue(
-    createCompletionStub(value, status, error),
+    withMessage(createCompletionStub(value, status, error)),
   );
   const resource = uiCompletionResource({
     components: [

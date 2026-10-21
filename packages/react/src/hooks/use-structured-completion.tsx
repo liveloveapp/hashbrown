@@ -6,9 +6,7 @@ import {
   s,
   type TransportOrFactory,
 } from '@hashbrownai/core';
-import { useMemo } from 'react';
-import { useCompletionInput } from './use-completion-input';
-import { useStructuredChat } from './use-structured-chat';
+import { useStructuredCompletionWithMessage } from './use-structured-completion-with-message';
 
 /**
  * Options for the `useStructuredCompletion` hook.
@@ -214,50 +212,5 @@ export function useStructuredCompletion<
 >(
   options: UseStructuredCompletionOptions<Input, Schema, State>,
 ): UseStructuredCompletionResult<s.InferSchemaOutput<Schema>, State> {
-  const { setMessages, ...chat } = useStructuredChat<
-    Schema,
-    Chat.AnyTool,
-    s.InferSchemaOutput<Schema>,
-    State
-  >({
-    ...options,
-    ui: options.ui ?? false,
-  });
-
-  useCompletionInput(options.input, chat.resume, setMessages);
-
-  const output: s.InferSchemaOutput<Schema> | null = useMemo(() => {
-    const message = chat.messages.find(
-      (message) =>
-        message.role === 'assistant' &&
-        message.content !== null &&
-        message.content !== undefined,
-    );
-
-    const content = message?.content;
-    return content === undefined || content === null
-      ? null
-      : (content as s.InferSchemaOutput<Schema>);
-  }, [chat.messages]);
-
-  return {
-    pendingInterrupts: chat.pendingInterrupts,
-    isResuming: chat.isResuming,
-    resume: chat.resume,
-    stop: chat.stop,
-    state: chat.state,
-    setState: chat.setState,
-    output,
-    reload: chat.reload,
-    error: chat.error,
-    isLoading: chat.isLoading,
-    isReceiving: chat.isReceiving,
-    isSending: chat.isSending,
-    isGenerating: chat.isGenerating,
-    isRunningToolCalls: chat.isRunningToolCalls,
-    sendingError: chat.sendingError,
-    generatingError: chat.generatingError,
-    exhaustedRetries: chat.exhaustedRetries,
-    lastRunResult: chat.lastRunResult,
-  };
+  return useStructuredCompletionWithMessage(options).result;
 }

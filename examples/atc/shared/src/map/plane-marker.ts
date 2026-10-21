@@ -1,6 +1,7 @@
 import type { Marker } from 'leaflet';
 import type { Aircraft } from '../aircraft';
 import { type AircraftKind, KIND_PATHS } from '../kinds';
+import { matchesResolved } from '../find-aircraft';
 import type { AtcState } from '../store';
 
 // SECURITY INVARIANT: marker HTML is built from strings and set as innerHTML
@@ -9,8 +10,45 @@ import type { AtcState } from '../store';
 // typeCode, description or registration here, or widening the HEX or LABEL
 // patterns in aircraft.ts, is an XSS bug. Everything else is set as text.
 
-/** CSS classes for one aircraft marker. */
-export function markerClassName(state: AtcState, hex: string): string {
+const NONE: ReadonlySet<string> = new Set();
+
+/**
+ * The hexes of planes outside the map filter, to dim. Selected, highlighted
+ * and followed planes are never in it, so a plane the user or the assistant
+ * points at stays readable. Empty without a filter. Computed once per render
+ * and passed to {@link markerClassName}; it reads only the state, so dimming
+ * follows every snapshot with no model call.
+ */
+export function filteredOutHexes(state: AtcState): ReadonlySet<string> {
+  const applied = state.mapFilter;
+  if (applied === null) {
+    return NONE;
+  }
+  const out = new Set<string>();
+  for (const aircraft of state.aircraft.values()) {
+    const { hex } = aircraft;
+    if (
+      state.selectedHex !== hex &&
+      state.followingHex !== hex &&
+      !state.highlighted.has(hex) &&
+      !matchesResolved(applied.resolved, aircraft)
+    ) {
+      out.add(hex);
+    }
+  }
+
+  return out;
+}
+
+/**
+ * CSS classes for one aircraft marker. `filteredOut` is
+ * {@link filteredOutHexes} for the same state, computed once per render.
+ */
+export function markerClassName(
+  state: AtcState,
+  hex: string,
+  filteredOut: ReadonlySet<string> = NONE,
+): string {
   const classes = ['atc-plane'];
   if (state.selectedHex === hex) {
     classes.push('is-selected');
@@ -20,6 +58,10 @@ export function markerClassName(state: AtcState, hex: string): string {
   }
   if (state.highlighted.size > 0) {
     classes.push(state.highlighted.has(hex) ? 'is-highlighted' : 'is-dimmed');
+  }
+
+  if (filteredOut.has(hex)) {
+    classes.push('is-filtered-out');
   }
 
   return classes.join(' ');
@@ -82,6 +124,7 @@ const STATE_CLASSES = [
   'is-followed',
   'is-highlighted',
   'is-dimmed',
+  'is-filtered-out',
 ];
 
 /** The silhouette SVG for a kind; the path comes from a closed table. */

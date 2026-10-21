@@ -14,6 +14,7 @@
     "src/**/*.ts",
     "demo/**/*.ts",
     "prose/**/*.ts",
+    "decide/**/*.ts",
     "playwright.config.ts"
   ]
 }

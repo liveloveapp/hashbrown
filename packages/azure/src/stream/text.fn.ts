@@ -1,4 +1,5 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { ɵwithActivities } from '@hashbrownai/core';
 import { AzureOpenAI } from 'openai';
 import { mapAzureEvents } from './azure-events';
 import { createAzureRequestOptions } from './azure-request';
@@ -13,14 +14,9 @@ function normalizeError(error: unknown): string {
 }
 
 /**
- * Streams canonical AG-UI events from an Azure OpenAI Responses API request.
- *
- * @param options - Azure SDK configuration and AG-UI run input.
- * @returns An asynchronous stream of canonical AG-UI events.
- *
- * @public
+ * Streams the provider's AG-UI events for one run, without activities.
  */
-export async function* text(
+async function* textEvents(
   options: AzureTextStreamOptions,
 ): AsyncIterable<AGUIEvent> {
   const {
@@ -80,4 +76,22 @@ export async function* text(
   } finally {
     providerStream?.abort();
   }
+}
+
+/**
+ * Streams canonical AG-UI events from an Azure OpenAI Responses API request.
+ *
+ * @param options - Azure SDK configuration and AG-UI run input.
+ * @returns An asynchronous stream of canonical AG-UI events.
+ *
+ * @public
+ */
+export function text(
+  options: AzureTextStreamOptions,
+): AsyncIterable<AGUIEvent> {
+  return ɵwithActivities(
+    (signal) => textEvents({ ...options, signal }),
+    options.activities,
+    options.signal,
+  );
 }

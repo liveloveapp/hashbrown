@@ -42,7 +42,7 @@ export interface UseStructuredChatOptions<
    * The initial messages for the chat.
    * default: 1.0
    */
-  messages?: Chat.Message<Output, Tools>[];
+  messages?: Chat.MessageInput<Output, Tools>[];
 
   /**
    * The initial shared agent state.
@@ -129,13 +129,13 @@ export interface UseStructuredChatResult<
    * Function to update the chat messages.
    * @param messages - The new array of chat messages.
    */
-  setMessages: (messages: Chat.Message<Output, Tools>[]) => void;
+  setMessages: (messages: Chat.MessageInput<Output, Tools>[]) => void;
 
   /**
    * Function to send a new chat message.
    * @param message - The chat message to send.
    */
-  sendMessage: (message: Chat.Message<Output, Tools>) => void;
+  sendMessage: (message: Chat.MessageInput<Output, Tools>) => void;
 
   /**
    * Function to cause current messages to be resent.  Can be used after an error in chat.
@@ -362,9 +362,12 @@ export function useStructuredChat<
     runtimeRef.current.lastAssistantMessage,
   );
   const lastRunResult = useHashbrownSignal(runtimeRef.current.lastRunResult);
-  const sendMessage = useCallback((message: Chat.Message<Output, Tools>) => {
-    getRuntime().sendMessage(message);
-  }, []);
+  const sendMessage = useCallback(
+    (message: Chat.MessageInput<Output, Tools>) => {
+      getRuntime().sendMessage(message);
+    },
+    [],
+  );
 
   const stop = useCallback((clearStreamingMessage = false) => {
     getRuntime().stop(clearStreamingMessage);
@@ -374,9 +377,12 @@ export function useStructuredChat<
     getRuntime().resendMessages();
   }, []);
 
-  const setMessages = useCallback((messages: Chat.Message<Output, Tools>[]) => {
-    getRuntime().setMessages(messages);
-  }, []);
+  const setMessages = useCallback(
+    (messages: Chat.MessageInput<Output, Tools>[]) => {
+      getRuntime().setMessages(messages);
+    },
+    [],
+  );
 
   const setState = useCallback((state: State) => {
     getRuntime().setState(state);
@@ -384,10 +390,15 @@ export function useStructuredChat<
 
   const reload = useCallback(() => {
     ɵassertRuntimeMessageSchedulingAllowed(getRuntime());
-    const lastMessage = internalMessages[internalMessages.length - 1];
+    // Activities never count as the last message: they trail the turn that
+    // produced them, so reload drops them along with that turn's answer.
+    const lastIndex = internalMessages.findLastIndex(
+      (message) => message.role !== 'activity',
+    );
+    const lastMessage = internalMessages[lastIndex];
 
     if (lastMessage?.role === 'assistant') {
-      getRuntime().setMessages(internalMessages.slice(0, -1));
+      getRuntime().setMessages(internalMessages.slice(0, lastIndex));
 
       return true;
     }

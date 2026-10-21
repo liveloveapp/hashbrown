@@ -7,8 +7,11 @@ import {
 } from '@atc/shared';
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { fakeDecisionTransport } from '@atc/shared/testing';
+import { provideHashbrown } from '@hashbrownai/angular';
 import { expect, test } from 'vitest';
 import { Composer } from './composer';
+import { ROUTE_DECISION_TRANSPORT } from './router';
 import { SheetHandle } from './sheet-handle';
 
 function pointer(type: string, clientY: number): Event {
@@ -132,7 +135,11 @@ test('focusing the composer opens the sheet fully', () => {
   imports: [Composer],
   template: `
     <section [attr.data-snap]="sheet().snap" (focusin)="focus($event)">
-      <atc-composer (send)="move({ type: 'send' })" />
+      <atc-composer
+        (chat)="move({ type: 'send' })"
+        (filter)="move({ type: 'send' })"
+        (clear)="move({ type: 'send' })"
+      />
     </section>
   `,
 })
@@ -148,7 +155,17 @@ class ComposerSheetHost {
   }
 }
 
-test('tapping Send lowers the sheet to half, though the composer takes focus back', () => {
+test('tapping Send lowers the sheet to half, though the composer takes focus back', async () => {
+  const model = fakeDecisionTransport(() => ({
+    intent: 'chat',
+    confidence: 0.9,
+  }));
+  TestBed.configureTestingModule({
+    providers: [
+      provideHashbrown({ baseUrl: '/unused' }),
+      { provide: ROUTE_DECISION_TRANSPORT, useValue: model.transport },
+    ],
+  });
   const fixture = TestBed.createComponent(ComposerSheetHost);
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
@@ -157,11 +174,18 @@ test('tapping Send lowers the sheet to half, though the composer takes focus bac
   const send = element.querySelector('.atc-send') as HTMLButtonElement;
   field.focus();
   field.value = "What's flying near Seattle?";
+  field.dispatchEvent(new Event('input', { bubbles: true }));
   // A tap moves focus to the Send button before it submits.
   send.focus();
 
   send.click();
-  fixture.detectChanges();
+  for (let attempt = 0; attempt < 200; attempt++) {
+    fixture.detectChanges();
+    if (fixture.componentInstance.sheet().snap === 'half') {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
 
   expect(fixture.componentInstance.sheet().snap).toBe('half');
   expect(document.activeElement).toBe(field);

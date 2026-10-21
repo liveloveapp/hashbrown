@@ -6,7 +6,7 @@ import {
   startAimock,
 } from '@hashbrownai/testing/aimock';
 import OpenAI from 'openai';
-import { HashbrownOpenAI } from './index';
+import { type ActivityCallback, HashbrownOpenAI } from './index';
 import { historyFromEvents } from './testing/history-from-events';
 import type { OpenAIHashbrownRunAgentInput } from './stream/types';
 
@@ -584,4 +584,53 @@ test('OpenAI cancellation after a message ends does not finish the run', async (
     await iterator.return?.();
     await aimock.stop();
   }
+});
+
+test('OpenAI sends callback activities inside the run', async () => {
+  const activities: ActivityCallback = async ({ activity, model }) => {
+    const plan = activity.snapshot('plan-1', 'plan', { status: 'running' });
+    await model;
+    plan.patch([{ op: 'replace', path: '/status', value: 'done' }]);
+  };
+
+  const events = await runProviderAGUIWithAimock({
+    fixturePath: fixturePath('text.json'),
+    createStream: (aimock, signal) =>
+      HashbrownOpenAI.stream.text({
+        apiKey: 'test-not-used',
+        baseURL: aimock.openAiBaseUrl,
+        model: OPENAI_MODEL,
+        input: baseInput('say hi briefly'),
+        signal,
+        activities,
+      }),
+  });
+
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.ACTIVITY_SNAPSHOT,
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.TEXT_MESSAGE_END,
+    EventType.ACTIVITY_DELTA,
+    EventType.RUN_FINISHED,
+  ]);
+  expect(events[1]).toEqual({
+    type: EventType.ACTIVITY_SNAPSHOT,
+    messageId: 'plan-1',
+    activityType: 'plan',
+    content: { status: 'running' },
+    replace: true,
+  });
+  expect(events.at(-2)).toEqual({
+    type: EventType.ACTIVITY_DELTA,
+    messageId: 'plan-1',
+    activityType: 'plan',
+    patch: [{ op: 'replace', path: '/status', value: 'done' }],
+  });
+  expect(events.at(-1)).toEqual({
+    type: EventType.RUN_FINISHED,
+    threadId: 'thread-openai',
+    runId: 'run-openai',
+  });
 });

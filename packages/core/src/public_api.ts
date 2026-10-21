@@ -11,6 +11,13 @@ export {
   type ɵRuntimeSchedulingState,
 } from './chat-runtime';
 export * from './models';
+export {
+  type ActivityCallback,
+  type ActivityContext,
+  type ActivityHandle,
+  type ActivityWriter,
+  ɵwithActivities,
+} from './activities';
 export * from './transport';
 export * from './decision';
 export {

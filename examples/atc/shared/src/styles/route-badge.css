@@ -1,0 +1,28 @@
+/*
+ * The router badge: where Enter will send what is typed, drawn inside the
+ * composer pill (on phones too). A filter route has an ink border, a chat
+ * route a plain one, and an unsure route (below 0.7 confidence, or "other",
+ * which goes to chat) a dashed one. Nothing is shown until the first answer.
+ */
+.atc-route {
+  flex: none;
+  padding: 0 8px;
+  border: 1px solid var(--atc-border);
+  border-radius: var(--atc-radius-pill);
+  font-family: var(--atc-mono);
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--atc-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.atc-route[data-tone='idle'] {
+  display: none;
+}
+.atc-route[data-tone='filter'] {
+  border-color: var(--atc-ink);
+  color: var(--atc-ink);
+}
+.atc-route[data-tone='unsure'] {
+  border-style: dashed;
+}

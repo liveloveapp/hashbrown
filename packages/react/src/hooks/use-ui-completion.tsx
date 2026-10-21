@@ -4,17 +4,14 @@ import {
   Dispatch,
   ReactElement,
   SetStateAction,
-  useCallback,
   useMemo,
   useState,
 } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
 import { UiAssistantMessage, UiChatSchema } from './use-ui-chat';
 import { type UiKitInput, useUiKit } from './use-ui-kit';
-import {
-  useStructuredCompletion,
-  type UseStructuredCompletionResult,
-} from './use-structured-completion';
+import type { UseStructuredCompletionResult } from './use-structured-completion';
+import { useStructuredCompletionWithMessage } from './use-structured-completion-with-message';
 
 /**
  * Options for the `useUiCompletion` hook.
@@ -135,38 +132,32 @@ export const useUiCompletion = <
 
   const uiSchema = useMemo(() => uiKit.schema, [uiKit.serializedSchema]);
 
-  const structured = useStructuredCompletion<Input, typeof uiSchema, State>({
-    ...completionOptions,
-    schema: uiSchema as any,
-    system,
-    tools,
-    ui: true,
-  });
-
-  const buildContent = useCallback(
-    (content: string | UiChatSchema): ReactElement<any>[] | string => {
-      if (typeof content === 'string') {
-        return content;
-      }
-      return uiKit.render(content);
-    },
-    [uiKit],
-  );
+  const { result: structured, message: completionMessage } =
+    useStructuredCompletionWithMessage<Input, typeof uiSchema, State>({
+      ...completionOptions,
+      schema: uiSchema as any,
+      system,
+      tools,
+      ui: true,
+    });
 
   const rawOutput = structured.output as UiChatSchema | null;
 
-  const message = useMemo(() => {
-    if (!rawOutput) {
+  const messageId = completionMessage?.id;
+
+  const message = useMemo((): UiAssistantMessage<Tools> | null => {
+    if (!rawOutput || messageId === undefined) {
       return null;
     }
 
     return {
-      role: 'assistant' as const,
+      id: messageId,
+      role: 'assistant',
       content: rawOutput,
       toolCalls: [],
-      ui: rawOutput ? buildContent(rawOutput) : null,
-    } as UiAssistantMessage<Tools>;
-  }, [rawOutput, buildContent]);
+      ui: uiKit.render(rawOutput),
+    };
+  }, [rawOutput, messageId, uiKit]);
 
   return {
     ...structured,

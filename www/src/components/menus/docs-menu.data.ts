@@ -70,6 +70,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: '8. Decisions', path: 'concept/decisions' },
       { text: '9. Generative UI', path: 'concept/components' },
       { text: '10. JavaScript Runtime', path: 'concept/runtime' },
+      { text: '11. Activities', path: 'concept/activities' },
     ],
   },
   {

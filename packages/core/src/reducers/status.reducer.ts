@@ -35,7 +35,10 @@ export const reducer = createReducer(
   initialStatusState,
   on(devActions.init, (state, action) => {
     const messages = action.payload.messages ?? [];
-    const lastMessage = messages[messages.length - 1];
+    // Trailing activities are display material, never the last turn.
+    const lastMessage = messages.findLast(
+      (message) => message.role !== 'activity',
+    );
 
     if (lastMessage?.role === 'user') {
       return {

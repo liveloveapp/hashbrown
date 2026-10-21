@@ -108,7 +108,7 @@ export interface UiDecisionChat {
   /** Replaces the components the chat offers to the model. */
   setComponents(components: UiKitInput<ExposedComponent<any>>[]): void;
   /** Sends a user message to the chat. */
-  sendMessage(message: Chat.UserMessage): void;
+  sendMessage(message: Chat.UserMessageInput): void;
 }
 
 /**

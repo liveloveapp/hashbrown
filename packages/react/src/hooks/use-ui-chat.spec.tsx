@@ -148,3 +148,43 @@ test('useUiChat forwards and returns shared agent state unchanged', () => {
   expect(result.current.state).toBe(state);
   expect(result.current.setState).toBe(setState);
 });
+
+test('useUiChat passes activity messages through', () => {
+  // Arrange
+  const activity = {
+    id: 'activity-1',
+    role: 'activity' as const,
+    activityType: 'progress',
+    content: { step: 'Searching' },
+    links: { assistantMessageId: 'assistant-1' },
+  };
+  useStructuredChatMock.mockReturnValue({
+    messages: [
+      { id: 'user-1', role: 'user', content: 'Find flights' },
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        content: { ui: [] },
+        toolCalls: [],
+      },
+      activity,
+    ],
+  } as unknown as ReturnType<typeof useStructuredChat>);
+
+  // Act
+  const { result } = renderHook(() =>
+    useUiChat({
+      system: 'system prompt',
+      components: [],
+    }),
+  );
+
+  // Assert
+  expect(result.current.messages.map((message) => message.role)).toEqual([
+    'user',
+    'assistant',
+    'activity',
+  ]);
+  expect(result.current.messages[2]).toBe(activity);
+  expect(result.current.lastAssistantMessage?.id).toBe('assistant-1');
+});

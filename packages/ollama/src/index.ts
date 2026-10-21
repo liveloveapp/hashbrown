@@ -3,6 +3,12 @@ import { text } from './stream/text.fn';
 import type { OllamaTextStreamOptions } from './stream/types';
 
 export type {
+  ActivityCallback,
+  ActivityContext,
+  ActivityHandle,
+  ActivityWriter,
+} from '@hashbrownai/core';
+export type {
   OllamaHashbrownRunAgentInput,
   OllamaTextStreamOptions,
 } from './stream/types';

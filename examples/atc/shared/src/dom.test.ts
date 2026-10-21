@@ -2,6 +2,7 @@
 import { expect, onTestFinished, test, vi } from 'vitest';
 import {
   addsUserMessage,
+  focusComposerAfterRefinement,
   focusOpensSheet,
   hoverless,
   isEmptyChat,
@@ -149,4 +150,19 @@ test('keyboardInset is the height the keyboard covers, in whole pixels', () => {
     '0px',
     '0px',
   ]);
+});
+
+test('a refinement picked from the keyboard moves focus to the composer field; a pointer click does not', () => {
+  document.body.innerHTML =
+    '<div class="atc-chat"><div class="atc-refinements"><button id="r">Only jets</button></div><form class="atc-composer"><input id="f"></form></div>';
+  const button = document.getElementById('r') as HTMLButtonElement;
+  const field = document.getElementById('f');
+  button.focus();
+
+  focusComposerAfterRefinement(button, 1);
+  const afterPointer = document.activeElement;
+  focusComposerAfterRefinement(button, 0);
+
+  expect(afterPointer).toBe(button);
+  expect(document.activeElement).toBe(field);
 });
