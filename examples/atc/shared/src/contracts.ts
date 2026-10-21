@@ -1,4 +1,4 @@
-import { s } from '@hashbrownai/core';
+import { markdownComponent, s, type SelectionGroup } from '@hashbrownai/core';
 
 // Hold-back: streamed props (s.streaming.*) render as they arrive; plain
 // props (hex, airport) appear only once complete, and Hashbrown shows the
@@ -141,3 +141,45 @@ export function starterPrompts(selected: boolean): readonly string[] {
 /** The atc example's source on GitHub, linked from the chat header. */
 export const ATC_SOURCE_URL =
   'https://github.com/liveloveapp/hashbrown/tree/main/examples/atc';
+
+/**
+ * What the router decides about the text the user typed: where it goes
+ * (`intent`) and whether it asks to remove the current map filter (`clear`).
+ * The decision API answers both with probabilities.
+ */
+export const routeSchema = s.object('Where to send what the user typed', {
+  intent: s.enumeration('What the user wants', {
+    filter:
+      'Change which aircraft the map shows, by kind, airline, type, altitude or place',
+    chat: 'Ask a question, or ask about a specific aircraft or airport',
+    other: 'Anything else',
+  }),
+  clear: s.boolean('The user wants to remove the current map filter'),
+});
+
+/**
+ * The cards the chat can render, as plain selection groups for
+ * `createSelectionSchema`: the four cards first, in the order
+ * `PINNED_RESPONSE_SCHEMA` lists them, then Markdown, which is never an option
+ * (`selectable: false`) and is always sent. `children: false` matches the
+ * server's pinned definitions.
+ */
+export const cardGroups: readonly SelectionGroup[] = [
+  {
+    components: [
+      { ...flightCardContract, children: false },
+      { ...arrivalsBoardContract, children: false },
+      { ...aircraftCompareContract, children: false },
+      { ...airportCardContract, children: false },
+    ],
+  },
+  { components: [markdownComponent()], selectable: false },
+];
+
+/** The context the router decision reads alongside the typed text. */
+export const ROUTE_CONTEXT =
+  'You route what a user typed in a live air-traffic map. Decide whether it changes which aircraft the map shows, or asks the assistant a question.';
+
+/** The context the card-narrowing decision reads alongside the question. */
+export const CARDS_CONTEXT =
+  'You pick which cards best answer a question about aircraft or airports in a live air-traffic map.';

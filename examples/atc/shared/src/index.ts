@@ -10,6 +10,7 @@ export * from './chart';
 export * from './store';
 export * from './feed';
 export * from './routes';
+export * from './route';
 export * from './contracts';
 export * from './find-aircraft';
 export * from './filter-view';
