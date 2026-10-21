@@ -113,8 +113,26 @@
   white-space: pre;
   tab-size: 2;
 }
+.atc-dev-title {
+  margin: 0;
+  color: var(--atc-dimmed);
+}
+.atc-dev-title::after {
+  content: ':';
+}
+/* Shown only while an earlier send is selected; returns to following. */
 .atc-dev-latest {
+  margin-left: auto;
   color: var(--atc-surface);
+}
+/* Dev mode only: answers select their send, and the shown send is marked. */
+.atc-answer[data-dev-shown] {
+  cursor: pointer;
+}
+.atc-answer[data-dev-shown='true'] {
+  outline: 1px dashed var(--atc-muted);
+  outline-offset: 4px;
+  border-radius: var(--atc-radius-row);
 }
 /* Phone only: closes the sheet. */
 .atc-dev-close {

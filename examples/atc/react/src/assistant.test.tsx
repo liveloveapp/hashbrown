@@ -1,5 +1,6 @@
 import {
   createAtcStore,
+  DEV_MODE_KEY,
   type MapFilter,
   RESPONSE_SCHEMA_ALLOWLIST,
   ROUTER_SKIPPED,
@@ -21,12 +22,13 @@ import {
   render,
   waitFor,
 } from '@testing-library/react';
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { expect, test } from 'vitest';
 import { Assistant } from './assistant';
 import { PanelHeader } from './panel-header';
 import { Transcript } from './transcript';
-import { ShowStreamProvider } from './show-stream';
+import { DevDrawer } from './dev-drawer';
+import { type DevChat, DevModeProvider, usePublishDev } from './dev-mode';
 import { AtcStoreProvider } from './store';
 
 const FILTER: MapFilter = {
@@ -186,66 +188,36 @@ test('a cards decision failure sends with every card', async () => {
   ]);
 });
 
-/** The header's switch above a transcript, as the app wires them. */
-function Switched({ items, turns }: { items: never[]; turns: TurnShown[] }) {
-  const [on, setOn] = useState(true);
-
-  return (
-    <ShowStreamProvider on={on}>
-      <PanelHeader showStream={on} onShowStream={setOn} />
-      <Transcript items={items} turns={turns} />
-    </ShowStreamProvider>
-  );
-}
-
-test('the switch hides and shows the panels', () => {
+test('the header button toggles dev mode on phones', () => {
   cleanup();
-  const messages = [
-    { id: 'u-Highest?', role: 'user', content: 'Highest?' },
-    {
-      role: 'assistant',
-      toolCalls: [],
-      content: { ui: [{ Markdown: { data: '<b>hi</b>' } }] },
-      ui: [<p key="a">hi</p>],
-    },
-  ] as UiChatMessage<Chat.AnyTool>[];
-  const turns: TurnShown[] = [{ text: 'Highest?', router: ROUTER_SKIPPED }];
+  const toggled: string[] = [];
   const view = render(
     <AtcStoreProvider store={createAtcStore()}>
-      <Switched items={transcriptItems(messages) as never[]} turns={turns} />
+      <PanelHeader devMode onToggleDevMode={() => toggled.push('toggle')} />
     </AtcStoreProvider>,
   );
-  const element = view.container;
-  const toggle = element.querySelector(
-    'input[type="checkbox"]',
-  ) as HTMLInputElement;
+  const button = view.container.querySelector(
+    '.atc-header-dev',
+  ) as HTMLButtonElement;
 
-  const shown = element.querySelector('.atc-stream')?.textContent ?? '';
-  fireEvent.click(toggle);
-  const hidden = element.querySelectorAll('.atc-stream').length;
-  fireEvent.click(toggle);
+  fireEvent.click(button);
 
-  expect(toggle.getAttribute('role')).toBe('switch');
-  expect(element.textContent).toContain('Show the stream');
-  expect(shown).toContain('routerskipped (starter)');
-  expect(shown).toContain('<b>hi</b>');
-  expect(element.querySelector('.atc-stream b')).toBeNull();
-  expect(element.querySelector('.atc-stream')?.getAttribute('aria-live')).toBe(
-    'off',
-  );
-  expect(element.querySelectorAll('.atc-stream [tabindex]')).toHaveLength(0);
-  expect(hidden).toBe(0);
-  expect(element.querySelectorAll('.atc-stream')).toHaveLength(1);
+  expect(button.getAttribute('aria-label')).toBe('Developer tools');
+  expect(button.getAttribute('aria-pressed')).toBe('true');
+  expect(toggled).toEqual(['toggle']);
+  expect(view.container.textContent).not.toContain('Show the stream');
+  expect(view.container.querySelector('[role="switch"]')).toBeNull();
 });
 
-test('a panel without the provider never shows', async () => {
+test('without dev mode an answer is not selectable', async () => {
   const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
   const { chat, element } = setup(() => null);
 
   act(() => starterButton(element, starter?.text ?? '').click());
   await waitFor(() => expect(chat.requests).toHaveLength(1));
 
-  expect(element.querySelectorAll('.atc-stream')).toHaveLength(0);
+  expect(element.querySelectorAll('[data-dev-shown]')).toHaveLength(0);
+  expect(element.querySelectorAll('[class*="atc-stream"]')).toHaveLength(0);
 });
 
 test('a superseded send does not shift later answers onto the wrong decisions', () => {
@@ -267,20 +239,46 @@ test('a superseded send does not shift later answers onto the wrong decisions', 
     { text: 'jets', router: ROUTER_SKIPPED },
     { text: 'Seattle?', router: { kind: 'fallback', reason: 'unavailable' } },
   ];
-
+  const items = transcriptItems(messages);
   const view = render(
-    <ShowStreamProvider on>
-      <AtcStoreProvider store={createAtcStore()}>
-        <Transcript items={transcriptItems(messages)} turns={turns} />
-      </AtcStoreProvider>
-    </ShowStreamProvider>,
+    <AtcStoreProvider store={createAtcStore()}>
+      <DevModeProvider storage={onStorage()}>
+        <Published items={items} turns={turns} />
+        <Transcript items={items} turns={turns} />
+        <DevDrawer filter={null} />
+      </DevModeProvider>
+    </AtcStoreProvider>,
   );
-  const panels = [...view.container.querySelectorAll('.atc-stream')].map(
-    (panel) => panel.textContent ?? '',
-  );
+  const answers = view.container.querySelectorAll('.atc-answer');
+  const router = () =>
+    view.container.querySelector('[role="tabpanel"]')?.textContent ?? '';
 
-  expect(panels).toHaveLength(2);
-  expect(panels[0]).toContain('skipped (starter)');
-  expect(panels[0]).not.toContain('superseded');
-  expect(panels[1]).toContain('→ chat (unavailable)');
+  fireEvent.click(answers[0] as HTMLElement);
+  const first = router();
+  fireEvent.click(answers[1] as HTMLElement);
+  const second = router();
+
+  expect(first).toContain('skipped (starter)');
+  expect(first).not.toContain('superseded');
+  expect(answers[0]?.getAttribute('data-dev-shown')).toBe('false');
+  expect(second).toContain('→ chat (unavailable)');
+  expect(answers[1]?.getAttribute('data-dev-shown')).toBe('true');
 });
+
+/** A storage with dev mode on. */
+function onStorage() {
+  const data = new Map([[DEV_MODE_KEY, 'on']]);
+
+  return {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => void data.set(key, value),
+  };
+}
+
+/** Publishes a transcript to the drawer, as the assistant does. */
+function Published({ items, turns }: Omit<DevChat, 'busy'>) {
+  const chat = useMemo(() => ({ items, turns, busy: false }), [items, turns]);
+  usePublishDev('chat', chat);
+
+  return null;
+}

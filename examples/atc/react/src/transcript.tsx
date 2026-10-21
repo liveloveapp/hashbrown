@@ -1,18 +1,16 @@
 import {
-  alignTurns,
-  answerBlocks,
-  answerTurns,
   chatStatus,
   labelForHex,
+  rowTurns,
+  shownTurn,
   thinkingStatus,
   type TranscriptItem,
   type TurnShown,
 } from '@atc/shared';
 import type { Chat } from '@hashbrownai/core';
 import type { UiChatMessage } from '@hashbrownai/react';
-import { useShowStream } from './show-stream';
+import { useDevMode } from './dev-mode';
 import { useAtcState } from './store';
-import { StreamPanel } from './stream-panel';
 import { ToolChips } from './tool-chips';
 
 /**
@@ -24,8 +22,9 @@ import { ToolChips } from './tool-chips';
  * busy region is announced, a visually hidden status region beside it says what
  * the assistant is doing now (the running step, "Reasoning…" while a reasoning
  * summary streams, else "Thinking…"); it stays mounted, so each change is
- * announced. With "Show the stream" on, each send's last answer carries a
- * panel with the decisions (`turns`, matched to user rows by the text sent) and the streaming JSON.
+ * announced. While dev mode is on, clicking an answer shows its send in the
+ * developer drawer (`turns` are the recorded sends, matched to user rows by
+ * the text sent), and the shown send's answers are marked.
  */
 export function Transcript({
   items,
@@ -36,12 +35,9 @@ export function Transcript({
   busy?: boolean;
   turns?: readonly TurnShown[];
 }) {
-  const showStream = useShowStream();
-  const answers = answerTurns(items);
-  const aligned = alignTurns(
-    turns,
-    items.flatMap((item) => (item.kind === 'user' ? [item.text] : [])),
-  );
+  const dev = useDevMode();
+  const owners = dev.on ? rowTurns(items, turns) : [];
+  const shown = dev.on ? shownTurn(turns, dev.selection) : null;
   const thinking = thinkingStatus(items, busy);
   const status = chatStatus(items, busy, labelForHex(useAtcState()));
 
@@ -58,11 +54,11 @@ export function Transcript({
             key={index}
             item={item}
             busy={busy}
-            stream={
-              showStream && answers[index] !== null
+            dev={
+              dev.on && owners[index] !== null && owners[index] !== undefined
                 ? {
-                    turn: aligned[answers[index] ?? 0],
-                    streaming: busy && index === items.length - 1,
+                    shown: owners[index] === shown,
+                    select: () => dev.select(owners[index] as number),
                   }
                 : null
             }
@@ -93,12 +89,12 @@ export function Transcript({
 function TranscriptRow({
   item,
   busy,
-  stream,
+  dev,
 }: {
   item: TranscriptItem<UiChatMessage<Chat.AnyTool>>;
   busy: boolean;
-  /** The panel under an answer, or null. */
-  stream: { turn: TurnShown | undefined; streaming: boolean } | null;
+  /** In dev mode, whether the drawer shows this row's send and how to show it. */
+  dev: { shown: boolean; select: () => void } | null;
 }) {
   switch (item.kind) {
     case 'user':
@@ -131,18 +127,12 @@ function TranscriptRow({
       );
     case 'answer':
       return (
-        <li className="atc-answer">
+        <li
+          className="atc-answer"
+          data-dev-shown={dev === null ? undefined : String(dev.shown)}
+          onClick={dev?.select}
+        >
           {item.message.ui}
-          {stream === null ? null : (
-            <StreamPanel
-              label="Answer stream"
-              blocks={answerBlocks(
-                stream.turn,
-                item.message.content,
-                stream.streaming,
-              )}
-            />
-          )}
         </li>
       );
   }

@@ -1,18 +1,19 @@
 import { ATC_SOURCE_URL, GITHUB_MARK_PATH } from '@atc/shared';
 import { AtcLogo } from './atc-logo';
 import { FeedNotice } from './feed-notice';
+import { DevIcon } from './rail';
 
 /**
  * The chat panel's header: lettermark, Hashbrown credit, a quiet notice
- * while the feed is degraded, the "Show the stream" switch and the GitHub
- * link to atc's source.
+ * while the feed is degraded, the GitHub link to atc's source and, on phones
+ * (where there is no rail), the developer tools toggle.
  */
 export function PanelHeader({
-  showStream = false,
-  onShowStream,
+  devMode = false,
+  onToggleDevMode,
 }: {
-  showStream?: boolean;
-  onShowStream?: (on: boolean) => void;
+  devMode?: boolean;
+  onToggleDevMode?: () => void;
 }) {
   return (
     <div className="atc-panel-header">
@@ -27,15 +28,18 @@ export function PanelHeader({
         Hashbrown
       </a>
       <FeedNotice />
-      <label className="atc-stream-switch">
-        <input
-          type="checkbox"
-          role="switch"
-          checked={showStream}
-          onChange={(event) => onShowStream?.(event.target.checked)}
-        />
-        Show the stream
-      </label>
+      {onToggleDevMode ? (
+        <button
+          type="button"
+          className="atc-header-dev"
+          aria-label="Developer tools"
+          aria-pressed={devMode}
+          data-testid="dev-toggle-header"
+          onClick={onToggleDevMode}
+        >
+          <DevIcon />
+        </button>
+      ) : null}
       <a
         className="atc-source-link"
         href={ATC_SOURCE_URL}

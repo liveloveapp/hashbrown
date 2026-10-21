@@ -1,10 +1,13 @@
+import { routerDecisionInput, type RouterInputState } from './router-input';
 import {
+  alignTurns,
   cardsBlock,
   type DevStorage,
   filterBlocks,
   jsonBlock,
   routerBlock,
   type RouterShown,
+  routerShown,
   type StreamBlock,
   type StreamToolCall,
   toolBlocks,
@@ -108,7 +111,11 @@ export interface DevSelection {
   readonly index: number | null;
 }
 
-/** Selects an earlier send; it stays selected as newer sends arrive. */
+/**
+ * Selects an earlier send; it stays selected as newer sends arrive. `index`
+ * is an index into the recorded turns (append-only, superseded sends kept),
+ * not a transcript row: map a clicked row with {@link rowTurns}.
+ */
 export function selectSend(index: number): DevSelection {
   return { follow: false, index };
 }
@@ -132,6 +139,94 @@ export function selectedTurn(
   const index = selection.index;
 
   return index !== null && index >= 0 && index < turns.length ? index : null;
+}
+
+/**
+ * What the router makes of the text being typed, for the drawer: null while
+ * the composer is empty or no answer for this text is in yet, else what a
+ * send now would record (`ms` is how long the answer took).
+ */
+export function routerTyping(
+  state: RouterInputState,
+  ms: number | null,
+): RouterShown | null {
+  if (state.text === '') return null;
+  if (state.pending && routerDecisionInput(state.text) !== null) return null;
+
+  return routerShown(state, ms);
+}
+
+/**
+ * The send to show: the selected one, or the newest when following or when
+ * the chosen send is gone (the thread was reset). Null with no sends.
+ */
+export function shownTurn(
+  turns: readonly TurnShown[],
+  selection: DevSelection,
+): number | null {
+  return selectedTurn(turns, selection) ?? selectedTurn(turns, followLatest());
+}
+
+/** The parts of a transcript row that the drawer reads. */
+export type DevRow =
+  | { readonly kind: 'user'; readonly text: string }
+  | { readonly kind: 'tools'; readonly calls: readonly StreamToolCall[] }
+  | { readonly kind: 'reasoning' }
+  | {
+      readonly kind: 'answer';
+      readonly message: { readonly content?: unknown };
+    };
+
+/**
+ * For each transcript row, the index in `turns` of the send it belongs to,
+ * or null (before the first user row, or a user row with no recorded send).
+ * User rows are matched to sends the way the transcript does (`alignTurns`),
+ * so superseded sends are skipped.
+ */
+export function rowTurns(
+  rows: readonly DevRow[],
+  turns: readonly TurnShown[],
+): (number | null)[] {
+  const userTexts = rows.flatMap((row) =>
+    row.kind === 'user' ? [row.text] : [],
+  );
+  const owners = alignTurns(turns, userTexts).map((turn) =>
+    turn === undefined ? null : turns.indexOf(turn),
+  );
+  let user = -1;
+
+  return rows.map((row) => {
+    if (row.kind === 'user') user += 1;
+
+    return user < 0 ? null : (owners[user] ?? null);
+  });
+}
+
+/**
+ * The answer and tool calls of send `turn` (an index into `turns`): its last
+ * answer, streaming while `busy` and the send is the newest in the
+ * transcript, and every tool call it made. A send with no rows has neither.
+ */
+export function sendActivity(
+  rows: readonly DevRow[],
+  turns: readonly TurnShown[],
+  turn: number | null,
+  busy: boolean,
+): Pick<DevToolInput, 'answer' | 'tools'> {
+  const owners = rowTurns(rows, turns);
+  const mine = rows.filter(
+    (_, index) => turn !== null && owners[index] === turn,
+  );
+  if (mine.length === 0) return { answer: null, tools: [] };
+  const last = mine.findLast((row) => row.kind === 'answer');
+
+  return {
+    answer: {
+      content: last?.kind === 'answer' ? last.message.content : undefined,
+      streaming: busy && owners.at(-1) === turn,
+    },
+    tools: mine.flatMap((row) => (row.kind === 'tools' ? row.calls : [])),
+  };
 }
 
 /** Everything the drawer's tabs read. */

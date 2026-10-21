@@ -36,8 +36,14 @@
   .atc-rail {
     display: none;
   }
+  /* Beside the GitHub link, on the right of the header. */
   .atc-header-dev {
     display: grid;
+    margin-left: auto;
+  }
+  .atc-feed-notice ~ .atc-header-dev,
+  .atc-panel-header:has(.atc-header-dev) .atc-source-link {
+    margin-left: 0;
   }
   /* The map column dissolves so the map panel still fills the screen. */
   .atc-workbench .atc-map-column {

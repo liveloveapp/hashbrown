@@ -9,11 +9,16 @@ import {
   followLatest,
   readDevMode,
   readDrawerHeight,
+  routerTyping,
+  rowTurns,
   selectedTurn,
   selectSend,
+  sendActivity,
+  shownTurn,
   writeDevMode,
   writeDrawerHeight,
 } from './dev-tool';
+import { createRouterInput } from './router-input';
 import type { TurnShown } from './stream-view';
 import { ROUTER_SKIPPED } from './stream-view';
 
@@ -196,4 +201,82 @@ test('empty tabs say so instead of rendering nothing', () => {
   expect(devTabBlocks('filter', EMPTY)).toEqual([
     { title: 'applied', text: 'no filter' },
   ]);
+});
+
+/** Transcript rows for two sends; the first used a tool. */
+const ROWS = [
+  { kind: 'user', text: 'one' },
+  {
+    kind: 'tools',
+    calls: [{ name: 'findAircraft', args: { q: 1 }, status: 'done' }],
+  },
+  { kind: 'answer', message: { role: 'assistant', content: { ui: 'a1' } } },
+  { kind: 'answer', message: { role: 'assistant', content: { ui: 'a2' } } },
+  { kind: 'user', text: 'two' },
+  { kind: 'answer', message: { role: 'assistant', content: { ui: 'b' } } },
+] as const;
+
+test('rowTurns maps each transcript row to its send in the recorded turns', () => {
+  const turns: TurnShown[] = [
+    { text: 'one', router: ROUTER_SKIPPED },
+    { text: 'two', router: { kind: 'fallback', reason: 'superseded' } },
+    { text: 'two', router: ROUTER_SKIPPED },
+  ];
+
+  const owners = rowTurns(ROWS, turns);
+
+  expect(owners).toEqual([0, 0, 0, 0, 2, 2]);
+  expect(rowTurns([{ kind: 'user', text: 'gone' }], turns)).toEqual([null]);
+});
+
+test('sendActivity reads one send: its last answer and every tool call', () => {
+  const turns: TurnShown[] = [
+    { text: 'one', router: ROUTER_SKIPPED },
+    { text: 'two', router: ROUTER_SKIPPED },
+  ];
+
+  const first = sendActivity(ROWS, turns, 0, true);
+  const newest = sendActivity(ROWS, turns, 1, true);
+  const none = sendActivity(ROWS, turns, null, false);
+
+  expect(first).toEqual({
+    answer: { content: { ui: 'a2' }, streaming: false },
+    tools: [{ name: 'findAircraft', args: { q: 1 }, status: 'done' }],
+  });
+  expect(newest).toEqual({
+    answer: { content: { ui: 'b' }, streaming: true },
+    tools: [],
+  });
+  expect(none).toEqual({ answer: null, tools: [] });
+});
+
+test('shownTurn falls back to the newest send when the chosen one is gone', () => {
+  const kept = shownTurn(TURNS, selectSend(0));
+  const gone = shownTurn(TURNS, selectSend(7));
+  const empty = shownTurn([], selectSend(0));
+
+  expect(kept).toBe(0);
+  expect(gone).toBe(1);
+  expect(empty).toBeNull();
+});
+
+test('routerTyping shows the live decision, or waiting while none is in', () => {
+  const input = createRouterInput();
+  const typed = input.reduce(input.initial, { type: 'typed', text: 'hello' });
+  const decided = input.reduce(typed, {
+    type: 'decided',
+    text: 'hello',
+    result: ROUTE as never,
+  });
+  const short = input.reduce(input.initial, { type: 'typed', text: 'hi' });
+
+  const empty = routerTyping(input.initial, null);
+  const waiting = routerTyping(typed, null);
+  const live = routerTyping(decided, 40);
+  const tooShort = routerTyping(short, null);
+
+  expect(empty).toBeNull();
+  expect(waiting).toBeNull();
+  expect(live).toEqual({ kind: 'decided', result: ROUTE, ms: 40 });
+  expect(tooShort).toEqual({ kind: 'fallback', reason: 'too short' });
 });
