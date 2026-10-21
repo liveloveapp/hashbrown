@@ -1,14 +1,12 @@
 import type { NextConfig } from 'next';
 import { dirname, resolve } from 'node:path';
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
 
-const { version } = JSON.parse(
-  readFileSync(resolve(repoRoot, 'package.json'), 'utf8'),
-) as { version: string };
+// Reported as the collectorVersion: the deployed commit, or `www-dev` locally.
+const version = `www-${(process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 7) || 'dev'}`;
 
 const nextConfig: NextConfig = {
   // The website collector reports this as its collectorVersion.

@@ -86,6 +86,11 @@ export interface WebsiteCollector {
   observePath(pathname: string): void;
   /** Sends everything queued now. */
   flush(): Promise<void>;
+  /**
+   * For `pagehide`: starts every queued chunk's post immediately, ignoring any
+   * in-flight rate-limit wait, and without retrying.
+   */
+  flushOnHide(): void;
 }
 
 interface SessionRecord {
@@ -110,13 +115,14 @@ function guard<T>(fn: () => T): T | undefined {
 export function createWebsiteCollector(
   deps: WebsiteCollectorDeps,
 ): WebsiteCollector {
-  const version = deps.collectorVersion ?? 'website';
+  const version = deps.collectorVersion || 'www-dev';
   let queue: Omit<WebsiteEvent, 'occurredAt'>[] = [];
   let timer: ReturnType<typeof setTimeout> | undefined;
   let sending: Promise<void> = Promise.resolve();
   let memorySubject: string | undefined;
   let memorySession: SessionRecord | undefined;
   let sessionStorageWorks = true;
+  let acquisitionSent = false;
 
   function subject(): WebsiteEvent['subject'] {
     const local = deps.storage.local;
@@ -227,17 +233,38 @@ export function createWebsiteCollector(
     }
   }
 
-  function flush(): Promise<void> {
+  function takeChunks(): Omit<WebsiteEvent, 'occurredAt'>[][] {
     if (timer !== undefined) {
       clearTimeout(timer);
       timer = undefined;
     }
     const pending = queue;
     queue = [];
-    if (!pending.length) return sending;
     const chunks: (typeof pending)[] = [];
     for (let i = 0; i < pending.length; i += MAX_BATCH_EVENTS)
       chunks.push(pending.slice(i, i + MAX_BATCH_EVENTS));
+    return chunks;
+  }
+
+  function flushOnHide() {
+    for (const chunk of takeChunks()) {
+      void guard(() =>
+        deps
+          .post({
+            schemaVersion: 1,
+            events: chunk.map((event) => ({
+              ...event,
+              occurredAt: deps.now().toISOString(),
+            })),
+          })
+          .catch(() => undefined),
+      );
+    }
+  }
+
+  function flush(): Promise<void> {
+    const chunks = takeChunks();
+    if (!chunks.length) return sending;
     sending = sending.then(async () => {
       for (const chunk of chunks) await sendOne(chunk);
     });
@@ -253,11 +280,15 @@ export function createWebsiteCollector(
         if (!session || now - session.last > SESSION_WINDOW_MS) {
           session = { id: deps.subjectIdFactory(), last: now, seen: [] };
           const context = deps.context?.() ?? { search: '', referrer: '' };
+          // Acquisition describes the page load's arrival, not a renewal.
           enqueue(
             session.id,
             'website.session_started',
-            acquisitionProperties(context.search, context.referrer),
+            acquisitionSent
+              ? {}
+              : acquisitionProperties(context.search, context.referrer),
           );
+          acquisitionSent = true;
         }
         const contentId = contentIdFor(pathname);
         const topic = websiteTopic(pathname);
@@ -272,6 +303,7 @@ export function createWebsiteCollector(
       });
     },
     flush,
+    flushOnHide,
   };
 }
 
@@ -354,7 +386,7 @@ export function installWebsiteCollector(): WebsiteCollector | undefined {
       referrer: document.referrer,
     }),
   });
-  window.addEventListener('pagehide', () => void collector.flush());
+  window.addEventListener('pagehide', () => collector.flushOnHide());
   installed = collector;
   return installed;
 }

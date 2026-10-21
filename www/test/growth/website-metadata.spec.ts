@@ -48,3 +48,13 @@ test('contentIdFor drops the slashes, lowercases, and maps the root to home', ()
 
   expect(ids).toEqual(['home', 'docs/react', 'blog/a_b', undefined]);
 });
+
+test('acquisitionProperties drops referrer hosts the server would reject', () => {
+  const hosts = ['example.com.', '-a.com', 'a-.com', 'a..b', 'exa_mple.com'];
+
+  const results = hosts.map((host) =>
+    acquisitionProperties('', `https://${host}/path`),
+  );
+
+  expect(results).toEqual(hosts.map(() => ({})));
+});

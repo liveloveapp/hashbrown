@@ -68,3 +68,9 @@ test('keeps the existing redirects and tracing configuration', async () => {
   expect(nextConfig.outputFileTracingIncludes).toBeDefined();
   expect(nextConfig.turbopack?.root).toBeDefined();
 });
+
+test('the collector version is the short deploy commit, never a package version', () => {
+  const env = nextConfig.env;
+
+  expect(env?.['NEXT_PUBLIC_WWW_VERSION']).toMatch(/^www-(dev|[0-9a-f]{7})$/u);
+});

@@ -5,7 +5,10 @@ import {
   isKnownWebsiteContent,
   websiteContentCatalog,
 } from '../../src/lib/growth/website-content';
-import { websiteTopic } from '../../src/lib/growth/website-metadata';
+import {
+  contentIdFor,
+  websiteTopic,
+} from '../../src/lib/growth/website-metadata';
 import {
   listApiReferenceEntries,
   listSitemapEntries,
@@ -115,11 +118,13 @@ test('the catalog is memoized', () => {
   expect(second).toBe(first);
 });
 
-test('the server catalog and websiteTopic agree on every catalog path', () => {
+test('the server catalog agrees with the collector helpers on every catalog path', () => {
   const catalog = websiteContentCatalog();
 
   const mismatches = Object.entries(catalog).filter(
-    ([path, entry]) => entry.topic !== websiteTopic(path),
+    ([path, entry]) =>
+      contentIdFor(path) !== entry.contentId ||
+      websiteTopic(path) !== entry.topic,
   );
 
   expect(Object.keys(catalog).length).toBeGreaterThan(0);

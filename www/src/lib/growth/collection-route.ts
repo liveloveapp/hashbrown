@@ -26,25 +26,33 @@ export interface CollectionRouteDependencies {
   sourceBudget: typeof consumeSourceBudget;
   subjectBudgets: typeof consumeSubjectBudgets;
   accept: typeof acceptObservationBatch;
-  validateWebsite(batch: CollectionBatchV1): void;
+  filterWebsite(batch: CollectionBatchV1): CollectionBatchV1;
   runtimeAnnouncements: typeof selectRuntimeAnnouncements;
   log(event: Readonly<Record<string, string | number>>): void;
 }
 
 /**
- * Rejects website batches that report a page outside the content catalog or
- * a topic other than that page's own.
+ * Removes `website.content_viewed` events that report a page outside the
+ * content catalog (or a topic other than that page's own), so a 404 or stale
+ * link cannot sink the rest of its batch. Other events are untouched.
  *
  * @param batch - A parsed website batch.
- * @throws ObservationError `invalid_payload` on unknown content.
+ * @returns The batch without its unknown content views.
  */
-export function validateWebsiteCollection(batch: CollectionBatchV1): void {
-  for (const event of batch.events)
-    if (
-      event.kind === 'website.content_viewed' &&
-      !isKnownWebsiteContent(event.properties.contentId, event.properties.topic)
-    )
-      throw new ObservationError('invalid_payload');
+export function filterWebsiteCollection(
+  batch: CollectionBatchV1,
+): CollectionBatchV1 {
+  return {
+    ...batch,
+    events: batch.events.filter(
+      (event) =>
+        event.kind !== 'website.content_viewed' ||
+        isKnownWebsiteContent(
+          event.properties.contentId,
+          event.properties.topic,
+        ),
+    ),
+  };
 }
 
 const headers = {
@@ -191,9 +199,31 @@ export function createCollectionRoute(deps: CollectionRouteDependencies) {
         return report(400, 'invalid_payload', undefined, error);
       }
       const now = deps.now();
-      const batch = parseCollectionBatch(source, json, now);
-      if (source === 'website') deps.validateWebsite(batch);
+      const parsed = parseCollectionBatch(source, json, now);
+      const batch = source === 'website' ? deps.filterWebsite(parsed) : parsed;
+      const dropped = parsed.events.length - batch.events.length;
       eventCount = batch.events.length;
+      const droppedProperty: Record<string, number> =
+        dropped > 0 ? { droppedUnknownContent: dropped } : {};
+      if (dropped > 0 && batch.events.length === 0) {
+        try {
+          deps.log({
+            event: 'growth.collection',
+            source,
+            code: 'committed',
+            status: 200,
+            eventCount,
+            accepted: 0,
+            duplicate: 0,
+            redacted: 0,
+            ...droppedProperty,
+            latencyMs: Date.now() - start,
+          });
+        } catch {
+          /* Diagnostics cannot change acceptance. */
+        }
+        return response(200, { schemaVersion: 1, events: [] });
+      }
       const subjects = await deps.subjectBudgets(db, source, batch.events, now);
       if (!subjects.allowed)
         return report(429, 'rate_limited', subjects.retryAfterSec);
@@ -216,6 +246,7 @@ export function createCollectionRoute(deps: CollectionRouteDependencies) {
             .length,
           redacted: result.events.filter((e) => e.disposition === 'redacted')
             .length,
+          ...droppedProperty,
           latencyMs: Date.now() - start,
         });
       } catch {
@@ -257,7 +288,7 @@ export function defaultCollectionRouteDependencies(): CollectionRouteDependencie
     sourceBudget: consumeSourceBudget,
     subjectBudgets: consumeSubjectBudgets,
     accept: acceptObservationBatch,
-    validateWebsite: validateWebsiteCollection,
+    filterWebsite: filterWebsiteCollection,
     runtimeAnnouncements: selectRuntimeAnnouncements,
     log: (event) => console.info(JSON.stringify(event)),
   };

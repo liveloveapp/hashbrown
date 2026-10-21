@@ -2,17 +2,10 @@
  * Browser-safe website metadata shared by the collector and the server's
  * content catalog. Keep this file free of server-only imports.
  */
+import type { WEBSITE_TOPICS } from '@hashbrownai-internal/growth';
 
 /** A coarse website content topic; mirrors the collection contract. */
-export type WebsiteTopic =
-  | 'getting_started'
-  | 'concepts'
-  | 'react'
-  | 'angular'
-  | 'platform'
-  | 'reference'
-  | 'blog'
-  | 'other';
+export type WebsiteTopic = (typeof WEBSITE_TOPICS)[number];
 
 /**
  * Maps a site path to its coarse topic. The single source of truth for both
@@ -50,6 +43,14 @@ export function contentIdFor(pathname: string): string | undefined {
 }
 
 /**
+ * The collection contract's hostname rule, copied from `hostname()` in
+ * `tools/growth/src/lib/observability/contracts.ts`, which cannot be imported
+ * into the browser (the contracts module pulls in `node:crypto`).
+ */
+const HOSTNAME =
+  /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/u;
+
+/**
  * Acquisition properties for `website.session_started`.
  *
  * @param search - `location.search`.
@@ -77,7 +78,7 @@ export function acquisitionProperties(
     if (
       ['http:', 'https:'].includes(url.protocol) &&
       host.length <= 253 &&
-      /^[a-z0-9.-]+$/u.test(host)
+      HOSTNAME.test(host)
     )
       properties['referrerHost'] = host;
   } catch {

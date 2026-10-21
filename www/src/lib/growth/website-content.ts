@@ -1,6 +1,10 @@
 import { listBlogPosts } from '../content';
 import { listApiReferenceEntries, listSitemapEntries } from '../search-index';
-import { type WebsiteTopic, websiteTopic } from './website-metadata';
+import {
+  contentIdFor,
+  type WebsiteTopic,
+  websiteTopic,
+} from './website-metadata';
 
 export type { WebsiteTopic };
 
@@ -24,9 +28,8 @@ export function websiteContentCatalog(): WebsiteCatalog {
   if (cached) return cached;
   const catalog: Record<string, WebsiteContent> = {};
   const add = (path: string) => {
-    const contentId = path === '/' ? 'home' : path.slice(1).toLowerCase();
-    if (/^[a-z0-9][a-z0-9_/-]{0,119}$/u.test(contentId))
-      catalog[path] = { contentId, topic: websiteTopic(path) };
+    const contentId = contentIdFor(path);
+    if (contentId) catalog[path] = { contentId, topic: websiteTopic(path) };
   };
   add('/');
   add('/docs');
