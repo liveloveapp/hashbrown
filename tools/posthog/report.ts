@@ -226,7 +226,9 @@ export function insightReportRows(
       return unavailable('missing or incomplete result series');
     groups[order].push(item);
   }
-  if (groups.some((group) => group.length === 0))
+  // A breakdown with no matching events returns no items at all; that is a
+  // week of zeros, not a missing result.
+  if (!broken && groups.some((group) => group.length === 0))
     return unavailable('missing or incomplete result series');
 
   const today = Date.UTC(
@@ -386,7 +388,7 @@ export async function generateReport(
         typeof tile.insight === 'number' ? tile.insight : tile.insight?.id;
       if (typeof insightId !== 'number') continue;
       const insight = (await client.get(`/insights/${insightId}/`, {
-        refresh: 'force_cache',
+        refresh: 'blocking',
       })) as FetchedInsight;
       rows.push(...insightReportRows(insight, asOf));
     }

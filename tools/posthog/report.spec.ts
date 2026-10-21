@@ -160,7 +160,7 @@ test('generateReport reads managed dashboards and their tiles through the client
   expect(requests).toEqual([
     '/dashboards/ {"limit":100,"offset":0}',
     '/dashboards/10/ {}',
-    '/insights/7/ {"refresh":"force_cache"}',
+    '/insights/7/ {"refresh":"blocking"}',
   ]);
 });
 
@@ -261,4 +261,30 @@ test('report renders the Top values cell', () => {
     /\| By path \| 10 \| 5 \| \+5 \(\+100%\) \| .* \| \/a, \/b \|/,
   );
   expect(markdown).toMatch(/Top values/);
+});
+
+test('report renders a breakdown with no matching events as zeros', () => {
+  const insight = {
+    id: 2,
+    name: 'CTA clicks by id',
+    query: {
+      source: {
+        ...daily,
+        breakdownFilter: { breakdown: 'cta_id', breakdown_limit: 3 },
+      },
+    },
+    result: [],
+  };
+
+  const rows = insightReportRows(insight, asOf);
+
+  expect(rows).toEqual([
+    {
+      metric: 'CTA clicks by id',
+      thisWeek: 0,
+      lastWeek: 0,
+      weeks: [0, 0, 0, 0],
+      topValues: '—',
+    },
+  ]);
 });
