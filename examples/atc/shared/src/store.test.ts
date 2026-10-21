@@ -25,7 +25,7 @@ import {
   requestArea,
   requestReset,
 } from './store';
-import { testAircraft } from './testing';
+import { testAircraft, testChartAirport, testShelf } from './testing';
 
 function aircraft(hex: string, altitudeFt = 30000): Aircraft {
   return testAircraft({ hex, label: 'UAL1', callsign: 'UAL1', altitudeFt });
@@ -528,8 +528,8 @@ test('setMapFilter stores the filter and its resolution', () => {
   const applied = store.getState().mapFilter;
   expect(applied?.filter).toBe(filter);
   expect(applied?.unknownPlaces).toEqual([]);
-  expect(applied?.resolved?.airline).toBe('ual');
-  expect(applied?.resolved?.minAltitudeFt).toBe(10000);
+  expect(applied?.resolved.airline).toBe('ual');
+  expect(applied?.resolved.minAltitudeFt).toBe(10000);
   expect(store.getState().viewRequest).toBeNull();
 });
 
@@ -546,14 +546,14 @@ test('clearMapFilter returns the same state when nothing is set', () => {
   expect(store.getState().mapFilter).toBeNull();
 });
 
-test('a near filter issues one view request and a later user drag still cancels it', () => {
+test('a near filter issues one view request and a user drag cancels it', () => {
   const store = createAtcStore();
   const filter = { ...anyFilter, near: { airport: 'KBDN', radiusNm: 25 } };
 
   store.setMapFilter(filter);
   const first = store.getState().viewRequest;
   store.setMapFilter({ ...filter, airline: 'UAL' });
-  const second = store.getState().viewRequest;
+  const repeat = store.getState().viewRequest;
   store.cancelViewRequest();
 
   expect(first).toEqual({
@@ -561,9 +561,93 @@ test('a near filter issues one view request and a later user drag still cancels 
     area: { airport: 'KBDN', radiusNm: 25 },
     seq: 1,
   });
-  expect(second).toBe(first);
+  expect(repeat).toBe(first);
   expect(store.getState().viewSeq).toBe(1);
   expect(store.getState().viewRequest).toBeNull();
+});
+
+test('a different near filter issues a newer request that wins', () => {
+  const store = createAtcStore();
+  store.setMapFilter({ ...anyFilter, near: { airport: 'KBDN', radiusNm: 25 } });
+
+  store.setMapFilter({ ...anyFilter, near: { airport: 'KSEA', radiusNm: 25 } });
+  store.setMapFilter({ ...anyFilter, near: { airport: 'KSEA', radiusNm: 50 } });
+
+  expect(store.getState().viewRequest).toEqual({
+    kind: 'area',
+    area: { airport: 'KSEA', radiusNm: 50 },
+    seq: 3,
+  });
+});
+
+test('an inAirspace filter requests the airspace view and wins over near', () => {
+  const store = createAtcStore();
+
+  store.setMapFilter({
+    ...anyFilter,
+    near: { airport: 'KBDN', radiusNm: 25 },
+    inAirspace: { airport: 'KSEA', class: null },
+  });
+
+  const state = store.getState();
+  expect(state.viewRequest).toEqual({
+    kind: 'airspace',
+    airport: 'KSEA',
+    seq: 1,
+  });
+  expect(state.highlightedAirspace).toBe('KSEA');
+  expect(state.layers.airspace).toBe(true);
+});
+
+test('a filter does not request a view while following', () => {
+  const store = createAtcStore();
+  store.follow('aaaaaa');
+
+  store.setMapFilter({ ...anyFilter, near: { airport: 'KBDN', radiusNm: 25 } });
+
+  expect(store.getState().viewRequest).toBeNull();
+  expect(store.getState().viewSeq).toBe(0);
+  expect(store.getState().mapFilter?.resolved.nearAirport?.code).toBe('KBDN');
+});
+
+test('a filter re-resolves when airspace loads, without a view request', () => {
+  const store = createAtcStore();
+  store.setMapFilter({
+    ...anyFilter,
+    inAirspace: { airport: 'KPDX', class: null },
+  });
+  const seq = store.getState().viewSeq;
+
+  store.setAirspace({
+    cycle: '2610',
+    effective: '2026-10-08',
+    shelves: [testShelf()],
+  });
+
+  const state = store.getState();
+  expect(state.mapFilter?.resolved.shelves).toHaveLength(1);
+  expect(state.viewSeq).toBe(seq);
+});
+
+test('a filter re-resolves when the chart loads, without a view request', () => {
+  const store = createAtcStore();
+  store.setMapFilter({
+    ...anyFilter,
+    near: { airport: 'KXYZ', radiusNm: 25 },
+  });
+  const before = store.getState();
+
+  store.setChart({
+    cycle: '2610',
+    effective: '2026-10-08',
+    airports: [testChartAirport({ code: 'KXYZ', faa: 'XYZ', aliases: [] })],
+  });
+
+  expect(before.mapFilter?.unknownPlaces).toEqual(['KXYZ']);
+  const state = store.getState();
+  expect(state.mapFilter?.unknownPlaces).toEqual([]);
+  expect(state.mapFilter?.resolved.nearAirport?.code).toBe('KXYZ');
+  expect(state.viewSeq).toBe(before.viewSeq);
 });
 
 test('an unknown place is kept in unknownPlaces and ignored when matching', () => {
@@ -580,7 +664,6 @@ test('an unknown place is kept in unknownPlaces and ignored when matching', () =
   const resolved = applied?.resolved;
   expect(applied?.filter).toBe(filter);
   expect(applied?.unknownPlaces).toEqual(['ZZZZ']);
-  expect(resolved).not.toBeNull();
   expect(resolved?.nearAirport).toBeNull();
   expect(store.getState().viewRequest).toBeNull();
   expect(
