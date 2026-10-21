@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { startBedrockConverseShim } from './bedrock-converse-shim';
 import {
   type AimockHandle,
   type AimockProvider,
@@ -209,7 +210,9 @@ export interface RecordedAimock {
  * With `AIMOCK_RECORD=1`, unmatched requests go to `upstream` and are recorded
  * there, with secrets scrubbed when the handle stops. Stopping then fails, and
  * deletes the recording, when it holds a response with no text, tool calls or
- * reasoning (see {@link emptyRecordedResponses}).
+ * reasoning (see {@link emptyRecordedResponses}). Bedrock records through a
+ * local proxy that works around an aimock framing bug (see
+ * `bedrock-converse-shim.ts`); replay never uses it.
  *
  * @param options - The test, provider and upstream to record from.
  * @returns The running aimock plus the headers and key the client must use.
@@ -221,13 +224,28 @@ export async function startRecordedAimock(
   const slug = recordedTestSlug(options.testName);
   const fileName = options.fileName ?? `${options.provider}.json`;
   const fixturePath = join(RECORDED_FIXTURES_ROOT, slug, fileName);
-  const aimock = await startAimock(
+  // Workaround for aimock recording Bedrock Converse streams as empty; see
+  // bedrock-converse-shim.ts. Record mode only.
+  const bedrockShim =
+    recording && options.provider === 'bedrock'
+      ? await startBedrockConverseShim({ upstream: options.upstream })
+      : undefined;
+  const startAimockOrStopShim = (
+    startOptions: Parameters<typeof startAimock>[0],
+  ) =>
+    startAimock(startOptions).catch(async (error: unknown) => {
+      await bedrockShim?.stop();
+      throw error;
+    });
+  const aimock = await startAimockOrStopShim(
     recording
       ? {
           fixturePath,
           chunkSize: options.chunkSize,
           record: {
-            providers: { [options.provider]: options.upstream },
+            providers: {
+              [options.provider]: bedrockShim?.url ?? options.upstream,
+            },
             fixturePath: RECORDED_FIXTURES_ROOT,
             secrets: options.secrets ?? collectSecrets(process.env),
           },
@@ -248,7 +266,11 @@ export async function startRecordedAimock(
     ? {
         ...aimock,
         async stop() {
-          await aimock.stop();
+          try {
+            await aimock.stop();
+          } finally {
+            await bedrockShim?.stop();
+          }
           rejectEmptyRecording(fixturePath, slug, options.provider);
         },
       }

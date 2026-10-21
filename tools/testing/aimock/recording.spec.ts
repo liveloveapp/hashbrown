@@ -229,6 +229,77 @@ test('startRecordedAimock replays without pacing recorded timings', async () => 
   expect(options).toMatchObject({ strict: true, ignoreRecordedTimings: true });
 });
 
+async function recordBedrockOptions(): Promise<{
+  options: aimockRunner.AimockStartOptions | undefined;
+  upstreamDuringRun: string | undefined;
+  shimAnswersAfterStop: boolean;
+}> {
+  const previousRecord = process.env['AIMOCK_RECORD'];
+  process.env['AIMOCK_RECORD'] = '1';
+  const startAimock = jest
+    .spyOn(aimockRunner, 'startAimock')
+    .mockResolvedValue({ stop: async () => undefined } as AimockHandle);
+
+  try {
+    const recorded = await startRecordedAimock({
+      testName: 'bedrock records through the converse shim',
+      provider: 'bedrock',
+      upstream: 'https://bedrock-runtime.us-east-1.amazonaws.com',
+      secrets: [],
+    });
+    const options = startAimock.mock.calls[0]?.[0];
+    const upstreamDuringRun = options?.record?.providers.bedrock;
+    await recorded.aimock.stop();
+    const shimAnswersAfterStop = await fetch(`${upstreamDuringRun}/`).then(
+      () => true,
+      () => false,
+    );
+    return { options, upstreamDuringRun, shimAnswersAfterStop };
+  } finally {
+    startAimock.mockRestore();
+    if (previousRecord === undefined) {
+      delete process.env['AIMOCK_RECORD'];
+    } else {
+      process.env['AIMOCK_RECORD'] = previousRecord;
+    }
+  }
+}
+
+test('record mode sends Bedrock through the local Converse shim and stops it', async () => {
+  const { upstreamDuringRun, shimAnswersAfterStop } =
+    await recordBedrockOptions();
+
+  expect(upstreamDuringRun).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+  expect(shimAnswersAfterStop).toBe(false);
+});
+
+test('replay never starts the Bedrock Converse shim', async () => {
+  const previousRecord = process.env['AIMOCK_RECORD'];
+  delete process.env['AIMOCK_RECORD'];
+  const startAimock = jest
+    .spyOn(aimockRunner, 'startAimock')
+    .mockResolvedValue({} as AimockHandle);
+  let options: aimockRunner.AimockStartOptions | undefined;
+
+  try {
+    await startRecordedAimock({
+      testName: 'bedrock replay without shim',
+      provider: 'bedrock',
+      upstream: 'https://bedrock-runtime.us-east-1.amazonaws.com',
+      secrets: [],
+    });
+    options = startAimock.mock.calls[0]?.[0];
+  } finally {
+    startAimock.mockRestore();
+    if (previousRecord !== undefined) {
+      process.env['AIMOCK_RECORD'] = previousRecord;
+    }
+  }
+
+  expect(options?.record).toBeUndefined();
+  expect(options).toMatchObject({ strict: true });
+});
+
 test('emptyRecordedResponses flags fixtures with no content, tool calls or reasoning', () => {
   const recording = {
     fixtures: [
