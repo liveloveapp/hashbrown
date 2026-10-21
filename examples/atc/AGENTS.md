@@ -32,10 +32,10 @@ dependencies); this file covers atc.
 | `shared/src/views.ts`, `detail-view.ts`                | Pure view models for cards and the map's detail card                                                                                               |
 | `shared/src/route.ts`, `router-input.ts`               | `routeSchema` decoding: where Enter sends typed text, and the router's debounced input                                                             |
 | `shared/src/filter-view.ts`, `filter-sync.ts`          | The filter pill's chips (a streaming field is dashed); the request `/api/filter` takes                                                             |
-| `shared/src/stream-view.ts`                            | "Show the stream" panels: router and cards decisions, `CARDS_SELECT_MAX`, `CARDS_MIN_CONFIDENCE`                                                   |
+| `shared/src/stream-view.ts`                            | The drawer's text blocks: router and cards decisions, `CARDS_SELECT_MAX`, `CARDS_MIN_CONFIDENCE`                                                   |
 | `angular/src/app/filter.ts`, `react/src/filter.tsx`    | The filter pill: structured completion against `/api/filter`                                                                                       |
 | `shared/src/dev-tool.ts`                               | The developer drawer's view model: dev mode and height storage, tabs, the shown send (`rowTurns`, `sendActivity`)                                  |
-| `angular/src/app/stream-panel.ts`, `show-stream.ts`    | Angular's dark JSON panels and header switch (replaced by the drawer next)                                                                         |
+| `angular/src/app/dev-*.ts`, `rail.ts`                  | Angular's dev mode (remembered), the drawer under the map, the rail toggle                                                                         |
 | `react/src/dev-mode.tsx`, `dev-drawer.tsx`, `rail.tsx` | Dev mode (remembered), the drawer under the map, the rail toggle                                                                                   |
 | `shared/src/tool-chips.ts`, `transcript.ts`            | Tool call labels and transcript rows                                                                                                               |
 | `shared/src/sheet.ts`, `dom.ts`                        | The phone sheet's snaps; the `/` shortcut and keyboard inset                                                                                       |

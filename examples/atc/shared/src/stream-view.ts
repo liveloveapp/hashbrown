@@ -14,13 +14,6 @@ const PICK_PROBABILITY = 0.5;
 /** The caret drawn after the last token of a value that is still streaming. */
 const CARET = '▍';
 
-/**
- * The localStorage key that remembered the "Show the stream" switch.
- *
- * @deprecated Dev mode replaced the switch; removed in Task 4.
- */
-export const SHOW_STREAM_KEY = 'atc.showStream';
-
 /** A decision's answers and their metadata, as Hashbrown returns them. */
 export interface DecisionResultLike {
   readonly value: unknown;
@@ -113,7 +106,7 @@ function rowLine(row: DecisionRow): string {
 }
 
 /**
- * Pretty-prints a value as JSON for a stream panel: two-space indent, keys in
+ * Pretty-prints a value as JSON for the developer drawer: two-space indent, keys in
  * the order they arrived. While `streaming`, a caret follows the last token;
  * a value that has not started (undefined or null) is then just the caret.
  * The result is text for text nodes, never for innerHTML.
@@ -127,7 +120,7 @@ export function streamJson(value: unknown, streaming = false): string {
   return streaming ? `${text}${CARET}` : text;
 }
 
-/** A titled block of a stream panel; `text` is rendered as plain text. */
+/** A titled block of the developer drawer; `text` is rendered as plain text. */
 export interface StreamBlock {
   readonly title: string;
   readonly text: string;
@@ -266,7 +259,7 @@ export function jsonBlock(
   return { title, text: streamJson(value, streaming) };
 }
 
-/** What a send recorded for its answer's panel. */
+/** What a send recorded, for the developer drawer. */
 export interface TurnShown {
   /** The text that was sent, to find the send's user row. */
   readonly text: string;
@@ -276,10 +269,10 @@ export interface TurnShown {
 }
 
 /**
- * For each transcript row, the index of the send whose panel it carries, or
- * null. Sends are numbered by the user rows; the panel sits on the last
- * answer row of each send, so a send with tool steps shows it once, on the
- * final answer.
+ * For each transcript row, the send it is the last answer of, or null. Sends
+ * are numbered by the user rows; only the last answer row of each send gets a
+ * number, so a send with tool steps is marked once, on the final answer (where
+ * dev mode puts its inspect button).
  */
 export function answerTurns(
   kinds: readonly { readonly kind: string }[],
@@ -315,7 +308,7 @@ export function addTurn(
  * superseded while its cards decision was pending, or that the chat refused,
  * has no user row; scanning from the newest, each row takes the latest unused
  * send with its text, so duplicates resolve to the one that really ran and
- * orphans are dropped. A row with no send (undefined) gets no panel.
+ * orphans are dropped. A row with no send is undefined.
  */
 export function alignTurns(
   turns: readonly TurnShown[],
@@ -385,40 +378,18 @@ export function settleCards(
   return [...turns.slice(0, -1), { ...last, cards }];
 }
 
-/**
- * The panel blocks under one assistant answer. While the answer is not
- * `streaming`, a send whose cards decision never ran says so, instead of
- * waiting for it.
- */
-export function answerBlocks(
-  turn: TurnShown | undefined,
-  content: unknown,
-  streaming: boolean,
-): StreamBlock[] {
-  return [
-    routerBlock(turn?.router ?? null),
-    cardsBlock(
-      turn?.cards ??
-        (streaming
-          ? undefined
-          : { result: null, ms: null, error: 'not asked' }),
-    ),
-    jsonBlock('ui', content, streaming),
-  ];
-}
-
 /** The applied map filter, as the store holds it. */
 interface AppliedLike {
   readonly filter: unknown;
 }
 
 /**
- * Whether the panel under the filter pill shows: only with a router decision
+ * Whether the drawer's Filter tab shows the run: only with a router decision
  * for a run, and then only while that run streams (`loading`), or while the
  * map's applied filter (`current`) still holds the filter object the run
  * produced. Chart and airspace loads re-resolve the applied filter into a new
- * wrapper but keep its `filter`, so they leave the panel; the assistant's
- * filter tool, a clear and the pill's x replace it, and the panel goes.
+ * wrapper but keep its `filter`, so they leave the run; the assistant's
+ * filter tool, a clear and the pill's x replace it, and the run goes.
  */
 export function filterPanelVisible(options: {
   readonly route: RouterShown | null;
@@ -437,7 +408,7 @@ export function filterPanelVisible(options: {
   );
 }
 
-/** The panel blocks under the filter pill: the router, then the filter. */
+/** A filter run's blocks: the router, then the filter. */
 export function filterBlocks(
   router: RouterShown | null,
   output: unknown,
@@ -446,7 +417,7 @@ export function filterBlocks(
   return [routerBlock(router), jsonBlock('filter', output, streaming)];
 }
 
-/** The parts of a tool call that the stream panel shows. */
+/** The parts of a tool call that the developer drawer shows. */
 export interface StreamToolCall {
   readonly name: string;
   readonly args: unknown;
@@ -462,47 +433,6 @@ export function toolBlocks(calls: readonly StreamToolCall[]): StreamBlock[] {
 
 /** The storage the developer drawer's settings are remembered in (`localStorage`). */
 export type DevStorage = Pick<Storage, 'getItem' | 'setItem'>;
-
-/**
- * The storage the switch was remembered in.
- *
- * @deprecated Use {@link DevStorage}; removed in Task 4.
- */
-export type ShowStreamStorage = DevStorage;
-
-/**
- * Whether "Show the stream" is on.
- *
- * It is on for a first visit, and whenever storage is missing or throws
- * (private windows, blocked site data).
- *
- * @deprecated Use `readDevMode` from `dev-tool`; removed in Task 4.
- */
-export function readShowStream(
-  storage: ShowStreamStorage | null | undefined,
-): boolean {
-  try {
-    return storage?.getItem(SHOW_STREAM_KEY) !== 'off';
-  } catch {
-    return true;
-  }
-}
-
-/**
- * Remembers the switch; a storage that throws is ignored.
- *
- * @deprecated Use `writeDevMode` from `dev-tool`; removed in Task 4.
- */
-export function writeShowStream(
-  storage: ShowStreamStorage | null | undefined,
-  on: boolean,
-): void {
-  try {
-    storage?.setItem(SHOW_STREAM_KEY, on ? 'on' : 'off');
-  } catch {
-    // The switch still works for this visit.
-  }
-}
 
 /** `localStorage`, or null where reading the property itself throws. */
 export function browserStorage(): DevStorage | null {

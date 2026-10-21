@@ -2,7 +2,6 @@ import { expect, test } from 'vitest';
 import {
   addTurn,
   alignTurns,
-  answerBlocks,
   answerTurns,
   cardPicks,
   cardsBlock,
@@ -10,16 +9,13 @@ import {
   filterBlocks,
   filterPanelVisible,
   observeDecisions,
-  readShowStream,
   ROUTER_SKIPPED,
   routerBlock,
   routerShown,
   settleCards,
-  SHOW_STREAM_KEY,
   streamJson,
   toolBlocks,
   withDecoded,
-  writeShowStream,
 } from './stream-view';
 import { createRouterInput } from './router-input';
 import { createAtcStore } from './store';
@@ -122,40 +118,6 @@ test('streamJson of nothing is empty, or just the caret while streaming', () => 
   expect(streamJson(null)).toBe('null');
 });
 
-test('readShowStream defaults to on and survives a throwing storage', () => {
-  const throwing = {
-    getItem: () => {
-      throw new Error('blocked');
-    },
-    setItem: () => {
-      throw new Error('blocked');
-    },
-  };
-
-  expect(readShowStream(null)).toBe(true);
-  expect(
-    readShowStream({ getItem: () => null, setItem: () => undefined }),
-  ).toBe(true);
-  expect(readShowStream(throwing)).toBe(true);
-  expect(() => writeShowStream(throwing, false)).not.toThrow();
-});
-
-test('writeShowStream remembers the switch', () => {
-  const data = new Map<string, string>();
-  const storage = {
-    getItem: (key: string) => data.get(key) ?? null,
-    setItem: (key: string, value: string) => void data.set(key, value),
-  };
-
-  writeShowStream(storage, false);
-  const off = readShowStream(storage);
-  writeShowStream(storage, true);
-
-  expect(data.get(SHOW_STREAM_KEY)).toBe('on');
-  expect(off).toBe(false);
-  expect(readShowStream(storage)).toBe(true);
-});
-
 test('routerBlock shows the answers, the skipped starter and the fallbacks', () => {
   const decided = routerBlock({ kind: 'decided', result: ROUTE, ms: 184 });
 
@@ -242,17 +204,11 @@ test('answerTurns puts the panel on the last answer of each send', () => {
   expect(turns).toEqual([null, null, null, 0, null, 1]);
 });
 
-test('answerBlocks and filterBlocks order the layers', () => {
-  const answer = answerBlocks(
-    { text: 'a', router: ROUTER_SKIPPED },
-    { ui: [] },
-    true,
-  );
-  const filter = filterBlocks(null, { airline: 'Alaska' }, false);
+test('filterBlocks orders the layers', () => {
+  const filter = filterBlocks(null, { airline: 'Alaska' }, true);
 
-  expect(answer.map((block) => block.title)).toEqual(['router', 'cards', 'ui']);
-  expect(answer[2].text.endsWith('▍')).toBe(true);
   expect(filter.map((block) => block.title)).toEqual(['router', 'filter']);
+  expect(filter[1].text.endsWith('▍')).toBe(true);
 });
 
 test('toolBlocks show each call with its arguments as JSON', () => {
@@ -318,16 +274,6 @@ test('settleCards records the decision on the newest send only', () => {
   expect(failed[0].cards).toEqual({ result: null, ms: 9, error: '503' });
   expect(two).toHaveLength(2);
   expect(settleCards([], { response: null, error: null, ms: 1 })).toEqual([]);
-});
-
-test('an answer whose cards decision never ran says so once it is not streaming', () => {
-  const turn = { text: 'a', router: ROUTER_SKIPPED };
-
-  const done = answerBlocks(turn, { ui: [] }, false);
-  const live = answerBlocks(turn, { ui: [] }, true);
-
-  expect(done[1].text).toBe('all (fallback: not asked)');
-  expect(live[1].text).toBe('deciding…');
 });
 
 test('routerBlock states the outcome: filter, clear, chat, and chat when unsure', () => {

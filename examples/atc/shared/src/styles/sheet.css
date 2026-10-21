@@ -232,3 +232,23 @@
     padding-top: 12px;
   }
 }
+
+/*
+ * Narrow headers: the credit shortens to "Hashbrown" (its lead stays for
+ * assistive tech) and the gaps tighten, so the credit, the developer tools
+ * button and the source link all fit.
+ */
+@media (max-width: 430px) {
+  .atc-panel-header {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+  .atc-credit-lead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
