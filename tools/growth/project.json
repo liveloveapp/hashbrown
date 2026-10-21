@@ -15,7 +15,24 @@
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node --test tools/growth/scripts/**/*.test.mjs"
+        "parallel": false,
+        "commands": [
+          "node --test tools/growth/scripts/**/*.test.mjs",
+          "vitest run --config tools/growth/vitest.config.mts"
+        ]
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p tools/growth/tsconfig.json"
+      }
+    },
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "vitest run --config tools/growth/vitest.integration.config.mts --passWithNoTests"
       }
     }
   }
