@@ -19,6 +19,7 @@ import {
   type TransportOrFactory,
   ɵassertRuntimeMessageSchedulingAllowed,
 } from '@hashbrownai/core';
+import { ɵinjectDevelopmentCollector } from '../growth/collector';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import {
   readReactiveOption,
@@ -224,6 +225,7 @@ export function chatResource<Tools extends Chat.AnyTool, State = unknown>(
             runInInjectionContext(injector, () => middleware(requestInit));
         }),
     });
+  const collector = ɵinjectDevelopmentCollector();
   const runtime = createChatRuntime({
     system: readReactiveOption(options.system),
     state: options.state,
@@ -237,6 +239,7 @@ export function chatResource<Tools extends Chat.AnyTool, State = unknown>(
         ? readReactiveOption(options.threadId)
         : undefined,
   });
+  const detach = collector.attach(runtime);
 
   let previousThreadId =
     options.threadId !== undefined
@@ -265,6 +268,7 @@ export function chatResource<Tools extends Chat.AnyTool, State = unknown>(
   const teardown = runtime.start();
 
   destroyRef.onDestroy(() => {
+    detach();
     teardown();
     optionsEffect.destroy();
   });

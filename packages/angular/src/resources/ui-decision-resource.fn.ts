@@ -20,8 +20,10 @@ import {
   s,
   ɵassertRuntimeMessageSchedulingAllowed,
   ɵcreateUiChatDecision,
+  ɵreportMilestone,
   ɵresolveSelection,
 } from '@hashbrownai/core';
+import { ɵinjectDevelopmentCollector } from '../growth/collector';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { type ExposedComponent } from '../utils/expose-component.fn';
 import { readReactiveOption } from '../utils/signals';
@@ -401,6 +403,11 @@ function candidatesMode(
   const ids = computed(() => {
     const current = selection();
     return current !== null && current.confident ? current.ids : [];
+  });
+  // The resource's injection context destroys this effect with it.
+  const collector = ɵinjectDevelopmentCollector();
+  effect(() => {
+    if (ids().length) ɵreportMilestone(collector, 'component.first_rendered');
   });
   const chosen = computed(() =>
     ids().flatMap((id): UiDecisionChosenCandidate[] => {
