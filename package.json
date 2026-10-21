@@ -49,6 +49,7 @@
     "leaflet": "^1.9.4",
     "next": "16.3.6",
     "ollama": "0.6.3",
+    "posthog-js": "1.372.6",
     "quickjs-emscripten-core": "0.31.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
