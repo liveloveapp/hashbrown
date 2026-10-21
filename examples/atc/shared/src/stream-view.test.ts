@@ -2,7 +2,6 @@ import { expect, test } from 'vitest';
 import {
   addTurn,
   alignTurns,
-  answerTurns,
   cardPicks,
   cardsBlock,
   decisionView,
@@ -10,6 +9,7 @@ import {
   filterPanelVisible,
   observeDecisions,
   ROUTER_SKIPPED,
+  ROUTER_SKIPPED_REFINEMENT,
   routerBlock,
   routerShown,
   settleCards,
@@ -125,6 +125,9 @@ test('routerBlock shows the answers, the skipped starter and the fallbacks', () 
     '→ filter\nintent: filter 0.97\nclear: no 0.88\nms: 184',
   );
   expect(routerBlock(ROUTER_SKIPPED).text).toBe('skipped (starter)');
+  expect(routerBlock(ROUTER_SKIPPED_REFINEMENT).text).toBe(
+    'skipped (refinement)',
+  );
   expect(routerBlock({ kind: 'fallback', reason: 'unavailable' }).text).toBe(
     '→ chat (unavailable)',
   );
@@ -187,21 +190,6 @@ test('cardsBlock names the fallback when unsure, failed or pending', () => {
     'all (fallback: status 503)',
   );
   expect(cardsBlock(undefined).text).toBe('deciding…');
-});
-
-test('answerTurns puts the panel on the last answer of each send', () => {
-  const kinds = [
-    { kind: 'user' },
-    { kind: 'tools' },
-    { kind: 'answer' },
-    { kind: 'answer' },
-    { kind: 'user' },
-    { kind: 'answer' },
-  ];
-
-  const turns = answerTurns(kinds);
-
-  expect(turns).toEqual([null, null, null, 0, null, 1]);
 });
 
 test('filterBlocks orders the layers', () => {

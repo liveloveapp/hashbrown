@@ -116,6 +116,7 @@ function Workbench() {
         <SheetHandle expanded={sheetExpanded(sheet)} onMove={move} />
         <PanelHeader devMode={dev.on} onToggleDevMode={dev.toggle} />
         <Assistant
+          filterLoading={loading}
           onFilter={applyFilter}
           onSent={() => move({ type: 'send' })}
         />

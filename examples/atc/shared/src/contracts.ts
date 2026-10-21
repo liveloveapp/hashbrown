@@ -87,6 +87,9 @@ Rules:
 - Refine current: keep its fields unless the request changes or removes them.
 - Use null for every field the request does not set.
 - Give airports as ICAO codes, such as KRDM.
+- "Helicopters" means kind: rotor.
+- Near with no distance: 25 nm.
+- Places are in the Pacific Northwest.
 - Output only the filter.`;
 
 /** The system prompt. The server pins it; clients cannot change it. */
@@ -130,18 +133,19 @@ export interface Starter {
   readonly route: StarterRoute;
 }
 
-/** Starter prompts shown before the first message. They skip the router. */
+/** Starter prompts shown before the first message: four map filters, then four questions. They skip the router. */
 export const STARTER_PROMPTS: readonly Starter[] = [
-  { text: "What's flying near Bend?", route: 'chat' },
-  { text: 'Show me everything landing at Seattle.', route: 'chat' },
+  { text: 'Only jets below 10,000 ft', route: 'filter' },
+  { text: 'Alaska Airlines near Seattle', route: 'filter' },
+  { text: 'Only helicopters', route: 'filter' },
+  { text: 'Arrivals into Portland', route: 'filter' },
   {
     text: "What's the highest plane right now? And the fastest?",
     route: 'chat',
   },
   { text: 'Follow the fastest airliner.', route: 'chat' },
+  { text: "What's flying near Bend?", route: 'chat' },
   { text: 'Show me Redmond airport.', route: 'chat' },
-  { text: 'Which planes are inside the Portland Class C?', route: 'chat' },
-  { text: 'Only jets below 10,000 ft', route: 'filter' },
 ];
 
 /** The starter offered first while the user has a plane selected. */
@@ -197,7 +201,7 @@ export const cardGroups: readonly SelectionGroup[] = [
 
 /** The context the router decision reads alongside the typed text. */
 export const ROUTE_CONTEXT =
-  'You route what a user typed into atc, a live air-traffic map with an assistant. Choose filter only when the whole request is a standing limit on which aircraft are visible (kind, airline, type, altitude or place), such as "only jets", "below 10,000 ft" or "Alaska flights near Seattle", or asks to show every aircraft again, and needs no reply. Choose chat when it asks a question, picks out particular aircraft (the fastest, the highest, a callsign, the selected plane), asks to follow, compare, highlight or explain aircraft, or is about an airport, its airspace or its arrivals, such as "show me Redmond airport" or "show me everything landing at Seattle".';
+  'You route what a user typed into atc, a live air-traffic map with an assistant. Choose filter only when the whole request is a standing limit on which aircraft are visible (kind, airline, type, altitude or place), such as "only jets", "below 10,000 ft", "Alaska flights near Seattle" or "arrivals into Portland", or asks to show every aircraft again, and needs no reply. A bare phrase that names a set of aircraft, with no question and no "show me", is a filter. Choose chat when it asks a question, picks out particular aircraft (the fastest, the highest, a callsign, the selected plane), asks to follow, compare, highlight or explain aircraft, asks about an airport or its airspace, or asks to see or list what lands there, such as "show me Redmond airport", "show me everything landing at Seattle" or "show me arrivals at Portland".';
 
 /** The context the card-narrowing decision reads alongside the question. */
 export const CARDS_CONTEXT =

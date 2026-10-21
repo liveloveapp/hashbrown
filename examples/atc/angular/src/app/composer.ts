@@ -70,12 +70,12 @@ export class Composer {
   /** Emits the trimmed text routed to the map filter. */
   readonly filter = output<string>();
   /**
-   * Emits what the router decided, just before `chat` or `filter` emits the
-   * text it was for (for the developer drawer).
+   * Emits what the router decided, just before `chat`, `filter` or `clear`
+   * emits the text it was for (for the developer drawer).
    */
   readonly routed = output<RouterShown>();
-  /** Emits when the text asks to clear the map filter. */
-  readonly clear = output();
+  /** Emits the trimmed text when it asks to clear the map filter. */
+  readonly clear = output<string>();
   private readonly draft = signal('');
   protected readonly router = injectRouter(this.draft);
   private readonly field =
@@ -112,7 +112,8 @@ export class Composer {
       this.routed.emit(routed);
       this.filter.emit(content);
     } else if (action.kind === 'clear') {
-      this.clear.emit();
+      this.routed.emit(routed);
+      this.clear.emit(content);
     } else {
       this.routed.emit(routed);
       this.chat.emit(content);
