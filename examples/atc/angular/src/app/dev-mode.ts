@@ -5,9 +5,12 @@ import {
   type DevStorage,
   followLatest,
   readDevMode,
-  type RouterShown,
+  recordRoute,
+  type RouteSend,
   selectSend,
   type TurnShown,
+  TYPING_EMPTY,
+  type TypingShown,
   writeDevMode,
 } from '@atc/shared';
 import {
@@ -35,13 +38,13 @@ export interface DevChat {
 
 /** What the chat publishes for the drawer. */
 export interface DevFeed {
-  /** What the router makes of the text being typed, or null. */
-  readonly typing: RouterShown | null;
+  /** What the router makes of the text being typed. */
+  readonly typing: TypingShown;
   readonly chat: DevChat;
 }
 
 const EMPTY_FEED: DevFeed = {
-  typing: null,
+  typing: TYPING_EMPTY,
   chat: { items: [], turns: [], busy: false },
 };
 
@@ -59,11 +62,14 @@ export class DevMode {
   private readonly state = signal(readDevMode(this.storage));
   private readonly chosen = signal<DevSelection>(followLatest());
   private readonly sources = signal<FeedSources>({});
+  private readonly logged = signal<readonly RouteSend[]>([]);
   /** True while the developer drawer is open. */
   readonly on = this.state.asReadonly();
   /** Which send the drawer shows. */
   readonly selection = this.chosen.asReadonly();
-  /** What the router makes of the text being typed, or null. */
+  /** Every submission and its route, newest first (see {@link recordRoute}). */
+  readonly routes = this.logged.asReadonly();
+  /** What the router makes of the text being typed. */
   readonly typing = computed(
     () => this.sources().typing?.() ?? EMPTY_FEED.typing,
   );
@@ -86,6 +92,15 @@ export class DevMode {
   /** Goes back to following the newest send. */
   follow(): void {
     this.chosen.set(followLatest());
+  }
+
+  /**
+   * Logs a submission and the route it took for the drawer's Router tab. It
+   * logs whether or not dev mode is on (the log is capped), so the drawer
+   * shows recent sends when opened later.
+   */
+  recordRoute(send: RouteSend): void {
+    this.logged.update((log) => recordRoute(log, send));
   }
 
   /** Feeds `key` from `source` until the returned function is called. */

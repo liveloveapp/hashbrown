@@ -897,7 +897,10 @@ test('the dev tool opens from the rail, shows each tab, and is remembered', asyn
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await expect(drawer).toBeVisible();
   await drawer.getByRole('tab', { name: 'Router' }).click();
-  await expect(drawer).toContainText('last chat send');
+  await expect(drawer).toContainText(
+    `sent: "${PROMPTS.redmondAirspace}" → chat`,
+  );
+  await expect(drawer).toContainText('type to see where it goes');
   await drawer.getByRole('tab', { name: 'Cards' }).click();
   await expect(drawer).toContainText('cards');
   await drawer.getByRole('tab', { name: 'Filter' }).click();

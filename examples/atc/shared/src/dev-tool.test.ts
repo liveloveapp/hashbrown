@@ -16,13 +16,15 @@ import {
   selectSend,
   sendActivity,
   shownTurn,
+  TYPING_EMPTY,
   wireUi,
   writeDevMode,
   writeDrawerHeight,
 } from './dev-tool';
 import { createRouterInput } from './router-input';
+import type { RouteSend } from './route-log';
 import type { TurnShown } from './stream-view';
-import { ROUTER_SKIPPED } from './stream-view';
+import { ROUTER_SKIPPED, ROUTER_SKIPPED_REFINEMENT } from './stream-view';
 
 function memoryStorage(seed: Record<string, string> = {}) {
   const data = new Map(Object.entries(seed));
@@ -49,8 +51,10 @@ const ROUTE = {
 };
 
 const EMPTY: DevToolInput = {
-  typing: null,
+  typing: TYPING_EMPTY,
   turn: undefined,
+  following: true,
+  routes: [],
   answer: null,
   tools: [],
   filter: { run: null, applied: null },
@@ -143,6 +147,8 @@ test('each tab lists its blocks in order', () => {
   const input: DevToolInput = {
     typing: { kind: 'decided', result: ROUTE, ms: 10 },
     turn: { text: 'x', router: ROUTER_SKIPPED },
+    following: false,
+    routes: [],
     answer: { content: { a: 1 }, streaming: false },
     tools: [{ name: 'findAircraft', args: { q: 1 }, status: 'done' }],
     filter: {
@@ -164,7 +170,7 @@ test('each tab lists its blocks in order', () => {
     'UI stream',
     'Tools',
   ]);
-  expect(titles('router')).toEqual(['typing', 'last chat send']);
+  expect(titles('router')).toEqual(['typing', 'sent: "x" → chat']);
   expect(devTabBlocks('router', input)[0].text).toContain('chat');
   expect(devTabBlocks('router', input)[1].text).toBe('skipped (starter)');
   expect(titles('cards')).toEqual(['cards']);
@@ -183,8 +189,8 @@ test('each tab lists its blocks in order', () => {
 
 test('empty tabs say so instead of rendering nothing', () => {
   expect(devTabBlocks('router', EMPTY)).toEqual([
-    { title: 'typing', text: 'waiting' },
-    { title: 'last chat send', text: 'waiting' },
+    { title: 'typing', text: 'type to see where it goes' },
+    { title: 'sent', text: 'nothing sent yet' },
   ]);
   expect(devTabBlocks('cards', EMPTY)).toEqual([
     { title: 'cards', text: 'deciding…' },
@@ -255,7 +261,7 @@ test('shownTurn falls back to the newest send when the chosen one is gone', () =
   expect(empty).toBeNull();
 });
 
-test('routerTyping shows the live decision, or waiting while none is in', () => {
+test('routerTyping shows the live decision, empty for an empty box, or waiting while none is in', () => {
   const input = createRouterInput();
   const typed = input.reduce(input.initial, { type: 'typed', text: 'hello' });
   const decided = input.reduce(typed, {
@@ -270,7 +276,7 @@ test('routerTyping shows the live decision, or waiting while none is in', () => 
   const live = routerTyping(decided, 40);
   const tooShort = routerTyping(short, null);
 
-  expect(empty).toBeNull();
+  expect(empty).toBe(TYPING_EMPTY);
   expect(waiting).toBeNull();
   expect(live).toEqual({ kind: 'decided', result: ROUTE, ms: 40 });
   expect(tooShort).toEqual({ kind: 'fallback', reason: 'too short' });
@@ -409,6 +415,8 @@ test('the cards tab settles when a finished answer never had a decision', () => 
   const base: DevToolInput = {
     typing: null,
     turn: { text: 'x', router: ROUTER_SKIPPED },
+    following: true,
+    routes: [],
     answer: { content: { a: 1 }, streaming: false },
     tools: [],
     filter: { run: null, applied: null },
@@ -423,4 +431,91 @@ test('the cards tab settles when a finished answer never had a decision', () => 
   expect(settled).toBe('all (fallback: not asked)');
   expect(whileStreaming).toBe('deciding…');
   expect(noAnswer).toBe('deciding…');
+});
+
+const FILTER_ROUTE = {
+  kind: 'decided',
+  result: {
+    value: { intent: 'filter', clear: false },
+    meta: {
+      intent: { confidence: 0.97, probabilities: { filter: 0.97 } },
+      clear: { probability: 0.02 },
+    },
+  },
+  ms: 120,
+} as const;
+
+test('the router tab says to type while the box is empty, and waits only for typed text', () => {
+  const typed = { ...EMPTY, typing: null };
+
+  const empty = devTabBlocks('router', EMPTY)[0];
+  const waiting = devTabBlocks('router', typed)[0];
+
+  expect(empty).toEqual({ title: 'typing', text: 'type to see where it goes' });
+  expect(waiting).toEqual({ title: 'typing', text: 'waiting' });
+});
+
+test('after a filter send the router tab shows that send, then earlier ones on one line each', () => {
+  const routes: RouteSend[] = [
+    {
+      text: 'only jets below 8000 ft',
+      router: FILTER_ROUTE,
+      outcome: 'filter',
+    },
+    {
+      text: 'below 5000 ft',
+      router: ROUTER_SKIPPED_REFINEMENT,
+      outcome: 'filter',
+    },
+    { text: 'jets', router: ROUTER_SKIPPED, outcome: 'filter' },
+    { text: 'a', router: ROUTER_SKIPPED, outcome: 'chat' },
+    { text: 'b', router: ROUTER_SKIPPED, outcome: 'chat' },
+    { text: 'c', router: ROUTER_SKIPPED, outcome: 'chat' },
+  ];
+  const input: DevToolInput = {
+    ...EMPTY,
+    turn: { text: 'older chat', router: ROUTER_SKIPPED },
+    routes,
+  };
+
+  const blocks = devTabBlocks('router', input);
+
+  expect(blocks.map((block) => block.title)).toEqual([
+    'typing',
+    'sent: "only jets below 8000 ft" → filter',
+    'earlier',
+  ]);
+  expect(blocks[1].text).toContain('→ filter');
+  expect(blocks[1].text).toContain('intent: filter 0.97');
+  expect(blocks[2].text).toBe(
+    [
+      '"below 5000 ft" → filter (refinement)',
+      '"jets" → filter (starter)',
+      '"a" → chat (starter)',
+      '"b" → chat (starter)',
+    ].join('\n'),
+  );
+});
+
+test('a selected chat send is still shown, whatever was sent after it', () => {
+  const routes: RouteSend[] = [
+    {
+      text: 'only jets below 8000 ft',
+      router: FILTER_ROUTE,
+      outcome: 'filter',
+    },
+  ];
+  const input: DevToolInput = {
+    ...EMPTY,
+    turn: { text: 'Seattle?', router: ROUTER_SKIPPED },
+    following: false,
+    routes,
+  };
+
+  const blocks = devTabBlocks('router', input);
+
+  expect(blocks).toEqual([
+    { title: 'typing', text: 'type to see where it goes' },
+    { title: 'sent: "Seattle?" → chat', text: 'skipped (starter)' },
+  ]);
 });

@@ -57,6 +57,8 @@ function DrawerPanel({ filter }: { filter: DevFilter }) {
   const blocks = devTabBlocks(tab, {
     typing: feed.typing,
     turn: shown === null ? undefined : turns[shown],
+    following: dev.selection.follow,
+    routes: feed.routes,
     answer: activity.answer,
     tools: activity.tools,
     filter,

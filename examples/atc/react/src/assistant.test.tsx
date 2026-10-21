@@ -427,3 +427,61 @@ function Published({ items, turns }: Omit<DevChat, 'busy'>) {
 
   return null;
 }
+
+/** The assistant and the drawer in dev mode, with stubbed decisions. */
+function setupWithDrawer(answer: Parameters<typeof fakeDecisionTransport>[0]) {
+  cleanup();
+  const chat = fakeFilterTransport();
+  const route = fakeDecisionTransport(answer);
+  const view = render(
+    <HashbrownProvider url="/unused" transport={chat.transport}>
+      <AtcStoreProvider store={createAtcStore()}>
+        <DevModeProvider storage={onStorage()}>
+          <Assistant
+            routeTransport={route.transport}
+            cardsTransport={fakeCardsTransport(() => null).transport}
+            onFilter={() => undefined}
+          />
+          <DevDrawer />
+        </DevModeProvider>
+      </AtcStoreProvider>
+    </HashbrownProvider>,
+  );
+  const router = () =>
+    view.container.querySelector('[role="tabpanel"]')?.textContent ?? '';
+
+  return { element: view.container, router };
+}
+
+test('the router tab keeps what a filter send decided after the box clears', async () => {
+  const { element, router } = setupWithDrawer(() => ({
+    intent: 'filter',
+    confidence: 0.97,
+  }));
+  const input = element.querySelector('input') as HTMLInputElement;
+  const empty = router();
+
+  fireEvent.change(input, { target: { value: 'only jets below 8000 ft' } });
+  await waitFor(() =>
+    expect(element.querySelector('.atc-route')?.textContent).toBe(
+      '→ filter 0.97',
+    ),
+  );
+  fireEvent.submit(element.querySelector('form') as HTMLFormElement);
+  await waitFor(() => expect(input.value).toBe(''));
+
+  expect(empty).toContain('type to see where it goes');
+  expect(router()).toContain('sent: "only jets below 8000 ft" → filter');
+  expect(router()).toContain('intent: filter 0.97');
+  expect(router()).toContain('type to see where it goes');
+});
+
+test('the router tab shows a filter starter as skipped', () => {
+  const starter = STARTER_PROMPTS.find((entry) => entry.route === 'filter');
+  const { element, router } = setupWithDrawer(() => null);
+
+  act(() => starterButton(element, starter?.text ?? '').click());
+
+  expect(router()).toContain(`sent: "${starter?.text}" → filter`);
+  expect(router()).toContain('skipped (starter)');
+});

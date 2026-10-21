@@ -6,12 +6,13 @@ import {
   ROUTER_WAIT_MS,
   routerBadge,
   routerDecisionInput,
-  type RouterShown,
   routerShown,
+  type RouterShown,
   routerTyping,
   routeSchema,
   submitTarget,
   trackDecisionInput,
+  type TypingShown,
 } from '@atc/shared';
 import { createHttpDecisionTransport, type Decision } from '@hashbrownai/core';
 import { useDecision } from '@hashbrownai/react';
@@ -46,7 +47,7 @@ export interface Router {
    */
   shown(): RouterShown;
   /** What the router makes of the text as it is typed, for the developer drawer. */
-  readonly typing: RouterShown | null;
+  readonly typing: TypingShown;
 }
 
 /**

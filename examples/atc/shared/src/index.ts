@@ -11,6 +11,7 @@ export * from './store';
 export * from './feed';
 export * from './routes';
 export * from './route';
+export * from './route-log';
 export * from './router-input';
 export * from './dev-tool';
 export * from './stream-view';

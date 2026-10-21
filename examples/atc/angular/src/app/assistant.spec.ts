@@ -440,3 +440,85 @@ test('a superseded send does not shift later answers onto the wrong decisions', 
   expect(inspect()[1]?.getAttribute('aria-pressed')).toBe('true');
   fixture.destroy();
 });
+
+@Component({
+  selector: 'atc-test-assistant-drawer',
+  imports: [Assistant, DevDrawer],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <atc-assistant />
+    <atc-dev-drawer />
+  `,
+})
+class AssistantWithDrawer {}
+
+/** The assistant and the drawer, with stubbed decisions. */
+function setupWithDrawer(answer: Parameters<typeof fakeDecisionTransport>[0]) {
+  TestBed.resetTestingModule();
+  TestBed.configureTestingModule({
+    providers: [
+      provideHashbrown({
+        baseUrl: '/unused',
+        transport: fakeFilterTransport().transport,
+      }),
+      { provide: ATC_STORE, useValue: createAtcStore() },
+      {
+        provide: ROUTE_DECISION_TRANSPORT,
+        useValue: fakeDecisionTransport(answer).transport,
+      },
+      {
+        provide: CARDS_DECISION_TRANSPORT,
+        useValue: fakeCardsTransport(() => null).transport,
+      },
+    ],
+  });
+  const fixture = TestBed.createComponent(AssistantWithDrawer);
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  const router = () => {
+    fixture.detectChanges();
+    return element.querySelector('[role="tabpanel"]')?.textContent ?? '';
+  };
+
+  return { fixture, element, router };
+}
+
+test('the router tab keeps what a filter send decided after the box clears', async () => {
+  const { fixture, element, router } = setupWithDrawer(() => ({
+    intent: 'filter',
+    confidence: 0.97,
+  }));
+  const input = element.querySelector('input') as HTMLInputElement;
+  const empty = router();
+
+  input.value = 'only jets below 8000 ft';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await until(
+    () =>
+      element.querySelector('.atc-route')?.textContent?.trim() ===
+      '→ filter 0.97',
+  );
+  element
+    .querySelector('form')
+    ?.dispatchEvent(new Event('submit', { cancelable: true }));
+  await until(() => input.value === '');
+  const sent = router();
+
+  expect(empty).toContain('type to see where it goes');
+  expect(sent).toContain('sent: "only jets below 8000 ft" → filter');
+  expect(sent).toContain('intent: filter 0.97');
+  expect(sent).toContain('type to see where it goes');
+  fixture.destroy();
+});
+
+test('the router tab shows a filter starter as skipped', () => {
+  const starter = STARTER_PROMPTS.find((entry) => entry.route === 'filter');
+  const { fixture, element, router } = setupWithDrawer(() => null);
+
+  starterButton(element, starter?.text ?? '').click();
+  const shown = router();
+
+  expect(shown).toContain(`sent: "${starter?.text}" → filter`);
+  expect(shown).toContain('skipped (starter)');
+  fixture.destroy();
+});

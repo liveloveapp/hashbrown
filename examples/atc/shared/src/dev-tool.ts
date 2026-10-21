@@ -1,3 +1,4 @@
+import { quotedSend, routeLine, type RouteSend } from './route-log';
 import { routerDecisionInput, type RouterInputState } from './router-input';
 import {
   alignTurns,
@@ -142,16 +143,27 @@ export function selectedTurn(
   return index !== null && index >= 0 && index < turns.length ? index : null;
 }
 
+/** The composer is empty, so there is nothing for the router to decide. */
+export const TYPING_EMPTY = { kind: 'empty' } as const;
+
 /**
- * What the router makes of the text being typed, for the drawer: null while
- * the composer is empty or no answer for this text is in yet, else what a
- * send now would record (`ms` is how long the answer took).
+ * What the router makes of the text being typed: {@link TYPING_EMPTY} for an
+ * empty composer, null while no answer for the text is in yet, else what a
+ * send now would record.
+ */
+export type TypingShown = RouterShown | typeof TYPING_EMPTY | null;
+
+/**
+ * What the router makes of the text being typed, for the drawer:
+ * {@link TYPING_EMPTY} while the composer is empty, null while no answer for
+ * this text is in yet, else what a send now would record (`ms` is how long
+ * the answer took).
  */
 export function routerTyping(
   state: RouterInputState,
   ms: number | null,
-): RouterShown | null {
-  if (state.text === '') return null;
+): TypingShown {
+  if (state.text === '') return TYPING_EMPTY;
   if (state.pending && routerDecisionInput(state.text) !== null) return null;
 
   return routerShown(state, ms);
@@ -233,9 +245,13 @@ export function sendActivity(
 /** Everything the drawer's tabs read. */
 export interface DevToolInput {
   /** What the router makes of the text being typed. */
-  typing: RouterShown | null;
+  typing: TypingShown;
   /** The shown send, if any. */
   turn: TurnShown | undefined;
+  /** True while the drawer follows the newest send (no answer picked). */
+  following: boolean;
+  /** Every submission and its route, newest first (`recordRoute`). */
+  routes: readonly RouteSend[];
   /** The shown send's answer, as it streams. */
   answer: { content: unknown; streaming: boolean } | null;
   /** The shown send's tool calls. */
@@ -322,6 +338,52 @@ export function wireUi(content: unknown): unknown {
   return content;
 }
 
+/** How many earlier sends the Router tab lists under the newest. */
+const EARLIER_SENDS = 4;
+
+/** The Router tab's live block for the text being typed. */
+function typingBlock(typing: TypingShown): StreamBlock {
+  return typing?.kind === 'empty'
+    ? { title: 'typing', text: 'type to see where it goes' }
+    : { ...routerBlock(typing), title: 'typing' };
+}
+
+/**
+ * The Router tab's sent blocks. With an answer picked in the chat (or no
+ * submission logged yet), that chat send's router; otherwise the newest
+ * submission of any route (chat, filter, clear, starter, refinement) in
+ * full, then up to four earlier ones, one line each.
+ */
+function sentBlocks(input: DevToolInput): StreamBlock[] {
+  // Before any submission is logged, the shown chat send stands in.
+  if (
+    input.turn !== undefined &&
+    (!input.following || input.routes.length === 0)
+  ) {
+    return [
+      {
+        title: `sent: ${quotedSend(input.turn.text)} → chat`,
+        text: routerBlock(input.turn.router).text,
+      },
+    ];
+  }
+  const [newest, ...earlier] = input.routes;
+  if (newest === undefined) {
+    return [{ title: 'sent', text: 'nothing sent yet' }];
+  }
+  const lines = earlier.slice(0, EARLIER_SENDS).map(routeLine);
+
+  return [
+    {
+      title: `sent: ${quotedSend(newest.text)} → ${newest.outcome}`,
+      text: routerBlock(newest.router).text,
+    },
+    ...(lines.length === 0
+      ? []
+      : [{ title: 'earlier', text: lines.join('\n') }]),
+  ];
+}
+
 /**
  * The blocks one tab lists, in order. A tab with nothing to show says so with
  * one block rather than rendering nothing.
@@ -332,11 +394,7 @@ export function devTabBlocks(
 ): StreamBlock[] {
   switch (tab) {
     case 'router':
-      return [
-        { ...routerBlock(input.typing), title: 'typing' },
-        // Filter sends are not recorded turns: this is the chat's.
-        { ...routerBlock(input.turn?.router ?? null), title: 'last chat send' },
-      ];
+      return [typingBlock(input.typing), ...sentBlocks(input)];
     case 'cards': {
       // A settled send whose decision never reported (none was asked) reads
       // as the fallback instead of "deciding…" forever.

@@ -153,6 +153,8 @@ export class DevDrawer {
     return devTabBlocks(this.tab(), {
       typing: this.dev.typing(),
       turn: shown === null ? undefined : this.dev.chat().turns[shown],
+      following: this.dev.selection().follow,
+      routes: this.dev.routes(),
       answer: activity.answer,
       tools: activity.tools,
       filter: this.filter(),

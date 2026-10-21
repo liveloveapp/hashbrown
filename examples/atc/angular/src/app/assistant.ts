@@ -57,7 +57,7 @@ import {
 import { FlightCard, FlightCardFallback } from './components/flight-card';
 import { AutoScroll } from './auto-scroll';
 import { Composer } from './composer';
-import { publishDev } from './dev-mode';
+import { DevMode, publishDev } from './dev-mode';
 import { EmptyState } from './empty-state';
 import { ATC_STORE, injectAtcState } from './store';
 import { Transcript } from './transcript';
@@ -167,7 +167,7 @@ let nextRefineId = 0;
       (routed)="routed.set($event)"
       (chat)="send($event)"
       (filter)="applyFilter($event)"
-      (clear)="clearFilter()"
+      (clear)="clearFilter($event)"
     />
   `,
 })
@@ -181,6 +181,8 @@ export class Assistant {
   /** Emits what the router decided, just before `filter` (for the developer drawer). */
   readonly filterRouted = output<RouterShown>();
   private readonly store = inject(ATC_STORE);
+  // Every submission, whichever route it took, for the drawer's Router tab.
+  private readonly dev = inject(DevMode);
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
   //    already on the map; no plane list goes to the server.
@@ -303,17 +305,20 @@ export class Assistant {
     // Added once the chat accepted the message: the drawer keeps this send's
     // router decision, and the cards decision joins it when it settles.
     this.turns.update((turns) => addTurn(turns, routed, content));
+    this.dev.recordRoute({ text: content, router: routed, outcome: 'chat' });
     this.sent.emit();
   }
 
   protected applyFilter(request: string, routed = this.routed()): void {
     this.filterRouted.emit(routed);
     this.filter.emit(request);
+    this.dev.recordRoute({ text: request, router: routed, outcome: 'filter' });
     this.sent.emit();
   }
 
-  protected clearFilter(): void {
+  protected clearFilter(content: string, routed = this.routed()): void {
     this.store.clearMapFilter();
+    this.dev.recordRoute({ text: content, router: routed, outcome: 'clear' });
     this.sent.emit();
   }
 

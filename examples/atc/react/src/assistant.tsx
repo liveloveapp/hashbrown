@@ -47,7 +47,7 @@ import {
 } from './components/arrivals-board';
 import { FlightCard, FlightCardFallback } from './components/flight-card';
 import { Composer } from './composer';
-import { usePublishDev } from './dev-mode';
+import { usePublishDev, useRecordRoute } from './dev-mode';
 import { useAutoScroll } from './auto-scroll';
 import { EmptyState } from './empty-state';
 import { useAtcStore } from './store';
@@ -205,19 +205,24 @@ export function Assistant({
     [items, turns, chat.isLoading],
   );
   usePublishDev('chat', devChat);
+  // Every submission, whichever route it took, for the drawer's Router tab.
+  const recordRoute = useRecordRoute();
   const send = (content: string, routed: RouterShown) => {
     narrowed.sendMessage(content);
     // Added once the chat accepted the message: the drawer keeps this send's
     // router decision, and the cards decision joins it when it settles.
     setTurns((current) => addTurn(current, routed, content));
+    recordRoute({ text: content, router: routed, outcome: 'chat' });
     onSent?.();
   };
   const filter = (request: string, routed: RouterShown) => {
     onFilter(request, routed);
+    recordRoute({ text: request, router: routed, outcome: 'filter' });
     onSent?.();
   };
-  const clear = () => {
+  const clear = (content: string, routed: RouterShown) => {
     store.clearMapFilter();
+    recordRoute({ text: content, router: routed, outcome: 'clear' });
     onSent?.();
   };
   // Ways to narrow the filter on the map, from it and the traffic: computed
