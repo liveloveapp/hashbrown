@@ -76,6 +76,12 @@ export type AnalyticsProperties = {
   /** The code block's fence language, or `unknown`. */
   language?: string;
   error_reason?: string;
+  /** Slug of the AI crawler behind a `marketing:ai_crawler_visit`. */
+  ai_crawler?: string;
+  /** Slug of the AI answer engine behind a `marketing:ai_referral_visit`. */
+  ai_source?: string;
+  /** Truncated crawler User-Agent (`marketing:ai_crawler_visit` only). */
+  user_agent?: string;
 };
 
 /**
