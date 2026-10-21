@@ -1,5 +1,8 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { ResendWebhookPayloadError } from '@hashbrownai-internal/growth';
+import {
+  processVerifiedResendWebhook,
+  ResendWebhookPayloadError,
+} from '@hashbrownai-internal/growth';
 
 import { createResendWebhookRoute } from '../../src/app/%5F/webhooks/resend/route';
 
@@ -144,4 +147,48 @@ test('mismatched environment returns 200 and writes nothing', async () => {
   expect(execute).not.toHaveBeenCalled();
   expect(transaction).not.toHaveBeenCalled();
   expect(close).toHaveBeenCalledTimes(1);
+});
+
+test('a foreign-sender event returns 200 and writes nothing', async () => {
+  const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  const execute = vi.fn();
+  const transaction = vi.fn();
+  const close = vi.fn(async () => undefined);
+  const routeStopContact = vi.fn();
+  const createdAt = '2026-10-21T12:00:00.000Z';
+  const threadplaneEvent = {
+    type: 'email.complained',
+    created_at: createdAt,
+    data: {
+      created_at: createdAt,
+      email_id: 'resend-email-threadplane',
+      from: 'Brian at Threadplane <brian@threadplane.ai>',
+      to: ['developer@example.com'],
+      subject: 'Your Threadplane key',
+      tags: { environment: 'production', job_kind: 'fulfill' },
+    },
+  };
+  const { route } = setup({
+    loadDatabaseEnvironment: () => 'production',
+    verify: () => threadplaneEvent,
+    createDatabase: () => ({ execute, transaction, close }),
+    processVerifiedResendWebhook,
+    stopContact: routeStopContact,
+  });
+
+  const response = await route.POST(request(JSON.stringify(threadplaneEvent)));
+
+  expect(response.status).toBe(200);
+  expect(await response.text()).toBe('Accepted');
+  expect(execute).not.toHaveBeenCalled();
+  expect(transaction).not.toHaveBeenCalled();
+  expect(routeStopContact).not.toHaveBeenCalled();
+  expect(info).toHaveBeenCalledWith(
+    JSON.stringify({
+      route: 'webhooks/resend',
+      status: 200,
+      applied: false,
+      reason: 'foreign_sender',
+    }),
+  );
 });

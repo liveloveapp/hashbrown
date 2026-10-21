@@ -188,10 +188,16 @@ export interface DeleteContactInput {
   actor: string;
   source: string;
   policyVersion: string;
-  /** Redacts evidence held outside the contact tables, inside the deletion transaction. Defaults to a no-op. */
+  /**
+   * Redacts evidence held outside the contact tables, inside the deletion
+   * transaction. Receives the transaction, the contact id, and the deletion's
+   * `occurredAt`, so redactions share the deletion's timestamp. Defaults to a
+   * no-op.
+   */
   redactEvidence?: (
     transaction: SqlTransaction,
     contactId: string,
+    occurredAt: Date,
   ) => Promise<void>;
 }
 
@@ -949,8 +955,6 @@ export async function deleteContact(
   };
 
   return executor.transaction(async (transaction) => {
-    // Form evidence inserts take FK locks on this contact while holding privacy.
-    // Take privacy first so deletion cannot invert that order.
     await privacyLock(transaction, true);
     const locked = await transaction.execute<ContactRow>(
       `/* growth:lock-contact */
@@ -976,7 +980,7 @@ export async function deleteContact(
     }
 
     await insertActivityOnce(transaction, deletionActivity);
-    await input.redactEvidence?.(transaction, contactId);
+    await input.redactEvidence?.(transaction, contactId, occurredAt);
 
     const jobs = await transaction.execute<{
       id: string;

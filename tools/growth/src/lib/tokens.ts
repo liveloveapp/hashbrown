@@ -36,7 +36,6 @@ export interface GrowthTokenKey {
   secret: string | Uint8Array;
 }
 
-/** A versioned HMAC signing key; the secret must be at least 32 bytes. */
 /** The active signing key plus previous keys still accepted for verification. */
 export interface GrowthTokenKeyring {
   active: GrowthTokenKey;
@@ -283,7 +282,6 @@ export function unsubscribeActionUrlValue(value: UnsubscribeActionUrl): string {
   return state.value;
 }
 
-/** Returns the URL string of a constructed unsubscribe action URL. */
 /** Returns the URL string, throwing unless it is bound to the given contact. */
 export function unsubscribeActionUrlValueForContact(
   value: UnsubscribeActionUrl,

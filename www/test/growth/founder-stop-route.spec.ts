@@ -101,3 +101,35 @@ test('founder stop rejects a tampered signature on GET and POST', async () => {
   expect(response.status).toBe(400);
   expect(stopContact).not.toHaveBeenCalled();
 });
+
+test('founder stop returns 503 with Retry-After on a database fault', async () => {
+  const rejecting = setup();
+  rejecting.stopContact.mockRejectedValue(new Error('db down'));
+  const unavailable = createFounderStopRoute({
+    now: () => TEST_NOW,
+    loadTokenKeyring: () => TEST_TOKEN_KEYRING,
+    createDatabase: () => {
+      throw new Error('no database');
+    },
+    stopContact: vi.fn(),
+  });
+  const post = () =>
+    new Request(ORIGIN, {
+      method: 'POST',
+      headers: FORM,
+      body: new URLSearchParams({
+        token: mintToken('founder_stop'),
+      }).toString(),
+    });
+
+  const stopFault = await rejecting.route.POST(post());
+  const connectFault = await unavailable.POST(post());
+
+  for (const response of [stopFault, connectFault]) {
+    expect(response.status).toBe(503);
+    expect(response.headers.get('retry-after')).toBe('30');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(await response.text()).toBe('Unable to process this request.');
+  }
+  expect(rejecting.close).toHaveBeenCalledTimes(1);
+});

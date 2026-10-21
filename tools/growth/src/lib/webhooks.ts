@@ -1,7 +1,11 @@
 import { canonicalJson } from './activity.ts';
 import { nestedExecutor, type SqlExecutor } from './database.ts';
 import type { GrowthDeliveryStatus } from './models.ts';
-import { type DeliveryEnvironment, isCampaignTemplateId } from './resend.ts';
+import {
+  type DeliveryEnvironment,
+  isCampaignTemplateId,
+  VERIFIED_DOMAIN,
+} from './resend.ts';
 import type {
   CanonicalStopReason,
   StopContactInput,
@@ -46,6 +50,7 @@ interface ParsedResendEvent {
   type: SupportedResendEventType;
   occurredAt: Date;
   providerEmailId: string;
+  senderDomain: string;
   rfcMessageId?: string;
   tags: Record<string, string>;
   bounceCategory?: 'permanent' | 'transient' | 'unknown';
@@ -80,13 +85,27 @@ export interface ProcessResendWebhookDependencies {
   ) => Promise<Pick<StopContactResult, 'applied' | 'effective'>>;
 }
 
-/** The outcome of processing one verified Resend webhook. */
+/**
+ * The outcome of processing one verified Resend webhook.
+ *
+ * - `ignored_event_type`: an event type the processor does not record.
+ * - `environment_mismatch`: the event's environment tag names another
+ *   database environment.
+ * - `foreign_sender`: the sender is not on the verified domain; the Resend
+ *   account is shared with another product, whose events are acknowledged and
+ *   ignored without touching the database.
+ * - `unmatched_job`: no job matches and the tags are not ours.
+ * - `retryable_unmatched_job`: no job matches yet, but the tags are ours, so
+ *   the provider should retry.
+ * - `replay`: the event was already recorded.
+ */
 export type ProcessResendWebhookResult =
   | {
       applied: false;
       reason:
         | 'ignored_event_type'
         | 'environment_mismatch'
+        | 'foreign_sender'
         | 'unmatched_job'
         | 'retryable_unmatched_job';
     }
@@ -269,6 +288,17 @@ function validateClosedDetails(
   return undefined;
 }
 
+// `from` arrives either bare (`a@b`) or display-named (`Name <a@b>`).
+function senderDomainOf(from: string): string {
+  const named = /<([^<>]*)>$/u.exec(from);
+  const address = (named ? named[1] : from).trim();
+  const at = address.lastIndexOf('@');
+  if (at < 1 || at === address.length - 1) {
+    throw new Error('Invalid Resend webhook payload');
+  }
+  return address.slice(at + 1).toLowerCase();
+}
+
 function parseSupportedEvent(payload: unknown): ParsedResendEvent | null {
   const root = plainObject(payload);
   if (
@@ -292,10 +322,12 @@ function parseSupportedEvent(payload: unknown): ParsedResendEvent | null {
     PROVIDER_ID_PATTERN,
   );
   const tags = boundedRecord(data['tags'], 10, 64, 128);
+  const senderDomain = senderDomainOf(boundedText(data['from'], 320));
   return {
     type,
     occurredAt,
     providerEmailId,
+    senderDomain,
     ...(data['message_id'] == null
       ? {}
       : { rfcMessageId: boundedText(data['message_id'], 998) }),
@@ -498,7 +530,8 @@ export class ResendWebhookPayloadError extends Error {
  * Applies one signature-verified Resend event: records a delivery activity,
  * advances the job's delivery status, and stops the contact on a permanent
  * bounce, complaint, or provider suppression. Replays by `resend:<id>` are
- * no-ops.
+ * no-ops. Events whose sender is not on {@link VERIFIED_DOMAIN} return
+ * `foreign_sender` before any database call.
  *
  * @param executor - Opens the transaction the event is applied in.
  * @param input - The svix id and the parsed payload.
@@ -525,6 +558,9 @@ export async function processVerifiedResendWebhook(
   if (!event) return { applied: false, reason: 'ignored_event_type' };
   if (event.tags['environment'] !== dependencies.databaseEnvironment) {
     return { applied: false, reason: 'environment_mismatch' };
+  }
+  if (event.senderDomain !== VERIFIED_DOMAIN) {
+    return { applied: false, reason: 'foreign_sender' };
   }
   const eventKey = `resend:${providerEventId}`;
   const projection = activityProjection(event);

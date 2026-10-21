@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 import {
   createDatabaseExecutor,
@@ -6,6 +6,29 @@ import {
   privacyLock,
   type SqlTransaction,
 } from './database';
+
+interface FakePoolClient {
+  query(sql: string): Promise<{ rows: unknown[] }>;
+  release(error?: unknown): void;
+}
+
+const neon = vi.hoisted(() => ({
+  client: {
+    query: async () => ({ rows: [] }),
+    release: () => undefined,
+  } as FakePoolClient,
+}));
+
+vi.mock('@neondatabase/serverless', () => ({
+  Pool: class {
+    async connect() {
+      return neon.client;
+    }
+    async end() {
+      return undefined;
+    }
+  },
+}));
 
 function recordingTransaction(): {
   tx: SqlTransaction;
@@ -62,4 +85,51 @@ test('privacyLock takes the shared lock by default and the exclusive one on requ
     true,
   );
   expect(calls.every((call) => call.sql.includes('/* growth:'))).toBe(true);
+});
+
+test('a failed rollback does not mask the original error', async () => {
+  const original = new Error('operation failed');
+  const rollbackFailure = new Error('rollback failed');
+  const statements: string[] = [];
+  const released: unknown[][] = [];
+  neon.client = {
+    async query(sql: string) {
+      statements.push(sql);
+      if (sql === 'rollback') throw rollbackFailure;
+      return { rows: [] };
+    },
+    release(...args: unknown[]) {
+      released.push(args);
+    },
+  };
+  const executor = createDatabaseExecutor('postgres://fake.invalid/db');
+
+  const attempt = executor.transaction(async () => {
+    throw original;
+  });
+
+  await expect(attempt).rejects.toBe(original);
+  expect(statements).toEqual(['begin', 'rollback']);
+  expect(released).toEqual([[rollbackFailure]]);
+});
+
+test('a successful rollback releases the client for reuse', async () => {
+  const original = new Error('operation failed');
+  const released: unknown[][] = [];
+  neon.client = {
+    async query() {
+      return { rows: [] };
+    },
+    release(...args: unknown[]) {
+      released.push(args);
+    },
+  };
+  const executor = createDatabaseExecutor('postgres://fake.invalid/db');
+
+  const attempt = executor.transaction(async () => {
+    throw original;
+  });
+
+  await expect(attempt).rejects.toBe(original);
+  expect(released).toEqual([[]]);
 });

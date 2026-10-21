@@ -38,7 +38,9 @@ function queryExecutor(
 }
 
 /**
- * Creates a Neon-backed executor.
+ * Creates a Neon-backed executor. A transaction that fails is rolled back and
+ * rethrows its original error; if the rollback itself fails, the connection is
+ * released with that error so the pool discards it.
  *
  * @param databaseUrl - Connection string; defaults to `DATABASE_URL`.
  * @throws When no connection string is available.
@@ -61,16 +63,27 @@ export function createDatabaseExecutor(
       operation: (transaction: SqlTransaction) => Promise<T>,
     ): Promise<T> {
       const client = await pool.connect();
+      // A connection whose rollback failed is in an unknown state, so it is
+      // destroyed (release with an error) instead of returned to the pool.
+      let releaseError: Error | undefined;
       try {
         await client.query('begin');
         const result = await operation(queryExecutor(client));
         await client.query('commit');
         return result;
       } catch (error) {
-        await client.query('rollback');
+        try {
+          await client.query('rollback');
+        } catch (rollbackError) {
+          releaseError =
+            rollbackError instanceof Error
+              ? rollbackError
+              : new Error('Growth transaction rollback failed');
+        }
         throw error;
       } finally {
-        client.release();
+        if (releaseError) client.release(releaseError);
+        else client.release();
       }
     },
     async close(): Promise<void> {

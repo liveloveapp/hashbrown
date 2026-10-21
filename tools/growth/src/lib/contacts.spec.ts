@@ -450,7 +450,11 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
     authorization: 'deleted',
     canSend: false,
   });
-  expect(redactEvidence).toHaveBeenCalledWith(expect.anything(), contactId);
+  expect(redactEvidence).toHaveBeenCalledWith(
+    expect.anything(),
+    contactId,
+    deleteInput.occurredAt,
+  );
   expect(sqlFor('cancel-and-scrub-jobs')).toMatch(/project_id\s*=\s*null/u);
   expect(sqlFor('scrub-retained-activity')).toMatch(
     /delivery\.submission_authorized[\s\S]*bounded_stop_race/u,

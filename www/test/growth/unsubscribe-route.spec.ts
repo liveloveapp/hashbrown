@@ -13,22 +13,14 @@ const FORM = { 'content-type': 'application/x-www-form-urlencoded' };
 function setup() {
   const close = vi.fn(async () => undefined);
   const stopContact = vi.fn(async () => ({ applied: true, effective: true }));
-  const stopLegacyEmailUnsubscribe = vi.fn(async () => ({
-    applied: true,
-    contactMatched: true,
-    effective: true,
-  }));
+  const createDatabase = vi.fn(() => ({ close }) as never);
   const route = createUnsubscribeRoute({
     now: () => TEST_NOW,
     loadTokenKeyring: () => TEST_TOKEN_KEYRING,
-    loadEmailKeyring: () => ({
-      active: { version: 1, secret: 'e'.repeat(48) },
-    }),
-    createDatabase: () => ({ close }) as never,
+    createDatabase,
     stopContact,
-    stopLegacyEmailUnsubscribe,
   });
-  return { route, close, stopContact, stopLegacyEmailUnsubscribe };
+  return { route, close, createDatabase, stopContact };
 }
 
 test('GET /_/unsubscribe with a valid token renders the confirm form', async () => {
@@ -154,17 +146,17 @@ test('unsubscribe returns 503 with Retry-After on a database fault', async () =>
   expect(response.headers.get('retry-after')).toBe('30');
 });
 
-test('legacy GET ?email= answers 200 and 503 on a database fault', async () => {
-  const { route, stopLegacyEmailUnsubscribe, close } = setup();
+test('GET without a token returns 400 and stops nothing', async () => {
+  const { route, createDatabase, stopContact } = setup();
 
-  const ok = await route.GET(new Request(`${ORIGIN}?email=a%40example.com`));
-  stopLegacyEmailUnsubscribe.mockRejectedValue(new Error('db down'));
-  const fault = await route.GET(new Request(`${ORIGIN}?email=a%40example.com`));
+  const bare = await route.GET(new Request(ORIGIN));
+  const email = await route.GET(new Request(`${ORIGIN}?email=a%40example.com`));
 
-  expect(ok.status).toBe(200);
-  expect(fault.status).toBe(503);
-  expect(fault.headers.get('retry-after')).toBe('30');
-  expect(close).toHaveBeenCalledTimes(2);
+  expect(bare.status).toBe(400);
+  expect(email.status).toBe(400);
+  expect(email.headers.get('cache-control')).toBe('no-store');
+  expect(createDatabase).not.toHaveBeenCalled();
+  expect(stopContact).not.toHaveBeenCalled();
 });
 
 test('unsubscribe rejects a tampered signature on GET and POST', async () => {

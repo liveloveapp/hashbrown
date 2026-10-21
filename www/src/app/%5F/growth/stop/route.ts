@@ -69,6 +69,21 @@ function failureResponse(): Response {
   });
 }
 
+/**
+ * A server fault is never reported as a recorded stop. The founder gets a
+ * retryable answer with no internal detail, and can submit the form again.
+ */
+function retryableFailureResponse(): Response {
+  return new Response(FAILURE_BODY, {
+    status: 503,
+    headers: {
+      'Cache-Control': 'no-store',
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Retry-After': '30',
+    },
+  });
+}
+
 function confirmationResponse(token: string): Response {
   return htmlResponse(
     'Confirm contact stop',
@@ -120,7 +135,8 @@ async function readToken(request: Request): Promise<string | null> {
 
 /**
  * Builds the `/_/growth/stop` handlers. GET verifies a 24 hour `founder_stop`
- * token and renders the confirm form; POST stops the contact.
+ * token and renders the confirm form; POST stops the contact. An invalid token
+ * gets 400; a database fault gets 503 with `Retry-After: 30`.
  *
  * @param overrides - Dependencies to replace, for tests.
  */
@@ -159,7 +175,12 @@ export function createFounderStopRoute(
       const payload = verify(token, receivedAt);
       if (!payload) return failureResponse();
 
-      const executor = dependencies.createDatabase();
+      let executor: SqlExecutor;
+      try {
+        executor = dependencies.createDatabase();
+      } catch {
+        return retryableFailureResponse();
+      }
       try {
         await dependencies.stopContact(executor, {
           contactId: payload.contactId,
@@ -175,7 +196,7 @@ export function createFounderStopRoute(
         });
         return successResponse();
       } catch {
-        return failureResponse();
+        return retryableFailureResponse();
       } finally {
         await executor.close?.();
       }

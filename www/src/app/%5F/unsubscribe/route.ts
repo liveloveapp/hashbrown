@@ -1,16 +1,12 @@
 import {
   createDatabaseExecutor,
-  type EmailHmacKeyring,
   growthStopEventKey,
   type GrowthTokenKeyring,
   loadGrowthTokenKeyring,
-  normalizeEmail,
-  parseEmailHmacKeyring,
   type SqlExecutor,
   stopContact,
   type StopContactInput,
   type StopContactResult,
-  stopLegacyEmailUnsubscribe,
   verifyGrowthActionToken,
 } from '@hashbrownai-internal/growth';
 
@@ -24,9 +20,7 @@ const FAILURE_BODY = 'Unable to process this request.';
 interface UnsubscribeRouteDependencies {
   now: () => Date;
   loadTokenKeyring: () => GrowthTokenKeyring;
-  loadEmailKeyring: () => EmailHmacKeyring;
   createDatabase: () => SqlExecutor;
-  stopLegacyEmailUnsubscribe: typeof stopLegacyEmailUnsubscribe;
   stopContact: (
     executor: SqlExecutor,
     input: StopContactInput,
@@ -110,9 +104,7 @@ function defaultDependencies(): UnsubscribeRouteDependencies {
   return {
     now: () => new Date(),
     loadTokenKeyring: () => loadGrowthTokenKeyring(),
-    loadEmailKeyring: () => parseEmailHmacKeyring(),
     createDatabase: () => createDatabaseExecutor(),
-    stopLegacyEmailUnsubscribe,
     stopContact,
   };
 }
@@ -190,8 +182,9 @@ function signedStopInput(
 
 /**
  * Builds the `/_/unsubscribe` handlers. GET renders the confirm form for a
- * valid token (or records a legacy `?email=` unsubscribe); POST accepts an
- * RFC 8058 one-click or the confirm form and stops the contact.
+ * valid token and answers 400 to anything else, including a request without a
+ * token; POST accepts an RFC 8058 one-click or the confirm form and stops the
+ * contact.
  *
  * @param overrides - Dependencies to replace, for tests.
  */
@@ -207,47 +200,20 @@ export function createUnsubscribeRoute(
     async GET(request) {
       const url = new URL(request.url);
       const token = url.searchParams.get('token')?.trim();
-      const legacyEmail = url.searchParams.get('email');
+      if (!token) return failureResponse();
 
-      if (token) {
-        let payload;
-        try {
-          payload = verifyGrowthActionToken(token, {
-            expectedPurpose: 'unsubscribe',
-            keyring: dependencies.loadTokenKeyring(),
-            now: dependencies.now(),
-            maxAgeSeconds: UNSUBSCRIBE_TOKEN_MAX_AGE_SECONDS,
-          });
-        } catch {
-          return failureResponse();
-        }
-        return payload ? confirmationResponse(token) : failureResponse();
-      }
-
-      if (legacyEmail === null) return failureResponse();
+      let payload;
       try {
-        normalizeEmail(legacyEmail);
+        payload = verifyGrowthActionToken(token, {
+          expectedPurpose: 'unsubscribe',
+          keyring: dependencies.loadTokenKeyring(),
+          now: dependencies.now(),
+          maxAgeSeconds: UNSUBSCRIBE_TOKEN_MAX_AGE_SECONDS,
+        });
       } catch {
         return failureResponse();
       }
-
-      try {
-        const occurredAt = dependencies.now();
-        await withDatabase(dependencies, async (executor) => {
-          await dependencies.stopLegacyEmailUnsubscribe(executor, {
-            email: legacyEmail,
-            keyring: dependencies.loadEmailKeyring(),
-            occurredAt,
-            source: 'legacy_raw_email_unsubscribe',
-            policyVersion: POLICY_VERSION,
-          });
-        });
-        // Known and unknown addresses share this shape, so the link still does
-        // not reveal whether the address is on file.
-        return successResponse();
-      } catch {
-        return retryableFailureResponse();
-      }
+      return payload ? confirmationResponse(token) : failureResponse();
     },
 
     async POST(request) {

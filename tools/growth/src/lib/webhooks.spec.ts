@@ -253,6 +253,58 @@ test('environment tag mismatch returns environment_mismatch before any database 
   expect(calls).toEqual([]);
 });
 
+test('an event from a sender outside hashbrown.dev returns foreign_sender before any database call', async () => {
+  const { executor, calls, dependencies } = harness();
+  const payload = {
+    type: 'email.delivered',
+    created_at: now.toISOString(),
+    data: {
+      ...baseData,
+      from: 'Brian at Threadplane <brian@threadplane.ai>',
+      tags: { environment: 'production', job_kind: 'fulfill' },
+    },
+  };
+
+  const result = await processVerifiedResendWebhook(
+    executor,
+    { providerEventId: 'evt-1', payload },
+    dependencies,
+  );
+
+  expect(result).toEqual({ applied: false, reason: 'foreign_sender' });
+  expect(calls).toEqual([]);
+});
+
+test('sender domains are compared case-insensitively and in bare form', async () => {
+  const bare = harness();
+  const lookalike = harness();
+  const bareSender = {
+    type: 'email.sent',
+    created_at: now.toISOString(),
+    data: { ...baseData, from: 'Brian@HashBrown.DEV' },
+  };
+  const lookalikeSender = {
+    type: 'email.sent',
+    created_at: now.toISOString(),
+    data: { ...baseData, from: 'Brian <brian@mail.hashbrown.dev.evil.test>' },
+  };
+
+  const accepted = await processVerifiedResendWebhook(
+    bare.executor,
+    { providerEventId: 'evt-1', payload: bareSender },
+    bare.dependencies,
+  );
+  const refused = await processVerifiedResendWebhook(
+    lookalike.executor,
+    { providerEventId: 'evt-2', payload: lookalikeSender },
+    lookalike.dependencies,
+  );
+
+  expect(accepted).toMatchObject({ applied: true });
+  expect(refused).toEqual({ applied: false, reason: 'foreign_sender' });
+  expect(lookalike.calls).toEqual([]);
+});
+
 test('an unsupported event type is ignored', async () => {
   const { executor, calls, dependencies } = harness();
 
