@@ -21,7 +21,7 @@ import { ShowStream } from './show-stream';
       href="https://hashbrown.dev"
       target="_blank"
       rel="noreferrer"
-      >built with Hashbrown</a
+      ><span class="atc-credit-lead">built with </span>Hashbrown</a
     >
     <atc-feed-notice />
     <label class="atc-stream-switch">

@@ -1,4 +1,5 @@
 import {
+  type AtcState,
   filterBlocks,
   filterPanelVisible,
   focusOpensSheet,
@@ -94,7 +95,7 @@ export class App {
   // The filter on the map. The panel shows only while a run streams, or while
   // the map still holds what the last run produced: the assistant's filter
   // tool, a clear or the pill's x all replace it, and the panel goes.
-  private readonly produced = signal<unknown>(null);
+  private readonly produced = signal<AtcState['mapFilter']>(null);
   private ran = false;
   private readonly settleRun = effect(() => {
     const loading = this.mapFilter.loading();

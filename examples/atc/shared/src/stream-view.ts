@@ -399,23 +399,33 @@ export function answerBlocks(
   ];
 }
 
+/** The applied map filter, as the store holds it. */
+interface AppliedLike {
+  readonly filter: unknown;
+}
+
 /**
  * Whether the panel under the filter pill shows: only with a router decision
  * for a run, and then only while that run streams (`loading`), or while the
- * map's filter (`current`) is still the object the run produced. The
- * assistant's filter tool, a clear and the pill's x all replace it, so the
- * panel never describes a filter that is no longer on the map.
+ * map's applied filter (`current`) still holds the filter object the run
+ * produced. Chart and airspace loads re-resolve the applied filter into a new
+ * wrapper but keep its `filter`, so they leave the panel; the assistant's
+ * filter tool, a clear and the pill's x replace it, and the panel goes.
  */
 export function filterPanelVisible(options: {
   readonly route: RouterShown | null;
   readonly loading: boolean;
-  readonly current: unknown;
-  readonly produced: unknown;
+  readonly current: AppliedLike | null;
+  readonly produced: AppliedLike | null;
 }): boolean {
+  const { current, produced } = options;
+
   return (
     options.route !== null &&
     (options.loading ||
-      (options.current !== null && options.current === options.produced))
+      (current !== null &&
+        produced !== null &&
+        current.filter === produced.filter))
   );
 }
 

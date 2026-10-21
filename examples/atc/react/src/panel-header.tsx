@@ -23,7 +23,8 @@ export function PanelHeader({
         target="_blank"
         rel="noreferrer"
       >
-        built with Hashbrown
+        <span className="atc-credit-lead">built with </span>
+        Hashbrown
       </a>
       <FeedNotice />
       <label className="atc-stream-switch">

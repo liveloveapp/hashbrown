@@ -22,6 +22,20 @@ import {
   writeShowStream,
 } from './stream-view';
 import { createRouterInput } from './router-input';
+import { createAtcStore } from './store';
+import { testShelf } from './testing';
+import type { MapFilter } from './find-aircraft';
+
+const NO_MAP_FILTER: MapFilter = {
+  airline: null,
+  typeCode: null,
+  kind: null,
+  minAltitudeFt: null,
+  maxAltitudeFt: null,
+  approaching: null,
+  near: null,
+  inAirspace: null,
+};
 
 const ROUTE = {
   value: { intent: 'filter', clear: false },
@@ -386,7 +400,10 @@ test('withDecoded prefers the hook decision, and an error empties the cards', ()
 });
 
 test('the filter panel goes when another writer or a clear replaces the filter', () => {
-  const run = { filter: { airline: 'Alaska' } };
+  const store = createAtcStore();
+  const filter = { ...NO_MAP_FILTER, airline: 'Alaska' };
+  store.setMapFilter(filter);
+  const run = store.getState().mapFilter;
   const base = {
     route: ROUTER_SKIPPED,
     loading: false,
@@ -394,16 +411,43 @@ test('the filter panel goes when another writer or a clear replaces the filter',
     produced: run,
   };
 
+  store.setMapFilter({ ...NO_MAP_FILTER, airline: 'Delta' });
+  const replaced = store.getState().mapFilter;
+  store.clearMapFilter();
+
+  expect(filterPanelVisible({ ...base, loading: true, current: null })).toBe(
+    true,
+  );
+  expect(filterPanelVisible(base)).toBe(true);
+  expect(filterPanelVisible({ ...base, current: replaced })).toBe(false);
+  expect(
+    filterPanelVisible({ ...base, current: store.getState().mapFilter }),
+  ).toBe(false);
+  expect(filterPanelVisible({ ...base, route: null })).toBe(false);
+});
+
+test('the filter panel stays when airspace or chart data re-resolves the same filter', () => {
+  const store = createAtcStore();
+  store.setMapFilter({
+    ...NO_MAP_FILTER,
+    inAirspace: { airport: 'KPDX', class: null },
+  });
+  const run = store.getState().mapFilter;
+
+  store.setAirspace({
+    cycle: '2610',
+    effective: '2026-10-08',
+    shelves: [testShelf()],
+  });
+  const resolved = store.getState().mapFilter;
+
+  expect(resolved).not.toBe(run);
   expect(
     filterPanelVisible({
-      ...base,
-      loading: true,
-      current: null,
-      produced: null,
+      route: ROUTER_SKIPPED,
+      loading: false,
+      current: resolved,
+      produced: run,
     }),
   ).toBe(true);
-  expect(filterPanelVisible(base)).toBe(true);
-  expect(filterPanelVisible({ ...base, current: { filter: {} } })).toBe(false);
-  expect(filterPanelVisible({ ...base, current: null })).toBe(false);
-  expect(filterPanelVisible({ ...base, route: null })).toBe(false);
 });

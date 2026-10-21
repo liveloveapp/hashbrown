@@ -848,12 +848,17 @@ for (const width of [320, 375]) {
     const switchBox = await page
       .getByRole('switch', { name: 'Show the stream' })
       .boundingBox();
+    const credit = await page
+      .getByRole('link', { name: 'built with Hashbrown' })
+      .boundingBox();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
     );
 
     expect(link).not.toBeNull();
     expect((link?.x ?? 0) + (link?.width ?? 0)).toBeLessThanOrEqual(width);
+    expect(credit?.width ?? 0).toBeGreaterThan(0);
+    expect((credit?.x ?? 0) + (credit?.width ?? 0)).toBeLessThanOrEqual(width);
     expect(switchBox?.x ?? -1).toBeGreaterThanOrEqual(0);
     expect(overflow).toBeLessThanOrEqual(0);
     await close();
