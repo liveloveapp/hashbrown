@@ -1,4 +1,5 @@
 import { Chat } from '../models';
+import { isProviderToolCall } from '../models/tool-step';
 import { executeToolTurn } from './tool-turn-executor';
 
 /**
@@ -45,7 +46,7 @@ export function createToolTurnCoordinator({
   const calls = [...toolCalls];
   const executions = calls.map((toolCall) => ({
     toolCall,
-    tool: toolsByName[toolCall.name],
+    tool: isProviderToolCall(toolCall) ? undefined : toolsByName[toolCall.name],
     controller: new AbortController(),
   }));
   let settledOutcome: ToolTurnOutcome | undefined;

@@ -21,6 +21,7 @@ import {
 } from './ag-ui-message-history';
 import { createReducer, on } from '../utils/micro-ngrx';
 import {
+  reopenCancelledStep,
   settleOpenSteps,
   ɵmergeStepMetadata,
   ɵmergeToolStep,
@@ -894,11 +895,22 @@ function startToolCall(
     ) {
       throw new Error(`AG-UI tool call ${toolCallId} cannot change parent`);
     }
-    if (event.metadata === undefined && heldStep === undefined) {
+    const reopenedMetadata = reopenCancelledStep(
+      existing.tool.metadata as Record<string, unknown> | undefined,
+    );
+    const reopenedTool =
+      reopenedMetadata === existing.tool.metadata
+        ? existing.tool
+        : { ...existing.tool, metadata: reopenedMetadata };
+    if (
+      event.metadata === undefined &&
+      heldStep === undefined &&
+      reopenedTool === existing.tool
+    ) {
       return messages;
     }
     const merged = mergeEventFields(
-      withHeldStep(existing.tool, heldStep),
+      withHeldStep(reopenedTool, heldStep),
       event,
     ) as NonNullable<
       Extract<Message, { role: 'assistant' }>['toolCalls']

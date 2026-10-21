@@ -262,9 +262,9 @@ const BAD = ['failed', 'denied', 'cancelled'];
  * `failed` wins over every status. `completed`, `denied` and `cancelled`
  * settle the step unless it has failed. `running` only lifts an unsettled
  * step, and a read without a status keeps the current one. When both sides
- * are settled, a step from a message beats one from a call. A running step
- * that moves to a bad settle loses its label and sources unless the new step
- * supplies them. A failed step with no error gets a default one.
+ * are settled, a step from a message beats one from a call. A step
+ * that moves into a different bad settle loses its label, icon and sources
+ * unless the new step supplies them. A failed step with no error gets a default one.
  *
  * @param previous - The step held so far, if any.
  * @param next - The incoming step.
@@ -304,12 +304,13 @@ function mergeSteps(
 
   const defined = compact({ ...next }) as ɵToolStepRead;
   const merged: ɵToolStep = { ...previous, ...defined, status };
-  if (previous.status === 'running' && BAD.includes(status)) {
-    const { label, sources, ...rest } = merged;
+  if (BAD.includes(status) && status !== previous.status) {
+    const { label, icon, sources, ...rest } = merged;
     return {
       ...rest,
       status,
       ...(next.label !== undefined ? { label } : {}),
+      ...(next.icon !== undefined ? { icon } : {}),
       ...(next.sources !== undefined ? { sources } : {}),
     };
   }
@@ -403,8 +404,48 @@ export function settleOpenSteps(
 }
 
 /**
+ * Reopens a `cancelled` step when its call is started again, as a resume run
+ * does for a call cancelled at an interrupt: status `running`, label and
+ * `settledAt` cleared. Any other step, or none, is returned unchanged.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param metadata - A tool call's metadata.
+ * @returns The metadata, or a copy with the step reopened.
+ */
+export function reopenCancelledStep(
+  metadata: Metadata | undefined,
+): Metadata | undefined {
+  const raw = metadata?.[ɵTOOL_STEP_METADATA_KEY];
+  if (!isRecord(raw) || raw['status'] !== 'cancelled') return metadata;
+  const { label: _label, settledAt: _settledAt, ...rest } = raw;
+  return {
+    ...metadata,
+    [ɵTOOL_STEP_METADATA_KEY]: { ...rest, status: 'running' },
+  };
+}
+
+/**
+ * Whether a tool call's step says the model provider ran it. Such a call is
+ * never executed by, or validated against, a client tool of the same name.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param toolCall - Anything with the call's metadata.
+ * @returns True for a `kind: 'provider'` step.
+ */
+export function isProviderToolCall(toolCall: {
+  readonly metadata?: Metadata;
+}): boolean {
+  return (
+    ɵreadToolStep(toolCall.metadata?.[ɵTOOL_STEP_METADATA_KEY])?.kind ===
+    'provider'
+  );
+}
+
+/**
  * Settles a still-`running` `b4.step` once its call has a result: `completed`
- * with the label kept, or `failed` with `error: {message}` when the result
+ * with the running label cleared (sources kept), or `failed` with `error: {message}` when the result
  * carries an error. Any other step, or none, is left as it is.
  *
  * Internal to core: not exported from the package.
@@ -427,7 +468,7 @@ export function completeRunningStep(
     ...metadata,
     [ɵTOOL_STEP_METADATA_KEY]:
       error === undefined
-        ? { ...raw, status: 'completed' }
+        ? withoutLabel({ ...raw, status: 'completed' })
         : ɵmergeToolStep(
             { ...step, status: 'running' },
             {
@@ -439,4 +480,9 @@ export function completeRunningStep(
             'message',
           ),
   };
+}
+
+function withoutLabel<T extends Record<string, unknown>>(step: T): T {
+  const { label: _label, ...rest } = step;
+  return rest as T;
 }

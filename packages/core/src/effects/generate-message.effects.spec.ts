@@ -1063,6 +1063,56 @@ test('does not execute a fresh call already settled by the agent', async () => {
   teardown();
 });
 
+test('a provider call is never executed or validated against a client tool of the same name', async () => {
+  jest.clearAllMocks();
+  const handler = jest.fn(async () => 'local result');
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request, [
+      {
+        type: EventType.TOOL_CALL_START,
+        toolCallId: 'call-provider',
+        toolCallName: 'web_search',
+        metadata: { 'b4.step': { v: 1, kind: 'provider', status: 'running' } },
+      } as AGUIEvent,
+      {
+        type: EventType.TOOL_CALL_ARGS,
+        toolCallId: 'call-provider',
+        delta: '{"unexpected":true}',
+      },
+      { type: EventType.TOOL_CALL_END, toolCallId: 'call-provider' },
+    ]),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: canonicalUser('Search.'),
+      tools: [
+        {
+          name: 'web_search',
+          description: 'Search the web.',
+          schema: s.object('Search input', { query: s.string('query') }),
+          handler,
+        },
+      ],
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForMockCalls(send, 1);
+  await waitForStoreGenerationToSettle(store);
+
+  expect(handler).not.toHaveBeenCalled();
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(store.read(selectStreamingMessageError)).toBeFalsy();
+
+  teardown();
+});
+
 test('does not execute pending calls from the attempt-start checkpoint', async () => {
   jest.clearAllMocks();
   const handler = jest.fn(async () => 'local result');

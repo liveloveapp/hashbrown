@@ -2,7 +2,11 @@ import * as Chat from './public_api';
 import type { Metadata, ReasoningMessage } from '@ag-ui/core';
 import { s } from '../schema';
 import { JsonValue, resolveWithSchema } from '../utils';
-import { ɵreadToolStep, ɵTOOL_STEP_METADATA_KEY } from './tool-step';
+import {
+  isProviderToolCall,
+  ɵreadToolStep,
+  ɵTOOL_STEP_METADATA_KEY,
+} from './tool-step';
 
 type ReasoningInput = {
   readonly reasoning?: string;
@@ -231,7 +235,7 @@ function toServerToolCalls(
       }
       const step = ɵreadToolStep(toolCall.metadata?.[ɵTOOL_STEP_METADATA_KEY]);
       if (
-        step?.kind !== 'provider' &&
+        !isProviderToolCall(toolCall) &&
         tools.some((tool) => tool.name === toolCall.name)
       ) {
         return [];

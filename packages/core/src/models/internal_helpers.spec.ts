@@ -1099,3 +1099,25 @@ test('calls without a step keep todays fields only', () => {
     },
   ]);
 });
+
+test('lowering a call that carries arrivedAt leaves the key out of the API messages', () => {
+  // Arrange
+  const message = internalAssistantWithCalls(['call-ws']);
+  const toolCalls: Chat.Internal.ToolCall[] = [
+    {
+      id: 'call-ws',
+      name: 'lookup',
+      arguments: '{"q":"x"}',
+      argumentsResolved: { q: 'x' },
+      status: 'done',
+      result: { status: 'fulfilled', value: 'ok' },
+      arrivedAt: 1234,
+    },
+  ];
+
+  // Act
+  const api = toApiMessagesFromInternal(message, toolCalls);
+
+  // Assert
+  expect(JSON.stringify(api)).not.toContain('arrivedAt');
+});

@@ -1019,7 +1019,7 @@ test('a RESULT step beats the call step', () => {
   });
 });
 
-test('a RESULT with no step completes a running step and keeps its label', () => {
+test('a RESULT with no step completes a running step and clears its label', () => {
   const store = createRootStore();
   dispatchEvents(store, [
     {
@@ -1051,7 +1051,6 @@ test('a RESULT with no step completes a running step and keeps its label', () =>
     v: 1,
     kind: 'server',
     status: 'completed',
-    label: 'Fetching',
   });
 });
 
@@ -1154,4 +1153,36 @@ test('records the arrival time at TOOL_CALL_START from the event timestamp, else
   // Assert
   expect(stamped.draft.entities['a']?.arrivedAt).toBe(1234);
   expect(typeof clocked.draft.entities['b']?.arrivedAt).toBe('number');
+});
+
+test('a TOOL_CALL_START for a cancelled step reopens it as running', () => {
+  const store = createRootStore();
+  const cancelled = {
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    label: 'Waiting',
+    settledAt: 99,
+  };
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: { 'b4.step': cancelled },
+    } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    } as AGUIEvent,
+  ]);
+
+  const step = readRootStep(store, 'c1');
+
+  expect(step).toMatchObject({ status: 'running' });
+  expect(step).not.toHaveProperty('label');
+  expect(step).not.toHaveProperty('settledAt');
 });

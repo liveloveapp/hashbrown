@@ -12,7 +12,11 @@ import {
   ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
 import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
-import { completeRunningStep, ɵmergeStepMetadata } from '../models/tool-step';
+import {
+  completeRunningStep,
+  reopenCancelledStep,
+  ɵmergeStepMetadata,
+} from '../models/tool-step';
 
 export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
   readonly committed: EntityState<Chat.Internal.ToolCall>;
@@ -191,11 +195,8 @@ export const reducer = createReducer(
     }
     if (action.payload.type === EventType.TOOL_CALL_START) {
       const existing = readOwn(state.draft.entities, action.payload.toolCallId);
-      const metadata = mergeMetadata(
-        existing?.metadata,
-        action.payload.metadata,
-        'call',
-      );
+      const reopened = reopenCancelledStep(existing?.metadata);
+      const metadata = mergeMetadata(reopened, action.payload.metadata, 'call');
       if (
         existing &&
         metadata === existing.metadata &&

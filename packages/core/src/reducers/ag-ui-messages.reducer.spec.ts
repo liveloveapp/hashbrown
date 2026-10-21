@@ -2961,3 +2961,62 @@ test('CUSTOM-folded and held steps do not carry the tool call id', () => {
     label: 'Queued',
   });
 });
+
+test('a failed step after a completed one replaces its label, icon and sources', () => {
+  const active = activeAttempt();
+  const running = {
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    label: 'Searching the corpus…',
+    icon: 'search',
+    sources: [{ id: 's1', kind: 'url', title: 'A', href: 'https://a.test' }],
+  };
+
+  const failed = applyEvents(active, [
+    startTool('c1', { 'b4.step': running }),
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+    } as AGUIEvent,
+    stepEvent({
+      toolCallId: 'c1',
+      status: 'failed',
+      label: 'Search failed',
+      icon: 'alert',
+    }),
+  ]);
+
+  const step = readStep(failed, 'c1') as Record<string, unknown>;
+  expect(step).toMatchObject({
+    status: 'failed',
+    label: 'Search failed',
+    icon: 'alert',
+    error: { message: 'Tool call did not finish' },
+  });
+  expect(step).not.toHaveProperty('sources');
+});
+
+test('a TOOL_CALL_START for a cancelled step reopens it as running', () => {
+  const active = activeAttempt();
+  const cancelled = {
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    label: 'Waiting',
+    settledAt: 99,
+  };
+
+  const reopened = applyEvents(active, [
+    startTool('c1', { 'b4.step': cancelled }),
+    startTool('c1'),
+  ]);
+
+  const step = readStep(reopened, 'c1') as Record<string, unknown>;
+  expect(step).toMatchObject({ status: 'running' });
+  expect(step).not.toHaveProperty('label');
+  expect(step).not.toHaveProperty('settledAt');
+});
