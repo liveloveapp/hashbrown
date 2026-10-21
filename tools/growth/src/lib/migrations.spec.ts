@@ -72,3 +72,93 @@ test('reporting migration defines exactly four views', async () => {
   ]);
   expect(sql).not.toContain('growth_legacy_progress_v1');
 });
+
+test('observability migration creates the eight tables with CASCADE only on observation children', async () => {
+  const sql = await read('0003_growth_observability.sql');
+
+  const tables = [...sql.matchAll(/CREATE TABLE (\w+)/gi)].map((m) => m[1]);
+  const cascades = [
+    ...sql.matchAll(/REFERENCES (\w+)\(id\) ON DELETE CASCADE/g),
+  ].map((m) => m[1]);
+
+  expect(tables).toEqual([
+    'growth_observation_subjects',
+    'growth_observations',
+    'growth_observation_identities',
+    'growth_observation_redactions',
+    'growth_observation_work',
+    'growth_observation_facts',
+    'growth_collection_budgets',
+    'growth_observation_operations',
+  ]);
+  expect(sql.match(/REFERENCES/g)?.length).toBe(5);
+  expect(cascades).toEqual([
+    'growth_observation_subjects',
+    'growth_observations',
+    'growth_observations',
+    'growth_observations',
+    'growth_observation_subjects',
+  ]);
+  expect(sql).not.toMatch(/ON UPDATE/i);
+  expect(sql).toContain(
+    "namespace IN ('website_session','installation','development_browser')",
+  );
+  expect(sql).toContain("CHECK (trust='client_reported')");
+  expect(sql).toMatch(
+    /CREATE INDEX growth_observation_facts_subject_milestone ON growth_observation_facts\s*\(subject_id,\s*milestone_kind\)/,
+  );
+});
+
+test('milestone_kind is constrained to the three runtime milestones and source has no form', async () => {
+  const sql = await read('0003_growth_observability.sql');
+
+  const milestones = sql.match(/milestone_kind IN \(([^)]*)\)/)?.[1];
+  const sources = [...sql.matchAll(/source IN \(([^)]*)\)/g)].map((m) => m[1]);
+
+  expect(milestones?.split(',').map((kind) => kind.trim())).toEqual([
+    "'runtime.first_stream_completed'",
+    "'tool.first_call_executed'",
+    "'component.first_rendered'",
+  ]);
+  expect(sources).toEqual([
+    "'website','install','runtime'",
+    "'website','install','runtime'",
+  ]);
+  expect(sql).not.toContain("'form'");
+  expect(sql).not.toMatch(/transport\.connected|thread\.persisted/);
+});
+
+test('observations carry installation_token_digest with a hex64 check', async () => {
+  const sql = await read('0003_growth_observability.sql');
+
+  expect(sql).toMatch(
+    /alter table growth_observations add column installation_token_digest text;/i,
+  );
+  expect(sql).toContain(
+    "check (installation_token_digest is null or installation_token_digest ~ '^[0-9a-f]{64}$')",
+  );
+  expect(sql).toMatch(
+    /create index growth_observation_installation_token on growth_observations\(installation_token_digest,source\)\s+where installation_token_digest is not null;/i,
+  );
+  expect(sql).not.toContain('growth_install_runtime_links');
+});
+
+test('views migration defines exactly six views', async () => {
+  const sql = await read('0004_growth_observability_views.sql');
+
+  const views = [...sql.matchAll(/CREATE VIEW (\w+)/gi)].map((m) => m[1]);
+
+  expect(views).toEqual([
+    'growth_observation_source_health_v1',
+    'growth_observation_subject_overview_v1',
+    'growth_observation_work_health_v1',
+    'growth_observation_runtime_funnel_v1',
+    'growth_observation_install_funnel_v1',
+    'growth_observation_funnel_daily_v1',
+  ]);
+  expect(sql).toContain(
+    "count(DISTINCT (f.milestone_kind,o.properties->>'integration'))",
+  );
+  expect(sql).toContain("namespace = 'development_browser'");
+  expect(sql).toContain("properties->>'environment' <> 'ci'");
+});
