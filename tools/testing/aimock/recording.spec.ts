@@ -196,6 +196,32 @@ test('startRecordedAimock passes chunkSize through to aimock', async () => {
   expect(options).toMatchObject({ chunkSize: 7, strict: true });
 });
 
+test('startRecordedAimock replays without pacing recorded timings', async () => {
+  const previousRecord = process.env['AIMOCK_RECORD'];
+  delete process.env['AIMOCK_RECORD'];
+  const startAimock = jest
+    .spyOn(aimockRunner, 'startAimock')
+    .mockResolvedValue({} as AimockHandle);
+  let options: unknown;
+
+  try {
+    await startRecordedAimock({
+      testName: 'replay without pacing',
+      provider: 'openai',
+      upstream: 'https://api.openai.com',
+      secrets: [],
+    });
+    options = startAimock.mock.calls[0]?.[0];
+  } finally {
+    startAimock.mockRestore();
+    if (previousRecord !== undefined) {
+      process.env['AIMOCK_RECORD'] = previousRecord;
+    }
+  }
+
+  expect(options).toMatchObject({ strict: true, ignoreRecordedTimings: true });
+});
+
 function runClearRecordings(root: string, args: string[]): string[] {
   const script = join(__dirname, 'clear-recordings.mjs');
   const output = execFileSync(

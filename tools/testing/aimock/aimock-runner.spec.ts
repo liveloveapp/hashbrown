@@ -47,6 +47,52 @@ test('startAimock boots a replay server backed by one fixture file', async () =>
   }
 });
 
+test('startAimock ignoreRecordedTimings replays without recorded latency', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  const fixturePath = join(workDir, 'slow.json');
+  writeFileSync(
+    fixturePath,
+    JSON.stringify({
+      fixtures: [
+        {
+          match: { userMessage: 'slow reply' },
+          response: { content: 'Hello from aimock.' },
+          recordedTimings: {
+            ttftMs: 5_000,
+            interChunkDelaysMs: [],
+            totalDurationMs: 5_000,
+          },
+        },
+      ],
+    }),
+  );
+  let handle: AimockHandle | null = null;
+  let elapsedMs = 0;
+  let body = '';
+
+  try {
+    handle = await startAimock({ fixturePath, ignoreRecordedTimings: true });
+    const started = Date.now();
+    const response = await fetch(`${handle.openAiBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4.1-mini',
+        stream: true,
+        messages: [{ role: 'user', content: 'slow reply' }],
+      }),
+    });
+    body = await response.text();
+    elapsedMs = Date.now() - started;
+  } finally {
+    await handle?.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+
+  expect(body).toContain('Hello from aimock.');
+  expect(elapsedMs).toBeLessThan(2_000);
+});
+
 test('startAimock loads sorted JSON fixture files from a directory', async () => {
   const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
   createFixtureFile(workDir, 'b.json', 'two');

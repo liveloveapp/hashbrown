@@ -109,7 +109,13 @@ async function withRecording<T>(
   const fetchSpy = jest
     .spyOn(globalThis, 'fetch')
     .mockImplementation((url, init) => {
-      const headers = new Headers(init?.headers);
+      // `init.headers` replaces a Request's own headers, so merge both.
+      const headers = new Headers(
+        url instanceof Request ? url.headers : undefined,
+      );
+      new Headers(init?.headers).forEach((value, name) => {
+        headers.set(name, value);
+      });
       for (const [name, value] of Object.entries(recorded.headers)) {
         headers.set(name, value);
       }
@@ -500,9 +506,13 @@ test(
 
     expectReasoning(firstEvents);
     expectToolRound(firstEvents, first, 'lookup');
-    expect(second.messages.map((message) => message.role)).toEqual(
-      expect.arrayContaining(['reasoning', 'assistant', 'tool']),
-    );
+    expect(second.messages.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+      'reasoning',
+      'assistant',
+      'tool',
+    ]);
     expect(Array.isArray(capturedInput) ? capturedInput : []).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

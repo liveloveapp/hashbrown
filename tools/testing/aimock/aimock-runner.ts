@@ -71,6 +71,11 @@ export interface AimockStartOptions {
    * was expected. Only used when `strict` applies.
    */
   readonly strictMissMessage?: string;
+  /**
+   * Drop each fixture's `recordedTimings`, so replay streams immediately
+   * instead of sleeping through the latency captured while recording.
+   */
+  readonly ignoreRecordedTimings?: boolean;
   /** Record unmatched requests from the real provider instead of failing. */
   readonly record?: AimockRecordOptions;
 }
@@ -160,7 +165,10 @@ function scrubRecordings(dir: string, secrets: readonly string[]): void {
 export async function startAimock(
   options: AimockStartOptions,
 ): Promise<AimockHandle> {
-  const entries = loadFixtureEntries(options.fixturePath);
+  const loaded = loadFixtureEntries(options.fixturePath);
+  const entries = options.ignoreRecordedTimings
+    ? loaded.map((entry) => ({ ...entry, recordedTimings: undefined }))
+    : loaded;
   const record = options.record;
   const strict = options.strict === true && record === undefined;
   const mock = new LLMock({

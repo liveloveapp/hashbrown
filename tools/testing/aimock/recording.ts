@@ -132,7 +132,8 @@ export interface RecordedAimock {
  * Start aimock for one test against its recorded fixture.
  *
  * Replay (the default) loads `RECORDED_FIXTURES_ROOT/<slug>/<fileName>`
- * strictly: a request with no recording gets a 503 naming the missing file.
+ * strictly: a request with no recording gets a 503 naming the missing file,
+ * and responses stream without the recorded latency.
  * With `AIMOCK_RECORD=1`, unmatched requests go to `upstream` and are recorded
  * there, with secrets scrubbed when the handle stops.
  *
@@ -161,6 +162,7 @@ export async function startRecordedAimock(
           fixturePath,
           chunkSize: options.chunkSize,
           strict: true,
+          ignoreRecordedTimings: true,
           strictMissMessage:
             `No recorded fixture matched for test "${slug}" ` +
             `(provider ${options.provider}) in ${fixturePath}. ` +
