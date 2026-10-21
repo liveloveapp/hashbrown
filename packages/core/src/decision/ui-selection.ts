@@ -4,23 +4,11 @@ import type { DecidableSchema } from './decidable-schema';
 import type { ChoiceMeta, Result, Select, YesNoMeta } from './decision.types';
 import { DecisionSchemaError } from './errors';
 import type { UiKit } from '../ui/ui-kit';
-import { toSelectionOptions } from './component-selection';
+import { type SelectionGroup, toSelectionOptions } from './component-selection';
 
 const MAX_CHOICE_OPTIONS = 255;
 const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
 const MIN_PROBABILITY = 0.5;
-
-/**
- * A plain group of structural component members, mirroring a UI kit.
- */
-interface SelectionGroupEntry {
-  components: ReadonlyArray<{
-    name: string;
-    description: string;
-    children?: unknown;
-  }>;
-  selectable?: boolean;
-}
 
 /**
  * Builds the decidable schema for selecting among UI options.
@@ -74,7 +62,9 @@ interface SelectionGroupEntry {
  * @param options - Candidate items, components and/or UI kits, in order.
  * @param select - How many options may be selected.
  * @returns A decidable object schema.
- * @throws DecisionSchemaError when the options or `select` are invalid.
+ * @throws DecisionSchemaError when the options or `select` are invalid, or
+ * when every entry is non-selectable (no options are left); callers should
+ * skip the decision in that case.
  *
  * @public
  */
@@ -83,7 +73,7 @@ export function createSelectionSchema(
     | { id: string; description: string }
     | { name: string; description: string; children?: unknown }
     | UiKit<any>
-    | SelectionGroupEntry
+    | SelectionGroup
   >,
   select: Select,
 ): DecidableSchema {

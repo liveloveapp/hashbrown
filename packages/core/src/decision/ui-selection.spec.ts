@@ -577,3 +577,30 @@ test('createSelectionSchema rejects a malformed plain group naming the index', (
   expect(error).toBeInstanceOf(DecisionSchemaError);
   expect((error as Error).message).toContain('index 1');
 });
+
+test('non-selectable plain groups and kits hide children alike', () => {
+  const kit = createUiKit({
+    components: [component('Parent', [component('Kid')])],
+    selectable: false,
+  });
+  const group = {
+    components: [
+      {
+        name: 'Parent',
+        description: 'The Parent component',
+        children: [{ name: 'Kid', description: 'The Kid component' }],
+      },
+    ],
+    selectable: false,
+  };
+  const open = { id: 'map', description: 'A map' };
+
+  const fromKit = createComponentSelection([kit]).options;
+  const fromGroup = createSelectionSchema([open, group], 'one');
+
+  expect(fromKit).toEqual([]);
+  expect(compileDecision(fromGroup)).toEqual(
+    compileDecision(createSelectionSchema([open, kit], 'one')),
+  );
+  expect(JSON.stringify(compileDecision(fromGroup))).not.toContain('Kid');
+});

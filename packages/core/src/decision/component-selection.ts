@@ -16,8 +16,12 @@ interface Selectable {
  * A plain group of structural members that mirrors a UI kit without
  * importing component implementations.
  */
-interface SelectionGroup {
-  components: ReadonlyArray<Selectable>;
+export interface SelectionGroup {
+  components: ReadonlyArray<{
+    name: string;
+    description: string;
+    children?: unknown;
+  }>;
   selectable?: boolean;
 }
 
