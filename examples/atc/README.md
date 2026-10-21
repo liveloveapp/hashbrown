@@ -135,7 +135,8 @@ available from the chat.
    it is not. Without the rule the model has no guidance on the turns the decision picks
    it.
 7. Say when it fits in `CARDS_CONTEXT`, one sentence like the others. The cards
-   decision reads it with the descriptions.
+   decision reads it with the descriptions; check the pick with
+   `npx nx decide-eval atc-e2e`.
 
 ### Add a tool
 

@@ -68,6 +68,7 @@ dependencies); this file covers atc.
 | `e2e/src/`                                                                                           | Playwright for both apps: `atc.spec.ts`, the scripted model turns in `model.ts`, the traffic and chart fixtures, and `stubs.ts`, which serves them |
 | `e2e/demo/`                                                                                          | The demo video: storyboard, director page, recorder, ffmpeg encoding                                                                               |
 | `e2e/prose/`                                                                                         | Live prose eval: real model answers checked for leaked rules, extra cards and the highlight they leave on the map                                  |
+| `e2e/decide/`                                                                                        | Live decide eval: labelled router and cards probes sent to TypeSafe Jev, scored the way the apps act                                               |
 
 ## Add a component or a tool
 
@@ -135,6 +136,10 @@ dependencies); this file covers atc.
   It flags prose that echoes a rule, names a component or tool, stops on a colon,
   promises a tap the app doesn't have or opens with a lead-in; answers with more cards
   than the prompt asks for; and answers that show aircraft but leave none highlighted.
+- After changing `ROUTE_CONTEXT`, `CARDS_CONTEXT`, `routeSchema` or a card description, run
+  `npx nx decide-eval atc-e2e` (live decisions, needs `TYPESAFE_API_KEY`, no servers). It
+  fails when the router gets fewer than 28 of its 30 labelled probes (or 16 of 17 held-out
+  ones) right, or fewer than 7 of 8 cards probes narrow confidently to the expected card.
 - Builds stay free of warnings. Leaflet 1.x ships only CommonJS, so the Angular build
   lists it in `allowedCommonJsDependencies` (`angular/project.json`); the React build
   splits React and Hashbrown into their own chunks (`react/vite.config.mts`) so no chunk
@@ -146,6 +151,9 @@ dependencies); this file covers atc.
 npx nx run-many -t build,test,lint -p atc-shared atc-server atc-angular atc-react atc-e2e atc
 npx nx e2e atc-e2e
 npx nx typecheck atc-e2e
+# Live, opt-in, cost a little per run:
+npx nx decide-eval atc-e2e   # needs TYPESAFE_API_KEY
+npx nx prose-eval atc-e2e    # needs OPENAI_API_KEY and the dev servers
 ```
 
 Tests use top-level `test(...)` only, with arrange, act and assert separated by blank
