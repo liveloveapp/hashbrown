@@ -49,9 +49,10 @@ export function useMapFilter(
   const inputRef = useRef<string | null>(null);
   const sync = useRef<FilterSync | null>(null);
   const stopRef = useRef<() => void>(() => undefined);
-  // The output of the run before this one, which must not be applied.
+  // False from `apply` until Hashbrown clears the previous run's output, so a
+  // last chunk of a superseded run is never applied for the new one.
+  const armed = useRef(true);
   const latest = useRef<unknown>(null);
-  const stale = useRef<unknown>(null);
   const completion = useStructuredCompletion({
     input,
     // Required by Hashbrown; the server replaces it with the filter prompt
@@ -76,7 +77,12 @@ export function useMapFilter(
   useEffect(() => {
     stopRef.current = stop;
     latest.current = output;
-    if (output === null || output === stale.current) {
+    if (output === null) {
+      armed.current = true;
+
+      return;
+    }
+    if (!armed.current) {
       return;
     }
     if (isLoading) {
@@ -90,7 +96,7 @@ export function useMapFilter(
     (request: string) => {
       const current = store.getState().mapFilter?.filter ?? null;
       const next = filterRequestInput(request, current);
-      stale.current = latest.current;
+      armed.current = latest.current === null;
       sync.current?.begin(current);
       if (next === inputRef.current) {
         // Hashbrown sends when the input changes; blank it first so the same

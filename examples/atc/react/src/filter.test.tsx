@@ -158,3 +158,27 @@ test('clearing before the first field arrives still cancels the run', async () =
 
   expect(store.getState().mapFilter).toBeNull();
 });
+
+test('the last chunk of a superseded run never lands, and the new run still applies', async () => {
+  const { store, model, hook } = setup();
+  act(() => hook.result.current.apply('Alaska'));
+  await waitFor(() => expect(model.requests).toHaveLength(1));
+  act(() => model.push('{"airline":"Alaska",'));
+  await waitFor(() => expect(store.getState().mapFilter).not.toBeNull());
+
+  await act(async () => {
+    hook.result.current.apply('Delta');
+    model.push('"kind":"jet"}');
+    model.finish();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+  await waitFor(() => expect(model.requests).toHaveLength(2));
+  const kindAfterOldRun = store.getState().mapFilter?.filter.kind;
+  act(() => model.push('{"airline":"Delta","kind":null}'));
+  act(() => model.finish());
+
+  await waitFor(() =>
+    expect(store.getState().mapFilter?.filter.airline).toBe('Delta'),
+  );
+  expect(kindAfterOldRun).toBeNull();
+});

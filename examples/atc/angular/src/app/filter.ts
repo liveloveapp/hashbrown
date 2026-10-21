@@ -68,13 +68,19 @@ export function injectMapFilter(
   const output = computed<unknown>(() =>
     resource.status() === 'error' ? null : resource.value(),
   );
-  // The output of the run before this one, which must not be applied.
-  let stale: unknown = null;
+  // False from `apply` until Hashbrown clears the previous run's output, so a
+  // last chunk of a superseded run is never applied for the new one.
+  let armed = true;
   // Each streamed update goes to the store; the final one is applied whole.
   effect(() => {
     const value = output();
     const loading = resource.isLoading();
-    if (value === null || value === stale) {
+    if (value === null) {
+      armed = true;
+
+      return;
+    }
+    if (!armed) {
       return;
     }
     if (loading) {
@@ -103,7 +109,7 @@ export function injectMapFilter(
     apply(request) {
       const current = store.getState().mapFilter?.filter ?? null;
       const next = filterRequestInput(request, current);
-      stale = output();
+      armed = output() === null;
       sync.begin(current);
       if (next === input()) {
         queued.set(next);
