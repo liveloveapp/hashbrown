@@ -331,34 +331,62 @@ test('maps reasoning before a client tool block', async () => {
   ]);
 });
 
-test('rejects reasoning starts after assistant text has begun', async () => {
+test('maps reasoning that starts after assistant text', async () => {
   const events = [
     messageStart(),
-    textStart(0, 'text'),
+    textStart(0, 'Looking'),
     contentStop(0),
-    thinkingStart(1),
+    thinkingStart(1, 'Interleaved', 'signature'),
+    contentStop(1),
+    textStart(2, ' done'),
+    contentStop(2),
+    messageStop(),
   ];
 
-  const act = collectEvents(events);
+  const result = await collectEvents(events);
 
-  await expect(act).rejects.toThrow(
-    'Anthropic reasoning block at index 1 cannot start after assistant text or a client tool block',
-  );
+  expect(result).toEqual([
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-message-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-message-1',
+      delta: 'Looking',
+    },
+    reasoningStartEvent('assistant-message-1:reasoning:1', 'thinking'),
+    reasoningContentEvent('assistant-message-1:reasoning:1', 'Interleaved'),
+    reasoningEncryptedEvent('assistant-message-1:reasoning:1', 'signature'),
+    reasoningEndEvent('assistant-message-1:reasoning:1'),
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-message-1',
+      delta: ' done',
+    },
+    { type: EventType.TEXT_MESSAGE_END, messageId: 'assistant-message-1' },
+  ]);
 });
 
-test('rejects reasoning starts after an empty native text block', async () => {
+test('maps reasoning that starts after an empty native text block', async () => {
   const events = [
     messageStart(),
     textStart(0, ''),
     contentStop(0),
-    thinkingStart(1),
+    thinkingStart(1, 'Plan', 'signature'),
+    contentStop(1),
+    messageStop(),
   ];
 
-  const act = collectEvents(events);
+  const result = await collectEvents(events);
 
-  await expect(act).rejects.toThrow(
-    'Anthropic reasoning block at index 1 cannot start after assistant text or a client tool block',
-  );
+  expect(result).toEqual([
+    reasoningStartEvent('assistant-message-1:reasoning:1', 'thinking'),
+    reasoningContentEvent('assistant-message-1:reasoning:1', 'Plan'),
+    reasoningEncryptedEvent('assistant-message-1:reasoning:1', 'signature'),
+    reasoningEndEvent('assistant-message-1:reasoning:1'),
+  ]);
 });
 
 test('does not emit AG-UI text events for an empty native text block', async () => {
@@ -374,19 +402,31 @@ test('does not emit AG-UI text events for an empty native text block', async () 
   expect(result).toEqual([]);
 });
 
-test('rejects reasoning starts after a client tool block has begun', async () => {
+test('maps reasoning that starts after a client tool block', async () => {
   const events = [
     messageStart(),
     toolStart(0),
     contentStop(0),
     redactedThinkingStart(1),
+    contentStop(1),
+    messageStop(),
   ];
 
-  const act = collectEvents(events);
+  const result = await collectEvents(events);
 
-  await expect(act).rejects.toThrow(
-    'Anthropic reasoning block at index 1 cannot start after assistant text or a client tool block',
-  );
+  expect(result).toEqual([
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'tool-1',
+      toolCallName: 'search',
+      parentMessageId: 'assistant-message-1',
+    },
+    { type: EventType.TOOL_CALL_ARGS, toolCallId: 'tool-1', delta: '{}' },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'tool-1' },
+    reasoningStartEvent('assistant-message-1:reasoning:1', 'redacted_thinking'),
+    reasoningEncryptedEvent('assistant-message-1:reasoning:1', 'redacted-data'),
+    reasoningEndEvent('assistant-message-1:reasoning:1'),
+  ]);
 });
 
 test('rejects thinking and signature deltas on text blocks', async () => {

@@ -318,9 +318,7 @@ export async function* mapAnthropicEvents(
   const activeBlocks = new Map<number, ContentBlockState>();
   let messageStarted = false;
   let messageStopped = false;
-  let nativeTextBlockStarted = false;
   let textStarted = false;
-  let clientToolStarted = false;
   let sourceCompleted = false;
   let hasPrimaryError = false;
 
@@ -382,13 +380,8 @@ export async function* mapAnthropicEvents(
 
           seenIndexes.add(index);
           if (blockType === 'thinking' || blockType === 'redacted_thinking') {
-            if (nativeTextBlockStarted || clientToolStarted) {
-              throw new Error(
-                `Anthropic reasoning block at index ${index} cannot start ` +
-                  'after assistant text or a client tool block',
-              );
-            }
-
+            // Interleaved thinking can follow text, server tools, or client
+            // tools in the same message, so reasoning may start anywhere.
             const messageId = `${options.messageId}:reasoning:${index}`;
             if (blockType === 'thinking') {
               const thinking = contentBlock['thinking'];
@@ -481,7 +474,6 @@ export async function* mapAnthropicEvents(
               );
             }
 
-            nativeTextBlockStarted = true;
             activeBlocks.set(index, { kind: 'text' });
             if (text.length > 0) {
               if (!textStarted) {
@@ -569,7 +561,6 @@ export async function* mapAnthropicEvents(
           }
 
           seenToolIds.add(id);
-          clientToolStarted = true;
           activeBlocks.set(index, {
             kind: 'tool',
             id,
