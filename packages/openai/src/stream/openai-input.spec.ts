@@ -333,6 +333,28 @@ test('drops reasoning from other providers', () => {
   expect(input).toEqual([{ role: 'assistant', content: 'Hi.' }]);
 });
 
+test('sends a tool error to the model instead of the tool result content', () => {
+  const messages: Message[] = [
+    {
+      id: 't-1',
+      role: 'tool',
+      toolCallId: 'call-1',
+      content: 'lookup failed',
+      error: 'upstream timeout',
+    },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([
+    {
+      type: 'function_call_output',
+      call_id: 'call-1',
+      output: '{"error":"upstream timeout"}',
+    },
+  ]);
+});
+
 test('drops activity messages', () => {
   const messages: Message[] = [
     { id: 'm-1', role: 'user', content: 'Hi' },

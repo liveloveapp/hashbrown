@@ -108,7 +108,11 @@ function mapMessage(message: Message): InputItem[] {
         {
           type: 'function_call_output',
           call_id: message.toolCallId,
-          output: message.content,
+          // Like the Google provider, a failed tool sends its error instead.
+          output:
+            message.error === undefined
+              ? message.content
+              : JSON.stringify({ error: message.error }),
         },
       ];
     case 'assistant':
