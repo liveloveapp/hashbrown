@@ -61,6 +61,7 @@ export const ROUTE_PROBES: readonly RouteProbe[] = [
   { input: 'Only show planes above 30,000 feet', expected: 'filter' },
   { input: 'only aircraft near Bend', expected: 'filter' },
   { input: 'Delta', expected: 'filter' },
+  { input: 'arrivals into Seattle', expected: 'filter' },
   { input: 'clear the filter', expected: 'clear' },
   { input: 'show everything', expected: 'clear' },
   { input: 'remove the filter', expected: 'clear' },

@@ -126,6 +126,13 @@ test('the filter prompt tells the model how to refine the current filter', () =>
   expect(FILTER_SYSTEM_PROMPT).toContain('Output only the filter');
 });
 
+test('the filter prompt gives near a default distance and places a region', () => {
+  expect(FILTER_SYSTEM_PROMPT).toContain('- Near with no distance: 25 nm.');
+  expect(FILTER_SYSTEM_PROMPT).toContain(
+    '- Places are in the Pacific Northwest.',
+  );
+});
+
 test('the starters include a question for the chat and a filter for the map', () => {
   const routes = new Set(STARTER_PROMPTS.map((starter) => starter.route));
   const filter = STARTER_PROMPTS.find((starter) => starter.route === 'filter');
@@ -173,6 +180,14 @@ test('the router context sends picks, follows and airports to chat, and only sta
     'Choose chat when it asks a question, picks out particular aircraft',
   );
   expect(ROUTE_CONTEXT).toContain('"show me everything landing at Seattle"');
+});
+
+test('the router context tells a named set of arrivals from asking to see them', () => {
+  expect(ROUTE_CONTEXT).toContain('"arrivals into Portland"');
+  expect(ROUTE_CONTEXT).toContain(
+    'A bare phrase that names a set of aircraft, with no question and no "show me", is a filter.',
+  );
+  expect(ROUTE_CONTEXT).not.toContain('its airspace or its arrivals');
 });
 
 test('the cards context and descriptions tell one aircraft from two superlatives', () => {
