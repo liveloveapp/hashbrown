@@ -3,5 +3,7 @@ export * from './lib/contacts';
 export * from './lib/crypto';
 export * from './lib/database';
 export * from './lib/email-keyring';
+export * from './lib/jobs';
 export * from './lib/models';
+export * from './lib/stops';
 export * from './lib/tokens';
