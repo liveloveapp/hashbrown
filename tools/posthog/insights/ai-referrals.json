@@ -1,6 +1,6 @@
 {
   "slug": "ai-referrals",
-  "posthog_id": null,
+  "posthog_id": 13138900,
   "kind": "trends",
   "name": "AI referral visits",
   "description": "Visitors arriving from AI answer engines, observed by Edge middleware, not posthog-js. Counted by referrer host.",

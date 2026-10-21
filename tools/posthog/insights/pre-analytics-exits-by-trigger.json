@@ -1,6 +1,6 @@
 {
   "slug": "pre-analytics-exits-by-trigger",
-  "posthog_id": null,
+  "posthog_id": 13138908,
   "kind": "trends",
   "name": "Pre-analytics exits by trigger",
   "description": "Visitors who left before posthog-js loaded, from the inline beacon. pagehide is a definite leave; visibilitychange may return.",

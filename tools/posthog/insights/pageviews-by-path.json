@@ -1,6 +1,6 @@
 {
   "slug": "pageviews-by-path",
-  "posthog_id": null,
+  "posthog_id": 13138907,
   "kind": "trends",
   "name": "Pageviews by path",
   "description": "Every $pageview, including App Router soft navigations, by pathname.",
