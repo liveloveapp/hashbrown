@@ -17,6 +17,18 @@ export type GrowthDeliveryStatus =
 export type GrowthJobKind =
   'fulfill' | 'notify' | 'send_step' | 'digest' | 'reply_reconcile';
 
+/** Whether a submitted address looks like a work or personal mailbox. */
+export type GrowthEmailClassification = 'work' | 'personal' | 'unknown';
+
+/** Payload of the `form.outreach_approved` activity. */
+export interface FormOutreachApprovedActivityData {
+  email_classification: GrowthEmailClassification;
+  policy_version: string;
+  source: string;
+  source_form: string;
+  verification: 'server_verified';
+}
+
 /** A person the growth programme knows about. */
 export interface GrowthContact {
   id: string;
