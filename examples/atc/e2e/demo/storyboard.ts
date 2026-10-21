@@ -106,7 +106,7 @@ export const STORYBOARD: readonly Beat[] = [
     panes: [
       {
         path: 'shared/src/tools.ts',
-        focal: /return findAircraft\(store\.getState\(\), input\);/,
+        focal: /aircraft: findAircraft\(/,
       },
       {
         path: 'angular/src/app/assistant.ts',

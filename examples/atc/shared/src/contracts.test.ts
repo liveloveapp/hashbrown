@@ -84,3 +84,9 @@ test('the prompt keeps the map as the answer left it unless the user asks', () =
     '- Leave the map as your answer set it: the highlight and any follow stay. Call clearHighlight or stopFollowing only when the user asks for that, never to tidy up an answer.',
   );
 });
+
+test('the prompt says the map filter applies and the assistant may change it', () => {
+  expect(SYSTEM_PROMPT).toContain(
+    '- The map filter limits findAircraft and the map to the same aircraft, and the result names it as mapFilter. When a question needs aircraft the filter hides, call setMapFilter or clearMapFilter, and say in one short sentence that you changed it.',
+  );
+});

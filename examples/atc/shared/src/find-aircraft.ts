@@ -293,7 +293,8 @@ export function matchesResolved(
 /**
  * Filters and sorts the aircraft on the map. Distances are measured from the
  * airport in `near`, else `inAirspace`, else the one in `approaching`, else
- * the area centre. A `near`, `inAirspace` or `approaching` airport outside the
+ * the area centre. When `also` is given (the map filter), a row must pass it
+ * as well, before sorting and the limit. A `near`, `inAirspace` or `approaching` airport outside the
  * directory matches nothing, and `inAirspace` keeps aircraft inside any shelf
  * of that airport (of one class when given). Those rows also carry the altitude
  * the check used.
@@ -302,6 +303,7 @@ export function findAircraft(
   state: AtcState,
   input: FindAircraftInput,
   area: Area = AREAS.pnw,
+  also: ResolvedFilter | null = null,
 ): AircraftRow[] {
   const resolved = resolveFilter(state, input);
   if ('unknownPlaces' in resolved) {
@@ -312,7 +314,11 @@ export function findAircraft(
   const limit = Math.min(20, Math.max(1, Math.round(input.limit)));
 
   return [...state.aircraft.values()]
-    .filter((a) => matchesResolved(resolved, a))
+    .filter(
+      (a) =>
+        matchesResolved(resolved, a) &&
+        (also === null || matchesResolved(also, a)),
+    )
     .map((a) =>
       shelves === null
         ? toRow(a, from)

@@ -8,6 +8,7 @@ import {
   type Surfaces,
 } from './chart';
 import { airportDirectory, chartAirportByCode } from './directory';
+import { filterSummary } from './filter-view';
 import {
   areaRadiusNm,
   findAircraft,
@@ -119,7 +120,42 @@ export function createAtcTools(context: AtcToolContext) {
           showAreaOnce(store, nearArea);
         }
 
-        return findAircraft(store.getState(), input);
+        const state = store.getState();
+        const summary =
+          state.mapFilter === null ? '' : filterSummary(state.mapFilter.filter);
+
+        return {
+          mapFilter: summary === '' ? null : summary,
+          aircraft: findAircraft(
+            state,
+            input,
+            undefined,
+            state.mapFilter?.resolved ?? null,
+          ),
+        };
+      },
+    },
+    setMapFilter: {
+      ...ATC_TOOL_DEFINITIONS.setMapFilter,
+      handler: async (input: ToolInput<'setMapFilter'>) => {
+        await chartSettled();
+        store.setMapFilter(input);
+        const applied = store.getState().mapFilter;
+        const summary = applied === null ? '' : filterSummary(applied.filter);
+
+        return {
+          applied: true as const,
+          mapFilter: summary,
+          unknownPlaces: applied?.unknownPlaces ?? [],
+        };
+      },
+    },
+    clearMapFilter: {
+      ...ATC_TOOL_DEFINITIONS.clearMapFilter,
+      handler: async () => {
+        store.clearMapFilter();
+
+        return { cleared: true as const };
       },
     },
     getSelectedAircraft: {

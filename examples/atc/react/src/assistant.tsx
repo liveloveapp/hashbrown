@@ -90,6 +90,8 @@ export function Assistant({ onSent }: { onSent?: () => void }) {
     useTool({ ...atcTools.showAirspace, deps: [atcTools] }),
     useTool({ ...atcTools.airspaceAt, deps: [atcTools] }),
     useTool({ ...atcTools.setLayers, deps: [atcTools] }),
+    useTool({ ...atcTools.setMapFilter, deps: [atcTools] }),
+    useTool({ ...atcTools.clearMapFilter, deps: [atcTools] }),
   ];
 
   // 3. Render the stream.
