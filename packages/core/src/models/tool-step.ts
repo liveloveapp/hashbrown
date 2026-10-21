@@ -262,8 +262,9 @@ const BAD = ['failed', 'denied', 'cancelled'];
  * `failed` wins over every status. `completed`, `denied` and `cancelled`
  * settle the step unless it has failed. `running` only lifts an unsettled
  * step, and a read without a status keeps the current one. When both sides
- * are settled, a step from a message beats one from a call. A bad settle
- * clears the running label and sources unless the new step supplies them.
+ * are settled, a step from a message beats one from a call. A running step
+ * that moves to a bad settle loses its label and sources unless the new step
+ * supplies them. A failed step with no error gets a default one.
  *
  * @param previous - The step held so far, if any.
  * @param next - The incoming step.
@@ -271,6 +272,20 @@ const BAD = ['failed', 'denied', 'cancelled'];
  * @returns The merged step; the inputs are not modified.
  */
 export function ɵmergeToolStep(
+  previous: ɵToolStep | undefined,
+  next: ɵToolStepRead,
+  source: 'call' | 'message',
+): ɵToolStep {
+  return withDefaultError(mergeSteps(previous, next, source));
+}
+
+function withDefaultError(step: ɵToolStep): ɵToolStep {
+  return step.status === 'failed' && step.error === undefined
+    ? { ...step, error: { message: 'Tool call did not finish' } }
+    : step;
+}
+
+function mergeSteps(
   previous: ɵToolStep | undefined,
   next: ɵToolStepRead,
   source: 'call' | 'message',
@@ -289,18 +304,13 @@ export function ɵmergeToolStep(
 
   const defined = compact({ ...next }) as ɵToolStepRead;
   const merged: ɵToolStep = { ...previous, ...defined, status };
-  if (BAD.includes(status)) {
+  if (previous.status === 'running' && BAD.includes(status)) {
     const { label, sources, ...rest } = merged;
     return {
       ...rest,
       status,
-      ...(status === 'failed' && merged.error === undefined
-        ? { error: { message: 'Tool call did not finish' } }
-        : {}),
-      ...(next.label !== undefined && status === next.status ? { label } : {}),
-      ...(next.sources !== undefined && status === next.status
-        ? { sources }
-        : {}),
+      ...(next.label !== undefined ? { label } : {}),
+      ...(next.sources !== undefined ? { sources } : {}),
     };
   }
   return merged;
@@ -322,16 +332,30 @@ export function ɵmergeStepMetadata(
 ): Metadata | undefined {
   if (next === undefined) return previous;
   const merged: Record<string, unknown> = { ...previous, ...next };
-  const nextStep = ɵreadToolStep(next[ɵTOOL_STEP_METADATA_KEY]);
-  if (nextStep !== undefined) {
+  if (ɵTOOL_STEP_METADATA_KEY in next) {
+    const rawNext = next[ɵTOOL_STEP_METADATA_KEY];
+    const nextStep = ɵreadToolStep(rawNext);
     const previousStep = ɵreadToolStep(previous?.[ɵTOOL_STEP_METADATA_KEY]);
-    merged[ɵTOOL_STEP_METADATA_KEY] = ɵmergeToolStep(
+    const heldStep =
       previousStep === undefined
         ? undefined
-        : { ...previousStep, status: previousStep.status ?? 'running' },
-      nextStep,
-      source,
-    );
+        : { ...previousStep, status: previousStep.status ?? 'running' };
+    if (nextStep === undefined) {
+      if (previous !== undefined && ɵTOOL_STEP_METADATA_KEY in previous) {
+        merged[ɵTOOL_STEP_METADATA_KEY] = previous[ɵTOOL_STEP_METADATA_KEY];
+      } else {
+        delete merged[ɵTOOL_STEP_METADATA_KEY];
+      }
+    } else {
+      const statedKind = isRecord(rawNext) && 'kind' in rawNext;
+      merged[ɵTOOL_STEP_METADATA_KEY] = ɵmergeToolStep(
+        heldStep,
+        heldStep !== undefined && !statedKind
+          ? { ...nextStep, kind: heldStep.kind }
+          : nextStep,
+        source,
+      );
+    }
   }
   return merged;
 }

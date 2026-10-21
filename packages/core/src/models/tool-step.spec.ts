@@ -78,7 +78,7 @@ test('reads an unknown status as undefined', () => {
   expect(result?.status).toBeUndefined();
 });
 
-test('keeps provider kind and open fields, and drops unknown shapes', () => {
+test('keeps provider kind and open fields', () => {
   const value = {
     v: 1,
     kind: 'provider',
@@ -90,7 +90,9 @@ test('keeps provider kind and open fields, and drops unknown shapes', () => {
     error: { message: 'x', code: 'y' },
   };
 
-  expect(readToolStep(value)).toEqual({
+  const result = readToolStep(value);
+
+  expect(result).toEqual({
     v: 1,
     kind: 'provider',
     builtin: 'web_search',
@@ -100,11 +102,14 @@ test('keeps provider kind and open fields, and drops unknown shapes', () => {
     parentToolCallId: 'p',
     error: { message: 'x', code: 'y' },
   });
-  expect(readToolStep('nope')).toBeUndefined();
-  expect(readToolStep(null)).toBeUndefined();
-  expect(readToolStep({ v: 2, kind: 'server', status: 'running' })).toBe(
-    undefined,
-  );
+});
+
+test('drops values that are not v1 or legacy steps', () => {
+  const unsupported = { v: 2, kind: 'server', status: 'running' };
+
+  const results = ['nope', null, unsupported].map((v) => readToolStep(v));
+
+  expect(results).toEqual([undefined, undefined, undefined]);
 });
 
 test('failed wins over a later completed step', () => {
@@ -222,10 +227,15 @@ test('reads answer annotations', () => {
 
   expect(result?.citations).toEqual([{ sourceId: 's', quote: 'q', block: 0 }]);
   expect(result?.sources).toEqual([{ id: 's', kind: 'url', title: 'T' }]);
-  expect(readAnswerAnnotations(7)).toBeUndefined();
 });
 
-test('a failed merge without an error gets a default error', () => {
+test('drops answer annotations that are not an object', () => {
+  const result = readAnswerAnnotations(7);
+
+  expect(result).toBeUndefined();
+});
+
+test('a failed merge from a running step gets a default error', () => {
   const running = step();
 
   const result = mergeToolStep(
@@ -237,4 +247,93 @@ test('a failed merge without an error gets a default error', () => {
 
   expect(result.error).toEqual({ message: 'Tool call did not finish' });
   expect(fresh.status).toBe('running');
+});
+
+test('a failed first write gets a default error', () => {
+  const failed = {
+    v: 1 as const,
+    kind: 'server' as const,
+    status: 'failed' as const,
+  };
+
+  const result = mergeToolStep(undefined, failed, 'call');
+
+  expect(result.error).toEqual({ message: 'Tool call did not finish' });
+});
+
+test('a previously failed step without an error gets a default error', () => {
+  const failed = step({ status: 'failed' });
+
+  const result = mergeToolStep(failed, step({ status: 'completed' }), 'call');
+
+  expect(result.error).toEqual({ message: 'Tool call did not finish' });
+});
+
+test('a failed first metadata write gets a default error', () => {
+  const next = { 'b4.step': step({ status: 'failed' }) };
+
+  const result = mergeStepMetadata(undefined, next, 'call');
+
+  expect((result?.['b4.step'] as ToolStep).error).toEqual({
+    message: 'Tool call did not finish',
+  });
+});
+
+test('a settled step keeps its label when a label-less settle repeats', () => {
+  const denied = step({ status: 'denied', label: 'Denied by user' });
+
+  const result = mergeToolStep(
+    denied,
+    { v: 1, kind: 'server', status: 'denied' },
+    'call',
+  );
+
+  expect(result.label).toBe('Denied by user');
+});
+
+test('a supplied label survives a bad settle', () => {
+  const running = step({ label: 'Searching the web' });
+  const failed = step({ status: 'failed', label: 'Web search failed' });
+
+  const result = mergeToolStep(running, failed, 'message');
+
+  expect(result.label).toBe('Web search failed');
+});
+
+test('a legacy value keeps a stored provider kind', () => {
+  const provider = { 'b4.step': step({ kind: 'provider', label: 'a' }) };
+  const legacy = { 'b4.step': { status: 'completed' } };
+
+  const result = mergeStepMetadata(provider, legacy, 'call');
+
+  expect((result?.['b4.step'] as ToolStep).kind).toBe('provider');
+  expect((result?.['b4.step'] as ToolStep).status).toBe('completed');
+});
+
+test('an explicit kind in the next value is honoured', () => {
+  const server = { 'b4.step': step({ kind: 'server' }) };
+  const provider = { 'b4.step': { v: 1, kind: 'provider', status: 'running' } };
+
+  const result = mergeStepMetadata(server, provider, 'call');
+
+  expect((result?.['b4.step'] as ToolStep).kind).toBe('provider');
+});
+
+test('an unreadable next step keeps the previous step', () => {
+  const previous = { 'b4.step': step({ label: 'a' }), openai: { id: 1 } };
+  const unreadable = {
+    'b4.step': { v: 2, kind: 'server', status: 'completed' },
+  };
+
+  const result = mergeStepMetadata(previous, unreadable, 'call');
+
+  expect(result?.['b4.step']).toBe(previous['b4.step']);
+});
+
+test('an unreadable first step is left out', () => {
+  const unreadable = { 'b4.step': 'junk', openai: { id: 1 } };
+
+  const result = mergeStepMetadata(undefined, unreadable, 'call');
+
+  expect(result).toEqual({ openai: { id: 1 } });
 });
