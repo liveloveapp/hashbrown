@@ -2683,3 +2683,176 @@ test('a snapshot stamps its run only on activities after the last user message',
     assistantMessageId: 'assistant-2',
   });
 });
+
+function activeAttempt() {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  return reducer(initialized, internalActions.generationAttemptStarted());
+}
+
+function applyEvents(
+  state: ReturnType<typeof activeAttempt>,
+  events: readonly AGUIEvent[],
+) {
+  return events.reduce(
+    (current, event) =>
+      reducer(current, apiActions.generateMessageEvent(event)),
+    state,
+  );
+}
+
+function readStep(
+  state: ReturnType<typeof activeAttempt>,
+  toolCallId: string,
+): unknown {
+  for (const message of state.draft) {
+    if (message.role !== 'assistant') continue;
+    const tool = message.toolCalls?.find((call) => call.id === toolCallId);
+    if (tool) return tool.metadata?.['b4.step'];
+  }
+  return undefined;
+}
+
+function startTool(
+  toolCallId: string,
+  metadata?: Record<string, unknown>,
+): AGUIEvent {
+  return {
+    type: EventType.TOOL_CALL_START,
+    toolCallId,
+    toolCallName: 'lookup',
+    parentMessageId: 'assistant-1',
+    ...(metadata === undefined ? {} : { metadata }),
+  } as AGUIEvent;
+}
+
+function stepEvent(value: Record<string, unknown>): AGUIEvent {
+  return { type: EventType.CUSTOM, name: 'b4.step', value } as AGUIEvent;
+}
+
+test('folds a legacy B4 CUSTOM step into the call metadata', () => {
+  const active = activeAttempt();
+
+  const folded = applyEvents(active, [
+    startTool('c1'),
+    stepEvent({ toolCallId: 'c1', status: 'running', label: 'Fetching' }),
+  ]);
+
+  expect(readStep(folded, 'c1')).toMatchObject({
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    label: 'Fetching',
+  });
+});
+
+test('holds a b4.step for an unknown call until TOOL_CALL_START', () => {
+  const active = activeAttempt();
+
+  const held = applyEvents(active, [
+    stepEvent({ toolCallId: 'c1', status: 'running', label: 'Queued' }),
+  ]);
+  const started = applyEvents(held, [startTool('c1')]);
+  const restarted = applyEvents(started, [
+    stepEvent({ toolCallId: 'c2', status: 'running' }),
+    startTool('c2', { other: true }),
+  ]);
+
+  expect(held.draft).toEqual([]);
+  expect(readStep(started, 'c1')).toMatchObject({
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    label: 'Queued',
+  });
+  expect(started.pendingToolSteps).toEqual({});
+  expect(readStep(restarted, 'c2')).toMatchObject({ status: 'running' });
+});
+
+test('an interrupted run keeps pending tool calls open and cancels the rest', () => {
+  const running = { v: 1, kind: 'server', status: 'running', label: 'Busy' };
+  const active = applyEvents(activeAttempt(), [
+    startTool('c1', { 'b4.step': running }),
+    startTool('c2', { 'b4.step': running }),
+    startTool('c3'),
+    startTool('c4'),
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-4',
+      toolCallId: 'c4',
+      content: 'done',
+    } as AGUIEvent,
+  ]);
+
+  const finished = applyEvents(active, [
+    {
+      type: EventType.RUN_FINISHED,
+      threadId: 't',
+      runId: 'r',
+      timestamp: 5000,
+      outcome: {
+        type: 'interrupt',
+        interrupts: [{ id: 'i1', reason: 'tool_approval', toolCallId: 'c1' }],
+      },
+    } as AGUIEvent,
+  ]);
+
+  expect(readStep(finished, 'c1')).toEqual(running);
+  expect(readStep(finished, 'c2')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    settledAt: 5000,
+  });
+  expect(readStep(finished, 'c3')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    settledAt: 5000,
+  });
+  expect(readStep(finished, 'c4')).toBeUndefined();
+});
+
+test('a failed run settles open steps as failed', () => {
+  const running = { v: 1, kind: 'server', status: 'running', label: 'Busy' };
+  const done = { v: 1, kind: 'server', status: 'completed', label: 'Done' };
+  const active = applyEvents(activeAttempt(), [
+    startTool('c1', { 'b4.step': running }),
+    startTool('c2', { 'b4.step': done }),
+  ]);
+
+  const failed = applyEvents(active, [
+    {
+      type: EventType.RUN_ERROR,
+      message: 'boom',
+      timestamp: 7000,
+    } as AGUIEvent,
+  ]);
+
+  expect(readStep(failed, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    settledAt: 7000,
+    error: { message: 'Tool call did not finish' },
+  });
+  expect(readStep(failed, 'c2')).toEqual(done);
+});
+
+test('ignores CUSTOM events with other names', () => {
+  const active = applyEvents(activeAttempt(), [startTool('c1')]);
+
+  const next = applyEvents(active, [
+    {
+      type: EventType.CUSTOM,
+      name: 'other',
+      value: { toolCallId: 'c1', status: 'failed' },
+    } as AGUIEvent,
+  ]);
+
+  expect(next.draft).toBe(active.draft);
+  expect(next.pendingToolSteps).toBe(active.pendingToolSteps);
+  expect(readStep(next, 'c1')).toBeUndefined();
+});

@@ -12,6 +12,7 @@ import {
   ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
 import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
+import { completeRunningStep, ɵmergeStepMetadata } from '../models/tool-step';
 
 export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
   readonly committed: EntityState<Chat.Internal.ToolCall>;
@@ -60,15 +61,19 @@ function writeOwn<T>(record: Record<string, T>, key: string, value: T) {
   });
 }
 
+/**
+ * Merges incoming metadata into a tool call's, applying the `b4.step` merge
+ * rules so the draft agrees with the canonical projection.
+ */
 function mergeMetadata(
   first: Chat.Internal.ToolCall['metadata'],
   second: Record<string, unknown> | undefined,
+  source: 'call' | 'message',
 ): Chat.Internal.ToolCall['metadata'] | undefined {
   if (second === undefined) return first;
-  const merged = {
-    ...(first === undefined ? {} : structuredClone(first)),
-    ...structuredClone(second),
-  };
+  const merged = structuredClone(
+    ɵmergeStepMetadata(first, second, source) ?? {},
+  ) as Record<string, unknown>;
   return sameMetadata(first, merged) ? first : merged;
 }
 
@@ -189,6 +194,7 @@ export const reducer = createReducer(
       const metadata = mergeMetadata(
         existing?.metadata,
         action.payload.metadata,
+        'call',
       );
       if (
         existing &&
@@ -251,7 +257,11 @@ export const reducer = createReducer(
       const toolCallName =
         (event as { readonly toolCallName?: string }).toolCallName ??
         state.activeToolCallName;
-      const metadata = mergeMetadata(existing?.metadata, event.metadata);
+      const metadata = mergeMetadata(
+        existing?.metadata,
+        event.metadata,
+        'call',
+      );
       const ending = event.type === EventType.TOOL_CALL_END;
       const activeToolCallId = ending ? undefined : id;
       const activeToolCallName = ending ? undefined : toolCallName;
@@ -328,10 +338,12 @@ export const reducer = createReducer(
         error === undefined
           ? { status: 'fulfilled', value: action.payload.content }
           : { status: 'rejected', reason: error };
-      const metadata = mergeMetadata(
+      const merged = mergeMetadata(
         existing.metadata,
         action.payload.metadata,
+        'message',
       );
+      const metadata = completeRunningStep(merged) as typeof merged;
       const draft = updateEntity(state.draft, action.payload.toolCallId, {
         status: 'done',
         result,
@@ -665,7 +677,11 @@ function reconcilePreparedEntities(
         : { source };
     writeOwn(nextProvenance, toolCall.id, next);
     if (local !== next) provenanceChanged = true;
-    const metadata = mergeMetadata(existing.metadata, toolCall.metadata);
+    const metadata = mergeMetadata(
+      existing.metadata,
+      toolCall.metadata,
+      'message',
+    );
     const encryptedValue = toolCall.encryptedValue;
     return metadata === existing.metadata &&
       encryptedValue === existing.encryptedValue

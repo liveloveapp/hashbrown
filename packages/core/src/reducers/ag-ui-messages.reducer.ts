@@ -20,6 +20,17 @@ import {
   ɵreadAgUiMessageSnapshot,
 } from './ag-ui-message-history';
 import { createReducer, on } from '../utils/micro-ngrx';
+import {
+  settleOpenSteps,
+  ɵmergeStepMetadata,
+  ɵmergeToolStep,
+  ɵreadToolStep,
+  ɵTOOL_STEP_EVENT_NAME,
+  ɵTOOL_STEP_METADATA_KEY,
+  type ɵToolStep,
+} from '../models/tool-step';
+
+const NO_PENDING_STEPS: Readonly<Record<string, ɵToolStep>> = Object.freeze({});
 
 /** Canonical AG-UI history synchronized transactionally with an agent run. @internal */
 export interface AgUiMessagesState {
@@ -48,6 +59,11 @@ export interface AgUiMessagesState {
   readonly lastAssistantMessageId: string | undefined;
   /** Why the last event, an `ACTIVITY_DELTA`, was dropped; logged by the effect. */
   readonly activityDeltaDropReason: string | undefined;
+  /**
+   * `b4.step` CUSTOM steps for calls not started yet in this attempt, keyed
+   * by tool call id and applied when `TOOL_CALL_START` arrives.
+   */
+  readonly pendingToolSteps: Readonly<Record<string, ɵToolStep>>;
 }
 
 /** The canonical outcome of one AG-UI message event. @internal */
@@ -80,6 +96,7 @@ export const initialAgUiMessagesState: AgUiMessagesState = Object.freeze({
   lastToolCallId: undefined,
   lastAssistantMessageId: undefined,
   activityDeltaDropReason: undefined,
+  pendingToolSteps: NO_PENDING_STEPS,
 });
 
 /** Reduces canonical AG-UI messages independently from Hashbrown projections. @internal */
@@ -285,10 +302,12 @@ export function ɵdecideAgUiMessageEvent(
           assistantMessageId: state.lastAssistantMessageId,
           toolCallId: state.lastToolCallId,
         },
+        pendingToolSteps: state.pendingToolSteps,
       });
     const lifecycle = {
       ...nextLifecycle(state, event, draft),
       activityDeltaDropReason: activityDelta?.dropped,
+      pendingToolSteps: nextPendingToolSteps(state, event, draft),
     };
     const draftFinishedTextMessageIds = nextFinishedTextMessageIds(
       state,
@@ -359,6 +378,8 @@ export function applyCanonicalMessageEvent(
     readonly finishedTextMessageIds?: readonly string[];
     /** Run facts that link a newly created activity. */
     readonly activityArrival?: ActivityArrival;
+    /** `b4.step` CUSTOM steps held for calls that have not started yet. */
+    readonly pendingToolSteps?: Readonly<Record<string, ɵToolStep>>;
   },
 ): readonly Readonly<Message>[] {
   switch (event.type) {
@@ -454,6 +475,7 @@ export function applyCanonicalMessageEvent(
         event.toolCallName,
         event.parentMessageId,
         event,
+        readHeldStep(context?.pendingToolSteps, event.toolCallId),
       );
     case EventType.TOOL_CALL_ARGS:
       return appendToolCallArguments(
@@ -466,10 +488,26 @@ export function applyCanonicalMessageEvent(
       return appendToolCallArguments(messages, event.toolCallId, '', event);
     case EventType.TOOL_CALL_CHUNK:
       return event.toolCallId && event.toolCallName
-        ? appendOrStartToolCall(messages, event)
+        ? appendOrStartToolCall(
+            messages,
+            event,
+            readHeldStep(context?.pendingToolSteps, event.toolCallId),
+          )
         : messages;
     case EventType.TOOL_CALL_RESULT:
       return upsertToolResult(messages, event);
+    case EventType.CUSTOM:
+      return event.name === ɵTOOL_STEP_EVENT_NAME
+        ? foldCustomToolStep(messages, event.value)
+        : messages;
+    case EventType.RUN_ERROR:
+      return settleToolSteps(messages, 'failed', new Set(), settleTime(event));
+    case EventType.RUN_FINISHED: {
+      const keepOpen = readFinishedKeepOpen(event);
+      return keepOpen === undefined
+        ? messages
+        : settleToolSteps(messages, 'cancelled', keepOpen, settleTime(event));
+    }
     default:
       return messages;
   }
@@ -499,6 +537,7 @@ function inactiveAttempt() {
     lastToolCallId: undefined,
     lastAssistantMessageId: undefined,
     activityDeltaDropReason: undefined,
+    pendingToolSteps: NO_PENDING_STEPS,
   } as const;
 }
 
@@ -812,6 +851,7 @@ function startToolCall(
   toolCallName: string,
   parentMessageId: string | undefined,
   event: AGUIEvent,
+  heldStep?: ɵToolStep,
 ): readonly Readonly<Message>[] {
   if (parentMessageId === toolCallId) {
     throw new Error(`AG-UI tool call ${toolCallId} cannot parent itself`);
@@ -832,10 +872,13 @@ function startToolCall(
     ) {
       throw new Error(`AG-UI tool call ${toolCallId} cannot change parent`);
     }
-    if (event.metadata === undefined) {
+    if (event.metadata === undefined && heldStep === undefined) {
       return messages;
     }
-    const merged = mergeEventFields(existing.tool, event) as NonNullable<
+    const merged = mergeEventFields(
+      withHeldStep(existing.tool, heldStep),
+      event,
+    ) as NonNullable<
       Extract<Message, { role: 'assistant' }>['toolCalls']
     >[number];
     if (merged === existing.tool) return messages;
@@ -873,11 +916,14 @@ function startToolCall(
   }
   const tool = freezeToolCall(
     mergeEventFields(
-      {
-        id: toolCallId,
-        type: 'function' as const,
-        function: { name: toolCallName, arguments: '' },
-      },
+      withHeldStep(
+        {
+          id: toolCallId,
+          type: 'function' as const,
+          function: { name: toolCallName, arguments: '' },
+        },
+        heldStep,
+      ),
       event,
     ) as NonNullable<
       Extract<Message, { role: 'assistant' }>['toolCalls']
@@ -895,6 +941,7 @@ function startToolCall(
 function appendOrStartToolCall(
   messages: readonly Readonly<Message>[],
   event: Extract<AGUIEvent, { type: EventType.TOOL_CALL_CHUNK }>,
+  heldStep?: ɵToolStep,
 ): readonly Readonly<Message>[] {
   if (!event.toolCallId || !event.toolCallName) {
     return messages;
@@ -919,6 +966,7 @@ function appendOrStartToolCall(
         event.toolCallName,
         event.parentMessageId,
         event,
+        heldStep,
       );
   return event.delta === undefined && event.metadata === undefined
     ? started
@@ -1136,8 +1184,11 @@ function mergeEventFields<T extends Record<string, unknown>>(
       ? {}
       : {
           metadata: Object.freeze({
-            ...(message['metadata'] as Record<string, unknown> | undefined),
-            ...(ɵownAgUiJsonValue(metadata) as Record<string, unknown>),
+            ...ɵmergeStepMetadata(
+              message['metadata'] as Record<string, unknown> | undefined,
+              ɵownAgUiJsonValue(metadata) as Record<string, unknown>,
+              message['role'] === 'tool' ? 'message' : 'call',
+            ),
           }),
         }),
     ...(typeof name === 'string' ? { name } : {}),
@@ -1152,4 +1203,202 @@ function mergeEventFields<T extends Record<string, unknown>>(
 function ownEventField(event: object, field: string): unknown {
   const descriptor = Object.getOwnPropertyDescriptor(event, field);
   return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+}
+
+type CanonicalToolCall = NonNullable<
+  Extract<Message, { role: 'assistant' }>['toolCalls']
+>[number];
+
+function readHeldStep(
+  pending: Readonly<Record<string, ɵToolStep>> | undefined,
+  toolCallId: string | undefined,
+): ɵToolStep | undefined {
+  return pending !== undefined &&
+    toolCallId !== undefined &&
+    Object.hasOwn(pending, toolCallId)
+    ? pending[toolCallId]
+    : undefined;
+}
+
+/** Folds a held CUSTOM step into a tool call before its START metadata. */
+function withHeldStep<T extends Record<string, unknown>>(
+  tool: T,
+  heldStep: ɵToolStep | undefined,
+): T {
+  if (heldStep === undefined) return tool;
+  return {
+    ...tool,
+    metadata: Object.freeze({
+      ...ɵmergeStepMetadata(
+        tool['metadata'] as Record<string, unknown> | undefined,
+        { [ɵTOOL_STEP_METADATA_KEY]: heldStep },
+        'call',
+      ),
+    }),
+  };
+}
+
+/** Reads the call a CUSTOM `b4.step` value targets, if it is a readable step. */
+function readCustomStepTarget(value: unknown): string | undefined {
+  return ɵreadToolStep(value)?.toolCallId;
+}
+
+/** Folds a CUSTOM `b4.step` into its call's metadata, as a call step. */
+function foldCustomToolStep(
+  messages: readonly Readonly<Message>[],
+  value: unknown,
+): readonly Readonly<Message>[] {
+  const toolCallId = readCustomStepTarget(value);
+  if (toolCallId === undefined) return messages;
+  const found = findToolCall(messages, toolCallId);
+  if (!found) return messages;
+  const metadata = ɵmergeStepMetadata(
+    found.tool.metadata as Record<string, unknown> | undefined,
+    { [ɵTOOL_STEP_METADATA_KEY]: value },
+    'call',
+  );
+  return replaceToolCall(messages, found, {
+    ...found.tool,
+    metadata: Object.freeze({ ...metadata }),
+  } as CanonicalToolCall);
+}
+
+/**
+ * Holds a CUSTOM `b4.step` for a call the draft does not have yet, and drops
+ * a held step once its call has started.
+ */
+function nextPendingToolSteps(
+  state: AgUiMessagesState,
+  event: AGUIEvent,
+  draft: readonly Readonly<Message>[],
+): Readonly<Record<string, ɵToolStep>> {
+  const pending = state.pendingToolSteps;
+  if (event.type === EventType.CUSTOM) {
+    if (event.name !== ɵTOOL_STEP_EVENT_NAME) return pending;
+    const step = ɵreadToolStep(event.value);
+    const id = step?.toolCallId;
+    if (step === undefined || id === undefined || findToolCall(draft, id)) {
+      return pending;
+    }
+    return Object.freeze({
+      ...pending,
+      [id]: ɵmergeToolStep(readHeldStep(pending, id), step, 'call'),
+    });
+  }
+  if (
+    (event.type === EventType.TOOL_CALL_START ||
+      event.type === EventType.TOOL_CALL_CHUNK) &&
+    readHeldStep(pending, event.toolCallId) !== undefined &&
+    event.toolCallId !== undefined &&
+    findToolCall(draft, event.toolCallId)
+  ) {
+    const id = event.toolCallId;
+    return Object.freeze(
+      Object.fromEntries(Object.entries(pending).filter(([key]) => key !== id)),
+    );
+  }
+  return pending;
+}
+
+function settleTime(event: AGUIEvent): number {
+  return typeof event.timestamp === 'number' ? event.timestamp : Date.now();
+}
+
+/**
+ * The calls a `RUN_FINISHED` keeps open, or `undefined` when it settles
+ * nothing. An interrupt keeps the calls its interrupts name, plus any
+ * `pendingToolCallIds`; a cancel keeps none; a success settles nothing.
+ */
+function readFinishedKeepOpen(
+  event: Extract<AGUIEvent, { type: EventType.RUN_FINISHED }>,
+): ReadonlySet<string> | undefined {
+  const outcome = (event as { readonly outcome?: unknown }).outcome;
+  if (typeof outcome !== 'object' || outcome === null) return undefined;
+  const record = outcome as Record<string, unknown>;
+  if (record['type'] === 'cancelled') return new Set();
+  if (record['type'] !== 'interrupt') return undefined;
+  const interrupts = Array.isArray(record['interrupts'])
+    ? record['interrupts']
+    : [];
+  const pending = Array.isArray(record['pendingToolCallIds'])
+    ? record['pendingToolCallIds']
+    : [];
+  return new Set(
+    [
+      ...interrupts.map((interrupt: unknown) =>
+        typeof interrupt === 'object' && interrupt !== null
+          ? (interrupt as Record<string, unknown>)['toolCallId']
+          : undefined,
+      ),
+      ...pending,
+    ].filter((id): id is string => typeof id === 'string'),
+  );
+}
+
+/**
+ * Settles the step of every open call. A call is open when it has no result
+ * and its step is absent or running; a call with no step gets one.
+ */
+function settleToolSteps(
+  messages: readonly Readonly<Message>[],
+  outcome: 'failed' | 'cancelled',
+  keepOpen: ReadonlySet<string>,
+  at: number,
+): readonly Readonly<Message>[] {
+  const answered = new Set(
+    messages.flatMap((message) =>
+      message.role === 'tool' ? [message.toolCallId] : [],
+    ),
+  );
+  const open: Record<string, ɵToolStep> = {};
+  for (const id of findToolCallIds(messages)) {
+    if (answered.has(id) || keepOpen.has(id)) continue;
+    const found = findToolCall(messages, id);
+    const step = ɵreadToolStep(found?.tool.metadata?.[ɵTOOL_STEP_METADATA_KEY]);
+    if (
+      step !== undefined &&
+      step.status !== undefined &&
+      step.status !== 'running'
+    ) {
+      continue;
+    }
+    Object.defineProperty(open, id, {
+      value:
+        step === undefined
+          ? { v: 1, kind: 'server', status: 'running' }
+          : { ...step, status: 'running' },
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
+  }
+  const settled = settleOpenSteps(open, outcome, new Set(), at);
+  return Object.entries(settled).reduce((current, [id, step]) => {
+    const found = findToolCall(current, id);
+    if (!found) return current;
+    return replaceToolCall(current, found, {
+      ...found.tool,
+      metadata: Object.freeze({
+        ...found.tool.metadata,
+        [ɵTOOL_STEP_METADATA_KEY]: step,
+      }),
+    } as CanonicalToolCall);
+  }, messages);
+}
+
+function replaceToolCall(
+  messages: readonly Readonly<Message>[],
+  found: NonNullable<ReturnType<typeof findToolCall>>,
+  tool: CanonicalToolCall,
+): readonly Readonly<Message>[] {
+  const frozen = freezeToolCall(tool);
+  const assistant = freezeMessage({
+    ...found.message,
+    toolCalls: Object.freeze(
+      (found.message.toolCalls ?? []).map((current) =>
+        current.id === tool.id ? frozen : current,
+      ),
+    ),
+  } as Message);
+  return replaceAt(messages, found.messageIndex, assistant);
 }

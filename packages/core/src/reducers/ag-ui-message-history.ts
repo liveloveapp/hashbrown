@@ -7,6 +7,7 @@ import {
 } from '@ag-ui/core';
 import { MessageSchema } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
+import { completeRunningStep, ɵmergeStepMetadata } from '../models/tool-step';
 import { s } from '../schema';
 import { resolveWithSchema } from '../utils';
 import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
@@ -886,7 +887,8 @@ function projectToolCall(
   const tool = Object.hasOwn(toolsByName, toolCall.function.name)
     ? toolsByName[toolCall.function.name]
     : undefined;
-  const metadata = mergeMetadata(toolCall.metadata, result?.metadata);
+  const merged = mergeMetadata(toolCall.metadata, result?.metadata);
+  const metadata = result ? completeRunningStep(merged) : merged;
   const encryptedValue = toolCall.encryptedValue ?? result?.encryptedValue;
   const argumentsResolved =
     tool && s.isHashbrownType(tool.schema)
@@ -920,10 +922,9 @@ function mergeMetadata(
     return undefined;
   }
 
-  return {
-    ...(first === undefined ? {} : structuredClone(first)),
-    ...(second === undefined ? {} : structuredClone(second)),
-  };
+  return structuredClone({
+    ...ɵmergeStepMetadata(first, second ?? {}, 'message'),
+  });
 }
 
 function serializeContent(value: unknown): string {

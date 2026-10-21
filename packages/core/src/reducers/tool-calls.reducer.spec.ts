@@ -1,7 +1,9 @@
-import { EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { s } from '../schema';
+import { createStore } from '../utils/micro-ngrx';
+import { reducers, ɵprepareRootAction } from './index';
 import { reducer, selectPendingToolCalls } from './tool-calls.reducer';
 
 test('includes a developer tool named output in pending tool calls', () => {
@@ -899,4 +901,154 @@ test('keeps projection tool names canonical when compact chunks or success decor
 
   expect(conflicted).toBe(active);
   expect(succeeded.entities['tool-1']?.name).toBe('lookup');
+});
+
+function createRootStore() {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  return store;
+}
+
+function dispatchEvents(
+  store: ReturnType<typeof createRootStore>,
+  events: readonly AGUIEvent[],
+) {
+  for (const event of events) {
+    store.dispatch(apiActions.generateMessageEvent(event));
+  }
+}
+
+function readRootStep(
+  store: ReturnType<typeof createRootStore>,
+  toolCallId: string,
+): unknown {
+  return store.read(
+    (state) => state.toolCalls.entities[toolCallId]?.metadata?.['b4.step'],
+  );
+}
+
+test('a failed step survives a later fulfilled TOOL_CALL_RESULT step', () => {
+  const store = createRootStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: {
+        toolCallId: 'c1',
+        status: 'failed',
+        error: { message: 'Timed out' },
+      },
+    },
+  ]);
+
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'completed' } },
+    } as AGUIEvent,
+  ]);
+
+  expect(readRootStep(store, 'c1')).toMatchObject({
+    status: 'failed',
+    error: { message: 'Timed out' },
+  });
+});
+
+test('a RESULT step beats the call step', () => {
+  const canonical = [
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [
+        {
+          id: 'c1',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+  ];
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: canonical }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const resulted = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'done',
+      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'completed' } },
+    } as AGUIEvent),
+  );
+
+  const ended = reducer(
+    resulted,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'cancelled' } },
+    } as AGUIEvent),
+  );
+
+  expect(ended.entities['c1']?.metadata?.['b4.step']).toMatchObject({
+    status: 'completed',
+  });
+});
+
+test('a RESULT with no step completes a running step and keeps its label', () => {
+  const store = createRootStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'server',
+          status: 'running',
+          label: 'Fetching',
+        },
+      },
+    } as AGUIEvent,
+  ]);
+
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+    },
+  ]);
+
+  expect(readRootStep(store, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+    label: 'Fetching',
+  });
 });

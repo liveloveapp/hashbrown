@@ -361,3 +361,67 @@ export function ɵmergeStepMetadata(
   }
   return merged;
 }
+
+/**
+ * Settles every open (`running`) step at the end of a run: `failed` on a run
+ * error, `cancelled` on a cancelled or interrupted run. Ids in `keepOpen`
+ * stay running. A settled step loses its running label and sources, and a
+ * failed one gets the default error. Mirrors B4's `settleOpenSteps`.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param steps - Steps keyed by tool call id.
+ * @param outcome - How the open steps settle.
+ * @param keepOpen - Tool call ids that stay open.
+ * @param at - The settle time, in epoch milliseconds.
+ * @returns A new record; the input is not modified.
+ */
+export function settleOpenSteps(
+  steps: Readonly<Record<string, ɵToolStep>>,
+  outcome: 'failed' | 'cancelled',
+  keepOpen: ReadonlySet<string>,
+  at: number,
+): Record<string, ɵToolStep> {
+  return Object.fromEntries(
+    Object.entries(steps).map(([id, step]) => {
+      if (step.status !== 'running' || keepOpen.has(id)) return [id, step];
+      return [
+        id,
+        compact({
+          ...step,
+          label: undefined,
+          sources: undefined,
+          status: outcome,
+          settledAt: at,
+          ...(outcome === 'failed'
+            ? { error: { message: 'Tool call did not finish' } }
+            : {}),
+        }),
+      ];
+    }),
+  );
+}
+
+/**
+ * Settles a still-`running` `b4.step` as `completed` once its call has a
+ * result, keeping the label. Any other step, or none, is left as it is.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param metadata - A tool call's merged metadata.
+ * @returns The metadata, or a copy with the step completed.
+ */
+export function completeRunningStep(
+  metadata: Metadata | undefined,
+): Metadata | undefined {
+  const raw = metadata?.[ɵTOOL_STEP_METADATA_KEY];
+  if (!isRecord(raw)) return metadata;
+  const step = ɵreadToolStep(raw);
+  if (step === undefined || (step.status ?? 'running') !== 'running') {
+    return metadata;
+  }
+  return {
+    ...metadata,
+    [ɵTOOL_STEP_METADATA_KEY]: { ...raw, status: 'completed' },
+  };
+}
