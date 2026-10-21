@@ -24,8 +24,8 @@ export function AtcDemoVideo() {
         <source src={video.mp4} type="video/mp4" />
       </video>
       <figcaption>
-        atc in 45 seconds: expose your components, give the model tools, render
-        the stream.
+        atc in about a minute: decide where text goes, filter the map, and answer
+        with your own components.
       </figcaption>
     </figure>
   );
