@@ -17,6 +17,13 @@ export function filterRequestInput(
   return JSON.stringify({ request, current });
 }
 
+/**
+ * What the filter pill says when a filter run fails (an HTTP error, the
+ * network, the model). Text only; it clears on the next request or the pill's
+ * x.
+ */
+export const FILTER_FAILED_NOTICE = "Couldn't filter. Try again.";
+
 /** A filter with every field "any". */
 const EMPTY_FILTER: MapFilter = {
   airline: null,
@@ -59,6 +66,13 @@ export interface FilterSync {
    * omitted are dropped.
    */
   finish(partial: unknown): void;
+  /**
+   * Ends the run after an error and puts back the filter it refined (the
+   * `begin` base, or no filter), so a half-applied answer never lingers.
+   * Returns true when a run was live; false when it had already finished,
+   * been cancelled or been superseded, and nothing changed.
+   */
+  fail(): boolean;
   /** Stops listening to the store. */
   dispose(): void;
 }
@@ -75,6 +89,8 @@ export function createFilterSync(
 ): FilterSync {
   let live = false;
   let base: MapFilter = EMPTY_FILTER;
+  // The filter the run started from, as `begin` received it.
+  let start: MapFilter | null = null;
   let applied: string | null = null;
   // Whether a filter was on the map after the last store change.
   let shown = false;
@@ -99,6 +115,7 @@ export function createFilterSync(
   return {
     begin(current) {
       live = true;
+      start = current;
       base = current ?? EMPTY_FILTER;
       applied = current === null ? null : JSON.stringify(current);
       shown = current !== null;
@@ -126,6 +143,19 @@ export function createFilterSync(
         apply(parsed.filter);
       }
       live = false;
+    },
+    fail() {
+      if (!live) {
+        return false;
+      }
+      live = false;
+      if (start === null) {
+        store.clearMapFilter();
+      } else {
+        store.setMapFilter(start);
+      }
+
+      return true;
     },
     dispose: unsubscribe,
   };

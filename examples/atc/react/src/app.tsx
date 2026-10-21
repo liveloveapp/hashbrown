@@ -1,5 +1,6 @@
 import {
   browserStorage,
+  FILTER_FAILED_NOTICE,
   filterBlocks,
   filterPanelVisible,
   focusOpensSheet,
@@ -119,9 +120,12 @@ export function App() {
           <AirspaceMap
             obstruction={chatSheet}
             streaming={mapFilter.streaming}
+            notice={mapFilter.error ? FILTER_FAILED_NOTICE : null}
+            onClearFilter={mapFilter.dismissError}
           />
           {showStream &&
           filterRoute !== null &&
+          mapFilter.error === null &&
           filterPanelVisible({
             route: filterRoute,
             loading,

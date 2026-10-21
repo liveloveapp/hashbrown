@@ -35,6 +35,14 @@ export interface MapFilterHandle {
   readonly output: unknown;
   /** True while the filter request is running. */
   readonly loading: boolean;
+  /**
+   * Why the latest filter request failed (HTTP, network or model), or null.
+   * The map is back on the filter that request refined. Cleared by the next
+   * {@link MapFilterHandle.apply} and by {@link MapFilterHandle.dismissError}.
+   */
+  readonly error: Error | null;
+  /** Clears {@link MapFilterHandle.error}; the pill's x calls it. */
+  dismissError(): void;
 }
 
 /**
@@ -55,6 +63,9 @@ export function useMapFilter(
   // last chunk of a superseded run is never applied for the new one.
   const armed = useRef(true);
   const latest = useRef<unknown>(null);
+  // The completion error already handled, so a lingering one is not re-read.
+  const seenError = useRef<Error | undefined>(undefined);
+  const [failure, setFailure] = useState<Error | null>(null);
   const completion = useStructuredCompletion({
     input,
     // Required by Hashbrown; the server replaces it with the filter prompt
@@ -75,6 +86,16 @@ export function useMapFilter(
       sync.current = null;
     };
   }, [store]);
+  // A failed run puts back the filter it refined and reports the error, once.
+  useEffect(() => {
+    if (error === seenError.current) {
+      return;
+    }
+    seenError.current = error;
+    if (error && sync.current?.fail()) {
+      setFailure(error);
+    }
+  }, [error]);
   // Each streamed update goes to the store; the final one is applied whole.
   useEffect(() => {
     stopRef.current = stop;
@@ -99,6 +120,7 @@ export function useMapFilter(
       const current = store.getState().mapFilter?.filter ?? null;
       const next = filterRequestInput(request, current);
       armed.current = latest.current === null;
+      setFailure(null);
       sync.current?.begin(current);
       if (next === inputRef.current) {
         // Hashbrown sends when the input changes; blank it first so the same
@@ -115,5 +137,14 @@ export function useMapFilter(
     [isLoading, output],
   );
 
-  return { apply, streaming, output, loading: isLoading };
+  const dismissError = useCallback(() => setFailure(null), []);
+
+  return {
+    apply,
+    streaming,
+    output,
+    loading: isLoading,
+    error: failure,
+    dismissError,
+  };
 }

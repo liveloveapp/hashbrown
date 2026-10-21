@@ -182,3 +182,39 @@ test('the last chunk of a superseded run never lands, and the new run still appl
   );
   expect(kindAfterOldRun).toBeNull();
 });
+
+test('a run that fails mid-stream restores the filter it refined and reports the error', async () => {
+  const { store, model, hook } = setup();
+  const base = filterOf({ airline: 'Alaska' });
+  act(() => store.setMapFilter(base));
+  act(() => hook.result.current.apply('only jets'));
+  await waitFor(() => expect(model.requests).toHaveLength(1));
+  act(() => model.push('{"kind":"jet","airline":null,'));
+  await waitFor(() =>
+    expect(store.getState().mapFilter?.filter.kind).toBe('jet'),
+  );
+
+  act(() => model.fail());
+
+  await waitFor(() => expect(hook.result.current.error).not.toBeNull());
+  expect(store.getState().mapFilter?.filter).toEqual(base);
+  expect(hook.result.current.loading).toBe(false);
+});
+
+test('the error clears on the next apply and on dismiss', async () => {
+  const { model, hook } = setup();
+  act(() => hook.result.current.apply('Alaska'));
+  await waitFor(() => expect(model.requests).toHaveLength(1));
+  act(() => model.fail());
+  await waitFor(() => expect(hook.result.current.error).not.toBeNull());
+
+  act(() => hook.result.current.apply('Delta'));
+  const afterApply = hook.result.current.error;
+  await waitFor(() => expect(model.requests).toHaveLength(2));
+  act(() => model.fail());
+  await waitFor(() => expect(hook.result.current.error).not.toBeNull());
+  act(() => hook.result.current.dismissError());
+
+  expect(afterApply).toBeNull();
+  expect(hook.result.current.error).toBeNull();
+});

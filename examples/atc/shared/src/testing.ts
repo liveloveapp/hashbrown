@@ -132,6 +132,8 @@ export interface FakeFilterTransport {
   push(delta: string): void;
   /** Ends the current answer. */
   finish(): void;
+  /** Ends the current answer with an AG-UI `RUN_ERROR`, as a failed model call does. */
+  fail(message?: string): void;
 }
 
 /**
@@ -175,6 +177,9 @@ export function fakeFilterTransport(): FakeFilterTransport {
               return;
             }
             yield event;
+            if (event.type === 'RUN_ERROR') {
+              return;
+            }
           }
         })(),
       };
@@ -192,6 +197,8 @@ export function fakeFilterTransport(): FakeFilterTransport {
         delta,
       } as AGUIEvent),
     finish: () => emit(null),
+    fail: (message = 'Filter failed') =>
+      emit({ type: 'RUN_ERROR', message } as AGUIEvent),
   };
 }
 

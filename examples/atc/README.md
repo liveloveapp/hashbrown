@@ -52,7 +52,8 @@ Enter will send the text.
 2. **Filter.** A filter request goes to a structured completion that streams a
    `MapFilter` field by field into a pill of chips. The filter is app state: the map dims
    the planes it hides, and a later request refines it. Planes you point at (selected,
-   highlighted or followed) are never dimmed. See `angular/src/app/filter.ts` and
+   highlighted or followed) are never dimmed. If the request fails, the map goes back to
+   the filter it refined and the pill says so. See `angular/src/app/filter.ts` and
    `react/src/filter.tsx`.
 3. **Generate.** A question goes to the chat, which calls browser-side tools and renders
    only the cards the decision picked, plus Markdown.

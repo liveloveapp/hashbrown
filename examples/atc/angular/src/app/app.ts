@@ -1,5 +1,6 @@
 import {
   type AtcState,
+  FILTER_FAILED_NOTICE,
   filterBlocks,
   filterPanelVisible,
   focusOpensSheet,
@@ -70,6 +71,8 @@ import { StreamPanel } from './stream-panel';
         <atc-airspace-map
           [obstruction]="chatSheet"
           [streaming]="mapFilter.streaming()"
+          [notice]="filterNotice()"
+          (clearFilter)="mapFilter.dismissError()"
         />
         @if (filterPanel(); as blocks) {
           <atc-stream-panel
@@ -108,11 +111,16 @@ export class App {
       }
     });
   });
+  /** What the filter pill says after a failed filter request, or null. */
+  protected readonly filterNotice = computed(() =>
+    this.mapFilter.error() ? FILTER_FAILED_NOTICE : null,
+  );
   /** The panel blocks under the filter pill, or null when there are none. */
   protected readonly filterPanel = computed(() => {
     const route = this.filterRoute();
     if (
       !this.showStream.on() ||
+      this.mapFilter.error() !== null ||
       !filterPanelVisible({
         route,
         loading: this.mapFilter.loading(),

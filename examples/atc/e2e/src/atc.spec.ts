@@ -946,6 +946,24 @@ test('the x on the filter pill clears the filter', async ({
   await expect(page.locator('.atc-plane.is-filtered-out')).toHaveCount(0);
 });
 
+test('a failed filter request says so on the pill and the x dismisses it', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  await page.route('**/api/filter**', (route) =>
+    route.fulfill({ status: 500, json: { error: 'Filter failed' } }),
+  );
+  const pill = page.getByTestId('filter-pill');
+
+  await submit(page, PROMPTS.filterJets);
+
+  await expect(pill).toContainText("Couldn't filter. Try again.");
+  await expect(pill.locator('.atc-filter-chip')).toHaveCount(0);
+  await expect(page.locator('.atc-plane.is-filtered-out')).toHaveCount(0);
+  await pill.getByRole('button', { name: 'Clear filter' }).click();
+  await expect(pill).toBeHidden();
+});
+
 test('typing a clear request removes the filter without a model', async ({
   page,
 }, testInfo) => {

@@ -71,3 +71,26 @@ test('the pill builds text nodes only', () => {
   expect(pill.element.querySelector('img')).toBeNull();
   expect(pill.element.textContent).toContain('<img src=x onerror=alert(1)>');
 });
+
+test('a notice opens the pill as text, beside any chips, until it is gone', () => {
+  let cleared = 0;
+  const pill = createFilterPill(document, () => (cleared += 1));
+  const set = applyMapFilter(INITIAL_STATE, filterOf({ kind: 'jet' }));
+
+  pill.sync(INITIAL_STATE, new Set(), "Couldn't filter. Try again.");
+  const alone = pill.element.querySelector('.atc-filter-notice');
+  const openAlone = pill.element.classList.contains('is-open');
+  pill.element.querySelector('button')?.click();
+  pill.sync(set, new Set(), "Couldn't filter. Try again.");
+  const besideChips = pill.element.querySelectorAll('.atc-filter-chip').length;
+  pill.sync(INITIAL_STATE, new Set(), null);
+
+  expect(openAlone).toBe(true);
+  expect(alone?.textContent).toBe("Couldn't filter. Try again.");
+  expect(alone?.getAttribute('role')).toBe('status');
+  expect(alone?.children).toHaveLength(0);
+  expect(cleared).toBe(1);
+  expect(besideChips).toBe(1);
+  expect(pill.element.classList.contains('is-open')).toBe(false);
+  expect(pill.element.querySelector('.atc-filter-notice')).toBeNull();
+});
