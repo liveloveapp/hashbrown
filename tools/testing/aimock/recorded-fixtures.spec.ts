@@ -1,6 +1,10 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { collectSecrets, RECORDED_FIXTURES_ROOT } from './recording';
+import {
+  collectSecrets,
+  RECORDED_FIXTURES_ROOT,
+  recordedTestSlug,
+} from './recording';
 import { findCredentialLeaks, parseEnvFile } from './secret-scan';
 
 const WORKSPACE_ROOT = resolve(__dirname, '..', '..', '..');
@@ -47,4 +51,34 @@ test('committed recorded fixtures contain no credentials', () => {
   );
 
   expect(failures).toEqual([]);
+});
+
+/** Slugs of every `test('…')` name in a spec file. */
+function specTestSlugs(specPath: string): string[] {
+  const source = readFileSync(join(WORKSPACE_ROOT, specPath), 'utf8');
+  return [...source.matchAll(/\btest\(\s*(['"`])([\s\S]*?)\1/g)].map((match) =>
+    recordedTestSlug(match[2]),
+  );
+}
+
+// Azure and OpenAI both record `openai.json`. `record-fixtures azure` clears
+// only `azure-*` slugs and `record-fixtures openai` clears every other slug,
+// so each recording's slug prefix must match the spec that owns it.
+test('openai.json recordings split into Azure and OpenAI tests by the azure- slug prefix', () => {
+  const azureSlugs = specTestSlugs('packages/azure/src/integration.spec.ts');
+  const openaiSlugs = specTestSlugs('packages/openai/src/integration.spec.ts');
+  const recordedSlugs = existsSync(RECORDED_FIXTURES_ROOT)
+    ? readdirSync(RECORDED_FIXTURES_ROOT).filter((slug) =>
+        existsSync(join(RECORDED_FIXTURES_ROOT, slug, 'openai.json')),
+      )
+    : [];
+
+  const misplaced = recordedSlugs.filter((slug) =>
+    slug.startsWith('azure-')
+      ? !azureSlugs.includes(slug)
+      : !openaiSlugs.includes(slug),
+  );
+
+  expect(openaiSlugs.filter((slug) => slug.startsWith('azure-'))).toEqual([]);
+  expect(misplaced).toEqual([]);
 });

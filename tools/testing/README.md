@@ -27,6 +27,8 @@ npx nx record-fixtures <provider>
 To list what would be deleted without recording, run
 `node tools/testing/aimock/record-fixtures.mjs <provider> --dry-run`. Env values are never printed.
 
+To re-record one test without clearing the provider's other recordings (its old recording is overwritten; delete it first if the prompt changed), run `( set -a; source .env; set +a; AIMOCK_RECORD=1 npx nx e2e <provider> --skip-nx-cache --testFile=src/integration.spec.ts --testNamePattern='<part of the test name>' )`, then the credential scan above.
+
 ## Credentials (in `.env`)
 
 | Provider  | Variables                                                                       |

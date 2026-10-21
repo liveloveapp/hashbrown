@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Say good morning in four words.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Good morning to you."
+      },
+      "recordedTimings": {
+        "ttftMs": 2690,
+        "interChunkDelaysMs": [0, 8, 0, 0, 0, 1, 0, 0, 102, 9, 1, 0],
+        "totalDurationMs": 2811
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}
