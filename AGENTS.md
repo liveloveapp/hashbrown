@@ -82,6 +82,16 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx test-integration growth` (needs `GROWTH_INTEGRATION=1` and `TEST_DATABASE_URL`)
   - `npx nx report growth -- <funnel|journey|health|timeline|detail> …`
   - `npx nx observability growth -- <process|replay|redact|initialize-redactions> …`
+- `posthog` (`tools/posthog`; dashboards as code, needs `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID`)
+  - `npx nx build posthog`
+  - `npx nx test posthog`
+  - `npx nx lint posthog`
+  - `npx nx sync:plan posthog` (read-only)
+  - `npx nx sync:apply posthog` (`-- --delete-orphans` also soft-deletes unmanaged remotes)
+  - `npx nx report posthog`
+  - `npx nx quality:live posthog -- --days 7 --limit-per-event 100 --require-critical-coverage`
+  - `npx nx settings:plan posthog` (read-only)
+  - `npx nx settings:apply posthog`
 - `anthropic`
   - `npx nx build anthropic`
   - `npx nx test anthropic`

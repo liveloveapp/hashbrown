@@ -661,6 +661,8 @@ test('TARGETS www lists the growth env keys', () => {
     'GOOGLE_REPLY_HMAC_SECRET',
     'NEXT_PUBLIC_POSTHOG_TOKEN',
     'NEXT_PUBLIC_POSTHOG_HOST',
+    'NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL',
+    'NEXT_PUBLIC_GROWTH_COLLECTION',
   ]) {
     assert.ok(target?.env.includes(key), key);
   }

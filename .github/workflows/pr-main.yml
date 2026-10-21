@@ -174,6 +174,68 @@ jobs:
       branch: main
     secrets: inherit
 
+  # Dashboards-as-code drift check. Runs only when tools/posthog changed, with
+  # the read-only key; forks and runs without the secret skip it (neutral).
+  # Not part of the PR gate: PostHog being unreachable must not block a merge.
+  posthog-sync-plan:
+    name: PostHog sync plan
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DO_NOT_TRACK: '1'
+      POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY_READONLY }}
+      POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+      POSTHOG_HOST: https://us.i.posthog.com
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect PostHog changes
+        id: changed
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if git diff --name-only "$BASE...$HEAD" | grep -qE '^tools/posthog/'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tools/posthog did not change; skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for read-only credentials
+        id: secrets
+        if: steps.changed.outputs.run == 'true'
+        run: |
+          if [ -z "${POSTHOG_PERSONAL_API_KEY:-}" ] || [ -z "${POSTHOG_PROJECT_ID:-}" ]; then
+            echo "::notice::PostHog secrets are not available; skipping the sync plan."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        if: steps.secrets.outputs.run == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.secrets.outputs.run == 'true'
+        run: npm ci
+
+      - name: Plan dashboard sync
+        if: steps.secrets.outputs.run == 'true'
+        run: npx nx run posthog:sync:plan
+
   pr-gate:
     name: PR Gate
     if: ${{ !cancelled() && github.event_name == 'pull_request' }}

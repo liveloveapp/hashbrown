@@ -39,8 +39,11 @@ export const POSTHOG_INIT_OPTIONS = {
   disable_surveys: true,
 } satisfies Partial<PostHogConfig>;
 
-if (shouldCaptureAnalytics({ token, captureLocal, host: browserHost })) {
-  posthog.init(token!, POSTHOG_INIT_OPTIONS);
+if (
+  token &&
+  shouldCaptureAnalytics({ token, captureLocal, host: browserHost })
+) {
+  posthog.init(token, POSTHOG_INIT_OPTIONS);
 }
 
 // Stand down the pre-analytics exit beacon inlined by app/layout.tsx. After
