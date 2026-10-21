@@ -544,3 +544,24 @@ test('rejects clientOptions.deployment with a clear error', async () => {
   expect(MockedAzureOpenAI).not.toHaveBeenCalled();
   expect(provider.create).not.toHaveBeenCalled();
 });
+
+test('passes builtInTools to the request', async () => {
+  mockProvider([completed]);
+  const captured: OpenAI.Responses.ResponseCreateParamsStreaming[] = [];
+  const capture = (options: OpenAI.Responses.ResponseCreateParamsStreaming) => {
+    captured.push(options);
+    return options;
+  };
+
+  await collectEvents(
+    createOptions({
+      builtInTools: { webSearch: true },
+      transformRequestOptions: capture,
+    }),
+  );
+
+  expect(captured[0]).toMatchObject({
+    tools: [{ type: 'web_search' }],
+    include: ['web_search_call.action.sources'],
+  });
+});

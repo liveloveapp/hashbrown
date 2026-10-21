@@ -25,6 +25,7 @@ async function* textEvents(
     input,
     signal,
     reasoning,
+    builtInTools,
     transformRequestOptions,
   } = options;
   const { threadId, runId } = input;
@@ -42,7 +43,12 @@ async function* textEvents(
       throw new Error(DEPLOYMENT_ERROR);
     }
 
-    const baseRequest = createAzureRequestOptions(input, model, reasoning);
+    const baseRequest = createAzureRequestOptions(
+      input,
+      model,
+      reasoning,
+      builtInTools,
+    );
     const request = transformRequestOptions
       ? await transformRequestOptions(baseRequest)
       : baseRequest;

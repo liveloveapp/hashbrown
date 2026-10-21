@@ -1,7 +1,28 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
+import {
+  ɵANSWER_METADATA_KEY,
+  type ɵAnswerAnnotations,
+  ɵbuiltInToolLabel,
+  ɵTOOL_STEP_METADATA_KEY,
+  type ɵToolStep,
+  type ɵToolStepSource,
+} from '@hashbrownai/core';
 import type OpenAI from 'openai';
 
 type StreamEvent = OpenAI.Responses.ResponseStreamEvent;
+type WebSearchCall = OpenAI.Responses.ResponseFunctionWebSearch;
+
+/** The provider name written on steps and the metadata key for item ids. */
+const PROVIDER = 'openai';
+const WEB_SEARCH = 'web_search';
+
+/** A `url_citation`, with its span resolved against the whole message. */
+interface CitationState {
+  readonly url: string;
+  readonly title: string;
+  readonly start: number;
+  readonly end: number;
+}
 
 interface ReasoningItemState {
   readonly summaryIndex?: number;
@@ -19,6 +40,16 @@ interface MapperState {
   readonly reasoningItemIds: readonly string[];
   readonly openReasoning: ReadonlyMap<string, ReasoningItemState>;
   readonly toolCalls: ReadonlyMap<string, ToolCallState>;
+  /** Start times of open `web_search_call` items, by item id. */
+  readonly webSearches: ReadonlyMap<string, number>;
+  /** All text written to the assistant message so far. */
+  readonly text: string;
+  /** Where each output text part (`<itemId>:<contentIndex>`) starts in `text`. */
+  readonly partOffsets: ReadonlyMap<string, number>;
+  /** `url_citation` annotations collected for the assistant message. */
+  readonly annotations: readonly CitationState[];
+  /** Source id by url, for every web search source seen so far. */
+  readonly sourceIndex: ReadonlyMap<string, string>;
 }
 
 interface MapperStep {
@@ -41,6 +72,11 @@ const initialState: MapperState = {
   reasoningItemIds: [],
   openReasoning: new Map(),
   toolCalls: new Map(),
+  webSearches: new Map(),
+  text: '',
+  partOffsets: new Map(),
+  annotations: [],
+  sourceIndex: new Map(),
 };
 
 function withEntry<V>(
@@ -60,16 +96,29 @@ function withoutEntry<V>(
   return next;
 }
 
+function partKey(itemId: string, contentIndex: number): string {
+  return `${itemId}:${contentIndex}`;
+}
+
 function mapTextDelta(
-  state: MapperState,
+  previous: MapperState,
   messageId: string,
   itemId: string,
+  contentIndex: number,
   delta: string,
 ): MapperStep {
   if (!delta) {
-    return { state, events: [] };
+    return { state: previous, events: [] };
   }
 
+  const key = partKey(itemId, contentIndex);
+  const state: MapperState = {
+    ...previous,
+    text: previous.text + delta,
+    partOffsets: previous.partOffsets.has(key)
+      ? previous.partOffsets
+      : withEntry(previous.partOffsets, key, previous.text.length),
+  };
   const content: AGUIEvent = {
     type: EventType.TEXT_MESSAGE_CONTENT,
     messageId,
@@ -95,6 +144,270 @@ function mapTextDelta(
       },
       content,
     ],
+  };
+}
+
+function webSearchStep(
+  status: 'running' | 'completed' | 'failed',
+  fields: Omit<ɵToolStep, 'v' | 'kind' | 'builtin' | 'provider' | 'status'>,
+): ɵToolStep {
+  return {
+    v: 1,
+    kind: 'provider',
+    builtin: WEB_SEARCH,
+    provider: PROVIDER,
+    status,
+    ...fields,
+  };
+}
+
+function searchQueries(action: WebSearchCall['action']): string[] {
+  if (action?.type !== 'search') {
+    return [];
+  }
+  const queries = [
+    ...(action.query ? [action.query] : []),
+    ...(action.queries ?? []),
+  ];
+  return [...new Set(queries.filter((query) => query.length > 0))];
+}
+
+function searchSources(item: WebSearchCall): ɵToolStepSource[] {
+  if (item.action?.type !== 'search') {
+    return [];
+  }
+  return (item.action.sources ?? [])
+    .filter((source) => typeof source.url === 'string')
+    .map((source, index) => ({
+      id: `${item.id}:${index}`,
+      kind: 'url',
+      title: source.url,
+      href: source.url,
+    }));
+}
+
+function mapWebSearchAdded(
+  state: MapperState,
+  messageId: string,
+  item: WebSearchCall,
+): MapperStep {
+  const startedAt = Date.now();
+  return {
+    state: {
+      ...state,
+      webSearches: withEntry(state.webSearches, item.id, startedAt),
+    },
+    events: [
+      {
+        type: EventType.TOOL_CALL_START,
+        toolCallId: item.id,
+        toolCallName: WEB_SEARCH,
+        parentMessageId: messageId,
+        metadata: {
+          [PROVIDER]: { itemId: item.id, itemType: item.type },
+          [ɵTOOL_STEP_METADATA_KEY]: webSearchStep('running', {
+            label: ɵbuiltInToolLabel(WEB_SEARCH, 'running', {}),
+            startedAt,
+          }),
+        },
+      },
+    ],
+  };
+}
+
+function mapWebSearchDone(state: MapperState, item: WebSearchCall): MapperStep {
+  const startedAt = state.webSearches.get(item.id);
+  if (startedAt === undefined) {
+    return { state, events: [] };
+  }
+
+  const settledAt = Date.now();
+  const queries = searchQueries(item.action);
+  const query = queries.length > 0 ? { queries } : {};
+  const step =
+    item.status === 'failed'
+      ? webSearchStep('failed', {
+          label: ɵbuiltInToolLabel(WEB_SEARCH, 'failed', {}),
+          ...query,
+          startedAt,
+          settledAt,
+          error: { message: 'Web search failed' },
+        })
+      : completedWebSearch(item, queries, startedAt, settledAt);
+  const sources = step.sources ?? [];
+  return {
+    state: {
+      ...state,
+      webSearches: withoutEntry(state.webSearches, item.id),
+      sourceIndex: sources.reduce(
+        (index, source) =>
+          source.href === undefined || index.has(source.href)
+            ? index
+            : withEntry(index, source.href, source.id),
+        state.sourceIndex,
+      ),
+    },
+    events: [
+      {
+        type: EventType.TOOL_CALL_ARGS,
+        toolCallId: item.id,
+        delta: JSON.stringify(item.action),
+      },
+      { type: EventType.TOOL_CALL_END, toolCallId: item.id },
+      {
+        type: EventType.TOOL_CALL_RESULT,
+        messageId: `${item.id}:result`,
+        toolCallId: item.id,
+        content: JSON.stringify({ action: item.action, status: item.status }),
+        metadata: { [ɵTOOL_STEP_METADATA_KEY]: step },
+      },
+    ],
+  };
+}
+
+function completedWebSearch(
+  item: WebSearchCall,
+  queries: readonly string[],
+  startedAt: number,
+  settledAt: number,
+): ɵToolStep {
+  const sources = searchSources(item);
+  return webSearchStep('completed', {
+    label: ɵbuiltInToolLabel(WEB_SEARCH, 'completed', {
+      query: queries[0],
+      sourceCount: sources.length > 0 ? sources.length : undefined,
+    }),
+    ...(queries.length > 0 ? { queries: [...queries] } : {}),
+    ...(sources.length > 0 ? { sources } : {}),
+    startedAt,
+    settledAt,
+  });
+}
+
+function isUrlCitation(
+  annotation: unknown,
+): annotation is OpenAI.Responses.ResponseOutputText.URLCitation {
+  if (typeof annotation !== 'object' || annotation === null) {
+    return false;
+  }
+  const value = annotation as Record<string, unknown>;
+  return (
+    value['type'] === 'url_citation' &&
+    typeof value['url'] === 'string' &&
+    typeof value['start_index'] === 'number' &&
+    typeof value['end_index'] === 'number'
+  );
+}
+
+function mapAnnotation(
+  state: MapperState,
+  event: OpenAI.Responses.ResponseOutputTextAnnotationAddedEvent,
+): MapperStep {
+  const annotation = event.annotation;
+  if (!isUrlCitation(annotation)) {
+    return { state, events: [] };
+  }
+
+  const offset =
+    state.partOffsets.get(partKey(event.item_id, event.content_index)) ?? 0;
+  return {
+    state: {
+      ...state,
+      annotations: [
+        ...state.annotations,
+        {
+          url: annotation.url,
+          title:
+            typeof annotation.title === 'string' && annotation.title
+              ? annotation.title
+              : annotation.url,
+          start: offset + annotation.start_index,
+          end: offset + annotation.end_index,
+        },
+      ],
+    },
+    events: [],
+  };
+}
+
+/**
+ * OpenAI appends `utm_source=openai` to cited urls but not to the sources it
+ * lists, so a citation also matches its url without that parameter.
+ */
+function withoutOpenAITracking(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.searchParams.get('utm_source') !== 'openai') {
+      return url;
+    }
+    parsed.searchParams.delete('utm_source');
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+function findSourceId(
+  sourceIndex: ReadonlyMap<string, string>,
+  url: string,
+): string | undefined {
+  const bare = withoutOpenAITracking(url);
+  return (
+    sourceIndex.get(url) ??
+    sourceIndex.get(bare) ??
+    // `URL` adds a trailing slash to a bare origin.
+    sourceIndex.get(bare.replace(/\/$/, ''))
+  );
+}
+
+function answerAnnotations(
+  state: MapperState,
+  messageId: string,
+): ɵAnswerAnnotations | undefined {
+  if (state.annotations.length === 0) {
+    return undefined;
+  }
+
+  const result = state.annotations.reduce<{
+    readonly citations: NonNullable<ɵAnswerAnnotations['citations']>;
+    readonly sources: readonly ɵToolStepSource[];
+  }>(
+    (acc, citation, index) => {
+      const known = findSourceId(state.sourceIndex, citation.url);
+      const existing = acc.sources.find(
+        (source) => source.href === citation.url,
+      );
+      const source: ɵToolStepSource | undefined =
+        known === undefined && existing === undefined
+          ? {
+              id: `${messageId}:cite:${index}`,
+              kind: 'url',
+              title: citation.title,
+              href: citation.url,
+            }
+          : undefined;
+      const sourceId = known ?? existing?.id ?? source?.id ?? '';
+      return {
+        citations: [
+          ...acc.citations,
+          {
+            sourceId,
+            quote: state.text.slice(citation.start, citation.end),
+            block: 0,
+            start: citation.start,
+            end: citation.end,
+          },
+        ],
+        sources: source ? [...acc.sources, source] : acc.sources,
+      };
+    },
+    { citations: [], sources: [] },
+  );
+
+  return {
+    v: 1,
+    citations: result.citations,
+    ...(result.sources.length > 0 ? { sources: [...result.sources] } : {}),
   };
 }
 
@@ -154,6 +467,8 @@ function mapItemAdded(
           },
         ],
       };
+    case 'web_search_call':
+      return mapWebSearchAdded(state, messageId, item);
     default:
       return { state, events: [] };
   }
@@ -214,6 +529,10 @@ function mapItemDone(
     };
   }
 
+  if (item.type === 'web_search_call') {
+    return mapWebSearchDone(state, item);
+  }
+
   return { state, events: [] };
 }
 
@@ -245,12 +564,21 @@ function mapSummaryDelta(
 }
 
 function endText(state: MapperState, messageId: string): MapperStep {
-  return state.textStarted
-    ? {
-        state: { ...state, textStarted: false },
-        events: [{ type: EventType.TEXT_MESSAGE_END, messageId }],
-      }
-    : { state, events: [] };
+  if (!state.textStarted) {
+    return { state, events: [] };
+  }
+
+  const answer = answerAnnotations(state, messageId);
+  return {
+    state: { ...state, textStarted: false },
+    events: [
+      {
+        type: EventType.TEXT_MESSAGE_END,
+        messageId,
+        ...(answer ? { metadata: { [ɵANSWER_METADATA_KEY]: answer } } : {}),
+      },
+    ],
+  };
 }
 
 function mapEvent(
@@ -267,7 +595,15 @@ function mapEvent(
       return mapSummaryDelta(state, event);
     case 'response.output_text.delta':
     case 'response.refusal.delta':
-      return mapTextDelta(state, messageId, event.item_id, event.delta);
+      return mapTextDelta(
+        state,
+        messageId,
+        event.item_id,
+        event.content_index,
+        event.delta,
+      );
+    case 'response.output_text.annotation.added':
+      return mapAnnotation(state, event);
     case 'response.function_call_arguments.delta': {
       const toolCall = state.toolCalls.get(event.item_id);
       if (!toolCall || !event.delta) {
@@ -310,6 +646,11 @@ function mapEvent(
 /**
  * Maps OpenAI Responses stream events to AG-UI message, reasoning and tool
  * call events.
+ *
+ * A `web_search_call` becomes a tool call that runs on the provider: its
+ * `TOOL_CALL_START` and `TOOL_CALL_RESULT` carry a `b4.step` with the
+ * queries, sources and label, and the answer's `url_citation` annotations
+ * become `b4.answer` citations on `TEXT_MESSAGE_END`.
  *
  * The mapper does not emit `RUN_STARTED`, `RUN_FINISHED` or `RUN_ERROR`; it
  * throws on `response.failed`, `error` and `response.incomplete` so the

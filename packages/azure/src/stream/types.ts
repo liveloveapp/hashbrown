@@ -25,6 +25,35 @@ export interface AzureHashbrownRunAgentInput extends RunAgentInput {
 }
 
 /**
+ * Provider-run (built-in) tools to turn on for a run. Each key is the
+ * camelCase form of the `builtin` value its calls report, so the same key
+ * means the same capability on every Hashbrown provider adapter.
+ *
+ * @public
+ */
+export interface AzureBuiltInTools {
+  /**
+   * Turns on the Responses API `web_search` tool. Pass `true` for the
+   * provider defaults, or the tool's own configuration (for example
+   * `search_context_size`, `user_location` or `filters`), which is sent
+   * unchanged. The Azure OpenAI resource and deployment must support web
+   * search; otherwise the request fails.
+   *
+   * Each search streams as a `web_search` tool call that runs on the
+   * provider, never in the app, with its queries, sources and a label. The
+   * answer's `url_citation` annotations become citations that point at those
+   * sources. Sources need this option: it also requests
+   * `web_search_call.action.sources`. A `web_search` tool added through
+   * `transformRequestOptions` instead still streams as a provider tool call,
+   * but without sources.
+   *
+   * Inline citations must be clearly visible and clickable in any UI that
+   * shows the answer.
+   */
+  webSearch?: true | Omit<OpenAI.Responses.WebSearchTool, 'type'>;
+}
+
+/**
  * Options for streaming an AG-UI run from the Azure OpenAI Responses API.
  *
  * @public
@@ -54,6 +83,11 @@ export interface AzureTextStreamOptions {
    * See {@link AzureReasoningOption}.
    */
   reasoning?: AzureReasoningOption;
+  /**
+   * Provider-run tools to turn on, such as web search.
+   * See {@link AzureBuiltInTools}.
+   */
+  builtInTools?: AzureBuiltInTools;
   /** Customize the Responses request after AG-UI input has been mapped. */
   transformRequestOptions?: (
     options: OpenAI.Responses.ResponseCreateParamsStreaming,

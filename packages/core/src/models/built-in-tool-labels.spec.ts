@@ -50,3 +50,17 @@ test('other builtins use the fallback labels', () => {
   expect(completed).toBe('Used code_interpreter');
   expect(failed).toBe('code_interpreter failed');
 });
+
+test('a completed web search with no query reads Searched the web', () => {
+  // Arrange
+  const noDetail = {};
+  const withSources = { sourceCount: 2 };
+
+  // Act
+  const bare = ɵbuiltInToolLabel('web_search', 'completed', noDetail);
+  const counted = ɵbuiltInToolLabel('web_search', 'completed', withSources);
+
+  // Assert
+  expect(bare).toBe('Searched the web');
+  expect(counted).toBe('Searched the web · 2 sources');
+});
