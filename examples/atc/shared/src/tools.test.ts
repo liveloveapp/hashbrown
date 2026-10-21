@@ -1,7 +1,7 @@
 import { expect, onTestFinished, test, vi } from 'vitest';
 import type { Aircraft } from './aircraft';
 import type { AirspaceShelf } from './chart';
-import type { FindAircraftInput } from './find-aircraft';
+import type { FindAircraftInput, MapFilter } from './find-aircraft';
 import { createAtcStore, INITIAL_STATE } from './store';
 import {
   squareRing,
@@ -34,6 +34,17 @@ const any: FindAircraftInput = {
   inAirspace: null,
   sortBy: 'altitude',
   limit: 20,
+};
+
+const NO_MAP_FILTER: MapFilter = {
+  airline: null,
+  typeCode: null,
+  kind: null,
+  minAltitudeFt: null,
+  maxAltitudeFt: null,
+  approaching: null,
+  near: null,
+  inAirspace: null,
 };
 
 function readyStore() {
@@ -144,7 +155,7 @@ test('findAircraft with an unknown approaching airport finds nothing', async () 
     approaching: 'KJFK',
   });
 
-  expect(rows).toEqual([]);
+  expect(rows).toEqual({ mapFilter: null, aircraft: [] });
 });
 
 test('findAircraft with inAirspace keeps aircraft inside that class and measures from the airport', async () => {
@@ -164,7 +175,9 @@ test('findAircraft with inAirspace keeps aircraft inside that class and measures
     inAirspace: { airport: 'KRDM', class: 'D' },
   });
 
-  expect(result).toMatchObject([{ hex: 'aaaaaa', distanceNm: 0.2 }]);
+  expect(result).toMatchObject({
+    aircraft: [{ hex: 'aaaaaa', distanceNm: 0.2 }],
+  });
   expect(store.getState().highlightedAirspace).toBe('KRDM');
 });
 
@@ -297,6 +310,140 @@ test('getSelectedAircraft returns a row for a hex-only aircraft', async () => {
     airline: null,
     aircraftType: 'Unknown type',
   });
+});
+
+test('findAircraft intersects its input with the map filter and reports the summary', async () => {
+  const store = readyStore();
+  store.applySnapshot({
+    at: 1,
+    aircraft: [
+      plane('aaaaaa', { kind: 'jet', altitudeFt: 5000 }),
+      plane('bbbbbb', { kind: 'jet', altitudeFt: 30000 }),
+      plane('cccccc', { kind: 'single', altitudeFt: 5000 }),
+      plane('dddddd', { kind: 'jet', altitudeFt: 8000 }),
+    ],
+  });
+  store.setMapFilter({ ...NO_MAP_FILTER, kind: 'jet', maxAltitudeFt: 10000 });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.findAircraft.handler({
+    ...any,
+    sortBy: 'altitude',
+    limit: 1,
+  });
+
+  expect(result).toMatchObject({
+    mapFilter: 'jets below 10,000 ft',
+    aircraft: [{ hex: 'dddddd' }],
+  });
+});
+
+test('findAircraft without a map filter reports a null summary', async () => {
+  const store = readyStore();
+  store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa')] });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.findAircraft.handler(any);
+
+  expect(result).toMatchObject({
+    mapFilter: null,
+    aircraft: [{ hex: 'aaaaaa' }],
+  });
+});
+
+test('findAircraft with a filter that matches nothing returns an empty list with the summary', async () => {
+  const store = readyStore();
+  store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa', { kind: 'jet' })] });
+  store.setMapFilter({ ...NO_MAP_FILTER, kind: 'rotor' });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.findAircraft.handler(any);
+
+  expect(result).toEqual({ mapFilter: 'helicopters', aircraft: [] });
+});
+
+test('getSelectedAircraft ignores the map filter', async () => {
+  const store = readyStore();
+  store.applySnapshot({ at: 1, aircraft: [plane('aaaaaa', { kind: 'jet' })] });
+  store.setMapFilter({ ...NO_MAP_FILTER, kind: 'rotor' });
+  store.select('aaaaaa');
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const selected = await tools.getSelectedAircraft.handler();
+
+  expect(selected?.hex).toBe('aaaaaa');
+});
+
+test('setMapFilter applies a validated filter and reports unknown places', async () => {
+  const store = readyStore();
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.setMapFilter.handler({
+    ...NO_MAP_FILTER,
+    kind: 'jet',
+    approaching: 'KZZZ',
+  });
+
+  expect(result).toEqual({
+    applied: true,
+    mapFilter: 'jets approaching KZZZ',
+    unknownPlaces: ['KZZZ'],
+  });
+  expect(store.getState().mapFilter?.filter.kind).toBe('jet');
+});
+
+test('setMapFilter replaces an existing filter', async () => {
+  const store = readyStore();
+  store.setMapFilter({ ...NO_MAP_FILTER, kind: 'jet' });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.setMapFilter.handler({
+    ...NO_MAP_FILTER,
+    kind: 'rotor',
+  });
+
+  expect(result).toMatchObject({ applied: true, mapFilter: 'helicopters' });
+  expect(store.getState().mapFilter?.filter.kind).toBe('rotor');
+});
+
+test('a setMapFilter waiting for the chart never overwrites a newer filter', async () => {
+  vi.useFakeTimers();
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+  const store = createAtcStore();
+  store.setMapFilter({ ...NO_MAP_FILTER, kind: 'jet' });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const pending = tools.setMapFilter.handler({
+    ...NO_MAP_FILTER,
+    kind: 'rotor',
+  });
+  await tools.clearMapFilter.handler();
+  store.setChart({
+    cycle: '2610',
+    effective: '2026-10-08',
+    airports: [testChartAirport()],
+  });
+  const result = await pending;
+
+  expect(result).toEqual({
+    applied: false,
+    mapFilter: null,
+    unknownPlaces: [],
+  });
+  expect(store.getState().mapFilter).toBeNull();
+});
+
+test('clearMapFilter removes the filter', async () => {
+  const store = readyStore();
+  store.setMapFilter({ ...NO_MAP_FILTER, kind: 'jet' });
+  const tools = createAtcTools({ store, fetchRoute: async () => null });
+
+  const result = await tools.clearMapFilter.handler();
+
+  expect(result).toEqual({ cleared: true });
+  expect(store.getState().mapFilter).toBeNull();
 });
 
 test('getSelectedAircraft returns the selected row or null', async () => {
@@ -896,7 +1043,7 @@ test('chart tools wait for a chart that loads within 5 s and use it', async () =
   const [place, found, area, airport] = await pending;
 
   expect(place).toMatchObject({ found: true, code: '6K5', towered: false });
-  expect(found).toEqual([]);
+  expect(found).toEqual({ mapFilter: null, aircraft: [] });
   expect(area).toMatchObject({ shown: true, airport: '6K5' });
   expect(airport).toMatchObject({ shown: true, code: '6K5' });
 });

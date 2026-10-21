@@ -44,6 +44,13 @@
         "command": "tsx --tsconfig examples/atc/e2e/tsconfig.json examples/atc/e2e/prose/eval.ts"
       }
     },
+    "decide-eval": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx --tsconfig examples/atc/e2e/tsconfig.json examples/atc/e2e/decide/eval.ts"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
       "options": {

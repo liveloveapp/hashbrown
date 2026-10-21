@@ -26,9 +26,13 @@ export type Tool<Name, Args, Result> = {
 export type AnyTool = Tool<string, any, any>;
 
 /**
+ * A message the user sent.
+ *
  * @public
  */
 export type UserMessage = {
+  /** The canonical AG-UI message id. Stable for the life of the message. */
+  readonly id: string;
   role: 'user';
   content: JsonValue;
 };
@@ -115,6 +119,11 @@ export type ServerToolCall = {
  * @public
  */
 export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
+  /**
+   * The canonical AG-UI message id. It is the same while the message streams
+   * and after it is committed.
+   */
+  readonly id: string;
   role: 'assistant';
   content?: Output;
   toolCalls: ToolCall<ToolUnion>[];
@@ -150,6 +159,9 @@ export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
 }
 
 /**
+ * A synthetic message describing a failed run. It has no id because it is
+ * never part of the canonical AG-UI history.
+ *
  * @public
  */
 export type ErrorMessage = {
@@ -158,12 +170,129 @@ export type ErrorMessage = {
 };
 
 /**
+ * What an activity message belongs to, recorded when the activity first
+ * arrived. Activities restored through `setMessages`, initial `messages` or a
+ * `MESSAGES_SNAPSHOT` get links recomputed from their position; incoming links
+ * are never trusted.
+ *
+ * @public
+ */
+export type ActivityLinks = {
+  /** The run that delivered the activity. */
+  runId?: string;
+  /** The assistant message open when the activity first arrived. */
+  assistantMessageId?: string;
+  /** The most recent tool call (client or server) in that run when it arrived. */
+  toolCallId?: string;
+  /** The subagent invocation that produced the activity. */
+  subagentRunId?: string;
+};
+
+/**
+ * An AG-UI activity: display material an agent streams alongside its answer,
+ * such as a plan, a progress report or a generated surface. Activity messages
+ * sit in the message list where they arrived and are never sent back to the
+ * agent.
+ *
+ * @public
+ */
+export type ActivityMessage = {
+  role: 'activity';
+  /** The AG-UI activity message id. */
+  id: string;
+  /** Producer-defined kind, e.g. 'plan', 'progress', 'a2ui-surface'. */
+  activityType: string;
+  /** Untyped payload; the app narrows it by `activityType`. */
+  content: Readonly<Record<string, unknown>>;
+  /** Provider metadata, preserved. */
+  metadata?: Metadata;
+  /** What this activity belongs to, recorded when it first arrived. */
+  links: ActivityLinks;
+};
+
+/**
  * @public
  */
 export type Message<Output, Tools extends AnyTool> =
-  UserMessage | AssistantMessage<Output, Tools> | ErrorMessage;
+  | UserMessage
+  | AssistantMessage<Output, Tools>
+  | ErrorMessage
+  | ActivityMessage;
 
 /**
  * @public
  */
 export type AnyMessage = Message<string | object, AnyTool>;
+
+/**
+ * A user message as an app supplies it, for example to `sendMessage`. The
+ * `id` is optional: Hashbrown keeps a supplied id and mints one when absent.
+ *
+ * @public
+ */
+export type UserMessageInput = Prettify<
+  Omit<UserMessage, 'id'> & {
+    /**
+     * The canonical AG-UI message id, when the app already has one. Hashbrown
+     * mints one when it is absent. Ids must be unique within the thread:
+     * `sendMessage` refuses, and does not send, a message whose id (or one of
+     * whose tool-call ids) already exists in the message history.
+     */
+    readonly id?: string;
+  }
+>;
+
+/**
+ * An assistant message as an app supplies it, for example in a saved
+ * transcript passed to `setMessages`. The `id` is optional: Hashbrown keeps a
+ * supplied id and mints one when absent.
+ *
+ * @public
+ */
+export interface AssistantMessageInput<
+  Output,
+  ToolUnion extends AnyTool,
+> extends Omit<AssistantMessage<Output, ToolUnion>, 'id'> {
+  /**
+   * The canonical AG-UI message id, when the app already has one. Hashbrown
+   * mints one when it is absent. Ids must be unique within the thread:
+   * `sendMessage` refuses, and does not send, a message whose id (or one of
+   * whose tool-call ids) already exists in the message history.
+   */
+  readonly id?: string;
+}
+
+/**
+ * An activity message as an app supplies it, for example in a saved
+ * transcript passed to `setMessages`. The `id` is required. `links` is
+ * optional and, when present, only its `subagentRunId` is kept: the other
+ * links are recomputed from the activity's position in the list.
+ *
+ * @public
+ */
+export type ActivityMessageInput = Prettify<
+  Omit<ActivityMessage, 'links'> & { links?: ActivityLinks }
+>;
+
+/**
+ * A message as an app supplies it to `setMessages`, initial `messages` or
+ * `sendMessage`. It is a {@link Message} whose `id` is optional: Hashbrown
+ * keeps a supplied id, so a saved transcript restores with the same ids, and
+ * mints one only when the id is absent. An {@link ActivityMessageInput} keeps
+ * its required `id`; its optional `links` are recomputed from position,
+ * except `subagentRunId`, which is kept.
+ *
+ * @public
+ */
+export type MessageInput<Output, Tools extends AnyTool> =
+  | UserMessageInput
+  | AssistantMessageInput<Output, Tools>
+  | ErrorMessage
+  | ActivityMessageInput;
+
+/**
+ * A {@link MessageInput} for any output and tool set.
+ *
+ * @public
+ */
+export type AnyMessageInput = MessageInput<string | object, AnyTool>;

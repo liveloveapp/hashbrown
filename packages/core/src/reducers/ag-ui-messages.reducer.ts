@@ -6,6 +6,13 @@ import {
 } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import {
+  type ActivityArrival,
+  applyActivityDelta,
+  applyActivitySnapshot,
+  mergeSnapshotActivities,
+  recomputeActivityLinks,
+} from './ag-ui-activity';
+import {
   applySystemMessageOverlay,
   ɵassertAgUiMessageAppendCompatibility,
   ɵownAgUiJsonValue,
@@ -30,6 +37,17 @@ export interface AgUiMessagesState {
   readonly activeToolCallId: string | undefined;
   readonly activeToolCallName: string | undefined;
   readonly activeAssistantMessageId: string | undefined;
+  /** The run that delivered the current attempt's events, from `RUN_STARTED`. */
+  readonly currentRunId: string | undefined;
+  /** The latest tool call of any kind started in the current attempt. */
+  readonly lastToolCallId: string | undefined;
+  /**
+   * The last assistant message started in the current attempt, by text or by
+   * a tool call's parent. Used only to link activities.
+   */
+  readonly lastAssistantMessageId: string | undefined;
+  /** Why the last event, an `ACTIVITY_DELTA`, was dropped; logged by the effect. */
+  readonly activityDeltaDropReason: string | undefined;
 }
 
 /** The canonical outcome of one AG-UI message event. @internal */
@@ -58,6 +76,10 @@ export const initialAgUiMessagesState: AgUiMessagesState = Object.freeze({
   activeToolCallId: undefined,
   activeToolCallName: undefined,
   activeAssistantMessageId: undefined,
+  currentRunId: undefined,
+  lastToolCallId: undefined,
+  lastAssistantMessageId: undefined,
+  activityDeltaDropReason: undefined,
 });
 
 /** Reduces canonical AG-UI messages independently from Hashbrown projections. @internal */
@@ -65,7 +87,7 @@ export const reducer = createReducer(
   initialAgUiMessagesState,
   on(devActions.init, (_state, action): AgUiMessagesState => {
     const systemMessage = action.payload.systemMessage;
-    const committed = own(action.payload.canonicalMessages);
+    const committed = ownRestored(action.payload.canonicalMessages);
 
     return {
       committed: withoutSystemOverlay(committed, systemMessage),
@@ -76,7 +98,7 @@ export const reducer = createReducer(
       attemptStartToolCallIds: Object.freeze([]),
       finishedTextMessageIds: Object.freeze([]),
       draftFinishedTextMessageIds: Object.freeze([]),
-      ...inactiveLifecycle(),
+      ...inactiveAttempt(),
     };
   }),
   on(devActions.updateOptions, (state, action): AgUiMessagesState => {
@@ -97,7 +119,7 @@ export const reducer = createReducer(
       protocolError: undefined,
       attemptStartToolCallIds: freezeStrings(findToolCallIds(state.committed)),
       draftFinishedTextMessageIds: state.finishedTextMessageIds,
-      ...inactiveLifecycle(),
+      ...inactiveAttempt(),
     };
   }),
   on(apiActions.generateMessageEvent, (state, action): AgUiMessagesState => {
@@ -119,7 +141,7 @@ export const reducer = createReducer(
       attemptStartToolCallIds: Object.freeze([]),
       finishedTextMessageIds: state.draftFinishedTextMessageIds,
       draftFinishedTextMessageIds: Object.freeze([]),
-      ...inactiveLifecycle(),
+      ...inactiveAttempt(),
     };
   }),
   on(internalActions.generationAttemptRolledBack, (state): AgUiMessagesState =>
@@ -148,7 +170,7 @@ export const reducer = createReducer(
         protocolError: undefined,
         attemptStartToolCallIds: Object.freeze([]),
         draftFinishedTextMessageIds: Object.freeze([]),
-        ...inactiveLifecycle(),
+        ...inactiveAttempt(),
       };
     } catch (error) {
       return {
@@ -161,7 +183,7 @@ export const reducer = createReducer(
     }
   }),
   on(devActions.setMessages, (state, action): AgUiMessagesState => {
-    const committed = own(action.payload.canonicalMessages);
+    const committed = ownRestored(action.payload.canonicalMessages);
     return {
       ...state,
       committed: withoutSystemOverlay(committed, state.systemMessage),
@@ -171,7 +193,7 @@ export const reducer = createReducer(
       attemptStartToolCallIds: Object.freeze([]),
       finishedTextMessageIds: Object.freeze([]),
       draftFinishedTextMessageIds: Object.freeze([]),
-      ...inactiveLifecycle(),
+      ...inactiveAttempt(),
     };
   }),
   on(devActions.resendMessages, (state): AgUiMessagesState => rollback(state)),
@@ -189,7 +211,7 @@ export const reducer = createReducer(
       protocolError: undefined,
       attemptStartToolCallIds: Object.freeze([]),
       draftFinishedTextMessageIds: Object.freeze([]),
-      ...inactiveLifecycle(),
+      ...inactiveAttempt(),
     };
   }),
 );
@@ -217,6 +239,10 @@ export const ɵselectEffectiveCommittedAgUiMessages = (
 /** Selects immutable tool call IDs that existed when the current attempt began. @internal */
 export const ɵselectAttemptStartToolCallIds = (state: AgUiMessagesState) =>
   state.attemptStartToolCallIds;
+
+/** Selects why the last event, an `ACTIVITY_DELTA`, was dropped. @internal */
+export const ɵselectActivityDeltaDropReason = (state: AgUiMessagesState) =>
+  state.activityDeltaDropReason;
 
 /** Selects the most recent canonical message protocol error. @internal */
 export const ɵselectAgUiMessagesProtocolError = (state: AgUiMessagesState) =>
@@ -246,10 +272,24 @@ export function ɵdecideAgUiMessageEvent(
 
   try {
     const event = correlateEvent(state, input);
-    const draft = applyCanonicalMessageEvent(state.draft, event, {
-      finishedTextMessageIds: state.draftFinishedTextMessageIds,
-    });
-    const lifecycle = nextLifecycle(state, event, draft);
+    const activityDelta =
+      event.type === EventType.ACTIVITY_DELTA
+        ? applyActivityDelta(state.draft, event)
+        : undefined;
+    const draft =
+      activityDelta?.messages ??
+      applyCanonicalMessageEvent(state.draft, event, {
+        finishedTextMessageIds: state.draftFinishedTextMessageIds,
+        activityArrival: {
+          runId: state.currentRunId,
+          assistantMessageId: state.lastAssistantMessageId,
+          toolCallId: state.lastToolCallId,
+        },
+      });
+    const lifecycle = {
+      ...nextLifecycle(state, event, draft),
+      activityDeltaDropReason: activityDelta?.dropped,
+    };
     const draftFinishedTextMessageIds = nextFinishedTextMessageIds(
       state,
       event,
@@ -317,14 +357,27 @@ export function applyCanonicalMessageEvent(
   context?: {
     /** Text messages the server already ended in this thread. */
     readonly finishedTextMessageIds?: readonly string[];
+    /** Run facts that link a newly created activity. */
+    readonly activityArrival?: ActivityArrival;
   },
 ): readonly Readonly<Message>[] {
   switch (event.type) {
     case EventType.MESSAGES_SNAPSHOT:
-      return ɵreadAgUiMessageSnapshot(event);
+      return mergeSnapshotActivities(
+        messages,
+        recomputeActivityLinks(
+          ɵreadAgUiMessageSnapshot(event),
+          context?.activityArrival?.runId,
+        ),
+      );
     case EventType.ACTIVITY_SNAPSHOT:
+      return applyActivitySnapshot(
+        messages,
+        event,
+        context?.activityArrival ?? {},
+      );
     case EventType.ACTIVITY_DELTA:
-      return messages;
+      return applyActivityDelta(messages, event).messages;
     case EventType.TEXT_MESSAGE_START:
       assertTextMessageIsUnfinished(event.messageId, context);
       return upsertText(
@@ -434,8 +487,19 @@ function rollback(state: AgUiMessagesState): AgUiMessagesState {
     protocolError: undefined,
     attemptStartToolCallIds: Object.freeze([]),
     draftFinishedTextMessageIds: state.finishedTextMessageIds,
-    ...inactiveLifecycle(),
+    ...inactiveAttempt(),
   };
+}
+
+/** Clears per-event lifecycle and the run facts that link activities. */
+function inactiveAttempt() {
+  return {
+    ...inactiveLifecycle(),
+    currentRunId: undefined,
+    lastToolCallId: undefined,
+    lastAssistantMessageId: undefined,
+    activityDeltaDropReason: undefined,
+  } as const;
 }
 
 function inactiveLifecycle() {
@@ -499,6 +563,8 @@ function nextLifecycle(
   draft: readonly Readonly<Message>[],
 ) {
   switch (event.type) {
+    case EventType.RUN_STARTED:
+      return { currentRunId: event.runId };
     case EventType.MESSAGES_SNAPSHOT:
       return inactiveLifecycle();
     case EventType.TEXT_MESSAGE_START:
@@ -509,6 +575,9 @@ function nextLifecycle(
           (event.role ?? 'assistant') === 'assistant'
             ? event.messageId
             : undefined,
+        ...((event.role ?? 'assistant') === 'assistant'
+          ? { lastAssistantMessageId: event.messageId }
+          : {}),
       };
     case EventType.TEXT_MESSAGE_END:
       return event.messageId === state.activeTextMessageId
@@ -522,6 +591,9 @@ function nextLifecycle(
               (event.role ?? 'assistant') === 'assistant'
                 ? event.messageId
                 : state.activeAssistantMessageId,
+            ...((event.role ?? 'assistant') === 'assistant'
+              ? { lastAssistantMessageId: event.messageId }
+              : {}),
           }
         : {};
     case EventType.REASONING_MESSAGE_START:
@@ -538,6 +610,10 @@ function nextLifecycle(
       return {
         activeToolCallId: event.toolCallId,
         activeToolCallName: event.toolCallName,
+        lastToolCallId: event.toolCallId,
+        ...(event.parentMessageId
+          ? { lastAssistantMessageId: event.parentMessageId }
+          : {}),
       };
     case EventType.TOOL_CALL_END:
       return event.toolCallId === state.activeToolCallId
@@ -548,6 +624,14 @@ function nextLifecycle(
         ? {
             activeToolCallId: event.toolCallId,
             activeToolCallName: event.toolCallName,
+            ...(findToolCall(state.draft, event.toolCallId)
+              ? {}
+              : {
+                  lastToolCallId: event.toolCallId,
+                  ...(event.parentMessageId
+                    ? { lastAssistantMessageId: event.parentMessageId }
+                    : {}),
+                }),
           }
         : {};
     default:
@@ -573,6 +657,13 @@ function own(
   messages: readonly Readonly<Message>[],
 ): readonly Readonly<Message>[] {
   return ɵownValidatedAgUiMessages(messages as readonly Message[]);
+}
+
+/** Owns restored history; its activities get links from position. */
+function ownRestored(
+  messages: readonly Readonly<Message>[],
+): readonly Readonly<Message>[] {
+  return recomputeActivityLinks(own(messages));
 }
 
 function withoutSystemOverlay(

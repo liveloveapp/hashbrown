@@ -3,6 +3,12 @@ import { text } from './stream/text.fn';
 import type { BedrockTextStreamOptions } from './stream/types';
 
 export type {
+  ActivityCallback,
+  ActivityContext,
+  ActivityHandle,
+  ActivityWriter,
+} from '@hashbrownai/core';
+export type {
   BedrockHashbrownRunAgentInput,
   BedrockTextStreamOptions,
 } from './stream/types';

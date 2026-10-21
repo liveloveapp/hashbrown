@@ -84,6 +84,13 @@ export interface UiKitOptions<T extends ExposedComponent<any>> {
    * Components or other UiKit instances to compose.
    */
   components: readonly UiKitInput<T>[];
+
+  /**
+   * Whether the kit's components are offered to UI selection. Set `false` for
+   * always-on components such as prose; they are never asked about and are
+   * always sent with the picks. Defaults to `true`.
+   */
+  selectable?: boolean;
 }
 
 /**
@@ -110,13 +117,16 @@ export function useUiKit<T extends ExposedComponent<any>>(
     () =>
       ɵcreateUiKit<T>({
         components: options.components,
+        selectable: options.selectable,
       }),
-    [options.components],
+    [options.components, options.selectable],
   );
   // The kit keeps its identity while its schema and implementations stay the
   // same, so inline component lists don't churn; a component redefined with
   // a new implementation under the same name still renders the new one.
-  const kitKey = `${nextKit.serializedSchema}|${implementationKey(nextKit)}`;
+  const kitKey = `${nextKit.serializedSchema}|${implementationKey(nextKit)}|${
+    options.selectable ?? true
+  }`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const uiKit = useMemo(() => nextKit, [kitKey]);
   const render = useCallback(

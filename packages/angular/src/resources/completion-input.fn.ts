@@ -14,7 +14,7 @@ export function connectCompletionInput<Input>(
   input: Signal<Input>,
   runtime: {
     resume: (options: ResumeOptions) => void;
-    setMessages: (messages: Chat.UserMessage[]) => void;
+    setMessages: (messages: Chat.UserMessageInput[]) => void;
   },
   clearEmpty = false,
 ): void {

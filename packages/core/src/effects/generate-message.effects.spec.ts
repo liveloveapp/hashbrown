@@ -7310,3 +7310,153 @@ test.each([
     teardown();
   },
 );
+
+test('a dropped delta logs a warning and the run continues', async () => {
+  jest.clearAllMocks();
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  makeSelection(async (request) => ({
+    events: successfulEvents(request, [
+      {
+        type: EventType.ACTIVITY_SNAPSHOT,
+        messageId: 'activity-1',
+        activityType: 'plan',
+        content: { steps: [] },
+      },
+      {
+        type: EventType.ACTIVITY_DELTA,
+        messageId: 'activity-1',
+        activityType: 'plan',
+        patch: [{ op: 'remove', path: '/missing' }],
+      },
+      {
+        type: EventType.ACTIVITY_DELTA,
+        messageId: 'activity-unknown',
+        activityType: 'plan',
+        patch: [],
+      },
+      {
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: 'assistant-after-drop',
+        role: 'assistant',
+      },
+      {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId: 'assistant-after-drop',
+        delta: 'Done.',
+      },
+      { type: EventType.TEXT_MESSAGE_END, messageId: 'assistant-after-drop' },
+    ]),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: canonicalUser('Plan.'),
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForStoreGenerationToSettle(store);
+  const committed = store.read(ɵselectCommittedAgUiMessages);
+  const warnings = [...warn.mock.calls];
+  warn.mockRestore();
+
+  expect(store.read(selectGeneratingError)).toBeUndefined();
+  expect(store.read(ɵselectAgUiMessagesProtocolError)).toBeUndefined();
+  expect(committed.map((message) => message.id)).toEqual([
+    expect.any(String),
+    'activity-1',
+    'assistant-after-drop',
+  ]);
+  expect(committed[1]).toMatchObject({ content: { steps: [] } });
+  expect(warnings).toEqual([
+    [
+      expect.stringContaining('ACTIVITY_DELTA'),
+      expect.stringContaining('activity-1'),
+    ],
+    [
+      expect.stringContaining('ACTIVITY_DELTA'),
+      expect.stringContaining('activity-unknown'),
+    ],
+  ]);
+
+  teardown();
+});
+
+test('a committed activity never reaches the next run input', async () => {
+  // Arrange
+  jest.clearAllMocks();
+  const requests: TransportRequest[] = [];
+  makeSelection(async (request) => {
+    requests.push(request);
+    return {
+      events: successfulEvents(
+        request,
+        requests.length === 1
+          ? [
+              {
+                type: EventType.TEXT_MESSAGE_START,
+                messageId: 'assistant-1',
+                role: 'assistant',
+              },
+              {
+                type: EventType.TEXT_MESSAGE_CONTENT,
+                messageId: 'assistant-1',
+                delta: 'Planned.',
+              },
+              { type: EventType.TEXT_MESSAGE_END, messageId: 'assistant-1' },
+              {
+                type: EventType.ACTIVITY_SNAPSHOT,
+                messageId: 'activity-1',
+                activityType: 'plan',
+                content: { steps: ['a'] },
+              },
+            ]
+          : [],
+      ),
+    };
+  });
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: 'You are a test bot',
+      canonicalMessages: canonicalUser('Plan.'),
+      retries: 0,
+      debounce: 0,
+      transport: configuredTransport,
+    }),
+  );
+  const teardown = store.runEffects();
+  store.dispatch(internalActions.start());
+  await waitForStoreGenerationToSettle(store);
+
+  // Act
+  store.dispatch(
+    devActions.sendMessage({
+      canonicalMessages: canonicalUser('Next.'),
+      message: { role: 'user', content: 'Next.' },
+    }),
+  );
+  await waitForMockCalls(configuredTransport.send, 2);
+  await waitForStoreGenerationToSettle(store);
+
+  // Assert
+  expect(
+    store.read(ɵselectCommittedAgUiMessages).map((message) => message.role),
+  ).toEqual(['user', 'assistant', 'activity', 'user']);
+  expect(requests).toHaveLength(2);
+  expect(requests[1]?.input.messages.map((message) => message.role)).toEqual([
+    'user',
+    'assistant',
+    'user',
+  ]);
+  expect(JSON.stringify(requests[1]?.input.messages)).not.toContain(
+    'hashbrownLinks',
+  );
+
+  teardown();
+});

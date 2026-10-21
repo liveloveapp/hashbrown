@@ -160,3 +160,142 @@ for (const toolRound of [false, true]) {
     }
   });
 }
+
+test('lists a provider activity before the answer with its patched content', async ({
+  page,
+}) => {
+  const content = {
+    ui: [
+      {
+        status: {
+          props: { title: 'Example fixture rendered successfully.', count: 1 },
+        },
+      },
+    ],
+  };
+  const mock = new LLMock({ port: 0 });
+  mock.onMessage('Verify the example transport', { content });
+  await mock.start();
+  let server: Server | undefined;
+
+  try {
+    server = createApi({
+      apiKey: 'fixture-only',
+      baseURL: `${mock.url}/v1`,
+      model: 'gpt-4.1-mini',
+      activities: true,
+    }).listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const { port } = server.address() as AddressInfo;
+    await page.goto(
+      '/?scenario=ui&native=true&runUrl=' +
+        encodeURIComponent('http://127.0.0.1:' + port + '/api/chat'),
+    );
+    await page.getByTestId('prompt').fill('Verify the example transport');
+
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+
+    await expect(page.getByTestId('status-card')).toBeVisible();
+    await expect(page.getByTestId('activity-plan')).toHaveText(
+      '{"step":"Done"}',
+    );
+    const activityFirst = await page.evaluate(() => {
+      const activity = document.querySelector('[data-testid="activity-plan"]');
+      const answer = document.querySelector('[data-testid="status-card"]');
+
+      return Boolean(
+        activity &&
+        answer &&
+        activity.compareDocumentPosition(answer) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
+    expect(activityFirst).toBe(true);
+  } finally {
+    if (server?.listening) {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        server?.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+    await mock.stop();
+  }
+});
+
+test("gives each turn its own provider activity before that turn's answer", async ({
+  page,
+}) => {
+  const content = {
+    ui: [
+      {
+        status: {
+          props: { title: 'Example fixture rendered successfully.', count: 1 },
+        },
+      },
+    ],
+  };
+  const mock = new LLMock({ port: 0 });
+  mock.onMessage('Verify the example transport', { content });
+  await mock.start();
+  let server: Server | undefined;
+
+  try {
+    server = createApi({
+      apiKey: 'fixture-only',
+      baseURL: `${mock.url}/v1`,
+      model: 'gpt-4.1-mini',
+      activities: true,
+    }).listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const { port } = server.address() as AddressInfo;
+    await page.goto(
+      '/?scenario=ui&native=true&runUrl=' +
+        encodeURIComponent('http://127.0.0.1:' + port + '/api/chat'),
+    );
+    const send = page.getByRole('button', { name: 'Send', exact: true });
+    await page.getByTestId('prompt').fill('Verify the example transport');
+    await send.click();
+    await expect(page.getByTestId('status-card')).toHaveCount(1);
+    await expect(page.getByTestId('activity-plan')).toHaveText([
+      '{"step":"Done"}',
+    ]);
+    await expect(page.getByTestId('status')).toHaveText('idle');
+
+    await page.getByTestId('prompt').fill('Verify the example transport again');
+    await send.click();
+
+    await expect(page.getByTestId('status-card')).toHaveCount(2);
+    await expect(page.getByTestId('activity-plan')).toHaveText([
+      '{"step":"Done"}',
+      '{"step":"Done"}',
+    ]);
+    const order = await page.evaluate(() =>
+      Array.from(
+        document.querySelectorAll(
+          '[data-testid="activity-plan"], [data-testid="status-card"]',
+        ),
+        (element) => element.getAttribute('data-testid'),
+      ),
+    );
+    expect(order).toEqual([
+      'activity-plan',
+      'status-card',
+      'activity-plan',
+      'status-card',
+    ]);
+    const ids = await page
+      .getByTestId('activity-plan')
+      .evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute('data-activity-id')),
+      );
+    expect(new Set(ids).size).toBe(2);
+  } finally {
+    if (server?.listening) {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        server?.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+    await mock.stop();
+  }
+});
