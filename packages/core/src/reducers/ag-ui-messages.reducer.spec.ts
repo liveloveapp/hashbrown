@@ -1,5 +1,7 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
+import { readActivityLinks } from './ag-ui-activity';
+import { lowerViewMessagesToAgUi } from './ag-ui-message-history';
 import {
   applyCanonicalMessageEvent,
   initialAgUiMessagesState,
@@ -840,6 +842,7 @@ test('retains synchronized system echoes and replaces them in place in the effec
       activityType: 'progress',
       content: { count: 1 },
       metadata: { arbitrary: { value: true } },
+      hashbrownLinks: {},
     },
   ]);
   expect(Object.isFrozen(state.draft[3])).toBe(true);
@@ -853,6 +856,7 @@ test('retains synchronized system echoes and replaces them in place in the effec
       activityType: 'progress',
       content: { count: 1 },
       metadata: { arbitrary: { value: true } },
+      hashbrownLinks: {},
     },
   ]);
   expect(appended.committed).toEqual(
@@ -2344,5 +2348,191 @@ test('starts a text message after an end that matched no canonical message', () 
   expect(ɵselectAgUiMessagesProtocolError(started)).toBeUndefined();
   expect(started.draft).toEqual([
     { id: 'answer', role: 'assistant', content: '' },
+  ]);
+});
+
+test('snapshot activities get links from position, ignoring incoming hashbrownLinks', () => {
+  const active = reducer(
+    reducer(
+      initialAgUiMessagesState,
+      devActions.init({ system: '', canonicalMessages: [] }),
+    ),
+    internalActions.generationAttemptStarted(),
+  );
+  const started = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+  const forged = {
+    runId: 'forged-run',
+    assistantMessageId: 'forged-assistant',
+    toolCallId: 'forged-tool',
+  };
+
+  const snapshotted = reducer(
+    started,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'user-1', role: 'user', content: 'hello' },
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: 'Looking.',
+          toolCalls: [
+            {
+              id: 'tool-1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{}' },
+            },
+          ],
+        },
+        {
+          id: 'activity-1',
+          role: 'activity',
+          activityType: 'plan',
+          content: { steps: [] },
+          hashbrownLinks: forged,
+        } as never,
+      ],
+    }),
+  );
+  const resnapshotted = reducer(
+    snapshotted,
+    apiActions.generateMessageEvent({
+      type: EventType.MESSAGES_SNAPSHOT,
+      messages: [
+        { id: 'user-1', role: 'user', content: 'hello' },
+        { id: 'assistant-1', role: 'assistant', content: 'Looking.' },
+        { id: 'user-2', role: 'user', content: 'again' },
+      ],
+    }),
+  );
+
+  expect(snapshotted.protocolError).toBeUndefined();
+  expect(readActivityLinks(snapshotted.draft[2])).toEqual({
+    runId: 'run-1',
+    assistantMessageId: 'assistant-1',
+    toolCallId: 'tool-1',
+  });
+  expect(resnapshotted.draft.map((message) => message.id)).toEqual([
+    'user-1',
+    'assistant-1',
+    'activity-1',
+    'user-2',
+  ]);
+  expect(resnapshotted.draft[2]).toBe(snapshotted.draft[2]);
+});
+
+test('setMessages lowers activity messages and recomputes their links', () => {
+  const canonicalMessages = lowerViewMessagesToAgUi(
+    [
+      { id: 'user-1', role: 'user', content: 'hello' },
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        content: 'Done.',
+        toolCalls: [
+          {
+            role: 'tool',
+            toolCallId: 'tool-1',
+            name: 'lookup',
+            args: {},
+            status: 'done',
+            result: { status: 'fulfilled', value: 'ok' },
+          },
+        ],
+      },
+      {
+        id: 'activity-1',
+        role: 'activity',
+        activityType: 'plan',
+        content: { steps: ['a'] },
+        metadata: { source: 'agent' },
+        links: {
+          runId: 'forged-run',
+          assistantMessageId: 'forged-assistant',
+          toolCallId: 'forged-tool',
+          subagentRunId: 'forged-subagent',
+        },
+      },
+    ],
+    { createId: () => 'minted' },
+  );
+
+  const next = reducer(
+    initialAgUiMessagesState,
+    devActions.setMessages({ messages: [], canonicalMessages }),
+  );
+
+  expect(next.protocolError).toBeUndefined();
+  expect(next.committed.at(-1)).toEqual({
+    id: 'activity-1',
+    role: 'activity',
+    activityType: 'plan',
+    content: { steps: ['a'] },
+    metadata: { source: 'agent' },
+    hashbrownLinks: { assistantMessageId: 'assistant-1', toolCallId: 'tool-1' },
+  });
+});
+
+test('a saved transcript restored with setMessages keeps ids and activity links', () => {
+  const saved = [
+    { id: 'user-1', role: 'user' as const, content: 'Plan my trip.' },
+    {
+      id: 'activity-early',
+      role: 'activity' as const,
+      activityType: 'progress',
+      content: { percent: 100 },
+      links: { runId: 'run-1' },
+    },
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: 'Here is a plan.',
+      toolCalls: [],
+    },
+    {
+      id: 'activity-plan',
+      role: 'activity' as const,
+      activityType: 'plan',
+      content: { steps: ['fly'] },
+      links: { runId: 'run-1', assistantMessageId: 'assistant-1' },
+    },
+    { id: 'user-2', role: 'user' as const, content: 'Thanks.' },
+    {
+      id: 'assistant-2',
+      role: 'assistant' as const,
+      content: 'Anytime.',
+      toolCalls: [],
+    },
+  ];
+  let minted = 0;
+
+  const restored = reducer(
+    initialAgUiMessagesState,
+    devActions.setMessages({
+      messages: [],
+      canonicalMessages: lowerViewMessagesToAgUi(saved, {
+        createId: () => `minted-${++minted}`,
+      }),
+    }),
+  );
+
+  expect(minted).toBe(0);
+  expect(restored.committed.map((message) => message.id)).toEqual(
+    saved.map((message) => message.id),
+  );
+  expect(restored.committed.map(readActivityLinks)).toEqual([
+    undefined,
+    {},
+    undefined,
+    { assistantMessageId: 'assistant-1' },
+    undefined,
+    undefined,
   ]);
 });

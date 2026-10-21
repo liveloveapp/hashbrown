@@ -2,7 +2,9 @@ import { EventType, type Message } from '@ag-ui/core';
 import {
   applyActivityDelta,
   applyActivitySnapshot,
+  mergeSnapshotActivities,
   readActivityLinks,
+  recomputeActivityLinks,
 } from './ag-ui-activity';
 
 const user: Message = Object.freeze({
@@ -358,4 +360,154 @@ test('a snapshot cannot take over a non-activity message or tool call id', () =>
 
   expect(takeOverMessage).toThrow(/user-1/);
   expect(takeOverToolCall).toThrow(/tool-1/);
+});
+
+function activity(
+  id: string,
+  links: Record<string, string> = {},
+): Readonly<Message> {
+  return Object.freeze({
+    id,
+    role: 'activity',
+    activityType: 'plan',
+    content: { id },
+    hashbrownLinks: links,
+  }) as unknown as Readonly<Message>;
+}
+
+function assistant(
+  id: string,
+  toolCallIds: readonly string[] = [],
+): Readonly<Message> {
+  return Object.freeze({
+    id,
+    role: 'assistant',
+    content: id,
+    ...(toolCallIds.length === 0
+      ? {}
+      : {
+          toolCalls: toolCallIds.map((toolCallId) => ({
+            id: toolCallId,
+            type: 'function' as const,
+            function: { name: 'lookup', arguments: '{}' },
+          })),
+        }),
+  });
+}
+
+test('a snapshot carrying activities replaces the activity set', () => {
+  const previous = Object.freeze([
+    user,
+    assistant('assistant-1'),
+    activity('activity-local', { assistantMessageId: 'assistant-1' }),
+  ]);
+  const snapshot = Object.freeze([
+    user,
+    assistant('assistant-1'),
+    activity('activity-remote'),
+  ]);
+
+  const merged = mergeSnapshotActivities(previous, snapshot);
+
+  expect(merged).toBe(snapshot);
+});
+
+test('a snapshot without activities keeps local activities after their linked assistant', () => {
+  const kept = activity('activity-1', { assistantMessageId: 'assistant-1' });
+  const keptToo = activity('activity-2', { assistantMessageId: 'assistant-1' });
+  const previous = Object.freeze([
+    user,
+    assistant('assistant-1'),
+    kept,
+    keptToo,
+    assistant('assistant-2'),
+  ]);
+  const snapshot = Object.freeze([
+    user,
+    assistant('assistant-1'),
+    { id: 'user-2', role: 'user', content: 'next' } as Message,
+    assistant('assistant-2'),
+  ]);
+
+  const merged = mergeSnapshotActivities(previous, snapshot);
+
+  expect(merged.map((message) => message.id)).toEqual([
+    'user-1',
+    'assistant-1',
+    'activity-1',
+    'activity-2',
+    'user-2',
+    'assistant-2',
+  ]);
+  expect(merged[2]).toBe(kept);
+  expect(merged[3]).toBe(keptToo);
+  expect(Object.isFrozen(merged)).toBe(true);
+});
+
+test('a kept activity whose assistant is gone moves to the end', () => {
+  const previous = Object.freeze([
+    activity('activity-unlinked'),
+    user,
+    assistant('assistant-gone'),
+    activity('activity-orphan', { assistantMessageId: 'assistant-gone' }),
+    assistant('assistant-1'),
+    activity('activity-1', { assistantMessageId: 'assistant-1' }),
+  ]);
+  const snapshot = Object.freeze([
+    user,
+    assistant('assistant-1'),
+    { id: 'user-2', role: 'user', content: 'next' } as Message,
+  ]);
+
+  const merged = mergeSnapshotActivities(previous, snapshot);
+
+  expect(merged.map((message) => message.id)).toEqual([
+    'user-1',
+    'assistant-1',
+    'activity-1',
+    'user-2',
+    'activity-unlinked',
+    'activity-orphan',
+  ]);
+});
+
+test('recomputeActivityLinks links each activity to the nearest assistant before it and its last tool call', () => {
+  const messages = Object.freeze([
+    activity('activity-first', { assistantMessageId: 'forged' }),
+    user,
+    assistant('assistant-1', ['tool-1', 'tool-2']),
+    {
+      id: 'tool-message-1',
+      role: 'tool',
+      toolCallId: 'tool-1',
+      content: 'ok',
+    } as Message,
+    Object.freeze({
+      ...activity('activity-1', { runId: 'forged', toolCallId: 'forged' }),
+      subagentRunId: 'sub-1',
+    }) as unknown as Readonly<Message>,
+    assistant('assistant-2'),
+    activity('activity-2'),
+  ]);
+
+  const next = recomputeActivityLinks(messages, 'run-9');
+
+  expect(next.map(readActivityLinks)).toEqual([
+    { runId: 'run-9' },
+    undefined,
+    undefined,
+    undefined,
+    {
+      runId: 'run-9',
+      assistantMessageId: 'assistant-1',
+      toolCallId: 'tool-2',
+      subagentRunId: 'sub-1',
+    },
+    undefined,
+    { runId: 'run-9', assistantMessageId: 'assistant-2' },
+  ]);
+  expect(next[1]).toBe(messages[1]);
+  expect(Object.isFrozen(next)).toBe(true);
+  expect(Object.isFrozen(next[4])).toBe(true);
+  expect(recomputeActivityLinks([user], 'run-9')).toEqual([user]);
 });

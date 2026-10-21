@@ -16,19 +16,49 @@ export interface LowerCanonicalMessagesOptions {
 }
 
 /**
+ * An activity view message as lowering accepts it. Its `links` are never
+ * trusted; the reducer recomputes them from position.
+ *
+ * @internal
+ */
+export interface ɵActivityMessageInput {
+  readonly role: 'activity';
+  readonly id: string;
+  readonly activityType: string;
+  readonly content: Readonly<Record<string, unknown>>;
+  readonly metadata?: Readonly<Record<string, unknown>>;
+  readonly links?: unknown;
+}
+
+/**
  * Lowers Hashbrown view messages once at the runtime boundary. A user or
  * assistant message keeps its supplied `id`; `createId` mints one only when
- * the id is absent.
+ * the id is absent. An activity message lowers to an AG-UI activity message
+ * without its links.
  *
  * @internal
  */
 export function lowerViewMessagesToAgUi(
-  messages: readonly Chat.AnyMessageInput[],
+  messages: readonly (Chat.AnyMessageInput | ɵActivityMessageInput)[],
   options: LowerCanonicalMessagesOptions,
 ): readonly Message[] {
   const lowered = messages.flatMap((message): readonly Message[] => {
     if (message.role === 'error') {
       return [];
+    }
+
+    if (message.role === 'activity') {
+      return [
+        {
+          id: message.id,
+          role: 'activity',
+          activityType: message.activityType,
+          content: message.content as Record<string, unknown>,
+          ...(message.metadata !== undefined
+            ? { metadata: message.metadata as Record<string, unknown> }
+            : {}),
+        },
+      ];
     }
 
     if (message.role === 'user') {

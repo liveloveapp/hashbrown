@@ -203,6 +203,114 @@ export function readActivityLinks(
     : undefined;
 }
 
+/**
+ * Recomputes the links of every activity in a list from its position.
+ *
+ * Used for activities that arrive through `MESSAGES_SNAPSHOT`, `setMessages`
+ * or initial `messages`, whose incoming `hashbrownLinks` are never trusted.
+ * `assistantMessageId` is the nearest assistant message before the activity,
+ * `toolCallId` is that assistant's last tool call, and `subagentRunId` comes
+ * from the activity message itself.
+ *
+ * @param messages - Canonical history whose activities arrived together.
+ * @param runId - The run that delivered the list, if any.
+ * @returns The history with fresh links on each activity, or `messages`
+ *   itself when it holds no activity.
+ * @internal
+ */
+export function recomputeActivityLinks(
+  messages: readonly Readonly<Message>[],
+  runId?: string,
+): readonly Readonly<Message>[] {
+  if (!messages.some((message) => message.role === 'activity')) {
+    return messages;
+  }
+  let assistant: Extract<Message, { role: 'assistant' }> | undefined;
+  return Object.freeze(
+    messages.map((message) => {
+      if (message.role === 'assistant') {
+        assistant = message;
+        return message;
+      }
+      if (message.role !== 'activity') {
+        return message;
+      }
+      const record = message as ActivityRecord;
+      return withMetadata(
+        {
+          ...record,
+          hashbrownLinks: createLinks(
+            {
+              runId,
+              assistantMessageId: assistant?.id,
+              toolCallId: assistant?.toolCalls?.at(-1)?.id,
+            },
+            typeof record.subagentRunId === 'string'
+              ? record.subagentRunId
+              : undefined,
+          ),
+        },
+        undefined,
+      );
+    }),
+  );
+}
+
+/**
+ * Applies the activity-set rule of `MESSAGES_SNAPSHOT` to canonical history.
+ *
+ * A snapshot that carries any activity replaces the activity set, so it is
+ * returned as is. A snapshot that carries none keeps the local activities:
+ * each one is re-inserted directly after its linked assistant message, or at
+ * the end when that message is gone, in the original relative order. Every
+ * other role keeps the snapshot's wholesale replace.
+ *
+ * @param previous - Canonical history before the snapshot.
+ * @param snapshot - The owned snapshot messages.
+ * @returns The next canonical history.
+ * @internal
+ */
+export function mergeSnapshotActivities(
+  previous: readonly Readonly<Message>[],
+  snapshot: readonly Readonly<Message>[],
+): readonly Readonly<Message>[] {
+  if (snapshot.some((message) => message.role === 'activity')) {
+    return snapshot;
+  }
+  const taken = new Set(
+    snapshot.flatMap((message) => [
+      message.id,
+      ...(message.role === 'assistant'
+        ? (message.toolCalls ?? []).map((toolCall) => toolCall.id)
+        : []),
+    ]),
+  );
+  const kept = previous.filter(
+    (message) => message.role === 'activity' && !taken.has(message.id),
+  );
+  if (kept.length === 0) {
+    return snapshot;
+  }
+  const assistantIds = new Set(
+    snapshot
+      .filter((message) => message.role === 'assistant')
+      .map((message) => message.id),
+  );
+  const anchorOf = (activity: Readonly<Message>) => {
+    const id = readActivityLinks(activity)?.assistantMessageId;
+    return id !== undefined && assistantIds.has(id) ? id : undefined;
+  };
+  return Object.freeze([
+    ...snapshot.flatMap((message) => [
+      message,
+      ...(message.role === 'assistant'
+        ? kept.filter((activity) => anchorOf(activity) === message.id)
+        : []),
+    ]),
+    ...kept.filter((activity) => anchorOf(activity) === undefined),
+  ]);
+}
+
 function createLinks(
   arrival: ActivityArrival,
   subagentRunId: string | undefined,

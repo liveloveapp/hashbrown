@@ -9,6 +9,8 @@ import {
   type ActivityArrival,
   applyActivityDelta,
   applyActivitySnapshot,
+  mergeSnapshotActivities,
+  recomputeActivityLinks,
 } from './ag-ui-activity';
 import {
   applySystemMessageOverlay,
@@ -79,7 +81,7 @@ export const reducer = createReducer(
   initialAgUiMessagesState,
   on(devActions.init, (_state, action): AgUiMessagesState => {
     const systemMessage = action.payload.systemMessage;
-    const committed = own(action.payload.canonicalMessages);
+    const committed = ownRestored(action.payload.canonicalMessages);
 
     return {
       committed: withoutSystemOverlay(committed, systemMessage),
@@ -175,7 +177,7 @@ export const reducer = createReducer(
     }
   }),
   on(devActions.setMessages, (state, action): AgUiMessagesState => {
-    const committed = own(action.payload.canonicalMessages);
+    const committed = ownRestored(action.payload.canonicalMessages);
     return {
       ...state,
       committed: withoutSystemOverlay(committed, state.systemMessage),
@@ -355,7 +357,13 @@ export function applyCanonicalMessageEvent(
 ): readonly Readonly<Message>[] {
   switch (event.type) {
     case EventType.MESSAGES_SNAPSHOT:
-      return ɵreadAgUiMessageSnapshot(event);
+      return mergeSnapshotActivities(
+        messages,
+        recomputeActivityLinks(
+          ɵreadAgUiMessageSnapshot(event),
+          context?.activityArrival?.runId,
+        ),
+      );
     case EventType.ACTIVITY_SNAPSHOT:
       return applyActivitySnapshot(
         messages,
@@ -628,6 +636,13 @@ function own(
   messages: readonly Readonly<Message>[],
 ): readonly Readonly<Message>[] {
   return ɵownValidatedAgUiMessages(messages as readonly Message[]);
+}
+
+/** Owns restored history; its activities get links from position. */
+function ownRestored(
+  messages: readonly Readonly<Message>[],
+): readonly Readonly<Message>[] {
+  return recomputeActivityLinks(own(messages));
 }
 
 function withoutSystemOverlay(
