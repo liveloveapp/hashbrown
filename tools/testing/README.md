@@ -27,23 +27,51 @@ npx nx record-fixtures <provider>
 To list what would be deleted without recording, run
 `node tools/testing/aimock/record-fixtures.mjs <provider> --dry-run`. Env values are never printed.
 
-To re-record one test without clearing the provider's other recordings (its old recording is overwritten; delete it first if the prompt changed), run `( set -a; source .env; set +a; AIMOCK_RECORD=1 npx nx e2e <provider> --skip-nx-cache --testFile=src/integration.spec.ts --testNamePattern='<part of the test name>' )`, then the credential scan above.
+If a record run fails (a test fails, or a recording holds an empty response),
+that provider's recordings have already been deleted. Restore the committed
+ones with `git checkout -- tools/testing/aimock/fixtures/recorded`.
+
+### Re-recording one test
+
+```sh
+node tools/testing/aimock/record-fixtures.mjs <provider> --only "<exact test name>"
+```
+
+This deletes only that test's recording
+(`<test-slug>/<provider file>.json`, using the same slug the spec records
+under), runs the provider's e2e target with `AIMOCK_RECORD=1` and
+`--testNamePattern` matching exactly that name, checks that a recording was
+written, then runs the credential scan. It loads `.env` the same way as a full
+run, so it works from a git worktree. Add `--dry-run` to print the file and
+commands without running them.
+
+The recording has to be deleted first: in record mode aimock still loads the
+existing recording, replays any request it matches instead of calling the
+real provider, and appends new recordings to the file.
 
 ## Credentials (in `.env`)
 
-| Provider  | Variables                                                                       |
-| --------- | ------------------------------------------------------------------------------- |
-| OpenAI    | `OPENAI_API_KEY`                                                                |
-| Anthropic | `ANTHROPIC_API_KEY`                                                             |
-| Google    | `GOOGLE_API_KEY`                                                                |
-| Ollama    | `OLLAMA_HOST`, `OLLAMA_MODEL`                                                   |
-| Azure     | `AZURE_ENDPOINT`, `AZURE_API_KEY`, `AZURE_API_VERSION` and the deployment names |
-| Bedrock   | AWS credentials, `BEDROCK_REGION`, `BEDROCK_MODEL_ID`                           |
+| Provider  | Variables                                                                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------ |
+| OpenAI    | `OPENAI_API_KEY`                                                                                                   |
+| Anthropic | `ANTHROPIC_API_KEY`                                                                                                |
+| Google    | `GOOGLE_API_KEY`                                                                                                   |
+| Ollama    | `OLLAMA_HOST`, `OLLAMA_MODEL`                                                                                      |
+| Azure     | `AZURE_ENDPOINT`, `AZURE_API_KEY`                                                                                  |
+| Bedrock   | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` (optional), `BEDROCK_REGION`, `BEDROCK_MODEL_ID` |
+
+`AZURE_ENDPOINT` must be the Azure OpenAI resource host,
+`https://<resource>.openai.azure.com`; the Azure AI Foundry
+`*.services.ai.azure.com` host returns 404 for these requests. The Azure spec
+does not read the API version or deployment names from the environment: it
+hard-codes API version `2025-04-01-preview` and the deployments `gpt-4.1-mini`
+and `gpt-5-mini` (`packages/azure/src/integration.spec.ts`), so the recording
+resource needs deployments with exactly those names.
 
 Bedrock signs each request for the real regional endpoint and then sends it to
 aimock, so recording needs `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (plus
-`AWS_SESSION_TOKEN` for temporary credentials) in `.env`; a named `AWS_PROFILE`
-is not used. aimock records Bedrock through a local proxy
+`AWS_SESSION_TOKEN` for temporary credentials) in `.env`; `AWS_PROFILE` is
+ignored. aimock records Bedrock through a local proxy
 (`aimock/bedrock-converse-shim.ts`) that works around an aimock bug that saves
 Converse streams as empty; delete it once aimock reads Converse events by their
 `:event-type` header.
@@ -59,10 +87,15 @@ run.
 
 Recording rewrites files, so inspect the diff of `fixtures/recorded/`: the
 requests and responses should be what you expect, with no credentials, account
-identifiers or endpoints. aimock replaces every configured secret value with
-`[REDACTED]` while writing, and the scan runs automatically at the end of
-`record-fixtures`; it also runs in `npx nx test testing`, so a leaked
-credential fails CI.
+identifiers or endpoints. After aimock has written the recordings, stopping
+the mock replaces every configured secret value in them with `[REDACTED]`.
+
+The credential scan runs automatically at the end of `record-fixtures`, where
+it checks both the configured secret values from `.env` and known key shapes
+(`sk-…`, `AKIA…`, `AIza…`, bearer tokens, credential header names). It also
+runs in `npx nx test testing`, but CI has no `.env`, so there it checks key
+shapes only; a credential without a recognisable shape, such as a hex Azure
+key, is caught only by the local scan. Review the diff.
 
 ## Replay is strict
 
