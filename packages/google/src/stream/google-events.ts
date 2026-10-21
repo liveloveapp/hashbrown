@@ -26,7 +26,6 @@ export async function* mapGoogleEvents(
   let textStarted = false;
   let reasoningId: string | undefined;
   let reasoningIndex = 0;
-  let lastToolCallId: string | undefined;
   let toolCallIndex = 0;
   const iterator = options.events[Symbol.asyncIterator]();
   let mappingFailed = false;
@@ -123,7 +122,6 @@ export async function* mapGoogleEvents(
           const toolCallId =
             part.functionCall.id ??
             `${options.messageId}:tool:${toolCallIndex}`;
-          lastToolCallId = toolCallId;
           toolCallIndex += 1;
           yield {
             type: EventType.TOOL_CALL_START,
@@ -161,16 +159,10 @@ export async function* mapGoogleEvents(
           continue;
         }
 
-        if (part.thoughtSignature && lastToolCallId && !part.text) {
-          yield {
-            type: EventType.REASONING_ENCRYPTED_VALUE,
-            subtype: 'tool-call',
-            entityId: lastToolCallId,
-            encryptedValue: part.thoughtSignature,
-          };
-          continue;
-        }
-
+        // A signature on a part without a function call belongs to that part,
+        // not to an earlier call: Gemini sends function-call signatures on the
+        // function-call part itself. The view model has nowhere to keep a
+        // text-part signature, and Gemini does not require it on replay.
         if (!part.text) {
           continue;
         }

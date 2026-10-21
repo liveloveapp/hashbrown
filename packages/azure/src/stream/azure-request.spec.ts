@@ -110,3 +110,12 @@ test('honours reasoning: false and an explicit object', () => {
   expect(explicit.reasoning).toEqual({ effort: 'low', summary: 'auto' });
   expect(explicit.include).toEqual(['reasoning.encrypted_content']);
 });
+
+test('requests summaries and encrypted reasoning for any deployment name when reasoning is true', () => {
+  const input = createInput();
+
+  const result = createAzureRequestOptions(input, 'support-assistant', true);
+
+  expect(result.reasoning).toEqual({ summary: 'auto' });
+  expect(result.include).toEqual(['reasoning.encrypted_content']);
+});

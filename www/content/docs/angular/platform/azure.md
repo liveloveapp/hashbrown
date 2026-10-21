@@ -62,7 +62,7 @@ HashbrownAzure.stream.text({
 | `input`                   | `AzureHashbrownRunAgentInput`           | AG-UI run input, including messages and tools.                                                             |
 | `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Azure OpenAI request when the HTTP client disconnects.                            |
 | `activities`              | `ActivityCallback`                      | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities). |
-| `reasoning`               | `false \| { effort?, summary? }`        | _(Optional)_ Controls the `reasoning` request parameter. See [Reasoning](#reasoning).                      |
+| `reasoning`               | `boolean \| { effort?, summary? }`      | _(Optional)_ Controls the `reasoning` request parameter. See [Reasoning](#reasoning).                      |
 | `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Responses request (`ResponseCreateParamsStreaming`).           |
 
 The adapter maps system and developer instructions, message history, tool definitions, tool results, and native structured output. Provider and mapping failures are emitted as `RUN_ERROR` events.
@@ -75,7 +75,7 @@ The adapter streams from the Responses API on your Azure OpenAI resource. Every 
 
 Hashbrown decides whether to request reasoning from the `model` option, which is your deployment name. If the name starts with `o` and a digit, `gpt-5`, or `gpt-` followed by a major version of 5 or later, and is not a `-chat` variant such as `gpt-5-chat-latest`, Hashbrown sends `reasoning: { summary: 'auto' }` and `include: ['reasoning.encrypted_content']`, and leaves `effort` to the model.
 
-A deployment name often does not reveal the model behind it. Set `reasoning` explicitly in that case:
+A deployment name often does not reveal the model behind it. Set `reasoning` explicitly in that case, to `true` or to an object:
 
 ```ts
 const stream = HashbrownAzure.stream.text({
@@ -90,6 +90,7 @@ const stream = HashbrownAzure.stream.text({
 });
 ```
 
+- `reasoning: true` treats the deployment as a reasoning model whatever its name, and sends `reasoning: { summary: 'auto' }` and `include: ['reasoning.encrypted_content']`.
 - `reasoning: { effort, summary }` is sent as given. A missing `summary` defaults to `'auto'`. `effort` is sent only when you set it.
 - `reasoning: false` stops Hashbrown from requesting reasoning summaries. Use it when a non-reasoning deployment happens to have a name that matches. It does not turn reasoning off: a reasoning model may still return encrypted reasoning, which Hashbrown still replays on the next turn.
 

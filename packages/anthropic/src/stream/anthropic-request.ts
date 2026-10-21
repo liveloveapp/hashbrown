@@ -29,6 +29,10 @@ function mapAssistantMessage(
     | Anthropic.Messages.RedactedThinkingBlockParam
   > = [],
 ): Anthropic.Messages.MessageParam {
+  // Hashbrown stores reasoning as an ordered list on the assistant message and
+  // joins text into one string, so where interleaved thinking sat between
+  // text and tool_use blocks is not recorded. Replay keeps the reasoning
+  // blocks in their original order and places them before text and tool use.
   const content: AnthropicAssistantContentBlock[] = [
     ...reasoningBlocks,
     ...(message.content

@@ -3,15 +3,20 @@ import type { Reasoning, ReasoningEffort } from 'openai/resources/shared';
 /**
  * Controls the `reasoning` request parameter for Azure OpenAI reasoning models.
  *
+ * - `true` marks the deployment as a reasoning model, whatever its name, and
+ *   requests `{ summary: 'auto' }` with encrypted reasoning content.
  * - `false` sends no `reasoning` parameter.
  * - An object is sent as given; a missing `summary` defaults to `'auto'`.
- * - When omitted, reasoning models request `{ summary: 'auto' }` and other
- *   models send nothing. `effort` is never set unless provided here.
+ * - When omitted, Hashbrown guesses from the deployment name: names that
+ *   start with `o` and a digit or `gpt-5` or later, other than `-chat`
+ *   variants, request `{ summary: 'auto' }` and others send nothing. A deployment name need not
+ *   reveal its model, so set this option for a reasoning deployment whose name
+ *   does not match. `effort` is never set unless provided here.
  *
  * @public
  */
 export type AzureReasoningOption =
-  | false
+  | boolean
   | {
       effort?: ReasoningEffort;
       summary?: 'auto' | 'concise' | 'detailed' | null;
@@ -43,6 +48,7 @@ export function resolveReasoning(
   option: AzureReasoningOption | undefined,
 ): Reasoning | undefined {
   if (option === false) return undefined;
+  if (option === true) return { summary: 'auto' };
   if (option === undefined) {
     return isReasoningModel(model) ? { summary: 'auto' } : undefined;
   }
