@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
   // Workspace packages (and the monorepo tracing root) live outside www.
   turbopack: { root: repoRoot },
   outputFileTracingRoot: repoRoot,
+  // The collection route checks website content ids against the docs and
+  // blog markdown at request time; `repoRoot()` finds them through nx.json.
+  outputFileTracingIncludes: {
+    '/_/growth/collect/v1/*': [
+      '../nx.json',
+      './content/docs/**/*.md',
+      './content/blog/**/*.md',
+    ],
+  },
   // The repo keeps its own AGENTS.md; don't let `next dev` write copies here.
   agentRules: false,
   async redirects() {
