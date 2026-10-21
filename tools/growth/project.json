@@ -45,6 +45,22 @@
       "options": {
         "command": "node --import tsx tools/growth/scripts/growth-database-preflight.mts integration"
       }
+    },
+    "report": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/growth-observability.mts",
+        "forwardAllArgs": true
+      }
+    },
+    "observability": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/growth-observability.mts",
+        "forwardAllArgs": true
+      }
     }
   }
 }

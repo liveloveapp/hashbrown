@@ -80,6 +80,8 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx lint growth`
   - `npx nx migrate-growth growth`
   - `npx nx test-integration growth` (needs `GROWTH_INTEGRATION=1` and `TEST_DATABASE_URL`)
+  - `npx nx report growth -- <funnel|journey|health|timeline|detail> …`
+  - `npx nx observability growth -- <process|replay|redact|initialize-redactions> …`
 - `anthropic`
   - `npx nx build anthropic`
   - `npx nx test anthropic`
