@@ -216,3 +216,34 @@ test('a failure after the run was cancelled or finished changes nothing', () => 
   expect(failed).toBe(false);
   expect(store.getState().mapFilter?.filter.airline).toBe('Alaska');
 });
+
+test('a filter set from outside the run (the assistant, say) cancels it', () => {
+  const store = createAtcStore();
+  const onCancel = vi.fn();
+  const sync = createFilterSync(store, onCancel);
+  sync.begin(null);
+  sync.update({ airline: 'Alaska' });
+  const outside = filterOf({ kind: 'rotor' });
+
+  store.setMapFilter(outside);
+  sync.update({ airline: 'Alaska', kind: 'jet' });
+  sync.finish({ airline: 'Alaska', kind: 'jet' });
+
+  expect(onCancel).toHaveBeenCalledTimes(1);
+  expect(store.getState().mapFilter?.filter).toEqual(outside);
+});
+
+test('a filter set from outside before the first update cancels the run', () => {
+  const store = createAtcStore();
+  const base = filterOf({ airline: 'Alaska' });
+  store.setMapFilter(base);
+  const onCancel = vi.fn();
+  const sync = createFilterSync(store, onCancel);
+  sync.begin(base);
+
+  store.setMapFilter(filterOf({ airline: 'Delta' }));
+  sync.update({ kind: 'jet' });
+
+  expect(onCancel).toHaveBeenCalledTimes(1);
+  expect(store.getState().mapFilter?.filter.airline).toBe('Delta');
+});

@@ -78,8 +78,9 @@ export interface FilterSync {
 }
 
 /**
- * Creates a {@link FilterSync}. If the filter is cleared (the pill's ✕, or
- * the assistant) while a run is live, the run stops being authoritative:
+ * Creates a {@link FilterSync}. If anything else changes the map filter while
+ * a run is live (the pill's x, a typed clear, the assistant's
+ * `setMapFilter` or `clearMapFilter`), the run stops being authoritative:
  * later output is ignored and `onCancel` is called once so the caller can
  * stop the stream.
  */
@@ -92,22 +93,24 @@ export function createFilterSync(
   // The filter the run started from, as `begin` received it.
   let start: MapFilter | null = null;
   let applied: string | null = null;
-  // Whether a filter was on the map after the last store change.
-  let shown = false;
+  // The filter object the store holds while the run owns it: the base, then
+  // each filter the run applied. The store keeps the object it was given, even
+  // when it re-resolves for chart or airspace data, so identity tells the
+  // run's own writes from anyone else's.
+  let expected: MapFilter | null = null;
 
   const unsubscribe = store.subscribe(() => {
-    const now = store.getState().mapFilter !== null;
-    if (live && shown && !now) {
+    if (live && (store.getState().mapFilter?.filter ?? null) !== expected) {
       live = false;
       onCancel();
     }
-    shown = now;
   });
 
   const apply = (next: MapFilter) => {
     const key = JSON.stringify(next);
     if (key !== applied) {
       applied = key;
+      expected = next;
       store.setMapFilter(next);
     }
   };
@@ -118,7 +121,7 @@ export function createFilterSync(
       start = current;
       base = current ?? EMPTY_FILTER;
       applied = current === null ? null : JSON.stringify(current);
-      shown = current !== null;
+      expected = store.getState().mapFilter?.filter ?? null;
     },
     update(partial) {
       if (!live) {
