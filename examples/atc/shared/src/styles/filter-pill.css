@@ -1,0 +1,65 @@
+/* The map filter: a pill of chips with an x to clear, below the follow pill. */
+.atc-filter {
+  position: absolute;
+  /* Same layer as the follow pill; see tokens.css. */
+  z-index: 1050;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  padding: 4px 4px 4px 8px;
+  background: var(--atc-surface);
+  border: 1px solid var(--atc-border);
+  border-radius: var(--atc-radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.atc-filter.is-open {
+  display: inline-flex;
+}
+.atc-filter-chip {
+  min-width: 0;
+  padding: 2px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid var(--atc-border);
+  border-radius: var(--atc-radius-pill);
+}
+.atc-filter-chip[data-state='streaming'],
+.atc-filter-chip[data-state='unknown'] {
+  border-style: dashed;
+  color: var(--atc-muted);
+}
+.atc-filter-note {
+  font-weight: 400;
+}
+.atc-filter button {
+  flex: none;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid var(--atc-border);
+  border-radius: var(--atc-radius-pill);
+  background: var(--atc-surface);
+  color: var(--atc-ink);
+  cursor: pointer;
+}
+.atc-filter button:hover {
+  border-color: var(--atc-muted);
+}
+.atc-map:has(.atc-detail.is-docked.is-open) .atc-filter {
+  display: none;
+}
+@media (pointer: coarse) {
+  .atc-filter button {
+    min-width: 44px;
+    min-height: 44px;
+    margin-block: -1px;
+  }
+}

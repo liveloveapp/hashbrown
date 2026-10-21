@@ -2,11 +2,13 @@
 import { expect, test, vi } from 'vitest';
 import type { Aircraft } from '../aircraft';
 import { KIND_PATHS } from '../kinds';
-import { applySnapshot, INITIAL_STATE } from '../store';
+import { applyMapFilter, applySnapshot, INITIAL_STATE } from '../store';
+import type { MapFilter } from '../find-aircraft';
 import { testAircraft } from '../testing';
 import type { Marker } from 'leaflet';
 import {
   altText,
+  filteredOutHexes,
   markerClassName,
   planeElementOf,
   planeIconHtml,
@@ -217,4 +219,111 @@ test('restartPulse removes and re-adds is-pulsing, and ignores a plane not drawn
 
   expect(remove).toHaveBeenCalledWith('is-pulsing');
   expect(plane.classList.contains('is-pulsing')).toBe(true);
+});
+
+/** A filter with every field "any", overridden by `overrides`. */
+function filterOf(overrides: Partial<MapFilter> = {}): MapFilter {
+  return {
+    airline: null,
+    typeCode: null,
+    kind: null,
+    minAltitudeFt: null,
+    maxAltitudeFt: null,
+    approaching: null,
+    near: null,
+    inAirspace: null,
+    ...overrides,
+  };
+}
+
+const jet = testAircraft({ hex: 'aaaaaa', kind: 'jet' });
+const single = testAircraft({ hex: 'bbbbbb', kind: 'single' });
+const rotor = testAircraft({ hex: 'cccccc', kind: 'rotor' });
+
+test('planes outside the filter are filtered out except selected, highlighted and followed planes', () => {
+  const snapshot = applySnapshot(INITIAL_STATE, {
+    at: 1,
+    aircraft: [jet, single, rotor],
+  });
+  const filtered = applyMapFilter(snapshot, filterOf({ kind: 'jet' }));
+  const state = {
+    ...filtered,
+    selectedHex: 'bbbbbb',
+    followingHex: 'cccccc',
+  };
+  const outside = filteredOutHexes(state);
+
+  const classes = ['aaaaaa', 'bbbbbb', 'cccccc'].map((hex) =>
+    markerClassName(state, hex, outside),
+  );
+  const highlighted = markerClassName(
+    { ...filtered, highlighted: new Set(['bbbbbb']) },
+    'bbbbbb',
+    filteredOutHexes({ ...filtered, highlighted: new Set(['bbbbbb']) }),
+  );
+  const plain = markerClassName(filtered, 'bbbbbb', filteredOutHexes(filtered));
+
+  expect(classes[0]).not.toContain('is-filtered-out');
+  expect(classes[1]).not.toContain('is-filtered-out');
+  expect(classes[2]).not.toContain('is-filtered-out');
+  expect(highlighted).not.toContain('is-filtered-out');
+  expect(plain).toContain('is-filtered-out');
+});
+
+test('a plane that starts matching after a new snapshot loses is-filtered-out', () => {
+  const first = applySnapshot(INITIAL_STATE, { at: 1, aircraft: [single] });
+  const filtered = applyMapFilter(first, filterOf({ kind: 'jet' }));
+  const before = markerClassName(
+    filtered,
+    'bbbbbb',
+    filteredOutHexes(filtered),
+  );
+
+  const next = applySnapshot(filtered, {
+    at: 2,
+    aircraft: [{ ...single, kind: 'jet' }],
+  });
+  const after = markerClassName(next, 'bbbbbb', filteredOutHexes(next));
+
+  expect(before).toContain('is-filtered-out');
+  expect(after).not.toContain('is-filtered-out');
+});
+
+test('a filter that matches nothing filters out every plane except pointed-at ones', () => {
+  const snapshot = applySnapshot(INITIAL_STATE, {
+    at: 1,
+    aircraft: [jet, single, rotor],
+  });
+  const state = {
+    ...applyMapFilter(snapshot, filterOf({ airline: 'zzzznomatch' })),
+    selectedHex: 'aaaaaa',
+  };
+
+  const outside = filteredOutHexes(state);
+
+  expect([...outside].sort()).toEqual(['bbbbbb', 'cccccc']);
+});
+
+test('without a filter no plane is filtered out', () => {
+  const state = applySnapshot(INITIAL_STATE, { at: 1, aircraft: [jet] });
+
+  expect(filteredOutHexes(state).size).toBe(0);
+});
+
+test('updatePlane toggles is-filtered-out in place', () => {
+  const host = document.createElement('div');
+  host.innerHTML = planeIconHtml(jet, 'atc-plane');
+  const element = host.firstElementChild as HTMLElement;
+
+  updatePlane(host, jet, 'atc-plane is-filtered-out');
+  const on = host
+    .querySelector('.atc-plane')
+    ?.classList.contains('is-filtered-out');
+  updatePlane(host, jet, 'atc-plane');
+  const off = host
+    .querySelector('.atc-plane')
+    ?.classList.contains('is-filtered-out');
+
+  expect(element).toBeTruthy();
+  expect([on, off]).toEqual([true, false]);
 });
