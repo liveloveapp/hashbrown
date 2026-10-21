@@ -76,11 +76,11 @@ database. `--limit` is 1 to 100. Every command prints one JSON line
 ## Reports (read-only)
 
 ```
-npx nx report growth -- funnel --from 2026-10-01 --to 2026-10-08
-npx nx report growth -- journey --contact <contact-uuid>
-npx nx report growth -- health --from <iso> --to <iso>
-npx nx report growth -- timeline --subject <subject-uuid> [--limit 100] [--cursor <cursor>]
-npx nx report growth -- detail --observation <uuid> --include-identity
+npx nx run growth:report -- funnel --from 2026-10-01 --to 2026-10-08
+npx nx run growth:report -- journey --contact <contact-uuid>
+npx nx run growth:report -- health --from <iso> --to <iso>
+npx nx run growth:report -- timeline --subject <subject-uuid> [--limit 100] [--cursor <cursor>]
+npx nx run growth:report -- detail --observation <uuid> --include-identity
 ```
 
 `funnel` and `health` take a range of at most 31 days. `detail` returns the

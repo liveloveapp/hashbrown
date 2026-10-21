@@ -19,19 +19,22 @@ posthog-js built-ins (`$pageview`, `$pageleave`, autocapture, web vitals),
 sent through the `/_/ingest` proxy. Nothing in PostHog authorizes an email, and
 PostHog never receives contact PII, prompts or message content. Installs,
 activation, enrichment, email eligibility and delivery outcomes are not in
-PostHog; they live in Neon (`npx nx report growth`).
+PostHog; they live in Neon (`npx nx run growth:report`).
 
 ## Measurement limits
 
 - Counts are a lower bound. Visitors with an ad or tracker blocker, with
-  `DNT`/`GPC` honoured by their browser, with JavaScript off, or who leave
+  JavaScript off, or who leave
   before the script loads are missing. The pre-analytics exit beacon covers
   only the earliest exits.
-- Localhost and non-production hosts send nothing unless
-  `NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL=true`; the token must also be set.
+- The capture gate blocks only loopback hosts (`localhost`, `127.0.0.1`,
+  `::1`) unless `NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL=true`; the token must also
+  be set. Vercel preview deployments with the token set do send events to the
+  same PostHog project, so previews are distinguishable only by `$host` or
+  pathname.
 - `quality:live` is a bounded sample (`--limit-per-event`) per contract event,
-  not a census. Zero samples do not prove collection works, and a count says
-  nothing about traffic volume. Use `--days 1` for a same-day comparison.
+  not a census. A passing sample does not prove every page collects; zero samples
+  means nothing arrived. A count says nothing about traffic volume. Use `--days 1` for a same-day comparison.
 - Historical malformed events keep failing a seven-day audit after a fix
   ships. Do not delete them, and do not read a lifecycle outage into that
   alone.
@@ -66,7 +69,7 @@ optionally `POSTHOG_HOST` from the root `.env` (gitignored; `.env.local` and
 ```
 npx nx sync:plan posthog        # read-only diff of JSON against PostHog
 npx nx sync:apply posthog       # create/update; commit the written-back posthog_id values
-npx nx report posthog           # docs/growth/reports/<date>-weekly.md
+npx nx run posthog:report           # docs/growth/reports/<date>-weekly.md
 npx nx quality:live posthog -- --days 7 --limit-per-event 100 --require-critical-coverage
 npx nx settings:plan posthog    # read-only project settings drift
 npx nx settings:apply posthog
@@ -96,7 +99,7 @@ not in git, except what `settings:apply` patches: `autocapture_opt_out: false`
 (autocapture must stay on, see "Bounce rate"). Everything else is set in the
 PostHog UI and a change there is not caught by CI: session replay and its
 sampling, web vitals and performance capture, the authorized URLs and
-domains, data retention, IP capture and the "respect DNT" setting, internal and
+domains, data retention, IP capture, internal and
 test user filters, and cookieless mode. When a number looks wrong, check those
 before the code. Use `settings:plan` to see drift on the managed setting.
 
@@ -114,14 +117,24 @@ The collector is off until both ends are set. Do it in this order:
    `NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL` are in the bootstrap's www env list and
    default unset; `tools/vercel/bootstrap.mjs` skips unset values.
 
+The collector has its own gate (`isWebsiteCollectionEnabled`).
+It requires `NEXT_PUBLIC_GROWTH_COLLECTION === 'true'` and a non-loopback host,
+even with `NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL=true`. It is off when
+`window.__HASHBROWN_TELEMETRY_DISABLED__` is set, the
+`HASHBROWN_TELEMETRY_DISABLED` localStorage flag is set, or
+`navigator.webdriver` is true. A local check must therefore use a non-loopback
+hostname such as `http://www.localhost:3000`; `isLocalAnalyticsHost` treats only
+the exact hostnames `localhost` and `127.0.0.1` and `::1` as loopback.
+
 To turn it off, unset `NEXT_PUBLIC_GROWTH_COLLECTION` and redeploy; removing
 `website` from `GROWTH_COLLECTION_SOURCES` makes the route answer 503
-`collection_disabled`, which the collector treats as a failed send.
+`collection_disabled`. The collector retries only a 429, once, after
+`Retry-After` (capped at `MAX_RETRY_AFTER_MS`); every other non-2xx response,
+503 included, and any exception drops the batch silently with no retry.
 
 ## Before the live check
 
-Nothing in `tools/posthog` has run against PostHog yet. Before the first live
-run, work through "Live checks for Task 7" in `tools/posthog/README.md`:
+Before the first live run (Task 7 of the plan), work through "Live checks for Task 7" in `tools/posthog/README.md`:
 
 1. Soft delete via `PATCH { deleted: true }` on dashboards and insights.
 2. `autocapture_opt_out` via `PATCH /api/projects/{id}/` (it may need

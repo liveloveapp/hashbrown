@@ -14,7 +14,7 @@ below is checked by tests in `tools/posthog`:
 PostHog measures engagement only. Nothing in PostHog authorizes an email, and
 PostHog never receives contact PII: no email, no Git identity, no connection
 string, no prompt or message content. Lifecycle facts (installs, activation,
-email) live in Neon; see `npx nx report growth`.
+email) live in Neon; see `npx nx run growth:report`.
 
 ## Conventions
 

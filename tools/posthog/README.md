@@ -18,7 +18,7 @@ npx nx build posthog                      # tsc --noEmit
 npx nx sync:plan posthog                  # diff JSON against PostHog; read-only
 npx nx sync:apply posthog                 # create/update, write posthog_id back
 npx nx sync:apply posthog -- --delete-orphans   # also soft-delete unmanaged remotes
-npx nx report posthog                     # docs/growth/reports/<date>-weekly.md
+npx nx run posthog:report                     # docs/growth/reports/<date>-weekly.md
 npx nx quality:live posthog -- --days 7 --limit-per-event 100 --require-critical-coverage
 npx nx settings:plan posthog              # project settings drift; read-only
 npx nx settings:apply posthog             # patch drifted project settings
