@@ -99,9 +99,13 @@ job-queue correctness, and its reporting, instead of rebuilding them.
   browser APIs.
 - Tests use top-level `test(...)` with arrange, act, assert. New public
   functionality carries TSDoc.
-- Vendor accounts: a new PostHog project and a new Neon project (preview and
-  production databases, plus a separate b4.run state database), both separate
-  from threadplane's. Resend is threadplane's existing account with the
+- Vendor accounts: a new PostHog project, and Neon as Vercel Marketplace
+  integration stores on hashbrown's Vercel team (the team already has the Neon
+  integration installed), one store per target: growth production, growth
+  preview, b4.run state production, b4.run state preview. The stores inject
+  `DATABASE_URL` (and `B4_DATABASE_URL` through the `B4_` env var prefix) into
+  the connected Vercel projects, exactly as threadplane's team does. No Neon API
+  key is used. Resend is threadplane's existing account with the
   `hashbrown.dev` domain added and verified. The `brian@hashbrown.dev` Google
   Workspace mailbox does not exist yet and is created as part of rollout.
 - Provisioning is done by the builder through the vendors' APIs using personal
@@ -584,9 +588,11 @@ emails the installer and never creates a contact.
 2. `hashbrown.dev/call` redirects to the same Google Calendar appointment page
    threadplane's `/call` uses, through a `redirects()` entry in
    `www/next.config.ts`.
-3. Brian supplies personal access tokens and the builder provisions Neon,
-   PostHog, Vercel, and the Resend domain through their APIs before PR 1, so
-   every PR is verified in preview as written. Resend is shared with threadplane.
+3. Brian supplies personal access tokens and the builder provisions PostHog,
+   Vercel (including the Neon marketplace stores), and the Resend domain
+   through their APIs before PR 1, so every PR is verified in preview as
+   written. Resend is shared with threadplane. Neon is reached only through
+   Vercel's marketplace API, as threadplane already does.
 
 ## 14. Rollout and PR sequence
 
@@ -595,9 +601,9 @@ Every switch defaults off and accepts only the exact strings `true` or `false`:
 `LIFECYCLE_CRON_ENABLED`, `GROWTH_OBSERVATION_PROCESSING_ENABLED`,
 `GROWTH_INSTALL_DIGEST_ENABLED`, `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED`.
 
-0. **Provisioning.** Scripts under `tools/growth/scripts/provision-*.mts`,
-   run once with Brian's tokens: Neon project with `preview`, `production`, and
-   `b4-state` databases; PostHog project with the ingest allowlist token;
+0. **Provisioning.** Scripts under `tools/growth/scripts/provision/`,
+   run once with Brian's tokens: four Neon marketplace stores on the Vercel
+   team, connected to the www and lifecycle projects per target; PostHog project with the ingest allowlist token;
    `hashbrown.dev` domain on the shared Resend account with DNS records
    reported back for Brian to add; lifecycle Vercel project via
    `tools/vercel/bootstrap.mjs` and the `VERCEL_PROJECT_ID_LIFECYCLE` secret;

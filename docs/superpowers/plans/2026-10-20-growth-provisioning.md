@@ -15,7 +15,7 @@
 - Tokens come only from `--env-file` or the process environment, are never written to any file the script creates except the private env output, and never appear in logs, errors, or the checklist.
 - Every mutating call is preceded by a read; a rerun must log `exists` for every resource and make no POST.
 - Output checklist lists each resource as `created` | `exists` | `manual`, with the manual steps the spec names: Resend webhook secret, the `brian@hashbrown.dev` mailbox, and the preview `GROWTH_PUBLIC_ACTION_ORIGIN`.
-- Resource names: Neon project `hashbrown-growth`, region `aws-us-east-1`, Postgres 17, branches `main` (production) and `preview`, databases `growth` and `b4_state` on each; PostHog project `hashbrown`; Resend domain `hashbrown.dev` region `us-east-1`, API key `hashbrown-lifecycle`; Vercel project `hashbrown-lifecycle`, GitHub secret `VERCEL_PROJECT_ID_LIFECYCLE`.
+- Resource names: Neon as Vercel Marketplace stores on the hashbrown team, `growth-production-target-01`, `growth-preview-target-01`, `b4-production-target-01`, `b4-preview-target-01`, product `neon`, plan `free_v3`, region `iad1`, connected to `hashbrown-www` (growth stores) and `hashbrown-lifecycle` (growth and b4 stores, the b4 stores with env var prefix `B4_`), production stores to the `production` environment and preview stores to `preview`; PostHog project `hashbrown`; Resend domain `hashbrown.dev` region `us-east-1`, API key `hashbrown-lifecycle`; Vercel project `hashbrown-lifecycle`, GitHub secret `VERCEL_PROJECT_ID_LIFECYCLE`.
 - Tests use top-level `test(...)` with arrange, act, assert separated by blank lines. Exported functions carry TSDoc.
 - Run `npx nx lint growth`, `npx nx test growth`, `npx nx lint vercel-bootstrap`, `npx nx test vercel-bootstrap` before the PR.
 
@@ -72,7 +72,7 @@ Expected: PASS.
 
 ---
 
-### Task 2: Neon provisioning
+### Task 2: Neon provisioning (superseded by Task 2b after the final review: Neon is provisioned as Vercel Marketplace stores, see the ledger ruling of 2026-10-20)
 
 **Files:**
 - Create: `tools/growth/scripts/provision/neon.mjs`
@@ -236,6 +236,10 @@ test('a rerun with all-exists vendors makes no POST', ...);  // stub all three v
 - [ ] **Step 6: Commit** `feat(growth): provisioning orchestrator and runbook`
 
 ---
+
+### Task 2b: Neon as Vercel Marketplace stores
+
+Replaces Task 2's direct Neon API client. See `.superpowers/sdd/2026-10-20-growth-provisioning/task-2b-brief.md` for the full brief; summary: `neon.mjs` becomes a Vercel-API module creating the four stores through `POST /v1/storage/stores/integration` and connecting each to its project through `POST /v1/storage/stores/{id}/connections`; `NEON_API_KEY` is gone; `DATABASE_URL`, `B4_DATABASE_URL` and their `PREVIEW_` forms leave `growth.env` and the bootstrap targets; the orchestrator runs the bootstrap before the Neon step so the lifecycle project exists.
 
 ### Task 7: Live run and verification
 
