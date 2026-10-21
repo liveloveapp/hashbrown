@@ -71,13 +71,14 @@ dependencies); this file covers atc.
 
 ## Add a component or a tool
 
-- Component: README, "Add a component". A new card goes in five places, in the same
+- Component: README, "Add a component". A new card goes in four places, in the same
   position in each: the `cards` kit in both core files (`angular/src/app/assistant.ts`,
-  `react/src/assistant.tsx`), `CARD_DEFINITIONS` in `shared/src/response-schemas.ts`,
-  `cardGroups` in `shared/src/contracts.ts`, and an "If the X card is available" rule
-  in `SYSTEM_PROMPT`. Missing from `CARD_DEFINITIONS`, any schema with the card falls back
-  to the full one, which lacks it; missing from `cardGroups`, the cards decision never
-  picks it and it is never offered.
+  `react/src/assistant.tsx`), `CARD_DEFINITIONS` in `shared/src/response-schemas.ts` and
+  `cardGroups` in `shared/src/contracts.ts`. It also needs a direct rule in
+  `SYSTEM_PROMPT` ("show one X") and a sentence in `CARDS_CONTEXT` saying when it fits.
+  Missing from `CARD_DEFINITIONS`, any schema with the card falls back to the full one,
+  which lacks it; missing from `cardGroups`, the cards decision never picks it and it is
+  never offered.
 - Tool: the comment on `createAtcTools` in `shared/src/tools.ts`. Its name,
   description and schema go in `ATC_TOOL_DEFINITIONS` (`shared/src/tool-definitions.ts`),
   which the server sends to the model; a tool missing there is dropped.
