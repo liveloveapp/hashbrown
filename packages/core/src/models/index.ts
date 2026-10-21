@@ -5,3 +5,4 @@ export type {
   ResumeEntry,
   ResumeOptions,
 } from './interrupt';
+export { groupTurns, type Turn } from './group-turns';
