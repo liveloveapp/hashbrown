@@ -4,11 +4,15 @@ import { createChatRuntime } from '../chat-runtime';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { createStore } from '../utils/micro-ngrx';
-import { projectAgUiMessages } from './ag-ui-message-history';
+import {
+  lowerViewMessagesToAgUi,
+  projectAgUiMessages,
+} from './ag-ui-message-history';
 import {
   reducers,
   selectIsLoading,
   selectIsRunningToolCalls,
+  selectShouldGenerateMessage,
   selectThreadId,
   selectToolCalls,
   selectUnifiedError,
@@ -5952,4 +5956,325 @@ test('treats a text message start without a role as an assistant message', () =>
   expect(withoutRole.messages).toEqual(withRole.messages);
   expect(withoutRole.agUiMessages).toEqual(withRole.agUiMessages);
   expect(withoutRole.streamingMessage).toEqual(withRole.streamingMessage);
+});
+
+function createActivityRunStore() {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: [{ id: 'user-1', role: 'user', content: 'Plan.' }],
+    }),
+  );
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+  return store;
+}
+
+function dispatchEvents(
+  store: ReturnType<typeof createActivityRunStore>,
+  events: readonly AGUIEvent[],
+) {
+  for (const event of events) {
+    store.dispatch(apiActions.generateMessageEvent(event));
+  }
+}
+
+test('activity messages appear in the view list in arrival order during a run', () => {
+  // Arrange
+  const store = createActivityRunStore();
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: 'Working',
+    },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      content: { steps: ['search'] },
+    },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-2',
+      activityType: 'progress',
+      content: { percent: 50 },
+    },
+  ]);
+  const view = selectViewMessages(store.read((state) => state));
+
+  // Assert
+  expect(view).toEqual([
+    { id: 'user-1', role: 'user', content: 'Plan.' },
+    expect.objectContaining({
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'Working',
+    }),
+    {
+      id: 'activity-1',
+      role: 'activity',
+      activityType: 'plan',
+      content: { steps: ['search'] },
+      links: { runId: 'run-1', assistantMessageId: 'assistant-1' },
+    },
+    {
+      id: 'activity-2',
+      role: 'activity',
+      activityType: 'progress',
+      content: { percent: 50 },
+      links: { runId: 'run-1', assistantMessageId: 'assistant-1' },
+    },
+  ]);
+  expect(view[2]).not.toHaveProperty('hashbrownLinks');
+  expect(Object.isFrozen((view[2] as Chat.ActivityMessage).content)).toBe(true);
+});
+
+test('an activity before any assistant text sits before the streaming assistant message, unlinked', () => {
+  // Arrange
+  const store = createActivityRunStore();
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'progress',
+      content: { percent: 0 },
+    },
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: 'Hi',
+    },
+  ]);
+  const view = selectViewMessages(store.read((state) => state));
+
+  // Assert
+  expect(view.map((message) => message.role)).toEqual([
+    'user',
+    'activity',
+    'assistant',
+  ]);
+  expect(view[1]).toEqual({
+    id: 'activity-1',
+    role: 'activity',
+    activityType: 'progress',
+    content: { percent: 0 },
+    links: { runId: 'run-1' },
+  });
+  expect(view[2]).toMatchObject({ id: 'assistant-1', content: 'Hi' });
+});
+
+test('an activity after the answer links to that assistant message', () => {
+  // Arrange
+  const store = createActivityRunStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: 'Done.',
+    },
+    { type: EventType.TEXT_MESSAGE_END, messageId: 'assistant-1' },
+  ]);
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'summary',
+      content: { cited: 2 },
+    },
+    { type: EventType.RUN_FINISHED, threadId: 'thread-1', runId: 'run-1' },
+  ]);
+  store.dispatch(
+    apiActions.generateMessageSuccess({
+      message: Chat.helpers.ɵwithInternalMessageId(
+        { role: 'assistant', content: 'Done.', toolCallIds: [] },
+        'assistant-1',
+      ),
+      toolCalls: [],
+    }),
+  );
+  const view = selectViewMessages(store.read((state) => state));
+
+  // Assert
+  expect(view.map((message) => message.role)).toEqual([
+    'user',
+    'assistant',
+    'activity',
+  ]);
+  expect(view[2]).toMatchObject({
+    id: 'activity-1',
+    links: { runId: 'run-1', assistantMessageId: 'assistant-1' },
+  });
+});
+
+test('reasoning still attaches to its assistant across an interleaved activity', () => {
+  // Arrange
+  const store = createActivityRunStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.REASONING_MESSAGE_START,
+      messageId: 'reasoning-1',
+      role: 'reasoning',
+    },
+    {
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-1',
+      delta: 'Think',
+    },
+    {
+      type: EventType.ACTIVITY_SNAPSHOT,
+      messageId: 'activity-1',
+      activityType: 'plan',
+      content: { steps: [] },
+    },
+  ]);
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.TEXT_MESSAGE_START,
+      messageId: 'assistant-1',
+      role: 'assistant',
+    },
+    {
+      type: EventType.REASONING_MESSAGE_CONTENT,
+      messageId: 'reasoning-1',
+      delta: ' more',
+    },
+    { type: EventType.REASONING_MESSAGE_END, messageId: 'reasoning-1' },
+    {
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId: 'assistant-1',
+      delta: 'Answer',
+    },
+  ]);
+  const state = store.read((current) => current);
+  const view = selectViewMessages(state);
+  const projection = projectAgUiMessages(ɵselectVisibleAgUiMessages(state), {});
+
+  // Assert
+  expect(state.streamingMessage.error).toBeUndefined();
+  expect(view.map((message) => message.role)).toEqual([
+    'user',
+    'activity',
+    'assistant',
+  ]);
+  expect(view[2]).toMatchObject({
+    id: 'assistant-1',
+    content: 'Answer',
+    reasoningDetails: [{ id: 'reasoning-1', content: 'Think more' }],
+  });
+  expect(projection.messages[2]).toMatchObject({
+    id: 'assistant-1',
+    reasoning: {
+      kind: 'details',
+      details: [{ id: 'reasoning-1', content: 'Think more' }],
+    },
+  });
+});
+
+test('selectShouldGenerateMessage and status ignore trailing activity messages', () => {
+  // Arrange
+  const activity: Chat.ActivityMessage = {
+    id: 'activity-1',
+    role: 'activity',
+    activityType: 'progress',
+    content: { percent: 100 },
+    links: {},
+  };
+  const afterUser: Chat.AnyMessageInput[] = [
+    { id: 'user-1', role: 'user', content: 'Plan.' },
+    activity,
+  ];
+  const afterAssistant: Chat.AnyMessageInput[] = [
+    { id: 'user-1', role: 'user', content: 'Plan.' },
+    { id: 'assistant-1', role: 'assistant', content: 'Done.', toolCalls: [] },
+    activity,
+  ];
+  const initWith = (messages: Chat.AnyMessageInput[]) =>
+    reduceAll(
+      createState(),
+      devActions.init({
+        system: '',
+        messages,
+        canonicalMessages: lowerViewMessagesToAgUi(messages, {
+          createId: () => 'minted',
+        }),
+      }),
+    );
+
+  // Act
+  const pendingUser = initWith(afterUser);
+  const answered = initWith(afterAssistant);
+
+  // Assert
+  expect(selectShouldGenerateMessage(pendingUser)).toBe(true);
+  expect(pendingUser.status.isSending).toBe(true);
+  expect(selectShouldGenerateMessage(answered)).toBe(false);
+  expect(answered.status.isSending).toBe(false);
+});
+
+test('initial messages restore activity messages into the view list with links from position', () => {
+  // Arrange
+  const messages: Chat.MessageInput<string, Chat.AnyTool>[] = [
+    { id: 'user-1', role: 'user', content: 'Plan.' },
+    { id: 'assistant-1', role: 'assistant', content: 'Done.', toolCalls: [] },
+    {
+      id: 'activity-1',
+      role: 'activity',
+      activityType: 'plan',
+      content: { steps: ['a'] },
+      links: { runId: 'forged', assistantMessageId: 'forged' },
+    },
+  ];
+
+  // Act
+  const runtime = createChatRuntime({ system: 'test', messages });
+  const view = runtime.messages();
+
+  // Assert
+  expect(view).toEqual([
+    { id: 'user-1', role: 'user', content: 'Plan.' },
+    expect.objectContaining({ id: 'assistant-1', role: 'assistant' }),
+    {
+      id: 'activity-1',
+      role: 'activity',
+      activityType: 'plan',
+      content: { steps: ['a'] },
+      links: { assistantMessageId: 'assistant-1' },
+    },
+  ]);
 });

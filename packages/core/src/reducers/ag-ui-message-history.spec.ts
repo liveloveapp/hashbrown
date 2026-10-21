@@ -851,6 +851,13 @@ test('projects canonical messages into typed messages and stitched tool calls', 
   // Assert
   expect(projection.messages).toEqual([
     {
+      id: 'activity-1',
+      role: 'activity',
+      activityType: 'progress',
+      content: { phase: 'searching' },
+      links: {},
+    },
+    {
       id: 'user-1',
       role: 'user',
       content: 'Find documentation.',

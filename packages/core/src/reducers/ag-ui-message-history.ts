@@ -9,6 +9,7 @@ import { MessageSchema } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
 import { s } from '../schema';
 import { resolveWithSchema } from '../utils';
+import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
 
 /** Options used to create stable local canonical message IDs. @internal */
 export interface LowerCanonicalMessagesOptions {
@@ -16,31 +17,16 @@ export interface LowerCanonicalMessagesOptions {
 }
 
 /**
- * An activity view message as lowering accepts it. Its `links` are never
- * trusted, and the reducer recomputes them from position. The one exception is
- * `subagentRunId`, which is protocol attribution rather than a derived link.
- *
- * @internal
- */
-export interface ɵActivityMessageInput {
-  readonly role: 'activity';
-  readonly id: string;
-  readonly activityType: string;
-  readonly content: Readonly<Record<string, unknown>>;
-  readonly metadata?: Readonly<Record<string, unknown>>;
-  readonly links?: Readonly<Record<string, unknown>>;
-}
-
-/**
  * Lowers Hashbrown view messages once at the runtime boundary. A user or
  * assistant message keeps its supplied `id`; `createId` mints one only when
  * the id is absent. An activity message lowers to an AG-UI activity message
- * that keeps only `links.subagentRunId`, as the message's `subagentRunId`.
+ * that keeps only `links.subagentRunId`, as the message's `subagentRunId`;
+ * its other links are recomputed from position by the reducer.
  *
  * @internal
  */
 export function lowerViewMessagesToAgUi(
-  messages: readonly (Chat.AnyMessageInput | ɵActivityMessageInput)[],
+  messages: readonly Chat.AnyMessageInput[],
   options: LowerCanonicalMessagesOptions,
 ): readonly Message[] {
   const lowered = messages.flatMap((message): readonly Message[] => {
@@ -55,8 +41,8 @@ export function lowerViewMessagesToAgUi(
           role: 'activity',
           activityType: message.activityType,
           content: message.content as Record<string, unknown>,
-          ...(typeof message.links?.['subagentRunId'] === 'string'
-            ? { subagentRunId: message.links['subagentRunId'] }
+          ...(typeof message.links?.subagentRunId === 'string'
+            ? { subagentRunId: message.links.subagentRunId }
             : {}),
           ...(message.metadata !== undefined
             ? { metadata: message.metadata as Record<string, unknown> }
@@ -139,15 +125,30 @@ export function lowerViewMessagesToAgUi(
   return ownAgUiMessages(lowered) as readonly Message[];
 }
 
-/** Pairs local view projections with the stable IDs assigned during lowering. @internal */
+/**
+ * Pairs local view projections with the stable IDs assigned during lowering.
+ * Activity messages are projected from their canonical records, whose links
+ * are recomputed from position, so incoming view links are never trusted.
+ *
+ * @internal
+ */
 export function ɵpairViewMessagesWithAgUi(
   messages: readonly Chat.AnyMessageInput[],
   canonicalMessages: readonly Readonly<Message>[],
 ): AgUiMessageProjection {
   let cursor = 0;
+  const linkedMessages = recomputeActivityLinks(canonicalMessages);
   const projectedMessages = messages.flatMap((message) => {
     if (message.role === 'error') {
       return [{ role: 'error' as const, content: message.content }];
+    }
+    if (message.role === 'activity') {
+      const canonical = linkedMessages.find(
+        (candidate): candidate is ActivitySource =>
+          candidate.role === 'activity' && candidate.id === message.id,
+      );
+      // Lowering keeps activity ids, so the canonical record is always found.
+      return canonical ? [projectActivity(canonical)] : [];
     }
     const internal = Chat.helpers.toInternalMessagesFromView(message);
     if (internal.length === 0) return internal;
@@ -416,6 +417,26 @@ export interface ɵAgUiCanonicalToolCallSource {
   readonly result: Readonly<Extract<Message, { role: 'tool' }>> | undefined;
 }
 
+type ActivitySource = Readonly<Extract<Message, { role: 'activity' }>>;
+
+/**
+ * Projects a canonical activity record into the internal model, exposing the
+ * links Hashbrown recorded on it. Content and metadata are deep-frozen in
+ * canonical history, so they are shared rather than cloned.
+ */
+function projectActivity(
+  source: ActivitySource,
+): Chat.Internal.ActivityMessage {
+  return {
+    id: source.id,
+    role: 'activity',
+    activityType: source.activityType,
+    content: source.content as Readonly<Record<string, unknown>>,
+    ...(source.metadata !== undefined ? { metadata: source.metadata } : {}),
+    links: readActivityLinks(source) ?? {},
+  };
+}
+
 /** Indexes canonical message sources and projection dependencies. @internal */
 export function ɵindexAgUiCanonicalMessageSources(
   messages: readonly Readonly<Message>[],
@@ -428,6 +449,10 @@ export function ɵindexAgUiCanonicalMessageSources(
   for (const message of messages) {
     if (message.role === 'reasoning') {
       pendingReasoning = [...pendingReasoning, message];
+      continue;
+    }
+    if (message.role === 'activity') {
+      // An activity never separates reasoning from its assistant message.
       continue;
     }
     if (message.role === 'assistant' || message.role === 'user') {
@@ -594,6 +619,12 @@ export function projectAgUiMessages(
       continue;
     }
 
+    if (message.role === 'activity') {
+      // An activity never separates reasoning from its assistant message.
+      projectedMessages.push(projectActivity(message));
+      continue;
+    }
+
     pendingReasoning = [];
     if (message.role === 'user') {
       projectedMessages.push(
@@ -651,8 +682,23 @@ export function ɵreconcileAgUiMessageProjection(
       pendingReasoning.push(source);
       continue;
     }
-    if (source.role !== 'assistant' && source.role !== 'user') {
+    if (
+      source.role !== 'assistant' &&
+      source.role !== 'user' &&
+      source.role !== 'activity'
+    ) {
       pendingReasoning = [];
+      continue;
+    }
+    if (source.role === 'activity') {
+      // An activity never separates reasoning from its assistant message.
+      const previousEntry = previousEntriesBySourceId.get(source.id);
+      const entry =
+        previousEntry !== undefined && previousEntry.source === source
+          ? previousEntry
+          : createProjectionEntry(source, [], [], toolsByName, responseSchema);
+      entries.push(entry);
+      projectedMessages.push(entry.message);
       continue;
     }
 
@@ -734,7 +780,9 @@ export function ɵreconcileAgUiMessageProjection(
 }
 
 function createProjectionEntry(
-  source: Readonly<Extract<Message, { role: 'assistant' | 'user' }>>,
+  source: Readonly<
+    Extract<Message, { role: 'assistant' | 'user' | 'activity' }>
+  >,
   reasoning: readonly Readonly<Extract<Message, { role: 'reasoning' }>>[],
   toolResults: readonly (
     Readonly<Extract<Message, { role: 'tool' }>> | undefined
@@ -742,6 +790,15 @@ function createProjectionEntry(
   toolsByName: Readonly<Record<string, Chat.Internal.Tool>>,
   responseSchema: s.HashbrownType | undefined,
 ): ɵAgUiMessageProjectionEntry {
+  if (source.role === 'activity') {
+    return {
+      source,
+      reasoning,
+      toolResults,
+      message: projectActivity(source),
+      toolCalls: [],
+    };
+  }
   if (source.role === 'user') {
     return {
       source,

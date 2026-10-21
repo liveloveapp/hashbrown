@@ -843,3 +843,36 @@ test('an unregistered call with no parsed arguments yet exposes null args', () =
     },
   ]);
 });
+
+test('view, internal and API conversions keep activity messages without dropping them', () => {
+  // Arrange
+  const view: Chat.ActivityMessage = {
+    role: 'activity',
+    id: 'activity-1',
+    activityType: 'plan',
+    content: { steps: ['search', 'answer'] },
+    metadata: { source: 'agent' },
+    links: {
+      runId: 'run-1',
+      assistantMessageId: 'assistant-1',
+      toolCallId: 'call-1',
+      subagentRunId: 'subagent-1',
+    },
+  };
+
+  // Act
+  const internal = toInternalMessagesFromView(view);
+  const roundTripped = internal.flatMap((message) =>
+    toViewMessagesFromInternal(message, {}, []),
+  );
+  const api = internal.flatMap((message) =>
+    toApiMessagesFromInternal(message, []),
+  );
+  const fromApi = api.flatMap(toInternalMessagesFromApi);
+
+  // Assert
+  expect(internal).toEqual([view]);
+  expect(roundTripped).toEqual([view]);
+  expect(api).toEqual([view]);
+  expect(fromApi).toEqual([view]);
+});

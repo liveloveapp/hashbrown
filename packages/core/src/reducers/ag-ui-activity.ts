@@ -3,26 +3,11 @@ import type {
   ActivitySnapshotEvent,
   Message,
 } from '@ag-ui/core';
+import type { ActivityLinks } from '../models/view.models';
 import { applyJsonPatch } from '../utils/json-patch';
 import { cloneAndFreezeOptionalJsonValue } from '../utils/json-value';
 import type { JsonValue } from '../utils/types';
 import { ɵownAgUiJsonValue } from './ag-ui-message-history';
-
-/**
- * What an activity belonged to when it first arrived.
- *
- * @internal
- */
-export interface ActivityLinks {
-  /** The run that delivered the activity. */
-  readonly runId?: string;
-  /** The last assistant message started in that run. */
-  readonly assistantMessageId?: string;
-  /** The latest tool call of any kind started in that run. */
-  readonly toolCallId?: string;
-  /** The subagent invocation that produced the activity. */
-  readonly subagentRunId?: string;
-}
 
 /**
  * Run facts current when an activity event arrives, used to link a new

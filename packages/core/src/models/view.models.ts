@@ -170,10 +170,54 @@ export type ErrorMessage = {
 };
 
 /**
+ * What an activity message belongs to, recorded when the activity first
+ * arrived. Activities restored through `setMessages`, initial `messages` or a
+ * `MESSAGES_SNAPSHOT` get links recomputed from their position; incoming links
+ * are never trusted.
+ *
+ * @public
+ */
+export type ActivityLinks = {
+  /** The run that delivered the activity. */
+  runId?: string;
+  /** The assistant message open when the activity first arrived. */
+  assistantMessageId?: string;
+  /** The most recent tool call (client or server) in that run when it arrived. */
+  toolCallId?: string;
+  /** The subagent invocation that produced the activity. */
+  subagentRunId?: string;
+};
+
+/**
+ * An AG-UI activity: display material an agent streams alongside its answer,
+ * such as a plan, a progress report or a generated surface. Activity messages
+ * sit in the message list where they arrived and are never sent back to the
+ * agent.
+ *
+ * @public
+ */
+export type ActivityMessage = {
+  role: 'activity';
+  /** The AG-UI activity message id. */
+  id: string;
+  /** Producer-defined kind, e.g. 'plan', 'progress', 'a2ui-surface'. */
+  activityType: string;
+  /** Untyped payload; the app narrows it by `activityType`. */
+  content: Readonly<Record<string, unknown>>;
+  /** Provider metadata, preserved. */
+  metadata?: Metadata;
+  /** What this activity belongs to, recorded when it first arrived. */
+  links: ActivityLinks;
+};
+
+/**
  * @public
  */
 export type Message<Output, Tools extends AnyTool> =
-  UserMessage | AssistantMessage<Output, Tools> | ErrorMessage;
+  | UserMessage
+  | AssistantMessage<Output, Tools>
+  | ErrorMessage
+  | ActivityMessage;
 
 /**
  * @public
@@ -209,12 +253,17 @@ export interface AssistantMessageInput<
  * A message as an app supplies it to `setMessages`, initial `messages` or
  * `sendMessage`. It is a {@link Message} whose `id` is optional: Hashbrown
  * keeps a supplied id, so a saved transcript restores with the same ids, and
- * mints one only when the id is absent.
+ * mints one only when the id is absent. An {@link ActivityMessage} keeps its
+ * required `id`; its `links` are recomputed from position, except
+ * `subagentRunId`, which is kept.
  *
  * @public
  */
 export type MessageInput<Output, Tools extends AnyTool> =
-  UserMessageInput | AssistantMessageInput<Output, Tools> | ErrorMessage;
+  | UserMessageInput
+  | AssistantMessageInput<Output, Tools>
+  | ErrorMessage
+  | ActivityMessage;
 
 /**
  * A {@link MessageInput} for any output and tool set.

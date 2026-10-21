@@ -637,7 +637,10 @@ export const selectApiMessages = select(
 export const selectShouldGenerateMessage = select(
   selectApiMessages,
   (messages) => {
-    const lastMessage = messages[messages.length - 1];
+    // Trailing activities are display material, never the last turn.
+    const lastMessage = messages.findLast(
+      (message) => message.role !== 'activity',
+    );
 
     if (!lastMessage) {
       return false;
