@@ -188,8 +188,15 @@ test('the router context tells a named set of arrivals from asking to see them',
   expect(ROUTE_CONTEXT).toContain(
     'A bare phrase that names a set of aircraft, with no question and no "show me", is a filter, even when it names arrivals or landings at an airport.',
   );
-  expect(ROUTE_CONTEXT).toContain('or starts with "show me"');
+  expect(ROUTE_CONTEXT).toContain('or starts with "show me" and names a place');
   expect(ROUTE_CONTEXT).not.toContain('its airspace or its arrivals');
+});
+
+test('the router context sends a "show me" that only limits aircraft to the filter', () => {
+  expect(ROUTE_CONTEXT).toContain(
+    'A "show me" that only limits aircraft by kind, airline, type or altitude, such as "show me only Delta flights" or "show me planes above 20,000 ft", is a filter.',
+  );
+  expect(ROUTE_CONTEXT).not.toContain('or starts with "show me", such as');
 });
 
 test('the router context keeps departures in chat, since the filter has no departing field', () => {
