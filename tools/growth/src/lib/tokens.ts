@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
+import type { GrowthJob } from './models.ts';
+
 const TOKEN_VERSION = 'g1';
 const TOKEN_HMAC_BYTE_LENGTH = 32;
 const TOKEN_CLOCK_SKEW_SECONDS = 300;
@@ -268,6 +270,30 @@ export function createUnsubscribeActionUrl(
     }),
   );
   return actionUrl;
+}
+
+/**
+ * Creates a retry-stable unsubscribe URL using the job's immutable creation time
+ * and identity. Retries must retain the same signing key and public origin.
+ *
+ * @throws When the job has no contact or its token input is invalid.
+ */
+export function createUnsubscribeActionUrlForJob(
+  job: Pick<GrowthJob, 'id' | 'contactId' | 'createdAt'>,
+  key: GrowthTokenKey,
+  publicActionOrigin: string,
+): UnsubscribeActionUrl {
+  if (job.contactId === null)
+    throw new Error('Job unsubscribe URL requires a contact');
+  return createUnsubscribeActionUrl(
+    {
+      contactId: job.contactId,
+      issuedAt: job.createdAt,
+      eventNonce: `job:${job.id}`,
+    },
+    key,
+    publicActionOrigin,
+  );
 }
 
 /** Returns the URL string of a constructed unsubscribe action URL. */

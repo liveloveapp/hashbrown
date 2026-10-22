@@ -42,7 +42,6 @@ const POSTHOG = {
 const SECRETS = {
   LIFECYCLE_SERVICE_SECRET: 'a'.repeat(64),
   CRON_SECRET: 'b'.repeat(64),
-  GOOGLE_REPLY_HMAC_SECRET: 'c'.repeat(64),
   GROWTH_ACTION_TOKEN_ACTIVE_SECRET: 'd'.repeat(64),
   GROWTH_EMAIL_HMAC_ACTIVE_SECRET: 'e'.repeat(64),
 };
@@ -82,6 +81,7 @@ test('buildEnvFile sets every rollout switch to false and both key versions to t
     assert.ok(!(key in env), key);
   }
   assert.equal(env.CRON_SECRET, SECRETS.CRON_SECRET);
+  assert.ok(!('GOOGLE_REPLY_HMAC_SECRET' in env));
   assert.ok(!('PREVIEW_GROWTH_PUBLIC_ACTION_ORIGIN' in env));
   assert.ok(!('PREVIEW_LIFECYCLE_URL' in env));
 });

@@ -16,9 +16,9 @@ import {
   type GrowthDispatchResult,
   type GrowthJob,
   isCampaignSendWindow,
-  isGoogleMailboxRecoveryPaused,
   JobLeaseConflictError,
   leaseDueJobs,
+  loadInboxPilot,
   materializeCampaignEnrollment,
   nextPacificBusinessMorning,
   pacificCalendarDate,
@@ -45,7 +45,7 @@ const RECOVERY_RETRY_DELAY_MS = 60_000;
  */
 export const TICK_JOB_START_BUDGET_MS = 40_000;
 
-/** Every job kind a tick leases; `reply_reconcile` is settled by growth. */
+/** App jobs and admitted historical replies that still require settlement. */
 export const LEASED_KINDS = [
   'fulfill',
   'notify',
@@ -95,7 +95,9 @@ export interface LifecycleDispatcherDependencies {
     job: GrowthJob,
     dependencies: GrowthDispatchDependencies,
   ) => Promise<GrowthDispatchResult>;
-  isRecoveryPaused: typeof isGoogleMailboxRecoveryPaused;
+  isRecoveryPaused: (
+    executor: Pick<SqlExecutor, 'execute'>,
+  ) => Promise<boolean>;
   reconcileMessageIds: (
     executor: SqlExecutor,
     input: { now: Date; signal: AbortSignal },
@@ -139,7 +141,24 @@ export function createLifecycleDispatcherDependencies(
     appHandlers: createLifecycleAppJobHandlers(jobDependencies),
     createDatabase: () => createDatabaseExecutor(environment['DATABASE_URL']),
     dispatchLeasedJob: dispatchGrowthLeasedJob,
-    isRecoveryPaused: isGoogleMailboxRecoveryPaused,
+    isRecoveryPaused: async (executor) => {
+      const config = loadInboxPilot(environment);
+      if (!config.enabled) return false;
+      const result = await executor.execute<{ paused: boolean }>(
+        `/* growth:lifecycle-inbox-health */
+         select not exists (
+           select 1 from growth_reply_mailboxes m where m.address = $1 and m.enabled
+             and m.recovery_id is null and m.healthy_through >= $2::timestamptz - interval '10 minutes'
+         ) or exists (
+           select 1 from growth_reply_receipts r where r.recipient = $1
+             and r.status = 'pending' and r.reference_ids is null
+         ) as paused`,
+        [config.address, (options.now ?? (() => new Date()))()],
+      );
+      if (typeof result.rows[0]?.paused !== 'boolean')
+        throw new Error('Missing inbox recovery health');
+      return result.rows[0].paused;
+    },
     reconcileMessageIds: (executor, input) =>
       reconcilePendingResendMessageIds(executor, input, {
         fetch: globalThis.fetch,
