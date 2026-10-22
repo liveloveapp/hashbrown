@@ -1,0 +1,45 @@
+{
+  "name": "lifecycle",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/lifecycle/src",
+  "projectType": "application",
+  "tags": [],
+  "implicitDependencies": ["growth"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint tools/lifecycle",
+        "forwardAllArgs": false
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config tools/lifecycle/vitest.config.mts"
+      }
+    },
+    "check": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "parallel": false,
+        "commands": [
+          "node --import tsx tools/lifecycle/scripts/b4-cli.mts check",
+          "tsc --noEmit -p tools/lifecycle/tsconfig.json"
+        ]
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "parallel": false,
+        "commands": [
+          "node --import tsx tools/lifecycle/scripts/b4-cli.mts check",
+          "tsc --noEmit -p tools/lifecycle/tsconfig.json"
+        ]
+      }
+    }
+  }
+}
