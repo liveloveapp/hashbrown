@@ -1,4 +1,5 @@
 import { canonicalJson } from './activity.ts';
+import { businessMorningAfter } from './campaign-schedule.ts';
 import {
   privacyLock,
   type SqlExecutor,
@@ -6,7 +7,13 @@ import {
 } from './database.ts';
 import { CONTACT_HARD_STOP_REASONS } from './contacts.ts';
 import { normalizeEmail } from './crypto.ts';
-import type { GrowthJob, GrowthJobKind } from './models.ts';
+import type {
+  GrowthCampaignEnrollmentReason,
+  GrowthJob,
+  GrowthJobKind,
+  GrowthLifecycleFormSubmission,
+  GrowthLifecycleJobContext,
+} from './models.ts';
 
 const FULFILLMENT_ALLOWED_PRIOR_STOPS = new Set([
   'unsubscribe',
@@ -171,6 +178,243 @@ function toJob(row: JobRow): GrowthJob {
   };
 }
 
+/** The approval activity kinds that may authorize campaign v1 outreach. */
+const CAMPAIGN_APPROVAL_KINDS = [
+  'form.outreach_approved',
+  'contact.reauthorized',
+  'install_runtime.outreach_approved',
+] as const;
+
+/**
+ * SQL predicate: the approval activity aliased `alias` may authorize campaign
+ * outreach. A form approval must be a server-verified Get unstuck submission,
+ * a reauthorization must be a founder action, and an install runtime approval
+ * must name the install and runtime observations it was linked from.
+ */
+function campaignApprovalPredicate(alias: string): string {
+  return `(
+    (
+      ${alias}.kind = 'form.outreach_approved'
+      and ${alias}.data->>'verification' = 'server_verified'
+      and ${alias}.data->>'source_form' = any(array['unstuck'])
+    )
+    or (
+      ${alias}.kind = 'contact.reauthorized'
+      and ${alias}.data->>'provenance' = 'founder_action'
+    )
+    or (
+      ${alias}.kind = 'install_runtime.outreach_approved'
+      and ${alias}.data->>'verification' = 'linked_observations'
+      and coalesce(${alias}.data->>'install_observation_id', '') <> ''
+      and coalesce(${alias}.data->>'runtime_observation_id', '') <> ''
+    )
+  )`;
+}
+
+/** Options for {@link materializeCampaignEnrollment}. */
+export interface MaterializeCampaignEnrollmentInput {
+  /** `CAMPAIGN_ENROLLMENT_ENABLED`; when false nothing is read or written. */
+  enrollmentEnabled: boolean;
+  /**
+   * `CAMPAIGN_ENROLLMENT_START_AT`: only contacts approved at or after it are
+   * enrolled. Recorded once as `campaign:v1:configuration` and immutable.
+   */
+  enrollmentStartAt: Date;
+  now: Date;
+  /** Contacts to enrol in this call, 1..1000. */
+  batchSize: number;
+}
+
+/** The contacts {@link materializeCampaignEnrollment} enrolled. */
+export interface MaterializeCampaignEnrollmentResult {
+  enrolledContactIds: string[];
+  createdJobs: number;
+}
+
+/**
+ * Enrols approved contacts in campaign v1. Under the privacy lock and a
+ * campaign advisory lock it records the enrollment start once, then, for each
+ * contact whose `outreach_approved_at` is at or after the start, is backed by
+ * an approval activity at that instant (a server-verified `unstuck` form, a
+ * founder reauthorization or a linked install runtime approval), is not
+ * deleted, has no hard stop since approval and is not yet enrolled, it records
+ * `campaign.enrolled:v1` with its `enrollment_reason` and queues three
+ * `send_step` jobs (`campaign:v1:<contactId>:step:<n>`) due at the next
+ * business morning. Step 1 is never leased before the enrollment is five
+ * minutes old; {@link recordProviderAcceptance} anchors steps 2 and 3.
+ *
+ * @throws When `enrollmentStartAt` differs from the recorded configuration.
+ */
+export async function materializeCampaignEnrollment(
+  executor: SqlExecutor,
+  input: MaterializeCampaignEnrollmentInput,
+): Promise<MaterializeCampaignEnrollmentResult> {
+  const enrollmentStartAt = validDate(
+    'enrollmentStartAt',
+    input.enrollmentStartAt,
+  );
+  const now = validDate('now', input.now);
+  const batchSize = positiveInteger('batchSize', input.batchSize, 1_000);
+  if (typeof input.enrollmentEnabled !== 'boolean') {
+    throw new Error('enrollmentEnabled must be a boolean');
+  }
+  if (!input.enrollmentEnabled) {
+    return { enrolledContactIds: [], createdJobs: 0 };
+  }
+
+  return executor.transaction(async (transaction) => {
+    await privacyLock(transaction);
+    await transaction.execute(
+      `/* growth:lock-campaign-enrollment */
+       select pg_advisory_xact_lock(
+         hashtextextended('growth:campaign-enrollment:v1', 0)
+       )`,
+    );
+    await transaction.execute(
+      `/* growth:insert-campaign-enrollment-config */
+       insert into growth_activity (
+         event_key, kind, occurred_at, data
+       ) values (
+         'campaign:v1:configuration',
+         'campaign.configured:v1',
+         $2,
+         jsonb_build_object('enrollment_start_at', $1::timestamptz)
+       )
+       on conflict (event_key) do nothing`,
+      [enrollmentStartAt, now],
+    );
+    const configured = await transaction.execute<{
+      enrollment_start_at: Date | string | null;
+    }>(
+      `/* growth:read-campaign-enrollment-start */
+       select data->>'enrollment_start_at' as enrollment_start_at
+       from growth_activity
+       where event_key = 'campaign:v1:configuration'
+         and kind = 'campaign.configured:v1'`,
+    );
+    const configuredAt = configured.rows[0]?.enrollment_start_at;
+    if (
+      configuredAt == null ||
+      new Date(configuredAt).getTime() !== enrollmentStartAt.getTime()
+    ) {
+      throw new Error(
+        'CAMPAIGN_ENROLLMENT_START_AT is immutable after campaign configuration',
+      );
+    }
+    const result = await transaction.execute<{
+      contact_id: string;
+      created_jobs: number | string;
+    }>(
+      `/* growth:enroll-campaign-v1 */
+       with eligible as (
+         select c.id,
+                approved.event_key as approval_event_key,
+                approved.kind as approval_kind,
+                approved.occurred_at as approval_at
+         from growth_contacts c
+         join lateral (
+           select approval.event_key,
+                  approval.kind,
+                  approval.occurred_at
+           from growth_activity approval
+           where approval.contact_id = c.id
+             and approval.occurred_at = c.outreach_approved_at
+             and ${campaignApprovalPredicate('approval')}
+           order by approval.event_key
+           limit 1
+         ) approved on true
+         where c.deleted_at is null
+           and c.outreach_approved_at >= $1
+           and not exists (
+             select 1
+             from growth_activity stop
+             where stop.contact_id = c.id
+               and stop.kind = any($4::text[])
+               and stop.occurred_at >= c.outreach_approved_at
+           )
+           and not exists (
+             select 1
+             from growth_activity a
+             where a.event_key = 'campaign:v1:' || c.id::text || ':enrolled'
+           )
+         order by c.outreach_approved_at, c.id
+         for update of c skip locked
+         limit $3
+       ), inserted_enrollment as (
+         insert into growth_activity (
+           event_key, contact_id, kind, occurred_at, data
+         )
+         select 'campaign:v1:' || e.id::text || ':enrolled',
+                e.id,
+                'campaign.enrolled:v1',
+                $2,
+                jsonb_build_object(
+                  'campaign_version', 'v1',
+                  'enrollment_reason', case e.approval_kind
+                    when 'form.outreach_approved' then 'unstuck_form'
+                    when 'contact.reauthorized' then 'install_digest'
+                    when 'install_runtime.outreach_approved'
+                      then 'install_runtime'
+                  end,
+                  'enrollment_start_at', $1::timestamptz,
+                  'approval_event_key', e.approval_event_key,
+                  'approval_kind', e.approval_kind,
+                  'approval_at', e.approval_at
+                )
+         from eligible e
+         on conflict (event_key) do nothing
+         returning contact_id, data
+       ), enrolled as (
+         select contact_id,
+                data->>'approval_event_key' as approval_event_key,
+                data->>'approval_kind' as approval_kind,
+                data->>'approval_at' as approval_at
+         from inserted_enrollment
+       ), inserted_jobs as (
+         insert into growth_jobs (
+           kind, contact_id, status, available_at,
+           idempotency_key, payload
+         )
+         select 'send_step',
+                e.contact_id,
+                'pending',
+                $5,
+                'campaign:v1:' || e.contact_id::text || ':step:' || step::text,
+                jsonb_build_object(
+                  'campaign_version', 'v1',
+                  'step', step,
+                  'approval_event_key', e.approval_event_key,
+                  'approval_kind', e.approval_kind,
+                  'approval_at', e.approval_at
+                )
+         from enrolled e
+         cross join generate_series(1, 3) step
+         on conflict (idempotency_key) do nothing
+         returning contact_id
+       )
+       select e.contact_id, count(j.contact_id)::integer as created_jobs
+       from enrolled e
+       left join inserted_jobs j on j.contact_id = e.contact_id
+       group by e.contact_id
+       order by e.contact_id`,
+      [
+        enrollmentStartAt,
+        now,
+        batchSize,
+        CONTACT_HARD_STOP_REASONS,
+        businessMorningAfter(now, 1),
+      ],
+    );
+    return {
+      enrolledContactIds: result.rows.map(({ contact_id }) => contact_id),
+      createdJobs: result.rows.reduce(
+        (total, { created_jobs }) => total + Number(created_jobs),
+        0,
+      ),
+    };
+  });
+}
+
 /** A job to enqueue once under its idempotency key. */
 export interface EnqueueJobInput {
   kind: GrowthJobKind;
@@ -245,7 +489,11 @@ export interface LeaseDueJobsInput {
   batchSize: number;
   leaseDurationMs: number;
   campaignEnabled: boolean;
-  /** Whether `now` is inside the campaign send window; defaults to always. */
+  /**
+   * Whether `now` is inside the campaign send window; defaults to always. The
+   * lease SQL also requires Monday to Friday 07:00 Pacific for `send_step`,
+   * so both must agree.
+   */
   isSendWindow?: (now: Date) => boolean;
 }
 
@@ -254,6 +502,11 @@ export interface LeaseDueJobsInput {
  * jobs and expired leases are leased with a fresh token and an incremented
  * attempt count; an expired lease that was already authorized for submission
  * is failed with `delivery_status = 'unknown'` for manual review instead.
+ *
+ * A `send_step` is leased only when the campaign is enabled, `isSendWindow`
+ * agrees, `now` is Monday to Friday in the 07:00 Pacific hour, and either it
+ * is step 1 of an enrollment (from one of the three approval kinds) at least
+ * five minutes old, or the previous step was accepted by the provider.
  *
  * @throws When no kinds are given or `batchSize` is outside 1..100.
  */
@@ -339,14 +592,21 @@ export async function leaseDueJobs(
            or (
              j.payload->>'campaign_version' = 'v1'
              and $6::boolean
+             and extract(isodow from $2::timestamptz at time zone 'America/Los_Angeles') between 1 and 5
+             and extract(hour from $2::timestamptz at time zone 'America/Los_Angeles') = 7
              and (
                (
                  j.payload->>'step' = '1'
                  and exists (
                    select 1
                    from growth_activity enrollment
-                   where enrollment.contact_id = j.contact_id
+                   where enrollment.event_key =
+                         'campaign:v1:' || j.contact_id::text || ':enrolled'
+                     and enrollment.contact_id = j.contact_id
                      and enrollment.kind = 'campaign.enrolled:v1'
+                     and enrollment.data->>'approval_kind' = any(
+                       array[${CAMPAIGN_APPROVAL_KINDS.map((kind) => `'${kind}'`).join(', ')}]
+                     )
                      and enrollment.occurred_at + interval '5 minutes' <= $2
                  )
                )
@@ -464,19 +724,7 @@ export async function authorizeLeasedJobForSubmission(
                target.payload->>'approval_event_key'
            and authoritative.kind = target.payload->>'approval_kind'
            and authoritative.occurred_at = c.outreach_approved_at
-           and (
-             (
-               authoritative.kind = 'form.outreach_approved'
-               and authoritative.data->>'verification' = 'server_verified'
-               and authoritative.data->>'source_form' = any(
-                 array['whitepaper', 'newsletter', 'contact', 'pricing']
-               )
-             )
-             or (
-               authoritative.kind = 'contact.reauthorized'
-               and authoritative.data->>'provenance' = 'founder_action'
-             )
-           )
+           and ${campaignApprovalPredicate('authoritative')}
          limit 1
        ) approval on true
        left join lateral (
@@ -716,6 +964,258 @@ export async function renewJobLease(
   return result.rows[0] ? toJob(result.rows[0]) : null;
 }
 
+interface LifecycleJobContextRow extends Record<string, unknown> {
+  contact_id: string;
+  display_name: string | null;
+  company_name: string | null;
+  company_domain: string | null;
+  email_classification: string | null;
+  form_submission: Record<string, unknown> | null;
+  enrollment_at: Date | string | null;
+  campaign_enrollment_reason: string | null;
+}
+
+const CAMPAIGN_ENROLLMENT_REASONS: readonly GrowthCampaignEnrollmentReason[] = [
+  'unstuck_form',
+  'install_digest',
+  'install_runtime',
+];
+
+function toLifecycleFormSubmission(
+  value: Record<string, unknown> | null,
+): GrowthLifecycleFormSubmission | null {
+  if (value === null || typeof value !== 'object') return null;
+  const submission: GrowthLifecycleFormSubmission = {};
+  if (value['form_kind'] === 'unstuck') submission.form_kind = 'unstuck';
+  if (typeof value['submission_id'] === 'string') {
+    submission.submission_id = value['submission_id'];
+  }
+  if (typeof value['message_present'] === 'boolean') {
+    submission.message_present = value['message_present'];
+  }
+  return submission;
+}
+
+/**
+ * Reads what a lifecycle job may know about its contact: name and company
+ * (from the job's accepted form submission, else the contact row), the email
+ * classification, the form facts (never the message itself) and the campaign
+ * v1 enrollment. A job whose payload names a `submission_id` reads the
+ * `contact.form_submission` recorded as `form:<submission_id>:accepted`; any
+ * other job reads the contact's latest accepted form submission.
+ *
+ * @throws When the job or its contact does not exist.
+ */
+export async function readLifecycleJobContext(
+  executor: SqlExecutor,
+  input: { jobId: string },
+): Promise<GrowthLifecycleJobContext> {
+  const jobId = requiredText('jobId', input.jobId);
+  const result = await executor.execute<LifecycleJobContextRow>(
+    `/* growth:read-lifecycle-job-context */
+     select c.id as contact_id,
+            coalesce(submission.data->>'display_name', c.display_name)
+              as display_name,
+            coalesce(submission.data->>'company_name', c.company_name)
+              as company_name,
+            coalesce(submission.data->>'company_domain', c.company_domain)
+              as company_domain,
+            submission.data->>'email_classification' as email_classification,
+            case when submission.data is null then null else
+              jsonb_strip_nulls(jsonb_build_object(
+                'form_kind', submission.data->'form_kind',
+                'submission_id', submission.data->'submission_id',
+                'message_present',
+                  coalesce(length(submission.data->>'message'), 0) > 0
+              ))
+            end as form_submission,
+            enrollment.occurred_at as enrollment_at,
+            enrollment.data->>'enrollment_reason'
+              as campaign_enrollment_reason
+     from growth_jobs target
+     join growth_contacts c on c.id = target.contact_id
+     left join lateral (
+       select a.data
+       from growth_activity a
+       where a.contact_id = c.id
+         and a.kind = 'contact.form_submission'
+         and (
+           (
+             target.payload ? 'submission_id'
+             and a.event_key =
+                 'form:' || (target.payload->>'submission_id') || ':accepted'
+           )
+           or not target.payload ? 'submission_id'
+         )
+       order by a.occurred_at desc, a.id desc
+       limit 1
+     ) submission on true
+     left join lateral (
+       select a.occurred_at, a.data
+       from growth_activity a
+       where a.event_key = 'campaign:v1:' || c.id::text || ':enrolled'
+         and a.contact_id = c.id
+         and a.kind = 'campaign.enrolled:v1'
+       limit 1
+     ) enrollment on true
+     where target.id = $1`,
+    [jobId],
+  );
+  const row = result.rows[0];
+  if (!row) {
+    throw new Error(`Growth lifecycle job context not found: ${jobId}`);
+  }
+  const emailClassification =
+    row.email_classification === 'work' ||
+    row.email_classification === 'personal' ||
+    row.email_classification === 'unknown'
+      ? row.email_classification
+      : 'unknown';
+  const reason = CAMPAIGN_ENROLLMENT_REASONS.find(
+    (candidate) => candidate === row.campaign_enrollment_reason,
+  );
+  return {
+    contactId: row.contact_id,
+    displayName: row.display_name,
+    companyName: row.company_name,
+    companyDomain: row.company_domain,
+    emailClassification,
+    formSubmission: toLifecycleFormSubmission(row.form_submission),
+    enrollmentAt: row.enrollment_at ? new Date(row.enrollment_at) : null,
+    campaignEnrollmentReason: reason ?? null,
+  };
+}
+
+/** The internal notification job kinds that submit at most once. */
+export type InternalNotificationKind = 'notify' | 'digest';
+
+/**
+ * Claims the single provider submission of a leased internal notification
+ * (`notify` or `digest`) by recording
+ * `internal_notification.submission_started` once per job. A job that was
+ * already claimed, for example by a worker that crashed mid-send, returns
+ * `already_claimed` and must not be sent again.
+ *
+ * @throws {JobLeaseConflictError} When the job is unclaimed and its lease is
+ * no longer valid, or the job is not of `kind`.
+ */
+export async function claimInternalNotificationSubmission(
+  executor: SqlExecutor,
+  input: {
+    jobId: string;
+    leaseToken: string;
+    now: Date;
+    kind: InternalNotificationKind;
+  },
+): Promise<'claimed' | 'already_claimed'> {
+  const jobId = requiredText('jobId', input.jobId);
+  const leaseToken = requiredText('leaseToken', input.leaseToken);
+  const now = validDate('now', input.now);
+  const kind = internalNotificationKind(input.kind);
+  const result = await executor.execute<{ event_key: string }>(
+    `/* growth:claim-internal-notification-submission */
+     insert into growth_activity (
+       event_key, contact_id, project_id, kind, occurred_at, data
+     )
+     select 'job:' || j.id::text || ':internal-notification-submission',
+            j.contact_id,
+            j.project_id,
+            'internal_notification.submission_started',
+            $3,
+            jsonb_build_object('at_most_once', true)
+     from growth_jobs j
+     where j.id = $1
+       and j.kind = $4
+       and j.status = 'leased'
+       and j.lease_token = $2::uuid
+       and j.lease_until > $3
+     on conflict (event_key) do nothing
+     returning event_key`,
+    [jobId, leaseToken, now, kind],
+  );
+  if (result.rows.length === 1) return 'claimed';
+  const existing = await executor.execute<{ event_key: string }>(
+    `/* growth:read-internal-notification-claim */
+     select event_key
+     from growth_activity
+     where event_key = 'job:' || $1::text || ':internal-notification-submission'
+       and kind = 'internal_notification.submission_started'`,
+    [jobId],
+  );
+  if (existing.rows.length === 1) return 'already_claimed';
+  throw new JobLeaseConflictError(jobId);
+}
+
+function internalNotificationKind(
+  kind: InternalNotificationKind | undefined,
+): InternalNotificationKind {
+  if (kind === undefined) return 'notify';
+  if (kind !== 'notify' && kind !== 'digest') {
+    throw new Error('kind must be notify or digest');
+  }
+  return kind;
+}
+
+/**
+ * Records that an internal notification's provider outcome is unknown: the
+ * leased job fails with `delivery_status = 'unknown'` and
+ * `internal_notification.acceptance_unknown` asks for manual review.
+ *
+ * @throws {JobLeaseConflictError} When the lease is no longer valid.
+ */
+export async function markInternalNotificationUnknown(
+  executor: SqlExecutor,
+  input: {
+    jobId: string;
+    leaseToken: string;
+    occurredAt: Date;
+    errorCode: string;
+    /** Defaults to `notify`. */
+    kind?: InternalNotificationKind;
+  },
+): Promise<GrowthJob> {
+  const jobId = requiredText('jobId', input.jobId);
+  const leaseToken = requiredText('leaseToken', input.leaseToken);
+  const occurredAt = validDate('occurredAt', input.occurredAt);
+  const errorCode = requiredText('errorCode', input.errorCode);
+  const kind = internalNotificationKind(input.kind);
+  return executor.transaction(async (transaction) => {
+    const result = await transaction.execute<JobRow>(
+      `/* growth:mark-internal-notification-unknown */
+       update growth_jobs
+       set status = 'failed',
+           lease_token = null,
+           lease_until = null,
+           delivery_status = 'unknown',
+           last_error_code = $4
+       where id = $1
+         and kind = $5
+         and lease_token = $2::uuid
+         and status = 'leased'
+         and lease_until > $3
+         and delivery_status = 'not_submitted'
+       returning *`,
+      [jobId, leaseToken, occurredAt, errorCode, kind],
+    );
+    const row = result.rows[0];
+    if (!row) throw new JobLeaseConflictError(jobId);
+    const job = toJob(row);
+    await transaction.execute(
+      `/* growth:insert-internal-notification-unknown */
+       insert into growth_activity (
+         event_key, contact_id, project_id, kind, occurred_at, data
+       ) values (
+         'job:' || $1::text || ':internal-notification-acceptance-unknown',
+         $2, $3, 'internal_notification.acceptance_unknown', $4,
+         jsonb_build_object('error_code', $5::text, 'manual_review', true)
+       )
+       on conflict (event_key) do nothing`,
+      [job.id, job.contactId, job.projectId, occurredAt, errorCode],
+    );
+    return job;
+  });
+}
+
 // Single statement, so it also runs inside an existing transaction.
 async function transitionLeasedJob(
   executor: SqlTransaction,
@@ -918,7 +1418,9 @@ const REPLAYABLE_ACCEPTANCE_DELIVERY_STATUSES: readonly GrowthJob['deliveryStatu
  * Records that the provider accepted an authorized submission and completes
  * the job. Replays with the same provider id return the stored job; a job a
  * stop cancelled, or a deletion interrupted, after authorization is reconciled
- * to completed.
+ * to completed. Accepting campaign step 1 moves pending step 2 to at least
+ * three and step 3 to at least eight business mornings later; accepting step 2
+ * moves step 3 to at least five business mornings later.
  *
  * @throws {JobLeaseConflictError} When the job cannot be accepted.
  */
@@ -1211,6 +1713,42 @@ export async function recordProviderAcceptance(
         acceptedAt,
         providerEmailId,
       });
+    }
+
+    if (step === 1 || step === 2) {
+      // Anchor later steps to this acceptance; greatest() never moves one
+      // earlier, so a delayed or replayed acceptance cannot pull a send in.
+      await transaction.execute(
+        `/* growth:anchor-campaign-cadence */
+         update growth_jobs later
+         set available_at = greatest(
+           later.available_at,
+           case
+             when $2::integer = 1 and later.payload->>'step' = '2'
+               then $3::timestamptz
+             when $2::integer = 1 and later.payload->>'step' = '3'
+               then $4::timestamptz
+             when $2::integer = 2 and later.payload->>'step' = '3'
+               then $3::timestamptz
+             else later.available_at
+           end
+         )
+         where later.contact_id = $1
+           and later.kind = 'send_step'
+           and later.payload->>'campaign_version' = 'v1'
+           and later.status = 'pending'
+           and later.delivery_status = 'not_submitted'
+           and (
+             ($2::integer = 1 and later.payload->>'step' in ('2', '3'))
+             or ($2::integer = 2 and later.payload->>'step' = '3')
+           )`,
+        [
+          job.contactId,
+          step,
+          businessMorningAfter(acceptedAt, step === 1 ? 3 : 5),
+          businessMorningAfter(acceptedAt, 8),
+        ],
+      );
     }
 
     if (resolvedDeletionUnknown) {

@@ -102,3 +102,34 @@ export interface GrowthArtifact {
   content: Record<string, unknown>;
   createdAt: Date;
 }
+
+/**
+ * Why a contact entered campaign v1: a Get unstuck form approval, a founder
+ * approval from the install digest, or a linked install and runtime approval.
+ */
+export type GrowthCampaignEnrollmentReason =
+  'unstuck_form' | 'install_digest' | 'install_runtime';
+
+/**
+ * The form facts a lifecycle job may use. The message itself never leaves the
+ * activity log; only whether one was given.
+ */
+export interface GrowthLifecycleFormSubmission {
+  form_kind?: 'unstuck';
+  submission_id?: string;
+  message_present?: boolean;
+}
+
+/** What a lifecycle job knows about its contact when it renders a message. */
+export interface GrowthLifecycleJobContext {
+  contactId: string;
+  displayName: string | null;
+  companyName: string | null;
+  companyDomain: string | null;
+  emailClassification: GrowthEmailClassification;
+  /** The accepted form submission behind the job, or `null` when there is none. */
+  formSubmission: GrowthLifecycleFormSubmission | null;
+  /** When the contact was enrolled in campaign v1, or `null`. */
+  enrollmentAt: Date | null;
+  campaignEnrollmentReason: GrowthCampaignEnrollmentReason | null;
+}

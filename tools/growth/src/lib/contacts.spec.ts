@@ -6,6 +6,7 @@ import {
   CONTACT_HARD_STOP_REASONS,
   deleteContact,
   findContactIdByEmail,
+  GROWTH_SOURCE_FORMS,
   readContactControlState,
   reauthorizeContact,
 } from './contacts.ts';
@@ -27,11 +28,11 @@ const baseApproval: ApproveContactFromFormInput = {
   companyName: ' Example Company ',
   companyDomain: ' Example.COM ',
   source: 'website',
-  sourceForm: 'whitepaper',
+  sourceForm: 'unstuck',
   noticeText: 'Send me the guide and a short follow-up. Unsubscribe anytime.',
-  noticeVersion: 'whitepaper-v1',
+  noticeVersion: 'unstuck-v1',
   policyVersion: 'growth-v1',
-  eventKey: 'form:whitepaper:submission-1',
+  eventKey: 'form:submission-1:accepted',
   occurredAt,
   keyring,
   serverEmailClassification: 'work',
@@ -211,6 +212,19 @@ test('approveContactFromForm refuses when a stored key version is not in the key
   const markers = harness.calls.map(({ marker }) => marker);
   expect(markers).not.toContain('find-contact');
   expect(markers).not.toContain('insert-activity');
+});
+
+test('approveContactFromForm accepts only the unstuck source form', async () => {
+  const harness = executorWith(approvalHandlers({}));
+
+  const result = approveContactFromForm(harness.executor, {
+    ...baseApproval,
+    sourceForm: 'whitepaper',
+  } as unknown as ApproveContactFromFormInput);
+
+  expect(GROWTH_SOURCE_FORMS).toEqual(['unstuck']);
+  await expect(result).rejects.toThrow('sourceForm must be one of: unstuck');
+  expect(harness.calls).toEqual([]);
 });
 
 test('approveContactFromForm rekeys an old digest and records a lookup alias', async () => {

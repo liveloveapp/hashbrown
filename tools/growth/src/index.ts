@@ -1,4 +1,5 @@
 export * from './lib/activity';
+export * from './lib/campaign-schedule';
 export * from './lib/contacts';
 export * from './lib/crypto';
 export * from './lib/database';

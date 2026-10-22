@@ -139,7 +139,8 @@ export interface ApproveContactFromFormInput {
   companyName?: string | null;
   companyDomain?: string | null;
   source: string;
-  sourceForm: string;
+  /** One of {@link GROWTH_SOURCE_FORMS}; any other form is rejected. */
+  sourceForm: GrowthSourceForm;
   noticeText: string;
   noticeVersion: string;
   policyVersion: string;
@@ -150,10 +151,16 @@ export interface ApproveContactFromFormInput {
   submittedFacts?: FormSubmittedFacts;
 }
 
+/** The forms whose server-verified submissions may approve outreach. */
+export const GROWTH_SOURCE_FORMS = ['unstuck'] as const;
+
+/** A form listed in {@link GROWTH_SOURCE_FORMS}. */
+export type GrowthSourceForm = (typeof GROWTH_SOURCE_FORMS)[number];
+
 /** Optional facts the submitter supplied on the form. */
 export interface FormSubmittedFacts {
   acquisition_session_id?: string;
-  form_kind?: 'whitepaper' | 'newsletter' | 'contact' | 'pricing';
+  form_kind?: GrowthSourceForm;
   message?: string;
   paper?: 'overview' | 'angular' | 'render' | 'chat';
   pilot_interest?: 'yes' | 'maybe' | 'no';
@@ -437,6 +444,11 @@ function prepareFormApproval(
     input.sourceForm,
     LIMITS.sourceForm,
   );
+  if (!(GROWTH_SOURCE_FORMS as readonly string[]).includes(sourceForm)) {
+    throw new Error(
+      `sourceForm must be one of: ${GROWTH_SOURCE_FORMS.join(', ')}`,
+    );
+  }
   const noticeText = requiredText(
     'noticeText',
     input.noticeText,
