@@ -130,7 +130,7 @@ interface B4AnswerAnnotations {
 
 - **Lifecycle comes from the standard events.** START means `inProgress`. END without a result means `executing`. RESULT means `complete`. The step refines this and never replaces it. A producer must stream START live and must not buffer a whole call (AG-UI #2402).
 - **Writes merge field by field, by explicit rules (amended during slice 1).** A producer should write the whole current step, but consumers merge:
-  - Defined fields from the newer write overlay the older one. The ToolMessage's step (RESULT metadata) beats the ToolCall's (START/END metadata and CUSTOM).
+  - A write from the ToolMessage carrier (RESULT metadata) overlays its defined fields onto the step. A write from a ToolCall carrier (START/END metadata, CUSTOM) overlays an unsettled step, but onto a settled step it only fills fields that are missing; it can still move a `completed` step into `denied` or `cancelled`. An empty `error` string is not a failure.
   - A settle out of `running` (`completed`, `failed`, `denied` or `cancelled`) drops the running-only fields `label` and `sources` unless the settle restates them. `icon`, `startedAt`, `queries`, `kind`, `builtin` and `provider` carry over.
   - A `running` write never contributes fields to a settled step.
   - A move into a different bad status (`failed`, `denied`, `cancelled`) from `running` or `completed` drops the previous label and sources and takes the new write's. The icon is kept unless the new write supplies one. A repeat of the same status keeps its label.
