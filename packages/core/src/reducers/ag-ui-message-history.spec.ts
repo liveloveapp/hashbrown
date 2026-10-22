@@ -1029,3 +1029,47 @@ test('projects a provider call without resolving its arguments against a client 
     other: 1,
   });
 });
+
+test('projects a RESULT error over a step a call already completed as failed', () => {
+  // Arrange
+  const messages: readonly Message[] = [
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'c1',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+          metadata: {
+            'b4.step': {
+              v: 1,
+              kind: 'server',
+              status: 'completed',
+              label: 'Looked up',
+            },
+          },
+        },
+      ],
+    },
+    {
+      id: 'result-1',
+      role: 'tool',
+      toolCallId: 'c1',
+      content: 'Rate limited',
+      error: 'Rate limited',
+    },
+  ];
+
+  // Act
+  const projection = projectAgUiMessages(messages, {});
+
+  // Assert
+  expect(projection.toolCalls[0]?.metadata?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    error: { message: 'Rate limited' },
+  });
+});

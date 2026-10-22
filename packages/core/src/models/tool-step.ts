@@ -487,10 +487,12 @@ export function isProviderToolCall(toolCall: {
 }
 
 /**
- * Settles a still-`running` `b4.step` once its call has a result: `completed`
- * with the running label cleared (sources kept), or `failed` with
- * `error: {message}` when the result carries an error. Any other step, or
- * none, is left as it is.
+ * Settles a `b4.step` once its call has a result. Without an error, a
+ * still-`running` step becomes `completed` with the running label cleared
+ * (sources kept). With an error, any step that has not failed becomes
+ * `failed` with `error: {message}`, even one a call already settled, since
+ * failed wins. A step that already failed keeps its own error, and a call
+ * with no step is left as it is.
  *
  * Internal to core: not exported from the package.
  *
@@ -505,7 +507,12 @@ export function completeRunningStep(
   const raw = metadata?.[ɵTOOL_STEP_METADATA_KEY];
   if (!isRecord(raw)) return metadata;
   const step = ɵreadToolStep(raw);
-  if (step === undefined || (step.status ?? 'running') !== 'running') {
+  const status = step?.status ?? 'running';
+  if (
+    step === undefined ||
+    status === 'failed' ||
+    (error === undefined && status !== 'running')
+  ) {
     return metadata;
   }
   return {
@@ -514,7 +521,7 @@ export function completeRunningStep(
       error === undefined
         ? withoutLabel({ ...raw, status: 'completed' })
         : ɵmergeToolStep(
-            { ...step, status: 'running' },
+            { ...step, status },
             {
               v: 1,
               kind: step.kind,
@@ -529,4 +536,46 @@ export function completeRunningStep(
 function withoutLabel<T extends Record<string, unknown>>(step: T): T {
   const { label: _label, ...rest } = step;
   return rest as T;
+}
+
+/**
+ * The step implied by a frame-only `TOOL_CALL_RESULT`: `completed`, or
+ * `failed` with `error: {message}` when the result carried an error. A step
+ * that first arrives after such a result merges onto this one.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param error - The result's error string, if it failed.
+ * @returns A fresh frame-derived step.
+ */
+export function frameResultStep(error?: string): ɵToolStep {
+  return error === undefined
+    ? { v: 1, kind: 'server', status: 'completed' }
+    : { v: 1, kind: 'server', status: 'failed', error: { message: error } };
+}
+
+/**
+ * Gives a call that has no step, but whose result already arrived, the step
+ * that result implies (see {@link frameResultStep}), so a step arriving
+ * afterwards merges onto it. A call with a readable step, or without a
+ * result, is returned unchanged.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param metadata - The call's merged metadata (call and result carriers).
+ * @param result - The call's result, or `undefined` when it has none yet.
+ * @returns The metadata, or a copy carrying the frame-derived step.
+ */
+export function seedFrameResultStep(
+  metadata: Metadata | undefined,
+  result: { readonly error?: string } | undefined,
+): Metadata | undefined {
+  if (result === undefined) return metadata;
+  if (ɵreadToolStep(metadata?.[ɵTOOL_STEP_METADATA_KEY]) !== undefined) {
+    return metadata;
+  }
+  return {
+    ...metadata,
+    [ɵTOOL_STEP_METADATA_KEY]: frameResultStep(result.error),
+  };
 }

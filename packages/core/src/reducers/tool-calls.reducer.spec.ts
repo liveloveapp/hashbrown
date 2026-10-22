@@ -1307,3 +1307,60 @@ test('a failed step after a RESULT completed the step replaces its label and sou
   });
   expect(step).not.toHaveProperty('sources');
 });
+
+function applyDraftEvents(events: readonly AGUIEvent[]) {
+  const initialized = reducer(undefined, { type: '@@init' } as never);
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  return events.reduce(
+    (state, event) => reducer(state, apiActions.generateMessageEvent(event)),
+    active,
+  );
+}
+
+test('a RESULT error fails a step a call already completed on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'server',
+          status: 'completed',
+          label: 'Looked up',
+          icon: 'search',
+        },
+      },
+    } as AGUIEvent,
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'Rate limited',
+      error: 'Rate limited',
+    } as AGUIEvent,
+  ];
+
+  // Act
+  const draft = applyDraftEvents(events);
+  dispatchEvents(store, events);
+
+  // Assert
+  const failed = {
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    icon: 'search',
+    error: { message: 'Rate limited' },
+  };
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(failed);
+  expect(readRootStep(store, 'c1')).toEqual(failed);
+});

@@ -1,4 +1,5 @@
 import {
+  completeRunningStep,
   ɵmergeStepMetadata as mergeStepMetadata,
   ɵmergeToolStep as mergeToolStep,
   ɵreadAnswerAnnotations as readAnswerAnnotations,
@@ -468,4 +469,30 @@ test('any v other than 1 is not a step and a missing v is legacy', () => {
   ]);
   expect(legacy).toEqual({ v: 1, kind: 'server', status: 'running' });
   expect(current).toEqual({ v: 1, kind: 'server', status: 'running' });
+});
+
+test('a RESULT error fails a step that a call already completed', () => {
+  const metadata = {
+    'b4.step': step({ status: 'completed', label: 'Done', icon: 'a' }),
+  };
+
+  const result = completeRunningStep(metadata, 'Rate limited');
+
+  expect(result?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    icon: 'a',
+    error: { message: 'Rate limited' },
+  });
+});
+
+test('a RESULT error keeps the error of a step that already failed', () => {
+  const metadata = {
+    'b4.step': step({ status: 'failed', error: { message: 'boom' } }),
+  };
+
+  const result = completeRunningStep(metadata, 'Rate limited');
+
+  expect(result).toBe(metadata);
 });
