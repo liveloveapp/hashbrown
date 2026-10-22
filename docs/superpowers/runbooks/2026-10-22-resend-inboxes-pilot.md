@@ -70,7 +70,7 @@ Contact erasure scrubs associated reply evidence. Before forwarding, the impleme
 
 ## Retry and shared-account safeguards
 
-- Recipient sends and forwards have `app=hashbrown`, an explicit environment and bounded job tags. Delivery rejects missing/foreign app tags before looking up jobs.
+- Recipient sends and forwards have `app=hashbrown`, an explicit environment and bounded job tags. Delivery rejects explicit foreign app tags before looking up jobs. Legacy tagless events require an authoritative stored provider ID and existing corroboration; unknown tagless events never write or stop a contact. Only product-tagged sends get retryable unmatched handling.
 - Provider keys are `hashbrown:{environment}:{sha256(source)}`. Products/environments cannot collide under shared-account keys.
 - `growth_provider_attempts` commits the first-attempt timestamp and SHA-256 of the exact payload before submission. Changed content under the same key is refused. Unknown attempts expire at **23 hours**, before Resend's 24-hour deduplication boundary. Known acceptance can finalize without another send, even later.
 - Use `createUnsubscribeActionUrlForJob` for future send rendering: the issued time is `job.createdAt` and nonce is the job ID. Retain the same origin/signing key during retries; drift is rejected by the payload ledger.
@@ -98,7 +98,7 @@ Inspect mailbox health and receipt identifiers/status/error codes with bounded q
 
 Disable campaign delivery first if reply coverage is uncertain. Preserve the receipt/attempt ledgers and fixed start. Disable receiving webhooks/cron only after campaigns are paused. Roll back Reply-To by disabling the pilot flag; new campaign sends still need an explicit delivery-policy decision. Do not delete recovery evidence.
 
-The operator explicitly requested Gmail polling removal. Hashbrown’s Google reply intake and polling credential provisioning are removed; the deployed Google HMAC credential is retired. No separate Hashbrown Apps Script project/trigger was identified in the repository or local deployment metadata. Threadplane’s distinct poller is outside this change. Already-admitted historical reconciliation can drain without further Gmail polling. **New replies to historical root-address emails are no longer collected by Hashbrown.** Root MX and Google mailbox/account contents remain unchanged; this does not cancel Google Workspace.
+The operator explicitly requested Gmail polling removal. Hashbrown’s Google reply intake and polling credential provisioning are removed; the deployed Google HMAC credential is retired. The operator confirmed Hashbrown never had Gmail or an Apps Script trigger installed. Threadplane’s distinct poller is being removed separately by the operator. Already-admitted historical reconciliation can drain without further Gmail polling. **New replies to historical root-address emails are no longer collected by Hashbrown.** Root MX and Google mailbox/account contents remain unchanged; this does not cancel Google Workspace.
 
 ## Verification record (2026-10-22)
 
@@ -120,3 +120,13 @@ The operator explicitly requested Gmail polling removal. Hashbrown’s Google re
 - Resend receiving webhook `184a443b-8ae9-4603-8637-ee73d33965cc` and delivery webhook `b40b7b73-f944-4629-8369-33f041cc4cb3`: enabled after health verification.
 - Root MX configuration still exactly matches the pre-pilot snapshot (zero root records). No general campaign/enrollment/delivery flag was enabled.
 - This deployment contains the local `codex/hashbrown-resend-inboxes-pilot` changes. Integrate this branch before the next routine deployment so an older source revision does not remove the pilot routes and safety gates.
+
+## Current-main integration and Gmail retirement
+
+The operator confirmed Hashbrown never had Gmail or a Hashbrown Apps Script trigger installed, and is removing Threadplane’s poller separately. This change removes Hashbrown’s unused Google intake/signing API, provisioning path and deployed HMAC secret. Historical database fields and already-admitted reply reconciliation are preserved; new campaign eligibility is gated by Resend coverage rather than old Google recovery activity.
+
+Current-main lifecycle integration covers campaign/fulfillment plus founder/digest sends, with fixed job-time tokens, product/environment tags and durable provider attempt guards. Lifecycle dispatch runs every ten minutes; receiving recovery remains every five minutes. Production lifecycle routing/safety flags are installed without giving the sending service the account-wide receiving credential or enabling delivery/enrollment/campaign flags. The lifecycle migration was applied while all previous migration filenames/checksums were preserved.
+
+Verification after integration: growth build/test/lint, lifecycle build/test/check/lint, www build/test/lint and normal pre-commit checks passed. Dedicated growth database integration passed all59 tests across14files. A fixture cleanup correction removes only the synthetic fences owned by each inbox test; the clean run left zero email fences. The old strict inventory mismatch is resolved by incorporating main’s lifecycle migration.
+
+The final review added legacy delivery compatibility: pre-rollout tagless bounce/complaint/suppression events still stop contacts only after matching a stored provider ID and corroborating the job. Explicit foreign-product events remain rejected before database access. Lifecycle database integration also passed all3 tests.

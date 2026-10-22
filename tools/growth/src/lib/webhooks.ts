@@ -95,8 +95,9 @@ export interface ProcessResendWebhookDependencies {
  * - `foreign_sender`: the sender is not on the verified domain; the Resend
  *   account is shared with another product, whose events are acknowledged and
  *   ignored without touching the database.
- * - `foreign_product`: the app tag is missing or names another product;
- *   ignored without touching the database, even on the verified domain.
+ * - `foreign_product`: an explicit app tag names another product; ignored
+ *   without touching the database, even on the verified domain. Legacy events
+ *   without an app tag require a stored provider email ID and corroboration.
  * - `unmatched_job`: no job matches and the tags are not ours.
  * - `retryable_unmatched_job`: no job matches yet, but the tags are ours, so
  *   the provider should retry.
@@ -536,8 +537,9 @@ export class ResendWebhookPayloadError extends Error {
  * advances the job's delivery status, and stops the contact on a permanent
  * bounce, complaint, or provider suppression. Replays by `resend:<id>` are
  * no-ops. Events whose sender is not on {@link VERIFIED_DOMAIN} return
- * `foreign_sender`; events without `app: hashbrown` return `foreign_product`.
- * Both are ignored before any database call.
+ * `foreign_sender`; an explicit foreign app tag returns `foreign_product`.
+ * Both are ignored before any database call. Legacy tagless events must match
+ * a stored provider email ID and pass corroboration before any write or stop.
  *
  * @param executor - Opens the transaction the event is applied in.
  * @param input - The svix id and the parsed payload.
@@ -568,7 +570,7 @@ export async function processVerifiedResendWebhook(
   if (event.senderDomain !== VERIFIED_DOMAIN) {
     return { applied: false, reason: 'foreign_sender' };
   }
-  if (event.tags['app'] !== 'hashbrown') {
+  if (event.tags['app'] !== undefined && event.tags['app'] !== 'hashbrown') {
     return { applied: false, reason: 'foreign_product' };
   }
   const eventKey = `resend:${providerEventId}`;

@@ -24,6 +24,10 @@ const tags = {
   campaign_step: '1',
 };
 
+const legacyTags = Object.fromEntries(
+  Object.entries(tags).filter(([name]) => name !== 'app'),
+);
+
 const baseData = {
   created_at: now.toISOString(),
   email_id: providerEmailId,
@@ -298,7 +302,7 @@ test('an event from a sender outside hashbrown.dev returns foreign_sender before
   expect(calls).toEqual([]);
 });
 
-for (const app of ['threadplane', undefined]) {
+for (const app of ['threadplane']) {
   test(`a same-domain event with ${app ?? 'missing'} app is ignored before any database call`, async () => {
     const { executor, calls, dependencies, stops } = harness();
     const eventTags = {
@@ -537,4 +541,93 @@ test('loadGrowthDatabaseEnvironment accepts only the three environments', () => 
   expect(() =>
     loadGrowthDatabaseEnvironment({ GROWTH_DATABASE_ENVIRONMENT: 'staging' }),
   ).toThrow();
+});
+
+for (const [type, reason, deliveryStatus] of [
+  ['email.complained', 'complaint', 'complained'],
+  ['email.bounced', 'hard_bounce', 'bounced'],
+] as const) {
+  test(`legacy tagless ${type} still stops its authoritatively matched contact`, async () => {
+    const { executor, dependencies, stops } = harness();
+    const payload = {
+      type,
+      created_at: now.toISOString(),
+      data: {
+        ...baseData,
+        tags: legacyTags,
+        ...(type === 'email.bounced'
+          ? {
+              bounce: {
+                type: 'Permanent',
+                subType: 'General',
+                message: 'bounced',
+              },
+            }
+          : {}),
+      },
+    };
+
+    const result = await processVerifiedResendWebhook(
+      executor,
+      {
+        providerEventId: `legacy-${type}`,
+        payload,
+      },
+      dependencies,
+    );
+
+    expect(result).toMatchObject({ applied: true, deliveryStatus });
+    expect(stops).toEqual([expect.objectContaining({ contactId, reason })]);
+  });
+}
+
+test('unmatched legacy tagless events are acknowledged without activity or stops', async () => {
+  const { executor, calls, dependencies, stops, updates } = harness({
+    jobs: [],
+  });
+
+  const result = await processVerifiedResendWebhook(
+    executor,
+    {
+      providerEventId: 'unmatched-legacy',
+      payload: {
+        type: 'email.complained',
+        created_at: now.toISOString(),
+        data: { ...baseData, tags: legacyTags },
+      },
+    },
+    dependencies,
+  );
+
+  expect(result).toEqual({ applied: false, reason: 'unmatched_job' });
+  expect(calls.map(({ marker }) => marker)).toEqual([
+    'read-resend-webhook-activity',
+    'discover-resend-webhook-job',
+  ]);
+  expect(stops).toEqual([]);
+  expect(updates).toEqual([]);
+});
+
+test('matched legacy tagless events must pass corroboration before any write', async () => {
+  const { executor, calls, dependencies, stops } = harness();
+
+  await expect(
+    processVerifiedResendWebhook(
+      executor,
+      {
+        providerEventId: 'conflicting-legacy',
+        payload: {
+          type: 'email.complained',
+          created_at: now.toISOString(),
+          data: { ...baseData, tags: { ...legacyTags, campaign_step: '2' } },
+        },
+      },
+      dependencies,
+    ),
+  ).rejects.toThrow('corroboration conflict');
+
+  expect(
+    calls.some(({ marker }) => marker === 'insert-resend-webhook-activity'),
+  ).toBe(false);
+  expect(stops).toEqual([]);
 });
