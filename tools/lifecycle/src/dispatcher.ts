@@ -5,6 +5,7 @@ import {
 } from './campaign/send.ts';
 import { loadEmailHmacKeyring } from './email-keyring.ts';
 import {
+  countUnboundProviderMessages,
   createDatabaseExecutor,
   deferLeasedJob,
   dispatchGrowthLeasedJob,
@@ -21,6 +22,7 @@ import {
   loadInboxPilot,
   materializeCampaignEnrollment,
   nextPacificBusinessMorning,
+  normalizeGrowthPublicActionOrigin,
   pacificCalendarDate,
   processInstallRuntimeActivations,
   processObservations,
@@ -36,6 +38,24 @@ const OBSERVATION_PROJECTION_MAX_LIMIT = 100;
 const LEASE_DURATION_MS = 60_000;
 const LEASE_RENEWAL_INTERVAL_MS = 20_000;
 const RECOVERY_RETRY_DELAY_MS = 60_000;
+const HANDLER_ERROR_BASE_DELAY_MS = 60_000;
+const HANDLER_ERROR_MAX_DELAY_MS = 3_600_000;
+const HANDLER_ERROR_MAX_ATTEMPTS = 5;
+const MESSAGE_ID_STALL_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * How long a job that failed with a non-deterministic handler error waits
+ * before its next attempt: 60 s doubling per attempt, capped at one hour.
+ *
+ * @param attempts - The attempt that just failed (1 for the first).
+ * @returns The delay in milliseconds.
+ */
+export function handlerErrorBackoffMs(attempts: number): number {
+  return Math.min(
+    HANDLER_ERROR_BASE_DELAY_MS * 2 ** Math.max(attempts - 1, 0),
+    HANDLER_ERROR_MAX_DELAY_MS,
+  );
+}
 
 /**
  * How long into a tick the dispatcher may still start a job. The last job's
@@ -53,6 +73,13 @@ export const LEASED_KINDS = [
   'reply_reconcile',
   'digest',
 ] as const;
+
+/**
+ * The only job kind that never reads `GROWTH_PUBLIC_ACTION_ORIGIN`. `fulfill`
+ * and `send_step` build the unsubscribe link; `notify` and `digest` build the
+ * founder links. While the origin is invalid only this kind is leased.
+ */
+export const ORIGIN_FREE_KINDS = ['reply_reconcile'] as const;
 
 /** What one tick may do; the switches come from the lifecycle environment. */
 export interface LifecycleDispatcherInput {
@@ -75,7 +102,10 @@ export interface LifecycleDispatcherInput {
 
 /** The closed set of alerts a tick reports to operators. */
 export type LifecycleOperatorAlert =
-  'mailbox_recovery_required' | 'observation_projection_failed';
+  | 'mailbox_recovery_required'
+  | 'observation_projection_failed'
+  | 'action_origin_invalid'
+  | 'message_id_unbound';
 
 /** What one tick did. */
 export interface LifecycleDispatcherResult {
@@ -116,6 +146,25 @@ export interface LifecycleDispatcherDependencies {
   renewJobLease: typeof renewJobLease;
   quarantineJob: typeof failLeasedJob;
   deferJob: typeof deferLeasedJob;
+  /**
+   * Whether the job's current lease already holds a
+   * `delivery.submission_authorized` record, so mail may have been handed to
+   * the provider.
+   */
+  hasSubmissionAuthorization: (
+    executor: SqlExecutor,
+    input: { jobId: string; leaseToken: string },
+  ) => Promise<boolean>;
+  /**
+   * Throws when `GROWTH_PUBLIC_ACTION_ORIGIN` is not a bare HTTPS origin.
+   * Attempted once at the start of every tick.
+   */
+  assertActionOrigin: () => void;
+  /** Counts completed sends that have no Message-ID after the stall age. */
+  countUnboundProviderMessages: (
+    executor: SqlExecutor,
+    input: { now: Date; olderThanMs: number },
+  ) => Promise<number>;
   clearTimeout: typeof globalThis.clearTimeout;
   setTimeout: typeof globalThis.setTimeout;
 }
@@ -175,9 +224,31 @@ export function createLifecycleDispatcherDependencies(
     renewJobLease,
     quarantineJob: failLeasedJob,
     deferJob: deferLeasedJob,
+    hasSubmissionAuthorization: submissionAuthorizationRecorded,
+    assertActionOrigin: () => {
+      normalizeGrowthPublicActionOrigin(
+        environment['GROWTH_PUBLIC_ACTION_ORIGIN'] ?? '',
+      );
+    },
+    countUnboundProviderMessages,
     clearTimeout: globalThis.clearTimeout,
     setTimeout: globalThis.setTimeout,
   };
+}
+
+async function submissionAuthorizationRecorded(
+  executor: SqlExecutor,
+  input: { jobId: string; leaseToken: string },
+): Promise<boolean> {
+  const result = await executor.execute(
+    `/* lifecycle:submission-authorization-recorded */
+     select 1
+     from growth_activity
+     where event_key = 'job:' || $1::text || ':submission-authorized:' || $2::text
+       and kind = 'delivery.submission_authorized'`,
+    [input.jobId, input.leaseToken],
+  );
+  return result.rows.length > 0;
 }
 
 interface LeaseHeartbeat {
@@ -329,11 +400,22 @@ async function prepareTick(
  * is also on), enrollment
  * materialization (then rescoring each enrolled contact), the Pacific-weekday
  * install digest enqueue, then a lease of up to `batchSize` due jobs that are
- * dispatched one at a time. Each lease lasts 60 s and is renewed every 20 s
+ * dispatched one at a time. If `GROWTH_PUBLIC_ACTION_ORIGIN` is not a bare
+ * HTTPS origin the tick raises `action_origin_invalid` and leases only
+ * {@link ORIGIN_FREE_KINDS}; before leasing, a completed send with no
+ * Message-ID for 6 hours raises `message_id_unbound`. Each lease lasts 60 s and is renewed every 20 s
  * while the tick runs; a failed renewal aborts the loop. A
  * {@link DeterministicLifecycleJobError} quarantines its job
  * (`deterministic_job_poison`); a {@link JobLeaseConflictError} drops the job
- * (it is no longer ours); a `recovery_paused` job is deferred 60 s with
+ * (it is no longer ours); any other handler error defers the job
+ * `min(60 × 2^(attempts − 1), 3600)` s with `handler_error` and the tick
+ * carries on, and the job's 5th failure quarantines it
+ * (`handler_error_exhausted`), except that a `reply_reconcile` job is never
+ * exhausted (a failed-exhausted reply job is never revived by
+ * `reconcileBoundMessage`, so its contact would never stop and later steps
+ * would send; it keeps deferring at the capped backoff), and that a job whose lease already holds a
+ * submission authorization stays leased (fail closed: the next lease fails
+ * it as `worker_interrupted_after_authorization`); a `recovery_paused` job is deferred 60 s with
  * `mailbox_recovery_paused`. Once {@link TICK_JOB_START_BUDGET_MS} has passed
  * since the tick began, no further job starts: each remaining leased job is
  * deferred to now with `tick_budget_exhausted` (and not counted as
@@ -344,7 +426,7 @@ async function prepareTick(
  * @param input - The batch size, switches and abort signal.
  * @param dependencies - The tick's collaborators.
  * @throws When the batch size or enrollment start is invalid, the tick is
- *   aborted, a lease renewal fails, or a non-deterministic error occurs.
+ *   aborted, a lease renewal fails, or releasing a failed job fails.
  */
 export async function dispatchLifecycleJobs(
   input: LifecycleDispatcherInput,
@@ -365,6 +447,16 @@ export async function dispatchLifecycleJobs(
       batchSize,
       dependencies,
     );
+    // A bad origin must not fail the tick: reconciliation, projection and
+    // enrollment above already ran, and only jobs that never read the
+    // origin are leased below.
+    let originValid = true;
+    try {
+      dependencies.assertActionOrigin();
+    } catch {
+      originValid = false;
+      operatorAlerts.push('action_origin_invalid');
+    }
     let recoveryPaused = await dependencies.isRecoveryPaused(executor);
     input.signal.throwIfAborted();
     const withAlerts = (
@@ -378,9 +470,26 @@ export async function dispatchLifecycleJobs(
         ? [...operatorAlerts, 'mailbox_recovery_required']
         : operatorAlerts,
     });
+    // The count only ever adds an alert: it runs before leasing, even when
+    // the job-start budget is spent, and a failure is logged by name only.
+    try {
+      if (
+        (await dependencies.countUnboundProviderMessages(executor, {
+          now: dependencies.now(),
+          olderThanMs: MESSAGE_ID_STALL_MS,
+        })) > 0
+      ) {
+        operatorAlerts.push('message_id_unbound');
+      }
+    } catch (error) {
+      input.signal.throwIfAborted();
+      console.error('[lifecycle-unbound-count-failed]', {
+        name: error instanceof Error ? error.name : 'Error',
+      });
+    }
     if (budgetSpent(dependencies.now())) return withAlerts(0, 0);
     const jobs = await dependencies.leaseDueJobs(executor, {
-      kinds: [...LEASED_KINDS],
+      kinds: originValid ? [...LEASED_KINDS] : [...ORIGIN_FREE_KINDS],
       now: dependencies.now(),
       batchSize,
       leaseDurationMs: LEASE_DURATION_MS,
@@ -425,13 +534,18 @@ export async function dispatchLifecycleJobs(
           const heartbeat = heartbeats.get(job.id);
           heartbeats.delete(job.id);
           await heartbeat?.stop();
-          await dependencies.deferJob(executor, {
-            jobId: job.id,
-            leaseToken,
-            now: startAt,
-            availableAt: startAt,
-            errorCode: 'tick_budget_exhausted',
-          });
+          try {
+            await dependencies.deferJob(executor, {
+              jobId: job.id,
+              leaseToken,
+              now: startAt,
+              availableAt: startAt,
+              errorCode: 'tick_budget_exhausted',
+            });
+          } catch (error) {
+            // The lease expired and the job is no longer ours.
+            if (!(error instanceof JobLeaseConflictError)) throw error;
+          }
           continue;
         }
         try {
@@ -458,14 +572,67 @@ export async function dispatchLifecycleJobs(
         } catch (error) {
           signal.throwIfAborted();
           if (error instanceof JobLeaseConflictError) continue;
-          if (!(error instanceof DeterministicLifecycleJobError)) throw error;
-          await dependencies.quarantineJob(executor, {
-            errorCode: 'deterministic_job_poison',
-            jobId: job.id,
-            leaseToken,
-            now: dependencies.now(),
+          if (error instanceof DeterministicLifecycleJobError) {
+            await dependencies.quarantineJob(executor, {
+              errorCode: 'deterministic_job_poison',
+              jobId: job.id,
+              leaseToken,
+              now: dependencies.now(),
+            });
+            dispatched += 1;
+            continue;
+          }
+          // One bad job must not stall the jobs behind it: stop its
+          // heartbeat, then back it off or, on its last attempt, quarantine
+          // it. Only the error name is logged, never the message.
+          const heartbeat = heartbeats.get(job.id);
+          heartbeats.delete(job.id);
+          await heartbeat?.stop();
+          console.error('[lifecycle-job-failed]', {
+            kind: job.kind,
+            name: error instanceof Error ? error.name : 'Error',
           });
-          dispatched += 1;
+          // A job whose lease already authorized a submission may have
+          // reached the provider. Never return it to pending, which would
+          // authorize and send again: leave it leased so the lease expires
+          // and the next lease fails it as `worker_interrupted_after_authorization`
+          // for manual review.
+          if (
+            await dependencies.hasSubmissionAuthorization(executor, {
+              jobId: job.id,
+              leaseToken,
+            })
+          ) {
+            continue;
+          }
+          const now = dependencies.now();
+          try {
+            if (
+              job.attempts >= HANDLER_ERROR_MAX_ATTEMPTS &&
+              job.kind !== 'reply_reconcile'
+            ) {
+              await dependencies.quarantineJob(executor, {
+                errorCode: 'handler_error_exhausted',
+                jobId: job.id,
+                leaseToken,
+                now,
+              });
+            } else {
+              await dependencies.deferJob(executor, {
+                jobId: job.id,
+                leaseToken,
+                now,
+                availableAt: new Date(
+                  now.getTime() + handlerErrorBackoffMs(job.attempts),
+                ),
+                errorCode: 'handler_error',
+              });
+            }
+          } catch (releaseError) {
+            if (!(releaseError instanceof JobLeaseConflictError)) {
+              throw releaseError;
+            }
+          }
         } finally {
           const heartbeat = heartbeats.get(job.id);
           heartbeats.delete(job.id);

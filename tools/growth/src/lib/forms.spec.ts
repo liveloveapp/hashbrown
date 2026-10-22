@@ -11,6 +11,7 @@ import {
   acceptFormSubmission,
   type AcceptFormSubmissionInput,
 } from './forms.ts';
+import { FormSubmissionConflictError } from './form-admission.ts';
 import { UNSTUCK_FRAMEWORKS } from './models.ts';
 
 const keyring: EmailHmacKeyring = {
@@ -378,6 +379,7 @@ test('a submission id colliding with jobs owned by another contact throws', asyn
     approveContact: harness.approveContact,
   });
 
+  await expect(accepted).rejects.toBeInstanceOf(FormSubmissionConflictError);
   await expect(accepted).rejects.toThrow(/job idempotency conflict/u);
 });
 

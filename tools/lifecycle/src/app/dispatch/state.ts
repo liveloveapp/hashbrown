@@ -20,6 +20,8 @@ const state = z
           z.enum([
             'mailbox_recovery_required',
             'observation_projection_failed',
+            'action_origin_invalid',
+            'message_id_unbound',
           ]),
         ),
       })

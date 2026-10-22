@@ -10,6 +10,7 @@ import { createDatabaseExecutor } from '../src/lib/database.ts';
 import {
   authorizeLeasedJobForSubmission,
   completeLeasedJob,
+  countUnboundProviderMessages,
   enqueueJob,
   JobLeaseConflictError,
   leaseDueJobs,
@@ -274,4 +275,61 @@ test('authorization, acceptance, and unknown outcomes settle leased send steps',
     'delivery.submission_authorized',
     'delivery.submission_authorized',
   ]);
+});
+
+test('an unbound provider message older than 6 hours is counted; a newer one or a deleted contact is not', async () => {
+  const now = new Date('2026-01-01T12:00:00.000Z');
+  const olderThanMs = 6 * 60 * 60 * 1000;
+  const live = await createEnrolledContact(executor, createdContactIds, now);
+  const deleted = await createEnrolledContact(executor, createdContactIds, now);
+  await executor.execute(
+    'update growth_contacts set deleted_at = $2 where id = $1',
+    [deleted.contactId, now],
+  );
+  const insert = async (
+    contactId: string,
+    kind: string,
+    updatedAt: Date,
+    rfcMessageId: string | null = null,
+  ) => {
+    await executor.execute(
+      `insert into growth_jobs (
+         kind, contact_id, status, available_at, attempts, idempotency_key,
+         provider_email_id, rfc_message_id, updated_at
+       ) values ($2, $1, 'completed', $3, 1, $4, $5, $6, $3)`,
+      [
+        contactId,
+        kind,
+        updatedAt,
+        `jobs-integration:${randomUUID()}`,
+        `email_${randomUUID()}`,
+        rfcMessageId,
+      ],
+    );
+  };
+  const before = await countUnboundProviderMessages(executor, {
+    now,
+    olderThanMs,
+  });
+
+  await insert(deleted.contactId, 'fulfill', new Date('2026-01-01T00:00:00Z'));
+  await insert(live.contactId, 'send_step', new Date('2026-01-01T08:00:00Z'));
+  await insert(
+    live.contactId,
+    'fulfill',
+    new Date('2026-01-01T00:00:00Z'),
+    '<bound@example.com>',
+  );
+  const withoutStalled = await countUnboundProviderMessages(executor, {
+    now,
+    olderThanMs,
+  });
+  await insert(live.contactId, 'send_step', new Date('2026-01-01T05:00:00Z'));
+  const withStalled = await countUnboundProviderMessages(executor, {
+    now,
+    olderThanMs,
+  });
+
+  expect(withoutStalled).toBe(before);
+  expect(withStalled).toBe(before + 1);
 });

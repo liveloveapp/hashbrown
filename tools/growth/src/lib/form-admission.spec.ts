@@ -3,6 +3,7 @@ import { expect, test, vi } from 'vitest';
 import type { SqlTransaction } from './database.ts';
 import {
   FormRateLimitError,
+  FormSubmissionConflictError,
   prepareFormAdmission,
   recordFormAdmission,
 } from './form-admission.ts';
@@ -134,7 +135,12 @@ test('replays the immutable decision without consuming a budget and rejects a ch
       .mocked(tx.execute)
       .mock.calls.some(([q]) => q.includes('growth:consume-form-budget')),
   ).toBe(false);
-  await expect(changedEmail).rejects.toThrow('identity conflict');
+  await expect(changedEmail).rejects.toBeInstanceOf(
+    FormSubmissionConflictError,
+  );
+  await expect(changedMessage).rejects.toBeInstanceOf(
+    FormSubmissionConflictError,
+  );
   await expect(changedMessage).rejects.toThrow('identity conflict');
 });
 

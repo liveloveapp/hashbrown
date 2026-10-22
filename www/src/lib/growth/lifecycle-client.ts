@@ -23,17 +23,43 @@ export interface InvokeLifecycleDependencies {
 
 /** An alert the lifecycle service raises for a human operator. */
 export type LifecycleOperatorAlert =
-  'mailbox_recovery_required' | 'observation_projection_failed';
+  | 'mailbox_recovery_required'
+  | 'observation_projection_failed'
+  | 'action_origin_invalid'
+  | 'message_id_unbound';
 
 const OPERATOR_ALERTS: readonly string[] = [
   'mailbox_recovery_required',
   'observation_projection_failed',
+  'action_origin_invalid',
+  'message_id_unbound',
 ];
 
 /** The validated outcome of one lifecycle dispatch. */
 export interface InvokeLifecycleResult {
   operatorAlerts: LifecycleOperatorAlert[];
   threadId: string;
+}
+
+/**
+ * A lifecycle dispatch failure after the request was built. It carries the
+ * b4run thread id so the caller can still delete the thread the run left
+ * behind. Its message is always one of the client's closed messages.
+ */
+export class LifecycleInvokeError extends Error {
+  constructor(
+    message: string,
+    /** The b4run thread the failed dispatch used. */
+    readonly threadId: string,
+    /**
+     * Whether the service answered. False for request-stage failures
+     * (timeout, network, abort), where the run may still be executing.
+     */
+    readonly runCompleted: boolean,
+  ) {
+    super(message);
+    this.name = 'LifecycleInvokeError';
+  }
 }
 
 const defaultDependencies: InvokeLifecycleDependencies = {
@@ -236,23 +262,100 @@ export async function invokeLifecycle(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
-    throw new Error('Lifecycle dispatch request failed');
+    throw new LifecycleInvokeError(
+      'Lifecycle dispatch request failed',
+      threadId,
+      false,
+    );
   }
-  if (!response.ok) {
+  try {
+    if (!response.ok) {
+      await cancelResponseBody(response);
+      throw new Error('Lifecycle dispatch was not accepted');
+    }
+    const state = await readLifecycleState(response);
+    return {
+      operatorAlerts: parseLifecycleState(state, input),
+      threadId,
+    };
+  } catch (error) {
+    throw new LifecycleInvokeError(
+      error instanceof Error ? error.message : INVALID_LIFECYCLE_STATE,
+      threadId,
+      true,
+    );
+  }
+}
+
+/** Input for {@link deleteLifecycleThread}. */
+export interface DeleteLifecycleThreadInput {
+  baseUrl: string;
+  serviceSecret: string;
+  /** The thread a lifecycle run used. */
+  threadId: string;
+  /** Milliseconds to wait for the delete. */
+  timeoutMs: number;
+}
+
+/** The longest a caller waits for a thread delete. */
+export const LIFECYCLE_THREAD_DELETE_TIMEOUT_MS = 5_000;
+
+/**
+ * Deletes the b4run thread (and its checkpoints) a lifecycle run left behind.
+ * Best effort and never throws: 2xx and 404 are done; any other status, a
+ * network error or a timeout is logged as `[lifecycle-thread-delete-failed]`
+ * with the status or the error name only, and swallowed. b4run refuses (409)
+ * while the run is still executing, so the thread of a run that the client
+ * timed out on usually stays.
+ *
+ * @param input - The service origin, bearer secret, thread id and timeout.
+ * @param dependencies - Collaborators to replace, for tests.
+ */
+export async function deleteLifecycleThread(
+  input: DeleteLifecycleThreadInput,
+  dependencies: Partial<Pick<InvokeLifecycleDependencies, 'fetch'>> = {},
+): Promise<void> {
+  try {
+    const origin = lifecycleBaseUrl(input.baseUrl);
+    const fetcher = dependencies.fetch ?? fetch;
+    const response = await fetcher(
+      `${origin}/threads/${encodeURIComponent(input.threadId)}`,
+      {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${input.serviceSecret}` },
+        redirect: 'error',
+        signal: AbortSignal.timeout(input.timeoutMs),
+      },
+    );
     await cancelResponseBody(response);
-    throw new Error('Lifecycle dispatch was not accepted');
+    if (!response.ok && response.status !== 404) {
+      console.warn('[lifecycle-thread-delete-failed]', response.status);
+    }
+  } catch (error) {
+    console.warn(
+      '[lifecycle-thread-delete-failed]',
+      error instanceof Error ? error.name : 'unknown',
+    );
   }
-  const state = await readLifecycleState(response);
-  return {
-    operatorAlerts: parseLifecycleState(state, input),
-    threadId,
-  };
+}
+
+/**
+ * The thread worth deleting after a failed dispatch: only when the service
+ * answered. A run the client gave up on may still be executing, so the delete
+ * would be refused (409) and only add latency.
+ */
+export function lifecycleThreadId(outcome: unknown): string | undefined {
+  if (outcome instanceof LifecycleInvokeError && outcome.runCompleted) {
+    return outcome.threadId;
+  }
+  return undefined;
 }
 
 /**
  * Asks the lifecycle service to dispatch now for a fresh submission. Best
- * effort: it waits at most two seconds and never throws, because the cron
- * tick picks the job up regardless. It does nothing unless
+ * effort: it waits at most two seconds for the run, then, only when the
+ * service answered, at most five for the thread delete. It never throws,
+ * because the cron tick picks the job up regardless. It does nothing unless
  * `LIFECYCLE_CRON_ENABLED` is exactly `true` and `LIFECYCLE_URL` and
  * `LIFECYCLE_SERVICE_SECRET` are set, so a disabled lifecycle is never called.
  *
@@ -261,6 +364,7 @@ export async function invokeLifecycle(
 export async function nudgeLifecycle(
   input: { submissionId: string },
   invoke: typeof invokeLifecycle = invokeLifecycle,
+  deleteThread: typeof deleteLifecycleThread = deleteLifecycleThread,
 ): Promise<void> {
   const baseUrl = process.env['LIFECYCLE_URL']?.trim();
   const serviceSecret = process.env['LIFECYCLE_SERVICE_SECRET'];
@@ -271,15 +375,30 @@ export async function nudgeLifecycle(
   ) {
     return;
   }
+  let threadId: string | undefined;
   try {
-    await invoke({
+    threadId = (
+      await invoke({
+        baseUrl,
+        serviceSecret,
+        timeoutMs: 2_000,
+        trigger: 'nudge',
+        submissionId: input.submissionId,
+      })
+    ).threadId;
+  } catch (error) {
+    // The next cron tick dispatches the job.
+    threadId = lifecycleThreadId(error);
+  }
+  if (threadId === undefined) return;
+  try {
+    await deleteThread({
       baseUrl,
       serviceSecret,
-      timeoutMs: 2_000,
-      trigger: 'nudge',
-      submissionId: input.submissionId,
+      threadId,
+      timeoutMs: LIFECYCLE_THREAD_DELETE_TIMEOUT_MS,
     });
   } catch {
-    // The next cron tick dispatches the job.
+    // Best effort.
   }
 }

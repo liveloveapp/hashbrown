@@ -3,6 +3,7 @@ import {
   createDatabaseExecutor,
   type EmailHmacKeyring,
   FormRateLimitError,
+  FormSubmissionConflictError,
   normalizeRecipientEmail,
   parseEmailHmacKeyring,
   type SqlExecutor,
@@ -101,7 +102,9 @@ function isJson(request: Request): boolean {
  * for a missing or stale `policy_version`), accepts the submission in one
  * transaction, closes the database, and only then nudges the lifecycle
  * service; a nudge failure never reaches the visitor. A rate limit answers
- * 429 with `Retry-After`; faults answer a retryable 503 and log
+ * 429 with `Retry-After`; a permanent identity conflict (a reused
+ * `submission_id` with a changed body, or jobs owned by another contact)
+ * answers 422 without `retryable`; faults answer a retryable 503 and log
  * `[unstuck-form-failed]` with the stage and the error's name only. Responses
  * and logs never carry submitted values.
  *
@@ -198,6 +201,12 @@ export function createUnstuckRoute(
             { error: 'Please try again later', retryable: true },
             429,
             { 'Retry-After': String(error.retryAfterSec) },
+          );
+        } else if (error instanceof FormSubmissionConflictError) {
+          logFailure('accept', error);
+          failure = jsonResponse(
+            { error: 'This submission changed. Please send it again.' },
+            422,
           );
         } else {
           logFailure('accept', error);

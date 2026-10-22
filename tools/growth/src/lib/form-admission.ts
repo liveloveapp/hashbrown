@@ -33,6 +33,20 @@ export class FormRateLimitError extends Error {
   }
 }
 
+/**
+ * Thrown when a form submission's identity can never be admitted: a reused
+ * `submission_id` arrived with a changed request, or its jobs already belong
+ * to another contact. A retry cannot succeed, so the route answers 422 rather
+ * than a retryable 503.
+ */
+export class FormSubmissionConflictError extends Error {
+  /** @param message - A fixed description; never submitted values. */
+  constructor(message: string) {
+    super(message);
+    this.name = 'FormSubmissionConflictError';
+  }
+}
+
 /** What {@link prepareFormAdmission} decided before the submission is applied. */
 export interface FormAdmission {
   assessment: FormAbuseAssessment;
@@ -54,7 +68,7 @@ function digest(secret: string | Uint8Array, value: string): string {
  *
  * - replays the recorded `form:<id>:assessment` result when the submission id
  *   was already admitted with a byte-identical request (no budget is spent),
- *   and throws `Form submission identity conflict` when the request changed;
+ *   and throws {@link FormSubmissionConflictError} when the request changed;
  * - otherwise scores the submission with {@link assessFormAbuse} and charges
  *   the budgets in `growth_collection_budgets` inside a savepoint: 5 per email
  *   per clock hour (`form:email:<hmac>`), 10 per email per UTC day
@@ -113,7 +127,9 @@ export async function prepareFormAdmission(
       !key ||
       digest(key.secret, `form-request:${request}`) !== data['request_digest']
     ) {
-      throw new Error('Form submission identity conflict');
+      throw new FormSubmissionConflictError(
+        'Form submission identity conflict',
+      );
     }
     return {
       assessment: data['assessment'] as FormAbuseAssessment,
