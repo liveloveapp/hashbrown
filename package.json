@@ -150,7 +150,7 @@
     "typescript-eslint": "^8.33.1",
     "vercel": "59.18.0",
     "verdaccio": "6.9.2",
-    "vite": "8.2.1",
+    "vite": "8.2.4",
     "vite-plugin-dts": "~4.5.4",
     "vitest": "4.1.10"
   },
