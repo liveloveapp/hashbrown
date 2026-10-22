@@ -162,3 +162,24 @@
     width: 192px;
   }
 }
+
+.help {
+  display: flex;
+  flex-direction: column;
+
+  > a {
+    display: flex;
+    color: var(--chocolate-brown, #774625);
+    padding: 6px 12px;
+    width: 100%;
+    border-radius: 8px;
+    font:
+      400 13px/18px Fredoka,
+      sans-serif;
+
+    &:hover,
+    &.active {
+      background: var(--sunshine-yellow-light, #fde4ba);
+    }
+  }
+}

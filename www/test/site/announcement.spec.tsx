@@ -8,9 +8,8 @@ import {
   ANNOUNCEMENT_STORAGE_KEY,
   shouldShowAnnouncement,
 } from '../../src/components/site/Announcement';
-import { ANNOUNCEMENTS } from '../../src/lib/announcements/catalog';
 
-const PUBLISHED_AT = ANNOUNCEMENTS[0].publishedAt;
+const PUBLISHED_AT = '2026-10-08T18:00:00Z';
 const ANNOUNCEMENT_DATE = new Date(PUBLISHED_AT);
 
 (

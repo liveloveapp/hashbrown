@@ -124,3 +124,13 @@ test('core keeps null token modules in the repo so any resolver can load it', ()
 
   expect(contents).toEqual(files);
 });
+
+test('every published package README links the Get unstuck form', () => {
+  const readmes = PACKAGES.map((name) =>
+    readFileSync(resolve(root, `packages/${name}/README.md`), 'utf8'),
+  );
+
+  expect(
+    readmes.map((text) => text.includes('https://hashbrown.dev/unstuck')),
+  ).toEqual(PACKAGES.map(() => true));
+});

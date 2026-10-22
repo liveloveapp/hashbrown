@@ -72,6 +72,8 @@ Your server keeps the API key and streams from a Hashbrown adapter:
 
 Hashbrown is headless. [threadplane](https://threadplane.ai) is the full agent UI for React and Angular, built on Hashbrown: threads, approvals, and tool progress. Free and MIT, with enterprise support from the team behind Hashbrown.
 
+Stuck? Ask Brian at https://hashbrown.dev/unstuck.
+
 ## What this package sends
 
 Hashbrown sends two kinds of usage observations so we can see where
