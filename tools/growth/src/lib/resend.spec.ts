@@ -42,7 +42,7 @@ const unsubscribeUrl = createUnsubscribeActionUrl(
 );
 const unsubscribeValue = unsubscribeActionUrlValue(unsubscribeUrl);
 
-test('pilot sends keep the verified sender but route replies to the receiving subdomain', async () => {
+test('new recipient emails use the root address for replies', async () => {
   vi.stubEnv('RESEND_INBOX_PILOT_ENABLED', 'true');
   vi.stubEnv('RESEND_INBOX_PILOT_ADDRESS', 'brian@replies.hashbrown.dev');
   vi.stubEnv('RESEND_INBOX_PILOT_STARTED_AT', '2026-10-20T00:00:00Z');
@@ -58,7 +58,7 @@ test('pilot sends keep the verified sender but route replies to the receiving su
     expect(deps.resend.emails.send).toHaveBeenCalledWith(
       expect.objectContaining({
         from: RECIPIENT_EMAIL_SENDER,
-        replyTo: 'brian@replies.hashbrown.dev',
+        replyTo: 'brian@hashbrown.dev',
       }),
       expect.anything(),
     );
@@ -427,7 +427,7 @@ test('explicit all-recipient pilot opt-in bypasses canary gates while retaining 
     expect(authorizationInput.requireInboxPilot).toBe(true);
     expect(authorizationInput.canaryRecipientAllowlist).toBeUndefined();
     expect(deps.resend.emails.send).toHaveBeenCalledWith(
-      expect.objectContaining({ replyTo: 'brian@replies.hashbrown.dev' }),
+      expect.objectContaining({ replyTo: 'brian@hashbrown.dev' }),
       expect.anything(),
     );
   } finally {

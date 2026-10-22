@@ -1,5 +1,5 @@
 import type { SqlExecutor } from './database.ts';
-import { loadInboxPilot } from './inbox-replies.ts';
+import { INBOX_REPLY_ADDRESS, loadInboxPilot } from './inbox-replies.ts';
 import type { ErrorResponse } from 'resend';
 import {
   authorizeLeasedJobForSubmission,
@@ -473,7 +473,7 @@ export async function sendRecipientEmail(
   const providerPayload: RecipientEmailProviderPayload = {
     from: RECIPIENT_EMAIL_SENDER,
     to,
-    replyTo: pilot.enabled ? pilot.address : RECIPIENT_EMAIL_SENDER,
+    replyTo: pilot.enabled ? INBOX_REPLY_ADDRESS : RECIPIENT_EMAIL_SENDER,
     subject,
     text,
     ...(html === undefined ? {} : { html }),
