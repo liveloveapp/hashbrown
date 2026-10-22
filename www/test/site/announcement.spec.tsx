@@ -17,10 +17,13 @@ const ANNOUNCEMENT_DATE = new Date(PUBLISHED_AT);
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
+const LIVE_NOW = new Date('2026-10-21T00:00:00Z');
+
 const mounted: Root[] = [];
 
 /** Undo the previous test: unmount, restore globals, clear storage and DOM. */
 function reset() {
+  vi.useRealTimers();
   act(() => mounted.splice(0).forEach((root) => root.unmount()));
   vi.unstubAllGlobals();
   localStorage.clear();
@@ -95,6 +98,7 @@ test('announces the date of the current announcement', () => {
 
 test('does not render on the server', () => {
   reset();
+  vi.useFakeTimers({ now: LIVE_NOW, toFake: ['Date'] });
 
   const html = renderToString(<Announcement />);
 
@@ -103,6 +107,7 @@ test('does not render on the server', () => {
 
 test('renders the link in the browser when not yet dismissed', () => {
   reset();
+  vi.useFakeTimers({ now: LIVE_NOW, toFake: ['Date'] });
 
   mount();
 
@@ -112,6 +117,7 @@ test('renders the link in the browser when not yet dismissed', () => {
 
 test('stays hidden in the browser once dismissed', () => {
   reset();
+  vi.useFakeTimers({ now: LIVE_NOW, toFake: ['Date'] });
   localStorage.setItem(
     ANNOUNCEMENT_STORAGE_KEY,
     ANNOUNCEMENT_DATE.toISOString(),
@@ -124,6 +130,7 @@ test('stays hidden in the browser once dismissed', () => {
 
 test('dismissing stores the announcement date and hides it', () => {
   reset();
+  vi.useFakeTimers({ now: LIVE_NOW, toFake: ['Date'] });
   mount();
 
   act(() => {
@@ -140,6 +147,7 @@ test('dismissing stores the announcement date and hides it', () => {
 
 test('hydrates without a mismatch, then shows', () => {
   reset();
+  vi.useFakeTimers({ now: LIVE_NOW, toFake: ['Date'] });
   const container = document.createElement('div');
   container.innerHTML = renderToString(<Announcement />);
   document.body.replaceChildren(container);
@@ -155,4 +163,13 @@ test('hydrates without a mismatch, then shows', () => {
 
   expect(recoverableErrors).not.toHaveBeenCalled();
   expect(link()).not.toBeNull();
+});
+
+test('renders nothing once the entry has expired', () => {
+  reset();
+  vi.useFakeTimers({ now: new Date('2027-06-01T00:00:00Z'), toFake: ['Date'] });
+
+  mount();
+
+  expect(link()).toBeNull();
 });

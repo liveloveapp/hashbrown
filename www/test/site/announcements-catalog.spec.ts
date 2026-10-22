@@ -3,6 +3,8 @@ import { expect, test } from 'vitest';
 import {
   ANNOUNCEMENTS,
   currentSiteAnnouncement,
+  isSiteRelativeHref,
+  isValidSiteAnnouncement,
   runtimeAnnouncementCatalog,
   type SiteAnnouncement,
 } from '../../src/lib/announcements/catalog';
@@ -67,24 +69,22 @@ test('the shipped entry is live on 2026-10-21', () => {
   expect(result?.text).toBe('New: Hashbrown v0.7 moves to AG-UI 1.0');
 });
 
-test('runtimeAnnouncementCatalog excludes entries without a runtime block and rejects a non-docs documentationUrl', () => {
+test('runtimeAnnouncementCatalog excludes entries without a runtime block and skips a non-docs documentationUrl', () => {
   const runtime = {
-    packageNames: ['@hashbrownai/react'],
+    packageNames: ['@hashbrownai/react'] as const,
     minVersion: '0.7.0',
     documentationUrl: 'https://hashbrown.dev/docs/react',
   };
   const entries = [
     entry({ id: 'plain' }),
     entry({ id: 'with', text: 'Hello', runtime }),
+    entry({
+      id: 'bad',
+      runtime: { ...runtime, documentationUrl: 'https://example.com/docs' },
+    }),
   ];
 
   const projected = runtimeAnnouncementCatalog(entries);
-  const bad = () =>
-    runtimeAnnouncementCatalog([
-      entry({
-        runtime: { ...runtime, documentationUrl: 'https://example.com/docs' },
-      }),
-    ]);
 
   expect(projected).toEqual([
     {
@@ -96,11 +96,35 @@ test('runtimeAnnouncementCatalog excludes entries without a runtime block and re
       documentationUrl: 'https://hashbrown.dev/docs/react',
     },
   ]);
-  expect(bad).toThrow(/documentationUrl/);
 });
 
-test('the shipped catalog projects no runtime announcements', () => {
-  const projected = runtimeAnnouncementCatalog();
+test('site-relative hrefs reject protocol-relative and absolute URLs', () => {
+  const hrefs = ['//x', 'https://x', '/\\x', 'blog/a', 'javascript:1'];
 
-  expect(projected).toEqual([]);
+  const results = hrefs.map(isSiteRelativeHref);
+
+  expect(results).toEqual([false, false, false, false, false]);
+  expect(isSiteRelativeHref('/blog/a?x=1#y')).toBe(true);
+});
+
+test('an entry with an invalid href is never shown', () => {
+  const entries = [entry({ href: '//evil.example' })];
+
+  const result = currentSiteAnnouncement(
+    new Date('2026-10-01T00:00:00Z'),
+    entries,
+  );
+
+  expect(result).toBeUndefined();
+});
+
+test('every shipped entry is valid for both surfaces', () => {
+  const entries = ANNOUNCEMENTS;
+
+  const valid = entries.map(isValidSiteAnnouncement);
+
+  expect(valid.every(Boolean)).toBe(true);
+  expect(runtimeAnnouncementCatalog(entries)).toHaveLength(
+    entries.filter(({ runtime }) => runtime).length,
+  );
 });

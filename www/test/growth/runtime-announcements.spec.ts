@@ -40,14 +40,6 @@ test('selectRuntimeAnnouncements reads the shared catalog', () => {
   expect(selected).toEqual(runtimeAnnouncementCatalog());
 });
 
-test('the shipped catalog is empty', () => {
-  const input = batch('0.8.0');
-
-  const selected = selectRuntimeAnnouncements(input, NOW);
-
-  expect(selected).toEqual([]);
-});
-
 test('an entry applies to release versions inside its range only', () => {
   const entries = [entry({ maxVersion: '0.9.0' })];
 

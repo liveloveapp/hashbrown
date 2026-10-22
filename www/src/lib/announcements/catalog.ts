@@ -1,7 +1,8 @@
+import type { PACKAGE_NAMES } from '@hashbrownai-internal/growth';
 import type { RuntimeAnnouncement } from '../growth/runtime-announcements';
 
 /** The name of a published Hashbrown package, such as `@hashbrownai/react`. */
-export type PackageName = string;
+export type PackageName = (typeof PACKAGE_NAMES)[number];
 
 /** One announcement, shown on hashbrown.dev and optionally to collectors. */
 export interface SiteAnnouncement {
@@ -58,6 +59,36 @@ export function approvedDocumentationUrl(value: string): boolean {
 }
 
 /**
+ * Whether an href is a site-relative path: one leading `/`, not `//`, and no
+ * scheme or backslash.
+ *
+ * @param value - The candidate href.
+ * @returns Whether it is safe to render as an internal link.
+ */
+export function isSiteRelativeHref(value: string): boolean {
+  return (
+    value.startsWith('/') &&
+    !value.startsWith('//') &&
+    !/[\\\p{Cc}\s]/u.test(value)
+  );
+}
+
+/**
+ * Whether an entry is valid for both surfaces: a site-relative `href` and,
+ * when it has a `runtime` block, an approved documentation URL.
+ *
+ * @param entry - The announcement.
+ * @returns Whether it may be shown and projected.
+ */
+export function isValidSiteAnnouncement(entry: SiteAnnouncement): boolean {
+  return (
+    isSiteRelativeHref(entry.href) &&
+    (entry.runtime === undefined ||
+      approvedDocumentationUrl(entry.runtime.documentationUrl))
+  );
+}
+
+/**
  * The newest announcement that is published and not yet expired.
  *
  * @param now - The time to evaluate against.
@@ -72,6 +103,7 @@ export function currentSiteAnnouncement(
   return entries
     .filter(
       (entry) =>
+        isValidSiteAnnouncement(entry) &&
         Date.parse(entry.publishedAt) <= time &&
         time < Date.parse(entry.expiresAt),
     )
@@ -83,22 +115,14 @@ export function currentSiteAnnouncement(
  *
  * @param entries - The catalog; defaults to {@link ANNOUNCEMENTS}.
  * @returns The runtime announcements.
- * @throws When a documentation URL is not an approved hashbrown.dev docs URL
- *   or an `href` is not a site-relative path.
+ * Invalid entries are skipped, never thrown on.
  */
 export function runtimeAnnouncementCatalog(
   entries: readonly SiteAnnouncement[] = ANNOUNCEMENTS,
 ): RuntimeAnnouncement[] {
-  return entries.flatMap(({ runtime, ...entry }) => {
-    if (!entry.href.startsWith('/') || entry.href.startsWith('//')) {
-      throw new Error(`Announcement ${entry.id} href must be site-relative`);
-    }
-    if (!runtime) return [];
-    if (!approvedDocumentationUrl(runtime.documentationUrl)) {
-      throw new Error(
-        `Announcement ${entry.id} has an unapproved documentationUrl`,
-      );
-    }
+  return entries.flatMap((entry) => {
+    const { runtime } = entry;
+    if (!runtime || !isValidSiteAnnouncement(entry)) return [];
     return [
       {
         id: entry.id,
