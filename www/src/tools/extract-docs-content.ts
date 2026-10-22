@@ -27,6 +27,7 @@ import {
   MinimizedApiReport,
 } from './api-report.models';
 import { resetReferenceOutput } from './reference-output';
+import { filterPublicApiMembers } from './public-api-members';
 
 interface ApiPackage {
   name: string;
@@ -40,7 +41,6 @@ const MONOREPO_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../..',
 );
-const ANGULAR_THETA_CHAR = 'ɵ';
 
 const PACKAGES_TO_PARSE: ApiPackage[] = [
   {
@@ -124,24 +124,6 @@ function createApiReport(pkg: ApiPackage) {
       content.replace(new RegExp(pkg.name, 'g'), pkg.rewriteName),
     );
   }
-}
-
-function filterMembersForAngularThetaChar(members: ApiMember[]): ApiMember[] {
-  return members.reduce((acc, member) => {
-    if (member.name && member.name.startsWith(ANGULAR_THETA_CHAR)) {
-      return acc;
-    }
-
-    return [
-      ...acc,
-      {
-        ...member,
-        members: member.members
-          ? filterMembersForAngularThetaChar(member.members)
-          : undefined,
-      },
-    ];
-  }, [] as ApiMember[]);
 }
 
 async function rollupApiReport(pkg: ApiPackage): Promise<ApiReport> {
@@ -347,7 +329,7 @@ async function rollupApiReport(pkg: ApiPackage): Promise<ApiReport> {
   );
 
   const symbols = new Map<string, ApiMember[]>();
-  const members = filterMembersForAngularThetaChar(entryPoint?.members ?? []);
+  const members = filterPublicApiMembers(entryPoint?.members ?? []);
 
   members.forEach((member) => {
     if (!symbols.has(member.name)) {
