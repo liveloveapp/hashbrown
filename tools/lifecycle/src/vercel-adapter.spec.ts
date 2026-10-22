@@ -52,7 +52,10 @@ function createAdapter(
   });
 }
 
-function request(path: string, headers?: HeadersInit): Request {
+/** Header input accepted by `new Headers(...)`, without relying on the DOM `HeadersInit` global. */
+type HeaderInput = ConstructorParameters<typeof Headers>[0];
+
+function request(path: string, headers?: HeaderInput): Request {
   return new Request(`https://lifecycle.invalid${path}`, {
     headers: new Headers(headers),
   });
@@ -70,7 +73,7 @@ test('adapter rejects every unauthenticated path incl. /healthz, /readyz, /threa
     '/dispatch',
     '/anything/else',
   ];
-  const headerVariants: (HeadersInit | undefined)[] = [
+  const headerVariants: (HeaderInput | undefined)[] = [
     undefined,
     { authorization: 'Bearer wrong' },
     { Authorization: `bearer ${SECRET}` },
