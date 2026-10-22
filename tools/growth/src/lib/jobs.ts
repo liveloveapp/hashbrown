@@ -5,7 +5,10 @@ import {
   type SqlExecutor,
   type SqlTransaction,
 } from './database.ts';
-import { CONTACT_HARD_STOP_REASONS } from './contacts.ts';
+import {
+  CONTACT_HARD_STOP_REASONS,
+  FULFILLMENT_EPOCH_FATAL_STOP_REASONS,
+} from './contacts.ts';
 import { normalizeEmail } from './crypto.ts';
 import type {
   GrowthCampaignEnrollmentReason,
@@ -14,15 +17,6 @@ import type {
   GrowthLifecycleFormSubmission,
   GrowthLifecycleJobContext,
 } from './models.ts';
-
-const FULFILLMENT_ALLOWED_PRIOR_STOPS = new Set([
-  'unsubscribe',
-  'campaign.reply_received',
-]);
-const FULFILLMENT_EPOCH_FATAL_STOP_REASONS = CONTACT_HARD_STOP_REASONS.filter(
-  (reason) =>
-    reason !== 'deletion' && !FULFILLMENT_ALLOWED_PRIOR_STOPS.has(reason),
-);
 
 interface JobRow extends Record<string, unknown> {
   id: string;

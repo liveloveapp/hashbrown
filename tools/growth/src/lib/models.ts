@@ -17,6 +17,17 @@ export type GrowthDeliveryStatus =
 export type GrowthJobKind =
   'fulfill' | 'notify' | 'send_step' | 'digest' | 'reply_reconcile';
 
+/** The framework choices on the Get unstuck form. */
+export const UNSTUCK_FRAMEWORKS = [
+  'react',
+  'angular',
+  'both',
+  'not_sure',
+] as const;
+
+/** One of {@link UNSTUCK_FRAMEWORKS}. */
+export type UnstuckFramework = (typeof UNSTUCK_FRAMEWORKS)[number];
+
 /** Whether a submitted address looks like a work or personal mailbox. */
 export type GrowthEmailClassification = 'work' | 'personal' | 'unknown';
 

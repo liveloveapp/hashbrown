@@ -23,8 +23,8 @@ import { redactContactObservationEvidence } from './observability/redaction.ts';
 import type {
   FormOutreachApprovedActivityData,
   GrowthEmailClassification,
+  UnstuckFramework,
 } from './models.ts';
-import type { UnstuckFramework } from './forms.ts';
 
 /** Activity kinds that permanently or conditionally stop outreach to a contact. */
 export const CONTACT_HARD_STOP_REASONS = [
@@ -40,6 +40,27 @@ export const CONTACT_HARD_STOP_REASONS = [
 
 /** One of the {@link CONTACT_HARD_STOP_REASONS}. */
 export type ContactHardStopReason = (typeof CONTACT_HARD_STOP_REASONS)[number];
+
+/**
+ * Hard stops that still let a contact receive what they asked for (`fulfill`)
+ * and reach the founder (`notify`): they end the campaign, not the request.
+ */
+export const FULFILLMENT_ALLOWED_PRIOR_STOPS = [
+  'unsubscribe',
+  'campaign.reply_received',
+] as const satisfies readonly ContactHardStopReason[];
+
+/**
+ * Hard stops that end all mail to a contact when they occurred at or after
+ * its outreach approval (or at any time, if it was never approved): every
+ * stop except deletion and the {@link FULFILLMENT_ALLOWED_PRIOR_STOPS}.
+ */
+export const FULFILLMENT_EPOCH_FATAL_STOP_REASONS: readonly ContactHardStopReason[] =
+  CONTACT_HARD_STOP_REASONS.filter(
+    (reason) =>
+      reason !== 'deletion' &&
+      !(FULFILLMENT_ALLOWED_PRIOR_STOPS as readonly string[]).includes(reason),
+  );
 
 const CONTACT_LOOKUP_ALIAS_KIND = 'contact.lookup_alias_added';
 

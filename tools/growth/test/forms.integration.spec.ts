@@ -12,12 +12,12 @@ import { FormRateLimitError } from '../src/lib/form-admission.ts';
 import {
   acceptFormSubmission,
   type AcceptFormSubmissionInput,
-  type UnstuckFramework,
 } from '../src/lib/forms.ts';
 import {
   materializeCampaignEnrollment,
   readNotificationSubmission,
 } from '../src/lib/jobs.ts';
+import type { UnstuckFramework } from '../src/lib/models.ts';
 import { stopContact } from '../src/lib/stops.ts';
 import { deleteCreatedContacts, runCleanup } from './job-fixtures.ts';
 
@@ -342,6 +342,50 @@ test('complaint suppresses all mail and returns deliverySuppressed', async () =>
     },
   });
   const input = submission(email, new Date('2026-10-22T15:12:00.000Z'));
+
+  const result = await accept(input);
+
+  expect(result).toEqual({
+    accepted: true,
+    approved: false,
+    contactId: earlier.contactId,
+    submissionId: input.submissionId,
+    deliverySuppressed: true,
+  });
+  expect(await counts(email, input.submissionId)).toEqual({
+    contacts: '1',
+    accepted: '1',
+    approvals: '0',
+    assessments: '1',
+    jobs: '0',
+  });
+});
+
+test('complaint then unsubscribe suppresses all mail and returns deliverySuppressed', async () => {
+  const email = newEmail('complained-then-unsubscribed');
+  const earlier = await accept(
+    submission(email, new Date('2026-10-22T15:10:00.000Z')),
+  );
+  await stopContact(executor, {
+    contactId: earlier.contactId,
+    reason: 'complaint',
+    eventKey: `forms-integration:${randomUUID()}`,
+    occurredAt: new Date('2026-10-22T15:11:00.000Z'),
+    source: 'forms-integration',
+    provenance: {
+      kind: 'provider_webhook',
+      policyVersion: 'growth-lifecycle-v1',
+    },
+  });
+  await stopContact(executor, {
+    contactId: earlier.contactId,
+    reason: 'unsubscribe',
+    eventKey: `forms-integration:${randomUUID()}`,
+    occurredAt: new Date('2026-10-22T15:12:00.000Z'),
+    source: 'forms-integration',
+    provenance: { kind: 'one_click', policyVersion: 'growth-lifecycle-v1' },
+  });
+  const input = submission(email, new Date('2026-10-22T15:13:00.000Z'));
 
   const result = await accept(input);
 

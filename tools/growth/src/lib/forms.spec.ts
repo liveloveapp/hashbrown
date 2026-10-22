@@ -1,13 +1,17 @@
 import { expect, test, vi } from 'vitest';
 
-import type { ContactHardStopReason } from './contacts.ts';
+import {
+  type ContactHardStopReason,
+  FULFILLMENT_ALLOWED_PRIOR_STOPS,
+  FULFILLMENT_EPOCH_FATAL_STOP_REASONS,
+} from './contacts.ts';
 import type { EmailHmacKeyring } from './crypto.ts';
 import type { SqlExecutor, SqlTransaction } from './database.ts';
 import {
   acceptFormSubmission,
   type AcceptFormSubmissionInput,
-  UNSTUCK_FRAMEWORKS,
 } from './forms.ts';
+import { UNSTUCK_FRAMEWORKS } from './models.ts';
 
 const keyring: EmailHmacKeyring = {
   active: {
@@ -25,6 +29,8 @@ function createHarness(
   authorization: Authorization = 'approved',
   options: {
     stopReason?: ContactHardStopReason;
+    /** Whether a delivery-fatal stop exists since approval; derived by default. */
+    fatalStop?: boolean;
     validJobReplay?: boolean;
   } = {},
 ) {
@@ -32,10 +38,19 @@ function createHarness(
   const stopReason =
     options.stopReason ??
     (authorization === 'deleted' ? 'deletion' : 'unsubscribe');
+  const fatalStop =
+    options.fatalStop ??
+    (authorization === 'stopped' &&
+      !(FULFILLMENT_ALLOWED_PRIOR_STOPS as readonly string[]).includes(
+        stopReason,
+      ));
   const queries: { sql: string; parameters: readonly unknown[] }[] = [];
   const transaction: SqlTransaction = {
     execute: vi.fn(async (sql: string, parameters: readonly unknown[] = []) => {
       queries.push({ sql, parameters });
+      if (sql.includes('growth:read-form-delivery-block')) {
+        return { rows: [{ blocked: fatalStop }] };
+      }
       if (sql.includes('growth:enqueue-form-jobs') && validJobReplay) {
         return {
           rows: ['fulfill', 'notify'].map((kind) => ({
@@ -277,11 +292,6 @@ const invalidInputs: [string, AcceptFormSubmissionInput, RegExp][] = [
     },
     /framework/u,
   ],
-  [
-    'a submission id that is not a UUIDv4',
-    { ...baseInput, submissionId: 'not-a-uuid' },
-    /submissionId/u,
-  ],
 ];
 
 for (const [label, input, error] of invalidInputs) {
@@ -296,6 +306,46 @@ for (const [label, input, error] of invalidInputs) {
     expect(harness.executor.transaction).not.toHaveBeenCalled();
   });
 }
+
+test('a submission id that is not a UUIDv4 is rejected before the transaction', async () => {
+  const harness = createHarness();
+
+  const accepted = acceptFormSubmission(
+    harness.executor,
+    { ...baseInput, submissionId: 'not-a-uuid' },
+    { approveContact: harness.approveContact },
+  );
+
+  await expect(accepted).rejects.toThrow(/submissionId/u);
+  expect(harness.executor.transaction).not.toHaveBeenCalled();
+});
+
+test('complaint then unsubscribe suppresses all mail even though the latest stop is an unsubscribe', async () => {
+  const harness = createHarness('stopped', {
+    stopReason: 'unsubscribe',
+    fatalStop: true,
+  });
+
+  const result = await acceptFormSubmission(harness.executor, baseInput, {
+    approveContact: harness.approveContact,
+  });
+
+  expect(result).toEqual({
+    accepted: true,
+    approved: false,
+    contactId,
+    submissionId: baseInput.submissionId,
+    deliverySuppressed: true,
+  });
+  expect(enqueueQuery(harness.queries)).toBeUndefined();
+  const check = harness.queries.find(({ sql }) =>
+    sql.includes('growth:read-form-delivery-block'),
+  );
+  expect(check?.parameters).toEqual([
+    contactId,
+    FULFILLMENT_EPOCH_FATAL_STOP_REASONS,
+  ]);
+});
 
 test('accepts messages of exactly 20 and 1000 characters', async () => {
   const short = createHarness();

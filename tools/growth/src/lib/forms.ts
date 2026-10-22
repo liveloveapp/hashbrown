@@ -3,35 +3,20 @@ import {
   approveContactFromFormInTransaction,
   type FormApprovalControlState,
   type FormSubmittedFacts,
+  FULFILLMENT_EPOCH_FATAL_STOP_REASONS,
 } from './contacts.ts';
 import type { EmailHmacKeyring } from './crypto.ts';
 import type { SqlExecutor, SqlTransaction } from './database.ts';
 import { prepareFormAdmission, recordFormAdmission } from './form-admission.ts';
+import { UNSTUCK_FRAMEWORKS, type UnstuckFramework } from './models.ts';
 
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-
-/** The framework choices on the Get unstuck form. */
-export const UNSTUCK_FRAMEWORKS = [
-  'react',
-  'angular',
-  'both',
-  'not_sure',
-] as const;
-
-/** One of {@link UNSTUCK_FRAMEWORKS}. */
-export type UnstuckFramework = (typeof UNSTUCK_FRAMEWORKS)[number];
 
 /** Shortest "Where are you stuck?" answer, after trimming. */
 export const UNSTUCK_MESSAGE_MIN_LENGTH = 20;
 /** Longest "Where are you stuck?" answer, after trimming. */
 export const UNSTUCK_MESSAGE_MAX_LENGTH = 1_000;
-
-/** Hard stops that still let a submitter reach Brian (fulfill and notify). */
-const DELIVERABLE_PRIOR_STOPS: readonly string[] = [
-  'unsubscribe',
-  'campaign.reply_received',
-];
 
 /** The fields of a Get unstuck submission. */
 export interface UnstuckSubmission {
@@ -114,13 +99,51 @@ function unstuckSubmission(form: UnstuckSubmission): UnstuckSubmission {
 }
 
 /**
+ * Whether mail to the contact is over, judged as `authorizeLeasedJobForSubmission`
+ * judges `fulfill`: the contact is deleted, or a stop in
+ * {@link FULFILLMENT_EPOCH_FATAL_STOP_REASONS} occurred at or after its
+ * outreach approval (at any time when it was never approved). A later
+ * unsubscribe or reply never lifts an earlier complaint or bounce.
+ */
+async function deliveryBlocked(
+  transaction: SqlTransaction,
+  contactId: string,
+): Promise<boolean> {
+  const result = await transaction.execute<{ blocked: boolean }>(
+    `/* growth:read-form-delivery-block */
+     select c.deleted_at is not null
+            or exists (
+              select 1
+              from growth_activity deletion_stop
+              where deletion_stop.contact_id = c.id
+                and deletion_stop.kind = 'deletion'
+            )
+            or exists (
+              select 1
+              from growth_activity fatal_stop
+              where fatal_stop.contact_id = c.id
+                and fatal_stop.kind = any($2::text[])
+                and (
+                  c.outreach_approved_at is null
+                  or fatal_stop.occurred_at >= c.outreach_approved_at
+                )
+            ) as blocked
+     from growth_contacts c
+     where c.id = $1`,
+    [contactId, FULFILLMENT_EPOCH_FATAL_STOP_REASONS],
+  );
+  return result.rows[0]?.blocked === true;
+}
+
+/**
  * Accepts a Get unstuck submission in one transaction: admits it (replay,
  * abuse score and hourly budgets; see `prepareFormAdmission`), records the
  * `contact.form_submission` consent record as `form:<id>:accepted`, approves
  * outreach when no hard stop applies, and enqueues `fulfill` and `notify`
- * (`form:<id>:fulfill`, `form:<id>:notify`). A submission blocked as abuse, or
- * from a contact with a hard stop other than an unsubscribe or a reply, gets
- * no jobs and returns `deliverySuppressed`. Retrying a submission id returns
+ * (`form:<id>:fulfill`, `form:<id>:notify`). A submission blocked as abuse,
+ * from a deleted contact, or from a contact with a complaint, bounce,
+ * suppression or invalid-address stop since its approval (even one followed
+ * by an unsubscribe or reply) gets no jobs and returns `deliverySuppressed`. Retrying a submission id returns
  * the original result.
  *
  * @throws When the submission id, framework or message is invalid (before any
@@ -168,9 +191,7 @@ export async function acceptFormSubmission(
     const suppressed =
       blocked ||
       contact.authorization === 'deleted' ||
-      (contact.authorization === 'stopped' &&
-        contact.latestHardStop !== null &&
-        !DELIVERABLE_PRIOR_STOPS.includes(contact.latestHardStop.reason));
+      (await deliveryBlocked(transaction, contact.contactId));
     if (suppressed) {
       const result: AcceptFormSubmissionResult = {
         accepted: true,
