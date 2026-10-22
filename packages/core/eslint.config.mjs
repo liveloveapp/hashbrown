@@ -9,6 +9,7 @@ export default [
         'warn',
         {
           ignoredFiles: ['{projectRoot}/eslint.config.{js,cjs,mjs}'],
+          buildTargets: ['compile'],
         },
       ],
     },

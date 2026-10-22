@@ -1,9 +1,12 @@
 import {
+  type Aircraft,
+  type AircraftSnapshot,
   AIRPORTS,
   applyAirspace,
   applySnapshot,
   distanceNm,
   findAircraft,
+  type FindAircraftInput,
   INITIAL_STATE,
 } from '@atc/shared';
 import type { BrowserContext, Route } from '@playwright/test';
@@ -13,6 +16,7 @@ import { expect, test } from 'vitest';
 import { CHART_AIRSPACE } from '../src/chart-fixtures';
 import { stubAtcFeeds } from '../src/stubs';
 import {
+  frame,
   NEAR_BEND,
   NO_FILTERS,
   PORTLAND_CLASS_C,
@@ -27,7 +31,13 @@ import {
   storyboardPaths,
 } from './storyboard';
 import { concatList, sceneOffset, sceneSpan } from './timeline';
-import { demoFrame, FILLER, seededRandom } from './traffic';
+import {
+  demoFrame,
+  FILLER,
+  LIVE_FRAMES,
+  LIVE_SNAPSHOT,
+  liveFiller,
+} from './traffic';
 
 const ATC = resolve(import.meta.dirname, '../..');
 const readAtc = (path: string) => readFileSync(resolve(ATC, path), 'utf8');
@@ -188,61 +198,151 @@ test('a loop refuses a clip too short for its fade', () => {
   expect(make).toThrow(RangeError);
 });
 
-test('the seeded random source repeats', () => {
-  const a = seededRandom(7);
-  const b = seededRandom(7);
+/** A level airliner over eastern Washington, clear of every scripted answer. */
+function plane(overrides: Partial<Aircraft> = {}): Aircraft {
+  return {
+    hex: 'abc123',
+    label: 'UAL123',
+    callsign: 'UAL123',
+    registration: null,
+    typeCode: 'B738',
+    category: null,
+    kind: 'jet',
+    lat: 46.5,
+    lon: -118.5,
+    altitudeFt: 30_000,
+    onGround: false,
+    groundSpeedKt: 450,
+    trackDeg: 90,
+    verticalRateFpm: 0,
+    ...overrides,
+  };
+}
 
-  const values = [a(), a(), a()];
-
-  expect([b(), b(), b()]).toEqual(values);
+/** A point `nm` nautical miles due north of `from`. */
+const northOf = (from: { lat: number; lon: number }, nm: number) => ({
+  lat: from.lat + nm / 60,
+  lon: from.lon,
 });
 
-test('filler traffic keeps the scripted answers true', () => {
-  const state = applyAirspace(
-    applySnapshot(INITIAL_STATE, demoFrame(0)),
-    CHART_AIRSPACE,
-  );
+/** Frames across the recording, and past the last live frame. */
+const SAMPLE_FRAMES = [0, 10, 40, 80, 120, LIVE_FRAMES - 1, LIVE_FRAMES + 40];
+
+test('the live filler is most of the captured snapshot', () => {
+  const captured = new Set(LIVE_SNAPSHOT.aircraft.map((a) => a.hex));
+
+  const kept = FILLER.filter((aircraft) => captured.has(aircraft.hex));
+
+  expect(LIVE_SNAPSHOT.aircraft.length).toBeGreaterThan(300);
+  expect(kept).toHaveLength(FILLER.length);
+  expect(FILLER.length).toBeGreaterThan(LIVE_SNAPSHOT.aircraft.length * 0.75);
+});
+
+test('the live filler drops aircraft that would change an answer', () => {
+  const keep = plane();
+  const candidates = [
+    keep,
+    plane({ hex: 'b00001', ...northOf(AIRPORTS.KBDN, 10) }),
+    plane({ hex: 'b00002', ...northOf(AIRPORTS.KBDN, 40), trackDeg: 180 }),
+    plane({
+      hex: 'b00003',
+      ...northOf(AIRPORTS.KSEA, 20),
+      altitudeFt: 8_000,
+      verticalRateFpm: -800,
+    }),
+    plane({
+      hex: 'b00004',
+      ...northOf(AIRPORTS.KSEA, 60),
+      altitudeFt: 9_000,
+      verticalRateFpm: -800,
+      trackDeg: 180,
+    }),
+    plane({ hex: 'b00005', altitudeFt: 45_000 }),
+    plane({ hex: 'b00006', groundSpeedKt: 600 }),
+    plane({ hex: scenario.highest.hex }),
+    plane({ hex: 'b00007', callsign: 'ASA301', label: 'ASA301' }),
+    plane({
+      hex: 'b00008',
+      ...AIRPORTS.KPDX,
+      altitudeFt: 2_000,
+      groundSpeedKt: 0,
+    }),
+  ];
+
+  const kept = liveFiller(candidates);
+
+  expect(kept.map((aircraft) => aircraft.hex)).toEqual([keep.hex]);
+});
+
+test('the live filler keeps the scripted answers true in every frame', () => {
   const any = { ...NO_FILTERS, limit: 20 } as const;
+  const answers = (snapshot: AircraftSnapshot) => {
+    const state = applyAirspace(
+      applySnapshot(INITIAL_STATE, snapshot),
+      CHART_AIRSPACE,
+    );
+    const hexes = (input: FindAircraftInput) =>
+      findAircraft(state, input).map((row) => row.hex);
 
-  const nearBend = findAircraft(state, {
-    ...any,
-    near: NEAR_BEND,
-    sortBy: 'distance',
-  });
-  const arrivals = findAircraft(state, {
-    ...any,
-    approaching: 'KSEA',
-    sortBy: 'distance',
-  });
-  const fastest = findAircraft(state, { ...any, sortBy: 'speed' }).filter(
-    (row) => row.hex !== scenario.highest.hex,
-  );
-  const portland = findAircraft(state, {
-    ...any,
-    inAirspace: PORTLAND_CLASS_C,
-    sortBy: 'distance',
-  });
+    return {
+      nearBend: hexes({ ...any, near: NEAR_BEND, sortBy: 'distance' }),
+      arrivals: hexes({ ...any, approaching: 'KSEA', sortBy: 'distance' }),
+      highest: hexes({ ...any, sortBy: 'altitude' })[0],
+      fastest: hexes({ ...any, sortBy: 'speed' }).filter(
+        (hex) => hex !== scenario.highest.hex,
+      )[0],
+      portland: hexes({
+        ...any,
+        inAirspace: PORTLAND_CLASS_C,
+        sortBy: 'distance',
+      }),
+    };
+  };
 
-  expect(nearBend.map((row) => row.hex)).toEqual(
-    scenario.nearby.map((row) => row.hex),
-  );
-  expect(arrivals.map((row) => row.hex)).toEqual(
-    scenario.arrivals.map((row) => row.hex),
-  );
-  expect(fastest[0].hex).toBe(scenario.fastest.hex);
-  expect(portland.map((row) => row.hex)).toEqual(
-    scenario.portland.map((row) => row.hex),
-  );
+  const pairs = SAMPLE_FRAMES.map((n) => ({
+    withFiller: answers(demoFrame(n)),
+    scenarioOnly: answers(frame(n)),
+  }));
+
+  for (const { withFiller, scenarioOnly } of pairs) {
+    expect(withFiller).toEqual(scenarioOnly);
+  }
+  expect(pairs[0].withFiller).toEqual({
+    nearBend: scenario.nearby.map((row) => row.hex),
+    arrivals: scenario.arrivals.map((row) => row.hex),
+    highest: scenario.highest.hex,
+    fastest: scenario.fastest.hex,
+    portland: scenario.portland.map((row) => row.hex),
+  });
 });
 
-test('filler traffic stays clear of the Bend ring', () => {
+test('the live filler stays clear of the Bend ring in every frame', () => {
+  const filler = new Set(FILLER.map((aircraft) => aircraft.hex));
+
   const nearest = Math.min(
-    ...FILLER.map((aircraft) => distanceNm(aircraft, AIRPORTS.KBDN)),
+    ...SAMPLE_FRAMES.flatMap((n) =>
+      demoFrame(n)
+        .aircraft.filter((aircraft) => filler.has(aircraft.hex))
+        .map((aircraft) => distanceNm(aircraft, AIRPORTS.KBDN)),
+    ),
   );
 
-  const clear = nearest > 25;
+  expect(nearest).toBeGreaterThan(25);
+});
 
-  expect(clear).toBe(true);
+test('the live filler holds still after the last live frame', () => {
+  const mover = FILLER.find(
+    (aircraft) => (aircraft.groundSpeedKt ?? 0) > 100 && !aircraft.onGround,
+  );
+  const at = (n: number) =>
+    demoFrame(n).aircraft.find((aircraft) => aircraft.hex === mover?.hex);
+
+  const last = at(LIVE_FRAMES - 1);
+  const later = at(LIVE_FRAMES + 20);
+
+  expect(later).toEqual(last);
+  expect(at(1)).toBeDefined();
+  expect(at(1)).not.toEqual(at(0));
 });
 
 test('the feed stubs serve the airspace from the chart fixtures', async () => {

@@ -5,7 +5,12 @@ import { validateResumeOptions } from './transport/interrupt-validation';
  * Core entry point for the Hashbrown framework.
  * Provides state management and messaging utilities for integrating LLM-based chat interactions into frontend applications.
  */
-import { devActions, internalActions } from './actions';
+import { EventType } from '@ag-ui/core';
+import { apiActions, devActions, internalActions } from './actions';
+import {
+  classifyTransport,
+  registerRuntimeBinder,
+} from './growth/runtime-binding';
 import effects from './effects';
 import { Chat } from './models';
 import {
@@ -20,7 +25,9 @@ import {
   selectIsRunningToolCalls,
   selectIsSending,
   selectLastAssistantMessage,
+  selectLastRunFinishReason,
   selectLastRunResult,
+  selectLastRunUsage,
   selectPendingInterrupts,
   selectRequestResponseSchema,
   selectResponseSchema,
@@ -52,6 +59,7 @@ import {
   ɵpairViewMessagesWithAgUi,
 } from './reducers/ag-ui-message-history';
 import { cloneAndFreezeOptionalJsonValue, type JsonValue } from './utils';
+import type { FinishReason, TokenUsage } from './models/run-finish';
 
 /** Settlement and thread ownership used by completion adapters. @internal */
 export interface ɵRuntimeSchedulingState {
@@ -166,6 +174,21 @@ export interface ChatRuntime<
    * currently shown. Interrupted, cancelled, and failed runs never set it.
    */
   lastRunResult: StateSignal<JsonValue | undefined>;
+  /**
+   * The token usage of the last run that completed (AG-UI's
+   * `RUN_FINISHED.usage`), one entry per provider and model, or `undefined`
+   * when the server reported none. Cleared when the next run starts, so a turn
+   * that calls tools reports only its final run. Interrupted, cancelled, and
+   * failed runs never set it.
+   */
+  lastRunUsage: StateSignal<readonly TokenUsage[] | undefined>;
+  /**
+   * Why the model stopped in the last run that completed, such as `length`
+   * when the answer was cut off, or `undefined` when the server did not say.
+   * Hashbrown's provider packages always report it. Cleared when the next run
+   * starts; interrupted, cancelled, and failed runs never set it.
+   */
+  lastRunFinishReason: StateSignal<FinishReason | undefined>;
   lastAssistantMessage: StateSignal<
     Chat.AssistantMessage<Output, Tools> | undefined
   >;
@@ -317,6 +340,8 @@ export function createChatRuntime(init: {
       generatingError: selectGeneratingError(state),
       error: selectUnifiedError(state),
       lastRunResult: selectLastRunResult(state),
+      lastRunUsage: selectLastRunUsage(state),
+      lastRunFinishReason: selectLastRunFinishReason(state),
       ɵɵinternal: state,
     }),
   });
@@ -643,6 +668,8 @@ export function createChatRuntime(init: {
     generatingError: state.createSignal(selectGeneratingError),
     exhaustedRetries: state.createSignal(selectExhaustedRetries),
     lastRunResult: state.createSignal(selectLastRunResult),
+    lastRunUsage: state.createSignal(selectLastRunUsage),
+    lastRunFinishReason: state.createSignal(selectLastRunFinishReason),
     lastAssistantMessage: state.createSignal(selectLastAssistantMessage),
     threadId: Object.assign(
       () =>
@@ -653,6 +680,54 @@ export function createChatRuntime(init: {
     ),
   };
   runtimeMessagePreflights.set(runtime.resume, assertMessageSchedulingAllowed);
+  registerRuntimeBinder(runtime.resume, (observer) => {
+    observer.sessionStarted(() =>
+      classifyTransport(state.read(selectTransport)),
+    );
+
+    let runStartedAt: number | undefined;
+    let contentSeen = false;
+    let streamReported = false;
+    const startedToolTurns = new Set<string>();
+    let toolReported = false;
+
+    const unsubscribers = [
+      state.when(apiActions.generateMessageStart, () => {
+        runStartedAt = Date.now();
+        contentSeen = false;
+      }),
+      state.when(apiActions.generateMessageEvent, (action) => {
+        const event = action.payload;
+        if (
+          event.type === EventType.TEXT_MESSAGE_CONTENT ||
+          event.type === EventType.TEXT_MESSAGE_CHUNK
+        ) {
+          contentSeen = true;
+          return;
+        }
+        if (event.type !== EventType.RUN_FINISHED || streamReported) return;
+        const outcome = (event as { outcome?: { type?: unknown } }).outcome;
+        if (outcome?.type === 'interrupt' || !contentSeen) return;
+        streamReported = true;
+        observer.streamCompleted(
+          runStartedAt === undefined ? undefined : Date.now() - runStartedAt,
+        );
+      }),
+      state.when(internalActions.toolTurnStarted, (action) => {
+        startedToolTurns.add(action.payload.toolTurnId);
+      }),
+      state.when(internalActions.toolTurnSettled, (action) => {
+        const started = startedToolTurns.delete(action.payload.toolTurnId);
+        if (!started || toolReported) return;
+        toolReported = true;
+        observer.toolExecuted();
+      }),
+    ];
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  });
   runtimeRequestSchemaSetters.set(runtime.resume, (schema) => {
     state.dispatch(
       devActions.updateOptions({ ɵrequestResponseSchema: schema ?? null }),

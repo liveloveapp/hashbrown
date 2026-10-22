@@ -106,6 +106,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'Amazon Bedrock', path: 'platform/bedrock' },
       { text: 'Ollama', path: 'platform/ollama' },
       { text: 'TypeSafe', path: 'platform/typesafe' },
+      { text: 'What Hashbrown Sends', path: 'platform/collection' },
     ],
   },
 ];

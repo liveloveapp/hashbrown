@@ -14,7 +14,15 @@
   },
   "tags": [],
   "targets": {
-    "build": {
+    "prepare": {
+      "executor": "nx:run-commands",
+      "inputs": ["{projectRoot}/package.json"],
+      "outputs": ["{projectRoot}/src/package-version.ts"],
+      "options": {
+        "command": "node tools/growth/install/write-package-version.mjs angular"
+      }
+    },
+    "compile": {
       "executor": "@nx/angular:package",
       "outputs": ["{workspaceRoot}/dist/packages/angular"],
       "defaultConfiguration": "production",
@@ -28,6 +36,20 @@
         "development": {
           "tsConfig": "packages/angular/tsconfig.lib.json"
         }
+      },
+      "dependsOn": ["^build", "prepare"]
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["compile"],
+      "inputs": [
+        "{workspaceRoot}/tools/growth/install/*.cjs",
+        "{workspaceRoot}/tools/growth/install/assemble-package.mjs",
+        "{projectRoot}/package.json"
+      ],
+      "outputs": ["{workspaceRoot}/dist/packages/angular"],
+      "options": {
+        "command": "node tools/growth/install/assemble-package.mjs angular"
       }
     },
     "nx-release-publish": {

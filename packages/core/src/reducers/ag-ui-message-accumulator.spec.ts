@@ -1574,3 +1574,57 @@ test('leaves malformed unregistered tool call arguments unresolved without a str
   expect(next.toolCalls[0]?.argumentsComplete).toBe(true);
   expect(next.error).toBeUndefined();
 });
+
+test('a TOOL_CALL_START for a cancelled step reopens it as running', () => {
+  // Arrange
+  const cancelled = {
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    label: 'Waiting',
+    settledAt: 99,
+  };
+  const state = createState();
+
+  // Act
+  const next = accumulateEvents(state, [
+    {
+      ...toolStart('c1', 'lookup'),
+      metadata: { 'b4.step': cancelled },
+    } as AGUIEvent,
+    toolStart('c1', 'lookup'),
+  ]);
+
+  // Assert
+  const step = next.toolCalls[0]?.metadata?.['b4.step'] as Record<
+    string,
+    unknown
+  >;
+  expect(step).toMatchObject({ status: 'running' });
+  expect(step).not.toHaveProperty('label');
+  expect(step).not.toHaveProperty('settledAt');
+});
+
+test('a step on TOOL_CALL_START without startedAt takes the START timestamp', () => {
+  // Arrange
+  const running = { v: 1, kind: 'provider', status: 'running' };
+  const state = createState();
+
+  // Act
+  const next = accumulateEvents(state, [
+    {
+      ...toolStart('c1', 'web_search'),
+      timestamp: 1000,
+      metadata: { 'b4.step': running },
+    } as AGUIEvent,
+    { ...toolStart('c2', 'lookup'), timestamp: 1000 } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(next.toolCalls[0]?.metadata?.['b4.step']).toEqual({
+    ...running,
+    startedAt: 1000,
+  });
+  expect(next.toolCalls[1]).not.toHaveProperty('metadata');
+  expect(next.toolCalls[1]).not.toHaveProperty('arrivedAt');
+});

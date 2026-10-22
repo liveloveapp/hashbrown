@@ -1,0 +1,27 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Ann is older than Ben. Ben is older than Cy. Dee is younger than Cy but older than Eve. Who is the second youngest? Reply with the name only.",
+        "model": "claude-haiku-5-5",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Dee",
+        "reasoning": "Ordering oldest to youngest: Ann, Ben, Cy, Dee, Eve — so Eve is youngest and Dee is second youngest.\n\n",
+        "reasoningSignature": "CAQSgQUKEAgTGAI4AUIIdGhpbmtpbmcSDL7ZHjApClw1RWBljxoM6yFx7oOQxzXXrV6JIjD545QW6wsqbF3OiL3SsY60+P0ncqB+Rf4PRizJYXamsMmzfUXVgYJYQf2KvRgnxhIqngR2E4Bec5J48Bgw9JxEyiQH7dszU+w3BwpRYiCvh4+xB3ux0XcBG3L/n/2CSE3I7DQ9qa9/cq3HHjwBv9Mm+z2Q4XCFaMmkSNNm/Eq79gQXduvHzaqtyRuMmymcuqXM3UGh9nJKaqAwsd8Gzb81QndI6WJ4L+0HXSVCwp7ExznPEs6XdyhRxqWeFcEO0X+FebxqgconrpB8bDD4vHFXGuYxSFzX7l4eonNcNANvznZ4x/hlLF+TBnM2KfGIoLZM8zuGf1tA9NNS3pG1bXvpGlmrVX3SnMkGUxK9LkCXt8qjn/vAkhO7Pi7wjS1+xzKrQxC5BYAgDO1FsPGF8vn7GFGagW7c+p8yaIDSXqnxO1S/t85Na4FHD82SMYt3lS13Iv82azAsx+CcK2464GUbwFIYniyh0Zgc/fiuqFULSzRitTkCpG/tCvELAA9kQ5dFFhP6GoZdS7E7WLJIJCuxsh1nYDJZN6DtcJeCyGrPIGGShLAJ9fO6qiRx/16urCZFKuXFzPkLOIVPnSJtuWu8+r4FsD0TXPDYps9FJKuqxNYdhILjoZUNpmCgBjywc+s0Eewg2s7TU0poYpl85Se3PWp+izNhngmUW/eOrViT/D4JAOLBKEx1kFV+jEDr8Ac6jMMoXuqth0VkqddZfdqjGaSWsMzepQZv65a4+BprxlPK7hl/W99yDmqkM0SBPWau334Gy+D+i+G6SUBtoc++QBgB"
+      },
+      "recordedTimings": {
+        "ttftMs": 853,
+        "interChunkDelaysMs": [
+          0, 1241, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ],
+        "totalDurationMs": 2094
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

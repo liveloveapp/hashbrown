@@ -1,6 +1,13 @@
 import { LLMock } from '@copilotkit/aimock';
 import type { AGUIEvent } from '@copilotkit/aimock/agui';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type AimockHandle, startAimock } from './aimock-runner';
@@ -38,6 +45,52 @@ test('startAimock boots a replay server backed by one fixture file', async () =>
     await handle?.stop();
     rmSync(workDir, { recursive: true, force: true });
   }
+});
+
+test('startAimock ignoreRecordedTimings replays without recorded latency', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  const fixturePath = join(workDir, 'slow.json');
+  writeFileSync(
+    fixturePath,
+    JSON.stringify({
+      fixtures: [
+        {
+          match: { userMessage: 'slow reply' },
+          response: { content: 'Hello from aimock.' },
+          recordedTimings: {
+            ttftMs: 5_000,
+            interChunkDelaysMs: [],
+            totalDurationMs: 5_000,
+          },
+        },
+      ],
+    }),
+  );
+  let handle: AimockHandle | null = null;
+  let elapsedMs = 0;
+  let body = '';
+
+  try {
+    handle = await startAimock({ fixturePath, ignoreRecordedTimings: true });
+    const started = Date.now();
+    const response = await fetch(`${handle.openAiBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4.1-mini',
+        stream: true,
+        messages: [{ role: 'user', content: 'slow reply' }],
+      }),
+    });
+    body = await response.text();
+    elapsedMs = Date.now() - started;
+  } finally {
+    await handle?.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+
+  expect(body).toContain('Hello from aimock.');
+  expect(elapsedMs).toBeLessThan(2_000);
 });
 
 test('startAimock loads sorted JSON fixture files from a directory', async () => {
@@ -269,4 +322,200 @@ test('AimockHandle shares a concurrent shutdown failure and permits a later retr
   expect(retryResults).toEqual([{ status: 'fulfilled', value: undefined }]);
   expect(stopCallCountAfterRetry).toBe(2);
   expect(existsSync(workDir)).toBe(false);
+});
+
+test('stop scrubs configured secrets from recorded files', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  const recordedRoot = join(workDir, 'recorded');
+  const secret = 'sk-fake-secret-value-123';
+  const recordingPath = join(recordedRoot, 'some-test', 'openai.json');
+  let handle: AimockHandle | null = null;
+  let scrubbed = '';
+
+  try {
+    handle = await startAimock({
+      fixturePath: join(workDir, 'missing.json'),
+      record: {
+        providers: {},
+        fixturePath: recordedRoot,
+        secrets: [secret, ''],
+      },
+    });
+    mkdirSync(join(recordedRoot, 'some-test'), { recursive: true });
+    writeFileSync(
+      recordingPath,
+      JSON.stringify({
+        fixtures: [
+          {
+            match: { userMessage: `key is ${secret}` },
+            response: { content: `echo ${secret}` },
+          },
+        ],
+      }),
+    );
+
+    await handle.stop();
+    scrubbed = readFileSync(recordingPath, 'utf-8');
+  } finally {
+    await handle?.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+
+  expect(scrubbed).toContain('[REDACTED]');
+  expect(scrubbed).not.toContain(secret);
+  expect(JSON.parse(scrubbed)).toEqual({
+    fixtures: [
+      {
+        match: { userMessage: 'key is [REDACTED]' },
+        response: { content: 'echo [REDACTED]' },
+      },
+    ],
+  });
+});
+
+test('record options enable aimock recording with the provider upstream', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  const recordedRoot = join(workDir, 'recorded');
+  const upstream = new LLMock({ port: 0 });
+  upstream.on(
+    { userMessage: 'say hi briefly' },
+    { content: 'Hi from upstream.' },
+  );
+  let handle: AimockHandle | null = null;
+  let status = 0;
+  let recorded: unknown = null;
+
+  try {
+    await upstream.start();
+    handle = await startAimock({
+      fixturePath: join(recordedRoot, 'record-case', 'openai.json'),
+      strict: true,
+      record: {
+        providers: { openai: upstream.url },
+        fixturePath: recordedRoot,
+        secrets: [],
+      },
+    });
+
+    const response = await fetch(`${handle.openAiBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer test-not-used',
+        'X-Test-Id': 'Record Case',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4.1-mini',
+        messages: [{ role: 'user', content: 'say hi briefly' }],
+      }),
+    });
+    status = response.status;
+    await response.text();
+    await handle.stop();
+    recorded = JSON.parse(
+      readFileSync(join(recordedRoot, 'record-case', 'openai.json'), 'utf-8'),
+    );
+  } finally {
+    await handle?.stop();
+    await upstream.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+
+  expect(status).toBe(200);
+  expect(recorded).toMatchObject({
+    fixtures: [
+      {
+        match: { userMessage: 'say hi briefly' },
+        response: { content: 'Hi from upstream.' },
+      },
+    ],
+  });
+});
+
+test('stop scrubs the JSON-escaped form of a secret', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  const recordedRoot = join(workDir, 'recorded');
+  const secret = 'sk-fake"quoted\\secret';
+  const recordingPath = join(recordedRoot, 'escaped-test', 'openai.json');
+  let handle: AimockHandle | null = null;
+  let scrubbed = '';
+
+  try {
+    handle = await startAimock({
+      fixturePath: join(workDir, 'missing.json'),
+      record: { providers: {}, fixturePath: recordedRoot, secrets: [secret] },
+    });
+    mkdirSync(join(recordedRoot, 'escaped-test'), { recursive: true });
+    writeFileSync(
+      recordingPath,
+      JSON.stringify({
+        fixtures: [
+          {
+            match: { userMessage: 'hello' },
+            response: { content: `echo ${secret}` },
+          },
+        ],
+      }),
+    );
+
+    await handle.stop();
+    scrubbed = readFileSync(recordingPath, 'utf-8');
+  } finally {
+    await handle?.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+
+  expect(scrubbed).not.toContain(JSON.stringify(secret).slice(1, -1));
+  expect(JSON.parse(scrubbed)).toEqual({
+    fixtures: [
+      {
+        match: { userMessage: 'hello' },
+        response: { content: 'echo [REDACTED]' },
+      },
+    ],
+  });
+});
+
+test('strict replay with a miss message still serves an existing recording', async () => {
+  const workDir = mkdtempSync(join(tmpdir(), 'hashbrown-aimock-'));
+  mkdirSync(join(workDir, 'served-case'), { recursive: true });
+  const fixturePath = createFixtureFile(
+    workDir,
+    'served-case/openai.json',
+    'say hi briefly',
+  );
+  let handle: AimockHandle | null = null;
+  let status = 0;
+  let body: unknown = null;
+
+  try {
+    handle = await startAimock({
+      fixturePath,
+      strict: true,
+      strictMissMessage: 'No recorded fixture matched for test "served-case".',
+    });
+
+    const response = await fetch(`${handle.openAiBaseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer test-not-used',
+        'X-Test-Id': 'served-case',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4.1-mini',
+        messages: [{ role: 'user', content: 'say hi briefly' }],
+      }),
+    });
+    status = response.status;
+    body = await response.json();
+  } finally {
+    await handle?.stop();
+    rmSync(workDir, { recursive: true, force: true });
+  }
+
+  expect(status).toBe(200);
+  expect(body).toMatchObject({
+    choices: [{ message: { content: 'Hello from aimock.' } }],
+  });
 });

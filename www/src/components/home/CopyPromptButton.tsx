@@ -1,5 +1,6 @@
 'use client';
 
+import { trackCtaClick } from '../../lib/analytics/client';
 import { toastService } from '../toast/toast-service';
 import { useSiteConfig } from '../use-site-config';
 import { copyText } from './copy-text';
@@ -15,6 +16,7 @@ export function CopyPromptButton({ className }: { className?: string }) {
   const { config } = useSiteConfig();
 
   const copy = async () => {
+    trackCtaClick({ cta_id: 'copy_prompt', surface: 'home' });
     if (
       await copyText(agentPrompt(config.sdk), globalThis.navigator?.clipboard)
     ) {

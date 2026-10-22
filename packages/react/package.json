@@ -20,7 +20,8 @@
     "index.*",
     "LICENSE",
     "package.json",
-    "README.md"
+    "README.md",
+    "install/*.cjs"
   ],
   "peerDependencies": {
     "react": ">=18 <20",

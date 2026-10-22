@@ -1,27 +1,20 @@
 import {
-  alignTurns,
-  answerBlocks,
-  answerTurns,
   chatStatus,
   labelForHex,
   thinkingStatus,
   type TranscriptItem,
-  type TurnShown,
 } from '@atc/shared';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  inject,
   input,
 } from '@angular/core';
 import {
   RenderMessageComponent,
   type UiChatMessage,
 } from '@hashbrownai/angular';
-import { ShowStream } from './show-stream';
 import { injectAtcState } from './store';
-import { StreamPanel } from './stream-panel';
 import { ToolChips } from './tool-chips';
 
 /**
@@ -33,12 +26,11 @@ import { ToolChips } from './tool-chips';
  * busy region is announced, a visually hidden status region beside it says what
  * the assistant is doing now (the running step, "Reasoning…" while a reasoning
  * summary streams, else "Thinking…"); it stays mounted, so each change is
- * announced. With "Show the stream" on, each send's last answer carries a
- * panel with the decisions (`turns`, matched to user rows by the text sent) and the streaming JSON.
+ * announced.
  */
 @Component({
   selector: 'atc-transcript',
-  imports: [RenderMessageComponent, StreamPanel, ToolChips],
+  imports: [RenderMessageComponent, ToolChips],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ol
@@ -75,9 +67,6 @@ import { ToolChips } from './tool-chips';
           @case ('answer') {
             <li class="atc-answer">
               <hb-render-message [message]="item.message" />
-              @if (panels()[$index]; as blocks) {
-                <atc-stream-panel label="Answer stream" [blocks]="blocks" />
-              }
             </li>
           }
         }
@@ -103,9 +92,6 @@ export class Transcript {
   readonly items = input.required<readonly TranscriptItem<UiChatMessage>[]>();
   /** Whether the chat is still running. */
   readonly busy = input(false);
-  /** What each send recorded for its answer's panel, one per user row. */
-  readonly turns = input<readonly TurnShown[]>([]);
-  private readonly showStream = inject(ShowStream);
   private readonly state = injectAtcState();
   protected readonly thinking = computed(() =>
     thinkingStatus(this.items(), this.busy()),
@@ -113,26 +99,4 @@ export class Transcript {
   protected readonly status = computed(() =>
     chatStatus(this.items(), this.busy(), labelForHex(this.state())),
   );
-  /** The panel blocks under each row, null where there is no panel. */
-  protected readonly panels = computed(() => {
-    const items = this.items();
-    const answers = answerTurns(items);
-    const aligned = alignTurns(
-      this.turns(),
-      items.flatMap((item) => (item.kind === 'user' ? [item.text] : [])),
-    );
-
-    return items.map((item, index) => {
-      const turn = answers[index];
-      if (!this.showStream.on() || item.kind !== 'answer' || turn === null) {
-        return null;
-      }
-
-      return answerBlocks(
-        aligned[turn],
-        item.message.content,
-        this.busy() && index === items.length - 1,
-      );
-    });
-  });
 }

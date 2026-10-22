@@ -203,10 +203,14 @@ function createRuntimeStub({
   messages,
   state = createMutableSignal<unknown>(undefined),
   lastRunResult = createSignal<unknown>(undefined),
+  lastRunUsage = createSignal<unknown>(undefined),
+  lastRunFinishReason = createSignal<unknown>(undefined),
 }: {
   messages: unknown[];
   state?: ReturnType<typeof createMutableSignal<unknown>>;
   lastRunResult?: ReturnType<typeof createSignal<unknown>>;
+  lastRunUsage?: ReturnType<typeof createSignal<unknown>>;
+  lastRunFinishReason?: ReturnType<typeof createSignal<unknown>>;
 }) {
   return {
     state,
@@ -225,6 +229,8 @@ function createRuntimeStub({
     generatingError: createSignal(undefined),
     lastAssistantMessage: createSignal(undefined),
     lastRunResult,
+    lastRunUsage,
+    lastRunFinishReason,
     isLoadingThread: createSignal(false),
     isSavingThread: createSignal(false),
     threadLoadError: createSignal(undefined),
@@ -270,3 +276,33 @@ function createSignal<T>(value: T) {
 
   return signal;
 }
+
+test('useStructuredChat exposes the last run usage and finish reason from the runtime', () => {
+  const lastRunUsage = createMutableSignal<unknown>(undefined);
+  const lastRunFinishReason = createMutableSignal<unknown>(undefined);
+  const runtime = createRuntimeStub({
+    messages: [],
+    lastRunUsage,
+    lastRunFinishReason,
+  });
+  createChatRuntimeMock.mockReset();
+  createChatRuntimeMock.mockReturnValue(runtime);
+
+  const { result } = renderHook(
+    () =>
+      useStructuredChat({
+        system: 'You are a helpful assistant.',
+        schema: s.object('risk summary', { risk: s.string('Risk level') }),
+      }),
+    { wrapper: ProviderWrapper },
+  );
+  act(() => {
+    lastRunUsage.set([{ provider: 'openai', inputTokens: 4, outputTokens: 2 }]);
+    lastRunFinishReason.set('length');
+  });
+
+  expect(result.current.lastRunUsage).toEqual([
+    { provider: 'openai', inputTokens: 4, outputTokens: 2 },
+  ]);
+  expect(result.current.lastRunFinishReason).toBe('length');
+});

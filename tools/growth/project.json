@@ -1,0 +1,102 @@
+{
+  "name": "growth",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/growth",
+  "projectType": "library",
+  "tags": [],
+  "implicitDependencies": [
+    "core",
+    "react",
+    "angular",
+    "openai",
+    "anthropic",
+    "azure",
+    "bedrock",
+    "google",
+    "ollama",
+    "typesafe"
+  ],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint tools/growth",
+        "forwardAllArgs": false
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "parallel": false,
+        "commands": [
+          "node --test \"tools/growth/scripts/**/*.test.mjs\" \"tools/growth/install/*.test.mjs\"",
+          "vitest run --config tools/growth/vitest.config.mts"
+        ]
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "parallel": false,
+        "commands": [
+          "tsc --noEmit -p tools/growth/tsconfig.json",
+          "tsc --noEmit -p tools/growth/tsconfig.spec.json"
+        ]
+      }
+    },
+    "migrate-growth": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/apply-migrations.mts"
+      }
+    },
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/growth-database-preflight.mts integration"
+      }
+    },
+    "report": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/growth-observability.mts",
+        "forwardAllArgs": true
+      }
+    },
+    "observability": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/growth-observability.mts",
+        "forwardAllArgs": true
+      }
+    },
+    "install-pack-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": [
+            "core",
+            "react",
+            "angular",
+            "openai",
+            "anthropic",
+            "azure",
+            "bedrock",
+            "google",
+            "ollama",
+            "typesafe"
+          ],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "node tools/growth/install/verify-pack.mjs"
+      }
+    }
+  }
+}

@@ -62,11 +62,13 @@ export type Flatten<T> = Identity<{ [k in keyof T]: T[k] }>;
  * @public
  */
 export type CleanInterfaceShape<T extends object> = Identity<{
-  [k in keyof T as k extends `${infer K}?`
-    ? K
-    : k extends `?${infer K}`
+  [
+    k in keyof T as k extends `${infer K}?`
       ? K
-      : k]: T[k];
+      : k extends `?${infer K}`
+        ? K
+        : k
+  ]: T[k];
 }>;
 
 /**

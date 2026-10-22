@@ -1,8 +1,11 @@
 import {
   createAtcStore,
+  DEV_MODE_KEY,
   type MapFilter,
   RESPONSE_SCHEMA_ALLOWLIST,
   ROUTER_SKIPPED,
+  ROUTER_SKIPPED_REFINEMENT,
+  type RouterShown,
   STARTER_PROMPTS,
   transcriptItems,
   type TurnShown,
@@ -11,6 +14,7 @@ import {
   fakeCardsTransport,
   fakeDecisionTransport,
   fakeFilterTransport,
+  testAircraft,
 } from '@atc/shared/testing';
 import type { Chat } from '@hashbrownai/core';
 import { HashbrownProvider, type UiChatMessage } from '@hashbrownai/react';
@@ -21,12 +25,13 @@ import {
   render,
   waitFor,
 } from '@testing-library/react';
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { expect, test } from 'vitest';
 import { Assistant } from './assistant';
 import { PanelHeader } from './panel-header';
 import { Transcript } from './transcript';
-import { ShowStreamProvider } from './show-stream';
+import { DevDrawer } from './dev-drawer';
+import { type DevChat, DevModeProvider, usePublishDev } from './dev-mode';
 import { AtcStoreProvider } from './store';
 
 const FILTER: MapFilter = {
@@ -43,6 +48,7 @@ const FILTER: MapFilter = {
 function setup(
   answer: Parameters<typeof fakeDecisionTransport>[0],
   cardsAnswer: Parameters<typeof fakeCardsTransport>[0] = () => null,
+  filterLoading = false,
 ) {
   cleanup();
   const store = createAtcStore();
@@ -50,19 +56,36 @@ function setup(
   const route = fakeDecisionTransport(answer);
   const cards = fakeCardsTransport(cardsAnswer);
   const filtered: string[] = [];
-  const view = render(
+  const routes: RouterShown[] = [];
+  const tree = (loading: boolean) => (
     <HashbrownProvider url="/unused" transport={chat.transport}>
       <AtcStoreProvider store={store}>
         <Assistant
           routeTransport={route.transport}
           cardsTransport={cards.transport}
-          onFilter={(request) => filtered.push(request)}
+          filterLoading={loading}
+          onFilter={(request, routed) => {
+            filtered.push(request);
+            routes.push(routed);
+          }}
         />
       </AtcStoreProvider>
-    </HashbrownProvider>,
+    </HashbrownProvider>
   );
+  const view = render(tree(filterLoading));
+  const setFilterLoading = (loading: boolean) =>
+    act(() => view.rerender(tree(loading)));
 
-  return { store, chat, route, cards, filtered, element: view.container };
+  return {
+    store,
+    chat,
+    route,
+    cards,
+    filtered,
+    routes,
+    setFilterLoading,
+    element: view.container,
+  };
 }
 
 function starterButton(element: HTMLElement, text: string) {
@@ -85,8 +108,127 @@ test('the filter starter applies the filter once, sends no chat request and leav
   expect(element.querySelector('ol')?.children.length ?? 0).toBe(0);
 });
 
+function refinementTexts(element: HTMLElement) {
+  return [
+    ...element.querySelectorAll('[data-testid="refinements"] button'),
+  ].map((button) => button.textContent);
+}
+
+/** Two Alaska flights: one low jet, one higher single-engine prop. */
+const ALASKA = [
+  testAircraft({ hex: 'a00001', callsign: 'ASA1', altitudeFt: 3000 }),
+  testAircraft({
+    hex: 'a00002',
+    callsign: 'ASA2',
+    altitudeFt: 9000,
+    kind: 'single',
+  }),
+];
+
+test('a refinement appears once a filter is applied and refines it without a transcript entry', async () => {
+  const { store, chat, route, filtered, routes, element } = setup(() => null);
+  act(() => {
+    store.applySnapshot({ at: 1, aircraft: ALASKA });
+  });
+  const before = element.querySelector('[data-testid="refinements"]');
+
+  act(() => store.setMapFilter(FILTER));
+  const texts = refinementTexts(element);
+  const row = element.querySelector('[data-testid="refinements"]');
+  const label = element.querySelector('.atc-refinements-label');
+  act(() =>
+    (
+      element.querySelector(
+        '[data-testid="refinements"] button',
+      ) as HTMLButtonElement
+    ).click(),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  expect(before).toBeNull();
+  expect(texts).toEqual(['Below 5,000 ft', 'Only jets']);
+  expect(row?.getAttribute('role')).toBe('group');
+  expect(label?.textContent?.trim()).toBe('Refine:');
+  expect(row?.getAttribute('aria-labelledby')).toBe(label?.id);
+  expect(label?.id).not.toBe('');
+  expect(filtered).toEqual(['Below 5,000 ft']);
+  expect(routes).toEqual([ROUTER_SKIPPED_REFINEMENT]);
+  expect(chat.requests).toHaveLength(0);
+  expect(route.requests).toHaveLength(0);
+  expect(element.querySelector('ol')?.children.length ?? 0).toBe(0);
+});
+
+test('refinements disappear when the filter is cleared', () => {
+  const { store, element } = setup(() => null);
+  act(() => {
+    store.applySnapshot({ at: 1, aircraft: ALASKA });
+    store.setMapFilter(FILTER);
+  });
+  const shown = refinementTexts(element).length;
+
+  act(() => store.clearMapFilter());
+
+  expect(shown).toBeGreaterThan(0);
+  expect(element.querySelector('[data-testid="refinements"]')).toBeNull();
+});
+
+test('no refinements show while a filter run streams', () => {
+  const { store, element, setFilterLoading } = setup(
+    () => null,
+    undefined,
+    true,
+  );
+  act(() => {
+    store.applySnapshot({ at: 1, aircraft: ALASKA });
+    store.setMapFilter(FILTER);
+  });
+  const streaming = element.querySelector('[data-testid="refinements"]');
+
+  setFilterLoading(false);
+
+  expect(streaming).toBeNull();
+  expect(refinementTexts(element)).toEqual(['Below 5,000 ft', 'Only jets']);
+});
+
+test('refinements stay put while traffic changes under the same filter', () => {
+  const { store, element } = setup(() => null);
+  act(() => {
+    store.applySnapshot({ at: 1, aircraft: ALASKA });
+    store.setMapFilter(FILTER);
+  });
+  const before = refinementTexts(element);
+
+  act(() => {
+    store.applySnapshot({
+      at: 2,
+      aircraft: ALASKA.map((a) => ({ ...a, altitudeFt: 2000 })),
+    });
+  });
+
+  expect(before).toEqual(['Below 5,000 ft', 'Only jets']);
+  expect(refinementTexts(element)).toEqual(before);
+});
+
+test('a refinement picked from the keyboard moves focus to the message field', () => {
+  const { store, element } = setup(() => null);
+  act(() => {
+    store.applySnapshot({ at: 1, aircraft: ALASKA });
+    store.setMapFilter(FILTER);
+  });
+  const button = element.querySelector(
+    '[data-testid="refinements"] button',
+  ) as HTMLButtonElement;
+  button.focus();
+
+  act(() => button.click());
+
+  expect(document.activeElement).toBe(
+    element.querySelector('input[aria-label="Message"]'),
+  );
+});
+
 test('a chat starter sends a chat message', async () => {
-  const starter = STARTER_PROMPTS[0];
+  const starter = STARTER_PROMPTS[4];
   const { chat, filtered, element } = setup(() => null);
 
   act(() => starterButton(element, starter.text).click());
@@ -186,69 +328,38 @@ test('a cards decision failure sends with every card', async () => {
   ]);
 });
 
-/** The header's switch above a transcript, as the app wires them. */
-function Switched({ items, turns }: { items: never[]; turns: TurnShown[] }) {
-  const [on, setOn] = useState(true);
-
-  return (
-    <ShowStreamProvider on={on}>
-      <PanelHeader showStream={on} onShowStream={setOn} />
-      <Transcript items={items} turns={turns} />
-    </ShowStreamProvider>
-  );
-}
-
-test('the switch hides and shows the panels', () => {
+test('the header button toggles dev mode on phones', () => {
   cleanup();
-  const messages = [
-    { id: 'u-Highest?', role: 'user', content: 'Highest?' },
-    {
-      role: 'assistant',
-      toolCalls: [],
-      content: { ui: [{ Markdown: { data: '<b>hi</b>' } }] },
-      ui: [<p key="a">hi</p>],
-    },
-  ] as UiChatMessage<Chat.AnyTool>[];
-  const turns: TurnShown[] = [{ text: 'Highest?', router: ROUTER_SKIPPED }];
+  const toggled: string[] = [];
   const view = render(
     <AtcStoreProvider store={createAtcStore()}>
-      <Switched items={transcriptItems(messages) as never[]} turns={turns} />
+      <PanelHeader devMode onToggleDevMode={() => toggled.push('toggle')} />
     </AtcStoreProvider>,
   );
-  const element = view.container;
-  const toggle = element.querySelector(
-    'input[type="checkbox"]',
-  ) as HTMLInputElement;
+  const button = view.container.querySelector(
+    '.atc-header-dev',
+  ) as HTMLButtonElement;
 
-  const shown = element.querySelector('.atc-stream')?.textContent ?? '';
-  fireEvent.click(toggle);
-  const hidden = element.querySelectorAll('.atc-stream').length;
-  fireEvent.click(toggle);
+  fireEvent.click(button);
 
-  expect(toggle.getAttribute('role')).toBe('switch');
-  expect(element.textContent).toContain('Show the stream');
-  expect(shown).toContain('routerskipped (starter)');
-  expect(shown).toContain('<b>hi</b>');
-  expect(element.querySelector('.atc-stream b')).toBeNull();
-  expect(element.querySelector('.atc-stream')?.getAttribute('aria-live')).toBe(
-    'off',
-  );
-  expect(element.querySelectorAll('.atc-stream [tabindex]')).toHaveLength(0);
-  expect(hidden).toBe(0);
-  expect(element.querySelectorAll('.atc-stream')).toHaveLength(1);
+  expect(button.getAttribute('aria-label')).toBe('Developer tools');
+  expect(button.getAttribute('aria-pressed')).toBe('true');
+  expect(toggled).toEqual(['toggle']);
+  expect(view.container.textContent).not.toContain('Show the stream');
+  expect(view.container.querySelector('[role="switch"]')).toBeNull();
 });
 
-test('a panel without the provider never shows', async () => {
+test('without dev mode no technical panels render', async () => {
   const starter = STARTER_PROMPTS.find((entry) => entry.route !== 'filter');
   const { chat, element } = setup(() => null);
 
   act(() => starterButton(element, starter?.text ?? '').click());
   await waitFor(() => expect(chat.requests).toHaveLength(1));
 
-  expect(element.querySelectorAll('.atc-stream')).toHaveLength(0);
+  expect(element.querySelectorAll('[class*="atc-stream"]')).toHaveLength(0);
 });
 
-test('a superseded send does not shift later answers onto the wrong decisions', () => {
+test('a superseded send does not shift the newest answer onto the wrong decision', () => {
   cleanup();
   const answer = (text: string) => ({
     role: 'assistant',
@@ -267,20 +378,105 @@ test('a superseded send does not shift later answers onto the wrong decisions', 
     { text: 'jets', router: ROUTER_SKIPPED },
     { text: 'Seattle?', router: { kind: 'fallback', reason: 'unavailable' } },
   ];
-
+  const items = transcriptItems(messages);
   const view = render(
-    <ShowStreamProvider on>
-      <AtcStoreProvider store={createAtcStore()}>
-        <Transcript items={transcriptItems(messages)} turns={turns} />
-      </AtcStoreProvider>
-    </ShowStreamProvider>,
+    <AtcStoreProvider store={createAtcStore()}>
+      <DevModeProvider storage={onStorage()}>
+        <Published items={items} turns={turns} />
+        <Transcript items={items} />
+        <DevDrawer />
+      </DevModeProvider>
+    </AtcStoreProvider>,
   );
-  const panels = [...view.container.querySelectorAll('.atc-stream')].map(
-    (panel) => panel.textContent ?? '',
-  );
+  const panel = () =>
+    view.container.querySelector('[role="tabpanel"]')?.textContent ?? '';
 
-  expect(panels).toHaveLength(2);
-  expect(panels[0]).toContain('skipped (starter)');
-  expect(panels[0]).not.toContain('superseded');
-  expect(panels[1]).toContain('→ chat (unavailable)');
+  const router = panel();
+  fireEvent.click(
+    [...view.container.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+      (entry) => entry.textContent === 'UI stream',
+    ) as HTMLElement,
+  );
+  const ui = panel();
+
+  expect(router).toContain('→ chat (unavailable)');
+  expect(router).not.toContain('superseded');
+  expect(ui).toContain('second');
+  expect(ui).not.toContain('first');
+});
+
+/** A storage with dev mode on. */
+function onStorage() {
+  const data = new Map([[DEV_MODE_KEY, 'on']]);
+
+  return {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => void data.set(key, value),
+  };
+}
+
+/** Publishes a transcript to the drawer, as the assistant does. */
+function Published({ items, turns }: Omit<DevChat, 'busy'>) {
+  const chat = useMemo(() => ({ items, turns, busy: false }), [items, turns]);
+  usePublishDev('chat', chat);
+
+  return null;
+}
+
+/** The assistant and the drawer in dev mode, with stubbed decisions. */
+function setupWithDrawer(answer: Parameters<typeof fakeDecisionTransport>[0]) {
+  cleanup();
+  const chat = fakeFilterTransport();
+  const route = fakeDecisionTransport(answer);
+  const view = render(
+    <HashbrownProvider url="/unused" transport={chat.transport}>
+      <AtcStoreProvider store={createAtcStore()}>
+        <DevModeProvider storage={onStorage()}>
+          <Assistant
+            routeTransport={route.transport}
+            cardsTransport={fakeCardsTransport(() => null).transport}
+            onFilter={() => undefined}
+          />
+          <DevDrawer />
+        </DevModeProvider>
+      </AtcStoreProvider>
+    </HashbrownProvider>,
+  );
+  const router = () =>
+    view.container.querySelector('[role="tabpanel"]')?.textContent ?? '';
+
+  return { element: view.container, router };
+}
+
+test('the router tab keeps what a filter send decided after the box clears', async () => {
+  const { element, router } = setupWithDrawer(() => ({
+    intent: 'filter',
+    confidence: 0.97,
+  }));
+  const input = element.querySelector('input') as HTMLInputElement;
+  const empty = router();
+
+  fireEvent.change(input, { target: { value: 'only jets below 8000 ft' } });
+  await waitFor(() =>
+    expect(element.querySelector('.atc-route')?.textContent).toBe(
+      '→ filter 0.97',
+    ),
+  );
+  fireEvent.submit(element.querySelector('form') as HTMLFormElement);
+  await waitFor(() => expect(input.value).toBe(''));
+
+  expect(empty).toContain('type to see where it goes');
+  expect(router()).toContain('sent "only jets below 8000 ft" → filter');
+  expect(router()).toContain('intent: filter 0.97');
+  expect(router()).toContain('type to see where it goes');
+});
+
+test('the router tab shows a filter starter as skipped', () => {
+  const starter = STARTER_PROMPTS.find((entry) => entry.route === 'filter');
+  const { element, router } = setupWithDrawer(() => null);
+
+  act(() => starterButton(element, starter?.text ?? '').click());
+
+  expect(router()).toContain(`sent "${starter?.text}" → filter`);
+  expect(router()).toContain('skipped (starter)');
 });

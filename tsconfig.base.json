@@ -16,6 +16,7 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
+      "@hashbrownai-internal/growth": ["tools/growth/src/index.ts"],
       "@atc/server": ["examples/atc/server/src/index.ts"],
       "@atc/shared": ["examples/atc/shared/src/index.ts"],
       "@atc/shared/map": ["examples/atc/shared/src/map/index.ts"],
@@ -30,7 +31,10 @@
       "@hashbrownai/openai": ["packages/openai/src/index.ts"],
       "@hashbrownai/typesafe": ["packages/typesafe/src/index.ts"],
       "@hashbrownai/react": ["packages/react/src/index.ts"],
-      "@hashbrownai/testing/aimock": ["tools/testing/aimock/index.ts"]
+      "@hashbrownai/testing/aimock": ["tools/testing/aimock/index.ts"],
+      "#development-install": [
+        "packages/core/src/growth/development-install.default.ts"
+      ]
     },
     "noUncheckedSideEffectImports": false,
     "types": ["*"],

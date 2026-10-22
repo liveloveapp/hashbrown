@@ -2,10 +2,12 @@
 import { computed, Resource, Signal } from '@angular/core';
 import {
   Chat,
+  type FinishReason,
   type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
+  type TokenUsage,
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { ExposedComponent } from '../utils/expose-component.fn';
@@ -134,6 +136,21 @@ export interface UiCompletionResourceRef<
    * runs never set it.
    */
   lastRunResult: Signal<JsonValue | undefined>;
+
+  /**
+   * The token usage of the last run that completed (AG-UI's
+   * `RUN_FINISHED.usage`), one entry per provider and model, or `undefined`
+   * when the server reported none. Cleared when the next run starts, so a turn
+   * that calls tools reports only its final run.
+   */
+  lastRunUsage: Signal<readonly TokenUsage[] | undefined>;
+
+  /**
+   * Why the model stopped in the last run that completed, such as `length`
+   * when the answer was cut off by a token limit, or `undefined` when the
+   * server did not say. Cleared when the next run starts.
+   */
+  lastRunFinishReason: Signal<FinishReason | undefined>;
 }
 
 /**
@@ -229,6 +246,8 @@ export function uiCompletionResource<
     isSending: completion.isSending,
     isReceiving: completion.isReceiving,
     lastRunResult: completion.lastRunResult,
+    lastRunUsage: completion.lastRunUsage,
+    lastRunFinishReason: completion.lastRunFinishReason,
     hasValue: hasValue as any,
   };
 }

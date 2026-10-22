@@ -174,7 +174,7 @@ test('maps Google thought and function-call parts with continuation signatures',
   ]);
 });
 
-test('attaches a later signature-only Google part to the preceding tool call', async () => {
+test('keeps a later signature-only Google part off the preceding tool call', async () => {
   const responses = [
     {
       candidates: [
@@ -189,6 +189,7 @@ test('attaches a later signature-only Google part to the preceding tool call', a
                   name: 'lookup',
                   args: { query: 'hashbrown' },
                 },
+                thoughtSignature: 'tool-signature',
               },
             ],
           },
@@ -201,7 +202,7 @@ test('attaches a later signature-only Google part to the preceding tool call', a
           index: 0,
           content: {
             role: 'model',
-            parts: [{ thoughtSignature: 'late-tool-signature' }],
+            parts: [{ text: '', thoughtSignature: 'final-text-signature' }],
           },
           finishReason: 'STOP',
         },
@@ -211,12 +212,18 @@ test('attaches a later signature-only Google part to the preceding tool call', a
 
   const events = await collectEvents(responses);
 
-  expect(events.at(-1)).toEqual({
-    type: EventType.REASONING_ENCRYPTED_VALUE,
-    subtype: 'tool-call',
-    entityId: 'call-google',
-    encryptedValue: 'late-tool-signature',
-  });
+  expect(
+    events.filter(
+      (event) => event.type === EventType.REASONING_ENCRYPTED_VALUE,
+    ),
+  ).toEqual([
+    {
+      type: EventType.REASONING_ENCRYPTED_VALUE,
+      subtype: 'tool-call',
+      entityId: 'call-google',
+      encryptedValue: 'tool-signature',
+    },
+  ]);
 });
 
 test('attaches a later signature-only Google part to active reasoning', async () => {

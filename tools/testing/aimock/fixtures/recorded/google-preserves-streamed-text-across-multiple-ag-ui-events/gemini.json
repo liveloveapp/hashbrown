@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Write two short sentences about potatoes.",
+        "model": "gemini-3.5-flash-lite",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Potatoes are versatile root vegetables that grow underground. They can be baked, mashed, or fried into delicious dishes."
+      },
+      "recordedTimings": {
+        "ttftMs": 628,
+        "interChunkDelaysMs": [35, 27, 7],
+        "totalDurationMs": 697
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

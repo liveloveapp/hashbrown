@@ -2,11 +2,13 @@
 /**
  * One-time, re-runnable provisioning for Hashbrown's Vercel deployment.
  *
- *   node tools/vercel/bootstrap.mjs --env-file /path/to/.env [--dns-records records.json] [--skip-workflow]
+ *   node tools/vercel/bootstrap.mjs --env-file /path/to/.env [--dns-records records.json] [--skip-workflow] [--skip-token-secrets]
  *
  * Environment (from --env-file or the process):
  *   VERCEL_TOKEN or VERCEL_API_TOKEN   required
- *   OPENAI_API_KEY                     required; set on the project, never printed
+ *   OPENAI_API_KEY                     set on the project, never printed; a target
+ *                                      missing a required key is reported `missing`
+ *   PREVIEW_<KEY>                      Preview value for a target's `envPerTarget` keys
  *   OPENAI_MODEL, OPENAI_BASE_URL      optional overrides
  *
  * --dns-records points at a JSON array of Vercel DNS records
@@ -67,7 +69,27 @@ export const TARGETS = Object.freeze([
     secret: 'VERCEL_PROJECT_ID_WWW',
     domains: SITE_DOMAINS,
     removedDomains: [`next.${DOMAIN}`],
-    env: ['OPENAI_API_KEY', 'OPENAI_MODEL', 'OPENAI_BASE_URL'],
+    env: [
+      'OPENAI_API_KEY',
+      'OPENAI_MODEL',
+      'OPENAI_BASE_URL',
+      'LIFECYCLE_SERVICE_SECRET',
+      'CRON_SECRET',
+      'GROWTH_ACTION_TOKEN_ACTIVE_VERSION',
+      'GROWTH_ACTION_TOKEN_ACTIVE_SECRET',
+      'GROWTH_EMAIL_HMAC_ACTIVE_VERSION',
+      'GROWTH_EMAIL_HMAC_ACTIVE_SECRET',
+      'GOOGLE_REPLY_HMAC_SECRET',
+      'NEXT_PUBLIC_POSTHOG_TOKEN',
+      'NEXT_PUBLIC_POSTHOG_HOST',
+      'NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL',
+      'NEXT_PUBLIC_GROWTH_COLLECTION',
+      // Read by the /_/cron/lifecycle route and nudgeLifecycle in www.
+      'LIFECYCLE_CRON_ENABLED',
+    ],
+    // DATABASE_URL is injected by the Neon Marketplace integration; the
+    // bootstrap must never upsert it.
+    envPerTarget: ['GROWTH_DATABASE_ENVIRONMENT', 'LIFECYCLE_URL'],
     requiredEnv: ['OPENAI_API_KEY'],
     build: {
       framework: 'nextjs',
@@ -76,6 +98,44 @@ export const TARGETS = Object.freeze([
       // CI installs dependencies with `npm ci` before `vercel build`.
       installCommand: 'true',
     },
+  }),
+  // The growth lifecycle service. No public domain; reached by URL.
+  Object.freeze({
+    key: 'lifecycle',
+    project: 'hashbrown-lifecycle',
+    secret: 'VERCEL_PROJECT_ID_LIFECYCLE',
+    domains: [],
+    env: [
+      'LIFECYCLE_SERVICE_SECRET',
+      'GROWTH_ACTION_TOKEN_ACTIVE_VERSION',
+      'GROWTH_ACTION_TOKEN_ACTIVE_SECRET',
+      'GROWTH_EMAIL_HMAC_ACTIVE_VERSION',
+      'GROWTH_EMAIL_HMAC_ACTIVE_SECRET',
+      'RESEND_API_KEY',
+      'RESEND_TRACKING_DISABLED',
+      'RESEND_SENDER_VERIFIED',
+      'FOUNDER_NOTIFICATION_EMAIL',
+      'CAMPAIGN_ENABLED',
+      'CAMPAIGN_ENROLLMENT_ENABLED',
+      'DELIVERY_ENABLED',
+      'GROWTH_OBSERVATION_PROCESSING_ENABLED',
+      'GROWTH_INSTALL_DIGEST_ENABLED',
+      'GROWTH_INSTALL_RUNTIME_HELLO_ENABLED',
+      // Unset until enrollment is enabled; immutable once recorded.
+      'CAMPAIGN_ENROLLMENT_START_AT',
+      'LIFECYCLE_BATCH_SIZE',
+    ],
+    // DATABASE_URL and B4_DATABASE_URL are injected by the Neon Marketplace
+    // integration; the bootstrap must never upsert them.
+    envPerTarget: [
+      'GROWTH_DATABASE_ENVIRONMENT',
+      'DELIVERY_ENVIRONMENT',
+      'GROWTH_PUBLIC_ACTION_ORIGIN',
+      'RESEND_NON_PRODUCTION_ALLOWLIST',
+      'RESEND_NON_PRODUCTION_REDIRECT_TO',
+    ],
+    requiredEnv: ['LIFECYCLE_SERVICE_SECRET', 'RESEND_API_KEY'],
+    resources: { fluid: true, functionDefaultTimeout: 60 },
   }),
 ]);
 
@@ -196,14 +256,27 @@ export async function ensureResources(vercel, project, resources) {
   return 'updated';
 }
 
-export async function upsertEnv(vercel, projectId, variables) {
+/**
+ * Upserts encrypted env vars on a project.
+ *
+ * @param vercel - A client from {@link createVercelClient}.
+ * @param projectId - The project to write to.
+ * @param variables - `{ KEY: value }`; empty or unset values are skipped.
+ * @param targets - Vercel environments to write to.
+ */
+export async function upsertEnv(
+  vercel,
+  projectId,
+  variables,
+  targets = ['production', 'preview'],
+) {
   const entries = Object.entries(variables)
     .filter(([, value]) => typeof value === 'string' && value.length > 0)
     .map(([key, value]) => ({
       key,
       value,
       type: 'encrypted',
-      target: ['production', 'preview'],
+      target: targets,
     }));
 
   if (entries.length === 0) return 'skipped';
@@ -220,6 +293,40 @@ export async function upsertEnv(vercel, projectId, variables) {
     );
   }
   return 'updated';
+}
+
+/**
+ * Upserts each of `keys` per environment: `env[KEY]` goes to Production only
+ * and `env['PREVIEW_' + KEY]` to Preview only. Unset or empty values are
+ * never written.
+ *
+ * @param vercel - A client from {@link createVercelClient}.
+ * @param projectId - The project to write to.
+ * @param keys - Variable names, without the `PREVIEW_` prefix.
+ * @param env - Source of values; defaults to `process.env`.
+ * @returns `'updated'` if either environment was written, else `'skipped'`.
+ */
+export async function upsertEnvPerTarget(
+  vercel,
+  projectId,
+  keys,
+  env = process.env,
+) {
+  const production = await upsertEnv(
+    vercel,
+    projectId,
+    Object.fromEntries(keys.map((key) => [key, env[key]])),
+    ['production'],
+  );
+  const preview = await upsertEnv(
+    vercel,
+    projectId,
+    Object.fromEntries(keys.map((key) => [key, env[`PREVIEW_${key}`]])),
+    ['preview'],
+  );
+  return production === 'updated' || preview === 'updated'
+    ? 'updated'
+    : 'skipped';
 }
 
 /**
@@ -477,6 +584,7 @@ async function main() {
       'env-file': { type: 'string' },
       'dns-records': { type: 'string' },
       'skip-workflow': { type: 'boolean', default: false },
+      'skip-token-secrets': { type: 'boolean', default: false },
     },
   });
 
@@ -495,9 +603,6 @@ async function main() {
 
   const token = process.env.VERCEL_TOKEN ?? process.env.VERCEL_API_TOKEN;
   if (!token) throw new Error('VERCEL_TOKEN or VERCEL_API_TOKEN is required.');
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is required.');
-  }
 
   const { user } = await createVercelClient(token)('GET', '/v2/user');
   const teamId = user.defaultTeamId ?? undefined;
@@ -525,6 +630,12 @@ async function main() {
         Object.fromEntries(target.env.map((key) => [key, process.env[key]])),
       ),
     );
+    if (target.envPerTarget) {
+      log(
+        'env vars per target',
+        await upsertEnvPerTarget(vercel, project.id, target.envPerTarget),
+      );
+    }
 
     const previousProjectId = target.previousProject
       ? await vercel('GET', `/v9/projects/${target.previousProject}`).then(
@@ -598,9 +709,13 @@ async function main() {
     log(`secret ${target.secret}`, 'set');
   }
 
-  await setSecret('VERCEL_TOKEN', token);
-  await setSecret('VERCEL_ORG_ID', teamId ?? user.id);
-  log('secrets VERCEL_*', 'set');
+  if (values['skip-token-secrets']) {
+    log('secrets VERCEL_*', 'skipped');
+  } else {
+    await setSecret('VERCEL_TOKEN', token);
+    await setSecret('VERCEL_ORG_ID', teamId ?? user.id);
+    log('secrets VERCEL_*', 'set');
+  }
 
   if (!values['skip-workflow']) {
     await gh([

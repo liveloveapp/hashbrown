@@ -7,11 +7,13 @@ import {
   routerBadge,
   routerDecisionInput,
   type RouterInputState,
-  type RouterShown,
   routerShown,
+  type RouterShown,
+  routerTyping,
   routeSchema,
   submitTarget,
   trackDecisionInput,
+  type TypingShown,
 } from '@atc/shared';
 import {
   computed,
@@ -58,9 +60,11 @@ export interface Router {
   /**
    * What the router decided for the text, as it stands now, with the
    * milliseconds the answer took; read it right after {@link Router.submit}
-   * resolves, for "Show the stream".
+   * resolves, for the developer drawer.
    */
   shown(): RouterShown;
+  /** What the router makes of the text as it is typed, for the developer drawer. */
+  readonly typing: Signal<TypingShown>;
 }
 
 /**
@@ -155,6 +159,15 @@ export function injectRouter(draft: Signal<string>): Router {
       });
     },
     cancel: () => cancelWaiting(),
+    // The answer's milliseconds are recorded before the state hears of it.
+    typing: computed(() => {
+      const current = state();
+
+      return routerTyping(
+        current,
+        tracked.answeredFor() === current.text ? tracked.answeredMs() : null,
+      );
+    }),
     shown: () =>
       routerShown(
         untracked(state),

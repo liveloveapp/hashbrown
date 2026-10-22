@@ -1,7 +1,11 @@
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
-import { lowerViewMessagesToAgUi } from './ag-ui-message-history';
+import { isProviderToolCall } from '../models/tool-step';
+import {
+  lowerViewMessagesToAgUi,
+  projectAgUiMessages,
+} from './ag-ui-message-history';
 import {
   applyCanonicalMessageEvent,
   initialAgUiMessagesState,
@@ -2682,4 +2686,677 @@ test('a snapshot stamps its run only on activities after the last user message',
     runId: 'run-2',
     assistantMessageId: 'assistant-2',
   });
+});
+
+function activeAttempt() {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages: [] }),
+  );
+  return reducer(initialized, internalActions.generationAttemptStarted());
+}
+
+function applyEvents(
+  state: ReturnType<typeof activeAttempt>,
+  events: readonly AGUIEvent[],
+) {
+  return events.reduce(
+    (current, event) =>
+      reducer(current, apiActions.generateMessageEvent(event)),
+    state,
+  );
+}
+
+function readStep(
+  state: ReturnType<typeof activeAttempt>,
+  toolCallId: string,
+): unknown {
+  for (const message of state.draft) {
+    if (message.role !== 'assistant') continue;
+    const tool = message.toolCalls?.find((call) => call.id === toolCallId);
+    if (tool) return tool.metadata?.['b4.step'];
+  }
+  return undefined;
+}
+
+function startTool(
+  toolCallId: string,
+  metadata?: Record<string, unknown>,
+): AGUIEvent {
+  return {
+    type: EventType.TOOL_CALL_START,
+    toolCallId,
+    toolCallName: 'lookup',
+    parentMessageId: 'assistant-1',
+    ...(metadata === undefined ? {} : { metadata }),
+  } as AGUIEvent;
+}
+
+function stepEvent(value: Record<string, unknown>): AGUIEvent {
+  return { type: EventType.CUSTOM, name: 'b4.step', value } as AGUIEvent;
+}
+
+test('folds a legacy B4 CUSTOM step into the call metadata', () => {
+  const active = activeAttempt();
+
+  const folded = applyEvents(active, [
+    startTool('c1'),
+    stepEvent({ toolCallId: 'c1', status: 'running', label: 'Fetching' }),
+  ]);
+
+  expect(readStep(folded, 'c1')).toMatchObject({
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    label: 'Fetching',
+  });
+});
+
+test('holds a b4.step for an unknown call until TOOL_CALL_START', () => {
+  const active = activeAttempt();
+
+  const held = applyEvents(active, [
+    stepEvent({ toolCallId: 'c1', status: 'running', label: 'Queued' }),
+  ]);
+  const started = applyEvents(held, [startTool('c1')]);
+  const restarted = applyEvents(started, [
+    stepEvent({ toolCallId: 'c2', status: 'running' }),
+    startTool('c2', { other: true }),
+  ]);
+
+  expect(held.draft).toEqual([]);
+  expect(readStep(started, 'c1')).toMatchObject({
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    label: 'Queued',
+  });
+  expect(started.pendingToolSteps).toEqual({});
+  expect(readStep(restarted, 'c2')).toMatchObject({ status: 'running' });
+});
+
+test('an interrupted run keeps pending tool calls open and cancels the rest', () => {
+  const running = { v: 1, kind: 'server', status: 'running', label: 'Busy' };
+  const active = applyEvents(activeAttempt(), [
+    startTool('c1', { 'b4.step': running }),
+    startTool('c2', { 'b4.step': running }),
+    startTool('c3'),
+    startTool('c4'),
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-4',
+      toolCallId: 'c4',
+      content: 'done',
+    } as AGUIEvent,
+  ]);
+
+  const finished = applyEvents(active, [
+    {
+      type: EventType.RUN_FINISHED,
+      threadId: 't',
+      runId: 'r',
+      timestamp: 5000,
+      outcome: {
+        type: 'interrupt',
+        interrupts: [{ id: 'i1', reason: 'tool_approval', toolCallId: 'c1' }],
+      },
+    } as AGUIEvent,
+  ]);
+
+  expect(readStep(finished, 'c1')).toEqual(running);
+  expect(readStep(finished, 'c2')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    settledAt: 5000,
+  });
+  expect(readStep(finished, 'c3')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    settledAt: 5000,
+  });
+  expect(readStep(finished, 'c4')).toBeUndefined();
+});
+
+test('a failed run settles open steps as failed', () => {
+  const running = { v: 1, kind: 'server', status: 'running', label: 'Busy' };
+  const done = { v: 1, kind: 'server', status: 'completed', label: 'Done' };
+  const active = applyEvents(activeAttempt(), [
+    startTool('c1', { 'b4.step': running }),
+    startTool('c2', { 'b4.step': done }),
+  ]);
+
+  const failed = applyEvents(active, [
+    {
+      type: EventType.RUN_ERROR,
+      message: 'boom',
+      timestamp: 7000,
+    } as AGUIEvent,
+  ]);
+
+  expect(readStep(failed, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    settledAt: 7000,
+    error: { message: 'Tool call did not finish' },
+  });
+  expect(readStep(failed, 'c2')).toEqual(done);
+});
+
+test('ignores CUSTOM events with other names', () => {
+  const active = applyEvents(activeAttempt(), [startTool('c1')]);
+
+  const next = applyEvents(active, [
+    {
+      type: EventType.CUSTOM,
+      name: 'other',
+      value: { toolCallId: 'c1', status: 'failed' },
+    } as AGUIEvent,
+  ]);
+
+  expect(next.draft).toBe(active.draft);
+  expect(next.pendingToolSteps).toBe(active.pendingToolSteps);
+  expect(readStep(next, 'c1')).toBeUndefined();
+});
+
+function attemptOver(canonicalMessages: Message[]) {
+  const initialized = reducer(
+    initialAgUiMessagesState,
+    devActions.init({ system: '', canonicalMessages }),
+  );
+  return reducer(initialized, internalActions.generationAttemptStarted());
+}
+
+function parkedTurn(step?: Record<string, unknown>): Message[] {
+  return [
+    {
+      id: 'assistant-0',
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'c0',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+          ...(step === undefined ? {} : { metadata: { 'b4.step': step } }),
+        },
+      ],
+    },
+  ];
+}
+
+test('a committed call from a prior turn is untouched by an interrupt or a cancel', () => {
+  const running = { v: 1, kind: 'server', status: 'running', label: 'Old' };
+  const active = applyEvents(attemptOver(parkedTurn(running)), [
+    startTool('c1'),
+  ]);
+  const bare = applyEvents(attemptOver(parkedTurn()), [startTool('c1')]);
+  const finished = (outcome: Record<string, unknown>): AGUIEvent =>
+    ({
+      type: EventType.RUN_FINISHED,
+      threadId: 't',
+      runId: 'r',
+      timestamp: 9000,
+      outcome,
+    }) as AGUIEvent;
+  const interrupt = {
+    type: 'interrupt',
+    interrupts: [{ id: 'i1', reason: 'tool_approval' }],
+  };
+
+  const interrupted = applyEvents(active, [finished(interrupt)]);
+  const cancelled = applyEvents(bare, [finished({ type: 'cancelled' })]);
+
+  expect(readStep(interrupted, 'c0')).toEqual(running);
+  expect(readStep(interrupted, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    settledAt: 9000,
+  });
+  expect(readStep(cancelled, 'c0')).toBeUndefined();
+  expect(readStep(cancelled, 'c1')).toMatchObject({ status: 'cancelled' });
+});
+
+test('a parked call that gets a running step in this attempt settles on a run error', () => {
+  const running = { v: 1, kind: 'server', status: 'running' };
+  const active = applyEvents(attemptOver(parkedTurn(running)), [
+    stepEvent({ toolCallId: 'c0', status: 'running', label: 'Resumed' }),
+  ]);
+
+  const failed = applyEvents(active, [
+    {
+      type: EventType.RUN_ERROR,
+      message: 'boom',
+      timestamp: 3000,
+    } as AGUIEvent,
+  ]);
+
+  expect(readStep(failed, 'c0')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    settledAt: 3000,
+    error: { message: 'Tool call did not finish' },
+  });
+});
+
+test('CUSTOM-folded and held steps do not carry the tool call id', () => {
+  const active = applyEvents(activeAttempt(), [startTool('c1')]);
+
+  const folded = applyEvents(active, [
+    stepEvent({ toolCallId: 'c1', status: 'running', label: 'Fetching' }),
+    stepEvent({ toolCallId: 'c2', status: 'running', label: 'Queued' }),
+    startTool('c2'),
+  ]);
+
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    label: 'Fetching',
+  });
+  expect(readStep(folded, 'c2')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    label: 'Queued',
+  });
+});
+
+test('a failed step after a completed one replaces its label, icon and sources', () => {
+  const active = activeAttempt();
+  const running = {
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    label: 'Searching the corpus…',
+    icon: 'search',
+    sources: [{ id: 's1', kind: 'url', title: 'A', href: 'https://a.test' }],
+  };
+
+  const failed = applyEvents(active, [
+    startTool('c1', { 'b4.step': running }),
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+    } as AGUIEvent,
+    stepEvent({
+      toolCallId: 'c1',
+      status: 'failed',
+      label: 'Search failed',
+      icon: 'alert',
+    }),
+  ]);
+
+  const step = readStep(failed, 'c1') as Record<string, unknown>;
+  expect(step).toMatchObject({
+    status: 'failed',
+    label: 'Search failed',
+    icon: 'alert',
+    error: { message: 'Tool call did not finish' },
+  });
+  expect(step).not.toHaveProperty('sources');
+});
+
+test('a TOOL_CALL_START for a cancelled step reopens it as running', () => {
+  const active = activeAttempt();
+  const cancelled = {
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    label: 'Waiting',
+    settledAt: 99,
+  };
+
+  const reopened = applyEvents(active, [
+    startTool('c1', { 'b4.step': cancelled }),
+    startTool('c1'),
+  ]);
+
+  const step = readStep(reopened, 'c1') as Record<string, unknown>;
+  expect(step).toMatchObject({ status: 'running' });
+  expect(step).not.toHaveProperty('label');
+  expect(step).not.toHaveProperty('settledAt');
+});
+
+test('a bad settle without an icon keeps the previous icon but drops label and sources', () => {
+  const active = activeAttempt();
+
+  const denied = applyEvents(active, [
+    startTool('c1', {
+      'b4.step': {
+        v: 1,
+        kind: 'server',
+        status: 'running',
+        label: 'Searching',
+        icon: 'search',
+        sources: [{ id: 's1', kind: 'url', title: 'A' }],
+      },
+    }),
+    stepEvent({ toolCallId: 'c1', status: 'denied' }),
+  ]);
+
+  const step = readStep(denied, 'c1') as Record<string, unknown>;
+  expect(step).toMatchObject({ status: 'denied', icon: 'search' });
+  expect(step).not.toHaveProperty('label');
+  expect(step).not.toHaveProperty('sources');
+});
+
+function frameOnlyResult(error?: string): AGUIEvent[] {
+  return [
+    startTool('c1'),
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: error ?? 'ok',
+      ...(error === undefined ? {} : { error }),
+    } as AGUIEvent,
+  ];
+}
+
+test('a running step after a frame-only RESULT stays completed', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult(),
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: {
+        v: 1,
+        toolCallId: 'c1',
+        status: 'running',
+        label: 'Fetching',
+        startedAt: 900,
+      },
+      timestamp: 1500,
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+});
+
+test('a denied step after a frame-only RESULT replaces the completed frame step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult(),
+    stepEvent({ v: 1, toolCallId: 'c1', status: 'denied' }),
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toMatchObject({
+    v: 1,
+    kind: 'server',
+    status: 'denied',
+  });
+});
+
+test('a step after a frame-only RESULT with an error merges onto a failed step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult('Rate limited'),
+    stepEvent({ v: 1, toolCallId: 'c1', status: 'running', label: 'Busy' }),
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': { v: 1, status: 'completed' } },
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    error: { message: 'Rate limited' },
+  });
+});
+
+test('a step on END metadata after a frame-only RESULT merges onto the completed frame step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult(),
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: {
+        'b4.step': { v: 1, status: 'running', label: 'Fetching' },
+      },
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+});
+
+test('a late call step after a RESULT step keeps the RESULT fields', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    startTool('c1'),
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+      metadata: { 'b4.step': { v: 1, status: 'completed', label: 'A' } },
+    } as AGUIEvent,
+    stepEvent({ v: 1, toolCallId: 'c1', status: 'completed', label: 'B' }),
+  ]);
+  const projected = projectAgUiMessages(folded.draft, {}).toolCalls[0];
+
+  // Assert
+  expect(projected?.metadata?.['b4.step']).toMatchObject({
+    status: 'completed',
+    label: 'A',
+  });
+});
+
+test('a late provider step after a frame-only RESULT keeps the server kind', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult(),
+    stepEvent({
+      v: 1,
+      toolCallId: 'c1',
+      status: 'completed',
+      kind: 'provider',
+    }),
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+});
+
+test('an empty RESULT error string does not fail a late step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult(''),
+    stepEvent({ v: 1, toolCallId: 'c1', status: 'running' }),
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+});
+
+test('a run error settles an unreadable provider step as a failed provider step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const settled = applyEvents(active, [
+    startTool('c1', {
+      'b4.step': { v: 1, kind: 'provider', builtin: 'web_search' },
+    }),
+    {
+      type: EventType.RUN_ERROR,
+      message: 'boom',
+      timestamp: 2000,
+    } as AGUIEvent,
+  ]);
+  const step = readStep(settled, 'c1');
+
+  // Assert
+  expect(step).toEqual({
+    v: 1,
+    kind: 'provider',
+    builtin: 'web_search',
+    status: 'failed',
+    settledAt: 2000,
+    error: { message: 'Tool call did not finish' },
+  });
+  expect(isProviderToolCall({ metadata: { 'b4.step': step } })).toBe(true);
+});
+
+test('a cancelled run settles an unreadable provider step as a cancelled provider step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const settled = applyEvents(active, [
+    startTool('c1', { 'b4.step': { v: 1, kind: 'provider' } }),
+    {
+      type: EventType.RUN_FINISHED,
+      threadId: 't',
+      runId: 'r',
+      outcome: { type: 'cancelled' },
+      timestamp: 2000,
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readStep(settled, 'c1')).toEqual({
+    v: 1,
+    kind: 'provider',
+    status: 'cancelled',
+    settledAt: 2000,
+  });
+});
+
+test('a frame-only RESULT seed keeps an unreadable provider step a provider step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    startTool('c1', {
+      'b4.step': { v: 1, kind: 'provider', builtin: 'web_search' },
+    }),
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+    } as AGUIEvent,
+    stepEvent({ v: 1, toolCallId: 'c1', status: 'running' }),
+  ]);
+  const step = readStep(folded, 'c1');
+
+  // Assert
+  expect(step).toEqual({
+    v: 1,
+    kind: 'provider',
+    builtin: 'web_search',
+    status: 'completed',
+  });
+  expect(isProviderToolCall({ metadata: { 'b4.step': step } })).toBe(true);
+});
+
+test('a step held before START keeps the provider kind of an unreadable START step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    stepEvent({ toolCallId: 'c1', status: 'running', label: 'Searching' }),
+    startTool('c1', {
+      'b4.step': { v: 1, kind: 'provider', builtin: 'web_search' },
+    }),
+  ]);
+  const step = readStep(folded, 'c1');
+
+  // Assert
+  expect(step).toMatchObject({
+    v: 1,
+    kind: 'provider',
+    builtin: 'web_search',
+    status: 'running',
+    label: 'Searching',
+  });
+  expect(isProviderToolCall({ metadata: { 'b4.step': step } })).toBe(true);
+});
+
+test('a step held before START of an existing call keeps the provider kind of an unreadable START step', () => {
+  // Arrange
+  const messages = applyCanonicalMessageEvent([], startTool('c1'));
+  const held = {
+    c1: {
+      v: 1 as const,
+      kind: 'server' as const,
+      status: 'running' as const,
+      label: 'Searching',
+    },
+  };
+
+  // Act
+  const next = applyCanonicalMessageEvent(
+    messages,
+    startTool('c1', { 'b4.step': { v: 1, kind: 'provider' } }),
+    { pendingToolSteps: held },
+  );
+  const assistant = next.find((message) => message.role === 'assistant');
+  const tool =
+    assistant?.role === 'assistant' ? assistant.toolCalls?.[0] : undefined;
+
+  // Assert
+  expect(tool?.metadata?.['b4.step']).toMatchObject({
+    kind: 'provider',
+    status: 'running',
+  });
+  expect(isProviderToolCall({ metadata: tool?.metadata })).toBe(true);
 });
