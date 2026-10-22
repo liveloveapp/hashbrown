@@ -44,35 +44,36 @@ Every switch accepts only the exact strings `true` and `false`. Unset is
 `false`. Any other value throws when the tick loads its configuration, so the
 tick fails and nothing is sent.
 
-| Variable                                | Where     | Meaning                                                                                                                          |
-| --------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `LIFECYCLE_SERVICE_SECRET`              | both      | Shared bearer between www and the service                                                                                        |
-| `LIFECYCLE_URL`                         | www       | HTTPS origin of the lifecycle deployment                                                                                         |
-| `LIFECYCLE_CRON_ENABLED`                | www       | The cron and `nudgeLifecycle` call the service only when exactly `true`                                                          |
-| `CRON_SECRET`                           | www       | The bearer the scheduler sends to `/_/cron/lifecycle`                                                                            |
-| `GOOGLE_REPLY_HMAC_SECRET`              | www       | Signs mailbox reply events; the reply route answers 503 when unset                                                               |
-| `DATABASE_URL`                          | both      | Growth store (Neon integration)                                                                                                  |
-| `B4_DATABASE_URL`                       | lifecycle | b4run state store (Neon integration)                                                                                             |
-| `B4_PG_SCHEMA`, `B4_PG_TABLE_PREFIX`    | lifecycle | Optional b4run table placement                                                                                                   |
-| `GROWTH_DATABASE_ENVIRONMENT`           | both      | `production`, `preview` or `test`; must equal `DELIVERY_ENVIRONMENT` or the delivery policy throws                               |
-| `DELIVERY_ENVIRONMENT`                  | lifecycle | `production`, `preview` or `test`                                                                                                |
-| `GROWTH_PUBLIC_ACTION_ORIGIN`           | lifecycle | Origin of the signed links in mail                                                                                               |
-| `GROWTH_ACTION_TOKEN_ACTIVE_*`          | both      | Signed link keys                                                                                                                 |
-| `GROWTH_EMAIL_HMAC_ACTIVE_*`            | both      | Email digest keys                                                                                                                |
-| `RESEND_API_KEY`                        | lifecycle | Sending key; the sender is a fetch-based Resend client, so the `resend` SDK is not in the bundle                                 |
-| `RESEND_TRACKING_DISABLED`              | lifecycle | Must be `true` or the delivery policy throws                                                                                     |
-| `RESEND_SENDER_VERIFIED`                | lifecycle | `true` once `hashbrown.dev` is verified in Resend                                                                                |
-| `RESEND_NON_PRODUCTION_ALLOWLIST`       | lifecycle | Outside production, the only recipients allowed (comma list)                                                                     |
-| `RESEND_NON_PRODUCTION_REDIRECT_TO`     | lifecycle | Optional; must be on the allowlist; receives all non-production mail                                                             |
-| `FOUNDER_NOTIFICATION_EMAIL`            | lifecycle | Receives founder notifications and the install digest                                                                            |
-| `DELIVERY_ENABLED`                      | lifecycle | Off: internal notifications wait and `send_step` defers with `delivery_disabled`                                                 |
-| `CAMPAIGN_ENABLED`                      | lifecycle | Off: `send_step` jobs are not leased                                                                                             |
-| `CAMPAIGN_ENROLLMENT_ENABLED`           | lifecycle | Turns on enrollment materialization; needs `CAMPAIGN_ENROLLMENT_START_AT`                                                        |
-| `CAMPAIGN_ENROLLMENT_START_AT`          | lifecycle | Canonical `YYYY-MM-DDTHH:MM:SS.mmmZ`; required only when enrollment is on; immutable once recorded (`campaign:v1:configuration`) |
-| `GROWTH_OBSERVATION_PROCESSING_ENABLED` | lifecycle | Projects observations each tick                                                                                                  |
-| `GROWTH_INSTALL_DIGEST_ENABLED`         | lifecycle | Enqueues the weekday install digest                                                                                              |
-| `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED`  | lifecycle | Approves contacts from install-runtime hello; runs only when `CAMPAIGN_ENROLLMENT_ENABLED` is also `true`                        |
-| `LIFECYCLE_BATCH_SIZE`                  | lifecycle | Jobs leased per tick, an integer from 1 to 25; default 20                                                                        |
+| Variable                                | Where     | Meaning                                                                                                                                          |
+| --------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `LIFECYCLE_SERVICE_SECRET`              | both      | Shared bearer between www and the service                                                                                                        |
+| `LIFECYCLE_URL`                         | www       | HTTPS origin of the lifecycle deployment                                                                                                         |
+| `LIFECYCLE_CRON_ENABLED`                | www       | The cron and `nudgeLifecycle` call the service only when exactly `true`                                                                          |
+| `GROWTH_UNSTUCK_FORM_ENABLED`           | www       | Exactly `true` opens `POST /_/forms/unstuck` and the form on `/unstuck`; otherwise the route answers 503 and the page shows the fallback address |
+| `CRON_SECRET`                           | www       | The bearer the scheduler sends to `/_/cron/lifecycle`                                                                                            |
+| `GOOGLE_REPLY_HMAC_SECRET`              | www       | Signs mailbox reply events; the reply route answers 503 when unset                                                                               |
+| `DATABASE_URL`                          | both      | Growth store (Neon integration)                                                                                                                  |
+| `B4_DATABASE_URL`                       | lifecycle | b4run state store (Neon integration)                                                                                                             |
+| `B4_PG_SCHEMA`, `B4_PG_TABLE_PREFIX`    | lifecycle | Optional b4run table placement                                                                                                                   |
+| `GROWTH_DATABASE_ENVIRONMENT`           | both      | `production`, `preview` or `test`; must equal `DELIVERY_ENVIRONMENT` or the delivery policy throws                                               |
+| `DELIVERY_ENVIRONMENT`                  | lifecycle | `production`, `preview` or `test`                                                                                                                |
+| `GROWTH_PUBLIC_ACTION_ORIGIN`           | lifecycle | Origin of the signed links in mail                                                                                                               |
+| `GROWTH_ACTION_TOKEN_ACTIVE_*`          | both      | Signed link keys                                                                                                                                 |
+| `GROWTH_EMAIL_HMAC_ACTIVE_*`            | both      | Email digest keys                                                                                                                                |
+| `RESEND_API_KEY`                        | lifecycle | Sending key; the sender is a fetch-based Resend client, so the `resend` SDK is not in the bundle                                                 |
+| `RESEND_TRACKING_DISABLED`              | lifecycle | Must be `true` or the delivery policy throws                                                                                                     |
+| `RESEND_SENDER_VERIFIED`                | lifecycle | `true` once `hashbrown.dev` is verified in Resend                                                                                                |
+| `RESEND_NON_PRODUCTION_ALLOWLIST`       | lifecycle | Outside production, the only recipients allowed (comma list)                                                                                     |
+| `RESEND_NON_PRODUCTION_REDIRECT_TO`     | lifecycle | Optional; must be on the allowlist; receives all non-production mail                                                                             |
+| `FOUNDER_NOTIFICATION_EMAIL`            | lifecycle | Receives founder notifications and the install digest                                                                                            |
+| `DELIVERY_ENABLED`                      | lifecycle | Off: internal notifications wait and `send_step` defers with `delivery_disabled`                                                                 |
+| `CAMPAIGN_ENABLED`                      | lifecycle | Off: `send_step` jobs are not leased                                                                                                             |
+| `CAMPAIGN_ENROLLMENT_ENABLED`           | lifecycle | Turns on enrollment materialization; needs `CAMPAIGN_ENROLLMENT_START_AT`                                                                        |
+| `CAMPAIGN_ENROLLMENT_START_AT`          | lifecycle | Canonical `YYYY-MM-DDTHH:MM:SS.mmmZ`; required only when enrollment is on; immutable once recorded (`campaign:v1:configuration`)                 |
+| `GROWTH_OBSERVATION_PROCESSING_ENABLED` | lifecycle | Projects observations each tick                                                                                                                  |
+| `GROWTH_INSTALL_DIGEST_ENABLED`         | lifecycle | Enqueues the weekday install digest                                                                                                              |
+| `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED`  | lifecycle | Approves contacts from install-runtime hello; runs only when `CAMPAIGN_ENROLLMENT_ENABLED` is also `true`                                        |
+| `LIFECYCLE_BATCH_SIZE`                  | lifecycle | Jobs leased per tick, an integer from 1 to 25; default 20                                                                                        |
 
 `tools/vercel/bootstrap.mjs` sets these from the provisioning output.
 `DATABASE_URL` and `B4_DATABASE_URL` come from the Neon integration and the
@@ -83,6 +84,44 @@ On www, a `LIFECYCLE_CRON_ENABLED` value other than exactly `true` or `false`
 answers the cron 503 and logs `[lifecycle-cron-misconfigured]`. An unset or
 `false` value answers 503 quietly. `nudgeLifecycle` (used by PR 6) honours the
 same switch and does nothing unless it is exactly `true`.
+
+## Get unstuck form
+
+Path: `/unstuck` (dynamic page) posts to `POST /_/forms/unstuck` on www. One
+transaction writes the contact, the consent record
+(`form:<id>:accepted`, carrying the disclosure text and its version) and, for
+an unsuppressed address, `form:<id>:accepted:outreach-approved`, then enqueues
+`fulfill` (acknowledgement) and `notify` (founder note, includes the message).
+After commit and close, `nudgeLifecycle` asks the service for a tick; the tick
+materializes enrollment with reason `unstuck_form` and its three `send_step`s.
+A prior unsubscribe still gets `fulfill` and `notify` but no approval; a
+complaint or hard bounce gets nothing. A nudge failure never changes the
+answer.
+
+`GROWTH_UNSTUCK_FORM_ENABLED` (www, exact `true`/`false`, default off): while
+off the route answers 503 before reading the body and `/unstuck` renders the
+fallback address (`brian@liveloveapp.com`, the `UNSTUCK_FALLBACK_ADDRESS`
+constant in `www/src/lib/growth/form-route.ts`, temporary until
+`brian@hashbrown.dev` exists) with no form. The switch also needs
+`LIFECYCLE_CRON_ENABLED=true` on www for the nudge. With the nudge off, accepted
+submissions still land and the cron picks the jobs up on its schedule, so
+replies are slower, not lost.
+
+Limits: 5 submissions per hour per address and 20 per hour per client IP
+(`growth_collection_budgets`, bucket keys prefixed `form:`), 429 with
+`Retry-After`. A limiter fault fails open. The honeypot field and an abuse
+score of 80 or more answer a silent 200 with no jobs. A stale `policy_version`
+answers 409 with the current version. Reusing a `submission_id` with the same
+body returns the original result; with a changed body it answers a retryable
+503 (documented behaviour).
+
+Local check: run `b4 dev` for the lifecycle against the test store (delivery
+off, enrollment on), run `next dev` for www with the same `DATABASE_URL` and
+`GROWTH_UNSTUCK_FORM_ENABLED=true`. `invokeLifecycle` requires a bare HTTPS
+origin, so the nudge is skipped against `http://127.0.0.1`; run the tick by
+hand with `"input":{"trigger":"nudge"}` as in the next sections. Clean up
+afterwards: the contacts (with their activity, jobs and scores), budgets whose
+bucket key starts with `form:`, and the `campaign:v1:configuration` activity.
 
 ## One tick
 
@@ -349,6 +388,9 @@ tick's result and the alerts after each one before the next.
 5. `LIFECYCLE_CRON_ENABLED` (on www)
 6. `GROWTH_INSTALL_DIGEST_ENABLED`
 7. `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED`
+8. `GROWTH_UNSTUCK_FORM_ENABLED` (on www). It goes on after `DELIVERY_ENABLED`
+   and campaign enrollment so the first submission is acknowledged and
+   enrolled, and it needs `LIFECYCLE_CRON_ENABLED` (step 5) for the nudge.
 
 ## Follow-ups
 
