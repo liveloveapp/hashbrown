@@ -28,7 +28,9 @@ export interface CardsProbe {
  * superlative is chat; the same set phrased as a restriction is filter.
  * Arrivals named as a set ("arrivals into Seattle") are a filter on the
  * `approaching` field; a question about them is chat. Departures are chat,
- * since the filter has no departing field.
+ * since the filter has no departing field. A "show me" that only limits
+ * aircraft by kind, airline, type or altitude is a filter; a "show me" that
+ * names an airport, an airspace or the traffic at a place is chat.
  */
 export const ROUTE_PROBES: readonly RouteProbe[] = [
   { input: 'Only jets below 10,000 ft', expected: 'filter' },
@@ -76,6 +78,14 @@ export const ROUTE_PROBES: readonly RouteProbe[] = [
   { input: "What's landing at Portland?", expected: 'chat' },
   { input: 'Which planes are arriving at Seattle?', expected: 'chat' },
   { input: 'Departures from Portland', expected: 'chat' },
+  { input: 'Show me only jets', expected: 'filter' },
+  { input: 'show me just the helicopters', expected: 'filter' },
+  { input: 'Show me planes below 5,000 ft', expected: 'filter' },
+  { input: 'show me only Alaska flights', expected: 'filter' },
+  { input: 'Show me only the turboprops', expected: 'filter' },
+  { input: 'show me the Redmond airspace', expected: 'chat' },
+  { input: 'Show me Boeing Field', expected: 'chat' },
+  { input: 'show me everything arriving at Portland', expected: 'chat' },
   { input: 'clear the filter', expected: 'clear' },
   { input: 'show everything', expected: 'clear' },
   { input: 'remove the filter', expected: 'clear' },
@@ -128,7 +138,7 @@ export const CARDS_PROBES: readonly CardsProbe[] = [
 
 /** The minimum correct answers per set; below any of them the eval fails. */
 export const DECIDE_EVAL_THRESHOLDS = {
-  route: 37,
+  route: 44,
   heldOut: 16,
   cards: 7,
 } as const;
