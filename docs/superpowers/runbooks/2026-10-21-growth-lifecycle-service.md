@@ -417,21 +417,6 @@ tick's result and the alerts after each one before the next.
 
 ## Follow-ups
 
-- Thread retention: b4run keeps one thread and its checkpoints per tick and
-  nudge in the B4 store, and nothing deletes them yet. A retention sweep is a
-  follow-up before PR 7.
-- `reply_reconcile` jobs carry `contact_id` null, so contact deletion does not
-  scrub their `in_reply_to`, `references` and `rfc_message_id` payload. A
-  follow-up clears it.
-- Before PR 7, a persistent non-deterministic handler error must stop blocking
-  the batch: catch per job, defer with backoff, and quarantine after N
-  attempts.
-- Before PR 7, a malformed `GROWTH_PUBLIC_ACTION_ORIGIN` fails every tick once
-  a `fulfill` job exists, even with delivery off, because the unsubscribe URL
-  is built before delivery is checked. Validate the origin when configuration
-  loads and defer the job, rather than throw mid-tick. Add "the origin is a
-  bare HTTPS origin" to the enable checklist.
-- A permanent Get unstuck identity conflict (a reused `submission_id` with a
-  changed body, or jobs owned by another contact) answers a retryable 503,
-  though a retry can never succeed. The browser cannot reach it; for API
-  clients, map it to 409 or 422 without `retryable`.
+- Thread retention: the cron and nudge delete their b4run thread after each
+  run, but threads of runs the client timed out on (mostly nudges) can remain.
+  b4run has no list route, so they need a manual sweep.
