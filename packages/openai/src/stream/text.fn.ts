@@ -26,6 +26,7 @@ async function* textEvents(
     input,
     signal,
     reasoning,
+    builtInTools,
     transformRequestOptions,
   } = options;
   const { threadId, runId } = input;
@@ -38,7 +39,12 @@ async function* textEvents(
   }
 
   try {
-    const baseRequest = createOpenAIRequestOptions(input, model, reasoning);
+    const baseRequest = createOpenAIRequestOptions(
+      input,
+      model,
+      reasoning,
+      builtInTools,
+    );
     const request = transformRequestOptions
       ? await transformRequestOptions(baseRequest)
       : baseRequest;

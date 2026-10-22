@@ -17,6 +17,11 @@ import {
   type StreamState,
 } from '@cacheplane/json-stream';
 import { Chat } from '../models';
+import {
+  isProviderToolCall,
+  reopenCancelledStep,
+  stampStepMetadataStart,
+} from '../models/tool-step';
 import { s } from '../schema';
 import { JsonValue } from '../utils';
 
@@ -594,23 +599,25 @@ function startToolCall(
     if (!existingToolCall) {
       return state;
     }
+    const reopened = reopenCancelledStep(existingToolCall.metadata);
     if (
       state.activeToolCallId === event.toolCallId &&
-      event.metadata === undefined
+      event.metadata === undefined &&
+      reopened === existingToolCall.metadata
     ) {
       return state;
     }
 
-    const metadata = mergeClonedMetadata(
-      existingToolCall.metadata,
-      event.metadata,
+    const metadata = stampStepMetadataStart(
+      mergeClonedMetadata(reopened, event.metadata),
+      event.timestamp,
     );
 
     return {
       ...state,
       activeToolCallId: event.toolCallId,
       toolCalls:
-        event.metadata === undefined
+        event.metadata === undefined && reopened === existingToolCall.metadata
           ? state.toolCalls
           : state.toolCalls.map((toolCall, index) =>
               index === existingToolCallIndex
@@ -623,7 +630,10 @@ function startToolCall(
     };
   }
 
-  const metadata = mergeClonedMetadata(undefined, event.metadata);
+  const metadata = stampStepMetadataStart(
+    mergeClonedMetadata(undefined, event.metadata),
+    event.timestamp,
+  );
   const toolCalls = [
     ...state.toolCalls,
     {
@@ -675,7 +685,9 @@ function appendToolArguments(
 
   const argumentsString = toolCall.arguments + event.delta;
   const metadata = mergeMetadata(toolCall.metadata, incomingMetadata);
-  const tool = state.configSnapshot?.toolsByName[toolCall.name];
+  const tool = isProviderToolCall({ metadata })
+    ? undefined
+    : state.configSnapshot?.toolsByName[toolCall.name];
   let argumentsResolved = toolCall.argumentsResolved;
   let toolParserStateById = state.toolParserStateById;
   let toolCacheById = state.toolCacheById;
@@ -972,7 +984,9 @@ function finalizeToolCalls(
     }
 
     const parserState = readOwn(toolParserStateById, toolCall.id);
-    const tool = toolsByName[toolCall.name];
+    const tool = isProviderToolCall(toolCall)
+      ? undefined
+      : toolsByName[toolCall.name];
     if (!tool) {
       // A server-executed call: finish the schemaless parse and record that
       // its arguments are complete, without ever raising a stream error.

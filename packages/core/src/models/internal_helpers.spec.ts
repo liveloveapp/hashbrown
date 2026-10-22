@@ -874,3 +874,403 @@ test('view and internal conversions keep activity messages and API conversion dr
   expect(roundTripped).toEqual([view]);
   expect(api).toEqual([]);
 });
+
+function stepCall(
+  step: Record<string, unknown>,
+  extra: Partial<Chat.Internal.ToolCall> = {},
+): Record<string, Chat.Internal.ToolCall> {
+  return {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'web_search',
+      arguments: '{"q":"x"}',
+      argumentsResolved: { q: 'x' },
+      argumentsComplete: true,
+      status: 'pending',
+      metadata: { 'b4.step': { v: 1, kind: 'server', ...step } },
+      ...extra,
+    },
+  };
+}
+
+function serverCallsOf(
+  toolCalls: Record<string, Chat.Internal.ToolCall>,
+  tools: AnyTool[] = [],
+) {
+  const [view] = toViewMessagesFromInternal(
+    internalAssistantWithCalls(['call-ws']),
+    toolCalls,
+    tools,
+  );
+  return (view as ViewAssistantMessage<string, AnyTool>).serverToolCalls;
+}
+
+test('a completed step gives outcome success with label and sources', () => {
+  // Arrange
+  const sources = [
+    { id: 's1', kind: 'url', title: 'A', href: 'https://a.test' },
+  ];
+  const toolCalls = stepCall(
+    {
+      kind: 'provider',
+      builtin: 'web_search',
+      status: 'completed',
+      label: "Searched 'x' · 1 source",
+      icon: 'search',
+      queries: ['x'],
+      sources,
+      startedAt: 100,
+      settledAt: 250,
+      parentToolCallId: 'parent',
+    },
+    {
+      status: 'done',
+      result: { status: 'fulfilled', value: 'ok' },
+    },
+  );
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call).toEqual(
+    expect.objectContaining({
+      status: 'complete',
+      outcome: 'success',
+      label: "Searched 'x' · 1 source",
+      icon: 'search',
+      kind: 'provider',
+      builtin: 'web_search',
+      queries: ['x'],
+      sources,
+      parentToolCallId: 'parent',
+      timing: { startedAt: 100, settledAt: 250 },
+      result: { status: 'fulfilled', value: 'ok' },
+    }),
+  );
+});
+
+test('timing comes from the step and is omitted without a start time', () => {
+  // Arrange
+  const started = stepCall({ status: 'running', startedAt: 77 });
+  const unknown = stepCall({ status: 'running', settledAt: 80 });
+
+  // Act
+  const [withStart] = serverCallsOf(started) ?? [];
+  const [without] = serverCallsOf(unknown) ?? [];
+
+  // Assert
+  expect(withStart.timing).toEqual({ startedAt: 77 });
+  expect(withStart).not.toHaveProperty('outcome');
+  expect(without).not.toHaveProperty('timing');
+});
+
+test('a failed step completes the call with a rejected result', () => {
+  // Arrange
+  const toolCalls = stepCall({
+    status: 'failed',
+    error: { message: 'boom' },
+  });
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.status).toBe('complete');
+  expect(call.outcome).toBe('failure');
+  expect(call.error).toEqual({ message: 'boom' });
+  expect(call.result).toEqual({
+    status: 'rejected',
+    reason: { message: 'boom' },
+  });
+});
+
+test('a later successful result never un-fails a failed step', () => {
+  // Arrange
+  const toolCalls = stepCall(
+    { status: 'failed', error: { message: 'boom' } },
+    { status: 'done', result: { status: 'fulfilled', value: 'late' } },
+  );
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.outcome).toBe('failure');
+  expect(call.result).toEqual({
+    status: 'rejected',
+    reason: { message: 'boom' },
+  });
+});
+
+test('a denied step without a result completes with no result', () => {
+  // Arrange
+  const toolCalls = stepCall({ status: 'denied' });
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.status).toBe('complete');
+  expect(call.outcome).toBe('denied');
+  expect(call).not.toHaveProperty('result');
+});
+
+test('a cancelled step without a result completes with no result', () => {
+  // Arrange
+  const toolCalls = stepCall({ status: 'cancelled' });
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.status).toBe('complete');
+  expect(call.outcome).toBe('cancelled');
+  expect(call).not.toHaveProperty('result');
+});
+
+test('a provider step is server-run even when a client tool shares its name', () => {
+  // Arrange
+  const clientTool: AnyTool = {
+    name: 'web_search',
+    description: '',
+    schema: s.object('arguments', { q: s.string('q') }),
+    handler: async () => undefined,
+  };
+  const provider = stepCall({ kind: 'provider', status: 'running' });
+  const server = stepCall({ kind: 'server', status: 'running' });
+
+  // Act
+  const providerCalls = serverCallsOf(provider, [clientTool]);
+  const serverCalls = serverCallsOf(server, [clientTool]);
+
+  // Assert
+  expect(providerCalls).toHaveLength(1);
+  expect(serverCalls).toBeUndefined();
+  const [view] = toViewMessagesFromInternal(
+    internalAssistantWithCalls(['call-ws']),
+    provider,
+    [clientTool],
+  );
+  expect((view as ViewAssistantMessage<string, AnyTool>).toolCalls).toEqual([]);
+});
+
+test('hydrating a provider call does not resolve its arguments against a client schema', () => {
+  // Arrange
+  const clientTool = {
+    name: 'web_search',
+    description: '',
+    schema: s.object('arguments', { q: s.string('q') }),
+    handler: async () => undefined,
+  };
+  const apiMessages: Chat.Api.Message[] = [
+    {
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'call-ws',
+          index: 0,
+          type: 'function',
+          function: { name: 'web_search', arguments: '{"other":1}' },
+          metadata: {
+            'b4.step': { v: 1, kind: 'provider', status: 'running' },
+          },
+        },
+      ],
+    },
+  ];
+
+  // Act
+  const calls = toInternalToolCallsFromApiMessages(apiMessages, {
+    web_search: clientTool,
+  });
+
+  // Assert
+  expect(calls[0].argumentsResolved).toEqual({ other: 1 });
+});
+
+test('the ag-ui-langgraph error sentinel reads as a failure', () => {
+  // Arrange
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'render',
+      arguments: '{}',
+      argumentsComplete: true,
+      status: 'done',
+      result: { status: 'rejected', reason: 'error' },
+    },
+  };
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.outcome).toBe('failure');
+  expect(call.error).toEqual({ message: 'error' });
+  expect(call.status).toBe('complete');
+});
+
+test('any error string on a call without a step reads as a failure', () => {
+  // Arrange
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'render',
+      arguments: '{}',
+      argumentsComplete: true,
+      status: 'done',
+      result: { status: 'rejected', reason: 'Rate limited' },
+    },
+  };
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.outcome).toBe('failure');
+  expect(call.error).toEqual({ message: 'Rate limited' });
+  expect(call.result).toEqual({ status: 'rejected', reason: 'Rate limited' });
+  expect(call.status).toBe('complete');
+});
+
+test('an empty error string on a call without a step gives no outcome', () => {
+  // Arrange
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'render',
+      arguments: '{}',
+      argumentsComplete: true,
+      status: 'done',
+      result: { status: 'rejected', reason: '' },
+    },
+  };
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call).not.toHaveProperty('outcome');
+  expect(call).not.toHaveProperty('error');
+  expect(call.result).toEqual({ status: 'rejected', reason: '' });
+});
+
+test('calls without a step keep todays fields only', () => {
+  // Arrange
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'render',
+      arguments: '{"a":1}',
+      argumentsResolved: { a: 1 },
+      argumentsComplete: true,
+      status: 'pending',
+    },
+  };
+
+  // Act
+  const calls = serverCallsOf(toolCalls);
+
+  // Assert
+  expect(calls).toEqual([
+    {
+      toolCallId: 'call-ws',
+      name: 'render',
+      status: 'executing',
+      args: { a: 1 },
+    },
+  ]);
+});
+
+test('assistant messages expose b4.answer citations and call-less sources', () => {
+  // Arrange
+  const message: Chat.Internal.AssistantMessage = {
+    id: 'assistant-1',
+    role: 'assistant',
+    content: 'Answer',
+    toolCallIds: [],
+    metadata: {
+      'b4.answer': {
+        v: 1,
+        citations: [{ sourceId: 's1', quote: 'cited text', block: 0 }],
+        sources: [
+          { id: 's1', kind: 'url', title: 'Site', href: 'https://a.b' },
+        ],
+        attribution: [
+          {
+            provider: 'google',
+            kind: 'search-suggestions',
+            html: '<div/>',
+            mustRender: true,
+          },
+        ],
+      },
+    },
+  };
+  const plain: Chat.Internal.AssistantMessage = {
+    id: 'assistant-2',
+    role: 'assistant',
+    content: 'Plain',
+    toolCallIds: [],
+  };
+
+  // Act
+  const [view] = toViewMessagesFromInternal(message, {}, []);
+  const [plainView] = toViewMessagesFromInternal(plain, {}, []);
+
+  // Assert
+  expect(view).toMatchObject({
+    citations: [{ sourceId: 's1', quote: 'cited text', block: 0 }],
+    sources: [{ id: 's1', kind: 'url', title: 'Site', href: 'https://a.b' }],
+    attribution: [
+      {
+        provider: 'google',
+        kind: 'search-suggestions',
+        html: '<div/>',
+        mustRender: true,
+      },
+    ],
+  });
+  expect(plainView).not.toHaveProperty('citations');
+  expect(plainView).not.toHaveProperty('sources');
+  expect(plainView).not.toHaveProperty('attribution');
+});
+
+test('an Error-like rejection on a call without a step reads its message as a failure', () => {
+  // Arrange
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'render',
+      arguments: '{}',
+      argumentsComplete: true,
+      status: 'done',
+      result: { status: 'rejected', reason: new Error('Rate limited') },
+    },
+  };
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.outcome).toBe('failure');
+  expect(call.error).toEqual({ message: 'Rate limited' });
+});
+
+test('legacy sources on a stored step get ids from the call id in the view', () => {
+  // Arrange
+  const toolCalls = stepCall({
+    status: 'completed',
+    sources: [{ title: 'A', href: 'https://a.test' }],
+  });
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.sources).toEqual([
+    { id: 'call-ws:0', kind: 'url', title: 'A', href: 'https://a.test' },
+  ]);
+});
