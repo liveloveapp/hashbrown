@@ -129,25 +129,36 @@ interface B4AnswerAnnotations {
 ### Rules
 
 - **Lifecycle comes from the standard events.** START means `inProgress`. END without a result means `executing`. RESULT means `complete`. The step refines this and never replaces it. A producer must stream START live and must not buffer a whole call (AG-UI #2402).
-- **Every write carries the complete step object.** Metadata merges without recursion, so the last write is the current state and no patch logic is needed.
+- **Writes merge field by field, by explicit rules (amended during slice 1).** A producer should write the whole current step, but consumers merge:
+  - Defined fields from the newer write overlay the older one. The ToolMessage's step (RESULT metadata) beats the ToolCall's (START/END metadata and CUSTOM).
+  - A settle out of `running` (`completed`, `failed`, `denied` or `cancelled`) drops the running-only fields `label` and `sources` unless the settle restates them. `icon`, `startedAt`, `queries`, `kind`, `builtin` and `provider` carry over.
+  - A `running` write never contributes fields to a settled step.
+  - A move into a different bad status (`failed`, `denied`, `cancelled`) from `running` or `completed` drops the previous label and sources and takes the new write's. The icon is kept unless the new write supplies one. A repeat of the same status keeps its label.
+  - Steps omit `toolCallId` once stored (it is the key). A failed step always carries `error`, defaulting to `{message: "Tool call did not finish"}`.
 - **Two carriers, one value.**
   - The metadata is authoritative and survives snapshots when the producer controls the events.
   - The CUSTOM `b4.step` is live-only and works everywhere. On ag-ui-langgraph it is the only way graph code can reach the wire, and it is the only signal for the moment execution actually starts, which can be long after END when an approval gate parks the call.
   - A consumer folds a CUSTOM step into that call's `metadata["b4.step"]` using the same merge rules.
-  - A step for an id the consumer hasn't seen yet is held, then applied when START arrives. ag-ui-langgraph emits START only at `on_tool_end` for calls that weren't streamed.
-- **Merge rules.**
+  - A step for an id the consumer hasn't seen yet is held, then applied when START arrives. ag-ui-langgraph emits START only at `on_tool_end` for calls that weren't streamed. Held steps are dropped at every run end.
+- **Status rules.**
   - `failed` wins over every other status.
   - `completed`, `denied` and `cancelled` settle the step unless it has already failed.
   - `running` only lifts an unsettled step.
-  - The ToolMessage's step beats the ToolCall's.
-  - `failed`, `denied` and `cancelled` clear the running label and its sources.
-  - On `RUN_ERROR`, open steps settle as `failed`. On a `RUN_FINISHED` whose outcome is cancelled or interrupt, open steps settle as `cancelled`, except ids in `pendingToolCallIds`.
+  - A `TOOL_CALL_RESULT` that carries no settled step completes a `running` step and clears its running label (sources kept). If the RESULT carries an `error` string it fails the step instead, even when a call-carrier step already said `completed`.
+  - A step that first arrives after a frame-only RESULT merges onto the frame-derived step `{v:1, kind:'server', status:'completed'}` (or `failed` when the RESULT carried an error).
+  - A re-presented `TOOL_CALL_START` reopens a `cancelled` step (back to `running`, label and `settledAt` removed). A RESULT alone never reopens it.
+- **Run ends (AG-UI 1.0 outcomes).**
+  - `RUN_ERROR`: open steps settle `failed`.
+  - `RUN_FINISHED` cancelled: every open step settles `cancelled`.
+  - `RUN_FINISHED` interrupt: open steps settle `cancelled`, except calls named in `outcome.interrupts[].toolCallId` and any `pendingToolCallIds`.
+  - `RUN_FINISHED` success, or no outcome: nothing settles. (A restored thread whose turn ended abnormally settles announced calls with no result as `failed`.)
+  - Settle time is the event's `timestamp`, else the current time.
 - **Failure is signalled three ways:**
   - `status: 'failed'` plus `error` in the step;
   - `ToolMessage.error`, whenever the producer writes a snapshot or a stored thread;
   - readable error text in the result `content`, so the model can correct itself.
 
-  Consumers also read the bare ag-ui-langgraph `error: "error"` sentinel.
+  Consumers read the step first, then a top-level `error` string on `TOOL_CALL_RESULT` (not in AG-UI 1.0's schema, but tolerated by its SDK), then `ToolMessage.error`. The bare ag-ui-langgraph `"error"` sentinel yields `{message: "error"}`.
 - **Labels are computed by the producer and overridable on the client.** For B4 tools they come from `display.running/done/failed`. For provider built-ins, the adapter has a built-in label table. The client checks the app's override first, then the producer's label, then a generic fallback.
 - **Sources live where they were produced, and citations point at them by id.** Sources from a tool call go on that call's step. Grounding that comes with no tool call goes on `b4.answer.sources`. Google attribution is never mixed into sources.
 - **Timing.** Use the producer's `startedAt` and `settledAt`. When a step has no `startedAt`, consumers stamp it from the carrying event's `timestamp` (the CUSTOM event, or TOOL_CALL_START for metadata). A call with no timestamps has no timing; reducers do not read the wall clock for it.
@@ -156,7 +167,8 @@ interface B4AnswerAnnotations {
   - New optional fields and new values of open strings never bump it.
   - Consumers ignore unknown fields.
   - An unknown `status` falls back to the lifecycle given by the events.
-  - A breaking change ships as `v: 2`, and producers write both `v: 1` and `v: 2` for one minor release.
+  - Readers accept `v: 1` and a missing `v` (legacy). Any other `v` is not a step.
+  - A breaking change ships under a new key and CUSTOM name (`b4.step@2`), and producers write both for one minor release. The published JSON Schema validates v1 producer output, so its `status` enum is closed even though readers tolerate unknown statuses.
 - **Replay.**
   - A call with `kind: 'provider'` is never sent back to a model as a function call. Adapters rebuild the provider's native blocks from what they stored on the call (`encryptedValue`, the provider payload in metadata), or drop the call where the provider allows that.
   - B4's inbound path drops any tool call or tool message that has a provider step.
@@ -165,7 +177,7 @@ interface B4AnswerAnnotations {
 
 - **`@b4run/sdk`** (no runtime dependencies) owns:
   - the types and constants: `B4_STEP_METADATA_KEY`, `B4_ANSWER_METADATA_KEY`, `B4_STEP_EVENT_NAME`, and the builtin and icon tables;
-  - the JSON Schema, exported as a const and also shipped as `tool-step.schema.json`;
+  - the JSON Schemas, exported as consts and also shipped as `tool-step.schema.json` and `answer.schema.json`;
   - the pure helpers `readToolStep`, `mergeToolStep` and `settleOpenSteps`;
   - the **fixture corpus** under the published `./testing` export. Each fixture is an AG-UI event stream paired with the expected per-call step view, including the ag-ui-langgraph ordering cases.
 - **Hashbrown** reads the contract with its own parser in core. A conformance spec in `packages/core` runs the `@b4run/sdk` fixtures against hashbrown's reducer (as a devDependency).
