@@ -56,7 +56,7 @@ tick fails and nothing is sent.
 | `B4_PG_SCHEMA`, `B4_PG_TABLE_PREFIX`    | lifecycle | Optional b4run table placement                                                                                                                   |
 | `GROWTH_DATABASE_ENVIRONMENT`           | both      | `production`, `preview` or `test`; must equal `DELIVERY_ENVIRONMENT` or the delivery policy throws                                               |
 | `DELIVERY_ENVIRONMENT`                  | lifecycle | `production`, `preview` or `test`                                                                                                                |
-| `GROWTH_PUBLIC_ACTION_ORIGIN`           | lifecycle | Origin of the signed links in mail                                                                                                               |
+| `GROWTH_PUBLIC_ACTION_ORIGIN`           | lifecycle | Origin of the signed links in mail; a bare HTTPS origin, else the tick raises `action_origin_invalid`                                            |
 | `GROWTH_ACTION_TOKEN_ACTIVE_*`          | both      | Signed link keys                                                                                                                                 |
 | `GROWTH_EMAIL_HMAC_ACTIVE_*`            | both      | Email digest keys                                                                                                                                |
 | `RESEND_API_KEY`                        | lifecycle | Sending key; the sender is a fetch-based Resend client, so the `resend` SDK is not in the bundle                                                 |
@@ -118,8 +118,9 @@ budget, so spam cannot spend a real visitor's address budget. Setup, accept
 and close failures log `[unstuck-form-failed]` with the stage and the error
 name only. A stale `policy_version`
 answers 409 with the current version. Reusing a `submission_id` with the same
-body returns the original result; with a changed body it answers a retryable
-503 (documented behaviour).
+body returns the original result; with a changed body (or a `submission_id` owned by another contact) it
+answers 422 `{ error: 'This submission changed. Please send it again.' }`
+without `retryable`.
 
 Local check: run `b4 dev` for the lifecycle against the test store (delivery
 off, enrollment on), run `next dev` for www with the same `DATABASE_URL` and
@@ -132,8 +133,14 @@ bucket key starts with `form:`, and the `campaign:v1:configuration` activity.
 ## One tick
 
 The cron calls `POST /threads/<uuid>/runs/wait` with
-`{ "route": "/dispatch#workflow", "input": { "trigger": "cron" } }`. The
-workflow reads the switches, then runs these steps in order:
+`{ "route": "/dispatch#workflow", "input": { "trigger": "cron" } }`.
+The cron and the nudge then call `DELETE /threads/<uuid>` for that thread
+(5 s cap, best effort, logged as `[lifecycle-thread-delete-failed]` with the
+status only). b4run refuses the delete while the run is still executing, so
+the threads of client-timed-out runs, mostly nudges, can remain and need a
+manual sweep.
+
+The workflow reads the switches, then runs these steps in order:
 
 1. Resend message-id reconciliation.
 2. Observation projection, when enabled. A failure here raises the
@@ -145,10 +152,22 @@ workflow reads the switches, then runs these steps in order:
 5. Install digest enqueue, when enabled and the Pacific date is a weekday.
 6. Lease up to `LIFECYCLE_BATCH_SIZE` due jobs (kinds `fulfill`, `notify`,
    `send_step`, `reply_reconcile`, `digest`) and dispatch them one at a time.
+   When `GROWTH_PUBLIC_ACTION_ORIGIN` is invalid (`action_origin_invalid`),
+   only `reply_reconcile` is leased.
 
 Each lease lasts 60 seconds and is renewed every 20 seconds. A job that can
 never succeed is quarantined (`deterministic_job_poison`) and the loop
-continues. Overlapping ticks never share a job, because leasing skips locked
+continues. Any other handler error logs `[lifecycle-job-failed]` (kind and
+error name only), defers the job with `last_error_code = 'handler_error'` for
+`min(60 × 2^(attempts − 1), 3600)` seconds, and the loop continues. On the
+5th attempt the job is quarantined as `failed` with `handler_error_exhausted`
+and is never retried by itself, for every kind except `reply_reconcile`, which
+keeps deferring at the capped backoff (a failed reply job is never revived, so
+its contact would not stop). A job whose lease already authorized a submission
+is left leased instead: its lease expires and it later fails as
+`worker_interrupted_after_authorization` for manual review. No alert fires for
+`handler_error_exhausted`, so check for it (see below) after a provider outage
+of about five ticks. Overlapping ticks never share a job, because leasing skips locked
 and live-leased rows. `maxDuration` is 60 seconds. No job starts once 40
 seconds of the tick have passed (`TICK_JOB_START_BUDGET_MS`): the rest are
 released at once with `tick_budget_exhausted` and the next tick leases them.
@@ -318,11 +337,14 @@ so nothing in a preview run may depend on it receiving mail.
 
 Logs from the cron (grep these):
 
-| Log line                         | Meaning                                                           |
-| -------------------------------- | ----------------------------------------------------------------- |
-| `[lifecycle-operator-alert]`     | The tick returned an alert; the alert name follows                |
-| `[lifecycle-cron-failed]`        | The invoke failed (network, non-2xx or invalid state); retry next |
-| `[lifecycle-cron-misconfigured]` | `LIFECYCLE_CRON_ENABLED` is not exactly `true` or `false`         |
+| Log line                           | Meaning                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| `[lifecycle-operator-alert]`       | The tick returned an alert; the alert name follows                              |
+| `[lifecycle-cron-failed]`          | The invoke failed (network, non-2xx or invalid state); retry next               |
+| `[lifecycle-cron-misconfigured]`   | `LIFECYCLE_CRON_ENABLED` is not exactly `true` or `false`                       |
+| `[lifecycle-job-failed]`           | A job's handler threw (kind and error name); it was deferred or quarantined     |
+| `[lifecycle-unbound-count-failed]` | The `message_id_unbound` count query failed; that alert is skipped for the tick |
+| `[lifecycle-thread-delete-failed]` | Deleting a finished run's b4run thread failed or timed out; harmless            |
 
 A `[lifecycle-cron-failed]` on every tick, with no job dispatched, means the
 tick fails before leasing, which holds back all mail (`fulfill` and `notify`
@@ -334,15 +356,18 @@ included). Look for these causes:
 | Email keyring coverage (hello)        | An email redaction uses a key version missing from `GROWTH_EMAIL_HMAC_*` (`identity_key_unavailable`), or a deleted contact is not fenced (`redaction_initialization_required`) |
 | Environment mismatch (reconciliation) | `DELIVERY_ENVIRONMENT` and `GROWTH_DATABASE_ENVIRONMENT` differ ("Provider lookup requires matching environments and credentials")                                              |
 
-| Alert                           | What to do                                                                                                                                                                                                       |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Alert                           | What to do                                                                                                                                                                                                                             |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `mailbox_recovery_required`     | Resend coverage is missing, stale, recovering, or contains unread receipts. Legacy Google recovery state gates only already-admitted historical reconciliation; it cannot pause new Resend campaigns. Follow the Resend pilot runbook. |
-| `observation_projection_failed` | Mail is unaffected. Run `process` by hand (intake runbook) and read the error code.                                                                                                                              |
+| `observation_projection_failed` | Mail is unaffected. Run `process` by hand (intake runbook) and read the error code.                                                                                                                                                    |
+| `action_origin_invalid`         | `GROWTH_PUBLIC_ACTION_ORIGIN` is not a bare HTTPS origin (no path, query, credentials or trailing slash). The tick leases only `reply_reconcile`, so no mail goes out. Fix the variable and redeploy; held jobs run on the next tick.  |
+| `message_id_unbound`            | A completed `fulfill` or `send_step` has had no `rfc_message_id` for over 6 hours and its contact is not deleted. Later `send_step`s for that contact wait. Run the query below.                                                       |
 
-A stall that raises no alert: later `send_step` jobs wait while an earlier sent
+A stall behind `message_id_unbound`: later `send_step` jobs wait while an earlier sent
 message for the contact has no `rfc_message_id`. Message-id reconciliation
-retries with backoff up to hourly, forever, and raises nothing. Find stuck
-messages with this read-only query:
+retries with backoff up to hourly, forever. After 6 hours it raises
+`message_id_unbound`; it raises nothing before then. Find stuck messages with
+this read-only query:
 
 ```sql
 select j.id, j.contact_id, j.kind, j.provider_email_id, j.updated_at
@@ -359,6 +384,31 @@ order by j.updated_at;
 
 Rows here mean the Resend lookup is failing or the message id never arrives.
 Check `RESEND_API_KEY` and the Resend dashboard for that email id.
+
+Find jobs quarantined by repeated handler errors with this read-only query:
+
+```sql
+select id, kind, contact_id, attempts, updated_at
+from growth_jobs
+where status = 'failed'
+  and last_error_code = 'handler_error_exhausted'
+order by updated_at;
+```
+
+After fixing the cause (for example a Resend outage), requeue one job. Reset
+`attempts` so it gets a fresh five tries, and do not requeue a job whose
+provider send may already have been accepted:
+
+```sql
+update growth_jobs
+set status = 'pending',
+    available_at = now(),
+    attempts = 0,
+    last_error_code = null
+where id = '<job id>'
+  and status = 'failed'
+  and last_error_code = 'handler_error_exhausted';
+```
 
 Until PR 6's form route writes `framework`, the founder notification shows
 "Framework: not given".
@@ -390,7 +440,13 @@ tick's result and the alerts after each one before the next.
 2. `DELIVERY_ENABLED`. Prerequisite: the Resend pilot mailbox is enabled,
    the inbound webhook is configured, and recovery has established coverage.
    The operator explicitly waived the canary; historical root-domain reply
-   coverage was retired with the Gmail intake.
+   coverage was retired with the Gmail intake. Also: the origin is a bare
+   HTTPS origin (`GROWTH_PUBLIC_ACTION_ORIGIN`, e.g. `https://hashbrown.dev`,
+   with no trailing slash or path). A bad one does not fail the tick; it
+   raises `action_origin_invalid` and holds back every job except
+   `reply_reconcile`. That alert fires on any tick from the first deploy, not
+   only at enable time, so the variable must be a valid bare HTTPS origin from
+   the first deploy (it is already set in production).
 3. `CAMPAIGN_ENROLLMENT_ENABLED` (with `CAMPAIGN_ENROLLMENT_START_AT`)
 4. `CAMPAIGN_ENABLED`
 5. `LIFECYCLE_CRON_ENABLED` (on www)
@@ -403,21 +459,6 @@ tick's result and the alerts after each one before the next.
 
 ## Follow-ups
 
-- Thread retention: b4run keeps one thread and its checkpoints per tick and
-  nudge in the B4 store, and nothing deletes them yet. A retention sweep is a
-  follow-up before PR 7.
-- `reply_reconcile` jobs carry `contact_id` null, so contact deletion does not
-  scrub their `in_reply_to`, `references` and `rfc_message_id` payload. A
-  follow-up clears it.
-- Before PR 7, a persistent non-deterministic handler error must stop blocking
-  the batch: catch per job, defer with backoff, and quarantine after N
-  attempts.
-- Before PR 7, a malformed `GROWTH_PUBLIC_ACTION_ORIGIN` fails every tick once
-  a `fulfill` job exists, even with delivery off, because the unsubscribe URL
-  is built before delivery is checked. Validate the origin when configuration
-  loads and defer the job, rather than throw mid-tick. Add "the origin is a
-  bare HTTPS origin" to the enable checklist.
-- A permanent Get unstuck identity conflict (a reused `submission_id` with a
-  changed body, or jobs owned by another contact) answers a retryable 503,
-  though a retry can never succeed. The browser cannot reach it; for API
-  clients, map it to 409 or 422 without `retryable`.
+- Thread retention: the cron and nudge delete their b4run thread after each
+  run, but threads of runs the client timed out on (mostly nudges) can remain.
+  b4run has no list route, so they need a manual sweep.

@@ -244,6 +244,30 @@ function rankedCandidatesFromPayload(
   return candidates;
 }
 
+/**
+ * Removes one deleted contact's Message-ID from a reply reconciliation
+ * payload (In-Reply-To, References and ranked candidates) so the job can
+ * still settle for the remaining candidates without pointing at that contact.
+ */
+function stripDeletedReplyReference(
+  payload: Record<string, unknown>,
+  messageId: string,
+): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...payload };
+  if (next['in_reply_to'] === messageId) next['in_reply_to'] = null;
+  if (Array.isArray(next['references'])) {
+    next['references'] = next['references'].filter((id) => id !== messageId);
+  }
+  if (Array.isArray(next['ranked_candidates'])) {
+    next['ranked_candidates'] = next['ranked_candidates'].filter(
+      (candidate) =>
+        (candidate as Record<string, unknown> | null)?.['message_id'] !==
+        messageId,
+    );
+  }
+  return next;
+}
+
 function resolvedCandidatesFromPayload(
   payload: Record<string, unknown>,
 ): ResolvedReplyCandidate[] {
@@ -460,7 +484,9 @@ export class ProviderMessageIdBindingError extends Error {
 /**
  * Binds a provider-reported RFC Message-ID to the completed job that carries
  * `providerEmailId`, then settles any `reply_reconcile` waiting on it (a
- * direct In-Reply-To match stops the contact at once). Only provider-
+ * direct In-Reply-To match stops the contact at once). For a deleted contact
+ * it binds nothing and cancels the historical replies waiting directly on
+ * that message, clearing their payloads. Only provider-
  * authenticated identifiers are bound, never a fabricated Gmail seed.
  *
  * @throws {ProviderMessageIdBindingError} On malformed or conflicting identities.
@@ -524,7 +550,40 @@ export async function bindProviderMessageId(
         'Provider Message-ID binding conflict',
       );
     }
-    if (contact.rows[0].deleted_at !== null) return 'ignored_deleted';
+    if (contact.rows[0].deleted_at !== null) {
+      // A historical reply waiting directly on this message now resolves to a
+      // deleted contact: settle it and drop its payload so no reply metadata
+      // keeps pointing at that contact.
+      await transaction.execute<{ id: string }>(
+        `/* growth:settle-google-reconcile-for-deleted-binding */
+         update growth_jobs
+         set status = 'cancelled',
+             contact_id = $2,
+             payload = '{}'::jsonb,
+             lease_until = null,
+             lease_token = null,
+             last_error_code = 'contact_deleted'
+         where kind = 'reply_reconcile'
+           and status in ('pending', 'leased')
+           and (
+             (
+               payload->'ranked_candidates' is null
+               and payload->>'in_reply_to' = $1
+             )
+             or exists (
+               select 1
+               from jsonb_array_elements(
+                 coalesce(payload->'ranked_candidates', '[]'::jsonb)
+               ) candidate
+               where candidate->>'message_id' = $1
+                 and candidate->>'rank' = '0'
+             )
+           )
+         returning id`,
+        [rfcMessageId, reference.contact_id],
+      );
+      return 'ignored_deleted';
+    }
     const conflicts = await transaction.execute<{ id: string }>(
       `/* growth:check-provider-message-conflicts */
        select id from growth_jobs where id <> $1 and rfc_message_id = $2 limit 1`,
@@ -750,10 +809,12 @@ export async function settleGoogleReplyReconciliation(
             input.jobId,
             input.leaseToken,
             terminal ? 'failed' : 'pending',
-            JSON.stringify({
-              ...job.payload,
-              resolved_candidates: remaining,
-            }),
+            JSON.stringify(
+              stripDeletedReplyReference(
+                { ...job.payload, resolved_candidates: remaining },
+                currentBest.message_id,
+              ),
+            ),
             new Date(now.getTime() + Math.min(60, 2 ** job.attempts) * 60_000),
             terminal ? 'founder_review' : 'reply_lower_reference_deleted',
           ],
@@ -768,11 +829,12 @@ export async function settleGoogleReplyReconciliation(
       const cancelled = await transaction.execute<{ id: string }>(
         `/* growth:cancel-deleted-google-reconcile */
          update growth_jobs
-         set status = 'cancelled', lease_until = null, lease_token = null,
+         set status = 'cancelled', contact_id = $3, payload = '{}'::jsonb,
+             lease_until = null, lease_token = null,
              last_error_code = 'contact_deleted'
          where id = $1 and lease_token = $2::uuid
          returning id`,
-        [input.jobId, input.leaseToken],
+        [input.jobId, input.leaseToken, selected.contact_id],
       );
       if (cancelled.rows.length !== 1) {
         throw new Error(

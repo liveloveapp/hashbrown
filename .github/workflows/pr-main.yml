@@ -44,13 +44,13 @@ jobs:
           cache: npm
 
       - name: Determine affected base
-        uses: nrwl/nx-set-shas@v3
+        uses: nrwl/nx-set-shas@v5
 
       - name: Install dependencies
         run: npm ci
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
@@ -69,7 +69,7 @@ jobs:
 
       - name: Upload runtime smoke diagnostics
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: canonical-example-diagnostics
           path: |

@@ -1,6 +1,7 @@
 import {
   acceptFormSubmission,
   FormRateLimitError,
+  FormSubmissionConflictError,
   type SqlExecutor,
 } from '@hashbrownai-internal/growth';
 import { expect, test, vi } from 'vitest';
@@ -225,6 +226,45 @@ test('rate limit answers 429 with Retry-After and no nudge', async () => {
   expect(await response.json()).toMatchObject({ retryable: true });
   expect(nudge).not.toHaveBeenCalled();
   expect(close).toHaveBeenCalledTimes(1);
+});
+
+test('a changed payload on a reused submission id answers 422 without retryable', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const { route, nudge, close } = harness({
+    accept: vi.fn(async () => {
+      throw new FormSubmissionConflictError(
+        'Form submission identity conflict',
+      );
+    }),
+  });
+
+  const response = await route.POST(post(validBody()));
+
+  expect(response.status).toBe(422);
+  expect(await response.json()).toEqual({
+    error: 'This submission changed. Please send it again.',
+  });
+  expect(nudge).not.toHaveBeenCalled();
+  expect(close).toHaveBeenCalledTimes(1);
+  expect(error.mock.calls).toEqual([
+    [
+      '[unstuck-form-failed]',
+      { stage: 'accept', name: 'FormSubmissionConflictError' },
+    ],
+  ]);
+  error.mockRestore();
+});
+
+test('a byte-identical retry still answers 200', async () => {
+  const { route, accept, nudge } = harness();
+
+  const first = await route.POST(post(validBody()));
+  const retry = await route.POST(post(validBody()));
+
+  expect(first.status).toBe(200);
+  expect(retry.status).toBe(200);
+  expect(accept).toHaveBeenCalledTimes(2);
+  expect(nudge).toHaveBeenCalledTimes(2);
 });
 
 test('a suppressed submission answers a silent 200 without nudging', async () => {

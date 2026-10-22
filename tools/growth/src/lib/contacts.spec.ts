@@ -433,6 +433,7 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
   });
   const harness = executorWith({
     'lock-contact': () => ({ rows: [contactRow()] }),
+    'scrub-reply-reconcile-jobs': emptyRows,
     'delete-artifacts': () => ({ rows: [{ id: 'artifact-id' }] }),
     'cancel-and-scrub-jobs': () => ({
       rows: [
@@ -493,6 +494,7 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
     'lock-contact',
     'insert-activity',
     'cancel-and-scrub-jobs',
+    'scrub-reply-reconcile-jobs',
     'delete-artifacts',
     'unlink-projects',
     'unlink-install-runtime-links',
@@ -533,6 +535,7 @@ test('deleteContact runs the observation redaction inside its transaction', asyn
     'observation-delete-redacted-facts': emptyRows,
     'observation-reset-redacted-work': emptyRows,
     'cancel-and-scrub-jobs': emptyRows,
+    'scrub-reply-reconcile-jobs': emptyRows,
     'delete-artifacts': emptyRows,
     'unlink-projects': emptyRows,
     'unlink-install-runtime-links': emptyRows,
@@ -561,6 +564,7 @@ test('deleteContact runs the observation redaction inside its transaction', asyn
     'observation-delete-redacted-facts',
     'observation-reset-redacted-work',
     'cancel-and-scrub-jobs',
+    'scrub-reply-reconcile-jobs',
     'delete-artifacts',
     'unlink-projects',
     'unlink-install-runtime-links',

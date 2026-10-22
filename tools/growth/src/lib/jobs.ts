@@ -518,6 +518,44 @@ export interface LeaseDueJobsInput {
 }
 
 /**
+ * How many completed `fulfill` or `send_step` jobs were accepted by the
+ * provider (`provider_email_id` set) but still have no `rfc_message_id`
+ * although they were last updated more than `olderThanMs` before `now`.
+ * Contacts that are deleted are not counted. Message-ID reconciliation
+ * retries forever, so a non-zero count means the lookup is failing and
+ * later `send_step` jobs for that contact are waiting.
+ *
+ * @param executor - The database executor.
+ * @param input - The clock and the age after which a missing Message-ID is a stall.
+ * @returns The number of stalled messages.
+ * @throws When `now` is invalid or `olderThanMs` is not a positive integer.
+ */
+export async function countUnboundProviderMessages(
+  executor: Pick<SqlExecutor, 'execute'>,
+  input: { now: Date; olderThanMs: number },
+): Promise<number> {
+  const now = validDate('now', input.now);
+  if (!Number.isInteger(input.olderThanMs) || input.olderThanMs < 1) {
+    throw new Error('olderThanMs must be a positive integer');
+  }
+  const cutoff = new Date(now.getTime() - input.olderThanMs);
+  const result = await executor.execute<{ stalled: number | string }>(
+    `/* growth:count-unbound-provider-messages */
+     select count(*)::int as stalled
+     from growth_jobs job
+     join growth_contacts contact on contact.id = job.contact_id
+     where job.kind in ('fulfill', 'send_step')
+       and job.status = 'completed'
+       and job.provider_email_id is not null
+       and job.rfc_message_id is null
+       and contact.deleted_at is null
+       and job.updated_at < $1`,
+    [cutoff],
+  );
+  return Number(result.rows[0]?.stalled ?? 0);
+}
+
+/**
  * Leases due jobs of the given kinds with `for update skip locked`. Pending
  * jobs and expired leases are leased with a fresh token and an incremented
  * attempt count; an expired lease that was already authorized for submission
