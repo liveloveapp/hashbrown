@@ -20,5 +20,10 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['test/**/*.spec.{ts,tsx}'],
+    // Reset between tests without lifecycle hooks (specs are top-level test() only).
+    mockReset: true,
+    restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
   },
 });

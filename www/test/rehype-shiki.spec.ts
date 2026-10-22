@@ -44,3 +44,11 @@ test('keeps angle brackets inside code as text nodes', async () => {
   expect(tree).not.toContain('"tagName":"hb-render-message"');
   expect(tree).toContain('hb-render-message');
 });
+
+test('marks the highlighted pre with the language actually used', async () => {
+  const known = await toHast('```ts\nconst a = 1;\n```');
+  const unknown = await toHast('```nope\nhello\n```');
+
+  expect(known).toContain('"dataLanguage":"typescript"');
+  expect(unknown).toContain('"dataLanguage":"text"');
+});

@@ -1,5 +1,10 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import Anthropic from '@anthropic-ai/sdk';
+import {
+  type FinishReason,
+  ɵcreateTokenUsage,
+  type ɵRunFinish,
+} from '@hashbrownai/core';
 
 const ABORTED = Symbol('aborted');
 
@@ -289,6 +294,149 @@ function serializeInitialInput(block: ToolBlockState, index: number): string {
   return result;
 }
 
+interface UsageCounts {
+  readonly inputTokens?: number | null;
+  readonly cacheWriteInputTokens?: number | null;
+  readonly cachedInputTokens?: number | null;
+  readonly outputTokens?: number | null;
+  readonly reasoningTokens?: number | null;
+}
+
+type NativeUsage = Partial<
+  Pick<
+    Anthropic.Messages.MessageDeltaUsage,
+    | 'input_tokens'
+    | 'cache_creation_input_tokens'
+    | 'cache_read_input_tokens'
+    | 'output_tokens'
+    | 'output_tokens_details'
+  >
+>;
+
+function latest(
+  next: number | null | undefined,
+  previous: number | null | undefined,
+): number | null | undefined {
+  return typeof next === 'number' ? next : previous;
+}
+
+/**
+ * Folds a native usage report into the counts seen so far. Anthropic repeats
+ * cumulative counts, so the latest non-null value wins.
+ */
+function mergeUsage(
+  previous: UsageCounts,
+  usage: NativeUsage | null | undefined,
+): UsageCounts {
+  if (!isRecord(usage)) {
+    return previous;
+  }
+
+  return {
+    inputTokens: latest(usage.input_tokens, previous.inputTokens),
+    cacheWriteInputTokens: latest(
+      usage.cache_creation_input_tokens,
+      previous.cacheWriteInputTokens,
+    ),
+    cachedInputTokens: latest(
+      usage.cache_read_input_tokens,
+      previous.cachedInputTokens,
+    ),
+    outputTokens: latest(usage.output_tokens, previous.outputTokens),
+    reasoningTokens: latest(
+      usage.output_tokens_details?.thinking_tokens,
+      previous.reasoningTokens,
+    ),
+  };
+}
+
+function count(value: number | null | undefined): number {
+  return typeof value === 'number' ? value : 0;
+}
+
+const STOP_REASONS: Readonly<Record<string, FinishReason>> = {
+  end_turn: 'stop',
+  stop_sequence: 'stop',
+  tool_use: 'tool_calls',
+  max_tokens: 'length',
+  model_context_window_exceeded: 'length',
+  refusal: 'refusal',
+  pause_turn: 'other',
+};
+
+interface StopFields {
+  readonly stopReason?: string | null;
+  readonly stopSequence?: string | null;
+  readonly refusalCategory?: string | null;
+}
+
+function readStopFields(
+  delta: Partial<Anthropic.Messages.RawMessageDeltaEvent['delta']> | undefined,
+): StopFields {
+  if (!isRecord(delta)) {
+    return {};
+  }
+
+  return {
+    stopReason: delta.stop_reason,
+    stopSequence: delta.stop_sequence,
+    refusalCategory: isRecord(delta.stop_details)
+      ? delta.stop_details.category
+      : undefined,
+  };
+}
+
+/**
+ * Builds the run's finish from the message's stop fields and token counts.
+ * AG-UI's `inputTokens` counts every prompt token, so it sums Anthropic's
+ * uncached input with its cache writes and cache reads.
+ */
+function readFinish(options: {
+  readonly model: string | undefined;
+  readonly stop: StopFields;
+  readonly usage: UsageCounts;
+  readonly calledClientTool: boolean;
+}): ɵRunFinish {
+  const { stop, usage } = options;
+  const stopReason = stop.stopReason ?? undefined;
+  const normalized: FinishReason = stopReason
+    ? (STOP_REASONS[stopReason] ?? 'other')
+    : 'other';
+  const finishReason: FinishReason =
+    normalized === 'stop' && options.calledClientTool
+      ? 'tool_calls'
+      : normalized;
+  const hasInput =
+    typeof usage.inputTokens === 'number' ||
+    typeof usage.cacheWriteInputTokens === 'number' ||
+    typeof usage.cachedInputTokens === 'number';
+  const tokenUsage = ɵcreateTokenUsage({
+    provider: 'anthropic',
+    model: options.model,
+    inputTokens: hasInput
+      ? count(usage.inputTokens) +
+        count(usage.cacheWriteInputTokens) +
+        count(usage.cachedInputTokens)
+      : undefined,
+    outputTokens: usage.outputTokens,
+    reasoningTokens: usage.reasoningTokens,
+    cachedInputTokens: usage.cachedInputTokens,
+    cacheWriteInputTokens: usage.cacheWriteInputTokens,
+  });
+
+  return {
+    finishReason,
+    providerMetadata: {
+      ...(stopReason ? { stopReason } : {}),
+      ...(stop.stopSequence ? { stopSequence: stop.stopSequence } : {}),
+      ...(stop.refusalCategory
+        ? { refusalCategory: stop.refusalCategory }
+        : {}),
+    },
+    ...(tokenUsage ? { usage: tokenUsage } : {}),
+  };
+}
+
 /**
  * Options for mapping a raw Anthropic message stream to AG-UI events.
  *
@@ -305,13 +453,15 @@ export interface MapAnthropicEventsOptions {
  *
  * @param options - Raw event source, stable assistant message ID, and cancellation
  * signal.
- * @returns An asynchronous stream of AG-UI message and tool events.
+ * @returns An asynchronous stream of AG-UI message and tool events; the
+ * generator's return value is how the model stopped and the message's token
+ * usage, or `undefined` when mapping stopped on abort.
  *
  * @internal
  */
 export async function* mapAnthropicEvents(
   options: MapAnthropicEventsOptions,
-): AsyncIterable<AGUIEvent> {
+): AsyncGenerator<AGUIEvent, ɵRunFinish | undefined> {
   const iterator = options.events[Symbol.asyncIterator]();
   const seenIndexes = new Set<number>();
   const seenToolIds = new Set<string>();
@@ -321,6 +471,9 @@ export async function* mapAnthropicEvents(
   let textStarted = false;
   let sourceCompleted = false;
   let hasPrimaryError = false;
+  let model: string | undefined;
+  let usage: UsageCounts = {};
+  let stop: StopFields = {};
 
   try {
     while (true) {
@@ -357,6 +510,10 @@ export async function* mapAnthropicEvents(
         }
 
         messageStarted = true;
+        const message: Partial<Anthropic.Messages.Message> | undefined =
+          isRecord(event.message) ? event.message : undefined;
+        model = typeof message?.model === 'string' ? message.model : undefined;
+        usage = mergeUsage(usage, message?.usage);
         continue;
       }
 
@@ -850,6 +1007,8 @@ export async function* mapAnthropicEvents(
               'Anthropic message_delta received while content blocks are open',
             );
           }
+          stop = { ...stop, ...readStopFields(event.delta) };
+          usage = mergeUsage(usage, event.usage);
           break;
 
         case 'message_stop':
@@ -885,6 +1044,13 @@ export async function* mapAnthropicEvents(
     if (!messageStopped) {
       throw new Error('Anthropic stream ended before message_stop');
     }
+
+    return readFinish({
+      model,
+      stop,
+      usage,
+      calledClientTool: seenToolIds.size > 0,
+    });
   } catch (error) {
     hasPrimaryError = true;
     throw error;

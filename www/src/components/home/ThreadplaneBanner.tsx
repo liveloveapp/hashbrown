@@ -8,6 +8,7 @@ export function ThreadplaneBanner() {
       <a
         className={styles.banner}
         href={THREADPLANE_URL}
+        data-surface="homepage_banner"
         target="_blank"
         rel="noopener"
       >

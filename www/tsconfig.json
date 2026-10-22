@@ -30,6 +30,7 @@
   },
   "include": [
     "next-env.d.ts",
+    "instrumentation-client.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "test/**/*.ts",

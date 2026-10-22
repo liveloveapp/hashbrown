@@ -4755,6 +4755,105 @@ test.each([
   }
 });
 
+test('exposes the usage and finish reason of a successful run', async () => {
+  jest.clearAllMocks();
+  const usage = [
+    {
+      provider: 'anthropic',
+      model: 'claude-test',
+      inputTokens: 20,
+      outputTokens: 300,
+      totalTokens: 320,
+    },
+  ];
+  makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId: 'assistant-1',
+          role: 'assistant',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_CONTENT,
+          messageId: 'assistant-1',
+          delta: 'Cut off mid',
+        } as AGUIEvent;
+        yield {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId: 'assistant-1',
+        } as AGUIEvent;
+        yield {
+          type: EventType.RUN_FINISHED,
+          ...identity,
+          usage,
+          metadata: {
+            hashbrown: { finishReason: 'length' },
+            anthropic: { stopReason: 'max_tokens' },
+          },
+        } as AGUIEvent;
+      })(),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+  });
+  const teardown = runtime.start();
+
+  try {
+    await Promise.resolve();
+    expect(runtime.lastRunUsage()).toBeUndefined();
+    expect(runtime.lastRunFinishReason()).toBeUndefined();
+    runtime.sendMessage({ role: 'user', content: 'Write a lot.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(runtime.lastRunUsage()).toEqual(usage);
+    expect(Object.isFrozen(runtime.lastRunUsage())).toBe(true);
+    expect(runtime.lastRunFinishReason()).toBe('length');
+    expect(runtime.error()).toBeUndefined();
+  } finally {
+    teardown();
+  }
+});
+
+test('a failed run publishes no usage or finish reason', async () => {
+  jest.clearAllMocks();
+  makeSelection(async (request) => {
+    const identity = getInputIdentity(request);
+    return {
+      events: (async function* () {
+        yield { type: EventType.RUN_STARTED, ...identity } as AGUIEvent;
+        yield {
+          type: EventType.RUN_ERROR,
+          message: 'failed',
+          usage: [{ provider: 'openai', inputTokens: 3 }],
+        } as AGUIEvent;
+      })(),
+    };
+  });
+  const runtime = createChatRuntime({
+    debounce: 0,
+    system: 'You are a test bot',
+    transport: configuredTransport,
+  });
+  const teardown = runtime.start();
+
+  try {
+    await Promise.resolve();
+    runtime.sendMessage({ role: 'user', content: 'Go.' });
+    await waitForRuntimeIdleAcrossTasks(runtime);
+
+    expect(runtime.lastRunUsage()).toBeUndefined();
+    expect(runtime.lastRunFinishReason()).toBeUndefined();
+  } finally {
+    teardown();
+  }
+});
+
 test('sends one RunAgentInput with tools, structured output, and UI metadata', async () => {
   jest.clearAllMocks();
   const responseSchema = s.object('answer', {

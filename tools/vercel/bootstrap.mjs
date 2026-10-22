@@ -82,6 +82,8 @@ export const TARGETS = Object.freeze([
       'GOOGLE_REPLY_HMAC_SECRET',
       'NEXT_PUBLIC_POSTHOG_TOKEN',
       'NEXT_PUBLIC_POSTHOG_HOST',
+      'NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL',
+      'NEXT_PUBLIC_GROWTH_COLLECTION',
     ],
     // DATABASE_URL is injected by the Neon Marketplace integration; the
     // bootstrap must never upsert it.

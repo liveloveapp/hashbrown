@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { TrackedLink } from '../site/TrackedLink';
 import { bySdk, GITHUB_URL, quickStartUrl } from './home.content';
 import { InstallCommand } from './InstallCommand';
 import { SdkSwitch } from './SdkSwitch';
@@ -15,19 +15,26 @@ export function ClosingCta() {
         <div className={styles.actions}>
           <SdkSwitch
             {...bySdk((sdk) => (
-              <Link className="hb-btn primary" href={quickStartUrl(sdk)}>
+              <TrackedLink
+                className="hb-btn primary"
+                href={quickStartUrl(sdk)}
+                ctaId="closing_quick_start"
+                surface="home"
+              >
                 Quick start →
-              </Link>
+              </TrackedLink>
             ))}
           />
-          <a
+          <TrackedLink
             className="hb-btn"
             href={GITHUB_URL}
             target="_blank"
             rel="noopener"
+            ctaId="closing_github"
+            surface="home"
           >
             Star on GitHub
-          </a>
+          </TrackedLink>
         </div>
       </div>
     </div>

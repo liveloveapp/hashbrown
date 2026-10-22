@@ -101,6 +101,38 @@ Hashbrown's direct provider adapters do not produce a return value. Use it with 
 
 ---
 
+## Token Usage and Finish Reason
+
+Hashbrown also reads how the last completed run ended. `lastRunUsage` holds the token counts from AG-UI's standard `RUN_FINISHED.usage` field, one entry per provider and model. `lastRunFinishReason` says why the model stopped.
+
+```ts
+const usage = chat.lastRunUsage; // TokenUsage[] | undefined
+const reason = chat.lastRunFinishReason; // FinishReason | undefined
+
+if (reason === 'length') {
+  // The answer was cut off by the output token limit.
+}
+```
+
+`lastRunFinishReason` is one of:
+
+| Reason           | Meaning                                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| `stop`           | The model finished its answer.                                                            |
+| `length`         | An output token limit or the context window cut the answer off.                           |
+| `tool_calls`     | The model stopped to call tools.                                                          |
+| `content_filter` | A provider safety filter or guardrail blocked or cut the answer, or blocked the prompt.   |
+| `refusal`        | The model declined to answer.                                                             |
+| `other`          | Any other reason. The provider's own reason is kept in the `RUN_FINISHED` event metadata. |
+
+A truncated, filtered, or refused answer is not an error. The run completes, the partial answer stays in the messages, and the finish reason tells you what happened, so check it when you need to tell the user that an answer was cut off or blocked. Hashbrown's provider packages always report a finish reason, and they report usage whenever the provider does.
+
+Both values follow the same lifecycle as `lastRunResult`: they are cleared when the next run starts and never set by interrupted, cancelled, or failed runs. When one turn spans several runs because the model called your tools, you read the final run's usage, not the turn's total.
+
+Each usage entry follows AG-UI's accounting. `inputTokens` and `outputTokens` are totals. `cachedInputTokens`, `cacheWriteInputTokens`, and `reasoningTokens` are parts of those totals, never additions to them. `totalTokens` is their sum.
+
+---
+
 ## Next Steps
 
 <hb-next-steps>

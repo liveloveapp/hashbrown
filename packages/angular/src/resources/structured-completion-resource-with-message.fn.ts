@@ -107,6 +107,8 @@ export function structuredCompletionResourceWithMessage<
     isRunningToolCalls: resource.isRunningToolCalls,
     sendingError: resource.sendingError,
     lastRunResult: resource.lastRunResult,
+    lastRunUsage: resource.lastRunUsage,
+    lastRunFinishReason: resource.lastRunFinishReason,
     generatingError: resource.generatingError,
     reload,
     stop,

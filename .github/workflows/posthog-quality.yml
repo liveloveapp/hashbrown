@@ -1,0 +1,60 @@
+name: PostHog telemetry quality
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: Days of live events to inspect
+        required: false
+        default: '7'
+      limit_per_event:
+        description: Maximum events to sample per contracted event
+        required: false
+        default: '100'
+  schedule:
+    - cron: '23 14 * * *'
+
+concurrency:
+  group: posthog-telemetry-quality
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DO_NOT_TRACK: '1'
+
+jobs:
+  live-quality:
+    name: Live telemetry contract and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run live telemetry quality check
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY_READONLY }}
+          POSTHOG_HOST: https://us.i.posthog.com
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          QUALITY_DAYS: ${{ github.event.inputs.days || '7' }}
+          QUALITY_LIMIT_PER_EVENT: ${{ github.event.inputs.limit_per_event || '100' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${POSTHOG_PERSONAL_API_KEY:-}" ] || [ -z "${POSTHOG_PROJECT_ID:-}" ]; then
+            echo "::error::POSTHOG_PERSONAL_API_KEY_READONLY and POSTHOG_PROJECT_ID Actions secrets are required."
+            exit 1
+          fi
+          npx nx run posthog:quality:live -- --days "$QUALITY_DAYS" --limit-per-event "$QUALITY_LIMIT_PER_EVENT" --require-critical-coverage

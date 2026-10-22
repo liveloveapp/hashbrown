@@ -1,5 +1,9 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { ɵwithActivities } from '@hashbrownai/core';
+import {
+  ɵcreateRunFinishedEvent,
+  ɵforwardMapped,
+  ɵwithActivities,
+} from '@hashbrownai/core';
 import { AzureOpenAI } from 'openai';
 import { mapAzureEvents } from './azure-events';
 import { createAzureRequestOptions } from './azure-request';
@@ -59,22 +63,25 @@ async function* textEvents(
     const azure = new AzureOpenAI(clientOptions);
     providerStream = azure.responses.stream(request, { signal });
 
-    for await (const event of mapAzureEvents({
-      events: providerStream,
-      messageId,
+    const finish = yield* ɵforwardMapped(
+      mapAzureEvents({
+        events: providerStream,
+        messageId,
+        signal,
+      }),
       signal,
-    })) {
-      yield event;
-      if (signal?.aborted) {
-        return;
-      }
-    }
+    );
 
-    if (signal?.aborted) {
+    if (signal?.aborted || !finish) {
       return;
     }
 
-    yield { type: EventType.RUN_FINISHED, threadId, runId };
+    yield ɵcreateRunFinishedEvent({
+      threadId,
+      runId,
+      provider: 'azure',
+      ...finish,
+    });
   } catch (error: unknown) {
     if (!signal?.aborted) {
       yield { type: EventType.RUN_ERROR, message: normalizeError(error) };

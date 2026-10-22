@@ -25,7 +25,9 @@ import {
   selectIsRunningToolCalls,
   selectIsSending,
   selectLastAssistantMessage,
+  selectLastRunFinishReason,
   selectLastRunResult,
+  selectLastRunUsage,
   selectPendingInterrupts,
   selectRequestResponseSchema,
   selectResponseSchema,
@@ -57,6 +59,7 @@ import {
   ɵpairViewMessagesWithAgUi,
 } from './reducers/ag-ui-message-history';
 import { cloneAndFreezeOptionalJsonValue, type JsonValue } from './utils';
+import type { FinishReason, TokenUsage } from './models/run-finish';
 
 /** Settlement and thread ownership used by completion adapters. @internal */
 export interface ɵRuntimeSchedulingState {
@@ -171,6 +174,21 @@ export interface ChatRuntime<
    * currently shown. Interrupted, cancelled, and failed runs never set it.
    */
   lastRunResult: StateSignal<JsonValue | undefined>;
+  /**
+   * The token usage of the last run that completed (AG-UI's
+   * `RUN_FINISHED.usage`), one entry per provider and model, or `undefined`
+   * when the server reported none. Cleared when the next run starts, so a turn
+   * that calls tools reports only its final run. Interrupted, cancelled, and
+   * failed runs never set it.
+   */
+  lastRunUsage: StateSignal<readonly TokenUsage[] | undefined>;
+  /**
+   * Why the model stopped in the last run that completed, such as `length`
+   * when the answer was cut off, or `undefined` when the server did not say.
+   * Hashbrown's provider packages always report it. Cleared when the next run
+   * starts; interrupted, cancelled, and failed runs never set it.
+   */
+  lastRunFinishReason: StateSignal<FinishReason | undefined>;
   lastAssistantMessage: StateSignal<
     Chat.AssistantMessage<Output, Tools> | undefined
   >;
@@ -322,6 +340,8 @@ export function createChatRuntime(init: {
       generatingError: selectGeneratingError(state),
       error: selectUnifiedError(state),
       lastRunResult: selectLastRunResult(state),
+      lastRunUsage: selectLastRunUsage(state),
+      lastRunFinishReason: selectLastRunFinishReason(state),
       ɵɵinternal: state,
     }),
   });
@@ -648,6 +668,8 @@ export function createChatRuntime(init: {
     generatingError: state.createSignal(selectGeneratingError),
     exhaustedRetries: state.createSignal(selectExhaustedRetries),
     lastRunResult: state.createSignal(selectLastRunResult),
+    lastRunUsage: state.createSignal(selectLastRunUsage),
+    lastRunFinishReason: state.createSignal(selectLastRunFinishReason),
     lastAssistantMessage: state.createSignal(selectLastAssistantMessage),
     threadId: Object.assign(
       () =>

@@ -184,6 +184,32 @@ test('chatResource exposes the last run result from the runtime', () => {
   expect(resource.lastRunResult()).toEqual({ verdict: 'approved' });
 });
 
+test('chatResource exposes the last run usage and finish reason from the runtime', () => {
+  createChatRuntimeMock.mockReset();
+  const lastRunUsage = createSignal<unknown>(undefined);
+  const lastRunFinishReason = createSignal<unknown>(undefined);
+  const runtime = createRuntimeStub({
+    messages: [],
+    lastRunUsage,
+    lastRunFinishReason,
+  });
+  createChatRuntimeMock.mockReturnValue(runtime);
+  TestBed.configureTestingModule({
+    providers: [provideHashbrown({ baseUrl: '/chat' })],
+  });
+
+  const resource = TestBed.runInInjectionContext(() =>
+    chatResource({ system: 'System A' }),
+  );
+  lastRunUsage.set([{ provider: 'openai', inputTokens: 4, outputTokens: 2 }]);
+  lastRunFinishReason.set('content_filter');
+
+  expect(resource.lastRunUsage()).toEqual([
+    { provider: 'openai', inputTokens: 4, outputTokens: 2 },
+  ]);
+  expect(resource.lastRunFinishReason()).toBe('content_filter');
+});
+
 test('chatResource does not resend state when reactive options change', () => {
   createChatRuntimeMock.mockReset();
   const system = signal('System A');
@@ -582,12 +608,16 @@ function createRuntimeStub({
   isLoading = false,
   state = createSignal<unknown>(undefined),
   lastRunResult = createSignal<unknown>(undefined),
+  lastRunUsage = createSignal<unknown>(undefined),
+  lastRunFinishReason = createSignal<unknown>(undefined),
 }: {
   messages: unknown[];
   error?: Error;
   isLoading?: boolean;
   state?: ReturnType<typeof createSignal<unknown>>;
   lastRunResult?: ReturnType<typeof createSignal<unknown>>;
+  lastRunUsage?: ReturnType<typeof createSignal<unknown>>;
+  lastRunFinishReason?: ReturnType<typeof createSignal<unknown>>;
 }) {
   const messagesSignal = createSignal(messages);
 
@@ -608,6 +638,8 @@ function createRuntimeStub({
     generatingError: createSignal(undefined),
     lastAssistantMessage: createSignal(undefined),
     lastRunResult,
+    lastRunUsage,
+    lastRunFinishReason,
     isLoadingThread: createSignal(false),
     isSavingThread: createSignal(false),
     threadLoadError: createSignal(undefined),

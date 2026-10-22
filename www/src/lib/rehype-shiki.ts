@@ -80,7 +80,9 @@ function highlightIn(parent: { children: ElementContent[] }, hl: Highlighter) {
       lang,
       theme: 'hashbrown',
     });
-    return highlighted.children[0] as Element;
+    const pre = highlighted.children[0] as Element;
+    pre.properties = { ...pre.properties, dataLanguage: lang };
+    return pre;
   });
 }
 
