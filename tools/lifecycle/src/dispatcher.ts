@@ -131,6 +131,15 @@ export interface LifecycleDispatcherDependencies {
   renewJobLease: typeof renewJobLease;
   quarantineJob: typeof failLeasedJob;
   deferJob: typeof deferLeasedJob;
+  /**
+   * Whether the job's current lease already holds a
+   * `delivery.submission_authorized` record, so mail may have been handed to
+   * the provider.
+   */
+  hasSubmissionAuthorization: (
+    executor: SqlExecutor,
+    input: { jobId: string; leaseToken: string },
+  ) => Promise<boolean>;
   clearTimeout: typeof globalThis.clearTimeout;
   setTimeout: typeof globalThis.setTimeout;
 }
@@ -173,9 +182,25 @@ export function createLifecycleDispatcherDependencies(
     renewJobLease,
     quarantineJob: failLeasedJob,
     deferJob: deferLeasedJob,
+    hasSubmissionAuthorization: submissionAuthorizationRecorded,
     clearTimeout: globalThis.clearTimeout,
     setTimeout: globalThis.setTimeout,
   };
+}
+
+async function submissionAuthorizationRecorded(
+  executor: SqlExecutor,
+  input: { jobId: string; leaseToken: string },
+): Promise<boolean> {
+  const result = await executor.execute(
+    `/* lifecycle:submission-authorization-recorded */
+     select 1
+     from growth_activity
+     where event_key = 'job:' || $1::text || ':submission-authorized:' || $2::text
+       and kind = 'delivery.submission_authorized'`,
+    [input.jobId, input.leaseToken],
+  );
+  return result.rows.length > 0;
 }
 
 interface LeaseHeartbeat {
@@ -334,7 +359,9 @@ async function prepareTick(
  * (it is no longer ours); any other handler error defers the job
  * `min(60 × 2^(attempts − 1), 3600)` s with `handler_error` and the tick
  * carries on, and the job's 5th failure quarantines it
- * (`handler_error_exhausted`); a `recovery_paused` job is deferred 60 s with
+ * (`handler_error_exhausted`), except that a job whose lease already holds a
+ * submission authorization stays leased (fail closed: the next lease fails
+ * it as `worker_interrupted_after_authorization`); a `recovery_paused` job is deferred 60 s with
  * `mailbox_recovery_paused`. Once {@link TICK_JOB_START_BUDGET_MS} has passed
  * since the tick began, no further job starts: each remaining leased job is
  * deferred to now with `tick_budget_exhausted` (and not counted as
@@ -484,6 +511,19 @@ export async function dispatchLifecycleJobs(
             kind: job.kind,
             name: error instanceof Error ? error.name : 'Error',
           });
+          // A job whose lease already authorized a submission may have
+          // reached the provider. Never return it to pending, which would
+          // authorize and send again: leave it leased so the lease expires
+          // and the next lease fails it as `worker_interrupted_after_authorization`
+          // for manual review.
+          if (
+            await dependencies.hasSubmissionAuthorization(executor, {
+              jobId: job.id,
+              leaseToken,
+            })
+          ) {
+            continue;
+          }
           const now = dependencies.now();
           try {
             if (job.attempts >= HANDLER_ERROR_MAX_ATTEMPTS) {

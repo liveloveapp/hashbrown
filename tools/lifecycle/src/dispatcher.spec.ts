@@ -113,6 +113,7 @@ function dependencies(
       .mockImplementation(async (_executor, request) =>
         leasedJob(request.jobId),
       ),
+    hasSubmissionAuthorization: vi.fn().mockResolvedValue(false),
     clearTimeout,
     setTimeout,
     ...overrides,
@@ -726,4 +727,29 @@ test('an abort still stops the loop after the current job', async () => {
   await expect(failure).rejects.toThrow('tick aborted');
   expect(dispatchLeasedJob).toHaveBeenCalledOnce();
   expect(deps.deferJob).not.toHaveBeenCalled();
+});
+
+test('a handler error after submission authorization leaves the job leased and never defers or quarantines it', async () => {
+  const authorized = failingJob('00000000-0000-4000-8000-000000000001', 5);
+  const healthy = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
+  const deps = dependencies({
+    dispatchLeasedJob: vi
+      .fn()
+      .mockRejectedValueOnce(new Error('acceptance write failed'))
+      .mockResolvedValueOnce('completed'),
+    leaseDueJobs: vi.fn().mockResolvedValue([authorized, healthy]),
+    hasSubmissionAuthorization: vi.fn().mockResolvedValueOnce(true),
+  });
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  logged.mockRestore();
+  expect(result).toMatchObject({ leased: 2, dispatched: 1 });
+  expect(deps.hasSubmissionAuthorization).toHaveBeenCalledWith(
+    expect.anything(),
+    { jobId: authorized.id, leaseToken: LEASE_TOKEN },
+  );
+  expect(deps.deferJob).not.toHaveBeenCalled();
+  expect(deps.quarantineJob).not.toHaveBeenCalled();
 });
