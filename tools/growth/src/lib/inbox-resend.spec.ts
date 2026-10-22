@@ -12,7 +12,7 @@ test('received message enumeration follows every page without skipping same-time
             data: [
               {
                 id: 'first',
-                to: ['brian@replies.hashbrown.dev'],
+                to: ['brian@hashbrown.dev'],
                 created_at: '2026-10-22T01:00:00Z',
               },
             ],
@@ -22,7 +22,7 @@ test('received message enumeration follows every page without skipping same-time
             data: [
               {
                 id: 'second',
-                to: ['brian@replies.hashbrown.dev'],
+                to: ['brian@hashbrown.dev'],
                 created_at: '2026-10-22T01:00:00Z',
               },
             ],

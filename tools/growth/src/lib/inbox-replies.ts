@@ -12,11 +12,10 @@ export const INBOX_PILOT_ADDRESS = 'brian@replies.hashbrown.dev';
 /** Primary reply address after the operator-authorized root MX cutover. */
 export const INBOX_REPLY_ADDRESS = 'brian@hashbrown.dev';
 
-/** Accepts only Brian's root address and the retained legacy reply alias. */
+/** Accepts only Brian's root receiving address; the legacy alias is retired. */
 export function isInboxRecipient(value: unknown): boolean {
   return (
-    typeof value === 'string' &&
-    [INBOX_REPLY_ADDRESS, INBOX_PILOT_ADDRESS].includes(value.toLowerCase())
+    typeof value === 'string' && value.toLowerCase() === INBOX_REPLY_ADDRESS
   );
 }
 
@@ -142,7 +141,7 @@ export async function ensureInboxMailbox(
   if (!result.rows.length) throw new Error('Mailbox recovery start conflict');
 }
 
-/** Admits either exact Brian address into the stable pilot mailbox ledger. */
+/** Admits root-address mail into the stable historical mailbox ledger. */
 export async function admitInboxEvent(
   executor: SqlExecutor,
   payload: unknown,

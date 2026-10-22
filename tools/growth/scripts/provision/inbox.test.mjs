@@ -3,146 +3,119 @@ import test from 'node:test';
 
 import { pilotDnsRecords, provisionInboxPilot } from './inbox.mjs';
 
-test('pilot DNS names are confined to the receiving subdomain', () => {
+const receiving = {
+  record: 'Receiving',
+  name: '',
+  type: 'MX',
+  value: 'receive.forge.rmta.net',
+  priority: 10,
+  status: 'verified',
+};
+
+test('DNS proposals include only root receiving and preserve sending records', () => {
   const records = pilotDnsRecords([
-    { name: '@', type: 'MX', value: 'receive.example.com', priority: 10 },
-    { name: 'resend._domainkey.replies', type: 'TXT', value: 'key' },
+    receiving,
+    { record: 'SPF', name: 'send', type: 'MX', value: 'sending.example.com' },
+    { record: 'DKIM', name: 'resend._domainkey', type: 'TXT', value: 'key' },
   ]);
 
-  assert.equal(records[0].name, 'replies.hashbrown.dev');
-  assert.equal(records[1].name, 'resend._domainkey.replies.hashbrown.dev');
+  assert.deepEqual(records, [{ ...receiving, name: 'hashbrown.dev' }]);
   assert.throws(() =>
-    pilotDnsRecords([{ name: 'hashbrown.dev', type: 'MX', value: 'wrong' }]),
+    pilotDnsRecords([{ ...receiving, name: 'replies.hashbrown.dev' }]),
   );
 });
 
-test('setup defaults to a read-only plan and never changes root receiving', async () => {
+test('missing root domain is a read-only plan and apply never creates a legacy domain', async () => {
   const calls = [];
   const request = async (method, path) => {
     calls.push({ method, path });
-    return { data: [], has_more: false };
+    return { data: [] };
   };
 
   const result = await provisionInboxPilot(request);
+  await assert.rejects(
+    provisionInboxPilot(request, { apply: true }),
+    /Existing Hashbrown root domain required/,
+  );
 
-  assert.deepEqual(result.actions, ['create receiving subdomain']);
-  assert.ok(calls.every(({ method }) => method === 'GET'));
+  assert.equal(result.state, 'planned');
+  assert.ok(calls.every((call) => call.method === 'GET'));
 });
 
-test('apply creates only the pilot domain and waits for DNS verification', async () => {
-  const calls = [];
-  const request = async (method, path, body) => {
-    calls.push({ method, path, body });
-    if (path === '/domains' && method === 'GET') return { data: [] };
-    if (path === '/domains' && method === 'POST') return { id: 'pilot-domain' };
-    if (path === '/domains/pilot-domain' && method === 'GET')
-      return {
-        id: 'pilot-domain',
-        name: 'replies.hashbrown.dev',
-        status: 'pending',
-        capabilities: { receiving: 'enabled' },
-        records: [
-          { name: 'replies', type: 'MX', value: 'receive.example.com' },
-        ],
-      };
-    throw new Error(`unexpected ${method} ${path}`);
-  };
-
-  const result = await provisionInboxPilot(request, { apply: true });
-
-  assert.equal(result.state, 'awaiting_dns');
-  assert.equal(
-    calls.find(({ method }) => method === 'POST').body.name,
-    'replies.hashbrown.dev',
-  );
-  assert.deepEqual(
-    calls.find(({ method }) => method === 'POST').body.capabilities,
-    { sending: 'disabled', receiving: 'enabled' },
-  );
-  assert.equal(result.dns[0].name, 'replies.hashbrown.dev');
-});
-
-test('a verified existing pilot is reused without mutation', async () => {
+test('verified root receiving is reused without mutation', async () => {
   const calls = [];
   const request = async (method, path) => {
     calls.push({ method, path });
     if (path === '/domains')
-      return { data: [{ id: 'pilot-domain', name: 'replies.hashbrown.dev' }] };
-    if (path === '/domains/pilot-domain')
       return {
-        id: 'pilot-domain',
-        name: 'replies.hashbrown.dev',
-        status: 'verified',
-        capabilities: { receiving: 'enabled' },
-        records: [],
+        data: [
+          { id: 'root-domain', name: 'hashbrown.dev' },
+          { id: 'legacy-domain', name: 'replies.hashbrown.dev' },
+        ],
       };
-    throw new Error('unexpected');
+    if (path === '/domains/root-domain')
+      return {
+        name: 'hashbrown.dev',
+        status: 'verified',
+        capabilities: { sending: 'enabled', receiving: 'enabled' },
+        records: [receiving],
+      };
+    throw new Error('Unexpected endpoint');
   };
 
   const result = await provisionInboxPilot(request, { apply: true });
 
   assert.equal(result.state, 'ready');
-  assert.equal(result.address, 'brian@replies.hashbrown.dev');
-  assert.equal(result.inboxId, undefined);
-  assert.ok(calls.every(({ path }) => path.startsWith('/domains')));
-  assert.ok(calls.every(({ method }) => method === 'GET'));
+  assert.equal(result.address, 'brian@hashbrown.dev');
+  assert.ok(calls.every((call) => call.method === 'GET'));
+  assert.ok(calls.every((call) => !call.path.includes('legacy-domain')));
 });
 
-test('a verified domain with disabled receiving is a read-only domain plan', async () => {
+test('disabled root receiving is planned without mutation', async () => {
   const calls = [];
   const request = async (method, path) => {
     calls.push({ method, path });
     if (path === '/domains')
-      return { data: [{ id: 'pilot-domain', name: 'replies.hashbrown.dev' }] };
-    if (path === '/domains/pilot-domain')
-      return {
-        name: 'replies.hashbrown.dev',
-        status: 'verified',
-        capabilities: { receiving: 'disabled' },
-        records: [],
-      };
-    throw new Error('unexpected endpoint');
+      return { data: [{ id: 'root-domain', name: 'hashbrown.dev' }] };
+    return {
+      name: 'hashbrown.dev',
+      status: 'verified',
+      capabilities: { receiving: 'disabled' },
+      records: [],
+    };
   };
 
   const result = await provisionInboxPilot(request);
 
   assert.equal(result.state, 'planned');
-  assert.deepEqual(result.actions, ['enable subdomain receiving']);
-  assert.ok(
-    calls.every(
-      ({ method, path }) => method === 'GET' && path.startsWith('/domains'),
-    ),
-  );
+  assert.deepEqual(result.actions, ['enable root receiving']);
+  assert.ok(calls.every((call) => call.method === 'GET'));
 });
 
-test('apply enables only subdomain receiving and returns its address when verified', async () => {
+test('apply enables root receiving without changing sending or tracking', async () => {
   const calls = [];
   let enabled = false;
   const request = async (method, path, body) => {
     calls.push({ method, path, body });
-    if (method === 'GET' && path === '/domains')
-      return { data: [{ id: 'pilot-domain', name: 'replies.hashbrown.dev' }] };
-    if (method === 'GET' && path === '/domains/pilot-domain')
-      return {
-        name: 'replies.hashbrown.dev',
-        status: 'verified',
-        capabilities: { receiving: enabled ? 'enabled' : 'disabled' },
-        records: [],
-      };
-    if (method === 'PATCH' && path === '/domains/pilot-domain') {
+    if (path === '/domains')
+      return { data: [{ id: 'root-domain', name: 'hashbrown.dev' }] };
+    if (method === 'PATCH') {
       enabled = true;
       return {};
     }
-    throw new Error('unexpected endpoint');
+    return {
+      name: 'hashbrown.dev',
+      status: 'verified',
+      capabilities: { receiving: enabled ? 'enabled' : 'disabled' },
+      records: enabled ? [receiving] : [],
+    };
   };
 
   const result = await provisionInboxPilot(request, { apply: true });
 
   assert.equal(result.state, 'ready');
-  assert.equal(result.address, 'brian@replies.hashbrown.dev');
-  assert.deepEqual(
-    calls.find(({ method }) => method === 'PATCH').body.capabilities,
-    { receiving: 'enabled' },
-  );
-  assert.ok(calls.every(({ path }) => path.startsWith('/domains')));
+  assert.equal(result.address, 'brian@hashbrown.dev');
+  assert.deepEqual(calls.find((call) => call.method === 'PATCH').body, {
+    capabilities: { receiving: 'enabled' },
+  });
 });

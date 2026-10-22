@@ -13,7 +13,7 @@ const config = {
 };
 const now = new Date('2026-10-22T01:00:00Z');
 
-for (const address of ['BRIAN@HASHBROWN.DEV', 'BRIAN@REPLIES.HASHBROWN.DEV']) {
+for (const address of ['BRIAN@HASHBROWN.DEV']) {
   test(`admits ${address} into the existing mailbox ledger`, async () => {
     const { executor, calls } = executorWith({
       'inbox-ensure-mailbox': () => ({ rows: [{ address: config.address }] }),
@@ -175,12 +175,16 @@ for (const address of ['BRIAN@HASHBROWN.DEV', 'BRIAN@REPLIES.HASHBROWN.DEV']) {
 }
 
 for (const address of [
+  'brian@replies.hashbrown.dev',
   'other@hashbrown.dev',
   'brian+tag@hashbrown.dev',
   'brian@threadplane.ai',
 ]) {
   test(`does not admit an unconfigured address ${address}`, async () => {
-    const { executor, calls } = executorWith({});
+    const { executor, calls } = executorWith({
+      'inbox-ensure-mailbox': () => ({ rows: [{ address: config.address }] }),
+      'inbox-admit': () => ({ rows: [] }),
+    });
 
     const result = await admitInboxEvent(
       executor,
@@ -244,4 +248,98 @@ test('authoritative content for a different root alias cannot stop or forward', 
   expect(calls.some((call) => call.marker === 'provider-attempt-insert')).toBe(
     false,
   );
+});
+
+test('recovery skips legacy subdomain mail without admitting or forwarding it', async () => {
+  const { executor, calls } = executorWith({
+    'inbox-admit': () => ({ rows: [] }),
+    'inbox-ensure-mailbox': () => ({ rows: [{ address: config.address }] }),
+    'inbox-recovery-start': () => ({ rows: [{ healthy_through: null }] }),
+    'inbox-unbound': () => ({ rows: [] }),
+    'inbox-list-pending': () => ({ rows: [] }),
+    'inbox-list-unforwarded': () => ({ rows: [] }),
+    'inbox-recovery-complete': () => ({ rows: [{ address: config.address }] }),
+  });
+  const forwardReceipt = vi.fn();
+
+  const result = await recoverInbox(executor, config, {
+    listReceived: async function* () {
+      yield {
+        id: 'legacy-1',
+        to: ['brian@replies.hashbrown.dev'],
+        created_at: now.toISOString(),
+      };
+    },
+    getSent: vi.fn(),
+    getReceived: vi.fn(),
+    stopContact: vi.fn(),
+    forwardReceipt,
+    now: () => now,
+  });
+
+  expect(result).toEqual({ received: 0, processed: 0 });
+  expect(calls.some((call) => call.marker === 'inbox-admit')).toBe(false);
+  expect(forwardReceipt).not.toHaveBeenCalled();
+});
+
+test('legacy subdomain content cannot stop or forward even with a mailbox receipt', async () => {
+  const email = {
+    id: 'legacy-1',
+    to: ['brian@replies.hashbrown.dev'],
+    from: 'reader@example.com',
+    created_at: now.toISOString(),
+    headers: { 'In-Reply-To': '<sent@resend.com>' },
+    raw: { download_url: 'https://example.com/raw' },
+  };
+  const stopContact = vi.fn();
+  const send = vi.fn();
+  const getRaw = vi.fn();
+  const { executor } = executorWith({
+    'inbox-receipt-lock': () => ({
+      rows: [{ recipient: config.address, status: 'pending' }],
+    }),
+    'inbox-match': () => ({
+      rows: [{ contact_id: 'contact-1', rfc_message_id: '<sent@resend.com>' }],
+    }),
+    'inbox-contact-lock': () => ({
+      rows: [
+        {
+          id: 'contact-1',
+          deleted_at: null,
+          email_normalized: 'reader@example.com',
+        },
+      ],
+    }),
+    'inbox-complete': () => ({ rows: [] }),
+    'inbox-forward-receipt': () => ({
+      rows: [
+        {
+          recipient: config.address,
+          forward_provider_id: null,
+          last_error_code: null,
+        },
+      ],
+    }),
+    'inbox-forward-accepted': () => ({ rows: [] }),
+  });
+
+  await expect(
+    processInboxReceipt(executor, email.id, config, {
+      getReceived: async () => email,
+      stopContact,
+    }),
+  ).rejects.toThrow('Received mailbox mismatch');
+  await expect(
+    forwardInboxReceipt(executor, email.id, {
+      environment: 'production',
+      isErasedSender: async () => false,
+      getReceived: async () => email,
+      getRaw,
+      send,
+    }),
+  ).rejects.toThrow('Forward source mismatch');
+
+  expect(stopContact).not.toHaveBeenCalled();
+  expect(send).not.toHaveBeenCalled();
+  expect(getRaw).not.toHaveBeenCalled();
 });
