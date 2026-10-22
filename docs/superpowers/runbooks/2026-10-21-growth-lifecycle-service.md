@@ -116,10 +116,11 @@ The cron route waits up to 58 seconds for the tick and has `maxDuration` 60.
 route answers 503 until `LIFECYCLE_CRON_ENABLED` is `true`, so the schedule is
 harmless while the switch is off.
 
-A cron more often than daily needs `hashbrown-www` on a Vercel Pro team. Brian
-chose Pro on 2026-10-22; the project must be on a Pro team before this lands
-on `main`, because a Hobby team rejects every deploy whose cron runs more than
-once a day. Two ticks fall inside the 07:00 Pacific send window each weekday.
+A cron more often than daily needs a Vercel Pro team; a Hobby team rejects
+every deploy whose cron runs more than once a day. `hashbrown-www` and
+`hashbrown-lifecycle` are on the `blovedev` team, which moved to Pro on
+2026-10-22. Two ticks fall inside the 07:00 Pacific send window each
+weekday.
 
 Before the switch is on, run a tick by hand: the `curl` against
 `/threads/<uuid>/runs/wait` in "Run a tick by hand".
@@ -327,8 +328,6 @@ has a `runtime` block with a `hashbrown.dev/docs` link. The first runtime entry
   block production delivery: without them replies bounce and are never
   detected, so a contact who answers step 1 would still get steps 2 and 3.
   The BCC seed (design section 8.1) arrives with them.
-- Move `hashbrown-www` (and `hashbrown-lifecycle`) to a Vercel Pro team before
-  this PR merges ("Scheduling the tick").
 - Set the Resend webhook signing secret (`RESEND_WEBHOOK_SECRET`) on www.
 - Choose and set `CAMPAIGN_ENROLLMENT_START_AT` when enrollment is enabled. It
   cannot be changed once recorded.
