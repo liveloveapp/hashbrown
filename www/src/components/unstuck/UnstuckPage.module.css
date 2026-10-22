@@ -1,0 +1,25 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px;
+  color: var(--gray-dark, #3d3c3a);
+}
+
+.heading {
+  margin: 0;
+  color: var(--gray, #5e5c5a);
+  font-family: KefirVariable, sans-serif;
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 750;
+  font-variation-settings: 'wght' 750;
+}
+
+.lede {
+  margin: 0;
+  max-width: 560px;
+  font:
+    400 17px/26px Fredoka,
+    sans-serif;
+}

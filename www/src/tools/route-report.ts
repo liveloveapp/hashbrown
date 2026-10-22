@@ -91,7 +91,7 @@ const blogRoutes = [
 
 // The Analog site's other routes; its page files are gone since the cutover.
 // The /samples pages were retired for a redirect to the example app docs.
-const otherRoutes = ['/', '/api', '/privacy'];
+const otherRoutes = ['/', '/api', '/privacy', '/unstuck'];
 
 // Share cards: the default, one per blog post, one per docs page, and the
 // GitHub preview. All prerender at build time.
@@ -109,7 +109,7 @@ for (const [label, routes] of [
   ['docs (llms.txt)', llmsDocs],
   ['api (api-report.min.json)', apiRoutes],
   ['blog (content files)', blogRoutes],
-  ['home, api index, privacy', otherRoutes],
+  ['home, api index, privacy, unstuck', otherRoutes],
   ['share cards', cardRoutes],
 ] as const) {
   const missing = routes.filter((route) => !built.has(route));
