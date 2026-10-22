@@ -6278,3 +6278,173 @@ test('initial messages restore activity messages into the view list with links f
     },
   ]);
 });
+
+function createStepStore(tools: Chat.AnyTool[] = []) {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [], tools }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(
+    apiActions.generateMessageStart({
+      toolsByName: Object.fromEntries(tools.map((tool) => [tool.name, tool])),
+    }),
+  );
+  store.dispatch(
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-1',
+    }),
+  );
+  return store;
+}
+
+function readStepAssistant(store: ReturnType<typeof createStepStore>) {
+  const assistant = store
+    .read(selectViewMessages)
+    .find((message) => message.role === 'assistant');
+  return assistant?.role === 'assistant' ? assistant : undefined;
+}
+
+test('a legacy CUSTOM step without startedAt is timed from its event in the root store', () => {
+  // Arrange
+  const store = createStepStore();
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      timestamp: 1000,
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { toolCallId: 'call-1', status: 'running', label: 'Looking up' },
+      timestamp: 1500,
+    },
+  ]);
+  const assistant = readStepAssistant(store);
+
+  // Assert
+  expect(assistant?.serverToolCalls?.[0]?.label).toBe('Looking up');
+  expect(assistant?.serverToolCalls?.[0]?.timing?.startedAt).toBe(1500);
+});
+
+test('a provider call shares a client tool name without becoming a client call in the root store', () => {
+  // Arrange
+  const clientTool: Chat.AnyTool = {
+    name: 'web_search',
+    description: 'Searches the web.',
+    schema: s.object('web search input', { q: s.string('query') }),
+    handler: async () => 'client result',
+  };
+  const store = createStepStore([clientTool]);
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call-1',
+      toolCallName: 'web_search',
+      parentMessageId: 'assistant-1',
+      timestamp: 1000,
+      metadata: {
+        'b4.step': { v: 1, kind: 'provider', status: 'running' },
+      },
+    } as AGUIEvent,
+  ]);
+  const assistant = readStepAssistant(store);
+
+  // Assert
+  expect(assistant?.toolCalls).toEqual([]);
+  expect(assistant?.serverToolCalls).toEqual([
+    expect.objectContaining({
+      toolCallId: 'call-1',
+      name: 'web_search',
+      kind: 'provider',
+      timing: { startedAt: 1000 },
+    }),
+  ]);
+});
+
+test('a CUSTOM step held before its call starts folds in at START in the root store', () => {
+  // Arrange
+  const store = createStepStore();
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: {
+        v: 1,
+        toolCallId: 'call-1',
+        kind: 'provider',
+        builtin: 'web_search',
+        status: 'running',
+        label: 'Searching',
+      },
+      timestamp: 900,
+    },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call-1',
+      toolCallName: 'web_search',
+      parentMessageId: 'assistant-1',
+      timestamp: 1000,
+    },
+  ]);
+  const assistant = readStepAssistant(store);
+
+  // Assert
+  expect(assistant?.serverToolCalls).toEqual([
+    expect.objectContaining({
+      toolCallId: 'call-1',
+      kind: 'provider',
+      builtin: 'web_search',
+      label: 'Searching',
+      timing: { startedAt: 900 },
+    }),
+  ]);
+});
+
+test('a failed run fails the open step in the root store', () => {
+  // Arrange
+  const store = createStepStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      timestamp: 1000,
+      metadata: {
+        'b4.step': { v: 1, kind: 'server', status: 'running', label: 'Busy' },
+      },
+    } as AGUIEvent,
+  ]);
+
+  // Act
+  dispatchEvents(store, [
+    { type: EventType.RUN_ERROR, message: 'boom', timestamp: 2000 },
+  ]);
+  const assistant = readStepAssistant(store);
+
+  // Assert
+  expect(assistant?.serverToolCalls).toEqual([
+    expect.objectContaining({
+      toolCallId: 'call-1',
+      status: 'complete',
+      outcome: 'failure',
+      error: { message: 'Tool call did not finish' },
+      timing: { startedAt: 1000, settledAt: 2000 },
+    }),
+  ]);
+  expect(assistant?.serverToolCalls?.[0]).not.toHaveProperty('label');
+});

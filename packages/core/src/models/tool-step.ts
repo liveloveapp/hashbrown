@@ -404,6 +404,44 @@ export function settleOpenSteps(
 }
 
 /**
+ * Gives a step with no `startedAt` the time of the event that folded it in,
+ * so timing works without reading a clock. A step that has a `startedAt`, an
+ * unreadable value or an event without a numeric timestamp is unchanged.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param step - A raw or normalized step value.
+ * @param timestamp - The folding event's `timestamp`, if any.
+ * @returns The step, or a copy with `startedAt` set.
+ */
+export function stampStepStart<T>(step: T, timestamp: unknown): T {
+  if (!isRecord(step) || num(timestamp) === undefined) return step;
+  const read = ɵreadToolStep(step);
+  if (read === undefined || read.startedAt !== undefined) return step;
+  return { ...step, startedAt: timestamp } as T;
+}
+
+/**
+ * Applies {@link stampStepStart} to the `b4.step` key of a call's metadata.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param metadata - A tool call's metadata.
+ * @param timestamp - The folding event's `timestamp`, if any.
+ * @returns The metadata, or a copy with the step's `startedAt` set.
+ */
+export function stampStepMetadataStart(
+  metadata: Metadata | undefined,
+  timestamp: unknown,
+): Metadata | undefined {
+  const raw = metadata?.[ɵTOOL_STEP_METADATA_KEY];
+  const stamped = stampStepStart(raw, timestamp);
+  return stamped === raw
+    ? metadata
+    : { ...metadata, [ɵTOOL_STEP_METADATA_KEY]: stamped };
+}
+
+/**
  * Reopens a `cancelled` step when its call is started again, as a resume run
  * does for a call cancelled at an interrupt: status `running`, label and
  * `settledAt` cleared. Any other step, or none, is returned unchanged.

@@ -23,6 +23,8 @@ import { createReducer, on } from '../utils/micro-ngrx';
 import {
   reopenCancelledStep,
   settleOpenSteps,
+  stampStepMetadataStart,
+  stampStepStart,
   ɵmergeStepMetadata,
   ɵmergeToolStep,
   ɵreadToolStep,
@@ -509,7 +511,7 @@ export function applyCanonicalMessageEvent(
       return upsertToolResult(messages, event);
     case EventType.CUSTOM:
       return event.name === ɵTOOL_STEP_EVENT_NAME
-        ? foldCustomToolStep(messages, event.value)
+        ? foldCustomToolStep(messages, event.value, event.timestamp)
         : messages;
     case EventType.RUN_ERROR:
       return settleToolSteps(
@@ -909,9 +911,9 @@ function startToolCall(
     ) {
       return messages;
     }
-    const merged = mergeEventFields(
-      withHeldStep(reopenedTool, heldStep),
-      event,
+    const merged = withStampedStart(
+      mergeEventFields(withHeldStep(reopenedTool, heldStep), event),
+      event.timestamp,
     ) as NonNullable<
       Extract<Message, { role: 'assistant' }>['toolCalls']
     >[number];
@@ -949,16 +951,19 @@ function startToolCall(
     );
   }
   const tool = freezeToolCall(
-    mergeEventFields(
-      withHeldStep(
-        {
-          id: toolCallId,
-          type: 'function' as const,
-          function: { name: toolCallName, arguments: '' },
-        },
-        heldStep,
+    withStampedStart(
+      mergeEventFields(
+        withHeldStep(
+          {
+            id: toolCallId,
+            type: 'function' as const,
+            function: { name: toolCallName, arguments: '' },
+          },
+          heldStep,
+        ),
+        event,
       ),
-      event,
+      event.timestamp,
     ) as NonNullable<
       Extract<Message, { role: 'assistant' }>['toolCalls']
     >[number],
@@ -1254,6 +1259,21 @@ function readHeldStep(
     : undefined;
 }
 
+/**
+ * Stamps the call's step with the START time when the step has no
+ * `startedAt` of its own.
+ */
+function withStampedStart<T extends Record<string, unknown>>(
+  tool: T,
+  timestamp: number | undefined,
+): T {
+  const metadata = tool['metadata'] as Record<string, unknown> | undefined;
+  const stamped = stampStepMetadataStart(metadata, timestamp);
+  return stamped === metadata
+    ? tool
+    : { ...tool, metadata: Object.freeze({ ...stamped }) };
+}
+
 /** Folds a held CUSTOM step into a tool call before its START metadata. */
 function withHeldStep<T extends Record<string, unknown>>(
   tool: T,
@@ -1302,15 +1322,19 @@ function readCustomStepTarget(value: unknown): string | undefined {
 function foldCustomToolStep(
   messages: readonly Readonly<Message>[],
   value: unknown,
+  timestamp: number | undefined,
 ): readonly Readonly<Message>[] {
   const toolCallId = readCustomStepTarget(value);
   if (toolCallId === undefined) return messages;
   const found = findToolCall(messages, toolCallId);
   if (!found) return messages;
-  const metadata = ɵmergeStepMetadata(
-    found.tool.metadata as Record<string, unknown> | undefined,
-    { [ɵTOOL_STEP_METADATA_KEY]: withoutToolCallId(value) },
-    'call',
+  const metadata = stampStepMetadataStart(
+    ɵmergeStepMetadata(
+      found.tool.metadata as Record<string, unknown> | undefined,
+      { [ɵTOOL_STEP_METADATA_KEY]: withoutToolCallId(value) },
+      'call',
+    ),
+    timestamp,
   );
   return replaceToolCall(messages, found, {
     ...found.tool,
@@ -1337,10 +1361,13 @@ function nextPendingToolSteps(
     }
     return Object.freeze({
       ...pending,
-      [id]: ɵmergeToolStep(
-        readHeldStep(pending, id),
-        withoutToolCallId(event.value, true) as ɵToolStepRead,
-        'call',
+      [id]: stampStepStart(
+        ɵmergeToolStep(
+          readHeldStep(pending, id),
+          withoutToolCallId(event.value, true) as ɵToolStepRead,
+          'call',
+        ),
+        event.timestamp,
       ),
     });
   }

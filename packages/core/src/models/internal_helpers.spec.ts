@@ -926,7 +926,6 @@ test('a completed step gives outcome success with label and sources', () => {
     {
       status: 'done',
       result: { status: 'fulfilled', value: 'ok' },
-      arrivedAt: 90,
     },
   );
 
@@ -951,18 +950,18 @@ test('a completed step gives outcome success with label and sources', () => {
   );
 });
 
-test('timing falls back to the arrival time and is omitted when nothing is known', () => {
+test('timing comes from the step and is omitted without a start time', () => {
   // Arrange
-  const running = stepCall({ status: 'running' }, { arrivedAt: 77 });
-  const unknown = stepCall({ status: 'running' });
+  const started = stepCall({ status: 'running', startedAt: 77 });
+  const unknown = stepCall({ status: 'running', settledAt: 80 });
 
   // Act
-  const [withArrival] = serverCallsOf(running) ?? [];
+  const [withStart] = serverCallsOf(started) ?? [];
   const [without] = serverCallsOf(unknown) ?? [];
 
   // Assert
-  expect(withArrival.timing).toEqual({ startedAt: 77 });
-  expect(withArrival).not.toHaveProperty('outcome');
+  expect(withStart.timing).toEqual({ startedAt: 77 });
+  expect(withStart).not.toHaveProperty('outcome');
   expect(without).not.toHaveProperty('timing');
 });
 
@@ -1168,7 +1167,6 @@ test('calls without a step keep todays fields only', () => {
       argumentsResolved: { a: 1 },
       argumentsComplete: true,
       status: 'pending',
-      arrivedAt: 5,
     },
   };
 
@@ -1184,28 +1182,6 @@ test('calls without a step keep todays fields only', () => {
       args: { a: 1 },
     },
   ]);
-});
-
-test('lowering a call that carries arrivedAt leaves the key out of the API messages', () => {
-  // Arrange
-  const message = internalAssistantWithCalls(['call-ws']);
-  const toolCalls: Chat.Internal.ToolCall[] = [
-    {
-      id: 'call-ws',
-      name: 'lookup',
-      arguments: '{"q":"x"}',
-      argumentsResolved: { q: 'x' },
-      status: 'done',
-      result: { status: 'fulfilled', value: 'ok' },
-      arrivedAt: 1234,
-    },
-  ];
-
-  // Act
-  const api = toApiMessagesFromInternal(message, toolCalls);
-
-  // Assert
-  expect(JSON.stringify(api)).not.toContain('arrivedAt');
 });
 
 test('assistant messages expose b4.answer citations and call-less sources', () => {

@@ -220,7 +220,6 @@ test('merges success tool decorations without replacing a canonical settled resu
 
   expect(committed.entities['tool-1']).toEqual({
     ...successTool,
-    arrivedAt: expect.any(Number),
     status: 'done',
     result: { status: 'fulfilled', value: 'canonical result' },
   });
@@ -777,7 +776,6 @@ test('TOOL_CALL_END records that the arguments are complete, once', () => {
     name: 'render',
     arguments: '{"text":"hi"}',
     status: 'pending',
-    arrivedAt: expect.any(Number),
     argumentsComplete: true,
   });
   expect(endedAgain).toBe(ended);
@@ -1123,13 +1121,14 @@ test('a RESULT with an error and no step fails a running step', () => {
   expect(standalone.entities['c1']?.metadata?.['b4.step']).toEqual(failed);
 });
 
-test('records the arrival time at TOOL_CALL_START from the event timestamp, else the clock', () => {
+test('a step on TOOL_CALL_START metadata takes the START timestamp as startedAt', () => {
   // Arrange
   const initialized = reducer(undefined, { type: '@@init' } as never);
   const active = reducer(
     initialized,
     internalActions.generationAttemptStarted(),
   );
+  const step = { v: 1, kind: 'provider', status: 'running' };
 
   // Act
   const stamped = reducer(
@@ -1139,20 +1138,94 @@ test('records the arrival time at TOOL_CALL_START from the event timestamp, else
       toolCallId: 'a',
       toolCallName: 'web_search',
       timestamp: 1234,
-    }),
+      metadata: { 'b4.step': step },
+    } as AGUIEvent),
   );
-  const clocked = reducer(
+  const kept = reducer(
     stamped,
     apiActions.generateMessageEvent({
       type: EventType.TOOL_CALL_START,
       toolCallId: 'b',
       toolCallName: 'web_search',
+      timestamp: 1234,
+      metadata: { 'b4.step': { ...step, startedAt: 99 } },
+    } as AGUIEvent),
+  );
+  const stepless = reducer(
+    kept,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c',
+      toolCallName: 'web_search',
+      timestamp: 1234,
     }),
+  );
+  const untimed = reducer(
+    stepless,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'd',
+      toolCallName: 'web_search',
+      metadata: { 'b4.step': step },
+    } as AGUIEvent),
   );
 
   // Assert
-  expect(stamped.draft.entities['a']?.arrivedAt).toBe(1234);
-  expect(typeof clocked.draft.entities['b']?.arrivedAt).toBe('number');
+  expect(stamped.draft.entities['a']?.metadata?.['b4.step']).toEqual({
+    ...step,
+    startedAt: 1234,
+  });
+  expect(kept.draft.entities['b']?.metadata?.['b4.step']).toEqual({
+    ...step,
+    startedAt: 99,
+  });
+  expect(stepless.draft.entities['c']).not.toHaveProperty('metadata');
+  expect(untimed.draft.entities['d']?.metadata?.['b4.step']).toEqual(step);
+  expect(untimed.draft.entities['d']).not.toHaveProperty('arrivedAt');
+});
+
+test('the root store stamps a step from its START or CUSTOM timestamp only when it has no startedAt', () => {
+  // Arrange
+  const store = createRootStore();
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      timestamp: 1000,
+      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'running' } },
+    } as AGUIEvent,
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { toolCallId: 'c1', status: 'completed' },
+      timestamp: 3000,
+    },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c2',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      timestamp: 1000,
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { toolCallId: 'c2', status: 'running', startedAt: 1200 },
+      timestamp: 1500,
+    },
+  ]);
+
+  // Assert
+  expect(readRootStep(store, 'c1')).toEqual(
+    expect.objectContaining({ status: 'completed', startedAt: 1000 }),
+  );
+  expect(readRootStep(store, 'c2')).toEqual(
+    expect.objectContaining({ status: 'running', startedAt: 1200 }),
+  );
 });
 
 test('a TOOL_CALL_START for a cancelled step reopens it as running', () => {

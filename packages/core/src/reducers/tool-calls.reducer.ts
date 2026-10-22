@@ -15,6 +15,7 @@ import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 import {
   completeRunningStep,
   reopenCancelledStep,
+  stampStepMetadataStart,
   ɵmergeStepMetadata,
 } from '../models/tool-step';
 
@@ -196,7 +197,10 @@ export const reducer = createReducer(
     if (action.payload.type === EventType.TOOL_CALL_START) {
       const existing = readOwn(state.draft.entities, action.payload.toolCallId);
       const reopened = reopenCancelledStep(existing?.metadata);
-      const metadata = mergeMetadata(reopened, action.payload.metadata, 'call');
+      const metadata = stampStepMetadataStart(
+        mergeMetadata(reopened, action.payload.metadata, 'call'),
+        action.payload.timestamp,
+      );
       if (
         existing &&
         metadata === existing.metadata &&
@@ -215,7 +219,6 @@ export const reducer = createReducer(
               name: action.payload.toolCallName,
               arguments: '',
               status: 'pending',
-              arrivedAt: action.payload.timestamp ?? Date.now(),
               ...(metadata === undefined ? {} : { metadata }),
             },
           ]);

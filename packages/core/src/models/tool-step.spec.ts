@@ -3,6 +3,8 @@ import {
   ɵmergeToolStep as mergeToolStep,
   ɵreadAnswerAnnotations as readAnswerAnnotations,
   ɵreadToolStep as readToolStep,
+  stampStepMetadataStart,
+  stampStepStart,
   type ɵToolStep as ToolStep,
 } from './tool-step';
 
@@ -356,4 +358,35 @@ test('an invalid kind in the next value does not count as stated', () => {
 
   expect((fromBogus?.['b4.step'] as ToolStep).kind).toBe('provider');
   expect((fromNull?.['b4.step'] as ToolStep).kind).toBe('provider');
+});
+
+test('stamps startedAt from the event timestamp only when the step has none', () => {
+  const legacy = { toolCallId: 'c1', status: 'running' };
+  const timed = step({ startedAt: 5 });
+
+  const stamped = stampStepStart(legacy, 1500);
+  const kept = stampStepStart(timed, 1500);
+  const untimed = stampStepStart(legacy, undefined);
+  const junk = stampStepStart('junk', 1500);
+
+  expect(stamped).toEqual({ ...legacy, startedAt: 1500 });
+  expect(kept).toBe(timed);
+  expect(untimed).toBe(legacy);
+  expect(junk).toBe('junk');
+});
+
+test('stamps the step in metadata and leaves stepless metadata alone', () => {
+  const metadata = { 'b4.step': step(), openai: { id: 1 } };
+  const stepless = { openai: { id: 1 } };
+
+  const stamped = stampStepMetadataStart(metadata, 1000);
+  const untouched = stampStepMetadataStart(stepless, 1000);
+
+  expect(stamped).toEqual({
+    'b4.step': step({ startedAt: 1000 }),
+    openai: { id: 1 },
+  });
+  expect(metadata['b4.step']).not.toHaveProperty('startedAt');
+  expect(untouched).toBe(stepless);
+  expect(stampStepMetadataStart(undefined, 1000)).toBeUndefined();
 });

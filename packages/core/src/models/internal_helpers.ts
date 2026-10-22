@@ -267,8 +267,7 @@ function toServerToolCalls(
             : 'inProgress';
       const error =
         steplessError !== undefined ? { message: steplessError } : step?.error;
-      const startedAt =
-        step === undefined ? undefined : (step.startedAt ?? toolCall.arrivedAt);
+      const startedAt = step?.startedAt;
       const result: PromiseSettledResult<unknown> | undefined =
         outcome === 'failure' && step?.error !== undefined
           ? { status: 'rejected', reason: step.error }

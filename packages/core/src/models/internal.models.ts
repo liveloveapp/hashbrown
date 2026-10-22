@@ -44,12 +44,6 @@ export interface ToolCall {
   status: 'pending' | 'done';
 
   /**
-   * Epoch milliseconds when `TOOL_CALL_START` arrived: the event timestamp
-   * when it carried one, else the local clock. Fallback for step timing.
-   */
-  arrivedAt?: number;
-
-  /**
    * Opaque provider continuation data preserved across AG-UI runs.
    * Hashbrown does not inspect or display this value.
    */

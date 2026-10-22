@@ -17,7 +17,11 @@ import {
   type StreamState,
 } from '@cacheplane/json-stream';
 import { Chat } from '../models';
-import { isProviderToolCall, reopenCancelledStep } from '../models/tool-step';
+import {
+  isProviderToolCall,
+  reopenCancelledStep,
+  stampStepMetadataStart,
+} from '../models/tool-step';
 import { s } from '../schema';
 import { JsonValue } from '../utils';
 
@@ -604,7 +608,10 @@ function startToolCall(
       return state;
     }
 
-    const metadata = mergeClonedMetadata(reopened, event.metadata);
+    const metadata = stampStepMetadataStart(
+      mergeClonedMetadata(reopened, event.metadata),
+      event.timestamp,
+    );
 
     return {
       ...state,
@@ -623,7 +630,10 @@ function startToolCall(
     };
   }
 
-  const metadata = mergeClonedMetadata(undefined, event.metadata);
+  const metadata = stampStepMetadataStart(
+    mergeClonedMetadata(undefined, event.metadata),
+    event.timestamp,
+  );
   const toolCalls = [
     ...state.toolCalls,
     {
@@ -631,7 +641,6 @@ function startToolCall(
       name: event.toolCallName,
       arguments: '',
       status: 'pending' as const,
-      arrivedAt: event.timestamp ?? Date.now(),
       ...(metadata !== undefined ? { metadata } : {}),
     },
   ];
