@@ -893,9 +893,13 @@ function projectToolCall(
     Object.hasOwn(toolsByName, toolCall.function.name)
       ? toolsByName[toolCall.function.name]
       : undefined;
-  const merged = mergeMetadata(toolCall.metadata, result?.metadata);
+  const merged = mergeMetadata(
+    toolCall.metadata,
+    result?.metadata,
+    toolCall.id,
+  );
   const metadata = result
-    ? completeRunningStep(merged, readResultError(result))
+    ? completeRunningStep(merged, readResultError(result), toolCall.id)
     : merged;
   const encryptedValue = toolCall.encryptedValue ?? result?.encryptedValue;
   const argumentsResolved =
@@ -927,13 +931,14 @@ function projectToolCall(
 function mergeMetadata(
   first: Record<string, unknown> | undefined,
   second: Record<string, unknown> | undefined,
+  toolCallId: string,
 ): Record<string, unknown> | undefined {
   if (first === undefined && second === undefined) {
     return undefined;
   }
 
   return structuredClone({
-    ...ɵmergeStepMetadata(first, second ?? {}, 'message'),
+    ...ɵmergeStepMetadata(first, second ?? {}, 'message', toolCallId),
   });
 }
 

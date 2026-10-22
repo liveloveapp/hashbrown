@@ -1237,3 +1237,40 @@ test('assistant messages expose b4.answer citations and call-less sources', () =
   expect(plainView).not.toHaveProperty('sources');
   expect(plainView).not.toHaveProperty('attribution');
 });
+
+test('an Error-like rejection on a call without a step reads its message as a failure', () => {
+  // Arrange
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'render',
+      arguments: '{}',
+      argumentsComplete: true,
+      status: 'done',
+      result: { status: 'rejected', reason: new Error('Rate limited') },
+    },
+  };
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.outcome).toBe('failure');
+  expect(call.error).toEqual({ message: 'Rate limited' });
+});
+
+test('legacy sources on a stored step get ids from the call id in the view', () => {
+  // Arrange
+  const toolCalls = stepCall({
+    status: 'completed',
+    sources: [{ title: 'A', href: 'https://a.test' }],
+  });
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.sources).toEqual([
+    { id: 'call-ws:0', kind: 'url', title: 'A', href: 'https://a.test' },
+  ]);
+});

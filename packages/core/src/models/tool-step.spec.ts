@@ -1,5 +1,6 @@
 import {
   completeRunningStep,
+  isProviderToolCall,
   ɵmergeStepMetadata as mergeStepMetadata,
   ɵmergeToolStep as mergeToolStep,
   ɵreadAnswerAnnotations as readAnswerAnnotations,
@@ -89,7 +90,7 @@ test('keeps provider kind and open fields', () => {
     kind: 'provider',
     builtin: 'web_search',
     icon: 'sparkle',
-    status: 'running',
+    status: 'failed',
     queries: ['a', 3],
     parentToolCallId: 'p',
     error: { message: 'x', code: 'y' },
@@ -102,7 +103,7 @@ test('keeps provider kind and open fields', () => {
     kind: 'provider',
     builtin: 'web_search',
     icon: 'sparkle',
-    status: 'running',
+    status: 'failed',
     queries: ['a'],
     parentToolCallId: 'p',
     error: { message: 'x', code: 'y' },
@@ -590,4 +591,136 @@ test('reads a result failure from a non-empty string or an Error-like message', 
     undefined,
     undefined,
   ]);
+});
+
+test('reads error only on a failed step', () => {
+  const error = { message: 'x', code: 'y' };
+
+  const completed = readToolStep({ v: 1, status: 'completed', error });
+  const failed = readToolStep({ v: 1, status: 'failed', error });
+
+  expect(completed).not.toHaveProperty('error');
+  expect(failed?.error).toEqual(error);
+});
+
+test('every merge strips error from a step that is not failed', () => {
+  const stray = { error: { message: 'stale' } };
+
+  const first = mergeToolStep(
+    undefined,
+    { v: 1, kind: 'server', status: 'completed', ...stray },
+    'call',
+  );
+  const settled = mergeToolStep(
+    step({ ...stray }),
+    { v: 1, kind: 'server', status: 'denied' },
+    'message',
+  );
+  const kept = mergeToolStep(
+    step({ status: 'completed', ...stray }),
+    { v: 1, kind: 'server', status: 'completed' },
+    'call',
+  );
+
+  expect(first).not.toHaveProperty('error');
+  expect(settled).not.toHaveProperty('error');
+  expect(kept).not.toHaveProperty('error');
+});
+
+test('a RESULT completes a running step from its normalized form', () => {
+  const metadata = {
+    'b4.step': {
+      status: 'running',
+      label: 'Busy',
+      icon: 'i',
+      error: { message: 'stale' },
+      sources: [{ title: 'A' }],
+      extra: true,
+    },
+  };
+
+  const result = completeRunningStep(metadata, undefined, 'c1');
+
+  expect(result?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+    icon: 'i',
+    sources: [{ id: 'c1:0', kind: 'record', title: 'A' }],
+  });
+});
+
+test('a value without a string status is not a step', () => {
+  const values = [{ v: 1 }, { v: 1, status: 3 }, { status: null }];
+
+  const result = values.map((value) => readToolStep(value));
+
+  expect(result).toEqual([undefined, undefined, undefined]);
+  expect(readToolStep({ v: 1, status: 'paused' })).toEqual({
+    v: 1,
+    kind: 'server',
+  });
+});
+
+test('empty strings read as absent', () => {
+  const value = {
+    v: 1,
+    toolCallId: '',
+    status: 'failed',
+    label: '',
+    icon: '',
+    builtin: '',
+    provider: '',
+    error: { message: '', code: '' },
+    sources: [
+      { id: '', title: 'A', href: '' },
+      { id: 's', title: '' },
+    ],
+  };
+
+  const read = readToolStep(value, 'c1');
+  const merged = read && mergeToolStep(undefined, read, 'call');
+
+  expect(read).toEqual({
+    v: 1,
+    toolCallId: 'c1',
+    kind: 'server',
+    status: 'failed',
+    sources: [{ id: 'c1:0', kind: 'record', title: 'A' }],
+  });
+  expect(merged?.error).toEqual({ message: 'Tool call did not finish' });
+});
+
+test('metadata merges give legacy sources ids from the call id and store no call id', () => {
+  const legacy = {
+    'b4.step': { status: 'running', sources: [{ title: 'A' }] },
+  };
+
+  const first = mergeStepMetadata(undefined, legacy, 'call', 'c1');
+  const next = mergeStepMetadata(
+    { 'b4.step': { status: 'running', sources: [{ title: 'B' }] } },
+    { 'b4.step': { status: 'running', label: 'x' } },
+    'call',
+    'c1',
+  );
+
+  expect(first?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    sources: [{ id: 'c1:0', kind: 'record', title: 'A' }],
+  });
+  expect((next?.['b4.step'] as ToolStep).sources).toEqual([
+    { id: 'c1:0', kind: 'record', title: 'B' },
+  ]);
+});
+
+test('a provider kind marks a call as a provider call even without a readable status', () => {
+  const statusless = { metadata: { 'b4.step': { v: 1, kind: 'provider' } } };
+  const future = { metadata: { 'b4.step': { v: 2, kind: 'provider' } } };
+  const server = { metadata: { 'b4.step': { kind: 'server' } } };
+
+  const results = [statusless, future, server].map(isProviderToolCall);
+
+  expect(results).toEqual([true, false, false]);
 });

@@ -1234,6 +1234,7 @@ function mergeEventFields<T extends Record<string, unknown>>(
               message['metadata'] as Record<string, unknown> | undefined,
               ɵownAgUiJsonValue(metadata) as Record<string, unknown>,
               message['role'] === 'tool' ? 'message' : 'call',
+              readStepCallId(message),
             ),
           }),
         }),
@@ -1244,6 +1245,17 @@ function mergeEventFields<T extends Record<string, unknown>>(
     JSON.stringify(next) === JSON.stringify(message)
     ? message
     : Object.freeze(next);
+}
+
+/** The call a tool call or tool message's step belongs to, if it is one. */
+function readStepCallId(message: Record<string, unknown>): string | undefined {
+  const id =
+    message['role'] === 'tool'
+      ? message['toolCallId']
+      : 'function' in message
+        ? message['id']
+        : undefined;
+  return typeof id === 'string' ? id : undefined;
 }
 
 function ownEventField(event: object, field: string): unknown {
@@ -1294,6 +1306,7 @@ function withHeldStep<T extends Record<string, unknown>>(
         tool['metadata'] as Record<string, unknown> | undefined,
         { [ɵTOOL_STEP_METADATA_KEY]: heldStep },
         'call',
+        tool['id'] as string | undefined,
       ),
     }),
   };
@@ -1341,6 +1354,7 @@ function foldCustomToolStep(
     base.metadata as Record<string, unknown> | undefined,
     { [ɵTOOL_STEP_METADATA_KEY]: withoutToolCallId(value) },
     'call',
+    toolCallId,
   );
   // A running write never contributes to a settled step, not even its time.
   const ignored =

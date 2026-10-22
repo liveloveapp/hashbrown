@@ -78,10 +78,11 @@ function mergeMetadata(
   first: Chat.Internal.ToolCall['metadata'],
   second: Record<string, unknown> | undefined,
   source: 'call' | 'message',
+  toolCallId: string,
 ): Chat.Internal.ToolCall['metadata'] | undefined {
   if (second === undefined) return first;
   const merged = structuredClone(
-    ɵmergeStepMetadata(first, second, source) ?? {},
+    ɵmergeStepMetadata(first, second, source, toolCallId) ?? {},
   ) as Record<string, unknown>;
   return sameMetadata(first, merged) ? first : merged;
 }
@@ -228,7 +229,12 @@ export const reducer = createReducer(
       const existing = readOwn(state.draft.entities, action.payload.toolCallId);
       const reopened = reopenCancelledStep(existing?.metadata);
       const metadata = stampStepMetadataStart(
-        mergeMetadata(reopened, action.payload.metadata, 'call'),
+        mergeMetadata(
+          reopened,
+          action.payload.metadata,
+          'call',
+          action.payload.toolCallId,
+        ),
         action.payload.timestamp,
       );
       if (
@@ -296,6 +302,7 @@ export const reducer = createReducer(
         withFrameResultStep(existing, event.metadata),
         event.metadata,
         'call',
+        id,
       );
       const ending = event.type === EventType.TOOL_CALL_END;
       const activeToolCallId = ending ? undefined : id;
@@ -377,10 +384,12 @@ export const reducer = createReducer(
         existing.metadata,
         action.payload.metadata,
         'message',
+        action.payload.toolCallId,
       );
       const metadata = completeRunningStep(
         merged,
         readResultFailure(error),
+        action.payload.toolCallId,
       ) as typeof merged;
       const draft = updateEntity(state.draft, action.payload.toolCallId, {
         status: 'done',
@@ -719,6 +728,7 @@ function reconcilePreparedEntities(
       existing.metadata,
       toolCall.metadata,
       'message',
+      toolCall.id,
     );
     const encryptedValue = toolCall.encryptedValue;
     return metadata === existing.metadata &&

@@ -88,7 +88,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function str(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
+  return typeof value === 'string' && value !== '' ? value : undefined;
 }
 
 function num(value: unknown): number | undefined {
@@ -98,7 +98,7 @@ function num(value: unknown): number | undefined {
 }
 
 function time(value: unknown): number | undefined {
-  if (typeof value === 'string') {
+  if (typeof value === 'string' && value !== '') {
     const parsed = Date.parse(value);
     return Number.isNaN(parsed) ? undefined : parsed;
   }
@@ -150,11 +150,14 @@ function readSources(
  * Reads a `b4.step` value, whether v1 or legacy, into a normalized step.
  * A legacy value gets `v: 1`, `kind: 'server'`, source ids of the form
  * `<toolCallId>:<index>` and epoch-millisecond times. Labels are cut to 120
- * code points and an unknown status reads as an undefined status.
+ * code points and an unknown status string reads as an undefined status.
+ * Empty strings read as absent, a source without a title is dropped, and
+ * `error` is kept only on a `failed` step. Mirrors B4's `readToolStep`.
  *
  * @param value - The raw metadata or event value.
  * @param toolCallId - The call id to use when the value carries none.
- * @returns The step, or `undefined` when the value is not a v1 or legacy step.
+ * @returns The step, or `undefined` when the value is not a record, has no
+ *   string `status`, or has a `v` other than 1.
  */
 export function ɵreadToolStep(
   value: unknown,
@@ -162,16 +165,18 @@ export function ɵreadToolStep(
 ): ɵToolStepRead | undefined {
   if (!isRecord(value)) return undefined;
   if (value['v'] !== undefined && value['v'] !== 1) return undefined;
+  if (typeof value['status'] !== 'string') return undefined;
+  const status = STATUSES.includes(value['status'])
+    ? (value['status'] as ɵToolStepStatus)
+    : undefined;
   const id = str(value['toolCallId']) ?? toolCallId;
   const label = str(value['label']);
-  const error = isRecord(value['error'])
-    ? str(value['error']['message']) !== undefined
-      ? compact({
-          message: value['error']['message'] as string,
-          code: str(value['error']['code']),
-        })
-      : undefined
-    : undefined;
+  const rawError = isRecord(value['error']) ? value['error'] : undefined;
+  const message = str(rawError?.['message']);
+  const error =
+    status === 'failed' && message !== undefined
+      ? compact({ message, code: str(rawError?.['code']) })
+      : undefined;
   return compact({
     v: 1 as const,
     toolCallId: id,
@@ -181,9 +186,7 @@ export function ɵreadToolStep(
         : ('server' as const),
     builtin: str(value['builtin']),
     provider: str(value['provider']),
-    status: STATUSES.includes(value['status'] as string)
-      ? (value['status'] as ɵToolStepStatus)
-      : undefined,
+    status,
     label:
       label === undefined
         ? undefined
@@ -192,7 +195,7 @@ export function ɵreadToolStep(
     queries: Array.isArray(value['queries'])
       ? value['queries'].filter((q): q is string => typeof q === 'string')
       : undefined,
-    sources: readSources(value['sources'], id ?? ''),
+    sources: readSources(value['sources'], id ?? 'step'),
     startedAt: time(value['startedAt']),
     settledAt: time(value['settledAt']),
     parentToolCallId: str(value['parentToolCallId']),
@@ -271,7 +274,8 @@ const BAD = ['failed', 'denied', 'cancelled'];
  * never contributes fields to a settled step. Otherwise the incoming step's
  * defined fields overlay the held ones, except that a call write onto a
  * settled step only fills fields the step lacks. A failed step with no error
- * gets a default one. Mirrors B4's `mergeToolStep`.
+ * gets a default one, and any other step carries no error. Mirrors B4's
+ * `mergeToolStep`.
  *
  * @param previous - The step held so far, if any.
  * @param next - The incoming step.
@@ -283,13 +287,27 @@ export function ɵmergeToolStep(
   next: ɵToolStepRead,
   source: 'call' | 'message',
 ): ɵToolStep {
-  return withDefaultError(mergeSteps(previous, next, source));
+  return withErrorRule(mergeSteps(previous, next, source));
 }
 
-function withDefaultError(step: ɵToolStep): ɵToolStep {
-  return step.status === 'failed' && step.error === undefined
-    ? { ...step, error: { message: 'Tool call did not finish' } }
-    : step;
+/** The step without `toolCallId`, which its call already names. */
+function withoutToolCallId(step: ɵToolStep): ɵToolStep {
+  return Object.fromEntries(
+    Object.entries(step).filter(([key]) => key !== 'toolCallId'),
+  ) as unknown as ɵToolStep;
+}
+
+/** A failed step always carries an error; any other step never does. */
+function withErrorRule(step: ɵToolStep): ɵToolStep {
+  if (step.status === 'failed') {
+    return step.error === undefined || step.error.message === ''
+      ? { ...step, error: { message: 'Tool call did not finish' } }
+      : step;
+  }
+  if (step.error === undefined) return step;
+  return Object.fromEntries(
+    Object.entries(step).filter(([key]) => key !== 'error'),
+  ) as unknown as ɵToolStep;
 }
 
 function mergeSteps(
@@ -339,24 +357,31 @@ function withoutRunningFields(step: ɵToolStep): ɵToolStep {
  * A shallow metadata merge, like a plain spread, except that the `b4.step`
  * key goes through {@link ɵmergeToolStep}. An unreadable incoming step keeps
  * the previous step, or its own raw value when there is none; readers ignore
- * a raw value they cannot read.
+ * a raw value they cannot read. With a `toolCallId`, both steps are read
+ * with it, so legacy sources get `<toolCallId>:<index>` ids, and the stored
+ * step omits `toolCallId` (the call names it).
  *
  * @param previous - Metadata held so far.
  * @param next - Incoming metadata.
  * @param source - Whether the incoming metadata came from a call or a message.
+ * @param toolCallId - The id of the call the metadata belongs to, if known.
  * @returns The merged metadata, or `undefined` when both sides are absent.
  */
 export function ɵmergeStepMetadata(
   previous: Metadata | undefined,
   next: Metadata | undefined,
   source: 'call' | 'message',
+  toolCallId?: string,
 ): Metadata | undefined {
   if (next === undefined) return previous;
   const merged: Record<string, unknown> = { ...previous, ...next };
   if (ɵTOOL_STEP_METADATA_KEY in next) {
     const rawNext = next[ɵTOOL_STEP_METADATA_KEY];
-    const nextStep = ɵreadToolStep(rawNext);
-    const previousStep = ɵreadToolStep(previous?.[ɵTOOL_STEP_METADATA_KEY]);
+    const nextStep = ɵreadToolStep(rawNext, toolCallId);
+    const previousStep = ɵreadToolStep(
+      previous?.[ɵTOOL_STEP_METADATA_KEY],
+      toolCallId,
+    );
     const heldStep =
       previousStep === undefined
         ? undefined
@@ -369,13 +394,15 @@ export function ɵmergeStepMetadata(
       const statedKind =
         isRecord(rawNext) &&
         (rawNext['kind'] === 'server' || rawNext['kind'] === 'provider');
-      merged[ɵTOOL_STEP_METADATA_KEY] = ɵmergeToolStep(
+      const step = ɵmergeToolStep(
         heldStep,
         heldStep !== undefined && !statedKind
           ? { ...nextStep, kind: heldStep.kind }
           : nextStep,
         source,
       );
+      merged[ɵTOOL_STEP_METADATA_KEY] =
+        toolCallId === undefined ? step : withoutToolCallId(step);
     }
   }
   return merged;
@@ -483,7 +510,10 @@ export function reopenCancelledStep(
 
 /**
  * Whether a tool call's step says the model provider ran it. Such a call is
- * never executed by, or validated against, a client tool of the same name.
+ * never executed by, validated against, or replayed as a client tool of the
+ * same name. This guard reads `kind` from any v1 or legacy step record, even
+ * one without a readable `status`, so a malformed provider step is never
+ * replayed as a function call.
  *
  * Internal to core: not exported from the package.
  *
@@ -493,9 +523,11 @@ export function reopenCancelledStep(
 export function isProviderToolCall(toolCall: {
   readonly metadata?: Metadata;
 }): boolean {
+  const raw = toolCall.metadata?.[ɵTOOL_STEP_METADATA_KEY];
   return (
-    ɵreadToolStep(toolCall.metadata?.[ɵTOOL_STEP_METADATA_KEY])?.kind ===
-    'provider'
+    isRecord(raw) &&
+    (raw['v'] === undefined || raw['v'] === 1) &&
+    raw['kind'] === 'provider'
   );
 }
 
@@ -505,36 +537,42 @@ export function isProviderToolCall(toolCall: {
  * (sources kept). With an error, any step that has not failed becomes
  * `failed` with `error: {message}`, even one a call already settled, since
  * failed wins. A step that already failed keeps its own error, and a call
- * with no step is left as it is.
+ * with no step is left as it is. The settled step is built from the
+ * normalized read, so unknown fields and stray errors are dropped.
  *
  * Internal to core: not exported from the package.
  *
  * @param metadata - A tool call's merged metadata.
  * @param error - The result's error string, if it failed; an empty string
  *   is no failure.
+ * @param toolCallId - The call's id, for legacy source ids; the settled step
+ *   omits it.
  * @returns The metadata, or a copy with the step settled.
  */
 export function completeRunningStep(
   metadata: Metadata | undefined,
   error?: string,
+  toolCallId?: string,
 ): Metadata | undefined {
   const raw = metadata?.[ɵTOOL_STEP_METADATA_KEY];
   if (!isRecord(raw)) return metadata;
-  const step = ɵreadToolStep(raw);
+  const read = ɵreadToolStep(raw, toolCallId);
   const failure = readResultFailure(error);
-  const status = step?.status ?? 'running';
+  const status = read?.status ?? 'running';
   if (
-    step === undefined ||
+    read === undefined ||
     status === 'failed' ||
     (failure === undefined && status !== 'running')
   ) {
     return metadata;
   }
+  const step =
+    toolCallId === undefined ? read : withoutToolCallId(read as ɵToolStep);
   return {
     ...metadata,
     [ɵTOOL_STEP_METADATA_KEY]:
       failure === undefined
-        ? withoutLabel({ ...raw, status: 'completed' })
+        ? withErrorRule(withoutLabel({ ...step, status: 'completed' as const }))
         : ɵmergeToolStep(
             { ...step, status },
             {

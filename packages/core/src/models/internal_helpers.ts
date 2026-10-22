@@ -4,6 +4,7 @@ import { s } from '../schema';
 import { JsonValue, resolveWithSchema } from '../utils';
 import {
   isProviderToolCall,
+  readResultFailure,
   ɵANSWER_METADATA_KEY,
   ɵreadAnswerAnnotations,
   ɵreadToolStep,
@@ -235,7 +236,10 @@ function toServerToolCalls(
       if (!toolCall) {
         return [];
       }
-      const step = ɵreadToolStep(toolCall.metadata?.[ɵTOOL_STEP_METADATA_KEY]);
+      const step = ɵreadToolStep(
+        toolCall.metadata?.[ɵTOOL_STEP_METADATA_KEY],
+        toolCallId,
+      );
       if (
         !isProviderToolCall(toolCall) &&
         tools.some((tool) => tool.name === toolCall.name)
@@ -247,11 +251,7 @@ function toServerToolCalls(
           ? toolCall.result.reason
           : undefined;
       const steplessError =
-        step === undefined &&
-        typeof rejectedReason === 'string' &&
-        rejectedReason.length > 0
-          ? rejectedReason
-          : undefined;
+        step === undefined ? readResultFailure(rejectedReason) : undefined;
       const outcome: Chat.ServerToolCallOutcome | undefined =
         steplessError !== undefined
           ? 'failure'

@@ -1597,3 +1597,33 @@ test('a step after a local result rejected with an Error fails with its message 
     error: { message: 'Rate limited' },
   });
 });
+
+test('legacy sources on START metadata get ids from the call id on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: {
+        'b4.step': { status: 'running', sources: [{ title: 'A' }] },
+      },
+    } as AGUIEvent,
+  ];
+
+  // Act
+  const draft = applyDraftEvents(events);
+  dispatchEvents(store, events);
+
+  // Assert
+  const sources = [{ id: 'c1:0', kind: 'record', title: 'A' }];
+  expect(
+    (draft.entities['c1']?.metadata?.['b4.step'] as { sources?: unknown })
+      ?.sources,
+  ).toEqual(sources);
+  expect((readRootStep(store, 'c1') as { sources?: unknown })?.sources).toEqual(
+    sources,
+  );
+});
