@@ -30,6 +30,7 @@ The model is server configuration and is not read from the client run input.
 | `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the OpenAI request when the HTTP client disconnects.                                  |
 | `activities`              | `ActivityCallback`                      | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities). |
 | `reasoning`               | `false \| { effort?, summary? }`        | _(Optional)_ Controls the `reasoning` request parameter. See [Reasoning](#reasoning).                      |
+| `builtInTools`            | `{ webSearch?: true \| object }`        | _(Optional)_ Turns on provider-run tools. See [Built-in Tools](#built-in-tools).                           |
 | `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Responses request (`ResponseCreateParamsStreaming`).           |
 
 The adapter maps system and developer instructions, message history, tool definitions, and tool results. Text and tool calls become canonical AG-UI events. Provider and mapping failures are emitted as `RUN_ERROR` events.
@@ -259,6 +260,58 @@ export default app;
 </div>
 
 </hb-backend-code-example>
+
+## Built-in Tools
+
+Built-in tools run on the model provider instead of in your app or on your server. Turn them on with `builtInTools`. The keys are the camelCase form of the `builtin` value a call reports, so a key means the same capability on every Hashbrown provider adapter. Today the only key is `webSearch`.
+
+```ts
+const stream = HashbrownOpenAI.stream.text({
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: 'gpt-5-nano',
+  input,
+  signal,
+  builtInTools: { webSearch: true },
+});
+```
+
+Pass `true` for the provider defaults, or the tool's own configuration (for example `search_context_size`, `user_location` or `filters`), which is sent unchanged: `builtInTools: { webSearch: { search_context_size: 'low' } }`. Web search needs a model that supports the Responses API `web_search` tool.
+
+On the client, each search arrives as an entry in the assistant message's `serverToolCalls`, with `kind: 'provider'` and `builtin: 'web_search'`. Hashbrown never runs it, and a client tool with the same name is never called in its place. The entry carries a ready-to-show `label` (for example `Searched 'hashbrown ai' · 3 sources`), the `queries` it ran, the `sources` it found, and its `outcome`. A failed search settles as `complete` with `outcome: 'failure'` and an `error`. See [Server-Executed Tool Calls](/docs/react/concept/functions#server-executed-tool-calls) for every field.
+
+The answer's `url_citation` annotations become `citations` on the assistant message. Each citation's `sourceId` is the `id` of one of the sources, and `quote` holds the cited text.
+
+```tsx
+export function Answer({ message }: { message: UiAssistantMessage<never> }) {
+  return (
+    <>
+      {message.serverToolCalls?.map((call) => (
+        <p key={call.toolCallId}>{call.label}</p>
+      ))}
+      {message.ui}
+      <ul>
+        {message.citations?.map((citation) => {
+          const source = message.serverToolCalls
+            ?.flatMap((call) => call.sources ?? [])
+            .find((s) => s.id === citation.sourceId);
+
+          return source?.href ? (
+            <li
+              key={`${citation.sourceId}-${citation.start ?? citation.quote}`}
+            >
+              <a href={source.href}>{source.title}</a>
+            </li>
+          ) : null;
+        })}
+      </ul>
+    </>
+  );
+}
+```
+
+OpenAI requires inline citations to be clearly visible and clickable wherever your UI shows the answer. Source links carry `?utm_source=openai`; keep it.
+
+Sources need the `builtInTools.webSearch` option, because it also requests `web_search_call.action.sources`. A `web_search` tool you add through `transformRequestOptions` instead still streams as a provider tool call, with a label and queries, but without sources.
 
 ## Sending Activities
 

@@ -63,6 +63,7 @@ HashbrownAzure.stream.text({
 | `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Azure OpenAI request when the HTTP client disconnects.                            |
 | `activities`              | `ActivityCallback`                      | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities). |
 | `reasoning`               | `boolean \| { effort?, summary? }`      | _(Optional)_ Controls the `reasoning` request parameter. See [Reasoning](#reasoning).                      |
+| `builtInTools`            | `{ webSearch?: true \| object }`        | _(Optional)_ Turns on provider-run tools. See [Built-in Tools](#built-in-tools).                           |
 | `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final streaming Responses request (`ResponseCreateParamsStreaming`).           |
 
 The adapter maps system and developer instructions, message history, tool definitions, tool results, and native structured output. Provider and mapping failures are emitted as `RUN_ERROR` events.
@@ -318,6 +319,55 @@ export default app;
 </div>
 
 </hb-backend-code-example>
+
+### Built-in Tools
+
+Built-in tools run on the model provider instead of in your app or on your server. Turn them on with `builtInTools`. The keys are the camelCase form of the `builtin` value a call reports, so a key means the same capability on every Hashbrown provider adapter. Today the only key is `webSearch`.
+
+```ts
+const stream = HashbrownAzure.stream.text({
+  clientOptions,
+  model: process.env.AZURE_OPENAI_DEPLOYMENT!,
+  input,
+  signal,
+  builtInTools: { webSearch: true },
+});
+```
+
+Pass `true` for the provider defaults, or the tool's own configuration (for example `search_context_size`, `user_location` or `filters`), which is sent unchanged: `builtInTools: { webSearch: { search_context_size: 'low' } }`. Web search works with Azure OpenAI deployments that support the Responses API `web_search` tool; it ran on a `gpt-4.1-mini` deployment when we tested it. Availability depends on your Azure resource and region, and a request fails if the deployment does not support it. Sources and citations use the same mapping as the OpenAI adapter.
+
+On the client, each search arrives as an entry in the assistant message's `serverToolCalls`, with `kind: 'provider'` and `builtin: 'web_search'`. Hashbrown never runs it, and a client tool with the same name is never called in its place. The entry carries a ready-to-show `label` (for example `Searched 'hashbrown ai' · 3 sources`), the `queries` it ran, the `sources` it found, and its `outcome`. A failed search settles as `complete` with `outcome: 'failure'` and an `error`. See [Server-Executed Tool Calls](/docs/angular/concept/functions#server-executed-tool-calls) for every field.
+
+The answer's `url_citation` annotations become `citations` on the assistant message. Each citation's `sourceId` is the `id` of one of the sources, and `quote` holds the cited text.
+
+```ts
+@Component({
+  selector: 'app-answer',
+  template: `
+    @for (call of message().serverToolCalls ?? []; track call.toolCallId) {
+      <p>{{ call.label }}</p>
+    }
+    @for (citation of message().citations ?? []; track $index) {
+      @if (hrefFor(citation.sourceId); as href) {
+        <a [href]="href">{{ citation.quote ?? href }}</a>
+      }
+    }
+  `,
+})
+export class AnswerComponent {
+  readonly message = input.required<UiAssistantMessage>();
+
+  hrefFor(sourceId: string): string | undefined {
+    return this.message()
+      .serverToolCalls?.flatMap((call) => call.sources ?? [])
+      .find((source) => source.id === sourceId)?.href;
+  }
+}
+```
+
+Azure OpenAI requires, as OpenAI does, inline citations to be clearly visible and clickable wherever your UI shows the answer. Source links carry `?utm_source=openai`; keep it.
+
+Sources need the `builtInTools.webSearch` option, because it also requests `web_search_call.action.sources`. A `web_search` tool you add through `transformRequestOptions` instead still streams as a provider tool call, with a label and queries, but without sources.
 
 ### Sending Activities
 
