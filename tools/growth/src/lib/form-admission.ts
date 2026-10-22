@@ -11,16 +11,22 @@ import type {
 
 /** Submissions one email may make per clock hour. */
 const EMAIL_HOURLY_LIMIT = 5;
+/** Submissions one email may make per UTC day. */
+const EMAIL_DAILY_LIMIT = 10;
 /** Submissions one trusted client IP may make per clock hour. */
 const IP_HOURLY_LIMIT = 20;
 const HOUR_MS = 3_600_000;
+const DAY_MS = 86_400_000;
 
 /**
- * Thrown when a form submission exceeds its hourly email or IP budget. The
- * route answers 429 with `Retry-After: retryAfterSec`.
+ * Thrown when a form submission exceeds its hourly email or IP budget or its
+ * daily email budget. The route answers 429 with `Retry-After: retryAfterSec`.
  */
 export class FormRateLimitError extends Error {
-  /** @param retryAfterSec - Seconds until the current hourly window ends (1..3600). */
+  /**
+   * @param retryAfterSec - Seconds until the exhausted window ends: the clock
+   * hour (1..3600) or the UTC day (1..86400).
+   */
   constructor(readonly retryAfterSec: number) {
     super('Form submission rate limited');
     this.name = 'FormRateLimitError';
@@ -50,8 +56,12 @@ function digest(secret: string | Uint8Array, value: string): string {
  *   was already admitted with a byte-identical request (no budget is spent),
  *   and throws `Form submission identity conflict` when the request changed;
  * - otherwise scores the submission with {@link assessFormAbuse} and charges
- *   the hourly budgets in `growth_collection_budgets` (5 per email, and 20 per
- *   trusted client IP when one is given) inside a savepoint.
+ *   the budgets in `growth_collection_budgets` inside a savepoint: 5 per email
+ *   per clock hour (`form:email:<hmac>`), 10 per email per UTC day
+ *   (`form:email-day:<hmac>`), and 20 per trusted client IP per clock hour
+ *   (`form:ip:<hmac>`) when one is given. A blocked submission (honeypot or
+ *   abuse score) charges only the IP budget, so spam cannot spend a real
+ *   visitor's email budget.
  *
  * The Get unstuck form carries no name or company, so the rapid identity
  * change signal (a different name and company for one email within a minute)
@@ -121,11 +131,30 @@ export async function prepareFormAdmission(
 
   const now = input.occurredAt.getTime();
   const window = new Date(Math.floor(now / HOUR_MS) * HOUR_MS);
+  const day = new Date(Math.floor(now / DAY_MS) * DAY_MS);
+  const emailDigest = digest(
+    input.keyring.active.secret,
+    `form-email:${email}`,
+  );
+  const emailBuckets =
+    assessment.decision === 'blocked'
+      ? []
+      : [
+          {
+            key: `form:email:${emailDigest}`,
+            window,
+            windowMs: HOUR_MS,
+            limit: EMAIL_HOURLY_LIMIT,
+          },
+          {
+            key: `form:email-day:${emailDigest}`,
+            window: day,
+            windowMs: DAY_MS,
+            limit: EMAIL_DAILY_LIMIT,
+          },
+        ];
   const buckets = [
-    {
-      key: `form:email:${digest(input.keyring.active.secret, `form-email:${email}`)}`,
-      limit: EMAIL_HOURLY_LIMIT,
-    },
+    ...emailBuckets,
     ...(input.trustedClientIp
       ? [
           {
@@ -133,6 +162,8 @@ export async function prepareFormAdmission(
               input.keyring.active.secret,
               `form-ip:${input.trustedClientIp}`,
             )}`,
+            window,
+            windowMs: HOUR_MS,
             limit: IP_HOURLY_LIMIT,
           },
         ]
@@ -146,13 +177,16 @@ export async function prepareFormAdmission(
         `/* growth:consume-form-budget */
          insert into growth_collection_budgets(bucket_key, window_start, count) values($1,$2,1)
          on conflict(bucket_key,window_start) do update set count=growth_collection_budgets.count+1 returning count`,
-        [bucket.key, window],
+        [bucket.key, bucket.window],
       );
       const charged = count.rows[0];
       if (!charged) throw new Error('Form budget unavailable');
       if (Number(charged.count) > bucket.limit) {
         throw new FormRateLimitError(
-          Math.max(1, Math.ceil((window.getTime() + HOUR_MS - now) / 1000)),
+          Math.max(
+            1,
+            Math.ceil((bucket.window.getTime() + bucket.windowMs - now) / 1000),
+          ),
         );
       }
     }

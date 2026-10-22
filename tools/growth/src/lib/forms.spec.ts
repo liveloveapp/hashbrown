@@ -126,6 +126,7 @@ test('accepts an unstuck submission and enqueues fulfill and notify in one trans
     eventKey: `form:${baseInput.submissionId}:accepted`,
     occurredAt,
     keyring,
+    serverEmailClassification: 'personal',
     submittedFacts: {
       form_kind: 'unstuck',
       submission_id: baseInput.submissionId,
@@ -153,6 +154,7 @@ test('accepts an unstuck submission and enqueues fulfill and notify in one trans
       form_kind: 'unstuck',
       submission_id: baseInput.submissionId,
     }),
+    `form:contact:${contactId}:fulfill:2026-10-22`,
   ]);
   expect(
     harness.queries.some(({ sql }) =>
@@ -377,4 +379,46 @@ test('a submission id colliding with jobs owned by another contact throws', asyn
   });
 
   await expect(accepted).rejects.toThrow(/job idempotency conflict/u);
+});
+
+test('keys fulfill once per contact per UTC day and notify per submission', async () => {
+  const harness = createHarness();
+  const lateInTheDay = new Date('2026-10-22T23:59:59.999Z');
+
+  await acceptFormSubmission(
+    harness.executor,
+    { ...baseInput, occurredAt: lateInTheDay },
+    { approveContact: harness.approveContact },
+  );
+
+  const enqueue = enqueueQuery(harness.queries);
+  expect(enqueue?.parameters[4]).toBe(
+    `form:contact:${contactId}:fulfill:2026-10-22`,
+  );
+  expect(enqueue?.sql).toContain("'form:' || $3 || ':notify'");
+});
+
+test('classifies a work domain as work and a personal domain as personal', async () => {
+  const work = createHarness();
+  const personal = createHarness();
+
+  await acceptFormSubmission(
+    work.executor,
+    { ...baseInput, email: 'Jordan@Acme.dev' },
+    { approveContact: work.approveContact },
+  );
+  await acceptFormSubmission(
+    personal.executor,
+    { ...baseInput, email: 'jordan@gmail.com' },
+    { approveContact: personal.approveContact },
+  );
+
+  expect(work.approveContact).toHaveBeenCalledWith(
+    work.transaction,
+    expect.objectContaining({ serverEmailClassification: 'work' }),
+  );
+  expect(personal.approveContact).toHaveBeenCalledWith(
+    personal.transaction,
+    expect.objectContaining({ serverEmailClassification: 'personal' }),
+  );
 });

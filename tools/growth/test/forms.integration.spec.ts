@@ -56,7 +56,7 @@ afterAll(async () => {
     () =>
       executor.execute(
         'delete from growth_collection_budgets where bucket_key = any($1::text[])',
-        [emails.map(emailBucketKey)],
+        [emails.flatMap(emailBucketKeys)],
       ),
     async () => {
       if (recordedCampaignConfiguration) await deleteCampaignConfiguration();
@@ -65,11 +65,11 @@ afterAll(async () => {
   await executor.close?.();
 });
 
-function emailBucketKey(email: string): string {
+function emailBucketKeys(email: string): string[] {
   const digest = createHmac('sha256', keyring.active.secret)
     .update(`form-email:${email}`)
     .digest('hex');
-  return `form:email:${digest}`;
+  return [`form:email:${digest}`, `form:email-day:${digest}`];
 }
 
 function newEmail(label: string): string {
@@ -127,7 +127,7 @@ async function counts(email: string, submissionId: string) {
        (select count(*)::text from growth_activity
          where event_key = 'form:' || $2 || ':assessment') as assessments,
        (select count(*)::text from growth_jobs
-         where idempotency_key like 'form:' || $2 || ':%') as jobs`,
+         where payload->>'submission_id' = $2) as jobs`,
     [email, submissionId],
   );
   return result.rows[0];
@@ -143,7 +143,7 @@ async function formJobs(submissionId: string) {
   }>(
     `select id, kind, idempotency_key, status, payload
      from growth_jobs
-     where idempotency_key like 'form:' || $1 || ':%'
+     where payload->>'submission_id' = $1
      order by kind`,
     [submissionId],
   );
@@ -200,6 +200,7 @@ test('accepts an unstuck submission: one contact, consent record with notice tex
     policy_version: POLICY_VERSION,
     source: 'website',
     source_form: 'unstuck',
+    email_classification: 'work',
   });
   expect(consent?.data).not.toHaveProperty('paper');
   const approval = await activityData(
@@ -218,7 +219,7 @@ test('accepts an unstuck submission: one contact, consent record with notice tex
   expect(await formJobs(input.submissionId)).toMatchObject([
     {
       kind: 'fulfill',
-      idempotency_key: `form:${input.submissionId}:fulfill`,
+      idempotency_key: `form:contact:${result.contactId}:fulfill:2026-10-22`,
       status: 'pending',
       payload,
     },
@@ -297,7 +298,8 @@ test('prior unsubscribe still gets fulfill and notify but no approval', async ()
     source: 'forms-integration',
     provenance: { kind: 'one_click', policyVersion: 'growth-lifecycle-v1' },
   });
-  const input = submission(email, new Date('2026-10-22T15:12:00.000Z'));
+  // The next UTC day, so the earlier submission's acknowledgement is not reused.
+  const input = submission(email, new Date('2026-10-23T15:12:00.000Z'));
 
   const result = await accept(input);
 
@@ -473,4 +475,74 @@ test('readNotificationSubmission reads framework and message from the accepted s
 
   expect(read).toEqual({ framework: 'both', message: MESSAGE });
   expect(missing).toBeNull();
+});
+
+test('two submissions from one address on one UTC day enqueue one fulfill and two notify jobs', async () => {
+  const email = newEmail('daily-fulfill');
+  const first = submission(email, new Date('2026-10-22T09:00:00.000Z'));
+  const second = submission(email, new Date('2026-10-22T21:00:00.000Z'), {
+    message: `${MESSAGE} Still stuck after the docs.`,
+  });
+  const nextDay = submission(email, new Date('2026-10-23T09:00:00.000Z'));
+
+  const firstResult = await accept(first);
+  const secondResult = await accept(second);
+  const nextDayResult = await accept(nextDay);
+
+  expect(secondResult).toMatchObject({ accepted: true });
+  expect(secondResult).not.toHaveProperty('deliverySuppressed');
+  const jobs = await executor.execute<{
+    kind: string;
+    idempotency_key: string;
+    payload: Record<string, unknown>;
+  }>(
+    `select kind, idempotency_key, payload from growth_jobs
+     where contact_id = $1 and kind in ('fulfill', 'notify')
+     order by kind, idempotency_key`,
+    [firstResult.contactId],
+  );
+  expect(nextDayResult.contactId).toBe(firstResult.contactId);
+  expect(jobs.rows).toEqual(
+    expect.arrayContaining([
+      {
+        kind: 'fulfill',
+        idempotency_key: `form:contact:${firstResult.contactId}:fulfill:2026-10-22`,
+        payload: { form_kind: 'unstuck', submission_id: first.submissionId },
+      },
+      {
+        kind: 'fulfill',
+        idempotency_key: `form:contact:${firstResult.contactId}:fulfill:2026-10-23`,
+        payload: { form_kind: 'unstuck', submission_id: nextDay.submissionId },
+      },
+    ]),
+  );
+  expect(jobs.rows.filter(({ kind }) => kind === 'fulfill')).toHaveLength(2);
+  expect(
+    jobs.rows
+      .filter(({ kind }) => kind === 'notify')
+      .map(({ idempotency_key }) => idempotency_key)
+      .sort(),
+  ).toEqual(
+    [
+      `form:${first.submissionId}:notify`,
+      `form:${second.submissionId}:notify`,
+      `form:${nextDay.submissionId}:notify`,
+    ].sort(),
+  );
+});
+
+test('the eleventh submission for one email in a UTC day throws FormRateLimitError until midnight', async () => {
+  const email = newEmail('daily-limited');
+  const day = Date.parse('2026-10-24T00:00:00.000Z');
+  for (let index = 0; index < 10; index += 1) {
+    // Five per clock hour, so only the daily budget can refuse.
+    const hour = Math.floor(index / 5) * 3_600_000;
+    await accept(submission(email, new Date(day + hour + index * 60_000)));
+  }
+  const eleventh = submission(email, new Date(day + 3 * 3_600_000));
+
+  const rejected = acceptFormSubmission(executor, eleventh);
+
+  await expect(rejected).rejects.toBeInstanceOf(FormRateLimitError);
+  await expect(rejected).rejects.toMatchObject({ retryAfterSec: 75_600 });
 });

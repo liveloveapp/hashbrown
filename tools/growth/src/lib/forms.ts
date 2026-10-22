@@ -5,10 +5,11 @@ import {
   type FormSubmittedFacts,
   FULFILLMENT_EPOCH_FATAL_STOP_REASONS,
 } from './contacts.ts';
-import type { EmailHmacKeyring } from './crypto.ts';
+import { type EmailHmacKeyring, normalizeRecipientEmail } from './crypto.ts';
 import type { SqlExecutor, SqlTransaction } from './database.ts';
 import { prepareFormAdmission, recordFormAdmission } from './form-admission.ts';
 import { UNSTUCK_FRAMEWORKS, type UnstuckFramework } from './models.ts';
+import { isPersonalEmailDomain } from './observability/install-digest.ts';
 
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -137,19 +138,23 @@ async function deliveryBlocked(
 
 /**
  * Accepts a Get unstuck submission in one transaction: admits it (replay,
- * abuse score and hourly budgets; see `prepareFormAdmission`), records the
- * `contact.form_submission` consent record as `form:<id>:accepted`, approves
- * outreach when no hard stop applies, and enqueues `fulfill` and `notify`
- * (`form:<id>:fulfill`, `form:<id>:notify`). A submission blocked as abuse,
- * from a deleted contact, or from a contact with a complaint, bounce,
- * suppression or invalid-address stop since its approval (even one followed
- * by an unsubscribe or reply) gets no jobs and returns `deliverySuppressed`. Retrying a submission id returns
- * the original result.
+ * abuse score and hourly and daily budgets; see `prepareFormAdmission`),
+ * records the `contact.form_submission` consent record as
+ * `form:<id>:accepted` with the server's work or personal email
+ * classification, approves outreach when no hard stop applies, and enqueues
+ * `notify` per submission (`form:<id>:notify`) and `fulfill` once per contact
+ * per UTC day (`form:contact:<contact_id>:fulfill:<yyyy-mm-dd>`, carrying the
+ * day's first submission id), so one address gets at most one acknowledgement
+ * a day. A submission blocked as abuse, from a deleted contact, or from a
+ * contact with a complaint, bounce, suppression or invalid-address stop since
+ * its approval (even one followed by an unsubscribe or reply) gets no jobs and
+ * returns `deliverySuppressed`. Retrying a submission id returns the original
+ * result.
  *
  * @throws When the submission id, framework or message is invalid (before any
  * transaction opens), when a retried submission id carries a different
  * request, or when its jobs belong to another contact.
- * @throws {FormRateLimitError} When an hourly budget is exhausted.
+ * @throws {FormRateLimitError} When an hourly or daily budget is exhausted.
  */
 export async function acceptFormSubmission(
   executor: SqlExecutor,
@@ -170,6 +175,11 @@ export async function acceptFormSubmission(
     form,
   };
 
+  const domain = normalizeRecipientEmail(input.email).split('@')[1] ?? '';
+  const emailClassification = isPersonalEmailDomain(domain)
+    ? 'personal'
+    : 'work';
+
   return executor.transaction(async (transaction) => {
     const admission = await prepareFormAdmission(transaction, normalized);
     if (admission.replay) return admission.replay;
@@ -184,6 +194,7 @@ export async function acceptFormSubmission(
       eventKey: `form:${submissionId}:accepted`,
       occurredAt: normalized.occurredAt,
       keyring: normalized.keyring,
+      serverEmailClassification: emailClassification,
       submittedFacts: facts,
       ...(blocked ? { serverFormBlocked: true } : {}),
     });
@@ -207,7 +218,7 @@ export async function acceptFormSubmission(
     const jobs = await transaction.execute<{ idempotency_key: string }>(
       `/* growth:enqueue-form-jobs */
        with requested(kind, idempotency_key, payload) as (
-         select 'fulfill', 'form:' || $3 || ':fulfill', $4::jsonb
+         select 'fulfill', $5, $4::jsonb
          union all
          select 'notify', 'form:' || $3 || ':notify', $4::jsonb
        ), inserted as (
@@ -231,12 +242,22 @@ export async function acceptFormSubmission(
              )
          and existing.contact_id = $1
          and existing.kind = requested.kind
-         and existing.payload = requested.payload`,
+         and (
+           existing.payload = requested.payload
+           -- The day's acknowledgement keeps its first submission id.
+           or (
+             requested.kind = 'fulfill'
+             and existing.payload->>'form_kind' = requested.payload->>'form_kind'
+           )
+         )`,
       [
         contact.contactId,
         normalized.occurredAt,
         submissionId,
         JSON.stringify({ form_kind: 'unstuck', submission_id: submissionId }),
+        `form:contact:${contact.contactId}:fulfill:${normalized.occurredAt
+          .toISOString()
+          .slice(0, 10)}`,
       ],
     );
     if (jobs.rows.length !== 2) {

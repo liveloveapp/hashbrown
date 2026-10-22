@@ -24,19 +24,41 @@ const input: AcceptFormSubmissionInput = {
   occurredAt: new Date('2026-09-09T14:01:00Z'),
 };
 
-function harness(count = 1, unavailable = false) {
+function harness(
+  count: number | ((bucketKey: string) => number) = 1,
+  unavailable = false,
+) {
   const queries: string[] = [];
   const tx: SqlTransaction = {
-    execute: vi.fn(async (q: string) => {
+    execute: vi.fn(async (q: string, parameters: readonly unknown[] = []) => {
       queries.push(q);
       if (q.includes('growth:consume-form-budget')) {
         if (unavailable) throw new Error('provider secret should not leak');
-        return { rows: [{ count }] };
+        return {
+          rows: [
+            {
+              count:
+                typeof count === 'function'
+                  ? count(String(parameters[0]))
+                  : count,
+            },
+          ],
+        };
       }
       return { rows: [] };
     }) as SqlTransaction['execute'],
   };
   return { tx, queries };
+}
+
+function chargedBuckets(tx: SqlTransaction) {
+  return vi
+    .mocked(tx.execute)
+    .mock.calls.filter(([q]) => q.includes('growth:consume-form-budget'))
+    .map(([, parameters]) => ({
+      key: String(parameters?.[0]),
+      window: parameters?.[1],
+    }));
 }
 
 async function recordedAssessment(
@@ -166,12 +188,11 @@ test('charges the IP budget only for a trusted client IP and denies over 20', as
     trustedClientIp: '203.0.113.5',
   });
 
-  const budgetKeys = vi
-    .mocked(withoutIp.tx.execute)
-    .mock.calls.filter(([q]) => q.includes('growth:consume-form-budget'))
-    .map(([, parameters]) => String(parameters?.[0]));
-  expect(budgetKeys).toHaveLength(1);
-  expect(budgetKeys[0]).toMatch(/^form:email:[0-9a-f]{64}$/u);
+  const budgetKeys = chargedBuckets(withoutIp.tx).map(({ key }) => key);
+  expect(budgetKeys).toHaveLength(2);
+  expect(budgetKeys.some((key) => /^form:email:[0-9a-f]{64}$/u.test(key))).toBe(
+    true,
+  );
   await expect(denied).rejects.toBeInstanceOf(FormRateLimitError);
 });
 
@@ -196,4 +217,40 @@ test('locks the submission and the normalized email before reading the assessmen
   expect(lockSubmission).toBeGreaterThanOrEqual(0);
   expect(lockSubmission).toBeLessThan(lockEmail);
   expect(lockEmail).toBeLessThan(read);
+});
+
+test('charges a daily email budget by UTC day and limits the eleventh submission until midnight', async () => {
+  const allowed = harness((key) =>
+    key.startsWith('form:email-day:') ? 10 : 1,
+  );
+  const limited = harness((key) =>
+    key.startsWith('form:email-day:') ? 11 : 1,
+  );
+
+  await prepareFormAdmission(allowed.tx, input);
+  const denied = prepareFormAdmission(limited.tx, input);
+
+  const day = chargedBuckets(allowed.tx).find(({ key }) =>
+    key.startsWith('form:email-day:'),
+  );
+  expect(day?.key).toMatch(/^form:email-day:[0-9a-f]{64}$/u);
+  expect(day?.window).toEqual(new Date('2026-09-09T00:00:00Z'));
+  await expect(denied).rejects.toBeInstanceOf(FormRateLimitError);
+  await expect(denied).rejects.toMatchObject({ retryAfterSec: 35_940 });
+  expect(limited.queries).toContain('rollback to savepoint growth_form_budget');
+});
+
+test('a blocked submission charges only the IP budget, never the email budgets', async () => {
+  const h = harness();
+
+  const admission = await prepareFormAdmission(h.tx, {
+    ...input,
+    honeypot: 'https://bot.invalid',
+    trustedClientIp: '203.0.113.5',
+  });
+
+  expect(admission.assessment.decision).toBe('blocked');
+  const keys = chargedBuckets(h.tx).map(({ key }) => key);
+  expect(keys).toHaveLength(1);
+  expect(keys[0]).toMatch(/^form:ip:[0-9a-f]{64}$/u);
 });
