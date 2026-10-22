@@ -26,7 +26,6 @@ import { Markdown } from './Markdown';
 exposeComponent(Markdown, {
   name: 'Markdown',
   description: 'Show markdown to the user',
-  name: 'Markdown',
   props: {
     data: s.string('The markdown content'),
   },
