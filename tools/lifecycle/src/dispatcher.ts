@@ -37,6 +37,14 @@ const LEASE_DURATION_MS = 60_000;
 const LEASE_RENEWAL_INTERVAL_MS = 20_000;
 const RECOVERY_RETRY_DELAY_MS = 60_000;
 
+/**
+ * How long into a tick the dispatcher may still start a job. The last job's
+ * 10 s Resend timeout plus its database writes must finish inside the 60 s
+ * `maxDuration`, so jobs still leased after 40 s are released for the next
+ * tick instead of risking a kill after authorization.
+ */
+export const TICK_JOB_START_BUDGET_MS = 40_000;
+
 /** Every job kind a tick leases; `reply_reconcile` is settled by growth. */
 export const LEASED_KINDS = [
   'fulfill',
@@ -58,6 +66,11 @@ export interface LifecycleDispatcherInput {
   /** Required when `campaignEnrollmentEnabled`. */
   campaignEnrollmentStartAt?: Date;
   signal: AbortSignal;
+  /**
+   * Milliseconds from the start of the tick after which no job is started.
+   * Defaults to {@link TICK_JOB_START_BUDGET_MS}; a test seam.
+   */
+  tickJobStartBudgetMs?: number;
 }
 
 /** The closed set of alerts a tick reports to operators. */
@@ -302,8 +315,12 @@ async function prepareTick(
  * {@link DeterministicLifecycleJobError} quarantines its job
  * (`deterministic_job_poison`); a {@link JobLeaseConflictError} drops the job
  * (it is no longer ours); a `recovery_paused` job is deferred 60 s with
- * `mailbox_recovery_paused`. Overlapping ticks never share a job, because
- * leasing skips locked and live-leased rows.
+ * `mailbox_recovery_paused`. Once {@link TICK_JOB_START_BUDGET_MS} has passed
+ * since the tick began, no further job starts: each remaining leased job is
+ * deferred to now with `tick_budget_exhausted` (and not counted as
+ * dispatched), and when preparing the tick alone used the budget nothing is
+ * leased. Overlapping ticks never share a job, because leasing skips locked
+ * and live-leased rows.
  *
  * @param input - The batch size, switches and abort signal.
  * @param dependencies - The tick's collaborators.
@@ -314,6 +331,10 @@ export async function dispatchLifecycleJobs(
   input: LifecycleDispatcherInput,
   dependencies: LifecycleDispatcherDependencies,
 ): Promise<LifecycleDispatcherResult> {
+  const tickStartedAt = dependencies.now().getTime();
+  const budgetMs = input.tickJobStartBudgetMs ?? TICK_JOB_START_BUDGET_MS;
+  const budgetSpent = (now: Date): boolean =>
+    now.getTime() - tickStartedAt >= budgetMs;
   const batchSize = validBatchSize(input.batchSize);
   if (input.campaignEnrollmentEnabled) validEnrollmentStart(input);
   input.signal.throwIfAborted();
@@ -327,6 +348,18 @@ export async function dispatchLifecycleJobs(
     );
     let recoveryPaused = await dependencies.isRecoveryPaused(executor);
     input.signal.throwIfAborted();
+    const withAlerts = (
+      leased: number,
+      dispatched: number,
+    ): LifecycleDispatcherResult => ({
+      leased,
+      dispatched,
+      recoveryPaused,
+      operatorAlerts: recoveryPaused
+        ? [...operatorAlerts, 'mailbox_recovery_required']
+        : operatorAlerts,
+    });
+    if (budgetSpent(dependencies.now())) return withAlerts(0, 0);
     const jobs = await dependencies.leaseDueJobs(executor, {
       kinds: [...LEASED_KINDS],
       now: dependencies.now(),
@@ -360,10 +393,28 @@ export async function dispatchLifecycleJobs(
       );
     }
     let dispatched = 0;
+    let budgetExhausted = false;
     try {
       for (const job of jobs) {
         signal.throwIfAborted();
         const leaseToken = job.leaseToken as string;
+        const startAt = dependencies.now();
+        if (budgetExhausted || budgetSpent(startAt)) {
+          // Release at once so the next tick can lease it, instead of
+          // leaving it leased until the lease expires.
+          budgetExhausted = true;
+          const heartbeat = heartbeats.get(job.id);
+          heartbeats.delete(job.id);
+          await heartbeat?.stop();
+          await dependencies.deferJob(executor, {
+            jobId: job.id,
+            leaseToken,
+            now: startAt,
+            availableAt: startAt,
+            errorCode: 'tick_budget_exhausted',
+          });
+          continue;
+        }
         try {
           const result = await dependencies.dispatchLeasedJob(executor, job, {
             appHandlers: dependencies.appHandlers,
@@ -406,14 +457,7 @@ export async function dispatchLifecycleJobs(
       await Promise.all([...heartbeats.values()].map(({ stop }) => stop()));
     }
     if (leaseFailureReason) throw leaseFailureReason;
-    return {
-      leased: jobs.length,
-      dispatched,
-      recoveryPaused,
-      operatorAlerts: recoveryPaused
-        ? [...operatorAlerts, 'mailbox_recovery_required']
-        : operatorAlerts,
-    };
+    return withAlerts(jobs.length, dispatched);
   } finally {
     await executor.close?.();
   }

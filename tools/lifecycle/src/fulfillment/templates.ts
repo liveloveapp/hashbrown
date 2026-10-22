@@ -25,6 +25,6 @@ export function renderFulfillmentTemplate(
   FulfillmentTemplateInputSchema.parse(candidate);
   return {
     subject: 'Got your note',
-    body: "Thanks for writing. I read every one of these myself and I'll reply with something useful, usually within a business day.\n\nIf it helps in the meantime, the docs for the part you're on are at\nhttps://hashbrown.dev/docs.",
+    body: "Thanks for writing. I read every one of these myself and I'll reply with something useful, usually within a business day.\n\nIf it helps in the meantime, the docs for the part you're on are at https://hashbrown.dev/docs.",
   };
 }

@@ -10,6 +10,7 @@ import {
   LEASED_KINDS,
   type LifecycleDispatcherDependencies,
   type LifecycleDispatcherInput,
+  TICK_JOB_START_BUDGET_MS,
 } from './dispatcher.ts';
 import { DeterministicLifecycleJobError } from './job-errors.ts';
 
@@ -442,7 +443,11 @@ test('dispatcher renews leases every 20 s and aborts the loop when a renewal fai
       renewJobLease: failingRenewal,
     });
 
-    const run = dispatchLifecycleJobs(input(), renewing);
+    // Job 1 is held for 40 s; widen the start budget so job 2 still runs.
+    const run = dispatchLifecycleJobs(
+      input({ tickJobStartBudgetMs: 120_000 }),
+      renewing,
+    );
     await vi.advanceTimersByTimeAsync(19_999);
     const beforeRenewal = vi.mocked(renewing.renewJobLease).mock.calls.length;
     await vi.advanceTimersByTimeAsync(1);
@@ -490,4 +495,76 @@ test('dispatcher stops before leasing when the tick is aborted', async () => {
 
   await expect(run).rejects.toThrow('tick cancelled');
   expect(deps.leaseDueJobs).not.toHaveBeenCalled();
+});
+
+test('dispatcher stops starting jobs once the tick budget is spent and releases the rest', async () => {
+  let clock = NOW.getTime();
+  const first = leasedJob('00000000-0000-4000-8000-000000000001', 'send_step');
+  const second = leasedJob('00000000-0000-4000-8000-000000000002', 'send_step');
+  const third = leasedJob('00000000-0000-4000-8000-000000000003', 'notify');
+  const deps = dependencies({
+    now: () => new Date(clock),
+    leaseDueJobs: vi.fn().mockResolvedValue([first, second, third]),
+    dispatchLeasedJob: vi.fn(async () => {
+      clock += TICK_JOB_START_BUDGET_MS;
+      return 'completed' as const;
+    }),
+  });
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  const budgetSpentAt = new Date(NOW.getTime() + TICK_JOB_START_BUDGET_MS);
+  expect(TICK_JOB_START_BUDGET_MS).toBe(40_000);
+  expect(result).toEqual({
+    leased: 3,
+    dispatched: 1,
+    recoveryPaused: false,
+    operatorAlerts: [],
+  });
+  expect(deps.dispatchLeasedJob).toHaveBeenCalledOnce();
+  expect(deps.dispatchLeasedJob).toHaveBeenCalledWith(
+    expect.anything(),
+    first,
+    expect.anything(),
+  );
+  expect(deps.deferJob).toHaveBeenCalledTimes(2);
+  expect(deps.deferJob).toHaveBeenNthCalledWith(1, expect.anything(), {
+    jobId: second.id,
+    leaseToken: LEASE_TOKEN,
+    now: budgetSpentAt,
+    availableAt: budgetSpentAt,
+    errorCode: 'tick_budget_exhausted',
+  });
+  expect(deps.deferJob).toHaveBeenNthCalledWith(2, expect.anything(), {
+    jobId: third.id,
+    leaseToken: LEASE_TOKEN,
+    now: budgetSpentAt,
+    availableAt: budgetSpentAt,
+    errorCode: 'tick_budget_exhausted',
+  });
+});
+
+test('dispatcher skips leasing when preparing the tick used the whole budget', async () => {
+  let clock = NOW.getTime();
+  const deps = dependencies({
+    now: () => new Date(clock),
+    reconcileMessageIds: vi.fn(async () => {
+      clock += 5_000;
+      return { claimed: 0, bound: 0, deferred: 0 };
+    }),
+  });
+
+  const result = await dispatchLifecycleJobs(
+    input({ tickJobStartBudgetMs: 5_000 }),
+    deps,
+  );
+
+  expect(result).toEqual({
+    leased: 0,
+    dispatched: 0,
+    recoveryPaused: false,
+    operatorAlerts: [],
+  });
+  expect(deps.leaseDueJobs).not.toHaveBeenCalled();
+  expect(deps.dispatchLeasedJob).not.toHaveBeenCalled();
 });

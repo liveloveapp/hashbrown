@@ -80,11 +80,12 @@ function unknownOutcome(message: string): ResendSendResult {
  * `Content-Type: application/json` and `Idempotency-Key`, mapping `replyTo`
  * to `reply_to` (every other field is passed through). It resolves, and never
  * rejects, with the SDK's shape: a 2xx with a string `id` is
- * `{ data: { id }, error: null }`; a non-2xx JSON error body is that
- * `{ name, message, statusCode }`, with the HTTP status when the body omits
- * one; a network error, timeout, non-JSON or over-64-KiB body, or a 2xx
- * without `id` is `application_error` with `statusCode: null`. The API key is
- * redacted from every returned message; nothing is logged.
+ * `{ data: { id }, error: null }`; a non-2xx JSON error body gives its
+ * `name` and `message` with the HTTP status as `statusCode` (any `statusCode`
+ * in the body is ignored); a network error, timeout, non-JSON or
+ * over-64-KiB body, or a 2xx without `id` is `application_error` with
+ * `statusCode: null`. The API key is redacted from every returned message;
+ * nothing is logged.
  *
  * @param options - See {@link ResendFetchClientOptions}.
  * @returns A client satisfying the lifecycle's Resend interface.
@@ -153,10 +154,9 @@ export function createResendFetchClient({
               ? parsed['message']
               : `Resend answered ${status}`,
           ),
-          statusCode:
-            typeof parsed['statusCode'] === 'number'
-              ? parsed['statusCode']
-              : status,
+          // Always the HTTP status: a body's statusCode must never turn a
+          // 5xx or 429 (possibly accepted) into a definitive rejection.
+          statusCode: status,
         };
         return { data: null, error };
       },

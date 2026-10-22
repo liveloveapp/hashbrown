@@ -1,6 +1,9 @@
 import { expect, test, vi } from 'vitest';
 
-import type { RecipientEmailProviderPayload } from './growth.ts';
+import {
+  classifyResendProviderError,
+  type RecipientEmailProviderPayload,
+} from './growth.ts';
 import { createResendFetchClient } from './resend-client.ts';
 
 const API_KEY = 're_secret_api_key_value';
@@ -131,6 +134,29 @@ test('an error body without statusCode takes the HTTP status', async () => {
     message: 'Too many requests',
     statusCode: 429,
   });
+});
+
+test('an HTTP 503 keeps its status even when the body claims a 4xx, so it is classified unknown', async () => {
+  const client = createResendFetchClient({
+    apiKey: API_KEY,
+    fetch: respondWith(() =>
+      Response.json(
+        { statusCode: 422, name: 'validation_error', message: 'x' },
+        { status: 503 },
+      ),
+    ),
+  });
+
+  const result = await client.emails.send(PAYLOAD, { idempotencyKey: 'k' });
+
+  expect(result.error).toEqual({
+    name: 'validation_error',
+    message: 'x',
+    statusCode: 503,
+  });
+  expect(result.error && classifyResendProviderError(result.error)).toBe(
+    'unknown',
+  );
 });
 
 test('a 500 maps to an error with status 500', async () => {

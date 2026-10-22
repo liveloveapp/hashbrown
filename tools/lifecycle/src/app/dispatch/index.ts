@@ -8,16 +8,20 @@ import {
 import type { DispatchState } from './state.ts';
 
 const DEFAULT_BATCH_SIZE = 20;
+const MAX_BATCH_SIZE = 25;
 
 function configuredBatchSize(
   environment: Readonly<Record<string, string | undefined>>,
 ): number {
   const raw = environment['LIFECYCLE_BATCH_SIZE'];
   if (!raw) return DEFAULT_BATCH_SIZE;
-  if (!/^\d+$/u.test(raw)) {
-    throw new Error('LIFECYCLE_BATCH_SIZE must be an integer');
+  const value = /^[1-9]\d*$/u.test(raw) ? Number(raw) : Number.NaN;
+  if (!(value >= 1 && value <= MAX_BATCH_SIZE)) {
+    throw new Error(
+      `LIFECYCLE_BATCH_SIZE must be an integer between 1 and ${MAX_BATCH_SIZE}`,
+    );
   }
-  return Number(raw);
+  return value;
 }
 
 /**
