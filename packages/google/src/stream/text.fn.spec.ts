@@ -127,6 +127,10 @@ test('streams canonical AG-UI run and text events from Google', async () => {
       type: EventType.RUN_FINISHED,
       threadId: 'thread-google',
       runId: 'run-google',
+      metadata: {
+        hashbrown: { finishReason: 'stop' },
+        google: { finishReason: 'STOP' },
+      },
     },
   ]);
   expect(MockedGoogleGenAI).toHaveBeenCalledWith({ apiKey: 'test-api-key' });
@@ -262,4 +266,259 @@ test('creates the Google SDK client with Vertex AI authentication', async () => 
     location: 'us-central1',
   });
   expect(provider.generateContentStream).toHaveBeenCalledTimes(1);
+});
+
+function finished(metadata: Record<string, unknown>, usage?: unknown[]) {
+  return {
+    type: EventType.RUN_FINISHED,
+    threadId: 'thread-google',
+    runId: 'run-google',
+    ...(usage ? { usage } : {}),
+    metadata,
+  };
+}
+
+function textChunk(
+  text: string,
+  extra: Partial<GenerateContentResponse> = {},
+  candidate: Record<string, unknown> = {},
+): GenerateContentResponse {
+  return {
+    candidates: [
+      {
+        index: 0,
+        content: { role: 'model', parts: [{ text }] },
+        ...candidate,
+      },
+    ],
+    ...extra,
+  } as GenerateContentResponse;
+}
+
+test('ends a stopped run with the last chunk usage and a stop reason', async () => {
+  mockProvider([
+    textChunk('Hello', {
+      modelVersion: 'gemini-test-2026',
+      usageMetadata: { promptTokenCount: 1, totalTokenCount: 1 },
+    } as Partial<GenerateContentResponse>),
+    textChunk(
+      ' there.',
+      {
+        modelVersion: 'gemini-test-2026',
+        usageMetadata: {
+          promptTokenCount: 100,
+          cachedContentTokenCount: 60,
+          toolUsePromptTokenCount: 20,
+          candidatesTokenCount: 30,
+          thoughtsTokenCount: 50,
+          totalTokenCount: 200,
+        },
+      } as Partial<GenerateContentResponse>,
+      { finishReason: 'STOP' },
+    ),
+  ]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished(
+      {
+        hashbrown: { finishReason: 'stop' },
+        google: { finishReason: 'STOP' },
+      },
+      [
+        {
+          provider: 'google',
+          model: 'gemini-test-2026',
+          inputTokens: 120,
+          outputTokens: 80,
+          totalTokens: 200,
+          reasoningTokens: 50,
+          cachedInputTokens: 60,
+        },
+      ],
+    ),
+  );
+});
+
+test('reports tool_calls when a STOP response called a function', async () => {
+  mockProvider([
+    {
+      candidates: [
+        {
+          index: 0,
+          content: {
+            role: 'model',
+            parts: [{ functionCall: { name: 'lookup', args: {} } }],
+          },
+          finishReason: 'STOP',
+        },
+      ],
+    } as GenerateContentResponse,
+  ]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished({
+      hashbrown: { finishReason: 'tool_calls' },
+      google: { finishReason: 'STOP' },
+    }),
+  );
+});
+
+test('reports tool_calls for a FUNCTION_CALL finish reason', async () => {
+  mockProvider([
+    {
+      candidates: [
+        {
+          index: 0,
+          content: {
+            role: 'model',
+            parts: [{ functionCall: { name: 'lookup', args: {} } }],
+          },
+          finishReason: 'FUNCTION_CALL',
+        },
+      ],
+    } as unknown as GenerateContentResponse,
+  ]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished({
+      hashbrown: { finishReason: 'tool_calls' },
+      google: { finishReason: 'FUNCTION_CALL' },
+    }),
+  );
+});
+
+test('reports length when the answer hit MAX_TOKENS', async () => {
+  mockProvider([textChunk('Cut', {}, { finishReason: 'MAX_TOKENS' })]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.TEXT_MESSAGE_END,
+    EventType.RUN_FINISHED,
+  ]);
+  expect(events.at(-1)).toEqual(
+    finished({
+      hashbrown: { finishReason: 'length' },
+      google: { finishReason: 'MAX_TOKENS' },
+    }),
+  );
+});
+
+test.each([
+  'SAFETY',
+  'RECITATION',
+  'BLOCKLIST',
+  'PROHIBITED_CONTENT',
+  'SPII',
+  'IMAGE_SAFETY',
+  'IMAGE_PROHIBITED_CONTENT',
+])('reports content_filter for the %s finish reason', async (reason) => {
+  mockProvider([
+    textChunk(
+      'Partial',
+      {},
+      { finishReason: reason, finishMessage: 'Filtered.' },
+    ),
+  ]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished({
+      hashbrown: { finishReason: 'content_filter' },
+      google: { finishReason: reason, finishMessage: 'Filtered.' },
+    }),
+  );
+});
+
+test('reports content_filter when the prompt was blocked', async () => {
+  mockProvider([
+    {
+      promptFeedback: { blockReason: 'SAFETY' },
+      modelVersion: 'gemini-test-2026',
+      usageMetadata: { promptTokenCount: 12, totalTokenCount: 12 },
+    } as GenerateContentResponse,
+  ]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events).toEqual([
+    {
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-google',
+      runId: 'run-google',
+    },
+    finished(
+      {
+        hashbrown: { finishReason: 'content_filter' },
+        google: { blockReason: 'SAFETY' },
+      },
+      [
+        {
+          provider: 'google',
+          model: 'gemini-test-2026',
+          inputTokens: 12,
+          totalTokens: 12,
+        },
+      ],
+    ),
+  ]);
+});
+
+test.each([
+  'MALFORMED_FUNCTION_CALL',
+  'LANGUAGE',
+  'OTHER',
+  'FINISH_REASON_UNSPECIFIED',
+  'UNEXPECTED_TOOL_CALL',
+  'SOMETHING_NEW',
+])('reports other for the %s finish reason', async (reason) => {
+  mockProvider([textChunk('Hmm', {}, { finishReason: reason })]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished({
+      hashbrown: { finishReason: 'other' },
+      google: { finishReason: reason },
+    }),
+  );
+});
+
+test('omits usage when Google reports no token counts', async () => {
+  mockProvider([
+    textChunk(
+      'Hi',
+      { modelVersion: 'gemini-test-2026', usageMetadata: {} },
+      { finishReason: 'STOP' },
+    ),
+  ]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished({
+      hashbrown: { finishReason: 'stop' },
+      google: { finishReason: 'STOP' },
+    }),
+  );
+});
+
+test('reports other when the stream ends without a finish reason', async () => {
+  mockProvider([textChunk('Hi')]);
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished({ hashbrown: { finishReason: 'other' } }),
+  );
 });

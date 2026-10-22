@@ -1,5 +1,9 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { ɵwithActivities } from '@hashbrownai/core';
+import {
+  ɵcreateRunFinishedEvent,
+  ɵforwardMapped,
+  ɵwithActivities,
+} from '@hashbrownai/core';
 import {
   BedrockRuntimeClient,
   ConverseStreamCommand,
@@ -51,21 +55,25 @@ async function* textEvents(
       throw new Error('Amazon Bedrock did not return a streaming response');
     }
 
-    for await (const event of mapBedrockEvents({
-      events: response.stream,
-      messageId,
+    const finish = yield* ɵforwardMapped(
+      mapBedrockEvents({
+        events: response.stream,
+        messageId,
+        model: request.modelId,
+        signal,
+      }),
       signal,
-    })) {
-      yield event;
-      if (signal?.aborted) {
-        return;
-      }
-    }
-    if (signal?.aborted) {
+    );
+    if (signal?.aborted || !finish) {
       return;
     }
 
-    yield { type: EventType.RUN_FINISHED, threadId, runId };
+    yield ɵcreateRunFinishedEvent({
+      threadId,
+      runId,
+      provider: 'bedrock',
+      ...finish,
+    });
   } catch (error: unknown) {
     if (!signal?.aborted) {
       yield { type: EventType.RUN_ERROR, message: normalizeError(error) };

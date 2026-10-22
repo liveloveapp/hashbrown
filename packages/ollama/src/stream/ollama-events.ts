@@ -1,4 +1,9 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
+import {
+  type FinishReason,
+  ɵcreateTokenUsage,
+  type ɵRunFinish,
+} from '@hashbrownai/core';
 import type { ChatResponse } from 'ollama';
 
 const ABORTED = Symbol('aborted');
@@ -41,6 +46,39 @@ function hasRawData(event: ChatResponse): boolean {
   );
 }
 
+const DONE_REASONS: Readonly<Record<string, FinishReason>> = {
+  stop: 'stop',
+  length: 'length',
+};
+
+/**
+ * Reads how the run stopped from Ollama's final (`done: true`) chunk. A plain
+ * `stop` after client tool calls reports `tool_calls`; `load`, `unload` and
+ * unknown reasons report `other`.
+ */
+function readFinish(
+  chunk: ChatResponse | undefined,
+  calledTools: boolean,
+): ɵRunFinish {
+  const doneReason = chunk?.done_reason || undefined;
+  const reason = doneReason ? (DONE_REASONS[doneReason] ?? 'other') : 'other';
+  const finishReason: FinishReason =
+    reason === 'stop' && calledTools ? 'tool_calls' : reason;
+  const usage = chunk
+    ? ɵcreateTokenUsage({
+        provider: 'ollama',
+        model: chunk.model || undefined,
+        inputTokens: chunk.prompt_eval_count,
+        outputTokens: chunk.eval_count,
+      })
+    : undefined;
+  return {
+    finishReason,
+    providerMetadata: doneReason ? { doneReason } : {},
+    ...(usage ? { usage } : {}),
+  };
+}
+
 async function nextWithCancellation(
   iterator: AsyncIterator<ChatResponse>,
   signal: AbortSignal | undefined,
@@ -74,19 +112,21 @@ async function nextWithCancellation(
  * Maps Ollama streaming chat chunks to canonical AG-UI events.
  *
  * @param options - Ollama stream, stable assistant ID, and cancellation signal.
- * @returns Canonical AG-UI text, reasoning, tool-call, and raw events.
+ * @returns Canonical AG-UI text, reasoning, tool-call, and raw events; the
+ *   generator returns how the run stopped, or `undefined` when it was aborted.
  *
  * @internal
  */
 export async function* mapOllamaEvents(
   options: MapOllamaEventsOptions,
-): AsyncIterable<AGUIEvent> {
+): AsyncGenerator<AGUIEvent, ɵRunFinish | undefined> {
   const iterator = options.events[Symbol.asyncIterator]();
   let textStarted = false;
   let reasoningId: string | undefined;
   let reasoningIndex = 0;
   let toolCallIndex = 0;
   let completed = false;
+  let doneChunk: ChatResponse | undefined;
   let providerAborted = false;
   let mappingFailed = false;
   let mappingError: unknown;
@@ -117,6 +157,9 @@ export async function* mapOllamaEvents(
       }
 
       const chunk = next.value;
+      if (chunk.done) {
+        doneChunk = chunk;
+      }
       const thinking = chunk.message.thinking;
       if (thinking) {
         if (!reasoningId) {
@@ -264,4 +307,8 @@ export async function* mapOllamaEvents(
   if (cleanupFailed && !options.signal?.aborted) {
     throw cleanupError;
   }
+  if (!completed || options.signal?.aborted) {
+    return undefined;
+  }
+  return readFinish(doneChunk, toolCallIndex > 0);
 }

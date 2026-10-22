@@ -6,6 +6,7 @@ import { ɵselectInterrupts } from '../reducers';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
+import { ɵreadFinishReason, ɵreadTokenUsage } from '../models/run-finish';
 import { ɵprepareAgUiMessageEvent } from '../reducers/ag-ui-message-history';
 import {
   selectDebounce,
@@ -227,11 +228,19 @@ export const generateMessage = createEffect((store) => {
         terminalEvent.result !== undefined
           ? cloneAndFreezeOptionalJsonValue(terminalEvent.result)
           : undefined;
+      const finished =
+        !interrupts && terminalEvent?.type === EventType.RUN_FINISHED
+          ? terminalEvent
+          : undefined;
+      const usage = finished ? ɵreadTokenUsage(finished) : undefined;
+      const finishReason = finished ? ɵreadFinishReason(finished) : undefined;
       dispatch(
         apiActions.generateMessageSuccess({
           ...(streamingMessage ? { message: streamingMessage } : {}),
           toolCalls: finalizedToolCalls,
           ...(result !== undefined ? { result } : {}),
+          ...(usage ? { usage } : {}),
+          ...(finishReason ? { finishReason } : {}),
         }),
       );
     }

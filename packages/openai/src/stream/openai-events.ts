@@ -1,4 +1,9 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
+import {
+  type FinishReason,
+  ɵcreateTokenUsage,
+  type ɵRunFinish,
+} from '@hashbrownai/core';
 import type OpenAI from 'openai';
 
 type StreamEvent = OpenAI.Responses.ResponseStreamEvent;
@@ -19,6 +24,9 @@ interface MapperState {
   readonly reasoningItemIds: readonly string[];
   readonly openReasoning: ReadonlyMap<string, ReasoningItemState>;
   readonly toolCalls: ReadonlyMap<string, ToolCallState>;
+  readonly calledTools: boolean;
+  readonly refused: boolean;
+  readonly finish?: ɵRunFinish;
 }
 
 interface MapperStep {
@@ -41,6 +49,8 @@ const initialState: MapperState = {
   reasoningItemIds: [],
   openReasoning: new Map(),
   toolCalls: new Map(),
+  calledTools: false,
+  refused: false,
 };
 
 function withEntry<V>(
@@ -134,6 +144,7 @@ function mapItemAdded(
       return {
         state: {
           ...state,
+          calledTools: true,
           toolCalls: withEntry(state.toolCalls, item.id ?? item.call_id, {
             toolCallId: item.call_id,
             hasArgs: false,
@@ -244,6 +255,57 @@ function mapSummaryDelta(
   };
 }
 
+const INCOMPLETE_REASONS: Readonly<Record<string, FinishReason>> = {
+  max_output_tokens: 'length',
+  content_filter: 'content_filter',
+};
+
+function readFinish(
+  state: MapperState,
+  response: OpenAI.Responses.Response,
+): ɵRunFinish {
+  const incompleteReason =
+    response.status === 'incomplete'
+      ? response.incomplete_details?.reason
+      : undefined;
+  const finishReason: FinishReason = incompleteReason
+    ? (INCOMPLETE_REASONS[incompleteReason] ?? 'other')
+    : state.refused
+      ? 'refusal'
+      : state.calledTools
+        ? 'tool_calls'
+        : 'stop';
+  const usage = ɵcreateTokenUsage({
+    provider: 'openai',
+    model: response.model,
+    inputTokens: response.usage?.input_tokens,
+    outputTokens: response.usage?.output_tokens,
+    totalTokens: response.usage?.total_tokens,
+    reasoningTokens: response.usage?.output_tokens_details?.reasoning_tokens,
+    cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens,
+  });
+  return {
+    finishReason,
+    providerMetadata: {
+      ...(response.status ? { status: response.status } : {}),
+      ...(incompleteReason ? { incompleteReason } : {}),
+    },
+    ...(usage ? { usage } : {}),
+  };
+}
+
+function finishResponse(
+  state: MapperState,
+  messageId: string,
+  response: OpenAI.Responses.Response,
+): MapperStep {
+  const step = endText(state, messageId);
+  return {
+    state: { ...step.state, finish: readFinish(state, response) },
+    events: step.events,
+  };
+}
+
 function endText(state: MapperState, messageId: string): MapperStep {
   return state.textStarted
     ? {
@@ -266,8 +328,14 @@ function mapEvent(
     case 'response.reasoning_summary_text.delta':
       return mapSummaryDelta(state, event);
     case 'response.output_text.delta':
-    case 'response.refusal.delta':
       return mapTextDelta(state, messageId, event.item_id, event.delta);
+    case 'response.refusal.delta':
+      return mapTextDelta(
+        { ...state, refused: true },
+        messageId,
+        event.item_id,
+        event.delta,
+      );
     case 'response.function_call_arguments.delta': {
       const toolCall = state.toolCalls.get(event.item_id);
       if (!toolCall || !event.delta) {
@@ -291,17 +359,14 @@ function mapEvent(
       };
     }
     case 'response.completed':
-      return endText(state, messageId);
+    case 'response.incomplete':
+      return finishResponse(state, messageId, event.response);
     case 'response.failed':
       throw new Error(
         event.response.error?.message ?? 'OpenAI response failed',
       );
     case 'error':
       throw new Error(event.message);
-    case 'response.incomplete':
-      throw new Error(
-        `OpenAI response incomplete: ${event.response.incomplete_details?.reason}`,
-      );
     default:
       return { state, events: [] };
   }
@@ -312,19 +377,21 @@ function mapEvent(
  * call events.
  *
  * The mapper does not emit `RUN_STARTED`, `RUN_FINISHED` or `RUN_ERROR`; it
- * throws on `response.failed`, `error` and `response.incomplete` so the
- * caller can emit `RUN_ERROR`. All text goes into one assistant message,
- * which stays open across tool calls and ends at `response.completed`. A
- * stream that ends without `response.completed` also throws.
+ * throws on `response.failed` and `error` so the caller can emit
+ * `RUN_ERROR`. All text goes into one assistant message, which stays open
+ * across tool calls and ends at `response.completed` or
+ * `response.incomplete`. A stream that ends without either also throws.
  *
  * @param options - Responses stream and AG-UI message identity.
- * @returns AG-UI events for the provider response.
+ * @returns AG-UI events for the provider response; the generator's return
+ * value is how the model stopped and the response's token usage, or
+ * `undefined` when mapping stopped on abort.
  *
  * @internal
  */
 export async function* mapOpenAIEvents(
   options: MapOpenAIEventsOptions,
-): AsyncIterable<AGUIEvent> {
+): AsyncGenerator<AGUIEvent, ɵRunFinish | undefined> {
   let state = initialState;
   let completed = false;
 
@@ -333,7 +400,10 @@ export async function* mapOpenAIEvents(
       return;
     }
 
-    completed = completed || event.type === 'response.completed';
+    completed =
+      completed ||
+      event.type === 'response.completed' ||
+      event.type === 'response.incomplete';
 
     const step = mapEvent(state, options.messageId, event);
     state = step.state;
@@ -352,4 +422,6 @@ export async function* mapOpenAIEvents(
   if (!completed) {
     throw new Error('OpenAI stream ended before response.completed');
   }
+
+  return state.finish;
 }
