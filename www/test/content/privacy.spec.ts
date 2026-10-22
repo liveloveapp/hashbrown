@@ -20,5 +20,8 @@ test('privacy describes the form, the install digest and install-runtime approva
   expect(text).toContain('work domain');
   expect(text).toContain('gmail.com');
   expect(text).toContain('three emails');
+  expect(text).toContain('Nobody on the digest is emailed until he approves');
+  expect(text).toContain('to send the emails described below');
+  expect(text).toContain('the packages they installed');
   expect(text).toContain('unsubscribe link');
 });
