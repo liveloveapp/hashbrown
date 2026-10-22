@@ -9,15 +9,15 @@ import {
   shouldShowAnnouncement,
 } from '../../src/components/site/Announcement';
 
-// Hard-coded: the v0.7 entry's date, so the newer unstuck entry cannot shift it.
-const PUBLISHED_AT = '2026-10-08T18:00:00Z';
+// Keep dismissal checks tied to the release announcement's publication date.
+const PUBLISHED_AT = '2026-10-22T18:00:00Z';
 const ANNOUNCEMENT_DATE = new Date(PUBLISHED_AT);
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-const LIVE_NOW = new Date('2026-10-21T00:00:00Z');
+const LIVE_NOW = new Date('2026-10-22T19:00:00Z');
 
 const mounted: Root[] = [];
 
@@ -41,7 +41,7 @@ function mount() {
 
 const link = () =>
   document.querySelector<HTMLAnchorElement>(
-    'a[href="/blog/2026-10-08-hashbrown-v-0-7-0"]',
+    'a[href="/blog/2026-10-22-hashbrown-v-0-8-0"]',
   );
 
 test('shows when nothing has been dismissed', () => {
@@ -77,7 +77,7 @@ test('stays hidden when storage is unavailable', () => {
 });
 
 test('dismissal compares against the entry publishedAt', () => {
-  const before = '2026-10-08T17:59:59.000Z';
+  const before = '2026-10-22T17:59:59.000Z';
   const exactly = new Date(PUBLISHED_AT).toISOString();
 
   const showBefore = shouldShowAnnouncement(before, new Date(PUBLISHED_AT));
@@ -92,7 +92,7 @@ test('announces the date of the current announcement', () => {
 
   const iso = date.toISOString();
 
-  expect(iso).toBe('2026-10-08T18:00:00.000Z');
+  expect(iso).toBe('2026-10-22T18:00:00.000Z');
   expect(ANNOUNCEMENT_STORAGE_KEY).toBe('lastAnnouncementDateTime');
 });
 
@@ -111,7 +111,7 @@ test('renders the link in the browser when not yet dismissed', () => {
 
   mount();
 
-  expect(link()?.textContent).toBe('New: Hashbrown v0.7 moves to AG-UI 1.0');
+  expect(link()?.textContent).toBe('New: Hashbrown v0.8 adds decisions');
   expect(link()?.querySelector('strong')?.textContent).toBe('New:');
 });
 
@@ -172,4 +172,14 @@ test('renders nothing once the entry has expired', () => {
   mount();
 
   expect(link()).toBeNull();
+});
+
+test('shows the release announcement after the previous release was dismissed', () => {
+  reset();
+  vi.useFakeTimers({ now: LIVE_NOW, toFake: ['Date'] });
+  localStorage.setItem(ANNOUNCEMENT_STORAGE_KEY, '2026-10-08T18:00:00Z');
+
+  mount();
+
+  expect(link()?.textContent).toBe('New: Hashbrown v0.8 adds decisions');
 });

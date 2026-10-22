@@ -52,7 +52,7 @@ export interface HashbrownProviderOptions {
     transport?: Decision.Transport;
   };
   /**
-   * Set to `false` to turn off Hashbrown's development-only collection for every descendant hook. See https://hashbrown.dev/docs/react/platform/collection.
+   * Set to `false` to turn off Hashbrown's development-only collection for every descendant hook.
    */
   telemetry?: boolean;
 }

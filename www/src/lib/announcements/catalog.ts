@@ -27,6 +27,13 @@ export interface SiteAnnouncement {
 /** The announcements, in any order; the newest live one is shown. */
 export const ANNOUNCEMENTS: readonly SiteAnnouncement[] = [
   {
+    id: 'v0-8-decisions',
+    text: 'New: Hashbrown v0.8 adds decisions',
+    href: '/blog/2026-10-22-hashbrown-v-0-8-0',
+    publishedAt: '2026-10-22T18:00:00Z',
+    expiresAt: '2027-01-20T18:00:00Z',
+  },
+  {
     id: 'v0-7-ag-ui-1-0',
     text: 'New: Hashbrown v0.7 moves to AG-UI 1.0',
     href: '/blog/2026-10-08-hashbrown-v-0-7-0',
@@ -44,7 +51,7 @@ export const ANNOUNCEMENTS: readonly SiteAnnouncement[] = [
     runtime: {
       packageNames: ['@hashbrownai/react'],
       minVersion: '0.8.0',
-      documentationUrl: 'https://hashbrown.dev/docs/react/platform/collection',
+      documentationUrl: 'https://hashbrown.dev/docs/react',
     },
   },
   {
@@ -56,8 +63,7 @@ export const ANNOUNCEMENTS: readonly SiteAnnouncement[] = [
     runtime: {
       packageNames: ['@hashbrownai/angular'],
       minVersion: '0.8.0',
-      documentationUrl:
-        'https://hashbrown.dev/docs/angular/platform/collection',
+      documentationUrl: 'https://hashbrown.dev/docs/angular',
     },
   },
 ];

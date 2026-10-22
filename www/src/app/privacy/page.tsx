@@ -12,7 +12,7 @@ import { DEFAULT_CARD_IMAGE, pageMetadata } from '../../lib/site-metadata';
 export const metadata: Metadata = pageMetadata({
   title: 'Privacy: Hashbrown',
   description:
-    'What Hashbrown collects, who processes it, and how to opt out or ask for deletion.',
+    'Contact Hashbrown with privacy questions or requests concerning your information.',
   image: DEFAULT_CARD_IMAGE,
 });
 

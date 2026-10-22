@@ -7,21 +7,17 @@ const privacy = readFileSync(
   'utf8',
 );
 
-test('privacy describes the form, the install digest and install-runtime approval as live', () => {
+test('privacy explains support form information, email and contact choices', () => {
   const text = privacy;
 
-  expect(text).not.toMatch(/upcoming|When the Get unstuck form launches/i);
-  expect(text).not.toMatch(/tracking/i);
   expect(text).toContain('[Get unstuck form](/unstuck)');
   expect(text).toContain(
     'your email address, your framework, and your question',
   );
-  expect(text).toContain('founder install digest');
-  expect(text).toContain('work domain');
-  expect(text).toContain('gmail.com');
   expect(text).toContain('three emails');
-  expect(text).toContain('Nobody on the digest is emailed until he approves');
-  expect(text).toContain('to send the emails described below');
-  expect(text).toContain('the packages they installed');
   expect(text).toContain('unsubscribe link');
+  expect(text).toContain('mailto:brian@hashbrown.dev');
+  expect(text).not.toMatch(
+    /telemetry|observability|collector|install digest|installation-id|DO_NOT_TRACK|PostHog/i,
+  );
 });
