@@ -150,7 +150,7 @@ interface B4AnswerAnnotations {
   Consumers also read the bare ag-ui-langgraph `error: "error"` sentinel.
 - **Labels are computed by the producer and overridable on the client.** For B4 tools they come from `display.running/done/failed`. For provider built-ins, the adapter has a built-in label table. The client checks the app's override first, then the producer's label, then a generic fallback.
 - **Sources live where they were produced, and citations point at them by id.** Sources from a tool call go on that call's step. Grounding that comes with no tool call goes on `b4.answer.sources`. Google attribution is never mixed into sources.
-- **Timing.** Use the producer's `startedAt` and `settledAt`. Fall back to the CUSTOM event's own `timestamp`, then to arrival time.
+- **Timing.** Use the producer's `startedAt` and `settledAt`. When a step has no `startedAt`, consumers stamp it from the carrying event's `timestamp` (the CUSTOM event, or TOOL_CALL_START for metadata). A call with no timestamps has no timing; reducers do not read the wall clock for it.
 - **Versioning.**
   - `v` is a major version.
   - New optional fields and new values of open strings never bump it.
