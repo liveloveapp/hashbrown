@@ -133,8 +133,14 @@ bucket key starts with `form:`, and the `campaign:v1:configuration` activity.
 ## One tick
 
 The cron calls `POST /threads/<uuid>/runs/wait` with
-`{ "route": "/dispatch#workflow", "input": { "trigger": "cron" } }`. The
-workflow reads the switches, then runs these steps in order:
+`{ "route": "/dispatch#workflow", "input": { "trigger": "cron" } }`.
+The cron and the nudge then call `DELETE /threads/<uuid>` for that thread
+(5 s cap, best effort, logged as `[lifecycle-thread-delete-failed]` with the
+status only). b4run refuses the delete while the run is still executing, so
+the threads of client-timed-out runs, mostly nudges, can remain and need a
+manual sweep.
+
+The workflow reads the switches, then runs these steps in order:
 
 1. Resend message-id reconciliation.
 2. Observation projection, when enabled. A failure here raises the

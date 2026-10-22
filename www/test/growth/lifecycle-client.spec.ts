@@ -1,7 +1,9 @@
 import { expect, test, vi } from 'vitest';
 
 import {
+  deleteLifecycleThread,
   invokeLifecycle,
+  LifecycleInvokeError,
   nudgeLifecycle,
 } from '../../src/lib/growth/lifecycle-client';
 
@@ -244,4 +246,134 @@ test('invokeLifecycle accepts exactly the four operator alerts', async () => {
   );
   expect(withRecovery.operatorAlerts).toEqual(['mailbox_recovery_required']);
   await expect(rejected).rejects.toThrow('invalid state');
+});
+
+const DELETE_INPUT = {
+  baseUrl: 'https://lifecycle.example/',
+  serviceSecret: 'service-secret',
+  threadId: THREAD_ID,
+  timeoutMs: 5_000,
+};
+
+test('deleteLifecycleThread sends an authenticated DELETE and treats 204 and 404 as done', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(new Response('gone', { status: 404 }));
+
+  await deleteLifecycleThread(DELETE_INPUT, { fetch: fetch as never });
+  await deleteLifecycleThread(DELETE_INPUT, { fetch: fetch as never });
+
+  const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toBe(`https://lifecycle.example/threads/${THREAD_ID}`);
+  expect(init.method).toBe('DELETE');
+  expect(init.redirect).toBe('error');
+  expect(init.headers).toEqual({ authorization: 'Bearer service-secret' });
+  expect(init.signal).toBeInstanceOf(AbortSignal);
+  expect(warn).not.toHaveBeenCalled();
+  warn.mockRestore();
+});
+
+test('deleteLifecycleThread logs only the status on a 409 and never throws', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const fetch = vi.fn(async () => new Response('secret body', { status: 409 }));
+
+  await expect(
+    deleteLifecycleThread(DELETE_INPUT, { fetch: fetch as never }),
+  ).resolves.toBeUndefined();
+
+  expect(warn).toHaveBeenCalledWith('[lifecycle-thread-delete-failed]', 409);
+  warn.mockRestore();
+});
+
+test('deleteLifecycleThread logs only the error name on a network failure or a bad origin and never throws', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const fetch = vi.fn(async () => {
+    throw new DOMException('token leaked here', 'TimeoutError');
+  });
+
+  await deleteLifecycleThread(DELETE_INPUT, { fetch: fetch as never });
+  await deleteLifecycleThread(
+    { ...DELETE_INPUT, baseUrl: 'http://insecure.example' },
+    { fetch: fetch as never },
+  );
+
+  expect(warn).toHaveBeenNthCalledWith(
+    1,
+    '[lifecycle-thread-delete-failed]',
+    'TimeoutError',
+  );
+  expect(warn).toHaveBeenCalledTimes(2);
+  expect(JSON.stringify(warn.mock.calls)).not.toContain('token leaked');
+  warn.mockRestore();
+});
+
+test('invokeLifecycle fails with an error that carries the thread id once the request is sent', async () => {
+  const rejected = vi.fn(async () => new Response('boom', { status: 502 }));
+  const invalid = vi.fn(async () => new Response('not json'));
+  const down = vi.fn(async () => {
+    throw new Error('down');
+  });
+
+  const results = await Promise.all(
+    [rejected, invalid, down].map((fetch) =>
+      invokeLifecycle(INPUT, {
+        fetch: fetch as never,
+        randomUUID: () => THREAD_ID,
+      }).catch((error: unknown) => error),
+    ),
+  );
+
+  for (const error of results) {
+    expect(error).toBeInstanceOf(LifecycleInvokeError);
+    expect((error as LifecycleInvokeError).threadId).toBe(THREAD_ID);
+  }
+  expect((results[0] as Error).message).toBe(
+    'Lifecycle dispatch was not accepted',
+  );
+});
+
+test('nudgeLifecycle deletes the thread after a successful run', async () => {
+  try {
+    stubLifecycleEnv();
+    const invoke = vi.fn(async () => ({
+      operatorAlerts: [],
+      threadId: THREAD_ID,
+    }));
+    const remove = vi.fn(async () => undefined);
+
+    await nudgeLifecycle({ submissionId: SUBMISSION_ID }, invoke, remove);
+
+    expect(remove).toHaveBeenCalledWith({
+      baseUrl: 'https://lifecycle.example',
+      serviceSecret: 'service-secret',
+      threadId: THREAD_ID,
+      timeoutMs: 5_000,
+    });
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+test('nudgeLifecycle deletes the thread of a failed run and never throws', async () => {
+  try {
+    stubLifecycleEnv();
+    const invoke = vi.fn(async () => {
+      throw new LifecycleInvokeError('down', THREAD_ID);
+    });
+    const remove = vi.fn(async () => {
+      throw new Error('delete exploded');
+    });
+
+    await expect(
+      nudgeLifecycle({ submissionId: SUBMISSION_ID }, invoke, remove),
+    ).resolves.toBeUndefined();
+
+    expect(remove).toHaveBeenCalledWith(
+      expect.objectContaining({ threadId: THREAD_ID }),
+    );
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });

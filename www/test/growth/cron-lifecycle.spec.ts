@@ -1,5 +1,6 @@
 import { expect, test, vi } from 'vitest';
 
+import { LifecycleInvokeError } from '../../src/lib/growth/lifecycle-client';
 import {
   createLifecycleCronRoute,
   maxDuration,
@@ -138,5 +139,65 @@ test('cron route logs a misconfiguration once, without the value, for a switch t
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith('[lifecycle-cron-misconfigured]');
     expect(invoke).not.toHaveBeenCalled();
+  });
+});
+
+test('the cron deletes its thread after a successful run', async () => {
+  await isolated(async () => {
+    configure();
+    const invoke = vi.fn(async () => ({ operatorAlerts: [], threadId: 't-1' }));
+    const deleteThread = vi.fn(async () => undefined);
+    const route = createLifecycleCronRoute({ invoke, deleteThread });
+
+    const response = await route(request());
+
+    expect(response.status).toBe(200);
+    expect(deleteThread).toHaveBeenCalledWith({
+      baseUrl: 'https://lifecycle.example',
+      serviceSecret: 'service-secret',
+      threadId: 't-1',
+      timeoutMs: 5_000,
+    });
+  });
+});
+
+test('the cron still answers 200 when the delete fails or times out', async () => {
+  await isolated(async () => {
+    configure();
+    const invoke = vi.fn(async () => ({ operatorAlerts: [], threadId: 't-1' }));
+    const deleteThread = vi.fn(async () => {
+      throw new Error('delete timed out');
+    });
+    const route = createLifecycleCronRoute({ invoke, deleteThread });
+
+    const response = await route(request());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      accepted: true,
+      operator_alerts: [],
+    });
+  });
+});
+
+test('a failed run still deletes its thread and answers 503', async () => {
+  await isolated(async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    configure();
+    const invoke = vi.fn(async () => {
+      throw new LifecycleInvokeError(
+        'Lifecycle dispatch request failed',
+        't-2',
+      );
+    });
+    const deleteThread = vi.fn(async () => undefined);
+    const route = createLifecycleCronRoute({ invoke, deleteThread });
+
+    const response = await route(request());
+
+    expect(response.status).toBe(503);
+    expect(deleteThread).toHaveBeenCalledWith(
+      expect.objectContaining({ threadId: 't-2' }),
+    );
   });
 });

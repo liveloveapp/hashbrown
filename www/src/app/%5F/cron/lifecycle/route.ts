@@ -1,10 +1,13 @@
 import { timingSafeEqual } from 'node:crypto';
 
 import {
+  deleteLifecycleThread,
   invokeLifecycle,
   type InvokeLifecycleInput,
   type InvokeLifecycleResult,
+  LIFECYCLE_THREAD_DELETE_TIMEOUT_MS,
   type LifecycleOperatorAlert,
+  lifecycleThreadId,
 } from '../../../../lib/growth/lifecycle-client';
 
 /** Always evaluated per request; a cron tick is never cached. */
@@ -18,10 +21,12 @@ const CRON_INVOKE_TIMEOUT_MS = 58_000;
 
 interface LifecycleCronDependencies {
   invoke: (input: InvokeLifecycleInput) => Promise<InvokeLifecycleResult>;
+  deleteThread?: typeof deleteLifecycleThread;
 }
 
 const defaultDependencies: LifecycleCronDependencies = {
   invoke: invokeLifecycle,
+  deleteThread: deleteLifecycleThread,
 };
 
 function exactBearer(
@@ -76,6 +81,20 @@ export function createLifecycleCronRoute(
     const baseUrl = process.env['LIFECYCLE_URL']?.trim();
     const serviceSecret = process.env['LIFECYCLE_SERVICE_SECRET'];
     if (!baseUrl || !serviceSecret) return response({ accepted: false }, 503);
+    const deleteThread = dependencies.deleteThread ?? deleteLifecycleThread;
+    const cleanUp = async (threadId: string | undefined): Promise<void> => {
+      if (threadId === undefined) return;
+      try {
+        await deleteThread({
+          baseUrl,
+          serviceSecret,
+          threadId,
+          timeoutMs: LIFECYCLE_THREAD_DELETE_TIMEOUT_MS,
+        });
+      } catch {
+        // Best effort: the dispatch outcome stands.
+      }
+    };
     try {
       const result = await dependencies.invoke({
         baseUrl,
@@ -83,6 +102,7 @@ export function createLifecycleCronRoute(
         timeoutMs: CRON_INVOKE_TIMEOUT_MS,
         trigger: 'cron',
       });
+      await cleanUp(result.threadId);
       for (const alert of result.operatorAlerts) {
         console.warn('[lifecycle-operator-alert]', alert);
       }
@@ -91,6 +111,7 @@ export function createLifecycleCronRoute(
         200,
       );
     } catch (error) {
+      await cleanUp(lifecycleThreadId(error));
       console.warn(
         '[lifecycle-cron-failed]',
         error instanceof Error ? error.message : 'unknown',
