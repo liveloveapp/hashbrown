@@ -264,7 +264,8 @@ const BAD = ['failed', 'denied', 'cancelled'];
  * step, and a read without a status keeps the current one. When both sides
  * are settled, a step from a message beats one from a call. A step
  * that moves into a different bad settle loses its label and sources unless
- * the new step supplies them; its icon is kept unless the new step has one. A failed step with no error gets a default one.
+ * the new step supplies them; its icon is kept unless the new step has one.
+ * A failed step with no error gets a default one.
  *
  * @param previous - The step held so far, if any.
  * @param next - The incoming step.
@@ -318,7 +319,9 @@ function mergeSteps(
 
 /**
  * A shallow metadata merge, like a plain spread, except that the `b4.step`
- * key goes through {@link ɵmergeToolStep}.
+ * key goes through {@link ɵmergeToolStep}. An unreadable incoming step keeps
+ * the previous step, or its own raw value when there is none; readers ignore
+ * a raw value they cannot read.
  *
  * @param previous - Metadata held so far.
  * @param next - Incoming metadata.
@@ -343,8 +346,6 @@ export function ɵmergeStepMetadata(
     if (nextStep === undefined) {
       if (previous !== undefined && ɵTOOL_STEP_METADATA_KEY in previous) {
         merged[ɵTOOL_STEP_METADATA_KEY] = previous[ɵTOOL_STEP_METADATA_KEY];
-      } else {
-        delete merged[ɵTOOL_STEP_METADATA_KEY];
       }
     } else {
       const statedKind =
@@ -444,8 +445,9 @@ export function isProviderToolCall(toolCall: {
 
 /**
  * Settles a still-`running` `b4.step` once its call has a result: `completed`
- * with the running label cleared (sources kept), or `failed` with `error: {message}` when the result
- * carries an error. Any other step, or none, is left as it is.
+ * with the running label cleared (sources kept), or `failed` with
+ * `error: {message}` when the result carries an error. Any other step, or
+ * none, is left as it is.
  *
  * Internal to core: not exported from the package.
  *

@@ -330,12 +330,20 @@ test('an unreadable next step keeps the previous step', () => {
   expect(result?.['b4.step']).toBe(previous['b4.step']);
 });
 
-test('an unreadable first step is left out', () => {
+test('an unreadable first step keeps its raw value', () => {
   const unreadable = { 'b4.step': 'junk', openai: { id: 1 } };
+  const future = { 'b4.step': { v: 2, status: 'completed' } };
 
-  const result = mergeStepMetadata(undefined, unreadable, 'call');
+  const first = mergeStepMetadata(undefined, unreadable, 'call');
+  const overOther = mergeStepMetadata({ openai: { id: 2 } }, future, 'call');
 
-  expect(result).toEqual({ openai: { id: 1 } });
+  expect(first).toEqual({ 'b4.step': 'junk', openai: { id: 1 } });
+  expect(overOther).toEqual({
+    'b4.step': { v: 2, status: 'completed' },
+    openai: { id: 2 },
+  });
+  expect(readToolStep(first?.['b4.step'])).toBeUndefined();
+  expect(readToolStep(overOther?.['b4.step'])).toBeUndefined();
 });
 
 test('an invalid kind in the next value does not count as stated', () => {
