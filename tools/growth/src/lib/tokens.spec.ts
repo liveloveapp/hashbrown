@@ -5,6 +5,7 @@ import { expect, test } from 'vitest';
 import {
   createGrowthActionToken,
   createUnsubscribeActionUrl,
+  createUnsubscribeActionUrlForJob,
   growthStopEventKey,
   loadGrowthTokenKeyring,
   normalizeGrowthPublicActionOrigin,
@@ -217,4 +218,46 @@ test('loadGrowthTokenKeyring reads the active and previous keys from the environ
     previous: [{ version: 1, secret }],
   });
   expect(missing).toThrow('GROWTH_ACTION_TOKEN_ACTIVE_VERSION');
+});
+
+test('job unsubscribe URLs use immutable job creation time and nonce across retries', () => {
+  const job = { id: 'job-1', contactId, createdAt: issuedAt };
+  const origin = 'https://hashbrown.dev';
+
+  const first = unsubscribeActionUrlValue(
+    createUnsubscribeActionUrlForJob(job, key, origin),
+  );
+  const retry = unsubscribeActionUrlValue(
+    createUnsubscribeActionUrlForJob(
+      { ...job, createdAt: new Date(issuedAt) },
+      key,
+      origin,
+    ),
+  );
+  const token = new URL(first).searchParams.get('token') ?? '';
+  const payload = verifyGrowthActionToken(token, {
+    expectedPurpose: 'unsubscribe',
+    keyring,
+    now: new Date(issuedAt.getTime() + 86400000),
+  });
+
+  expect(retry).toBe(first);
+  expect(payload).toMatchObject({
+    contactId,
+    issuedAt,
+    eventNonce: 'job:job-1',
+  });
+  expect(
+    unsubscribeActionUrlValue(
+      createUnsubscribeActionUrlForJob({ ...job, id: 'job-2' }, key, origin),
+    ),
+  ).not.toBe(first);
+});
+
+test('job unsubscribe URLs reject jobs without a contact', () => {
+  const job = { id: 'job-1', contactId: null, createdAt: issuedAt };
+
+  expect(() =>
+    createUnsubscribeActionUrlForJob(job, key, 'https://hashbrown.dev'),
+  ).toThrow('contact');
 });

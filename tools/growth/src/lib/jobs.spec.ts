@@ -30,6 +30,77 @@ const now = new Date('2026-09-02T15:00:00.000Z');
 const leaseUntil = new Date('2026-09-02T15:10:00.000Z');
 const emptyRows = () => ({ rows: [] });
 
+test('canary allowlist rejects before a submission authorization is recorded', async () => {
+  const { executor, calls } = executorWith({
+    'lock-contact-for-send': () => ({ rows: [sendContactRow()] }),
+    'lock-job-for-send': () => ({ rows: [jobRow()] }),
+    'insert-final-send-authorization': () => ({
+      rows: [{ event_key: 'unused' }],
+    }),
+  });
+
+  const result = await authorizeLeasedJobForSubmission(executor, {
+    jobId,
+    leaseToken,
+    now,
+    campaignEnabled: true,
+    deliveryEnabled: true,
+    canaryRecipientAllowlist: ['someone-else@example.com'],
+  });
+
+  expect(result).toMatchObject({
+    authorized: false,
+    reason: 'pilot_recipient_not_allowlisted',
+  });
+  expect(
+    calls.some((call) => call.marker === 'insert-final-send-authorization'),
+  ).toBe(false);
+});
+
+test('final authorization blocks a campaign when mailbox recovery is unhealthy', async () => {
+  const { executor } = executorWith({
+    'lock-contact-for-send': () => ({
+      rows: [sendContactRow({ mailbox_recovery_required: true })],
+    }),
+    'lock-job-for-send': () => ({ rows: [jobRow()] }),
+  });
+
+  const result = await authorizeLeasedJobForSubmission(executor, {
+    jobId,
+    leaseToken,
+    now,
+    campaignEnabled: true,
+    deliveryEnabled: true,
+  });
+
+  expect(result).toMatchObject({
+    authorized: false,
+    reason: 'mailbox_recovery_required',
+  });
+});
+
+test('final authorization blocks contact follow-ups while reply binding is pending', async () => {
+  const { executor } = executorWith({
+    'lock-contact-for-send': () => ({
+      rows: [sendContactRow({ reply_binding_pending: true })],
+    }),
+    'lock-job-for-send': () => ({ rows: [jobRow()] }),
+  });
+
+  const result = await authorizeLeasedJobForSubmission(executor, {
+    jobId,
+    leaseToken,
+    now,
+    campaignEnabled: true,
+    deliveryEnabled: true,
+  });
+
+  expect(result).toMatchObject({
+    authorized: false,
+    reason: 'reply_binding_pending',
+  });
+});
+
 function jobRow(overrides: TestRow = {}): TestRow {
   return {
     id: jobId,
@@ -200,6 +271,7 @@ test('leaseDueJobs leases only due pending or expired jobs and increments attemp
     new Date(now.getTime() + 60_000),
     true,
     false,
+    false,
   ]);
   expect(second?.params[5]).toBe(true);
   expect(first?.sql).toContain("j.status = 'pending'");
@@ -218,7 +290,7 @@ test('leaseDueJobs leases only due pending or expired jobs and increments attemp
   ).rejects.toThrow('batchSize must be an integer between 1 and 100');
 });
 
-test('leaseDueJobs holds send_step behind an unbound sibling send and both mailbox kinds behind an open recovery', async () => {
+test('leaseDueJobs uses Resend campaign coverage and retains old recovery only for legacy reconciliation', async () => {
   const { executor, calls } = executorWith({
     'lease-due-jobs': emptyRows,
   });
@@ -235,7 +307,8 @@ test('leaseDueJobs holds send_step behind an unbound sibling send and both mailb
   expect(sql).toContain(
     "unbound.kind in ('fulfill', 'send_step') and unbound.status = 'completed' and unbound.provider_email_id is not null and unbound.rfc_message_id is null",
   );
-  expect(sql).toContain("j.kind not in ('send_step', 'reply_reconcile')");
+  expect(sql).toContain("j.kind <> 'reply_reconcile'");
+  expect(sql).toContain('from growth_reply_mailboxes m where m.enabled');
   expect(sql).toContain("recovery_required.kind = 'mailbox.recovery_required'");
   expect(sql).toContain(
     "recovery_completed.data->>'recovery_id' = recovery_required.data->>'recovery_id'",
@@ -377,6 +450,7 @@ test('authorizeLeasedJobForSubmission gates in order and records submission_auth
   });
   expect(fresh.calls.map(({ marker }) => marker)).toEqual([
     'privacy-lock',
+    'inbox-send-lock',
     'lock-contact-for-send',
     'lock-job-for-send',
     'insert-final-send-authorization',

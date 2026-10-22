@@ -1,4 +1,5 @@
 import { canonicalJson } from './activity.ts';
+import { bindOutboundMessageId } from './inbox-replies.ts';
 import { nestedExecutor, type SqlExecutor } from './database.ts';
 import type { GrowthDeliveryStatus } from './models.ts';
 import {
@@ -94,6 +95,9 @@ export interface ProcessResendWebhookDependencies {
  * - `foreign_sender`: the sender is not on the verified domain; the Resend
  *   account is shared with another product, whose events are acknowledged and
  *   ignored without touching the database.
+ * - `foreign_product`: an explicit app tag names another product; ignored
+ *   without touching the database, even on the verified domain. Legacy events
+ *   without an app tag require a stored provider email ID and corroboration.
  * - `unmatched_job`: no job matches and the tags are not ours.
  * - `retryable_unmatched_job`: no job matches yet, but the tags are ours, so
  *   the provider should retry.
@@ -106,6 +110,7 @@ export type ProcessResendWebhookResult =
         | 'ignored_event_type'
         | 'environment_mismatch'
         | 'foreign_sender'
+        | 'foreign_product'
         | 'unmatched_job'
         | 'retryable_unmatched_job';
     }
@@ -460,6 +465,7 @@ function validateCorroboration(
 }
 
 function isHashbrownGrowthSend(tags: Record<string, string>): boolean {
+  if (tags['app'] !== 'hashbrown') return false;
   const environment = tags['environment'];
   if (
     environment !== 'production' &&
@@ -470,16 +476,16 @@ function isHashbrownGrowthSend(tags: Record<string, string>): boolean {
   }
   if (tags['job_kind'] === 'fulfill') {
     return (
-      Object.keys(tags).length === 2 &&
+      Object.keys(tags).length === 3 &&
       tags['campaign_version'] === undefined &&
       tags['campaign_step'] === undefined
     );
   }
   if (tags['job_kind'] !== 'send_step') return false;
-  // Sends accepted before the template tag shipped carry four tags; newer
-  // sends carry a fifth, bounded to the closed template allowlist.
+  // App-tagged sends without a template carry five tags; newer sends carry
+  // a sixth, bounded to the closed template allowlist.
   const template = tags['campaign_template'];
-  const expectedTagCount = template === undefined ? 4 : 5;
+  const expectedTagCount = template === undefined ? 5 : 6;
   return (
     Object.keys(tags).length === expectedTagCount &&
     tags['campaign_version'] === 'v1' &&
@@ -531,7 +537,9 @@ export class ResendWebhookPayloadError extends Error {
  * advances the job's delivery status, and stops the contact on a permanent
  * bounce, complaint, or provider suppression. Replays by `resend:<id>` are
  * no-ops. Events whose sender is not on {@link VERIFIED_DOMAIN} return
- * `foreign_sender` before any database call.
+ * `foreign_sender`; an explicit foreign app tag returns `foreign_product`.
+ * Both are ignored before any database call. Legacy tagless events must match
+ * a stored provider email ID and pass corroboration before any write or stop.
  *
  * @param executor - Opens the transaction the event is applied in.
  * @param input - The svix id and the parsed payload.
@@ -561,6 +569,9 @@ export async function processVerifiedResendWebhook(
   }
   if (event.senderDomain !== VERIFIED_DOMAIN) {
     return { applied: false, reason: 'foreign_sender' };
+  }
+  if (event.tags['app'] !== undefined && event.tags['app'] !== 'hashbrown') {
+    return { applied: false, reason: 'foreign_product' };
   }
   const eventKey = `resend:${providerEventId}`;
   const projection = activityProjection(event);
@@ -641,6 +652,12 @@ export async function processVerifiedResendWebhook(
       throw new Error('Resend webhook job changed during processing');
     }
     validateCorroboration(job, event);
+    if (event.rfcMessageId)
+      await bindOutboundMessageId(
+        transaction,
+        event.providerEmailId,
+        event.rfcMessageId,
+      );
 
     const inserted = await transaction.execute<{ event_key: string }>(
       `/* growth:insert-resend-webhook-activity */
