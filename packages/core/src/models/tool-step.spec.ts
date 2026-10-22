@@ -207,7 +207,7 @@ test('merges step metadata, keeping other keys shallow-merged', () => {
 
   expect(result?.['openai']).toEqual({ id: 'b' });
   expect((result?.['b4.step'] as ToolStep).status).toBe('completed');
-  expect((result?.['b4.step'] as ToolStep).label).toBe('a');
+  expect(result?.['b4.step'] as ToolStep).not.toHaveProperty('label');
 });
 
 test('merge metadata handles undefined sides', () => {
@@ -389,4 +389,83 @@ test('stamps the step in metadata and leaves stepless metadata alone', () => {
   expect(metadata['b4.step']).not.toHaveProperty('startedAt');
   expect(untouched).toBe(stepless);
   expect(stampStepMetadataStart(undefined, 1000)).toBeUndefined();
+});
+
+test('a settle with no label drops the running label and sources and keeps the rest', () => {
+  const running = step({
+    label: 'Searching',
+    icon: 'search',
+    startedAt: 1000,
+    queries: ['q'],
+    builtin: 'web_search',
+    provider: 'openai',
+    sources: [{ id: 's', kind: 'url', title: 'A' }],
+  });
+
+  const result = mergeToolStep(
+    running,
+    { v: 1, kind: 'server', status: 'completed' },
+    'message',
+  );
+
+  expect(result).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+    icon: 'search',
+    startedAt: 1000,
+    queries: ['q'],
+    builtin: 'web_search',
+    provider: 'openai',
+  });
+});
+
+test('a settle that restates its label and sources keeps them', () => {
+  const running = step({
+    label: 'Searching',
+    sources: [{ id: 's', kind: 'url', title: 'A' }],
+  });
+  const completed = step({
+    status: 'completed',
+    label: 'Searched',
+    sources: [{ id: 't', kind: 'url', title: 'B' }],
+  });
+
+  const result = mergeToolStep(running, completed, 'call');
+
+  expect(result.label).toBe('Searched');
+  expect(result.sources).toEqual([{ id: 't', kind: 'url', title: 'B' }]);
+});
+
+test('a running write never changes a settled step', () => {
+  const completed = step({ status: 'completed', label: 'Done', icon: 'a' });
+  const running = step({ label: 'Again', icon: 'b', startedAt: 5 });
+
+  const fromCall = mergeToolStep(completed, running, 'call');
+  const fromMessage = mergeToolStep(completed, running, 'message');
+
+  expect(fromCall).toEqual(completed);
+  expect(fromMessage).toEqual(completed);
+});
+
+test('any v other than 1 is not a step and a missing v is legacy', () => {
+  const values = [0, 2, '1', null, 1.5].map((v) => ({
+    v,
+    kind: 'server',
+    status: 'running',
+  }));
+
+  const rejected = values.map((value) => readToolStep(value));
+  const legacy = readToolStep({ status: 'running' });
+  const current = readToolStep({ v: 1, status: 'running' });
+
+  expect(rejected).toEqual([
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+  ]);
+  expect(legacy).toEqual({ v: 1, kind: 'server', status: 'running' });
+  expect(current).toEqual({ v: 1, kind: 'server', status: 'running' });
 });

@@ -262,10 +262,13 @@ const BAD = ['failed', 'denied', 'cancelled'];
  * `failed` wins over every status. `completed`, `denied` and `cancelled`
  * settle the step unless it has failed. `running` only lifts an unsettled
  * step, and a read without a status keeps the current one. When both sides
- * are settled, a step from a message beats one from a call. A step
- * that moves into a different bad settle loses its label and sources unless
- * the new step supplies them; its icon is kept unless the new step has one.
- * A failed step with no error gets a default one.
+ * are settled, a step from a message beats one from a call. Defined fields
+ * of the incoming step overlay the held ones, except that a `running` write
+ * never contributes fields to a settled step. A settle out of `running`, or
+ * a move into a different bad settle, drops the running-only `label` and
+ * `sources` unless the incoming step restates them; `icon`, `startedAt`,
+ * `queries`, `kind`, `builtin` and `provider` carry over. A failed step with
+ * no error gets a default one.
  *
  * @param previous - The step held so far, if any.
  * @param next - The incoming step.
@@ -296,6 +299,7 @@ function mergeSteps(
   }
   if (previous.status === 'failed') return { ...previous };
   const prevSettled = previous.status !== 'running';
+  if (prevSettled && next.status === 'running') return { ...previous };
   let status: ɵToolStepStatus;
   if (next.status === undefined) status = previous.status;
   else if (next.status === 'failed') status = 'failed';
@@ -305,7 +309,8 @@ function mergeSteps(
 
   const defined = compact({ ...next }) as ɵToolStepRead;
   const merged: ɵToolStep = { ...previous, ...defined, status };
-  if (BAD.includes(status) && status !== previous.status) {
+  const settles = previous.status === 'running' && status !== 'running';
+  if (settles || (BAD.includes(status) && status !== previous.status)) {
     const { label, sources, ...rest } = merged;
     return {
       ...rest,
