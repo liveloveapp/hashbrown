@@ -1268,7 +1268,8 @@ export async function approveContactFromInstallDigest(
 
 /**
  * Erases a contact: records the deletion, cancels unsent jobs, removes private
- * activity, artifacts and the stored score, unlinks projects and install
+ * activity, artifacts and the stored score, clears the payload of unmatched
+ * `reply_reconcile` jobs that reference its sent Message-IDs, unlinks projects and install
  * runtime links (the link rows stay, so their runtime observations are never
  * re-evaluated), scrubs contact fields, and keeps stop and delivery audit
  * state. Repeating the deletion is inert.
@@ -1443,6 +1444,56 @@ export async function deleteContact(
         [interruptedAuthorizedJobIds, occurredAt],
       );
     }
+
+    // Unmatched replies queue `reply_reconcile` jobs with no contact, holding
+    // the reply's In-Reply-To/References headers. Match them by the contact's
+    // own sent Message-IDs (never by address) and drop that metadata; a job
+    // still waiting is cancelled like the contact's other unsent jobs.
+    await transaction.execute<{ id: string }>(
+      `/* growth:scrub-reply-reconcile-jobs */
+       with sent as (
+         select rfc_message_id as message_id from growth_jobs
+         where id = any($2::uuid[]) and rfc_message_id is not null
+         union
+         select gmail_seed_message_id from growth_jobs
+         where id = any($2::uuid[]) and gmail_seed_message_id is not null
+       )
+       update growth_jobs
+       set status = case
+             when status in ('pending', 'leased') then 'cancelled'
+             else status
+           end,
+           lease_until = null,
+           lease_token = null,
+           payload = '{}'::jsonb
+       where kind = 'reply_reconcile'
+         and contact_id is null
+         and (
+           payload->>'in_reply_to' in (select message_id from sent)
+           or payload->>'rfc_message_id' in (select message_id from sent)
+           or (
+             jsonb_typeof(payload->'references') = 'array'
+             and exists (
+               select 1 from jsonb_array_elements_text(payload->'references') ref
+               where ref in (select message_id from sent)
+             )
+           )
+           or (
+             jsonb_typeof(payload->'ranked_candidates') = 'array'
+             and exists (
+               select 1 from jsonb_array_elements(payload->'ranked_candidates') cand
+               where cand->>'message_id' in (select message_id from sent)
+             )
+           )
+           or (
+             jsonb_typeof(payload->'resolved_candidates') = 'array'
+             and payload->'resolved_candidates' @>
+                 jsonb_build_array(jsonb_build_object('contact_id', $1::text))
+           )
+         )
+       returning id`,
+      [contactId, jobIds],
+    );
 
     const artifacts = await transaction.execute<{ id: string }>(
       `/* growth:delete-artifacts */

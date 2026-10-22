@@ -1886,11 +1886,12 @@ export async function settleGoogleReplyReconciliation(
       const cancelled = await transaction.execute<{ id: string }>(
         `/* growth:cancel-deleted-google-reconcile */
          update growth_jobs
-         set status = 'cancelled', lease_until = null, lease_token = null,
+         set status = 'cancelled', contact_id = $3, payload = '{}'::jsonb,
+             lease_until = null, lease_token = null,
              last_error_code = 'contact_deleted'
          where id = $1 and lease_token = $2::uuid
          returning id`,
-        [input.jobId, input.leaseToken],
+        [input.jobId, input.leaseToken, selected.contact_id],
       );
       if (cancelled.rows.length !== 1) {
         throw new Error(

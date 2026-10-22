@@ -6,6 +6,7 @@ import {
   applyMigrations,
   defaultMigrationsDirectory,
 } from '../scripts/apply-migrations.mts';
+import { deleteContact } from '../src/lib/contacts.ts';
 import { createDatabaseExecutor } from '../src/lib/database.ts';
 import { dispatchGrowthLeasedJob } from '../src/lib/dispatcher.ts';
 import {
@@ -444,5 +445,127 @@ test('recovery_required pauses send_step and reply_reconcile dispatch until reco
   expect(deferred.rows[0]).toEqual({
     status: 'pending',
     last_error_code: 'reply_reference_unresolved',
+  });
+});
+
+/** Inserts a `reply_reconcile` job the way an unmatched reply leaves it. */
+async function insertReconcile(
+  occurredAt: Date,
+  reply: Record<string, unknown>,
+  resolvedContactId?: string,
+): Promise<string> {
+  const gmailId = `gmail-${randomUUID()}`;
+  createdGmailIds.add(gmailId);
+  const inserted = await executor.execute<{ id: string }>(
+    `insert into growth_jobs (kind, status, available_at, idempotency_key, payload)
+     values ('reply_reconcile', 'pending', $1, $2, $3::jsonb)
+     returning id`,
+    [
+      occurredAt,
+      `reply_reconcile:gmail:${gmailId}`,
+      JSON.stringify({
+        schema_version: 1,
+        gmail_message_id: gmailId,
+        rfc_message_id: `<reply.${randomUUID()}@example.com>`,
+        occurred_at: occurredAt.toISOString(),
+        in_reply_to: null,
+        references: [],
+        subject_sha256: null,
+        ranked_candidates: [],
+        resolved_candidates: resolvedContactId
+          ? [{ message_id: 'x', rank: 0, contact_id: resolvedContactId }]
+          : [],
+        ...reply,
+      }),
+    ],
+  );
+  return inserted.rows[0]?.id ?? '';
+}
+
+async function readReconcile(id: string) {
+  const result = await executor.execute<{
+    status: string;
+    payload: Record<string, unknown>;
+  }>('select status, payload from growth_jobs where id = $1', [id]);
+  return result.rows[0];
+}
+
+const deletion = (contactId: string, at: Date) => ({
+  contactId,
+  eventKey: `delete:${randomUUID()}`,
+  occurredAt: at,
+  actor: 'founder',
+  source: 'test',
+  policyVersion: 'growth-v1',
+  redactEvidence: async () => undefined,
+});
+
+test('deleting a contact clears unmatched reply_reconcile payloads that reference its messages', async () => {
+  const approvedAt = new Date('2037-07-01T00:00:00.000Z');
+  const sentAt = new Date('2037-07-07T14:10:00.000Z');
+  const contact = await createEnrolledContact(
+    executor,
+    createdContactIds,
+    approvedAt,
+  );
+  const stepOne = await acceptStepOne(contact, sentAt, 'Engineer to engineer');
+  const rfcMessageId = `<${randomUUID()}@resend.dev>`;
+  await bindProviderMessageId(executor, {
+    providerEmailId: stepOne.providerEmailId,
+    rfcMessageId,
+  });
+  const byInReplyTo = await insertReconcile(sentAt, {
+    in_reply_to: rfcMessageId,
+  });
+  const byReferences = await insertReconcile(sentAt, {
+    references: [`<other.${randomUUID()}@x>`, rfcMessageId],
+  });
+  const byResolved = await insertReconcile(sentAt, {}, contact.contactId);
+  const unrelated = await insertReconcile(sentAt, {
+    in_reply_to: `<${randomUUID()}@resend.dev>`,
+  });
+
+  await deleteContact(executor, deletion(contact.contactId, sentAt));
+
+  for (const id of [byInReplyTo, byReferences, byResolved]) {
+    const job = await readReconcile(id);
+    expect(job?.status).toBe('cancelled');
+    expect(job?.payload).toEqual({});
+  }
+  expect((await readReconcile(unrelated))?.status).toBe('pending');
+});
+
+test("deleting a contact leaves other contacts' reply_reconcile payloads intact", async () => {
+  const approvedAt = new Date('2037-08-01T00:00:00.000Z');
+  const sentAt = new Date('2037-08-07T14:10:00.000Z');
+  const deleted = await createEnrolledContact(
+    executor,
+    createdContactIds,
+    approvedAt,
+  );
+  const kept = await createEnrolledContact(
+    executor,
+    createdContactIds,
+    approvedAt,
+  );
+  const keptStep = await acceptStepOne(kept, sentAt, 'Engineer to engineer');
+  await acceptStepOne(deleted, sentAt, 'Another subject');
+  const keptRfc = `<${randomUUID()}@resend.dev>`;
+  await bindProviderMessageId(executor, {
+    providerEmailId: keptStep.providerEmailId,
+    rfcMessageId: keptRfc,
+  });
+  const reply = await insertReconcile(sentAt, {
+    in_reply_to: keptRfc,
+    references: [keptRfc],
+  });
+
+  await deleteContact(executor, deletion(deleted.contactId, sentAt));
+
+  const job = await readReconcile(reply);
+  expect(job?.status).toBe('pending');
+  expect(job?.payload).toMatchObject({
+    in_reply_to: keptRfc,
+    references: [keptRfc],
   });
 });
