@@ -12,9 +12,15 @@ import {
   type RecipientDeliveryPolicy,
   type RecipientEmailInput,
   type RecipientSendDependencies,
+  reconcilePendingResendMessageIds,
   sendRecipientEmail,
   VERIFIED_DOMAIN,
 } from './resend.ts';
+import {
+  ProviderMessageIdBindingError,
+  replySubjectSha256,
+} from './replies.ts';
+import { executorWith } from './testing/fake-executor.ts';
 import {
   createUnsubscribeActionUrl,
   unsubscribeActionUrlValue,
@@ -248,6 +254,7 @@ test('sendRecipientEmail sends with the unsubscribe headers, tags, and the job i
     leaseToken,
     acceptedAt: now,
     providerEmailId: 'email_1',
+    subjectSha256: replySubjectSha256('Hello'),
   });
 });
 
@@ -431,4 +438,129 @@ test('the unsubscribe URL must belong to the authorized contact', async () => {
 
   await expect(attempt).rejects.toThrow('contact binding does not match');
   expect(deps.resend.emails.send).not.toHaveBeenCalled();
+});
+
+const lookupEnv = {
+  RESEND_API_KEY: 're_test_lookup',
+  DELIVERY_ENVIRONMENT: 'preview',
+  GROWTH_DATABASE_ENVIRONMENT: 'preview',
+};
+
+function lookupResponse(id: string, environment = 'preview'): Response {
+  return new Response(
+    JSON.stringify({
+      id,
+      message_id: `<${id}@resend.dev>`,
+      tags: [{ name: 'environment', value: environment }],
+    }),
+  );
+}
+
+test('reconcilePendingResendMessageIds claims at most 5, backs off per attempt and ignores foreign environments', async () => {
+  const claimedIds = ['email_a', 'email_b', 'email_c'];
+  const { executor: lookupExecutor, calls } = executorWith({
+    'claim-provider-message-lookups': () => ({
+      rows: claimedIds.map((provider_email_id) => ({ provider_email_id })),
+    }),
+  });
+  const fetch = vi.fn(async (url: string | URL | Request) => {
+    const id = decodeURIComponent(String(url).split('/').at(-1) ?? '');
+    return id === 'email_b'
+      ? lookupResponse(id, 'production')
+      : id === 'email_c'
+        ? new Response('x'.repeat(131_073))
+        : lookupResponse(id);
+  });
+  const bindProviderMessageId = vi.fn(async () => 'bound' as const);
+  const signal = new AbortController().signal;
+
+  const result = await reconcilePendingResendMessageIds(
+    lookupExecutor,
+    { now, signal },
+    { fetch, env: lookupEnv, bindProviderMessageId },
+  );
+
+  expect(result).toEqual({ claimed: 3, bound: 1, deferred: 2 });
+  const [claim] = calls;
+  expect(claim?.params).toEqual([now]);
+  expect(claim?.sql).toContain('limit 5 for update of job skip locked');
+  expect(claim?.sql).toContain('job.rfc_message_id is null');
+  expect(claim?.sql).toContain("'message_id_lookup_after'");
+  expect(claim?.sql).toContain('make_interval(mins => least(60, power(2,');
+  expect(fetch).toHaveBeenCalledTimes(3);
+  expect(fetch).toHaveBeenCalledWith(
+    'https://api.resend.com/emails/email_a',
+    expect.objectContaining({
+      method: 'GET',
+      headers: { Authorization: 'Bearer re_test_lookup' },
+      redirect: 'error',
+    }),
+  );
+  expect(bindProviderMessageId).toHaveBeenCalledExactlyOnceWith(
+    lookupExecutor,
+    { providerEmailId: 'email_a', rfcMessageId: '<email_a@resend.dev>' },
+  );
+});
+
+test('reconcilePendingResendMessageIds skips without delivery configuration and throws on mismatched environments', async () => {
+  const { executor: lookupExecutor, calls } = executorWith({});
+  const fetch = vi.fn();
+  const signal = new AbortController().signal;
+
+  const unconfigured = await reconcilePendingResendMessageIds(
+    lookupExecutor,
+    { now, signal },
+    { fetch, env: {} },
+  );
+  const mismatched = reconcilePendingResendMessageIds(
+    lookupExecutor,
+    { now, signal },
+    {
+      fetch,
+      env: { ...lookupEnv, GROWTH_DATABASE_ENVIRONMENT: 'production' },
+    },
+  );
+
+  expect(unconfigured).toEqual({ claimed: 0, bound: 0, deferred: 0 });
+  await expect(mismatched).rejects.toThrow(
+    'Provider lookup requires matching environments and credentials',
+  );
+  expect(calls).toEqual([]);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test('reconcilePendingResendMessageIds defers binding conflicts and surfaces database errors', async () => {
+  const { executor: lookupExecutor } = executorWith({
+    'claim-provider-message-lookups': () => ({
+      rows: [{ provider_email_id: 'email_a' }],
+    }),
+  });
+  const fetch = vi.fn(async () => lookupResponse('email_a'));
+  const signal = new AbortController().signal;
+
+  const conflict = await reconcilePendingResendMessageIds(
+    lookupExecutor,
+    { now, signal },
+    {
+      fetch,
+      env: lookupEnv,
+      bindProviderMessageId: async () => {
+        throw new ProviderMessageIdBindingError('conflict');
+      },
+    },
+  );
+  const failure = reconcilePendingResendMessageIds(
+    lookupExecutor,
+    { now, signal },
+    {
+      fetch,
+      env: lookupEnv,
+      bindProviderMessageId: async () => {
+        throw new Error('database unavailable');
+      },
+    },
+  );
+
+  expect(conflict).toEqual({ claimed: 1, bound: 0, deferred: 1 });
+  await expect(failure).rejects.toThrow('database unavailable');
 });

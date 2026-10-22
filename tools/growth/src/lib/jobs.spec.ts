@@ -206,7 +206,7 @@ test('leaseDueJobs leases only due pending or expired jobs and increments attemp
   expect(first?.sql).toContain("j.status = 'leased' and j.lease_until <= $2");
   expect(first?.sql).toContain('attempts = j.attempts + 1');
   expect(first?.sql).toContain('for update skip locked');
-  expect(first?.sql).not.toMatch(/form\.abuse_assessed|mailbox\.recovery/u);
+  expect(first?.sql).not.toMatch(/form\.abuse_assessed/u);
   await expect(
     leaseDueJobs(executor, {
       kinds: ['fulfill'],
@@ -216,6 +216,30 @@ test('leaseDueJobs leases only due pending or expired jobs and increments attemp
       campaignEnabled: true,
     }),
   ).rejects.toThrow('batchSize must be an integer between 1 and 100');
+});
+
+test('leaseDueJobs holds send_step behind an unbound sibling send and both mailbox kinds behind an open recovery', async () => {
+  const { executor, calls } = executorWith({
+    'lease-due-jobs': emptyRows,
+  });
+
+  await leaseDueJobs(executor, {
+    kinds: ['send_step', 'reply_reconcile'],
+    now,
+    batchSize: 5,
+    leaseDurationMs: 60_000,
+    campaignEnabled: true,
+  });
+
+  const sql = (calls[0]?.sql ?? '').replace(/\s+/gu, ' ');
+  expect(sql).toContain(
+    "unbound.kind in ('fulfill', 'send_step') and unbound.status = 'completed' and unbound.provider_email_id is not null and unbound.rfc_message_id is null",
+  );
+  expect(sql).toContain("j.kind not in ('send_step', 'reply_reconcile')");
+  expect(sql).toContain("recovery_required.kind = 'mailbox.recovery_required'");
+  expect(sql).toContain(
+    "recovery_completed.data->>'recovery_id' = recovery_required.data->>'recovery_id'",
+  );
 });
 
 test('leaseDueJobs fails expired leases that were already authorized for submission', async () => {

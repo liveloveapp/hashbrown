@@ -150,6 +150,12 @@ async function sendAndAccept(
     providerEmailId,
   };
   await recordProviderAcceptance(executor, acceptance);
+  // Stand in for Resend Message-ID reconciliation: the next step only leases
+  // once this send's RFC Message-ID is bound.
+  await executor.execute(
+    'update growth_jobs set rfc_message_id = $2 where id = $1',
+    [job.id, `<${providerEmailId}@resend.dev>`],
+  );
   return acceptance;
 }
 

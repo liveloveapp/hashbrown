@@ -524,7 +524,11 @@ export interface LeaseDueJobsInput {
  * A `send_step` is leased only when the campaign is enabled, `isSendWindow`
  * agrees, `now` is Monday to Friday in the 07:00 Pacific hour, and either it
  * is step 1 of an enrollment (from one of the three approval kinds) at least
- * five minutes old, or the previous step was accepted by the provider.
+ * five minutes old, or the previous step was accepted by the provider. A
+ * `send_step` also waits while another `fulfill` or `send_step` for the same
+ * contact is completed with a provider id but no RFC Message-ID yet, and
+ * neither `send_step` nor `reply_reconcile` is leased while a
+ * `mailbox.recovery_required` has no matching `mailbox.recovery_completed`.
  *
  * @throws When no kinds are given or `batchSize` is outside 1..100.
  */
@@ -596,6 +600,30 @@ export async function leaseDueJobs(
        from growth_jobs j
        where j.kind = any($1::text[])
          and ($5::boolean or j.kind <> 'send_step')
+         -- A reply to an earlier send can only be matched once that send's
+         -- Message-ID is bound, so the next step waits for the binding.
+         and (j.kind <> 'send_step' or not exists (
+           select 1 from growth_jobs unbound
+           where unbound.contact_id = j.contact_id and unbound.id <> j.id
+             and unbound.kind in ('fulfill', 'send_step') and unbound.status = 'completed'
+             and unbound.provider_email_id is not null and unbound.rfc_message_id is null
+         ))
+         -- While the mailbox poller may have missed replies, nothing that
+         -- depends on reply evidence runs.
+         and (
+           j.kind not in ('send_step', 'reply_reconcile')
+           or not exists (
+             select 1
+             from growth_activity recovery_required
+             where recovery_required.kind = 'mailbox.recovery_required'
+               and not exists (
+                 select 1
+                 from growth_activity recovery_completed
+                 where recovery_completed.kind = 'mailbox.recovery_completed'
+                   and recovery_completed.data->>'recovery_id' = recovery_required.data->>'recovery_id'
+               )
+           )
+         )
          and j.available_at <= $2
          and (
            j.status = 'pending'
@@ -1449,6 +1477,12 @@ export async function recordProviderAcceptance(
     leaseToken: string;
     acceptedAt: Date;
     providerEmailId: string;
+    /**
+     * The sent subject's reply digest (`replySubjectSha256`), recorded on the
+     * job as `payload.subject_sha256` so a reply can be matched before the
+     * Message-ID binds. The subject itself is never stored.
+     */
+    subjectSha256?: string;
   },
 ): Promise<GrowthJob> {
   const acceptedAt = validDate('acceptedAt', input.acceptedAt);
@@ -1457,6 +1491,13 @@ export async function recordProviderAcceptance(
     input.providerEmailId,
     256,
   );
+  if (
+    input.subjectSha256 !== undefined &&
+    !/^[A-Za-z0-9_-]{43}$/u.test(input.subjectSha256)
+  ) {
+    throw new Error('subjectSha256 must be a base64url SHA-256 digest');
+  }
+  const subjectSha256 = input.subjectSha256 ?? null;
   return executor.transaction(async (transaction) => {
     const discovered =
       await transaction.execute<ProviderAcceptanceContactReference>(
@@ -1536,6 +1577,10 @@ export async function recordProviderAcceptance(
              lease_until = null,
              provider_email_id = $4,
              delivery_status = $5,
+             payload = case
+               when $6::text is null then current.payload
+               else current.payload || jsonb_build_object('subject_sha256', $6::text)
+             end,
              last_error_code = null
          where current.id = $1
            and current.lease_token = $2::uuid
@@ -1569,6 +1614,7 @@ export async function recordProviderAcceptance(
           acceptedAt,
           providerEmailId,
           'submitted',
+          subjectSha256,
         ],
       );
       const acceptedRow = accepted.rows[0];
@@ -1588,6 +1634,10 @@ export async function recordProviderAcceptance(
              lease_until = null,
              provider_email_id = $4,
              delivery_status = $5,
+             payload = case
+               when $6::text is null then current.payload
+               else current.payload || jsonb_build_object('subject_sha256', $6::text)
+             end,
              last_error_code = null
          where current.id = $1
            and current.status = 'cancelled'
@@ -1613,6 +1663,7 @@ export async function recordProviderAcceptance(
           acceptedAt,
           providerEmailId,
           'submitted',
+          subjectSha256,
         ],
       );
       if (reconciled.rows[0]) {
