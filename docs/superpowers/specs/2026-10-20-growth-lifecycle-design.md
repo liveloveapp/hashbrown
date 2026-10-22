@@ -118,33 +118,33 @@ job-queue correctness, and its reporting, instead of rebuilding them.
 
 These are Brian's decisions and are not up for reinterpretation by the builder.
 
-| Decision | Choice |
-| --- | --- |
-| Signals | Mirror threadplane's collection: postinstall collector in the packages, development-browser runtime collector, website session and content views, server-side form acceptance. |
-| Milestones | Four: `package.installed`, `runtime.first_stream_completed`, `tool.first_call_executed`, `component.first_rendered`. |
-| Worker runtime | b4.run, on the current `@b4run/*` packages (0.14 at the time of writing), not the `@dawn-ai/*` 0.8.26 line threadplane's `apps/lifecycle` is still pinned to. The dispatcher, job, and template code mirror threadplane; the config, CLI wrapper, Vercel adapter, and state-database binding are rebuilt against b4.run's own Vercel target and verified the same way (`verify-vercel-adapter`). This is the one place "mirror" means re-implement. |
-| Enrichment and research | Not built. |
-| Email customization | None. One fixed three-step founder sequence; milestones feed internal analytics only. |
-| Enrollment sources | The founder install digest with one-click approve, plus a "Get unstuck" contact form on hashbrown.dev. |
-| Code location | Copied and adapted into the hashbrown monorepo as private Nx projects. No shared package with threadplane. |
-| Accounts | A separate PostHog project. (Neon and Resend separation are the author's call, see §12.) |
+| Decision                | Choice                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signals                 | Mirror threadplane's collection: postinstall collector in the packages, development-browser runtime collector, website session and content views, server-side form acceptance.                                                                                                                                                                                                                                                                      |
+| Milestones              | Four: `package.installed`, `runtime.first_stream_completed`, `tool.first_call_executed`, `component.first_rendered`.                                                                                                                                                                                                                                                                                                                                |
+| Worker runtime          | b4.run, on the current `@b4run/*` packages (0.14 at the time of writing), not the `@dawn-ai/*` 0.8.26 line threadplane's `apps/lifecycle` is still pinned to. The dispatcher, job, and template code mirror threadplane; the config, CLI wrapper, Vercel adapter, and state-database binding are rebuilt against b4.run's own Vercel target and verified the same way (`verify-vercel-adapter`). This is the one place "mirror" means re-implement. |
+| Enrichment and research | Not built.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Email customization     | None. One fixed three-step founder sequence; milestones feed internal analytics only.                                                                                                                                                                                                                                                                                                                                                               |
+| Enrollment sources      | The founder install digest with one-click approve, a "Get unstuck" contact form on hashbrown.dev, and install-runtime hello (work-domain installers whose runtime session links to the same email).                                                                                                                                                                                                                                                 |
+| Code location           | Copied and adapted into the hashbrown monorepo as private Nx projects. No shared package with threadplane.                                                                                                                                                                                                                                                                                                                                          |
+| Accounts                | A separate PostHog project. (Neon and Resend separation are the author's call, see §12.)                                                                                                                                                                                                                                                                                                                                                            |
 
 ## 5. Architecture
 
 ### 5.1 Projects
 
-| Project | Path | Mirrors | Role |
-| --- | --- | --- | --- |
-| `growth` | `tools/growth` | `libs/growth` | `@hashbrownai-internal/growth`: contacts, approvals, stops, observations, projection, facts, jobs, Resend sender, webhooks, tokens, scoring, reports. Raw SQL over `@neondatabase/serverless`. |
-| `growth-collector` | `tools/growth/install` | `libs/telemetry/install` | Dependency-free CJS postinstall collector, assembled into each published package at build. |
-| `lifecycle` | `tools/lifecycle` | `apps/lifecycle` | b4.run app on Vercel Node 24: job dispatcher, fulfillment, founder sequence, notifications, install digest. |
-| `posthog` | `tools/posthog` | `tools/posthog` | Event contract, dashboards as JSON, quality check, report. |
-| migrations | `tools/growth/migrations/NNNN_*.sql` | `migrations/` | Growth schema. Applied with `npx nx migrate-growth growth`. |
-| www routes | `www/src/app/%5F/...` | `apps/website/src/app/api/*` | Collection, ingest proxy, form, unsubscribe, stop, approve, Resend webhook, reply intake, cron. |
-| www pages | `www/src/app/unstuck`, `www/src/app/privacy`, `www/src/app/call` | `/contact`, `/privacy`, `/call` | The form page, the privacy policy, and the booking redirect. |
-| core | `packages/core/src/growth/` | `libs/telemetry/src/browser/development` | Development runtime collector, exported `ɵ`-prefixed. |
-| react, angular | existing packages | adapter wiring | Pass dev-mode and the `telemetry: false` option into core's collector. |
-| operator scripts | `tools/growth/scripts/growth-*.mts` | `scripts/growth-*.mts` | `report`, `control`, `observability`. |
+| Project            | Path                                                             | Mirrors                                  | Role                                                                                                                                                                                           |
+| ------------------ | ---------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `growth`           | `tools/growth`                                                   | `libs/growth`                            | `@hashbrownai-internal/growth`: contacts, approvals, stops, observations, projection, facts, jobs, Resend sender, webhooks, tokens, scoring, reports. Raw SQL over `@neondatabase/serverless`. |
+| `growth-collector` | `tools/growth/install`                                           | `libs/telemetry/install`                 | Dependency-free CJS postinstall collector, assembled into each published package at build.                                                                                                     |
+| `lifecycle`        | `tools/lifecycle`                                                | `apps/lifecycle`                         | b4.run app on Vercel Node 24: job dispatcher, fulfillment, founder sequence, notifications, install digest.                                                                                    |
+| `posthog`          | `tools/posthog`                                                  | `tools/posthog`                          | Event contract, dashboards as JSON, quality check, report.                                                                                                                                     |
+| migrations         | `tools/growth/migrations/NNNN_*.sql`                             | `migrations/`                            | Growth schema. Applied with `npx nx migrate-growth growth`.                                                                                                                                    |
+| www routes         | `www/src/app/%5F/...`                                            | `apps/website/src/app/api/*`             | Collection, ingest proxy, form, unsubscribe, stop, approve, Resend webhook, reply intake, cron.                                                                                                |
+| www pages          | `www/src/app/unstuck`, `www/src/app/privacy`, `www/src/app/call` | `/contact`, `/privacy`, `/call`          | The form page, the privacy policy, and the booking redirect.                                                                                                                                   |
+| core               | `packages/core/src/growth/`                                      | `libs/telemetry/src/browser/development` | Development runtime collector, exported `ɵ`-prefixed.                                                                                                                                          |
+| react, angular     | existing packages                                                | adapter wiring                           | Pass dev-mode and the `telemetry: false` option into core's collector.                                                                                                                         |
+| operator scripts   | `tools/growth/scripts/growth-*.mts`                              | `scripts/growth-*.mts`                   | `report`, `control`, `observability`.                                                                                                                                                          |
 
 Nx target names follow the existing repo (`build`, `test`, `lint`), plus
 `migrate-growth` on `growth`, and `report`, `control`, `observability` run
@@ -248,12 +248,12 @@ installation token starts a new envelope.
 
 Events:
 
-| Kind | When | Hook site |
-| --- | --- | --- |
-| `runtime.session_started` | Once per integration per session, when a chat runtime is created in a development browser | `createChatRuntime` in `packages/core/src/chat-runtime.ts` |
-| `runtime.first_stream_completed` | First `RUN_FINISHED` after at least one `TEXT_MESSAGE_CONTENT` or structured-output chunk in a run | `ag-ui-run-driver.ts` `onEvent`, or the status reducer's generating→idle transition |
-| `tool.first_call_executed` | First client tool handler resolves (success or error) | `effects/tool-turn-executor.ts` |
-| `component.first_rendered` | First exposed component is rendered from a UI chat, or the first `decision` selects a component | React `expose-component.fn.ts` render path and Angular `components/` render path, reporting through core |
+| Kind                             | When                                                                                               | Hook site                                                                                                |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `runtime.session_started`        | Once per integration per session, when a chat runtime is created in a development browser          | `createChatRuntime` in `packages/core/src/chat-runtime.ts`                                               |
+| `runtime.first_stream_completed` | First `RUN_FINISHED` after at least one `TEXT_MESSAGE_CONTENT` or structured-output chunk in a run | `ag-ui-run-driver.ts` `onEvent`, or the status reducer's generating→idle transition                      |
+| `tool.first_call_executed`       | First client tool handler resolves (success or error)                                              | `effects/tool-turn-executor.ts`                                                                          |
+| `component.first_rendered`       | First exposed component is rendered from a UI chat, or the first `decision` selects a component    | React `expose-component.fn.ts` render path and Angular `components/` render path, reporting through core |
 
 Milestones are deduplicated per integration per session, coalesced with at
 least ten seconds between requests, capped at 50 pending and 20 per request,
@@ -267,6 +267,9 @@ Announcements: the collector may display a code-owned plain-text console
 announcement at most once per identity, with package/version applicability and
 expiry, linking only to `https://hashbrown.dev/docs/...` paths. No remote code,
 no HTML. The first announcement shipped is the "Get unstuck" pointer (§8.4).
+One announcements catalog (`www/src/lib/announcements/catalog.ts`) feeds both
+the site pill and the runtime announcements. An entry reaches development
+collectors only when it has a `runtime` block with a `hashbrown.dev/docs` link.
 
 ### 6.4 Website signals (mirror)
 
@@ -293,17 +296,17 @@ The `/_/ingest` route uses posthog-node with a closed allowlist in
 
 Per `installation` or `development_browser` subject:
 
-| Stage | Definition |
-| --- | --- |
-| Installed | `package.installed` from a non-CI environment |
-| Started | `runtime.session_started` |
-| Streamed | `runtime.first_stream_completed` |
-| Used a tool | `tool.first_call_executed` |
-| Rendered a component | `component.first_rendered` |
-| Activated | All three runtime milestones within 30 days of the first `runtime.session_started` |
-| Stalled before first request | Installed, no `runtime.session_started` within 3 days |
-| Stalled after hello world | Streamed, no tool call and no component within 7 days |
-| Returned | A second session on a later calendar day within 7 days (`project.returned_7d`) |
+| Stage                        | Definition                                                                         |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| Installed                    | `package.installed` from a non-CI environment                                      |
+| Started                      | `runtime.session_started`                                                          |
+| Streamed                     | `runtime.first_stream_completed`                                                   |
+| Used a tool                  | `tool.first_call_executed`                                                         |
+| Rendered a component         | `component.first_rendered`                                                         |
+| Activated                    | All three runtime milestones within 30 days of the first `runtime.session_started` |
+| Stalled before first request | Installed, no `runtime.session_started` within 3 days                              |
+| Stalled after hello world    | Streamed, no tool call and no component within 7 days                              |
+| Returned                     | A second session on a later calendar day within 7 days (`project.returned_7d`)     |
 
 Threadplane's 30-minute activation window becomes 30 days (author's call: a
 library is evaluated over evenings, not in one sitting). The `growth_funnel_daily_v1`
@@ -370,17 +373,26 @@ production use different Neon resources for both.
 
 ### 8.2 Enrollment
 
-Only `outreach_approved_at` authorizes a send. It is set by exactly two paths:
+Only `outreach_approved_at` authorizes a send. It is set by exactly three paths:
 
 1. **Get unstuck form** accepted with the visible disclosure (§8.4). The exact
    disclosure string and version are recorded in `growth_activity` as
    `form.outreach_approved`.
 2. **Founder install digest** approve link, which creates and approves the
-   contact through the founder reauthorization path (`contact.reauthorized`).
+   contact through the founder reauthorization path (`contact.reauthorized`,
+   `provenance = 'founder_action'`).
+3. **Install-runtime hello**, recorded as `install_runtime.outreach_approved`
+   and backed by an `approved` row in `growth_install_runtime_links`. It
+   applies only to work-domain emails (the same `PERSONAL_EMAIL_DOMAINS`
+   exclusion as the digest) and never to CI or redacted installs or installs
+   with two different emails. It runs only when both
+   `CAMPAIGN_ENROLLMENT_ENABLED` and `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED` are
+   `true`, so a contact is never approved before the immutable
+   `CAMPAIGN_ENROLLMENT_START_AT` and stranded.
 
 Each contact is enrolled at most once (`materializeCampaignEnrollment`).
-Enrollment reason is `unstuck_form` or `install_digest`; both get identical
-copy. Anonymous observations never enroll anyone.
+Enrollment reason is `unstuck_form`, `install_digest` or `install_runtime`; all
+get identical copy. Anonymous observations never enroll anyone.
 
 ### 8.3 Schedule (mirror)
 
@@ -399,12 +411,12 @@ site footer, the runtime console announcement, and the package READMEs.
 
 Fields:
 
-| Field | Type | Rule |
-| --- | --- | --- |
-| Email | required | Full address; error copy "Enter a full address, like jordan@acme.dev." |
-| Framework | required select | React, Angular, Both, Not sure yet |
-| Where are you stuck? | required textarea | 20 to 1,000 characters; stored as a bounded fact, never sent to PostHog |
-| Disclosure | muted paragraph above the button | "By sending, you agree Brian may follow up by email about your request, including a short three-email note about building with Hashbrown. Unsubscribe anytime." |
+| Field                | Type                             | Rule                                                                                                                                                            |
+| -------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Email                | required                         | Full address; error copy "Enter a full address, like jordan@acme.dev."                                                                                          |
+| Framework            | required select                  | React, Angular, Both, Not sure yet                                                                                                                              |
+| Where are you stuck? | required textarea                | 20 to 1,000 characters; stored as a bounded fact, never sent to PostHog                                                                                         |
+| Disclosure           | muted paragraph above the button | "By sending, you agree Brian may follow up by email about your request, including a short three-email note about building with Hashbrown. Unsubscribe anytime." |
 
 Validation on blur, final pass on submit, focus to first invalid field,
 `aria-describedby` on errors and on the button for the disclosure. Success:
@@ -504,7 +516,9 @@ bodies are never stored.
 
 ### 8.7 Founder install digest (mirror)
 
-One `digest` job per Pacific business day (`install_digest:<YYYY-MM-DD>`) when
+One `digest` job per Pacific business day (`install_digest:<YYYY-MM-DD>`), due
+at 07:00 Pacific (`nextPacificBusinessMorning`) rather than at the first tick
+after midnight, when
 at least one non-CI installer with a work-email domain has no contact and has
 not been reported. Plain text to `FOUNDER_NOTIFICATION_EMAIL`, one line per
 identity with package, version, framework if a runtime session linked, highest
@@ -624,7 +638,9 @@ Every switch defaults off and accepts only the exact strings `true` or `false`:
    as code, nightly quality check, threadplane CTA events.
 5. **Lifecycle service.** `tools/lifecycle` on b4.run, third `DEPLOY_TARGETS`
    entry, cron route, dispatcher, fulfillment, notifications, campaign
-   templates with the linter, schedule, digest. Preview dogfood against a
+   templates with the linter, schedule, digest, install-runtime hello, and the
+   shared announcements catalog behind the site pill and runtime
+   announcements. Preview dogfood against a
    controlled recipient with `DELIVERY_ENABLED=false`, then `true` with the
    non-production allowlist.
 6. **Get unstuck form.** Page, route, acknowledgement, enrollment, links from
