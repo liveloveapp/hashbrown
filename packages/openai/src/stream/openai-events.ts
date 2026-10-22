@@ -336,8 +336,10 @@ function mapAnnotation(
 }
 
 /**
- * OpenAI appends `utm_source=openai` to cited urls but not to the sources it
- * lists, so a citation also matches its url without that parameter.
+ * OpenAI can append `utm_source=openai` to cited urls. In a live capture
+ * both the citations and the listed sources carry it, so the exact url
+ * matches first; a citation also matches its url without that parameter in
+ * case only one side carries it.
  */
 function withoutOpenAITracking(url: string): string {
   try {

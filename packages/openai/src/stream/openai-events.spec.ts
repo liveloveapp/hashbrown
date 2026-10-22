@@ -980,6 +980,8 @@ test('maps a live-captured web search turn to a provider step, sources and citat
   expect(answer?.citations?.length ?? 0).toBeGreaterThanOrEqual(1);
   for (const citation of answer?.citations ?? []) {
     expect(sourceIds.has(citation.sourceId)).toBe(true);
+    expect(typeof citation.start).toBe('number');
+    expect(typeof citation.end).toBe('number');
     expect(citation.quote).toBe(text.slice(citation.start, citation.end));
   }
 });

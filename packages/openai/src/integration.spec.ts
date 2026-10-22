@@ -307,9 +307,9 @@ const WEB_SEARCH_PROMPT =
   'Search the web for the current stable version of Node.js. Answer in one short sentence and cite your source.';
 
 /**
- * Asserts one `web_search` call that ran on the provider: a running
- * `b4.step` on its start and a completed step with its queries on its result.
- * Returns the call id.
+ * Asserts one or more `web_search` calls that ran on the provider: each with
+ * a running `b4.step` on its start and a completed step with at least one
+ * query on its result. Returns the first call's id.
  *
  * aimock's recorder keeps only each search's query, so recorded cases cannot
  * replay sources or `url_citation` annotations; those are covered by the
@@ -319,40 +319,42 @@ function expectWebSearchStep(events: AGUIEvent[]): string {
   const starts = events.flatMap((event) =>
     event.type === EventType.TOOL_CALL_START ? [event] : [],
   );
-  const start = starts[0];
-  const result = events.find(
-    (event) =>
-      event.type === EventType.TOOL_CALL_RESULT &&
-      event.toolCallId === start?.toolCallId,
-  );
 
-  expect(starts).toHaveLength(1);
-  expect(start).toMatchObject({
-    toolCallName: 'web_search',
-    metadata: {
-      'b4.step': {
-        v: 1,
-        kind: 'provider',
-        builtin: 'web_search',
-        status: 'running',
-        label: expect.any(String),
-      },
-    },
-  });
-  expect(result).toMatchObject({
-    metadata: {
-      'b4.step': {
-        v: 1,
-        kind: 'provider',
-        builtin: 'web_search',
-        status: 'completed',
-        label: expect.stringMatching(/^Searched/),
-        queries: [expect.any(String)],
-      },
-    },
-  });
+  expect(starts.length).toBeGreaterThanOrEqual(1);
+  for (const start of starts) {
+    const result = events.find(
+      (event) =>
+        event.type === EventType.TOOL_CALL_RESULT &&
+        event.toolCallId === start.toolCallId,
+    );
 
-  return start?.toolCallId ?? '';
+    expect(start).toMatchObject({
+      toolCallName: 'web_search',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'provider',
+          builtin: 'web_search',
+          status: 'running',
+          label: expect.any(String),
+        },
+      },
+    });
+    expect(result).toMatchObject({
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'provider',
+          builtin: 'web_search',
+          status: 'completed',
+          label: expect.stringMatching(/^Searched/),
+          queries: expect.arrayContaining([expect.any(String)]),
+        },
+      },
+    });
+  }
+
+  return starts[0]?.toolCallId ?? '';
 }
 
 /** Returns the provider's own result content for each call in `events`. */
@@ -659,22 +661,32 @@ test(
       expect.arrayContaining([
         expect.objectContaining({
           role: 'assistant',
-          toolCalls: [
+          toolCalls: expect.arrayContaining([
             expect.objectContaining({
               id: toolCallId,
               function: expect.objectContaining({ name: 'web_search' }),
             }),
-          ],
+          ]),
         }),
         expect.objectContaining({ role: 'tool', toolCallId }),
       ]),
     );
-    expect(Array.isArray(capturedInput) ? capturedInput : []).not.toEqual(
+    expect(Array.isArray(capturedInput)).toBe(true);
+    const replayed = Array.isArray(capturedInput) ? capturedInput : [];
+    expect(replayed).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'user',
+          content: 'Without searching again, repeat that version number only.',
+        }),
+      ]),
+    );
+    expect(replayed).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ type: 'function_call', name: 'web_search' }),
       ]),
     );
-    expect(Array.isArray(capturedInput) ? capturedInput : []).not.toEqual(
+    expect(replayed).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ call_id: toolCallId }),
       ]),

@@ -927,10 +927,11 @@ test('skips a url_citation for a part with no recorded offset', async () => {
   });
 });
 
-test('maps a live-captured web search turn to a provider step, sources and citations', async () => {
-  // Responses SSE events captured once from the live API (gpt-4.1-mini with
-  // web_search and `web_search_call.action.sources`). aimock's recorder keeps
-  // only search queries, so sources and citations are proven here.
+test('maps the OpenAI live-captured web search turn to a provider step, sources and citations', async () => {
+  // Reuses the OpenAI live capture (gpt-4.1-mini with web_search and
+  // `web_search_call.action.sources`): Azure streams the same Responses event
+  // shapes. Azure's own sources and citations are not yet verified live, since
+  // aimock's recorder keeps only search queries.
   const input = JSON.parse(
     readFileSync(
       resolve(
@@ -983,6 +984,8 @@ test('maps a live-captured web search turn to a provider step, sources and citat
   expect(answer?.citations?.length ?? 0).toBeGreaterThanOrEqual(1);
   for (const citation of answer?.citations ?? []) {
     expect(sourceIds.has(citation.sourceId)).toBe(true);
+    expect(typeof citation.start).toBe('number');
+    expect(typeof citation.end).toBe('number');
     expect(citation.quote).toBe(text.slice(citation.start, citation.end));
   }
 });
