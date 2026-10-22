@@ -1,5 +1,9 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { ɵwithActivities } from '@hashbrownai/core';
+import {
+  ɵcreateRunFinishedEvent,
+  ɵforwardMapped,
+  ɵwithActivities,
+} from '@hashbrownai/core';
 import Anthropic from '@anthropic-ai/sdk';
 import { mapAnthropicEvents } from './anthropic-events';
 import { createAnthropicRequestOptions } from './anthropic-request';
@@ -50,22 +54,25 @@ async function* textEvents(
       return;
     }
 
-    for await (const event of mapAnthropicEvents({
-      events: providerStream,
-      messageId,
+    const finish = yield* ɵforwardMapped(
+      mapAnthropicEvents({
+        events: providerStream,
+        messageId,
+        signal,
+      }),
       signal,
-    })) {
-      yield event;
-      if (signal?.aborted) {
-        return;
-      }
-    }
+    );
 
-    if (signal?.aborted) {
+    if (signal?.aborted || !finish) {
       return;
     }
 
-    yield { type: EventType.RUN_FINISHED, threadId, runId };
+    yield ɵcreateRunFinishedEvent({
+      threadId,
+      runId,
+      provider: 'anthropic',
+      ...finish,
+    });
     if (signal?.aborted) {
       return;
     }

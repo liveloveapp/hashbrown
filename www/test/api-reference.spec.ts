@@ -47,3 +47,28 @@ test('returns undefined for unknown symbols and path escapes', () => {
   expect(unknown).toBeUndefined();
   expect(escape).toBeUndefined();
 });
+
+test('the public reference excludes collection APIs and provider settings', () => {
+  const symbols = listSymbols();
+  const options = [
+    readSymbol('react', 'HashbrownProviderOptions'),
+    readSymbol('angular', 'ProvideHashbrownOptions'),
+  ];
+
+  const collectionSymbols = symbols.filter(({ symbol }) =>
+    [
+      'DevelopmentCollectionDiagnostics',
+      'getDevelopmentCollectionDiagnostics',
+      'setDevelopmentCollectionEnabled',
+    ].includes(symbol),
+  );
+  const providerSettings = options.flatMap(
+    (option) => option?.members.flatMap((member) => member.members ?? []) ?? [],
+  );
+
+  expect(collectionSymbols).toEqual([]);
+  expect(providerSettings.some(({ name }) => name === 'telemetry')).toBe(false);
+  expect(
+    providerSettings.some(({ name }) => name === 'url' || name === 'baseUrl'),
+  ).toBe(true);
+});

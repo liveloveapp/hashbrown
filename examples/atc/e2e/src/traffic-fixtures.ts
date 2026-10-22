@@ -196,7 +196,9 @@ const TRACKS: readonly Track[] = [
     {
       lat: MAP_CENTRE.lat + 0.1,
       lon: MAP_CENTRE.lon - 0.18,
-      altitudeFt: 2_000,
+      // Above 5,000 ft, unlike the EC135, so "Below 5,000 ft" narrows the
+      // helicopters without emptying them.
+      altitudeFt: 6_000,
       speedKt: 90,
     },
     { dLat: -0.0005, dLon: 0.0005, dAltFt: 10, trackDeg: 135 },

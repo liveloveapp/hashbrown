@@ -14,13 +14,16 @@ import {
 import {
   Chat,
   createChatRuntime,
+  type FinishReason,
   type JsonValue,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
+  type TokenUsage,
   type TransportOrFactory,
   ɵassertRuntimeMessageSchedulingAllowed,
 } from '@hashbrownai/core';
+import { ɵinjectDevelopmentCollector } from '../growth/collector';
 import { ɵinjectHashbrownConfig } from '../providers/provide-hashbrown.fn';
 import { readReactiveOption, toNgSignal } from '../utils/signals';
 import { ReactiveOption } from '../utils/types';
@@ -87,6 +90,21 @@ export interface StructuredChatResourceRef<
    * runs never set it.
    */
   lastRunResult: Signal<JsonValue | undefined>;
+
+  /**
+   * The token usage of the last run that completed (AG-UI's
+   * `RUN_FINISHED.usage`), one entry per provider and model, or `undefined`
+   * when the server reported none. Cleared when the next run starts, so a turn
+   * that calls tools reports only its final run.
+   */
+  lastRunUsage: Signal<readonly TokenUsage[] | undefined>;
+
+  /**
+   * Why the model stopped in the last run that completed, such as `length`
+   * when the answer was cut off by a token limit, or `undefined` when the
+   * server did not say. Cleared when the next run starts.
+   */
+  lastRunFinishReason: Signal<FinishReason | undefined>;
   /**
    * Send a new user message to the chat.
    *
@@ -233,6 +251,7 @@ export function structuredChatResource<
             runInInjectionContext(injector, () => middleware(requestInit));
         }),
     });
+  const collector = ɵinjectDevelopmentCollector();
   const runtime = createChatRuntime<Schema, Tools, Output, State>({
     system: readReactiveOption(options.system),
     state: options.state,
@@ -249,6 +268,7 @@ export function structuredChatResource<
         ? readReactiveOption(options.threadId)
         : undefined,
   });
+  const detach = collector.attach(runtime);
 
   let previousThreadId =
     options.threadId !== undefined
@@ -299,6 +319,7 @@ export function structuredChatResource<
   const teardown = runtime.start();
 
   destroyRef.onDestroy(() => {
+    detach();
     teardown();
     optionsEffect.destroy();
     schemaEffect.destroy();
@@ -354,6 +375,14 @@ export function structuredChatResource<
   const lastRunResult = toNgSignal(
     runtime.lastRunResult,
     options.debugName && `${options.debugName}.lastRunResult`,
+  );
+  const lastRunUsage = toNgSignal(
+    runtime.lastRunUsage,
+    options.debugName && `${options.debugName}.lastRunUsage`,
+  );
+  const lastRunFinishReason = toNgSignal(
+    runtime.lastRunFinishReason,
+    options.debugName && `${options.debugName}.lastRunFinishReason`,
   );
   const status = computed(
     (): ResourceStatus => {
@@ -461,6 +490,8 @@ export function structuredChatResource<
     error,
     sendingError,
     lastRunResult,
+    lastRunUsage,
+    lastRunFinishReason,
     generatingError,
     setMessages,
     setState,

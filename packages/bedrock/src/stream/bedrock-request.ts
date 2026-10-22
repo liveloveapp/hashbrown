@@ -179,6 +179,27 @@ function mapMessage(
   }
 }
 
+// Converse requires user and assistant turns to alternate, so parallel tool
+// results and any user message that follows them share one user turn.
+function mergeAdjacentUserMessages(
+  messages: BedrockMessage[],
+): BedrockMessage[] {
+  return messages.reduce<BedrockMessage[]>((merged, message) => {
+    const previous = merged[merged.length - 1];
+    if (previous?.role !== 'user' || message.role !== 'user') {
+      return [...merged, message];
+    }
+
+    return [
+      ...merged.slice(0, -1),
+      {
+        ...previous,
+        content: [...(previous.content ?? []), ...(message.content ?? [])],
+      },
+    ];
+  }, []);
+}
+
 function mapTool(tool: Tool): BedrockTool.ToolSpecMember {
   return {
     toolSpec: {
@@ -211,10 +232,12 @@ export function createBedrockRequestOptions(
       ? [{ text: message.content }]
       : [],
   );
-  const messages = input.messages.flatMap((message, index) => {
-    const mapped = mapMessage(input.messages, message, index);
-    return mapped ? [mapped] : [];
-  });
+  const messages = mergeAdjacentUserMessages(
+    input.messages.flatMap((message, index) => {
+      const mapped = mapMessage(input.messages, message, index);
+      return mapped ? [mapped] : [];
+    }),
+  );
   const tools = input.tools.map(mapTool);
   const responseSchema = input.forwardedProps?.hashbrown?.responseSchema;
 

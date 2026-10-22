@@ -4,6 +4,7 @@ import {
   type Decision,
   type TransportOrFactory,
 } from '@hashbrownai/core';
+import { ɵprovideCollectionEnabled } from '../growth/collector';
 
 /**
  * Hashbrown must be configured with a base URL,
@@ -38,6 +39,10 @@ export interface ProvideHashbrownOptions {
      */
     transport?: Decision.Transport;
   };
+  /**
+   * Set to `false` to turn off Hashbrown's development-only collection for every resource and component under this provider.
+   */
+  telemetry?: boolean;
 }
 
 /**
@@ -54,10 +59,13 @@ export const ɵHASHBROWN_CONFIG_INJECTION_TOKEN =
  * @returns The Hashbrown configuration.
  */
 export function provideHashbrown(options: ProvideHashbrownOptions): Provider {
-  return {
-    provide: ɵHASHBROWN_CONFIG_INJECTION_TOKEN,
-    useValue: options,
-  };
+  return [
+    {
+      provide: ɵHASHBROWN_CONFIG_INJECTION_TOKEN,
+      useValue: options,
+    },
+    ɵprovideCollectionEnabled(options),
+  ];
 }
 
 /**

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   TARGETS,
@@ -15,6 +17,7 @@ import {
   missingDnsRecords,
   missingEnv,
   upsertEnv,
+  upsertEnvPerTarget,
 } from './bootstrap.mjs';
 
 function stubFetch(routes) {
@@ -543,7 +546,7 @@ test('TARGETS entries are well-formed and secrets follow the naming convention',
     assert.equal(typeof target.key, 'string');
     assert.equal(typeof target.project, 'string');
     assert.equal(typeof target.secret, 'string');
-    assert.ok(Array.isArray(target.domains) && target.domains.length > 0);
+    assert.ok(Array.isArray(target.domains));
     assert.ok(Array.isArray(target.env) && target.env.length > 0);
     assert.ok(
       Array.isArray(target.requiredEnv) && target.requiredEnv.length > 0,
@@ -567,4 +570,163 @@ test('missingDnsRecords compares name, type and value', () => {
   ];
 
   assert.deepEqual(missingDnsRecords(existing, wanted), [wanted[2]]);
+});
+
+test('upsertEnv writes PREVIEW_ values only to the preview target', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'POST /v10/projects/prj_1/env?upsert=true': { body: {} },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+  const env = { DATABASE_URL: 'prod-url', PREVIEW_DATABASE_URL: 'preview-url' };
+
+  const result = await upsertEnvPerTarget(
+    vercel,
+    'prj_1',
+    ['DATABASE_URL'],
+    env,
+  );
+
+  assert.equal(result, 'updated');
+  assert.deepEqual(
+    calls.map((call) => call.body),
+    [
+      [
+        {
+          key: 'DATABASE_URL',
+          value: 'prod-url',
+          type: 'encrypted',
+          target: ['production'],
+        },
+      ],
+      [
+        {
+          key: 'DATABASE_URL',
+          value: 'preview-url',
+          type: 'encrypted',
+          target: ['preview'],
+        },
+      ],
+    ],
+  );
+});
+
+test('upsertEnv skips a per-target key whose value is unset', async () => {
+  const { fetchImpl, calls } = stubFetch({
+    'POST /v10/projects/prj_1/env?upsert=true': { body: {} },
+  });
+  const vercel = createVercelClient('tok', fetchImpl);
+  const env = { DATABASE_URL: 'prod-url', PREVIEW_DATABASE_URL: '' };
+
+  const result = await upsertEnvPerTarget(
+    vercel,
+    'prj_1',
+    ['DATABASE_URL'],
+    env,
+  );
+
+  assert.equal(result, 'updated');
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].body[0].target, ['production']);
+  assert.equal(
+    await upsertEnvPerTarget(vercel, 'prj_1', ['DATABASE_URL'], {}),
+    'skipped',
+  );
+  assert.equal(calls.length, 1);
+});
+
+test('TARGETS includes hashbrown-lifecycle with no domains and a 60 second fluid timeout', () => {
+  const target = TARGETS.find((t) => t.key === 'lifecycle');
+
+  assert.equal(target?.project, 'hashbrown-lifecycle');
+  assert.equal(target?.secret, 'VERCEL_PROJECT_ID_LIFECYCLE');
+  assert.deepEqual(target?.domains, []);
+  assert.deepEqual(target?.resources, {
+    fluid: true,
+    functionDefaultTimeout: 60,
+  });
+  assert.deepEqual(target?.requiredEnv, [
+    'LIFECYCLE_SERVICE_SECRET',
+    'RESEND_API_KEY',
+  ]);
+  assert.ok(!target?.envPerTarget.includes('DATABASE_URL'));
+  assert.ok(!target?.envPerTarget.includes('B4_DATABASE_URL'));
+  assert.ok(target?.env.includes('RESEND_API_KEY'));
+});
+
+test('TARGETS www lists the growth env keys', () => {
+  const target = TARGETS.find((t) => t.key === 'www');
+
+  for (const key of [
+    'OPENAI_API_KEY',
+    'LIFECYCLE_SERVICE_SECRET',
+    'CRON_SECRET',
+    'GOOGLE_REPLY_HMAC_SECRET',
+    'NEXT_PUBLIC_POSTHOG_TOKEN',
+    'NEXT_PUBLIC_POSTHOG_HOST',
+    'NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL',
+    'NEXT_PUBLIC_GROWTH_COLLECTION',
+  ]) {
+    assert.ok(target?.env.includes(key), key);
+  }
+  assert.deepEqual(target?.envPerTarget, [
+    'GROWTH_DATABASE_ENVIRONMENT',
+    'LIFECYCLE_URL',
+  ]);
+});
+
+test('bootstrap lifecycle env lists CAMPAIGN_ENROLLMENT_START_AT and LIFECYCLE_BATCH_SIZE', () => {
+  const target = TARGETS.find((t) => t.key === 'lifecycle');
+  const www = TARGETS.find((t) => t.key === 'www');
+
+  const env = target?.env ?? [];
+
+  assert.ok(env.includes('CAMPAIGN_ENROLLMENT_START_AT'));
+  assert.ok(env.includes('LIFECYCLE_BATCH_SIZE'));
+  assert.ok(!env.includes('GOOGLE_REPLY_HMAC_SECRET'));
+  assert.ok(www?.env.includes('GOOGLE_REPLY_HMAC_SECRET'));
+  assert.ok(!target?.requiredEnv.includes('CAMPAIGN_ENROLLMENT_START_AT'));
+});
+
+test('bootstrap puts LIFECYCLE_CRON_ENABLED on www, which serves the cron route', () => {
+  const www = TARGETS.find((t) => t.key === 'www');
+  const lifecycle = TARGETS.find((t) => t.key === 'lifecycle');
+
+  const wwwEnv = www?.env ?? [];
+
+  assert.ok(wwwEnv.includes('LIFECYCLE_CRON_ENABLED'));
+  assert.ok(!lifecycle?.env.includes('LIFECYCLE_CRON_ENABLED'));
+});
+
+test('DEPLOY_TARGETS lists lifecycle as optional with the lifecycle project secret', () => {
+  const workflow = readFileSync(
+    fileURLToPath(
+      new URL('../../.github/workflows/pr-main.yml', import.meta.url),
+    ),
+    'utf8',
+  );
+
+  const line = /^\s*DEPLOY_TARGETS:\s*'(.*)'\s*$/m.exec(workflow);
+  const targets = JSON.parse(line?.[1] ?? '[]');
+  const lifecycle = targets.find((t) => t.key === 'lifecycle');
+
+  assert.deepEqual(lifecycle, {
+    key: 'lifecycle',
+    dir: 'tools/lifecycle',
+    project_id_secret: 'VERCEL_PROJECT_ID_LIFECYCLE',
+    optional: true,
+  });
+  assert.equal(
+    TARGETS.find((t) => t.key === 'lifecycle')?.secret,
+    lifecycle?.project_id_secret,
+  );
+  assert.deepEqual(
+    targets.map((t) => t.key),
+    ['www', 'atc', 'lifecycle'],
+  );
+});
+
+test('bootstrap lists GROWTH_UNSTUCK_FORM_ENABLED for www', () => {
+  const target = TARGETS.find((t) => t.key === 'www');
+
+  assert.ok(target?.env.includes('GROWTH_UNSTUCK_FORM_ENABLED'));
 });

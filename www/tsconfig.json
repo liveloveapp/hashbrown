@@ -8,6 +8,7 @@
     "lib": ["dom", "dom.iterable", "es2023"],
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "allowJs": false,
     "esModuleInterop": true,
     "resolveJsonModule": true,
@@ -20,11 +21,16 @@
       "@/*": ["src/*"],
       "@hashbrownai/openai": ["../dist/packages/openai"],
       "@hashbrownai/core": ["../packages/core/src/index.ts"],
-      "@hashbrownai/react": ["../packages/react/src/index.ts"]
+      "@hashbrownai-internal/growth": ["../tools/growth/src/index.ts"],
+      "@hashbrownai/react": ["../packages/react/src/index.ts"],
+      "#development-install": [
+        "../packages/core/src/growth/development-install.default.ts"
+      ]
     }
   },
   "include": [
     "next-env.d.ts",
+    "instrumentation-client.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "test/**/*.ts",

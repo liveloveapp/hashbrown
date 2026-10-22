@@ -71,7 +71,7 @@ function Search({ query }: { query: string }) {
 
 1. The schema describes the questions. Each property is one question.
 2. The `input` is the state to decide about. `null` keeps the hook idle.
-3. `system` is prepended to the state the model sees.
+3. `system` is sent with the input as context for the decision model.
 4. `debounceTime` waits for the input to settle before sending a request.
 
 The hook requires a `HashbrownProvider`. Changing `system` re-decides. Changing `transport` applies from the next request and never recreates the decision.

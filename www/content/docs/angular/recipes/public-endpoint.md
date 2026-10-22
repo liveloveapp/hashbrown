@@ -80,32 +80,58 @@ export function pinTools(tools: readonly Tool[]): Tool[] {
 
 ### The UI response schema
 
-The response schema lists the components the model may render and their props. Build it on the server with `createUiJsonSchema` from `@hashbrownai/core`, passing the same component definitions, in the same order, that the browser exposes. `exposeMarkdown` builds from `markdownComponent()`, so pass that too, with the same `name`, `description` and `citations` options if you set any:
+The response schema lists the components the model may render and their props. Build it on the server with `createUiJsonSchema` from `@hashbrownai/core`, passing the same component definitions, in the same order, that the browser exposes. `exposeMarkdown` builds from `markdownComponent()`, so pass that too, with the same `name`, `description` and `citations` options if you set any.
+
+If the browser narrows its components with [UI selection](/docs/angular/recipes/ui-selection), each narrowed request sends a schema for only the chosen components, so one pinned schema is not enough: a server that replaces every other schema with the full one undoes the narrowing. atc keeps an allowlist in its shared package: Markdown plus every non-empty subset of the four cards, in the order both apps expose them.
+
+<hb-code-example header="response-schemas.ts">
+
+```ts
+import { createUiJsonSchema, markdownComponent } from '@hashbrownai/core';
+
+const CARD_DEFINITIONS = [
+  flightCardContract,
+  arrivalsBoardContract,
+  aircraftCompareContract,
+  airportCardContract,
+].map((contract) => ({ ...contract, children: false as const }));
+
+function responseSchemaFor(
+  cards: readonly (typeof CARD_DEFINITIONS)[number][],
+) {
+  return createUiJsonSchema({ components: [markdownComponent(), ...cards] });
+}
+
+export const FULL_RESPONSE_SCHEMA: Record<string, unknown> =
+  responseSchemaFor(CARD_DEFINITIONS);
+
+export const RESPONSE_SCHEMA_ALLOWLIST: readonly Record<string, unknown>[] =
+  Array.from({ length: 2 ** CARD_DEFINITIONS.length - 1 }, (_, index) =>
+    CARD_DEFINITIONS.filter((_card, bit) => ((index + 1) >> bit) & 1),
+  ).map((cards) =>
+    cards.length === CARD_DEFINITIONS.length
+      ? FULL_RESPONSE_SCHEMA
+      : responseSchemaFor(cards),
+  );
+```
+
+</hb-code-example>
+
+The server keeps a schema that equals an allowlisted one, using its own copy, and replaces anything else with the full schema:
 
 <hb-code-example header="run-handler.ts">
 
 ```ts
 import type { RunAgentInput } from '@ag-ui/core';
-import {
-  aircraftCompareContract,
-  airportCardContract,
-  arrivalsBoardContract,
-  flightCardContract,
-} from '@atc/shared';
-import { createUiJsonSchema, markdownComponent } from '@hashbrownai/core';
+import { FULL_RESPONSE_SCHEMA, RESPONSE_SCHEMA_ALLOWLIST } from '@atc/shared';
 import type { OpenAIHashbrownRunAgentInput } from '@hashbrownai/openai';
 
-export const PINNED_RESPONSE_SCHEMA = createUiJsonSchema({
-  components: [
-    markdownComponent(),
-    { ...flightCardContract, children: false },
-    { ...arrivalsBoardContract, children: false },
-    { ...aircraftCompareContract, children: false },
-    { ...airportCardContract, children: false },
-  ],
-});
-
-const PINNED_RESPONSE_SCHEMA_JSON = JSON.stringify(PINNED_RESPONSE_SCHEMA);
+const PINNED_RESPONSE_SCHEMAS_BY_JSON: ReadonlyMap<
+  string,
+  Record<string, unknown>
+> = new Map(
+  RESPONSE_SCHEMA_ALLOWLIST.map((schema) => [JSON.stringify(schema), schema]),
+);
 
 export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   const { forwardedProps } = input as OpenAIHashbrownRunAgentInput;
@@ -113,11 +139,12 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
   if (hashbrown?.responseSchema === undefined) {
     return input;
   }
-  if (
-    JSON.stringify(hashbrown.responseSchema) !== PINNED_RESPONSE_SCHEMA_JSON
-  ) {
+  const allowed = PINNED_RESPONSE_SCHEMAS_BY_JSON.get(
+    JSON.stringify(hashbrown.responseSchema),
+  );
+  if (allowed === undefined) {
     console.warn(
-      '[atc] replaced a response schema that differs from the pinned one',
+      '[atc] replaced a response schema that is not an allowlisted one',
     );
   }
 
@@ -125,7 +152,10 @@ export function pinResponseSchema(input: RunAgentInput): RunAgentInput {
     ...input,
     forwardedProps: {
       ...forwardedProps,
-      hashbrown: { ...hashbrown, responseSchema: PINNED_RESPONSE_SCHEMA },
+      hashbrown: {
+        ...hashbrown,
+        responseSchema: allowed ?? FULL_RESPONSE_SCHEMA,
+      },
     },
   } as OpenAIHashbrownRunAgentInput;
 }
@@ -137,7 +167,7 @@ The schema is pinned when the browser sends one. A request that leaves out `forw
 
 ### Share the definitions
 
-The browser and the server must agree byte for byte, or every request logs a difference. atc keeps the component contracts, the tool definitions and the system prompt in a shared package (`@atc/shared`). The browser exposes each component from its contract:
+The browser and the server must agree byte for byte, or every request falls back to the full schema and logs a warning. atc keeps the component contracts, the tool definitions and the system prompt in a shared package (`@atc/shared`). The browser exposes each component from its contract:
 
 <hb-code-example header="assistant.ts">
 
@@ -242,10 +272,11 @@ const MAX_OUTPUT_TOKENS = 4096;
 export function limitRequest(
   request: OpenAI.Responses.ResponseCreateParamsStreaming,
   reasoningEffort: ReasoningEffort | null,
+  maxOutputTokens: number = MAX_OUTPUT_TOKENS,
 ): OpenAI.Responses.ResponseCreateParamsStreaming {
   return {
     ...request,
-    max_output_tokens: MAX_OUTPUT_TOKENS,
+    max_output_tokens: maxOutputTokens,
     ...(reasoningEffort !== null && isReasoningModel(request.model ?? '')
       ? { reasoning: { ...request.reasoning, effort: reasoningEffort } }
       : {}),
@@ -261,7 +292,7 @@ Set the model on the server too. atc reads it from `OPENAI_MODEL` and ignores an
 
 ## Outside the code
 
-- **Rate-limit the route.** atc's hosted app allows 40 requests a minute per IP on `POST /api/run`, set as a Vercel Firewall rule. One question makes 3 to 5 requests, one per tool round trip.
+- **Rate-limit the route.** atc's hosted app allows 60 requests a minute per IP, shared between `POST /api/run` and `POST /api/filter`, set as one Vercel Firewall rule. One question makes 3 to 5 `/api/run` requests, one per tool round trip.
 - **Cap the provider key's budget.** Use a dedicated project key with a hard monthly budget, so a bug or an abuser cannot spend past it.
 
 ---
@@ -269,3 +300,4 @@ Set the model on the server too. atc reads it from `OPENAI_MODEL` and ignores an
 ## See it in atc
 
 Read the full handler, its tests and the shared definitions in [examples/atc](https://github.com/liveloveapp/hashbrown/tree/main/examples/atc), starting at `server/src/run-handler.ts`.
+atc's other two model routes follow the same rules: `server/src/filter-handler.ts` pins the filter's system prompt and schema and sends no tools, and `server/src/decide-handler.ts` pins each decision's questions.

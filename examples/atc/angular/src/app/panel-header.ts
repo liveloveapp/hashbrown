@@ -1,17 +1,22 @@
 import { ATC_SOURCE_URL, GITHUB_MARK_PATH } from '@atc/shared';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  input,
+  output,
+} from '@angular/core';
 import { AtcLogo } from './atc-logo';
 import { FeedNotice } from './feed-notice';
-import { ShowStream } from './show-stream';
+import { DevIcon } from './rail';
 
 /**
  * The chat panel's header: lettermark, Hashbrown credit, a quiet notice
- * while the feed is degraded, the "Show the stream" switch and the GitHub
- * link to atc's source.
+ * while the feed is degraded, the GitHub link to atc's source and, on phones
+ * (where there is no rail), the developer tools toggle.
  */
 @Component({
   selector: 'atc-panel-header',
-  imports: [AtcLogo, FeedNotice],
+  imports: [AtcLogo, DevIcon, FeedNotice],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'atc-panel-header' },
   template: `
@@ -24,16 +29,16 @@ import { ShowStream } from './show-stream';
       ><span class="atc-credit-lead">built with </span>Hashbrown</a
     >
     <atc-feed-notice />
-    <label class="atc-stream-switch">
-      <input
-        #box
-        type="checkbox"
-        role="switch"
-        [checked]="stream.on()"
-        (change)="stream.set(box.checked)"
-      />
-      Show the stream
-    </label>
+    <button
+      type="button"
+      class="atc-header-dev"
+      aria-label="Developer tools"
+      data-testid="dev-toggle-header"
+      [attr.aria-pressed]="devMode()"
+      (click)="toggleDevMode.emit()"
+    >
+      <atc-dev-icon />
+    </button>
     <a
       class="atc-source-link"
       [href]="sourceUrl"
@@ -48,7 +53,10 @@ import { ShowStream } from './show-stream';
   `,
 })
 export class PanelHeader {
-  protected readonly stream = inject(ShowStream);
+  /** Whether dev mode is on, for the phone toggle's pressed state. */
+  readonly devMode = input(false);
+  /** Emits when the phone toggle is pressed. */
+  readonly toggleDevMode = output();
   protected readonly sourceUrl = ATC_SOURCE_URL;
   protected readonly githubMark = GITHUB_MARK_PATH;
 }

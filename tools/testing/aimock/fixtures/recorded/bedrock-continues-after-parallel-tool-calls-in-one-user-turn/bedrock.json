@@ -1,0 +1,55 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Call the lookup tool twice in parallel, once for the code word 'alpha' and once for 'beta', then answer in one short sentence.",
+        "model": "us.anthropic.claude-haiku-4-5-20251001-v1%3A0",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": "{\"query\": \"alpha\"}",
+            "id": "tooluse_5BzpxN5q96dQpw7A5CqrOH"
+          },
+          {
+            "name": "lookup",
+            "arguments": "{\"query\": \"beta\"}",
+            "id": "tooluse_3y5BfUp2Wxa6hGs90EmDKX"
+          }
+        ]
+      },
+      "recordedTimings": {
+        "ttftMs": 910,
+        "interChunkDelaysMs": [0, 0, 151, 0, 0, 0, 0, 8, 0, 11, 0, 0],
+        "totalDurationMs": 1080
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Call the lookup tool twice in parallel, once for the code word 'alpha' and once for 'beta', then answer in one short sentence.",
+        "model": "us.anthropic.claude-haiku-4-5-20251001-v1%3A0",
+        "turnIndex": 1,
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "Both the code words 'alpha' and 'beta' are green."
+      },
+      "recordedTimings": {
+        "ttftMs": 589,
+        "interChunkDelaysMs": [0, 118, 0, 0, 0, 0, 10, 0, 0],
+        "totalDurationMs": 717
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

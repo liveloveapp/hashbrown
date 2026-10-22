@@ -131,6 +131,21 @@ export async function* text(
 
 For tool calls, emit `TOOL_CALL_START` once the call ID and name are known, stream argument fragments with `TOOL_CALL_ARGS`, and finish with `TOOL_CALL_END`. Preserve the provider's call ID so later tool-result messages correlate correctly. Tool-result messages, like user messages, can carry content parts instead of a string, so map them or reject them with a clear error, as the official providers do. Map provider reasoning to AG-UI reasoning events and use `RAW` for useful provider details that have no canonical event.
 
+To report how the model stopped and what it used, put the counts in AG-UI's standard `usage` field on `RUN_FINISHED`, and put a normalized reason under `metadata.hashbrown.finishReason`: `stop`, `length`, `tool_calls`, `content_filter`, `refusal`, or `other`. Keep the provider's own reason under a key of your own, for example `metadata.myProvider.stopReason`. Hashbrown exposes these as `lastRunUsage` and `lastRunFinishReason`. A truncated or filtered answer still ends with `RUN_FINISHED`; use `RUN_ERROR` only for failures.
+
+```ts
+yield {
+  type: EventType.RUN_FINISHED,
+  threadId,
+  runId,
+  usage: [{ provider: 'my-provider', model, inputTokens, outputTokens, totalTokens: inputTokens + outputTokens }],
+  metadata: {
+    hashbrown: { finishReason: 'length' },
+    myProvider: { stopReason: 'max_tokens' },
+  },
+};
+```
+
 If the provider supports native structured output, map `input.forwardedProps?.hashbrown?.responseSchema` to that capability. Hashbrown continues to incrementally parse the resulting assistant text; the provider integration should not add a second parser or validate the full output itself.
 
 ## Expose POST `/run`

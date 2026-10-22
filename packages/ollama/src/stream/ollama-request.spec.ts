@@ -152,6 +152,25 @@ test('ignores reasoning records that are not owned by Ollama', () => {
   expect(result.messages?.[3]?.thinking).toBeUndefined();
 });
 
+test('sends a tool error to Ollama instead of the tool result content', () => {
+  const input = createInput();
+  const toolMessage = input.messages.find(
+    (message) => message.id === 'tool-ollama',
+  );
+  if (toolMessage?.role === 'tool') {
+    toolMessage.content = 'lookup failed';
+    toolMessage.error = 'upstream timeout';
+  }
+
+  const result = createOllamaRequestOptions(input, 'qwen3');
+
+  expect(result.messages?.at(-1)).toEqual({
+    role: 'tool',
+    content: '{"error":"upstream timeout"}',
+    tool_name: 'lookup',
+  });
+});
+
 test('rejects a tool result whose call cannot be resolved', () => {
   const input = createInput();
   const toolMessage = input.messages.find(

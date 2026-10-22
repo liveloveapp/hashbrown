@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
+import { trackCtaClick } from '../../lib/analytics/client';
 import { toastService } from '../toast/toast-service';
 import { useSiteConfig } from '../use-site-config';
 import { copyText } from './copy-text';
@@ -54,7 +55,16 @@ export function InstallCommand({ centered = false }: { centered?: boolean }) {
   const command = installCommand(sdk);
   const [scope, packages] = splitInstallCommand(command);
 
+  const select = (option: Sdk) => {
+    if (option === sdk) {
+      return;
+    }
+    trackCtaClick({ cta_id: `sdk_switch_${option}`, surface: 'home' });
+    update({ sdk: option });
+  };
+
   const copy = async () => {
+    trackCtaClick({ cta_id: 'install_copy', surface: 'home' });
     if (await copyText(command, globalThis.navigator?.clipboard)) {
       toastService.success('Install command copied', {
         position: 'top-center',
@@ -80,14 +90,14 @@ export function InstallCommand({ centered = false }: { centered?: boolean }) {
             aria-checked={sdk === option}
             tabIndex={sdk === option ? 0 : -1}
             className={sdk === option ? styles.on : undefined}
-            onClick={() => update({ sdk: option })}
+            onClick={() => select(option)}
             onKeyDown={(event) => {
               const next = sdkForKey(option, event.key);
               if (!next) {
                 return;
               }
               event.preventDefault();
-              update({ sdk: next });
+              select(next);
               radios.current[next]?.focus();
             }}
           >

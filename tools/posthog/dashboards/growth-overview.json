@@ -1,0 +1,21 @@
+{
+  "slug": "growth-overview",
+  "posthog_id": 2242197,
+  "name": "Website · Growth overview",
+  "description": "hashbrown.dev reach and attention: pageviews, engaged page views, docs reading, and visitors lost before analytics loaded. Event counts, not people. Lifecycle outcomes live in Neon (npx nx run growth:report). Managed in tools/posthog; edit the JSON, not the UI.",
+  "tags": ["growth", "website"],
+  "tiles": [
+    {
+      "insight": "pageviews-by-path"
+    },
+    {
+      "insight": "engaged-sessions"
+    },
+    {
+      "insight": "docs-reading-by-framework"
+    },
+    {
+      "insight": "pre-analytics-exits-by-trigger"
+    }
+  ]
+}

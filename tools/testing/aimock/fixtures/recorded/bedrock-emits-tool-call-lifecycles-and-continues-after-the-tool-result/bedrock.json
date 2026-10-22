@@ -1,0 +1,50 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'bedrock', then answer in one short sentence.",
+        "model": "us.anthropic.claude-haiku-4-5-20251001-v1%3A0",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": "{\"query\": \"bedrock\"}",
+            "id": "tooluse_m4r8JYmgKx5m8asRL9v2wf"
+          }
+        ]
+      },
+      "recordedTimings": {
+        "ttftMs": 734,
+        "interChunkDelaysMs": [0, 0, 66, 0, 0, 6, 0, 0],
+        "totalDurationMs": 806
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'bedrock', then answer in one short sentence.",
+        "model": "us.anthropic.claude-haiku-4-5-20251001-v1%3A0",
+        "turnIndex": 1,
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "The code word 'bedrock' is green."
+      },
+      "recordedTimings": {
+        "ttftMs": 639,
+        "interChunkDelaysMs": [0, 0, 23, 0, 0, 0],
+        "totalDurationMs": 662
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

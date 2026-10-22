@@ -1,0 +1,17 @@
+{
+  "slug": "docs-reading-by-framework",
+  "posthog_id": 13138904,
+  "kind": "trends",
+  "name": "Docs reading by framework",
+  "description": "docs:page_viewed on /docs/react and /docs/angular pages.",
+  "events": [
+    {
+      "event": "docs:page_viewed",
+      "name": "Docs pages read",
+      "math": "total"
+    }
+  ],
+  "breakdown": "framework",
+  "interval": "day",
+  "date_from": "-30d"
+}

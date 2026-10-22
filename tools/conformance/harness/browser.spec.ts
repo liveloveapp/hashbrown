@@ -15,6 +15,15 @@ function createFakePage(): FakePage {
       listeners.set(event, eventListeners);
       return page;
     },
+    off(event: string, listener: (value: unknown) => void) {
+      listeners.set(
+        event,
+        (listeners.get(event) ?? []).filter(
+          (candidate) => candidate !== listener,
+        ),
+      );
+      return page;
+    },
   } as unknown as Page;
 
   return {
@@ -223,4 +232,27 @@ test('waits for a pending POST failure before asserting hygiene', async () => {
   await expect(assertion).rejects.toThrow(
     'Request failed: POST http://127.0.0.1:4100/run (net::ERR_FAILED)',
   );
+});
+
+test('a disposed browser hygiene monitor stops observing the page', async () => {
+  const fakePage = createFakePage();
+  const hygiene = installBrowserHygiene(fakePage.page);
+  hygiene.dispose();
+
+  fakePage.emit('requestfailed', createRequest('net::ERR_FAILED'));
+
+  await expect(hygiene.assertClean()).resolves.toBeUndefined();
+});
+
+test('a later scenario monitor sees a one-shot ignore record once the earlier one is disposed', async () => {
+  const fakePage = createFakePage();
+  const terminalRuns = new Set(['run-2']);
+  const ignoreTerminalAbort = () => terminalRuns.delete('run-2');
+  const earlier = installBrowserHygiene(fakePage.page, {}, ignoreTerminalAbort);
+  earlier.dispose();
+  const later = installBrowserHygiene(fakePage.page, {}, ignoreTerminalAbort);
+
+  fakePage.emit('requestfailed', createRequest());
+
+  await expect(later.assertClean()).resolves.toBeUndefined();
 });

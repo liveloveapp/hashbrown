@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import styles from '../../../components/layout/SectionShell.module.css';
+import { DocsPageViewSignal } from '../../../components/docs/DocsPageViewSignal';
 import { ApiMenu } from '../../../components/menus/ApiMenu';
 import { DocsMenu } from '../../../components/menus/DocsMenu';
 import { Header } from '../../../components/site/Header';
@@ -29,6 +30,7 @@ export default async function DocsLayout({
   const current: Sdk = sdk === 'angular' ? 'angular' : 'react';
   return (
     <div className={`${styles.shell} ${styles.docs}`}>
+      <DocsPageViewSignal sdk={current} />
       <Header
         sdk={current}
         docsMenu={<DocsMenu sdk={current} />}

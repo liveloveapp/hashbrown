@@ -7,10 +7,14 @@ import {
   CARDS_SELECT_MAX,
   createBrowserAtcTools,
   flightCardContract,
+  focusComposerAfterRefinement,
+  NO_REFINEMENTS,
   observeDecisions,
   ROUTER_SKIPPED,
+  ROUTER_SKIPPED_REFINEMENT,
   type RouterShown,
   settleCards,
+  stableRefinements,
   type Starter,
   transcriptItems,
   type TurnShown,
@@ -25,7 +29,13 @@ import {
   useUiDecision,
   useUiKit,
 } from '@hashbrownai/react';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   AircraftCompare,
   AircraftCompareFallback,
@@ -37,6 +47,7 @@ import {
 } from './components/arrivals-board';
 import { FlightCard, FlightCardFallback } from './components/flight-card';
 import { Composer } from './composer';
+import { usePublishDev, useRecordRoute } from './dev-mode';
 import { useAutoScroll } from './auto-scroll';
 import { EmptyState } from './empty-state';
 import { useAtcStore } from './store';
@@ -87,18 +98,22 @@ const CARDS_TRANSPORT = createHttpDecisionTransport({
 /**
  * The chat panel: components, browser-side tools and the streaming answer,
  * with the one composer that routes what is typed. `onFilter` applies a
- * natural-language map filter (with what the router decided, for "Show the
- * stream"); `onSent` is called when the user sends
- * anything (to the chat, to the filter, or a clear).
+ * natural-language map filter (with what the router decided, for the
+ * developer drawer); `onSent` is called when the user sends
+ * anything (to the chat, to the filter, or a clear). `filterLoading` is true
+ * while a filter run streams; the "Refine:" row waits for it to settle.
  */
 export function Assistant({
   onFilter,
   onSent,
+  filterLoading = false,
   routeTransport,
   cardsTransport = CARDS_TRANSPORT,
 }: {
   onFilter: (request: string, routed: RouterShown) => void;
   onSent?: () => void;
+  /** True while a map filter run streams. */
+  filterLoading?: boolean;
   /** Replaces the router's HTTP transport (tests). */
   routeTransport?: Decision.Transport;
   /** Replaces the cards decision's HTTP transport (tests). */
@@ -141,6 +156,10 @@ export function Assistant({
     tools,
   });
   const scroller = useAutoScroll<HTMLDivElement>();
+  const items = useMemo(
+    () => transcriptItems(chat.messages, chat.isLoading),
+    [chat.messages, chat.isLoading],
+  );
   // 4. Decide: route what the user typed, then narrow the cards. The composer
   //    asks a Jev decision (react/src/router.ts) and calls one of these; the
   //    filter route adds nothing to the transcript. A chat message first asks
@@ -148,8 +167,8 @@ export function Assistant({
   //    chat sends with only those plus Markdown. The server pins the questions
   //    (server/src/decide-handler.ts); an unsure or failed decision sends
   //    with every card.
-  // "Show the stream": each send's router decision and cards decision, kept
-  // with its answer. A starter skips the router.
+  // The developer drawer: each send's router decision and cards decision,
+  // recorded in order (superseded sends stay). A starter skips the router.
   const [turns, setTurns] = useState<readonly TurnShown[]>([]);
   const observed = useMemo(
     () =>
@@ -166,7 +185,7 @@ export function Assistant({
     transport: observed,
   });
   // Once the decision settles, the hook's decoded value (or its error) is
-  // what the chat acted on, so the panel shows that.
+  // what the chat acted on, so the drawer shows that.
   const { isDeciding, decisionError, decision } = narrowed;
   useEffect(() => {
     if (isDeciding) {
@@ -180,21 +199,52 @@ export function Assistant({
       );
     }
   }, [isDeciding, decisionError, decision.value, decision.meta]);
+  // The drawer reads the chat as it streams.
+  const devChat = useMemo(
+    () => ({ items, turns, busy: chat.isLoading }),
+    [items, turns, chat.isLoading],
+  );
+  usePublishDev('chat', devChat);
+  // Every submission, whichever route it took, for the drawer's Router tab.
+  const recordRoute = useRecordRoute();
   const send = (content: string, routed: RouterShown) => {
     narrowed.sendMessage(content);
-    // Added once the chat accepted the message: its panel keeps this send's
+    // Added once the chat accepted the message: the drawer keeps this send's
     // router decision, and the cards decision joins it when it settles.
     setTurns((current) => addTurn(current, routed, content));
+    recordRoute({ text: content, router: routed, outcome: 'chat' });
     onSent?.();
   };
   const filter = (request: string, routed: RouterShown) => {
     onFilter(request, routed);
+    recordRoute({ text: request, router: routed, outcome: 'filter' });
     onSent?.();
   };
-  const clear = () => {
+  const clear = (content: string, routed: RouterShown) => {
     store.clearMapFilter();
+    recordRoute({ text: content, router: routed, outcome: 'clear' });
     onSent?.();
   };
+  // Ways to narrow the filter on the map, from it and the traffic: computed
+  // once per filter after its run settles, so they hold still as planes move.
+  const applied = useSyncExternalStore(
+    store.subscribe,
+    () => store.getState().mapFilter,
+  );
+  const aircraft = useSyncExternalStore(
+    store.subscribe,
+    () => store.getState().aircraft,
+  );
+  const [held, setHeld] = useState(NO_REFINEMENTS);
+  const next = filterLoading
+    ? held
+    : stableRefinements(held, applied, [...aircraft.values()]);
+  if (next !== held) {
+    // React's pattern for state that depends on earlier renders.
+    setHeld(next);
+  }
+  const suggestions = filterLoading ? [] : next.list;
+  const refineLabelId = useId();
   const pick = (starter: Starter) =>
     starter.route === 'filter'
       ? filter(starter.text, ROUTER_SKIPPED)
@@ -211,11 +261,7 @@ export function Assistant({
         {chat.messages.length === 0 && !chat.error ? (
           <EmptyState onPick={pick} />
         ) : null}
-        <Transcript
-          items={transcriptItems(chat.messages, chat.isLoading)}
-          busy={chat.isLoading}
-          turns={turns}
-        />
+        <Transcript items={items} busy={chat.isLoading} />
         {chat.error ? (
           <div className="atc-card atc-error" role="alert">
             <span>The assistant didn&apos;t answer. Try again.</span>
@@ -225,6 +271,31 @@ export function Assistant({
           </div>
         ) : null}
       </div>
+      {suggestions.length > 0 ? (
+        <div
+          className="atc-refinements"
+          data-testid="refinements"
+          role="group"
+          aria-labelledby={refineLabelId}
+        >
+          <span id={refineLabelId} className="atc-refinements-label">
+            Refine:
+          </span>
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion.text}
+              type="button"
+              className="atc-refinement"
+              onClick={(event) => {
+                filter(suggestion.text, ROUTER_SKIPPED_REFINEMENT);
+                focusComposerAfterRefinement(event.currentTarget, event.detail);
+              }}
+            >
+              {suggestion.text}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <Composer
         busy={chat.isLoading}
         onChat={send}

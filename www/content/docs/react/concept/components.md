@@ -24,8 +24,8 @@ import { s } from '@hashbrownai/core';
 import { Markdown } from './Markdown';
 
 exposeComponent(Markdown, {
-  description: 'Show markdown to the user',
   name: 'Markdown',
+  description: 'Show markdown to the user',
   props: {
     data: s.string('The markdown content'),
   },
@@ -69,6 +69,7 @@ Let's update the previous example to support **streaming** of the markdown strin
 
 ```ts
 exposeComponent(Markdown, {
+  name: 'Markdown',
   description: 'Show markdown to the user',
   props: {
     data: s.streaming.string('The markdown content'),
@@ -81,7 +82,7 @@ exposeComponent(Markdown, {
 The `s.streaming.string()` function is used to define the type of the prop, indicating that it can be a string that will be streamed in chunks.
 
 <hb-next-steps>
-  <hb-next-step link="/concept/streaming">
+  <hb-next-step link="concept/streaming">
     <div>
       <hb-code />
     </div>
@@ -102,6 +103,7 @@ When exposing components, you can also define the `children` that the component 
 
 ```ts
 exposeComponent(LightList, {
+  name: 'LightList',
   description: 'Show a list of lights to the user',
   props: {
     title: s.string('The name of the list'),
@@ -120,12 +122,14 @@ However, if we wanted to explicitly limit the children that the model can genera
 
 ```ts
 exposeComponent(LightList, {
+  name: 'LightList',
   description: 'Show a list of lights to the user',
   props: {
     title: s.string('The name of the list'),
   },
   children: [
     exposeComponent(Light, {
+      name: 'Light',
       description: 'Show a light to the user',
       props: {
         lightId: s.string('The id of the light'),
@@ -152,10 +156,12 @@ import { Markdown } from './Markdown';
 
 // 1. Create the UI chat hook
 const chat = useUiChat({
+  system: 'You are a helpful assistant.',
   // 2. Specify the collection of exposed components
   components: [
     // 3. Expose the Markdown component to the model
     exposeComponent(Markdown, {
+      name: 'Markdown',
       description: 'Show markdown to the user',
       props: {
         data: s.streaming.string('The markdown content'),
@@ -177,7 +183,7 @@ const chat = useUiChat({
 
 | Option         | Type                                  | Required | Description                                   |
 | -------------- | ------------------------------------- | -------- | --------------------------------------------- |
-| `components`   | `ExposedComponent<any>[]`             | Yes      | The components to use for the UI chat hook    |
+| `components`   | `UiKitInput<ExposedComponent<any>>[]` | Yes      | The components or kits for the UI chat hook   |
 | `system`       | `string`                              | Yes      | The system prompt to use for the UI chat hook |
 | `messages`     | `Chat.Message<UiChatSchema, Tools>[]` | No       | The initial messages for the UI chat hook     |
 | `tools`        | `Tools[]`                             | No       | The tools to use for the UI chat hook         |
@@ -234,8 +240,13 @@ If you only want to render the last assistant message, `useUiChat()` provides a 
 ```tsx
 function UI() {
   const chat = useUiChat({
+    system: 'You are a helpful assistant.',
     components: [
-      exposeComponent(Markdown, { props: { data: s.string('md') } }),
+      exposeComponent(Markdown, {
+        name: 'Markdown',
+        description: 'Show markdown to the user',
+        props: { data: s.string('The markdown content') },
+      }),
     ],
   });
 

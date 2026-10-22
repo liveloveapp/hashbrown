@@ -1,0 +1,32 @@
+import {
+  createGrowthActionToken,
+  type GrowthTokenKeyring,
+} from '@hashbrownai-internal/growth';
+
+export const TEST_TOKEN_KEYRING: GrowthTokenKeyring = {
+  active: { version: 1, secret: 'x'.repeat(48) },
+};
+
+export const TEST_NOW = new Date('2026-10-21T12:00:00.000Z');
+
+export function mintToken(
+  purpose: 'unsubscribe' | 'founder_stop' | 'founder_approve_install',
+  issuedAt: Date = TEST_NOW,
+): string {
+  return createGrowthActionToken(
+    {
+      contactId: '11111111-1111-4111-8111-111111111111',
+      purpose,
+      issuedAt,
+      eventNonce: 'nonce-1',
+    },
+    TEST_TOKEN_KEYRING.active,
+  );
+}
+
+/** Flips the first character of the signature segment of a token. */
+export function tamperToken(token: string): string {
+  const cut = token.lastIndexOf('.') + 1;
+  const flipped = token[cut] === 'A' ? 'B' : 'A';
+  return token.slice(0, cut) + flipped + token.slice(cut + 1);
+}

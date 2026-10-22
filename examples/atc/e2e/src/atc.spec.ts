@@ -63,24 +63,10 @@ test.afterAll(async () => {
 
 /**
  * Opens one app with stubbed feeds and waits for the map to draw its first
- * frame. "Show the stream" is on for a first visit, and its panels repeat the
- * answers' text, so tests turn it off unless they pass `stream: true`.
+ * frame. Dev mode is off on a first visit, so the developer drawer is absent.
  */
-async function openApp(
-  page: Page,
-  framework: string,
-  options: { stream?: boolean } = {},
-): Promise<void> {
+async function openApp(page: Page, framework: string): Promise<void> {
   await stubAtcFeeds(page, { frames: frame, blockTiles: true });
-  if (!options.stream) {
-    await page.addInitScript(() => {
-      try {
-        localStorage.setItem('atc.showStream', 'off');
-      } catch {
-        // The app reads the same storage; without it the switch stays on.
-      }
-    });
-  }
   // Record every data-hex a card ever renders, not just the final DOM, so a
   // card that briefly showed a half-streamed ID is caught by expectOnlyCompleteIds.
   await page.addInitScript(() => {
@@ -439,7 +425,7 @@ test('shows Seattle arrivals and highlights them on the map', async ({
 }, testInfo) => {
   await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: PROMPTS.seattleArrivals }).click();
+  await ask(page, PROMPTS.seattleArrivals);
 
   await expect(page.getByTestId('arrivals-row')).toHaveCount(arrivals.length);
   await expect(page.locator('.atc-plane.is-dimmed').first()).toBeAttached();
@@ -463,7 +449,7 @@ test('the browser sends the response schema the server pins', async ({
   try {
     await openApp(page, testInfo.project.name);
 
-    await page.getByRole('button', { name: PROMPTS.seattleArrivals }).click();
+    await ask(page, PROMPTS.seattleArrivals);
     await expect(page.getByTestId('arrivals-row')).toHaveCount(arrivals.length);
   } finally {
     console.warn = warn;
@@ -506,6 +492,12 @@ test('on a phone, the starters show in the peek, a pick lowers the sheet to half
   const sheet = page.locator('#atc-chat-sheet');
   const starter = page.getByRole('button', { name: PROMPTS.nearBend });
   await expect(sheet).toHaveAttribute('data-snap', 'peek');
+  // The peek is short: the first group's first filter starter shows, and the
+  // questions below it scroll into view.
+  await expect(
+    page.getByRole('button', { name: PROMPTS.starterJets }),
+  ).toBeInViewport();
+  await starter.scrollIntoViewIfNeeded();
   await expect(starter).toBeInViewport();
 
   await starter.tap();
@@ -523,6 +515,34 @@ test('on a phone, the starters show in the peek, a pick lowers the sheet to half
   await expect(card).toHaveClass(/is-docked/);
   await card.getByRole('button', { name: /^Close details/ }).tap();
   await expect(card).toBeHidden();
+  await close();
+});
+
+test('on a phone, the refine row shows at half and the peek still shows the starters and the composer', async ({
+  browser,
+}, testInfo) => {
+  const { page, close } = await openPhone(browser, testInfo.project.name, {
+    width: 375,
+    height: 812,
+  });
+  const sheet = page.locator('#atc-chat-sheet');
+  const picked = page.getByRole('button', { name: PROMPTS.starterHelicopters });
+  const field = page.getByRole('textbox', { name: 'Message' });
+  const row = page.getByTestId('refinements');
+
+  await picked.tap();
+  await expect(sheet).toHaveAttribute('data-snap', 'half');
+  await expect(row.getByRole('button').first()).toBeInViewport();
+  await expect(field).toBeInViewport();
+  await picked.press('Escape');
+
+  // The peek's starters are one sideways-scrolling row. Tapping a pill that
+  // sits partly off the edge scrolls the row to it (how far depends on font
+  // metrics), so assert the picked pill rather than the row's first one.
+  await expect(sheet).toHaveAttribute('data-snap', 'peek');
+  await expect(picked).toBeInViewport();
+  await expect(field).toBeInViewport();
+  await expect(row).toBeHidden();
   await close();
 });
 
@@ -564,7 +584,9 @@ test('on a phone, a plane picked off screen lands mid-way between the docked car
   browser,
 }, testInfo) => {
   const { page, close } = await openPhone(browser, testInfo.project.name);
-  await page.getByRole('button', { name: PROMPTS.highestAndFastest }).tap();
+  const starter = page.getByRole('button', { name: PROMPTS.highestAndFastest });
+  await starter.scrollIntoViewIfNeeded();
+  await starter.tap();
   const pick = page.locator(
     `[data-testid="aircraft-compare"] [data-hex="${highest.hex}"]`,
   );
@@ -827,7 +849,7 @@ test('lists the aircraft inside the Portland Class C and lights its shelf', asyn
 }, testInfo) => {
   await openApp(page, testInfo.project.name);
 
-  await page.getByRole('button', { name: PROMPTS.portlandClassC }).click();
+  await ask(page, PROMPTS.portlandClassC);
 
   await expect(page.getByTestId('arrivals-row')).toHaveCount(portland.length);
   await expect(page.locator('.atc-as.is-c.is-highlighted')).toHaveCount(1);
@@ -865,43 +887,86 @@ test('the Layers control hides the airspace', async ({ page }, testInfo) => {
   await expect(page.locator('.atc-as')).toHaveCount(0);
 });
 
-test('Show the stream is on for a first visit and shows every layer', async ({
+test('the dev tool opens from the rail, shows each tab, and is remembered', async ({
   page,
 }, testInfo) => {
-  await openApp(page, testInfo.project.name, { stream: true });
-  const toggle = page.getByRole('switch', { name: 'Show the stream' });
+  await openApp(page, testInfo.project.name);
+  const toggle = page.getByTestId('dev-toggle');
+  const drawer = page.getByTestId('dev-drawer');
 
+  await toggle.click();
   await ask(page, PROMPTS.redmondAirspace);
 
-  await expect(toggle).toBeChecked();
-  const panel = page.getByTestId('stream-panel').last();
-  await expect(panel).toContainText('router');
-  await expect(panel).toContainText('cards');
-  await expect(panel).toContainText('"Markdown"');
-  await expect(
-    page
-      .getByTestId('stream-panel')
-      .filter({ hasText: 'showAirspace' })
-      .first(),
-  ).toBeVisible();
-
-  await toggle.uncheck();
-
-  await expect(page.getByTestId('stream-panel')).toHaveCount(0);
-  await expect(
-    page.getByText('Redmond has a part-time Class D.'),
-  ).toBeVisible();
-
-  await toggle.check();
-
-  await expect(page.getByTestId('stream-panel').last()).toContainText('cards');
-  await toggle.uncheck();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole('tab', { name: 'Router' }).click();
+  await expect(drawer).toContainText(
+    `sent "${PROMPTS.redmondAirspace}" → chat`,
+  );
+  await expect(drawer).toContainText('type to see where it goes');
+  await drawer.getByRole('tab', { name: 'Cards' }).click();
+  await expect(drawer).toContainText('cards');
+  await drawer.getByRole('tab', { name: 'Filter' }).click();
+  await expect(drawer).toContainText('applied');
+  await drawer.getByRole('tab', { name: 'UI stream' }).click();
+  await expect(drawer).toContainText('"Markdown"');
+  await drawer.getByRole('tab', { name: 'Tools' }).click();
+  await expect(drawer).toContainText('showAirspace');
 
   await page.reload();
 
+  await expect(page.getByTestId('dev-drawer')).toBeVisible();
+  await page.getByTestId('dev-toggle').click();
+  await expect(page.getByTestId('dev-drawer')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId('airspace-map')).toHaveAttribute(
+    'data-ready',
+    '',
+  );
+  await expect(page.getByTestId('dev-drawer')).toHaveCount(0);
+});
+
+test('with dev mode off the map and transcript have no technical panels', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+
+  await ask(page, PROMPTS.redmondAirspace);
+
+  await expect(
+    page.getByText('Redmond has a part-time Class D.'),
+  ).toBeVisible();
+  await expect(page.getByTestId('dev-toggle')).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(page.getByTestId('dev-drawer')).toHaveCount(0);
+  await expect(page.getByTestId('stream-panel')).toHaveCount(0);
   await expect(
     page.getByRole('switch', { name: 'Show the stream' }),
-  ).not.toBeChecked();
+  ).toHaveCount(0);
+});
+
+test('at 375 px the header button opens the drawer as a sheet and closes it', async ({
+  browser,
+}, testInfo) => {
+  const { page, close } = await openPhone(browser, testInfo.project.name, {
+    width: 375,
+    height: 700,
+  });
+  const drawer = page.getByTestId('dev-drawer');
+
+  await page.locator('.atc-header-dev').click();
+
+  await expect(drawer).toBeVisible();
+  const box = await drawer.boundingBox();
+  expect((box?.x ?? -1) + (box?.width ?? 0)).toBeLessThanOrEqual(375);
+  await expect(page.getByTestId('airspace-map')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Close developer tools' }).click();
+
+  await expect(drawer).toHaveCount(0);
+  await close();
 });
 
 test('typing shows where Enter will send the text', async ({
@@ -932,6 +997,52 @@ test('Enter on a filter streams its chips and dims the planes it hides', async (
   ]);
   await expect(page.getByTestId('flight-card')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Message' })).toHaveValue('');
+});
+
+test('each filter starter streams chips without a transcript entry', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  const pill = page.getByTestId('filter-pill');
+  const cases = [
+    { text: PROMPTS.starterJets, chips: ['Jets', 'Below 10,000 ft'] },
+    {
+      text: PROMPTS.starterAlaska,
+      chips: ['Airline Alaska Airlines', 'Within 25 nm of KSEA'],
+    },
+    { text: PROMPTS.starterHelicopters, chips: ['Helicopters'] },
+    { text: PROMPTS.starterPortland, chips: ['Approaching KPDX'] },
+  ];
+
+  for (const { text, chips } of cases) {
+    await page.getByRole('button', { name: text }).click();
+
+    await expect(pill.locator('.atc-filter-chip')).toHaveText(chips);
+    await expect(page.locator('.atc-transcript > *')).toHaveCount(0);
+  }
+  await expect(page.getByTestId('flight-card')).toHaveCount(0);
+});
+
+test('a refinement adds a chip and keeps the existing ones', async ({
+  page,
+}, testInfo) => {
+  await openApp(page, testInfo.project.name);
+  const pill = page.getByTestId('filter-pill');
+  const refinements = page.getByTestId('refinements');
+  await expect(refinements).toBeHidden();
+  await page.getByRole('button', { name: PROMPTS.starterHelicopters }).click();
+  await expect(pill.locator('.atc-filter-chip')).toHaveText(['Helicopters']);
+
+  await refinements.getByRole('button', { name: 'Below 5,000 ft' }).click();
+
+  await expect(pill.locator('.atc-filter-chip')).toHaveText([
+    'Helicopters',
+    'Below 5,000 ft',
+  ]);
+  await expect(page.locator('.atc-transcript > *')).toHaveCount(0);
+  await expect(
+    refinements.getByRole('button', { name: 'Below 5,000 ft' }),
+  ).toHaveCount(0);
 });
 
 test('the x on the filter pill clears the filter', async ({
@@ -1047,9 +1158,7 @@ for (const width of [320, 375]) {
     const link = await page
       .getByRole('link', { name: 'atc source on GitHub' })
       .boundingBox();
-    const switchBox = await page
-      .getByRole('switch', { name: 'Show the stream' })
-      .boundingBox();
+    const devBox = await page.locator('.atc-header-dev').boundingBox();
     const credit = await page
       .getByRole('link', { name: 'built with Hashbrown' })
       .boundingBox();
@@ -1061,7 +1170,7 @@ for (const width of [320, 375]) {
     expect((link?.x ?? 0) + (link?.width ?? 0)).toBeLessThanOrEqual(width);
     expect(credit?.width ?? 0).toBeGreaterThan(0);
     expect((credit?.x ?? 0) + (credit?.width ?? 0)).toBeLessThanOrEqual(width);
-    expect(switchBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect(devBox?.x ?? -1).toBeGreaterThanOrEqual(0);
     expect(overflow).toBeLessThanOrEqual(0);
     await close();
   });

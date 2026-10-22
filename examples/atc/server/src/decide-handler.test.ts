@@ -12,6 +12,7 @@ import type { AddressInfo } from 'node:net';
 import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
 import { expect, onTestFinished, test, vi } from 'vitest';
 import { createDecideHandler } from './decide-handler';
+import { createFixedWindowLimiter } from './rate-limit';
 
 interface Wire {
   url: string;
@@ -63,8 +64,9 @@ function fakeTypeSafe(status = 200) {
 async function serve(
   env: NodeJS.ProcessEnv,
   fetchFn?: typeof fetch,
+  limiter?: ReturnType<typeof createFixedWindowLimiter>,
 ): Promise<string> {
-  const handler = createDecideHandler(env, { fetch: fetchFn });
+  const handler = createDecideHandler(env, { fetch: fetchFn, limiter });
   const server: Server = createServer((req, res) => void handler(req, res));
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -76,10 +78,15 @@ async function serve(
 
 const KEY = { TYPESAFE_API_KEY: 'k' };
 
-function post(base: string, kind: string, body: unknown): Promise<Response> {
+function post(
+  base: string,
+  kind: string,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Promise<Response> {
   return fetch(`${base}/api/decide?kind=${kind}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
   });
 }
@@ -298,4 +305,45 @@ test('decide answers 500 internal for a non-DecisionError, without leaking it', 
   expect(response.status).toBe(500);
   expect(JSON.parse(text)).toEqual({ code: 'internal' });
   expect(text).not.toContain('secret');
+});
+
+test('decide answers 429 with Retry-After from the 301st request per IP, without calling TypeSafe', async () => {
+  const model = fakeTypeSafe();
+  const base = await serve(KEY, model.fetchFn);
+  const ip = { 'x-forwarded-for': ' 203.0.113.7 , 10.0.0.1' };
+  for (let i = 0; i < 300; i += 1) {
+    await post(base, 'route', { state: 'hi' }, ip);
+  }
+
+  const blocked = await post(base, 'route', { state: 'hi' }, ip);
+  const text = await blocked.text();
+  expect(blocked.status).toBe(429);
+  expect(Number(blocked.headers.get('retry-after'))).toBeGreaterThan(0);
+  expect(JSON.parse(text)).toEqual({ code: 'rate_limited' });
+  expect(model.calls).toHaveLength(300);
+
+  const other = await post(
+    base,
+    'route',
+    { state: 'hi' },
+    {
+      'x-forwarded-for': '203.0.113.8',
+    },
+  );
+
+  expect(other.status).toBe(200);
+  expect(model.calls).toHaveLength(301);
+});
+
+test('decide takes the limiter as an option and falls back to the socket address', async () => {
+  const model = fakeTypeSafe();
+  const limiter = createFixedWindowLimiter({ limit: 1, windowMs: 60_000 });
+  const base = await serve(KEY, model.fetchFn, limiter);
+
+  const first = await post(base, 'route', { state: 'hi' });
+  const second = await post(base, 'route', { state: 'hi' });
+
+  expect(first.status).toBe(200);
+  expect(second.status).toBe(429);
+  expect(model.calls).toHaveLength(1);
 });

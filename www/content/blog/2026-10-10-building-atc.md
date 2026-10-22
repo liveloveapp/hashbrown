@@ -25,7 +25,7 @@ The assistant answers with the same cards, boards and map that the app already h
 - [Fly it live at atc.hashbrown.dev](https://atc.hashbrown.dev)
 - [Read the source on GitHub](https://github.com/liveloveapp/hashbrown/tree/main/examples/atc)
 
-Here's the whole thing in 45 seconds:
+Here's the whole thing in about a minute:
 
 <www-atc-demo-video>
 </www-atc-demo-video>
@@ -37,6 +37,8 @@ We'll go from the transponder in an airplane all the way to a streamed React or 
 Ok, let's dive in. ✈️
 
 > **Update, October 20, 2026.** atc now shows Hashbrown in three steps: decide (a TypeSafe Jev decision routes what you type and narrows the cards), filter (a structured completion streams a map filter that the map keeps as state) and generate (the chat, as described below). A "Show the stream" switch shows each route's JSON as it arrives. The code in this post is from the first version; for the current design, read [How this example is built](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/README.md#how-this-example-is-built) and the [hosting notes](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/README.md#hosting).
+>
+> **Update, October 21, 2026.** The "Show the stream" switch is now a developer drawer under the map. Turn on dev mode from the rail (or the header on phones) to see the router, the cards decision, the filter, the streaming UI JSON and the tool calls in tabs. It is off by default.
 
 ---
 

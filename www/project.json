@@ -32,7 +32,9 @@
     },
     "lint": {
       "executor": "nx:run-commands",
-      "options": { "command": "eslint www/src www/test" }
+      "options": {
+        "command": "eslint www/src www/test www/instrumentation-client.ts www/next.config.ts"
+      }
     },
     "e2e": {
       "executor": "nx:run-commands",

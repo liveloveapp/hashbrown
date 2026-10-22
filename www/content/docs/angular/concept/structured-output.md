@@ -40,11 +40,11 @@ export class App {
 
   constructor() {
     // 1. Send a user message
-    chat.sendMessage({ role: 'user', content: 'My name is Brian Love' });
+    this.chat.sendMessage({ role: 'user', content: 'My name is Brian Love' });
 
     // 3. Log out the structure response
     effect(() => {
-      const value = chat.value();
+      const value = this.chat.value();
       console.log({
         firstName: value.content.firstName,
         lastName: value.content.lastName,
@@ -79,7 +79,7 @@ The `schema` option accepts Skillet schemas, Standard JSON Schema objects (the `
 
 ### Provider Enforcement
 
-The `schema` option is the only client-side structured output control. Hashbrown includes its JSON Schema in `RunAgentInput.hashbrown.responseSchema`, then incrementally parses and validates the text events returned by the AG-UI endpoint.
+The `schema` option is the only client-side structured output control. Hashbrown includes its JSON Schema in `RunAgentInput.forwardedProps.hashbrown.responseSchema`, then incrementally parses and validates the text events returned by the AG-UI endpoint.
 
 The server adapter decides how to request structured output from its provider. It may use native schema enforcement, JSON mode, or provider-specific request options. Hashbrown does not synthesize an `output` tool; developers may use that name for a normal tool.
 

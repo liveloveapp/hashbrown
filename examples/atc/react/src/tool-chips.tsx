@@ -1,13 +1,6 @@
-import {
-  labelForHex,
-  toolBlocks,
-  type ToolCallLike,
-  toolRunView,
-} from '@atc/shared';
+import { labelForHex, type ToolCallLike, toolRunView } from '@atc/shared';
 import { useId, useState } from 'react';
-import { useShowStream } from './show-stream';
 import { useAtcState } from './store';
-import { StreamPanel } from './stream-panel';
 
 /**
  * One assistant turn's tool activity, as one quiet line. While a step runs,
@@ -16,8 +9,8 @@ import { StreamPanel } from './stream-panel';
  * it, since this line sits in a busy list). Once the steps finish it becomes
  * a button with a check, what they did and how many there were ("Searched
  * traffic · 2 steps"), which expands to every step. A call only runs while
- * the chat is busy, so the line always settles. With "Show the stream" on,
- * a panel under the line shows each real call with its arguments as JSON.
+ * the chat is busy, so the line always settles. Arguments are never shown
+ * here; the developer drawer lists them.
  */
 export function ToolChips({
   calls,
@@ -28,7 +21,6 @@ export function ToolChips({
 }) {
   const [open, setOpen] = useState(false);
   const stepsId = useId();
-  const showStream = useShowStream();
   const run = toolRunView(calls, busy, labelForHex(useAtcState()));
 
   return (
@@ -99,9 +91,6 @@ export function ToolChips({
             </li>
           ))}
         </ol>
-      ) : null}
-      {showStream && calls.length > 0 ? (
-        <StreamPanel label="Tool calls" blocks={toolBlocks(calls)} />
       ) : null}
     </div>
   );

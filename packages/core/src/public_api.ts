@@ -12,6 +12,28 @@ export {
 } from './chat-runtime';
 export * from './models';
 export {
+  ɵTOOL_STEP_METADATA_KEY,
+  ɵANSWER_METADATA_KEY,
+  ɵTOOL_STEP_EVENT_NAME,
+  ɵreadToolStep,
+  ɵreadAnswerAnnotations,
+  ɵmergeToolStep,
+  ɵmergeStepMetadata,
+  type ɵToolStep,
+  type ɵToolStepRead,
+  type ɵToolStepSource,
+  type ɵToolStepStatus,
+  type ɵAnswerAnnotations,
+} from './models/tool-step';
+export { ɵbuiltInToolLabel } from './models/built-in-tool-labels';
+export {
+  ɵcreateRunFinishedEvent,
+  ɵcreateTokenUsage,
+  type ɵRunFinish,
+  type ɵRunFinishedEventOptions,
+  type ɵTokenUsageInput,
+} from './models/run-finish';
+export {
   type ActivityCallback,
   type ActivityContext,
   type ActivityHandle,
@@ -57,6 +79,7 @@ export { createUiKit as ɵcreateUiKit, isUiKit as ɵisUiKit } from './ui/ui-kit'
 export { mergeOfferedComponents as ɵmergeOfferedComponents } from './ui/offered-components';
 export { deepEqual as ɵdeepEqual } from './utils/deep-equal';
 export { sanitizeUrl as ɵsanitizeUrl } from './utils/sanitize-url';
+export { forwardMapped as ɵforwardMapped } from './utils/async';
 export {
   compileDecision as ɵcompileDecision,
   type CompileDecisionOptions as ɵCompileDecisionOptions,
@@ -92,3 +115,15 @@ export {
   mergeToolCalls,
   updateAssistantMessage,
 } from './utils/assistant-message';
+export {
+  createDevelopmentCollector as ɵcreateDevelopmentCollector,
+  reportMilestone as ɵreportMilestone,
+  setDevelopmentCollectionEnabled as ɵsetDevelopmentCollectionEnabled,
+  getDevelopmentCollectionDiagnostics as ɵgetDevelopmentCollectionDiagnostics,
+  type DevelopmentCollector as ɵDevelopmentCollector,
+  type DevelopmentCollectorOptions as ɵDevelopmentCollectorOptions,
+  type DevelopmentMilestone as ɵDevelopmentMilestone,
+  type DevelopmentTransportKind as ɵDevelopmentTransportKind,
+} from './growth';
+// Public: referenced by React and Angular signatures.
+export type { DevelopmentCollectionDiagnostics } from './growth';

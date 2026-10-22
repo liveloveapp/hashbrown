@@ -432,6 +432,19 @@ test('emits canonical mapper events followed by one RUN_FINISHED', async () => {
       type: EventType.RUN_FINISHED,
       threadId: 'thread-anthropic',
       runId: 'run-anthropic',
+      usage: [
+        {
+          provider: 'anthropic',
+          model: 'claude-server-model',
+          inputTokens: 1,
+          outputTokens: 4,
+          totalTokens: 5,
+        },
+      ],
+      metadata: {
+        hashbrown: { finishReason: 'stop' },
+        anthropic: { stopReason: 'end_turn' },
+      },
     },
   ]);
   expect(provider.abort).toHaveBeenCalledTimes(1);
@@ -521,4 +534,341 @@ test('aborts the raw provider stream when the consumer returns early', async () 
 
   expect(returned).toEqual({ done: true, value: undefined });
   expect(provider.abort).toHaveBeenCalledTimes(1);
+});
+
+type StartUsage = Anthropic.Messages.Usage;
+type DeltaUsage = Anthropic.Messages.MessageDeltaUsage;
+type DeltaFields = Anthropic.Messages.RawMessageDeltaEvent['delta'];
+
+function startUsage(overrides: Partial<StartUsage> = {}): StartUsage {
+  return {
+    cache_creation: null,
+    cache_creation_input_tokens: null,
+    cache_read_input_tokens: null,
+    inference_geo: null,
+    input_tokens: 0,
+    output_tokens: 0,
+    output_tokens_details: null,
+    server_tool_use: null,
+    service_tier: null,
+    ...overrides,
+  };
+}
+
+function finishedEvents(options: {
+  readonly content: readonly RawEvent[];
+  readonly delta?: Partial<DeltaFields>;
+  readonly startUsage?: StartUsage;
+  readonly deltaUsage?: Partial<DeltaUsage>;
+}): RawEvent[] {
+  return [
+    {
+      type: 'message_start',
+      message: {
+        id: 'provider-message',
+        type: 'message',
+        role: 'assistant',
+        content: [],
+        model: 'claude-test-2026',
+        container: null,
+        stop_reason: null,
+        stop_sequence: null,
+        stop_details: null,
+        usage: options.startUsage ?? startUsage(),
+      },
+    },
+    ...options.content,
+    {
+      type: 'message_delta',
+      delta: {
+        container: null,
+        stop_details: null,
+        stop_reason: 'end_turn',
+        stop_sequence: null,
+        ...options.delta,
+      },
+      usage: {
+        cache_creation_input_tokens: null,
+        cache_read_input_tokens: null,
+        input_tokens: null,
+        output_tokens: 0,
+        output_tokens_details: null,
+        server_tool_use: null,
+        ...options.deltaUsage,
+      },
+    },
+    { type: 'message_stop' },
+  ];
+}
+
+function textBlock(value: string): RawEvent[] {
+  return [
+    {
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'text', text: '', citations: null },
+    },
+    {
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'text_delta', text: value },
+    },
+    { type: 'content_block_stop', index: 0 },
+  ];
+}
+
+function toolBlock(): RawEvent[] {
+  return [
+    {
+      type: 'content_block_start',
+      index: 0,
+      content_block: {
+        type: 'tool_use',
+        id: 'toolu_1',
+        name: 'lookup',
+        input: {},
+        caller: { type: 'direct' },
+      } as Anthropic.Messages.ToolUseBlock,
+    },
+    {
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'input_json_delta', partial_json: '{}' },
+    },
+    { type: 'content_block_stop', index: 0 },
+  ];
+}
+
+function finished(metadata: Record<string, unknown>, usage?: unknown[]) {
+  return {
+    type: EventType.RUN_FINISHED,
+    threadId: 'thread-anthropic',
+    runId: 'run-anthropic',
+    ...(usage ? { usage } : {}),
+    metadata,
+  };
+}
+
+test('ends a completed run with its usage, cache breakdown and a stop reason', async () => {
+  mockProvider(
+    finishedEvents({
+      content: textBlock('Hello.'),
+      startUsage: startUsage({
+        input_tokens: 20,
+        cache_creation_input_tokens: 30,
+        cache_read_input_tokens: 100,
+        output_tokens: 1,
+      }),
+      deltaUsage: {
+        output_tokens: 40,
+        output_tokens_details: { thinking_tokens: 25 },
+      },
+    }),
+  );
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished(
+      {
+        hashbrown: { finishReason: 'stop' },
+        anthropic: { stopReason: 'end_turn' },
+      },
+      [
+        {
+          provider: 'anthropic',
+          model: 'claude-test-2026',
+          inputTokens: 150,
+          outputTokens: 40,
+          totalTokens: 190,
+          reasoningTokens: 25,
+          cachedInputTokens: 100,
+          cacheWriteInputTokens: 30,
+        },
+      ],
+    ),
+  );
+});
+
+test('prefers the latest non-null input and cache counts from message_delta', async () => {
+  mockProvider(
+    finishedEvents({
+      content: textBlock('Hello.'),
+      startUsage: startUsage({ input_tokens: 5, cache_read_input_tokens: 7 }),
+      deltaUsage: {
+        input_tokens: 10,
+        cache_creation_input_tokens: 3,
+        cache_read_input_tokens: null,
+        output_tokens: 2,
+      },
+    }),
+  );
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toEqual(
+    finished(
+      {
+        hashbrown: { finishReason: 'stop' },
+        anthropic: { stopReason: 'end_turn' },
+      },
+      [
+        {
+          provider: 'anthropic',
+          model: 'claude-test-2026',
+          inputTokens: 20,
+          outputTokens: 2,
+          totalTokens: 22,
+          cachedInputTokens: 7,
+          cacheWriteInputTokens: 3,
+        },
+      ],
+    ),
+  );
+});
+
+test('reports a stop sequence as stop and keeps the sequence', async () => {
+  mockProvider(
+    finishedEvents({
+      content: textBlock('Hello.'),
+      delta: { stop_reason: 'stop_sequence', stop_sequence: 'END' },
+    }),
+  );
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toMatchObject({
+    metadata: {
+      hashbrown: { finishReason: 'stop' },
+      anthropic: { stopReason: 'stop_sequence', stopSequence: 'END' },
+    },
+  });
+});
+
+test('reports tool_calls when the model stopped for a client tool', async () => {
+  mockProvider(
+    finishedEvents({
+      content: toolBlock(),
+      delta: { stop_reason: 'tool_use' },
+    }),
+  );
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toMatchObject({
+    metadata: {
+      hashbrown: { finishReason: 'tool_calls' },
+      anthropic: { stopReason: 'tool_use' },
+    },
+  });
+});
+
+test('reports tool_calls when a client tool ends with a plain end_turn', async () => {
+  mockProvider(finishedEvents({ content: toolBlock() }));
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.at(-1)).toMatchObject({
+    metadata: {
+      hashbrown: { finishReason: 'tool_calls' },
+      anthropic: { stopReason: 'end_turn' },
+    },
+  });
+});
+
+test.each([
+  { stopReason: 'max_tokens', finishReason: 'length' },
+  { stopReason: 'model_context_window_exceeded', finishReason: 'length' },
+  { stopReason: 'pause_turn', finishReason: 'other' },
+  { stopReason: 'something_new', finishReason: 'other' },
+])(
+  'finishes a $stopReason answer with its partial text and $finishReason',
+  async ({ stopReason, finishReason }) => {
+    mockProvider(
+      finishedEvents({
+        content: textBlock('Cut off'),
+        delta: { stop_reason: stopReason as Anthropic.Messages.StopReason },
+        startUsage: startUsage({ input_tokens: 10 }),
+        deltaUsage: { output_tokens: 300 },
+      }),
+    );
+
+    const events = await collectEvents(createOptions());
+
+    expect(events.map((event) => event.type)).toEqual([
+      EventType.RUN_STARTED,
+      EventType.TEXT_MESSAGE_START,
+      EventType.TEXT_MESSAGE_CONTENT,
+      EventType.TEXT_MESSAGE_END,
+      EventType.RUN_FINISHED,
+    ]);
+    expect(events.at(-1)).toEqual(
+      finished({ hashbrown: { finishReason }, anthropic: { stopReason } }, [
+        {
+          provider: 'anthropic',
+          model: 'claude-test-2026',
+          inputTokens: 10,
+          outputTokens: 300,
+          totalTokens: 310,
+        },
+      ]),
+    );
+  },
+);
+
+test('reports a refusal with its policy category', async () => {
+  mockProvider(
+    finishedEvents({
+      content: textBlock('I cannot help with that.'),
+      delta: {
+        stop_reason: 'refusal',
+        stop_details: {
+          type: 'refusal',
+          category: 'cyber',
+          explanation: null,
+        },
+      },
+    }),
+  );
+
+  const events = await collectEvents(createOptions());
+
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.TEXT_MESSAGE_END,
+    EventType.RUN_FINISHED,
+  ]);
+  expect(events.at(-1)).toMatchObject({
+    metadata: {
+      hashbrown: { finishReason: 'refusal' },
+      anthropic: { stopReason: 'refusal', refusalCategory: 'cyber' },
+    },
+  });
+});
+
+test('omits usage and provider metadata when the provider reports neither', async () => {
+  const events = finishedEvents({
+    content: textBlock('Hello.'),
+    delta: { stop_reason: null },
+  }).map((event) => {
+    if (event.type === 'message_start') {
+      return {
+        ...event,
+        message: { ...event.message, usage: undefined },
+      } as unknown as RawEvent;
+    }
+    if (event.type === 'message_delta') {
+      return { ...event, usage: undefined } as unknown as RawEvent;
+    }
+    return event;
+  });
+  mockProvider(events);
+
+  const result = await collectEvents(createOptions());
+
+  expect(result.at(-1)).toEqual(
+    finished({ hashbrown: { finishReason: 'other' } }),
+  );
 });

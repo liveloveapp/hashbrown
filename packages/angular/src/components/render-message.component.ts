@@ -13,6 +13,8 @@ import {
   ViewContainerRef,
 } from '@angular/core';
 import { NgComponentOutlet, NgTemplateOutlet } from '@angular/common';
+import { ɵreportMilestone } from '@hashbrownai/core';
+import { ɵinjectDevelopmentCollector } from '../growth/collector';
 import {
   getTagNameRegistry,
   UiAssistantMessage,
@@ -142,6 +144,8 @@ export class RenderMessageComponent {
    * @internal
    */
   renderableInjectorMap = new Map<string, Injector | undefined>();
+  private readonly collector = ɵinjectDevelopmentCollector();
+  private reportedRender = false;
   private renderableInjectorTagRegistryRef: object | null = null;
 
   /**
@@ -251,6 +255,10 @@ export class RenderMessageComponent {
     const component = this.getTagComponent(entry.tag);
     if (node && typeof node === 'object') {
       this.renderableComponentWeakMap.set(node as object, component);
+    }
+    if (component && !this.reportedRender) {
+      this.reportedRender = true;
+      ɵreportMilestone(this.collector, 'component.first_rendered');
     }
     return component;
   }

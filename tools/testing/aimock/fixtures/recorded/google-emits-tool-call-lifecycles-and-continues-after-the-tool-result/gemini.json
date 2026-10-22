@@ -1,0 +1,49 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+        "model": "gemini-3.5-flash-lite",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": "{\"query\":\"hashbrown\"}"
+          }
+        ]
+      },
+      "recordedTimings": {
+        "ttftMs": 634,
+        "interChunkDelaysMs": [3],
+        "totalDurationMs": 637
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Use the lookup tool to look up the code word 'hashbrown', then answer in one short sentence.",
+        "model": "gemini-3.5-flash-lite",
+        "turnIndex": 1,
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "The code word hashbrown is green."
+      },
+      "recordedTimings": {
+        "ttftMs": 630,
+        "interChunkDelaysMs": [28, 6],
+        "totalDurationMs": 664
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

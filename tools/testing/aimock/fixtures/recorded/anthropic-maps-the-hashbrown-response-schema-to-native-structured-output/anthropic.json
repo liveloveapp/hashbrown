@@ -1,0 +1,26 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Describe a potato as structured output.",
+        "model": "claude-haiku-5-5",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "{\"text\": \"A potato is a starchy, tuberous vegetable that grows underground on the plant Solanum tuberosum. It has a thick brown or red skin, a white, yellow, or purple interior, and is typically oval or round in shape. Potatoes are rich in carbohydrates, contain vitamin C and potassium, and are widely cooked by boiling, baking, frying, or mashing.\", \"ok\": true}"
+      },
+      "recordedTimings": {
+        "ttftMs": 1436,
+        "interChunkDelaysMs": [
+          0, 0, 0, 27, 21, 15, 21, 19, 22, 20, 18, 32, 12, 312, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 15, 16, 19, 23, 17, 21, 27, 27, 9, 24, 0, 0
+        ],
+        "totalDurationMs": 2153
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Write two short sentences about potatoes.",
+        "model": "claude-haiku-5-5",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Potatoes are a versatile and affordable staple crop enjoyed around the world. They can be boiled, baked, fried, or mashed, making them a favorite in countless kitchens."
+      },
+      "recordedTimings": {
+        "ttftMs": 1028,
+        "interChunkDelaysMs": [
+          0, 0, 0, 10, 183, 0, 0, 0, 0, 0, 0, 0, 0, 18, 1, 1, 0
+        ],
+        "totalDurationMs": 1241
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

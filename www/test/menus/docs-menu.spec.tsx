@@ -139,3 +139,16 @@ test('the search trigger opens the search overlay', () => {
   expect(listener).toHaveBeenCalledOnce();
   expect(listener.mock.calls[0][0]).toBeInstanceOf(CustomEvent);
 });
+
+test.each(SDKS)(
+  '%s docs menu ends with a Stuck? Ask Brian link to /unstuck',
+  (sdk) => {
+    const html = renderToStaticMarkup(<DocsMenu sdk={sdk} />);
+
+    const links = [...html.matchAll(/<a [^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/g)];
+    const last = links[links.length - 1];
+
+    expect(last[1]).toBe('/unstuck');
+    expect(last[2]).toContain('Stuck? Ask Brian');
+  },
+);

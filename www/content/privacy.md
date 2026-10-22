@@ -1,0 +1,17 @@
+# Privacy
+
+Hashbrown is built by LiveLoveApp, LLC.
+
+## Get unstuck
+
+When you fill in the [Get unstuck form](/unstuck), we keep your email address, your framework, and your question, along with your agreement to hear back from us. We use this information to answer your question.
+
+We send an acknowledgement followed by three emails from Brian. Replies go to a human, and every email has an unsubscribe link.
+
+## Contact
+
+For privacy questions or requests concerning your information, email [brian@hashbrown.dev](mailto:brian@hashbrown.dev).
+
+## Email
+
+To stop receiving email from us, use the unsubscribe link in an email or contact [brian@hashbrown.dev](mailto:brian@hashbrown.dev).

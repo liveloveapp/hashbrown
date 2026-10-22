@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Write two short sentences about potatoes.",
+        "model": "gemini-4-argon",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Potatoes are versatile root vegetables grown all over the world. They can be boiled, baked, mashed, or fried into delicious meals."
+      },
+      "recordedTimings": {
+        "ttftMs": 2342,
+        "interChunkDelaysMs": [280, 51, 243],
+        "totalDurationMs": 2916
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

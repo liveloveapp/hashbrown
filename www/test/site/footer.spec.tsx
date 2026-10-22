@@ -14,6 +14,8 @@ test('footer links match the Angular footer', () => {
     '/llms.txt',
     '/llms-full.txt',
     '/blog',
+    '/privacy',
+    '/unstuck',
     'https://threadplane.ai/?utm_source=hashbrown&amp;utm_medium=footer',
     'https://b4.run',
     'https://pretable.ai',

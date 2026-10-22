@@ -32,6 +32,8 @@ Keep your `TYPESAFE_API_KEY` on the server. The adapter never runs in the browse
 | `baseURL`          | `string`          | _(Optional)_ Defaults to `https://api.typesafe.ai`.                            |
 | `signal`           | `AbortSignal`     | _(Optional)_ Cancels the call when the client disconnects.                     |
 | `transformRequest` | `(body) => body`  | _(Optional)_ Edits the request body just before it is sent.                    |
+| `fetch`            | `typeof fetch`    | _(Optional)_ A `fetch` implementation. Defaults to the global `fetch`.         |
+| `maxRequestChars`  | `number`          | _(Optional)_ The largest request accepted, in characters of JSON.              |
 
 ### Node.js Server Integration
 

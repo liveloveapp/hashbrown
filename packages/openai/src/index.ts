@@ -10,6 +10,7 @@ export type {
 } from '@hashbrownai/core';
 export type { OpenAIReasoningOption } from './stream/reasoning';
 export type {
+  OpenAIBuiltInTools,
   OpenAIHashbrownRunAgentInput,
   OpenAITextStreamOptions,
 } from './stream/types';

@@ -57,8 +57,10 @@ export interface StandardJSONSchemaV1<Input = unknown, Output = Input> {
 
 export declare namespace StandardJSONSchemaV1 {
   /** The Standard JSON Schema properties interface. */
-  export interface Props<Input = unknown, Output = Input>
-    extends StandardTypedV1.Props<Input, Output> {
+  export interface Props<
+    Input = unknown,
+    Output = Input,
+  > extends StandardTypedV1.Props<Input, Output> {
     /** Methods for generating the input/output JSON Schema. */
     readonly jsonSchema: StandardJSONSchemaV1.Converter;
   }
@@ -99,8 +101,10 @@ export declare namespace StandardJSONSchemaV1 {
   }
 
   /** The Standard types interface. */
-  export interface Types<Input = unknown, Output = Input>
-    extends StandardTypedV1.Types<Input, Output> {}
+  export interface Types<
+    Input = unknown,
+    Output = Input,
+  > extends StandardTypedV1.Types<Input, Output> {}
 
   /** Infers the input type of a Standard. */
   export type InferInput<Schema extends StandardTypedV1> =
@@ -308,16 +312,14 @@ function readStandardJsonSchemaProps(
   }
 
   const standard = (schema as StandardJSONSchemaV1)['~standard'] as
-    | StandardJSONSchemaV1.Props
-    | undefined;
+    StandardJSONSchemaV1.Props | undefined;
 
   if (!standard || typeof standard !== 'object') {
     throw new Error('Standard schema "~standard" property must be an object.');
   }
 
   const jsonSchema = (standard as StandardJSONSchemaV1.Props).jsonSchema as
-    | StandardJSONSchemaV1.Converter
-    | undefined;
+    StandardJSONSchemaV1.Converter | undefined;
 
   if (!jsonSchema || typeof jsonSchema !== 'object') {
     throw new Error('Standard schema "~standard.jsonSchema" is required.');
@@ -356,8 +358,7 @@ function getStandardVendor(schema: unknown): string | undefined {
   }
 
   const standard = (schema as StandardJSONSchemaV1)['~standard'] as
-    | StandardJSONSchemaV1.Props
-    | undefined;
+    StandardJSONSchemaV1.Props | undefined;
 
   const vendor =
     standard && typeof standard === 'object' ? standard.vendor : undefined;

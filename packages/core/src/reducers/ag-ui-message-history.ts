@@ -7,8 +7,13 @@ import {
 } from '@ag-ui/core';
 import { MessageSchema } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
+import {
+  completeRunningStep,
+  isProviderToolCall,
+  ɵmergeStepMetadata,
+} from '../models/tool-step';
 import { s } from '../schema';
-import { resolveWithSchema } from '../utils';
+import { type JsonValue, resolveWithSchema } from '../utils';
 import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
 import { cloneAgUiValue } from './ag-ui-json-value';
 
@@ -883,15 +888,26 @@ function projectToolCall(
   result: Extract<Message, { role: 'tool' }> | undefined,
   toolsByName: Readonly<Record<string, Chat.Internal.Tool>>,
 ): Chat.Internal.ToolCall {
-  const tool = Object.hasOwn(toolsByName, toolCall.function.name)
-    ? toolsByName[toolCall.function.name]
-    : undefined;
-  const metadata = mergeMetadata(toolCall.metadata, result?.metadata);
+  const tool =
+    !isProviderToolCall(toolCall) &&
+    Object.hasOwn(toolsByName, toolCall.function.name)
+      ? toolsByName[toolCall.function.name]
+      : undefined;
+  const merged = mergeMetadata(
+    toolCall.metadata,
+    result?.metadata,
+    toolCall.id,
+  );
+  const metadata = result
+    ? completeRunningStep(merged, readResultError(result), toolCall.id)
+    : merged;
   const encryptedValue = toolCall.encryptedValue ?? result?.encryptedValue;
   const argumentsResolved =
     tool && s.isHashbrownType(tool.schema)
       ? resolveWithSchema(tool.schema, toolCall.function.arguments)
-      : undefined;
+      : isProviderToolCall(toolCall)
+        ? parseJsonOrUndefined(toolCall.function.arguments)
+        : undefined;
 
   return {
     id: toolCall.id,
@@ -915,15 +931,15 @@ function projectToolCall(
 function mergeMetadata(
   first: Record<string, unknown> | undefined,
   second: Record<string, unknown> | undefined,
+  toolCallId: string,
 ): Record<string, unknown> | undefined {
   if (first === undefined && second === undefined) {
     return undefined;
   }
 
-  return {
-    ...(first === undefined ? {} : structuredClone(first)),
-    ...(second === undefined ? {} : structuredClone(second)),
-  };
+  return structuredClone({
+    ...ɵmergeStepMetadata(first, second ?? {}, 'message', toolCallId),
+  });
 }
 
 function serializeContent(value: unknown): string {
@@ -936,4 +952,19 @@ function serializeResult(value: unknown): string {
   }
 
   return serializeContent(value);
+}
+
+function readResultError(
+  result: Extract<Message, { role: 'tool' }>,
+): string | undefined {
+  return typeof result.error === 'string' ? result.error : undefined;
+}
+
+/** The text parsed as plain JSON, or undefined when it is not valid JSON. */
+function parseJsonOrUndefined(text: string): JsonValue | undefined {
+  try {
+    return JSON.parse(text) as JsonValue;
+  } catch {
+    return undefined;
+  }
 }
