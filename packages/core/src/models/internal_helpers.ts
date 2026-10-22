@@ -246,12 +246,18 @@ function toServerToolCalls(
         toolCall.result?.status === 'rejected'
           ? toolCall.result.reason
           : undefined;
-      const sentinel = step === undefined && rejectedReason === 'error';
-      const outcome: Chat.ServerToolCallOutcome | undefined = sentinel
-        ? 'failure'
-        : step?.status === undefined || step.status === 'running'
-          ? undefined
-          : STEP_OUTCOMES[step.status];
+      const steplessError =
+        step === undefined &&
+        typeof rejectedReason === 'string' &&
+        rejectedReason.length > 0
+          ? rejectedReason
+          : undefined;
+      const outcome: Chat.ServerToolCallOutcome | undefined =
+        steplessError !== undefined
+          ? 'failure'
+          : step?.status === undefined || step.status === 'running'
+            ? undefined
+            : STEP_OUTCOMES[step.status];
       const settled = outcome !== undefined;
       const status =
         settled || toolCall.status === 'done'
@@ -259,7 +265,8 @@ function toServerToolCalls(
           : toolCall.argumentsComplete
             ? 'executing'
             : 'inProgress';
-      const error = sentinel ? { message: 'error' } : step?.error;
+      const error =
+        steplessError !== undefined ? { message: steplessError } : step?.error;
       const startedAt =
         step === undefined ? undefined : (step.startedAt ?? toolCall.arrivedAt);
       const result: PromiseSettledResult<unknown> | undefined =

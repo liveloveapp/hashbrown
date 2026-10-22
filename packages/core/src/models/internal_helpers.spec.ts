@@ -1113,6 +1113,51 @@ test('the ag-ui-langgraph error sentinel reads as a failure', () => {
   expect(call.status).toBe('complete');
 });
 
+test('any error string on a call without a step reads as a failure', () => {
+  // Arrange
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'render',
+      arguments: '{}',
+      argumentsComplete: true,
+      status: 'done',
+      result: { status: 'rejected', reason: 'Rate limited' },
+    },
+  };
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call.outcome).toBe('failure');
+  expect(call.error).toEqual({ message: 'Rate limited' });
+  expect(call.result).toEqual({ status: 'rejected', reason: 'Rate limited' });
+  expect(call.status).toBe('complete');
+});
+
+test('an empty error string on a call without a step gives no outcome', () => {
+  // Arrange
+  const toolCalls: Record<string, Chat.Internal.ToolCall> = {
+    'call-ws': {
+      id: 'call-ws',
+      name: 'render',
+      arguments: '{}',
+      argumentsComplete: true,
+      status: 'done',
+      result: { status: 'rejected', reason: '' },
+    },
+  };
+
+  // Act
+  const [call] = serverCallsOf(toolCalls) ?? [];
+
+  // Assert
+  expect(call).not.toHaveProperty('outcome');
+  expect(call).not.toHaveProperty('error');
+  expect(call.result).toEqual({ status: 'rejected', reason: '' });
+});
+
 test('calls without a step keep todays fields only', () => {
   // Arrange
   const toolCalls: Record<string, Chat.Internal.ToolCall> = {
