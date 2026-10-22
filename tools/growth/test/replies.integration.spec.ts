@@ -473,3 +473,40 @@ test('deleting a contact strips only its ids from a reply that also references a
     ranked_candidates: [{ message_id: live.rfc, rank: 1 }],
   });
 });
+
+test('binding a provider Message-ID after the contact was deleted cancels the waiting reply job and clears its payload', async () => {
+  const at = new Date('2038-02-07T14:10:00.000Z');
+  const contact = await createEnrolledContact(
+    executor,
+    createdContactIds,
+    new Date('2038-02-01T00:00:00.000Z'),
+  );
+  const step = await acceptStepOne(
+    executor,
+    contact,
+    at,
+    'Engineer to engineer',
+  );
+  const rfc = `<${randomUUID()}@resend.dev>`;
+  const reply = await insertReconcile(at, {
+    in_reply_to: rfc,
+    ranked_candidates: [{ message_id: rfc, rank: 0 }],
+  });
+  const unrelated = await insertReconcile(at, {
+    in_reply_to: `<${randomUUID()}@resend.dev>`,
+  });
+  await deleteContact(executor, deletion(contact.contactId, at));
+
+  const result = await bindProviderMessageId(executor, {
+    providerEmailId: step.providerEmailId,
+    rfcMessageId: rfc,
+  });
+
+  expect(result).toBe('ignored_deleted');
+  expect(await readReconcileRow(reply)).toEqual({
+    status: 'cancelled',
+    contact_id: contact.contactId,
+    payload: {},
+  });
+  expect((await readReconcile(unrelated))?.status).toBe('pending');
+});

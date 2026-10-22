@@ -484,7 +484,9 @@ export class ProviderMessageIdBindingError extends Error {
 /**
  * Binds a provider-reported RFC Message-ID to the completed job that carries
  * `providerEmailId`, then settles any `reply_reconcile` waiting on it (a
- * direct In-Reply-To match stops the contact at once). Only provider-
+ * direct In-Reply-To match stops the contact at once). For a deleted contact
+ * it binds nothing and cancels the historical replies waiting directly on
+ * that message, clearing their payloads. Only provider-
  * authenticated identifiers are bound, never a fabricated Gmail seed.
  *
  * @throws {ProviderMessageIdBindingError} On malformed or conflicting identities.
@@ -548,7 +550,40 @@ export async function bindProviderMessageId(
         'Provider Message-ID binding conflict',
       );
     }
-    if (contact.rows[0].deleted_at !== null) return 'ignored_deleted';
+    if (contact.rows[0].deleted_at !== null) {
+      // A historical reply waiting directly on this message now resolves to a
+      // deleted contact: settle it and drop its payload so no reply metadata
+      // keeps pointing at that contact.
+      await transaction.execute<{ id: string }>(
+        `/* growth:settle-google-reconcile-for-deleted-binding */
+         update growth_jobs
+         set status = 'cancelled',
+             contact_id = $2,
+             payload = '{}'::jsonb,
+             lease_until = null,
+             lease_token = null,
+             last_error_code = 'contact_deleted'
+         where kind = 'reply_reconcile'
+           and status in ('pending', 'leased')
+           and (
+             (
+               payload->'ranked_candidates' is null
+               and payload->>'in_reply_to' = $1
+             )
+             or exists (
+               select 1
+               from jsonb_array_elements(
+                 coalesce(payload->'ranked_candidates', '[]'::jsonb)
+               ) candidate
+               where candidate->>'message_id' = $1
+                 and candidate->>'rank' = '0'
+             )
+           )
+         returning id`,
+        [rfcMessageId, reference.contact_id],
+      );
+      return 'ignored_deleted';
+    }
     const conflicts = await transaction.execute<{ id: string }>(
       `/* growth:check-provider-message-conflicts */
        select id from growth_jobs where id <> $1 and rfc_message_id = $2 limit 1`,
