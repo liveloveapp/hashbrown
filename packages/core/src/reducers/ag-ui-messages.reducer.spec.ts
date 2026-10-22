@@ -3043,3 +3043,112 @@ test('a bad settle without an icon keeps the previous icon but drops label and s
   expect(step).not.toHaveProperty('label');
   expect(step).not.toHaveProperty('sources');
 });
+
+function frameOnlyResult(error?: string): AGUIEvent[] {
+  return [
+    startTool('c1'),
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: error ?? 'ok',
+      ...(error === undefined ? {} : { error }),
+    } as AGUIEvent,
+  ];
+}
+
+test('a running step after a frame-only RESULT stays completed', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult(),
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: {
+        v: 1,
+        toolCallId: 'c1',
+        status: 'running',
+        label: 'Fetching',
+        startedAt: 900,
+      },
+      timestamp: 1500,
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+});
+
+test('a denied step after a frame-only RESULT replaces the completed frame step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult(),
+    stepEvent({ v: 1, toolCallId: 'c1', status: 'denied' }),
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toMatchObject({
+    v: 1,
+    kind: 'server',
+    status: 'denied',
+  });
+});
+
+test('a step after a frame-only RESULT with an error merges onto a failed step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult('Rate limited'),
+    stepEvent({ v: 1, toolCallId: 'c1', status: 'running', label: 'Busy' }),
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': { v: 1, status: 'completed' } },
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    error: { message: 'Rate limited' },
+  });
+});
+
+test('a step on END metadata after a frame-only RESULT merges onto the completed frame step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult(),
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: {
+        'b4.step': { v: 1, status: 'running', label: 'Fetching' },
+      },
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+});

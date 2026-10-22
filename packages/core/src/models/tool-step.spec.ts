@@ -4,6 +4,7 @@ import {
   ɵmergeToolStep as mergeToolStep,
   ɵreadAnswerAnnotations as readAnswerAnnotations,
   ɵreadToolStep as readToolStep,
+  seedFrameResultStep,
   stampStepMetadataStart,
   stampStepStart,
   type ɵToolStep as ToolStep,
@@ -495,4 +496,29 @@ test('a RESULT error keeps the error of a step that already failed', () => {
   const result = completeRunningStep(metadata, 'Rate limited');
 
   expect(result).toBe(metadata);
+});
+
+test('a frame-only RESULT gives a stepless call a completed or failed step', () => {
+  const other = { openai: { id: 'x' } };
+
+  const completed = seedFrameResultStep(other, { error: undefined });
+  const failed = seedFrameResultStep(undefined, { error: 'boom' });
+  const unanswered = seedFrameResultStep(other, undefined);
+  const stepped = { 'b4.step': step() };
+  const kept = seedFrameResultStep(stepped, { error: undefined });
+
+  expect(completed).toEqual({
+    openai: { id: 'x' },
+    'b4.step': { v: 1, kind: 'server', status: 'completed' },
+  });
+  expect(failed).toEqual({
+    'b4.step': {
+      v: 1,
+      kind: 'server',
+      status: 'failed',
+      error: { message: 'boom' },
+    },
+  });
+  expect(unanswered).toBe(other);
+  expect(kept).toBe(stepped);
 });

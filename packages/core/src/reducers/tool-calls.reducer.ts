@@ -15,8 +15,11 @@ import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 import {
   completeRunningStep,
   reopenCancelledStep,
+  seedFrameResultStep,
   stampStepMetadataStart,
   ɵmergeStepMetadata,
+  ɵreadToolStep,
+  ɵTOOL_STEP_METADATA_KEY,
 } from '../models/tool-step';
 
 export interface ToolCallsState extends EntityState<Chat.Internal.ToolCall> {
@@ -80,6 +83,36 @@ function mergeMetadata(
     ɵmergeStepMetadata(first, second, source) ?? {},
   ) as Record<string, unknown>;
   return sameMetadata(first, merged) ? first : merged;
+}
+
+/**
+ * The metadata an incoming step write merges onto. When the write is a
+ * readable step, the call has no step, and its result already arrived, the
+ * call takes the step that frame-only result implies and the write merges
+ * onto it as a message step would, matching the canonical reducer.
+ */
+function withFrameResultStep(
+  existing: Chat.Internal.ToolCall | undefined,
+  incoming: Record<string, unknown> | undefined,
+): {
+  readonly metadata: Chat.Internal.ToolCall['metadata'];
+  readonly source: 'call' | 'message';
+} {
+  const metadata = existing?.metadata;
+  if (
+    existing?.status !== 'done' ||
+    ɵreadToolStep(incoming?.[ɵTOOL_STEP_METADATA_KEY]) === undefined
+  ) {
+    return { metadata, source: 'call' };
+  }
+  const reason =
+    existing.result?.status === 'rejected' ? existing.result.reason : undefined;
+  const seeded = seedFrameResultStep(metadata, {
+    error: typeof reason === 'string' ? reason : undefined,
+  }) as Chat.Internal.ToolCall['metadata'];
+  return seeded === metadata
+    ? { metadata, source: 'call' }
+    : { metadata: seeded, source: 'message' };
 }
 
 function sameMetadata(
@@ -262,10 +295,11 @@ export const reducer = createReducer(
       const toolCallName =
         (event as { readonly toolCallName?: string }).toolCallName ??
         state.activeToolCallName;
+      const base = withFrameResultStep(existing, event.metadata);
       const metadata = mergeMetadata(
-        existing?.metadata,
+        base.metadata,
         event.metadata,
-        'call',
+        base.source,
       );
       const ending = event.type === EventType.TOOL_CALL_END;
       const activeToolCallId = ending ? undefined : id;

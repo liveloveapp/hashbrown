@@ -22,6 +22,7 @@ import {
 import { createReducer, on } from '../utils/micro-ngrx';
 import {
   reopenCancelledStep,
+  seedFrameResultStep,
   settleOpenSteps,
   stampStepMetadataStart,
   stampStepStart,
@@ -1030,16 +1031,22 @@ function appendToolCallArguments(
   if (delta.length === 0 && event.metadata === undefined) {
     return messages;
   }
+  const base = withFrameResultStep(
+    messages,
+    found.tool,
+    event.metadata?.[ɵTOOL_STEP_METADATA_KEY],
+  );
   const tool = freezeToolCall(
     mergeEventFields(
       {
-        ...found.tool,
+        ...base.tool,
         function: {
           ...found.tool.function,
           arguments: found.tool.function.arguments + delta,
         },
       },
       event,
+      base.source,
     ) as NonNullable<
       Extract<Message, { role: 'assistant' }>['toolCalls']
     >[number],
@@ -1212,6 +1219,7 @@ function freezeToolCall(
 function mergeEventFields<T extends Record<string, unknown>>(
   message: T,
   event: AGUIEvent,
+  stepSource?: 'call' | 'message',
 ): T {
   const candidate = event as unknown as object;
   const metadata = ownEventField(candidate, 'metadata');
@@ -1226,7 +1234,7 @@ function mergeEventFields<T extends Record<string, unknown>>(
             ...ɵmergeStepMetadata(
               message['metadata'] as Record<string, unknown> | undefined,
               ɵownAgUiJsonValue(metadata) as Record<string, unknown>,
-              message['role'] === 'tool' ? 'message' : 'call',
+              stepSource ?? (message['role'] === 'tool' ? 'message' : 'call'),
             ),
           }),
         }),
@@ -1328,18 +1336,68 @@ function foldCustomToolStep(
   if (toolCallId === undefined) return messages;
   const found = findToolCall(messages, toolCallId);
   if (!found) return messages;
-  const metadata = stampStepMetadataStart(
-    ɵmergeStepMetadata(
-      found.tool.metadata as Record<string, unknown> | undefined,
-      { [ɵTOOL_STEP_METADATA_KEY]: withoutToolCallId(value) },
-      'call',
-    ),
-    timestamp,
+  const base = withFrameResultStep(messages, found.tool, value);
+  const held = ɵreadToolStep(base.tool.metadata?.[ɵTOOL_STEP_METADATA_KEY]);
+  const merged = ɵmergeStepMetadata(
+    base.tool.metadata as Record<string, unknown> | undefined,
+    { [ɵTOOL_STEP_METADATA_KEY]: withoutToolCallId(value) },
+    base.source,
   );
+  // A running write never contributes to a settled step, not even its time.
+  const ignored =
+    held?.status !== undefined &&
+    held.status !== 'running' &&
+    ɵreadToolStep(value)?.status === 'running';
+  const metadata = ignored ? merged : stampStepMetadataStart(merged, timestamp);
   return replaceToolCall(messages, found, {
     ...found.tool,
     metadata: Object.freeze({ ...metadata }),
   } as CanonicalToolCall);
+}
+
+/**
+ * Prepares a call for an incoming step write. When the write is a readable
+ * step, the call has no step, and its result already arrived without one,
+ * the call takes the step that frame-only result implies and the write
+ * merges onto it as a message step would, so a settled write replaces the
+ * frame-derived status. Otherwise the call and the `call` source are kept.
+ */
+function withFrameResultStep(
+  messages: readonly Readonly<Message>[],
+  tool: CanonicalToolCall,
+  incomingStep: unknown,
+): { readonly tool: CanonicalToolCall; readonly source: 'call' | 'message' } {
+  if (ɵreadToolStep(incomingStep) === undefined)
+    return { tool, source: 'call' };
+  const metadata = tool.metadata as Record<string, unknown> | undefined;
+  const seeded = seedFrameResultStep(
+    metadata,
+    readFrameOnlyResult(messages, tool.id),
+  );
+  return seeded === metadata
+    ? { tool, source: 'call' }
+    : {
+        tool: { ...tool, metadata: Object.freeze({ ...seeded }) },
+        source: 'message',
+      };
+}
+
+/**
+ * The result a call already has when that result carries no readable step,
+ * with its error string if it failed; `undefined` otherwise.
+ */
+function readFrameOnlyResult(
+  messages: readonly Readonly<Message>[],
+  toolCallId: string,
+): { readonly error?: string } | undefined {
+  const result = messages.find(
+    (message) => message.role === 'tool' && message.toolCallId === toolCallId,
+  );
+  if (result?.role !== 'tool') return undefined;
+  if (ɵreadToolStep(result.metadata?.[ɵTOOL_STEP_METADATA_KEY]) !== undefined) {
+    return undefined;
+  }
+  return typeof result.error === 'string' ? { error: result.error } : {};
 }
 
 /**

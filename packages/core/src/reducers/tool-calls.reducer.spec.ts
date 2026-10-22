@@ -1308,6 +1308,25 @@ test('a failed step after a RESULT completed the step replaces its label and sou
   expect(step).not.toHaveProperty('sources');
 });
 
+function frameOnlyResultEvents(error?: string): AGUIEvent[] {
+  return [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: error ?? 'ok',
+      ...(error === undefined ? {} : { error }),
+    } as AGUIEvent,
+  ];
+}
+
 function applyDraftEvents(events: readonly AGUIEvent[]) {
   const initialized = reducer(undefined, { type: '@@init' } as never);
   const active = reducer(
@@ -1319,6 +1338,88 @@ function applyDraftEvents(events: readonly AGUIEvent[]) {
     active,
   );
 }
+
+test('a running step after a frame-only RESULT stays completed on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const late: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: {
+        'b4.step': { v: 1, status: 'running', label: 'Fetching' },
+      },
+    } as AGUIEvent,
+  ];
+
+  // Act
+  const draft = applyDraftEvents([...frameOnlyResultEvents(), ...late]);
+  dispatchEvents(store, [
+    ...frameOnlyResultEvents(),
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'c1', status: 'running', label: 'Fetching' },
+      timestamp: 1500,
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  const completed = { v: 1, kind: 'server', status: 'completed' };
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(completed);
+  expect(readRootStep(store, 'c1')).toEqual(completed);
+});
+
+test('a denied step after a frame-only RESULT is denied on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+
+  // Act
+  const draft = applyDraftEvents([
+    ...frameOnlyResultEvents(),
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': { v: 1, status: 'denied' } },
+    } as AGUIEvent,
+  ]);
+  dispatchEvents(store, [
+    ...frameOnlyResultEvents(),
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'c1', status: 'denied' },
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  const denied = { v: 1, kind: 'server', status: 'denied' };
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(denied);
+  expect(readRootStep(store, 'c1')).toEqual(denied);
+});
+
+test('a step after a frame-only RESULT with an error stays failed on the draft path', () => {
+  // Arrange
+  const late: AGUIEvent = {
+    type: EventType.TOOL_CALL_END,
+    toolCallId: 'c1',
+    metadata: { 'b4.step': { v: 1, status: 'completed', label: 'Done' } },
+  } as AGUIEvent;
+
+  // Act
+  const draft = applyDraftEvents([
+    ...frameOnlyResultEvents('Rate limited'),
+    late,
+  ]);
+
+  // Assert
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    error: { message: 'Rate limited' },
+  });
+});
 
 test('a RESULT error fails a step a call already completed on the draft and root paths', () => {
   // Arrange

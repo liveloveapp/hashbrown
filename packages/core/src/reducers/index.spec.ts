@@ -6448,3 +6448,65 @@ test('a failed run fails the open step in the root store', () => {
   ]);
   expect(assistant?.serverToolCalls?.[0]).not.toHaveProperty('label');
 });
+
+test('a step after a frame-only RESULT merges onto the completed frame step in the root store', () => {
+  // Arrange
+  const frameOnly: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call-1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      timestamp: 1000,
+    },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'call-1' },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'call-1',
+      content: 'ok',
+    },
+  ];
+  const running = createStepStore();
+  const denied = createStepStore();
+
+  // Act
+  dispatchEvents(running, [
+    ...frameOnly,
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'call-1', status: 'running', label: 'Busy' },
+      timestamp: 1500,
+    },
+  ]);
+  dispatchEvents(denied, [
+    ...frameOnly,
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'call-1', status: 'denied' },
+      timestamp: 1500,
+    },
+  ]);
+  const readStep = (store: ReturnType<typeof createStepStore>) =>
+    store.read(
+      (state) => state.toolCalls.entities['call-1']?.metadata?.['b4.step'],
+    );
+
+  // Assert
+  expect(readStep(running)).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+  expect(readStep(denied)).toEqual(
+    expect.objectContaining({ v: 1, kind: 'server', status: 'denied' }),
+  );
+  expect(readStepAssistant(running)?.serverToolCalls?.[0]).toEqual(
+    expect.objectContaining({ toolCallId: 'call-1', status: 'complete' }),
+  );
+  expect(readStepAssistant(running)?.serverToolCalls?.[0]).not.toHaveProperty(
+    'label',
+  );
+});
