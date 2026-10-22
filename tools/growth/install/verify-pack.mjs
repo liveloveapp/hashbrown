@@ -1,5 +1,5 @@
 // Verifies the ten built packages as packed npm artifacts: their manifests,
-// tarball contents and disclosures, then real offline npm installs whose
+// tarball contents and README files, then real offline npm installs whose
 // collector events go to a loopback capture server. Run after building them:
 //   npx nx install-pack-e2e growth
 // All installs live in disposable directories with an isolated HOME.
@@ -158,11 +158,11 @@ async function packAndCheck(name, destination) {
   const tarball = join(destination, packed.filename);
 
   const readme = await tarFile(tarball, 'README.md');
-  assert(
-    readme.includes('## What this package sends'),
-    `${name} disclosure heading`,
+  assert.equal(
+    readme,
+    await readFile(join(workspaceRoot, 'packages', name, 'README.md'), 'utf8'),
+    `${name} must ship the current public README`,
   );
-  assert(readme.includes('DO_NOT_TRACK'), `${name} DO_NOT_TRACK disclosure`);
 
   const bridgeFiles = paths.filter((path) =>
     path.startsWith('development-install'),
@@ -341,7 +341,7 @@ try {
     packages.push(await packAndCheck(name, temporary));
   const tarballs = packages.map(({ tarball }) => tarball);
   console.log(
-    `packed: ${packages.length} tarballs; manifest, file and disclosure checks passed`,
+    `packed: ${packages.length} tarballs; manifest, file and README checks passed`,
   );
 
   // Resolve dependency metadata once, scripts disabled, so the scenarios can

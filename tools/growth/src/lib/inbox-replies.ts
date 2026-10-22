@@ -6,8 +6,18 @@ import {
 } from './database.ts';
 import { stopContact } from './stops.ts';
 
-/** The only receiving address accepted by the isolated Hashbrown pilot. */
+/** Stable mailbox ledger identity, retained across the root-domain cutover. */
 export const INBOX_PILOT_ADDRESS = 'brian@replies.hashbrown.dev';
+
+/** Primary reply address after the operator-authorized root MX cutover. */
+export const INBOX_REPLY_ADDRESS = 'brian@hashbrown.dev';
+
+/** Accepts only Brian's root receiving address; the legacy alias is retired. */
+export function isInboxRecipient(value: unknown): boolean {
+  return (
+    typeof value === 'string' && value.toLowerCase() === INBOX_REPLY_ADDRESS
+  );
+}
 
 /** Explicit, server-side pilot configuration. The start bounds recovery coverage. */
 export type InboxPilot =
@@ -131,7 +141,7 @@ export async function ensureInboxMailbox(
   if (!result.rows.length) throw new Error('Mailbox recovery start conflict');
 }
 
-/** Durably admits only received mail delivered to this configured pilot address. */
+/** Admits root-address mail into the stable historical mailbox ledger. */
 export async function admitInboxEvent(
   executor: SqlExecutor,
   payload: unknown,
@@ -144,13 +154,7 @@ export async function admitInboxEvent(
   const data = root['data'] as Record<string, unknown> | undefined;
   if (!data || !Array.isArray(data['to']))
     throw new Error('Invalid inbound recipients');
-  if (
-    !data['to'].some(
-      (address) =>
-        typeof address === 'string' && address.toLowerCase() === config.address,
-    )
-  )
-    return null;
+  if (!data['to'].some(isInboxRecipient)) return null;
   const id = inboxProviderId(data['email_id']);
   const receivedAt = new Date(String(data['created_at'] ?? root['created_at']));
   if (!Number.isFinite(receivedAt.getTime()))
@@ -216,7 +220,7 @@ export async function processInboxReceipt(
   if (
     email.id !== id ||
     !Array.isArray(email.to) ||
-    !email.to.some((to) => to.toLowerCase() === config.address)
+    !email.to.some(isInboxRecipient)
   )
     throw new Error('Received mailbox mismatch');
   const receivedAt = new Date(email.created_at);
@@ -256,11 +260,7 @@ export async function processInboxReceipt(
       );
       return status;
     };
-    if (
-      !evidence.references.length ||
-      sender === config.address ||
-      sender === 'brian@hashbrown.dev'
-    )
+    if (!evidence.references.length || isInboxRecipient(sender))
       return complete('ignored');
     const matches = await tx.execute<{
       contact_id: string;

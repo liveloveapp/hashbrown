@@ -20,19 +20,21 @@ function entry(overrides: Partial<SiteAnnouncement> = {}): SiteAnnouncement {
   };
 }
 
-test('the shipped catalog has the v0.7 and unstuck entries with site-relative hrefs', () => {
+test('the shipped catalog keeps releases and support entries with site-relative hrefs', () => {
   const entries = ANNOUNCEMENTS;
 
   expect(entries.map(({ id }) => id)).toEqual([
+    'v0-8-decisions',
     'v0-7-ag-ui-1-0',
     'get-unstuck-form-react',
     'get-unstuck-form-angular',
   ]);
   expect(entries.every(({ href }) => href.startsWith('/'))).toBe(true);
-  expect(entries[0].expiresAt).toBe('2027-01-06T18:00:00Z');
+  expect(entries[0].expiresAt).toBe('2027-01-20T18:00:00Z');
+  expect(entries[0].href).toBe('/blog/2026-10-22-hashbrown-v-0-8-0');
 });
 
-test('the unstuck runtime entry reaches React and Angular collectors from 0.8.0 with a docs link and is the current site pill', () => {
+test('support entries reach React and Angular runtimes while the release is the current site pill', () => {
   const now = new Date('2026-10-23T00:00:00Z');
 
   const pill = currentSiteAnnouncement(now);
@@ -40,8 +42,8 @@ test('the unstuck runtime entry reaches React and Angular collectors from 0.8.0 
     id.startsWith('get-unstuck-form'),
   );
 
-  expect(pill?.id).toBe('get-unstuck-form-react');
-  expect(pill?.href).toBe('/unstuck');
+  expect(pill?.id).toBe('v0-8-decisions');
+  expect(pill?.href).toBe('/blog/2026-10-22-hashbrown-v-0-8-0');
   expect(
     runtime.map(({ packageNames, minVersion, documentationUrl, text }) => ({
       packageNames,
@@ -53,14 +55,13 @@ test('the unstuck runtime entry reaches React and Angular collectors from 0.8.0 
     {
       packageNames: ['@hashbrownai/react'],
       minVersion: '0.8.0',
-      documentationUrl: 'https://hashbrown.dev/docs/react/platform/collection',
+      documentationUrl: 'https://hashbrown.dev/docs/react',
       text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founding engineer: hashbrown.dev/unstuck",
     },
     {
       packageNames: ['@hashbrownai/angular'],
       minVersion: '0.8.0',
-      documentationUrl:
-        'https://hashbrown.dev/docs/angular/platform/collection',
+      documentationUrl: 'https://hashbrown.dev/docs/angular',
       text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founding engineer: hashbrown.dev/unstuck",
     },
   ]);
@@ -196,4 +197,16 @@ test('every shipped entry is valid for both surfaces', () => {
 
   expect(valid.every(Boolean)).toBe(true);
   expect(runtime).toHaveLength(entries.filter(({ runtime }) => runtime).length);
+});
+
+test('the release announcement takes over at publication and keeps the prior announcement before it', () => {
+  const before = new Date('2026-10-22T17:59:59Z');
+  const atPublication = new Date('2026-10-22T18:00:00Z');
+
+  const previous = currentSiteAnnouncement(before);
+  const current = currentSiteAnnouncement(atPublication);
+
+  expect(previous?.id).toBe('v0-7-ag-ui-1-0');
+  expect(current?.id).toBe('v0-8-decisions');
+  expect(current?.href).toBe('/blog/2026-10-22-hashbrown-v-0-8-0');
 });

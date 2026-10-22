@@ -47,7 +47,7 @@ export function createReactCollector(
 /**
  * Turns Hashbrown's development-only collection on or off for the whole page.
  * Turning it off cancels scheduled and in-flight requests and forgets every
- * queued event. See https://hashbrown.dev/docs/react/platform/collection.
+ * queued event.
  *
  * @public
  * @param value - Whether collection may run.

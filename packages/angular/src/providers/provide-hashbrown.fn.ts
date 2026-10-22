@@ -40,7 +40,7 @@ export interface ProvideHashbrownOptions {
     transport?: Decision.Transport;
   };
   /**
-   * Set to `false` to turn off Hashbrown's development-only collection for every resource and component under this provider. See https://hashbrown.dev/docs/angular/platform/collection.
+   * Set to `false` to turn off Hashbrown's development-only collection for every resource and component under this provider.
    */
   telemetry?: boolean;
 }

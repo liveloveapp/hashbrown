@@ -24,7 +24,7 @@ const receipt = {
 };
 const message = {
   id: 'incoming-1',
-  to: [config.address],
+  to: ['brian@hashbrown.dev'],
   from: 'Reader <reader@example.com>',
   created_at: receivedAt.toISOString(),
   headers: {
@@ -35,7 +35,7 @@ const message = {
   text: 'not persisted',
 };
 
-test('pilot configuration is disabled by default and only accepts the receiving subdomain', () => {
+test('pilot configuration keeps the historical ledger identity and defaults to disabled', () => {
   expect(loadInboxPilot({})).toEqual({ enabled: false });
   expect(() =>
     loadInboxPilot({

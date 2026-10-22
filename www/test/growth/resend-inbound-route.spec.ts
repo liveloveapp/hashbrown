@@ -19,7 +19,7 @@ function setup(overrides: Record<string, unknown> = {}) {
   const close = vi.fn(async () => undefined);
   const verify = vi.fn(() => ({
     type: 'email.received',
-    data: { email_id: 'incoming-1', to: [config.address] },
+    data: { email_id: 'incoming-1', to: ['brian@hashbrown.dev'] },
   }));
   const route = createResendInboundRoute({
     loadConfig: () => config,

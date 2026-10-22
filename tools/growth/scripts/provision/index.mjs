@@ -333,7 +333,7 @@ export async function provision({
   checklist.add(
     'Mailbox brian@hashbrown.dev',
     'manual',
-    'pilot Resend Receiving at brian@replies.hashbrown.dev; forward to brian@cacheplane.ai; follow docs/superpowers/runbooks/2026-10-22-resend-inboxes-pilot.md; leave root MX unchanged; operator waived canary',
+    'Resend Receiving at brian@hashbrown.dev only; forward to brian@cacheplane.ai; follow docs/superpowers/runbooks/2026-10-22-root-email-receiving.md; legacy subdomain retired; operator waived canary',
   );
   checklist.add(
     'Preview values',

@@ -1,5 +1,7 @@
 # Hashbrown Resend receiving pilot
 
+For the subsequently authorized root-domain cutover, see [root-domain receiving](2026-10-22-root-email-receiving.md). The subdomain routing and root-MX restrictions below describe the original pilot.
+
 ## Decision and live state
 
 The operator waived the live email canary on 2026-10-22 and requested forwarding to `brian@cacheplane.ai`. This waiver does not authorize a root-domain MX cutover or general campaign activation.

@@ -62,35 +62,3 @@ app.post('/run', async (req, res) => {
 [Read the docs for the Hashbrown Amazon Bedrock adapter](https://hashbrown.dev/docs/react/platform/bedrock).
 
 Stuck? Ask Brian at https://hashbrown.dev/unstuck.
-
-## What this package sends
-
-**When you install.** A postinstall step sends one `package.installed` event:
-the package name and version, your operating system, CPU architecture, Node
-version, package manager, whether the install ran in CI, and, when Git is
-configured in the installing checkout or globally and the install is not in CI,
-your Git `user.name`, `user.email`, and the owner of the `origin` remote on
-GitHub, GitLab, or Bitbucket. Every package reads or creates a random id in
-`~/.hashbrown/installation-id` and sends it with the event, so repeat installs
-on one machine are counted once. It finishes within five seconds and never
-fails an installation. `@hashbrownai/core` also writes a random installation id
-into its own package folder and sends it with its event so a development
-browser can cite the same install.
-
-Turn it off:
-
-- `DO_NOT_TRACK=1` or `HASHBROWN_TELEMETRY_DISABLED=1` in the environment stops
-  the install step. `HASHBROWN_TELEMETRY_DEBUG=1` prints what would be sent and
-  sends nothing.
-
-Details, the full field list, and how to ask for deletion are at
-[hashbrown.dev/docs/react/platform/collection](https://hashbrown.dev/docs/react/platform/collection)
-and [hashbrown.dev/privacy](https://hashbrown.dev/privacy).
-
-## Contributing
-
-Hashbrown is a community-driven project. Read our [contributing guidelines](https://github.com/liveloveapp/hashbrown?tab=contributing-ov-file) on how to get involved.
-
-## License
-
-MIT © [LiveLoveApp, LLC](https://liveloveapp.com)

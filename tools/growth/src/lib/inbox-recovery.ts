@@ -8,6 +8,7 @@ import {
   type InboxPilot,
   type InboxReplyDependencies,
   inboxTransactionGuard,
+  isInboxRecipient,
   processInboxReceipt,
 } from './inbox-replies.ts';
 import type { InboxReceivedReference } from './inbox-resend.ts';
@@ -73,8 +74,7 @@ export async function recoverInbox(
   }
   let received = 0;
   for await (const email of dependencies.listReceived()) {
-    if (!Array.isArray(email.to) || !email.to.includes(config.address))
-      continue;
+    if (!Array.isArray(email.to) || !email.to.some(isInboxRecipient)) continue;
     const id = await admitInboxEvent(
       executor,
       {
