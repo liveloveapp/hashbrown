@@ -7,7 +7,11 @@ import {
 } from './contacts.ts';
 import { type EmailHmacKeyring, normalizeRecipientEmail } from './crypto.ts';
 import type { SqlExecutor, SqlTransaction } from './database.ts';
-import { prepareFormAdmission, recordFormAdmission } from './form-admission.ts';
+import {
+  FormSubmissionConflictError,
+  prepareFormAdmission,
+  recordFormAdmission,
+} from './form-admission.ts';
 import { UNSTUCK_FRAMEWORKS, type UnstuckFramework } from './models.ts';
 import { isPersonalEmailDomain } from './observability/install-digest.ts';
 
@@ -155,6 +159,8 @@ async function deliveryBlocked(
  * transaction opens), when a retried submission id carries a different
  * request, or when its jobs belong to another contact.
  * @throws {FormRateLimitError} When an hourly or daily budget is exhausted.
+ * @throws {FormSubmissionConflictError} When the id was reused with a changed
+ * request, or its jobs belong to another contact.
  */
 export async function acceptFormSubmission(
   executor: SqlExecutor,
@@ -261,7 +267,9 @@ export async function acceptFormSubmission(
       ],
     );
     if (jobs.rows.length !== 2) {
-      throw new Error(`Growth form job idempotency conflict: ${submissionId}`);
+      throw new FormSubmissionConflictError(
+        `Growth form job idempotency conflict: ${submissionId}`,
+      );
     }
 
     const result: AcceptFormSubmissionResult = {

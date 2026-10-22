@@ -62,7 +62,11 @@ afterAll(async () => {
 
 async function insertDueJob(
   kind: string,
-  options: { contactId?: string; payload?: Record<string, unknown> } = {},
+  options: {
+    contactId?: string;
+    payload?: Record<string, unknown>;
+    availableAt?: Date;
+  } = {},
 ): Promise<string> {
   const jobId = randomUUID();
   createdJobIds.add(jobId);
@@ -74,7 +78,7 @@ async function insertDueJob(
       jobId,
       kind,
       options.contactId ?? null,
-      new Date(NOW.getTime() - 60_000),
+      options.availableAt ?? new Date(NOW.getTime() - 60_000),
       `lifecycle-integration:${jobId}`,
       JSON.stringify(options.payload ?? {}),
     ],
@@ -106,7 +110,9 @@ function tickDependencies(
   dispatchLeasedJob: LifecycleDispatcherDependencies['dispatchLeasedJob'],
 ): LifecycleDispatcherDependencies {
   return {
-    ...createLifecycleDispatcherDependencies({}),
+    ...createLifecycleDispatcherDependencies({
+      GROWTH_PUBLIC_ACTION_ORIGIN: 'https://preview.hashbrown.test',
+    }),
     createDatabase: () => createDatabaseExecutor(DATABASE_URL),
     reconcileMessageIds: async () => ({ claimed: 0, bound: 0, deferred: 0 }),
     now: () => NOW,
@@ -297,4 +303,130 @@ test('a notify job reads the submission, mails the founder once and completes', 
   expect(claims.rows).toEqual([
     { kind: 'internal_notification.submission_started' },
   ]);
+});
+
+test('a failing job backs off, never delays the healthy job behind it, and is quarantined on its 5th attempt', async () => {
+  // The failing job is due earlier, so leasing orders it ahead of the
+  // healthy one and the test proves the batch continues past it.
+  const failingId = await insertDueJob('digest', {
+    availableAt: new Date(NOW.getTime() - 120_000),
+  });
+  const healthyId = await insertDueJob('digest');
+  const order: string[] = [];
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  let clock = NOW;
+  const tick = async (): Promise<string[]> => {
+    const dispatched: string[] = [];
+    const complete = completing(dispatched);
+    await dispatchLifecycleJobs(input(), {
+      ...tickDependencies(async (tickExecutor, job) => {
+        order.push(job.id);
+        if (job.id === failingId) throw new Error('always fails');
+        return complete(tickExecutor, job);
+      }),
+      now: () => clock,
+    });
+    return dispatched;
+  };
+
+  const firstTick = await tick();
+  const afterFirst = await executor.execute<{
+    status: string;
+    attempts: number;
+    last_error_code: string;
+    available_at: Date;
+  }>(
+    'select status, attempts, last_error_code, available_at from growth_jobs where id = $1',
+    [failingId],
+  );
+  for (let attempt = 2; attempt <= 5; attempt += 1) {
+    clock = new Date(clock.getTime() + 3_600_001);
+    await tick();
+  }
+  const final = await executor.execute<{
+    status: string;
+    attempts: number;
+    last_error_code: string;
+  }>(
+    'select status, attempts, last_error_code from growth_jobs where id = $1',
+    [failingId],
+  );
+
+  logged.mockRestore();
+  expect(order.slice(0, 2)).toEqual([failingId, healthyId]);
+  expect(firstTick).toContain(healthyId);
+  expect(afterFirst.rows[0]).toMatchObject({
+    status: 'pending',
+    attempts: 1,
+    last_error_code: 'handler_error',
+  });
+  expect(afterFirst.rows[0].available_at.getTime()).toBe(
+    NOW.getTime() + 60_000,
+  );
+  expect(final.rows[0]).toMatchObject({
+    status: 'failed',
+    attempts: 5,
+    last_error_code: 'handler_error_exhausted',
+  });
+  expect(await jobStatuses([healthyId])).toEqual(['completed']);
+});
+
+test('a handler that authorizes submission and then throws is never returned to pending or authorized again', async () => {
+  const jobId = await insertDueJob('digest');
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  let authorizations = 0;
+  const authorizeThenThrow = async (
+    tickExecutor: SqlExecutor,
+    job: GrowthJob,
+  ) => {
+    authorizations += 1;
+    await tickExecutor.execute(
+      `insert into growth_activity (event_key, kind, occurred_at, data)
+       values ($1, 'delivery.submission_authorized', $2, $3::jsonb)`,
+      [
+        `job:${job.id}:submission-authorized:${job.leaseToken}`,
+        NOW,
+        JSON.stringify({
+          bounded_stop_race: true,
+          lease_token: job.leaseToken,
+        }),
+      ],
+    );
+    throw new Error('acceptance write failed');
+  };
+
+  await dispatchLifecycleJobs(input(), tickDependencies(authorizeThenThrow));
+  const afterFailure = await executor.execute<{
+    status: string;
+    last_error_code: string | null;
+  }>('select status, last_error_code from growth_jobs where id = $1', [jobId]);
+  const later = new Date(NOW.getTime() + 3_600_000);
+  await dispatchLifecycleJobs(input(), {
+    ...tickDependencies(authorizeThenThrow),
+    now: () => later,
+  });
+  const afterRecovery = await executor.execute<{
+    status: string;
+    last_error_code: string | null;
+    delivery_status: string;
+  }>(
+    'select status, last_error_code, delivery_status from growth_jobs where id = $1',
+    [jobId],
+  );
+
+  logged.mockRestore();
+  await executor.execute(
+    'delete from growth_activity where event_key like $1',
+    [`job:${jobId}:%`],
+  );
+  expect(afterFailure.rows[0]).toEqual({
+    status: 'leased',
+    last_error_code: null,
+  });
+  expect(authorizations).toBe(1);
+  expect(afterRecovery.rows[0]).toEqual({
+    status: 'failed',
+    last_error_code: 'worker_interrupted_after_authorization',
+    delivery_status: 'unknown',
+  });
 });

@@ -8,6 +8,7 @@ import {
 import {
   createLifecycleDispatcherDependencies,
   dispatchLifecycleJobs,
+  handlerErrorBackoffMs,
   LEASED_KINDS,
   type LifecycleDispatcherDependencies,
   type LifecycleDispatcherInput,
@@ -113,6 +114,9 @@ function dependencies(
       .mockImplementation(async (_executor, request) =>
         leasedJob(request.jobId),
       ),
+    hasSubmissionAuthorization: vi.fn().mockResolvedValue(false),
+    assertActionOrigin: vi.fn(),
+    countUnboundProviderMessages: vi.fn().mockResolvedValue(0),
     clearTimeout,
     setTimeout,
     ...overrides,
@@ -294,7 +298,7 @@ test('dispatcher quarantines a DeterministicLifecycleJobError and continues', as
   );
 });
 
-test('dispatcher drops a job whose lease conflicts and propagates any other error', async () => {
+test('dispatcher drops a job whose lease conflicts', async () => {
   const lost = leasedJob('00000000-0000-4000-8000-000000000001', 'notify');
   const next = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
   const conflicted = dependencies({
@@ -304,18 +308,12 @@ test('dispatcher drops a job whose lease conflicts and propagates any other erro
       .mockResolvedValueOnce('completed'),
     leaseDueJobs: vi.fn().mockResolvedValue([lost, next]),
   });
-  const broken = dependencies({
-    dispatchLeasedJob: vi.fn().mockRejectedValue(new Error('database down')),
-    leaseDueJobs: vi.fn().mockResolvedValue([lost]),
-  });
 
   const result = await dispatchLifecycleJobs(input(), conflicted);
-  const failure = dispatchLifecycleJobs(input(), broken);
 
   expect(result).toMatchObject({ leased: 2, dispatched: 1 });
   expect(conflicted.quarantineJob).not.toHaveBeenCalled();
-  await expect(failure).rejects.toThrow('database down');
-  expect(broken.quarantineJob).not.toHaveBeenCalled();
+  expect(conflicted.deferJob).not.toHaveBeenCalled();
 });
 
 test('dispatcher defers a recovery_paused job and raises the mailbox alert', async () => {
@@ -568,6 +566,345 @@ test('dispatcher skips leasing when preparing the tick used the whole budget', a
   });
   expect(deps.leaseDueJobs).not.toHaveBeenCalled();
   expect(deps.dispatchLeasedJob).not.toHaveBeenCalled();
+});
+
+function failingJob(id: string, attempts: number): GrowthJob {
+  return { ...leasedJob(id, 'fulfill'), attempts };
+}
+
+test('a failing job defers with backoff, the rest of the batch runs, and the 5th failure quarantines', async () => {
+  const failing = failingJob('00000000-0000-4000-8000-000000000001', 1);
+  const exhausted = failingJob('00000000-0000-4000-8000-000000000002', 5);
+  const healthy = leasedJob('00000000-0000-4000-8000-000000000003', 'notify');
+  const dispatchLeasedJob = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('handler blew up'))
+    .mockRejectedValueOnce(new Error('handler blew up'))
+    .mockResolvedValueOnce('completed');
+  const deps = dependencies({
+    dispatchLeasedJob,
+    leaseDueJobs: vi.fn().mockResolvedValue([failing, exhausted, healthy]),
+  });
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  logged.mockRestore();
+  expect(result).toMatchObject({ leased: 3, dispatched: 1 });
+  expect(dispatchLeasedJob).toHaveBeenCalledTimes(3);
+  expect(deps.deferJob).toHaveBeenCalledOnce();
+  expect(deps.deferJob).toHaveBeenCalledWith(expect.anything(), {
+    jobId: failing.id,
+    leaseToken: LEASE_TOKEN,
+    now: NOW,
+    availableAt: new Date(NOW.getTime() + 60_000),
+    errorCode: 'handler_error',
+  });
+  expect(deps.quarantineJob).toHaveBeenCalledOnce();
+  expect(deps.quarantineJob).toHaveBeenCalledWith(expect.anything(), {
+    errorCode: 'handler_error_exhausted',
+    jobId: exhausted.id,
+    leaseToken: LEASE_TOKEN,
+    now: NOW,
+  });
+});
+
+test('a failing reply_reconcile job is never exhausted and keeps deferring at the 3600 second cap', async () => {
+  const reply: GrowthJob = {
+    ...leasedJob('00000000-0000-4000-8000-000000000001', 'reply_reconcile'),
+    attempts: 8,
+  };
+  const deps = dependencies({
+    dispatchLeasedJob: vi.fn().mockRejectedValue(new Error('boom')),
+    leaseDueJobs: vi.fn().mockResolvedValue([reply]),
+  });
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  await dispatchLifecycleJobs(input(), deps);
+
+  logged.mockRestore();
+  expect(deps.quarantineJob).not.toHaveBeenCalled();
+  expect(deps.deferJob).toHaveBeenCalledWith(expect.anything(), {
+    jobId: reply.id,
+    leaseToken: LEASE_TOKEN,
+    now: NOW,
+    availableAt: new Date(NOW.getTime() + 3_600_000),
+    errorCode: 'handler_error',
+  });
+});
+
+test('backoff is 60, 120, 240, 480 seconds and caps at 3600', async () => {
+  const jobs = [1, 2, 3, 4].map((attempts) =>
+    failingJob(`00000000-0000-4000-8000-00000000000${attempts}`, attempts),
+  );
+  const deps = dependencies({
+    dispatchLeasedJob: vi.fn().mockRejectedValue(new Error('boom')),
+    leaseDueJobs: vi.fn().mockResolvedValue(jobs),
+  });
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  await dispatchLifecycleJobs(input(), deps);
+
+  logged.mockRestore();
+  const delays = vi
+    .mocked(deps.deferJob)
+    .mock.calls.map(
+      ([, request]) => request.availableAt.getTime() - NOW.getTime(),
+    );
+  expect(delays).toEqual([60_000, 120_000, 240_000, 480_000]);
+});
+
+test('the backoff doubles from 60 seconds and caps at 3600', () => {
+  const attempts = [1, 2, 5, 6, 7, 20];
+
+  const delays = attempts.map(handlerErrorBackoffMs);
+
+  expect(delays).toEqual([
+    60_000, 120_000, 960_000, 1_920_000, 3_600_000, 3_600_000,
+  ]);
+});
+
+test('a lease conflict on the budget-path defer drops that job and the tick continues', async () => {
+  let clock = NOW.getTime();
+  const first = leasedJob('00000000-0000-4000-8000-000000000001', 'send_step');
+  const second = leasedJob('00000000-0000-4000-8000-000000000002', 'send_step');
+  const third = leasedJob('00000000-0000-4000-8000-000000000003', 'notify');
+  const deps = dependencies({
+    now: () => new Date(clock),
+    leaseDueJobs: vi.fn().mockResolvedValue([first, second, third]),
+    dispatchLeasedJob: vi.fn(async () => {
+      clock += TICK_JOB_START_BUDGET_MS;
+      return 'completed' as const;
+    }),
+    deferJob: vi
+      .fn()
+      .mockRejectedValueOnce(new JobLeaseConflictError(second.id))
+      .mockResolvedValueOnce(leasedJob(third.id)),
+  });
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(result).toMatchObject({ leased: 3, dispatched: 1 });
+  expect(deps.deferJob).toHaveBeenCalledTimes(2);
+});
+
+test('a lease conflict on a recovery_paused defer drops that job and the tick continues', async () => {
+  const paused = leasedJob('00000000-0000-4000-8000-000000000001', 'send_step');
+  const next = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
+  const deps = dependencies({
+    leaseDueJobs: vi.fn().mockResolvedValue([paused, next]),
+    dispatchLeasedJob: vi
+      .fn()
+      .mockResolvedValueOnce('recovery_paused')
+      .mockResolvedValueOnce('completed'),
+    deferJob: vi
+      .fn()
+      .mockRejectedValueOnce(new JobLeaseConflictError(paused.id)),
+  });
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(result).toMatchObject({ leased: 2, dispatched: 1 });
+});
+
+test('the logged failure carries only kind and error name', async () => {
+  class VendorError extends Error {
+    override name = 'VendorError';
+  }
+  const job = failingJob('00000000-0000-4000-8000-000000000001', 1);
+  const other = failingJob('00000000-0000-4000-8000-000000000002', 1);
+  const deps = dependencies({
+    dispatchLeasedJob: vi
+      .fn()
+      .mockRejectedValueOnce(new VendorError('secret@example.com leaked'))
+      .mockRejectedValueOnce('a thrown string'),
+    leaseDueJobs: vi.fn().mockResolvedValue([job, other]),
+  });
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  await dispatchLifecycleJobs(input(), deps);
+
+  const calls = logged.mock.calls;
+  logged.mockRestore();
+  expect(calls).toEqual([
+    ['[lifecycle-job-failed]', { kind: 'fulfill', name: 'VendorError' }],
+    ['[lifecycle-job-failed]', { kind: 'fulfill', name: 'Error' }],
+  ]);
+  expect(JSON.stringify(calls)).not.toContain('secret@example.com');
+});
+
+test('an abort still stops the loop after the current job', async () => {
+  const controller = new AbortController();
+  const first = failingJob('00000000-0000-4000-8000-000000000001', 1);
+  const second = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
+  const dispatchLeasedJob = vi.fn(async () => {
+    controller.abort(new Error('tick aborted'));
+    throw new Error('handler failed while aborting');
+  });
+  const deps = dependencies({
+    dispatchLeasedJob,
+    leaseDueJobs: vi.fn().mockResolvedValue([first, second]),
+  });
+
+  const failure = dispatchLifecycleJobs(
+    input({ signal: controller.signal }),
+    deps,
+  );
+
+  await expect(failure).rejects.toThrow('tick aborted');
+  expect(dispatchLeasedJob).toHaveBeenCalledOnce();
+  expect(deps.deferJob).not.toHaveBeenCalled();
+});
+
+test('a handler error after submission authorization leaves the job leased and never defers or quarantines it', async () => {
+  const authorized = failingJob('00000000-0000-4000-8000-000000000001', 5);
+  const healthy = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
+  const deps = dependencies({
+    dispatchLeasedJob: vi
+      .fn()
+      .mockRejectedValueOnce(new Error('acceptance write failed'))
+      .mockResolvedValueOnce('completed'),
+    leaseDueJobs: vi.fn().mockResolvedValue([authorized, healthy]),
+    hasSubmissionAuthorization: vi.fn().mockResolvedValueOnce(true),
+  });
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  logged.mockRestore();
+  expect(result).toMatchObject({ leased: 2, dispatched: 1 });
+  expect(deps.hasSubmissionAuthorization).toHaveBeenCalledWith(
+    expect.anything(),
+    { jobId: authorized.id, leaseToken: LEASE_TOKEN },
+  );
+  expect(deps.deferJob).not.toHaveBeenCalled();
+  expect(deps.quarantineJob).not.toHaveBeenCalled();
+});
+
+test('an invalid action origin leases only reply_reconcile, keeps enrollment running and alerts action_origin_invalid', async () => {
+  const calls: string[] = [];
+  const job = leasedJob(
+    '00000000-0000-4000-8000-000000000001',
+    'reply_reconcile',
+  );
+  const deps = dependencies({
+    assertActionOrigin: vi.fn(() => {
+      throw new Error(
+        'Growth public action origin must be a bare HTTPS origin',
+      );
+    }),
+    reconcileMessageIds: vi.fn(async () => {
+      calls.push('reconcile');
+    }),
+    processObservations: vi.fn(async () => {
+      calls.push('projection');
+      return {
+        completed: 0,
+        leaseLost: 0,
+        retryScheduled: 0,
+        failed: 0,
+        disabled: false,
+      };
+    }),
+    processInstallRuntimeActivations: vi.fn(async () => {
+      calls.push('hello');
+      return { approved: 0, ineligible: 0, conflicted: 0, disabled: false };
+    }),
+    materializeCampaignEnrollment: vi.fn(async () => {
+      calls.push('enrollment');
+      return { enrolledContactIds: [], createdJobs: 0 };
+    }),
+    leaseDueJobs: vi.fn().mockResolvedValue([job]),
+  });
+
+  const result = await dispatchLifecycleJobs(
+    input({
+      campaignEnabled: true,
+      campaignEnrollmentEnabled: true,
+      campaignEnrollmentStartAt: new Date('2026-09-01T00:00:00.000Z'),
+      installRuntimeHelloEnabled: true,
+      observationProcessingEnabled: true,
+    }),
+    deps,
+  );
+
+  expect(calls).toEqual(['reconcile', 'projection', 'hello', 'enrollment']);
+  expect(deps.leaseDueJobs).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ kinds: ['reply_reconcile'] }),
+  );
+  expect(result).toEqual({
+    leased: 1,
+    dispatched: 1,
+    recoveryPaused: false,
+    operatorAlerts: ['action_origin_invalid'],
+  });
+});
+
+test('a valid action origin leases every kind and raises no origin alert', async () => {
+  const deps = dependencies();
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(deps.leaseDueJobs).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ kinds: [...LEASED_KINDS] }),
+  );
+  expect(result.operatorAlerts).toEqual([]);
+});
+
+test('unbound provider messages alert message_id_unbound after leasing, and none does not', async () => {
+  const unbound = dependencies({
+    countUnboundProviderMessages: vi.fn().mockResolvedValue(2),
+  });
+  const clean = dependencies();
+
+  const alerted = await dispatchLifecycleJobs(input(), unbound);
+  const quiet = await dispatchLifecycleJobs(input(), clean);
+
+  expect(alerted.operatorAlerts).toEqual(['message_id_unbound']);
+  expect(unbound.countUnboundProviderMessages).toHaveBeenCalledWith(
+    expect.anything(),
+    { now: NOW, olderThanMs: 6 * 60 * 60 * 1000 },
+  );
+  expect(quiet.operatorAlerts).toEqual([]);
+});
+
+test('a failing unbound count is logged by name, adds no alert and the tick still dispatches its jobs', async () => {
+  const job = leasedJob('00000000-0000-4000-8000-000000000001');
+  const deps = dependencies({
+    countUnboundProviderMessages: vi
+      .fn()
+      .mockRejectedValue(new TypeError('secret detail')),
+    leaseDueJobs: vi.fn().mockResolvedValue([job]),
+  });
+  const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(result).toMatchObject({
+    leased: 1,
+    dispatched: 1,
+    operatorAlerts: [],
+  });
+  expect(log).toHaveBeenCalledWith('[lifecycle-unbound-count-failed]', {
+    name: 'TypeError',
+  });
+  log.mockRestore();
+});
+
+test('the unbound alert is raised even when the job-start budget is already spent', async () => {
+  const deps = dependencies({
+    countUnboundProviderMessages: vi.fn().mockResolvedValue(1),
+  });
+
+  const result = await dispatchLifecycleJobs(
+    input({ tickJobStartBudgetMs: 0 }),
+    deps,
+  );
+
+  expect(result.operatorAlerts).toEqual(['message_id_unbound']);
+  expect(deps.leaseDueJobs).not.toHaveBeenCalled();
 });
 
 test('lifecycle drains admitted historical replies alongside its app jobs', () => {
