@@ -170,14 +170,15 @@ npx nx test lifecycle
 npx nx lint lifecycle
 ```
 
-To run the service against the test store with nothing sent:
+The `nx` targets use a wrapper that is for `check` and `build` only. To run the
+service against the test store with nothing sent, run `b4 dev` from the app
+directory, with the variables in a private env file you do not commit
+(`DATABASE_URL`, `B4_DATABASE_URL`, `LIFECYCLE_SERVICE_SECRET`,
+`GROWTH_DATABASE_ENVIRONMENT=test`, `DELIVERY_ENVIRONMENT=test`,
+`DELIVERY_ENABLED=false`):
 
 ```
-DATABASE_URL=<test store> B4_DATABASE_URL=<state store> \
-  LIFECYCLE_SERVICE_SECRET=<any local value> \
-  GROWTH_DATABASE_ENVIRONMENT=test DELIVERY_ENVIRONMENT=test \
-  DELIVERY_ENABLED=false \
-  node --import tsx tools/lifecycle/scripts/b4-cli.mts dev
+cd tools/lifecycle && npx b4 dev --env-file <private env file>
 ```
 
 `GROWTH_INTEGRATION=1 npx nx test-integration lifecycle` runs the integration
@@ -258,14 +259,16 @@ retries with backoff up to hourly, forever, and raises nothing. Find stuck
 messages with this read-only query:
 
 ```sql
-select id, contact_id, kind, provider_email_id, updated_at
-from growth_jobs
-where kind in ('fulfill', 'send_step')
-  and status = 'completed'
-  and provider_email_id is not null
-  and rfc_message_id is null
-  and updated_at < now() - interval '1 hour'
-order by updated_at;
+select j.id, j.contact_id, j.kind, j.provider_email_id, j.updated_at
+from growth_jobs j
+join growth_contacts c on c.id = j.contact_id
+where j.kind in ('fulfill', 'send_step')
+  and j.status = 'completed'
+  and j.provider_email_id is not null
+  and j.rfc_message_id is null
+  and c.deleted_at is null
+  and j.updated_at < now() - interval '1 hour'
+order by j.updated_at;
 ```
 
 Rows here mean the Resend lookup is failing or the message id never arrives.

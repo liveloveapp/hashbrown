@@ -267,6 +267,7 @@ Announcements: the collector may display a code-owned plain-text console
 announcement at most once per identity, with package/version applicability and
 expiry, linking only to `https://hashbrown.dev/docs/...` paths. No remote code,
 no HTML. The first announcement shipped is the "Get unstuck" pointer (§8.4).
+
 One announcements catalog (`www/src/lib/announcements/catalog.ts`) feeds both
 the site pill and the runtime announcements. An entry reaches development
 collectors only when it has a `runtime` block with a `hashbrown.dev/docs` link.
@@ -516,11 +517,10 @@ bodies are never stored.
 
 ### 8.7 Founder install digest (mirror)
 
-One `digest` job per Pacific business day (`install_digest:<YYYY-MM-DD>`), due
-at 07:00 Pacific (`nextPacificBusinessMorning`) rather than at the first tick
-after midnight, when
-at least one non-CI installer with a work-email domain has no contact and has
-not been reported. Plain text to `FOUNDER_NOTIFICATION_EMAIL`, one line per
+One `digest` job per Pacific business day (`install_digest:<YYYY-MM-DD>`) is
+enqueued when at least one non-CI installer with a work-email domain has no
+contact and has not been reported. It is due at 07:00 Pacific
+(`nextPacificBusinessMorning`), not at the first tick after midnight. Plain text to `FOUNDER_NOTIFICATION_EMAIL`, one line per
 identity with package, version, framework if a runtime session linked, highest
 milestone reached, score tier, and a seven-day signed approve link. It never
 emails the installer and never creates a contact.
