@@ -391,7 +391,10 @@ async function prepareTick(
  * (it is no longer ours); any other handler error defers the job
  * `min(60 × 2^(attempts − 1), 3600)` s with `handler_error` and the tick
  * carries on, and the job's 5th failure quarantines it
- * (`handler_error_exhausted`), except that a job whose lease already holds a
+ * (`handler_error_exhausted`), except that a `reply_reconcile` job is never
+ * exhausted (a failed-exhausted reply job is never revived by
+ * `reconcileBoundMessage`, so its contact would never stop and later steps
+ * would send; it keeps deferring at the capped backoff), and that a job whose lease already holds a
  * submission authorization stays leased (fail closed: the next lease fails
  * it as `worker_interrupted_after_authorization`); a `recovery_paused` job is deferred 60 s with
  * `mailbox_recovery_paused`. Once {@link TICK_JOB_START_BUDGET_MS} has passed
@@ -585,7 +588,10 @@ export async function dispatchLifecycleJobs(
           }
           const now = dependencies.now();
           try {
-            if (job.attempts >= HANDLER_ERROR_MAX_ATTEMPTS) {
+            if (
+              job.attempts >= HANDLER_ERROR_MAX_ATTEMPTS &&
+              job.kind !== 'reply_reconcile'
+            ) {
               await dependencies.quarantineJob(executor, {
                 errorCode: 'handler_error_exhausted',
                 jobId: job.id,

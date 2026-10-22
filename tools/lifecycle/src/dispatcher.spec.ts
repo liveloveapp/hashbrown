@@ -608,6 +608,30 @@ test('a failing job defers with backoff, the rest of the batch runs, and the 5th
   });
 });
 
+test('a failing reply_reconcile job is never exhausted and keeps deferring at the 3600 second cap', async () => {
+  const reply: GrowthJob = {
+    ...leasedJob('00000000-0000-4000-8000-000000000001', 'reply_reconcile'),
+    attempts: 8,
+  };
+  const deps = dependencies({
+    dispatchLeasedJob: vi.fn().mockRejectedValue(new Error('boom')),
+    leaseDueJobs: vi.fn().mockResolvedValue([reply]),
+  });
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  await dispatchLifecycleJobs(input(), deps);
+
+  logged.mockRestore();
+  expect(deps.quarantineJob).not.toHaveBeenCalled();
+  expect(deps.deferJob).toHaveBeenCalledWith(expect.anything(), {
+    jobId: reply.id,
+    leaseToken: LEASE_TOKEN,
+    now: NOW,
+    availableAt: new Date(NOW.getTime() + 3_600_000),
+    errorCode: 'handler_error',
+  });
+});
+
 test('backoff is 60, 120, 240, 480 seconds and caps at 3600', async () => {
   const jobs = [1, 2, 3, 4].map((attempts) =>
     failingJob(`00000000-0000-4000-8000-00000000000${attempts}`, attempts),

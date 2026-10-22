@@ -119,8 +119,9 @@ budget, so spam cannot spend a real visitor's address budget. Setup, accept
 and close failures log `[unstuck-form-failed]` with the stage and the error
 name only. A stale `policy_version`
 answers 409 with the current version. Reusing a `submission_id` with the same
-body returns the original result; with a changed body it answers a retryable
-503 (documented behaviour).
+body returns the original result; with a changed body (or a `submission_id` owned by another contact) it
+answers 422 `{ error: 'This submission changed. Please send it again.' }`
+without `retryable`.
 
 Local check: run `b4 dev` for the lifecycle against the test store (delivery
 off, enrollment on), run `next dev` for www with the same `DATABASE_URL` and
@@ -152,10 +153,22 @@ The workflow reads the switches, then runs these steps in order:
 5. Install digest enqueue, when enabled and the Pacific date is a weekday.
 6. Lease up to `LIFECYCLE_BATCH_SIZE` due jobs (kinds `fulfill`, `notify`,
    `send_step`, `reply_reconcile`, `digest`) and dispatch them one at a time.
+   When `GROWTH_PUBLIC_ACTION_ORIGIN` is invalid (`action_origin_invalid`),
+   only `reply_reconcile` is leased.
 
 Each lease lasts 60 seconds and is renewed every 20 seconds. A job that can
 never succeed is quarantined (`deterministic_job_poison`) and the loop
-continues. Overlapping ticks never share a job, because leasing skips locked
+continues. Any other handler error logs `[lifecycle-job-failed]` (kind and
+error name only), defers the job with `last_error_code = 'handler_error'` for
+`min(60 × 2^(attempts − 1), 3600)` seconds, and the loop continues. On the
+5th attempt the job is quarantined as `failed` with `handler_error_exhausted`
+and is never retried by itself, for every kind except `reply_reconcile`, which
+keeps deferring at the capped backoff (a failed reply job is never revived, so
+its contact would not stop). A job whose lease already authorized a submission
+is left leased instead: its lease expires and it later fails as
+`worker_interrupted_after_authorization` for manual review. No alert fires for
+`handler_error_exhausted`, so check for it (see below) after a provider outage
+of about five ticks. Overlapping ticks never share a job, because leasing skips locked
 and live-leased rows. `maxDuration` is 60 seconds. No job starts once 40
 seconds of the tick have passed (`TICK_JOB_START_BUDGET_MS`): the rest are
 released at once with `tick_budget_exhausted` and the next tick leases them.
@@ -321,11 +334,14 @@ so nothing in a preview run may depend on it receiving mail.
 
 Logs from the cron (grep these):
 
-| Log line                         | Meaning                                                           |
-| -------------------------------- | ----------------------------------------------------------------- |
-| `[lifecycle-operator-alert]`     | The tick returned an alert; the alert name follows                |
-| `[lifecycle-cron-failed]`        | The invoke failed (network, non-2xx or invalid state); retry next |
-| `[lifecycle-cron-misconfigured]` | `LIFECYCLE_CRON_ENABLED` is not exactly `true` or `false`         |
+| Log line                           | Meaning                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| `[lifecycle-operator-alert]`       | The tick returned an alert; the alert name follows                              |
+| `[lifecycle-cron-failed]`          | The invoke failed (network, non-2xx or invalid state); retry next               |
+| `[lifecycle-cron-misconfigured]`   | `LIFECYCLE_CRON_ENABLED` is not exactly `true` or `false`                       |
+| `[lifecycle-job-failed]`           | A job's handler threw (kind and error name); it was deferred or quarantined     |
+| `[lifecycle-unbound-count-failed]` | The `message_id_unbound` count query failed; that alert is skipped for the tick |
+| `[lifecycle-thread-delete-failed]` | Deleting a finished run's b4run thread failed or timed out; harmless            |
 
 A `[lifecycle-cron-failed]` on every tick, with no job dispatched, means the
 tick fails before leasing, which holds back all mail (`fulfill` and `notify`
@@ -365,6 +381,31 @@ order by j.updated_at;
 
 Rows here mean the Resend lookup is failing or the message id never arrives.
 Check `RESEND_API_KEY` and the Resend dashboard for that email id.
+
+Find jobs quarantined by repeated handler errors with this read-only query:
+
+```sql
+select id, kind, contact_id, attempts, updated_at
+from growth_jobs
+where status = 'failed'
+  and last_error_code = 'handler_error_exhausted'
+order by updated_at;
+```
+
+After fixing the cause (for example a Resend outage), requeue one job. Reset
+`attempts` so it gets a fresh five tries, and do not requeue a job whose
+provider send may already have been accepted:
+
+```sql
+update growth_jobs
+set status = 'pending',
+    available_at = now(),
+    attempts = 0,
+    last_error_code = null
+where id = '<job id>'
+  and status = 'failed'
+  and last_error_code = 'handler_error_exhausted';
+```
 
 Until PR 6's form route writes `framework`, the founder notification shows
 "Framework: not given".
