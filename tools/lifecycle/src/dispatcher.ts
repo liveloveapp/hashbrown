@@ -383,7 +383,7 @@ async function prepareTick(
  * install digest enqueue, then a lease of up to `batchSize` due jobs that are
  * dispatched one at a time. If `GROWTH_PUBLIC_ACTION_ORIGIN` is not a bare
  * HTTPS origin the tick raises `action_origin_invalid` and leases only
- * {@link ORIGIN_FREE_KINDS}; after leasing, a completed send with no
+ * {@link ORIGIN_FREE_KINDS}; before leasing, a completed send with no
  * Message-ID for 6 hours raises `message_id_unbound`. Each lease lasts 60 s and is renewed every 20 s
  * while the tick runs; a failed renewal aborts the loop. A
  * {@link DeterministicLifecycleJobError} quarantines its job
@@ -448,6 +448,23 @@ export async function dispatchLifecycleJobs(
         ? [...operatorAlerts, 'mailbox_recovery_required']
         : operatorAlerts,
     });
+    // The count only ever adds an alert: it runs before leasing, even when
+    // the job-start budget is spent, and a failure is logged by name only.
+    try {
+      if (
+        (await dependencies.countUnboundProviderMessages(executor, {
+          now: dependencies.now(),
+          olderThanMs: MESSAGE_ID_STALL_MS,
+        })) > 0
+      ) {
+        operatorAlerts.push('message_id_unbound');
+      }
+    } catch (error) {
+      input.signal.throwIfAborted();
+      console.error('[lifecycle-unbound-count-failed]', {
+        name: error instanceof Error ? error.name : 'Error',
+      });
+    }
     if (budgetSpent(dependencies.now())) return withAlerts(0, 0);
     const jobs = await dependencies.leaseDueJobs(executor, {
       kinds: originValid ? [...LEASED_KINDS] : [...ORIGIN_FREE_KINDS],
@@ -457,14 +474,6 @@ export async function dispatchLifecycleJobs(
       campaignEnabled: input.campaignEnabled,
       isSendWindow: isCampaignSendWindow,
     });
-    if (
-      (await dependencies.countUnboundProviderMessages(executor, {
-        now: dependencies.now(),
-        olderThanMs: MESSAGE_ID_STALL_MS,
-      })) > 0
-    ) {
-      operatorAlerts.push('message_id_unbound');
-    }
     const leaseFailure = new AbortController();
     let leaseFailureReason: Error | null = null;
     const failLease = (error: Error): void => {

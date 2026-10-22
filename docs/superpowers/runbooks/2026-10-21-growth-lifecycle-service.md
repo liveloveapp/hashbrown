@@ -396,6 +396,9 @@ tick's result and the alerts after each one before the next.
    (`GROWTH_PUBLIC_ACTION_ORIGIN`, e.g. `https://hashbrown.dev`, with no
    trailing slash or path). A bad one does not fail the tick; it raises
    `action_origin_invalid` and holds back every job except `reply_reconcile`.
+   That alert fires on any tick from the first deploy, not only at enable
+   time, so the variable must be a valid bare HTTPS origin from the first
+   deploy (it is already set in production).
 3. `CAMPAIGN_ENROLLMENT_ENABLED` (with `CAMPAIGN_ENROLLMENT_START_AT`)
 4. `CAMPAIGN_ENABLED`
 5. `LIFECYCLE_CRON_ENABLED` (on www)

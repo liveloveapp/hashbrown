@@ -841,3 +841,40 @@ test('unbound provider messages alert message_id_unbound after leasing, and none
   );
   expect(quiet.operatorAlerts).toEqual([]);
 });
+
+test('a failing unbound count is logged by name, adds no alert and the tick still dispatches its jobs', async () => {
+  const job = leasedJob('00000000-0000-4000-8000-000000000001');
+  const deps = dependencies({
+    countUnboundProviderMessages: vi
+      .fn()
+      .mockRejectedValue(new TypeError('secret detail')),
+    leaseDueJobs: vi.fn().mockResolvedValue([job]),
+  });
+  const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(result).toMatchObject({
+    leased: 1,
+    dispatched: 1,
+    operatorAlerts: [],
+  });
+  expect(log).toHaveBeenCalledWith('[lifecycle-unbound-count-failed]', {
+    name: 'TypeError',
+  });
+  log.mockRestore();
+});
+
+test('the unbound alert is raised even when the job-start budget is already spent', async () => {
+  const deps = dependencies({
+    countUnboundProviderMessages: vi.fn().mockResolvedValue(1),
+  });
+
+  const result = await dispatchLifecycleJobs(
+    input({ tickJobStartBudgetMs: 0 }),
+    deps,
+  );
+
+  expect(result.operatorAlerts).toEqual(['message_id_unbound']);
+  expect(deps.leaseDueJobs).not.toHaveBeenCalled();
+});
