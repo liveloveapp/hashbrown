@@ -8,8 +8,8 @@ dependencies); this file covers atc.
 ## Where to start
 
 - `angular/src/app/assistant.ts` and `react/src/assistant.tsx`: the core files. Steps
-  1 to 3 (expose components, give the model tools, render the stream) are marked in
-  both.
+  1 to 4 (expose components, give the model tools, render the stream, decide) are
+  marked in both.
 - `shared/src/store.ts`: `AtcState` and its pure reducers. The map, the tools and the
   components all read this one store.
 - `shared/src/tools.ts`: the tools the model calls. They run in the browser.

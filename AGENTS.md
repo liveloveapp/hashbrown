@@ -165,6 +165,7 @@ that protects the published packages, not examples.
 - `atc-e2e`
   - `npx nx e2e atc-e2e`
   - `npx nx prose-eval atc-e2e` (live model; needs `OPENAI_API_KEY` and the atc dev servers)
+  - `npx nx decide-eval atc-e2e` (live decisions; needs `TYPESAFE_API_KEY`, no servers)
   - `npx nx test atc-e2e` (the demo video recorder's unit tests)
   - `npx nx lint atc-e2e`
   - `npx nx typecheck atc-e2e` (`tsc` over the e2e code, which Playwright and Vitest do not type-check)
