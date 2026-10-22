@@ -24,7 +24,7 @@ import {
 } from './job-fixtures.ts';
 import { cleanContactObservationFences } from './observability-fixtures.ts';
 
-for (const address of ['brian@hashbrown.dev', 'brian@replies.hashbrown.dev']) {
+for (const address of ['brian@hashbrown.dev']) {
   test(`reply at ${address} recovers, stops once, and blocks follow-ups before processing`, async () => {
     const db = createDatabaseExecutor(process.env['TEST_DATABASE_URL']);
     const contactIds = new Set<string>();

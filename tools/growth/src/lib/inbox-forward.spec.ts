@@ -7,7 +7,7 @@ test('forwarding goes only to Brian and preserves original content in an eml att
   const email = {
     id: 'incoming-1',
     from: 'Reader <reader@example.com>',
-    to: ['brian@replies.hashbrown.dev'],
+    to: ['brian@hashbrown.dev'],
     created_at: '2026-10-22T00:00:00Z',
     headers: {},
     subject: 'Hello',
@@ -86,7 +86,7 @@ test('erasure during raw fetching prevents subsequent forwarding', async () => {
   });
   const getReceived = async () => ({
     id: 'incoming-1',
-    to: ['BRIAN@REPLIES.HASHBROWN.DEV'],
+    to: ['BRIAN@HASHBROWN.DEV'],
     from: 'reader@example.com',
     created_at: '2026-10-22T00:00:00Z',
     headers: {},
@@ -166,7 +166,7 @@ test('an erased sender is never forwarded even without a classified contact', as
     isErasedSender,
     getReceived: async () => ({
       id: 'incoming-1',
-      to: ['brian@replies.hashbrown.dev'],
+      to: ['brian@hashbrown.dev'],
       from: 'Reader <reader@example.com>',
       created_at: '2026-10-22T00:00:00Z',
       headers: {},
