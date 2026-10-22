@@ -1,5 +1,5 @@
 import type { Message } from '@ag-ui/core';
-import { ɵreadToolStep, ɵTOOL_STEP_METADATA_KEY } from '@hashbrownai/core';
+import { ɵTOOL_STEP_METADATA_KEY } from '@hashbrownai/core';
 import type OpenAI from 'openai';
 
 type InputItem = OpenAI.Responses.ResponseInputItem;
@@ -79,7 +79,20 @@ function isProviderCall(toolCall: ToolCall): boolean {
   const marker = metadata['openai'];
   return (
     (isRecord(marker) && marker['itemType'] === 'web_search_call') ||
-    ɵreadToolStep(metadata[ɵTOOL_STEP_METADATA_KEY])?.kind === 'provider'
+    isProviderStep(metadata[ɵTOOL_STEP_METADATA_KEY])
+  );
+}
+
+/**
+ * Whether a raw `b4.step` (v1 or legacy) says the provider ran the call. It
+ * reads `kind` even when the step has no readable `status`, so a malformed
+ * provider step is still never replayed as a function call.
+ */
+function isProviderStep(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    (value['v'] === undefined || value['v'] === 1) &&
+    value['kind'] === 'provider'
   );
 }
 
