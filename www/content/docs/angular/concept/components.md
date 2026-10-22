@@ -79,7 +79,7 @@ The `s.streaming.string()` function is used to define the type of the input, ind
 A note on the `streaming` keyword: this is a Skillet-specific keyword that indicates that the input can be streamed in chunks, which is useful for large content like markdown.
 
 <hb-next-steps>
-  <hb-next-step link="/concept/streaming">
+  <hb-next-step link="concept/streaming">
     <div>
       <hb-code />
     </div>

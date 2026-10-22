@@ -1,0 +1,28 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Search the web for the current stable version of Node.js. Answer in one short sentence and cite your source.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "The current stable version of Node.js is 26.12.1 (Current) and the latest LTS version is 24.22.1. \n\nSource: [Node.js Download](https://nodejs.org/en/download/) and [Node.js GitHub Releases](https://github.com/nodejs/node/releases)",
+        "webSearches": ["current stable version of Node.js"]
+      },
+      "recordedTimings": {
+        "ttftMs": 1213,
+        "interChunkDelaysMs": [
+          0, 30, 0, 193, 905, 3, 1, 0, 6, 7, 5, 5, 6, 7, 57, 6, 1, 6, 1, 2, 1,
+          3, 7, 1, 3, 3, 9, 20, 12, 31, 4, 132, 0, 0, 0, 0, 148, 0, 0, 208, 0,
+          0, 0, 1, 0, 0, 0
+        ],
+        "totalDurationMs": 3037
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

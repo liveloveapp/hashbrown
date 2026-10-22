@@ -526,18 +526,21 @@ test('on a phone, the refine row shows at half and the peek still shows the star
     height: 812,
   });
   const sheet = page.locator('#atc-chat-sheet');
-  const first = page.getByRole('button', { name: PROMPTS.starterJets });
+  const picked = page.getByRole('button', { name: PROMPTS.starterHelicopters });
   const field = page.getByRole('textbox', { name: 'Message' });
   const row = page.getByTestId('refinements');
 
-  await page.getByRole('button', { name: PROMPTS.starterHelicopters }).tap();
+  await picked.tap();
   await expect(sheet).toHaveAttribute('data-snap', 'half');
   await expect(row.getByRole('button').first()).toBeInViewport();
   await expect(field).toBeInViewport();
-  await first.press('Escape');
+  await picked.press('Escape');
 
+  // The peek's starters are one sideways-scrolling row. Tapping a pill that
+  // sits partly off the edge scrolls the row to it (how far depends on font
+  // metrics), so assert the picked pill rather than the row's first one.
   await expect(sheet).toHaveAttribute('data-snap', 'peek');
-  await expect(first).toBeInViewport();
+  await expect(picked).toBeInViewport();
   await expect(field).toBeInViewport();
   await expect(row).toBeHidden();
   await close();

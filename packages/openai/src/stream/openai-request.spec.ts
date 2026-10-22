@@ -110,3 +110,62 @@ test('honours reasoning: false and an explicit object', () => {
   expect(explicit.reasoning).toEqual({ effort: 'low', summary: 'auto' });
   expect(explicit.include).toEqual(['reasoning.encrypted_content']);
 });
+
+test('webSearch adds the web_search tool and requests its sources', () => {
+  const input = createInput({
+    tools: [{ name: 'ping', description: 'Pings', parameters: {} }],
+  });
+
+  const options = createOpenAIRequestOptions(input, 'gpt-4.1', undefined, {
+    webSearch: true,
+  });
+
+  expect(options.tools).toEqual([
+    {
+      type: 'function',
+      name: 'ping',
+      description: 'Pings',
+      parameters: {},
+      strict: true,
+    },
+    { type: 'web_search' },
+  ]);
+  expect(options.include).toEqual(['web_search_call.action.sources']);
+});
+
+test('webSearch keeps the reasoning include', () => {
+  const input = createInput();
+
+  const options = createOpenAIRequestOptions(input, 'gpt-5-mini', undefined, {
+    webSearch: true,
+  });
+
+  expect(options.reasoning).toEqual({ summary: 'auto' });
+  expect(options.include).toEqual([
+    'reasoning.encrypted_content',
+    'web_search_call.action.sources',
+  ]);
+});
+
+test('webSearch passes the provider config through', () => {
+  const input = createInput();
+  const config = {
+    search_context_size: 'low' as const,
+    user_location: { type: 'approximate' as const, country: 'US' },
+  };
+
+  const options = createOpenAIRequestOptions(input, 'gpt-4.1', undefined, {
+    webSearch: config,
+  });
+
+  expect(options.tools).toEqual([{ type: 'web_search', ...config }]);
+});
+
+test('no builtInTools leaves the request unchanged', () => {
+  const input = createInput();
+
+  const options = createOpenAIRequestOptions(input, 'gpt-4.1', undefined, {});
+
+  expect('tools' in options).toBe(false);
+  expect('include' in options).toBe(false);
+});

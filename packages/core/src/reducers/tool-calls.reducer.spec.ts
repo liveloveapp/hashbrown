@@ -1,7 +1,10 @@
-import { EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
+import { isProviderToolCall } from '../models/tool-step';
 import { s } from '../schema';
+import { createStore } from '../utils/micro-ngrx';
+import { reducers, ɵprepareRootAction } from './index';
 import { reducer, selectPendingToolCalls } from './tool-calls.reducer';
 
 test('includes a developer tool named output in pending tool calls', () => {
@@ -899,4 +902,783 @@ test('keeps projection tool names canonical when compact chunks or success decor
 
   expect(conflicted).toBe(active);
   expect(succeeded.entities['tool-1']?.name).toBe('lookup');
+});
+
+function createRootStore() {
+  const store = createStore({
+    reducers,
+    effects: [],
+    prepareAction: ɵprepareRootAction,
+  });
+  store.dispatch(devActions.init({ system: '', canonicalMessages: [] }));
+  store.dispatch(internalActions.generationAttemptStarted());
+  store.dispatch(apiActions.generateMessageStart({ toolsByName: {} }));
+  return store;
+}
+
+function dispatchEvents(
+  store: ReturnType<typeof createRootStore>,
+  events: readonly AGUIEvent[],
+) {
+  for (const event of events) {
+    store.dispatch(apiActions.generateMessageEvent(event));
+  }
+}
+
+function readRootStep(
+  store: ReturnType<typeof createRootStore>,
+  toolCallId: string,
+): unknown {
+  return store.read(
+    (state) => state.toolCalls.entities[toolCallId]?.metadata?.['b4.step'],
+  );
+}
+
+test('a failed step survives a later fulfilled TOOL_CALL_RESULT step', () => {
+  const store = createRootStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: {
+        toolCallId: 'c1',
+        status: 'failed',
+        error: { message: 'Timed out' },
+      },
+    },
+  ]);
+
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'completed' } },
+    } as AGUIEvent,
+  ]);
+
+  expect(readRootStep(store, 'c1')).toMatchObject({
+    status: 'failed',
+    error: { message: 'Timed out' },
+  });
+});
+
+test('a RESULT step beats the call step', () => {
+  const canonical = [
+    {
+      id: 'assistant-1',
+      role: 'assistant' as const,
+      content: '',
+      toolCalls: [
+        {
+          id: 'c1',
+          type: 'function' as const,
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+  ];
+  const initialized = reducer(
+    undefined,
+    devActions.init({ system: '', canonicalMessages: canonical }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const resulted = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'done',
+      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'denied' } },
+    } as AGUIEvent),
+  );
+
+  const ended = reducer(
+    resulted,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'completed' } },
+    } as AGUIEvent),
+  );
+
+  expect(ended.entities['c1']?.metadata?.['b4.step']).toMatchObject({
+    status: 'denied',
+  });
+});
+
+test('a RESULT with no step completes a running step and clears its label', () => {
+  const store = createRootStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'server',
+          status: 'running',
+          label: 'Fetching',
+        },
+      },
+    } as AGUIEvent,
+  ]);
+
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+    },
+  ]);
+
+  expect(readRootStep(store, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+});
+
+test('a RESULT with an error and no step fails a running step', () => {
+  const resultEvent = {
+    type: EventType.TOOL_CALL_RESULT,
+    messageId: 'result-1',
+    toolCallId: 'c1',
+    content: 'Rate limited',
+    error: 'Rate limited',
+  } as AGUIEvent;
+  const store = createRootStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'server',
+          status: 'running',
+          label: 'Fetching',
+        },
+      },
+    } as AGUIEvent,
+  ]);
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          toolCalls: [
+            {
+              id: 'c1',
+              type: 'function',
+              function: { name: 'lookup', arguments: '{}' },
+              metadata: {
+                'b4.step': { v: 1, kind: 'server', status: 'running' },
+              },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  dispatchEvents(store, [resultEvent]);
+  const standalone = reducer(
+    active,
+    apiActions.generateMessageEvent(resultEvent),
+  );
+
+  const failed = {
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    error: { message: 'Rate limited' },
+  };
+  expect(readRootStep(store, 'c1')).toEqual(failed);
+  expect(standalone.entities['c1']?.metadata?.['b4.step']).toEqual(failed);
+});
+
+test('a step on TOOL_CALL_START metadata takes the START timestamp as startedAt', () => {
+  // Arrange
+  const initialized = reducer(undefined, { type: '@@init' } as never);
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  const step = { v: 1, kind: 'provider', status: 'running' };
+
+  // Act
+  const stamped = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'a',
+      toolCallName: 'web_search',
+      timestamp: 1234,
+      metadata: { 'b4.step': step },
+    } as AGUIEvent),
+  );
+  const kept = reducer(
+    stamped,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'b',
+      toolCallName: 'web_search',
+      timestamp: 1234,
+      metadata: { 'b4.step': { ...step, startedAt: 99 } },
+    } as AGUIEvent),
+  );
+  const stepless = reducer(
+    kept,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c',
+      toolCallName: 'web_search',
+      timestamp: 1234,
+    }),
+  );
+  const untimed = reducer(
+    stepless,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'd',
+      toolCallName: 'web_search',
+      metadata: { 'b4.step': step },
+    } as AGUIEvent),
+  );
+
+  // Assert
+  expect(stamped.draft.entities['a']?.metadata?.['b4.step']).toEqual({
+    ...step,
+    startedAt: 1234,
+  });
+  expect(kept.draft.entities['b']?.metadata?.['b4.step']).toEqual({
+    ...step,
+    startedAt: 99,
+  });
+  expect(stepless.draft.entities['c']).not.toHaveProperty('metadata');
+  expect(untimed.draft.entities['d']?.metadata?.['b4.step']).toEqual(step);
+  expect(untimed.draft.entities['d']).not.toHaveProperty('arrivedAt');
+});
+
+test('the root store stamps a step from its START or CUSTOM timestamp only when it has no startedAt', () => {
+  // Arrange
+  const store = createRootStore();
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      timestamp: 1000,
+      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'running' } },
+    } as AGUIEvent,
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { toolCallId: 'c1', status: 'completed' },
+      timestamp: 3000,
+    },
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c2',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      timestamp: 1000,
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { toolCallId: 'c2', status: 'running', startedAt: 1200 },
+      timestamp: 1500,
+    },
+  ]);
+
+  // Assert
+  expect(readRootStep(store, 'c1')).toEqual(
+    expect.objectContaining({ status: 'completed', startedAt: 1000 }),
+  );
+  expect(readRootStep(store, 'c2')).toEqual(
+    expect.objectContaining({ status: 'running', startedAt: 1200 }),
+  );
+});
+
+test('a TOOL_CALL_START for a cancelled step reopens it as running', () => {
+  const store = createRootStore();
+  const cancelled = {
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    label: 'Waiting',
+    settledAt: 99,
+  };
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: { 'b4.step': cancelled },
+    } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    } as AGUIEvent,
+  ]);
+
+  const step = readRootStep(store, 'c1');
+
+  expect(step).toMatchObject({ status: 'running' });
+  expect(step).not.toHaveProperty('label');
+  expect(step).not.toHaveProperty('settledAt');
+});
+
+test('a failed step after a RESULT completed the step replaces its label and sources', () => {
+  const store = createRootStore();
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'server',
+          status: 'running',
+          label: 'Searching',
+          icon: 'search',
+          sources: [{ id: 's1', kind: 'url', title: 'A' }],
+        },
+      },
+    } as AGUIEvent,
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: {
+        toolCallId: 'c1',
+        status: 'failed',
+        label: 'Search failed',
+        icon: 'alert',
+      },
+    } as AGUIEvent,
+  ]);
+
+  const step = readRootStep(store, 'c1');
+
+  expect(step).toMatchObject({
+    status: 'failed',
+    label: 'Search failed',
+    icon: 'alert',
+  });
+  expect(step).not.toHaveProperty('sources');
+});
+
+function frameOnlyResultEvents(error?: string): AGUIEvent[] {
+  return [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: error ?? 'ok',
+      ...(error === undefined ? {} : { error }),
+    } as AGUIEvent,
+  ];
+}
+
+function applyDraftEvents(events: readonly AGUIEvent[]) {
+  const initialized = reducer(undefined, { type: '@@init' } as never);
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+  return events.reduce(
+    (state, event) => reducer(state, apiActions.generateMessageEvent(event)),
+    active,
+  );
+}
+
+test('a running step after a frame-only RESULT stays completed on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const late: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: {
+        'b4.step': { v: 1, status: 'running', label: 'Fetching' },
+      },
+    } as AGUIEvent,
+  ];
+
+  // Act
+  const draft = applyDraftEvents([...frameOnlyResultEvents(), ...late]);
+  dispatchEvents(store, [
+    ...frameOnlyResultEvents(),
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'c1', status: 'running', label: 'Fetching' },
+      timestamp: 1500,
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  const completed = { v: 1, kind: 'server', status: 'completed' };
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(completed);
+  expect(readRootStep(store, 'c1')).toEqual(completed);
+});
+
+test('a denied step after a frame-only RESULT is denied on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+
+  // Act
+  const draft = applyDraftEvents([
+    ...frameOnlyResultEvents(),
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': { v: 1, status: 'denied' } },
+    } as AGUIEvent,
+  ]);
+  dispatchEvents(store, [
+    ...frameOnlyResultEvents(),
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'c1', status: 'denied' },
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  const denied = { v: 1, kind: 'server', status: 'denied' };
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(denied);
+  expect(readRootStep(store, 'c1')).toEqual(denied);
+});
+
+test('a step after a frame-only RESULT with an error stays failed on the draft path', () => {
+  // Arrange
+  const late: AGUIEvent = {
+    type: EventType.TOOL_CALL_END,
+    toolCallId: 'c1',
+    metadata: { 'b4.step': { v: 1, status: 'completed', label: 'Done' } },
+  } as AGUIEvent;
+
+  // Act
+  const draft = applyDraftEvents([
+    ...frameOnlyResultEvents('Rate limited'),
+    late,
+  ]);
+
+  // Assert
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    error: { message: 'Rate limited' },
+  });
+});
+
+test('a RESULT error fails a step a call already completed on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'server',
+          status: 'completed',
+          label: 'Looked up',
+          icon: 'search',
+        },
+      },
+    } as AGUIEvent,
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'Rate limited',
+      error: 'Rate limited',
+    } as AGUIEvent,
+  ];
+
+  // Act
+  const draft = applyDraftEvents(events);
+  dispatchEvents(store, events);
+
+  // Assert
+  const failed = {
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    icon: 'search',
+    error: { message: 'Rate limited' },
+  };
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(failed);
+  expect(readRootStep(store, 'c1')).toEqual(failed);
+});
+
+test('a late CUSTOM step keeps the RESULT step label in the root store', () => {
+  // Arrange
+  const store = createRootStore();
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+      metadata: { 'b4.step': { v: 1, status: 'completed', label: 'A' } },
+    } as AGUIEvent,
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'c1', status: 'completed', label: 'B' },
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readRootStep(store, 'c1')).toEqual(
+    expect.objectContaining({ status: 'completed', label: 'A' }),
+  );
+});
+
+test('a late provider step after a frame-only RESULT keeps the server kind on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const value = { v: 1, status: 'completed', kind: 'provider' };
+
+  // Act
+  const draft = applyDraftEvents([
+    ...frameOnlyResultEvents(),
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': value },
+    } as AGUIEvent,
+  ]);
+  dispatchEvents(store, [
+    ...frameOnlyResultEvents(),
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { ...value, toolCallId: 'c1' },
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  const completed = { v: 1, kind: 'server', status: 'completed' };
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(completed);
+  expect(readRootStep(store, 'c1')).toEqual(completed);
+});
+
+test('an empty RESULT error string completes a running step on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: { 'b4.step': { v: 1, status: 'running', label: 'Busy' } },
+    } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+      error: '',
+    } as AGUIEvent,
+  ];
+
+  // Act
+  const draft = applyDraftEvents(events);
+  dispatchEvents(store, events);
+
+  // Assert
+  const completed = { v: 1, kind: 'server', status: 'completed' };
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(completed);
+  expect(readRootStep(store, 'c1')).toEqual(completed);
+});
+
+test('a step after a local result rejected with an Error fails with its message on the draft path', () => {
+  // Arrange
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'c1',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'done',
+    result: { status: 'rejected', reason: new Error('Rate limited') },
+  };
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      localProjection: { messages: [], toolCalls: [toolCall] },
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  // Act
+  const next = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': { v: 1, status: 'completed' } },
+    } as AGUIEvent),
+  );
+
+  // Assert
+  expect(next.entities['c1']?.metadata?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    error: { message: 'Rate limited' },
+  });
+});
+
+test('legacy sources on START metadata get ids from the call id on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: {
+        'b4.step': { status: 'running', sources: [{ title: 'A' }] },
+      },
+    } as AGUIEvent,
+  ];
+
+  // Act
+  const draft = applyDraftEvents(events);
+  dispatchEvents(store, events);
+
+  // Assert
+  const sources = [{ id: 'c1:0', kind: 'record', title: 'A' }];
+  expect(
+    (draft.entities['c1']?.metadata?.['b4.step'] as { sources?: unknown })
+      ?.sources,
+  ).toEqual(sources);
+  expect((readRootStep(store, 'c1') as { sources?: unknown })?.sources).toEqual(
+    sources,
+  );
+});
+
+test('a frame-only RESULT seed keeps an unreadable provider step a provider step on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const provider = { v: 1, kind: 'provider', builtin: 'web_search' };
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'web_search',
+      parentMessageId: 'assistant-1',
+      metadata: { 'b4.step': provider },
+    } as AGUIEvent,
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+    },
+  ];
+
+  // Act
+  const draft = applyDraftEvents([
+    ...events,
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': { v: 1, status: 'running' } },
+    } as AGUIEvent,
+  ]);
+  dispatchEvents(store, [
+    ...events,
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'c1', status: 'running' },
+    } as AGUIEvent,
+  ]);
+  const draftStep = draft.entities['c1']?.metadata?.['b4.step'];
+  const rootStep = readRootStep(store, 'c1');
+
+  // Assert
+  const completed = {
+    v: 1,
+    kind: 'provider',
+    builtin: 'web_search',
+    status: 'completed',
+  };
+  expect(draftStep).toEqual(completed);
+  expect(rootStep).toEqual(completed);
+  expect(isProviderToolCall({ metadata: { 'b4.step': draftStep } })).toBe(true);
+  expect(isProviderToolCall({ metadata: { 'b4.step': rootStep } })).toBe(true);
 });

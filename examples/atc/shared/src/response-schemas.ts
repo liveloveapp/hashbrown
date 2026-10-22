@@ -24,7 +24,6 @@ function responseSchemaFor(
 /**
  * The UI the model may render when every card is available, built from the
  * same definitions, in the same order, as the components both apps expose.
- * Neither app passes UI examples; if one ever does, pass the same ones here.
  */
 export const FULL_RESPONSE_SCHEMA: Record<string, unknown> =
   responseSchemaFor(CARD_DEFINITIONS);

@@ -10,6 +10,7 @@ export type {
 } from '@hashbrownai/core';
 export type { AzureReasoningOption } from './stream/reasoning';
 export type {
+  AzureBuiltInTools,
   AzureHashbrownRunAgentInput,
   AzureTextStreamOptions,
 } from './stream/types';
