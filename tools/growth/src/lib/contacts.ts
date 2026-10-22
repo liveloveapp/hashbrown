@@ -1339,7 +1339,15 @@ export async function deleteContact(
       last_error_code: string | null;
     }>(
       `/* growth:cancel-and-scrub-jobs */
-       with authorized_interrupted as materialized (
+       with scrubbed_replies as (
+         update growth_reply_receipts set status = 'ignored', contact_id = null,
+           reference_ids = null, rfc_message_id = null,
+           last_error_code = 'contact_deleted', updated_at = $2
+         where contact_id = $1 or reference_ids ?| array(
+           select rfc_message_id from growth_jobs where contact_id = $1 and rfc_message_id is not null
+         )
+         returning id
+       ), authorized_interrupted as materialized (
          select target.id
          from growth_jobs target
          where (

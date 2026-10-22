@@ -3,9 +3,12 @@ import { expect, test, vi } from 'vitest';
 import {
   createGrowthActionToken,
   createUnsubscribeActionUrl,
+  createUnsubscribeActionUrlForJob,
   type GrowthJob,
   type GrowthLifecycleJobContext,
   JobLeaseConflictError,
+  ProviderAttemptError,
+  providerIdempotencyKey,
   type RecipientSendResult,
   type SqlExecutor,
   unsubscribeActionUrlValue,
@@ -168,6 +171,9 @@ function dependencies(
       ],
     }),
     createUnsubscribeUrl: vi.fn(() => unsubscribeUrl()),
+    createUnsubscribeUrlForJob: vi.fn((job) =>
+      createUnsubscribeActionUrlForJob(job, TOKEN_KEY, ORIGIN),
+    ),
     createActionToken: vi.fn((input) =>
       createGrowthActionToken(input, TOKEN_KEY),
     ),
@@ -320,6 +326,11 @@ test('send_step maps every RecipientSendResult to the documented dispatch outcom
     [{ accepted: false, reason: 'delivery_disabled' }, 'deferred', 'defer'],
     [{ accepted: false, reason: 'outside_send_window' }, 'deferred', 'defer'],
     [{ accepted: false, reason: 'reply_binding_pending' }, 'deferred', 'defer'],
+    [
+      { accepted: false, reason: 'pilot_recipient_not_allowlisted' },
+      'deferred',
+      'defer',
+    ],
     [{ accepted: false, reason: 'contact_deleted' }, 'cancelled', 'cancel'],
     [{ accepted: false, reason: 'contact_stopped' }, 'cancelled', 'cancel'],
     [{ accepted: false, reason: 'contact_unapproved' }, 'cancelled', 'cancel'],
@@ -493,7 +504,7 @@ test('notify defers while delivery is disabled and claims at most once', async (
     issuedAt: NOW,
     eventNonce: JOB_ID,
   });
-  const request = vi.mocked(sent.sendInternalNotification).mock.calls[0]?.[0];
+  const request = vi.mocked(sent.sendInternalNotification).mock.calls[0]?.[1];
   expect(request).toMatchObject({
     subject: 'Hashbrown lifecycle review',
     idempotencyKey: 'notify:fixture',
@@ -622,7 +633,7 @@ test('digest completes without sending when no candidates remain and marks repor
     { jobId: JOB_ID, leaseToken: LEASE_TOKEN, now: NOW, kind: 'digest' },
   );
   const request = vi.mocked(accepted.sendInternalNotification).mock
-    .calls[0]?.[0];
+    .calls[0]?.[1];
   expect(request).toMatchObject({
     subject: 'Hashbrown install digest for 2026-09-01: 1 new identity',
     idempotencyKey: 'digest:fixture',
@@ -681,7 +692,7 @@ test('digest pluralizes identities and poisons a missing business date', async (
   );
 
   expect(
-    vi.mocked(two.sendInternalNotification).mock.calls[0]?.[0].subject,
+    vi.mocked(two.sendInternalNotification).mock.calls[0]?.[1].subject,
   ).toBe('Hashbrown install digest for 2026-09-01: 2 new identities');
   await expect(poisoned).rejects.toThrow(DeterministicLifecycleJobError);
 });
@@ -737,16 +748,23 @@ test('loadRecipientDeliveryPolicy reads the delivery environment and allowlist',
   expect(unknownEnvironment).toThrow(/DELIVERY_ENVIRONMENT/u);
 });
 
-test('the internal sender mails only the founder with an internal idempotency key and environment tags', async () => {
+test('the internal sender mails only the founder with an app tag and environment-scoped reserved payload', async () => {
   const send = vi.fn().mockResolvedValue({
     data: { id: 'provider-internal-1' },
     error: null,
   });
   const resend = { emails: { send } } as unknown as LifecycleResendClient;
+  const reserve = vi.fn(async () => null);
+  const complete = vi.fn(async () => undefined);
+  const db = transactionalExecutor();
   const deps = createDefaultLifecycleJobDependencies(BASE_ENVIRONMENT, {
     resend: () => resend,
+    reserveProviderAttempt: reserve,
+    completeProviderAttempt: complete,
   });
   const malformed = createDefaultLifecycleJobDependencies(BASE_ENVIRONMENT, {
+    reserveProviderAttempt: async () => null,
+    completeProviderAttempt: async () => undefined,
     resend: () =>
       ({
         emails: {
@@ -765,9 +783,15 @@ test('the internal sender mails only the founder with an internal idempotency ke
     kind: 'notify' as const,
   };
 
-  const accepted = await deps.sendInternalNotification(request);
-  const unknown = await malformed.sendInternalNotification(request);
-  const refused = offAllowlist.sendInternalNotification(request);
+  const accepted = await deps.sendInternalNotification(db, request);
+  const unknown = await malformed.sendInternalNotification(
+    transactionalExecutor(),
+    request,
+  );
+  const refused = offAllowlist.sendInternalNotification(
+    transactionalExecutor(),
+    request,
+  );
 
   expect(accepted).toEqual({ outcome: 'accepted' });
   expect(send).toHaveBeenCalledWith(
@@ -777,11 +801,31 @@ test('the internal sender mails only the founder with an internal idempotency ke
       subject: 'Hashbrown lifecycle review',
       text: 'Review only',
       tags: [
+        { name: 'app', value: 'hashbrown' },
         { name: 'environment', value: 'preview' },
         { name: 'job_kind', value: 'notify' },
       ],
     },
-    { idempotencyKey: 'internal:notify:fixture' },
+    {
+      idempotencyKey: providerIdempotencyKey(
+        'preview',
+        'internal:notify:fixture',
+      ),
+    },
+  );
+  expect(reserve).toHaveBeenCalledWith(
+    db,
+    providerIdempotencyKey('preview', 'internal:notify:fixture'),
+    send.mock.calls[0]?.[0],
+    expect.any(Date),
+  );
+  expect(reserve.mock.invocationCallOrder[0]).toBeLessThan(
+    send.mock.invocationCallOrder[0] ?? 0,
+  );
+  expect(complete).toHaveBeenCalledWith(
+    db,
+    providerIdempotencyKey('preview', 'internal:notify:fixture'),
+    'provider-internal-1',
   );
   expect(unknown).toEqual({ outcome: 'unknown' });
   await expect(refused).rejects.toThrow(/NON_PRODUCTION_ALLOWLIST/u);
@@ -816,3 +860,105 @@ test('default dependencies bind unsubscribe links and action tokens to the confi
   expect(deps.publicActionOrigin).toBe(ORIGIN);
   expect(() => badOrigin.publicActionOrigin).toThrow(/origin/u);
 });
+
+for (const kind of ['fulfill', 'send_step'] as const) {
+  test(`${kind} retries keep the unsubscribe token stable across clocks`, async () => {
+    const deps = dependencies();
+    const executor = transactionalExecutor();
+    const first =
+      kind === 'fulfill' ? job(kind, { form_kind: 'unstuck' }) : job(kind);
+    const signal = new AbortController().signal;
+
+    await dispatchLifecycleAppOwnedJob(executor, first, { signal }, deps);
+    const initial = vi.mocked(deps.sendRecipient).mock.calls[0]?.[1]
+      .unsubscribeUrl;
+    deps.now = () => new Date(NOW.getTime() + 60000);
+    await dispatchLifecycleAppOwnedJob(executor, first, { signal }, deps);
+    const retried = vi.mocked(deps.sendRecipient).mock.calls[1]?.[1]
+      .unsubscribeUrl;
+
+    if (initial === undefined || retried === undefined)
+      throw new Error('Expected recipient submissions');
+    expect(unsubscribeActionUrlValue(initial)).toBe(
+      unsubscribeActionUrlValue(retried),
+    );
+    expect(deps.createUnsubscribeUrlForJob).toHaveBeenCalledWith(first);
+  });
+}
+
+for (const code of ['payload_conflict', 'idempotency_expired'] as const) {
+  test(`internal messages fail closed on ${code} before contacting Resend`, async () => {
+    const send = vi.fn();
+    const deps = createDefaultLifecycleJobDependencies(BASE_ENVIRONMENT, {
+      resend: () => ({ emails: { send } }) as LifecycleResendClient,
+      reserveProviderAttempt: async () => {
+        throw new ProviderAttemptError(code);
+      },
+      completeProviderAttempt: vi.fn(),
+    });
+
+    const attempt = deps.sendInternalNotification(transactionalExecutor(), {
+      subject: 'Review',
+      text: 'Body',
+      idempotencyKey: 'notify:fixture',
+      kind: 'notify',
+    });
+
+    await expect(attempt).rejects.toThrow(ProviderAttemptError);
+    expect(send).not.toHaveBeenCalled();
+  });
+}
+
+test('internal digest reuses known ledger acceptance without a provider submission', async () => {
+  const send = vi.fn();
+  const complete = vi.fn();
+  const deps = createDefaultLifecycleJobDependencies(BASE_ENVIRONMENT, {
+    resend: () => ({ emails: { send } }) as LifecycleResendClient,
+    reserveProviderAttempt: async () => 'already-accepted',
+    completeProviderAttempt: complete,
+  });
+
+  const result = await deps.sendInternalNotification(transactionalExecutor(), {
+    subject: 'Digest',
+    text: 'Body',
+    idempotencyKey: 'digest:fixture',
+    kind: 'digest',
+  });
+
+  expect(result).toEqual({ outcome: 'accepted' });
+  expect(send).not.toHaveBeenCalled();
+  expect(complete).toHaveBeenCalledWith(
+    expect.anything(),
+    providerIdempotencyKey('preview', 'internal:digest:fixture'),
+    'already-accepted',
+  );
+});
+
+for (const kind of ['notify', 'digest'] as const) {
+  test(`${kind} tokens retain the job creation time while database claims use the current clock`, async () => {
+    const later = new Date(NOW.getTime() + 60000);
+    const subject = kind === 'digest' ? digestJob() : job('notify');
+    const deps = dependencies({ now: () => later });
+
+    await dispatchLifecycleAppOwnedJob(
+      transactionalExecutor(),
+      subject,
+      {},
+      deps,
+    );
+
+    expect(deps.createActionToken).toHaveBeenCalledWith(
+      expect.objectContaining({ issuedAt: subject.createdAt }),
+    );
+    expect(deps.claimInternalNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ now: later }),
+    );
+    if (kind === 'digest') {
+      expect(deps.readInstallDigestContext).toHaveBeenCalledWith(
+        expect.anything(),
+        { since: new Date(subject.createdAt.getTime() - 86400000) },
+      );
+    }
+  });
+}

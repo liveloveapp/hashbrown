@@ -1,3 +1,12 @@
 {
-  "crons": [{ "path": "/_/cron/lifecycle", "schedule": "*/30 * * * *" }]
+  "crons": [
+    {
+      "path": "/_/cron/lifecycle",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/_/cron/inbox-recovery",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

@@ -84,7 +84,7 @@ The checklist ends with these:
    https://resend.com/webhooks for `https://hashbrown.dev/_/webhooks/resend`
    with the events listed in the checklist line, then set
    `RESEND_WEBHOOK_SECRET` on `hashbrown-www` and `hashbrown-lifecycle`.
-2. **Mailbox**: create the `brian@hashbrown.dev` Google Workspace mailbox.
+2. **Mailbox**: use the [Resend Receiving subdomain pilot](2026-10-22-resend-inboxes-pilot.md) at `brian@replies.hashbrown.dev`. Forward to `brian@cacheplane.ai` and leave root-domain MX records unchanged. The operator waived the live canary; record it as waived.
 3. **Preview values**: once the preview lifecycle URL exists, set
    `GROWTH_PUBLIC_ACTION_ORIGIN`, `LIFECYCLE_URL`,
    `RESEND_NON_PRODUCTION_ALLOWLIST`, and `RESEND_NON_PRODUCTION_REDIRECT_TO`

@@ -4,6 +4,10 @@ import type { SqlExecutor } from './database.ts';
 import type { FinalSendAuthorization } from './jobs.ts';
 import type { GrowthJob } from './models.ts';
 import {
+  ProviderAttemptError,
+  providerIdempotencyKey,
+} from './provider-attempts.ts';
+import {
   assertRecipientDeliveryPolicy,
   CAMPAIGN_TEMPLATE_IDS,
   classifyResendProviderError,
@@ -37,6 +41,58 @@ const unsubscribeUrl = createUnsubscribeActionUrl(
   'https://hashbrown.dev',
 );
 const unsubscribeValue = unsubscribeActionUrlValue(unsubscribeUrl);
+
+test('pilot sends keep the verified sender but route replies to the receiving subdomain', async () => {
+  vi.stubEnv('RESEND_INBOX_PILOT_ENABLED', 'true');
+  vi.stubEnv('RESEND_INBOX_PILOT_ADDRESS', 'brian@replies.hashbrown.dev');
+  vi.stubEnv('RESEND_INBOX_PILOT_STARTED_AT', '2026-10-20T00:00:00Z');
+  vi.stubEnv('RESEND_INBOX_PILOT_RECIPIENT_ALLOWLIST', 'ada@example.com');
+  const deps = dependencies(async () => ({
+    data: { id: 'email_1' },
+    error: null,
+  }));
+
+  try {
+    await sendRecipientEmail(executor, input(), policy(), deps);
+
+    expect(deps.resend.emails.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: RECIPIENT_EMAIL_SENDER,
+        replyTo: 'brian@replies.hashbrown.dev',
+      }),
+      expect.anything(),
+    );
+    expect(deps.authorizeLeasedJobForSubmission).toHaveBeenCalledWith(
+      executor,
+      expect.objectContaining({ requireInboxPilot: true }),
+    );
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+test('pilot refuses recipients outside the explicit canary allowlist', async () => {
+  vi.stubEnv('RESEND_INBOX_PILOT_ENABLED', 'true');
+  vi.stubEnv('RESEND_INBOX_PILOT_ADDRESS', 'brian@replies.hashbrown.dev');
+  vi.stubEnv('RESEND_INBOX_PILOT_STARTED_AT', '2026-10-20T00:00:00Z');
+  vi.stubEnv(
+    'RESEND_INBOX_PILOT_RECIPIENT_ALLOWLIST',
+    'someone-else@example.com',
+  );
+  const deps = dependencies(async () => ({
+    data: { id: 'email_1' },
+    error: null,
+  }));
+
+  try {
+    await expect(
+      sendRecipientEmail(executor, input(), policy(), deps),
+    ).rejects.toThrow('canary allowlist');
+    expect(deps.resend.emails.send).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
 
 function policy(
   overrides: Partial<RecipientDeliveryPolicy> = {},
@@ -115,12 +171,16 @@ function dependencies(
     recordProviderAcceptance: vi.fn(async () => undefined),
     markProviderAcceptanceUnknown: vi.fn(async () => undefined),
     markProviderRejection: vi.fn(async () => undefined),
+    reserveProviderAttempt: vi.fn(async () => null),
+    completeProviderAttempt: vi.fn(async () => undefined),
   } as unknown as RecipientSendDependencies & {
     resend: { emails: { send: ReturnType<typeof vi.fn> } };
     authorizeLeasedJobForSubmission: ReturnType<typeof vi.fn>;
     recordProviderAcceptance: ReturnType<typeof vi.fn>;
     markProviderAcceptanceUnknown: ReturnType<typeof vi.fn>;
     markProviderRejection: ReturnType<typeof vi.fn>;
+    reserveProviderAttempt: ReturnType<typeof vi.fn>;
+    completeProviderAttempt: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -240,6 +300,7 @@ test('sendRecipientEmail sends with the unsubscribe headers, tags, and the job i
         'X-Hashbrown-Job-ID': jobId,
       },
       tags: [
+        { name: 'app', value: 'hashbrown' },
         { name: 'environment', value: 'production' },
         { name: 'job_kind', value: 'send_step' },
         { name: 'campaign_version', value: 'v1' },
@@ -247,7 +308,12 @@ test('sendRecipientEmail sends with the unsubscribe headers, tags, and the job i
         { name: 'campaign_template', value: 'day-3' },
       ],
     },
-    { idempotencyKey: 'send_step:contact:1' },
+    {
+      idempotencyKey: providerIdempotencyKey(
+        'production',
+        'send_step:contact:1',
+      ),
+    },
   );
   expect(deps.recordProviderAcceptance).toHaveBeenCalledWith(executor, {
     jobId,
@@ -256,6 +322,117 @@ test('sendRecipientEmail sends with the unsubscribe headers, tags, and the job i
     providerEmailId: 'email_1',
     subjectSha256: replySubjectSha256('Hello'),
   });
+});
+
+test('reserves the exact provider payload before submission and completes its ledger before job acceptance', async () => {
+  const deps = dependencies(async () => ({
+    data: { id: 'email_1' },
+    error: null,
+  }));
+
+  await sendRecipientEmail(executor, input(), policy(), deps);
+
+  const key = providerIdempotencyKey('production', 'send_step:contact:1');
+  expect(deps.reserveProviderAttempt).toHaveBeenCalledWith(
+    executor,
+    key,
+    deps.resend.emails.send.mock.calls[0][0],
+    now,
+  );
+  expect(deps.reserveProviderAttempt.mock.invocationCallOrder[0]).toBeLessThan(
+    deps.resend.emails.send.mock.invocationCallOrder[0],
+  );
+  expect(deps.completeProviderAttempt).toHaveBeenCalledWith(
+    executor,
+    key,
+    'email_1',
+  );
+  expect(deps.completeProviderAttempt.mock.invocationCallOrder[0]).toBeLessThan(
+    deps.recordProviderAcceptance.mock.invocationCallOrder[0],
+  );
+});
+
+for (const code of ['payload_conflict', 'idempotency_expired'] as const) {
+  test(`refuses provider submission when the attempt ledger reports ${code}`, async () => {
+    const deps = dependencies(async () => ({
+      data: { id: 'email_1' },
+      error: null,
+    }));
+    deps.reserveProviderAttempt.mockRejectedValue(
+      new ProviderAttemptError(code),
+    );
+
+    const attempt = sendRecipientEmail(executor, input(), policy(), deps);
+
+    await expect(attempt).rejects.toThrow(ProviderAttemptError);
+    expect(deps.resend.emails.send).not.toHaveBeenCalled();
+    expect(deps.markProviderAcceptanceUnknown).not.toHaveBeenCalled();
+  });
+}
+
+test('known ledger acceptance records the job without another provider submission', async () => {
+  const deps = dependencies(async () => ({
+    data: { id: 'email_1' },
+    error: null,
+  }));
+  deps.reserveProviderAttempt.mockResolvedValue('email_existing');
+
+  const result = await sendRecipientEmail(executor, input(), policy(), deps);
+
+  expect(result).toEqual({ accepted: true, providerEmailId: 'email_existing' });
+  expect(deps.resend.emails.send).not.toHaveBeenCalled();
+  expect(deps.recordProviderAcceptance).toHaveBeenCalledWith(
+    executor,
+    expect.objectContaining({ providerEmailId: 'email_existing' }),
+  );
+});
+
+test('checks the send window again after reserving the provider attempt', async () => {
+  let inWindow = true;
+  const deps = {
+    ...dependencies(async () => ({ data: { id: 'email_1' }, error: null })),
+    isSendWindow: () => inWindow,
+  };
+  deps.reserveProviderAttempt.mockImplementation(async () => {
+    inWindow = false;
+    return null;
+  });
+
+  const result = await sendRecipientEmail(executor, input(), policy(), deps);
+
+  expect(result).toEqual({ accepted: false, reason: 'outside_send_window' });
+  expect(deps.resend.emails.send).not.toHaveBeenCalled();
+});
+
+test('explicit all-recipient pilot opt-in bypasses canary gates while retaining inbox safety', async () => {
+  vi.stubEnv('RESEND_INBOX_PILOT_ENABLED', 'true');
+  vi.stubEnv('RESEND_INBOX_PILOT_ADDRESS', 'brian@replies.hashbrown.dev');
+  vi.stubEnv('RESEND_INBOX_PILOT_STARTED_AT', '2026-10-20T00:00:00Z');
+  vi.stubEnv(
+    'RESEND_INBOX_PILOT_RECIPIENT_ALLOWLIST',
+    'someone-else@example.com',
+  );
+  vi.stubEnv('RESEND_INBOX_PILOT_ALLOW_ALL_RECIPIENTS', 'true');
+  const deps = dependencies(async () => ({
+    data: { id: 'email_1' },
+    error: null,
+  }));
+
+  try {
+    const result = await sendRecipientEmail(executor, input(), policy(), deps);
+
+    expect(result.accepted).toBe(true);
+    const authorizationInput =
+      deps.authorizeLeasedJobForSubmission.mock.calls[0][1];
+    expect(authorizationInput.requireInboxPilot).toBe(true);
+    expect(authorizationInput.canaryRecipientAllowlist).toBeUndefined();
+    expect(deps.resend.emails.send).toHaveBeenCalledWith(
+      expect.objectContaining({ replyTo: 'brian@replies.hashbrown.dev' }),
+      expect.anything(),
+    );
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });
 
 test('sendRecipientEmail rejects an HTML part that drops the unsubscribe anchor', async () => {
