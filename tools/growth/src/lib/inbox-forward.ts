@@ -1,7 +1,9 @@
 import {
+  INBOX_PILOT_ADDRESS,
   inboxProviderId,
   type InboxReceivedEmail,
   inboxSenderAddress,
+  isInboxRecipient,
 } from './inbox-replies.ts';
 import {
   completeProviderAttempt,
@@ -85,7 +87,7 @@ export async function forwardInboxReceipt(
       [id],
     );
     const receipt = result.rows[0];
-    if (!receipt || receipt.recipient !== 'brian@replies.hashbrown.dev')
+    if (!receipt || receipt.recipient !== INBOX_PILOT_ADDRESS)
       throw new Error('Unknown forwarding receipt');
     return receipt;
   };
@@ -120,7 +122,7 @@ export async function forwardInboxReceipt(
   if (
     email.id !== id ||
     !Array.isArray(email.to) ||
-    !email.to.some((to) => to.toLowerCase() === receipt.recipient) ||
+    !email.to.some(isInboxRecipient) ||
     !email.raw?.download_url
   )
     throw new Error('Forward source mismatch or raw unavailable');
