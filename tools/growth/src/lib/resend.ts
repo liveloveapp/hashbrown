@@ -13,6 +13,11 @@ import {
 } from './tokens.ts';
 import { normalizeRecipientEmail } from './crypto.ts';
 import { assertPlainHtml } from './email-html.ts';
+import {
+  bindProviderMessageId,
+  ProviderMessageIdBindingError,
+  replySubjectSha256,
+} from './replies.ts';
 
 /** The only sender recipient mail may use; replies go back to it as well. */
 export const RECIPIENT_EMAIL_SENDER =
@@ -518,6 +523,208 @@ export async function sendRecipientEmail(
     leaseToken,
     acceptedAt,
     providerEmailId,
+    subjectSha256: replySubjectSha256(subject),
   });
   return { accepted: true, providerEmailId };
+}
+
+/** How many accepted sends one reconciliation pass looks up. */
+export const RESEND_MESSAGE_ID_LOOKUP_BATCH = 5;
+const RESEND_LOOKUP_TIMEOUT_MS = 5_000;
+const RESEND_LOOKUP_MAX_BYTES = 128 * 1_024;
+const DELIVERY_ENVIRONMENTS: readonly string[] = [
+  'production',
+  'preview',
+  'test',
+];
+
+/**
+ * Collaborators of {@link reconcilePendingResendMessageIds}. `env` supplies
+ * `RESEND_API_KEY`, `DELIVERY_ENVIRONMENT` and `GROWTH_DATABASE_ENVIRONMENT`;
+ * `bindProviderMessageId` is injectable for tests.
+ */
+export interface ResendMessageIdReconciliationDependencies {
+  fetch: typeof globalThis.fetch;
+  env: Readonly<Record<string, string | undefined>>;
+  bindProviderMessageId?: typeof bindProviderMessageId;
+}
+
+/** What one reconciliation pass did: looked up, bound, and left for a later retry. */
+export interface ResendMessageIdReconciliationResult {
+  claimed: number;
+  bound: number;
+  deferred: number;
+}
+
+async function boundedProviderResponse(
+  response: Response,
+): Promise<Record<string, unknown>> {
+  if (!response.ok || !response.body) {
+    throw new Error('Provider lookup unavailable');
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > RESEND_LOOKUP_MAX_BYTES) {
+        throw new Error('Provider lookup exceeds limit');
+      }
+      chunks.push(value);
+    }
+  } finally {
+    await reader.cancel();
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const value: unknown = JSON.parse(new TextDecoder().decode(bytes));
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Invalid provider lookup');
+  }
+  return value as Record<string, unknown>;
+}
+
+function environmentTags(tags: unknown): unknown[] {
+  if (Array.isArray(tags)) {
+    return tags
+      .filter(
+        (tag): tag is { name: unknown; value: unknown } =>
+          tag !== null &&
+          typeof tag === 'object' &&
+          (tag as { name?: unknown }).name === 'environment',
+      )
+      .map((tag) => tag.value);
+  }
+  if (tags && typeof tags === 'object') {
+    return [(tags as Record<string, unknown>)['environment']];
+  }
+  return [];
+}
+
+/**
+ * Binds the RFC Message-ID of accepted sends that do not have one yet, so a
+ * reply's In-Reply-To can be matched and the next step can lease. Each pass
+ * durably reserves at most {@link RESEND_MESSAGE_ID_LOOKUP_BATCH} completed
+ * `fulfill`/`send_step` jobs of live contacts (`for update skip locked`),
+ * pushing each one's next lookup out by `min(60, 2^min(6, attempts))`
+ * minutes before any network I/O, then reads
+ * `GET https://api.resend.com/emails/:id` with a 5 s timeout and a 128 KiB
+ * response cap. A response for another id, without a Message-ID, or tagged
+ * with another environment is ignored and retried later; binding conflicts
+ * are deferred, and database errors propagate. This path only reads from
+ * Resend and never sends.
+ *
+ * Without `RESEND_API_KEY`, `DELIVERY_ENVIRONMENT` and
+ * `GROWTH_DATABASE_ENVIRONMENT` it does nothing, since the final send gate
+ * still waits for every binding.
+ *
+ * @throws When the environments are unregistered or differ, or a database
+ *   or abort error occurs.
+ */
+export async function reconcilePendingResendMessageIds(
+  executor: SqlExecutor,
+  input: { now: Date; signal: AbortSignal },
+  dependencies: ResendMessageIdReconciliationDependencies = {
+    fetch: globalThis.fetch,
+    env: process.env,
+  },
+): Promise<ResendMessageIdReconciliationResult> {
+  input.signal.throwIfAborted();
+  const apiKey = dependencies.env['RESEND_API_KEY']?.trim() ?? '';
+  const environment = dependencies.env['DELIVERY_ENVIRONMENT']?.trim() ?? '';
+  const databaseEnvironment =
+    dependencies.env['GROWTH_DATABASE_ENVIRONMENT']?.trim() ?? '';
+  if (!apiKey || !environment || !databaseEnvironment) {
+    return { claimed: 0, bound: 0, deferred: 0 };
+  }
+  if (
+    !DELIVERY_ENVIRONMENTS.includes(environment) ||
+    environment !== databaseEnvironment ||
+    !(input.now instanceof Date) ||
+    Number.isNaN(input.now.getTime())
+  ) {
+    throw new Error(
+      'Provider lookup requires matching environments and credentials',
+    );
+  }
+  const bind = dependencies.bindProviderMessageId ?? bindProviderMessageId;
+  // Reserve retries atomically before network I/O, including process crashes.
+  // A missing ID never reopens a completed send or changes its idempotency key.
+  const claimed = await executor.execute<{ provider_email_id: string }>(
+    `/* growth:claim-provider-message-lookups */
+     with due as (
+       select job.id from growth_jobs job
+       join growth_contacts contact on contact.id = job.contact_id
+       where job.kind in ('fulfill', 'send_step') and job.status = 'completed'
+         and job.provider_email_id is not null and job.rfc_message_id is null
+         and contact.deleted_at is null
+         and coalesce((job.payload->>'message_id_lookup_after')::timestamptz, job.updated_at) <= $1
+       order by coalesce((job.payload->>'message_id_lookup_after')::timestamptz, job.updated_at), job.id
+       limit ${RESEND_MESSAGE_ID_LOOKUP_BATCH} for update of job skip locked
+     )
+     update growth_jobs job set payload = job.payload || jsonb_build_object(
+       'message_id_lookup_attempts', least(16, coalesce((job.payload->>'message_id_lookup_attempts')::int, 0) + 1),
+       'message_id_lookup_after', $1::timestamptz + make_interval(mins => least(60, power(2,
+         least(6, coalesce((job.payload->>'message_id_lookup_attempts')::int, 0) + 1))::int))
+     ) from due where job.id = due.id returning job.provider_email_id`,
+    [input.now],
+  );
+  let bound = 0;
+  for (const row of claimed.rows) {
+    input.signal.throwIfAborted();
+    let binding: { providerEmailId: string; rfcMessageId: string };
+    try {
+      const providerEmailId = opaqueIdentifier(
+        'providerEmailId',
+        row.provider_email_id,
+        256,
+      );
+      const response = await dependencies.fetch(
+        `https://api.resend.com/emails/${encodeURIComponent(providerEmailId)}`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${apiKey}` },
+          redirect: 'error',
+          signal: AbortSignal.any([
+            input.signal,
+            AbortSignal.timeout(RESEND_LOOKUP_TIMEOUT_MS),
+          ]),
+        },
+      );
+      const data = await boundedProviderResponse(response);
+      const environments = environmentTags(data['tags']);
+      if (
+        data['id'] !== providerEmailId ||
+        environments.length !== 1 ||
+        environments[0] !== environment ||
+        typeof data['message_id'] !== 'string'
+      ) {
+        continue;
+      }
+      binding = { providerEmailId, rfcMessageId: data['message_id'] };
+    } catch {
+      input.signal.throwIfAborted();
+      // The durable next-at reservation survives provider errors and timeouts.
+      continue;
+    }
+    try {
+      if ((await bind(executor, binding)) === 'bound') bound += 1;
+    } catch (error) {
+      input.signal.throwIfAborted();
+      // Malformed or conflicting identities stay unbound; database errors surface.
+      if (!(error instanceof ProviderMessageIdBindingError)) throw error;
+    }
+  }
+  return {
+    claimed: claimed.rows.length,
+    bound,
+    deferred: claimed.rows.length - bound,
+  };
 }

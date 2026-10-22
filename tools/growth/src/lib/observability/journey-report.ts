@@ -86,6 +86,12 @@ export interface FunnelDay {
   stalled_after_hello_world: number;
 }
 
+/** Lifecycle approvals in the window: hello-path approvals and digested identities. */
+export interface LifecycleApprovalCounts {
+  approvedByHello: number;
+  digested: number;
+}
+
 /** What {@link readGrowthFunnel} returns. */
 export interface GrowthFunnelReport {
   from: string;
@@ -104,6 +110,7 @@ export interface GrowthFunnelReport {
     rows: PackageInstallCounts[];
   };
   daily: FunnelDay[];
+  lifecycle: { unit: string; window: string } & LifecycleApprovalCounts;
   unavailable: string[];
 }
 
@@ -114,8 +121,10 @@ export interface GrowthFunnelReport {
  * token-bearing (`@hashbrownai/core`) non-CI installs whose `installed_day`
  * falls in it, `installedByPackage` counts every package's non-CI installs by
  * the same day, and `daily` is the daily view's rows for days in it; a UTC day
- * falls in the window when its midnight does. Activation links, forms, and the
- * campaign cohort are not reported yet.
+ * falls in the window when its midnight does. `lifecycle` counts runtime
+ * observations approved by the install-runtime (hello) path by evaluation
+ * time and identities reported in an install digest by report time. Forms and
+ * the campaign cohort are not reported yet.
  *
  * @param db - The growth database executor.
  * @param input - The window `[from, to)`; `to` after `from`, at most 31 days.
@@ -187,6 +196,15 @@ export async function readGrowthFunnel(
     from growth_observation_funnel_daily_v1 where ${dayInWindow('day')} order by day`,
     parameters,
   );
+  const lifecycle = await db.execute<{
+    approved_by_hello: number | string;
+    digested: number | string;
+  }>(
+    `/* growth:observation-read-lifecycle-approvals */ select
+    (select count(*)::int from growth_install_runtime_links where outcome='approved' and evaluated_at >= $1 and evaluated_at < $2) as approved_by_hello,
+    (select count(*)::int from growth_install_digest_reports where reported_at >= $1 and reported_at < $2) as digested`,
+    parameters,
+  );
   const dayWindow = 'UTC days whose midnight is in [from,to)';
   return {
     from: input.from.toISOString(),
@@ -216,11 +234,16 @@ export async function readGrowthFunnel(
       rows: byPackage.rows,
     },
     daily: daily.rows,
+    lifecycle: {
+      unit: 'runtime observations approved by the hello path, and identities reported in an install digest',
+      window: 'evaluated_at and reported_at [from,to)',
+      approvedByHello: Number(lifecycle.rows[0]?.approved_by_hello ?? 0),
+      digested: Number(lifecycle.rows[0]?.digested ?? 0),
+    },
     unavailable: [
       'Anonymous website-to-install attribution is not persisted.',
       'Ingress rejection details require service logs.',
       'Provider outcomes not yet persisted are unavailable.',
-      'Install-to-runtime activation links are not reported yet.',
       'Form submissions are not reported yet.',
       'The linked contact campaign cohort is not reported yet.',
     ],

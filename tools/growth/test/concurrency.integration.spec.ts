@@ -103,8 +103,9 @@ test('two workers lease each job once and a stale lease cannot complete', async 
 
 test('a stop racing a lease and authorization on two connections never loses the job', async () => {
   for (let round = 0; round < 3; round += 1) {
-    const approvedAt = new Date(Date.UTC(1997, 0, 1 + round * 2));
-    const now = new Date(approvedAt.getTime() + 24 * 60 * 60 * 1000);
+    // Monday to Wednesday, leased the next weekday at 07:30 Pacific (PST).
+    const approvedAt = new Date(Date.UTC(1997, 0, 6 + round));
+    const now = new Date(Date.UTC(1997, 0, 7 + round, 15, 30));
     const contact = await createEnrolledContact(
       stopExecutor,
       createdContactIds,

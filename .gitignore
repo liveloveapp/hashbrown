@@ -93,3 +93,7 @@ next-env.d.ts
 
 # Growth provisioning output (private env file)
 tools/growth/.provision/
+
+# Lifecycle service local output
+tools/lifecycle/.b4/
+tools/lifecycle/.vercel/

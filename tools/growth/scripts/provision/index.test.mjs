@@ -630,3 +630,18 @@ test('a non-postgres readback is a manual step, writes no file, and stays last',
   assert.match(lines[index], /\smanual\s/);
   assert.ok(!lines.join('\n').includes('not-a-database-url-secret'));
 });
+
+test('CAMPAIGN_ENROLLMENT_START_AT stays unset and is a manual checklist step', async () => {
+  const outDir = mkdtempSync(join(tmpdir(), 'growth-provision-'));
+
+  const { checklist } = await runWith(vendorFixtures(), outDir);
+
+  const env = parseEnvFile(readFileSync(join(outDir, 'growth.env'), 'utf8'));
+  assert.ok(!('CAMPAIGN_ENROLLMENT_START_AT' in env));
+  const line = checklist
+    .lines()
+    .find((l) => l.includes('CAMPAIGN_ENROLLMENT_START_AT'));
+  assert.ok(line);
+  assert.match(line, /\smanual\s/);
+  assert.match(line, /set when enabling enrollment; immutable/);
+});
