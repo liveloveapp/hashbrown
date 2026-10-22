@@ -91,7 +91,10 @@ Path: `/unstuck` (dynamic page) posts to `POST /_/forms/unstuck` on www. One
 transaction writes the contact, the consent record
 (`form:<id>:accepted`, carrying the disclosure text and its version) and, for
 an unsuppressed address, `form:<id>:accepted:outreach-approved`, then enqueues
-`fulfill` (acknowledgement) and `notify` (founder note, includes the message).
+`fulfill` (acknowledgement, at most one per contact per UTC day under
+`form:contact:<contact_id>:fulfill:<yyyy-mm-dd>`, carrying that day's first
+submission id) and `notify` (founder note per submission, includes the
+message).
 After commit and close, `nudgeLifecycle` asks the service for a tick; the tick
 materializes enrollment with reason `unstuck_form` and its three `send_step`s.
 A prior unsubscribe still gets `fulfill` and `notify` but no approval; a
@@ -102,15 +105,19 @@ answer.
 off the route answers 503 before reading the body and `/unstuck` renders the
 fallback address (`brian@liveloveapp.com`, the `UNSTUCK_FALLBACK_ADDRESS`
 constant in `www/src/lib/growth/form-route.ts`, temporary until
-`brian@hashbrown.dev` exists) with no form. The switch also needs
-`LIFECYCLE_CRON_ENABLED=true` on www for the nudge. With the nudge off, accepted
-submissions still land and the cron picks the jobs up on its schedule, so
-replies are slower, not lost.
+`brian@hashbrown.dev` exists) with no form. The nudge and the cron both need
+`LIFECYCLE_CRON_ENABLED=true` on www: with it off, neither calls the service,
+and accepted submissions wait in `growth_jobs` until it is on. They are delayed,
+not lost.
 
-Limits: 5 submissions per hour per address and 20 per hour per client IP
-(`growth_collection_budgets`, bucket keys prefixed `form:`), 429 with
-`Retry-After`. A limiter fault fails open. The honeypot field and an abuse
-score of 80 or more answer a silent 200 with no jobs. A stale `policy_version`
+Limits: 5 submissions per hour and 10 per UTC day per address, and 20 per
+hour per client IP (`growth_collection_budgets`, bucket keys `form:email:`,
+`form:email-day:` and `form:ip:`), 429 with `Retry-After` to the end of the
+exhausted window. A limiter fault fails open. The honeypot field and an abuse
+score of 80 or more answer a silent 200 with no jobs and charge only the IP
+budget, so spam cannot spend a real visitor's address budget. Setup, accept
+and close failures log `[unstuck-form-failed]` with the stage and the error
+name only. A stale `policy_version`
 answers 409 with the current version. Reusing a `submission_id` with the same
 body returns the original result; with a changed body it answers a retryable
 503 (documented behaviour).
@@ -390,7 +397,8 @@ tick's result and the alerts after each one before the next.
 7. `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED`
 8. `GROWTH_UNSTUCK_FORM_ENABLED` (on www). It goes on after `DELIVERY_ENABLED`
    and campaign enrollment so the first submission is acknowledged and
-   enrolled, and it needs `LIFECYCLE_CRON_ENABLED` (step 5) for the nudge.
+   enrolled, and it needs `LIFECYCLE_CRON_ENABLED` (step 5): the nudge and
+   the cron both need it.
 
 ## Follow-ups
 
@@ -403,3 +411,12 @@ tick's result and the alerts after each one before the next.
 - Before PR 7, a persistent non-deterministic handler error must stop blocking
   the batch: catch per job, defer with backoff, and quarantine after N
   attempts.
+- Before PR 7, a malformed `GROWTH_PUBLIC_ACTION_ORIGIN` fails every tick once
+  a `fulfill` job exists, even with delivery off, because the unsubscribe URL
+  is built before delivery is checked. Validate the origin when configuration
+  loads and defer the job, rather than throw mid-tick. Add "the origin is a
+  bare HTTPS origin" to the enable checklist.
+- A permanent Get unstuck identity conflict (a reused `submission_id` with a
+  changed body, or jobs owned by another contact) answers a retryable 503,
+  though a retry can never succeed. The browser cannot reach it; for API
+  clients, map it to 409 or 422 without `retryable`.

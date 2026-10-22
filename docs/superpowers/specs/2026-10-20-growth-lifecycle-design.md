@@ -654,10 +654,11 @@ Every switch defaults off and accepts only the exact strings `true` or `false`:
    announcements. Preview dogfood against a
    controlled recipient with `DELIVERY_ENABLED=false`, then `true` with the
    non-production allowlist.
-6. **Get unstuck form.** Page, route, acknowledgement, enrollment, links from
-   docs, footer, READMEs, and the console announcement, all behind
-   `GROWTH_UNSTUCK_FORM_ENABLED` (off) with the temporary fallback address
-   `brian@liveloveapp.com`.
+6. **Get unstuck form.** Page, route, acknowledgement and enrollment, with
+   the page and route behind `GROWTH_UNSTUCK_FORM_ENABLED` (off); the docs
+   menu, footer, README links, site pill and console announcement are live
+   and land on the fallback address (`brian@liveloveapp.com`) until PR 7
+   turns the form on.
 7. **Enable.** Production switches on in the order observation processing,
    delivery, campaign enrollment, campaign, cron, digest, install-runtime hello,
    then the Get unstuck form switch.
