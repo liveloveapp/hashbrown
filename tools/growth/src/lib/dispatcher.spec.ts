@@ -72,7 +72,7 @@ test('dispatchGrowthLeasedJob throws for an unleased job and an unknown kind', a
   expect(handler).not.toHaveBeenCalled();
 });
 
-test('dispatchGrowthLeasedJob pauses send_step and reply_reconcile while mailbox recovery is open', async () => {
+test('dispatchGrowthLeasedJob retired Google recovery pauses only legacy reconciliation, never Resend campaign dispatch', async () => {
   const { executor, calls } = pauseExecutor(true);
   const handler = vi.fn(async () => 'completed' as const);
   const appHandlers = { send_step: handler, fulfill: handler };
@@ -92,13 +92,12 @@ test('dispatchGrowthLeasedJob pauses send_step and reply_reconcile while mailbox
   );
 
   expect([sendStep, reconcile, fulfill]).toEqual([
-    'recovery_paused',
+    'completed',
     'recovery_paused',
     'completed',
   ]);
-  expect(handler).toHaveBeenCalledOnce();
+  expect(handler).toHaveBeenCalledTimes(2);
   expect(calls.map(({ marker }) => marker)).toEqual([
-    'read-google-mailbox-recovery-pause',
     'read-google-mailbox-recovery-pause',
   ]);
 });

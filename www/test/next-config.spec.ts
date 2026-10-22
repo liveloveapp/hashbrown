@@ -50,7 +50,6 @@ test('rewrites do not match /_/chat, /_/cron, /_/growth, /_/unsubscribe, /_/webh
     '/_/search-index',
     '/_/growth/collect/v1/website',
     '/_/growth/approve-install',
-    '/_/growth/replies/google',
     '/_/growth/stop',
     '/_/cron/lifecycle',
     '/_/unsubscribe',

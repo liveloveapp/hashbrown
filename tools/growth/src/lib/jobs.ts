@@ -10,6 +10,7 @@ import {
   FULFILLMENT_EPOCH_FATAL_STOP_REASONS,
 } from './contacts.ts';
 import { normalizeEmail } from './crypto.ts';
+import { inboxTransactionGuard, loadInboxPilot } from './inbox-replies.ts';
 import type {
   GrowthCampaignEnrollmentReason,
   GrowthJob,
@@ -78,6 +79,9 @@ export type FinalSendAuthorization =
         | 'contact_unapproved'
         | 'campaign_disabled'
         | 'delivery_disabled'
+        | 'mailbox_recovery_required'
+        | 'reply_binding_pending'
+        | 'pilot_recipient_not_allowlisted'
         | 'outside_send_window';
       job: GrowthJob;
     };
@@ -93,6 +97,8 @@ interface SendContactRow extends Record<string, unknown> {
   fulfillment_deletion_blocked?: boolean;
   campaign_approval_valid?: boolean;
   campaign_enrollment_valid?: boolean;
+  mailbox_recovery_required?: boolean;
+  reply_binding_pending?: boolean;
 }
 
 interface FinalSendAuthorizationRow extends Record<string, unknown> {
@@ -507,6 +513,8 @@ export interface LeaseDueJobsInput {
    * so both must agree.
    */
   isSendWindow?: (now: Date) => boolean;
+  /** Require initialized reply collection before leasing a campaign step. */
+  requireInboxPilot?: boolean;
 }
 
 /**
@@ -560,7 +568,8 @@ export async function countUnboundProviderMessages(
  * `send_step` also waits while another `fulfill` or `send_step` for the same
  * contact is completed with a provider id but no RFC Message-ID yet, and
  * neither `send_step` nor `reply_reconcile` is leased while a
- * `mailbox.recovery_required` has no matching `mailbox.recovery_completed`.
+ * Resend reply coverage is unhealthy; legacy reconciliation alone retains the
+ * historical mailbox recovery fence.
  *
  * @throws When no kinds are given or `batchSize` is outside 1..100.
  */
@@ -640,22 +649,33 @@ export async function leaseDueJobs(
              and unbound.kind in ('fulfill', 'send_step') and unbound.status = 'completed'
              and unbound.provider_email_id is not null and unbound.rfc_message_id is null
          ))
-         -- While the mailbox poller may have missed replies, nothing that
-         -- depends on reply evidence runs.
-         and (
-           j.kind not in ('send_step', 'reply_reconcile')
-           or not exists (
-             select 1
-             from growth_activity recovery_required
-             where recovery_required.kind = 'mailbox.recovery_required'
-               and not exists (
-                 select 1
-                 from growth_activity recovery_completed
-                 where recovery_completed.kind = 'mailbox.recovery_completed'
-                   and recovery_completed.data->>'recovery_id' = recovery_required.data->>'recovery_id'
-               )
+
+         -- Retain recovery fencing only for already-admitted legacy evidence.
+         and (j.kind <> 'reply_reconcile' or not exists (
+           select 1 from growth_activity recovery_required
+           where recovery_required.kind = 'mailbox.recovery_required'
+             and not exists (select 1 from growth_activity recovery_completed
+               where recovery_completed.kind = 'mailbox.recovery_completed'
+                 and recovery_completed.data->>'recovery_id' = recovery_required.data->>'recovery_id')
+         ))
+         and (j.kind <> 'send_step' or not $7::boolean or exists (
+           select 1 from growth_reply_mailboxes where enabled
+         ))
+         and (j.kind <> 'send_step' or not exists (
+           select 1 from growth_reply_mailboxes m where m.enabled and (
+             m.recovery_id is not null or m.healthy_through is null
+             or m.healthy_through < $2::timestamptz - interval '10 minutes'
+             or exists (select 1 from growth_reply_receipts r where r.recipient = m.address
+               and r.status = 'pending' and (r.reference_ids is null or r.contact_id = j.contact_id))
+             or exists (select 1 from growth_jobs sent where sent.contact_id = j.contact_id
+               and sent.kind in ('fulfill','send_step')
+               and (sent.created_at >= m.started_at or exists (
+                 select 1 from growth_activity accepted where accepted.event_key = 'job:' || sent.id::text || ':provider-accepted'
+                   and accepted.occurred_at >= m.started_at))
+               and sent.provider_email_id is not null and sent.rfc_message_id is null)
            )
-         )
+         ))
+
          and j.available_at <= $2
          and (
            j.status = 'pending'
@@ -725,6 +745,7 @@ export async function leaseDueJobs(
       leaseUntil,
       input.campaignEnabled,
       (input.isSendWindow ?? (() => true))(now),
+      input.requireInboxPilot === true || loadInboxPilot().enabled,
     ],
   );
   return result.rows.map(toJob);
@@ -750,6 +771,10 @@ export async function authorizeLeasedJobForSubmission(
     currentTime?: () => Date;
     /** Whether `now` is inside the campaign send window; defaults to always. */
     isSendWindow?: (now: Date) => boolean;
+    /** Require initialized pilot collection even before its first webhook. */
+    requireInboxPilot?: boolean;
+    /** Operator-owned canary recipients; checked before recording authorization. */
+    canaryRecipientAllowlist?: readonly string[];
   },
 ): Promise<FinalSendAuthorization> {
   const jobId = requiredText('jobId', input.jobId);
@@ -764,6 +789,7 @@ export async function authorizeLeasedJobForSubmission(
 
   return executor.transaction(async (transaction) => {
     await privacyLock(transaction);
+    await inboxTransactionGuard(transaction);
     const contactResult = await transaction.execute<SendContactRow>(
       `/* growth:lock-contact-for-send */
        select c.id,
@@ -772,6 +798,26 @@ export async function authorizeLeasedJobForSubmission(
               c.deleted_at,
               stop.kind as latest_hard_stop_kind,
               stop.occurred_at as latest_hard_stop_at,
+              (($5::boolean and not exists (select 1 from growth_reply_mailboxes where enabled)) or exists (
+                select 1 from growth_reply_mailboxes m where m.enabled and (
+                  m.recovery_id is not null or m.healthy_through is null
+                  or m.healthy_through < $4::timestamptz - interval '10 minutes'
+                  or exists (select 1 from growth_reply_receipts r where r.recipient = m.address
+                    and r.status = 'pending' and r.reference_ids is null)
+                )
+              )) as mailbox_recovery_required,
+              exists (
+                select 1 from growth_reply_mailboxes m where m.enabled and (
+                  exists (select 1 from growth_reply_receipts r where r.recipient = m.address
+                    and r.status = 'pending' and r.contact_id = c.id)
+                  or exists (select 1 from growth_jobs sent where sent.contact_id = c.id
+                    and sent.kind in ('fulfill','send_step')
+                    and (sent.created_at >= m.started_at or exists (
+                      select 1 from growth_activity accepted where accepted.event_key = 'job:' || sent.id::text || ':provider-accepted'
+                        and accepted.occurred_at >= m.started_at))
+                    and sent.provider_email_id is not null and sent.rfc_message_id is null)
+                )
+              ) as reply_binding_pending,
               exists (
                 select 1
                 from growth_activity fatal_stop
@@ -831,7 +877,13 @@ export async function authorizeLeasedJobForSubmission(
        ) stop on true
        where target.id = $1
        for update of c`,
-      [jobId, CONTACT_HARD_STOP_REASONS, FULFILLMENT_EPOCH_FATAL_STOP_REASONS],
+      [
+        jobId,
+        CONTACT_HARD_STOP_REASONS,
+        FULFILLMENT_EPOCH_FATAL_STOP_REASONS,
+        now,
+        input.requireInboxPilot === true || loadInboxPilot().enabled,
+      ],
     );
     const contact = contactResult.rows[0];
     if (!contact) throw new JobLeaseConflictError(jobId);
@@ -854,6 +906,10 @@ export async function authorizeLeasedJobForSubmission(
     if (job.kind === 'send_step' && !input.campaignEnabled) {
       return { authorized: false, reason: 'campaign_disabled', job };
     }
+    if (job.kind === 'send_step' && contact.mailbox_recovery_required === true)
+      return { authorized: false, reason: 'mailbox_recovery_required', job };
+    if (job.kind === 'send_step' && contact.reply_binding_pending === true)
+      return { authorized: false, reason: 'reply_binding_pending', job };
 
     if (contact.deleted_at !== null) {
       return { authorized: false, reason: 'contact_deleted', job };
@@ -921,6 +977,16 @@ export async function authorizeLeasedJobForSubmission(
     }
     if (emailNormalized !== contact.email_normalized) {
       throw new JobLeaseConflictError(jobId);
+    }
+    if (
+      input.canaryRecipientAllowlist &&
+      !input.canaryRecipientAllowlist.includes(emailNormalized)
+    ) {
+      return {
+        authorized: false,
+        reason: 'pilot_recipient_not_allowlisted',
+        job,
+      };
     }
 
     // Lock waits must not carry a pre-window-boundary timestamp into a send.

@@ -51,7 +51,6 @@ tick fails and nothing is sent.
 | `LIFECYCLE_CRON_ENABLED`                | www       | The cron and `nudgeLifecycle` call the service only when exactly `true`                                                                          |
 | `GROWTH_UNSTUCK_FORM_ENABLED`           | www       | Exactly `true` opens `POST /_/forms/unstuck` and the form on `/unstuck`; otherwise the route answers 503 and the page shows the fallback address |
 | `CRON_SECRET`                           | www       | The bearer the scheduler sends to `/_/cron/lifecycle`                                                                                            |
-| `GOOGLE_REPLY_HMAC_SECRET`              | www       | Signs mailbox reply events; the reply route answers 503 when unset                                                                               |
 | `DATABASE_URL`                          | both      | Growth store (Neon integration)                                                                                                                  |
 | `B4_DATABASE_URL`                       | lifecycle | b4run state store (Neon integration)                                                                                                             |
 | `B4_PG_SCHEMA`, `B4_PG_TABLE_PREFIX`    | lifecycle | Optional b4run table placement                                                                                                                   |
@@ -176,8 +175,8 @@ The cron route waits up to 58 seconds for the tick and has `maxDuration` 60.
 
 ## Scheduling the tick
 
-`www/vercel.json` schedules `GET /_/cron/lifecycle` every 30 minutes
-(`*/30 * * * *`). Vercel sends `Authorization: Bearer $CRON_SECRET`, and the
+`www/vercel.json` schedules `GET /_/cron/lifecycle` every ten minutes
+(`*/10 * * * *`). Vercel sends `Authorization: Bearer $CRON_SECRET`, and the
 route answers 503 until `LIFECYCLE_CRON_ENABLED` is `true`, so the schedule is
 harmless while the switch is off.
 
@@ -238,19 +237,23 @@ so that runtime observation is never approved again) and deletes the
 
 ## Replies
 
-The Apps Script poller posts mailbox events to `/_/growth/replies/google`,
-signed with `GOOGLE_REPLY_HMAC_SECRET`. The route answers 503 when the secret is
-unset. A reply stops the contact and cancels pending steps.
+The Gmail/Apps Script intake was retired at the user's request. Hashbrown
+no longer exposes `/_/growth/replies/google` or provisions its HMAC secret.
+Historical Google receipt activity, schema fields and queued reconciliation
+remain readable; the provider Message-ID binding path remains in service.
 
-- The poller must send `subject_sha256` computed exactly as
-  `normalizeReplySubject` does (`tools/growth/src/lib/replies.ts`), byte for
-  byte, or the subject fallback never matches. The message-id path still works
-  once Resend message ids reconcile.
-- The subject fallback has no sender authentication. A forged From with the
-  campaign subject can stop that contact. It fails safe, because a stop only
-  prevents mail.
-- The BCC seed from design section 8.1 is not implemented yet: the sender
-  sends no `bcc`. It arrives with the mailbox and the poller.
+New mail uses Resend Receiving at `brian@replies.hashbrown.dev` through the
+signed `/_/webhooks/resend-inbound` endpoint. Admitted messages are forwarded to
+`brian@cacheplane.ai`, independently of reply classification. Verified replies
+to Hashbrown jobs stop the contact and cancel pending steps. Follow the
+[Resend pilot runbook](2026-10-22-resend-inboxes-pilot.md) for credentials,
+recovery, forwarding and rollout checks. The operator waived the canary gate.
+
+Retiring the poller leaves a deliberate coverage gap: replies to historical
+mail addressed to `brian@hashbrown.dev` are not ingested by the new subdomain
+mailbox. Root-domain MX stays unchanged; retirement does not migrate those
+messages. The user explicitly authorized this retirement and historical reply
+coverage gap. Existing durable stops remain effective.
 
 ## Run it locally
 
@@ -353,12 +356,12 @@ included). Look for these causes:
 | Email keyring coverage (hello)        | An email redaction uses a key version missing from `GROWTH_EMAIL_HMAC_*` (`identity_key_unavailable`), or a deleted contact is not fenced (`redaction_initialization_required`) |
 | Environment mismatch (reconciliation) | `DELIVERY_ENVIRONMENT` and `GROWTH_DATABASE_ENVIRONMENT` differ ("Provider lookup requires matching environments and credentials")                                              |
 
-| Alert                           | What to do                                                                                                                                                                                                                            |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mailbox_recovery_required`     | Mail depending on reply evidence is paused. The reply poller may have missed replies. Sends and reply reconciliation resume once the matching `mailbox.recovery_completed` activity is recorded.                                      |
-| `observation_projection_failed` | Mail is unaffected. Run `process` by hand (intake runbook) and read the error code.                                                                                                                                                   |
-| `action_origin_invalid`         | `GROWTH_PUBLIC_ACTION_ORIGIN` is not a bare HTTPS origin (no path, query, credentials or trailing slash). The tick leases only `reply_reconcile`, so no mail goes out. Fix the variable and redeploy; held jobs run on the next tick. |
-| `message_id_unbound`            | A completed `fulfill` or `send_step` has had no `rfc_message_id` for over 6 hours and its contact is not deleted. Later `send_step`s for that contact wait. Run the query below.                                                      |
+| Alert                           | What to do                                                                                                                                                                                                                             |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mailbox_recovery_required`     | Resend coverage is missing, stale, recovering, or contains unread receipts. Legacy Google recovery state gates only already-admitted historical reconciliation; it cannot pause new Resend campaigns. Follow the Resend pilot runbook. |
+| `observation_projection_failed` | Mail is unaffected. Run `process` by hand (intake runbook) and read the error code.                                                                                                                                                    |
+| `action_origin_invalid`         | `GROWTH_PUBLIC_ACTION_ORIGIN` is not a bare HTTPS origin (no path, query, credentials or trailing slash). The tick leases only `reply_reconcile`, so no mail goes out. Fix the variable and redeploy; held jobs run on the next tick.  |
+| `message_id_unbound`            | A completed `fulfill` or `send_step` has had no `rfc_message_id` for over 6 hours and its contact is not deleted. Later `send_step`s for that contact wait. Run the query below.                                                       |
 
 A stall behind `message_id_unbound`: later `send_step` jobs wait while an earlier sent
 message for the contact has no `rfc_message_id`. Message-id reconciliation
@@ -419,11 +422,9 @@ has a `runtime` block with a `hashbrown.dev/docs` link. The first runtime entry
 
 ## Manual steps still open
 
-- Create the `brian@hashbrown.dev` mailbox and build the Apps Script mailbox
-  poller (not built yet), with `GOOGLE_REPLY_HMAC_SECRET` set on www. Both
-  block production delivery: without them replies bounce and are never
-  detected, so a contact who answers step 1 would still get steps 2 and 3.
-  The BCC seed (design section 8.1) arrives with them.
+- Configure the Resend Receiving pilot mailbox and its inbound webhook secret,
+  complete recovery, and verify forwarding using the Resend pilot runbook.
+  Historical root-domain replies remain outside this replacement's coverage.
 - Set the Resend webhook signing secret (`RESEND_WEBHOOK_SECRET`) on www.
 - Choose and set `CAMPAIGN_ENROLLMENT_START_AT` when enrollment is enabled. It
   cannot be changed once recorded.
@@ -436,16 +437,16 @@ Production switches go on in this order (design section 14, item 7). Check a
 tick's result and the alerts after each one before the next.
 
 1. `GROWTH_OBSERVATION_PROCESSING_ENABLED`
-2. `DELIVERY_ENABLED`. Prerequisite: the `brian@hashbrown.dev` mailbox exists
-   and receives mail, the Apps Script poller is deployed with
-   `GOOGLE_REPLY_HMAC_SECRET`, and one synthetic reply has been seen to stop a
-   test contact. Also: the origin is a bare HTTPS origin
-   (`GROWTH_PUBLIC_ACTION_ORIGIN`, e.g. `https://hashbrown.dev`, with no
-   trailing slash or path). A bad one does not fail the tick; it raises
-   `action_origin_invalid` and holds back every job except `reply_reconcile`.
-   That alert fires on any tick from the first deploy, not only at enable
-   time, so the variable must be a valid bare HTTPS origin from the first
-   deploy (it is already set in production).
+2. `DELIVERY_ENABLED`. Prerequisite: the Resend pilot mailbox is enabled,
+   the inbound webhook is configured, and recovery has established coverage.
+   The operator explicitly waived the canary; historical root-domain reply
+   coverage was retired with the Gmail intake. Also: the origin is a bare
+   HTTPS origin (`GROWTH_PUBLIC_ACTION_ORIGIN`, e.g. `https://hashbrown.dev`,
+   with no trailing slash or path). A bad one does not fail the tick; it
+   raises `action_origin_invalid` and holds back every job except
+   `reply_reconcile`. That alert fires on any tick from the first deploy, not
+   only at enable time, so the variable must be a valid bare HTTPS origin from
+   the first deploy (it is already set in production).
 3. `CAMPAIGN_ENROLLMENT_ENABLED` (with `CAMPAIGN_ENROLLMENT_START_AT`)
 4. `CAMPAIGN_ENABLED`
 5. `LIFECYCLE_CRON_ENABLED` (on www)

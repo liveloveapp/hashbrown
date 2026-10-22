@@ -6,6 +6,7 @@ import {
   type SqlExecutor,
 } from './growth.ts';
 import {
+  createLifecycleDispatcherDependencies,
   dispatchLifecycleJobs,
   handlerErrorBackoffMs,
   LEASED_KINDS,
@@ -22,7 +23,7 @@ const EMAIL_KEYRING = {
   active: { version: 1, secret: 'dispatcher-email-test-secret-material' },
 };
 
-function leasedJob(id: string, kind = 'reply_reconcile'): GrowthJob {
+function leasedJob(id: string, kind = 'fulfill'): GrowthJob {
   return {
     id,
     kind,
@@ -782,7 +783,10 @@ test('a handler error after submission authorization leaves the job leased and n
 
 test('an invalid action origin leases only reply_reconcile, keeps enrollment running and alerts action_origin_invalid', async () => {
   const calls: string[] = [];
-  const job = leasedJob('00000000-0000-4000-8000-000000000001');
+  const job = leasedJob(
+    '00000000-0000-4000-8000-000000000001',
+    'reply_reconcile',
+  );
   const deps = dependencies({
     assertActionOrigin: vi.fn(() => {
       throw new Error(
@@ -902,3 +906,33 @@ test('the unbound alert is raised even when the job-start budget is already spen
   expect(result.operatorAlerts).toEqual(['message_id_unbound']);
   expect(deps.leaseDueJobs).not.toHaveBeenCalled();
 });
+
+test('lifecycle drains admitted historical replies alongside its app jobs', () => {
+  expect(LEASED_KINDS).toEqual([
+    'fulfill',
+    'notify',
+    'send_step',
+    'reply_reconcile',
+    'digest',
+  ]);
+});
+
+for (const paused of [true, false]) {
+  test(`default recovery guard reads Resend mailbox health when paused=${paused}`, async () => {
+    const execute = vi.fn().mockResolvedValue({ rows: [{ paused }] });
+    const deps = createLifecycleDispatcherDependencies({
+      RESEND_INBOX_PILOT_ENABLED: 'true',
+      RESEND_INBOX_PILOT_ADDRESS: 'brian@replies.hashbrown.dev',
+      RESEND_INBOX_PILOT_STARTED_AT: '2026-10-22T00:00:00Z',
+    });
+
+    const result = await deps.isRecoveryPaused({ execute });
+
+    expect(result).toBe(paused);
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining('growth_reply_mailboxes'),
+      expect.anything(),
+    );
+    expect(execute.mock.calls[0]?.[0]).not.toContain('google');
+  });
+}

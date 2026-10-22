@@ -111,24 +111,37 @@ function defaultDependencies(): UnsubscribeRouteDependencies {
 
 async function readPostInput(request: Request): Promise<PostInput | null> {
   const url = new URL(request.url);
-  const contentType = request.headers.get('content-type');
+  const contentType = request.headers.get('content-type') ?? '';
+  const mediaType = contentType.split(';', 1)[0]?.trim().toLowerCase();
   if (
-    contentType?.split(';', 1)[0]?.trim().toLowerCase() !==
-    'application/x-www-form-urlencoded'
+    mediaType !== 'application/x-www-form-urlencoded' &&
+    mediaType !== 'multipart/form-data'
   ) {
     return null;
   }
 
-  let bodyText: string;
+  let formEntries: [string, FormDataEntryValue][];
   try {
     const boundedBody = await readBoundedBody(request, MAX_REQUEST_BODY_LENGTH);
     if (boundedBody === null) return null;
-    bodyText = boundedBody;
+    formEntries =
+      mediaType === 'multipart/form-data'
+        ? [
+            ...(
+              await new Response(boundedBody, {
+                headers: { 'content-type': contentType },
+              }).formData()
+            ).entries(),
+          ]
+        : [...new URLSearchParams(boundedBody).entries()];
   } catch {
     return null;
   }
+  if (formEntries.length !== 1 || typeof formEntries[0]?.[1] !== 'string') {
+    return null;
+  }
+  const formValue = formEntries[0][1];
   const queryEntries = [...url.searchParams.entries()];
-  const formEntries = [...new URLSearchParams(bodyText).entries()];
 
   if (queryEntries.length > 0) {
     const queryToken = queryEntries[0]?.[1].trim() ?? '';
@@ -137,12 +150,12 @@ async function readPostInput(request: Request): Promise<PostInput | null> {
       queryToken.length > 0 &&
       formEntries.length === 1 &&
       formEntries[0]?.[0] === 'List-Unsubscribe' &&
-      formEntries[0]?.[1] === 'One-Click'
+      formValue === 'One-Click'
       ? { token: queryToken }
       : null;
   }
 
-  const bodyToken = formEntries[0]?.[1].trim() ?? '';
+  const bodyToken = formValue.trim();
   return formEntries.length === 1 &&
     formEntries[0]?.[0] === 'token' &&
     bodyToken.length > 0

@@ -28,7 +28,9 @@ test('migrations apply twice against Postgres and the second run applies nothing
     '0002_growth_reporting_views.sql',
     '0003_growth_observability.sql',
     '0004_growth_observability_views.sql',
+    '0005_growth_inbox_replies.sql',
     '0005_growth_lifecycle.sql',
+    '0006_growth_provider_attempts.sql',
   ]);
 
   const tables = await executor.execute<{ table_name: string }>(`
@@ -54,6 +56,9 @@ test('migrations apply twice against Postgres and the second run applies nothing
     'growth_observation_work',
     'growth_observations',
     'growth_projects',
+    'growth_provider_attempts',
+    'growth_reply_mailboxes',
+    'growth_reply_receipts',
     'growth_schema_migrations',
   ]);
 
@@ -87,7 +92,9 @@ test('migrations apply twice against Postgres and the second run applies nothing
     { name: '0002_growth_reporting_views.sql', checksum_length: 64 },
     { name: '0003_growth_observability.sql', checksum_length: 64 },
     { name: '0004_growth_observability_views.sql', checksum_length: 64 },
+    { name: '0005_growth_inbox_replies.sql', checksum_length: 64 },
     { name: '0005_growth_lifecycle.sql', checksum_length: 64 },
+    { name: '0006_growth_provider_attempts.sql', checksum_length: 64 },
   ]);
 });
 
