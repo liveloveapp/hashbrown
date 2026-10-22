@@ -6,6 +6,7 @@ import {
   type TransportOrFactory,
   type UiWrapper,
   ɵmergeOfferedComponents,
+  ɵreportMilestone,
   ɵsetRequestResponseSchema,
 } from '@hashbrownai/core';
 import {
@@ -13,12 +14,14 @@ import {
   ReactElement,
   type SetStateAction,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import { ExposedComponent } from '../expose-component.fn';
+import { HashbrownContext } from '../hashbrown-provider';
 import {
   useStructuredChat,
   type UseStructuredChatResult,
@@ -285,6 +288,19 @@ export const useUiChat = <Tools extends Chat.AnyTool, State = unknown>(
   const lastAssistantMessage = useMemo(() => {
     return uiChatMessages.findLast((message) => message.role === 'assistant');
   }, [uiChatMessages]);
+
+  const collector = useContext(HashbrownContext)?.collector;
+  const renderedComponent = uiChatMessages.some(
+    (message) =>
+      message.role === 'assistant' &&
+      Array.isArray(message.ui) &&
+      message.ui.length > 0,
+  );
+  useEffect(() => {
+    if (renderedComponent && collector) {
+      ɵreportMilestone(collector, 'component.first_rendered');
+    }
+  }, [renderedComponent, collector]);
 
   return {
     ...chat,

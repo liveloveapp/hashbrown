@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import type OpenAI from 'openai';
@@ -440,19 +442,29 @@ test('throws on error events', async () => {
   await expect(result).rejects.toThrow('Too many requests');
 });
 
-test('throws on response.incomplete', async () => {
+test('ends the text at response.incomplete instead of throwing', async () => {
   const input = [
     event({
+      type: 'response.output_text.delta',
+      item_id: 'msg_1',
+      delta: 'Cut',
+    }),
+    event({
       type: 'response.incomplete',
-      response: { incomplete_details: { reason: 'max_output_tokens' } },
+      response: {
+        status: 'incomplete',
+        incomplete_details: { reason: 'max_output_tokens' },
+      },
     }),
   ];
 
-  const result = collectEvents(input);
+  const events = await collectEvents(input);
 
-  await expect(result).rejects.toThrow(
-    'Azure OpenAI response incomplete: max_output_tokens',
-  );
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.TEXT_MESSAGE_START,
+    EventType.TEXT_MESSAGE_CONTENT,
+    EventType.TEXT_MESSAGE_END,
+  ]);
 });
 
 test('stops yielding once aborted', async () => {
@@ -529,4 +541,512 @@ test('emits the finished arguments when a function call streamed no argument del
     { type: EventType.TOOL_CALL_ARGS, toolCallId: 'call_2', delta: '{"b":2}' },
     { type: EventType.TOOL_CALL_END, toolCallId: 'call_2' },
   ]);
+});
+
+function webSearchAdded(id: string): StreamEvent {
+  return event({
+    type: 'response.output_item.added',
+    output_index: 0,
+    item: {
+      type: 'web_search_call',
+      id,
+      status: 'in_progress',
+      action: { type: 'search' },
+    },
+  });
+}
+
+function webSearchDone(
+  id: string,
+  action: Record<string, unknown>,
+  status = 'completed',
+): StreamEvent {
+  return event({
+    type: 'response.output_item.done',
+    output_index: 0,
+    item: { type: 'web_search_call', id, status, action },
+  });
+}
+
+function urlCitation(
+  itemId: string,
+  url: string,
+  title: string,
+  start: number,
+  end: number,
+): StreamEvent {
+  return event({
+    type: 'response.output_text.annotation.added',
+    item_id: itemId,
+    output_index: 1,
+    content_index: 0,
+    annotation_index: 0,
+    annotation: {
+      type: 'url_citation',
+      url,
+      title,
+      start_index: start,
+      end_index: end,
+    },
+  });
+}
+
+function mockClock(...times: number[]): jest.SpiedFunction<typeof Date.now> {
+  const spy = jest.spyOn(Date, 'now');
+  for (const time of times) {
+    spy.mockReturnValueOnce(time);
+  }
+  return spy;
+}
+
+const runningStep = {
+  v: 1,
+  kind: 'provider',
+  builtin: 'web_search',
+  provider: 'azure',
+  status: 'running',
+  label: 'Searching the web',
+  startedAt: 1000,
+};
+
+test('a web_search_call becomes a provider step with queries and sources', async () => {
+  const action = {
+    type: 'search',
+    query: 'hashbrown',
+    queries: ['hashbrown', 'hashbrown ai'],
+    sources: [
+      { type: 'url', url: 'https://hashbrown.dev' },
+      { type: 'url', url: 'https://github.com/liveloveapp/hashbrown' },
+    ],
+  };
+  const input = [
+    webSearchAdded('ws_1'),
+    webSearchDone('ws_1', action),
+    completed,
+  ];
+  const clock = mockClock(1000, 2000);
+
+  const events = await collectEvents(input);
+  clock.mockRestore();
+
+  expect(events).toEqual([
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'ws_1',
+      toolCallName: 'web_search',
+      parentMessageId: messageId,
+      metadata: {
+        azure: { itemId: 'ws_1', itemType: 'web_search_call' },
+        'b4.step': runningStep,
+      },
+    },
+    {
+      type: EventType.TOOL_CALL_ARGS,
+      toolCallId: 'ws_1',
+      delta: JSON.stringify(action),
+    },
+    { type: EventType.TOOL_CALL_END, toolCallId: 'ws_1' },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'ws_1:result',
+      toolCallId: 'ws_1',
+      content: JSON.stringify({ action, status: 'completed' }),
+      metadata: {
+        'b4.step': {
+          v: 1,
+          kind: 'provider',
+          builtin: 'web_search',
+          provider: 'azure',
+          status: 'completed',
+          label: "Searched 'hashbrown' · 2 sources",
+          queries: ['hashbrown', 'hashbrown ai'],
+          sources: [
+            {
+              id: 'ws_1:0',
+              kind: 'url',
+              title: 'https://hashbrown.dev',
+              href: 'https://hashbrown.dev',
+            },
+            {
+              id: 'ws_1:1',
+              kind: 'url',
+              title: 'https://github.com/liveloveapp/hashbrown',
+              href: 'https://github.com/liveloveapp/hashbrown',
+            },
+          ],
+          startedAt: 1000,
+          settledAt: 2000,
+        },
+      },
+    },
+  ]);
+});
+
+test('a failed web_search_call becomes a failed step', async () => {
+  const action = { type: 'search', query: 'hashbrown' };
+  const input = [
+    webSearchAdded('ws_1'),
+    webSearchDone('ws_1', action, 'failed'),
+    completed,
+  ];
+  const clock = mockClock(1000, 2000);
+
+  const events = await collectEvents(input);
+  clock.mockRestore();
+
+  expect(events.at(-1)).toEqual({
+    type: EventType.TOOL_CALL_RESULT,
+    messageId: 'ws_1:result',
+    toolCallId: 'ws_1',
+    content: JSON.stringify({ action, status: 'failed' }),
+    metadata: {
+      'b4.step': {
+        v: 1,
+        kind: 'provider',
+        builtin: 'web_search',
+        provider: 'azure',
+        status: 'failed',
+        label: 'Web search failed',
+        queries: ['hashbrown'],
+        startedAt: 1000,
+        settledAt: 2000,
+        error: { message: 'Web search failed' },
+      },
+    },
+  });
+});
+
+test('url_citation annotations become b4.answer citations pointing at source ids', async () => {
+  const action = {
+    type: 'search',
+    query: 'hashbrown',
+    sources: [
+      { type: 'url', url: 'https://a.example' },
+      { type: 'url', url: 'https://b.example/page' },
+    ],
+  };
+  const input = [
+    webSearchAdded('ws_1'),
+    webSearchDone('ws_1', action),
+    messageAdded('msg_1'),
+    textDelta('msg_1', 'Hashbrown is '),
+    textDelta('msg_1', 'a framework.'),
+    urlCitation(
+      'msg_1',
+      'https://b.example/page?utm_source=openai',
+      'B',
+      13,
+      24,
+    ),
+    urlCitation('msg_1', 'https://a.example', 'A', 0, 9),
+    completed,
+  ];
+  const clock = mockClock(1000, 2000);
+
+  const events = await collectEvents(input);
+  clock.mockRestore();
+
+  expect(events.at(-1)).toEqual({
+    type: EventType.TEXT_MESSAGE_END,
+    messageId,
+    metadata: {
+      'b4.answer': {
+        v: 1,
+        citations: [
+          {
+            sourceId: 'ws_1:1',
+            quote: 'a framework',
+            block: 0,
+            start: 13,
+            end: 24,
+          },
+          {
+            sourceId: 'ws_1:0',
+            quote: 'Hashbrown',
+            block: 0,
+            start: 0,
+            end: 9,
+          },
+        ],
+      },
+    },
+  });
+});
+
+test('a citation matches a source that alone carries utm_source', async () => {
+  const action = {
+    type: 'search',
+    query: 'hashbrown',
+    sources: [
+      { type: 'url', url: 'https://a.example/?utm_source=openai' },
+      { type: 'url', url: 'https://b.example/page?utm_source=openai' },
+    ],
+  };
+  const input = [
+    webSearchAdded('ws_1'),
+    webSearchDone('ws_1', action),
+    messageAdded('msg_1'),
+    textDelta('msg_1', 'Hashbrown is a framework.'),
+    urlCitation('msg_1', 'https://b.example/page', 'B', 13, 24),
+    urlCitation('msg_1', 'https://a.example', 'A', 0, 9),
+    completed,
+  ];
+  const clock = mockClock(1000, 2000);
+
+  const events = await collectEvents(input);
+  clock.mockRestore();
+
+  expect(events.at(-1)).toEqual({
+    type: EventType.TEXT_MESSAGE_END,
+    messageId,
+    metadata: {
+      'b4.answer': {
+        v: 1,
+        citations: [
+          {
+            sourceId: 'ws_1:1',
+            quote: 'a framework',
+            block: 0,
+            start: 13,
+            end: 24,
+          },
+          {
+            sourceId: 'ws_1:0',
+            quote: 'Hashbrown',
+            block: 0,
+            start: 0,
+            end: 9,
+          },
+        ],
+      },
+    },
+  });
+});
+
+test('a url_citation with no matching source adds an answer-level source', async () => {
+  const input = [
+    messageAdded('msg_1'),
+    textDelta('msg_1', 'See the docs.'),
+    urlCitation('msg_1', 'https://docs.example', 'Docs', 4, 12),
+    urlCitation('msg_1', 'https://docs.example', 'Docs', 0, 3),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(events.at(-1)).toEqual({
+    type: EventType.TEXT_MESSAGE_END,
+    messageId,
+    metadata: {
+      'b4.answer': {
+        v: 1,
+        citations: [
+          {
+            sourceId: `${messageId}:cite:0`,
+            quote: 'the docs',
+            block: 0,
+            start: 4,
+            end: 12,
+          },
+          {
+            sourceId: `${messageId}:cite:0`,
+            quote: 'See',
+            block: 0,
+            start: 0,
+            end: 3,
+          },
+        ],
+        sources: [
+          {
+            id: `${messageId}:cite:0`,
+            kind: 'url',
+            title: 'Docs',
+            href: 'https://docs.example',
+          },
+        ],
+      },
+    },
+  });
+});
+
+test('citation spans count text from earlier message items', async () => {
+  const input = [
+    messageAdded('msg_1'),
+    textDelta('msg_1', 'One. '),
+    messageAdded('msg_2'),
+    textDelta('msg_2', 'Two.'),
+    urlCitation('msg_2', 'https://two.example', 'Two', 0, 3),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(events.at(-1)).toMatchObject({
+    metadata: {
+      'b4.answer': {
+        citations: [
+          {
+            sourceId: `${messageId}:cite:0`,
+            quote: 'Two',
+            block: 0,
+            start: 5,
+            end: 8,
+          },
+        ],
+      },
+    },
+  });
+});
+
+test('a web_search_call added via transformRequestOptions still maps, without sources', async () => {
+  const action = { type: 'search', query: 'hashbrown' };
+  const input = [
+    webSearchAdded('ws_1'),
+    webSearchDone('ws_1', action),
+    completed,
+  ];
+  const clock = mockClock(1000, 2000);
+
+  const events = await collectEvents(input);
+  clock.mockRestore();
+
+  expect(events.map((output) => output.type)).toEqual([
+    EventType.TOOL_CALL_START,
+    EventType.TOOL_CALL_ARGS,
+    EventType.TOOL_CALL_END,
+    EventType.TOOL_CALL_RESULT,
+  ]);
+  expect(events.at(-1)).toMatchObject({
+    metadata: {
+      'b4.step': {
+        status: 'completed',
+        label: "Searched 'hashbrown'",
+        queries: ['hashbrown'],
+      },
+    },
+  });
+  expect(
+    (events.at(-1) as { metadata: Record<string, Record<string, unknown>> })
+      .metadata['b4.step'],
+  ).not.toHaveProperty('sources');
+});
+
+test('ignores non-url annotations', async () => {
+  const input = [
+    messageAdded('msg_1'),
+    textDelta('msg_1', 'Text.'),
+    event({
+      type: 'response.output_text.annotation.added',
+      item_id: 'msg_1',
+      output_index: 0,
+      content_index: 0,
+      annotation_index: 0,
+      annotation: {
+        type: 'file_citation',
+        file_id: 'f',
+        filename: 'f',
+        index: 0,
+      },
+    }),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(events.at(-1)).toEqual({
+    type: EventType.TEXT_MESSAGE_END,
+    messageId,
+  });
+});
+
+test('skips a url_citation for a part with no recorded offset', async () => {
+  const input = [
+    messageAdded('msg_1'),
+    textDelta('msg_1', 'Text.'),
+    event({
+      type: 'response.output_text.annotation.added',
+      item_id: 'msg_1',
+      output_index: 0,
+      content_index: 3,
+      annotation_index: 0,
+      annotation: {
+        type: 'url_citation',
+        url: 'https://a.example',
+        title: 'A',
+        start_index: 0,
+        end_index: 4,
+      },
+    }),
+    completed,
+  ];
+
+  const events = await collectEvents(input);
+
+  expect(events.at(-1)).toEqual({
+    type: EventType.TEXT_MESSAGE_END,
+    messageId,
+  });
+});
+
+test('maps the OpenAI live-captured web search turn to a provider step, sources and citations', async () => {
+  // Reuses the OpenAI live capture (gpt-4.1-mini with web_search and
+  // `web_search_call.action.sources`): Azure streams the same Responses event
+  // shapes. Azure's own sources and citations are not yet verified live, since
+  // aimock's recorder keeps only search queries.
+  const input = JSON.parse(
+    readFileSync(
+      resolve(
+        __dirname,
+        '../../../openai/src/stream/fixtures/web-search-live.events.json',
+      ),
+      'utf8',
+    ),
+  ) as StreamEvent[];
+
+  const events = await collectEvents(input);
+
+  const text = events
+    .flatMap((output) =>
+      output.type === EventType.TEXT_MESSAGE_CONTENT ? [output.delta] : [],
+    )
+    .join('');
+  const result = events.find(
+    (output) => output.type === EventType.TOOL_CALL_RESULT,
+  );
+  const step = (result?.metadata as Record<string, unknown> | undefined)?.[
+    'b4.step'
+  ] as { sources?: { id: string; href?: string }[] } | undefined;
+  const end = events.find(
+    (output) => output.type === EventType.TEXT_MESSAGE_END,
+  );
+  const answer = (end?.metadata as Record<string, unknown> | undefined)?.[
+    'b4.answer'
+  ] as
+    | {
+        citations?: {
+          sourceId: string;
+          quote?: string;
+          start?: number;
+          end?: number;
+        }[];
+        sources?: { id: string }[];
+      }
+    | undefined;
+  const sourceIds = new Set(
+    [...(step?.sources ?? []), ...(answer?.sources ?? [])].map(
+      (source) => source.id,
+    ),
+  );
+
+  expect(step?.sources?.length ?? 0).toBeGreaterThanOrEqual(1);
+  expect(
+    step?.sources?.every((source) => typeof source.href === 'string'),
+  ).toBe(true);
+  expect(answer?.citations?.length ?? 0).toBeGreaterThanOrEqual(1);
+  for (const citation of answer?.citations ?? []) {
+    expect(sourceIds.has(citation.sourceId)).toBe(true);
+    expect(typeof citation.start).toBe('number');
+    expect(typeof citation.end).toBe('number');
+    expect(citation.quote).toBe(text.slice(citation.start, citation.end));
+  }
 });

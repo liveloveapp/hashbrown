@@ -1,0 +1,17 @@
+{
+  "slug": "threadplane-handoff-by-surface",
+  "posthog_id": 13138909,
+  "kind": "trends",
+  "name": "Threadplane hand-off clicks by surface",
+  "description": "marketing:threadplane_cta_click: clicks from hashbrown.dev to threadplane, by the surface the link is on.",
+  "events": [
+    {
+      "event": "marketing:threadplane_cta_click",
+      "name": "Hand-off clicks",
+      "math": "total"
+    }
+  ],
+  "breakdown": "surface",
+  "interval": "day",
+  "date_from": "-30d"
+}

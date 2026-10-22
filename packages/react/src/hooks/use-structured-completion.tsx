@@ -1,6 +1,8 @@
 import {
   Chat,
+  type FinishReason,
   type JsonValue,
+  type TokenUsage,
   type PendingInterruptBatch,
   type ResumeOptions,
   s,
@@ -170,6 +172,21 @@ export interface UseStructuredCompletionResult<Output, State = unknown> {
    * runs never set it.
    */
   lastRunResult: JsonValue | undefined;
+
+  /**
+   * The token usage of the last run that completed (AG-UI's
+   * `RUN_FINISHED.usage`), one entry per provider and model, or `undefined`
+   * when the server reported none. Cleared when the next run starts, so a turn
+   * that calls tools reports only its final run.
+   */
+  lastRunUsage: readonly TokenUsage[] | undefined;
+
+  /**
+   * Why the model stopped in the last run that completed, such as `length`
+   * when the answer was cut off by a token limit, or `undefined` when the
+   * server did not say. Cleared when the next run starts.
+   */
+  lastRunFinishReason: FinishReason | undefined;
 }
 
 /**

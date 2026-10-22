@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Describe a potato as structured output.",
+        "model": "gemini-4-argon",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "{\"text\": \"A potato is a starchy, tuberous crop from the perennial nightshade Solanum tuberosum.\", \"ok\": true}"
+      },
+      "recordedTimings": {
+        "ttftMs": 3160,
+        "interChunkDelaysMs": [192, 207],
+        "totalDurationMs": 3559
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

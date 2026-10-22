@@ -13,7 +13,6 @@ import { expect, test, vi } from 'vitest';
 import { Composer } from './composer';
 import { EmptyState } from './empty-state';
 import { PanelHeader } from './panel-header';
-import { ShowStream } from './show-stream';
 import { ToolChips } from './tool-chips';
 import { Transcript } from './transcript';
 import { ROUTE_DECISION_TRANSPORT } from './router';
@@ -78,6 +77,22 @@ test('the feed notice is silent while live and quiet while delayed', () => {
   );
 });
 
+/** The starter groups, each named by the heading its `aria-labelledby` points at. */
+function starterGroups(element: HTMLElement) {
+  return [...element.querySelectorAll('[role="group"]')].map((group) => {
+    const heading = [...element.querySelectorAll('h2')].find(
+      (h) => h.id === group.getAttribute('aria-labelledby'),
+    );
+
+    return {
+      name: text(heading),
+      starters: [...group.querySelectorAll('button')].map((button) =>
+        text(button),
+      ),
+    };
+  });
+}
+
 test('the empty state asks a question and offers every starter prompt', () => {
   setup();
   const fixture = TestBed.createComponent(EmptyState);
@@ -90,24 +105,36 @@ test('the empty state asks a question and offers every starter prompt', () => {
   buttons[1]?.click();
 
   expect(text(element.querySelector('.atc-empty-title'))).toBe(
-    'Ask about the planes over the Pacific Northwest.',
+    'Filter the map or ask about the planes overhead.',
   );
-  expect(buttons.map((button) => nameOf(button))).toEqual(
-    STARTER_PROMPTS.map(
-      (starter) =>
-        `${starter.text} (${starter.route === 'filter' ? 'filter' : 'question'})`,
-    ),
-  );
-  expect(
-    buttons.map(
-      (button) => button.querySelector('[aria-hidden="true"]')?.textContent,
-    ),
-  ).toEqual(
-    STARTER_PROMPTS.map((starter) =>
-      starter.route === 'filter' ? 'filter' : 'question',
-    ),
+  expect(buttons.map((button) => text(button))).toEqual(
+    STARTER_PROMPTS.map((starter) => starter.text),
   );
   expect(picked).toEqual([STARTER_PROMPTS[1]]);
+});
+
+test('starters are grouped as filters and questions', () => {
+  setup();
+  const fixture = TestBed.createComponent(EmptyState);
+
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  const groups = starterGroups(element);
+
+  expect(groups).toEqual([
+    {
+      name: 'Filter the map',
+      starters: STARTER_PROMPTS.filter((s) => s.route === 'filter').map(
+        (s) => s.text,
+      ),
+    },
+    {
+      name: 'Ask a question',
+      starters: STARTER_PROMPTS.filter((s) => s.route !== 'filter').map(
+        (s) => s.text,
+      ),
+    },
+  ]);
 });
 
 test('the empty state offers the selected-plane question first while a plane is selected', () => {
@@ -117,21 +144,17 @@ test('the empty state offers the selected-plane question first while a plane is 
   store.select('aaaaaa');
   fixture.detectChanges();
   const element = fixture.nativeElement as HTMLElement;
-  const buttons = [...element.querySelectorAll('button')];
+  const questions = starterGroups(element)[1].starters;
 
-  expect(nameOf(buttons[0])).toBe(`${SELECTED_PROMPT} (question)`);
-  expect(buttons).toHaveLength(STARTER_PROMPTS.length + 1);
+  expect(questions[0]).toBe(SELECTED_PROMPT);
+  expect(element.querySelectorAll('button')).toHaveLength(
+    STARTER_PROMPTS.length + 1,
+  );
+  // The phone peek's single row puts the marked starter first.
+  expect(
+    [...element.querySelectorAll('button[data-lead]')].map((b) => text(b)),
+  ).toEqual([SELECTED_PROMPT]);
 });
-
-/** A button's accessible text: what assistive tech reads, without aria-hidden parts. */
-function nameOf(element: Element): string {
-  const copy = element.cloneNode(true) as Element;
-  copy
-    .querySelectorAll('[aria-hidden="true"]')
-    .forEach((hidden) => hidden.remove());
-
-  return text(copy);
-}
 
 function composer(answer?: Answer) {
   setup(answer);
@@ -406,7 +429,7 @@ test('starters go straight to their route', () => {
   buttons.at(-1)?.click();
   buttons[0]?.click();
 
-  expect(picked.map((starter) => starter.route)).toEqual(['filter', 'chat']);
+  expect(picked.map((starter) => starter.route)).toEqual(['chat', 'filter']);
 });
 
 test('a running step shows as one shimmering line, then folds into a summary that expands to every step', () => {
@@ -564,56 +587,43 @@ test('reasoning shimmers while it streams and collapses to Reasoned once done', 
   );
 });
 
-test('the switch hides and shows the panels and remembers the choice', () => {
-  localStorage.clear();
+test('the header button toggles dev mode on phones', () => {
   setup();
-  const header = TestBed.createComponent(PanelHeader);
+  const fixture = TestBed.createComponent(PanelHeader);
+  const toggled: string[] = [];
+  fixture.componentRef.setInput('devMode', true);
+  fixture.componentInstance.toggleDevMode.subscribe(() =>
+    toggled.push('toggle'),
+  );
+  fixture.detectChanges();
+  const element = fixture.nativeElement as HTMLElement;
+  const button = element.querySelector('.atc-header-dev') as HTMLButtonElement;
+
+  button.click();
+
+  expect(button.getAttribute('aria-label')).toBe('Developer tools');
+  expect(button.getAttribute('aria-pressed')).toBe('true');
+  expect(button.getAttribute('data-testid')).toBe('dev-toggle-header');
+  expect(toggled).toEqual(['toggle']);
+  expect(text(element)).not.toContain('Show the stream');
+  expect(element.querySelector('[role="switch"]')).toBeNull();
+});
+
+test('tool lines never show arguments', () => {
+  setup();
   const chips = TestBed.createComponent(ToolChips);
   chips.componentRef.setInput('calls', [
     {
       name: 'findAircraft',
-      args: { near: '<b>KSEA</b>' },
+      args: { near: 'KSEA' },
       status: 'done',
       result: { status: 'fulfilled' },
     },
   ]);
-  // A click only fires its change event on an element that is in the document.
-  document.body.append(header.nativeElement);
-  header.detectChanges();
-  chips.detectChanges();
-  const toggle = (header.nativeElement as HTMLElement).querySelector(
-    'input[type="checkbox"]',
-  ) as HTMLInputElement;
-  const panel = () =>
-    (chips.nativeElement as HTMLElement).querySelector('.atc-stream');
 
-  const shownPanel = panel();
-  const shown = shownPanel?.textContent ?? '';
-  toggle.click();
-  header.detectChanges();
   chips.detectChanges();
-  const hidden = panel();
-  const stored = localStorage.getItem('atc.showStream');
-  const remembered = TestBed.runInInjectionContext(() =>
-    new (ShowStream as unknown as new () => ShowStream)().on(),
-  );
-  toggle.click();
-  header.detectChanges();
-  chips.detectChanges();
+  const element = chips.nativeElement as HTMLElement;
 
-  (header.nativeElement as HTMLElement).remove();
-
-  expect(toggle.getAttribute('role')).toBe('switch');
-  expect(text(header.nativeElement)).toContain('Show the stream');
-  expect(shown).toContain('findAircraft');
-  expect(shownPanel?.getAttribute('aria-live')).toBe('off');
-  expect(shownPanel?.getAttribute('tabindex')).toBe('0');
-  expect(shownPanel?.querySelectorAll('[tabindex]')).toHaveLength(0);
-  expect(shown).toContain('<b>KSEA</b>');
-  expect(panel()?.querySelector('b')).toBeNull();
-  expect(hidden).toBeNull();
-  expect(stored).toBe('off');
-  expect(remembered).toBe(false);
-  expect(panel()).not.toBeNull();
-  localStorage.clear();
+  expect(text(element)).not.toContain('KSEA');
+  expect(element.querySelectorAll('[class*="atc-stream"]')).toHaveLength(0);
 });

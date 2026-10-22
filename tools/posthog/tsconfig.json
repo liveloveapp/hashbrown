@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "strict": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    "lib": ["es2022"],
+    "types": ["node"],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "experimentalDecorators": false,
+    "emitDecoratorMetadata": false,
+    "importHelpers": false
+  },
+  "include": ["*.ts"],
+  "exclude": ["**/*.spec.ts"]
+}

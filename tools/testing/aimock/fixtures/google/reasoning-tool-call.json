@@ -15,6 +15,15 @@
           }
         ]
       }
+    },
+    {
+      "match": {
+        "userMessage": "reason before calling lookup",
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "The code word is green."
+      }
     }
   ]
 }

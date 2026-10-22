@@ -13,14 +13,23 @@
   },
   "tags": [],
   "targets": {
-    "build": {
+    "prepare": {
+      "executor": "nx:run-commands",
+      "inputs": ["{projectRoot}/package.json"],
+      "outputs": ["{projectRoot}/src/package-version.ts"],
+      "options": {
+        "command": "node tools/growth/install/write-package-version.mjs react"
+      }
+    },
+    "compile": {
       "executor": "@nx/rollup:rollup",
       "outputs": ["{options.outputPath}"],
       "dependsOn": [
         {
           "projects": ["core"],
           "target": "build"
-        }
+        },
+        "prepare"
       ],
       "options": {
         "main": "packages/react/src/index.ts",
@@ -48,6 +57,19 @@
             "output": "."
           }
         ]
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["compile"],
+      "inputs": [
+        "{workspaceRoot}/tools/growth/install/*.cjs",
+        "{workspaceRoot}/tools/growth/install/assemble-package.mjs",
+        "{projectRoot}/package.json"
+      ],
+      "outputs": ["{workspaceRoot}/dist/packages/react"],
+      "options": {
+        "command": "node tools/growth/install/assemble-package.mjs react"
       }
     },
     "e2e": {

@@ -293,3 +293,14 @@
     display: flex;
   }
 }
+
+/* Screenshots in docs pages (the atc example page): full width, kept to their
+   aspect ratio by their width and height attributes. */
+.article > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 8px 0 24px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(61, 60, 58, 0.12);
+}

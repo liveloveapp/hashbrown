@@ -130,6 +130,38 @@ test('supplies an empty object when Bedrock emits no tool input', async () => {
   });
 });
 
+test('maps Bedrock server tool use as raw events instead of a client tool call', async () => {
+  const start: ConverseStreamOutput = {
+    contentBlockStart: {
+      contentBlockIndex: 0,
+      start: {
+        toolUse: {
+          toolUseId: 'server-call',
+          name: 'web_search',
+          type: 'server_tool_use',
+        },
+      },
+    },
+  };
+  const delta: ConverseStreamOutput = {
+    contentBlockDelta: {
+      contentBlockIndex: 0,
+      delta: { toolUse: { input: '{"query":"hashbrown"}' } },
+    },
+  };
+
+  const events = await collectEvents([
+    start,
+    delta,
+    { contentBlockStop: { contentBlockIndex: 0 } },
+  ]);
+
+  expect(events).toEqual([
+    { type: EventType.RAW, source: 'bedrock', event: start },
+    { type: EventType.RAW, source: 'bedrock', event: delta },
+  ]);
+});
+
 test('maps Bedrock reasoning text, signature, and redacted content', async () => {
   const events = await collectEvents([
     {

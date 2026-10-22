@@ -1,0 +1,65 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Find the number between 20 and 40 that leaves remainder 1 when divided by 4 and by 6 and is divisible by 5. Look that number up with the lookup tool, then answer in one short sentence.",
+        "model": "gpt-5-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "toolCalls": [
+          {
+            "name": "lookup",
+            "arguments": "{\"query\":\"25\"}",
+            "id": "call_O9Sz7F7ZkX49TQx35tQOaZoT"
+          }
+        ],
+        "reasoning": "**Calculating conditions for numbers**\n\nI'll start with the functions.lookup tool, avoiding multi_tool_use since I only need one tool. The simpler option is to call functions.lookup directly.\n\nNext, I’m looking for a number between 20 and 40 that has a remainder of 1 when divided by 4 and 6, and is divisible by 5. By solving the congruences, I find x ≡1 mod 12. The possible candidates between 20 and 40 that are 1 mod 12 turn out to be 25 and potentially others like 37.**Confirming the final number**\n\nI found that 25 and 37 are in the range, but only 25 is divisible by 5. So, the answer is 25. The user wants me to look that number up with the lookup tool and respond in one short sentence. I should use the query string \"25.\" \n\nThe tool description says it provides a short fact about a code word, so I'll call functions.lookup with {query: \"25\"} and then give a concise response based on the tool's result."
+      },
+      "recordedTimings": {
+        "ttftMs": 3146,
+        "interChunkDelaysMs": [
+          21, 64, 3934, 33, 7, 15, 23, 4, 6, 23, 11, 29, 5, 11, 72, 14, 24, 8,
+          26, 36, 194, 2, 0, 1, 1, 84, 8, 40, 15, 18, 6, 154, 0, 0, 0, 0, 0, 0,
+          0, 0, 159, 0, 0, 0, 419, 0, 215, 111, 0, 205, 0, 0, 0, 135, 0, 0, 0,
+          158, 0, 0, 0, 0, 181, 0, 109, 0, 0, 0, 111, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 115, 0, 0, 0, 0, 135, 0, 0, 0, 0, 1980, 0, 0, 0, 0,
+          0, 0, 123, 0, 0, 0, 0, 108, 0, 0, 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0,
+          279, 0, 0, 130, 0, 0, 188, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 133, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 125, 116, 0, 0, 0, 0, 0, 0, 158, 0, 0, 0, 0, 0, 0,
+          0, 102, 0, 0, 145, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0,
+          0, 0, 118, 0, 583, 0, 0, 0, 121, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+          0, 0, 271, 6, 0, 0
+        ],
+        "totalDurationMs": 15007
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Find the number between 20 and 40 that leaves remainder 1 when divided by 4 and by 6 and is divisible by 5. Look that number up with the lookup tool, then answer in one short sentence.",
+        "model": "gpt-5-mini",
+        "turnIndex": 1,
+        "hasToolResult": true
+      },
+      "response": {
+        "content": "The number is 25."
+      },
+      "recordedTimings": {
+        "ttftMs": 678,
+        "interChunkDelaysMs": [
+          0, 53, 2756, 5, 9, 10, 8, 1, 4, 10, 5, 173, 3, 1, 3
+        ],
+        "totalDurationMs": 3719
+      },
+      "metadata": {
+        "systemHash": "d52f053a",
+        "toolsHash": "bcbea26b"
+      }
+    }
+  ]
+}

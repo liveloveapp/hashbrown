@@ -40,6 +40,8 @@ Thumbs.db
 
 # Environment
 .env
+.env.local
+.env.*.local
 
 # nx monorepo
 .nx/cache
@@ -88,3 +90,10 @@ next-env.d.ts
 
 # Brainstorming companion mockups
 .superpowers/
+
+# Growth provisioning output (private env file)
+tools/growth/.provision/
+
+# Lifecycle service local output
+tools/lifecycle/.b4/
+tools/lifecycle/.vercel/

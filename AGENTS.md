@@ -74,6 +74,30 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx lint typesafe`
   - `npx nx build-api-report typesafe`
   - `npx nx nx-release-publish typesafe`
+- `growth`
+  - `npx nx build growth`
+  - `npx nx test growth`
+  - `npx nx lint growth`
+  - `npx nx migrate-growth growth`
+  - `npx nx test-integration growth` (needs `GROWTH_INTEGRATION=1` and `TEST_DATABASE_URL`)
+  - `npx nx run growth:report -- <funnel|journey|health|timeline|detail> …`
+  - `npx nx observability growth -- <process|replay|redact|initialize-redactions> …`
+- `lifecycle` (`tools/lifecycle`; the b4run lifecycle service, deployed prebuilt as `hashbrown-lifecycle`)
+  - `npx nx build lifecycle` (`b4 build --clean`, then wraps and verifies the Vercel adapter in isolation)
+  - `npx nx test lifecycle`
+  - `npx nx lint lifecycle`
+  - `npx nx check lifecycle`
+  - `npx nx test-integration lifecycle` (needs `GROWTH_INTEGRATION=1` and `TEST_DATABASE_URL`)
+- `posthog` (`tools/posthog`; dashboards as code, needs `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID`)
+  - `npx nx build posthog`
+  - `npx nx test posthog`
+  - `npx nx lint posthog`
+  - `npx nx sync:plan posthog` (read-only)
+  - `npx nx sync:apply posthog` (`-- --delete-orphans` also soft-deletes unmanaged remotes)
+  - `npx nx run posthog:report`
+  - `npx nx quality:live posthog -- --days 7 --limit-per-event 100 --require-critical-coverage`
+  - `npx nx settings:plan posthog` (read-only)
+  - `npx nx settings:apply posthog`
 - `anthropic`
   - `npx nx build anthropic`
   - `npx nx test anthropic`
@@ -141,8 +165,8 @@ that protects the published packages, not examples.
 - `atc-e2e`
   - `npx nx e2e atc-e2e`
   - `npx nx prose-eval atc-e2e` (live model; needs `OPENAI_API_KEY` and the atc dev servers)
-  - `npx nx decide-eval atc-e2e` (live router and cards decisions against labelled probes; needs `TYPESAFE_API_KEY`)
-  - `npx nx test atc-e2e` (unit tests for the demo video recorder and the prose and decide evals)
+  - `npx nx decide-eval atc-e2e` (live decisions; needs `TYPESAFE_API_KEY`, no servers)
+  - `npx nx test atc-e2e` (the demo video recorder's unit tests)
   - `npx nx lint atc-e2e`
   - `npx nx typecheck atc-e2e` (`tsc` over the e2e code, which Playwright and Vitest do not type-check)
   - `npx nx demo atc-e2e` (records the demo video and home page loop; needs ffmpeg)

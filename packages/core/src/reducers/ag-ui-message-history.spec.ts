@@ -989,3 +989,87 @@ test('folds only contiguous reasoning into the next assistant projection', () =>
     },
   ]);
 });
+
+test('projects a provider call without resolving its arguments against a client schema', () => {
+  // Arrange
+  const clientTool = {
+    name: 'web_search',
+    description: 'Search.',
+    schema: s.object('search input', { query: s.string('query') }),
+    handler: async () => undefined,
+  };
+  const messages: readonly Message[] = [
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'call-ws',
+          type: 'function',
+          function: { name: 'web_search', arguments: '{"other":1}' },
+          metadata: {
+            'b4.step': { v: 1, kind: 'provider', status: 'running' },
+          },
+        },
+      ],
+    },
+  ];
+
+  // Act
+  const projection = projectAgUiMessages(messages, {
+    web_search: clientTool,
+  });
+
+  // Assert
+  expect(
+    projection.toolCalls.find((call) => call.id === 'call-ws')
+      ?.argumentsResolved,
+  ).toEqual({
+    other: 1,
+  });
+});
+
+test('projects a RESULT error over a step a call already completed as failed', () => {
+  // Arrange
+  const messages: readonly Message[] = [
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'c1',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+          metadata: {
+            'b4.step': {
+              v: 1,
+              kind: 'server',
+              status: 'completed',
+              label: 'Looked up',
+            },
+          },
+        },
+      ],
+    },
+    {
+      id: 'result-1',
+      role: 'tool',
+      toolCallId: 'c1',
+      content: 'Rate limited',
+      error: 'Rate limited',
+    },
+  ];
+
+  // Act
+  const projection = projectAgUiMessages(messages, {});
+
+  // Assert
+  expect(projection.toolCalls[0]?.metadata?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    error: { message: 'Rate limited' },
+  });
+});

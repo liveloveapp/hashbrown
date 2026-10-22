@@ -1,0 +1,13 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Ann is older than Ben. Ben is older than Cy. Dee is younger than Cy but older than Eve. Who is the second youngest? Reply with the name only."
+      },
+      "response": {
+        "reasoning": "Ann, Ben, Cy, Dee and Eve are in age order, so Dee is second youngest.",
+        "content": "Dee"
+      }
+    }
+  ]
+}

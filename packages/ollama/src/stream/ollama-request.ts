@@ -131,7 +131,11 @@ function mapMessage(
 
       return {
         role: 'tool',
-        content: message.content,
+        // Like the Google provider, a failed tool sends its error instead.
+        content:
+          message.error === undefined
+            ? message.content
+            : JSON.stringify({ error: message.error }),
         tool_name: toolName,
       };
     }

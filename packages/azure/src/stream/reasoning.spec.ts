@@ -52,3 +52,9 @@ test('resolveReasoning sends an object as given and fills only a missing summary
   expect(nullSummary).toEqual({ summary: null });
   expect(explicit).toEqual({ effort: 'high', summary: 'detailed' });
 });
+
+test('resolveReasoning requests auto summaries for any deployment name when the option is true', () => {
+  const result = resolveReasoning('support-assistant', true);
+
+  expect(result).toEqual({ summary: 'auto' });
+});

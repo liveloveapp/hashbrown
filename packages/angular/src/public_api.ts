@@ -54,6 +54,11 @@ export {
 } from './resources';
 export { provideHashbrown, type ProvideHashbrownOptions } from './providers';
 export {
+  getDevelopmentCollectionDiagnostics,
+  setDevelopmentCollectionEnabled,
+} from './growth';
+export type { DevelopmentCollectionDiagnostics } from '@hashbrownai/core';
+export {
   createRuntime,
   createRuntimeFunction,
   createTool,

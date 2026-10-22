@@ -8,6 +8,7 @@ import {
   s,
   ɵassertRuntimeMessageSchedulingAllowed,
   ɵcreateUiChatDecision,
+  ɵreportMilestone,
   ɵresolveSelection,
 } from '@hashbrownai/core';
 import {
@@ -370,6 +371,13 @@ function useCandidates(
         : [],
     [hasOptions, selection],
   );
+  const collector = useContext(HashbrownContext)?.collector;
+  const rendersCandidate = ids.length > 0;
+  useEffect(() => {
+    if (rendersCandidate && collector) {
+      ɵreportMilestone(collector, 'component.first_rendered');
+    }
+  }, [rendersCandidate, collector]);
   const ui = useMemo(
     () =>
       ids.flatMap((id) => {
@@ -428,6 +436,8 @@ function useChatNarrowing(
     throw new Error('HashbrownContext not found');
   }
 
+  // `component.first_rendered` is reported by the chat's `useUiChat` render
+  // path, so chat mode reports nothing itself.
   const [controller] = useState(() => ɵcreateUiChatDecision());
   const state = useSyncExternalStore(
     controller.subscribe,

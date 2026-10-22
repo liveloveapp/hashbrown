@@ -84,6 +84,8 @@ export function useStructuredCompletionWithMessage<
     generatingError: chat.generatingError,
     exhaustedRetries: chat.exhaustedRetries,
     lastRunResult: chat.lastRunResult,
+    lastRunUsage: chat.lastRunUsage,
+    lastRunFinishReason: chat.lastRunFinishReason,
   };
 
   return { result, message };

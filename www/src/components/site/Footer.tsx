@@ -69,6 +69,11 @@ export function Footer({ sdk }: { sdk?: Sdk } = {}) {
                   Blog
                 </Link>
               </li>
+              <li>
+                <Link href="/privacy" className="underline">
+                  Privacy
+                </Link>
+              </li>
             </ul>
           </div>
           <div className={styles.team}>
@@ -77,6 +82,7 @@ export function Footer({ sdk }: { sdk?: Sdk } = {}) {
               <li>
                 <a
                   href="https://threadplane.ai/?utm_source=hashbrown&utm_medium=footer"
+                  data-surface="footer"
                   {...external}
                   className="underline"
                 >

@@ -1,0 +1,26 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Write two short sentences about hash browns.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Hash browns are a popular breakfast dish made from grated potatoes. They are typically fried until crispy and golden brown."
+      },
+      "recordedTimings": {
+        "ttftMs": 724,
+        "interChunkDelaysMs": [
+          4, 2, 5, 3, 8, 0, 4, 2, 5, 0, 1, 18, 33, 0, 0, 0, 0, 0, 5, 7, 9, 15,
+          37, 87, 4, 15, 0
+        ],
+        "totalDurationMs": 988
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Message } from '@ag-ui/core';
 import { Chat } from '../models';
+import { isProviderToolCall } from '../models/tool-step';
 import { apiActions, internalActions } from '../actions';
 import { Prettify } from '../utils/types';
 import { select } from '../utils/micro-ngrx';
@@ -383,6 +384,14 @@ export const selectLastRunResult = select(
   selectStatusState,
   fromStatus.selectLastRunResult,
 );
+export const selectLastRunUsage = select(
+  selectStatusState,
+  fromStatus.selectLastRunUsage,
+);
+export const selectLastRunFinishReason = select(
+  selectStatusState,
+  fromStatus.selectLastRunFinishReason,
+);
 
 /**
  * Streaming Message
@@ -454,7 +463,10 @@ export const ɵselectAttemptOwnedPendingToolCalls = select(
     );
 
     return pendingToolCalls
-      .filter((toolCall) => !baseline.has(toolCall.id))
+      .filter(
+        (toolCall) =>
+          !baseline.has(toolCall.id) && !isProviderToolCall(toolCall),
+      )
       .map((toolCall) => {
         const parsed = streaming.get(toolCall.id);
         if (

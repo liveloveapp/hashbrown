@@ -1,0 +1,46 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Search the web for the current stable version of Node.js. Answer in one short sentence and cite your source.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "The current stable version (LTS) of Node.js is 24.22.1. [Source: Node.js official website](https://nodejs.org/en/download)",
+        "webSearches": ["current stable version of Node.js"]
+      },
+      "recordedTimings": {
+        "ttftMs": 998,
+        "interChunkDelaysMs": [
+          4, 97, 2, 178, 1019, 1, 2, 0, 3, 5, 5, 5, 5, 7, 4, 6, 16, 17, 11, 12,
+          3, 76, 39, 44, 6, 64, 8, 4, 15, 10, 54, 226, 0, 0, 60, 0, 0, 0
+        ],
+        "totalDurationMs": 3006
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Without searching again, repeat that version number only.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 1,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "24.22.1"
+      },
+      "recordedTimings": {
+        "ttftMs": 753,
+        "interChunkDelaysMs": [0, 16, 2, 6, 0, 6, 1, 4, 76, 0, 7, 0],
+        "totalDurationMs": 871
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

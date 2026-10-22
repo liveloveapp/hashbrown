@@ -574,3 +574,50 @@ test('clears the last run result on a stop and a message replacement', () => {
   expect(stopped.lastRunResult).toBeUndefined();
   expect(replaced.lastRunResult).toBeUndefined();
 });
+
+test('stores the usage and finish reason committed with a successful generation', () => {
+  const usage = [{ provider: 'openai', inputTokens: 5, outputTokens: 2 }];
+
+  const next = reducer(
+    initialStatusState,
+    apiActions.generateMessageSuccess({
+      toolCalls: [],
+      usage,
+      finishReason: 'length',
+    }),
+  );
+
+  expect(next.lastRunUsage).toEqual(usage);
+  expect(next.lastRunFinishReason).toBe('length');
+});
+
+test('clears the last run usage and finish reason when the next run starts, on a stop and on a replacement', () => {
+  const state = {
+    ...initialStatusState,
+    lastRunUsage: [{ provider: 'openai', inputTokens: 1 }],
+    lastRunFinishReason: 'stop' as const,
+  };
+
+  const started = reducer(
+    state,
+    apiActions.generateMessageEvent({
+      type: EventType.RUN_STARTED,
+      threadId: 'thread-1',
+      runId: 'run-2',
+    }),
+  );
+  const stopped = reducer(state, devActions.stopMessageGeneration(false));
+  const replaced = reducer(
+    state,
+    devActions.setMessages({ messages: [], canonicalMessages: [] }),
+  );
+  const succeeded = reducer(
+    state,
+    apiActions.generateMessageSuccess({ toolCalls: [] }),
+  );
+
+  for (const next of [started, stopped, replaced, succeeded]) {
+    expect(next.lastRunUsage).toBeUndefined();
+    expect(next.lastRunFinishReason).toBeUndefined();
+  }
+});

@@ -256,6 +256,32 @@ test('useChat and useStructuredChat reload ignore trailing activities', () => {
   ).toHaveBeenCalledWith([messages[0]]);
 });
 
+test('useChat exposes the last run usage and finish reason from the runtime', () => {
+  const lastRunUsage = createMutableSignal<unknown>(undefined);
+  const lastRunFinishReason = createMutableSignal<unknown>(undefined);
+  const runtime = createRuntimeStub({
+    messages: [],
+    lastRunUsage,
+    lastRunFinishReason,
+  });
+  createChatRuntimeMock.mockReset();
+  createChatRuntimeMock.mockReturnValue(runtime);
+
+  const { result } = renderHook(
+    () => useChat({ system: 'You are a helpful assistant.' }),
+    { wrapper: ProviderWrapper },
+  );
+  act(() => {
+    lastRunUsage.set([{ provider: 'openai', inputTokens: 4, outputTokens: 2 }]);
+    lastRunFinishReason.set('length');
+  });
+
+  expect(result.current.lastRunUsage).toEqual([
+    { provider: 'openai', inputTokens: 4, outputTokens: 2 },
+  ]);
+  expect(result.current.lastRunFinishReason).toBe('length');
+});
+
 function ProviderWrapper({ children }: { children: ReactNode }) {
   return <HashbrownProvider url="/chat">{children}</HashbrownProvider>;
 }
@@ -264,10 +290,14 @@ function createRuntimeStub({
   messages,
   state = createMutableSignal<unknown>(undefined),
   lastRunResult = createSignal<unknown>(undefined),
+  lastRunUsage = createSignal<unknown>(undefined),
+  lastRunFinishReason = createSignal<unknown>(undefined),
 }: {
   messages: unknown[];
   state?: ReturnType<typeof createMutableSignal<unknown>>;
   lastRunResult?: ReturnType<typeof createSignal<unknown>>;
+  lastRunUsage?: ReturnType<typeof createSignal<unknown>>;
+  lastRunFinishReason?: ReturnType<typeof createSignal<unknown>>;
 }) {
   return {
     state,
@@ -286,6 +316,8 @@ function createRuntimeStub({
     generatingError: createSignal(undefined),
     lastAssistantMessage: createSignal(undefined),
     lastRunResult: lastRunResult,
+    lastRunUsage,
+    lastRunFinishReason,
     isLoadingThread: createSignal(false),
     isSavingThread: createSignal(false),
     threadLoadError: createSignal(undefined),

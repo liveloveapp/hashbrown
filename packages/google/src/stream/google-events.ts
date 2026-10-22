@@ -1,5 +1,13 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import type { GenerateContentResponse } from '@google/genai';
+import {
+  type FinishReason,
+  ɵcreateTokenUsage,
+  type ɵRunFinish,
+} from '@hashbrownai/core';
+import type {
+  GenerateContentResponse,
+  GenerateContentResponseUsageMetadata,
+} from '@google/genai';
 
 /**
  * Inputs for mapping Google response chunks to canonical AG-UI events.
@@ -12,21 +20,99 @@ export interface MapGoogleEventsOptions {
   signal?: AbortSignal;
 }
 
+const FINISH_REASONS: Readonly<Record<string, FinishReason>> = {
+  STOP: 'stop',
+  MAX_TOKENS: 'length',
+  // Not in the SDK's enum, but some Gemini-compatible servers (aimock among
+  // them) send it for a function-call turn.
+  FUNCTION_CALL: 'tool_calls',
+  SAFETY: 'content_filter',
+  RECITATION: 'content_filter',
+  BLOCKLIST: 'content_filter',
+  PROHIBITED_CONTENT: 'content_filter',
+  SPII: 'content_filter',
+  IMAGE_SAFETY: 'content_filter',
+  IMAGE_PROHIBITED_CONTENT: 'content_filter',
+};
+
+/**
+ * What the stream reported about how the model stopped, collected across
+ * chunks. Later chunks win.
+ */
+interface GoogleFinishState {
+  readonly calledTools: boolean;
+  readonly finishReason?: string;
+  readonly finishMessage?: string;
+  readonly blockReason?: string;
+  readonly modelVersion?: string;
+  readonly usage?: GenerateContentResponseUsageMetadata;
+}
+
+function sumCounts(
+  ...counts: readonly (number | undefined)[]
+): number | undefined {
+  const known = counts.filter((count) => count !== undefined);
+  return known.length
+    ? known.reduce((total, count) => total + count, 0)
+    : undefined;
+}
+
+function readFinish(state: GoogleFinishState): ɵRunFinish {
+  const finishReason: FinishReason = state.blockReason
+    ? 'content_filter'
+    : state.finishReason === undefined
+      ? 'other'
+      : state.finishReason === 'STOP'
+        ? state.calledTools
+          ? 'tool_calls'
+          : 'stop'
+        : (FINISH_REASONS[state.finishReason] ?? 'other');
+  const usage = ɵcreateTokenUsage({
+    provider: 'google',
+    model: state.modelVersion,
+    inputTokens: sumCounts(
+      state.usage?.promptTokenCount,
+      state.usage?.toolUsePromptTokenCount,
+    ),
+    outputTokens: sumCounts(
+      state.usage?.candidatesTokenCount,
+      state.usage?.thoughtsTokenCount,
+    ),
+    totalTokens: state.usage?.totalTokenCount,
+    reasoningTokens: state.usage?.thoughtsTokenCount,
+    cachedInputTokens: state.usage?.cachedContentTokenCount,
+  });
+  return {
+    finishReason,
+    providerMetadata: {
+      ...(state.finishReason ? { finishReason: state.finishReason } : {}),
+      ...(state.finishMessage ? { finishMessage: state.finishMessage } : {}),
+      ...(state.blockReason ? { blockReason: state.blockReason } : {}),
+    },
+    ...(usage ? { usage } : {}),
+  };
+}
+
 /**
  * Maps Google response chunks to canonical AG-UI message events.
  *
+ * A blocked prompt or a filtered, truncated or otherwise stopped candidate
+ * ends normally; the reason is in the generator's return value.
+ *
  * @param options - Google stream and AG-UI message identity.
- * @returns Canonical AG-UI events for the provider response.
+ * @returns Canonical AG-UI events for the provider response; the generator's
+ * return value is how the model stopped and the response's token usage, or
+ * `undefined` when mapping stopped on abort.
  *
  * @internal
  */
 export async function* mapGoogleEvents(
   options: MapGoogleEventsOptions,
-): AsyncIterable<AGUIEvent> {
+): AsyncGenerator<AGUIEvent, ɵRunFinish | undefined> {
+  let finish: GoogleFinishState = { calledTools: false };
   let textStarted = false;
   let reasoningId: string | undefined;
   let reasoningIndex = 0;
-  let lastToolCallId: string | undefined;
   let toolCallIndex = 0;
   const iterator = options.events[Symbol.asyncIterator]();
   let mappingFailed = false;
@@ -41,10 +127,25 @@ export async function* mapGoogleEvents(
         break;
       }
 
-      const candidates = next.value.candidates ?? [];
+      const chunk = next.value;
+      const candidates = chunk.candidates ?? [];
       const candidate =
         candidates.find((entry) => entry.index === 0) ??
         candidates.find((entry) => entry.index === undefined);
+      finish = {
+        ...finish,
+        ...(candidate?.finishReason
+          ? { finishReason: candidate.finishReason }
+          : {}),
+        ...(candidate?.finishMessage
+          ? { finishMessage: candidate.finishMessage }
+          : {}),
+        ...(chunk.promptFeedback?.blockReason
+          ? { blockReason: chunk.promptFeedback.blockReason }
+          : {}),
+        ...(chunk.modelVersion ? { modelVersion: chunk.modelVersion } : {}),
+        ...(chunk.usageMetadata ? { usage: chunk.usageMetadata } : {}),
+      };
       const parts = candidate?.content?.parts ?? [];
       for (const part of parts) {
         if (options.signal?.aborted) {
@@ -123,8 +224,8 @@ export async function* mapGoogleEvents(
           const toolCallId =
             part.functionCall.id ??
             `${options.messageId}:tool:${toolCallIndex}`;
-          lastToolCallId = toolCallId;
           toolCallIndex += 1;
+          finish = { ...finish, calledTools: true };
           yield {
             type: EventType.TOOL_CALL_START,
             toolCallId,
@@ -161,16 +262,10 @@ export async function* mapGoogleEvents(
           continue;
         }
 
-        if (part.thoughtSignature && lastToolCallId && !part.text) {
-          yield {
-            type: EventType.REASONING_ENCRYPTED_VALUE,
-            subtype: 'tool-call',
-            entityId: lastToolCallId,
-            encryptedValue: part.thoughtSignature,
-          };
-          continue;
-        }
-
+        // A signature on a part without a function call belongs to that part,
+        // not to an earlier call: Gemini sends function-call signatures on the
+        // function-call part itself. The view model has nowhere to keep a
+        // text-part signature, and Gemini does not require it on replay.
         if (!part.text) {
           continue;
         }
@@ -232,5 +327,10 @@ export async function* mapGoogleEvents(
       type: EventType.TEXT_MESSAGE_END,
       messageId: options.messageId,
     };
+    if (options.signal?.aborted) {
+      return;
+    }
   }
+
+  return readFinish(finish);
 }

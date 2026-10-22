@@ -121,6 +121,10 @@ test('OpenAI Express route streams canonical AG-UI SSE to HttpTransport', async 
         type: EventType.RUN_FINISHED,
         threadId: 'express-thread',
         runId: 'express-run',
+        metadata: expect.objectContaining({
+          hashbrown: { finishReason: 'stop' },
+        }),
+        usage: [expect.objectContaining({ inputTokens: expect.any(Number) })],
       },
     ]);
   } finally {
@@ -226,6 +230,10 @@ test('OpenAI Express route serves AG-UI through its native provider without proc
       type: EventType.RUN_FINISHED,
       threadId: 'sample-thread',
       runId: 'sample-run',
+      metadata: expect.objectContaining({
+        hashbrown: { finishReason: 'stop' },
+      }),
+      usage: [expect.objectContaining({ inputTokens: expect.any(Number) })],
     });
     expect(events).toContainEqual(
       expect.objectContaining({

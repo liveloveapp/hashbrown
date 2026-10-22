@@ -3,14 +3,20 @@ import {
   aircraftCompareContract,
   airportCardContract,
   arrivalsBoardContract,
+  type AtcState,
   CARDS_MIN_CONFIDENCE,
   CARDS_SELECT_MAX,
   createBrowserAtcTools,
   flightCardContract,
+  focusComposerAfterRefinement,
+  NO_REFINEMENTS,
   observeDecisions,
   ROUTER_SKIPPED,
+  ROUTER_SKIPPED_REFINEMENT,
   type RouterShown,
   settleCards,
+  stableRefinements,
+  type StableRefinements,
   type Starter,
   transcriptItems,
   type TurnShown,
@@ -23,6 +29,7 @@ import {
   effect,
   inject,
   InjectionToken,
+  input,
   linkedSignal,
   output,
   signal,
@@ -50,8 +57,9 @@ import {
 import { FlightCard, FlightCardFallback } from './components/flight-card';
 import { AutoScroll } from './auto-scroll';
 import { Composer } from './composer';
+import { DevMode, publishDev } from './dev-mode';
 import { EmptyState } from './empty-state';
-import { ATC_STORE } from './store';
+import { ATC_STORE, injectAtcState } from './store';
 import { Transcript } from './transcript';
 
 // 1. Expose your components, in two kits. The model can only render these, and
@@ -107,6 +115,8 @@ export const CARDS_DECISION_TRANSPORT = new InjectionToken<Decision.Transport>(
   },
 );
 
+let nextRefineId = 0;
+
 /**
  * The chat panel: components, browser-side tools and the streaming answer,
  * with the one composer that routes what is typed.
@@ -121,11 +131,7 @@ export const CARDS_DECISION_TRANSPORT = new InjectionToken<Decision.Transport>(
       @if (messages().length === 0 && !chat.error()) {
         <atc-empty-state (pick)="pick($event)" />
       }
-      <atc-transcript
-        [items]="items()"
-        [busy]="chat.isLoading()"
-        [turns]="turns()"
-      />
+      <atc-transcript [items]="items()" [busy]="chat.isLoading()" />
       @if (chat.error()) {
         <div class="atc-card atc-error" role="alert">
           <span>The assistant didn't answer. Try again.</span>
@@ -133,23 +139,46 @@ export const CARDS_DECISION_TRANSPORT = new InjectionToken<Decision.Transport>(
         </div>
       }
     </div>
+    @if (suggestions().length > 0) {
+      <div
+        class="atc-refinements"
+        data-testid="refinements"
+        role="group"
+        [attr.aria-labelledby]="refineLabelId"
+      >
+        <span [id]="refineLabelId" class="atc-refinements-label">Refine:</span>
+        @for (suggestion of suggestions(); track suggestion.text) {
+          <button
+            type="button"
+            class="atc-refinement"
+            (click)="refine(suggestion.text, $event)"
+          >
+            {{ suggestion.text }}
+          </button>
+        }
+      </div>
+    }
     <atc-composer
       [busy]="chat.isLoading()"
       (routed)="routed.set($event)"
       (chat)="send($event)"
       (filter)="applyFilter($event)"
-      (clear)="clearFilter()"
+      (clear)="clearFilter($event)"
     />
   `,
 })
 export class Assistant {
+  /** True while a map filter run streams; the "Refine:" row waits for it. */
+  readonly filterLoading = input(false);
   /** Emits when the user sends anything (to the chat, to the filter, or a clear). */
   readonly sent = output();
   /** Emits the request the user routed to the natural-language map filter. */
   readonly filter = output<string>();
-  /** Emits what the router decided, just before `filter` (for "Show the stream"). */
+  /** Emits what the router decided, just before `filter` (for the developer drawer). */
   readonly filterRouted = output<RouterShown>();
   private readonly store = inject(ATC_STORE);
+  // Every submission, whichever route it took, for the drawer's Router tab.
+  private readonly dev = inject(DevMode);
 
   // 2. Give the model tools. They run here in the browser, against the aircraft
   //    already on the map; no plane list goes to the server.
@@ -188,6 +217,28 @@ export class Assistant {
     source: () => (this.chat.status() === 'error' ? null : this.chat.value()),
     computation: (value, prev): UiChatMessage[] => value ?? prev?.value ?? [],
   });
+  protected readonly refineLabelId = `atc-refine-${nextRefineId++}`;
+  // Ways to narrow the filter on the map, from it and the traffic: computed
+  // once per filter after its run settles, so they hold still as planes move.
+  private readonly atcState = injectAtcState();
+  private readonly held = linkedSignal<
+    { loading: boolean; state: AtcState },
+    StableRefinements
+  >({
+    source: () => ({ loading: this.filterLoading(), state: this.atcState() }),
+    computation: ({ loading, state }, prev) => {
+      const held = prev?.value ?? NO_REFINEMENTS;
+
+      return loading
+        ? held
+        : stableRefinements(held, state.mapFilter, [
+            ...state.aircraft.values(),
+          ]);
+    },
+  });
+  protected readonly suggestions = computed(() =>
+    this.filterLoading() ? [] : this.held().list,
+  );
   protected readonly items = computed(() =>
     transcriptItems(this.messages(), this.chat.isLoading()),
   );
@@ -200,8 +251,8 @@ export class Assistant {
   //    questions (server/src/decide-handler.ts); an unsure or failed decision
   //    sends with every card.
   //
-  //    "Show the stream" keeps each send's router decision and cards decision
-  //    with its answer. A starter skips the router.
+  //    The developer drawer: each send's router decision and cards decision,
+  //    recorded in order (superseded sends stay). A starter skips the router.
   protected readonly turns = signal<readonly TurnShown[]>([]);
   /** What the router decided for the text the composer is sending. */
   protected readonly routed = signal<RouterShown>(ROUTER_SKIPPED);
@@ -216,8 +267,17 @@ export class Assistant {
   });
 
   constructor() {
+    // The drawer reads the chat as it streams.
+    publishDev(
+      'chat',
+      computed(() => ({
+        items: this.items(),
+        turns: this.turns(),
+        busy: this.chat.isLoading(),
+      })),
+    );
     // Once the decision settles, the hook's decoded value (or its error) is
-    // what the chat acted on, so the panel shows that.
+    // what the chat acted on, so the drawer shows that.
     effect(() => {
       const deciding = this.narrowed.isDeciding();
       const error = this.narrowed.decisionError();
@@ -238,21 +298,31 @@ export class Assistant {
 
   protected send(content: string, routed = this.routed()): void {
     this.narrowed.sendMessage(content);
-    // Added once the chat accepted the message: its panel keeps this send's
+    // Added once the chat accepted the message: the drawer keeps this send's
     // router decision, and the cards decision joins it when it settles.
     this.turns.update((turns) => addTurn(turns, routed, content));
+    this.dev.recordRoute({ text: content, router: routed, outcome: 'chat' });
     this.sent.emit();
   }
 
   protected applyFilter(request: string, routed = this.routed()): void {
     this.filterRouted.emit(routed);
     this.filter.emit(request);
+    this.dev.recordRoute({ text: request, router: routed, outcome: 'filter' });
     this.sent.emit();
   }
 
-  protected clearFilter(): void {
+  protected clearFilter(content: string, routed = this.routed()): void {
     this.store.clearMapFilter();
+    this.dev.recordRoute({ text: content, router: routed, outcome: 'clear' });
     this.sent.emit();
+  }
+
+  protected refine(text: string, event: MouseEvent): void {
+    this.applyFilter(text, ROUTER_SKIPPED_REFINEMENT);
+    if (event.currentTarget instanceof Element) {
+      focusComposerAfterRefinement(event.currentTarget, event.detail);
+    }
   }
 
   protected pick(starter: Starter): void {

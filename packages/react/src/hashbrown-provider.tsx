@@ -1,10 +1,19 @@
-import { createContext, useMemo } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import {
   createHttpDecisionTransport,
   createHttpTransport,
   type Decision,
   type TransportOrFactory,
+  type ɵDevelopmentCollector,
 } from '@hashbrownai/core';
+import { createReactCollector } from './growth/collector';
 
 /**
  * The options for the Hashbrown provider.
@@ -42,11 +51,17 @@ export interface HashbrownProviderOptions {
      */
     transport?: Decision.Transport;
   };
+  /**
+   * Set to `false` to turn off Hashbrown's development-only collection for every descendant hook. See https://hashbrown.dev/docs/react/platform/collection.
+   */
+  telemetry?: boolean;
 }
 
 interface HashbrownProviderContext {
   transport: TransportOrFactory;
   decisionTransport: Decision.Transport;
+  collector: ɵDevelopmentCollector;
+  collectionEnabled: () => boolean;
 }
 
 export const HashbrownContext = createContext<
@@ -72,7 +87,23 @@ export const HashbrownProvider = (
     children: React.ReactNode;
   },
 ) => {
-  const { url, middleware, transport, decision, children } = props;
+  const { url, middleware, transport, decision, telemetry, children } = props;
+  // An outer provider's opt-out applies to every nested provider.
+  const parentEnabled = useContext(HashbrownContext)?.collectionEnabled;
+  // Read through a ref so `collectionEnabled`, and so the collector, stay
+  // stable across renders.
+  const telemetryRef = useRef(telemetry);
+  useEffect(() => {
+    telemetryRef.current = telemetry;
+  });
+  const collectionEnabled = useCallback(
+    () => telemetryRef.current !== false && (parentEnabled?.() ?? true),
+    [parentEnabled],
+  );
+  const collector = useMemo(
+    () => createReactCollector(collectionEnabled),
+    [collectionEnabled],
+  );
   const configuredTransport = useMemo<TransportOrFactory>(
     () =>
       transport ??
@@ -92,8 +123,13 @@ export const HashbrownProvider = (
     [decisionOverride, decisionUrl, middleware],
   );
   const context = useMemo(
-    () => ({ transport: configuredTransport, decisionTransport }),
-    [configuredTransport, decisionTransport],
+    () => ({
+      transport: configuredTransport,
+      decisionTransport,
+      collector,
+      collectionEnabled,
+    }),
+    [configuredTransport, decisionTransport, collector, collectionEnabled],
   );
 
   return (

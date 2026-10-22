@@ -78,7 +78,7 @@ export class SearchComponent {
 
 1. The schema describes the questions. Each property is one question.
 2. The `input` is the state to decide about. A `null` value keeps the resource idle.
-3. `system` is prepended to the state the model sees.
+3. `system` is sent with the input as context for the decision model.
 4. `debounce` waits for the input to settle before sending a request.
 
 The resource requires `provideHashbrown`. Changing `system` aborts the request and resets `value` and `meta` to `null` before the new decision arrives.

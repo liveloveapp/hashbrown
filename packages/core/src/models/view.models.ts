@@ -85,6 +85,68 @@ export type ToolCall<ToolUnion extends AnyTool> = Prettify<
 export type AnyToolCall = ToolCall<AnyTool>;
 
 /**
+ * A source a server tool call produced, such as a web page a search found.
+ * Citations in an answer refer to a source by its `id`.
+ *
+ * @public
+ */
+export type ServerToolCallSource = {
+  id: string;
+  kind: 'url' | 'file' | 'document' | 'record';
+  title: string;
+  href?: string;
+  snippet?: string;
+  fileId?: string;
+  containerId?: string;
+  /** Whether the answer cited this source. */
+  cited?: boolean;
+};
+
+/**
+ * A reference from an answer to one of its sources.
+ *
+ * @public
+ */
+export type Citation = {
+  /** The `id` of the {@link ServerToolCallSource} being cited. */
+  sourceId: string;
+  /** The cited text, the most reliable anchor into the answer. */
+  quote?: string;
+  /** Index of the text block the citation belongs to. */
+  block?: number;
+  /** Character span, present only when the provider gives true offsets. */
+  start?: number;
+  end?: number;
+};
+
+/**
+ * Attribution a provider requires an app to show with an answer, such as
+ * Google's search suggestions.
+ *
+ * @public
+ */
+export type Attribution = {
+  provider: 'google';
+  kind: 'search-suggestions' | 'maps';
+  /** Provider-rendered markup, to be shown verbatim. */
+  html?: string;
+  widgetToken?: string;
+  /**
+   * Always true: show it unmodified, adjacent to the answer, at full width,
+   * without link tracking.
+   */
+  mustRender: true;
+};
+
+/**
+ * How a settled server tool call ended.
+ *
+ * @public
+ */
+export type ServerToolCallOutcome =
+  'success' | 'failure' | 'denied' | 'cancelled';
+
+/**
  * A tool call the agent server executes itself, surfaced for display only.
  *
  * Hashbrown never runs these: the client has no tool of that name. The
@@ -113,6 +175,47 @@ export type ServerToolCall = {
 
   /** Provider metadata preserved across AG-UI runs. */
   metadata?: Metadata;
+
+  /**
+   * How the call ended. Absent while it runs. A call that failed, was denied
+   * or was cancelled is `complete` with the matching outcome, even when the
+   * server sent no result.
+   */
+  outcome?: ServerToolCallOutcome;
+
+  /** A short human-readable description of what the call is doing or did. */
+  label?: string;
+
+  /** A generic icon name for the call, such as `search`. */
+  icon?: string;
+
+  /**
+   * `provider` when the model provider ran the tool itself (for example web
+   * search), `server` when the agent server did. A provider call is never
+   * dispatched to a client tool, even one with the same name.
+   */
+  kind?: 'server' | 'provider';
+
+  /** The provider built-in tool this call ran, such as `web_search`. */
+  builtin?: string;
+
+  /** The queries the call ran, such as search terms. */
+  queries?: readonly string[];
+
+  /** The sources the call produced. */
+  sources?: readonly ServerToolCallSource[];
+
+  /** Why the call failed. */
+  error?: { message: string; code?: string };
+
+  /**
+   * Epoch milliseconds when the call started and, once it ended, settled.
+   * Absent when neither time is known.
+   */
+  timing?: { startedAt: number; settledAt?: number };
+
+  /** The id of the tool call that spawned this one, when nested. */
+  parentToolCallId?: string;
 };
 
 /**
@@ -134,6 +237,15 @@ export interface AssistantMessage<Output, ToolUnion extends AnyTool> {
    * at least one.
    */
   readonly serverToolCalls?: readonly ServerToolCall[];
+
+  /** Which sources the answer cites, and where. */
+  readonly citations?: readonly Citation[];
+
+  /** Sources the answer drew on that came with no tool call. */
+  readonly sources?: readonly ServerToolCallSource[];
+
+  /** Attribution the provider requires an app to show with the answer. */
+  readonly attribution?: readonly Attribution[];
 
   /**
    * Opaque provider continuation data preserved across AG-UI runs.

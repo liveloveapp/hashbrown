@@ -1,14 +1,15 @@
 import { isFocusShortcut, type RouterShown } from '@atc/shared';
 import type { Decision } from '@hashbrownai/core';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { usePublishDev } from './dev-mode';
 import { useRouter } from './router';
 
 /**
  * The one input, a pill floating over the bottom of the transcript. As you
  * type, a badge shows where Enter will send the text (`→ filter 0.97`): the
  * map filter (`onFilter`), clearing it (`onClear`), or the chat (`onChat`).
- * `onChat` and `onFilter` also get what the router decided, for "Show the
- * stream". `/` focuses the pill from anywhere outside another field. `transport`
+ * Each also gets the text and what the router decided, and the router's
+ * live decision goes to the developer drawer. `/` focuses the pill from anywhere outside another field. `transport`
  * replaces the router's HTTP transport (tests).
  */
 export function Composer({
@@ -21,13 +22,14 @@ export function Composer({
   busy?: boolean;
   onChat: (content: string, routed: RouterShown) => void;
   onFilter: (content: string, routed: RouterShown) => void;
-  onClear: () => void;
+  onClear: (content: string, routed: RouterShown) => void;
   transport?: Decision.Transport;
 }) {
   const field = useRef<HTMLInputElement>(null);
   const badgeId = useId();
   const [draft, setDraft] = useState('');
   const router = useRouter(draft, { transport });
+  usePublishDev('typing', router.typing);
 
   useEffect(() => {
     const focusOnSlash = (event: KeyboardEvent) => {
@@ -61,7 +63,7 @@ export function Composer({
     if (action.kind === 'filter') {
       onFilter(content, routed);
     } else if (action.kind === 'clear') {
-      onClear();
+      onClear(content, routed);
     } else {
       onChat(content, routed);
     }

@@ -1,0 +1,46 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Search the web for the current stable version of Node.js. Answer in one short sentence and cite your source.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "The current stable version of Node.js is 26.12.0, released on October 14, 2026. ([eosl.date](https://eosl.date/eol/product/nodejs/?utm_source=openai)) ",
+        "webSearches": ["current stable version of Node.js"]
+      },
+      "recordedTimings": {
+        "ttftMs": 1022,
+        "interChunkDelaysMs": [
+          0, 57, 0, 83, 846, 0, 0, 0, 364, 3, 4, 1, 11, 0, 4, 3, 4, 6, 6, 6, 2,
+          2, 3, 4, 6, 5, 4, 6, 3, 5, 3, 3, 6, 26, 47, 0, 29, 52, 0, 0, 14
+        ],
+        "totalDurationMs": 2640
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    },
+    {
+      "match": {
+        "userMessage": "Without searching again, repeat that version number only.",
+        "model": "gpt-4.1-mini",
+        "turnIndex": 1,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "26.12.0"
+      },
+      "recordedTimings": {
+        "ttftMs": 1201,
+        "interChunkDelaysMs": [0, 1, 0, 0, 0, 0, 0, 0, 49, 0, 2, 29],
+        "totalDurationMs": 1282
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}

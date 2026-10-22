@@ -269,7 +269,7 @@ test('aborts and closes the provider iterator when the consumer returns early', 
   })[Symbol.asyncIterator]();
 
   await iterator.next();
-  await iterator.return?.();
+  await iterator.return?.(undefined);
 
   expect(abort).toHaveBeenCalledTimes(1);
   expect(close).toHaveBeenCalledTimes(1);

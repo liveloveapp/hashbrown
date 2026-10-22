@@ -1,4 +1,5 @@
 import type { Message } from '@ag-ui/core';
+import { ɵTOOL_STEP_METADATA_KEY } from '@hashbrownai/core';
 import type OpenAI from 'openai';
 
 type InputItem = OpenAI.Responses.ResponseInputItem;
@@ -46,7 +47,53 @@ type AzureMarker = {
  * is malformed.
  */
 export function mapInput(messages: readonly Message[]): InputItem[] {
-  return groupSegments(messages).flatMap(mapSegment);
+  return groupSegments(dropProviderResults(messages)).flatMap(mapSegment);
+}
+
+/**
+ * Drops the tool results of provider-run calls. Requests use `store: false`,
+ * so the provider keeps no item to reference, and a replayed `function_call`
+ * for a tool the request never declared is rejected.
+ */
+function dropProviderResults(messages: readonly Message[]): Message[] {
+  const providerIds = new Set(
+    messages.flatMap((message) =>
+      message.role === 'assistant'
+        ? (message.toolCalls ?? []).filter(isProviderCall).map((c) => c.id)
+        : [],
+    ),
+  );
+
+  return messages.filter(
+    (message) =>
+      !(message.role === 'tool' && providerIds.has(message.toolCallId)),
+  );
+}
+
+function isProviderCall(toolCall: ToolCall): boolean {
+  const metadata = toolCall.metadata;
+  if (!isRecord(metadata)) {
+    return false;
+  }
+
+  const marker = metadata['azure'];
+  return (
+    (isRecord(marker) && marker['itemType'] === 'web_search_call') ||
+    isProviderStep(metadata[ɵTOOL_STEP_METADATA_KEY])
+  );
+}
+
+/**
+ * Whether a raw `b4.step` (v1 or legacy) says the provider ran the call. It
+ * reads `kind` even when the step has no readable `status`, so a malformed
+ * provider step is still never replayed as a function call.
+ */
+function isProviderStep(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    (value['v'] === undefined || value['v'] === 1) &&
+    value['kind'] === 'provider'
+  );
 }
 
 function groupSegments(messages: readonly Message[]): Segment[] {
@@ -110,7 +157,11 @@ function mapMessage(message: Message): InputItem[] {
         {
           type: 'function_call_output',
           call_id: message.toolCallId,
-          output: message.content,
+          // Like the Google provider, a failed tool sends its error instead.
+          output:
+            message.error === undefined
+              ? message.content
+              : JSON.stringify({ error: message.error }),
         },
       ];
     case 'assistant':
@@ -125,19 +176,34 @@ function mapTurn(
   reasoning: readonly ReasoningMessage[],
   assistant: AssistantMessage,
 ): InputItem[] {
-  const reasoningItems = reasoning.flatMap(mapReasoningMessage);
-  const replayedIds = new Set(reasoningItems.map((item) => item.id));
+  const allReasoningItems = reasoning.flatMap(mapReasoningMessage);
+  const replayedIds = new Set(allReasoningItems.map((item) => item.id));
   const assistantMarker = readMarker(
     assistant.metadata,
     `Azure OpenAI assistant message "${assistant.id}"`,
   );
-  const toolCalls = assistant.toolCalls ?? [];
+  const allToolCalls = assistant.toolCalls ?? [];
+  const toolCalls = allToolCalls.filter(
+    (toolCall) => !isProviderCall(toolCall),
+  );
   const toolCallMarkers = toolCalls.map((toolCall) =>
     readMarker(toolCall.metadata, `Azure OpenAI tool call "${toolCall.id}"`),
   );
   const keepIds = [assistantMarker, ...toolCallMarkers].every((marker) =>
     marker.reasoningItemIds.every((id) => replayedIds.has(id)),
   );
+
+  // Reasoning that only a dropped provider call referenced has no item left to
+  // pair with, and an unpaired reasoning item can be rejected.
+  const referencedIds = new Set(
+    [assistantMarker, ...toolCallMarkers].flatMap(
+      (marker) => marker.reasoningItemIds,
+    ),
+  );
+  const reasoningItems =
+    toolCalls.length === allToolCalls.length
+      ? allReasoningItems
+      : allReasoningItems.filter((item) => referencedIds.has(item.id));
 
   const turnItems = [
     ...mapAssistantText(

@@ -6,6 +6,7 @@ import {
 } from '@atc/shared';
 import { createSelectionSchema, type DecidableSchema } from '@hashbrownai/core';
 import { DecisionError, HashbrownTypeSafe } from '@hashbrownai/typesafe';
+import type { IncomingMessage } from 'node:http';
 import {
   BodyTooLargeError,
   type NodeHandler,
@@ -13,6 +14,10 @@ import {
   readJsonBody,
   sendJson,
 } from './http';
+import {
+  createFixedWindowLimiter,
+  type FixedWindowLimiter,
+} from './rate-limit';
 
 /** The pinned Jev version; bump it deliberately. */
 const DECIDE_MODEL = 'jev-1.14.0';
@@ -32,10 +37,31 @@ const KINDS: Record<string, { schema: DecidableSchema; system: string }> = {
   },
 };
 
+/** Decisions allowed per client IP per window. */
+const DECIDE_LIMIT = 300;
+
+/** The window for {@link DECIDE_LIMIT}, in milliseconds. */
+const DECIDE_WINDOW_MS = 60_000;
+
 /** Options for {@link createDecideHandler}. */
 export interface DecideHandlerOptions {
   /** A `fetch` for the TypeSafe call; tests pass a fake. */
   fetch?: typeof fetch;
+  /** The per-IP limiter; defaults to 300 requests per 60 s, one per handler. */
+  limiter?: FixedWindowLimiter;
+}
+
+/**
+ * The client IP: the first `x-forwarded-for` entry (Vercel sets it), else the
+ * socket's address.
+ */
+function clientIp(req: IncomingMessage): string {
+  const header = req.headers?.['x-forwarded-for'];
+  const first = (Array.isArray(header) ? header[0] : header)
+    ?.split(',')[0]
+    ?.trim();
+
+  return first || req.socket?.remoteAddress || 'unknown';
 }
 
 /**
@@ -66,6 +92,13 @@ function inputOf(state: unknown): unknown {
  * are ignored. Without `TYPESAFE_API_KEY` it answers 503 `{ code:
  * 'unavailable' }`, and the browser falls back to its no-decision path.
  *
+ * Each client IP gets 300 requests per minute; past that it answers 429 `{
+ * code: 'rate_limited' }` with `Retry-After`, before reading the body or
+ * calling TypeSafe. The count lives in this handler's memory, so it is a soft
+ * cap: each server instance counts separately. It is in code because Vercel's
+ * Hobby plan allows one firewall rate-limit rule per project, and that rule
+ * covers `/api/run` and `/api/filter`.
+ *
  * @param env - The environment; reads `TYPESAFE_API_KEY`.
  * @param options - Test seams.
  * @returns The route handler.
@@ -74,6 +107,13 @@ export function createDecideHandler(
   env: NodeJS.ProcessEnv,
   options: DecideHandlerOptions = {},
 ): NodeHandler {
+  const limiter =
+    options.limiter ??
+    createFixedWindowLimiter({
+      limit: DECIDE_LIMIT,
+      windowMs: DECIDE_WINDOW_MS,
+    });
+
   return async (req, res) => {
     if (req.method !== 'POST') {
       return sendJson(res, 405, { code: 'method_not_allowed' });
@@ -81,6 +121,15 @@ export function createDecideHandler(
     const apiKey = env['TYPESAFE_API_KEY'];
     if (!apiKey) {
       return sendJson(res, 503, { code: 'unavailable' });
+    }
+    const taken = limiter.take(clientIp(req));
+    if (!taken.allowed) {
+      return sendJson(
+        res,
+        429,
+        { code: 'rate_limited' },
+        { 'Retry-After': String(taken.retryAfterSec) },
+      );
     }
     const kind = queryParam(req, 'kind');
     const pinned = Object.hasOwn(KINDS, kind) ? KINDS[kind] : undefined;

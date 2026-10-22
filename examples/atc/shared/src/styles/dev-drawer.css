@@ -1,0 +1,155 @@
+/*
+ * The developer drawer under the map: the dark JSON panels that show every
+ * layer a developer would otherwise not see (the router, the cards decision,
+ * the streaming UI JSON, the filter, tool arguments). An ink panel in the
+ * mono font, flat, text only. The apps set --atc-drawer-height.
+ */
+.atc-map-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: var(--atc-gutter);
+}
+.atc-map-column > .atc-map-panel {
+  flex: 1 1 0;
+  min-height: 120px;
+}
+.atc-dev-drawer {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 0;
+  height: var(--atc-drawer-height, 280px);
+  max-height: 60%;
+  overflow: hidden;
+  background: var(--atc-ink);
+  color: var(--atc-surface);
+  border-radius: var(--atc-radius);
+  font-family: var(--atc-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+/* The drag handle along the top edge. */
+.atc-dev-resize {
+  flex: none;
+  height: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: row-resize;
+  touch-action: none;
+}
+.atc-dev-resize::after {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 3px;
+  margin: 4px auto 0;
+  border-radius: var(--atc-radius-pill);
+  background: var(--atc-dimmed);
+}
+.atc-dev-resize:is(:hover, :focus-visible)::after {
+  background: var(--atc-surface);
+}
+.atc-dev-resize:focus-visible {
+  outline-color: var(--atc-surface);
+  outline-offset: -2px;
+}
+.atc-dev-tabs {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 0 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--atc-muted);
+}
+.atc-dev-tablist {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+.atc-dev-tabs::-webkit-scrollbar {
+  display: none;
+}
+.atc-dev-tab {
+  flex: none;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: inherit;
+  color: var(--atc-dimmed);
+  cursor: pointer;
+}
+.atc-dev-tab:is(:hover, :focus-visible) {
+  color: var(--atc-surface);
+}
+.atc-dev-tab:focus-visible {
+  outline-color: var(--atc-surface);
+  outline-offset: -2px;
+}
+.atc-dev-tab[aria-selected='true'] {
+  color: var(--atc-surface);
+  border-bottom-color: var(--atc-surface);
+}
+/* The one scroll container: long lines scroll here, never the page. */
+.atc-dev-body {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  padding: 10px 12px;
+  overflow: auto;
+}
+.atc-dev-block {
+  min-width: 0;
+}
+.atc-dev-block pre {
+  margin: 0;
+  font: inherit;
+  white-space: pre;
+  tab-size: 2;
+}
+.atc-dev-title {
+  margin: 0;
+  color: var(--atc-dimmed);
+}
+/* Phone only: closes the sheet. */
+.atc-dev-close {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--atc-surface);
+  cursor: pointer;
+}
+.atc-dev-close:focus-visible {
+  outline-color: var(--atc-surface);
+  outline-offset: -4px;
+}
+/* Touch screens: a taller drag handle and 44px tabs. */
+@media (pointer: coarse) {
+  .atc-dev-resize {
+    height: 24px;
+  }
+  .atc-dev-resize::after {
+    margin-top: 10px;
+  }
+  .atc-dev-tab {
+    min-height: 44px;
+  }
+}

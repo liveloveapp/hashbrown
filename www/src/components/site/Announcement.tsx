@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useSyncExternalStore } from 'react';
+import {
+  currentSiteAnnouncement,
+  type SiteAnnouncement,
+} from '../../lib/announcements/catalog';
 import styles from './Announcement.module.css';
 
 /** The `localStorage` key the Angular site stores the last dismissal under. */
 export const ANNOUNCEMENT_STORAGE_KEY = 'lastAnnouncementDateTime';
-
-/** When the current announcement went out. Bump it to show a new one. */
-export const ANNOUNCEMENT_DATE = new Date('2026-10-21T18:00:00Z');
 
 /**
  * Whether to show the announcement, following the Angular `Announcement`:
@@ -65,12 +66,9 @@ function subscribe(listener: () => void): () => void {
 
 const getServerStored = () => undefined;
 
-function dismiss() {
+function dismiss(announcement: SiteAnnouncement) {
   try {
-    localStorage.setItem(
-      ANNOUNCEMENT_STORAGE_KEY,
-      ANNOUNCEMENT_DATE.toISOString(),
-    );
+    localStorage.setItem(ANNOUNCEMENT_STORAGE_KEY, announcement.publishedAt);
   } catch {
     // Storage can be unavailable (private mode, blocked site data).
   }
@@ -85,19 +83,30 @@ function dismiss() {
 export function Announcement() {
   const stored = useSyncExternalStore(subscribe, readStored, getServerStored);
 
-  if (!shouldShowAnnouncement(stored, ANNOUNCEMENT_DATE)) {
+  // `stored` is `undefined` on the server, so the clock is only read in the
+  // browser and the server render stays empty.
+  const announcement =
+    stored === undefined ? undefined : currentSiteAnnouncement(new Date());
+  if (
+    !announcement ||
+    !shouldShowAnnouncement(stored, new Date(announcement.publishedAt))
+  ) {
     return null;
   }
+  const [lead, rest] = announcement.text.startsWith('New:')
+    ? ['New:', announcement.text.slice('New:'.length)]
+    : [undefined, announcement.text];
   return (
     <div className={styles.announcement}>
       <div className={styles.alert}>
-        <Link href="/blog/2026-10-21-hashbrown-v-0-8-0">
-          <strong>New:</strong> Hashbrown v0.8 adds decisions
+        <Link href={announcement.href}>
+          {lead && <strong>{lead}</strong>}
+          {rest}
         </Link>
         <button
           type="button"
           className={styles.close}
-          onClick={dismiss}
+          onClick={() => dismiss(announcement)}
           aria-label="Dismiss announcement"
         >
           <svg

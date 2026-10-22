@@ -1,0 +1,23 @@
+{
+  "fixtures": [
+    {
+      "match": {
+        "userMessage": "Say hello in three words.",
+        "model": "gemini-4-argon",
+        "turnIndex": 0,
+        "hasToolResult": false
+      },
+      "response": {
+        "content": "Hello right now."
+      },
+      "recordedTimings": {
+        "ttftMs": 11302,
+        "interChunkDelaysMs": [124, 35],
+        "totalDurationMs": 11461
+      },
+      "metadata": {
+        "systemHash": "d52f053a"
+      }
+    }
+  ]
+}
