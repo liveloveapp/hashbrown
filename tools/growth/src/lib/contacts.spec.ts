@@ -3,9 +3,13 @@ import { expect, test, vi } from 'vitest';
 import {
   approveContactFromForm,
   type ApproveContactFromFormInput,
+  approveContactFromInstallDigest,
+  approveContactFromInstallRuntimeInTransaction,
   CONTACT_HARD_STOP_REASONS,
   deleteContact,
   findContactIdByEmail,
+  GROWTH_SOURCE_FORMS,
+  normalizeInstallRuntimeEmail,
   readContactControlState,
   reauthorizeContact,
 } from './contacts.ts';
@@ -27,11 +31,11 @@ const baseApproval: ApproveContactFromFormInput = {
   companyName: ' Example Company ',
   companyDomain: ' Example.COM ',
   source: 'website',
-  sourceForm: 'whitepaper',
+  sourceForm: 'unstuck',
   noticeText: 'Send me the guide and a short follow-up. Unsubscribe anytime.',
-  noticeVersion: 'whitepaper-v1',
+  noticeVersion: 'unstuck-v1',
   policyVersion: 'growth-v1',
-  eventKey: 'form:whitepaper:submission-1',
+  eventKey: 'form:submission-1:accepted',
   occurredAt,
   keyring,
   serverEmailClassification: 'work',
@@ -211,6 +215,19 @@ test('approveContactFromForm refuses when a stored key version is not in the key
   const markers = harness.calls.map(({ marker }) => marker);
   expect(markers).not.toContain('find-contact');
   expect(markers).not.toContain('insert-activity');
+});
+
+test('approveContactFromForm accepts only the unstuck source form', async () => {
+  const harness = executorWith(approvalHandlers({}));
+
+  const result = approveContactFromForm(harness.executor, {
+    ...baseApproval,
+    sourceForm: 'whitepaper',
+  } as unknown as ApproveContactFromFormInput);
+
+  expect(GROWTH_SOURCE_FORMS).toEqual(['unstuck']);
+  await expect(result).rejects.toThrow('sourceForm must be one of: unstuck');
+  expect(harness.calls).toEqual([]);
 });
 
 test('approveContactFromForm rekeys an old digest and records a lookup alias', async () => {
@@ -424,6 +441,8 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
       ],
     }),
     'unlink-projects': () => ({ rows: [{ id: 'project-id' }] }),
+    'unlink-install-runtime-links': emptyRows,
+    'delete-contact-score': emptyRows,
     'delete-private-activity': () => ({ rows: [{ id: 1 }] }),
     'scrub-retained-activity': () => ({ rows: [{ id: 2 }] }),
     'insert-activity': () => ({ rows: [{ event_key: 'founder:delete:1' }] }),
@@ -462,6 +481,12 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
   expect(sqlFor('delete-private-activity')).toMatch(
     /contact\.lookup_alias_added/u,
   );
+  expect(sqlFor('unlink-install-runtime-links')).toMatch(
+    /update growth_install_runtime_links\s+set contact_id = null\s+where contact_id = \$1/u,
+  );
+  expect(sqlFor('delete-contact-score')).toMatch(
+    /delete from growth_contact_scores\s+where contact_id = \$1/u,
+  );
   expect(harness.calls.map(({ marker }) => marker)).toEqual([
     'privacy-lock',
     'lock-contact',
@@ -469,6 +494,8 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
     'cancel-and-scrub-jobs',
     'delete-artifacts',
     'unlink-projects',
+    'unlink-install-runtime-links',
+    'delete-contact-score',
     'delete-private-activity',
     'scrub-retained-activity',
     'scrub-contact',
@@ -507,6 +534,8 @@ test('deleteContact runs the observation redaction inside its transaction', asyn
     'cancel-and-scrub-jobs': emptyRows,
     'delete-artifacts': emptyRows,
     'unlink-projects': emptyRows,
+    'unlink-install-runtime-links': emptyRows,
+    'delete-contact-score': emptyRows,
     'delete-private-activity': emptyRows,
     'scrub-retained-activity': emptyRows,
     'scrub-contact': () => ({ rows: [deletedRow] }),
@@ -533,6 +562,8 @@ test('deleteContact runs the observation redaction inside its transaction', asyn
     'cancel-and-scrub-jobs',
     'delete-artifacts',
     'unlink-projects',
+    'unlink-install-runtime-links',
+    'delete-contact-score',
     'delete-private-activity',
     'scrub-retained-activity',
     'scrub-contact',
@@ -591,4 +622,85 @@ test('the fake executor throws on an unexpected marker', async () => {
   const result = harness.executor.execute('/* growth:mystery */ select 1');
 
   await expect(result).rejects.toThrow('Unexpected growth SQL marker: mystery');
+});
+
+test('normalizeInstallRuntimeEmail keeps a usable recipient and drops bots and malformed mailboxes', () => {
+  const inputs = [
+    ' Dev@Acme.DEV ',
+    'not-an-email',
+    'noreply@acme.dev',
+    'dependabot+1@acme.dev',
+    'dev@no-reply.acme.dev',
+    '.dev@acme.dev',
+    'd..ev@acme.dev',
+    'dev@-acme.dev',
+  ];
+
+  const results = inputs.map(normalizeInstallRuntimeEmail);
+
+  expect(results).toEqual([
+    'dev@acme.dev',
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+  ]);
+});
+
+test('approveContactFromInstallRuntimeInTransaction refuses personal-domain and bot emails before any SQL', async () => {
+  const { executor, calls } = executorWith({});
+  const input = {
+    keyring,
+    now: occurredAt,
+    installObservationId: '00000000-0000-4000-8000-0000000000a1',
+    runtimeObservationId: '00000000-0000-4000-8000-0000000000b1',
+  };
+
+  const results = [
+    await approveContactFromInstallRuntimeInTransaction(executor, {
+      ...input,
+      email: 'someone@gmail.com',
+    }),
+    await approveContactFromInstallRuntimeInTransaction(executor, {
+      ...input,
+      email: 'noreply@acme.dev',
+    }),
+  ];
+
+  expect(results).toEqual([null, null]);
+  expect(calls).toEqual([]);
+  await expect(
+    approveContactFromInstallRuntimeInTransaction(executor, {
+      ...input,
+      email: 'dev@acme.dev',
+      runtimeObservationId: 'runtime-1',
+    }),
+  ).rejects.toThrow('Install/runtime approval requires observation UUIDs');
+});
+
+test('approveContactFromInstallDigest reports an unavailable identity and requires an observation UUID', async () => {
+  const { executor, calls } = executorWith({
+    'read-install-digest-identity': () => ({ rows: [] }),
+  });
+  const input = {
+    installObservationId: '00000000-0000-4000-8000-0000000000a1',
+    occurredAt,
+    eventKey: 'install_digest:approve:1',
+    keyring,
+  };
+
+  const result = await approveContactFromInstallDigest(executor, input);
+
+  expect(result).toEqual({ approved: false, reason: 'identity_unavailable' });
+  expect(calls[0]?.sql).toContain("o.kind = 'package.installed'");
+  expect(calls[0]?.sql).toContain('o.redacted_at is null');
+  await expect(
+    approveContactFromInstallDigest(executor, {
+      ...input,
+      installObservationId: 'install-1',
+    }),
+  ).rejects.toThrow('Install digest approval requires an observation UUID');
 });

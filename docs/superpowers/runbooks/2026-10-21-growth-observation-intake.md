@@ -15,7 +15,7 @@ Work through this list in order before (and while) collection is on:
    setting `GROWTH_COLLECTION_SOURCES`. The source budget is global: one client
    at about 20 requests per second exhausts it and denies everyone.
 2. Set `GROWTH_OBSERVATION_PROCESSING_ENABLED=true` together with collection
-   and run `process` (below) on a schedule until PR 5's cron arrives. Subject
+   and run `process` (below) on a schedule until `LIFECYCLE_CRON_ENABLED=true`. Subject
    id churn can write about 24k rows a minute; projection and the budget
    garbage collection keep up only if they run. Every `process` call that
    reaches the library collects old budget rows first, but the CLI prints
@@ -60,8 +60,8 @@ it never fails a committed batch).
 
 ## Run projection by hand
 
-Projection turns accepted evidence into journey state. Until the lifecycle cron
-arrives in PR 5, run it yourself:
+Projection turns accepted evidence into journey state. Until
+`LIFECYCLE_CRON_ENABLED=true`, run it yourself:
 
 ```
 GROWTH_OBSERVATION_PROCESSING_ENABLED=true npx nx observability growth -- process --limit 100
@@ -173,6 +173,6 @@ event means tracing broke.
 
 ## Not in this PR
 
-Collectors that send these events (PR 3), PostHog forwarding (PR 4), the
-lifecycle cron that calls `process` (PR 5), and forms plus the install digest
-(PR 6).
+Collectors that send these events (PR 3), PostHog forwarding (PR 4), and
+the Get unstuck form (PR 6). The lifecycle cron that calls `process` is
+described in `2026-10-21-growth-lifecycle-service.md`.

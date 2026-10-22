@@ -101,7 +101,6 @@ from `GROWTH_DATABASE_ENVIRONMENT` are acknowledged with 200 and ignored.
 
 ## Not in PR 1
 
-From section 14 of the design: observation intake and budgets (PR 2),
-collectors (PR 3), website analytics (PR 4), the lifecycle service with
-scoring, campaign calendar and templates, reply binding and the digest (PR 5),
-the Get unstuck form (PR 6), and enabling production switches (PR 7).
+The lifecycle service is covered by `2026-10-21-growth-lifecycle-service.md`.
+Still to come from section 14 of the design: the Get unstuck form (PR 6) and
+enabling production switches (PR 7).

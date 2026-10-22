@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import nextConfig from '../next.config';
 
@@ -37,4 +39,31 @@ test('the retired /samples pages redirect to the example app docs', async () => 
       },
     ]),
   );
+});
+
+test('/call redirects temporarily to the Google Calendar booking page', async () => {
+  const redirects = await nextConfig.redirects?.();
+
+  expect(redirects).toEqual(
+    expect.arrayContaining([
+      {
+        source: '/call',
+        destination: 'https://calendar.app.google/nK961tWHZd21izKR6',
+        permanent: false,
+      },
+    ]),
+  );
+});
+
+// A cron more often than daily needs hashbrown-www on a Vercel Pro team; a
+// Hobby team rejects the deploy. See "Scheduling the tick" in
+// docs/superpowers/runbooks/2026-10-21-growth-lifecycle-service.md.
+test('vercel.json schedules /_/cron/lifecycle every 30 minutes', () => {
+  const path = resolve(__dirname, '../vercel.json');
+
+  const config = JSON.parse(readFileSync(path, 'utf8'));
+
+  expect(config.crons).toEqual([
+    { path: '/_/cron/lifecycle', schedule: '*/30 * * * *' },
+  ]);
 });

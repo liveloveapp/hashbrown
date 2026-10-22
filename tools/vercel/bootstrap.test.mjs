@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   TARGETS,
@@ -670,4 +672,55 @@ test('TARGETS www lists the growth env keys', () => {
     'GROWTH_DATABASE_ENVIRONMENT',
     'LIFECYCLE_URL',
   ]);
+});
+
+test('bootstrap lifecycle env lists CAMPAIGN_ENROLLMENT_START_AT and LIFECYCLE_BATCH_SIZE', () => {
+  const target = TARGETS.find((t) => t.key === 'lifecycle');
+  const www = TARGETS.find((t) => t.key === 'www');
+
+  const env = target?.env ?? [];
+
+  assert.ok(env.includes('CAMPAIGN_ENROLLMENT_START_AT'));
+  assert.ok(env.includes('LIFECYCLE_BATCH_SIZE'));
+  assert.ok(!env.includes('GOOGLE_REPLY_HMAC_SECRET'));
+  assert.ok(www?.env.includes('GOOGLE_REPLY_HMAC_SECRET'));
+  assert.ok(!target?.requiredEnv.includes('CAMPAIGN_ENROLLMENT_START_AT'));
+});
+
+test('bootstrap puts LIFECYCLE_CRON_ENABLED on www, which serves the cron route', () => {
+  const www = TARGETS.find((t) => t.key === 'www');
+  const lifecycle = TARGETS.find((t) => t.key === 'lifecycle');
+
+  const wwwEnv = www?.env ?? [];
+
+  assert.ok(wwwEnv.includes('LIFECYCLE_CRON_ENABLED'));
+  assert.ok(!lifecycle?.env.includes('LIFECYCLE_CRON_ENABLED'));
+});
+
+test('DEPLOY_TARGETS lists lifecycle as optional with the lifecycle project secret', () => {
+  const workflow = readFileSync(
+    fileURLToPath(
+      new URL('../../.github/workflows/pr-main.yml', import.meta.url),
+    ),
+    'utf8',
+  );
+
+  const line = /^\s*DEPLOY_TARGETS:\s*'(.*)'\s*$/m.exec(workflow);
+  const targets = JSON.parse(line?.[1] ?? '[]');
+  const lifecycle = targets.find((t) => t.key === 'lifecycle');
+
+  assert.deepEqual(lifecycle, {
+    key: 'lifecycle',
+    dir: 'tools/lifecycle',
+    project_id_secret: 'VERCEL_PROJECT_ID_LIFECYCLE',
+    optional: true,
+  });
+  assert.equal(
+    TARGETS.find((t) => t.key === 'lifecycle')?.secret,
+    lifecycle?.project_id_secret,
+  );
+  assert.deepEqual(
+    targets.map((t) => t.key),
+    ['www', 'atc', 'lifecycle'],
+  );
 });

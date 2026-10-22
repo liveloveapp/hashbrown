@@ -8,6 +8,7 @@
     "strict": true,
     "types": ["node"],
     "noEmit": true,
+    "resolveJsonModule": true,
     "ignoreDeprecations": "6.0"
   },
   "include": [

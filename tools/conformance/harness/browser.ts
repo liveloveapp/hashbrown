@@ -36,6 +36,12 @@ export interface BrowserHygieneOptions {
 export interface BrowserHygiene {
   /** Asserts that no unexpected browser, console, request, or HTTP errors occurred. */
   assertClean(): Promise<void>;
+  /**
+   * Detaches every page listener this monitor installed. A later scenario on
+   * the same page then owns its events alone, so one-shot ignore records (a
+   * terminal run's client abort) are not consumed by a stale monitor.
+   */
+  dispose(): void;
 }
 
 /** Options used to reset, register, and open one fixture scenario. */
@@ -170,15 +176,15 @@ export function installBrowserHygiene(
     });
   };
 
-  page.on('request', (request) => {
+  const onRequest = (request: Request) => {
     if (request.method() === 'POST') {
       pendingPostRequests.add(request);
     }
-  });
-  page.on('pageerror', (error) => {
+  };
+  const onPageError = (error: Error) => {
     unexpectedEntries.push(`Page error: ${error.stack ?? error.message}`);
-  });
-  page.on('console', (message) => {
+  };
+  const onConsole = (message: ConsoleMessage) => {
     if (
       message.type() === 'error' &&
       !consoleErrorAllowances.consume(message)
@@ -187,9 +193,8 @@ export function installBrowserHygiene(
         `Console error: ${message.text()}${formatLocation(message.location())}`,
       );
     }
-  });
-  page.on('requestfinished', settleRequest);
-  page.on('requestfailed', (request) => {
+  };
+  const onRequestFailed = (request: Request) => {
     if (
       !ignoreRequestFailure(request) &&
       !requestFailureAllowances.consume(request)
@@ -200,14 +205,22 @@ export function installBrowserHygiene(
       );
     }
     settleRequest(request);
-  });
-  page.on('response', (response) => {
+  };
+  const onResponse = (response: Response) => {
     if (response.status() >= 400 && !httpErrorAllowances.consume(response)) {
       unexpectedEntries.push(
         `HTTP ${response.status()}: ${response.request().method()} ${response.url()}`,
       );
     }
-  });
+  };
+
+  page.on('request', onRequest);
+  page.on('pageerror', onPageError);
+  page.on('console', onConsole);
+  page.on('requestfinished', settleRequest);
+  page.on('requestfailed', onRequestFailed);
+  page.on('response', onResponse);
+  let disposed = false;
 
   return {
     async assertClean() {
@@ -223,8 +236,23 @@ export function installBrowserHygiene(
         `Unexpected browser errors:\n${errors.join('\n')}`,
       ).toEqual([]);
     },
+    dispose() {
+      if (disposed) {
+        return;
+      }
+
+      disposed = true;
+      page.off('request', onRequest);
+      page.off('pageerror', onPageError);
+      page.off('console', onConsole);
+      page.off('requestfinished', settleRequest);
+      page.off('requestfailed', onRequestFailed);
+      page.off('response', onResponse);
+    },
   };
 }
+
+const activeScenarioHygiene = new WeakMap<Page, BrowserHygiene>();
 
 /** Opens a reset and registered fixture scenario, then waits for readiness. */
 export async function openScenario(
@@ -232,6 +260,7 @@ export async function openScenario(
   aimock: RuntimeSmokeAimockHandle,
   options: OpenScenarioOptions,
 ): Promise<BrowserHygiene> {
+  activeScenarioHygiene.get(page)?.dispose();
   aimock.resetTerminalRuns();
   aimock.aguiMock.reset();
   const hygiene = installBrowserHygiene(page, options.hygiene, (request) => {
@@ -254,6 +283,7 @@ export async function openScenario(
       return false;
     }
   });
+  activeScenarioHygiene.set(page, hygiene);
   await options.register?.(aimock);
 
   const searchParams = new URLSearchParams({

@@ -10,7 +10,7 @@ export const TEST_TOKEN_KEYRING: GrowthTokenKeyring = {
 export const TEST_NOW = new Date('2026-10-21T12:00:00.000Z');
 
 export function mintToken(
-  purpose: 'unsubscribe' | 'founder_stop',
+  purpose: 'unsubscribe' | 'founder_stop' | 'founder_approve_install',
   issuedAt: Date = TEST_NOW,
 ): string {
   return createGrowthActionToken(

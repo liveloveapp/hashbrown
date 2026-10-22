@@ -1,16 +1,21 @@
 import { expect, test, vi } from 'vitest';
 
+import { businessMorningAfter } from './campaign-schedule.ts';
 import {
   authorizeLeasedJobForSubmission,
   cancelLeasedJob,
+  claimInternalNotificationSubmission,
   completeLeasedJob,
   deferLeasedJob,
   enqueueJob,
   failLeasedJob,
   JobLeaseConflictError,
   leaseDueJobs,
+  markInternalNotificationUnknown,
   markProviderAcceptanceUnknown,
   markProviderRejection,
+  materializeCampaignEnrollment,
+  readLifecycleJobContext,
   recordProviderAcceptance,
 } from './jobs.ts';
 import { executorWith, type MarkerHandler } from './testing/fake-executor.ts';
@@ -201,7 +206,7 @@ test('leaseDueJobs leases only due pending or expired jobs and increments attemp
   expect(first?.sql).toContain("j.status = 'leased' and j.lease_until <= $2");
   expect(first?.sql).toContain('attempts = j.attempts + 1');
   expect(first?.sql).toContain('for update skip locked');
-  expect(first?.sql).not.toMatch(/form\.abuse_assessed|mailbox\.recovery/u);
+  expect(first?.sql).not.toMatch(/form\.abuse_assessed/u);
   await expect(
     leaseDueJobs(executor, {
       kinds: ['fulfill'],
@@ -211,6 +216,30 @@ test('leaseDueJobs leases only due pending or expired jobs and increments attemp
       campaignEnabled: true,
     }),
   ).rejects.toThrow('batchSize must be an integer between 1 and 100');
+});
+
+test('leaseDueJobs holds send_step behind an unbound sibling send and both mailbox kinds behind an open recovery', async () => {
+  const { executor, calls } = executorWith({
+    'lease-due-jobs': emptyRows,
+  });
+
+  await leaseDueJobs(executor, {
+    kinds: ['send_step', 'reply_reconcile'],
+    now,
+    batchSize: 5,
+    leaseDurationMs: 60_000,
+    campaignEnabled: true,
+  });
+
+  const sql = (calls[0]?.sql ?? '').replace(/\s+/gu, ' ');
+  expect(sql).toContain(
+    "unbound.kind in ('fulfill', 'send_step') and unbound.status = 'completed' and unbound.provider_email_id is not null and unbound.rfc_message_id is null",
+  );
+  expect(sql).toContain("j.kind not in ('send_step', 'reply_reconcile')");
+  expect(sql).toContain("recovery_required.kind = 'mailbox.recovery_required'");
+  expect(sql).toContain(
+    "recovery_completed.data->>'recovery_id' = recovery_required.data->>'recovery_id'",
+  );
 });
 
 test('leaseDueJobs fails expired leases that were already authorized for submission', async () => {
@@ -374,6 +403,8 @@ function acceptanceExecutor(lockedJob: TestRow, acceptance: TestRow[]) {
     'accept-provider-submission': () => ({
       rows: [
         jobRow({
+          kind: lockedJob['kind'],
+          payload: lockedJob['payload'],
           status: 'completed',
           lease_token: null,
           lease_until: null,
@@ -386,6 +417,7 @@ function acceptanceExecutor(lockedJob: TestRow, acceptance: TestRow[]) {
       rows: [{ event_key: `job:${jobId}:provider-accepted` }],
     }),
     'read-provider-acceptance-activity': () => ({ rows: acceptance }),
+    'anchor-campaign-cadence': emptyRows,
   };
   return executorWith(handlers);
 }
@@ -437,6 +469,7 @@ test('recordProviderAcceptance completes the job and replays idempotently', asyn
     'read-final-send-authorization',
     'accept-provider-submission',
     'insert-provider-acceptance-activity',
+    'anchor-campaign-cadence',
   ]);
   expect(
     first.calls.find(
@@ -490,4 +523,411 @@ test('markProviderAcceptanceUnknown sets unknown and never completes', async () 
     'accept-provider-submission',
   );
   expect(calls.at(-1)?.marker).toBe('insert-provider-unknown-activity');
+});
+
+test('leaseDueJobs embeds the Pacific Monday-Friday 07:00 window and the three approval kinds for send_step', async () => {
+  const { executor, calls } = executorWith({
+    'lease-due-jobs': emptyRows,
+  });
+
+  await leaseDueJobs(executor, {
+    kinds: ['send_step'],
+    now,
+    batchSize: 5,
+    leaseDurationMs: 60_000,
+    campaignEnabled: true,
+    isSendWindow: () => true,
+  });
+
+  const sql = calls[0]?.sql ?? '';
+  expect(sql).toContain(
+    "extract(isodow from $2::timestamptz at time zone 'America/Los_Angeles') between 1 and 5",
+  );
+  expect(sql).toContain(
+    "extract(hour from $2::timestamptz at time zone 'America/Los_Angeles') = 7",
+  );
+  expect(sql).toContain("enrollment.occurred_at + interval '5 minutes' <= $2");
+  for (const kind of [
+    'form.outreach_approved',
+    'contact.reauthorized',
+    'install_runtime.outreach_approved',
+  ]) {
+    expect(sql).toContain(`'${kind}'`);
+  }
+  expect(sql).not.toMatch(/growth_artifacts|enrichment|project\.claimed/u);
+});
+
+test('authorizeLeasedJobForSubmission accepts only unstuck forms, founder reauthorization and linked install runtime approvals', async () => {
+  const { executor, calls } = executorWith({
+    'lock-contact-for-send': () => ({ rows: [sendContactRow()] }),
+    'lock-job-for-send': () => ({ rows: [jobRow()] }),
+    'insert-final-send-authorization': () => ({
+      rows: [{ event_key: `job:${jobId}:submission-authorized:${leaseToken}` }],
+    }),
+  });
+
+  await authorizeLeasedJobForSubmission(executor, {
+    jobId,
+    leaseToken,
+    now,
+    campaignEnabled: true,
+    deliveryEnabled: true,
+  });
+
+  const sql =
+    calls.find(({ marker }) => marker === 'lock-contact-for-send')?.sql ?? '';
+  expect(sql).toContain("array['unstuck']");
+  expect(sql).toContain("'install_runtime.outreach_approved'");
+  expect(sql).toContain("data->>'verification' = 'linked_observations'");
+  expect(sql).toContain("data->>'provenance' = 'founder_action'");
+  expect(sql).not.toMatch(/whitepaper|newsletter|pricing/u);
+  expect(sql).toContain('from growth_install_runtime_links link');
+  expect(sql).toContain("link.outcome = 'approved'");
+  expect(sql).toContain('link.contact_id = authoritative.contact_id');
+  expect(sql).toContain('runtime_observation.redacted_at is null');
+  expect(sql).toContain('install_observation.redacted_at is null');
+});
+
+test('materializeCampaignEnrollment validates input and does nothing when enrollment is disabled', async () => {
+  const { executor, calls } = executorWith({});
+  const input = {
+    enrollmentEnabled: false,
+    enrollmentStartAt: new Date('2026-09-01T00:00:00.000Z'),
+    now,
+    batchSize: 10,
+  };
+
+  const disabled = await materializeCampaignEnrollment(executor, input);
+
+  expect(disabled).toEqual({ enrolledContactIds: [], createdJobs: 0 });
+  expect(calls).toEqual([]);
+  await expect(
+    materializeCampaignEnrollment(executor, { ...input, batchSize: 1_001 }),
+  ).rejects.toThrow('batchSize must be an integer between 1 and 1000');
+  await expect(
+    materializeCampaignEnrollment(executor, {
+      ...input,
+      enrollmentStartAt: new Date('invalid'),
+    }),
+  ).rejects.toThrow('enrollmentStartAt must be a valid Date');
+});
+
+test('materializeCampaignEnrollment records the configuration, enrols eligible contacts and schedules step 1 on the next business morning', async () => {
+  const enrollmentStartAt = new Date('2026-09-01T00:00:00.000Z');
+  const otherContactId = '00000000-0000-4000-8000-000000000002';
+  const { executor, calls } = executorWith({
+    'privacy-lock': emptyRows,
+    'lock-campaign-enrollment': emptyRows,
+    'insert-campaign-enrollment-config': emptyRows,
+    'read-campaign-enrollment-start': () => ({
+      rows: [{ enrollment_start_at: enrollmentStartAt.toISOString() }],
+    }),
+    'enroll-campaign-v1': () => ({
+      rows: [
+        { contact_id: contactId, created_jobs: 3 },
+        { contact_id: otherContactId, created_jobs: '3' },
+      ],
+    }),
+  });
+
+  const result = await materializeCampaignEnrollment(executor, {
+    enrollmentEnabled: true,
+    enrollmentStartAt,
+    now,
+    batchSize: 10,
+  });
+
+  expect(result).toEqual({
+    enrolledContactIds: [contactId, otherContactId],
+    createdJobs: 6,
+  });
+  expect(calls.map(({ marker }) => marker)).toEqual([
+    'privacy-lock',
+    'lock-campaign-enrollment',
+    'insert-campaign-enrollment-config',
+    'read-campaign-enrollment-start',
+    'enroll-campaign-v1',
+  ]);
+  const enroll = calls.at(-1);
+  expect(enroll?.params[0]).toEqual(enrollmentStartAt);
+  expect(enroll?.params[1]).toEqual(now);
+  expect(enroll?.params[2]).toBe(10);
+  expect(enroll?.params[4]).toEqual(businessMorningAfter(now, 1));
+  expect(enroll?.sql).toContain("'unstuck_form'");
+  expect(enroll?.sql).toContain("'install_digest'");
+  expect(enroll?.sql).toContain("'install_runtime'");
+  expect(enroll?.sql).toContain("link.outcome = 'approved'");
+  expect(enroll?.sql).toContain('link.contact_id = approval.contact_id');
+  expect(enroll?.sql).toContain(
+    "'campaign:v1:' || e.contact_id::text || ':step:' || step::text",
+  );
+  expect(enroll?.sql).not.toMatch(
+    /project\.claimed|form\.abuse_assessed|legacy|whitepaper/u,
+  );
+});
+
+test('materializeCampaignEnrollment throws when the start differs from the recorded configuration', async () => {
+  const { executor, calls } = executorWith({
+    'privacy-lock': emptyRows,
+    'lock-campaign-enrollment': emptyRows,
+    'insert-campaign-enrollment-config': emptyRows,
+    'read-campaign-enrollment-start': () => ({
+      rows: [{ enrollment_start_at: '2026-08-01T00:00:00.000Z' }],
+    }),
+  });
+
+  const result = materializeCampaignEnrollment(executor, {
+    enrollmentEnabled: true,
+    enrollmentStartAt: new Date('2026-09-01T00:00:00.000Z'),
+    now,
+    batchSize: 10,
+  });
+
+  await expect(result).rejects.toThrow(
+    'CAMPAIGN_ENROLLMENT_START_AT is immutable after campaign configuration',
+  );
+  expect(calls.map(({ marker }) => marker)).not.toContain('enroll-campaign-v1');
+});
+
+test('recordProviderAcceptance anchors steps 2 and 3 to the step 1 acceptance', async () => {
+  const acceptedAt = new Date('2026-09-02T15:01:00.000Z');
+  const { executor, calls } = acceptanceExecutor(jobRow(), []);
+
+  await recordProviderAcceptance(executor, {
+    jobId,
+    leaseToken,
+    acceptedAt,
+    providerEmailId: 'resend-email-1',
+  });
+
+  const anchor = calls.find(
+    ({ marker }) => marker === 'anchor-campaign-cadence',
+  );
+  expect(anchor?.params).toEqual([
+    contactId,
+    1,
+    businessMorningAfter(acceptedAt, 3),
+    businessMorningAfter(acceptedAt, 8),
+  ]);
+  expect(anchor?.sql).toContain('greatest(');
+  expect(anchor?.sql).toContain("later.status = 'pending'");
+  expect(anchor?.sql).toContain("later.delivery_status = 'not_submitted'");
+});
+
+test('recordProviderAcceptance anchors step 3 to the step 2 acceptance and skips non-campaign jobs', async () => {
+  const acceptedAt = new Date('2026-09-02T15:01:00.000Z');
+  const stepTwo = acceptanceExecutor(
+    jobRow({ payload: { campaign_version: 'v1', step: 2 } }),
+    [],
+  );
+  const fulfill = acceptanceExecutor(
+    jobRow({ kind: 'fulfill', payload: { submission_id: 'submission-1' } }),
+    [],
+  );
+
+  await recordProviderAcceptance(stepTwo.executor, {
+    jobId,
+    leaseToken,
+    acceptedAt,
+    providerEmailId: 'resend-email-1',
+  });
+  await recordProviderAcceptance(fulfill.executor, {
+    jobId,
+    leaseToken,
+    acceptedAt,
+    providerEmailId: 'resend-email-1',
+  });
+
+  const anchor = stepTwo.calls.find(
+    ({ marker }) => marker === 'anchor-campaign-cadence',
+  );
+  expect(anchor?.params).toEqual([
+    contactId,
+    2,
+    businessMorningAfter(acceptedAt, 5),
+    businessMorningAfter(acceptedAt, 8),
+  ]);
+  expect(fulfill.calls.map(({ marker }) => marker)).not.toContain(
+    'anchor-campaign-cadence',
+  );
+});
+
+test('readLifecycleJobContext maps the contact, unstuck form facts and enrollment reason', async () => {
+  const enrolledAt = new Date('2026-09-01T15:00:00.000Z');
+  const { executor, calls } = executorWith({
+    'read-lifecycle-job-context': () => ({
+      rows: [
+        {
+          contact_id: contactId,
+          display_name: 'Person Name',
+          company_name: 'Example Company',
+          company_domain: 'example.com',
+          email_classification: 'work',
+          form_submission: {
+            form_kind: 'unstuck',
+            submission_id: 'submission-1',
+            message_present: true,
+          },
+          enrollment_at: enrolledAt.toISOString(),
+          campaign_enrollment_reason: 'unstuck_form',
+        },
+      ],
+    }),
+  });
+
+  const context = await readLifecycleJobContext(executor, { jobId });
+
+  expect(context).toEqual({
+    contactId,
+    displayName: 'Person Name',
+    companyName: 'Example Company',
+    companyDomain: 'example.com',
+    emailClassification: 'work',
+    formSubmission: {
+      form_kind: 'unstuck',
+      submission_id: 'submission-1',
+      message_present: true,
+    },
+    enrollmentAt: enrolledAt,
+    campaignEnrollmentReason: 'unstuck_form',
+  });
+  expect(calls[0]?.params).toEqual([jobId]);
+  expect(calls[0]?.sql).not.toMatch(/growth_artifacts|'message', a\.data/u);
+});
+
+test('readLifecycleJobContext normalizes unknown values and throws for a missing job', async () => {
+  const { executor } = executorWith({
+    'read-lifecycle-job-context': (params) =>
+      params[0] === jobId
+        ? {
+            rows: [
+              {
+                contact_id: contactId,
+                display_name: null,
+                company_name: null,
+                company_domain: null,
+                email_classification: 'corporate',
+                form_submission: { form_kind: 'whitepaper', paper: 'angular' },
+                enrollment_at: null,
+                campaign_enrollment_reason: 'project_claim',
+              },
+            ],
+          }
+        : { rows: [] },
+  });
+
+  const context = await readLifecycleJobContext(executor, { jobId });
+  const missing = readLifecycleJobContext(executor, { jobId: 'missing' });
+
+  expect(context).toEqual({
+    contactId,
+    displayName: null,
+    companyName: null,
+    companyDomain: null,
+    emailClassification: 'unknown',
+    formSubmission: {},
+    enrollmentAt: null,
+    campaignEnrollmentReason: null,
+  });
+  await expect(missing).rejects.toThrow(
+    'Growth lifecycle job context not found: missing',
+  );
+});
+
+test('claimInternalNotificationSubmission claims once per job and refuses a stale lease', async () => {
+  let claimed = false;
+  const { executor, calls } = executorWith({
+    'claim-internal-notification-submission': (params) => {
+      if (claimed || params[1] !== leaseToken) return { rows: [] };
+      claimed = true;
+      return {
+        rows: [{ event_key: `job:${jobId}:internal-notification-submission` }],
+      };
+    },
+    'read-internal-notification-claim': () => ({
+      rows: claimed
+        ? [{ event_key: `job:${jobId}:internal-notification-submission` }]
+        : [],
+    }),
+  });
+  const input = { jobId, leaseToken, now, kind: 'digest' } as const;
+
+  const stale = await claimInternalNotificationSubmission(executor, {
+    ...input,
+    leaseToken: '00000000-0000-4000-8000-000000000299',
+  }).catch((error: unknown) => error);
+  const first = await claimInternalNotificationSubmission(executor, input);
+  const second = await claimInternalNotificationSubmission(executor, input);
+
+  expect(stale).toBeInstanceOf(JobLeaseConflictError);
+  expect(first).toBe('claimed');
+  expect(second).toBe('already_claimed');
+  const claim = calls.find(
+    ({ marker }) => marker === 'claim-internal-notification-submission',
+  );
+  expect(claim?.params).toEqual([
+    jobId,
+    '00000000-0000-4000-8000-000000000299',
+    now,
+    'digest',
+  ]);
+  expect(claim?.sql).toContain("'internal_notification.submission_started'");
+  expect(claim?.sql).toContain('j.lease_until > $3');
+});
+
+test('markInternalNotificationUnknown fails the job as unknown and records manual review', async () => {
+  const occurredAt = new Date('2026-09-02T15:01:00.000Z');
+  const { executor, calls } = executorWith({
+    'mark-internal-notification-unknown': (params) => ({
+      rows:
+        params[1] === leaseToken
+          ? [
+              jobRow({
+                kind: params[4],
+                status: 'failed',
+                lease_token: null,
+                lease_until: null,
+                delivery_status: 'unknown',
+                last_error_code: params[3],
+              }),
+            ]
+          : [],
+    }),
+    'insert-internal-notification-unknown': emptyRows,
+  });
+
+  const job = await markInternalNotificationUnknown(executor, {
+    jobId,
+    leaseToken,
+    occurredAt,
+    errorCode: 'resend_timeout',
+  });
+  const stale = markInternalNotificationUnknown(executor, {
+    jobId,
+    leaseToken: '00000000-0000-4000-8000-000000000299',
+    occurredAt,
+    errorCode: 'resend_timeout',
+    kind: 'digest',
+  });
+
+  expect(job).toMatchObject({
+    kind: 'notify',
+    status: 'failed',
+    deliveryStatus: 'unknown',
+    lastErrorCode: 'resend_timeout',
+  });
+  await expect(stale).rejects.toBeInstanceOf(JobLeaseConflictError);
+  expect(calls.map(({ marker }) => marker)).toEqual([
+    'mark-internal-notification-unknown',
+    'insert-internal-notification-unknown',
+    'mark-internal-notification-unknown',
+  ]);
+  expect(calls[1]?.sql).toContain("'internal_notification.acceptance_unknown'");
+  expect(calls[1]?.params).toEqual([
+    jobId,
+    contactId,
+    null,
+    occurredAt,
+    'resend_timeout',
+  ]);
 });

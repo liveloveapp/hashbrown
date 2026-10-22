@@ -8,8 +8,8 @@ dependencies); this file covers atc.
 ## Where to start
 
 - `angular/src/app/assistant.ts` and `react/src/assistant.tsx`: the core files. Steps
-  1 to 3 (expose components, give the model tools, render the stream) are marked in
-  both.
+  1 to 4 (expose components, give the model tools, render the stream, decide) are
+  marked in both.
 - `shared/src/store.ts`: `AtcState` and its pure reducers. The map, the tools and the
   components all read this one store.
 - `shared/src/tools.ts`: the tools the model calls. They run in the browser.
@@ -143,7 +143,7 @@ dependencies); this file covers atc.
   than the prompt asks for; and answers that show aircraft but leave none highlighted.
 - After changing `ROUTE_CONTEXT`, `CARDS_CONTEXT`, `routeSchema` or a card description, run
   `npx nx decide-eval atc-e2e` (live decisions, needs `TYPESAFE_API_KEY`, no servers). It
-  fails when the router gets fewer than 37 of its 45 labelled probes (or 16 of 17 held-out
+  fails when the router gets fewer than 44 of its 53 labelled probes (or 16 of 17 held-out
   ones) right, or fewer than 7 of 8 cards probes narrow confidently to the expected card.
 - Builds stay free of warnings. Leaflet 1.x ships only CommonJS, so the Angular build
   lists it in `allowedCommonJsDependencies` (`angular/project.json`); the React build

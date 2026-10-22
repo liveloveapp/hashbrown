@@ -44,12 +44,12 @@ and similar), `token`, `uuid` and `distinct_id`.
 Sent by posthog-js in the browser (`www/instrumentation-client.ts`), through
 the `/_/ingest` proxy.
 
-| Event          | When                                                                                                                                                       | Contract properties                                   |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `$pageview`    | Every page load and every App Router soft navigation (`capture_pageview: 'history_change'`).                                                               | allowed: `$pathname`, `title`; breakdown: `$pathname` |
-| `$pageleave`   | When a page is left (`capture_pageleave: 'if_capture_pageview'`).                                                                                          | Not in the contract; not charted.                     |
-| `$autocapture` | Clicks, form submits and changes (`autocapture: true`). Needs the project-level `autocapture_opt_out: false`, enforced by `npx nx settings:apply posthog`. | Not in the contract; not charted.                     |
-| `$web_vitals`  | Core Web Vitals (`capture_performance: { web_vitals: true }`).                                                                                             | Not in the contract; not charted.                     |
+| Event          | When                                                                                                                                                       | Contract properties                                                      |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `$pageview`    | Every page load and every App Router soft navigation (`capture_pageview: 'history_change'`).                                                               | allowed: `$pathname`, `title`, `navigation_type`; breakdown: `$pathname` |
+| `$pageleave`   | When a page is left (`capture_pageleave: 'if_capture_pageview'`).                                                                                          | Not in the contract; not charted.                                        |
+| `$autocapture` | Clicks, form submits and changes (`autocapture: true`). Needs the project-level `autocapture_opt_out: false`, enforced by `npx nx settings:apply posthog`. | Not in the contract; not charted.                                        |
+| `$web_vitals`  | Core Web Vitals (`capture_performance: { web_vitals: true }`).                                                                                             | Not in the contract; not charted.                                        |
 
 ## Marketing
 

@@ -235,7 +235,13 @@ export async function provision({
   checklist,
   spawnBootstrap = spawnBootstrapProcess,
 }) {
-  const manual = [];
+  const manual = [
+    [
+      'CAMPAIGN_ENROLLMENT_START_AT',
+      'manual',
+      'left unset on hashbrown-lifecycle; set when enabling enrollment; immutable',
+    ],
+  ];
   const steps = {
     add(step, outcome, detail = '') {
       if (outcome === 'manual') manual.push([step, outcome, detail]);

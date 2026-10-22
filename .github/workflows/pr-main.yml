@@ -23,7 +23,7 @@ env:
   # project_id_secret = repository secret holding that target's Vercel project ID.
   # builder "vercel" = build the Next.js app in `root` with `vercel build`;
   # optional = skip while the project secret is unset (see deploy.yml).
-  DEPLOY_TARGETS: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW","builder":"vercel","root":"www"},{"key":"atc","dir":"examples/atc","project_id_secret":"VERCEL_PROJECT_ID_ATC"}]'
+  DEPLOY_TARGETS: '[{"key":"www","dir":".","project_id_secret":"VERCEL_PROJECT_ID_WWW","builder":"vercel","root":"www"},{"key":"atc","dir":"examples/atc","project_id_secret":"VERCEL_PROJECT_ID_ATC"},{"key":"lifecycle","dir":"tools/lifecycle","project_id_secret":"VERCEL_PROJECT_ID_LIFECYCLE","optional":true}]'
 
 jobs:
   ci:

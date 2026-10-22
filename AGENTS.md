@@ -82,6 +82,12 @@ This file defines how agents should work in this repository. Keep changes aligne
   - `npx nx test-integration growth` (needs `GROWTH_INTEGRATION=1` and `TEST_DATABASE_URL`)
   - `npx nx run growth:report -- <funnel|journey|health|timeline|detail> …`
   - `npx nx observability growth -- <process|replay|redact|initialize-redactions> …`
+- `lifecycle` (`tools/lifecycle`; the b4run lifecycle service, deployed prebuilt as `hashbrown-lifecycle`)
+  - `npx nx build lifecycle` (`b4 build --clean`, then wraps and verifies the Vercel adapter in isolation)
+  - `npx nx test lifecycle`
+  - `npx nx lint lifecycle`
+  - `npx nx check lifecycle`
+  - `npx nx test-integration lifecycle` (needs `GROWTH_INTEGRATION=1` and `TEST_DATABASE_URL`)
 - `posthog` (`tools/posthog`; dashboards as code, needs `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID`)
   - `npx nx build posthog`
   - `npx nx test posthog`
@@ -159,6 +165,7 @@ that protects the published packages, not examples.
 - `atc-e2e`
   - `npx nx e2e atc-e2e`
   - `npx nx prose-eval atc-e2e` (live model; needs `OPENAI_API_KEY` and the atc dev servers)
+  - `npx nx decide-eval atc-e2e` (live decisions; needs `TYPESAFE_API_KEY`, no servers)
   - `npx nx test atc-e2e` (the demo video recorder's unit tests)
   - `npx nx lint atc-e2e`
   - `npx nx typecheck atc-e2e` (`tsc` over the e2e code, which Playwright and Vitest do not type-check)

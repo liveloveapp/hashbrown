@@ -4,6 +4,7 @@ import {
   type RuntimeAnnouncement,
   selectRuntimeAnnouncements,
 } from '../../src/lib/growth/runtime-announcements';
+import { runtimeAnnouncementCatalog } from '../../src/lib/announcements/catalog';
 
 const NOW = new Date('2026-10-21T12:00:00.000Z');
 
@@ -31,12 +32,12 @@ function entry(
   };
 }
 
-test('the shipped catalog is empty', () => {
+test('selectRuntimeAnnouncements reads the shared catalog', () => {
   const input = batch('0.8.0');
 
   const selected = selectRuntimeAnnouncements(input, NOW);
 
-  expect(selected).toEqual([]);
+  expect(selected).toEqual(runtimeAnnouncementCatalog(NOW));
 });
 
 test('an entry applies to release versions inside its range only', () => {

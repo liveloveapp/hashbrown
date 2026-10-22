@@ -1,3 +1,7 @@
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+
 import { afterAll, expect, test } from 'vitest';
 
 import {
@@ -24,6 +28,7 @@ test('migrations apply twice against Postgres and the second run applies nothing
     '0002_growth_reporting_views.sql',
     '0003_growth_observability.sql',
     '0004_growth_observability_views.sql',
+    '0005_growth_lifecycle.sql',
   ]);
 
   const tables = await executor.execute<{ table_name: string }>(`
@@ -36,7 +41,10 @@ test('migrations apply twice against Postgres and the second run applies nothing
     'growth_activity',
     'growth_artifacts',
     'growth_collection_budgets',
+    'growth_contact_scores',
     'growth_contacts',
+    'growth_install_digest_reports',
+    'growth_install_runtime_links',
     'growth_jobs',
     'growth_observation_facts',
     'growth_observation_identities',
@@ -79,7 +87,35 @@ test('migrations apply twice against Postgres and the second run applies nothing
     { name: '0002_growth_reporting_views.sql', checksum_length: 64 },
     { name: '0003_growth_observability.sql', checksum_length: 64 },
     { name: '0004_growth_observability_views.sql', checksum_length: 64 },
+    { name: '0005_growth_lifecycle.sql', checksum_length: 64 },
   ]);
+});
+
+test('migration 0005 applies after 0004 and the ledger records its checksum', async () => {
+  const directory = defaultMigrationsDirectory();
+  const expected = createHash('sha256')
+    .update(await readFile(join(directory, '0005_growth_lifecycle.sql')))
+    .digest('hex');
+
+  await applyMigrations({ directory, executor });
+
+  const ledger = await executor.execute<{ name: string; checksum: string }>(
+    `select name, checksum from public.growth_schema_migrations
+     where name in ('0004_growth_observability_views.sql', '0005_growth_lifecycle.sql')
+     order by applied_at, name`,
+  );
+  expect(ledger.rows.map(({ name }) => name)).toEqual([
+    '0004_growth_observability_views.sql',
+    '0005_growth_lifecycle.sql',
+  ]);
+  expect(ledger.rows[1]?.checksum).toBe(expected);
+  const tiers = await executor.execute<{ definition: string }>(
+    `select pg_get_constraintdef(oid) as definition from pg_constraint
+     where conrelid = 'public.growth_contact_scores'::regclass and contype = 'c'`,
+  );
+  expect(tiers.rows.map(({ definition }) => definition).join(' ')).toContain(
+    'very_high',
+  );
 });
 
 test('observability views compute against the test store', async () => {
