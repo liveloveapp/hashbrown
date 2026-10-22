@@ -329,6 +329,9 @@ test('invokeLifecycle fails with an error that carries the thread id once the re
     expect(error).toBeInstanceOf(LifecycleInvokeError);
     expect((error as LifecycleInvokeError).threadId).toBe(THREAD_ID);
   }
+  expect(
+    results.map((error) => (error as LifecycleInvokeError).runCompleted),
+  ).toEqual([true, true, false]);
   expect((results[0] as Error).message).toBe(
     'Lifecycle dispatch was not accepted',
   );
@@ -360,7 +363,7 @@ test('nudgeLifecycle deletes the thread of a failed run and never throws', async
   try {
     stubLifecycleEnv();
     const invoke = vi.fn(async () => {
-      throw new LifecycleInvokeError('down', THREAD_ID);
+      throw new LifecycleInvokeError('down', THREAD_ID, true);
     });
     const remove = vi.fn(async () => {
       throw new Error('delete exploded');
@@ -373,6 +376,22 @@ test('nudgeLifecycle deletes the thread of a failed run and never throws', async
     expect(remove).toHaveBeenCalledWith(
       expect.objectContaining({ threadId: THREAD_ID }),
     );
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+test('nudgeLifecycle skips the delete when the run never completed', async () => {
+  try {
+    stubLifecycleEnv();
+    const invoke = vi.fn(async () => {
+      throw new LifecycleInvokeError('timed out', THREAD_ID, false);
+    });
+    const remove = vi.fn(async () => undefined);
+
+    await nudgeLifecycle({ submissionId: SUBMISSION_ID }, invoke, remove);
+
+    expect(remove).not.toHaveBeenCalled();
   } finally {
     vi.unstubAllEnvs();
   }

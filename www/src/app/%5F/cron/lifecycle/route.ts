@@ -19,9 +19,15 @@ export const maxDuration = 60;
 // Just under the route's own limit, so a long tick still reports its alerts.
 const CRON_INVOKE_TIMEOUT_MS = 58_000;
 
+// Left unspent so the response always lands inside the route's own limit.
+const CRON_RESPONSE_MARGIN_MS = 1_000;
+const MIN_DELETE_MS = 250;
+
 interface LifecycleCronDependencies {
   invoke: (input: InvokeLifecycleInput) => Promise<InvokeLifecycleResult>;
   deleteThread?: typeof deleteLifecycleThread;
+  /** The clock in milliseconds, replaceable for tests. */
+  now?: () => number;
 }
 
 const defaultDependencies: LifecycleCronDependencies = {
@@ -82,17 +88,35 @@ export function createLifecycleCronRoute(
     const serviceSecret = process.env['LIFECYCLE_SERVICE_SECRET'];
     if (!baseUrl || !serviceSecret) return response({ accepted: false }, 503);
     const deleteThread = dependencies.deleteThread ?? deleteLifecycleThread;
+    const now = dependencies.now ?? Date.now;
+    const startedAt = now();
+    // Runs after the outcome is logged. The delete is capped by the time left
+    // in the route's budget, and the wait is raced so a stuck delete cannot
+    // push the response past it.
     const cleanUp = async (threadId: string | undefined): Promise<void> => {
       if (threadId === undefined) return;
+      const budgetMs = Math.min(
+        LIFECYCLE_THREAD_DELETE_TIMEOUT_MS,
+        maxDuration * 1_000 - (now() - startedAt) - CRON_RESPONSE_MARGIN_MS,
+      );
+      if (budgetMs < MIN_DELETE_MS) return;
+      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        await deleteThread({
-          baseUrl,
-          serviceSecret,
-          threadId,
-          timeoutMs: LIFECYCLE_THREAD_DELETE_TIMEOUT_MS,
-        });
+        await Promise.race([
+          deleteThread({
+            baseUrl,
+            serviceSecret,
+            threadId,
+            timeoutMs: budgetMs,
+          }),
+          new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, budgetMs);
+          }),
+        ]);
       } catch {
         // Best effort: the dispatch outcome stands.
+      } finally {
+        clearTimeout(timer);
       }
     };
     try {
@@ -102,20 +126,20 @@ export function createLifecycleCronRoute(
         timeoutMs: CRON_INVOKE_TIMEOUT_MS,
         trigger: 'cron',
       });
-      await cleanUp(result.threadId);
       for (const alert of result.operatorAlerts) {
         console.warn('[lifecycle-operator-alert]', alert);
       }
+      await cleanUp(result.threadId);
       return response(
         { accepted: true, operator_alerts: result.operatorAlerts },
         200,
       );
     } catch (error) {
-      await cleanUp(lifecycleThreadId(error));
       console.warn(
         '[lifecycle-cron-failed]',
         error instanceof Error ? error.message : 'unknown',
       );
+      await cleanUp(lifecycleThreadId(error));
       return response({ accepted: false }, 503);
     }
   };

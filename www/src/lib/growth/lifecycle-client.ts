@@ -51,6 +51,11 @@ export class LifecycleInvokeError extends Error {
     message: string,
     /** The b4run thread the failed dispatch used. */
     readonly threadId: string,
+    /**
+     * Whether the service answered. False for request-stage failures
+     * (timeout, network, abort), where the run may still be executing.
+     */
+    readonly runCompleted: boolean,
   ) {
     super(message);
     this.name = 'LifecycleInvokeError';
@@ -260,6 +265,7 @@ export async function invokeLifecycle(
     throw new LifecycleInvokeError(
       'Lifecycle dispatch request failed',
       threadId,
+      false,
     );
   }
   try {
@@ -276,6 +282,7 @@ export async function invokeLifecycle(
     throw new LifecycleInvokeError(
       error instanceof Error ? error.message : INVALID_LIFECYCLE_STATE,
       threadId,
+      true,
     );
   }
 }
@@ -332,18 +339,23 @@ export async function deleteLifecycleThread(
   }
 }
 
-/** The thread id of a dispatch outcome, when it has one. */
+/**
+ * The thread worth deleting after a failed dispatch: only when the service
+ * answered. A run the client gave up on may still be executing, so the delete
+ * would be refused (409) and only add latency.
+ */
 export function lifecycleThreadId(outcome: unknown): string | undefined {
-  if (outcome instanceof LifecycleInvokeError) return outcome.threadId;
+  if (outcome instanceof LifecycleInvokeError && outcome.runCompleted) {
+    return outcome.threadId;
+  }
   return undefined;
 }
 
 /**
  * Asks the lifecycle service to dispatch now for a fresh submission. Best
- * effort: it waits at most two seconds for the run, then at most five for the
- * thread delete (a timed-out run's thread is refused with 409 almost at once),
- * and never throws, because the cron
- * tick picks the job up regardless. It does nothing unless
+ * effort: it waits at most two seconds for the run, then, only when the
+ * service answered, at most five for the thread delete. It never throws,
+ * because the cron tick picks the job up regardless. It does nothing unless
  * `LIFECYCLE_CRON_ENABLED` is exactly `true` and `LIFECYCLE_URL` and
  * `LIFECYCLE_SERVICE_SECRET` are set, so a disabled lifecycle is never called.
  *
