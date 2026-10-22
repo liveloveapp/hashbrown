@@ -1,5 +1,3 @@
-import { Resend } from 'resend';
-
 import { loadEmailHmacKeyring } from '../email-keyring.ts';
 import { renderFulfillmentTemplate } from '../fulfillment/templates.ts';
 import {
@@ -58,6 +56,7 @@ import {
   VERIFIED_DOMAIN,
 } from '../growth.ts';
 import { DeterministicLifecycleJobError } from '../job-errors.ts';
+import { createResendFetchClient } from '../resend-client.ts';
 import { renderInstallDigest } from '../notifications/install-digest.ts';
 import { renderInternalNotificationSummary } from '../notifications/templates.ts';
 import { type CampaignStep, renderCampaignTemplate } from './templates.ts';
@@ -846,7 +845,7 @@ interface MailRuntime {
 
 /** Options for {@link createDefaultLifecycleJobDependencies}. */
 export interface LifecycleJobDependencyOptions {
-  /** Builds the Resend client; defaults to `new Resend(RESEND_API_KEY)`. */
+  /** Builds the Resend client; defaults to `createResendFetchClient({ apiKey: RESEND_API_KEY })`. */
   resend?: () => LifecycleResendClient;
   now?: () => Date;
 }
@@ -899,7 +898,7 @@ export function createDefaultLifecycleJobDependencies(
     mail = {
       founderNotificationEmail,
       recipientPolicy,
-      resend: options.resend?.() ?? new Resend(apiKey),
+      resend: options.resend?.() ?? createResendFetchClient({ apiKey }),
       tokenKey: tokenKey(),
     };
     return mail;
