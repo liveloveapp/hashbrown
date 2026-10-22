@@ -338,7 +338,7 @@ Pass `true` for the provider defaults, or the tool's own configuration (for exam
 
 On the client, each search arrives as an entry in the assistant message's `serverToolCalls`, with `kind: 'provider'` and `builtin: 'web_search'`. Hashbrown never runs it, and a client tool with the same name is never called in its place. The entry carries a ready-to-show `label` (for example `Searched 'hashbrown ai' · 3 sources`), the `queries` it ran, the `sources` it found, and its `outcome`. A failed search settles as `complete` with `outcome: 'failure'` and an `error`. See [Server-Executed Tool Calls](/docs/angular/concept/functions#server-executed-tool-calls) for every field.
 
-The answer's `url_citation` annotations become `citations` on the assistant message. Each citation's `sourceId` is the `id` of one of the sources, and `quote` holds the cited text.
+The answer's `url_citation` annotations become `citations` on the assistant message. Each citation's `sourceId` is the `id` of a source, and `quote` holds the cited text. A citation's source can be on the call or on the message: in the `sources` of one of the message's `serverToolCalls`, or, when no search returned it, in the message's own `sources`. Look in both.
 
 ```ts
 @Component({
@@ -358,14 +358,16 @@ export class AnswerComponent {
   readonly message = input.required<UiAssistantMessage>();
 
   hrefFor(sourceId: string): string | undefined {
-    return this.message()
-      .serverToolCalls?.flatMap((call) => call.sources ?? [])
-      .find((source) => source.id === sourceId)?.href;
+    const message = this.message();
+    return [
+      ...(message.serverToolCalls ?? []).flatMap((call) => call.sources ?? []),
+      ...(message.sources ?? []),
+    ].find((source) => source.id === sourceId)?.href;
   }
 }
 ```
 
-Azure OpenAI requires, as OpenAI does, inline citations to be clearly visible and clickable wherever your UI shows the answer. Source links carry `?utm_source=openai`; keep it.
+Azure OpenAI requires, as OpenAI does, inline citations to be clearly visible and clickable wherever your UI shows the answer. Source links may carry `?utm_source=openai`; keep it.
 
 Sources need the `builtInTools.webSearch` option, because it also requests `web_search_call.action.sources`. A `web_search` tool you add through `transformRequestOptions` instead still streams as a provider tool call, with a label and queries, but without sources.
 

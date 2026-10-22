@@ -4,7 +4,6 @@ meta:
   - name: description
     content: 'Give the model access to your application state and enable the model to take action.'
 ---
-
 # Tool Calling
 
 <p class="subtitle">Give the model access to your application state and enable the model to take action.</p>
@@ -62,12 +61,12 @@ createTool({
 
 ### `CreateToolOptions`
 
-| Option        | Type            | Required | Description                                     |
-| ------------- | --------------- | -------- | ----------------------------------------------- |
-| `name`        | `string`        | Yes      | The name of the function that the LLM will call |
-| `description` | `string`        | Yes      | Description of what the function does           |
-| `schema`      | `s.SchemaInput` | No       | Schema defining the function arguments          |
-| `handler`     | `Function`      | Yes      | The function to execute when called             |
+| Option        | Type                        | Required | Description                                     |
+| ------------- | --------------------------- | -------- | ----------------------------------------------- |
+| `name`        | `string`                    | Yes      | The name of the function that the LLM will call |
+| `description` | `string`                    | Yes      | Description of what the function does           |
+| `schema`      | `s.SchemaInput`             | No       | Schema defining the function arguments          |
+| `handler`     | `Function`                  | Yes      | The function to execute when called             |
 
 ---
 
@@ -106,8 +105,10 @@ Standard JSON Schema inputs are normalized to Skillet (draft-07) before streamin
 <hb-code-example header="handler">
 
 ```ts
-handler: (input: s.InferSchemaInput<Schema>, abortSignal: AbortSignal) =>
-  Promise<Result>;
+handler: (
+  input: s.InferSchemaInput<Schema>,
+  abortSignal: AbortSignal
+) => Promise<Result>;
 ```
 
 </hb-code-example>
@@ -238,7 +239,8 @@ same name.
 ### The `b4.step` Contract
 
 An AG-UI server describes its tool calls by sending a `b4.step` step record
-(version `1`) as AG-UI metadata or a `CUSTOM` event. Hashbrown merges the
+(version `1`) in one of two carriers: the `metadata['b4.step']` key on the
+tool-call events, or a `CUSTOM` event named `b4.step`. Hashbrown merges the
 records into the matching `serverToolCalls` entry, so any server that emits
 `b4.step`, such as a [B4.run](https://b4.run/docs/ag-ui) agent, has its steps
 appear automatically, with no client code to add. Servers that do not emit it
