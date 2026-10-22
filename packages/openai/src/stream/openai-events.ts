@@ -241,9 +241,13 @@ function mapWebSearchDone(state: MapperState, item: WebSearchCall): MapperStep {
       webSearches: withoutEntry(state.webSearches, item.id),
       sourceIndex: sources.reduce(
         (index, source) =>
-          source.href === undefined || index.has(source.href)
+          source.href === undefined
             ? index
-            : withEntry(index, source.href, source.id),
+            : urlKeys(source.href).reduce(
+                (keyed, key) =>
+                  keyed.has(key) ? keyed : withEntry(keyed, key, source.id),
+                index,
+              ),
         state.sourceIndex,
       ),
     },
@@ -336,10 +340,10 @@ function mapAnnotation(
 }
 
 /**
- * OpenAI can append `utm_source=openai` to cited urls. In a live capture
- * both the citations and the listed sources carry it, so the exact url
- * matches first; a citation also matches its url without that parameter in
- * case only one side carries it.
+ * OpenAI can append `utm_source=openai` to urls. In a live capture both the
+ * citations and the listed sources carry it, but either side may carry it
+ * alone, so sources are indexed and citations looked up under every key
+ * from {@link urlKeys}.
  */
 function withoutOpenAITracking(url: string): string {
   try {
@@ -354,17 +358,23 @@ function withoutOpenAITracking(url: string): string {
   }
 }
 
+/**
+ * The keys a url matches under: the raw url, then the url without
+ * `utm_source=openai`, then that without a trailing slash (`URL` adds one to
+ * a bare origin).
+ */
+function urlKeys(url: string): readonly string[] {
+  const bare = withoutOpenAITracking(url);
+  return [...new Set([url, bare, bare.replace(/\/$/, '')])];
+}
+
 function findSourceId(
   sourceIndex: ReadonlyMap<string, string>,
   url: string,
 ): string | undefined {
-  const bare = withoutOpenAITracking(url);
-  return (
-    sourceIndex.get(url) ??
-    sourceIndex.get(bare) ??
-    // `URL` adds a trailing slash to a bare origin.
-    sourceIndex.get(bare.replace(/\/$/, ''))
-  );
+  return urlKeys(url)
+    .map((key) => sourceIndex.get(key))
+    .find((id) => id !== undefined);
 }
 
 function answerAnnotations(

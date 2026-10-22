@@ -581,16 +581,13 @@ function urlCitation(
   });
 }
 
-function mockClock(...times: number[]): void {
+function mockClock(...times: number[]): jest.SpiedFunction<typeof Date.now> {
   const spy = jest.spyOn(Date, 'now');
   for (const time of times) {
     spy.mockReturnValueOnce(time);
   }
+  return spy;
 }
-
-afterAll(() => {
-  jest.restoreAllMocks();
-});
 
 const runningStep = {
   v: 1,
@@ -617,9 +614,10 @@ test('a web_search_call becomes a provider step with queries and sources', async
     webSearchDone('ws_1', action),
     completed,
   ];
-  mockClock(1000, 2000);
+  const clock = mockClock(1000, 2000);
 
   const events = await collectEvents(input);
+  clock.mockRestore();
 
   expect(events).toEqual([
     {
@@ -681,9 +679,10 @@ test('a failed web_search_call becomes a failed step', async () => {
     webSearchDone('ws_1', action, 'failed'),
     completed,
   ];
-  mockClock(1000, 2000);
+  const clock = mockClock(1000, 2000);
 
   const events = await collectEvents(input);
+  clock.mockRestore();
 
   expect(events.at(-1)).toEqual({
     type: EventType.TOOL_CALL_RESULT,
@@ -732,9 +731,60 @@ test('url_citation annotations become b4.answer citations pointing at source ids
     urlCitation('msg_1', 'https://a.example', 'A', 0, 9),
     completed,
   ];
-  mockClock(1000, 2000);
+  const clock = mockClock(1000, 2000);
 
   const events = await collectEvents(input);
+  clock.mockRestore();
+
+  expect(events.at(-1)).toEqual({
+    type: EventType.TEXT_MESSAGE_END,
+    messageId,
+    metadata: {
+      'b4.answer': {
+        v: 1,
+        citations: [
+          {
+            sourceId: 'ws_1:1',
+            quote: 'a framework',
+            block: 0,
+            start: 13,
+            end: 24,
+          },
+          {
+            sourceId: 'ws_1:0',
+            quote: 'Hashbrown',
+            block: 0,
+            start: 0,
+            end: 9,
+          },
+        ],
+      },
+    },
+  });
+});
+
+test('a citation matches a source that alone carries utm_source', async () => {
+  const action = {
+    type: 'search',
+    query: 'hashbrown',
+    sources: [
+      { type: 'url', url: 'https://a.example/?utm_source=openai' },
+      { type: 'url', url: 'https://b.example/page?utm_source=openai' },
+    ],
+  };
+  const input = [
+    webSearchAdded('ws_1'),
+    webSearchDone('ws_1', action),
+    messageAdded('msg_1'),
+    textDelta('msg_1', 'Hashbrown is a framework.'),
+    urlCitation('msg_1', 'https://b.example/page', 'B', 13, 24),
+    urlCitation('msg_1', 'https://a.example', 'A', 0, 9),
+    completed,
+  ];
+  const clock = mockClock(1000, 2000);
+
+  const events = await collectEvents(input);
+  clock.mockRestore();
 
   expect(events.at(-1)).toEqual({
     type: EventType.TEXT_MESSAGE_END,
@@ -845,9 +895,10 @@ test('a web_search_call added via transformRequestOptions still maps, without so
     webSearchDone('ws_1', action),
     completed,
   ];
-  mockClock(1000, 2000);
+  const clock = mockClock(1000, 2000);
 
   const events = await collectEvents(input);
+  clock.mockRestore();
 
   expect(events.map((output) => output.type)).toEqual([
     EventType.TOOL_CALL_START,
