@@ -26,12 +26,18 @@ import {
   createApprovedContact,
   createEnrolledContact,
   deleteCreatedContacts,
+  deleteCreatedSubjects,
+  insertInstallRuntimeLink,
+  insertLinkedObservations,
   insertSendStep,
+  installRuntimeApproval,
+  type LinkedObservations,
   UNSTUCK_FORM_APPROVAL,
 } from './job-fixtures.ts';
 
 const executor = createDatabaseExecutor(process.env['TEST_DATABASE_URL']);
 const createdContactIds = new Set<string>();
+const createdSubjectIds = new Set<string>();
 // Every contact here is approved after this start, and every other spec's
 // contacts before it, so enrollment never reaches another spec's rows.
 const enrollmentStartAt = new Date('2031-01-01T00:00:00.000Z');
@@ -41,15 +47,25 @@ const FOUNDER_APPROVAL: CampaignApprovalFixture = {
   data: { provenance: 'founder_action' },
 };
 
-function installRuntimeApproval(): CampaignApprovalFixture {
-  return {
-    kind: 'install_runtime.outreach_approved',
-    data: {
-      verification: 'linked_observations',
-      install_observation_id: randomUUID(),
-      runtime_observation_id: randomUUID(),
-    },
-  };
+function linkedObservations(at: Date): Promise<LinkedObservations> {
+  return insertLinkedObservations(executor, createdSubjectIds, at);
+}
+
+/** A contact approved by the hello path, backed by an approved link row. */
+async function createInstallRuntimeContact(approvedAt: Date) {
+  const observations = await linkedObservations(approvedAt);
+  const contact = await createApprovedContact(
+    executor,
+    createdContactIds,
+    approvedAt,
+    { approval: installRuntimeApproval(observations) },
+  );
+  await insertInstallRuntimeLink(executor, observations, {
+    contactId: contact.contactId,
+    outcome: 'approved',
+    evaluatedAt: approvedAt,
+  });
+  return contact;
 }
 
 async function deleteCampaignConfiguration(): Promise<void> {
@@ -146,6 +162,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await deleteCreatedContacts(executor, createdContactIds);
+  await deleteCreatedSubjects(executor, createdSubjectIds);
   await deleteCampaignConfiguration();
   await executor.close?.();
 });
@@ -166,7 +183,7 @@ test('materializeCampaignEnrollment enrols unstuck, founder-digest and install-r
     );
   const unstuck = await create(UNSTUCK_FORM_APPROVAL);
   const founder = await create(FOUNDER_APPROVAL);
-  const install = await create(installRuntimeApproval());
+  const install = await createInstallRuntimeContact(approvedAt);
   const whitepaper = await create({
     kind: 'form.outreach_approved',
     data: { source_form: 'whitepaper', verification: 'server_verified' },
@@ -415,13 +432,17 @@ test('leaseDueJobs never leases a send_step outside Monday-Friday 07:00 Pacific 
 test('final authorization accepts source_form unstuck and install_runtime.outreach_approved and rejects whitepaper', async () => {
   const approvedAt = new Date('2031-02-10T12:00:00.000Z');
   const now = new Date('2031-02-11T15:30:00.000Z');
-  const authorize = async (approval: CampaignApprovalFixture) => {
+  const authorize = async (
+    approval: CampaignApprovalFixture,
+    link?: (contactId: string) => Promise<void>,
+  ) => {
     const contact = await createEnrolledContact(
       executor,
       createdContactIds,
       approvedAt,
       approval,
     );
+    await link?.(contact.contactId);
     const leaseToken = randomUUID();
     const jobId = await insertSendStep(executor, contact, {
       status: 'leased',
@@ -439,8 +460,17 @@ test('final authorization accepts source_form unstuck and install_runtime.outrea
     });
   };
 
+  const observations = await linkedObservations(approvedAt);
   const unstuck = await authorize(UNSTUCK_FORM_APPROVAL);
-  const install = await authorize(installRuntimeApproval());
+  const install = await authorize(
+    installRuntimeApproval(observations),
+    async (contactId) =>
+      insertInstallRuntimeLink(executor, observations, {
+        contactId,
+        outcome: 'approved',
+        evaluatedAt: approvedAt,
+      }),
+  );
   const founder = await authorize(FOUNDER_APPROVAL);
   const whitepaper = await authorize({
     kind: 'form.outreach_approved',
@@ -609,4 +639,95 @@ test('an internal notification is claimed once per job and an unknown outcome ne
     'internal_notification.acceptance_unknown',
     'internal_notification.submission_started',
   ]);
+});
+
+test('an install runtime approval without a matching approved link is neither enrolled nor authorized', async () => {
+  // Monday 2031-03-03 06:00 PST.
+  const now = new Date('2031-03-03T14:00:00.000Z');
+  const approvedAt = new Date('2031-03-02T18:00:00.000Z');
+  const linked = await createInstallRuntimeContact(approvedAt);
+  const contactFor = async (
+    link?: (
+      observations: LinkedObservations,
+      contactId: string,
+    ) => Promise<void>,
+  ) => {
+    const observations = await linkedObservations(approvedAt);
+    const contact = await createApprovedContact(
+      executor,
+      createdContactIds,
+      approvedAt,
+      { approval: installRuntimeApproval(observations) },
+    );
+    await link?.(observations, contact.contactId);
+    return contact;
+  };
+  const noLink = await contactFor();
+  const ineligibleLink = await contactFor((observations, contactId) =>
+    insertInstallRuntimeLink(executor, observations, {
+      contactId,
+      outcome: 'ineligible',
+      evaluatedAt: approvedAt,
+    }),
+  );
+  const otherContactLink = await contactFor((observations) =>
+    insertInstallRuntimeLink(executor, observations, {
+      contactId: linked.contactId,
+      outcome: 'approved',
+      evaluatedAt: approvedAt,
+    }),
+  );
+  const redactedRuntime = await contactFor(async (observations, contactId) => {
+    await insertInstallRuntimeLink(executor, observations, {
+      contactId,
+      outcome: 'approved',
+      evaluatedAt: approvedAt,
+    });
+    await executor.execute(
+      'update growth_observations set redacted_at = $2 where id = $1',
+      [observations.runtimeObservationId, approvedAt],
+    );
+  });
+  const unlinked = [noLink, ineligibleLink, otherContactLink, redactedRuntime];
+  const mine = new Set([linked, ...unlinked].map(({ contactId }) => contactId));
+
+  const result = await enroll(now);
+
+  expect(result.enrolledContactIds.filter((id) => mine.has(id))).toEqual([
+    linked.contactId,
+  ]);
+  const leaseToken = randomUUID();
+  const jobId = await insertSendStep(executor, noLink, {
+    status: 'leased',
+    availableAt: approvedAt,
+    leaseUntil: new Date(now.getTime() + 10 * 60_000),
+    leaseToken,
+  });
+  await executor.execute(
+    `insert into growth_activity (event_key, contact_id, kind, occurred_at, data)
+     values ('campaign:v1:' || $1::text || ':enrolled', $1::uuid,
+             'campaign.enrolled:v1', $2,
+             jsonb_build_object('campaign_version', 'v1',
+                                'approval_event_key', $3::text,
+                                'approval_kind', $4::text,
+                                'approval_at', $2::timestamptz))`,
+    [
+      noLink.contactId,
+      approvedAt,
+      noLink.approvalEventKey,
+      noLink.approvalKind,
+    ],
+  );
+  const authorization = await authorizeLeasedJobForSubmission(executor, {
+    jobId,
+    leaseToken,
+    now: new Date('2031-03-03T15:30:00.000Z'),
+    campaignEnabled: true,
+    deliveryEnabled: true,
+    isSendWindow: isCampaignSendWindow,
+  });
+  expect(authorization).toMatchObject({
+    authorized: false,
+    reason: 'contact_unapproved',
+  });
 });

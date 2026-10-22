@@ -556,9 +556,12 @@ test('authorizeLeasedJobForSubmission accepts only unstuck forms, founder reauth
   expect(sql).toContain("'install_runtime.outreach_approved'");
   expect(sql).toContain("data->>'verification' = 'linked_observations'");
   expect(sql).toContain("data->>'provenance' = 'founder_action'");
-  expect(sql).not.toMatch(
-    /whitepaper|newsletter|pricing|growth_install_runtime_links/u,
-  );
+  expect(sql).not.toMatch(/whitepaper|newsletter|pricing/u);
+  expect(sql).toContain('from growth_install_runtime_links link');
+  expect(sql).toContain("link.outcome = 'approved'");
+  expect(sql).toContain('link.contact_id = authoritative.contact_id');
+  expect(sql).toContain('runtime_observation.redacted_at is null');
+  expect(sql).toContain('install_observation.redacted_at is null');
 });
 
 test('materializeCampaignEnrollment validates input and does nothing when enrollment is disabled', async () => {
@@ -629,6 +632,8 @@ test('materializeCampaignEnrollment records the configuration, enrols eligible c
   expect(enroll?.sql).toContain("'unstuck_form'");
   expect(enroll?.sql).toContain("'install_digest'");
   expect(enroll?.sql).toContain("'install_runtime'");
+  expect(enroll?.sql).toContain("link.outcome = 'approved'");
+  expect(enroll?.sql).toContain('link.contact_id = approval.contact_id');
   expect(enroll?.sql).toContain(
     "'campaign:v1:' || e.contact_id::text || ':step:' || step::text",
   );

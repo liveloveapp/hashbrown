@@ -16,7 +16,9 @@ import {
   createEmailLookupCandidates,
   type EmailHmacKeyring,
   normalizeEmail,
+  normalizeRecipientEmail,
 } from './crypto.ts';
+import { isPersonalEmailDomain } from './observability/install-digest.ts';
 import { redactContactObservationEvidence } from './observability/redaction.ts';
 import type {
   FormOutreachApprovedActivityData,
@@ -933,6 +935,316 @@ async function reauthorizeContactInTransaction(
     blockedBy: [],
     state: await readControlState(transaction, contactId),
   };
+}
+
+const OBSERVATION_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+
+/** The linked evidence behind an install-runtime ("hello") approval. */
+export interface ApproveContactFromInstallRuntimeInput {
+  email: string;
+  keyring: EmailHmacKeyring;
+  now: Date;
+  installObservationId: string;
+  runtimeObservationId: string;
+}
+
+/**
+ * Normalizes an install identity email into a usable recipient hint, or
+ * `null` for malformed, no-reply and bot mailboxes. Not verification of
+ * ownership or employment.
+ */
+export function normalizeInstallRuntimeEmail(email: string): string | null {
+  let normalized: string;
+  try {
+    normalized = normalizeRecipientEmail(email);
+  } catch {
+    return null;
+  }
+  const [local, domain] = normalized.split('@');
+  if (
+    !local ||
+    !domain ||
+    local.length > 64 ||
+    local.startsWith('.') ||
+    local.endsWith('.') ||
+    local.includes('..') ||
+    /[(),:;\\[\]"]/u.test(local) ||
+    !domain
+      .split('.')
+      .every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u.test(label))
+  )
+    return null;
+  const mailbox = local.split('+')[0].replace(/[._-]/gu, '');
+  if (
+    [
+      'noreply',
+      'donotreply',
+      'noreplies',
+      'mailerdaemon',
+      'bot',
+      'buildbot',
+      'dependabot',
+      'renovate',
+      'githubactions',
+      'gitlabci',
+      'jenkins',
+    ].includes(mailbox) ||
+    domain.split('.').some((label) => ['noreply', 'no-reply'].includes(label))
+  )
+    return null;
+  return normalized;
+}
+
+/**
+ * Locks an identity email, then finds (or inserts with `source`) its contact
+ * row under any keyring candidate or lookup alias, so a key rotation never
+ * creates a second contact. Shared by every approval path that starts from an
+ * observed email.
+ */
+async function findOrInsertIdentityContactInTransaction(
+  transaction: SqlTransaction,
+  input: {
+    email: string;
+    keyring: EmailHmacKeyring;
+    source: string;
+    lockLabel: string;
+  },
+): Promise<IdentityContactRow> {
+  const candidates = createEmailLookupCandidates(input.email, input.keyring);
+  const active = candidates[0];
+  await privacyLock(transaction);
+  await transaction.execute(
+    `/* growth:lock-email */ select pg_advisory_xact_lock(hashtextextended($1, 0))`,
+    [input.email],
+  );
+  // Missing rotation keys must not turn a deleted contact into a new eligible identity.
+  const storedVersions = await transaction.execute<{
+    email_hmac_key_version: number;
+  }>(
+    `/* growth:read-key-versions */
+     select distinct email_hmac_key_version from growth_contacts order by email_hmac_key_version`,
+  );
+  if (
+    storedVersions.rows.some(
+      (row) =>
+        !candidates.some(
+          (candidate) => candidate.keyVersion === row.email_hmac_key_version,
+        ),
+    )
+  ) {
+    throw new Error(
+      `Email HMAC rotation coverage error for ${input.lockLabel}`,
+    );
+  }
+  const found = await transaction.execute<IdentityContactRow>(
+    `/* growth:find-install-runtime-contact */
+     select c.id, c.email_lookup_hmac, c.email_hmac_key_version,
+            c.outreach_approved_at, c.deleted_at, c.updated_at
+     from growth_contacts c
+     where c.email_normalized = $2 or exists (
+       select 1 from jsonb_to_recordset($1::jsonb)
+         as candidate(key_version smallint, digest text)
+       where (candidate.key_version = c.email_hmac_key_version
+              and candidate.digest = c.email_lookup_hmac)
+          or exists (
+            select 1 from growth_activity alias
+            where alias.contact_id = c.id and alias.kind = '${CONTACT_LOOKUP_ALIAS_KIND}'
+              and alias.data->>'key_version' = candidate.key_version::text
+              and alias.data->>'digest' = candidate.digest
+          )
+     )
+     order by c.id limit 2 for update of c`,
+    [
+      JSON.stringify(
+        candidates.map((candidate) => ({
+          key_version: candidate.keyVersion,
+          digest: candidate.digest,
+        })),
+      ),
+      input.email,
+    ],
+  );
+  if (found.rows.length > 1)
+    throw new Error('Email HMAC lookup matched multiple growth contacts');
+  const contact = found.rows[0];
+  if (contact) {
+    const matching = candidates.find(
+      (candidate) => candidate.keyVersion === contact.email_hmac_key_version,
+    );
+    if (
+      !matching ||
+      !compareEmailLookupHmac(matching.digest, contact.email_lookup_hmac)
+    ) {
+      throw new Error(
+        `Email HMAC secret material is inconsistent for ${input.lockLabel}`,
+      );
+    }
+    return contact;
+  }
+  const inserted = await transaction.execute<IdentityContactRow>(
+    `/* growth:insert-install-runtime-contact */
+     insert into growth_contacts (email_normalized, email_lookup_hmac, email_hmac_key_version, source)
+     values ($1, $2, $3, $4)
+     returning id, email_lookup_hmac, email_hmac_key_version,
+               outreach_approved_at, deleted_at, updated_at`,
+    [input.email, active.digest, active.keyVersion, input.source],
+  );
+  const created = inserted.rows[0];
+  if (!created) throw new Error('Failed to insert growth contact');
+  return created;
+}
+
+async function identityControlState(
+  transaction: SqlTransaction,
+  contact: IdentityContactRow,
+): Promise<ContactControlState> {
+  const stops = await findHardStops(transaction, contact.id);
+  return toControlState({
+    ...contact,
+    latest_hard_stop_kind: stops[0]?.kind ?? null,
+    latest_hard_stop_at: stops[0]?.occurred_at ?? null,
+  });
+}
+
+/**
+ * Approves outreach from linked install and runtime evidence. Call only after
+ * the server resolved one eligible, non-conflicting, non-CI install identity
+ * for the runtime observation. Records `install_runtime.outreach_approved`
+ * (`verification: linked_observations`) once per contact and creates the
+ * contact with `source = 'install_runtime'` when absent.
+ *
+ * @returns The contact id when it is (or already was) approved; `null` for an
+ *   unusable or personal-domain email, or a stopped or deleted contact.
+ * @throws When an observation id is not a UUID.
+ */
+export async function approveContactFromInstallRuntimeInTransaction(
+  transaction: SqlTransaction,
+  input: ApproveContactFromInstallRuntimeInput,
+): Promise<string | null> {
+  const email = normalizeInstallRuntimeEmail(input.email);
+  if (!email || isPersonalEmailDomain(email.split('@')[1] ?? '')) return null;
+  const now = validDate('now', input.now);
+  if (
+    !OBSERVATION_ID_PATTERN.test(input.installObservationId) ||
+    !OBSERVATION_ID_PATTERN.test(input.runtimeObservationId)
+  ) {
+    throw new Error('Install/runtime approval requires observation UUIDs');
+  }
+  const contact = await findOrInsertIdentityContactInTransaction(transaction, {
+    email,
+    keyring: input.keyring,
+    source: 'install_runtime',
+    lockLabel: 'install/runtime approval',
+  });
+  const state = await identityControlState(transaction, contact);
+  if (state.authorization === 'deleted' || state.authorization === 'stopped')
+    return null;
+  if (state.authorization === 'approved') return contact.id;
+  const approved = await transaction.execute<{ id: string }>(
+    `/* growth:set-install-runtime-approval */
+     update growth_contacts set outreach_approved_at = $2
+     where id = $1 and outreach_approved_at is null and deleted_at is null
+     returning id`,
+    [contact.id, now],
+  );
+  if (!approved.rows.length) return null;
+  await insertActivityOnce(transaction, {
+    eventKey: `install_runtime.outreach_approved:${contact.id}`,
+    contactId: contact.id,
+    occurredAt: now,
+    kind: 'install_runtime.outreach_approved',
+    data: {
+      install_observation_id: input.installObservationId,
+      runtime_observation_id: input.runtimeObservationId,
+      policy_version: 'growth-v1',
+      verification: 'linked_observations',
+    },
+  });
+  return contact.id;
+}
+
+/** A founder's signed approval of one install digest identity. */
+export interface ApproveContactFromInstallDigestInput {
+  installObservationId: string;
+  occurredAt: Date;
+  eventKey: string;
+  keyring: EmailHmacKeyring;
+}
+
+/** Outcome of {@link approveContactFromInstallDigest}. */
+export type ApproveContactFromInstallDigestResult =
+  | { approved: true; contactId: string; changed: boolean }
+  | { approved: false; reason: 'identity_unavailable' | 'stopped' | 'deleted' };
+
+/**
+ * Founder-approved outreach for an installer from the install digest. Creates
+ * the contact when absent, then records the same founder reauthorization the
+ * operator CLI records (with the install observation id), so campaign
+ * enrollment picks it up through the `contact.reauthorized` path. Replaying an
+ * approval is inert.
+ *
+ * @throws When the install observation id is not a UUID.
+ */
+export async function approveContactFromInstallDigest(
+  executor: SqlExecutor,
+  input: ApproveContactFromInstallDigestInput,
+): Promise<ApproveContactFromInstallDigestResult> {
+  const observationId = requiredText(
+    'installObservationId',
+    input.installObservationId,
+    36,
+  );
+  if (!OBSERVATION_ID_PATTERN.test(observationId)) {
+    throw new Error('Install digest approval requires an observation UUID');
+  }
+  const occurredAt = validDate('occurredAt', input.occurredAt);
+  return executor.transaction(async (transaction) => {
+    const identity = await transaction.execute<{
+      email_normalized: string | null;
+    }>(
+      `/* growth:read-install-digest-identity */
+       select i.email_normalized
+       from growth_observations o
+       join growth_observation_identities i on i.observation_id = o.id
+       where o.id = $1 and o.source = 'install' and o.kind = 'package.installed' and o.redacted_at is null`,
+      [observationId],
+    );
+    const raw = identity.rows[0]?.email_normalized;
+    const email = raw ? normalizeInstallRuntimeEmail(raw) : null;
+    if (!email) return { approved: false, reason: 'identity_unavailable' };
+
+    const contact = await findOrInsertIdentityContactInTransaction(
+      transaction,
+      {
+        email,
+        keyring: input.keyring,
+        source: 'signed_founder_approve_install',
+        lockLabel: 'install digest approval',
+      },
+    );
+    const state = await identityControlState(transaction, contact);
+    if (state.authorization === 'deleted')
+      return { approved: false, reason: 'deleted' };
+    if (state.authorization === 'stopped')
+      return { approved: false, reason: 'stopped' };
+    if (state.authorization === 'approved') {
+      return { approved: true, contactId: contact.id, changed: false };
+    }
+    const result = await reauthorizeContactInTransaction(transaction, {
+      contactId: contact.id,
+      eventKey: input.eventKey,
+      occurredAt,
+      actor: 'founder',
+      reason: 'founder_install_digest_approval',
+      source: 'signed_founder_approve_install',
+      policyVersion: 'growth-v1',
+      allowedPriorStops: [],
+      extraActivityData: { install_observation_id: observationId },
+    });
+    if (!result.reauthorized) return { approved: false, reason: 'stopped' };
+    return { approved: true, contactId: contact.id, changed: true };
+  });
 }
 
 /**

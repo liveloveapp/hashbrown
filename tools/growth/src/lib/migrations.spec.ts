@@ -175,3 +175,35 @@ test('observability views compute days in UTC, never in the session time zone', 
   expect(sql).not.toMatch(/current_date/i);
   expect(utcDays.length).toBe(4);
 });
+
+test('lifecycle migration creates the install runtime links, digest reports and contact scores', async () => {
+  const sql = await read('0005_growth_lifecycle.sql');
+
+  const tables = [...sql.matchAll(/create table (\w+)/gi)].map((m) => m[1]);
+
+  expect(tables).toEqual([
+    'growth_install_runtime_links',
+    'growth_install_digest_reports',
+    'growth_contact_scores',
+  ]);
+  expect(sql).toContain(
+    'runtime_observation_id uuid primary key references growth_observations(id) on delete cascade',
+  );
+  expect(sql).toContain(
+    'contact_id uuid references growth_contacts(id) on delete set null',
+  );
+  expect(sql).toContain(
+    "outcome text not null check (outcome in ('approved','ineligible','conflicted'))",
+  );
+  expect(sql).toContain(
+    'digest_job_id uuid not null references growth_jobs(id)',
+  );
+  expect(sql).toContain('primary key (email_key_version, email_lookup_hmac)');
+  expect(sql).toContain(
+    'contact_id uuid primary key references growth_contacts(id)',
+  );
+  expect(sql).toContain(
+    "tier text not null check (tier in ('low','medium','high','very_high'))",
+  );
+  expect(sql).not.toMatch(/growth_jobs_kind_check|add column/i);
+});

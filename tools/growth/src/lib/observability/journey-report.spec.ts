@@ -54,6 +54,9 @@ test('readGrowthFunnel reads the runtime, install, and daily funnel views', asyn
     'observation-read-install-funnel': () => ({ rows: [install] }),
     'observation-read-installs-by-package': () => ({ rows: [packageRow] }),
     'observation-read-funnel-daily': () => ({ rows: [day] }),
+    'observation-read-lifecycle-approvals': () => ({
+      rows: [{ approved_by_hello: 2, digested: 5 }],
+    }),
   });
 
   const funnel = await readGrowthFunnel(executor, { from, to });
@@ -65,6 +68,7 @@ test('readGrowthFunnel reads the runtime, install, and daily funnel views', asyn
     'observation-read-install-funnel',
     'observation-read-installs-by-package',
     'observation-read-funnel-daily',
+    'observation-read-lifecycle-approvals',
   ]);
   expect(calls.every((c) => c.params[0] === from && c.params[1] === to)).toBe(
     true,
@@ -82,6 +86,11 @@ test('readGrowthFunnel reads the runtime, install, and daily funnel views', asyn
   expect(calls[4].sql).toContain("group by properties->>'packageName'");
   expect(calls[4].sql).not.toContain('installation_token_digest');
   expect(calls[5].sql).toContain('from growth_observation_funnel_daily_v1');
+  expect(calls[6].sql).toContain('from growth_install_runtime_links');
+  expect(calls[6].sql).toContain("outcome='approved'");
+  expect(calls[6].sql).toContain('evaluated_at >= $1 and evaluated_at < $2');
+  expect(calls[6].sql).toContain('from growth_install_digest_reports');
+  expect(calls[6].sql).toContain('reported_at >= $1 and reported_at < $2');
   expect(funnel).toMatchObject({
     from: from.toISOString(),
     to: to.toISOString(),
@@ -100,7 +109,15 @@ test('readGrowthFunnel reads the runtime, install, and daily funnel views', asyn
       rows: [packageRow],
     },
     daily: [day],
+    lifecycle: {
+      window: 'evaluated_at and reported_at [from,to)',
+      approvedByHello: 2,
+      digested: 5,
+    },
   });
+  expect(funnel.unavailable).not.toContain(
+    'Install-to-runtime activation links are not reported yet.',
+  );
   expect(funnel).not.toHaveProperty('activationDecisions');
   expect(funnel).not.toHaveProperty('linkedContactCohort');
   expect(funnel.unavailable.length).toBeGreaterThan(0);

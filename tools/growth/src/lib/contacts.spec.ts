@@ -3,10 +3,13 @@ import { expect, test, vi } from 'vitest';
 import {
   approveContactFromForm,
   type ApproveContactFromFormInput,
+  approveContactFromInstallDigest,
+  approveContactFromInstallRuntimeInTransaction,
   CONTACT_HARD_STOP_REASONS,
   deleteContact,
   findContactIdByEmail,
   GROWTH_SOURCE_FORMS,
+  normalizeInstallRuntimeEmail,
   readContactControlState,
   reauthorizeContact,
 } from './contacts.ts';
@@ -605,4 +608,85 @@ test('the fake executor throws on an unexpected marker', async () => {
   const result = harness.executor.execute('/* growth:mystery */ select 1');
 
   await expect(result).rejects.toThrow('Unexpected growth SQL marker: mystery');
+});
+
+test('normalizeInstallRuntimeEmail keeps a usable recipient and drops bots and malformed mailboxes', () => {
+  const inputs = [
+    ' Dev@Acme.DEV ',
+    'not-an-email',
+    'noreply@acme.dev',
+    'dependabot+1@acme.dev',
+    'dev@no-reply.acme.dev',
+    '.dev@acme.dev',
+    'd..ev@acme.dev',
+    'dev@-acme.dev',
+  ];
+
+  const results = inputs.map(normalizeInstallRuntimeEmail);
+
+  expect(results).toEqual([
+    'dev@acme.dev',
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+  ]);
+});
+
+test('approveContactFromInstallRuntimeInTransaction refuses personal-domain and bot emails before any SQL', async () => {
+  const { executor, calls } = executorWith({});
+  const input = {
+    keyring,
+    now: occurredAt,
+    installObservationId: '00000000-0000-4000-8000-0000000000a1',
+    runtimeObservationId: '00000000-0000-4000-8000-0000000000b1',
+  };
+
+  const results = [
+    await approveContactFromInstallRuntimeInTransaction(executor, {
+      ...input,
+      email: 'someone@gmail.com',
+    }),
+    await approveContactFromInstallRuntimeInTransaction(executor, {
+      ...input,
+      email: 'noreply@acme.dev',
+    }),
+  ];
+
+  expect(results).toEqual([null, null]);
+  expect(calls).toEqual([]);
+  await expect(
+    approveContactFromInstallRuntimeInTransaction(executor, {
+      ...input,
+      email: 'dev@acme.dev',
+      runtimeObservationId: 'runtime-1',
+    }),
+  ).rejects.toThrow('Install/runtime approval requires observation UUIDs');
+});
+
+test('approveContactFromInstallDigest reports an unavailable identity and requires an observation UUID', async () => {
+  const { executor, calls } = executorWith({
+    'read-install-digest-identity': () => ({ rows: [] }),
+  });
+  const input = {
+    installObservationId: '00000000-0000-4000-8000-0000000000a1',
+    occurredAt,
+    eventKey: 'install_digest:approve:1',
+    keyring,
+  };
+
+  const result = await approveContactFromInstallDigest(executor, input);
+
+  expect(result).toEqual({ approved: false, reason: 'identity_unavailable' });
+  expect(calls[0]?.sql).toContain("o.kind = 'package.installed'");
+  expect(calls[0]?.sql).toContain('o.redacted_at is null');
+  await expect(
+    approveContactFromInstallDigest(executor, {
+      ...input,
+      installObservationId: 'install-1',
+    }),
+  ).rejects.toThrow('Install digest approval requires an observation UUID');
 });

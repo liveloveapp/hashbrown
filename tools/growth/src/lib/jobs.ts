@@ -189,7 +189,9 @@ const CAMPAIGN_APPROVAL_KINDS = [
  * SQL predicate: the approval activity aliased `alias` may authorize campaign
  * outreach. A form approval must be a server-verified Get unstuck submission,
  * a reauthorization must be a founder action, and an install runtime approval
- * must name the install and runtime observations it was linked from.
+ * must name the install and runtime observations it was linked from, backed by
+ * an `approved` link row for exactly those observations and this contact,
+ * with both observations unredacted.
  */
 function campaignApprovalPredicate(alias: string): string {
   return `(
@@ -207,6 +209,22 @@ function campaignApprovalPredicate(alias: string): string {
       and ${alias}.data->>'verification' = 'linked_observations'
       and coalesce(${alias}.data->>'install_observation_id', '') <> ''
       and coalesce(${alias}.data->>'runtime_observation_id', '') <> ''
+      and exists (
+        select 1
+        from growth_install_runtime_links link
+        join growth_observations runtime_observation
+          on runtime_observation.id = link.runtime_observation_id
+        join growth_observations install_observation
+          on install_observation.id = link.install_observation_id
+        where link.outcome = 'approved'
+          and link.contact_id = ${alias}.contact_id
+          and link.runtime_observation_id::text =
+              ${alias}.data->>'runtime_observation_id'
+          and link.install_observation_id::text =
+              ${alias}.data->>'install_observation_id'
+          and runtime_observation.redacted_at is null
+          and install_observation.redacted_at is null
+      )
     )
   )`;
 }

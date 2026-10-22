@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import type { SqlExecutor } from '../src/lib/database.ts';
 
@@ -150,6 +150,128 @@ export async function insertSendStep(
   return jobId;
 }
 
+/** An install and a runtime observation that share an installation token. */
+export interface LinkedObservations {
+  installObservationId: string;
+  runtimeObservationId: string;
+}
+
+/**
+ * Inserts an install and a runtime observation under fresh subjects for
+ * integration tests and records the subjects' external ids in
+ * `createdSubjectIds` so {@link deleteCreatedSubjects} removes them (and,
+ * by cascade, their observations and install runtime links).
+ */
+export async function insertLinkedObservations(
+  executor: SqlExecutor,
+  createdSubjectIds: Set<string>,
+  at: Date,
+): Promise<LinkedObservations> {
+  const token = randomBytes(32).toString('hex');
+  const insert = async (
+    source: 'install' | 'runtime',
+    namespace: 'installation' | 'development_browser',
+    kind: string,
+  ) => {
+    const externalId = randomUUID();
+    createdSubjectIds.add(externalId);
+    const result = await executor.execute<{ id: string }>(
+      `with subject as (
+         insert into growth_observation_subjects (
+           namespace, external_id, first_received_at, last_received_at
+         ) values ($2, $3, $5, $5)
+         returning id
+       )
+       insert into growth_observations (
+         source, event_id, subject_id, kind, schema_version, collector_version,
+         identity_scope, occurred_at, received_at, properties, public_digest,
+         installation_token_digest
+       )
+       select $1, gen_random_uuid(), subject.id, $4, 1, '1', 'persistent',
+              $5, $5, '{}'::jsonb, $6, $7
+       from subject
+       returning id`,
+      [
+        source,
+        namespace,
+        externalId,
+        kind,
+        at,
+        randomBytes(32).toString('hex'),
+        token,
+      ],
+    );
+    const id = result.rows[0]?.id;
+    if (!id) throw new Error('expected an observation');
+    return id;
+  };
+  return {
+    installObservationId: await insert(
+      'install',
+      'installation',
+      'package.installed',
+    ),
+    runtimeObservationId: await insert(
+      'runtime',
+      'development_browser',
+      'runtime.session_started',
+    ),
+  };
+}
+
+/** The `install_runtime.outreach_approved` approval naming linked observations. */
+export function installRuntimeApproval(
+  observations: LinkedObservations,
+): CampaignApprovalFixture {
+  return {
+    kind: 'install_runtime.outreach_approved',
+    data: {
+      install_observation_id: observations.installObservationId,
+      runtime_observation_id: observations.runtimeObservationId,
+      policy_version: 'growth-v1',
+      verification: 'linked_observations',
+    },
+  };
+}
+
+/** Records an install runtime link decision for linked observations. */
+export async function insertInstallRuntimeLink(
+  executor: SqlExecutor,
+  observations: LinkedObservations,
+  link: {
+    contactId: string | null;
+    outcome: 'approved' | 'ineligible' | 'conflicted';
+    evaluatedAt: Date;
+  },
+): Promise<void> {
+  await executor.execute(
+    `insert into growth_install_runtime_links (
+       runtime_observation_id, install_observation_id, contact_id, outcome,
+       evaluated_at
+     ) values ($1, $2, $3, $4, $5)`,
+    [
+      observations.runtimeObservationId,
+      observations.installObservationId,
+      link.contactId,
+      link.outcome,
+      link.evaluatedAt,
+    ],
+  );
+}
+
+/** Deletes subjects created by {@link insertLinkedObservations}; observations and links cascade. */
+export async function deleteCreatedSubjects(
+  executor: SqlExecutor,
+  createdSubjectIds: Set<string>,
+): Promise<void> {
+  const ids = [...createdSubjectIds];
+  if (ids.length === 0) return;
+  await executor.execute(
+    'delete from growth_observation_subjects where external_id = any($1::uuid[])',
+    [ids],
+  );
+}
+
 /** Deletes every row the integration tests created, in foreign-key-safe order. */
 export async function deleteCreatedContacts(
   executor: SqlExecutor,
@@ -172,6 +294,10 @@ export async function deleteCreatedContacts(
     );
     await tx.execute(
       'delete from growth_jobs where contact_id = any($1::uuid[])',
+      [ids],
+    );
+    await tx.execute(
+      'delete from growth_contact_scores where contact_id = any($1::uuid[])',
       [ids],
     );
     await tx.execute('delete from growth_contacts where id = any($1::uuid[])', [
