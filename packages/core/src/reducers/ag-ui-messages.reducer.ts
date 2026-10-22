@@ -21,6 +21,7 @@ import {
 } from './ag-ui-message-history';
 import { createReducer, on } from '../utils/micro-ngrx';
 import {
+  readResultFailure,
   reopenCancelledStep,
   seedFrameResultStep,
   settleOpenSteps,
@@ -1039,14 +1040,13 @@ function appendToolCallArguments(
   const tool = freezeToolCall(
     mergeEventFields(
       {
-        ...base.tool,
+        ...base,
         function: {
           ...found.tool.function,
           arguments: found.tool.function.arguments + delta,
         },
       },
       event,
-      base.source,
     ) as NonNullable<
       Extract<Message, { role: 'assistant' }>['toolCalls']
     >[number],
@@ -1219,7 +1219,6 @@ function freezeToolCall(
 function mergeEventFields<T extends Record<string, unknown>>(
   message: T,
   event: AGUIEvent,
-  stepSource?: 'call' | 'message',
 ): T {
   const candidate = event as unknown as object;
   const metadata = ownEventField(candidate, 'metadata');
@@ -1234,7 +1233,7 @@ function mergeEventFields<T extends Record<string, unknown>>(
             ...ɵmergeStepMetadata(
               message['metadata'] as Record<string, unknown> | undefined,
               ɵownAgUiJsonValue(metadata) as Record<string, unknown>,
-              stepSource ?? (message['role'] === 'tool' ? 'message' : 'call'),
+              message['role'] === 'tool' ? 'message' : 'call',
             ),
           }),
         }),
@@ -1337,11 +1336,11 @@ function foldCustomToolStep(
   const found = findToolCall(messages, toolCallId);
   if (!found) return messages;
   const base = withFrameResultStep(messages, found.tool, value);
-  const held = ɵreadToolStep(base.tool.metadata?.[ɵTOOL_STEP_METADATA_KEY]);
+  const held = ɵreadToolStep(base.metadata?.[ɵTOOL_STEP_METADATA_KEY]);
   const merged = ɵmergeStepMetadata(
-    base.tool.metadata as Record<string, unknown> | undefined,
+    base.metadata as Record<string, unknown> | undefined,
     { [ɵTOOL_STEP_METADATA_KEY]: withoutToolCallId(value) },
-    base.source,
+    'call',
   );
   // A running write never contributes to a settled step, not even its time.
   const ignored =
@@ -1358,28 +1357,24 @@ function foldCustomToolStep(
 /**
  * Prepares a call for an incoming step write. When the write is a readable
  * step, the call has no step, and its result already arrived without one,
- * the call takes the step that frame-only result implies and the write
- * merges onto it as a message step would, so a settled write replaces the
- * frame-derived status. Otherwise the call and the `call` source are kept.
+ * the call takes the step that frame-only result implies, and the write then
+ * merges onto it as any call write does, as in B4's fold. Otherwise the call
+ * is returned unchanged.
  */
 function withFrameResultStep(
   messages: readonly Readonly<Message>[],
   tool: CanonicalToolCall,
   incomingStep: unknown,
-): { readonly tool: CanonicalToolCall; readonly source: 'call' | 'message' } {
-  if (ɵreadToolStep(incomingStep) === undefined)
-    return { tool, source: 'call' };
+): CanonicalToolCall {
+  if (ɵreadToolStep(incomingStep) === undefined) return tool;
   const metadata = tool.metadata as Record<string, unknown> | undefined;
   const seeded = seedFrameResultStep(
     metadata,
     readFrameOnlyResult(messages, tool.id),
   );
   return seeded === metadata
-    ? { tool, source: 'call' }
-    : {
-        tool: { ...tool, metadata: Object.freeze({ ...seeded }) },
-        source: 'message',
-      };
+    ? tool
+    : { ...tool, metadata: Object.freeze({ ...seeded }) };
 }
 
 /**
@@ -1397,7 +1392,8 @@ function readFrameOnlyResult(
   if (ɵreadToolStep(result.metadata?.[ɵTOOL_STEP_METADATA_KEY]) !== undefined) {
     return undefined;
   }
-  return typeof result.error === 'string' ? { error: result.error } : {};
+  const error = readResultFailure(result.error);
+  return error === undefined ? {} : { error };
 }
 
 /**

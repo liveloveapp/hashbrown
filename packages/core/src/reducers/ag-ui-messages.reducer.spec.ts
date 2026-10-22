@@ -1,7 +1,10 @@
 import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
-import { lowerViewMessagesToAgUi } from './ag-ui-message-history';
+import {
+  lowerViewMessagesToAgUi,
+  projectAgUiMessages,
+} from './ag-ui-message-history';
 import {
   applyCanonicalMessageEvent,
   initialAgUiMessagesState,
@@ -3143,6 +3146,72 @@ test('a step on END metadata after a frame-only RESULT merges onto the completed
         'b4.step': { v: 1, status: 'running', label: 'Fetching' },
       },
     } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+});
+
+test('a late call step after a RESULT step keeps the RESULT fields', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    startTool('c1'),
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+      metadata: { 'b4.step': { v: 1, status: 'completed', label: 'A' } },
+    } as AGUIEvent,
+    stepEvent({ v: 1, toolCallId: 'c1', status: 'completed', label: 'B' }),
+  ]);
+  const projected = projectAgUiMessages(folded.draft, {}).toolCalls[0];
+
+  // Assert
+  expect(projected?.metadata?.['b4.step']).toMatchObject({
+    status: 'completed',
+    label: 'A',
+  });
+});
+
+test('a late provider step after a frame-only RESULT keeps the server kind', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult(),
+    stepEvent({
+      v: 1,
+      toolCallId: 'c1',
+      status: 'completed',
+      kind: 'provider',
+    }),
+  ]);
+
+  // Assert
+  expect(readStep(folded, 'c1')).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+});
+
+test('an empty RESULT error string does not fail a late step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    ...frameOnlyResult(''),
+    stepEvent({ v: 1, toolCallId: 'c1', status: 'running' }),
   ]);
 
   // Assert

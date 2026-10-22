@@ -262,13 +262,16 @@ const BAD = ['failed', 'denied', 'cancelled'];
  * `failed` wins over every status. `completed`, `denied` and `cancelled`
  * settle the step unless it has failed. `running` only lifts an unsettled
  * step, and a read without a status keeps the current one. When both sides
- * are settled, a step from a message beats one from a call. Defined fields
- * of the incoming step overlay the held ones, except that a `running` write
- * never contributes fields to a settled step. A settle out of `running`, or
- * a move into a different bad settle, drops the running-only `label` and
+ * are settled, a step from a message beats one from a call: a settled step
+ * changes status only for a message write, or for a call write that moves
+ * `completed` into `denied` or `cancelled`. A settle out of `running`, or a
+ * move into a different bad settle, drops the running-only `label` and
  * `sources` unless the incoming step restates them; `icon`, `startedAt`,
- * `queries`, `kind`, `builtin` and `provider` carry over. A failed step with
- * no error gets a default one.
+ * `queries`, `kind`, `builtin` and `provider` carry over. A `running` write
+ * never contributes fields to a settled step. Otherwise the incoming step's
+ * defined fields overlay the held ones, except that a call write onto a
+ * settled step only fills fields the step lacks. A failed step with no error
+ * gets a default one. Mirrors B4's `mergeToolStep`.
  *
  * @param previous - The step held so far, if any.
  * @param next - The incoming step.
@@ -299,27 +302,37 @@ function mergeSteps(
   }
   if (previous.status === 'failed') return { ...previous };
   const prevSettled = previous.status !== 'running';
-  if (prevSettled && next.status === 'running') return { ...previous };
-  let status: ɵToolStepStatus;
-  if (next.status === undefined) status = previous.status;
-  else if (next.status === 'failed') status = 'failed';
-  else if (next.status === 'running') status = previous.status;
-  else if (prevSettled && source === 'call') status = previous.status;
-  else status = next.status;
-
-  const defined = compact({ ...next }) as ɵToolStepRead;
-  const merged: ɵToolStep = { ...previous, ...defined, status };
-  const settles = previous.status === 'running' && status !== 'running';
-  if (settles || (BAD.includes(status) && status !== previous.status)) {
-    const { label, sources, ...rest } = merged;
-    return {
-      ...rest,
-      status,
-      ...(next.label !== undefined ? { label } : {}),
-      ...(next.sources !== undefined ? { sources } : {}),
-    };
+  const { status: nextStatus, ...rest } = next;
+  const nextFields = compact(rest);
+  // A running write says nothing about a step that has already settled.
+  if (prevSettled && nextStatus === 'running') return { ...previous };
+  let status: ɵToolStepStatus = previous.status;
+  if (nextStatus === 'failed') status = 'failed';
+  else if (nextStatus === 'running') status = 'running';
+  else if (nextStatus !== undefined) {
+    const badAfterCompleted =
+      previous.status === 'completed' && BAD.includes(nextStatus);
+    if (source === 'message' || !prevSettled || badAfterCompleted) {
+      status = nextStatus;
+    }
   }
-  return merged;
+  const settlesRunning = previous.status === 'running' && status !== 'running';
+  const turnsBad = BAD.includes(status) && status !== previous.status;
+  if (settlesRunning || turnsBad) {
+    return { ...withoutRunningFields(previous), ...nextFields, status };
+  }
+  return source === 'message' || !prevSettled
+    ? { ...previous, ...nextFields, status }
+    : { ...nextFields, ...previous, status };
+}
+
+/** The step without its running-only `label` and `sources`. */
+function withoutRunningFields(step: ɵToolStep): ɵToolStep {
+  return Object.fromEntries(
+    Object.entries(step).filter(
+      ([key]) => key !== 'label' && key !== 'sources',
+    ),
+  ) as unknown as ɵToolStep;
 }
 
 /**
@@ -497,7 +510,8 @@ export function isProviderToolCall(toolCall: {
  * Internal to core: not exported from the package.
  *
  * @param metadata - A tool call's merged metadata.
- * @param error - The result's error string, if it failed.
+ * @param error - The result's error string, if it failed; an empty string
+ *   is no failure.
  * @returns The metadata, or a copy with the step settled.
  */
 export function completeRunningStep(
@@ -507,18 +521,19 @@ export function completeRunningStep(
   const raw = metadata?.[ɵTOOL_STEP_METADATA_KEY];
   if (!isRecord(raw)) return metadata;
   const step = ɵreadToolStep(raw);
+  const failure = readResultFailure(error);
   const status = step?.status ?? 'running';
   if (
     step === undefined ||
     status === 'failed' ||
-    (error === undefined && status !== 'running')
+    (failure === undefined && status !== 'running')
   ) {
     return metadata;
   }
   return {
     ...metadata,
     [ɵTOOL_STEP_METADATA_KEY]:
-      error === undefined
+      failure === undefined
         ? withoutLabel({ ...raw, status: 'completed' })
         : ɵmergeToolStep(
             { ...step, status },
@@ -526,7 +541,7 @@ export function completeRunningStep(
               v: 1,
               kind: step.kind,
               status: 'failed',
-              error: { message: error },
+              error: { message: failure },
             },
             'message',
           ),
@@ -545,13 +560,15 @@ function withoutLabel<T extends Record<string, unknown>>(step: T): T {
  *
  * Internal to core: not exported from the package.
  *
- * @param error - The result's error string, if it failed.
+ * @param error - The result's error string, if it failed; an empty string
+ *   is no failure.
  * @returns A fresh frame-derived step.
  */
 export function frameResultStep(error?: string): ɵToolStep {
-  return error === undefined
+  const failure = readResultFailure(error);
+  return failure === undefined
     ? { v: 1, kind: 'server', status: 'completed' }
-    : { v: 1, kind: 'server', status: 'failed', error: { message: error } };
+    : { v: 1, kind: 'server', status: 'failed', error: { message: failure } };
 }
 
 /**
@@ -578,4 +595,19 @@ export function seedFrameResultStep(
     ...metadata,
     [ɵTOOL_STEP_METADATA_KEY]: frameResultStep(result.error),
   };
+}
+
+/**
+ * Reads the failure a tool result carries: a non-empty error string, or the
+ * non-empty `message` of an `Error`-like rejection reason. An empty string is
+ * no failure, as in B4's fold.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param value - A RESULT `error` field or a rejection reason.
+ * @returns The failure message, or `undefined` when there is none.
+ */
+export function readResultFailure(value: unknown): string | undefined {
+  const message = isRecord(value) ? value['message'] : value;
+  return typeof message === 'string' && message !== '' ? message : undefined;
 }

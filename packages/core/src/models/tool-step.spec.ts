@@ -3,6 +3,7 @@ import {
   ɵmergeStepMetadata as mergeStepMetadata,
   ɵmergeToolStep as mergeToolStep,
   ɵreadAnswerAnnotations as readAnswerAnnotations,
+  readResultFailure,
   ɵreadToolStep as readToolStep,
   seedFrameResultStep,
   stampStepMetadataStart,
@@ -175,14 +176,14 @@ test('running lifts an unsettled step and a read without status keeps status', (
 });
 
 test('a message step beats a call step when both settle', () => {
-  const settledByCall = step({ status: 'completed' });
-  const denied = step({ status: 'denied' });
+  const settledByCall = step({ status: 'denied' });
+  const completed = step({ status: 'completed' });
 
-  const fromMessage = mergeToolStep(settledByCall, denied, 'message');
-  const fromCall = mergeToolStep(settledByCall, denied, 'call');
+  const fromMessage = mergeToolStep(settledByCall, completed, 'message');
+  const fromCall = mergeToolStep(settledByCall, completed, 'call');
 
-  expect(fromMessage.status).toBe('denied');
-  expect(fromCall.status).toBe('completed');
+  expect(fromMessage.status).toBe('completed');
+  expect(fromCall.status).toBe('denied');
 });
 
 test('does not mutate its inputs', () => {
@@ -521,4 +522,72 @@ test('a frame-only RESULT gives a stepless call a completed or failed step', () 
   });
   expect(unanswered).toBe(other);
   expect(kept).toBe(stepped);
+});
+
+test('a call write moves a completed step into denied or cancelled', () => {
+  const completed = step({ status: 'completed', label: 'Done', icon: 'a' });
+
+  const denied = mergeToolStep(
+    completed,
+    { v: 1, kind: 'server', status: 'denied' },
+    'call',
+  );
+  const cancelled = mergeToolStep(
+    completed,
+    { v: 1, kind: 'server', status: 'cancelled', label: 'Stopped' },
+    'call',
+  );
+
+  expect(denied).toEqual({ v: 1, kind: 'server', status: 'denied', icon: 'a' });
+  expect(cancelled).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'cancelled',
+    icon: 'a',
+    label: 'Stopped',
+  });
+});
+
+test('a call write onto a settled step only fills missing fields', () => {
+  const completed = step({ status: 'completed', label: 'A' });
+  const late = step({ status: 'completed', label: 'B', icon: 'i' });
+
+  const fromCall = mergeToolStep(completed, late, 'call');
+  const fromMessage = mergeToolStep(completed, late, 'message');
+
+  expect(fromCall).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+    label: 'A',
+    icon: 'i',
+  });
+  expect(fromMessage.label).toBe('B');
+});
+
+test('an empty RESULT error string is no failure', () => {
+  const metadata = { 'b4.step': step({ label: 'Busy' }) };
+
+  const result = completeRunningStep(metadata, '');
+
+  expect(result?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'completed',
+  });
+});
+
+test('reads a result failure from a non-empty string or an Error-like message', () => {
+  const values = ['boom', '', new Error('bad'), { message: '' }, 3, undefined];
+
+  const result = values.map((value) => readResultFailure(value));
+
+  expect(result).toEqual([
+    'boom',
+    undefined,
+    'bad',
+    undefined,
+    undefined,
+    undefined,
+  ]);
 });

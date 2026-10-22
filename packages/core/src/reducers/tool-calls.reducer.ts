@@ -14,6 +14,7 @@ import {
 import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
 import {
   completeRunningStep,
+  readResultFailure,
   reopenCancelledStep,
   seedFrameResultStep,
   stampStepMetadataStart,
@@ -88,31 +89,27 @@ function mergeMetadata(
 /**
  * The metadata an incoming step write merges onto. When the write is a
  * readable step, the call has no step, and its result already arrived, the
- * call takes the step that frame-only result implies and the write merges
- * onto it as a message step would, matching the canonical reducer.
+ * call takes the step that frame-only result implies, and the write then
+ * merges onto it as any call write does, matching the canonical reducer.
  */
 function withFrameResultStep(
   existing: Chat.Internal.ToolCall | undefined,
   incoming: Record<string, unknown> | undefined,
-): {
-  readonly metadata: Chat.Internal.ToolCall['metadata'];
-  readonly source: 'call' | 'message';
-} {
+): Chat.Internal.ToolCall['metadata'] {
   const metadata = existing?.metadata;
   if (
     existing?.status !== 'done' ||
     ɵreadToolStep(incoming?.[ɵTOOL_STEP_METADATA_KEY]) === undefined
   ) {
-    return { metadata, source: 'call' };
+    return metadata;
   }
-  const reason =
-    existing.result?.status === 'rejected' ? existing.result.reason : undefined;
-  const seeded = seedFrameResultStep(metadata, {
-    error: typeof reason === 'string' ? reason : undefined,
+  return seedFrameResultStep(metadata, {
+    error: readResultFailure(
+      existing.result?.status === 'rejected'
+        ? existing.result.reason
+        : undefined,
+    ),
   }) as Chat.Internal.ToolCall['metadata'];
-  return seeded === metadata
-    ? { metadata, source: 'call' }
-    : { metadata: seeded, source: 'message' };
 }
 
 function sameMetadata(
@@ -295,11 +292,10 @@ export const reducer = createReducer(
       const toolCallName =
         (event as { readonly toolCallName?: string }).toolCallName ??
         state.activeToolCallName;
-      const base = withFrameResultStep(existing, event.metadata);
       const metadata = mergeMetadata(
-        base.metadata,
+        withFrameResultStep(existing, event.metadata),
         event.metadata,
-        base.source,
+        'call',
       );
       const ending = event.type === EventType.TOOL_CALL_END;
       const activeToolCallId = ending ? undefined : id;
@@ -384,7 +380,7 @@ export const reducer = createReducer(
       );
       const metadata = completeRunningStep(
         merged,
-        typeof error === 'string' ? error : undefined,
+        readResultFailure(error),
       ) as typeof merged;
       const draft = updateEntity(state.draft, action.payload.toolCallId, {
         status: 'done',

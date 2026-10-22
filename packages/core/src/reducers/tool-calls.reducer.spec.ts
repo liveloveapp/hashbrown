@@ -999,7 +999,7 @@ test('a RESULT step beats the call step', () => {
       messageId: 'result-1',
       toolCallId: 'c1',
       content: 'done',
-      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'completed' } },
+      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'denied' } },
     } as AGUIEvent),
   );
 
@@ -1008,12 +1008,12 @@ test('a RESULT step beats the call step', () => {
     apiActions.generateMessageEvent({
       type: EventType.TOOL_CALL_END,
       toolCallId: 'c1',
-      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'cancelled' } },
+      metadata: { 'b4.step': { v: 1, kind: 'server', status: 'completed' } },
     } as AGUIEvent),
   );
 
   expect(ended.entities['c1']?.metadata?.['b4.step']).toMatchObject({
-    status: 'completed',
+    status: 'denied',
   });
 });
 
@@ -1464,4 +1464,136 @@ test('a RESULT error fails a step a call already completed on the draft and root
   };
   expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(failed);
   expect(readRootStep(store, 'c1')).toEqual(failed);
+});
+
+test('a late CUSTOM step keeps the RESULT step label in the root store', () => {
+  // Arrange
+  const store = createRootStore();
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+    },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+      metadata: { 'b4.step': { v: 1, status: 'completed', label: 'A' } },
+    } as AGUIEvent,
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'c1', status: 'completed', label: 'B' },
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readRootStep(store, 'c1')).toEqual(
+    expect.objectContaining({ status: 'completed', label: 'A' }),
+  );
+});
+
+test('a late provider step after a frame-only RESULT keeps the server kind on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const value = { v: 1, status: 'completed', kind: 'provider' };
+
+  // Act
+  const draft = applyDraftEvents([
+    ...frameOnlyResultEvents(),
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': value },
+    } as AGUIEvent,
+  ]);
+  dispatchEvents(store, [
+    ...frameOnlyResultEvents(),
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { ...value, toolCallId: 'c1' },
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  const completed = { v: 1, kind: 'server', status: 'completed' };
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(completed);
+  expect(readRootStep(store, 'c1')).toEqual(completed);
+});
+
+test('an empty RESULT error string completes a running step on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'lookup',
+      parentMessageId: 'assistant-1',
+      metadata: { 'b4.step': { v: 1, status: 'running', label: 'Busy' } },
+    } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+      error: '',
+    } as AGUIEvent,
+  ];
+
+  // Act
+  const draft = applyDraftEvents(events);
+  dispatchEvents(store, events);
+
+  // Assert
+  const completed = { v: 1, kind: 'server', status: 'completed' };
+  expect(draft.entities['c1']?.metadata?.['b4.step']).toEqual(completed);
+  expect(readRootStep(store, 'c1')).toEqual(completed);
+});
+
+test('a step after a local result rejected with an Error fails with its message on the draft path', () => {
+  // Arrange
+  const toolCall: Chat.Internal.ToolCall = {
+    id: 'c1',
+    name: 'lookup',
+    arguments: '{}',
+    status: 'done',
+    result: { status: 'rejected', reason: new Error('Rate limited') },
+  };
+  const initialized = reducer(
+    undefined,
+    devActions.init({
+      system: '',
+      canonicalMessages: [],
+      localProjection: { messages: [], toolCalls: [toolCall] },
+    }),
+  );
+  const active = reducer(
+    initialized,
+    internalActions.generationAttemptStarted(),
+  );
+
+  // Act
+  const next = reducer(
+    active,
+    apiActions.generateMessageEvent({
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': { v: 1, status: 'completed' } },
+    } as AGUIEvent),
+  );
+
+  // Assert
+  expect(next.entities['c1']?.metadata?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'failed',
+    error: { message: 'Rate limited' },
+  });
 });
