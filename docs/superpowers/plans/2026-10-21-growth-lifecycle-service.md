@@ -10,11 +10,11 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-20-growth-lifecycle-design.md` sections 4, 5.1 (`lifecycle`), 5.2, 6.6, 7, 8, 11, 12 (items 7 and 11), 14 item 5, as amended by Task 11 of this plan (three approval paths; shared announcements). Reconnaissance notes: the side-session note `growth-pr5-lifecycle-recon.md` (outside the repo; facts about threadplane and b4run 0.14 that this plan relies on).
 
-## Open questions for Brian (answer before Task 1)
+## Open questions for Brian (answered 2026-10-21)
 
-1. **Dependencies.** May the five root dependencies be added: `@b4run/sdk`, `@b4run/cli`, `@b4run/core`, `@b4run/postgres-storage` (all `0.14.0`, or the release that carries `B4_DATABASE_URL` if Task 0 lands on outcome B) and `hono`?
-2. **Announcement expiry.** How long should the v0.7 pill entry stay live once it moves into the shared catalog (Task 9)? Default if unanswered: 90 days from 2026-10-08.
-3. **Dogfood mailbox.** Which address goes on `RESEND_NON_PRODUCTION_ALLOWLIST` / `RESEND_NON_PRODUCTION_REDIRECT_TO` for the preview run (Task 11)? Set it on Vercel's Preview target; never paste it into the PR.
+1. **Dependencies.** Approved: `@b4run/sdk`, `@b4run/cli`, `@b4run/core`, `@b4run/postgres-storage` at `0.14.0` (Task 0 landed on outcome A, so no b4run release is needed) and `hono`.
+2. **Announcement expiry.** 90 days from 2026-10-08: `expiresAt: '2027-01-06T18:00:00Z'`.
+3. **Dogfood mailbox.** Brian supplied a preview address. It goes on `RESEND_NON_PRODUCTION_ALLOWLIST` and `RESEND_NON_PRODUCTION_REDIRECT_TO` on the Preview target of `hashbrown-lifecycle` only, and never into the repo, the PR, fixtures or logs. `brian@hashbrown.dev` does not exist yet, so nothing in the preview run may depend on it receiving mail.
 
 ## Decisions from brainstorming (2026-10-21, Brian)
 
