@@ -340,6 +340,53 @@ test('dispatcher defers a recovery_paused job and raises the mailbox alert', asy
   });
 });
 
+test('dispatcher runs hello only while enrollment is also enabled', async () => {
+  const helloAlone = dependencies();
+  const helloWithEnrollment = dependencies();
+
+  await dispatchLifecycleJobs(
+    input({ installRuntimeHelloEnabled: true }),
+    helloAlone,
+  );
+  await dispatchLifecycleJobs(
+    input({
+      installRuntimeHelloEnabled: true,
+      campaignEnrollmentEnabled: true,
+      campaignEnrollmentStartAt: new Date('2026-09-01T00:00:00.000Z'),
+    }),
+    helloWithEnrollment,
+  );
+
+  expect(helloAlone.processInstallRuntimeActivations).not.toHaveBeenCalled();
+  expect(helloAlone.loadEmailKeyring).not.toHaveBeenCalled();
+  expect(
+    helloWithEnrollment.processInstallRuntimeActivations,
+  ).toHaveBeenCalledOnce();
+});
+
+test('dispatcher defers a recovery_paused job even when the tick aborts right after it', async () => {
+  const controller = new AbortController();
+  const job = leasedJob('00000000-0000-4000-8000-000000000001', 'send_step');
+  const deps = dependencies({
+    dispatchLeasedJob: vi.fn(async () => {
+      controller.abort(new Error('tick cancelled'));
+      return 'recovery_paused' as const;
+    }),
+    leaseDueJobs: vi.fn().mockResolvedValue([job]),
+  });
+
+  const run = dispatchLifecycleJobs(input({ signal: controller.signal }), deps);
+
+  await expect(run).rejects.toThrow('tick cancelled');
+  expect(deps.deferJob).toHaveBeenCalledWith(expect.anything(), {
+    jobId: job.id,
+    leaseToken: LEASE_TOKEN,
+    now: NOW,
+    availableAt: new Date(NOW.getTime() + 60_000),
+    errorCode: 'mailbox_recovery_paused',
+  });
+});
+
 test('dispatcher reports an open recovery even with nothing leased and closes the executor', async () => {
   const close = vi.fn().mockResolvedValue(undefined);
   const executor = {

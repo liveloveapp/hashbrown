@@ -246,7 +246,10 @@ async function prepareTick(
     }
     signal.throwIfAborted();
   }
-  if (input.installRuntimeHelloEnabled) {
+  // Hello runs only alongside enrollment: an approval made while enrollment
+  // is off can predate a later CAMPAIGN_ENROLLMENT_START_AT and would never
+  // be enrolled.
+  if (input.campaignEnrollmentEnabled && input.installRuntimeHelloEnabled) {
     // Returns counts only; newly approved contacts are scored once enrolled.
     await dependencies.processInstallRuntimeActivations(executor, {
       enabled: true,
@@ -290,7 +293,8 @@ async function prepareTick(
 /**
  * One lifecycle tick. In order: Resend message-id reconciliation,
  * observation projection (a failure only raises
- * `observation_projection_failed`), hello activations, enrollment
+ * `observation_projection_failed`), hello activations (only while enrollment
+ * is also on), enrollment
  * materialization (then rescoring each enrolled contact), the Pacific-weekday
  * install digest enqueue, then a lease of up to `batchSize` due jobs that are
  * dispatched one at a time. Each lease lasts 60 s and is renewed every 20 s
@@ -366,7 +370,8 @@ export async function dispatchLifecycleJobs(
             signal,
             now: dependencies.now,
           });
-          signal.throwIfAborted();
+          // Release a paused job before honouring an abort, so it is not
+          // left leased until the lease expires.
           if (result === 'recovery_paused') {
             recoveryPaused = true;
             const now = dependencies.now();
@@ -378,6 +383,7 @@ export async function dispatchLifecycleJobs(
               errorCode: 'mailbox_recovery_paused',
             });
           }
+          signal.throwIfAborted();
           dispatched += 1;
         } catch (error) {
           signal.throwIfAborted();

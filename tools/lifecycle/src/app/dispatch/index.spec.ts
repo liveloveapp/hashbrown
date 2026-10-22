@@ -1,5 +1,5 @@
 import type { RuntimeContext } from '@b4run/sdk';
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 
 const dispatchLifecycleJobs = vi.hoisted(() => vi.fn());
 const createLifecycleDispatcherDependencies = vi.hoisted(() =>
@@ -13,10 +13,8 @@ vi.mock('../../dispatcher.ts', () => ({
 
 import { workflow } from './index.ts';
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.clearAllMocks();
-});
+// Env stubs and mock calls are reset between tests by `unstubEnvs` and
+// `clearMocks` in vitest.config.mts.
 
 const RESULT = {
   leased: 2,
@@ -29,7 +27,7 @@ function context(): RuntimeContext {
   return { signal: new AbortController().signal } as RuntimeContext;
 }
 
-test('workflow returns {...current, result} and rejects a non-integer LIFECYCLE_BATCH_SIZE', async () => {
+test('workflow returns {...current, result} with the configured switches and the default batch size', async () => {
   vi.stubEnv('LIFECYCLE_BATCH_SIZE', '');
   vi.stubEnv('CAMPAIGN_ENABLED', 'true');
   vi.stubEnv('CAMPAIGN_ENROLLMENT_ENABLED', 'true');
@@ -45,18 +43,6 @@ test('workflow returns {...current, result} and rejects a non-integer LIFECYCLE_
     },
     runtime,
   );
-  vi.stubEnv('LIFECYCLE_BATCH_SIZE', '5');
-  await workflow({ trigger: 'cron' }, runtime);
-  const batchSizes = dispatchLifecycleJobs.mock.calls.map(
-    ([request]) => request.batchSize,
-  );
-  const rejections: PromiseSettledResult<unknown>[] = [];
-  for (const value of ['1.5', 'ten', '1e1']) {
-    vi.stubEnv('LIFECYCLE_BATCH_SIZE', value);
-    rejections.push(
-      ...(await Promise.allSettled([workflow({ trigger: 'cron' }, runtime)])),
-    );
-  }
 
   expect(state).toEqual({
     trigger: 'nudge',
@@ -76,15 +62,35 @@ test('workflow returns {...current, result} and rejects a non-integer LIFECYCLE_
     },
     { marker: 'tick-dependencies' },
   );
-  expect(createLifecycleDispatcherDependencies).toHaveBeenCalledTimes(2);
-  expect(batchSizes).toEqual([20, 5]);
-  expect(rejections.map(({ status }) => status)).toEqual([
-    'rejected',
-    'rejected',
-    'rejected',
-  ]);
-  expect(dispatchLifecycleJobs).toHaveBeenCalledTimes(2);
+  expect(createLifecycleDispatcherDependencies).toHaveBeenCalledOnce();
 });
+
+test('workflow passes an integer LIFECYCLE_BATCH_SIZE to the dispatcher', async () => {
+  vi.stubEnv('LIFECYCLE_BATCH_SIZE', '5');
+  dispatchLifecycleJobs.mockResolvedValue(RESULT);
+
+  await workflow({ trigger: 'cron' }, context());
+
+  expect(dispatchLifecycleJobs).toHaveBeenCalledWith(
+    expect.objectContaining({ batchSize: 5 }),
+    { marker: 'tick-dependencies' },
+  );
+});
+
+test.each(['1.5', 'ten', '1e1', '-3'])(
+  'workflow rejects the non-integer LIFECYCLE_BATCH_SIZE %s',
+  async (value) => {
+    vi.stubEnv('LIFECYCLE_BATCH_SIZE', value);
+    dispatchLifecycleJobs.mockResolvedValue(RESULT);
+
+    const run = workflow({ trigger: 'cron' }, context());
+
+    await expect(run).rejects.toThrow(
+      'LIFECYCLE_BATCH_SIZE must be an integer',
+    );
+    expect(dispatchLifecycleJobs).not.toHaveBeenCalled();
+  },
+);
 
 test('workflow refuses an invalid switch before touching the database', async () => {
   vi.stubEnv('DELIVERY_ENABLED', 'yes');
