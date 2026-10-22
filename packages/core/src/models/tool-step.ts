@@ -290,6 +290,49 @@ export function ɵmergeToolStep(
   return withErrorRule(mergeSteps(previous, next, source));
 }
 
+/**
+ * The provider identity (`kind`, `builtin`, `provider`) of a raw v1 or
+ * legacy step record, read even when the record is not a readable step (for
+ * example one with no `status`). Hashbrown keeps it so that a provider call
+ * is never run client-side or replayed, a deliberate divergence from B4.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param value - The raw `b4.step` value.
+ * @returns The identity fields the record states; empty when none.
+ */
+export function readRawStepIdentity(
+  value: unknown,
+): Partial<Pick<ɵToolStep, 'kind' | 'builtin' | 'provider'>> {
+  if (!isRecord(value)) return {};
+  if (value['v'] !== undefined && value['v'] !== 1) return {};
+  return compact({
+    kind:
+      value['kind'] === 'provider' || value['kind'] === 'server'
+        ? (value['kind'] as ɵToolStep['kind'])
+        : undefined,
+    builtin: str(value['builtin']),
+    provider: str(value['provider']),
+  });
+}
+
+/** The incoming step with any identity fields it lacks taken from `raw`. */
+function withRawIdentity(
+  step: ɵToolStepRead,
+  raw: Partial<Pick<ɵToolStep, 'kind' | 'builtin' | 'provider'>>,
+): ɵToolStepRead {
+  return {
+    ...step,
+    ...(raw.kind !== undefined ? { kind: raw.kind } : {}),
+    ...(step.builtin === undefined && raw.builtin !== undefined
+      ? { builtin: raw.builtin }
+      : {}),
+    ...(step.provider === undefined && raw.provider !== undefined
+      ? { provider: raw.provider }
+      : {}),
+  };
+}
+
 /** The step without `toolCallId`, which its call already names. */
 function withoutToolCallId(step: ɵToolStep): ɵToolStep {
   return Object.fromEntries(
@@ -357,7 +400,11 @@ function withoutRunningFields(step: ɵToolStep): ɵToolStep {
  * A shallow metadata merge, like a plain spread, except that the `b4.step`
  * key goes through {@link ɵmergeToolStep}. An unreadable incoming step keeps
  * the previous step, or its own raw value when there is none; readers ignore
- * a raw value they cannot read. With a `toolCallId`, both steps are read
+ * a raw value they cannot read. When the previous step is unreadable (for
+ * example a provider step with no status) and the incoming step states no
+ * kind, the raw previous `kind`, `builtin` and `provider` carry over, so a
+ * provider call never turns into a client call. This diverges from B4,
+ * which would read the write as a fresh server step. With a `toolCallId`, both steps are read
  * with it, so legacy sources get `<toolCallId>:<index>` ids, and the stored
  * step omits `toolCallId` (the call names it).
  *
@@ -398,7 +445,12 @@ export function ɵmergeStepMetadata(
         heldStep,
         heldStep !== undefined && !statedKind
           ? { ...nextStep, kind: heldStep.kind }
-          : nextStep,
+          : heldStep === undefined && !statedKind
+            ? withRawIdentity(
+                nextStep,
+                readRawStepIdentity(previous?.[ɵTOOL_STEP_METADATA_KEY]),
+              )
+            : nextStep,
         source,
       );
       merged[ɵTOOL_STEP_METADATA_KEY] =

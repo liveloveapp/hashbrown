@@ -1,6 +1,7 @@
 import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { readActivityLinks, recomputeActivityLinks } from './ag-ui-activity';
+import { isProviderToolCall } from '../models/tool-step';
 import {
   lowerViewMessagesToAgUi,
   projectAgUiMessages,
@@ -3219,5 +3220,59 @@ test('an empty RESULT error string does not fail a late step', () => {
     v: 1,
     kind: 'server',
     status: 'completed',
+  });
+});
+
+test('a run error settles an unreadable provider step as a failed provider step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const settled = applyEvents(active, [
+    startTool('c1', {
+      'b4.step': { v: 1, kind: 'provider', builtin: 'web_search' },
+    }),
+    {
+      type: EventType.RUN_ERROR,
+      message: 'boom',
+      timestamp: 2000,
+    } as AGUIEvent,
+  ]);
+  const step = readStep(settled, 'c1');
+
+  // Assert
+  expect(step).toEqual({
+    v: 1,
+    kind: 'provider',
+    builtin: 'web_search',
+    status: 'failed',
+    settledAt: 2000,
+    error: { message: 'Tool call did not finish' },
+  });
+  expect(isProviderToolCall({ metadata: { 'b4.step': step } })).toBe(true);
+});
+
+test('a cancelled run settles an unreadable provider step as a cancelled provider step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const settled = applyEvents(active, [
+    startTool('c1', { 'b4.step': { v: 1, kind: 'provider' } }),
+    {
+      type: EventType.RUN_FINISHED,
+      threadId: 't',
+      runId: 'r',
+      outcome: { type: 'cancelled' },
+      timestamp: 2000,
+    } as AGUIEvent,
+  ]);
+
+  // Assert
+  expect(readStep(settled, 'c1')).toEqual({
+    v: 1,
+    kind: 'provider',
+    status: 'cancelled',
+    settledAt: 2000,
   });
 });

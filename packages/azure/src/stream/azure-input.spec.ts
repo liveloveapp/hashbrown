@@ -675,3 +675,39 @@ test('reasoning referenced by a dropped call and a kept call is still replayed',
     },
   ]);
 });
+
+test('a provider step with no status, or settled failed by a run error, is not replayed', () => {
+  const messages: Message[] = [
+    { id: 'u-1', role: 'user', content: 'Search' },
+    {
+      id: 'm-1',
+      role: 'assistant',
+      content: '',
+      toolCalls: [
+        {
+          id: 'ws_1',
+          type: 'function',
+          function: { name: 'web_search', arguments: '{}' },
+          metadata: { 'b4.step': { v: 1, kind: 'provider' } },
+        },
+        {
+          id: 'ws_2',
+          type: 'function',
+          function: { name: 'web_search', arguments: '{}' },
+          metadata: {
+            'b4.step': {
+              v: 1,
+              kind: 'provider',
+              status: 'failed',
+              error: { message: 'Tool call did not finish' },
+            },
+          },
+        },
+      ],
+    },
+  ];
+
+  const input = mapInput(messages);
+
+  expect(input).toEqual([{ role: 'user', content: 'Search' }]);
+});

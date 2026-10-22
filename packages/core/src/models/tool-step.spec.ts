@@ -724,3 +724,30 @@ test('a provider kind marks a call as a provider call even without a readable st
 
   expect(results).toEqual([true, false, false]);
 });
+
+test('a status-only write onto an unreadable provider step keeps its provider identity', () => {
+  const previous = {
+    'b4.step': {
+      v: 1,
+      kind: 'provider',
+      builtin: 'web_search',
+      provider: 'openai',
+    },
+  };
+
+  const result = mergeStepMetadata(
+    previous,
+    { 'b4.step': { status: 'running' } },
+    'call',
+    'c1',
+  );
+
+  expect(result?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'provider',
+    builtin: 'web_search',
+    provider: 'openai',
+    status: 'running',
+  });
+  expect(isProviderToolCall({ metadata: result })).toBe(true);
+});

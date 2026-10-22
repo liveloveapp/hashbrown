@@ -21,6 +21,7 @@ import {
 } from './ag-ui-message-history';
 import { createReducer, on } from '../utils/micro-ngrx';
 import {
+  readRawStepIdentity,
   readResultFailure,
   reopenCancelledStep,
   seedFrameResultStep,
@@ -1510,7 +1511,8 @@ function settleToolSteps(
     if (answered.has(id) || keepOpen.has(id)) continue;
     const found = findToolCall(messages, id);
     if (scope !== undefined && !inAttempt(scope, id, found?.tool)) continue;
-    const step = ɵreadToolStep(found?.tool.metadata?.[ɵTOOL_STEP_METADATA_KEY]);
+    const raw = found?.tool.metadata?.[ɵTOOL_STEP_METADATA_KEY];
+    const step = ɵreadToolStep(raw);
     if (
       step !== undefined &&
       step.status !== undefined &&
@@ -1521,7 +1523,13 @@ function settleToolSteps(
     Object.defineProperty(open, id, {
       value:
         step === undefined
-          ? { v: 1, kind: 'server', status: 'running' }
+          ? // An unreadable provider step keeps its identity (never replayed).
+            {
+              v: 1,
+              kind: 'server',
+              ...readRawStepIdentity(raw),
+              status: 'running',
+            }
           : { ...step, status: 'running' },
       enumerable: true,
       configurable: true,
