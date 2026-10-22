@@ -11,6 +11,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join, resolve } from 'node:path';
+import { AREAS } from '@atc/shared';
 import { scriptAtcModel } from '../src/model';
 import { stubAtcFeeds } from '../src/stubs';
 import { scenario } from '../src/traffic-fixtures';
@@ -131,6 +132,42 @@ async function mapReady(app: FrameLocator | Page): Promise<void> {
   await app.locator('.atc-plane').first().waitFor();
 }
 
+/**
+ * How the recordings open: zoomed out from the app's central Oregon home
+ * view (zoom 9) to zoom 7, and panned north to about 45.8 N, so Oregon and
+ * Washington and most of the captured live traffic are on screen. Each step
+ * is one Leaflet keyboard step: a zoom level, or 80 px of pan at zoom 7.
+ */
+const WIDE_OPENING = { zoomOutSteps: 2, panNorthSteps: 3 } as const;
+
+/**
+ * Moves the map in `app` to {@link WIDE_OPENING} the way a person would, with
+ * Leaflet's keyboard controls, then drops the focus so no ring is drawn. The
+ * app's home view is unchanged; the scripted answers move the camera from
+ * here as they always do.
+ */
+async function openWide(app: FrameLocator | Page): Promise<void> {
+  const map = app.getByTestId('airspace-map');
+  await map.focus();
+  for (let step = 1; step <= WIDE_OPENING.zoomOutSteps; step++) {
+    await map.press('Minus');
+    // Leaflet ignores a key pressed mid-zoom, so wait for the new level's tiles.
+    const zoom = AREAS.pnw.view.zoom - step;
+    await app
+      .locator(
+        `img.leaflet-tile-loaded[src*="tile.openstreetmap.org/${zoom}/"]`,
+      )
+      .first()
+      .waitFor();
+    await wait(300);
+  }
+  for (let step = 0; step < WIDE_OPENING.panNorthSteps; step++) {
+    await map.press('ArrowUp');
+    await wait(300);
+  }
+  await map.blur();
+}
+
 /** Types `prompt` into the composer, visibly, and sends it. */
 async function ask(app: FrameLocator | Page, prompt: string): Promise<void> {
   const input = app.getByRole('textbox', { name: 'Message' });
@@ -224,6 +261,7 @@ async function recordDemo(context: BrowserContext, origin: string) {
   await page.evaluate(() => document.fonts.ready);
   const app = page.frameLocator('iframe[name="app"]');
   await mapReady(app);
+  await openWide(app);
   await wait(WARM_UP_MS);
   const take = await capture(page, join(WORK, 'demo-frames'), STAGE);
   await page.evaluate(() =>
@@ -238,6 +276,10 @@ async function recordDemo(context: BrowserContext, origin: string) {
       if (beat.kind !== 'app') return;
       if (beat.prompt !== null) {
         await ask(app, DEMO_PROMPTS[beat.prompt]);
+        // Park the pointer outside the app: once the camera zooms, the Send
+        // button's spot lies over the map, and a plane passing under the
+        // pointer would open its detail card.
+        await page.mouse.move(0, 0);
         await answered(app, beat.prompt);
         if (beat.then !== undefined) {
           await page.evaluate(
@@ -270,6 +312,7 @@ async function recordLoop(context: BrowserContext, origin: string) {
   await page.setViewportSize(LOOP);
   await page.goto(`${origin}/angular/`);
   await mapReady(page);
+  await openWide(page);
   await wait(WARM_UP_MS);
   const take = await capture(page, join(WORK, 'loop-frames'), LOOP);
   await take.scene('loop', async () => {
