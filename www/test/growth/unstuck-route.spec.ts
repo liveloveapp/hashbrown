@@ -1,0 +1,275 @@
+import {
+  acceptFormSubmission,
+  FormRateLimitError,
+  type SqlExecutor,
+} from '@hashbrownai-internal/growth';
+import { expect, test, vi } from 'vitest';
+
+import { createUnstuckRoute } from '../../src/app/%5F/forms/unstuck/route';
+import {
+  UNSTUCK_FORM_DISCLOSURE,
+  UNSTUCK_FORM_POLICY_VERSION,
+} from '../../src/lib/growth/form-route';
+import { nudgeLifecycle } from '../../src/lib/growth/lifecycle-client';
+
+const URL_ = 'https://hashbrown.dev/_/forms/unstuck';
+const SUBMISSION_ID = '5b0d3f5e-3f55-4a9b-8d0a-0f8b3d5c1a11';
+const NOW = new Date('2026-10-22T12:00:00.000Z');
+const EMAIL = 'Jordan@Acme.dev';
+const MESSAGE = 'I cannot get streaming tool calls to render.';
+
+function validBody(overrides: Record<string, unknown> = {}) {
+  return {
+    policy_version: UNSTUCK_FORM_POLICY_VERSION,
+    submission_id: SUBMISSION_ID,
+    email: EMAIL,
+    framework: 'react',
+    message: MESSAGE,
+    ...overrides,
+  };
+}
+
+function post(
+  body: unknown,
+  headers: Record<string, string> = { 'content-type': 'application/json' },
+): Request {
+  return new Request(URL_, {
+    method: 'POST',
+    headers,
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+  });
+}
+
+function harness(overrides: Record<string, unknown> = {}) {
+  const events: string[] = [];
+  const close = vi.fn(async () => {
+    events.push('close');
+  });
+  const database = { close } as unknown as SqlExecutor;
+  const accept = vi.fn<typeof acceptFormSubmission>(async () => {
+    events.push('accept');
+    return {
+      accepted: true as const,
+      approved: true,
+      contactId: 'c1',
+      submissionId: SUBMISSION_ID,
+    };
+  });
+  const nudge = vi.fn<typeof nudgeLifecycle>(async () => {
+    events.push('nudge');
+  });
+  const deps = {
+    enabled: () => true,
+    accept,
+    createDatabase: () => database,
+    loadKeyring: () => ({ active: { version: 1, secret: 'k'.repeat(48) } }),
+    now: () => NOW,
+    nudge,
+    ...overrides,
+  };
+  return {
+    route: createUnstuckRoute(deps as never),
+    accept,
+    nudge,
+    close,
+    events,
+  };
+}
+
+test('switch off answers 503 before reading the body', async () => {
+  const { route, accept, nudge } = harness({ enabled: () => false });
+  const request = post(validBody());
+
+  const response = await route.POST(request);
+
+  expect(response.status).toBe(503);
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(request.bodyUsed).toBe(false);
+  expect(accept).not.toHaveBeenCalled();
+  expect(nudge).not.toHaveBeenCalled();
+});
+
+test('commits, closes the database, then nudges, and answers 200', async () => {
+  vi.stubEnv('VERCEL', '1');
+  const { route, accept, events } = harness();
+  const request = post(validBody({ message: `  ${MESSAGE}  ` }), {
+    'content-type': 'application/json; charset=utf-8',
+    'x-vercel-forwarded-for': '203.0.113.7',
+  });
+
+  const response = await route.POST(request);
+
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ ok: true });
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(events).toEqual(['accept', 'close', 'nudge']);
+  const input = accept.mock.calls[0][1];
+  expect(input).toMatchObject({
+    submissionId: SUBMISSION_ID,
+    email: 'jordan@acme.dev',
+    form: { framework: 'react', message: MESSAGE },
+    noticeText: UNSTUCK_FORM_DISCLOSURE,
+    noticeVersion: `${UNSTUCK_FORM_POLICY_VERSION}.unstuck`,
+    policyVersion: UNSTUCK_FORM_POLICY_VERSION,
+    occurredAt: NOW,
+    trustedClientIp: '203.0.113.7',
+  });
+});
+
+test('the honeypot is passed to the library, not decided by the route', async () => {
+  const { route, accept } = harness();
+
+  const response = await route.POST(
+    post(validBody({ website_url: 'http://spam' })),
+  );
+
+  expect(response.status).toBe(200);
+  expect(accept.mock.calls[0][1].honeypot).toBe('http://spam');
+});
+
+test('nudge failure still answers 200', async () => {
+  const nudge = vi.fn(async () => {
+    throw new Error('lifecycle down');
+  });
+  const { route } = harness({ nudge });
+
+  const response = await route.POST(post(validBody()));
+
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ ok: true });
+  expect(nudge).toHaveBeenCalledTimes(1);
+});
+
+test('missing or stale policy version answers 409 with the current version and Retry-After 0', async () => {
+  const { route, accept } = harness();
+  const stale = validBody({ policy_version: 'unstuck_v0' });
+  const missing: Record<string, unknown> = validBody();
+  delete missing['policy_version'];
+
+  const staleResponse = await route.POST(post(stale));
+  const missingResponse = await route.POST(post(missing));
+
+  for (const response of [staleResponse, missingResponse]) {
+    expect(response.status).toBe(409);
+    expect(response.headers.get('retry-after')).toBe('0');
+    expect(await response.json()).toMatchObject({
+      policy_version: UNSTUCK_FORM_POLICY_VERSION,
+      retryable: true,
+    });
+  }
+  expect(accept).not.toHaveBeenCalled();
+});
+
+test('non-JSON, oversized, wrong content type and schema failures answer 400 without echoing values', async () => {
+  const { route, accept } = harness();
+  const secret = 'leaky-value-123';
+  const cases = [
+    post('{nope'),
+    post('[]'),
+    post('x'.repeat(9_000)),
+    post(validBody(), { 'content-type': 'text/plain' }),
+    post(validBody({ extra: secret })),
+    post(validBody({ submission_id: 'not-a-uuid' })),
+    post(validBody({ website_url: secret.repeat(20) })),
+    post(validBody({ email: `${secret}${'a'.repeat(260)}@acme.dev` })),
+  ];
+
+  const responses = await Promise.all(cases.map((c) => route.POST(c)));
+
+  for (const response of responses) {
+    const text = await response.text();
+    expect(response.status).toBe(400);
+    expect(text).not.toContain(secret);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  }
+  expect(accept).not.toHaveBeenCalled();
+});
+
+test('a short message, a bad framework and a bad email each answer 400', async () => {
+  const { route, accept } = harness();
+
+  const short = await route.POST(post(validBody({ message: 'too short' })));
+  const framework = await route.POST(post(validBody({ framework: 'vue' })));
+  const email = await route.POST(post(validBody({ email: 'not an email' })));
+
+  expect(short.status).toBe(400);
+  expect(framework.status).toBe(400);
+  expect(email.status).toBe(400);
+  expect(await email.json()).toEqual({ error: 'Valid email required' });
+  expect(accept).not.toHaveBeenCalled();
+});
+
+test('the message is measured like the library: trimmed UTF-16 units, 20 to 1000 inclusive', async () => {
+  const { route } = harness();
+  const bodyFor = (length: number) =>
+    validBody({ message: ` ${'a'.repeat(length)} ` });
+
+  const statuses = [19, 20, 1000, 1001].map(
+    async (length) => (await route.POST(post(bodyFor(length)))).status,
+  );
+
+  expect(await Promise.all(statuses)).toEqual([400, 200, 200, 400]);
+});
+
+test('rate limit answers 429 with Retry-After and no nudge', async () => {
+  const { route, nudge, close } = harness({
+    accept: vi.fn(async () => {
+      throw new FormRateLimitError(1_234);
+    }),
+  });
+
+  const response = await route.POST(post(validBody()));
+
+  expect(response.status).toBe(429);
+  expect(response.headers.get('retry-after')).toBe('1234');
+  expect(await response.json()).toMatchObject({ retryable: true });
+  expect(nudge).not.toHaveBeenCalled();
+  expect(close).toHaveBeenCalledTimes(1);
+});
+
+test('a suppressed submission answers a silent 200 without nudging', async () => {
+  const { route, nudge } = harness({
+    accept: vi.fn(async () => ({
+      accepted: true as const,
+      approved: false,
+      contactId: 'c1',
+      submissionId: SUBMISSION_ID,
+      deliverySuppressed: true as const,
+    })),
+  });
+
+  const response = await route.POST(post(validBody()));
+
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ ok: true });
+  expect(nudge).not.toHaveBeenCalled();
+});
+
+test('database, keyring, accept and close failures answer 503 retryable without secrets', async () => {
+  const boom = () => {
+    throw new Error('postgres://user:hunter2@host/db');
+  };
+  const closeFails = harness({
+    createDatabase: () =>
+      ({
+        close: async () => {
+          throw new Error('hunter2');
+        },
+      }) as unknown as SqlExecutor,
+  });
+  const variants = [
+    harness({ createDatabase: boom }),
+    harness({ loadKeyring: boom }),
+    harness({ accept: vi.fn(async () => boom()) }),
+    closeFails,
+  ];
+
+  for (const variant of variants) {
+    const response = await variant.route.POST(post(validBody()));
+    const text = await response.text();
+    expect(response.status).toBe(503);
+    expect(JSON.parse(text)).toMatchObject({ retryable: true });
+    expect(text).not.toContain('hunter2');
+    expect(variant.nudge).not.toHaveBeenCalled();
+  }
+});
