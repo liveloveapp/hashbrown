@@ -36,6 +36,23 @@ const OBSERVATION_PROJECTION_MAX_LIMIT = 100;
 const LEASE_DURATION_MS = 60_000;
 const LEASE_RENEWAL_INTERVAL_MS = 20_000;
 const RECOVERY_RETRY_DELAY_MS = 60_000;
+const HANDLER_ERROR_BASE_DELAY_MS = 60_000;
+const HANDLER_ERROR_MAX_DELAY_MS = 3_600_000;
+const HANDLER_ERROR_MAX_ATTEMPTS = 5;
+
+/**
+ * How long a job that failed with a non-deterministic handler error waits
+ * before its next attempt: 60 s doubling per attempt, capped at one hour.
+ *
+ * @param attempts - The attempt that just failed (1 for the first).
+ * @returns The delay in milliseconds.
+ */
+export function handlerErrorBackoffMs(attempts: number): number {
+  return Math.min(
+    HANDLER_ERROR_BASE_DELAY_MS * 2 ** Math.max(attempts - 1, 0),
+    HANDLER_ERROR_MAX_DELAY_MS,
+  );
+}
 
 /**
  * How long into a tick the dispatcher may still start a job. The last job's
@@ -314,7 +331,10 @@ async function prepareTick(
  * while the tick runs; a failed renewal aborts the loop. A
  * {@link DeterministicLifecycleJobError} quarantines its job
  * (`deterministic_job_poison`); a {@link JobLeaseConflictError} drops the job
- * (it is no longer ours); a `recovery_paused` job is deferred 60 s with
+ * (it is no longer ours); any other handler error defers the job
+ * `min(60 × 2^(attempts − 1), 3600)` s with `handler_error` and the tick
+ * carries on, and the job's 5th failure quarantines it
+ * (`handler_error_exhausted`); a `recovery_paused` job is deferred 60 s with
  * `mailbox_recovery_paused`. Once {@link TICK_JOB_START_BUDGET_MS} has passed
  * since the tick began, no further job starts: each remaining leased job is
  * deferred to now with `tick_budget_exhausted` (and not counted as
@@ -325,7 +345,7 @@ async function prepareTick(
  * @param input - The batch size, switches and abort signal.
  * @param dependencies - The tick's collaborators.
  * @throws When the batch size or enrollment start is invalid, the tick is
- *   aborted, a lease renewal fails, or a non-deterministic error occurs.
+ *   aborted, a lease renewal fails, or releasing a failed job fails.
  */
 export async function dispatchLifecycleJobs(
   input: LifecycleDispatcherInput,
@@ -406,13 +426,18 @@ export async function dispatchLifecycleJobs(
           const heartbeat = heartbeats.get(job.id);
           heartbeats.delete(job.id);
           await heartbeat?.stop();
-          await dependencies.deferJob(executor, {
-            jobId: job.id,
-            leaseToken,
-            now: startAt,
-            availableAt: startAt,
-            errorCode: 'tick_budget_exhausted',
-          });
+          try {
+            await dependencies.deferJob(executor, {
+              jobId: job.id,
+              leaseToken,
+              now: startAt,
+              availableAt: startAt,
+              errorCode: 'tick_budget_exhausted',
+            });
+          } catch (error) {
+            // The lease expired and the job is no longer ours.
+            if (!(error instanceof JobLeaseConflictError)) throw error;
+          }
           continue;
         }
         try {
@@ -439,14 +464,51 @@ export async function dispatchLifecycleJobs(
         } catch (error) {
           signal.throwIfAborted();
           if (error instanceof JobLeaseConflictError) continue;
-          if (!(error instanceof DeterministicLifecycleJobError)) throw error;
-          await dependencies.quarantineJob(executor, {
-            errorCode: 'deterministic_job_poison',
-            jobId: job.id,
-            leaseToken,
-            now: dependencies.now(),
+          if (error instanceof DeterministicLifecycleJobError) {
+            await dependencies.quarantineJob(executor, {
+              errorCode: 'deterministic_job_poison',
+              jobId: job.id,
+              leaseToken,
+              now: dependencies.now(),
+            });
+            dispatched += 1;
+            continue;
+          }
+          // One bad job must not stall the jobs behind it: stop its
+          // heartbeat, then back it off or, on its last attempt, quarantine
+          // it. Only the error name is logged, never the message.
+          const heartbeat = heartbeats.get(job.id);
+          heartbeats.delete(job.id);
+          await heartbeat?.stop();
+          console.error('[lifecycle-job-failed]', {
+            kind: job.kind,
+            name: error instanceof Error ? error.name : 'Error',
           });
-          dispatched += 1;
+          const now = dependencies.now();
+          try {
+            if (job.attempts >= HANDLER_ERROR_MAX_ATTEMPTS) {
+              await dependencies.quarantineJob(executor, {
+                errorCode: 'handler_error_exhausted',
+                jobId: job.id,
+                leaseToken,
+                now,
+              });
+            } else {
+              await dependencies.deferJob(executor, {
+                jobId: job.id,
+                leaseToken,
+                now,
+                availableAt: new Date(
+                  now.getTime() + handlerErrorBackoffMs(job.attempts),
+                ),
+                errorCode: 'handler_error',
+              });
+            }
+          } catch (releaseError) {
+            if (!(releaseError instanceof JobLeaseConflictError)) {
+              throw releaseError;
+            }
+          }
         } finally {
           const heartbeat = heartbeats.get(job.id);
           heartbeats.delete(job.id);

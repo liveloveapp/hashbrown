@@ -293,3 +293,62 @@ test('a notify job reads the submission, mails the founder once and completes', 
     { kind: 'internal_notification.submission_started' },
   ]);
 });
+
+test('a failing job backs off, never delays the healthy job behind it, and is quarantined on its 5th attempt', async () => {
+  const failingId = await insertDueJob('digest');
+  const healthyId = await insertDueJob('digest');
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  let clock = NOW;
+  const tick = async (): Promise<string[]> => {
+    const dispatched: string[] = [];
+    const complete = completing(dispatched);
+    await dispatchLifecycleJobs(input(), {
+      ...tickDependencies(async (tickExecutor, job) => {
+        if (job.id === failingId) throw new Error('always fails');
+        return complete(tickExecutor, job);
+      }),
+      now: () => clock,
+    });
+    return dispatched;
+  };
+
+  const firstTick = await tick();
+  const afterFirst = await executor.execute<{
+    status: string;
+    attempts: number;
+    last_error_code: string;
+    available_at: Date;
+  }>(
+    'select status, attempts, last_error_code, available_at from growth_jobs where id = $1',
+    [failingId],
+  );
+  for (let attempt = 2; attempt <= 5; attempt += 1) {
+    clock = new Date(clock.getTime() + 3_600_001);
+    await tick();
+  }
+  const final = await executor.execute<{
+    status: string;
+    attempts: number;
+    last_error_code: string;
+  }>(
+    'select status, attempts, last_error_code from growth_jobs where id = $1',
+    [failingId],
+  );
+
+  logged.mockRestore();
+  expect(firstTick).toContain(healthyId);
+  expect(afterFirst.rows[0]).toMatchObject({
+    status: 'pending',
+    attempts: 1,
+    last_error_code: 'handler_error',
+  });
+  expect(afterFirst.rows[0].available_at.getTime()).toBe(
+    NOW.getTime() + 60_000,
+  );
+  expect(final.rows[0]).toMatchObject({
+    status: 'failed',
+    attempts: 5,
+    last_error_code: 'handler_error_exhausted',
+  });
+  expect(await jobStatuses([healthyId])).toEqual(['completed']);
+});

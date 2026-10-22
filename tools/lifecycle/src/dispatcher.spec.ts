@@ -7,6 +7,7 @@ import {
 } from './growth.ts';
 import {
   dispatchLifecycleJobs,
+  handlerErrorBackoffMs,
   LEASED_KINDS,
   type LifecycleDispatcherDependencies,
   type LifecycleDispatcherInput,
@@ -293,7 +294,7 @@ test('dispatcher quarantines a DeterministicLifecycleJobError and continues', as
   );
 });
 
-test('dispatcher drops a job whose lease conflicts and propagates any other error', async () => {
+test('dispatcher drops a job whose lease conflicts', async () => {
   const lost = leasedJob('00000000-0000-4000-8000-000000000001', 'notify');
   const next = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
   const conflicted = dependencies({
@@ -303,18 +304,12 @@ test('dispatcher drops a job whose lease conflicts and propagates any other erro
       .mockResolvedValueOnce('completed'),
     leaseDueJobs: vi.fn().mockResolvedValue([lost, next]),
   });
-  const broken = dependencies({
-    dispatchLeasedJob: vi.fn().mockRejectedValue(new Error('database down')),
-    leaseDueJobs: vi.fn().mockResolvedValue([lost]),
-  });
 
   const result = await dispatchLifecycleJobs(input(), conflicted);
-  const failure = dispatchLifecycleJobs(input(), broken);
 
   expect(result).toMatchObject({ leased: 2, dispatched: 1 });
   expect(conflicted.quarantineJob).not.toHaveBeenCalled();
-  await expect(failure).rejects.toThrow('database down');
-  expect(broken.quarantineJob).not.toHaveBeenCalled();
+  expect(conflicted.deferJob).not.toHaveBeenCalled();
 });
 
 test('dispatcher defers a recovery_paused job and raises the mailbox alert', async () => {
@@ -567,4 +562,168 @@ test('dispatcher skips leasing when preparing the tick used the whole budget', a
   });
   expect(deps.leaseDueJobs).not.toHaveBeenCalled();
   expect(deps.dispatchLeasedJob).not.toHaveBeenCalled();
+});
+
+function failingJob(id: string, attempts: number): GrowthJob {
+  return { ...leasedJob(id, 'fulfill'), attempts };
+}
+
+test('a failing job defers with backoff, the rest of the batch runs, and the 5th failure quarantines', async () => {
+  const failing = failingJob('00000000-0000-4000-8000-000000000001', 1);
+  const exhausted = failingJob('00000000-0000-4000-8000-000000000002', 5);
+  const healthy = leasedJob('00000000-0000-4000-8000-000000000003', 'notify');
+  const dispatchLeasedJob = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('handler blew up'))
+    .mockRejectedValueOnce(new Error('handler blew up'))
+    .mockResolvedValueOnce('completed');
+  const deps = dependencies({
+    dispatchLeasedJob,
+    leaseDueJobs: vi.fn().mockResolvedValue([failing, exhausted, healthy]),
+  });
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  logged.mockRestore();
+  expect(result).toMatchObject({ leased: 3, dispatched: 1 });
+  expect(dispatchLeasedJob).toHaveBeenCalledTimes(3);
+  expect(deps.deferJob).toHaveBeenCalledOnce();
+  expect(deps.deferJob).toHaveBeenCalledWith(expect.anything(), {
+    jobId: failing.id,
+    leaseToken: LEASE_TOKEN,
+    now: NOW,
+    availableAt: new Date(NOW.getTime() + 60_000),
+    errorCode: 'handler_error',
+  });
+  expect(deps.quarantineJob).toHaveBeenCalledOnce();
+  expect(deps.quarantineJob).toHaveBeenCalledWith(expect.anything(), {
+    errorCode: 'handler_error_exhausted',
+    jobId: exhausted.id,
+    leaseToken: LEASE_TOKEN,
+    now: NOW,
+  });
+});
+
+test('backoff is 60, 120, 240, 480 seconds and caps at 3600', async () => {
+  const jobs = [1, 2, 3, 4].map((attempts) =>
+    failingJob(`00000000-0000-4000-8000-00000000000${attempts}`, attempts),
+  );
+  const deps = dependencies({
+    dispatchLeasedJob: vi.fn().mockRejectedValue(new Error('boom')),
+    leaseDueJobs: vi.fn().mockResolvedValue(jobs),
+  });
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  await dispatchLifecycleJobs(input(), deps);
+
+  logged.mockRestore();
+  const delays = vi
+    .mocked(deps.deferJob)
+    .mock.calls.map(
+      ([, request]) => request.availableAt.getTime() - NOW.getTime(),
+    );
+  expect(delays).toEqual([60_000, 120_000, 240_000, 480_000]);
+});
+
+test('the backoff doubles from 60 seconds and caps at 3600', () => {
+  const attempts = [1, 2, 5, 6, 7, 20];
+
+  const delays = attempts.map(handlerErrorBackoffMs);
+
+  expect(delays).toEqual([
+    60_000, 120_000, 960_000, 1_920_000, 3_600_000, 3_600_000,
+  ]);
+});
+
+test('a lease conflict on the budget-path defer drops that job and the tick continues', async () => {
+  let clock = NOW.getTime();
+  const first = leasedJob('00000000-0000-4000-8000-000000000001', 'send_step');
+  const second = leasedJob('00000000-0000-4000-8000-000000000002', 'send_step');
+  const third = leasedJob('00000000-0000-4000-8000-000000000003', 'notify');
+  const deps = dependencies({
+    now: () => new Date(clock),
+    leaseDueJobs: vi.fn().mockResolvedValue([first, second, third]),
+    dispatchLeasedJob: vi.fn(async () => {
+      clock += TICK_JOB_START_BUDGET_MS;
+      return 'completed' as const;
+    }),
+    deferJob: vi
+      .fn()
+      .mockRejectedValueOnce(new JobLeaseConflictError(second.id))
+      .mockResolvedValueOnce(leasedJob(third.id)),
+  });
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(result).toMatchObject({ leased: 3, dispatched: 1 });
+  expect(deps.deferJob).toHaveBeenCalledTimes(2);
+});
+
+test('a lease conflict on a recovery_paused defer drops that job and the tick continues', async () => {
+  const paused = leasedJob('00000000-0000-4000-8000-000000000001', 'send_step');
+  const next = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
+  const deps = dependencies({
+    leaseDueJobs: vi.fn().mockResolvedValue([paused, next]),
+    dispatchLeasedJob: vi
+      .fn()
+      .mockResolvedValueOnce('recovery_paused')
+      .mockResolvedValueOnce('completed'),
+    deferJob: vi
+      .fn()
+      .mockRejectedValueOnce(new JobLeaseConflictError(paused.id)),
+  });
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(result).toMatchObject({ leased: 2, dispatched: 1 });
+});
+
+test('the logged failure carries only kind and error name', async () => {
+  class VendorError extends Error {
+    override name = 'VendorError';
+  }
+  const job = failingJob('00000000-0000-4000-8000-000000000001', 1);
+  const other = failingJob('00000000-0000-4000-8000-000000000002', 1);
+  const deps = dependencies({
+    dispatchLeasedJob: vi
+      .fn()
+      .mockRejectedValueOnce(new VendorError('secret@example.com leaked'))
+      .mockRejectedValueOnce('a thrown string'),
+    leaseDueJobs: vi.fn().mockResolvedValue([job, other]),
+  });
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  await dispatchLifecycleJobs(input(), deps);
+
+  const calls = logged.mock.calls;
+  logged.mockRestore();
+  expect(calls).toEqual([
+    ['[lifecycle-job-failed]', { kind: 'fulfill', name: 'VendorError' }],
+    ['[lifecycle-job-failed]', { kind: 'fulfill', name: 'Error' }],
+  ]);
+  expect(JSON.stringify(calls)).not.toContain('secret@example.com');
+});
+
+test('an abort still stops the loop after the current job', async () => {
+  const controller = new AbortController();
+  const first = failingJob('00000000-0000-4000-8000-000000000001', 1);
+  const second = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
+  const dispatchLeasedJob = vi.fn(async () => {
+    controller.abort(new Error('tick aborted'));
+    throw new Error('handler failed while aborting');
+  });
+  const deps = dependencies({
+    dispatchLeasedJob,
+    leaseDueJobs: vi.fn().mockResolvedValue([first, second]),
+  });
+
+  const failure = dispatchLifecycleJobs(
+    input({ signal: controller.signal }),
+    deps,
+  );
+
+  await expect(failure).rejects.toThrow('tick aborted');
+  expect(dispatchLeasedJob).toHaveBeenCalledOnce();
+  expect(deps.deferJob).not.toHaveBeenCalled();
 });
