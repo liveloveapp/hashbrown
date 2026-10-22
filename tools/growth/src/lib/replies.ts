@@ -1034,6 +1034,30 @@ function rankedCandidatesFromPayload(
   return candidates;
 }
 
+/**
+ * Removes one deleted contact's Message-ID from a reply reconciliation
+ * payload (In-Reply-To, References and ranked candidates) so the job can
+ * still settle for the remaining candidates without pointing at that contact.
+ */
+function stripDeletedReplyReference(
+  payload: Record<string, unknown>,
+  messageId: string,
+): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...payload };
+  if (next['in_reply_to'] === messageId) next['in_reply_to'] = null;
+  if (Array.isArray(next['references'])) {
+    next['references'] = next['references'].filter((id) => id !== messageId);
+  }
+  if (Array.isArray(next['ranked_candidates'])) {
+    next['ranked_candidates'] = next['ranked_candidates'].filter(
+      (candidate) =>
+        (candidate as Record<string, unknown> | null)?.['message_id'] !==
+        messageId,
+    );
+  }
+  return next;
+}
+
 function resolvedCandidatesFromPayload(
   payload: Record<string, unknown>,
 ): ResolvedReplyCandidate[] {
@@ -1138,6 +1162,8 @@ async function processSeed(
       `/* growth:settle-google-reconcile-for-deleted-seed */
        update growth_jobs
        set status = 'cancelled',
+           contact_id = $2,
+           payload = '{}'::jsonb,
            lease_until = null,
            lease_token = null,
            last_error_code = 'contact_deleted'
@@ -1158,7 +1184,7 @@ async function processSeed(
            )
          )
        returning id`,
-      [event.rfcMessageId],
+      [event.rfcMessageId, contactId],
     );
     return 'ignored_deleted';
   }
@@ -1868,10 +1894,12 @@ export async function settleGoogleReplyReconciliation(
             input.jobId,
             input.leaseToken,
             terminal ? 'failed' : 'pending',
-            JSON.stringify({
-              ...job.payload,
-              resolved_candidates: remaining,
-            }),
+            JSON.stringify(
+              stripDeletedReplyReference(
+                { ...job.payload, resolved_candidates: remaining },
+                currentBest.message_id,
+              ),
+            ),
             new Date(now.getTime() + Math.min(60, 2 ** job.attempts) * 60_000),
             terminal ? 'founder_review' : 'reply_lower_reference_deleted',
           ],

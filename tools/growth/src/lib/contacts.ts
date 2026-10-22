@@ -1447,8 +1447,11 @@ export async function deleteContact(
 
     // Unmatched replies queue `reply_reconcile` jobs with no contact, holding
     // the reply's In-Reply-To/References headers. Match them by the contact's
-    // own sent Message-IDs (never by address) and drop that metadata; a job
-    // still waiting is cancelled like the contact's other unsent jobs.
+    // own sent Message-IDs (never by address). When every candidate belongs to
+    // this contact the job is closed like the contact's other unsent jobs and
+    // its payload emptied; when the reply also references another contact's
+    // message, only this contact's ids are stripped and the job stays so it
+    // can still stop that contact.
     await transaction.execute<{ id: string }>(
       `/* growth:scrub-reply-reconcile-jobs */
        with sent as (
@@ -1457,41 +1460,123 @@ export async function deleteContact(
          union
          select gmail_seed_message_id from growth_jobs
          where id = any($2::uuid[]) and gmail_seed_message_id is not null
+       ),
+       hit as (
+         select job.id,
+                (
+                  select count(*) from (
+                    select job.payload->>'in_reply_to' as message_id
+                    union all
+                    select value from jsonb_array_elements_text(
+                      case when jsonb_typeof(job.payload->'references') = 'array'
+                        then job.payload->'references' else '[]'::jsonb end
+                    )
+                    union all
+                    select candidate->>'message_id' from jsonb_array_elements(
+                      case when jsonb_typeof(job.payload->'ranked_candidates') = 'array'
+                        then job.payload->'ranked_candidates' else '[]'::jsonb end
+                    ) candidate
+                  ) referenced
+                  where referenced.message_id is not null
+                    and referenced.message_id not in (select message_id from sent)
+                ) + (
+                  select count(*) from jsonb_array_elements(
+                    case when jsonb_typeof(job.payload->'resolved_candidates') = 'array'
+                      then job.payload->'resolved_candidates' else '[]'::jsonb end
+                  ) resolved
+                  where resolved->>'contact_id' is distinct from $1::text
+                ) as others
+         from growth_jobs job
+         where job.kind = 'reply_reconcile'
+           and job.contact_id is null
+           and (
+             job.payload->>'in_reply_to' in (select message_id from sent)
+             or job.payload->>'rfc_message_id' in (select message_id from sent)
+             or (
+               jsonb_typeof(job.payload->'references') = 'array'
+               and exists (
+                 select 1 from jsonb_array_elements_text(job.payload->'references') ref
+                 where ref in (select message_id from sent)
+               )
+             )
+             or (
+               jsonb_typeof(job.payload->'ranked_candidates') = 'array'
+               and exists (
+                 select 1 from jsonb_array_elements(job.payload->'ranked_candidates') cand
+                 where cand->>'message_id' in (select message_id from sent)
+               )
+             )
+             or (
+               jsonb_typeof(job.payload->'resolved_candidates') = 'array'
+               and job.payload->'resolved_candidates' @>
+                   jsonb_build_array(jsonb_build_object('contact_id', $1::text))
+             )
+           )
+         for update of job
        )
-       update growth_jobs
+       update growth_jobs target
        set status = case
-             when status in ('pending', 'leased') then 'cancelled'
-             else status
+             when hit.others = 0 and target.status in ('pending', 'leased')
+             then 'cancelled'
+             else target.status
            end,
-           lease_until = null,
-           lease_token = null,
-           payload = '{}'::jsonb
-       where kind = 'reply_reconcile'
-         and contact_id is null
-         and (
-           payload->>'in_reply_to' in (select message_id from sent)
-           or payload->>'rfc_message_id' in (select message_id from sent)
-           or (
-             jsonb_typeof(payload->'references') = 'array'
-             and exists (
-               select 1 from jsonb_array_elements_text(payload->'references') ref
-               where ref in (select message_id from sent)
+           lease_until = case when hit.others = 0 then null else target.lease_until end,
+           lease_token = case when hit.others = 0 then null else target.lease_token end,
+           payload = case
+             when hit.others = 0 then '{}'::jsonb
+             else jsonb_set(
+               jsonb_set(
+                 jsonb_set(
+                   jsonb_set(
+                     target.payload,
+                     '{in_reply_to}',
+                     case
+                       when target.payload->>'in_reply_to' in (select message_id from sent)
+                       then 'null'::jsonb
+                       else coalesce(target.payload->'in_reply_to', 'null'::jsonb)
+                     end,
+                     false
+                   ),
+                   '{references}',
+                   case
+                     when jsonb_typeof(target.payload->'references') = 'array'
+                     then coalesce((
+                       select jsonb_agg(ref)
+                       from jsonb_array_elements(target.payload->'references') ref
+                       where (ref #>> '{}') not in (select message_id from sent)
+                     ), '[]'::jsonb)
+                     else coalesce(target.payload->'references', 'null'::jsonb)
+                   end,
+                   false
+                 ),
+                 '{ranked_candidates}',
+                 case
+                   when jsonb_typeof(target.payload->'ranked_candidates') = 'array'
+                   then coalesce((
+                     select jsonb_agg(cand)
+                     from jsonb_array_elements(target.payload->'ranked_candidates') cand
+                     where (cand->>'message_id') not in (select message_id from sent)
+                   ), '[]'::jsonb)
+                   else coalesce(target.payload->'ranked_candidates', 'null'::jsonb)
+                 end,
+                 false
+               ),
+               '{resolved_candidates}',
+               case
+                 when jsonb_typeof(target.payload->'resolved_candidates') = 'array'
+                 then coalesce((
+                   select jsonb_agg(resolved)
+                   from jsonb_array_elements(target.payload->'resolved_candidates') resolved
+                   where resolved->>'contact_id' is distinct from $1::text
+                 ), '[]'::jsonb)
+                 else coalesce(target.payload->'resolved_candidates', 'null'::jsonb)
+               end,
+               false
              )
-           )
-           or (
-             jsonb_typeof(payload->'ranked_candidates') = 'array'
-             and exists (
-               select 1 from jsonb_array_elements(payload->'ranked_candidates') cand
-               where cand->>'message_id' in (select message_id from sent)
-             )
-           )
-           or (
-             jsonb_typeof(payload->'resolved_candidates') = 'array'
-             and payload->'resolved_candidates' @>
-                 jsonb_build_array(jsonb_build_object('contact_id', $1::text))
-           )
-         )
-       returning id`,
+           end
+       from hit
+       where target.id = hit.id
+       returning target.id`,
       [contactId, jobIds],
     );
 

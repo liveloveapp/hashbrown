@@ -20,6 +20,7 @@ import {
   parseGoogleMailboxEvent,
   processGoogleMailboxEvent,
   replySubjectSha256,
+  settleGoogleReplyReconciliation,
   sha256Base64Url,
 } from '../src/lib/replies.ts';
 import {
@@ -518,7 +519,7 @@ test('deleting a contact clears unmatched reply_reconcile payloads that referenc
     in_reply_to: rfcMessageId,
   });
   const byReferences = await insertReconcile(sentAt, {
-    references: [`<other.${randomUUID()}@x>`, rfcMessageId],
+    references: [rfcMessageId],
   });
   const byResolved = await insertReconcile(sentAt, {}, contact.contactId);
   const unrelated = await insertReconcile(sentAt, {
@@ -567,5 +568,222 @@ test("deleting a contact leaves other contacts' reply_reconcile payloads intact"
   expect(job?.payload).toMatchObject({
     in_reply_to: keptRfc,
     references: [keptRfc],
+  });
+});
+
+/** Inserts a leased `reply_reconcile` job holding the given payload fields. */
+async function insertLeasedReconcile(
+  occurredAt: Date,
+  fields: Record<string, unknown>,
+): Promise<{ id: string; leaseToken: string }> {
+  const gmailId = `gmail-${randomUUID()}`;
+  createdGmailIds.add(gmailId);
+  const leaseToken = randomUUID();
+  const inserted = await executor.execute<{ id: string }>(
+    `insert into growth_jobs (
+       kind, status, available_at, idempotency_key, payload,
+       lease_until, lease_token, attempts
+     ) values (
+       'reply_reconcile', 'leased', $1, $2, $3::jsonb, $4, $5, 1
+     ) returning id`,
+    [
+      occurredAt,
+      `reply_reconcile:gmail:${gmailId}`,
+      JSON.stringify({
+        schema_version: 1,
+        gmail_message_id: gmailId,
+        rfc_message_id: `<reply.${randomUUID()}@example.com>`,
+        occurred_at: occurredAt.toISOString(),
+        in_reply_to: null,
+        references: [],
+        ranked_candidates: [],
+        resolved_candidates: [],
+        ...fields,
+      }),
+      new Date(occurredAt.getTime() + 600_000),
+      leaseToken,
+    ],
+  );
+  return { id: inserted.rows[0]?.id ?? '', leaseToken };
+}
+
+async function readReconcileRow(id: string) {
+  const result = await executor.execute<{
+    status: string;
+    contact_id: string | null;
+    payload: Record<string, unknown>;
+  }>('select status, contact_id, payload from growth_jobs where id = $1', [id]);
+  return result.rows[0];
+}
+
+async function sentContact(at: Date, month: string) {
+  const contact = await createEnrolledContact(
+    executor,
+    createdContactIds,
+    new Date(`2037-${month}-01T00:00:00.000Z`),
+  );
+  const step = await acceptStepOne(contact, at, 'Engineer to engineer');
+  const rfc = `<${randomUUID()}@resend.dev>`;
+  await bindProviderMessageId(executor, {
+    providerEmailId: step.providerEmailId,
+    rfcMessageId: rfc,
+  });
+  return { contact, step, rfc };
+}
+
+test('settling a reply_reconcile job records the resolved contact', async () => {
+  const at = new Date('2037-09-07T14:10:00.000Z');
+  const { contact, step, rfc } = await sentContact(at, '09');
+  const job = await insertLeasedReconcile(at, {
+    in_reply_to: rfc,
+    ranked_candidates: [{ message_id: rfc, rank: 0 }],
+    resolved_candidates: [
+      {
+        message_id: rfc,
+        rank: 0,
+        contact_id: contact.contactId,
+        seed_job_id: step.jobId,
+      },
+    ],
+  });
+
+  const outcome = await settleGoogleReplyReconciliation(executor, {
+    jobId: job.id,
+    leaseToken: job.leaseToken,
+    now: new Date(at.getTime() + 600_000),
+  });
+
+  expect(outcome).toBe('completed');
+  expect(await readReconcileRow(job.id)).toMatchObject({
+    status: 'completed',
+    contact_id: contact.contactId,
+  });
+});
+
+test('settling for a deleted contact cancels, records the contact and clears the payload', async () => {
+  const at = new Date('2037-10-07T14:10:00.000Z');
+  const { contact, step, rfc } = await sentContact(at, '10');
+  await deleteContact(executor, deletion(contact.contactId, at));
+  const job = await insertLeasedReconcile(at, {
+    in_reply_to: rfc,
+    ranked_candidates: [{ message_id: rfc, rank: 0 }],
+    resolved_candidates: [
+      {
+        message_id: rfc,
+        rank: 0,
+        contact_id: contact.contactId,
+        seed_job_id: step.jobId,
+      },
+    ],
+  });
+
+  const outcome = await settleGoogleReplyReconciliation(executor, {
+    jobId: job.id,
+    leaseToken: job.leaseToken,
+    now: new Date(at.getTime() + 600_000),
+  });
+
+  expect(outcome).toBe('ignored_deleted');
+  expect(await readReconcileRow(job.id)).toEqual({
+    status: 'cancelled',
+    contact_id: contact.contactId,
+    payload: {},
+  });
+});
+
+test('settling a lower reference to a deleted contact strips its ids and keeps the job', async () => {
+  const at = new Date('2037-11-07T14:10:00.000Z');
+  const gone = await sentContact(at, '11');
+  const live = await sentContact(at, '11');
+  await deleteContact(executor, deletion(gone.contact.contactId, at));
+  const job = await insertLeasedReconcile(at, {
+    in_reply_to: live.rfc,
+    references: [gone.rfc, live.rfc],
+    ranked_candidates: [
+      { message_id: live.rfc, rank: 0 },
+      { message_id: gone.rfc, rank: 1 },
+    ],
+    resolved_candidates: [
+      {
+        message_id: gone.rfc,
+        rank: 1,
+        contact_id: gone.contact.contactId,
+        seed_job_id: gone.step.jobId,
+      },
+    ],
+  });
+
+  const outcome = await settleGoogleReplyReconciliation(executor, {
+    jobId: job.id,
+    leaseToken: job.leaseToken,
+    now: new Date(at.getTime() + 600_000),
+  });
+
+  expect(outcome).toBe('retry_scheduled');
+  const row = await readReconcileRow(job.id);
+  expect(row?.status).toBe('pending');
+  expect(JSON.stringify(row?.payload)).not.toContain(gone.rfc);
+  expect(row?.payload['references']).toEqual([live.rfc]);
+});
+
+test('a seed binding after the contact was deleted cancels the waiting reply job and clears its payload', async () => {
+  const at = new Date('2037-12-07T14:10:00.000Z');
+  const contact = await createEnrolledContact(
+    executor,
+    createdContactIds,
+    new Date('2037-12-01T00:00:00.000Z'),
+  );
+  const step = await acceptStepOne(contact, at, 'Engineer to engineer');
+  const rfc = `<${randomUUID()}@resend.dev>`;
+  const reply = await insertReconcile(at, {
+    in_reply_to: rfc,
+    ranked_candidates: [{ message_id: rfc, rank: 0 }],
+  });
+  await deleteContact(executor, deletion(contact.contactId, at));
+
+  const result = await post(
+    {
+      kind: 'seed',
+      version: 1,
+      gmail_message_id: `gmail-${randomUUID()}`,
+      rfc_message_id: rfc,
+      occurred_at: at.toISOString(),
+      from: 'Brian at Hashbrown <brian@hashbrown.dev>',
+      verification: 'gmail_auth_aligned',
+      x_hashbrown_job_id: step.jobId,
+    },
+    at,
+  );
+
+  expect(result).toEqual({ applied: true, outcome: 'ignored_deleted' });
+  expect(await readReconcileRow(reply)).toEqual({
+    status: 'cancelled',
+    contact_id: contact.contactId,
+    payload: {},
+  });
+});
+
+test('deleting a contact strips only its ids from a reply that also references a live contact', async () => {
+  const at = new Date('2038-01-07T14:10:00.000Z');
+  const gone = await sentContact(at, '01');
+  const live = await sentContact(at, '01');
+  const mixed = await insertReconcile(at, {
+    in_reply_to: gone.rfc,
+    references: [live.rfc, gone.rfc],
+    ranked_candidates: [
+      { message_id: gone.rfc, rank: 0 },
+      { message_id: live.rfc, rank: 1 },
+    ],
+  });
+
+  await deleteContact(executor, deletion(gone.contact.contactId, at));
+
+  const row = await readReconcileRow(mixed);
+  expect(row?.status).toBe('pending');
+  expect(JSON.stringify(row?.payload)).not.toContain(gone.rfc);
+  expect(row?.payload).toMatchObject({
+    in_reply_to: null,
+    references: [live.rfc],
+    ranked_candidates: [{ message_id: live.rfc, rank: 1 }],
   });
 });
