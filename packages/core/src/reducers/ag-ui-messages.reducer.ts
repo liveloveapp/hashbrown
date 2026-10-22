@@ -1444,7 +1444,9 @@ function nextPendingToolSteps(
         stampStepStart(
           ɵmergeToolStep(
             readHeldStep(pending, id),
-            withoutToolCallId(event.value, true) as ɵToolStepRead,
+            // Pending steps have no frame lifecycle fallback. Normalize an
+            // unknown status before merging so it cannot settle running fields.
+            ɵreadToolStep(withoutToolCallId(event.value, true)) as ɵToolStepRead,
             'call',
           ),
           event.timestamp,

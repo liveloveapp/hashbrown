@@ -2775,6 +2775,34 @@ test('holds a b4.step for an unknown call until TOOL_CALL_START', () => {
   expect(readStep(restarted, 'c2')).toMatchObject({ status: 'running' });
 });
 
+test('an unknown pending step status preserves running fields until the call starts', () => {
+  const active = activeAttempt();
+  const held = applyEvents(active, [
+    stepEvent({
+      toolCallId: 'c1',
+      status: 'running',
+      label: 'Queued',
+      sources: [{ title: 'Existing' }],
+    }),
+  ]);
+
+  const started = applyEvents(held, [
+    stepEvent({ toolCallId: 'c1', status: 'future-status', icon: 'search' }),
+    startTool('c1'),
+  ]);
+
+  expect(readStep(started, 'c1')).toMatchObject({
+    status: 'running',
+    label: 'Queued',
+    sources: [expect.objectContaining({ title: 'Existing' })],
+    icon: 'search',
+  });
+  expect(held.pendingToolSteps['c1']).toMatchObject({
+    status: 'running',
+    label: 'Queued',
+  });
+});
+
 test('an interrupted run keeps pending tool calls open and cancels the rest', () => {
   const running = { v: 1, kind: 'server', status: 'running', label: 'Busy' };
   const active = applyEvents(activeAttempt(), [
