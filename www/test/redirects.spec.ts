@@ -55,14 +55,15 @@ test('/call redirects temporarily to the Google Calendar booking page', async ()
   );
 });
 
-// hashbrown-www is on Vercel Hobby, which rejects a deploy whose cron runs
-// more than once a day. The lifecycle tick's scheduler is chosen before
-// LIFECYCLE_CRON_ENABLED is turned on: see "Scheduling the tick" in
+// A cron more often than daily needs hashbrown-www on a Vercel Pro team; a
+// Hobby team rejects the deploy. See "Scheduling the tick" in
 // docs/superpowers/runbooks/2026-10-21-growth-lifecycle-service.md.
-test('www declares no Vercel cron', () => {
+test('vercel.json schedules /_/cron/lifecycle every 30 minutes', () => {
   const path = resolve(__dirname, '../vercel.json');
 
-  const config = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : {};
+  const config = JSON.parse(readFileSync(path, 'utf8'));
 
-  expect(config).not.toHaveProperty('crons');
+  expect(config.crons).toEqual([
+    { path: '/_/cron/lifecycle', schedule: '*/30 * * * *' },
+  ]);
 });

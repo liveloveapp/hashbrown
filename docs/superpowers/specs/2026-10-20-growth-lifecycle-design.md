@@ -402,10 +402,10 @@ step 1 is accepted by Resend; step 3 five business days after step 2. Sends are
 leased only Monday to Friday 07:00 to 08:00 Pacific, batch size 20. Due times live
 in `growth_jobs.available_at`. A `*/30 * * * *` schedule calls
 `/_/cron/lifecycle`, which forwards to the lifecycle service with the bearer
-token. Vercel Hobby allows a cron at most once a day, so PR 5 ships no
-`www/vercel.json` cron; the scheduler is chosen before `LIFECYCLE_CRON_ENABLED`
-(lifecycle runbook, "Scheduling the tick"). The form route nudges lifecycle immediately after its transaction
-commits; the cron is the fallback.
+token. The schedule lives in `www/vercel.json` and needs `hashbrown-www` on a
+Vercel Pro team (Brian's decision, 2026-10-22); a Hobby team rejects any cron
+that runs more than once a day. The form route nudges lifecycle immediately
+after its transaction commits; the cron is the fallback.
 
 ### 8.4 Get unstuck form
 

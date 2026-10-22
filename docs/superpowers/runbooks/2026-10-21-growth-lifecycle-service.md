@@ -111,22 +111,18 @@ The cron route waits up to 58 seconds for the tick and has `maxDuration` 60.
 
 ## Scheduling the tick
 
-The `hashbrown-www` project is on Vercel Hobby, which allows a cron at most
-once a day, so this PR ships no `www/vercel.json` cron. Before
-`LIFECYCLE_CRON_ENABLED=true`, Brian picks one:
+`www/vercel.json` schedules `GET /_/cron/lifecycle` every 30 minutes
+(`*/30 * * * *`). Vercel sends `Authorization: Bearer $CRON_SECRET`, and the
+route answers 503 until `LIFECYCLE_CRON_ENABLED` is `true`, so the schedule is
+harmless while the switch is off.
 
-- Move the projects to a Pro team and restore
-  `{ "crons": [{ "path": "/_/cron/lifecycle", "schedule": "*/30 * * * *" }] }`
-  in `www/vercel.json`.
-- Add a scheduled GitHub Actions workflow that calls
-  `GET https://hashbrown.dev/_/cron/lifecycle` with
-  `Authorization: Bearer $CRON_SECRET` every 30 minutes.
+A cron more often than daily needs `hashbrown-www` on a Vercel Pro team. Brian
+chose Pro on 2026-10-22; the project must be on a Pro team before this lands
+on `main`, because a Hobby team rejects every deploy whose cron runs more than
+once a day. Two ticks fall inside the 07:00 Pacific send window each weekday.
 
-Until then ticks run by hand: the `curl` against `/threads/<uuid>/runs/wait`
-in "Run a tick by hand", or the cron route with the bearer (it answers 503
-until `LIFECYCLE_CRON_ENABLED` is `true`). The 07:00 Pacific send window needs
-at least one tick inside 07:00 to 08:00 on weekdays, whichever scheduler is
-chosen.
+Before the switch is on, run a tick by hand: the `curl` against
+`/threads/<uuid>/runs/wait` in "Run a tick by hand".
 
 ## Calendar and send window
 
@@ -331,8 +327,8 @@ has a `runtime` block with a `hashbrown.dev/docs` link. The first runtime entry
   block production delivery: without them replies bounce and are never
   detected, so a contact who answers step 1 would still get steps 2 and 3.
   The BCC seed (design section 8.1) arrives with them.
-- Choose the scheduler for the tick ("Scheduling the tick") before
-  `LIFECYCLE_CRON_ENABLED=true`.
+- Move `hashbrown-www` (and `hashbrown-lifecycle`) to a Vercel Pro team before
+  this PR merges ("Scheduling the tick").
 - Set the Resend webhook signing secret (`RESEND_WEBHOOK_SECRET`) on www.
 - Choose and set `CAMPAIGN_ENROLLMENT_START_AT` when enrollment is enabled. It
   cannot be changed once recorded.
