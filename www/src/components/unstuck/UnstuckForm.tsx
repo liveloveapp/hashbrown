@@ -106,6 +106,11 @@ export function UnstuckForm({
   const frameworkRef = useRef<HTMLSelectElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
 
+  /** Dismiss a lingering failure alert once the visitor starts editing. */
+  function edited() {
+    if (form.status === 'failed') form.reset();
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const problems = [
@@ -116,9 +121,18 @@ export function UnstuckForm({
     setEmailMessage(problems[0]);
     setFrameworkMessage(problems[1]);
     setMessageMessage(problems[2]);
-    if (problems[0]) return emailRef.current?.focus();
-    if (problems[1]) return frameworkRef.current?.focus();
-    if (problems[2]) return messageRef.current?.focus();
+    if (problems[0]) {
+      emailRef.current?.focus();
+      return;
+    }
+    if (problems[1]) {
+      frameworkRef.current?.focus();
+      return;
+    }
+    if (problems[2]) {
+      messageRef.current?.focus();
+      return;
+    }
 
     const honeypot = new FormData(event.currentTarget).get('website_url');
     void form.submit({
@@ -182,6 +196,7 @@ export function UnstuckForm({
           inputMode="email"
           value={email}
           onChange={(event) => {
+            edited();
             setEmail(event.target.value);
             if (emailMessage) setEmailMessage(emailError(event.target.value));
           }}
@@ -194,6 +209,7 @@ export function UnstuckForm({
           ref={frameworkRef}
           value={framework}
           onChange={(event) => {
+            edited();
             setFramework(event.target.value);
             if (frameworkMessage) {
               setFrameworkMessage(frameworkError(event.target.value));
@@ -221,6 +237,7 @@ export function UnstuckForm({
           rows={6}
           value={message}
           onChange={(event) => {
+            edited();
             setMessage(event.target.value);
             if (messageMessage)
               setMessageMessage(messageError(event.target.value));

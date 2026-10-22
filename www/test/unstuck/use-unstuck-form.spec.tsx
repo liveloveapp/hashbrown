@@ -97,7 +97,7 @@ test('a second submit while one is in flight sends nothing', async () => {
   expect(result.current.status).toBe('sent');
 });
 
-test('409 settles as stale and fires no success or fail', async () => {
+test('409 settles as stale and fires fail with stale_form', async () => {
   vi.stubGlobal('fetch', respond(409, { policy_version: 'newer' }));
   const { result } = renderHook(() =>
     useUnstuckForm({ policyVersion: POLICY }),
@@ -106,7 +106,15 @@ test('409 settles as stale and fires no success or fail', async () => {
   await act(() => result.current.submit(FACTS));
 
   expect(result.current.status).toBe('stale');
-  expect(eventNames()).toEqual(['marketing:unstuck_form_submit']);
+  expect(eventNames()).toEqual([
+    'marketing:unstuck_form_submit',
+    'marketing:unstuck_form_fail',
+  ]);
+  expect(vi.mocked(posthog.capture).mock.calls[1][1]).toEqual({
+    surface: 'unstuck',
+    error_reason: 'stale_form',
+    source_page: '/',
+  });
 });
 
 test('failures fire fail with the matching error_reason and never carry form values', async () => {

@@ -87,6 +87,10 @@ export function useUnstuckForm({
             setStatus('sent');
           } else if (response.status === 409) {
             attempt.current = null;
+            track(analyticsEvents.marketingUnstuckFormFail, {
+              ...surface,
+              error_reason: 'stale_form',
+            });
             setStatus('stale');
           } else if (response.status === 429) {
             fail('rate_limited');

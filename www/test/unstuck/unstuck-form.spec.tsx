@@ -192,10 +192,10 @@ test('a retry with identical facts reuses the submission id; changed facts mint 
   await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
   send();
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
   fireEvent.change(screen.getByLabelText('Where are you stuck?'), {
     target: { value: `${MESSAGE} Also this.` },
   });
-  await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
   send();
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
@@ -207,7 +207,7 @@ test('a retry with identical facts reuses the submission id; changed facts mint 
   );
 });
 
-test('409 shows the refresh screen and fires no success', async () => {
+test('409 shows the refresh screen and fires fail with stale_form', async () => {
   respond(409, { policy_version: 'newer' });
   mount();
   fill('jordan@acme.dev', 'both', MESSAGE);
@@ -220,7 +220,25 @@ test('409 shows the refresh screen and fires no success', async () => {
   expect(screen.getByRole('button', { name: 'Refresh page' })).toBeTruthy();
   expect(vi.mocked(posthog.capture).mock.calls.map((c) => c[0])).toEqual([
     'marketing:unstuck_form_submit',
+    'marketing:unstuck_form_fail',
   ]);
+  expect(vi.mocked(posthog.capture).mock.calls[1][1]).toMatchObject({
+    error_reason: 'stale_form',
+  });
+});
+
+test('editing after a failure dismisses the failure alert', async () => {
+  respond(503, { error: 'x', retryable: true });
+  mount();
+  fill('jordan@acme.dev', 'react', MESSAGE);
+  send();
+  await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+
+  fireEvent.change(screen.getByLabelText('Where are you stuck?'), {
+    target: { value: `${MESSAGE} More.` },
+  });
+
+  expect(screen.queryByRole('alert')).toBeNull();
 });
 
 test('a failed request offers the fallback address and fires fail with error_reason', async () => {
