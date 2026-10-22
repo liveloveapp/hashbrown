@@ -10,6 +10,12 @@ import {
 /** Always evaluated per request; a cron tick is never cached. */
 export const dynamic = 'force-dynamic';
 
+/** Seconds the route may run: a lifecycle tick may take up to 60 s. */
+export const maxDuration = 60;
+
+// Just under the route's own limit, so a long tick still reports its alerts.
+const CRON_INVOKE_TIMEOUT_MS = 58_000;
+
 interface LifecycleCronDependencies {
   invoke: (input: InvokeLifecycleInput) => Promise<InvokeLifecycleResult>;
 }
@@ -74,7 +80,7 @@ export function createLifecycleCronRoute(
       const result = await dependencies.invoke({
         baseUrl,
         serviceSecret,
-        timeoutMs: 15_000,
+        timeoutMs: CRON_INVOKE_TIMEOUT_MS,
         trigger: 'cron',
       });
       for (const alert of result.operatorAlerts) {

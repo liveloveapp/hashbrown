@@ -111,18 +111,28 @@ export function currentSiteAnnouncement(
 }
 
 /**
- * Projects the entries with a `runtime` block to the shape collectors receive.
+ * Projects the published entries with a `runtime` block to the shape
+ * collectors receive. As with the site pill, an entry whose `publishedAt` is
+ * after `now` is not yet published and is skipped.
  *
+ * @param now - The time used for publication.
  * @param entries - The catalog; defaults to {@link ANNOUNCEMENTS}.
  * @returns The runtime announcements.
  * Invalid entries are skipped, never thrown on.
  */
 export function runtimeAnnouncementCatalog(
+  now: Date,
   entries: readonly SiteAnnouncement[] = ANNOUNCEMENTS,
 ): RuntimeAnnouncement[] {
+  const time = now.getTime();
   return entries.flatMap((entry) => {
     const { runtime } = entry;
-    if (!runtime || !isValidSiteAnnouncement(entry)) return [];
+    if (
+      !runtime ||
+      !isValidSiteAnnouncement(entry) ||
+      !(Date.parse(entry.publishedAt) <= time)
+    )
+      return [];
     return [
       {
         id: entry.id,

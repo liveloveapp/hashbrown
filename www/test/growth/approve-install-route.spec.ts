@@ -62,9 +62,10 @@ test('approve-install POST approves once, rejects a query string, a second field
   const oversize = await route.POST(post(`token=${'a'.repeat(3_000)}`));
 
   expect(response.status).toBe(200);
-  expect(await response.text()).toContain(
-    "They'll be enrolled on the next lifecycle tick.",
-  );
+  const page = await response.text();
+  expect(page).toContain('<h1>Outreach approved</h1>');
+  expect(page).toContain('<p>Outreach approved.</p>');
+  expect(page).not.toContain('enrolled');
   expect(approve).toHaveBeenCalledTimes(1);
   expect(approve).toHaveBeenCalledWith(
     expect.anything(),

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import nextConfig from '../next.config';
@@ -55,12 +55,14 @@ test('/call redirects temporarily to the Google Calendar booking page', async ()
   );
 });
 
-test('vercel.json schedules /_/cron/lifecycle every 30 minutes', () => {
-  const config = JSON.parse(
-    readFileSync(resolve(__dirname, '../vercel.json'), 'utf8'),
-  );
+// hashbrown-www is on Vercel Hobby, which rejects a deploy whose cron runs
+// more than once a day. The lifecycle tick's scheduler is chosen before
+// LIFECYCLE_CRON_ENABLED is turned on: see "Scheduling the tick" in
+// docs/superpowers/runbooks/2026-10-21-growth-lifecycle-service.md.
+test('www declares no Vercel cron', () => {
+  const path = resolve(__dirname, '../vercel.json');
 
-  expect(config).toEqual({
-    crons: [{ path: '/_/cron/lifecycle', schedule: '*/30 * * * *' }],
-  });
+  const config = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : {};
+
+  expect(config).not.toHaveProperty('crons');
 });

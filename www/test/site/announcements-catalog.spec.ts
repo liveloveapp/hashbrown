@@ -84,7 +84,10 @@ test('runtimeAnnouncementCatalog excludes entries without a runtime block and sk
     }),
   ];
 
-  const projected = runtimeAnnouncementCatalog(entries);
+  const projected = runtimeAnnouncementCatalog(
+    new Date('2026-10-01T00:00:00Z'),
+    entries,
+  );
 
   expect(projected).toEqual([
     {
@@ -96,6 +99,29 @@ test('runtimeAnnouncementCatalog excludes entries without a runtime block and sk
       documentationUrl: 'https://hashbrown.dev/docs/react',
     },
   ]);
+});
+
+test('runtimeAnnouncementCatalog skips entries not yet published, as the pill does', () => {
+  const runtime = {
+    packageNames: ['@hashbrownai/react'] as const,
+    minVersion: '0.7.0',
+    documentationUrl: 'https://hashbrown.dev/docs/react',
+  };
+  const entries = [
+    entry({ id: 'future', publishedAt: '2026-11-01T00:00:00Z', runtime }),
+  ];
+
+  const before = runtimeAnnouncementCatalog(
+    new Date('2026-10-31T23:59:59Z'),
+    entries,
+  );
+  const after = runtimeAnnouncementCatalog(
+    new Date('2026-11-01T00:00:00Z'),
+    entries,
+  );
+
+  expect(before).toEqual([]);
+  expect(after.map(({ id }) => id)).toEqual(['future']);
 });
 
 test('site-relative hrefs reject protocol-relative and absolute URLs', () => {
@@ -120,11 +146,13 @@ test('an entry with an invalid href is never shown', () => {
 
 test('every shipped entry is valid for both surfaces', () => {
   const entries = ANNOUNCEMENTS;
+  const latest = new Date(
+    Math.max(...entries.map(({ publishedAt }) => Date.parse(publishedAt))),
+  );
 
   const valid = entries.map(isValidSiteAnnouncement);
+  const runtime = runtimeAnnouncementCatalog(latest, entries);
 
   expect(valid.every(Boolean)).toBe(true);
-  expect(runtimeAnnouncementCatalog(entries)).toHaveLength(
-    entries.filter(({ runtime }) => runtime).length,
-  );
+  expect(runtime).toHaveLength(entries.filter(({ runtime }) => runtime).length);
 });

@@ -1,6 +1,9 @@
 import { expect, test, vi } from 'vitest';
 
-import { createLifecycleCronRoute } from '../../src/app/%5F/cron/lifecycle/route';
+import {
+  createLifecycleCronRoute,
+  maxDuration,
+} from '../../src/app/%5F/cron/lifecycle/route';
 
 const URL_ = 'https://hashbrown.dev/_/cron/lifecycle';
 
@@ -66,7 +69,7 @@ test('cron route: 401 wrong secret, 503 when disabled or unconfigured, 200 with 
     expect(invoke).toHaveBeenCalledWith({
       baseUrl: 'https://lifecycle.example',
       serviceSecret: 'service-secret',
-      timeoutMs: 15_000,
+      timeoutMs: 58_000,
       trigger: 'cron',
     });
     expect(warn).toHaveBeenCalledWith(
@@ -78,6 +81,12 @@ test('cron route: 401 wrong secret, 503 when disabled or unconfigured, 200 with 
     expect(failing.status).toBe(503);
     expect(await failing.json()).toEqual({ accepted: false });
   });
+});
+
+test('cron route may run for 60 s, the longest a tick takes', () => {
+  const seconds = maxDuration;
+
+  expect(seconds).toBe(60);
 });
 
 test('cron route rejects every request when CRON_SECRET is unset', async () => {

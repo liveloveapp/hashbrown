@@ -9,6 +9,7 @@ const INVALID_LIFECYCLE_STATE = 'Lifecycle dispatch returned invalid state';
 export interface InvokeLifecycleInput {
   baseUrl: string;
   serviceSecret: string;
+  /** Milliseconds to wait for the tick, 250..60 000; defaults to 15 000. */
   timeoutMs?: number;
   trigger: 'cron' | 'nudge';
   submissionId?: string;
@@ -62,9 +63,9 @@ function lifecycleBaseUrl(value: string): string {
 
 function timeout(value: number | undefined): number {
   const resolved = value ?? 15_000;
-  if (!Number.isInteger(resolved) || resolved < 250 || resolved > 30_000) {
+  if (!Number.isInteger(resolved) || resolved < 250 || resolved > 60_000) {
     throw new Error(
-      'Lifecycle timeout must be between 250 and 30000 milliseconds',
+      'Lifecycle timeout must be between 250 and 60000 milliseconds',
     );
   }
   return resolved;

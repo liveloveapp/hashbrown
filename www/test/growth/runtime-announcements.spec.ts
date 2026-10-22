@@ -37,7 +37,7 @@ test('selectRuntimeAnnouncements reads the shared catalog', () => {
 
   const selected = selectRuntimeAnnouncements(input, NOW);
 
-  expect(selected).toEqual(runtimeAnnouncementCatalog());
+  expect(selected).toEqual(runtimeAnnouncementCatalog(NOW));
 });
 
 test('an entry applies to release versions inside its range only', () => {

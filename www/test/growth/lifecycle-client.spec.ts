@@ -151,6 +151,26 @@ test('invokeLifecycle rejects an out-of-range timeout as its own error', async (
   expect(fetch).not.toHaveBeenCalled();
 });
 
+test('invokeLifecycle accepts a timeout up to 60 s and rejects anything longer', async () => {
+  const fetch = vi.fn(async () => new Response(state([])));
+  const refused = vi.fn();
+
+  const result = await invokeLifecycle(
+    { ...INPUT, timeoutMs: 60_000 },
+    { fetch: fetch as never, randomUUID: () => THREAD_ID },
+  );
+  const tooLong = invokeLifecycle(
+    { ...INPUT, timeoutMs: 60_001 },
+    { fetch: refused as never },
+  );
+
+  expect(result).toEqual({ operatorAlerts: [], threadId: THREAD_ID });
+  await expect(tooLong).rejects.toThrow(
+    'Lifecycle timeout must be between 250 and 60000 milliseconds',
+  );
+  expect(refused).not.toHaveBeenCalled();
+});
+
 const SUBMISSION_ID = '018f47a2-4a2b-4f86-9f03-3dca36f26e55';
 
 function stubLifecycleEnv(overrides: Record<string, string> = {}) {

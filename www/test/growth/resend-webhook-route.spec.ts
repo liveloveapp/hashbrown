@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import {
   processVerifiedResendWebhook,
   ResendWebhookPayloadError,
@@ -39,7 +39,7 @@ function request(body: string, headers: Record<string, string> = HEADERS) {
   });
 }
 
-afterEach(() => vi.restoreAllMocks());
+// Spies are restored between tests by `restoreMocks` in vitest.config.mts.
 
 test('webhook rejects missing svix headers with 400 and oversize bodies with 413', async () => {
   const { route, verify } = setup();

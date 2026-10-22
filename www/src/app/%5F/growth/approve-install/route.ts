@@ -44,10 +44,7 @@ function confirmationResponse(token: string): Response {
 }
 
 function successResponse(): Response {
-  return htmlResponse(
-    'Outreach approved',
-    "Outreach approved. They'll be enrolled on the next lifecycle tick.",
-  );
+  return htmlResponse('Outreach approved', 'Outreach approved.');
 }
 
 function defaultDependencies(): FounderApproveInstallRouteDependencies {

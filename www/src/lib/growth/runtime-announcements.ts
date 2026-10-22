@@ -38,14 +38,15 @@ function compareVersion(left: number[], right: number[]): number {
  * well-formed entries whose package and release range match some event.
  *
  * @param batch - The committed batch.
- * @param now - The time used for expiry.
+ * @param now - The time used for expiry and, for the default catalog,
+ *   publication.
  * @param entries - The catalog; defaults to the shared announcements catalog.
  * @returns At most five announcements, projected to their public fields.
  */
 export function selectRuntimeAnnouncements(
   batch: RuntimePackageBatch,
   now: Date,
-  entries: readonly RuntimeAnnouncement[] = runtimeAnnouncementCatalog(),
+  entries: readonly RuntimeAnnouncement[] = runtimeAnnouncementCatalog(now),
 ): RuntimeAnnouncement[] {
   if (!Number.isFinite(now.getTime())) return [];
   const selected: RuntimeAnnouncement[] = [];
