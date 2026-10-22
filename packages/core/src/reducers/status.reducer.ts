@@ -1,5 +1,6 @@
 import { EventType } from '@ag-ui/core';
 import type { JsonValue } from '../utils/types';
+import type { FinishReason, TokenUsage } from '../models/run-finish';
 import { createReducer, on } from '../utils/micro-ngrx';
 import { apiActions, devActions, internalActions } from '../actions';
 import { ɵreadAgUiMessageEventDecision } from './ag-ui-messages.reducer';
@@ -16,6 +17,10 @@ export interface StatusState {
   exhaustedRetries: boolean;
   /** The return value of the last run that completed, until the next run starts. */
   lastRunResult: JsonValue | undefined;
+  /** The token usage of the last run that completed, until the next run starts. */
+  lastRunUsage: readonly TokenUsage[] | undefined;
+  /** Why the model stopped in the last run that completed, until the next run starts. */
+  lastRunFinishReason: FinishReason | undefined;
 }
 
 export const initialStatusState: StatusState = {
@@ -29,6 +34,8 @@ export const initialStatusState: StatusState = {
   error: undefined,
   exhaustedRetries: false,
   lastRunResult: undefined,
+  lastRunUsage: undefined,
+  lastRunFinishReason: undefined,
 };
 
 export const reducer = createReducer(
@@ -59,6 +66,8 @@ export const reducer = createReducer(
       isSending: true,
       sendingError: undefined,
       lastRunResult: undefined,
+      lastRunUsage: undefined,
+      lastRunFinishReason: undefined,
     };
   }),
   on(
@@ -71,6 +80,8 @@ export const reducer = createReducer(
         isSending: true,
         sendingError: undefined,
         lastRunResult: undefined,
+        lastRunUsage: undefined,
+        lastRunFinishReason: undefined,
       };
     },
   ),
@@ -111,6 +122,8 @@ export const reducer = createReducer(
           generatingError: undefined,
           error: undefined,
           lastRunResult: undefined,
+          lastRunUsage: undefined,
+          lastRunFinishReason: undefined,
         };
       case EventType.RUN_FINISHED:
         return {
@@ -150,6 +163,8 @@ export const reducer = createReducer(
       generatingError: undefined,
       exhaustedRetries: false,
       lastRunResult: action.payload.result,
+      lastRunUsage: action.payload.usage,
+      lastRunFinishReason: action.payload.finishReason,
     };
   }),
   on(apiActions.generateMessageError, (state, action) => {
@@ -222,6 +237,8 @@ export const reducer = createReducer(
       error: undefined,
       exhaustedRetries: false,
       lastRunResult: undefined,
+      lastRunUsage: undefined,
+      lastRunFinishReason: undefined,
     };
   }),
   on(internalActions.skippedToolCalls, (state) => {
@@ -239,3 +256,6 @@ export const selectError = (state: StatusState) => state.error;
 export const selectExhaustedRetries = (state: StatusState) =>
   state.exhaustedRetries;
 export const selectLastRunResult = (state: StatusState) => state.lastRunResult;
+export const selectLastRunUsage = (state: StatusState) => state.lastRunUsage;
+export const selectLastRunFinishReason = (state: StatusState) =>
+  state.lastRunFinishReason;

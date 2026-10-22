@@ -383,6 +383,14 @@ export const selectLastRunResult = select(
   selectStatusState,
   fromStatus.selectLastRunResult,
 );
+export const selectLastRunUsage = select(
+  selectStatusState,
+  fromStatus.selectLastRunUsage,
+);
+export const selectLastRunFinishReason = select(
+  selectStatusState,
+  fromStatus.selectLastRunFinishReason,
+);
 
 /**
  * Streaming Message

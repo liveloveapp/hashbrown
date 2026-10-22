@@ -190,11 +190,7 @@ function expectCanonicalTextRun(
     threadId: input.threadId,
     runId: input.runId,
   });
-  expect(events.at(-1)).toEqual({
-    type: EventType.RUN_FINISHED,
-    threadId: input.threadId,
-    runId: input.runId,
-  });
+  expectRunFinished(events.at(-1), input, 'stop');
   expect(textTypes[0]).toBe(EventType.TEXT_MESSAGE_START);
   expect(textTypes.at(-1)).toBe(EventType.TEXT_MESSAGE_END);
   expect(
@@ -222,6 +218,32 @@ function expectCanonicalTextRun(
 }
 
 /**
+ * Asserts the closing `RUN_FINISHED`: the normalized finish reason and a
+ * usage entry. Replayed recordings carry aimock's synthesized stop reason and
+ * usage, so only the shape is checked.
+ */
+function expectRunFinished(
+  event: AGUIEvent | undefined,
+  run: { readonly threadId: string; readonly runId: string },
+  finishReason: 'stop' | 'tool_calls',
+): void {
+  expect(event).toMatchObject({
+    type: EventType.RUN_FINISHED,
+    threadId: run.threadId,
+    runId: run.runId,
+    metadata: { hashbrown: { finishReason } },
+    usage: [
+      expect.objectContaining({
+        provider: 'openai',
+        inputTokens: expect.any(Number),
+        outputTokens: expect.any(Number),
+        totalTokens: expect.any(Number),
+      }),
+    ],
+  });
+}
+
+/**
  * Asserts a run that finished after calling `toolName` at least once, each
  * call with a complete lifecycle and JSON object arguments.
  */
@@ -235,11 +257,7 @@ function expectToolRound(
   );
 
   expect(eventTypes(events)).not.toContain(EventType.RUN_ERROR);
-  expect(events.at(-1)).toEqual({
-    type: EventType.RUN_FINISHED,
-    threadId: input.threadId,
-    runId: input.runId,
-  });
+  expectRunFinished(events.at(-1), input, 'tool_calls');
   expect(starts.length).toBeGreaterThanOrEqual(1);
   for (const start of starts) {
     const args = events
@@ -841,9 +859,9 @@ test('OpenAI sends callback activities inside the run', async () => {
     activityType: 'plan',
     patch: [{ op: 'replace', path: '/status', value: 'done' }],
   });
-  expect(events.at(-1)).toEqual({
-    type: EventType.RUN_FINISHED,
-    threadId: 'thread-openai',
-    runId: 'run-openai',
-  });
+  expectRunFinished(
+    events.at(-1),
+    { threadId: 'thread-openai', runId: 'run-openai' },
+    'stop',
+  );
 });

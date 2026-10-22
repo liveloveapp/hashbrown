@@ -1,5 +1,9 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { ɵwithActivities } from '@hashbrownai/core';
+import {
+  ɵcreateRunFinishedEvent,
+  ɵforwardMapped,
+  ɵwithActivities,
+} from '@hashbrownai/core';
 import OpenAI from 'openai';
 import { mapOpenAIEvents } from './openai-events';
 import { createOpenAIRequestOptions } from './openai-request';
@@ -45,22 +49,25 @@ async function* textEvents(
     const openai = new OpenAI({ apiKey, baseURL });
     providerStream = openai.responses.stream(request, { signal });
 
-    for await (const event of mapOpenAIEvents({
-      events: providerStream,
-      messageId,
+    const finish = yield* ɵforwardMapped(
+      mapOpenAIEvents({
+        events: providerStream,
+        messageId,
+        signal,
+      }),
       signal,
-    })) {
-      yield event;
-      if (signal?.aborted) {
-        return;
-      }
-    }
+    );
 
-    if (signal?.aborted) {
+    if (signal?.aborted || !finish) {
       return;
     }
 
-    yield { type: EventType.RUN_FINISHED, threadId, runId };
+    yield ɵcreateRunFinishedEvent({
+      threadId,
+      runId,
+      provider: 'openai',
+      ...finish,
+    });
   } catch (error: unknown) {
     if (!signal?.aborted) {
       yield { type: EventType.RUN_ERROR, message: normalizeError(error) };

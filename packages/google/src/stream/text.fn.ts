@@ -1,5 +1,9 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import { ɵwithActivities } from '@hashbrownai/core';
+import {
+  ɵcreateRunFinishedEvent,
+  ɵforwardMapped,
+  ɵwithActivities,
+} from '@hashbrownai/core';
 import { type GenerateContentResponse, GoogleGenAI } from '@google/genai';
 import { mapGoogleEvents } from './google-events';
 import { createGoogleRequestOptions } from './google-request';
@@ -51,22 +55,25 @@ async function* textEvents(
     providerStream = await ai.models.generateContentStream(request);
     mappingStarted = true;
 
-    for await (const event of mapGoogleEvents({
-      events: providerStream,
-      messageId,
+    const finish = yield* ɵforwardMapped(
+      mapGoogleEvents({
+        events: providerStream,
+        messageId,
+        signal,
+      }),
       signal,
-    })) {
-      yield event;
-      if (signal?.aborted) {
-        return;
-      }
-    }
+    );
 
-    if (signal?.aborted) {
+    if (signal?.aborted || !finish) {
       return;
     }
 
-    yield { type: EventType.RUN_FINISHED, threadId, runId };
+    yield ɵcreateRunFinishedEvent({
+      threadId,
+      runId,
+      provider: 'google',
+      ...finish,
+    });
   } catch (error: unknown) {
     if (!signal?.aborted) {
       yield { type: EventType.RUN_ERROR, message: normalizeError(error) };

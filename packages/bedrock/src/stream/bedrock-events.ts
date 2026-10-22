@@ -1,5 +1,13 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
-import type { ConverseStreamOutput } from '@aws-sdk/client-bedrock-runtime';
+import type {
+  TokenUsage as BedrockTokenUsage,
+  ConverseStreamOutput,
+} from '@aws-sdk/client-bedrock-runtime';
+import {
+  type FinishReason,
+  ɵcreateTokenUsage,
+  type ɵRunFinish,
+} from '@hashbrownai/core';
 
 const ABORTED = Symbol('aborted');
 
@@ -27,7 +35,67 @@ type BlockState = ToolState | ReasoningState;
 export interface MapBedrockEventsOptions {
   readonly events: AsyncIterable<ConverseStreamOutput>;
   readonly messageId: string;
+  /** The request's model ID, reported with the token usage. */
+  readonly model?: string;
   readonly signal?: AbortSignal;
+}
+
+const STOP_REASONS: Readonly<Record<string, FinishReason>> = {
+  end_turn: 'stop',
+  stop_sequence: 'stop',
+  tool_use: 'tool_calls',
+  max_tokens: 'length',
+  model_context_window_exceeded: 'length',
+  guardrail_intervened: 'content_filter',
+  content_filtered: 'content_filter',
+};
+
+function sumCounts(
+  ...values: readonly (number | undefined)[]
+): number | undefined {
+  const counts = values.filter(
+    (value): value is number => typeof value === 'number',
+  );
+  return counts.length
+    ? counts.reduce((total, value) => total + value, 0)
+    : undefined;
+}
+
+/**
+ * Builds the run's finish from the `messageStop` reason and the trailing
+ * `metadata` usage. Converse's `inputTokens` counts only the uncached prompt
+ * tokens, so cache reads and writes are added to it to match AG-UI's
+ * accounting; the total is recomputed from input and output.
+ */
+function readFinish(
+  stopReason: string | undefined,
+  calledTools: boolean,
+  usage: BedrockTokenUsage | undefined,
+  model: string | undefined,
+): ɵRunFinish {
+  const mapped =
+    stopReason === undefined ? 'other' : (STOP_REASONS[stopReason] ?? 'other');
+  const finishReason: FinishReason =
+    mapped === 'stop' && calledTools ? 'tool_calls' : mapped;
+  const tokenUsage = usage
+    ? ɵcreateTokenUsage({
+        provider: 'bedrock',
+        model,
+        inputTokens: sumCounts(
+          usage.inputTokens,
+          usage.cacheReadInputTokens,
+          usage.cacheWriteInputTokens,
+        ),
+        outputTokens: usage.outputTokens,
+        cachedInputTokens: usage.cacheReadInputTokens,
+        cacheWriteInputTokens: usage.cacheWriteInputTokens,
+      })
+    : undefined;
+  return {
+    finishReason,
+    providerMetadata: stopReason === undefined ? {} : { stopReason },
+    ...(tokenUsage ? { usage: tokenUsage } : {}),
+  };
 }
 
 function rawEvent(event: ConverseStreamOutput): AGUIEvent {
@@ -118,19 +186,26 @@ async function nextWithCancellation(
 /**
  * Maps Bedrock ConverseStream output to canonical AG-UI events.
  *
- * @param options - Bedrock stream, stable assistant ID, and cancellation signal.
- * @returns Canonical AG-UI message, tool, reasoning, and raw events.
+ * @param options - Bedrock stream, stable assistant ID, model ID, and
+ * cancellation signal.
+ * @returns Canonical AG-UI message, tool, reasoning, and raw events; the
+ * generator's return value is how the model stopped and the call's token
+ * usage, or `undefined` when mapping stopped on abort.
  *
  * @internal
  */
 export async function* mapBedrockEvents(
   options: MapBedrockEventsOptions,
-): AsyncIterable<AGUIEvent> {
+): AsyncGenerator<AGUIEvent, ɵRunFinish | undefined> {
   const iterator = options.events[Symbol.asyncIterator]();
   const activeBlocks = new Map<number, BlockState>();
   let textStarted = false;
   let reasoningIndex = 0;
   let completed = false;
+  let calledTools = false;
+  let stopReason: string | undefined;
+  let usage: BedrockTokenUsage | undefined;
+  let finish: ɵRunFinish | undefined;
   let mappingFailed = false;
   let mappingError: unknown;
   let cleanupFailed = false;
@@ -169,6 +244,7 @@ export async function* mapBedrockEvents(
             id: toolUse.toolUseId,
             receivedInput: false,
           });
+          calledTools = true;
           yield {
             type: EventType.TOOL_CALL_START,
             toolCallId: toolUse.toolUseId,
@@ -293,6 +369,7 @@ export async function* mapBedrockEvents(
       }
 
       if (event.messageStop) {
+        stopReason = event.messageStop.stopReason ?? stopReason;
         if (textStarted) {
           textStarted = false;
           yield {
@@ -307,6 +384,7 @@ export async function* mapBedrockEvents(
       }
 
       if (event.metadata) {
+        usage = event.metadata.usage ?? usage;
         yield rawEvent(event);
         continue;
       }
@@ -347,6 +425,7 @@ export async function* mapBedrockEvents(
         messageId: options.messageId,
       };
     }
+    finish = readFinish(stopReason, calledTools, usage, options.model);
   } catch (error) {
     mappingFailed = true;
     mappingError = error;
@@ -365,4 +444,5 @@ export async function* mapBedrockEvents(
   if (cleanupFailed && !options.signal?.aborted) {
     throw cleanupError;
   }
+  return options.signal?.aborted ? undefined : finish;
 }

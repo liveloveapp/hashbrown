@@ -759,7 +759,7 @@ test('awaits source iterator closure when the consumer returns early', async () 
   })[Symbol.asyncIterator]();
 
   const first = await iterator.next();
-  const returned = await iterator.return?.();
+  const returned = await iterator.return?.(undefined);
 
   expect(first.done).toBe(false);
   expect(returned).toEqual({ done: true, value: undefined });
