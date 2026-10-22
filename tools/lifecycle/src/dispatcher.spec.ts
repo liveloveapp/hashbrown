@@ -1,0 +1,446 @@
+import { expect, test, vi } from 'vitest';
+
+import {
+  type GrowthJob,
+  JobLeaseConflictError,
+  type SqlExecutor,
+} from './growth.ts';
+import {
+  dispatchLifecycleJobs,
+  LEASED_KINDS,
+  type LifecycleDispatcherDependencies,
+  type LifecycleDispatcherInput,
+} from './dispatcher.ts';
+import { DeterministicLifecycleJobError } from './job-errors.ts';
+
+// A Tuesday, 07:30 Pacific.
+const NOW = new Date('2026-09-01T14:30:00.000Z');
+const LEASE_TOKEN = '00000000-0000-4000-8000-000000000099';
+const EMAIL_KEYRING = {
+  active: { version: 1, secret: 'dispatcher-email-test-secret-material' },
+};
+
+function leasedJob(id: string, kind = 'reply_reconcile'): GrowthJob {
+  return {
+    id,
+    kind,
+    contactId: null,
+    projectId: null,
+    status: 'leased',
+    availableAt: NOW,
+    leaseUntil: new Date(NOW.getTime() + 60_000),
+    leaseToken: LEASE_TOKEN,
+    attempts: 1,
+    idempotencyKey: `test:${id}`,
+    payload: {},
+    providerEmailId: null,
+    rfcMessageId: null,
+    gmailSeedMessageId: null,
+    deliveryStatus: 'not_submitted',
+    lastErrorCode: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+}
+
+function input(
+  overrides: Partial<LifecycleDispatcherInput> = {},
+): LifecycleDispatcherInput {
+  return {
+    batchSize: 20,
+    campaignEnabled: false,
+    campaignEnrollmentEnabled: false,
+    installRuntimeHelloEnabled: false,
+    installDigestEnabled: false,
+    observationProcessingEnabled: false,
+    signal: new AbortController().signal,
+    ...overrides,
+  };
+}
+
+function dependencies(
+  overrides: Partial<LifecycleDispatcherDependencies> = {},
+): LifecycleDispatcherDependencies {
+  const executor = {
+    execute: vi.fn(),
+    transaction: vi.fn(),
+    close: vi.fn().mockResolvedValue(undefined),
+  } as unknown as SqlExecutor;
+  return {
+    appHandlers: {},
+    createDatabase: vi.fn(() => executor),
+    dispatchLeasedJob: vi.fn().mockResolvedValue('completed'),
+    isRecoveryPaused: vi.fn().mockResolvedValue(false),
+    reconcileMessageIds: vi
+      .fn()
+      .mockResolvedValue({ claimed: 0, bound: 0, deferred: 0 }),
+    leaseDueJobs: vi.fn().mockResolvedValue([]),
+    loadEmailKeyring: vi.fn(() => EMAIL_KEYRING),
+    processInstallRuntimeActivations: vi.fn().mockResolvedValue({
+      approved: 0,
+      ineligible: 0,
+      conflicted: 0,
+      disabled: false,
+    }),
+    materializeCampaignEnrollment: vi.fn().mockResolvedValue({
+      enrolledContactIds: [],
+      createdJobs: 0,
+    }),
+    recomputeContactScore: vi.fn().mockResolvedValue(undefined),
+    enqueueInstallDigestJob: vi.fn().mockResolvedValue(null),
+    processObservations: vi.fn().mockResolvedValue({
+      completed: 0,
+      leaseLost: 0,
+      retryScheduled: 0,
+      failed: 0,
+      disabled: false,
+    }),
+    now: vi.fn(() => NOW),
+    renewJobLease: vi
+      .fn()
+      .mockImplementation(async (_executor, request) =>
+        leasedJob(request.jobId),
+      ),
+    quarantineJob: vi
+      .fn()
+      .mockImplementation(async (_executor, request) =>
+        leasedJob(request.jobId),
+      ),
+    deferJob: vi
+      .fn()
+      .mockImplementation(async (_executor, request) =>
+        leasedJob(request.jobId),
+      ),
+    clearTimeout,
+    setTimeout,
+    ...overrides,
+  };
+}
+
+test('dispatcher runs reconciliation, projection, hello, enrollment, digest, lease, dispatch in order and projection failure only alerts', async () => {
+  const calls: string[] = [];
+  const record =
+    <T>(name: string, value: T) =>
+    async () => {
+      calls.push(name);
+      return value;
+    };
+  const job = leasedJob('00000000-0000-4000-8000-000000000001', 'fulfill');
+  const startAt = new Date('2026-09-01T00:00:00.000Z');
+  const deps = dependencies({
+    reconcileMessageIds: vi.fn(
+      record('reconcile', { claimed: 0, bound: 0, deferred: 0 }),
+    ),
+    processObservations: vi.fn(async () => {
+      calls.push('projection');
+      throw new Error('projection exploded');
+    }),
+    processInstallRuntimeActivations: vi.fn(
+      record('hello', {
+        approved: 1,
+        ineligible: 0,
+        conflicted: 0,
+        disabled: false,
+      }),
+    ),
+    materializeCampaignEnrollment: vi.fn(
+      record('enrollment', {
+        enrolledContactIds: ['contact-a', 'contact-b'],
+        createdJobs: 6,
+      }),
+    ),
+    recomputeContactScore: vi.fn(record('score', undefined)),
+    enqueueInstallDigestJob: vi.fn(record('digest', 'digest-job')),
+    isRecoveryPaused: vi.fn(record('recovery', false)),
+    leaseDueJobs: vi.fn(record('lease', [job])),
+    dispatchLeasedJob: vi.fn(record('dispatch', 'completed' as const)),
+  });
+
+  const result = await dispatchLifecycleJobs(
+    input({
+      batchSize: 7,
+      campaignEnabled: true,
+      campaignEnrollmentEnabled: true,
+      campaignEnrollmentStartAt: startAt,
+      installRuntimeHelloEnabled: true,
+      installDigestEnabled: true,
+      observationProcessingEnabled: true,
+    }),
+    deps,
+  );
+
+  expect(calls).toEqual([
+    'reconcile',
+    'projection',
+    'hello',
+    'enrollment',
+    'score',
+    'score',
+    'digest',
+    'recovery',
+    'lease',
+    'dispatch',
+  ]);
+  expect(result).toEqual({
+    leased: 1,
+    dispatched: 1,
+    recoveryPaused: false,
+    operatorAlerts: ['observation_projection_failed'],
+  });
+  expect(deps.processObservations).toHaveBeenCalledWith(expect.anything(), {
+    enabled: true,
+    limit: 7,
+    now: deps.now,
+  });
+  expect(deps.processInstallRuntimeActivations).toHaveBeenCalledWith(
+    expect.anything(),
+    { enabled: true, limit: 7, now: NOW, keyring: EMAIL_KEYRING },
+  );
+  expect(deps.materializeCampaignEnrollment).toHaveBeenCalledWith(
+    expect.anything(),
+    {
+      enrollmentEnabled: true,
+      enrollmentStartAt: startAt,
+      now: NOW,
+      batchSize: 7,
+    },
+  );
+  expect(deps.recomputeContactScore).toHaveBeenCalledWith(expect.anything(), {
+    contactId: 'contact-a',
+    now: NOW,
+  });
+  expect(deps.recomputeContactScore).toHaveBeenCalledWith(expect.anything(), {
+    contactId: 'contact-b',
+    now: NOW,
+  });
+  expect(deps.enqueueInstallDigestJob).toHaveBeenCalledWith(expect.anything(), {
+    now: NOW,
+    idempotencyKey: 'install_digest:2026-09-01',
+    businessDate: '2026-09-01',
+    keyring: EMAIL_KEYRING,
+    availableAt: new Date('2026-09-02T14:00:00.000Z'),
+  });
+  expect(deps.leaseDueJobs).toHaveBeenCalledWith(expect.anything(), {
+    kinds: [...LEASED_KINDS],
+    now: NOW,
+    batchSize: 7,
+    leaseDurationMs: 60_000,
+    campaignEnabled: true,
+    isSendWindow: expect.any(Function),
+  });
+  expect(LEASED_KINDS).toEqual([
+    'fulfill',
+    'notify',
+    'send_step',
+    'reply_reconcile',
+    'digest',
+  ]);
+});
+
+test('dispatcher skips disabled stages, weekend digests and rejects a bad batch size', async () => {
+  const saturday = new Date('2026-09-05T18:00:00.000Z');
+  const deps = dependencies({ now: vi.fn(() => saturday) });
+  const disabled = dependencies();
+
+  await dispatchLifecycleJobs(input({ installDigestEnabled: true }), deps);
+  await dispatchLifecycleJobs(input(), disabled);
+  const tooLarge = dispatchLifecycleJobs(input({ batchSize: 26 }), disabled);
+  const fractional = dispatchLifecycleJobs(input({ batchSize: 1.5 }), disabled);
+  const missingStart = dispatchLifecycleJobs(
+    input({ campaignEnrollmentEnabled: true }),
+    disabled,
+  );
+
+  expect(deps.enqueueInstallDigestJob).not.toHaveBeenCalled();
+  expect(disabled.processObservations).not.toHaveBeenCalled();
+  expect(disabled.processInstallRuntimeActivations).not.toHaveBeenCalled();
+  expect(disabled.materializeCampaignEnrollment).not.toHaveBeenCalled();
+  expect(disabled.enqueueInstallDigestJob).not.toHaveBeenCalled();
+  expect(disabled.loadEmailKeyring).not.toHaveBeenCalled();
+  await expect(tooLarge).rejects.toThrow(/between 1 and 25/u);
+  await expect(fractional).rejects.toThrow(/between 1 and 25/u);
+  await expect(missingStart).rejects.toThrow(/campaignEnrollmentStartAt/u);
+});
+
+test('dispatcher quarantines a DeterministicLifecycleJobError and continues', async () => {
+  const poison = leasedJob('00000000-0000-4000-8000-000000000001', 'fulfill');
+  const healthy = leasedJob('00000000-0000-4000-8000-000000000002', 'fulfill');
+  const dispatchLeasedJob = vi
+    .fn()
+    .mockRejectedValueOnce(new DeterministicLifecycleJobError('corrupt'))
+    .mockResolvedValueOnce('completed');
+  const deps = dependencies({
+    dispatchLeasedJob,
+    leaseDueJobs: vi.fn().mockResolvedValue([poison, healthy]),
+  });
+
+  const result = await dispatchLifecycleJobs(input({ batchSize: 2 }), deps);
+
+  expect(result).toMatchObject({ leased: 2, dispatched: 2 });
+  expect(deps.quarantineJob).toHaveBeenCalledOnce();
+  expect(deps.quarantineJob).toHaveBeenCalledWith(expect.anything(), {
+    errorCode: 'deterministic_job_poison',
+    jobId: poison.id,
+    leaseToken: LEASE_TOKEN,
+    now: NOW,
+  });
+  expect(dispatchLeasedJob).toHaveBeenCalledTimes(2);
+  expect(dispatchLeasedJob).toHaveBeenLastCalledWith(
+    expect.anything(),
+    healthy,
+    expect.objectContaining({ appHandlers: deps.appHandlers }),
+  );
+});
+
+test('dispatcher drops a job whose lease conflicts and propagates any other error', async () => {
+  const lost = leasedJob('00000000-0000-4000-8000-000000000001', 'notify');
+  const next = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
+  const conflicted = dependencies({
+    dispatchLeasedJob: vi
+      .fn()
+      .mockRejectedValueOnce(new JobLeaseConflictError(lost.id))
+      .mockResolvedValueOnce('completed'),
+    leaseDueJobs: vi.fn().mockResolvedValue([lost, next]),
+  });
+  const broken = dependencies({
+    dispatchLeasedJob: vi.fn().mockRejectedValue(new Error('database down')),
+    leaseDueJobs: vi.fn().mockResolvedValue([lost]),
+  });
+
+  const result = await dispatchLifecycleJobs(input(), conflicted);
+  const failure = dispatchLifecycleJobs(input(), broken);
+
+  expect(result).toMatchObject({ leased: 2, dispatched: 1 });
+  expect(conflicted.quarantineJob).not.toHaveBeenCalled();
+  await expect(failure).rejects.toThrow('database down');
+  expect(broken.quarantineJob).not.toHaveBeenCalled();
+});
+
+test('dispatcher defers a recovery_paused job and raises the mailbox alert', async () => {
+  const job = leasedJob('00000000-0000-4000-8000-000000000001', 'send_step');
+  const deps = dependencies({
+    dispatchLeasedJob: vi.fn().mockResolvedValue('recovery_paused'),
+    leaseDueJobs: vi.fn().mockResolvedValue([job]),
+  });
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(result).toEqual({
+    leased: 1,
+    dispatched: 1,
+    recoveryPaused: true,
+    operatorAlerts: ['mailbox_recovery_required'],
+  });
+  expect(deps.deferJob).toHaveBeenCalledWith(expect.anything(), {
+    jobId: job.id,
+    leaseToken: LEASE_TOKEN,
+    now: NOW,
+    availableAt: new Date(NOW.getTime() + 60_000),
+    errorCode: 'mailbox_recovery_paused',
+  });
+});
+
+test('dispatcher reports an open recovery even with nothing leased and closes the executor', async () => {
+  const close = vi.fn().mockResolvedValue(undefined);
+  const executor = {
+    execute: vi.fn(),
+    transaction: vi.fn(),
+    close,
+  } as unknown as SqlExecutor;
+  const deps = dependencies({
+    createDatabase: vi.fn(() => executor),
+    isRecoveryPaused: vi.fn().mockResolvedValue(true),
+  });
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(result).toEqual({
+    leased: 0,
+    dispatched: 0,
+    recoveryPaused: true,
+    operatorAlerts: ['mailbox_recovery_required'],
+  });
+  expect(close).toHaveBeenCalledOnce();
+});
+
+test('dispatcher renews leases every 20 s and aborts the loop when a renewal fails', async () => {
+  vi.useFakeTimers({ now: NOW });
+  try {
+    const first = leasedJob('00000000-0000-4000-8000-000000000001');
+    const second = leasedJob('00000000-0000-4000-8000-000000000002');
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const renewing = dependencies({
+      dispatchLeasedJob: vi
+        .fn()
+        .mockImplementationOnce(async () => pending.then(() => 'completed'))
+        .mockResolvedValue('completed'),
+      leaseDueJobs: vi.fn().mockResolvedValue([first, second]),
+      now: () => new Date(Date.now()),
+    });
+    const failingRenewal = vi.fn().mockResolvedValue(null);
+    const failing = dependencies({
+      dispatchLeasedJob: vi.fn().mockImplementation(
+        async (_executor, _job, { signal }) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(signal.reason), {
+              once: true,
+            });
+          }),
+      ),
+      leaseDueJobs: vi.fn().mockResolvedValue([first, second]),
+      now: () => new Date(Date.now()),
+      renewJobLease: failingRenewal,
+    });
+
+    const run = dispatchLifecycleJobs(input(), renewing);
+    await vi.advanceTimersByTimeAsync(19_999);
+    const beforeRenewal = vi.mocked(renewing.renewJobLease).mock.calls.length;
+    await vi.advanceTimersByTimeAsync(1);
+    const afterFirstRenewal = vi.mocked(renewing.renewJobLease).mock.calls
+      .length;
+    await vi.advanceTimersByTimeAsync(20_000);
+    const afterSecondRenewal = vi.mocked(renewing.renewJobLease).mock.calls
+      .length;
+    release();
+    const result = await run;
+    const aborted = dispatchLifecycleJobs(input(), failing);
+    const rejection = expect(aborted).rejects.toThrow(/lease renewal failed/u);
+    await vi.advanceTimersByTimeAsync(20_000);
+    await rejection;
+    const renewalsAtFailure = failingRenewal.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(120_000);
+
+    expect(beforeRenewal).toBe(0);
+    expect(afterFirstRenewal).toBe(2);
+    expect(afterSecondRenewal).toBe(4);
+    expect(renewing.renewJobLease).toHaveBeenCalledWith(expect.anything(), {
+      jobId: second.id,
+      leaseDurationMs: 60_000,
+      leaseToken: LEASE_TOKEN,
+      now: expect.any(Date),
+    });
+    expect(result).toMatchObject({ leased: 2, dispatched: 2 });
+    expect(failingRenewal).toHaveBeenCalledTimes(renewalsAtFailure);
+    expect(failing.dispatchLeasedJob).toHaveBeenCalledOnce();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('dispatcher stops before leasing when the tick is aborted', async () => {
+  const controller = new AbortController();
+  const deps = dependencies({
+    reconcileMessageIds: vi.fn(async () => {
+      controller.abort(new Error('tick cancelled'));
+      return { claimed: 0, bound: 0, deferred: 0 };
+    }),
+  });
+
+  const run = dispatchLifecycleJobs(input({ signal: controller.signal }), deps);
+
+  await expect(run).rejects.toThrow('tick cancelled');
+  expect(deps.leaseDueJobs).not.toHaveBeenCalled();
+});

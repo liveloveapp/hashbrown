@@ -19,6 +19,13 @@
         "command": "vitest run --config tools/lifecycle/vitest.config.mts"
       }
     },
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "vitest run --config tools/lifecycle/vitest.integration.config.mts --reporter=verbose"
+      }
+    },
     "check": {
       "executor": "nx:run-commands",
       "cache": false,
