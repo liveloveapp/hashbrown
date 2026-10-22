@@ -41,6 +41,11 @@ export function DocsMenu({ sdk, className }: { sdk: Sdk; className?: string }) {
           </div>
         );
       })}
+      <div className={styles.help}>
+        <MenuLink href="/unstuck" activeClassName={styles.active}>
+          Stuck? Ask Brian
+        </MenuLink>
+      </div>
     </nav>
   );
 }

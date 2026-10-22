@@ -1,0 +1,128 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 560px;
+}
+
+.trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  color: var(--gray-dark, #3d3c3a);
+  font:
+    500 15px/21px Fredoka,
+    sans-serif;
+}
+
+.control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-light, #a4a3a1);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--gray-dark, #3d3c3a);
+  font:
+    400 15px/21px Fredoka,
+    sans-serif;
+}
+
+textarea.control {
+  resize: vertical;
+  min-height: 140px;
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--sky-blue-dark, #64afb5);
+  outline-offset: 1px;
+}
+
+.control[aria-invalid='true'] {
+  border-color: var(--indian-red-dark, #924e4e);
+}
+
+.error {
+  margin: 0;
+  color: var(--indian-red-dark, #924e4e);
+  font:
+    400 14px/20px Fredoka,
+    sans-serif;
+}
+
+.count,
+.countOver {
+  margin: 0;
+  text-align: right;
+  font:
+    400 13px/18px Fredoka,
+    sans-serif;
+}
+
+.count {
+  color: var(--gray, #5e5c5a);
+}
+
+.countOver {
+  color: var(--indian-red-dark, #924e4e);
+}
+
+.disclosure {
+  margin: 0;
+  color: var(--gray, #5e5c5a);
+  font:
+    400 14px/20px Fredoka,
+    sans-serif;
+}
+
+.button {
+  align-self: flex-start;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--sunshine-yellow, #fbbb52);
+  color: var(--gray-dark, #3d3c3a);
+  cursor: pointer;
+  font:
+    500 16px/24px Fredoka,
+    sans-serif;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--sunshine-yellow-dark, #e8a23d);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--sky-blue-dark, #64afb5);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.status {
+  max-width: 560px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--sky-blue-light, #d8ecef);
+  color: var(--gray-dark, #3d3c3a);
+  font:
+    400 15px/21px Fredoka,
+    sans-serif;
+}
+
+.status p {
+  margin: 0 0 12px;
+}

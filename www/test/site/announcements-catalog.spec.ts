@@ -20,12 +20,53 @@ function entry(overrides: Partial<SiteAnnouncement> = {}): SiteAnnouncement {
   };
 }
 
-test('the shipped catalog has the v0.7 entry with a site-relative href', () => {
+test('the shipped catalog has the v0.7 and unstuck entries with site-relative hrefs', () => {
   const entries = ANNOUNCEMENTS;
 
-  expect(entries.map(({ id }) => id)).toEqual(['v0-7-ag-ui-1-0']);
+  expect(entries.map(({ id }) => id)).toEqual([
+    'v0-7-ag-ui-1-0',
+    'get-unstuck-form-react',
+    'get-unstuck-form-angular',
+  ]);
   expect(entries.every(({ href }) => href.startsWith('/'))).toBe(true);
   expect(entries[0].expiresAt).toBe('2027-01-06T18:00:00Z');
+});
+
+test('the unstuck runtime entry reaches React and Angular collectors from 0.8.0 with a docs link and is the current site pill', () => {
+  const now = new Date('2026-10-23T00:00:00Z');
+
+  const pill = currentSiteAnnouncement(now);
+  const runtime = runtimeAnnouncementCatalog(now).filter(({ id }) =>
+    id.startsWith('get-unstuck-form'),
+  );
+
+  expect(pill?.id).toBe('get-unstuck-form-react');
+  expect(pill?.href).toBe('/unstuck');
+  expect(
+    runtime.map(({ packageNames, minVersion, documentationUrl, text }) => ({
+      packageNames,
+      minVersion,
+      documentationUrl,
+      text,
+    })),
+  ).toEqual([
+    {
+      packageNames: ['@hashbrownai/react'],
+      minVersion: '0.8.0',
+      documentationUrl: 'https://hashbrown.dev/docs/react/platform/collection',
+      text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founding engineer: hashbrown.dev/unstuck",
+    },
+    {
+      packageNames: ['@hashbrownai/angular'],
+      minVersion: '0.8.0',
+      documentationUrl:
+        'https://hashbrown.dev/docs/angular/platform/collection',
+      text: "Stuck on your first stream, tool call or component? Ask Brian, Hashbrown's founding engineer: hashbrown.dev/unstuck",
+    },
+  ]);
+  expect(
+    runtime.every(({ expiresAt }) => expiresAt === '2027-04-20T18:00:00Z'),
+  ).toBe(true);
 });
 
 test('currentSiteAnnouncement returns the newest live entry and none when all expired', () => {

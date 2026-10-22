@@ -65,6 +65,8 @@ app.post('/run', async (req, res) => {
 
 [Read the docs for the Hashbrown Azure OpenAI adapter](https://hashbrown.dev/docs/react/platform/azure).
 
+Stuck? Ask Brian at https://hashbrown.dev/unstuck.
+
 ## What this package sends
 
 **When you install.** A postinstall step sends one `package.installed` event:

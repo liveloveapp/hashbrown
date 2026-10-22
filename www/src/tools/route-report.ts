@@ -93,6 +93,19 @@ const blogRoutes = [
 // The /samples pages were retired for a redirect to the example app docs.
 const otherRoutes = ['/', '/api', '/privacy'];
 
+// Dynamic pages are never prerendered; they must be built as app routes.
+const dynamicRoutes = ['/unstuck'];
+const appPaths = new Set(
+  Object.keys(
+    JSON.parse(
+      readFileSync(
+        join(root, 'www/.next/server/app-paths-manifest.json'),
+        'utf-8',
+      ),
+    ) as Record<string, string>,
+  ),
+);
+
 // Share cards: the default, one per blog post, one per docs page, and the
 // GitHub preview. All prerender at build time.
 const cardRoutes = [
@@ -119,6 +132,15 @@ for (const [label, routes] of [
   missing.forEach((route) => console.log(`    missing ${route}`));
   failed ||= missing.length > 0;
 }
+
+const missingDynamic = dynamicRoutes.filter(
+  (route) => !appPaths.has(`${route}/page`),
+);
+console.log(
+  `  ${'dynamic pages'.padEnd(28)} ${dynamicRoutes.length - missingDynamic.length}/${dynamicRoutes.length}`,
+);
+missingDynamic.forEach((route) => console.log(`    missing ${route}`));
+failed ||= missingDynamic.length > 0;
 
 // 3. Every prerendered page ships an og:image. In Next 16 a segment that sets
 //    `openGraph` without `images`, and has no `opengraph-image` in its own

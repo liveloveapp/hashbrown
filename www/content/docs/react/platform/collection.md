@@ -100,3 +100,7 @@ Install events go to `https://hashbrown.dev/_/growth/collect/v1/install` and dev
 ## Deleting your data
 
 Email [brian@hashbrown.dev](mailto:brian@hashbrown.dev) from the address you want removed. We clear the contact fields tied to it, remove its project mapping, cancel any scheduled email, and redact its observations. A one-way hash of the email address remains so we do not contact you again.
+
+## Getting help
+
+Stuck on your first stream, tool call or component? [Ask Brian](/unstuck).

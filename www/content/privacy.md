@@ -8,7 +8,11 @@ This page explains what Hashbrown collects, who processes it, how long we keep i
 
 **Install and development observations from the packages.** When you install a `@hashbrownai/*` package, a postinstall step sends one `package.installed` event describing the package, your operating system, CPU architecture, Node version, package manager, and whether the install ran in CI, together with a random per-user id that each package reads from or creates in `~/.hashbrown/installation-id` so repeat installs on one machine are counted once. Outside CI, when Git is configured, it also sends your Git `user.name`, `user.email`, and the owner of the `origin` remote on GitHub, GitLab, or Bitbucket. In a development build in a browser, the packages report when a chat runtime starts, the first completed stream, the first tool call, and the first rendered component, once per session. Production builds, server rendering, automated browsers, and test runners send nothing. None of these observations include prompts, messages, schemas, tool arguments, component props, URLs, or thread identifiers. The full field list is in the docs at [What Hashbrown Sends](/docs/react/platform/collection).
 
-**The Get unstuck form and email replies.** When the Get unstuck form launches and you fill it in, or when you reply to one of our emails, we keep what you wrote and the address you wrote from so we can answer you.
+**The Get unstuck form and email replies.** When you fill in the [Get unstuck form](/unstuck), we keep your email address, your framework, and your question, along with a record that you saw the disclosure on the form and agreed to hear back from us. When you reply to one of our emails, we keep what you wrote and the address you wrote from. We use these to answer you and to send the emails described below.
+
+**The founder install digest.** Brian receives a digest of installs whose Git email is on a work domain, showing the installer's identity (name, work email, and repository owner), the packages they installed, and their activity level, so he can decide whether to reach out. Nobody on the digest is emailed until he approves outreach.
+
+**Approval from a development runtime.** If a development build links to an install whose Git email is on a work domain, that contact may be approved automatically and enrolled in the same three emails described below, each with an unsubscribe link. Personal mailboxes such as gmail.com are never approved this way.
 
 ## Who processes it
 
@@ -26,7 +30,7 @@ We keep this data indefinitely by default, until you ask us to delete it.
 
 ## Email
 
-The Get unstuck form and the founder install digest are upcoming. When they launch, opting in through either one sends you one short sequence of emails from the founder. Every email has an unsubscribe link, and replies go to a human.
+When you submit the Get unstuck form, we send an acknowledgement and then a short sequence of three emails from the founder, Brian. The same three emails go to a contact Brian approves from the install digest, or who is approved automatically as described above. Every email has an unsubscribe link, and replies go to a human.
 
 ## Your choices
 

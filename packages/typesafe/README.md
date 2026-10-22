@@ -105,6 +105,10 @@ await HashbrownTypeSafe.decide({
 deliberately, so a model update never changes your decisions unannounced. Do not
 use a floating alias in production.
 
+## Getting help
+
+Stuck? Ask Brian at https://hashbrown.dev/unstuck.
+
 ## What this package sends
 
 **When you install.** A postinstall step sends one `package.installed` event:

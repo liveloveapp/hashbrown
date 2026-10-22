@@ -86,6 +86,9 @@ export const TARGETS = Object.freeze([
       'NEXT_PUBLIC_GROWTH_COLLECTION',
       // Read by the /_/cron/lifecycle route and nudgeLifecycle in www.
       'LIFECYCLE_CRON_ENABLED',
+      // Read by the /_/forms/unstuck route and the /unstuck page: exact
+      // true | false, default off.
+      'GROWTH_UNSTUCK_FORM_ENABLED',
     ],
     // DATABASE_URL is injected by the Neon Marketplace integration; the
     // bootstrap must never upsert it.
