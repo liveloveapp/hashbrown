@@ -143,7 +143,6 @@ const stream = HashbrownOpenAI.stream.text({
 
     return {
       ...options,
-      temperature: userPlan === 'creative' ? 0.8 : 0.2,
       max_output_tokens: userPlan === 'free' ? 500 : undefined,
       reasoning:
         userPlan === 'premium'
