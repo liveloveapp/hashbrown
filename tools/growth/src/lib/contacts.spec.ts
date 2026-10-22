@@ -475,6 +475,7 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
     deleteInput.occurredAt,
   );
   expect(sqlFor('cancel-and-scrub-jobs')).toMatch(/project_id\s*=\s*null/u);
+  expect(sqlFor('cancel-and-scrub-jobs')).toContain('growth_reply_receipts');
   expect(sqlFor('scrub-retained-activity')).toMatch(
     /delivery\.submission_authorized[\s\S]*bounded_stop_race/u,
   );

@@ -60,9 +60,10 @@ const SETTLEMENT_RESULTS = {
 
 /**
  * The one dispatch boundary for jobs returned by `leaseDueJobs`. It settles
- * `reply_reconcile` itself, returns `recovery_paused` for `send_step` and
- * `reply_reconcile` while Google mailbox recovery is open, and otherwise hands
- * the job to the app handler for its kind. Reply settlements map as
+ * legacy `reply_reconcile` itself, returns `recovery_paused` for that
+ * legacy work while its old recovery is open, and otherwise hands
+ * the job to the app handler for its kind. Campaigns use the Resend mailbox
+ * gates in leasing/final authorization. Reply settlements map as
  * `retry_scheduled → deferred`, `founder_review → failed` and
  * `ignored_deleted → cancelled`.
  *
@@ -87,7 +88,7 @@ export async function dispatchGrowthLeasedJob(
     throw new Error(`Unsupported or inactive growth job kind: ${job.kind}`);
   }
   if (
-    (job.kind === 'reply_reconcile' || job.kind === 'send_step') &&
+    job.kind === 'reply_reconcile' &&
     (await isGoogleMailboxRecoveryPaused(executor))
   ) {
     return 'recovery_paused';

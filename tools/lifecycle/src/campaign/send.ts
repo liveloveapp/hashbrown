@@ -8,9 +8,11 @@ import {
   claimInternalNotificationSubmission,
   classifyResendProviderError,
   completeLeasedJob,
+  completeProviderAttempt,
   createGrowthActionToken,
   type CreateGrowthActionTokenInput,
   createUnsubscribeActionUrl,
+  createUnsubscribeActionUrlForJob,
   type CreateUnsubscribeActionUrlInput,
   deferLeasedJob,
   type DeliveryEnvironment,
@@ -36,6 +38,7 @@ import {
   normalizeGrowthPublicActionOrigin,
   normalizeRecipientEmail,
   type NotificationSubmission,
+  providerIdempotencyKey,
   readInstallDigestCandidates,
   readInstallDigestContext,
   readLifecycleJobContext,
@@ -50,6 +53,7 @@ import {
   recordProviderAcceptance,
   renderPlainHtml,
   renderPlainText,
+  reserveProviderAttempt,
   sendRecipientEmail,
   type SqlExecutor,
   type SqlTransaction,
@@ -290,7 +294,7 @@ export function loadRecipientDeliveryPolicy(
 export interface InternalNotificationRequest {
   subject: string;
   text: string;
-  /** The job's idempotency key; the provider key is `internal:<key>`. */
+  /** The source job key, namespaced by product and environment for the provider. */
   idempotencyKey: string;
   kind: InternalNotificationKind;
 }
@@ -347,6 +351,10 @@ export interface LifecycleJobDependencies {
   createUnsubscribeUrl: (
     input: CreateUnsubscribeActionUrlInput,
   ) => UnsubscribeActionUrl;
+  /** Mints a retry-stable unsubscribe URL from the job's immutable creation time. */
+  createUnsubscribeUrlForJob: (
+    job: Pick<GrowthJob, 'id' | 'contactId' | 'createdAt'>,
+  ) => UnsubscribeActionUrl;
   /** Mints a signed action token with the active token key. */
   createActionToken: (input: CreateGrowthActionTokenInput) => string;
   /** Sends one recipient message under the tick's delivery policy. */
@@ -362,6 +370,7 @@ export interface LifecycleJobDependencies {
   markInternalNotificationUnknown: typeof markInternalNotificationUnknown;
   /** Sends a founder-only message to `FOUNDER_NOTIFICATION_EMAIL`. */
   sendInternalNotification: (
+    executor: SqlExecutor,
     request: InternalNotificationRequest,
   ) => Promise<InternalNotificationResult>;
   readInstallDigestCandidates: (
@@ -431,6 +440,7 @@ async function dispatchRecipient(
     case 'delivery_disabled':
     case 'outside_send_window':
     case 'reply_binding_pending':
+    case 'pilot_recipient_not_allowlisted':
       return deferForRetry(
         executor,
         job,
@@ -500,7 +510,7 @@ async function claimAndSendInternal(
     return 'failed';
   }
   signal.throwIfAborted();
-  const sent = await dependencies.sendInternalNotification({
+  const sent = await dependencies.sendInternalNotification(executor, {
     subject: message.subject,
     text: message.text,
     idempotencyKey: job.idempotencyKey,
@@ -555,7 +565,7 @@ async function dispatchNotifyJob(
   const founderStopToken = dependencies.createActionToken({
     contactId: context.contactId,
     purpose: 'founder_stop',
-    issuedAt: claimedAt,
+    issuedAt: job.createdAt,
     eventNonce: job.id,
   });
   // Render (and validate) before the at-most-once claim is consumed.
@@ -638,7 +648,8 @@ async function dispatchInstallDigestJob(
     });
     return 'completed';
   }
-  const issuedAt = dependencies.now();
+  const claimedAt = dependencies.now();
+  const issuedAt = job.createdAt;
   const context = await dependencies.readInstallDigestContext(executor, {
     since: new Date(issuedAt.getTime() - INSTALL_DIGEST_CONTEXT_WINDOW_MS),
   });
@@ -667,7 +678,7 @@ async function dispatchInstallDigestJob(
         count === 1 ? 'identity' : 'identities'
       }`,
       text,
-      claimedAt: issuedAt,
+      claimedAt,
     },
     signal,
     dependencies,
@@ -692,7 +703,8 @@ async function dispatchInstallDigestJob(
  * Runs one leased app-owned job (`fulfill`, `send_step`, `notify` or
  * `digest`) and settles its lease. Recipient results map as: accepted →
  * `completed`; `campaign_disabled`, `delivery_disabled`,
- * `outside_send_window`, `reply_binding_pending` → deferred 60 s;
+ * `outside_send_window`, `reply_binding_pending`,
+ * `pilot_recipient_not_allowlisted` → deferred 60 s;
  * `contact_*` → `cancelled`; `mailbox_recovery_required` → `recovery_paused`
  * (still leased; the dispatcher defers it); `provider_rejected` and
  * `provider_outcome_unknown` → `failed` (the sender recorded both).
@@ -727,7 +739,6 @@ export async function dispatchLifecycleAppOwnedJob(
       `Unsupported app-owned growth job kind: ${job.kind}`,
     );
   }
-  const now = dependencies.now();
   const context = await dependencies.readJobContext(executor, {
     jobId: job.id,
   });
@@ -747,11 +758,7 @@ export async function dispatchLifecycleAppOwnedJob(
       dependencies,
     );
   }
-  const unsubscribeUrl = dependencies.createUnsubscribeUrl({
-    contactId: context.contactId,
-    issuedAt: now,
-    eventNonce: job.id,
-  });
+  const unsubscribeUrl = dependencies.createUnsubscribeUrlForJob(job);
   if (job.kind === 'send_step') {
     const message = prepareCampaignMessage({ context, job, unsubscribeUrl });
     return dispatchRecipient(
@@ -798,6 +805,10 @@ export interface LifecycleJobDependencyOptions {
   /** Builds the Resend client; defaults to `createResendFetchClient({ apiKey: RESEND_API_KEY })`. */
   resend?: () => LifecycleResendClient;
   now?: () => Date;
+  /** Reserves immutable provider payload evidence before submission. */
+  reserveProviderAttempt?: typeof reserveProviderAttempt;
+  /** Records known acceptance before settling the job. */
+  completeProviderAttempt?: typeof completeProviderAttempt;
 }
 
 /**
@@ -869,6 +880,8 @@ export function createDefaultLifecycleJobDependencies(
     scoreContact: recomputeContactScore,
     createUnsubscribeUrl: (input) =>
       createUnsubscribeActionUrl(input, tokenKey(), publicActionOrigin()),
+    createUnsubscribeUrlForJob: (job) =>
+      createUnsubscribeActionUrlForJob(job, tokenKey(), publicActionOrigin()),
     createActionToken: (input) => createGrowthActionToken(input, tokenKey()),
     sendRecipient: (executor, input) => {
       const { recipientPolicy, resend } = mailRuntime();
@@ -888,29 +901,45 @@ export function createDefaultLifecycleJobDependencies(
     failJob: failLeasedJob,
     claimInternalNotification: claimInternalNotificationSubmission,
     markInternalNotificationUnknown,
-    async sendInternalNotification(request) {
+    async sendInternalNotification(executor, request) {
       const { founderNotificationEmail, recipientPolicy, resend } =
         mailRuntime();
+      const payload: InternalNotificationProviderPayload = {
+        from: RECIPIENT_EMAIL_SENDER,
+        to: founderNotificationEmail,
+        subject: request.subject,
+        text: request.text,
+        tags: [
+          { name: 'app', value: 'hashbrown' },
+          { name: 'environment', value: recipientPolicy.environment },
+          { name: 'job_kind', value: request.kind },
+        ],
+      };
+      const idempotencyKey = providerIdempotencyKey(
+        recipientPolicy.environment,
+        `internal:${request.idempotencyKey}`,
+      );
+      const knownProviderId = await (
+        options.reserveProviderAttempt ?? reserveProviderAttempt
+      )(executor, idempotencyKey, payload, now());
       try {
-        const response = await resend.emails.send(
-          {
-            from: RECIPIENT_EMAIL_SENDER,
-            to: founderNotificationEmail,
-            subject: request.subject,
-            text: request.text,
-            tags: [
-              { name: 'environment', value: recipientPolicy.environment },
-              { name: 'job_kind', value: request.kind },
-            ],
-          },
-          { idempotencyKey: `internal:${request.idempotencyKey}` },
-        );
+        const response =
+          knownProviderId === null
+            ? await resend.emails.send(payload, { idempotencyKey })
+            : { data: { id: knownProviderId }, error: null };
         if (response.error === null) {
           const providerId: unknown = response.data?.id;
-          return typeof providerId === 'string' &&
-            PROVIDER_ID_PATTERN.test(providerId)
-            ? { outcome: 'accepted' }
-            : { outcome: 'unknown' };
+          if (
+            typeof providerId !== 'string' ||
+            !PROVIDER_ID_PATTERN.test(providerId)
+          )
+            return { outcome: 'unknown' };
+          await (options.completeProviderAttempt ?? completeProviderAttempt)(
+            executor,
+            idempotencyKey,
+            providerId,
+          );
+          return { outcome: 'accepted' };
         }
         return { outcome: classifyResendProviderError(response.error) };
       } catch {

@@ -1,4 +1,5 @@
 import type { SqlExecutor } from './database.ts';
+import { loadInboxPilot } from './inbox-replies.ts';
 import type { ErrorResponse } from 'resend';
 import {
   authorizeLeasedJobForSubmission,
@@ -18,6 +19,11 @@ import {
   ProviderMessageIdBindingError,
   replySubjectSha256,
 } from './replies.ts';
+import {
+  completeProviderAttempt,
+  providerIdempotencyKey,
+  reserveProviderAttempt,
+} from './provider-attempts.ts';
 
 /** The only sender recipient mail may use; replies go back to it as well. */
 export const RECIPIENT_EMAIL_SENDER =
@@ -123,7 +129,7 @@ type ResendResponse =
 export interface RecipientEmailProviderPayload {
   from: typeof RECIPIENT_EMAIL_SENDER;
   to: string;
-  replyTo: typeof RECIPIENT_EMAIL_SENDER;
+  replyTo: string;
   subject: string;
   text: string;
   html?: string;
@@ -155,6 +161,10 @@ export interface RecipientSendDependencies {
   recordProviderAcceptance: typeof recordProviderAcceptance;
   markProviderAcceptanceUnknown: typeof markProviderAcceptanceUnknown;
   markProviderRejection: typeof markProviderRejection;
+  /** Reserves immutable payload evidence and enforces the provider retry horizon. */
+  reserveProviderAttempt?: typeof reserveProviderAttempt;
+  /** Persists known acceptance before the job's acceptance is recorded. */
+  completeProviderAttempt?: typeof completeProviderAttempt;
 }
 
 /** Whether Resend accepted the message, or why it was not sent. */
@@ -171,6 +181,7 @@ export type RecipientSendResult =
         | 'outside_send_window'
         | 'mailbox_recovery_required'
         | 'reply_binding_pending'
+        | 'pilot_recipient_not_allowlisted'
         | 'provider_rejected'
         | 'provider_outcome_unknown';
     };
@@ -307,6 +318,7 @@ function campaignTags(
   campaignTemplate: unknown,
 ): { name: string; value: string }[] {
   const tags = [
+    { name: 'app', value: 'hashbrown' },
     { name: 'environment', value: environment },
     { name: 'job_kind', value: kind },
   ];
@@ -337,7 +349,9 @@ function campaignTags(
 /**
  * Submits one leased `fulfill` or `send_step` job to Resend. The job is
  * authorized for submission first; the send carries one-click unsubscribe
- * headers, bounded tags, and the job's idempotency key. Acceptance, rejection
+ * headers, bounded tags, and an environment-scoped idempotency key. An immutable
+ * payload reservation limits retries to the provider deduplication horizon.
+ * Acceptance, rejection
  * (`resend_<name>`), and ambiguous outcomes
  * (`resend_submission_outcome_unknown`) are recorded against the job.
  *
@@ -368,6 +382,15 @@ export async function sendRecipientEmail(
         );
   const isSendWindow = dependencies.isSendWindow ?? (() => true);
   const authorizedAt = dependencies.now();
+  const pilot = loadInboxPilot();
+  const pilotAllowlist = (
+    process.env['RESEND_INBOX_PILOT_RECIPIENT_ALLOWLIST'] ?? ''
+  )
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  const allowAllPilotRecipients =
+    process.env['RESEND_INBOX_PILOT_ALLOW_ALL_RECIPIENTS'] === 'true';
   if (Number.isNaN(authorizedAt.getTime()))
     throw new Error('now must be valid');
 
@@ -376,6 +399,14 @@ export async function sendRecipientEmail(
     {
       campaignEnabled: policy.campaignEnabled,
       deliveryEnabled: policy.deliveryEnabled,
+      ...(pilot.enabled
+        ? {
+            requireInboxPilot: true,
+            ...(allowAllPilotRecipients
+              ? {}
+              : { canaryRecipientAllowlist: pilotAllowlist }),
+          }
+        : {}),
       jobId,
       leaseToken,
       now: authorizedAt,
@@ -411,13 +442,21 @@ export async function sendRecipientEmail(
     authorization.recipient.contactId,
   );
   const to = effectiveRecipient(recipient, policy);
+  if (pilot.enabled && !allowAllPilotRecipients) {
+    if (!pilotAllowlist.includes(to))
+      throw new Error('Recipient is outside the pilot canary allowlist');
+  }
   if (!RECIPIENT_JOB_KINDS.has(job.kind)) {
     throw new Error(`Unsupported recipient job kind: ${job.kind}`);
   }
-  const idempotencyKey = opaqueIdentifier(
+  const sourceIdempotencyKey = opaqueIdentifier(
     'job.idempotencyKey',
     job.idempotencyKey,
     256,
+  );
+  const idempotencyKey = providerIdempotencyKey(
+    policy.environment,
+    sourceIdempotencyKey,
   );
   const tags = campaignTags(
     policy.environment,
@@ -431,24 +470,38 @@ export async function sendRecipientEmail(
   if (job.kind === 'send_step' && !isSendWindow(dependencies.now())) {
     return { accepted: false, reason: 'outside_send_window' };
   }
+  const providerPayload: RecipientEmailProviderPayload = {
+    from: RECIPIENT_EMAIL_SENDER,
+    to,
+    replyTo: pilot.enabled ? pilot.address : RECIPIENT_EMAIL_SENDER,
+    subject,
+    text,
+    ...(html === undefined ? {} : { html }),
+    headers: {
+      'List-Unsubscribe': `<${unsubscribeUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      'X-Hashbrown-Job-ID': jobId,
+    },
+    tags,
+  };
+  const knownProviderId = await (
+    dependencies.reserveProviderAttempt ?? reserveProviderAttempt
+  )(executor, idempotencyKey, providerPayload, dependencies.now());
+  input.signal?.throwIfAborted();
+  if (
+    knownProviderId === null &&
+    job.kind === 'send_step' &&
+    !isSendWindow(dependencies.now())
+  ) {
+    return { accepted: false, reason: 'outside_send_window' };
+  }
   try {
-    response = await dependencies.resend.emails.send(
-      {
-        from: RECIPIENT_EMAIL_SENDER,
-        to,
-        replyTo: RECIPIENT_EMAIL_SENDER,
-        subject,
-        text,
-        ...(html === undefined ? {} : { html }),
-        headers: {
-          'List-Unsubscribe': `<${unsubscribeUrl}>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-          'X-Hashbrown-Job-ID': jobId,
-        },
-        tags,
-      },
-      { idempotencyKey },
-    );
+    response =
+      knownProviderId === null
+        ? await dependencies.resend.emails.send(providerPayload, {
+            idempotencyKey,
+          })
+        : { data: { id: knownProviderId }, error: null };
   } catch {
     const occurredAt = dependencies.now();
     await dependencies.markProviderAcceptanceUnknown(executor, {
@@ -518,6 +571,11 @@ export async function sendRecipientEmail(
     });
     return { accepted: false, reason: 'provider_outcome_unknown' };
   }
+  await (dependencies.completeProviderAttempt ?? completeProviderAttempt)(
+    executor,
+    idempotencyKey,
+    providerEmailId,
+  );
   await dependencies.recordProviderAcceptance(executor, {
     jobId,
     leaseToken,

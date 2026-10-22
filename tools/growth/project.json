@@ -17,6 +17,21 @@
     "typesafe"
   ],
   "targets": {
+    "inbox-setup": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/growth/scripts/provision/inbox.mjs",
+        "forwardAllArgs": true
+      }
+    },
+    "inbox-recover": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/inbox-recovery.mts"
+      }
+    },
     "lint": {
       "executor": "nx:run-commands",
       "options": {

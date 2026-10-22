@@ -17,6 +17,7 @@ const jobId = '00000000-0000-4000-8000-000000000001';
 const contactId = '00000000-0000-4000-8000-000000000002';
 const providerEmailId = 'resend-email-1';
 const tags = {
+  app: 'hashbrown',
   environment: 'production',
   job_kind: 'send_step',
   campaign_version: 'v1',
@@ -101,6 +102,7 @@ function harness(options: { deliveryStatus?: string; jobs?: TestRow[] } = {}) {
     delivery_status: options.deliveryStatus ?? 'submitted',
   });
   const { executor, calls } = executorWith({
+    'inbox-bind-outbound': () => ({ rows: [{ id: jobId }] }),
     'read-resend-webhook-activity': () => ({ rows: [] }),
     'discover-resend-webhook-job': () => ({
       rows: (options.jobs ?? [job]).map((row) => ({
@@ -127,6 +129,27 @@ function harness(options: { deliveryStatus?: string; jobs?: TestRow[] } = {}) {
   };
   return { executor, calls, dependencies, stops, updates };
 }
+
+test('verified delivery persists the outbound RFC Message-ID for reply matching', async () => {
+  const { executor, calls, dependencies } = harness();
+
+  await processVerifiedResendWebhook(
+    executor,
+    {
+      providerEventId: 'event-with-message-id',
+      payload: {
+        type: 'email.sent',
+        created_at: now.toISOString(),
+        data: { ...baseData, message_id: '<outbound@resend.com>' },
+      },
+    },
+    dependencies,
+  );
+
+  expect(
+    calls.find((call) => call.marker === 'inbox-bind-outbound')?.params,
+  ).toEqual([providerEmailId, '<outbound@resend.com>']);
+});
 
 const mapping = [
   ['email.sent', 'delivery.sent', 'submitted', undefined],
@@ -275,6 +298,40 @@ test('an event from a sender outside hashbrown.dev returns foreign_sender before
   expect(calls).toEqual([]);
 });
 
+for (const app of ['threadplane', undefined]) {
+  test(`a same-domain event with ${app ?? 'missing'} app is ignored before any database call`, async () => {
+    const { executor, calls, dependencies, stops } = harness();
+    const eventTags = {
+      environment: 'production',
+      job_kind: 'send_step',
+      campaign_version: 'v1',
+      campaign_step: '1',
+      ...(app === undefined ? {} : { app }),
+    };
+
+    const result = await processVerifiedResendWebhook(
+      executor,
+      {
+        providerEventId: 'evt-foreign-product',
+        payload: {
+          type: 'email.complained',
+          created_at: now.toISOString(),
+          data: {
+            ...baseData,
+            message_id: '<foreign@resend.com>',
+            tags: eventTags,
+          },
+        },
+      },
+      dependencies,
+    );
+
+    expect(result).toEqual({ applied: false, reason: 'foreign_product' });
+    expect(calls).toEqual([]);
+    expect(stops).toEqual([]);
+  });
+}
+
 test('sender domains are compared case-insensitively and in bare form', async () => {
   const bare = harness();
   const lookalike = harness();
@@ -369,12 +426,42 @@ test('our own tags with no matching job return retryable_unmatched_job', async (
   expect(result).toEqual({ applied: false, reason: 'retryable_unmatched_job' });
 });
 
-test('foreign tags with no matching job return unmatched_job', async () => {
+for (const eventTags of [
+  { app: 'hashbrown', environment: 'production', job_kind: 'fulfill' },
+  { ...tags, campaign_template: 'immediate' },
+]) {
+  test(`our ${eventTags.job_kind} tags with ${Object.keys(eventTags).length} entries remain retryable`, async () => {
+    const { executor, dependencies } = harness({ jobs: [] });
+
+    const result = await processVerifiedResendWebhook(
+      executor,
+      {
+        providerEventId: 'evt-1',
+        payload: {
+          type: 'email.sent',
+          created_at: now.toISOString(),
+          data: { ...baseData, tags: eventTags },
+        },
+      },
+      dependencies,
+    );
+
+    expect(result).toEqual({
+      applied: false,
+      reason: 'retryable_unmatched_job',
+    });
+  });
+}
+
+test('non-growth Hashbrown tags with no matching job return unmatched_job', async () => {
   const { executor, dependencies } = harness({ jobs: [] });
   const payload = {
     type: 'email.sent',
     created_at: now.toISOString(),
-    data: { ...baseData, tags: { environment: 'production', other: 'x' } },
+    data: {
+      ...baseData,
+      tags: { app: 'hashbrown', environment: 'production', other: 'x' },
+    },
   };
 
   const result = await processVerifiedResendWebhook(
