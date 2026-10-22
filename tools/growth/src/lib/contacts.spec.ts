@@ -441,6 +441,8 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
       ],
     }),
     'unlink-projects': () => ({ rows: [{ id: 'project-id' }] }),
+    'unlink-install-runtime-links': emptyRows,
+    'delete-contact-score': emptyRows,
     'delete-private-activity': () => ({ rows: [{ id: 1 }] }),
     'scrub-retained-activity': () => ({ rows: [{ id: 2 }] }),
     'insert-activity': () => ({ rows: [{ event_key: 'founder:delete:1' }] }),
@@ -479,6 +481,12 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
   expect(sqlFor('delete-private-activity')).toMatch(
     /contact\.lookup_alias_added/u,
   );
+  expect(sqlFor('unlink-install-runtime-links')).toMatch(
+    /update growth_install_runtime_links\s+set contact_id = null\s+where contact_id = \$1/u,
+  );
+  expect(sqlFor('delete-contact-score')).toMatch(
+    /delete from growth_contact_scores\s+where contact_id = \$1/u,
+  );
   expect(harness.calls.map(({ marker }) => marker)).toEqual([
     'privacy-lock',
     'lock-contact',
@@ -486,6 +494,8 @@ test('deleteContact nulls contact fields, cancels jobs, keeps stop and delivery 
     'cancel-and-scrub-jobs',
     'delete-artifacts',
     'unlink-projects',
+    'unlink-install-runtime-links',
+    'delete-contact-score',
     'delete-private-activity',
     'scrub-retained-activity',
     'scrub-contact',
@@ -524,6 +534,8 @@ test('deleteContact runs the observation redaction inside its transaction', asyn
     'cancel-and-scrub-jobs': emptyRows,
     'delete-artifacts': emptyRows,
     'unlink-projects': emptyRows,
+    'unlink-install-runtime-links': emptyRows,
+    'delete-contact-score': emptyRows,
     'delete-private-activity': emptyRows,
     'scrub-retained-activity': emptyRows,
     'scrub-contact': () => ({ rows: [deletedRow] }),
@@ -550,6 +562,8 @@ test('deleteContact runs the observation redaction inside its transaction', asyn
     'cancel-and-scrub-jobs',
     'delete-artifacts',
     'unlink-projects',
+    'unlink-install-runtime-links',
+    'delete-contact-score',
     'delete-private-activity',
     'scrub-retained-activity',
     'scrub-contact',

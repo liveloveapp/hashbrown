@@ -148,3 +148,50 @@ test('processInstallRuntimeActivations links by installation token and approves 
     calls.filter(({ marker }) => marker === 'insert-install-runtime-contact'),
   ).toHaveLength(1);
 });
+
+test('processInstallRuntimeActivations never approves when a redacted install shares the token with an unredacted work email', async () => {
+  const runtimeId = '00000000-0000-4000-8000-000000000031';
+  const workInstall = '00000000-0000-4000-8000-000000000032';
+  const redactedInstall = '00000000-0000-4000-8000-000000000033';
+  const { executor, calls } = executorWith({
+    'observation-read-key-coverage': () => ({ rows: [] }),
+    'observation-read-unfenced-deletions': () => ({ rows: [] }),
+    'read-install-runtime-candidates': () => ({
+      rows: [{ id: runtimeId, installation_token_digest: 'shared' }],
+    }),
+    'read-install-runtime-installs': () => ({
+      rows: [
+        install(workInstall, 'dev@acme.dev'),
+        {
+          id: redactedInstall,
+          email_normalized: null,
+          redacted_at: now,
+          environment: 'local',
+        },
+      ],
+    }),
+    'insert-install-runtime-link': () => ({ rows: [] }),
+  });
+
+  const counts = await processInstallRuntimeActivations(executor, {
+    enabled: true,
+    limit: 10,
+    now,
+    keyring,
+  });
+
+  expect(counts).toEqual({
+    approved: 0,
+    ineligible: 1,
+    conflicted: 0,
+    disabled: false,
+  });
+  expect(
+    calls
+      .filter(({ marker }) => marker === 'insert-install-runtime-link')
+      .map(({ params }) => params.slice(0, 4)),
+  ).toEqual([[runtimeId, workInstall, null, 'ineligible']]);
+  expect(calls.map(({ marker }) => marker)).not.toContain(
+    'insert-install-runtime-contact',
+  );
+});

@@ -1249,8 +1249,10 @@ export async function approveContactFromInstallDigest(
 
 /**
  * Erases a contact: records the deletion, cancels unsent jobs, removes private
- * activity and artifacts, scrubs contact fields, and keeps stop and delivery
- * audit state. Repeating the deletion is inert.
+ * activity, artifacts and the stored score, unlinks projects and install
+ * runtime links (the link rows stay, so their runtime observations are never
+ * re-evaluated), scrubs contact fields, and keeps stop and delivery audit
+ * state. Repeating the deletion is inert.
  */
 export async function deleteContact(
   executor: SqlExecutor,
@@ -1444,6 +1446,22 @@ export async function deleteContact(
       [contactId],
     );
     const projectIds = projects.rows.map(({ id }) => id);
+
+    // The hello-path link is the contact-to-runtime mapping. Keep the rows so
+    // a decided runtime observation is never re-evaluated into a new approval.
+    await transaction.execute(
+      `/* growth:unlink-install-runtime-links */
+       update growth_install_runtime_links
+       set contact_id = null
+       where contact_id = $1`,
+      [contactId],
+    );
+    await transaction.execute(
+      `/* growth:delete-contact-score */
+       delete from growth_contact_scores
+       where contact_id = $1`,
+      [contactId],
+    );
 
     await transaction.execute<{ id: bigint }>(
       `/* growth:delete-private-activity */

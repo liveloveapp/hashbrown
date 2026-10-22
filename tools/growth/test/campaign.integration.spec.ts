@@ -32,6 +32,7 @@ import {
   insertSendStep,
   installRuntimeApproval,
   type LinkedObservations,
+  runCleanup,
   UNSTUCK_FORM_APPROVAL,
 } from './job-fixtures.ts';
 
@@ -161,10 +162,15 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await deleteCreatedContacts(executor, createdContactIds);
-  await deleteCreatedSubjects(executor, createdSubjectIds);
-  await deleteCampaignConfiguration();
-  await executor.close?.();
+  try {
+    await runCleanup([
+      () => deleteCreatedContacts(executor, createdContactIds),
+      () => deleteCreatedSubjects(executor, createdSubjectIds),
+      () => deleteCampaignConfiguration(),
+    ]);
+  } finally {
+    await executor.close?.();
+  }
 });
 
 test('materializeCampaignEnrollment enrols unstuck, founder-digest and install-runtime approvals once and never an unapproved or stopped contact', async () => {

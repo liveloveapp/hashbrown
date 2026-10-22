@@ -272,36 +272,49 @@ export async function deleteCreatedSubjects(
   );
 }
 
-/** Deletes every row the integration tests created, in foreign-key-safe order. */
+/**
+ * Runs every cleanup step even when an earlier one throws, then rethrows the
+ * failures together, so one broken step never strands the remaining fixture
+ * rows in the shared test store.
+ */
+export async function runCleanup(
+  steps: readonly (() => Promise<unknown>)[],
+): Promise<void> {
+  const errors: unknown[] = [];
+  for (const step of steps) {
+    try {
+      await step();
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length > 0) {
+    throw new AggregateError(errors, 'integration cleanup failed');
+  }
+}
+
+/**
+ * Deletes every row the integration tests created, in foreign-key-safe order.
+ * Each step runs on its own (see {@link runCleanup}).
+ */
 export async function deleteCreatedContacts(
   executor: SqlExecutor,
   createdContactIds: Set<string>,
 ): Promise<void> {
   const ids = [...createdContactIds];
   if (ids.length === 0) return;
-  await executor.transaction(async (tx) => {
-    await tx.execute(
+  const run = (sql: string) => () => executor.execute(sql, [ids]);
+  await runCleanup([
+    run(
       `delete from growth_artifacts
        where contact_id = any($1::uuid[])
           or job_id in (
             select id from growth_jobs where contact_id = any($1::uuid[])
           )`,
-      [ids],
-    );
-    await tx.execute(
-      'delete from growth_activity where contact_id = any($1::uuid[])',
-      [ids],
-    );
-    await tx.execute(
-      'delete from growth_jobs where contact_id = any($1::uuid[])',
-      [ids],
-    );
-    await tx.execute(
-      'delete from growth_contact_scores where contact_id = any($1::uuid[])',
-      [ids],
-    );
-    await tx.execute('delete from growth_contacts where id = any($1::uuid[])', [
-      ids,
-    ]);
-  });
+    ),
+    run('delete from growth_activity where contact_id = any($1::uuid[])'),
+    run('delete from growth_jobs where contact_id = any($1::uuid[])'),
+    run('delete from growth_contact_scores where contact_id = any($1::uuid[])'),
+    run('delete from growth_contacts where id = any($1::uuid[])'),
+  ]);
 }

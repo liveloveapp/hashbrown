@@ -3,7 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 
 import { nextPacificBusinessMorning } from '../src/lib/campaign-schedule.ts';
-import { approveContactFromInstallDigest } from '../src/lib/contacts.ts';
+import {
+  approveContactFromInstallDigest,
+  deleteContact,
+} from '../src/lib/contacts.ts';
 import {
   createEmailLookupHmac,
   type EmailHmacKeyring,
@@ -20,8 +23,10 @@ import {
   readInstallDigestCandidates,
 } from '../src/lib/observability/install-digest.ts';
 import { processInstallRuntimeActivations } from '../src/lib/observability/install-runtime.ts';
-import { deleteCreatedContacts } from './job-fixtures.ts';
+import { recomputeContactScore } from '../src/lib/scoring.ts';
+import { deleteCreatedContacts, runCleanup } from './job-fixtures.ts';
 import {
+  cleanContactObservationFences,
   cleanEvidence,
   evidenceDatabase,
   evidenceKeys,
@@ -45,21 +50,33 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  const contacts = await db.execute<{ id: string }>(
-    'select id from growth_contacts where email_normalized = any($1::citext[])',
-    [emails],
-  );
-  for (const { id } of contacts.rows) contactIds.add(id);
-  await db.execute(
-    'delete from growth_install_digest_reports where digest_job_id = any($1::uuid[])',
-    [jobIds],
-  );
-  await db.execute('delete from growth_jobs where id = any($1::uuid[])', [
-    jobIds,
-  ]);
-  await deleteCreatedContacts(db, contactIds);
-  await cleanEvidence(db, { subjects, emails });
-  await db.close?.();
+  try {
+    await runCleanup([
+      async () => {
+        const contacts = await db.execute<{ id: string }>(
+          'select id from growth_contacts where email_normalized = any($1::citext[])',
+          [emails],
+        );
+        for (const { id } of contacts.rows) contactIds.add(id);
+      },
+      ...[...contactIds].map(
+        (id) => () => cleanContactObservationFences(db, id),
+      ),
+      () =>
+        db.execute(
+          'delete from growth_install_digest_reports where digest_job_id = any($1::uuid[])',
+          [jobIds],
+        ),
+      () =>
+        db.execute('delete from growth_jobs where id = any($1::uuid[])', [
+          jobIds,
+        ]),
+      () => deleteCreatedContacts(db, contactIds),
+      () => cleanEvidence(db, { subjects, emails }),
+    ]);
+  } finally {
+    await db.close?.();
+  }
 });
 
 /** A fresh synthetic mailbox on a domain; recorded for cleanup. */
@@ -630,4 +647,101 @@ test('approveContactFromInstallDigest creates and approves once, reports stopped
       install_observation_id: freshInstall,
     },
   });
+});
+
+test('hello never approves when one installation token has an unredacted work email and a redacted install', async () => {
+  const now = new Date();
+  const token = randomUUID();
+  const email = mailbox();
+  const [workInstall, redactedInstall] = await accept(
+    'install',
+    [installEvent({ email, token }), installEvent({ email: mailbox(), token })],
+    now,
+  );
+  await db.execute(
+    'delete from growth_observation_identities where observation_id = $1',
+    [redactedInstall],
+  );
+  await db.execute(
+    'update growth_observations set redacted_at = $2 where id = $1',
+    [redactedInstall, now],
+  );
+  const [runtime] = await accept('runtime', [runtimeEvent({ token })], now);
+
+  const links = await activate([runtime as string], now);
+
+  expect(links.get(runtime as string)).toMatchObject({
+    outcome: 'ineligible',
+    contact_id: null,
+    install_observation_id: workInstall,
+  });
+  const contacts = await db.execute(
+    'select 1 from growth_contacts where email_normalized = $1',
+    [email],
+  );
+  expect(contacts.rows).toEqual([]);
+});
+
+test('deleteContact unlinks the hello mapping, removes the score, and a later tick does not re-approve', async () => {
+  const now = new Date();
+  const later = new Date(now.getTime() + 60_000);
+  const token = randomUUID();
+  const email = mailbox();
+  await accept('install', [installEvent({ email, token })], now);
+  const [runtime] = await accept('runtime', [runtimeEvent({ token })], now);
+  const links = await activate([runtime as string], now);
+  const contactId = links.get(runtime as string)?.contact_id as string;
+  expect(contactId).toEqual(expect.any(String));
+  await recomputeContactScore(db, { contactId, now });
+  const scored = await db.execute(
+    'select 1 from growth_contact_scores where contact_id = $1',
+    [contactId],
+  );
+  expect(scored.rows).toHaveLength(1);
+
+  const deletion = await deleteContact(db, {
+    contactId,
+    eventKey: `install-lifecycle:delete:${contactId}`,
+    occurredAt: later,
+    actor: 'integration',
+    source: 'install-lifecycle-integration',
+    policyVersion: 'growth-v1',
+  });
+  const [laterRuntime] = await accept(
+    'runtime',
+    [runtimeEvent({ token })],
+    later,
+  );
+  const laterLinks = await activate([laterRuntime as string], later);
+
+  expect(deletion.deleted).toBe(true);
+  const kept = await db.execute<{ contact_id: string | null; outcome: string }>(
+    'select contact_id, outcome from growth_install_runtime_links where runtime_observation_id = $1',
+    [runtime],
+  );
+  expect(kept.rows).toEqual([{ contact_id: null, outcome: 'approved' }]);
+  const score = await db.execute(
+    'select 1 from growth_contact_scores where contact_id = $1',
+    [contactId],
+  );
+  expect(score.rows).toEqual([]);
+  expect(laterLinks.get(laterRuntime as string)).toMatchObject({
+    outcome: 'ineligible',
+    contact_id: null,
+  });
+  const contact = await db.execute<{
+    outreach_approved_at: Date | null;
+    deleted_at: Date | null;
+  }>(
+    'select outreach_approved_at, deleted_at from growth_contacts where id = $1',
+    [contactId],
+  );
+  expect(contact.rows[0]?.outreach_approved_at).toBeNull();
+  expect(contact.rows[0]?.deleted_at).not.toBeNull();
+  const approvals = await db.execute(
+    `select 1 from growth_activity
+     where contact_id = $1 and kind = 'install_runtime.outreach_approved'`,
+    [contactId],
+  );
+  expect(approvals.rows).toEqual([]);
 });
