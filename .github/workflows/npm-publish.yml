@@ -35,7 +35,7 @@ jobs:
         run: npm install -g npm@11
 
       - name: Determine affected base
-        uses: nrwl/nx-set-shas@v3
+        uses: nrwl/nx-set-shas@v5
 
       - name: Install dependencies
         run: npm ci
