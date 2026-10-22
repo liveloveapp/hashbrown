@@ -326,3 +326,20 @@ test('a redacted crawler user agent raises no email_shaped_value', () => {
     'email_shaped_value',
   );
 });
+
+test('a $pageview carrying posthog-js navigation_type raises no finding', () => {
+  const events: LiveTelemetryEvent[] = [
+    {
+      event: '$pageview',
+      timestamp: at,
+      properties: {
+        $pathname: '/docs/react/start/quick',
+        navigation_type: 'navigate',
+      },
+    },
+  ];
+
+  const findings = analyzeTelemetryEvents(events);
+
+  expect(findings).toEqual([]);
+});

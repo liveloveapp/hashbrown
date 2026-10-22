@@ -48,7 +48,9 @@ export const TELEMETRY_EVENT_CONTRACT: Readonly<
 > = {
   $pageview: {
     requiredProperties: [],
-    allowedProperties: ['$pathname', 'title'],
+    // `navigation_type` is set by posthog-js itself (navigate, reload,
+    // back_forward); it carries no visitor data.
+    allowedProperties: ['$pathname', 'title', 'navigation_type'],
     allowedBreakdowns: ['$pathname'],
   },
   'marketing:cta_click': {
