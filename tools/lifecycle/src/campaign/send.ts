@@ -35,9 +35,11 @@ import {
   markProviderRejection,
   normalizeGrowthPublicActionOrigin,
   normalizeRecipientEmail,
+  type NotificationSubmission,
   readInstallDigestCandidates,
   readInstallDigestContext,
   readLifecycleJobContext,
+  readNotificationSubmission,
   RECIPIENT_EMAIL_SENDER,
   type RecipientDeliveryPolicy,
   type RecipientEmailInput,
@@ -282,58 +284,6 @@ export function loadRecipientDeliveryPolicy(
   };
   assertRecipientDeliveryPolicy(policy);
   return policy;
-}
-
-/** The form facts a founder notification quotes. */
-export interface NotificationSubmission {
-  /** The framework the submitter chose, or `null` when none was recorded. */
-  framework: string | null;
-  /** The "Where are you stuck?" text, or `null` when none was given. */
-  message: string | null;
-}
-
-/**
- * Reads the accepted form submission behind a `notify` job: the activity
- * `form:<submission_id>:accepted` when the payload names one, otherwise the
- * contact's latest `contact.form_submission`. The message text is read only
- * here, for the founder notification.
- *
- * @returns The framework and message, or `null` when there is no submission.
- */
-export async function readNotificationSubmission(
-  executor: SqlTransaction,
-  input: { jobId: string },
-): Promise<NotificationSubmission | null> {
-  const result = await executor.execute<{
-    framework: string | null;
-    message: string | null;
-  }>(
-    `/* lifecycle:read-notification-submission */
-     select a.data->>'framework' as framework,
-            a.data->>'message' as message
-     from growth_jobs target
-     join growth_activity a
-       on a.contact_id = target.contact_id
-      and a.kind = 'contact.form_submission'
-      and (
-        (
-          target.payload ? 'submission_id'
-          and a.event_key =
-              'form:' || (target.payload->>'submission_id') || ':accepted'
-        )
-        or not target.payload ? 'submission_id'
-      )
-     where target.id = $1
-     order by a.occurred_at desc, a.id desc
-     limit 1`,
-    [input.jobId],
-  );
-  const row = result.rows[0];
-  if (!row) return null;
-  return {
-    framework: row.framework?.trim() ? row.framework.trim() : null,
-    message: row.message ? row.message : null,
-  };
 }
 
 /** One founder-only message from the internal sender. */

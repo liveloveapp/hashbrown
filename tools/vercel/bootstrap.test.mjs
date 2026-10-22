@@ -724,3 +724,9 @@ test('DEPLOY_TARGETS lists lifecycle as optional with the lifecycle project secr
     ['www', 'atc', 'lifecycle'],
   );
 });
+
+test('bootstrap lists GROWTH_UNSTUCK_FORM_ENABLED for www', () => {
+  const target = TARGETS.find((t) => t.key === 'www');
+
+  assert.ok(target?.env.includes('GROWTH_UNSTUCK_FORM_ENABLED'));
+});

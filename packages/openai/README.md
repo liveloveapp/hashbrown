@@ -61,10 +61,4 @@ app.post('/run', async (req, res) => {
 
 [Read the docs for the Hashbrown OpenAI adapter](https://hashbrown.dev/docs/react/platform/openai).
 
-## Contributing
-
-Hashbrown is a community-driven project. Read our [contributing guidelines](https://github.com/liveloveapp/hashbrown?tab=contributing-ov-file) on how to get involved.
-
-## License
-
-MIT © [LiveLoveApp, LLC](https://liveloveapp.com)
+Stuck? Ask Brian at https://hashbrown.dev/unstuck.

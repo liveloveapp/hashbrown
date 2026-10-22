@@ -8,9 +8,9 @@ import {
   ANNOUNCEMENT_STORAGE_KEY,
   shouldShowAnnouncement,
 } from '../../src/components/site/Announcement';
-import { ANNOUNCEMENTS } from '../../src/lib/announcements/catalog';
 
-const PUBLISHED_AT = ANNOUNCEMENTS[0].publishedAt;
+// Keep dismissal checks tied to the release announcement's publication date.
+const PUBLISHED_AT = '2026-10-22T18:00:00Z';
 const ANNOUNCEMENT_DATE = new Date(PUBLISHED_AT);
 
 (
@@ -77,7 +77,7 @@ test('stays hidden when storage is unavailable', () => {
 });
 
 test('dismissal compares against the entry publishedAt', () => {
-  const before = '2026-10-08T17:59:59.000Z';
+  const before = '2026-10-22T17:59:59.000Z';
   const exactly = new Date(PUBLISHED_AT).toISOString();
 
   const showBefore = shouldShowAnnouncement(before, new Date(PUBLISHED_AT));

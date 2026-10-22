@@ -424,13 +424,21 @@ Fields:
 Validation on blur, final pass on submit, focus to first invalid field,
 `aria-describedby` on errors and on the button for the disclosure. Success:
 "Got it. Brian reads every one of these and replies from brian@hashbrown.dev."
-Failure offers `mailto:brian@hashbrown.dev`.
+Failure offers `mailto:brian@liveloveapp.com`, a temporary fallback until
+`brian@hashbrown.dev` exists (the success copy keeps hashbrown.dev).
+
+Launch gate: the www switch `GROWTH_UNSTUCK_FORM_ENABLED` (exact `true`/`false`,
+default off). While off, `/unstuck` shows the fallback address and the route
+answers 503. PR 7 turns it on after delivery and campaign enrollment; the
+nudge also needs `LIFECYCLE_CRON_ENABLED`.
 
 Server: `POST /_/forms/unstuck` validates with Zod 4, rate-limits by IP and by
 `email_lookup_hmac`, persists the contact and the bounded submission in one
-transaction, records `form.accepted` and `form.outreach_approved`, enqueues
-`fulfill` (acknowledgement), `notify` (internal, includes the text), and
-`send_step` 1, then nudges lifecycle.
+transaction, records `form.accepted` and `form.outreach_approved`, and enqueues
+`fulfill` (acknowledgement) and `notify` (internal, includes the text), then
+nudges lifecycle. `notify` is enqueued for every accepted unsuppressed
+submission, including a prior unsubscriber; approval and `send_step`s come only
+from enrollment (reason `unstuck_form`) and never for a prior unsubscribe.
 
 Acknowledgement email (fulfillment, plain text, author's draft, Brian edits):
 
@@ -615,7 +623,8 @@ emails the installer and never creates a contact.
 Every switch defaults off and accepts only the exact strings `true` or `false`:
 `CAMPAIGN_ENABLED`, `CAMPAIGN_ENROLLMENT_ENABLED`, `DELIVERY_ENABLED`,
 `LIFECYCLE_CRON_ENABLED`, `GROWTH_OBSERVATION_PROCESSING_ENABLED`,
-`GROWTH_INSTALL_DIGEST_ENABLED`, `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED`.
+`GROWTH_INSTALL_DIGEST_ENABLED`, `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED`, plus
+`GROWTH_UNSTUCK_FORM_ENABLED` on www.
 
 0. **Provisioning.** Scripts under `tools/growth/scripts/provision/`,
    run once with Brian's tokens: four Neon marketplace stores on the Vercel
@@ -645,10 +654,14 @@ Every switch defaults off and accepts only the exact strings `true` or `false`:
    announcements. Preview dogfood against a
    controlled recipient with `DELIVERY_ENABLED=false`, then `true` with the
    non-production allowlist.
-6. **Get unstuck form.** Page, route, acknowledgement, enrollment, links from
-   docs, footer, READMEs, and the console announcement.
+6. **Get unstuck form.** Page, route, acknowledgement and enrollment, with
+   the page and route behind `GROWTH_UNSTUCK_FORM_ENABLED` (off); the docs
+   menu, footer, README links, site pill and console announcement are live
+   and land on the fallback address (`brian@liveloveapp.com`) until PR 7
+   turns the form on.
 7. **Enable.** Production switches on in the order observation processing,
-   delivery, campaign enrollment, campaign, cron, digest, install-runtime hello.
+   delivery, campaign enrollment, campaign, cron, digest, install-runtime hello,
+   then the Get unstuck form switch.
    Delivery waits until the `brian@hashbrown.dev` mailbox receives mail, the
    reply poller is deployed, and a synthetic reply has stopped a test contact.
 

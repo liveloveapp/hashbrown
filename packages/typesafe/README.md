@@ -104,3 +104,7 @@ await HashbrownTypeSafe.decide({
 `model` is required. Always pin an exact version such as `jev-1.14.0` and bump it
 deliberately, so a model update never changes your decisions unannounced. Do not
 use a floating alias in production.
+
+## Getting help
+
+Stuck? Ask Brian at https://hashbrown.dev/unstuck.
