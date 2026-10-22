@@ -73,6 +73,13 @@ const nextConfig: NextConfig = {
         destination: '/docs/react/start/sample',
         statusCode: 301 as const,
       })),
+      // Campaign emails link to hashbrown.dev/call; a temporary redirect
+      // lets the calendar page change without touching sent mail.
+      {
+        source: '/call',
+        destination: 'https://calendar.app.google/nK961tWHZd21izKR6',
+        permanent: false,
+      },
     ];
   },
 };

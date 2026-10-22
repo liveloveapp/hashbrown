@@ -11,11 +11,17 @@ import {
   verifyGrowthActionToken,
 } from '@hashbrownai-internal/growth';
 
+import {
+  escapeHtmlAttribute,
+  failureResponse,
+  htmlResponse,
+  readActionToken,
+  retryableFailureResponse,
+} from '../../_internal/action-page';
 import { readBoundedBody } from '../../_internal/read-bounded-body';
 
 const POLICY_VERSION = 'growth-lifecycle-v1';
 const MAX_REQUEST_BODY_LENGTH = 2_048;
-const FAILURE_BODY = 'Unable to process this request.';
 
 interface FounderStopRouteDependencies {
   now: () => Date;
@@ -25,63 +31,6 @@ interface FounderStopRouteDependencies {
     executor: SqlExecutor,
     input: StopContactInput,
   ) => Promise<Pick<StopContactResult, 'applied' | 'effective'>>;
-}
-
-function escapeHtmlAttribute(value: string): string {
-  return value.replace(/[&<>"'`]/gu, (character) => {
-    switch (character) {
-      case '&':
-        return '&amp;';
-      case '<':
-        return '&lt;';
-      case '>':
-        return '&gt;';
-      case '"':
-        return '&quot;';
-      case "'":
-        return '&#39;';
-      default:
-        return '&#96;';
-    }
-  });
-}
-
-function htmlResponse(title: string, message: string, form = ''): Response {
-  return new Response(
-    `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head><body><main><h1>${title}</h1><p>${message}</p>${form}</main></body></html>`,
-    {
-      status: 200,
-      headers: {
-        'Cache-Control': 'no-store',
-        'Content-Type': 'text/html; charset=utf-8',
-      },
-    },
-  );
-}
-
-function failureResponse(): Response {
-  return new Response(FAILURE_BODY, {
-    status: 400,
-    headers: {
-      'Cache-Control': 'no-store',
-      'Content-Type': 'text/plain; charset=utf-8',
-    },
-  });
-}
-
-/**
- * A server fault is never reported as a recorded stop. The founder gets a
- * retryable answer with no internal detail, and can submit the form again.
- */
-function retryableFailureResponse(): Response {
-  return new Response(FAILURE_BODY, {
-    status: 503,
-    headers: {
-      'Cache-Control': 'no-store',
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Retry-After': '30',
-    },
-  });
 }
 
 function confirmationResponse(token: string): Response {
@@ -103,34 +52,6 @@ function defaultDependencies(): FounderStopRouteDependencies {
     createDatabase: () => createDatabaseExecutor(),
     stopContact,
   };
-}
-
-async function readToken(request: Request): Promise<string | null> {
-  if ([...new URL(request.url).searchParams].length > 0) return null;
-  const contentType = request.headers.get('content-type');
-  if (
-    contentType?.split(';', 1)[0]?.trim().toLowerCase() !==
-    'application/x-www-form-urlencoded'
-  ) {
-    return null;
-  }
-
-  let bodyText: string;
-  try {
-    const boundedBody = await readBoundedBody(request, MAX_REQUEST_BODY_LENGTH);
-    if (boundedBody === null) return null;
-    bodyText = boundedBody;
-  } catch {
-    return null;
-  }
-  if (bodyText.length === 0) {
-    return null;
-  }
-  const entries = [...new URLSearchParams(bodyText).entries()];
-  const token = entries[0]?.[1].trim() ?? '';
-  return entries.length === 1 && entries[0]?.[0] === 'token' && token.length > 0
-    ? token
-    : null;
 }
 
 /**
@@ -170,7 +91,11 @@ export function createFounderStopRoute(
 
     async POST(request) {
       const receivedAt = dependencies.now();
-      const token = await readToken(request);
+      const token = await readActionToken(
+        request,
+        MAX_REQUEST_BODY_LENGTH,
+        readBoundedBody,
+      );
       if (!token) return failureResponse();
       const payload = verify(token, receivedAt);
       if (!payload) return failureResponse();

@@ -43,12 +43,16 @@ test('rewrites expose /_/ingest/static and /_/ingest in that order with CORS hea
   ]);
 });
 
-test('rewrites do not match /_/chat, /_/growth, /_/unsubscribe, /_/webhooks, /_/search-index', async () => {
+test('rewrites do not match /_/chat, /_/cron, /_/growth, /_/unsubscribe, /_/webhooks, /_/search-index', async () => {
   const rules = await rewriteRules();
   const paths = [
     '/_/chat',
     '/_/search-index',
     '/_/growth/collect/v1/website',
+    '/_/growth/approve-install',
+    '/_/growth/replies/google',
+    '/_/growth/stop',
+    '/_/cron/lifecycle',
     '/_/unsubscribe',
     '/_/webhooks/resend',
   ];

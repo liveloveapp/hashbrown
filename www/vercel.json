@@ -1,0 +1,3 @@
+{
+  "crons": [{ "path": "/_/cron/lifecycle", "schedule": "*/30 * * * *" }]
+}
