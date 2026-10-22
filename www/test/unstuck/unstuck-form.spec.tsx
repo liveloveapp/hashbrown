@@ -260,3 +260,42 @@ test('a failed request offers the fallback address and fires fail with error_rea
     surface: 'unstuck',
   });
 });
+
+test('the email field caps at 254 characters and rejects angle brackets like the server', () => {
+  const fetchMock = respond(200);
+  mount();
+  const email = screen.getByLabelText('Email') as HTMLInputElement;
+
+  fill('<jordan@acme.dev>', 'react', MESSAGE);
+  send();
+
+  expect(email.maxLength).toBe(254);
+  expect(
+    screen.getByText('Enter a full address, like jordan@acme.dev.').id,
+  ).toBe('unstuck-email-error');
+  expect(document.activeElement).toBe(email);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test('focus moves to the success status once the message is sent', async () => {
+  respond(200);
+  mount();
+  fill('jordan@acme.dev', 'react', MESSAGE);
+
+  send();
+
+  const status = await screen.findByRole('status');
+  expect(status.tabIndex).toBe(-1);
+  expect(document.activeElement).toBe(status);
+});
+
+test('focus moves to the refresh notice when the form is out of date', async () => {
+  respond(409, { policy_version: 'newer' });
+  mount();
+  fill('jordan@acme.dev', 'react', MESSAGE);
+
+  send();
+
+  const alert = await screen.findByRole('alert');
+  expect(document.activeElement).toBe(alert);
+});

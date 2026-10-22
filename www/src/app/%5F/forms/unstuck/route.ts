@@ -32,7 +32,13 @@ const unstuckSchema = z.strictObject({
   submission_id: z.uuidv4(),
   email: z.string().max(254),
   framework: z.enum(UNSTUCK_FRAMEWORKS),
-  message: z.string().trim().min(20).max(1_000),
+  // Postgres jsonb rejects NUL, which would otherwise loop on a retryable 503.
+  message: z
+    .string()
+    .trim()
+    .min(20)
+    .max(1_000)
+    .refine((message) => !message.includes('\u0000')),
   website_url: z.string().max(200).optional(),
 });
 
@@ -68,6 +74,17 @@ function unableToAccept(): Response {
   );
 }
 
+/**
+ * Logs a failed stage by the error's name only: messages can carry SQL, the
+ * email or other submitted values.
+ */
+function logFailure(stage: 'setup' | 'accept' | 'close', error: unknown) {
+  console.error('[unstuck-form-failed]', {
+    stage,
+    name: error instanceof Error ? error.name : 'unknown',
+  });
+}
+
 function isJson(request: Request): boolean {
   return (
     request.headers
@@ -84,8 +101,9 @@ function isJson(request: Request): boolean {
  * for a missing or stale `policy_version`), accepts the submission in one
  * transaction, closes the database, and only then nudges the lifecycle
  * service; a nudge failure never reaches the visitor. A rate limit answers
- * 429 with `Retry-After`; faults answer a retryable 503. Responses never echo
- * submitted values.
+ * 429 with `Retry-After`; faults answer a retryable 503 and log
+ * `[unstuck-form-failed]` with the stage and the error's name only. Responses
+ * and logs never carry submitted values.
  *
  * @param deps - Collaborators to replace, for tests.
  */
@@ -149,7 +167,8 @@ export function createUnstuckRoute(
       try {
         keyring = deps.loadKeyring();
         database = deps.createDatabase();
-      } catch {
+      } catch (error) {
+        logFailure('setup', error);
         return unableToAccept();
       }
 
@@ -174,19 +193,21 @@ export function createUnstuckRoute(
         accepted = true;
         deliverySuppressed = outcome.deliverySuppressed === true;
       } catch (error) {
-        failure =
-          error instanceof FormRateLimitError
-            ? jsonResponse(
-                { error: 'Please try again later', retryable: true },
-                429,
-                { 'Retry-After': String(error.retryAfterSec) },
-              )
-            : undefined;
+        if (error instanceof FormRateLimitError) {
+          failure = jsonResponse(
+            { error: 'Please try again later', retryable: true },
+            429,
+            { 'Retry-After': String(error.retryAfterSec) },
+          );
+        } else {
+          logFailure('accept', error);
+        }
       }
 
       try {
         await database.close?.();
-      } catch {
+      } catch (error) {
+        logFailure('close', error);
         return unableToAccept();
       }
       if (failure) return failure;

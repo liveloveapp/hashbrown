@@ -1,6 +1,7 @@
 import { expect, test, vi } from 'vitest';
 
 import {
+  jsonResponse,
   trustedFormClientIp,
   UNSTUCK_FALLBACK_ADDRESS,
   UNSTUCK_FORM_DISCLOSURE,
@@ -59,4 +60,22 @@ test('the consent text, version and fallback address are the approved values', (
     'By sending, you agree Brian may follow up by email about your request, including a short three-email note about building with Hashbrown. Unsubscribe anytime.',
   );
   expect(UNSTUCK_FALLBACK_ADDRESS).toBe('brian@liveloveapp.com');
+});
+
+test('jsonResponse keeps headers passed as a Headers instance or pairs and is never cached', async () => {
+  const fromHeaders = jsonResponse(
+    { ok: true },
+    429,
+    new Headers({ 'Retry-After': '60', 'Cache-Control': 'public' }),
+  );
+  const fromPairs = jsonResponse({ ok: true }, 409, [['Retry-After', '0']]);
+
+  const bodies = [await fromHeaders.json(), await fromPairs.json()];
+
+  expect(bodies).toEqual([{ ok: true }, { ok: true }]);
+  expect(fromHeaders.status).toBe(429);
+  expect(fromHeaders.headers.get('retry-after')).toBe('60');
+  expect(fromHeaders.headers.get('cache-control')).toBe('no-store');
+  expect(fromPairs.headers.get('retry-after')).toBe('0');
+  expect(fromPairs.headers.get('cache-control')).toBe('no-store');
 });

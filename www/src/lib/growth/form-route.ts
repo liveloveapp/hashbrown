@@ -52,7 +52,8 @@ export function trustedFormClientIp(request: Request): string | undefined {
 }
 
 /**
- * A JSON response that is never cached.
+ * A JSON response that is never cached: `Cache-Control: no-store` replaces
+ * any value passed in `headers`.
  *
  * @param body - The JSON body.
  * @param status - The HTTP status; defaults to 200.
@@ -63,8 +64,7 @@ export function jsonResponse(
   status = 200,
   headers?: HeadersInit,
 ): Response {
-  return Response.json(body, {
-    status,
-    headers: { 'Cache-Control': 'no-store', ...headers },
-  });
+  const merged = new Headers(headers);
+  merged.set('Cache-Control', 'no-store');
+  return Response.json(body, { status, headers: merged });
 }

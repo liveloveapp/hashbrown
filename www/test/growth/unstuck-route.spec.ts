@@ -273,3 +273,64 @@ test('database, keyring, accept and close failures answer 503 retryable without 
     expect(variant.nudge).not.toHaveBeenCalled();
   }
 });
+
+test('a failing setup, accept or close logs the stage and error name without submitted values', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const secret = new TypeError(`insert failed for ${EMAIL} ${MESSAGE}`);
+  const variants = [
+    harness({
+      loadKeyring: () => {
+        throw secret;
+      },
+    }),
+    harness({ accept: vi.fn(async () => Promise.reject(secret)) }),
+    harness({
+      createDatabase: () =>
+        ({
+          close: async () => {
+            throw secret;
+          },
+        }) as unknown as SqlExecutor,
+    }),
+  ];
+
+  for (const variant of variants) {
+    await variant.route.POST(post(validBody()));
+  }
+
+  expect(error.mock.calls).toEqual([
+    ['[unstuck-form-failed]', { stage: 'setup', name: 'TypeError' }],
+    ['[unstuck-form-failed]', { stage: 'accept', name: 'TypeError' }],
+    ['[unstuck-form-failed]', { stage: 'close', name: 'TypeError' }],
+  ]);
+  const logged = JSON.stringify(error.mock.calls);
+  expect(logged).not.toContain('Acme');
+  expect(logged.toLowerCase()).not.toContain('jordan');
+  expect(logged).not.toContain(MESSAGE);
+  error.mockRestore();
+});
+
+test('a rate limit is not logged as a failure', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const { route } = harness({
+    accept: vi.fn(async () => {
+      throw new FormRateLimitError(60);
+    }),
+  });
+
+  await route.POST(post(validBody()));
+
+  expect(error).not.toHaveBeenCalled();
+  error.mockRestore();
+});
+
+test('a message containing NUL answers 400 before accepting', async () => {
+  const { route, accept } = harness();
+
+  const response = await route.POST(
+    post(validBody({ message: `${MESSAGE}\u0000` })),
+  );
+
+  expect(response.status).toBe(400);
+  expect(accept).not.toHaveBeenCalled();
+});

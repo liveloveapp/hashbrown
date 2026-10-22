@@ -14,8 +14,18 @@ const FRAMEWORKS = [
 const MESSAGE_MIN = 20;
 const MESSAGE_MAX = 1_000;
 
-/** Loose shape check, something@something.tld; the server normalizes for real. */
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u;
+/**
+ * Loose shape check, something@something.tld, refusing `<` and `>` as the
+ * server does; the server normalizes for real.
+ */
+const EMAIL_SHAPE = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]{2,}$/u;
+/** The longest address the server accepts. */
+const EMAIL_MAX = 254;
+
+/** Moves focus to a status as it mounts, so it is announced and not lost. */
+function focusOnMount(element: HTMLElement | null) {
+  element?.focus();
+}
 
 function emailError(value: string): string | null {
   const email = value.trim();
@@ -145,7 +155,12 @@ export function UnstuckForm({
 
   if (form.status === 'sent') {
     return (
-      <div className={styles.status} role="status">
+      <div
+        className={styles.status}
+        role="status"
+        tabIndex={-1}
+        ref={focusOnMount}
+      >
         <strong>Got it.</strong> Brian reads every one of these and replies from
         brian@hashbrown.dev.
       </div>
@@ -154,7 +169,12 @@ export function UnstuckForm({
 
   if (form.status === 'stale') {
     return (
-      <div className={styles.status} role="alert">
+      <div
+        className={styles.status}
+        role="alert"
+        tabIndex={-1}
+        ref={focusOnMount}
+      >
         <p>
           <strong>This page is out of date.</strong> Refresh it before sending
           again.
@@ -194,6 +214,7 @@ export function UnstuckForm({
           type="email"
           autoComplete="email"
           inputMode="email"
+          maxLength={EMAIL_MAX}
           value={email}
           onChange={(event) => {
             edited();
