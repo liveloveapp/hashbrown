@@ -66,7 +66,6 @@ export function buildBootstrapEnv(base, envFileContents) {
 const SECRET_KEYS = [
   'LIFECYCLE_SERVICE_SECRET',
   'CRON_SECRET',
-  'GOOGLE_REPLY_HMAC_SECRET',
   'GROWTH_ACTION_TOKEN_ACTIVE_SECRET',
   'GROWTH_EMAIL_HMAC_ACTIVE_SECRET',
 ];
@@ -334,7 +333,7 @@ export async function provision({
   checklist.add(
     'Mailbox brian@hashbrown.dev',
     'manual',
-    'create the Google Workspace mailbox',
+    'pilot Resend Receiving at brian@replies.hashbrown.dev; forward to brian@cacheplane.ai; follow docs/superpowers/runbooks/2026-10-22-resend-inboxes-pilot.md; leave root MX unchanged; operator waived canary',
   );
   checklist.add(
     'Preview values',

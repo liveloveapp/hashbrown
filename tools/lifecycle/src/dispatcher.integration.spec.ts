@@ -23,6 +23,7 @@ import {
   completeLeasedJob,
   createDatabaseExecutor,
   type GrowthJob,
+  providerIdempotencyKey,
   type SqlExecutor,
 } from './growth.ts';
 
@@ -274,6 +275,7 @@ test('a notify job reads the submission, mails the founder once and completes', 
     to: 'founder@hashbrown.test',
     subject: 'Hashbrown lifecycle review',
     tags: [
+      { name: 'app', value: 'hashbrown' },
       { name: 'environment', value: 'test' },
       { name: 'job_kind', value: 'notify' },
     ],
@@ -286,7 +288,10 @@ test('a notify job reads the submission, mails the founder once and completes', 
     'https://preview.hashbrown.test/_/growth/stop?token=g1.',
   );
   expect(options).toEqual({
-    idempotencyKey: `internal:lifecycle-integration:${jobId}`,
+    idempotencyKey: providerIdempotencyKey(
+      'test',
+      `internal:lifecycle-integration:${jobId}`,
+    ),
   });
   expect(await jobStatuses([jobId])).toEqual(['completed']);
   expect(claims.rows).toEqual([

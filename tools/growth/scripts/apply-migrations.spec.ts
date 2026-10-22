@@ -105,3 +105,30 @@ test('applyMigrations runs each file in its own transaction behind the advisory 
     );
   }
 });
+
+test('migration filenames with the same numeric prefix retain independent ledger identities', async () => {
+  const directory = await directoryWith({
+    '0005_growth_lifecycle.sql': 'select 5',
+    '0005_growth_inbox_replies.sql': 'select 6',
+    '0006_growth_provider_attempts.sql': 'select 7',
+  });
+  const migrations = await discoverMigrations(directory);
+  const appliedInbox = migrations.find(
+    ({ name }) => name === '0005_growth_inbox_replies.sql',
+  );
+  const { executor } = fakeExecutor({
+    '0005_growth_inbox_replies.sql': appliedInbox?.checksum ?? '',
+  });
+
+  const result = await applyMigrations({ directory, executor });
+
+  expect(migrations.map(({ name }) => name)).toEqual([
+    '0005_growth_inbox_replies.sql',
+    '0005_growth_lifecycle.sql',
+    '0006_growth_provider_attempts.sql',
+  ]);
+  expect(result).toEqual({
+    applied: ['0005_growth_lifecycle.sql', '0006_growth_provider_attempts.sql'],
+    skipped: ['0005_growth_inbox_replies.sql'],
+  });
+});

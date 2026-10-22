@@ -176,3 +176,168 @@ test('unsubscribe rejects a tampered signature on GET and POST', async () => {
   expect(response.status).toBe(400);
   expect(stopContact).not.toHaveBeenCalled();
 });
+
+test('POST multipart one-click unsubscribe accepts the signed query token', async () => {
+  const { route, stopContact, close } = setup();
+  const token = mintToken('unsubscribe');
+  const form = new FormData();
+  form.set('List-Unsubscribe', 'One-Click');
+
+  const response = await route.POST(
+    new Request(`${ORIGIN}?token=${token}`, { method: 'POST', body: form }),
+  );
+
+  expect(response.status).toBe(200);
+  expect(stopContact).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      source: 'signed_unsubscribe',
+      reason: 'unsubscribe',
+    }),
+  );
+  expect(close).toHaveBeenCalledTimes(1);
+});
+
+test('POST multipart confirmation accepts a signed body token', async () => {
+  const { route, stopContact } = setup();
+  const form = new FormData();
+  form.set('token', mintToken('unsubscribe'));
+
+  const response = await route.POST(
+    new Request(ORIGIN, { method: 'POST', body: form }),
+  );
+
+  expect(response.status).toBe(200);
+  expect(stopContact).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  {
+    entries: [
+      ['List-Unsubscribe', 'One-Click'],
+      ['List-Unsubscribe', 'One-Click'],
+    ],
+  },
+  {
+    entries: [
+      ['List-Unsubscribe', 'One-Click'],
+      ['extra', 'value'],
+    ],
+  },
+  {
+    entries: [
+      ['List-Unsubscribe', 'One-Click'],
+      ['token', 'other'],
+    ],
+  },
+  { entries: [['List-Unsubscribe', 'Wrong']] },
+  { entries: [] },
+])(
+  'POST multipart rejects invalid one-click fields $entries',
+  async ({ entries }) => {
+    const { route, createDatabase, stopContact } = setup();
+    const form = new FormData();
+    for (const [name, value] of entries) form.append(name, value);
+
+    const response = await route.POST(
+      new Request(`${ORIGIN}?token=${mintToken('unsubscribe')}`, {
+        method: 'POST',
+        body: form,
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(createDatabase).not.toHaveBeenCalled();
+    expect(stopContact).not.toHaveBeenCalled();
+  },
+);
+
+test.each(['List-Unsubscribe', 'token'])(
+  'POST multipart rejects file field %s',
+  async (name) => {
+    const { route, createDatabase } = setup();
+    const form = new FormData();
+    form.set(
+      name,
+      new Blob([name === 'token' ? mintToken('unsubscribe') : 'One-Click']),
+      'value.txt',
+    );
+    const url =
+      name === 'token' ? ORIGIN : `${ORIGIN}?token=${mintToken('unsubscribe')}`;
+
+    const response = await route.POST(
+      new Request(url, { method: 'POST', body: form }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(createDatabase).not.toHaveBeenCalled();
+  },
+);
+
+test.each(['duplicate-token', 'extra-query', 'tampered', 'wrong-purpose'])(
+  'POST multipart rejects invalid signed query %s',
+  async (kind) => {
+    const { route, createDatabase } = setup();
+    const token = mintToken('unsubscribe');
+    const query =
+      kind === 'tampered'
+        ? `token=${tamperToken(token)}`
+        : kind === 'wrong-purpose'
+          ? `token=${mintToken('founder_stop')}`
+          : `token=${token}&${kind === 'duplicate-token' ? 'token' : 'extra'}=${token}`;
+    const form = new FormData();
+    form.set('List-Unsubscribe', 'One-Click');
+
+    const response = await route.POST(
+      new Request(`${ORIGIN}?${query}`, { method: 'POST', body: form }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(createDatabase).not.toHaveBeenCalled();
+  },
+);
+
+test('POST multipart rejects a missing boundary', async () => {
+  const { route, createDatabase } = setup();
+
+  const response = await route.POST(
+    new Request(`${ORIGIN}?token=${mintToken('unsubscribe')}`, {
+      method: 'POST',
+      headers: { 'content-type': 'multipart/form-data' },
+      body: 'List-Unsubscribe=One-Click',
+    }),
+  );
+
+  expect(response.status).toBe(400);
+  expect(createDatabase).not.toHaveBeenCalled();
+});
+
+test.each([undefined, '2049'])(
+  'POST multipart bounds streamed bodies with content-length %s',
+  async (contentLength) => {
+    const { route, createDatabase } = setup();
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('x'.repeat(2049)));
+      },
+      cancel,
+    });
+    const headers = new Headers({
+      'content-type': 'multipart/form-data; boundary=test',
+    });
+    if (contentLength) headers.set('content-length', contentLength);
+    const request = new Request(`${ORIGIN}?token=${mintToken('unsubscribe')}`, {
+      method: 'POST',
+      headers,
+      body,
+      duplex: 'half',
+    } as RequestInit);
+
+    const response = await route.POST(request);
+
+    expect(response.status).toBe(400);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(createDatabase).not.toHaveBeenCalled();
+  },
+);

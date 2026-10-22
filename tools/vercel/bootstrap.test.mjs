@@ -660,7 +660,6 @@ test('TARGETS www lists the growth env keys', () => {
     'OPENAI_API_KEY',
     'LIFECYCLE_SERVICE_SECRET',
     'CRON_SECRET',
-    'GOOGLE_REPLY_HMAC_SECRET',
     'NEXT_PUBLIC_POSTHOG_TOKEN',
     'NEXT_PUBLIC_POSTHOG_HOST',
     'NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL',
@@ -683,7 +682,7 @@ test('bootstrap lifecycle env lists CAMPAIGN_ENROLLMENT_START_AT and LIFECYCLE_B
   assert.ok(env.includes('CAMPAIGN_ENROLLMENT_START_AT'));
   assert.ok(env.includes('LIFECYCLE_BATCH_SIZE'));
   assert.ok(!env.includes('GOOGLE_REPLY_HMAC_SECRET'));
-  assert.ok(www?.env.includes('GOOGLE_REPLY_HMAC_SECRET'));
+  assert.ok(!www?.env.includes('GOOGLE_REPLY_HMAC_SECRET'));
   assert.ok(!target?.requiredEnv.includes('CAMPAIGN_ENROLLMENT_START_AT'));
 });
 
