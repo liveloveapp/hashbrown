@@ -1,3 +1,53 @@
+## 0.8.0 (Unreleased)
+
+### 🧭 Migrating from 0.7
+
+0.8 is a breaking release, and client and server must upgrade together: the Hashbrown run-input extension moves to `forwardedProps.hashbrown`, few-shot UI examples and the `prompt` template are removed, the OpenAI and Azure adapters move to the Responses API, and activities join the message list. Read the step-by-step guide for [React](https://hashbrown.dev/docs/react/migrations/v0-8) or [Angular](https://hashbrown.dev/docs/angular/migrations/v0-8), which includes a prompt you can hand to an AI coding assistant.
+
+### ⚠️ Breaking Changes
+
+- the Hashbrown run-input extension (`responseSchema`, `ui`) moves from a top-level `hashbrown` key to `forwardedProps.hashbrown`, AG-UI's pass-through extension point; the client sends only the new shape and every adapter, both local transports and the conformance endpoint read only it, so a server that reads `input.hashbrown` must read `input.forwardedProps.hashbrown` ([#659](https://github.com/liveloveapp/hashbrown/pull/659), [#661](https://github.com/liveloveapp/hashbrown/pull/661))
+- few-shot UI examples are removed: the `prompt` tagged template and its `<ui>` blocks, the `SystemPrompt`, `HBTree`, `PromptDiagnostic`, `PromptDiagnosticCode` and `PromptDiagnosticSeverity` types, and every `examples` option (UI kits, `useUiChat`/`useUiCompletion`, `uiChatResource`/`uiCompletionResource`, `createUiJsonSchema`); `system` is a plain string, and guidance moves into component and prop descriptions ([#662](https://github.com/liveloveapp/hashbrown/pull/662))
+- **openai, azure:** the adapters stream from the Responses API instead of Chat Completions: `transformRequestOptions` receives `ResponseCreateParamsStreaming`, Chat Completions-only servers are no longer supported, reasoning models get reasoning summaries by default (`reasoning: false` turns them off), every request sends `store: false`, Azure's `clientOptions.deployment` is removed in favour of `model`, and the `openai` peer dependency rises to `^6.45.0` ([#667](https://github.com/liveloveapp/hashbrown/pull/667))
+- `Chat.Message` gains an `ActivityMessage` variant (`role: 'activity'`) for AG-UI activities, and user and assistant messages carry a stable `id`; code that switches exhaustively on `role` or compares whole messages needs updating ([#669](https://github.com/liveloveapp/hashbrown/pull/669))
+- **core:** package `imports` support is required; upgrade older bundlers and test runners before installing v0.8.
+- **openai, azure:** incomplete responses finish with their partial answer and `lastRunFinishReason` instead of raising `RUN_ERROR`; check for `length` or `content_filter` ([#690](https://github.com/liveloveapp/hashbrown/pull/690)).
+
+### 🚀 Features
+
+- decisions: typed decision models over plain JSON, with per-option enumeration descriptions, `useDecision`/`decisionResource`, UI selection with `useUiDecision`/`uiDecisionResource`/`hb-ui-decision` (including chat-mode narrowing of an existing chat), `createSelectionSchema` to pin selection questions on a server, and the new `@hashbrownai/typesafe` adapter for TypeSafe Jev ([#656](https://github.com/liveloveapp/hashbrown/pull/656), [#664](https://github.com/liveloveapp/hashbrown/pull/664), [#666](https://github.com/liveloveapp/hashbrown/pull/666))
+- **core:** decisions in agents: public `decodeDecision`, and `AgentRunError`, which keeps a `RUN_ERROR` event's `code` ([#665](https://github.com/liveloveapp/hashbrown/pull/665))
+- UI kits take `selectable: false` so their members remain available every turn and are excluded from selection questions ([#670](https://github.com/liveloveapp/hashbrown/pull/670))
+- AG-UI activities: `ACTIVITY_*` events become activity messages linked to their run, message and tool call, `groupTurns` groups a transcript into turns, and provider adapters take an `activities` callback ([#669](https://github.com/liveloveapp/hashbrown/pull/669))
+- **openai, azure:** reasoning summaries and stateless encrypted-reasoning replay on the Responses API ([#667](https://github.com/liveloveapp/hashbrown/pull/667))
+- **core:** `lastRunResult` exposes AG-UI's `RUN_FINISHED.result` on `ChatRuntime`, the React chat, completion and UI hooks and every Angular chat and completion resource; it is cleared when the next run starts and never set by interrupted, cancelled or failed runs; `JsonValue` becomes a public core type ([#655](https://github.com/liveloveapp/hashbrown/pull/655))
+- **core:** `markdownComponent`, so a server can pin the full UI response schema ([#654](https://github.com/liveloveapp/hashbrown/pull/654))
+- all six generative provider adapters report normalized finish reasons and available token usage through `lastRunFinishReason` and `lastRunUsage` on core, React, and Angular APIs; values describe the last completed run, not an entire tool-call turn ([#690](https://github.com/liveloveapp/hashbrown/pull/690)).
+- **openai, azure:** enable provider-run web search with `builtInTools.webSearch`, with queries, sources, and answer citations ([#691](https://github.com/liveloveapp/hashbrown/pull/691)).
+- **core:** read `b4.step` metadata and custom events into `serverToolCalls`, exposing labels, outcomes, errors, timing, sources, and nested calls; assistant messages expose citations, sources, and required attribution ([#691](https://github.com/liveloveapp/hashbrown/pull/691)).
+
+### 🩹 Fixes
+
+- **react, angular:** component changes update the UI response schema, preserve earlier answers, and use the newest definition for a component name; Angular UI chat resources expose `components` and `setComponents` ([#666](https://github.com/liveloveapp/hashbrown/pull/666)).
+- **anthropic:** accept thinking blocks interleaved with text and tool use ([#684](https://github.com/liveloveapp/hashbrown/pull/684)).
+- **bedrock:** combine parallel tool results into one user turn and keep server tool use from being dispatched as a client tool call ([#684](https://github.com/liveloveapp/hashbrown/pull/684)).
+- **google:** preserve function-call thought signatures when a signature-only part follows ([#684](https://github.com/liveloveapp/hashbrown/pull/684)).
+- **openai, azure, ollama:** return client tool errors to the model instead of dropping them ([#684](https://github.com/liveloveapp/hashbrown/pull/684)).
+- **azure:** support `reasoning: true` for deployments with custom names ([#684](https://github.com/liveloveapp/hashbrown/pull/684)).
+- **core:** a `RUN_FINISHED` with `outcome: { type: 'cancelled' }` settles the run as cancelled, rolled back like a local stop with no retry and no error, instead of raising a protocol error ([#653](https://github.com/liveloveapp/hashbrown/pull/653))
+- **core:** activity messages are removed from AG-UI run input, as the spec requires ([#668](https://github.com/liveloveapp/hashbrown/pull/668))
+- **core:** keep QuickJS types out of the public declarations ([#637](https://github.com/liveloveapp/hashbrown/pull/637))
+- **typesafe:** a score's value is its most probable level, request size caps fit Jev, and errors carry the vendor's error type ([#658](https://github.com/liveloveapp/hashbrown/pull/658), [#660](https://github.com/liveloveapp/hashbrown/pull/660))
+
+### 📖 Documentation
+
+- Refresh the atc example and provide paired React and Angular examples throughout the v0.8 release post and migration guides.
+
+### ❤️ Thank You
+
+- Brian Love @blove
+- Manfred Steyer — activity snapshot capabilities
+
 ## 0.7.0 (2026-10-08)
 
 ### 🧭 Migrating from 0.6

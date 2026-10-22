@@ -16,6 +16,7 @@ Hashbrown publishes these packages together at one version:
 - `@hashbrownai/ollama`
 - `@hashbrownai/openai`
 - `@hashbrownai/react`
+- `@hashbrownai/typesafe`
 
 Each package must have an npm trusted publisher entry with:
 
@@ -26,6 +27,24 @@ Each package must have an npm trusted publisher entry with:
 - Allowed action: `npm publish`
 - Environment: blank
 
+## First Publication Of A New Package
+
+A package must exist on npm before its trusted publisher can be configured
+([npm prerequisites](https://docs.npmjs.com/cli/v11/commands/npm-trust/)).
+`@hashbrownai/typesafe` is new in 0.8 and requires this bootstrap step.
+
+Before triggering `npm/latest`, the maintainer must approve and complete the
+first publication from the reviewed release artifact using an authorized npm
+account, then configure the trusted publisher listed above. Do not add a
+long-lived publishing token to the workflow as a workaround. Confirm the package
+version, public access, and trusted publisher configuration before continuing.
+If the release version was published during bootstrap, the normal publish run
+must skip that existing version and still verify all ten packages.
+
+Do not perform the bootstrap, create release tags, publish packages, or deploy
+the release announcement until the maintainer explicitly gives the go-ahead.
+Merging the release post into `main` deploys the site independently of npm.
+
 ## Prepare The Release Commit
 
 1. Start from current `main`.
@@ -33,7 +52,7 @@ Each package must have an npm trusted publisher entry with:
    old beta tags are not ancestors of `main`.
 3. Generate the changelog for the intended range. If `CHANGELOG.md` already
    has a curated `## X.Y.Z (Unreleased)` entry, check it against the range and
-   replace `Unreleased` with the release date (`YYYY-MM-DD`).
+   after maintainer approval replace `Unreleased` with the release date (`YYYY-MM-DD`).
 4. Run local verification:
 
 ```sh
@@ -41,13 +60,18 @@ node --test scripts/verify-release-versions.spec.mjs scripts/verify-npm-release.
 node scripts/verify-release-versions.mjs --tag vX.Y.Z
 actionlint .github/workflows/*.yml
 npx nx run-many -t test,lint -p vercel-bootstrap
-npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react --parallel=3
-npx nx run-many -t test -p angular anthropic azure bedrock core google ollama openai --parallel=3
-npx nx run-many -t lint -p angular anthropic azure bedrock core google ollama openai --parallel=3
-npx nx release publish --dry-run
+npx nx run-many -t build -p angular anthropic azure bedrock core google ollama openai react typesafe --parallel=3
+npx nx run-many -t test -p angular anthropic azure bedrock core google ollama openai react typesafe --parallel=3
+npx nx run-many -t lint -p angular anthropic azure bedrock core google ollama openai react typesafe --parallel=3
+npm_config_ignore_scripts=true npm_config_dry_run=true npx nx release publish --dry-run --parallel=1
 ```
 
-5. Open and merge the release PR through the protected `main` branch.
+5. Open the release PR for review. Keep a curated changelog entry marked
+   `Unreleased` while publication is on hold. After the maintainer approves the
+   release, set its date, update the release-post filename/slug and announcement
+   timestamps together if needed, and merge through the protected `main` branch.
+   Coordinate the post merge with npm availability so it does not announce
+   packages before they can be installed.
 
 ## Tag And Publish
 
