@@ -2,35 +2,70 @@
 title: 'Example App: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'atc: a live map of airline traffic with an assistant that answers in your own React components.'
+    content: 'atc: a live map of air traffic with an assistant that answers in your own React components.'
 ---
 
 # atc Example
 
-atc is a live map of airline traffic over the Pacific Northwest. Ask about the planes you
-see, and the answer renders as the app's own components: flight cards, an arrivals board
-and side-by-side comparisons. The cards keep updating after the answer finishes, and the
-assistant can highlight and follow aircraft on the map.
+atc is a live map of the air traffic over the Pacific Northwest, with an assistant that answers in the app's own React components.
+It's Hashbrown's flagship example, and it's built twice, in Angular and React, on one shared core.
+
+Here's the whole thing in about a minute:
+
+<www-atc-demo-video>
+</www-atc-demo-video>
 
 The hosted app at [atc.hashbrown.dev](https://atc.hashbrown.dev/angular/) is the Angular
-version. The React version runs locally for now; see [Run locally](#run-locally), or
-[read the source](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/README.md).
+version; the React version is the same app, and it runs locally (see [Run Locally](#run-locally)).
+Or [read the source](https://github.com/liveloveapp/hashbrown/tree/main/examples/atc).
 
-## What to look for
+---
 
-- **Your components, not generated HTML.** `exposeComponent` lists every component the
-  model may use, with a Skillet schema for each of its props.
-- **Tools run in the browser.** `useTool` wraps functions that search the aircraft
-  already on the map. The plane list never goes to the server.
-- **Fields that must arrive whole do.** A card's aircraft ID is `s.string`, so the card
-  never shows a half-written ID. Its note is `s.streaming.string` and streams in.
-- **A thin server.** One route (`/api/run`) streams the model's answer and another (`/api/aircraft`)
-  proxies the aircraft feed; the system prompt and model are pinned on the server.
+## Three Steps
 
-The core file is
-[`examples/atc/react/src/assistant.tsx`](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/react/src/assistant.tsx).
+atc shows Hashbrown in three steps.
+You type into one composer, and a badge shows where Enter will send the text.
 
-## Run locally
+1. **Decide.** A TypeSafe Jev decision routes what you typed: to the map filter, to clearing the filter, or to the chat. For a chat message, a second decision picks which cards fit.
+2. **Filter.** A structured completion streams a map filter into a pill of chips. The filter is app state, so the map dims every plane it hides, and a "Refine:" row offers ways to narrow it.
+3. **Generate.** A question goes to the chat, which calls tools in the browser and answers with Markdown and the app's own cards.
+
+Here's a filter, "Alaska Airlines near Seattle", applied to the map:
+
+<img src="/image/docs/atc/filter.webp" width="1280" height="800" loading="lazy" alt="The map filtered to Alaska Airlines within 25 nm of KSEA, with the filter chips over the map and a Refine suggestion above the composer." />
+
+And here's the answer to "What's flying near Bend?": an arrivals board, with the same planes highlighted on the map:
+
+<img src="/image/docs/atc/answer.webp" width="1280" height="800" loading="lazy" alt="The chat answering What's flying near Bend? with a board of three flights, and the same three planes highlighted on the map." />
+
+---
+
+## The Developer Drawer
+
+Press the `{ }` button on the rail to open the developer drawer under the map.
+It shows each layer's JSON as it arrives for the newest send, in five tabs: Router, Cards, Filter, UI stream and Tools.
+Dev mode is off on a first visit, and the choice is remembered.
+
+<img src="/image/docs/atc/drawer-router.webp" width="1280" height="800" loading="lazy" alt="The developer drawer open on its Router tab, showing typed text routed to the filter at 0.97 confidence." />
+
+---
+
+## What to Look For
+
+The core file, [`examples/atc/react/src/assistant.tsx`](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/react/src/assistant.tsx), is organized into the same numbered steps as its twin in the other framework.
+A few things to note:
+
+- **Your components, not generated HTML.** `exposeComponent` lists every component the model may use, with a Skillet schema for each of its props.
+- **Fields that must arrive whole do.** A card's aircraft ID is `s.string`, so a card never shows a half-written ID. Its note is `s.streaming.string`, and it streams in.
+- **Tools run in the browser.** `useTool` wraps functions that search, highlight and follow the aircraft already on the map. The plane list never goes to the server.
+- **The chat streams UI.** `useUiChat` renders only the components you exposed, and the cards keep updating after the answer finishes.
+- **Decisions route and narrow.** `useDecision` routes typed text in [`router.ts`](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/react/src/router.ts), and `useUiDecision` picks the cards for each chat message. An unsure or failed decision never blocks a send.
+- **A filter is structured output.** `useStructuredCompletion` streams the map filter in [`filter.tsx`](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/react/src/filter.tsx).
+- **The server pins the model routes.** `/api/run`, `/api/filter` and `/api/decide` each fix their prompt or questions, schemas and output cap. [Securing a public endpoint](/docs/react/recipes/public-endpoint) shows how.
+
+---
+
+## Run Locally
 
 ```bash
 git clone https://github.com/liveloveapp/hashbrown.git
@@ -39,7 +74,9 @@ nvm use
 npm ci
 ```
 
-Add `OPENAI_API_KEY=...` to `.env`, then start the server and the app in two terminals:
+Add `OPENAI_API_KEY=...` to the `.env` file at the root of the repository.
+`TYPESAFE_API_KEY` is optional: without it, everything you type goes to the chat.
+Then, start the server and the app in two terminals:
 
 ```bash
 npx nx serve atc-server
@@ -50,3 +87,4 @@ npx nx serve atc-react
 ```
 
 Open http://127.0.0.1:4342/react/.
+The [README](https://github.com/liveloveapp/hashbrown/blob/main/examples/atc/README.md) has the rest: every variable, a tour of the code by step, hosting and troubleshooting.

@@ -261,7 +261,7 @@ Set the model on the server too. atc reads it from `OPENAI_MODEL` and ignores an
 
 ## Outside the code
 
-- **Rate-limit the route.** atc's hosted app allows 40 requests a minute per IP on `POST /api/run`, set as a Vercel Firewall rule. One question makes 3 to 5 requests, one per tool round trip.
+- **Rate-limit the route.** atc's hosted app allows 60 requests a minute per IP, shared between `POST /api/run` and `POST /api/filter`, set as one Vercel Firewall rule. One question makes 3 to 5 `/api/run` requests, one per tool round trip.
 - **Cap the provider key's budget.** Use a dedicated project key with a hard monthly budget, so a bug or an abuser cannot spend past it.
 
 ---
@@ -269,3 +269,4 @@ Set the model on the server too. atc reads it from `OPENAI_MODEL` and ignores an
 ## See it in atc
 
 Read the full handler, its tests and the shared definitions in [examples/atc](https://github.com/liveloveapp/hashbrown/tree/main/examples/atc), starting at `server/src/run-handler.ts`.
+atc's other two model routes follow the same rules: `server/src/filter-handler.ts` pins the filter's system prompt and schema and sends no tools, and `server/src/decide-handler.ts` pins each decision's questions.
