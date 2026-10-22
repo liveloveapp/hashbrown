@@ -1,6 +1,9 @@
 import { expect, test, vi } from 'vitest';
 
-import { invokeLifecycle } from '../../src/lib/growth/lifecycle-client';
+import {
+  invokeLifecycle,
+  nudgeLifecycle,
+} from '../../src/lib/growth/lifecycle-client';
 
 const THREAD_ID = '5b0c3f0e-7c1a-4f0a-9d2e-1a2b3c4d5e6f';
 const INPUT = {
@@ -134,4 +137,67 @@ test('invokeLifecycle rejects a non-success status with a closed error', async (
   const result = invokeLifecycle(INPUT, { fetch: fetch as never });
 
   await expect(result).rejects.toThrow('not accepted');
+});
+
+test('invokeLifecycle rejects an out-of-range timeout as its own error', async () => {
+  const fetch = vi.fn();
+
+  const result = invokeLifecycle(
+    { ...INPUT, timeoutMs: 10 },
+    { fetch: fetch as never },
+  );
+
+  await expect(result).rejects.toThrow('timeout must be between');
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+const SUBMISSION_ID = '018f47a2-4a2b-4f86-9f03-3dca36f26e55';
+
+function stubLifecycleEnv(overrides: Record<string, string> = {}) {
+  const env = {
+    LIFECYCLE_CRON_ENABLED: 'true',
+    LIFECYCLE_URL: 'https://lifecycle.example',
+    LIFECYCLE_SERVICE_SECRET: 'service-secret',
+    ...overrides,
+  };
+  for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
+}
+
+test('nudgeLifecycle does nothing unless the switch is exactly true and the URL and secret are set', async () => {
+  try {
+    const invoke = vi.fn();
+    stubLifecycleEnv({ LIFECYCLE_CRON_ENABLED: 'TRUE' });
+    await nudgeLifecycle({ submissionId: SUBMISSION_ID }, invoke);
+    stubLifecycleEnv({ LIFECYCLE_URL: '' });
+    await nudgeLifecycle({ submissionId: SUBMISSION_ID }, invoke);
+    stubLifecycleEnv({ LIFECYCLE_SERVICE_SECRET: '' });
+    await nudgeLifecycle({ submissionId: SUBMISSION_ID }, invoke);
+
+    expect(invoke).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+test('nudgeLifecycle invokes a nudge with a 2 s timeout and never throws', async () => {
+  try {
+    stubLifecycleEnv();
+    const invoke = vi.fn(async () => {
+      throw new Error('down');
+    });
+
+    await expect(
+      nudgeLifecycle({ submissionId: SUBMISSION_ID }, invoke as never),
+    ).resolves.toBeUndefined();
+
+    expect(invoke).toHaveBeenCalledWith({
+      baseUrl: 'https://lifecycle.example',
+      serviceSecret: 'service-secret',
+      timeoutMs: 2_000,
+      trigger: 'nudge',
+      submissionId: SUBMISSION_ID,
+    });
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });

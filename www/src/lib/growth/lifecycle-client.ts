@@ -215,6 +215,7 @@ export async function invokeLifecycle(
     throw new Error('Lifecycle thread ID must be a UUID v4');
   }
 
+  const timeoutMs = timeout(input.timeoutMs);
   let response: Response;
   try {
     response = await resolved.fetch(`${origin}/threads/${threadId}/runs/wait`, {
@@ -231,7 +232,7 @@ export async function invokeLifecycle(
         },
       }),
       redirect: 'error',
-      signal: AbortSignal.timeout(timeout(input.timeoutMs)),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     throw new Error('Lifecycle dispatch request failed');
@@ -250,13 +251,16 @@ export async function invokeLifecycle(
 /**
  * Asks the lifecycle service to dispatch now for a fresh submission. Best
  * effort: it waits at most two seconds and never throws, because the cron
- * tick picks the job up regardless.
+ * tick picks the job up regardless. It does nothing unless
+ * `LIFECYCLE_CRON_ENABLED` is exactly `true` and `LIFECYCLE_URL` and
+ * `LIFECYCLE_SERVICE_SECRET` are set, so a disabled lifecycle is never called.
  *
  * @param input - The submission to nudge for.
  */
-export async function nudgeLifecycle(input: {
-  submissionId: string;
-}): Promise<void> {
+export async function nudgeLifecycle(
+  input: { submissionId: string },
+  invoke: typeof invokeLifecycle = invokeLifecycle,
+): Promise<void> {
   const baseUrl = process.env['LIFECYCLE_URL']?.trim();
   const serviceSecret = process.env['LIFECYCLE_SERVICE_SECRET'];
   if (
@@ -267,7 +271,7 @@ export async function nudgeLifecycle(input: {
     return;
   }
   try {
-    await invokeLifecycle({
+    await invoke({
       baseUrl,
       serviceSecret,
       timeoutMs: 2_000,

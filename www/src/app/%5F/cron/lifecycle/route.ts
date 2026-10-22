@@ -60,7 +60,11 @@ export function createLifecycleCronRoute(
     ) {
       return response({ accepted: false }, 401);
     }
-    if (process.env['LIFECYCLE_CRON_ENABLED'] !== 'true') {
+    const enabled = process.env['LIFECYCLE_CRON_ENABLED'];
+    if (enabled !== 'true') {
+      if (enabled !== undefined && enabled !== 'false') {
+        console.warn('[lifecycle-cron-misconfigured]');
+      }
       return response({ accepted: false }, 503);
     }
     const baseUrl = process.env['LIFECYCLE_URL']?.trim();
@@ -80,7 +84,11 @@ export function createLifecycleCronRoute(
         { accepted: true, operator_alerts: result.operatorAlerts },
         200,
       );
-    } catch {
+    } catch (error) {
+      console.warn(
+        '[lifecycle-cron-failed]',
+        error instanceof Error ? error.message : 'unknown',
+      );
       return response({ accepted: false }, 503);
     }
   };

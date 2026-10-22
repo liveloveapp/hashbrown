@@ -95,10 +95,16 @@ export function createGoogleRepliesRoute(
       const rawBody = await readBoundedBody(request, MAX_BODY_BYTES);
       if (rawBody === null) return response(413);
 
-      let secret: string;
       const receivedAt = dependencies.now();
+      let secret: string;
       try {
         secret = dependencies.loadSecret();
+      } catch {
+        return response(503);
+      }
+      // A missing secret is a retryable configuration fault, not a bad request.
+      if (secret.length === 0) return response(503);
+      try {
         dependencies.verifySignature({
           rawBody,
           timestamp,

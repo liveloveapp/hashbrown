@@ -25,7 +25,11 @@ function signed(rawBody: string, timestamp = String(TEST_NOW.getTime())) {
 }
 
 function setup(
-  options: { processFails?: boolean; createFails?: boolean } = {},
+  options: {
+    processFails?: boolean;
+    createFails?: boolean;
+    secret?: string;
+  } = {},
 ) {
   const close = vi.fn(async () => undefined);
   const processEvent = vi.fn(async () => {
@@ -39,7 +43,7 @@ function setup(
   });
   const route = createGoogleRepliesRoute({
     now: () => TEST_NOW,
-    loadSecret: () => SECRET,
+    loadSecret: () => options.secret ?? SECRET,
     verifySignature: verifyGoogleReplySignature,
     parseEvent,
     createDatabase: () => {
@@ -96,4 +100,14 @@ test('replies/google: 400 on bad signature, stale timestamp or schema; 413 overs
   expect(oversize.status).toBe(413);
   expect(unavailable.status).toBe(503);
   expect(noDatabase.status).toBe(503);
+});
+
+test('replies/google answers 503 before verifying when the secret is not configured', async () => {
+  const body = JSON.stringify({ ok: true });
+  const { route, processEvent } = setup({ secret: '' });
+
+  const response = await route.POST(req(body, signed(body)));
+
+  expect(response.status).toBe(503);
+  expect(processEvent).not.toHaveBeenCalled();
 });
