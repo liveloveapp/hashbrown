@@ -84,6 +84,8 @@ export const TARGETS = Object.freeze([
       'NEXT_PUBLIC_POSTHOG_HOST',
       'NEXT_PUBLIC_POSTHOG_CAPTURE_LOCAL',
       'NEXT_PUBLIC_GROWTH_COLLECTION',
+      // Read by the /_/cron/lifecycle route and nudgeLifecycle in www.
+      'LIFECYCLE_CRON_ENABLED',
     ],
     // DATABASE_URL is injected by the Neon Marketplace integration; the
     // bootstrap must never upsert it.
@@ -116,7 +118,6 @@ export const TARGETS = Object.freeze([
       'CAMPAIGN_ENABLED',
       'CAMPAIGN_ENROLLMENT_ENABLED',
       'DELIVERY_ENABLED',
-      'LIFECYCLE_CRON_ENABLED',
       'GROWTH_OBSERVATION_PROCESSING_ENABLED',
       'GROWTH_INSTALL_DIGEST_ENABLED',
       'GROWTH_INSTALL_RUNTIME_HELLO_ENABLED',

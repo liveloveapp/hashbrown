@@ -687,6 +687,16 @@ test('bootstrap lifecycle env lists CAMPAIGN_ENROLLMENT_START_AT and LIFECYCLE_B
   assert.ok(!target?.requiredEnv.includes('CAMPAIGN_ENROLLMENT_START_AT'));
 });
 
+test('bootstrap puts LIFECYCLE_CRON_ENABLED on www, which serves the cron route', () => {
+  const www = TARGETS.find((t) => t.key === 'www');
+  const lifecycle = TARGETS.find((t) => t.key === 'lifecycle');
+
+  const wwwEnv = www?.env ?? [];
+
+  assert.ok(wwwEnv.includes('LIFECYCLE_CRON_ENABLED'));
+  assert.ok(!lifecycle?.env.includes('LIFECYCLE_CRON_ENABLED'));
+});
+
 test('DEPLOY_TARGETS lists lifecycle as optional with the lifecycle project secret', () => {
   const workflow = readFileSync(
     fileURLToPath(
