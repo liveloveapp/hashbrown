@@ -275,7 +275,7 @@ test('workflow returns {...current, result} and rejects a non-integer LIFECYCLE_
 
 ### Task 7: Vercel adapter, build verification, deploy target, env
 
-> Spike result (Task 0): _to be filled in by the Task 0 implementer: (A) or (B), with the quoted bundle lines and, for (B), the b4run release that carries `B4_DATABASE_URL`._
+> Spike result (Task 0), 2026-10-21: **(A)**. Built with `@b4run/*@0.14.0`, `functions/b4.func/index.mjs` default-exports a Hono app (`app.fetch(request, env)`), and its store factory resolves every setting with `const binding = (env, name) => env?.[name] ?? readRuntimeEnv(name);` (`DATABASE_URL`, `B4_PG_SCHEMA`, `B4_PG_TABLE_PREFIX`, `B4_PG_DRIVER`, `B4_PG_WS_PROXY`), where `env` is `c.env ?? {}` from the catch-all `app.all("*", ...)`. Calling `app.fetch(new Request("http://localhost/readyz"), { DATABASE_URL: "postgres://x:y@127.0.0.1:1/z" })` with `process.env.DATABASE_URL` unset failed with `ECONNREFUSED 127.0.0.1:1` (the env-passed host), while calling it with no env failed with "DATABASE_URL is not set". So the adapter passes `{ DATABASE_URL: process.env.B4_DATABASE_URL, B4_PG_SCHEMA, B4_PG_TABLE_PREFIX }` as the second `fetch` argument; no b4run change is needed and the `0.14.0` pins stand. Caveat: provider keys are seeded from the first request's env only (`seedRuntimeEnvOnce`), and the request must reach `app.fetch` directly (not Hono `mount()`).
 
 **Files:**
 
