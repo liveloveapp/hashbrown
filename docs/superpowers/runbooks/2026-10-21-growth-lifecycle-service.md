@@ -57,7 +57,7 @@ tick fails and nothing is sent.
 | `B4_PG_SCHEMA`, `B4_PG_TABLE_PREFIX`    | lifecycle | Optional b4run table placement                                                                                                                   |
 | `GROWTH_DATABASE_ENVIRONMENT`           | both      | `production`, `preview` or `test`; must equal `DELIVERY_ENVIRONMENT` or the delivery policy throws                                               |
 | `DELIVERY_ENVIRONMENT`                  | lifecycle | `production`, `preview` or `test`                                                                                                                |
-| `GROWTH_PUBLIC_ACTION_ORIGIN`           | lifecycle | Origin of the signed links in mail                                                                                                               |
+| `GROWTH_PUBLIC_ACTION_ORIGIN`           | lifecycle | Origin of the signed links in mail; a bare HTTPS origin, else the tick raises `action_origin_invalid`                                            |
 | `GROWTH_ACTION_TOKEN_ACTIVE_*`          | both      | Signed link keys                                                                                                                                 |
 | `GROWTH_EMAIL_HMAC_ACTIVE_*`            | both      | Email digest keys                                                                                                                                |
 | `RESEND_API_KEY`                        | lifecycle | Sending key; the sender is a fetch-based Resend client, so the `resend` SDK is not in the bundle                                                 |
@@ -331,15 +331,18 @@ included). Look for these causes:
 | Email keyring coverage (hello)        | An email redaction uses a key version missing from `GROWTH_EMAIL_HMAC_*` (`identity_key_unavailable`), or a deleted contact is not fenced (`redaction_initialization_required`) |
 | Environment mismatch (reconciliation) | `DELIVERY_ENVIRONMENT` and `GROWTH_DATABASE_ENVIRONMENT` differ ("Provider lookup requires matching environments and credentials")                                              |
 
-| Alert                           | What to do                                                                                                                                                                                       |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `mailbox_recovery_required`     | Mail depending on reply evidence is paused. The reply poller may have missed replies. Sends and reply reconciliation resume once the matching `mailbox.recovery_completed` activity is recorded. |
-| `observation_projection_failed` | Mail is unaffected. Run `process` by hand (intake runbook) and read the error code.                                                                                                              |
+| Alert                           | What to do                                                                                                                                                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mailbox_recovery_required`     | Mail depending on reply evidence is paused. The reply poller may have missed replies. Sends and reply reconciliation resume once the matching `mailbox.recovery_completed` activity is recorded.                                      |
+| `observation_projection_failed` | Mail is unaffected. Run `process` by hand (intake runbook) and read the error code.                                                                                                                                                   |
+| `action_origin_invalid`         | `GROWTH_PUBLIC_ACTION_ORIGIN` is not a bare HTTPS origin (no path, query, credentials or trailing slash). The tick leases only `reply_reconcile`, so no mail goes out. Fix the variable and redeploy; held jobs run on the next tick. |
+| `message_id_unbound`            | A completed `fulfill` or `send_step` has had no `rfc_message_id` for over 6 hours and its contact is not deleted. Later `send_step`s for that contact wait. Run the query below.                                                      |
 
-A stall that raises no alert: later `send_step` jobs wait while an earlier sent
+A stall behind `message_id_unbound`: later `send_step` jobs wait while an earlier sent
 message for the contact has no `rfc_message_id`. Message-id reconciliation
-retries with backoff up to hourly, forever, and raises nothing. Find stuck
-messages with this read-only query:
+retries with backoff up to hourly, forever. After 6 hours it raises
+`message_id_unbound`; it raises nothing before then. Find stuck messages with
+this read-only query:
 
 ```sql
 select j.id, j.contact_id, j.kind, j.provider_email_id, j.updated_at
@@ -389,7 +392,10 @@ tick's result and the alerts after each one before the next.
 2. `DELIVERY_ENABLED`. Prerequisite: the `brian@hashbrown.dev` mailbox exists
    and receives mail, the Apps Script poller is deployed with
    `GOOGLE_REPLY_HMAC_SECRET`, and one synthetic reply has been seen to stop a
-   test contact.
+   test contact. Also: the origin is a bare HTTPS origin
+   (`GROWTH_PUBLIC_ACTION_ORIGIN`, e.g. `https://hashbrown.dev`, with no
+   trailing slash or path). A bad one does not fail the tick; it raises
+   `action_origin_invalid` and holds back every job except `reply_reconcile`.
 3. `CAMPAIGN_ENROLLMENT_ENABLED` (with `CAMPAIGN_ENROLLMENT_START_AT`)
 4. `CAMPAIGN_ENABLED`
 5. `LIFECYCLE_CRON_ENABLED` (on www)

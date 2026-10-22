@@ -221,3 +221,27 @@ test('nudgeLifecycle invokes a nudge with a 2 s timeout and never throws', async
     vi.unstubAllEnvs();
   }
 });
+
+test('invokeLifecycle accepts exactly the four operator alerts', async () => {
+  const alerts = [
+    'observation_projection_failed',
+    'action_origin_invalid',
+    'message_id_unbound',
+  ];
+  const respond = (operatorAlerts: string[], recoveryPaused = false) =>
+    invokeLifecycle(INPUT, {
+      fetch: (async () =>
+        new Response(state(operatorAlerts, recoveryPaused))) as never,
+      randomUUID: () => THREAD_ID,
+    });
+
+  const accepted = await Promise.all(alerts.map((alert) => respond([alert])));
+  const withRecovery = await respond(['mailbox_recovery_required'], true);
+  const rejected = respond(['fifth_alert']);
+
+  expect(accepted.map((result) => result.operatorAlerts)).toEqual(
+    alerts.map((alert) => [alert]),
+  );
+  expect(withRecovery.operatorAlerts).toEqual(['mailbox_recovery_required']);
+  await expect(rejected).rejects.toThrow('invalid state');
+});

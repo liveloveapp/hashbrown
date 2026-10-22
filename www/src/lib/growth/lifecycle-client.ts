@@ -23,11 +23,16 @@ export interface InvokeLifecycleDependencies {
 
 /** An alert the lifecycle service raises for a human operator. */
 export type LifecycleOperatorAlert =
-  'mailbox_recovery_required' | 'observation_projection_failed';
+  | 'mailbox_recovery_required'
+  | 'observation_projection_failed'
+  | 'action_origin_invalid'
+  | 'message_id_unbound';
 
 const OPERATOR_ALERTS: readonly string[] = [
   'mailbox_recovery_required',
   'observation_projection_failed',
+  'action_origin_invalid',
+  'message_id_unbound',
 ];
 
 /** The validated outcome of one lifecycle dispatch. */

@@ -5,6 +5,7 @@ import {
 } from './campaign/send.ts';
 import { loadEmailHmacKeyring } from './email-keyring.ts';
 import {
+  countUnboundProviderMessages,
   createDatabaseExecutor,
   deferLeasedJob,
   dispatchGrowthLeasedJob,
@@ -21,6 +22,7 @@ import {
   leaseDueJobs,
   materializeCampaignEnrollment,
   nextPacificBusinessMorning,
+  normalizeGrowthPublicActionOrigin,
   pacificCalendarDate,
   processInstallRuntimeActivations,
   processObservations,
@@ -39,6 +41,7 @@ const RECOVERY_RETRY_DELAY_MS = 60_000;
 const HANDLER_ERROR_BASE_DELAY_MS = 60_000;
 const HANDLER_ERROR_MAX_DELAY_MS = 3_600_000;
 const HANDLER_ERROR_MAX_ATTEMPTS = 5;
+const MESSAGE_ID_STALL_MS = 6 * 60 * 60 * 1000;
 
 /**
  * How long a job that failed with a non-deterministic handler error waits
@@ -71,6 +74,13 @@ export const LEASED_KINDS = [
   'digest',
 ] as const;
 
+/**
+ * The only job kind that never reads `GROWTH_PUBLIC_ACTION_ORIGIN`. `fulfill`
+ * and `send_step` build the unsubscribe link; `notify` and `digest` build the
+ * founder links. While the origin is invalid only this kind is leased.
+ */
+export const ORIGIN_FREE_KINDS = ['reply_reconcile'] as const;
+
 /** What one tick may do; the switches come from the lifecycle environment. */
 export interface LifecycleDispatcherInput {
   /** Jobs to lease, 1..25. */
@@ -92,7 +102,10 @@ export interface LifecycleDispatcherInput {
 
 /** The closed set of alerts a tick reports to operators. */
 export type LifecycleOperatorAlert =
-  'mailbox_recovery_required' | 'observation_projection_failed';
+  | 'mailbox_recovery_required'
+  | 'observation_projection_failed'
+  | 'action_origin_invalid'
+  | 'message_id_unbound';
 
 /** What one tick did. */
 export interface LifecycleDispatcherResult {
@@ -140,6 +153,16 @@ export interface LifecycleDispatcherDependencies {
     executor: SqlExecutor,
     input: { jobId: string; leaseToken: string },
   ) => Promise<boolean>;
+  /**
+   * Throws when `GROWTH_PUBLIC_ACTION_ORIGIN` is not a bare HTTPS origin.
+   * Attempted once at the start of every tick.
+   */
+  assertActionOrigin: () => void;
+  /** Counts completed sends that have no Message-ID after the stall age. */
+  countUnboundProviderMessages: (
+    executor: SqlExecutor,
+    input: { now: Date; olderThanMs: number },
+  ) => Promise<number>;
   clearTimeout: typeof globalThis.clearTimeout;
   setTimeout: typeof globalThis.setTimeout;
 }
@@ -183,6 +206,12 @@ export function createLifecycleDispatcherDependencies(
     quarantineJob: failLeasedJob,
     deferJob: deferLeasedJob,
     hasSubmissionAuthorization: submissionAuthorizationRecorded,
+    assertActionOrigin: () => {
+      normalizeGrowthPublicActionOrigin(
+        environment['GROWTH_PUBLIC_ACTION_ORIGIN'] ?? '',
+      );
+    },
+    countUnboundProviderMessages,
     clearTimeout: globalThis.clearTimeout,
     setTimeout: globalThis.setTimeout,
   };
@@ -352,7 +381,10 @@ async function prepareTick(
  * is also on), enrollment
  * materialization (then rescoring each enrolled contact), the Pacific-weekday
  * install digest enqueue, then a lease of up to `batchSize` due jobs that are
- * dispatched one at a time. Each lease lasts 60 s and is renewed every 20 s
+ * dispatched one at a time. If `GROWTH_PUBLIC_ACTION_ORIGIN` is not a bare
+ * HTTPS origin the tick raises `action_origin_invalid` and leases only
+ * {@link ORIGIN_FREE_KINDS}; after leasing, a completed send with no
+ * Message-ID for 6 hours raises `message_id_unbound`. Each lease lasts 60 s and is renewed every 20 s
  * while the tick runs; a failed renewal aborts the loop. A
  * {@link DeterministicLifecycleJobError} quarantines its job
  * (`deterministic_job_poison`); a {@link JobLeaseConflictError} drops the job
@@ -393,6 +425,16 @@ export async function dispatchLifecycleJobs(
       batchSize,
       dependencies,
     );
+    // A bad origin must not fail the tick: reconciliation, projection and
+    // enrollment above already ran, and only jobs that never read the
+    // origin are leased below.
+    let originValid = true;
+    try {
+      dependencies.assertActionOrigin();
+    } catch {
+      originValid = false;
+      operatorAlerts.push('action_origin_invalid');
+    }
     let recoveryPaused = await dependencies.isRecoveryPaused(executor);
     input.signal.throwIfAborted();
     const withAlerts = (
@@ -408,13 +450,21 @@ export async function dispatchLifecycleJobs(
     });
     if (budgetSpent(dependencies.now())) return withAlerts(0, 0);
     const jobs = await dependencies.leaseDueJobs(executor, {
-      kinds: [...LEASED_KINDS],
+      kinds: originValid ? [...LEASED_KINDS] : [...ORIGIN_FREE_KINDS],
       now: dependencies.now(),
       batchSize,
       leaseDurationMs: LEASE_DURATION_MS,
       campaignEnabled: input.campaignEnabled,
       isSendWindow: isCampaignSendWindow,
     });
+    if (
+      (await dependencies.countUnboundProviderMessages(executor, {
+        now: dependencies.now(),
+        olderThanMs: MESSAGE_ID_STALL_MS,
+      })) > 0
+    ) {
+      operatorAlerts.push('message_id_unbound');
+    }
     const leaseFailure = new AbortController();
     let leaseFailureReason: Error | null = null;
     const failLease = (error: Error): void => {

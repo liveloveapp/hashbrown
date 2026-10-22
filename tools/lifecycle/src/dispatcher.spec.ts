@@ -114,6 +114,8 @@ function dependencies(
         leasedJob(request.jobId),
       ),
     hasSubmissionAuthorization: vi.fn().mockResolvedValue(false),
+    assertActionOrigin: vi.fn(),
+    countUnboundProviderMessages: vi.fn().mockResolvedValue(0),
     clearTimeout,
     setTimeout,
     ...overrides,
@@ -752,4 +754,90 @@ test('a handler error after submission authorization leaves the job leased and n
   );
   expect(deps.deferJob).not.toHaveBeenCalled();
   expect(deps.quarantineJob).not.toHaveBeenCalled();
+});
+
+test('an invalid action origin leases only reply_reconcile, keeps enrollment running and alerts action_origin_invalid', async () => {
+  const calls: string[] = [];
+  const job = leasedJob('00000000-0000-4000-8000-000000000001');
+  const deps = dependencies({
+    assertActionOrigin: vi.fn(() => {
+      throw new Error(
+        'Growth public action origin must be a bare HTTPS origin',
+      );
+    }),
+    reconcileMessageIds: vi.fn(async () => {
+      calls.push('reconcile');
+    }),
+    processObservations: vi.fn(async () => {
+      calls.push('projection');
+      return {
+        completed: 0,
+        leaseLost: 0,
+        retryScheduled: 0,
+        failed: 0,
+        disabled: false,
+      };
+    }),
+    processInstallRuntimeActivations: vi.fn(async () => {
+      calls.push('hello');
+      return { approved: 0, ineligible: 0, conflicted: 0, disabled: false };
+    }),
+    materializeCampaignEnrollment: vi.fn(async () => {
+      calls.push('enrollment');
+      return { enrolledContactIds: [], createdJobs: 0 };
+    }),
+    leaseDueJobs: vi.fn().mockResolvedValue([job]),
+  });
+
+  const result = await dispatchLifecycleJobs(
+    input({
+      campaignEnabled: true,
+      campaignEnrollmentEnabled: true,
+      campaignEnrollmentStartAt: new Date('2026-09-01T00:00:00.000Z'),
+      installRuntimeHelloEnabled: true,
+      observationProcessingEnabled: true,
+    }),
+    deps,
+  );
+
+  expect(calls).toEqual(['reconcile', 'projection', 'hello', 'enrollment']);
+  expect(deps.leaseDueJobs).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ kinds: ['reply_reconcile'] }),
+  );
+  expect(result).toEqual({
+    leased: 1,
+    dispatched: 1,
+    recoveryPaused: false,
+    operatorAlerts: ['action_origin_invalid'],
+  });
+});
+
+test('a valid action origin leases every kind and raises no origin alert', async () => {
+  const deps = dependencies();
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(deps.leaseDueJobs).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ kinds: [...LEASED_KINDS] }),
+  );
+  expect(result.operatorAlerts).toEqual([]);
+});
+
+test('unbound provider messages alert message_id_unbound after leasing, and none does not', async () => {
+  const unbound = dependencies({
+    countUnboundProviderMessages: vi.fn().mockResolvedValue(2),
+  });
+  const clean = dependencies();
+
+  const alerted = await dispatchLifecycleJobs(input(), unbound);
+  const quiet = await dispatchLifecycleJobs(input(), clean);
+
+  expect(alerted.operatorAlerts).toEqual(['message_id_unbound']);
+  expect(unbound.countUnboundProviderMessages).toHaveBeenCalledWith(
+    expect.anything(),
+    { now: NOW, olderThanMs: 6 * 60 * 60 * 1000 },
+  );
+  expect(quiet.operatorAlerts).toEqual([]);
 });

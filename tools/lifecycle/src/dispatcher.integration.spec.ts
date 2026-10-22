@@ -109,7 +109,9 @@ function tickDependencies(
   dispatchLeasedJob: LifecycleDispatcherDependencies['dispatchLeasedJob'],
 ): LifecycleDispatcherDependencies {
   return {
-    ...createLifecycleDispatcherDependencies({}),
+    ...createLifecycleDispatcherDependencies({
+      GROWTH_PUBLIC_ACTION_ORIGIN: 'https://preview.hashbrown.test',
+    }),
     createDatabase: () => createDatabaseExecutor(DATABASE_URL),
     reconcileMessageIds: async () => ({ claimed: 0, bound: 0, deferred: 0 }),
     now: () => NOW,
