@@ -1,3 +1,8 @@
+import {
+  approvedDocumentationUrl,
+  runtimeAnnouncementCatalog,
+} from '../announcements/catalog';
+
 /** A version-gated notice returned to runtime collectors after a commit. */
 export interface RuntimeAnnouncement {
   id: string;
@@ -12,8 +17,6 @@ export interface RuntimeAnnouncement {
 type RuntimePackageBatch = {
   events: readonly { properties: Readonly<Record<string, string>> }[];
 };
-
-const catalog: readonly RuntimeAnnouncement[] = [];
 
 /** Only numeric release versions have a defined ordering in this small catalog. */
 function releaseVersion(value: string): number[] | undefined {
@@ -30,36 +33,19 @@ function compareVersion(left: number[], right: number[]): number {
   return 0;
 }
 
-function approvedDocumentationUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return (
-      url.protocol === 'https:' &&
-      url.hostname === 'hashbrown.dev' &&
-      !url.port &&
-      !url.username &&
-      !url.password &&
-      !url.search &&
-      (url.pathname === '/docs' || url.pathname.startsWith('/docs/'))
-    );
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Selects the catalog entries that apply to a committed runtime batch: live,
  * well-formed entries whose package and release range match some event.
  *
  * @param batch - The committed batch.
  * @param now - The time used for expiry.
- * @param entries - The catalog; defaults to the shipped (empty) one.
+ * @param entries - The catalog; defaults to the shared announcements catalog.
  * @returns At most five announcements, projected to their public fields.
  */
 export function selectRuntimeAnnouncements(
   batch: RuntimePackageBatch,
   now: Date,
-  entries: readonly RuntimeAnnouncement[] = catalog,
+  entries: readonly RuntimeAnnouncement[] = runtimeAnnouncementCatalog(),
 ): RuntimeAnnouncement[] {
   if (!Number.isFinite(now.getTime())) return [];
   const selected: RuntimeAnnouncement[] = [];

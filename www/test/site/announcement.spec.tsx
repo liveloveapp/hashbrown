@@ -5,10 +5,13 @@ import { renderToString } from 'react-dom/server';
 import { expect, test, vi } from 'vitest';
 import {
   Announcement,
-  ANNOUNCEMENT_DATE,
   ANNOUNCEMENT_STORAGE_KEY,
   shouldShowAnnouncement,
 } from '../../src/components/site/Announcement';
+import { ANNOUNCEMENTS } from '../../src/lib/announcements/catalog';
+
+const PUBLISHED_AT = ANNOUNCEMENTS[0].publishedAt;
+const ANNOUNCEMENT_DATE = new Date(PUBLISHED_AT);
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -70,6 +73,17 @@ test('stays hidden when storage is unavailable', () => {
   expect(result).toBe(false);
 });
 
+test('dismissal compares against the entry publishedAt', () => {
+  const before = '2026-10-08T17:59:59.000Z';
+  const exactly = new Date(PUBLISHED_AT).toISOString();
+
+  const showBefore = shouldShowAnnouncement(before, new Date(PUBLISHED_AT));
+  const showExactly = shouldShowAnnouncement(exactly, new Date(PUBLISHED_AT));
+
+  expect(showBefore).toBe(true);
+  expect(showExactly).toBe(false);
+});
+
 test('announces the date of the current announcement', () => {
   const date = ANNOUNCEMENT_DATE;
 
@@ -120,9 +134,7 @@ test('dismissing stores the announcement date and hides it', () => {
       ?.click();
   });
 
-  expect(localStorage.getItem(ANNOUNCEMENT_STORAGE_KEY)).toBe(
-    '2026-10-08T18:00:00.000Z',
-  );
+  expect(localStorage.getItem(ANNOUNCEMENT_STORAGE_KEY)).toBe(PUBLISHED_AT);
   expect(link()).toBeNull();
 });
 
