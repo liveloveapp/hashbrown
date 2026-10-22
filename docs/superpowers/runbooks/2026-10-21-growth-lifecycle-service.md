@@ -13,9 +13,9 @@ for connection strings and migrations, and the observation intake runbook
 - It is a b4run app (formerly Dawn). It hosts one route, `/dispatch#workflow`,
   and one run is one tick of the job dispatcher.
 - No model is called. The workflow is plain code.
-- b4run has no cron. The cron lives in `www/vercel.json`
-  (`*/30 * * * *` on `/_/cron/lifecycle`), which calls the service with the
-  shared bearer.
+- b4run has no cron. www's `/_/cron/lifecycle` route calls the service with
+  the shared bearer. This PR ships no schedule for it; see "Scheduling the
+  tick".
 - It adds no PostHog events and sends nothing about a contact to PostHog.
 
 ## Two databases
@@ -49,7 +49,7 @@ tick fails and nothing is sent.
 | `LIFECYCLE_SERVICE_SECRET`              | both      | Shared bearer between www and the service                                                                                        |
 | `LIFECYCLE_URL`                         | www       | HTTPS origin of the lifecycle deployment                                                                                         |
 | `LIFECYCLE_CRON_ENABLED`                | www       | The cron and `nudgeLifecycle` call the service only when exactly `true`                                                          |
-| `CRON_SECRET`                           | www       | Vercel sends it as the cron bearer                                                                                               |
+| `CRON_SECRET`                           | www       | The bearer the scheduler sends to `/_/cron/lifecycle`                                                                            |
 | `GOOGLE_REPLY_HMAC_SECRET`              | www       | Signs mailbox reply events; the reply route answers 503 when unset                                                               |
 | `DATABASE_URL`                          | both      | Growth store (Neon integration)                                                                                                  |
 | `B4_DATABASE_URL`                       | lifecycle | b4run state store (Neon integration)                                                                                             |
@@ -104,7 +104,29 @@ workflow reads the switches, then runs these steps in order:
 Each lease lasts 60 seconds and is renewed every 20 seconds. A job that can
 never succeed is quarantined (`deterministic_job_poison`) and the loop
 continues. Overlapping ticks never share a job, because leasing skips locked
-and live-leased rows. `maxDuration` is 60 seconds.
+and live-leased rows. `maxDuration` is 60 seconds. No job starts once 40
+seconds of the tick have passed (`TICK_JOB_START_BUDGET_MS`): the rest are
+released at once with `tick_budget_exhausted` and the next tick leases them.
+The cron route waits up to 58 seconds for the tick and has `maxDuration` 60.
+
+## Scheduling the tick
+
+The `hashbrown-www` project is on Vercel Hobby, which allows a cron at most
+once a day, so this PR ships no `www/vercel.json` cron. Before
+`LIFECYCLE_CRON_ENABLED=true`, Brian picks one:
+
+- Move the projects to a Pro team and restore
+  `{ "crons": [{ "path": "/_/cron/lifecycle", "schedule": "*/30 * * * *" }] }`
+  in `www/vercel.json`.
+- Add a scheduled GitHub Actions workflow that calls
+  `GET https://hashbrown.dev/_/cron/lifecycle` with
+  `Authorization: Bearer $CRON_SECRET` every 30 minutes.
+
+Until then ticks run by hand: the `curl` against `/threads/<uuid>/runs/wait`
+in "Run a tick by hand", or the cron route with the bearer (it answers 503
+until `LIFECYCLE_CRON_ENABLED` is `true`). The 07:00 Pacific send window needs
+at least one tick inside 07:00 to 08:00 on weekdays, whichever scheduler is
+chosen.
 
 ## Calendar and send window
 
@@ -120,6 +142,9 @@ All dates are `America/Los_Angeles`.
   that starts at 06:59:58 or 07:59:59 obeys the window at the moment of the
   Resend call. There is no override.
 - Weekends are skipped. Holidays are not.
+- Throughput: at a 30-minute cadence two ticks fall inside the 07:00 hour, and
+  the batch of 20 is shared with every job kind, so at most about 40
+  `send_step`s go out per weekday. The overflow slips a business day.
 - The install digest is enqueued once per Pacific weekday with the key
   `install_digest:<YYYY-MM-DD>` and is due at 07:00 Pacific
   (`nextPacificBusinessMorning`), not at the first tick after midnight.
@@ -141,6 +166,8 @@ never approves from a CI install, a redacted install, or an install with two
 different emails. It runs only when both `CAMPAIGN_ENROLLMENT_ENABLED` and
 `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED` are `true`, so a contact is never
 approved before the immutable `CAMPAIGN_ENROLLMENT_START_AT` and stranded.
+Founder approvals from the install digest have no such guard: a digest approval
+made before `CAMPAIGN_ENROLLMENT_START_AT` is never enrolled.
 
 Every send re-authorizes under the privacy lock immediately before Resend.
 Contact deletion nulls `growth_install_runtime_links.contact_id` (the row stays,
@@ -160,6 +187,8 @@ unset. A reply stops the contact and cancels pending steps.
 - The subject fallback has no sender authentication. A forged From with the
   campaign subject can stop that contact. It fails safe, because a stop only
   prevents mail.
+- The BCC seed from design section 8.1 is not implemented yet: the sender
+  sends no `bcc`. It arrives with the mailbox and the poller.
 
 ## Run it locally
 
@@ -170,16 +199,17 @@ npx nx test lifecycle
 npx nx lint lifecycle
 ```
 
-The `nx` targets use a wrapper that is for `check` and `build` only. To run the
-service against the test store with nothing sent, run `b4 dev` from the app
-directory, with the variables in a private env file you do not commit
-(`DATABASE_URL`, `B4_DATABASE_URL`, `LIFECYCLE_SERVICE_SECRET`,
-`GROWTH_DATABASE_ENVIRONMENT=test`, `DELIVERY_ENVIRONMENT=test`,
-`DELIVERY_ENABLED=false`):
+`nx check` and `nx build` go through the b4-cli wrapper (`scripts/b4-cli.mts`), which does not forward `b4 dev`; run `b4 dev` directly:
 
 ```
 cd tools/lifecycle && npx b4 dev --env-file <private env file>
 ```
+
+That runs the service against the test store with nothing sent. Keep the
+variables in a private env file you do not commit (`DATABASE_URL`,
+`B4_DATABASE_URL`, `LIFECYCLE_SERVICE_SECRET`,
+`GROWTH_DATABASE_ENVIRONMENT=test`, `DELIVERY_ENVIRONMENT=test`,
+`DELIVERY_ENABLED=false`).
 
 `GROWTH_INTEGRATION=1 npx nx test-integration lifecycle` runs the integration
 tests; it needs `TEST_DATABASE_URL`.
@@ -248,6 +278,16 @@ Logs from the cron (grep these):
 | `[lifecycle-cron-failed]`        | The invoke failed (network, non-2xx or invalid state); retry next |
 | `[lifecycle-cron-misconfigured]` | `LIFECYCLE_CRON_ENABLED` is not exactly `true` or `false`         |
 
+A `[lifecycle-cron-failed]` on every tick, with no job dispatched, means the
+tick fails before leasing, which holds back all mail (`fulfill` and `notify`
+included). Look for these causes:
+
+| Cause                                 | Check                                                                                                                                                                           |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enrollment start mismatch             | `CAMPAIGN_ENROLLMENT_START_AT` differs from the value recorded in `campaign:v1:configuration` ("is immutable after campaign configuration")                                     |
+| Email keyring coverage (hello)        | An email redaction uses a key version missing from `GROWTH_EMAIL_HMAC_*` (`identity_key_unavailable`), or a deleted contact is not fenced (`redaction_initialization_required`) |
+| Environment mismatch (reconciliation) | `DELIVERY_ENVIRONMENT` and `GROWTH_DATABASE_ENVIRONMENT` differ ("Provider lookup requires matching environments and credentials")                                              |
+
 | Alert                           | What to do                                                                                                                                                                                       |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `mailbox_recovery_required`     | Mail depending on reply evidence is paused. The reply poller may have missed replies. Sends and reply reconciliation resume once the matching `mailbox.recovery_completed` activity is recorded. |
@@ -286,10 +326,13 @@ has a `runtime` block with a `hashbrown.dev/docs` link. The first runtime entry
 
 ## Manual steps still open
 
-- Create the `brian@hashbrown.dev` mailbox. Nothing else here depends on it
-  until the poller is built.
-- Build the Apps Script mailbox poller (not built yet) and set
-  `GOOGLE_REPLY_HMAC_SECRET` on www.
+- Create the `brian@hashbrown.dev` mailbox and build the Apps Script mailbox
+  poller (not built yet), with `GOOGLE_REPLY_HMAC_SECRET` set on www. Both
+  block production delivery: without them replies bounce and are never
+  detected, so a contact who answers step 1 would still get steps 2 and 3.
+  The BCC seed (design section 8.1) arrives with them.
+- Choose the scheduler for the tick ("Scheduling the tick") before
+  `LIFECYCLE_CRON_ENABLED=true`.
 - Set the Resend webhook signing secret (`RESEND_WEBHOOK_SECRET`) on www.
 - Choose and set `CAMPAIGN_ENROLLMENT_START_AT` when enrollment is enabled. It
   cannot be changed once recorded.
@@ -302,9 +345,24 @@ Production switches go on in this order (design section 14, item 7). Check a
 tick's result and the alerts after each one before the next.
 
 1. `GROWTH_OBSERVATION_PROCESSING_ENABLED`
-2. `DELIVERY_ENABLED`
+2. `DELIVERY_ENABLED`. Prerequisite: the `brian@hashbrown.dev` mailbox exists
+   and receives mail, the Apps Script poller is deployed with
+   `GOOGLE_REPLY_HMAC_SECRET`, and one synthetic reply has been seen to stop a
+   test contact.
 3. `CAMPAIGN_ENROLLMENT_ENABLED` (with `CAMPAIGN_ENROLLMENT_START_AT`)
 4. `CAMPAIGN_ENABLED`
 5. `LIFECYCLE_CRON_ENABLED` (on www)
 6. `GROWTH_INSTALL_DIGEST_ENABLED`
 7. `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED`
+
+## Follow-ups
+
+- Thread retention: b4run keeps one thread and its checkpoints per tick and
+  nudge in the B4 store, and nothing deletes them yet. A retention sweep is a
+  follow-up before PR 7.
+- `reply_reconcile` jobs carry `contact_id` null, so contact deletion does not
+  scrub their `in_reply_to`, `references` and `rfc_message_id` payload. A
+  follow-up clears it.
+- Before PR 7, a persistent non-deterministic handler error must stop blocking
+  the batch: catch per job, defer with backoff, and quarantine after N
+  attempts.

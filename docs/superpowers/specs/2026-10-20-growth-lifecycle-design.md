@@ -400,9 +400,11 @@ get identical copy. Anonymous observations never enroll anyone.
 Step 1 at 07:00 Pacific on the next weekday; step 2 three business days after
 step 1 is accepted by Resend; step 3 five business days after step 2. Sends are
 leased only Monday to Friday 07:00 to 08:00 Pacific, batch size 20. Due times live
-in `growth_jobs.available_at`. The cron is `*/30 * * * *` in `www/vercel.json`,
-calling `/_/cron/lifecycle`, which forwards to the lifecycle service with the
-bearer token. The form route nudges lifecycle immediately after its transaction
+in `growth_jobs.available_at`. A `*/30 * * * *` schedule calls
+`/_/cron/lifecycle`, which forwards to the lifecycle service with the bearer
+token. Vercel Hobby allows a cron at most once a day, so PR 5 ships no
+`www/vercel.json` cron; the scheduler is chosen before `LIFECYCLE_CRON_ENABLED`
+(lifecycle runbook, "Scheduling the tick"). The form route nudges lifecycle immediately after its transaction
 commits; the cron is the fallback.
 
 ### 8.4 Get unstuck form
@@ -520,8 +522,8 @@ bodies are never stored.
 One `digest` job per Pacific business day (`install_digest:<YYYY-MM-DD>`) is
 enqueued when at least one non-CI installer with a work-email domain has no
 contact and has not been reported. It is due at 07:00 Pacific
-(`nextPacificBusinessMorning`), not at the first tick after midnight. Plain text to `FOUNDER_NOTIFICATION_EMAIL`, one line per
-identity with package, version, framework if a runtime session linked, highest
+(`nextPacificBusinessMorning`), not at the first tick after midnight. Plain
+text to `FOUNDER_NOTIFICATION_EMAIL`, one line per identity with package, version, framework if a runtime session linked, highest
 milestone reached, score tier, and a seven-day signed approve link. It never
 emails the installer and never creates a contact.
 
@@ -647,6 +649,8 @@ Every switch defaults off and accepts only the exact strings `true` or `false`:
    docs, footer, READMEs, and the console announcement.
 7. **Enable.** Production switches on in the order observation processing,
    delivery, campaign enrollment, campaign, cron, digest, install-runtime hello.
+   Delivery waits until the `brian@hashbrown.dev` mailbox receives mail, the
+   reply poller is deployed, and a synthetic reply has stopped a test contact.
 
 Each PR runs build, test, and lint for every affected project, including the
 ten packages for PR 3.
