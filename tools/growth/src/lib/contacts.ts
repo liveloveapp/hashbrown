@@ -24,6 +24,7 @@ import type {
   FormOutreachApprovedActivityData,
   GrowthEmailClassification,
 } from './models.ts';
+import type { UnstuckFramework } from './forms.ts';
 
 /** Activity kinds that permanently or conditionally stop outreach to a contact. */
 export const CONTACT_HARD_STOP_REASONS = [
@@ -159,16 +160,13 @@ export const GROWTH_SOURCE_FORMS = ['unstuck'] as const;
 /** A form listed in {@link GROWTH_SOURCE_FORMS}. */
 export type GrowthSourceForm = (typeof GROWTH_SOURCE_FORMS)[number];
 
-/** Optional facts the submitter supplied on the form. */
+/** The facts a Get unstuck submitter supplied, recorded on `contact.form_submission`. */
 export interface FormSubmittedFacts {
-  acquisition_session_id?: string;
-  form_kind?: GrowthSourceForm;
-  message?: string;
-  paper?: 'overview' | 'angular' | 'render' | 'chat';
-  pilot_interest?: 'yes' | 'maybe' | 'no';
-  submission_id?: string;
-  team_size?: '1-5' | '6-25' | '26-100' | '100+';
-  timeline?: 'this_quarter' | 'next_quarter' | '6_plus_months' | 'exploring';
+  form_kind: GrowthSourceForm;
+  submission_id: string;
+  framework: UnstuckFramework;
+  /** "Where are you stuck?", trimmed, 20 to 1,000 characters. */
+  message: string;
 }
 
 /** A founder action that restores outreach after permitted prior stops. */
