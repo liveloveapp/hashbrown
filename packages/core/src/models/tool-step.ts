@@ -316,21 +316,66 @@ export function readRawStepIdentity(
   });
 }
 
-/** The incoming step with any identity fields it lacks taken from `raw`. */
-function withRawIdentity(
-  step: ɵToolStepRead,
-  raw: Partial<Pick<ɵToolStep, 'kind' | 'builtin' | 'provider'>>,
-): ɵToolStepRead {
-  return {
-    ...step,
-    ...(raw.kind !== undefined ? { kind: raw.kind } : {}),
-    ...(step.builtin === undefined && raw.builtin !== undefined
-      ? { builtin: raw.builtin }
-      : {}),
-    ...(step.provider === undefined && raw.provider !== undefined
-      ? { provider: raw.provider }
-      : {}),
-  };
+/**
+ * Keeps a provider call's identity on a `b4.step` value about to be stored.
+ * When the previous raw record states `kind: 'provider'`, or the incoming raw
+ * record does and cannot be read as a step (so a merge would discard it), the
+ * stored value keeps `kind: 'provider'`, and gains `builtin` and `provider`
+ * when it lacks them (incoming values first, then previous ones). Once a
+ * call's stored step is a provider step, no later write turns it into a
+ * server step, so the call is never run client-side or replayed. This
+ * outranks B4 parity. Every write of the `b4.step` key in core goes through
+ * it.
+ *
+ * Internal to core: not exported from the package.
+ *
+ * @param previousRaw - The raw `b4.step` value stored before the write.
+ * @param incomingRaw - The raw `b4.step` value the write carried, if any.
+ * @param stored - The value the write would store.
+ * @returns `stored`, or a copy carrying the provider identity.
+ */
+export function withProviderIdentity<T>(
+  previousRaw: unknown,
+  incomingRaw: unknown,
+  stored: T,
+): T {
+  const previous = readRawStepIdentity(previousRaw);
+  const incoming =
+    ɵreadToolStep(incomingRaw) === undefined
+      ? readRawStepIdentity(incomingRaw)
+      : {};
+  if (previous.kind !== 'provider' && incoming.kind !== 'provider') {
+    return stored;
+  }
+  if (!isRecord(stored)) return stored;
+  const identity = compact({
+    kind: 'provider' as const,
+    builtin: str(stored['builtin']) ?? incoming.builtin ?? previous.builtin,
+    provider: str(stored['provider']) ?? incoming.provider ?? previous.provider,
+  });
+  return Object.entries(identity).every(([key, value]) => stored[key] === value)
+    ? stored
+    : ({ ...stored, ...identity } as T);
+}
+
+/** The metadata with its `b4.step` value kept by {@link withProviderIdentity}. */
+function withMetadataProviderIdentity(
+  previous: Metadata | undefined,
+  incomingRaw: unknown,
+  metadata: Metadata | undefined,
+): Metadata | undefined {
+  if (metadata === undefined || !(ɵTOOL_STEP_METADATA_KEY in metadata)) {
+    return metadata;
+  }
+  const stored = metadata[ɵTOOL_STEP_METADATA_KEY];
+  const kept = withProviderIdentity(
+    previous?.[ɵTOOL_STEP_METADATA_KEY],
+    incomingRaw,
+    stored,
+  );
+  return kept === stored
+    ? metadata
+    : { ...metadata, [ɵTOOL_STEP_METADATA_KEY]: kept };
 }
 
 /** The step without `toolCallId`, which its call already names. */
@@ -400,13 +445,14 @@ function withoutRunningFields(step: ɵToolStep): ɵToolStep {
  * A shallow metadata merge, like a plain spread, except that the `b4.step`
  * key goes through {@link ɵmergeToolStep}. An unreadable incoming step keeps
  * the previous step, or its own raw value when there is none; readers ignore
- * a raw value they cannot read. When the previous step is unreadable (for
- * example a provider step with no status) and the incoming step states no
- * kind, the raw previous `kind`, `builtin` and `provider` carry over, so a
- * provider call never turns into a client call. This diverges from B4,
- * which would read the write as a fresh server step. With a `toolCallId`, both steps are read
- * with it, so legacy sources get `<toolCallId>:<index>` ids, and the stored
- * step omits `toolCallId` (the call names it).
+ * a raw value they cannot read. The stored step goes through
+ * {@link withProviderIdentity}: when either raw step states
+ * `kind: 'provider'` (even one with no status), the provider identity is
+ * kept, so a provider call never turns into a client call. This diverges
+ * from B4, which would read a write onto an unreadable step as a fresh
+ * server step. With a `toolCallId`, both steps are
+ * read with it, so legacy sources get `<toolCallId>:<index>` ids, and the
+ * stored step omits `toolCallId` (the call names it).
  *
  * @param previous - Metadata held so far.
  * @param next - Incoming metadata.
@@ -445,17 +491,13 @@ export function ɵmergeStepMetadata(
         heldStep,
         heldStep !== undefined && !statedKind
           ? { ...nextStep, kind: heldStep.kind }
-          : heldStep === undefined && !statedKind
-            ? withRawIdentity(
-                nextStep,
-                readRawStepIdentity(previous?.[ɵTOOL_STEP_METADATA_KEY]),
-              )
-            : nextStep,
+          : nextStep,
         source,
       );
       merged[ɵTOOL_STEP_METADATA_KEY] =
         toolCallId === undefined ? step : withoutToolCallId(step);
     }
+    return withMetadataProviderIdentity(previous, rawNext, merged);
   }
   return merged;
 }
@@ -535,7 +577,10 @@ export function stampStepMetadataStart(
   const stamped = stampStepStart(raw, timestamp);
   return stamped === raw
     ? metadata
-    : { ...metadata, [ɵTOOL_STEP_METADATA_KEY]: stamped };
+    : withMetadataProviderIdentity(metadata, undefined, {
+        ...metadata,
+        [ɵTOOL_STEP_METADATA_KEY]: stamped,
+      });
 }
 
 /**
@@ -554,10 +599,10 @@ export function reopenCancelledStep(
   const raw = metadata?.[ɵTOOL_STEP_METADATA_KEY];
   if (!isRecord(raw) || raw['status'] !== 'cancelled') return metadata;
   const { label: _label, settledAt: _settledAt, ...rest } = raw;
-  return {
+  return withMetadataProviderIdentity(metadata, undefined, {
     ...metadata,
     [ɵTOOL_STEP_METADATA_KEY]: { ...rest, status: 'running' },
-  };
+  });
 }
 
 /**
@@ -620,7 +665,7 @@ export function completeRunningStep(
   }
   const step =
     toolCallId === undefined ? read : withoutToolCallId(read as ɵToolStep);
-  return {
+  return withMetadataProviderIdentity(metadata, undefined, {
     ...metadata,
     [ɵTOOL_STEP_METADATA_KEY]:
       failure === undefined
@@ -635,7 +680,7 @@ export function completeRunningStep(
             },
             'message',
           ),
-  };
+  });
 }
 
 function withoutLabel<T extends Record<string, unknown>>(step: T): T {
@@ -681,10 +726,10 @@ export function seedFrameResultStep(
   if (ɵreadToolStep(metadata?.[ɵTOOL_STEP_METADATA_KEY]) !== undefined) {
     return metadata;
   }
-  return {
+  return withMetadataProviderIdentity(metadata, undefined, {
     ...metadata,
     [ɵTOOL_STEP_METADATA_KEY]: frameResultStep(result.error),
-  };
+  });
 }
 
 /**

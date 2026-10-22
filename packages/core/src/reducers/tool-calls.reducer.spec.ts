@@ -1,6 +1,7 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { apiActions, devActions, internalActions } from '../actions';
 import { Chat } from '../models';
+import { isProviderToolCall } from '../models/tool-step';
 import { s } from '../schema';
 import { createStore } from '../utils/micro-ngrx';
 import { reducers, ɵprepareRootAction } from './index';
@@ -1626,4 +1627,58 @@ test('legacy sources on START metadata get ids from the call id on the draft and
   expect((readRootStep(store, 'c1') as { sources?: unknown })?.sources).toEqual(
     sources,
   );
+});
+
+test('a frame-only RESULT seed keeps an unreadable provider step a provider step on the draft and root paths', () => {
+  // Arrange
+  const store = createRootStore();
+  const provider = { v: 1, kind: 'provider', builtin: 'web_search' };
+  const events: AGUIEvent[] = [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'c1',
+      toolCallName: 'web_search',
+      parentMessageId: 'assistant-1',
+      metadata: { 'b4.step': provider },
+    } as AGUIEvent,
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+    },
+  ];
+
+  // Act
+  const draft = applyDraftEvents([
+    ...events,
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'c1',
+      metadata: { 'b4.step': { v: 1, status: 'running' } },
+    } as AGUIEvent,
+  ]);
+  dispatchEvents(store, [
+    ...events,
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'c1', status: 'running' },
+    } as AGUIEvent,
+  ]);
+  const draftStep = draft.entities['c1']?.metadata?.['b4.step'];
+  const rootStep = readRootStep(store, 'c1');
+
+  // Assert
+  const completed = {
+    v: 1,
+    kind: 'provider',
+    builtin: 'web_search',
+    status: 'completed',
+  };
+  expect(draftStep).toEqual(completed);
+  expect(rootStep).toEqual(completed);
+  expect(isProviderToolCall({ metadata: { 'b4.step': draftStep } })).toBe(true);
+  expect(isProviderToolCall({ metadata: { 'b4.step': rootStep } })).toBe(true);
 });

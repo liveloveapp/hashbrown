@@ -3276,3 +3276,87 @@ test('a cancelled run settles an unreadable provider step as a cancelled provide
     settledAt: 2000,
   });
 });
+
+test('a frame-only RESULT seed keeps an unreadable provider step a provider step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    startTool('c1', {
+      'b4.step': { v: 1, kind: 'provider', builtin: 'web_search' },
+    }),
+    { type: EventType.TOOL_CALL_END, toolCallId: 'c1' } as AGUIEvent,
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'c1',
+      content: 'ok',
+    } as AGUIEvent,
+    stepEvent({ v: 1, toolCallId: 'c1', status: 'running' }),
+  ]);
+  const step = readStep(folded, 'c1');
+
+  // Assert
+  expect(step).toEqual({
+    v: 1,
+    kind: 'provider',
+    builtin: 'web_search',
+    status: 'completed',
+  });
+  expect(isProviderToolCall({ metadata: { 'b4.step': step } })).toBe(true);
+});
+
+test('a step held before START keeps the provider kind of an unreadable START step', () => {
+  // Arrange
+  const active = activeAttempt();
+
+  // Act
+  const folded = applyEvents(active, [
+    stepEvent({ toolCallId: 'c1', status: 'running', label: 'Searching' }),
+    startTool('c1', {
+      'b4.step': { v: 1, kind: 'provider', builtin: 'web_search' },
+    }),
+  ]);
+  const step = readStep(folded, 'c1');
+
+  // Assert
+  expect(step).toMatchObject({
+    v: 1,
+    kind: 'provider',
+    builtin: 'web_search',
+    status: 'running',
+    label: 'Searching',
+  });
+  expect(isProviderToolCall({ metadata: { 'b4.step': step } })).toBe(true);
+});
+
+test('a step held before START of an existing call keeps the provider kind of an unreadable START step', () => {
+  // Arrange
+  const messages = applyCanonicalMessageEvent([], startTool('c1'));
+  const held = {
+    c1: {
+      v: 1 as const,
+      kind: 'server' as const,
+      status: 'running' as const,
+      label: 'Searching',
+    },
+  };
+
+  // Act
+  const next = applyCanonicalMessageEvent(
+    messages,
+    startTool('c1', { 'b4.step': { v: 1, kind: 'provider' } }),
+    { pendingToolSteps: held },
+  );
+  const assistant = next.find((message) => message.role === 'assistant');
+  const tool =
+    assistant?.role === 'assistant' ? assistant.toolCalls?.[0] : undefined;
+
+  // Assert
+  expect(tool?.metadata?.['b4.step']).toMatchObject({
+    kind: 'provider',
+    status: 'running',
+  });
+  expect(isProviderToolCall({ metadata: tool?.metadata })).toBe(true);
+});

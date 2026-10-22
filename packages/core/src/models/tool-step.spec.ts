@@ -751,3 +751,36 @@ test('a status-only write onto an unreadable provider step keeps its provider id
   });
   expect(isProviderToolCall({ metadata: result })).toBe(true);
 });
+
+test('a write stating a server kind never turns a provider step into a server step', () => {
+  const readable = { 'b4.step': step({ kind: 'provider', builtin: 'x' }) };
+  const unreadable = { 'b4.step': { v: 1, kind: 'provider', builtin: 'x' } };
+  const write = { 'b4.step': { v: 1, kind: 'server', status: 'running' } };
+
+  const fromReadable = mergeStepMetadata(readable, write, 'message', 'c1');
+  const fromUnreadable = mergeStepMetadata(unreadable, write, 'message', 'c1');
+
+  expect(fromReadable?.['b4.step']).toMatchObject({
+    kind: 'provider',
+    builtin: 'x',
+  });
+  expect(fromUnreadable?.['b4.step']).toMatchObject({
+    kind: 'provider',
+    builtin: 'x',
+  });
+});
+
+test('a frame-only RESULT seed keeps an unreadable provider identity', () => {
+  const metadata = {
+    'b4.step': { v: 1, kind: 'provider', builtin: 'web_search' },
+  };
+
+  const seeded = seedFrameResultStep(metadata, {});
+
+  expect(seeded?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'provider',
+    builtin: 'web_search',
+    status: 'completed',
+  });
+});

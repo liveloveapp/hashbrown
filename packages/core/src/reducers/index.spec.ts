@@ -6510,3 +6510,42 @@ test('a step after a frame-only RESULT merges onto the completed frame step in t
     'label',
   );
 });
+
+test('a frame-only RESULT seed keeps an unreadable provider step a provider call in the root store', () => {
+  // Arrange
+  const clientTool: Chat.AnyTool = {
+    name: 'web_search',
+    description: 'Searches the web.',
+    schema: s.object('web search input', { q: s.string('query') }),
+    handler: async () => 'client result',
+  };
+  const store = createStepStore([clientTool]);
+
+  // Act
+  dispatchEvents(store, [
+    {
+      type: EventType.TOOL_CALL_START,
+      toolCallId: 'call-1',
+      toolCallName: 'web_search',
+      parentMessageId: 'assistant-1',
+      metadata: { 'b4.step': { v: 1, kind: 'provider' } },
+    } as AGUIEvent,
+    { type: EventType.TOOL_CALL_END, toolCallId: 'call-1' },
+    {
+      type: EventType.TOOL_CALL_RESULT,
+      messageId: 'result-1',
+      toolCallId: 'call-1',
+      content: 'ok',
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'b4.step',
+      value: { v: 1, toolCallId: 'call-1', status: 'running' },
+    },
+  ]);
+  const assistant = readStepAssistant(store);
+
+  // Assert
+  expect(assistant?.serverToolCalls?.[0]?.kind).toBe('provider');
+  expect(assistant?.toolCalls).toEqual([]);
+});

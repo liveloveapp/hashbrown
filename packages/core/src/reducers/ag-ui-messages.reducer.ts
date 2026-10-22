@@ -28,6 +28,7 @@ import {
   settleOpenSteps,
   stampStepMetadataStart,
   stampStepStart,
+  withProviderIdentity,
   ɵmergeStepMetadata,
   ɵmergeToolStep,
   ɵreadToolStep,
@@ -1430,13 +1431,17 @@ function nextPendingToolSteps(
     }
     return Object.freeze({
       ...pending,
-      [id]: stampStepStart(
-        ɵmergeToolStep(
-          readHeldStep(pending, id),
-          withoutToolCallId(event.value, true) as ɵToolStepRead,
-          'call',
+      [id]: withProviderIdentity(
+        readHeldStep(pending, id),
+        undefined,
+        stampStepStart(
+          ɵmergeToolStep(
+            readHeldStep(pending, id),
+            withoutToolCallId(event.value, true) as ɵToolStepRead,
+            'call',
+          ),
+          event.timestamp,
         ),
-        event.timestamp,
       ),
     });
   }
@@ -1544,7 +1549,11 @@ function settleToolSteps(
       ...found.tool,
       metadata: Object.freeze({
         ...found.tool.metadata,
-        [ɵTOOL_STEP_METADATA_KEY]: step,
+        [ɵTOOL_STEP_METADATA_KEY]: withProviderIdentity(
+          found.tool.metadata?.[ɵTOOL_STEP_METADATA_KEY],
+          undefined,
+          step,
+        ),
       }),
     } as CanonicalToolCall);
   }, messages);
