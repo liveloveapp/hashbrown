@@ -5,5 +5,11 @@
   "type": "module",
   "engines": {
     "node": ">=24"
+  },
+  "dependencies": {
+    "@b4run/cli": "0.14.0",
+    "@b4run/postgres-storage": "0.14.0",
+    "@neondatabase/serverless": "0.10.4",
+    "hono": "4.13.5"
   }
 }

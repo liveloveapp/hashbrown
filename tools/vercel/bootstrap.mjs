@@ -120,6 +120,9 @@ export const TARGETS = Object.freeze([
       'GROWTH_OBSERVATION_PROCESSING_ENABLED',
       'GROWTH_INSTALL_DIGEST_ENABLED',
       'GROWTH_INSTALL_RUNTIME_HELLO_ENABLED',
+      // Unset until enrollment is enabled; immutable once recorded.
+      'CAMPAIGN_ENROLLMENT_START_AT',
+      'LIFECYCLE_BATCH_SIZE',
     ],
     // DATABASE_URL and B4_DATABASE_URL are injected by the Neon Marketplace
     // integration; the bootstrap must never upsert them.

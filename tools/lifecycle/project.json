@@ -33,19 +33,26 @@
         "parallel": false,
         "commands": [
           "node --import tsx tools/lifecycle/scripts/b4-cli.mts check",
-          "tsc --noEmit -p tools/lifecycle/tsconfig.json"
+          "tsc --noEmit -p tools/lifecycle/tsconfig.json",
+          "tsc --noEmit -p tools/lifecycle/tsconfig.spec.json"
         ]
       }
     },
     "build": {
       "executor": "nx:run-commands",
       "cache": false,
+      "outputs": ["{projectRoot}/.b4/build", "{projectRoot}/.vercel/output"],
       "options": {
         "parallel": false,
         "commands": [
-          "node --import tsx tools/lifecycle/scripts/b4-cli.mts check",
-          "tsc --noEmit -p tools/lifecycle/tsconfig.json"
+          "tsc --noEmit -p tools/lifecycle/tsconfig.json",
+          "tsc --noEmit -p tools/lifecycle/tsconfig.spec.json",
+          "node --import tsx tools/lifecycle/scripts/b4-cli.mts build --clean",
+          "node --import tsx tools/lifecycle/scripts/verify-vercel-adapter.mts"
         ]
+      },
+      "configurations": {
+        "production": {}
       }
     }
   }
