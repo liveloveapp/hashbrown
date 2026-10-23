@@ -3,10 +3,8 @@ import {
   generateMetadata,
   generateStaticParams as pageParams,
 } from '../../src/app/docs/[sdk]/[...slug]/page';
-import {
-  docsCardContent,
-  generateStaticParams,
-} from '../../src/app/og/docs/[sdk]/[...slug]/route';
+import { docsCardContent } from '../../src/app/og/docs/[sdk]/[...slug]/content';
+import { generateStaticParams } from '../../src/app/og/docs/[sdk]/[...slug]/route';
 
 test('every docs page has a card', () => {
   const pages = pageParams();

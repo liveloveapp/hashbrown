@@ -1,0 +1,25 @@
+Your components. Generated UI.
+
+Expose trusted components. Let the model choose what to render.
+
+This recording uses the real ATC application, scripted model responses, and fixture traffic. It has no narration.
+
+#00:00 The result
+
+A real app renders aircraft cards from a natural-language request.
+
+#00:02 Define the contract
+
+Component props use Skillet schemas; the app owns the implementation.
+
+#00:07 Ask in plain words
+
+The scripted response passes through Hashbrown and renders the registered cards.
+
+#00:18 Wire up the UI
+
+The Angular and React implementations create UI chat with their native APIs.
+
+#00:23 Inspect the result
+
+The completed cards display aircraft data returned by the app tools.

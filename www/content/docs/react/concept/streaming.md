@@ -9,6 +9,9 @@ meta:
 
 Applications leveraging LLMs offer the best user experience by leveraging streaming to show responses to the user as fast as the LLM can generate them. By leveraging streaming, you can improve perceived performance of your application. Hashbrown is architected to make streaming as easy and simple to consume for you, the developer, as possible.
 
+<hb-docs-demo demo="streaming">
+</hb-docs-demo>
+
 ---
 
 ## What is Skillet?
@@ -21,12 +24,6 @@ Skillet is a Zod-like schema language that is LLM-optimized.
 - Skillet tightly integrates streaming
 
 [Read our docs on the Skillet schema language](/docs/react/concept/schema)
-
----
-
-## Demo
-
-<div style="padding:59.64% 0 0 0;position:relative; width:100%;"><iframe src="https://player.vimeo.com/video/1089273215?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown structured output"></iframe></div>
 
 ---
 

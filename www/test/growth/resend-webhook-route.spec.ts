@@ -4,7 +4,7 @@ import {
   ResendWebhookPayloadError,
 } from '@hashbrownai-internal/growth';
 
-import { createResendWebhookRoute } from '../../src/app/%5F/webhooks/resend/route';
+import { createResendWebhookRoute } from '../../src/app/%5F/webhooks/resend/handler';
 
 const HEADERS = {
   'svix-id': 'msg_1',

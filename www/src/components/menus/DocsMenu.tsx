@@ -26,9 +26,11 @@ export function DocsMenu({ sdk, className }: { sdk: Sdk; className?: string }) {
       <SearchButton />
       {docsMenuSections(sdk).map((section) => {
         const List = section.ordered ? 'ol' : 'ul';
+        const Section = section.collapsible ? 'details' : 'div';
+        const Heading = section.collapsible ? 'summary' : 'h2';
         return (
-          <div key={section.title} className={styles.section}>
-            <h2>{section.title}</h2>
+          <Section key={section.title} className={styles.section}>
+            <Heading>{section.title}</Heading>
             <List>
               {section.links.map((link, index) => (
                 <li key={`${index}-${link.href}`}>
@@ -38,7 +40,7 @@ export function DocsMenu({ sdk, className }: { sdk: Sdk; className?: string }) {
                 </li>
               ))}
             </List>
-          </div>
+          </Section>
         );
       })}
       <div className={styles.help}>

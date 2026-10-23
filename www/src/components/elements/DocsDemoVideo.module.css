@@ -1,0 +1,28 @@
+.demo {
+  margin: 16px 0 32px;
+}
+
+.demo video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  background: var(--vanilla-ivory, #faf9f0);
+  box-shadow: 0 0 0 1px rgba(61, 60, 58, 0.12);
+}
+
+.demo video:focus-visible {
+  outline: 2px solid var(--chocolate-brown, #774625);
+  outline-offset: 4px;
+}
+
+.demo figcaption {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.demo .note {
+  color: var(--gray, #5e5c5a);
+  font-size: 13px;
+}

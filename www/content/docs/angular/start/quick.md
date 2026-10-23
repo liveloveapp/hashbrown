@@ -262,13 +262,14 @@ export class App {
 
 ---
 
-## Debugging with Redux Devtools
+## Debugging
 
-Hashbrown streams LLM messages and internal actions to the [redux devtools](https://chromewebstore.google.com/detail/lmhkpmbekcpmknklioeibfkpmmfibljd).
+The ATC example's developer drawer lets you inspect routing decisions, streamed UI JSON, and browser-side tool calls.
 
-<div style="padding:59.64% 0 0 0;position:relative; width:100%;"><iframe src="https://player.vimeo.com/video/1089272009?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown debugging"></iframe></div>
+<hb-docs-demo demo="debugging">
+</hb-docs-demo>
 
-To enable debugging, specify the `debugName` option.
+In your own app, Hashbrown streams messages and internal actions to [Redux DevTools](https://chromewebstore.google.com/detail/lmhkpmbekcpmknklioeibfkpmmfibljd). Specify the `debugName` option to identify the chat instance.
 
 <hb-code-example header="debug">
 
