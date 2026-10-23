@@ -565,7 +565,8 @@ async function dispatchNotifyJob(
   const founderStopToken = dependencies.createActionToken({
     contactId: context.contactId,
     purpose: 'founder_stop',
-    issuedAt: job.createdAt,
+    // Internal submissions are at most once; validity starts when sending.
+    issuedAt: claimedAt,
     eventNonce: job.id,
   });
   // Render (and validate) before the at-most-once claim is consumed.
@@ -649,9 +650,8 @@ async function dispatchInstallDigestJob(
     return 'completed';
   }
   const claimedAt = dependencies.now();
-  const issuedAt = job.createdAt;
   const context = await dependencies.readInstallDigestContext(executor, {
-    since: new Date(issuedAt.getTime() - INSTALL_DIGEST_CONTEXT_WINDOW_MS),
+    since: new Date(job.createdAt.getTime() - INSTALL_DIGEST_CONTEXT_WINDOW_MS),
   });
   const text = renderInstallDigest({
     businessDate,
@@ -661,7 +661,8 @@ async function dispatchInstallDigestJob(
       approveToken: dependencies.createActionToken({
         contactId: candidate.firstInstallObservationId,
         purpose: 'founder_approve_install',
-        issuedAt,
+        // The permanent submission claim prevents reissuing a sent token.
+        issuedAt: claimedAt,
         eventNonce: job.id,
       }),
     })),

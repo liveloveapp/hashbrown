@@ -84,10 +84,25 @@ for (const address of ['BRIAN@HASHBROWN.DEV']) {
   test(`recovers ${address} using the original coverage boundary`, async () => {
     const { executor, calls } = executorWith({
       'inbox-ensure-mailbox': () => ({ rows: [{ address: config.address }] }),
-      'inbox-recovery-start': () => ({ rows: [{ healthy_through: null }] }),
+      'inbox-recovery-start': () => ({
+        rows: [
+          {
+            healthy_through: null,
+            scan_cursor: null,
+            scan_started_at: now,
+            scan_complete: false,
+            covered_head_id: null,
+          },
+        ],
+      }),
+      'inbox-recovery-generation-lock': () => ({
+        rows: [{ address: config.address }],
+      }),
+      'inbox-scan-progress': () => ({ rows: [{ address: config.address }] }),
       'inbox-unbound': () => ({ rows: [] }),
       'inbox-admit': () => ({ rows: [] }),
       'inbox-list-pending': () => ({ rows: [] }),
+      'inbox-list-unforwarded': () => ({ rows: [] }),
       'inbox-recovery-complete': () => ({
         rows: [{ address: config.address }],
       }),
@@ -107,7 +122,7 @@ for (const address of ['BRIAN@HASHBROWN.DEV']) {
       now: () => now,
     });
 
-    expect(result).toEqual({ received: 1, processed: 0 });
+    expect(result).toEqual({ received: 1, processed: 0, complete: true });
     expect(
       calls.find((call) => call.marker === 'inbox-ensure-mailbox')?.params,
     ).toEqual([config.address, config.startedAt]);
@@ -254,7 +269,21 @@ test('recovery skips legacy subdomain mail without admitting or forwarding it', 
   const { executor, calls } = executorWith({
     'inbox-admit': () => ({ rows: [] }),
     'inbox-ensure-mailbox': () => ({ rows: [{ address: config.address }] }),
-    'inbox-recovery-start': () => ({ rows: [{ healthy_through: null }] }),
+    'inbox-recovery-start': () => ({
+      rows: [
+        {
+          healthy_through: null,
+          scan_cursor: null,
+          scan_started_at: now,
+          scan_complete: false,
+          covered_head_id: null,
+        },
+      ],
+    }),
+    'inbox-recovery-generation-lock': () => ({
+      rows: [{ address: config.address }],
+    }),
+    'inbox-scan-progress': () => ({ rows: [{ address: config.address }] }),
     'inbox-unbound': () => ({ rows: [] }),
     'inbox-list-pending': () => ({ rows: [] }),
     'inbox-list-unforwarded': () => ({ rows: [] }),
@@ -277,7 +306,7 @@ test('recovery skips legacy subdomain mail without admitting or forwarding it', 
     now: () => now,
   });
 
-  expect(result).toEqual({ received: 0, processed: 0 });
+  expect(result).toEqual({ received: 0, processed: 0, complete: true });
   expect(calls.some((call) => call.marker === 'inbox-admit')).toBe(false);
   expect(forwardReceipt).not.toHaveBeenCalled();
 });

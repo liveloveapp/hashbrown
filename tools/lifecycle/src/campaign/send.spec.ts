@@ -4,6 +4,8 @@ import {
   createGrowthActionToken,
   createUnsubscribeActionUrl,
   createUnsubscribeActionUrlForJob,
+  FOUNDER_APPROVE_INSTALL_TOKEN_MAX_AGE_SECONDS,
+  FOUNDER_STOP_TOKEN_MAX_AGE_SECONDS,
   type GrowthJob,
   type GrowthLifecycleJobContext,
   JobLeaseConflictError,
@@ -12,6 +14,7 @@ import {
   type RecipientSendResult,
   type SqlExecutor,
   unsubscribeActionUrlValue,
+  verifyGrowthActionToken,
 } from '../growth.ts';
 import { DeterministicLifecycleJobError } from '../job-errors.ts';
 import {
@@ -935,10 +938,17 @@ test('internal digest reuses known ledger acceptance without a provider submissi
 });
 
 for (const kind of ['notify', 'digest'] as const) {
-  test(`${kind} tokens retain the job creation time while database claims use the current clock`, async () => {
-    const later = new Date(NOW.getTime() + 60000);
+  test(`${kind} action tokens start their lifetime at delayed first submission`, async () => {
+    const delayHours = kind === 'notify' ? 25 : 8 * 24;
+    const submittedAt = new Date(NOW.getTime() + delayHours * 60 * 60 * 1000);
     const subject = kind === 'digest' ? digestJob() : job('notify');
-    const deps = dependencies({ now: () => later });
+    const deps = dependencies({ now: () => submittedAt });
+    const purpose =
+      kind === 'notify' ? 'founder_stop' : 'founder_approve_install';
+    const maxAgeSeconds =
+      kind === 'notify'
+        ? FOUNDER_STOP_TOKEN_MAX_AGE_SECONDS
+        : FOUNDER_APPROVE_INSTALL_TOKEN_MAX_AGE_SECONDS;
 
     await dispatchLifecycleAppOwnedJob(
       transactionalExecutor(),
@@ -946,13 +956,36 @@ for (const kind of ['notify', 'digest'] as const) {
       {},
       deps,
     );
+    const request = vi.mocked(deps.sendInternalNotification).mock.calls[0]?.[1];
+    const token = request?.text.match(
+      /\?token=(g1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)/u,
+    )?.[1];
+    const verified = verifyGrowthActionToken(token ?? '', {
+      expectedPurpose: purpose,
+      keyring: { active: TOKEN_KEY },
+      now: submittedAt,
+      maxAgeSeconds,
+    });
+    const expired = verifyGrowthActionToken(token ?? '', {
+      expectedPurpose: purpose,
+      keyring: { active: TOKEN_KEY },
+      now: new Date(submittedAt.getTime() + (maxAgeSeconds + 1) * 1000),
+      maxAgeSeconds,
+    });
 
-    expect(deps.createActionToken).toHaveBeenCalledWith(
-      expect.objectContaining({ issuedAt: subject.createdAt }),
-    );
+    expect(verified).toMatchObject({
+      contactId:
+        kind === 'notify'
+          ? CONTACT_ID
+          : DIGEST_CANDIDATE.firstInstallObservationId,
+      purpose,
+      issuedAt: submittedAt,
+      eventNonce: JOB_ID,
+    });
+    expect(expired).toBeNull();
     expect(deps.claimInternalNotification).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ now: later }),
+      expect.objectContaining({ now: submittedAt }),
     );
     if (kind === 'digest') {
       expect(deps.readInstallDigestContext).toHaveBeenCalledWith(
@@ -961,4 +994,43 @@ for (const kind of ['notify', 'digest'] as const) {
       );
     }
   });
+
+  for (const outcome of ['accepted', 'unknown'] as const) {
+    test(`${kind} never resubmits a consumed claim after ${outcome}`, async () => {
+      const subject = kind === 'digest' ? digestJob() : job('notify');
+      const deps = dependencies({
+        claimInternalNotification: vi
+          .fn()
+          .mockResolvedValueOnce('claimed')
+          .mockResolvedValue('already_claimed'),
+        sendInternalNotification: vi.fn().mockResolvedValue({ outcome }),
+        completeJob: vi
+          .fn()
+          .mockRejectedValue(new Error('settlement interrupted')),
+      });
+      const executor = transactionalExecutor();
+
+      const first = dispatchLifecycleAppOwnedJob(executor, subject, {}, deps);
+      if (outcome === 'accepted') {
+        await expect(first).rejects.toThrow('settlement interrupted');
+      } else {
+        expect(await first).toBe('failed');
+      }
+      deps.now = () => new Date(NOW.getTime() + 8 * 86400000);
+      const retried = await dispatchLifecycleAppOwnedJob(
+        executor,
+        subject,
+        {},
+        deps,
+      );
+
+      expect(retried).toBe('failed');
+      expect(deps.claimInternalNotification).toHaveBeenCalledTimes(2);
+      expect(deps.sendInternalNotification).toHaveBeenCalledOnce();
+      expect(deps.markInternalNotificationUnknown).toHaveBeenLastCalledWith(
+        executor,
+        expect.objectContaining({ jobId: JOB_ID, kind }),
+      );
+    });
+  }
 }

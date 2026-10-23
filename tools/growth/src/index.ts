@@ -35,3 +35,7 @@ export * from './lib/observability/replay';
 export * from './lib/observability/redaction';
 export * from './lib/observability/queries';
 export * from './lib/observability/journey-report';
+
+export * from './lib/receiving-operations';
+
+export * from './lib/health-alerts';

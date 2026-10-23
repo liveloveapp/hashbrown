@@ -224,3 +224,23 @@ test('outbound binding refuses a conflicting existing message ID', async () => {
     bindOutboundMessageId(executor, 'outgoing-1', '<sent@resend.com>'),
   ).rejects.toThrow('binding');
 });
+
+test('a stale recovery generation cannot settle a fetched reply', async () => {
+  const { executor, calls } = executorWith({
+    'inbox-recovery-generation-lock': () => ({ rows: [] }),
+  });
+  const stopContact = vi.fn();
+
+  await expect(
+    processInboxReceipt(executor, message.id, config, {
+      getReceived: async () => message,
+      stopContact,
+      recoveryGeneration: 'old-generation',
+    }),
+  ).rejects.toThrow('superseded');
+
+  expect(stopContact).not.toHaveBeenCalled();
+  expect(calls.some((call) => call.marker === 'inbox-receipt-lock')).toBe(
+    false,
+  );
+});

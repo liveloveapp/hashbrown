@@ -189,3 +189,108 @@ for (const address of ['brian@hashbrown.dev']) {
     }
   });
 }
+
+test('unattributed parsed replies fence leases and final submission even with recent coverage', async () => {
+  const db = createDatabaseExecutor(process.env['TEST_DATABASE_URL']);
+  const contactIds = new Set<string>();
+  const config = {
+    enabled: true as const,
+    address: 'brian@replies.hashbrown.dev',
+    startedAt: new Date('2026-10-22T00:00:00Z'),
+  };
+  const now = new Date('2026-10-22T01:00:00Z');
+  const receiptId = randomUUID();
+  let ownsMailbox = false;
+  try {
+    await applyMigrations({
+      directory: defaultMigrationsDirectory(),
+      executor: db,
+    });
+    expect(
+      (await db.execute('select address from growth_reply_mailboxes')).rows,
+    ).toEqual([]);
+    ownsMailbox = true;
+    const contact = await createEnrolledContact(
+      db,
+      contactIds,
+      config.startedAt,
+    );
+    const jobId = await insertSendStep(db, contact, {
+      status: 'pending',
+      availableAt: now,
+    });
+    await admitInboxEvent(
+      db,
+      {
+        type: 'email.received',
+        created_at: now.toISOString(),
+        data: { email_id: receiptId, to: ['brian@hashbrown.dev'] },
+      },
+      config,
+    );
+    expect(
+      await processInboxReceipt(db, receiptId, config, {
+        getReceived: async () => ({
+          id: receiptId,
+          to: ['brian@hashbrown.dev'],
+          from: 'unknown@example.com',
+          created_at: now.toISOString(),
+          headers: { 'In-Reply-To': '<unbound@resend.com>' },
+        }),
+        stopContact,
+      }),
+    ).toBe('pending');
+    const receipt = await db.execute(
+      'select contact_id, reference_ids from growth_reply_receipts where id = $1',
+      [receiptId],
+    );
+    expect(receipt.rows[0]).toMatchObject({
+      contact_id: null,
+      reference_ids: ['<unbound@resend.com>'],
+    });
+    await db.execute('update growth_reply_mailboxes set healthy_through = $1', [
+      now,
+    ]);
+
+    const leased = await leaseDueJobs(db, {
+      kinds: ['send_step'],
+      now,
+      batchSize: 100,
+      leaseDurationMs: 60000,
+      campaignEnabled: true,
+    });
+    const leaseToken = randomUUID();
+    await db.execute(
+      "update growth_jobs set status = 'leased', lease_token = $2, lease_until = $3 where id = $1",
+      [jobId, leaseToken, new Date(now.getTime() + 60000)],
+    );
+    const authorization = await authorizeLeasedJobForSubmission(db, {
+      jobId,
+      leaseToken,
+      now,
+      campaignEnabled: true,
+      deliveryEnabled: true,
+    });
+
+    expect(leased.some((job) => job.id === jobId)).toBe(false);
+    expect(authorization).toMatchObject({
+      authorized: false,
+      reason: 'mailbox_recovery_required',
+    });
+  } finally {
+    if (ownsMailbox) {
+      await db.execute(
+        'delete from growth_reply_receipts where recipient = $1',
+        [config.address],
+      );
+      await db.execute(
+        'delete from growth_reply_mailboxes where address = $1',
+        [config.address],
+      );
+    }
+    for (const contactId of contactIds)
+      await cleanContactObservationFences(db, contactId);
+    await deleteCreatedContacts(db, contactIds);
+    await db.close?.();
+  }
+});

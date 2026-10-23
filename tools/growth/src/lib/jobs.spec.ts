@@ -58,7 +58,7 @@ test('canary allowlist rejects before a submission authorization is recorded', a
 });
 
 test('final authorization blocks a campaign when mailbox recovery is unhealthy', async () => {
-  const { executor } = executorWith({
+  const { executor, calls } = executorWith({
     'lock-contact-for-send': () => ({
       rows: [sendContactRow({ mailbox_recovery_required: true })],
     }),
@@ -77,6 +77,9 @@ test('final authorization blocks a campaign when mailbox recovery is unhealthy',
     authorized: false,
     reason: 'mailbox_recovery_required',
   });
+  expect(
+    calls.find((call) => call.marker === 'lock-contact-for-send')?.sql,
+  ).toContain('r.reference_ids is null or r.contact_id is null');
 });
 
 test('final authorization blocks contact follow-ups while reply binding is pending', async () => {
@@ -277,6 +280,9 @@ test('leaseDueJobs leases only due pending or expired jobs and increments attemp
   expect(first?.sql).toContain("j.status = 'pending'");
   expect(first?.sql).toContain("j.status = 'leased' and j.lease_until <= $2");
   expect(first?.sql).toContain('attempts = j.attempts + 1');
+  expect(first?.sql).toContain(
+    'r.reference_ids is null or r.contact_id is null or r.contact_id = j.contact_id',
+  );
   expect(first?.sql).toContain('for update skip locked');
   expect(first?.sql).not.toMatch(/form\.abuse_assessed/u);
   await expect(
