@@ -472,6 +472,21 @@ PR 7 plan: `docs/superpowers/plans/2026-10-22-growth-enable.md`.
   - `GROWTH_OBSERVATION_PROCESSING_ENABLED=true`: lifecycle redeployed, the tick came back clean with no alerts.
   - `DELIVERY_ENABLED=true`: lifecycle redeployed, the tick came back clean with no alerts; there was nothing waiting to send.
   - The synthetic reply moved to Stage E as a real reply canary, because inbound replies are fetched from Resend by id.
+- **2026-10-23, Stage C:**
+  - `CAMPAIGN_ENROLLMENT_START_AT=2026-10-23T02:34:13.869Z`, Brian's choice of "now". It was recorded as `campaign:v1:configuration` at 02:34:33Z and can no longer change.
+  - `CAMPAIGN_ENROLLMENT_ENABLED=true` and `CAMPAIGN_ENABLED=true` each got a production-only entry; preview stays `false`.
+  - Lifecycle was redeployed after each switch and each tick came back clean with no alerts. No contacts existed, so nobody was enrolled.
+- **2026-10-23, Stage D:**
+  - `LIFECYCLE_CRON_ENABLED=true` was set on www (production only). The stray lifecycle entry (`false`, never read) was deleted.
+  - www was redeployed. `GET /_/cron/lifecycle` with `CRON_SECRET` answered 200 `{ accepted: true, operator_alerts: [] }`.
+- **2026-10-23, Stage E:**
+  - `GROWTH_INSTALL_DIGEST_ENABLED=true` and `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED=true` each got a production-only entry; preview stays `false`. Lifecycle was redeployed after each and each tick came back clean with no alerts.
+  - `GROWTH_UNSTUCK_FORM_ENABLED=true` was set on www (production only) and www was redeployed. `/unstuck` renders the form, and the route no longer answers 503.
+  - Reply canary, 02:40Z: a submission from Brian's address created an approved contact, the consent record and abuse assessment, and enrolled the contact in campaign v1. That queued `fulfill`, `notify` and three `send_step` jobs.
+  - `fulfill` and `notify` first failed with `handler_error`. The cause was `RESEND_SENDER_VERIFIED=false` in production although `hashbrown.dev` is verified for sending (DKIM and SPF verified in Resend). It was set to `true` (production only) and lifecycle redeployed.
+  - On the next tick, `fulfill` completed and the acknowledgement was submitted to Resend.
+  - `notify` failed closed as `internal_notification_outcome_unknown`. Its first attempt recorded `internal_notification.submission_started` before the sender check threw, so the retry could not rule out a send. Nothing reached Resend, but per "Retry and recovery" the job was left failed rather than reset.
+  - Reply canary passed, 03:18Z. The acknowledgement shows `delivered` with its RFC Message-ID recorded. Brian's reply was admitted, matched to his contact, forwarded, and recorded as `campaign.reply_received` (receipt `stopped`). All three `send_step` jobs were cancelled with `contact_stopped`. The mailbox stayed healthy.
 
 ## Follow-ups
 
