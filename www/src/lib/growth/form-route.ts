@@ -13,11 +13,8 @@ export const UNSTUCK_FORM_POLICY_VERSION = 'unstuck_v1.2026-10-22';
 export const UNSTUCK_FORM_DISCLOSURE =
   'By sending, you agree Brian may follow up by email about your request, including a short three-email note about building with Hashbrown. Unsubscribe anytime.';
 
-/**
- * Where visitors can write when the form is off or fails. Temporary until
- * `brian@hashbrown.dev` exists.
- */
-export const UNSTUCK_FALLBACK_ADDRESS = 'brian@liveloveapp.com';
+/** Where visitors can write when the form is off or fails. */
+export const UNSTUCK_FALLBACK_ADDRESS = 'brian@hashbrown.dev';
 
 /**
  * Whether the Get unstuck form accepts submissions. Only the exact value

@@ -102,9 +102,8 @@ answer.
 
 `GROWTH_UNSTUCK_FORM_ENABLED` (www, exact `true`/`false`, default off): while
 off the route answers 503 before reading the body and `/unstuck` renders the
-fallback address (`brian@liveloveapp.com`, the `UNSTUCK_FALLBACK_ADDRESS`
-constant in `www/src/lib/growth/form-route.ts`, temporary until
-`brian@hashbrown.dev` exists) with no form. The nudge and the cron both need
+fallback address (`brian@hashbrown.dev`, the `UNSTUCK_FALLBACK_ADDRESS`
+constant in `www/src/lib/growth/form-route.ts`) with no form. The nudge and the cron both need
 `LIFECYCLE_CRON_ENABLED=true` on www: with it off, neither calls the service,
 and accepted submissions wait in `growth_jobs` until it is on. They are delayed,
 not lost.
@@ -456,6 +455,23 @@ tick's result and the alerts after each one before the next.
    and campaign enrollment so the first submission is acknowledged and
    enrolled, and it needs `LIFECYCLE_CRON_ENABLED` (step 5): the nudge and
    the cron both need it.
+
+## Enable log
+
+PR 7 plan: `docs/superpowers/plans/2026-10-22-growth-enable.md`.
+
+- **2026-10-22, Stage A (readiness, read-only):**
+  - Root receiving: `inbox-setup` reports `ready`, and the public MX for `hashbrown.dev` resolves to the Resend receiving host.
+  - Inbox recovery answered 200 with nothing received. The mailbox row is enabled, has no recovery in progress, and was healthy 35 s earlier; there are no open recoveries.
+  - A tick by hand returned `leased: 0`, `dispatched: 0` and no operator alerts, so the action origin is valid. Its thread was deleted (204).
+  - Both projects run main at f3f332ad, which includes #706.
+  - The production store holds no contacts, observations or jobs yet.
+  - `LIFECYCLE_CRON_ENABLED` is set on lifecycle, which never reads it; it is missing on www, so no scheduled tick runs (fixed in Stage D).
+- **2026-10-22, Stage B:**
+  - The two switch entries covered production and preview at once. Each was narrowed to preview, where it stays `false`, and a production-only entry was added with `true`.
+  - `GROWTH_OBSERVATION_PROCESSING_ENABLED=true`: lifecycle redeployed, the tick came back clean with no alerts.
+  - `DELIVERY_ENABLED=true`: lifecycle redeployed, the tick came back clean with no alerts; there was nothing waiting to send.
+  - The synthetic reply moved to Stage E as a real reply canary, because inbound replies are fetched from Resend by id.
 
 ## Follow-ups
 
