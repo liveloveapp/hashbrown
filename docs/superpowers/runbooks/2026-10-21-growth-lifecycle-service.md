@@ -467,6 +467,11 @@ PR 7 plan: `docs/superpowers/plans/2026-10-22-growth-enable.md`.
   - Both projects run main at f3f332ad, which includes #706.
   - The production store holds no contacts, observations or jobs yet.
   - `LIFECYCLE_CRON_ENABLED` is set on lifecycle, which never reads it; it is missing on www, so no scheduled tick runs (fixed in Stage D).
+- **2026-10-22, Stage B:**
+  - The two switch entries covered production and preview at once. Each was narrowed to preview, where it stays `false`, and a production-only entry was added with `true`.
+  - `GROWTH_OBSERVATION_PROCESSING_ENABLED=true`: lifecycle redeployed, the tick came back clean with no alerts.
+  - `DELIVERY_ENABLED=true`: lifecycle redeployed, the tick came back clean with no alerts; there was nothing waiting to send.
+  - The synthetic reply moved to Stage E as a real reply canary, because inbound replies are fetched from Resend by id.
 
 ## Follow-ups
 

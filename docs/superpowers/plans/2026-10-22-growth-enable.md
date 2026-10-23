@@ -11,7 +11,7 @@
 - Lifecycle has every switch present; www has `RESEND_WEBHOOK_SECRET`, `RESEND_INBOUND_WEBHOOK_SECRET` and the inbox-pilot variables, so the mailbox and webhook manual steps look done.
 - `LIFECYCLE_CRON_ENABLED` exists on **lifecycle** but not on **www**, where the cron route and the nudge read it. Today no tick runs in production.
 - `GROWTH_UNSTUCK_FORM_ENABLED` is unset on www (off). `CAMPAIGN_ENROLLMENT_START_AT` is unset (correct while enrollment is off).
-- Spec §14 item 7's delivery gate ("mailbox receives mail, the reply poller is deployed, a synthetic reply stopped a test contact") predates #698/#702: Gmail polling is retired and the root-receiving runbook records that Brian waived the live-email canary. Stage B below replaces the gate with a signed synthetic reply against a test contact.
+- Spec §14 item 7's delivery gate ("mailbox receives mail, the reply poller is deployed, a synthetic reply stopped a test contact") predates #698/#702: Gmail polling is retired and the root-receiving runbook records that Brian waived the live-email canary. Stage E replaces the gate with a real reply canary (see Stage B, step 3).
 
 ## Global Constraints
 
@@ -39,7 +39,7 @@
 
 1. `GROWTH_OBSERVATION_PROCESSING_ENABLED=true` → tick, no `observation_projection_failed`.
 2. `DELIVERY_ENABLED=true` → tick. Founder notifications that were waiting now go to `FOUNDER_NOTIFICATION_EMAIL`. Brian confirms one arrived.
-3. Synthetic reply: a fixture contact (Brian's own address, approved), a signed synthetic inbound event referencing its send, and a check that the contact gains a reply stop. Fixture rows are deleted afterwards.
+3. ~~Synthetic reply~~ moved to Stage E: the inbound webhook fetches each reply from Resend by id (`/emails/receiving/<id>`), so a synthetic signed event cannot be admitted in production. Instead, Stage E step 3 is the canary: Brian submits the form, receives the acknowledgement, replies to it, and the contact must gain a reply stop. No other contact exists to receive mail before then.
 
 ## Stage C: enrollment and campaign (approval 2, needs the start time)
 
@@ -54,7 +54,7 @@
 
 1. `GROWTH_INSTALL_DIGEST_ENABLED=true` → the next weekday window sends Brian the digest.
 2. `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED=true` → tick, hello approvals recorded.
-3. `GROWTH_UNSTUCK_FORM_ENABLED=true` on www → redeploy; a real submission from Brian is acknowledged, notifies Brian, and enrolls with reason `unstuck_form`.
+3. `GROWTH_UNSTUCK_FORM_ENABLED=true` on www → redeploy; a real submission from Brian is acknowledged, notifies Brian, and enrolls with reason `unstuck_form`. Brian then replies to the acknowledgement; the reply must be admitted, forwarded, and record a reply stop on his contact (the reply canary).
 
 ## After
 
