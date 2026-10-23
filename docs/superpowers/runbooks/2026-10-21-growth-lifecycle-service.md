@@ -482,7 +482,11 @@ PR 7 plan: `docs/superpowers/plans/2026-10-22-growth-enable.md`.
 - **2026-10-23, Stage E:**
   - `GROWTH_INSTALL_DIGEST_ENABLED=true` and `GROWTH_INSTALL_RUNTIME_HELLO_ENABLED=true` each got a production-only entry; preview stays `false`. Lifecycle was redeployed after each and each tick came back clean with no alerts.
   - `GROWTH_UNSTUCK_FORM_ENABLED=true` was set on www (production only) and www was redeployed. `/unstuck` renders the form, and the route no longer answers 503.
-  - Reply canary: pending.
+  - Reply canary, 02:40Z: a submission from Brian's address created an approved contact, the consent record and abuse assessment, and enrolled the contact in campaign v1. That queued `fulfill`, `notify` and three `send_step` jobs.
+  - `fulfill` and `notify` first failed with `handler_error`. The cause was `RESEND_SENDER_VERIFIED=false` in production although `hashbrown.dev` is verified for sending (DKIM and SPF verified in Resend). It was set to `true` (production only) and lifecycle redeployed.
+  - On the next tick, `fulfill` completed and the acknowledgement was submitted to Resend.
+  - `notify` failed closed as `internal_notification_outcome_unknown`. Its first attempt recorded `internal_notification.submission_started` before the sender check threw, so the retry could not rule out a send. Nothing reached Resend, but per "Retry and recovery" the job was left failed rather than reset.
+  - Pending: Brian's reply to the acknowledgement and the reply stop it should record.
 
 ## Follow-ups
 
