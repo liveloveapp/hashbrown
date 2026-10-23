@@ -16,6 +16,7 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
+      "@b4run/sdk/testing": ["node_modules/@b4run/sdk/dist/testing/index.d.ts"],
       "@hashbrownai-internal/growth": ["tools/growth/src/index.ts"],
       "@atc/server": ["examples/atc/server/src/index.ts"],
       "@atc/shared": ["examples/atc/shared/src/index.ts"],

@@ -21,6 +21,7 @@ import {
   isProviderToolCall,
   reopenCancelledStep,
   stampStepMetadataStart,
+  ɵmergeStepMetadata,
 } from '../models/tool-step';
 import { s } from '../schema';
 import { JsonValue } from '../utils';
@@ -609,7 +610,12 @@ function startToolCall(
     }
 
     const metadata = stampStepMetadataStart(
-      mergeClonedMetadata(reopened, event.metadata),
+      ɵmergeStepMetadata(
+        reopened,
+        cloneMetadata(event.metadata),
+        'call',
+        event.toolCallId,
+      ),
       event.timestamp,
     );
 
@@ -631,7 +637,12 @@ function startToolCall(
   }
 
   const metadata = stampStepMetadataStart(
-    mergeClonedMetadata(undefined, event.metadata),
+    ɵmergeStepMetadata(
+      undefined,
+      cloneMetadata(event.metadata),
+      'call',
+      event.toolCallId,
+    ),
     event.timestamp,
   );
   const toolCalls = [
@@ -684,7 +695,12 @@ function appendToolArguments(
   }
 
   const argumentsString = toolCall.arguments + event.delta;
-  const metadata = mergeMetadata(toolCall.metadata, incomingMetadata);
+  const metadata = ɵmergeStepMetadata(
+    toolCall.metadata,
+    incomingMetadata,
+    'call',
+    event.toolCallId,
+  );
   const tool = isProviderToolCall({ metadata })
     ? undefined
     : state.configSnapshot?.toolsByName[toolCall.name];
