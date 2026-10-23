@@ -107,8 +107,8 @@ enabling production switches (PR 7).
 
 ## Receiving recovery and operator review
 
-Apply `0007_growth_inbox_recovery.sql` before deploying the resumable recovery
-worker. A scan records its original start, cursor, and newest message atomically
+Apply `0007_growth_inbox_recovery.sql` and `0008_growth_health_alerts.sql` before
+deploying the resumable recovery worker and alert-enabled cron. A scan records its original start, cursor, and newest message atomically
 with receipt admission. Each invocation processes at most 100 items per phase
 and uses a 240-second work budget. An interrupted or superseded invocation keeps
 coverage blocked; the next invocation resumes the saved scan. Recovery never
@@ -139,9 +139,21 @@ receipt, and does not mark the mailbox healthy or bypass forwarding/deletion.
 Approval preserves prior stops by default; `--allow-prior-stop KIND` explicitly
 names a permitted prior stop to supersede. Deletion can never be superseded.
 
-The health command is an operator/monitor integration boundary. Automatic alert
-delivery is not configured by these changes: an existing authorized scheduler
-must run it and route meaningful unhealthy/recovered transitions to the existing
-operator destination. Keep campaigns paused until deployed recovery reports full
-coverage and all diagnostic codes clear; deploying code alone is not approval to
-resume sends.
+Receiving recovery cron sends health transitions to `brian@cacheplane.ai` when
+`GROWTH_HEALTH_ALERTS_ENABLED=true`,
+`GROWTH_HEALTH_ALERT_RECIPIENT=brian@cacheplane.ai`, and both
+`DELIVERY_ENVIRONMENT` and `GROWTH_DATABASE_ENVIRONMENT` are `production`.
+Set these only on the production website project; previews remain disabled.
+The existing server-only sending key submits the messages. Initial healthy
+state and unchanged canonical codes are silent; unhealthy changes and recovery
+are persisted in a durable outbox. Each cron invocation submits at most one
+pending alert, using an immutable payload and the existing 23-hour provider
+idempotency horizon. Expired/conflicting attempts retain terminal evidence and
+do not starve later recovery notifications. Alerts contain only closed codes
+and a timestamp, with product/environment tags. No email bodies are stored.
+
+Recovery and health-read failures produce explicit failure alerts and keep the
+cron response unsuccessful. Database outages can also prevent outbox writes;
+retain deployment monitoring for failed cron invocations. Keep campaigns paused
+until deployed recovery reports full coverage and all diagnostic codes clear;
+deploying code alone is not approval to resume sends.
