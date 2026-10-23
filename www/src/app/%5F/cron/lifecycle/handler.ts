@@ -6,6 +6,7 @@ import {
   type InvokeLifecycleInput,
   type InvokeLifecycleResult,
   LIFECYCLE_THREAD_DELETE_TIMEOUT_MS,
+  LIFECYCLE_THREAD_IDS,
   type LifecycleOperatorAlert,
   lifecycleThreadId,
 } from '../../../../lib/growth/lifecycle-client';
@@ -87,9 +88,10 @@ export function createLifecycleCronRoute(
     const deleteThread = dependencies.deleteThread ?? deleteLifecycleThread;
     const now = dependencies.now ?? Date.now;
     const startedAt = now();
-    // Runs after the outcome is logged. The delete is capped by the time left
-    // in the route's budget, and the wait is raced so a stuck delete cannot
-    // push the response past it.
+    // Runs after the outcome is logged. It deletes the cron's own thread and
+    // the nudge's, which a nudge may have left behind, in parallel under one
+    // budget: the time left in the route's limit, capped per delete, with the
+    // wait raced so a stuck delete cannot push the response past it.
     const cleanUp = async (threadId: string | undefined): Promise<void> => {
       if (threadId === undefined) return;
       const budgetMs = Math.min(
@@ -97,15 +99,20 @@ export function createLifecycleCronRoute(
         CRON_MAX_DURATION_MS - (now() - startedAt) - CRON_RESPONSE_MARGIN_MS,
       );
       if (budgetMs < MIN_DELETE_MS) return;
+      const threadIds = [...new Set([threadId, LIFECYCLE_THREAD_IDS.nudge])];
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         await Promise.race([
-          deleteThread({
-            baseUrl,
-            serviceSecret,
-            threadId,
-            timeoutMs: budgetMs,
-          }),
+          Promise.all(
+            threadIds.map((id) =>
+              deleteThread({
+                baseUrl,
+                serviceSecret,
+                threadId: id,
+                timeoutMs: budgetMs,
+              }),
+            ),
+          ),
           new Promise<void>((resolve) => {
             timer = setTimeout(resolve, budgetMs);
           }),
@@ -136,6 +143,7 @@ export function createLifecycleCronRoute(
         '[lifecycle-cron-failed]',
         error instanceof Error ? error.message : 'unknown',
       );
+      // Only when the service answered: an unreachable one could not delete.
       await cleanUp(lifecycleThreadId(error));
       return response({ accepted: false }, 503);
     }

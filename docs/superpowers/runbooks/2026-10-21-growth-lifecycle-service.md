@@ -131,13 +131,17 @@ bucket key starts with `form:`, and the `campaign:v1:configuration` activity.
 
 ## One tick
 
-The cron calls `POST /threads/<uuid>/runs/wait` with
-`{ "route": "/dispatch#workflow", "input": { "trigger": "cron" } }`.
-The cron and the nudge then call `DELETE /threads/<uuid>` for that thread
-(5 s cap, best effort, logged as `[lifecycle-thread-delete-failed]` with the
-status only). b4run refuses the delete while the run is still executing, so
-the threads of client-timed-out runs, mostly nudges, can remain and need a
-manual sweep.
+The cron calls `POST /threads/<id>/runs/wait` with
+`{ "route": "/dispatch#workflow", "input": { "trigger": "cron" } }`. Each
+trigger reuses one fixed thread id (`LIFECYCLE_THREAD_IDS` in
+`www/src/lib/growth/lifecycle-client.ts`), so b4run answers 409 to a run on a
+thread that is still executing and two runs of one trigger never overlap.
+After a run the service answered, the cron deletes its own thread and the
+nudge's in parallel, and the nudge deletes its own (5 s cap and the time left
+in the cron's budget, best effort, logged as `[lifecycle-thread-delete-failed]`
+with the status only). b4run refuses a delete while that run is still
+executing; such a thread is reused and deleted after a later tick, so at most
+two lifecycle threads exist at any time and no manual sweep is needed.
 
 The workflow reads the switches, then runs these steps in order:
 
@@ -511,9 +515,3 @@ A guarded transaction recorded `internal_notification.reviewed_not_submitted`
 and classified its delivery as `not_submitted`. The job stays `failed`, and both
 the permanent claim and original unknown-outcome event remain intact. Nothing
 was resent or requeued. Aggregate receiving health returned to healthy.
-
-## Follow-ups
-
-- Thread retention: the cron and nudge delete their b4run thread after each
-  run, but threads of runs the client timed out on (mostly nudges) can remain.
-  b4run has no list route, so they need a manual sweep.
