@@ -69,8 +69,8 @@
     "zone.js": "0.16.3"
   },
   "devDependencies": {
-    "@analogjs/vite-plugin-angular": "3.0.0-alpha.87",
-    "@analogjs/vitest-angular": "3.0.0-alpha.87",
+    "@analogjs/vite-plugin-angular": "3.0.0-beta.5",
+    "@analogjs/vitest-angular": "3.0.0-beta.5",
     "@angular-devkit/core": "22.2.3",
     "@angular-devkit/schematics": "22.2.3",
     "@angular-eslint/eslint-plugin": "22.6.0",
@@ -142,6 +142,7 @@
     "nx": "23.3.0",
     "openai": "^6.45.0",
     "prettier": "^3.9.10",
+    "rollup": "4.65.0",
     "shiki": "^1.29.2",
     "ts-jest": "^29.4.15",
     "ts-node": "10.9.2",
