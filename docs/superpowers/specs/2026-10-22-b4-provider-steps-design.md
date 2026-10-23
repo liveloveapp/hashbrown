@@ -1,6 +1,6 @@
 # Provider tool steps: slice 3 audit and Anthropic delivery
 
-Status: draft for user review; independent spec review approved. No implementation changes.
+Status: Anthropic-first delivery approved by the user on 2026-10-22; independent spec review approved. Later-provider details remain deferred.
 
 ## Baseline and binding requirements
 
@@ -128,4 +128,4 @@ Keep Azure image generation outside the enabling table for this streaming API. I
 
 ## Review gate
 
-Approve the separate-provider delivery and the Anthropic design before implementation planning. The defaults and native-history persistence strategy above are concrete proposals; they have not yet been implemented or validated by new tests. Later provider designs must resolve their backend and replay-specific details before their code changes.
+The user approved the separate-provider delivery and Anthropic design, including the defaults and native-history footer. Implementation follows `../plans/2026-10-22-anthropic-provider-steps.md`. Later provider designs must resolve their backend and replay-specific details before their code changes.
