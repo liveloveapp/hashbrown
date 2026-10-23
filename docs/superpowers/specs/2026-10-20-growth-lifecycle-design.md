@@ -424,8 +424,8 @@ Fields:
 Validation on blur, final pass on submit, focus to first invalid field,
 `aria-describedby` on errors and on the button for the disclosure. Success:
 "Got it. Brian reads every one of these and replies from brian@hashbrown.dev."
-Failure offers `mailto:brian@liveloveapp.com`, a temporary fallback until
-`brian@hashbrown.dev` exists (the success copy keeps hashbrown.dev).
+Failure offers `mailto:brian@hashbrown.dev` (it was `brian@liveloveapp.com` until
+the root mailbox received mail; PR 7 switched it).
 
 Launch gate: the www switch `GROWTH_UNSTUCK_FORM_ENABLED` (exact `true`/`false`,
 default off). While off, `/unstuck` shows the fallback address and the route
@@ -515,6 +515,10 @@ becomes plain text.
 Stop reasons `unsubscribe, complaint, hard_bounce, provider_suppression,
 invalid_address, manual_suppression, campaign.reply_received, deletion`, each
 one idempotent transaction that clears approval and cancels pending jobs.
+A reply is `campaign.reply_received` only when its own text asks to leave
+("unsubscribe", "stop", "opt out", "remove me", "not interested" and similar)
+or has no readable text; any other reply is forwarded to Brian and the contact
+keeps the sequence (Brian's call, 2026-10-23: content-based, kept simple).
 Resend webhook at `/_/webhooks/resend`, Svix-verified, mapping `email.sent |
 delivered | delivery_delayed | bounced | complained | suppressed | failed` with
 threadplane's precedence; environment-tag mismatches are acknowledged and

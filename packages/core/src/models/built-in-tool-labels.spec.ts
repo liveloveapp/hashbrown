@@ -64,3 +64,45 @@ test('a completed web search with no query reads Searched the web', () => {
   expect(bare).toBe('Searched the web');
   expect(counted).toBe('Searched the web · 2 sources');
 });
+
+test.each([
+  ['web_fetch', 'Fetching a page', 'Fetched a page', 'Web fetch failed'],
+  ['code_execution', 'Running code', 'Ran code', 'Code execution failed'],
+  ['file_search', 'Searching files', 'Searched files', 'File search failed'],
+  [
+    'image_generation',
+    'Generating an image',
+    'Generated an image',
+    'Image generation failed',
+  ],
+])(
+  'uses shared plain wording for %s',
+  (builtin, running, completed, failed) => {
+    const detail = {};
+
+    const labels = ['running', 'completed', 'failed'].map((status) =>
+      ɵbuiltInToolLabel(
+        builtin,
+        status as 'running' | 'completed' | 'failed',
+        detail,
+      ),
+    );
+
+    expect(labels).toEqual([running, completed, failed]);
+  },
+);
+
+test('includes validated query details for fetch and file search', () => {
+  const query = 'flight plan';
+
+  const fetch = ɵbuiltInToolLabel('web_fetch', 'running', {
+    query: 'https://example.test',
+  });
+  const search = ɵbuiltInToolLabel('file_search', 'completed', {
+    query,
+    sourceCount: 2,
+  });
+
+  expect(fetch).toBe("Fetching 'https://example.test'");
+  expect(search).toBe("Searched files for 'flight plan' · 2 sources");
+});

@@ -565,7 +565,8 @@ async function dispatchNotifyJob(
   const founderStopToken = dependencies.createActionToken({
     contactId: context.contactId,
     purpose: 'founder_stop',
-    issuedAt: job.createdAt,
+    // Internal submissions are at most once; validity starts when sending.
+    issuedAt: claimedAt,
     eventNonce: job.id,
   });
   // Render (and validate) before the at-most-once claim is consumed.
@@ -649,9 +650,8 @@ async function dispatchInstallDigestJob(
     return 'completed';
   }
   const claimedAt = dependencies.now();
-  const issuedAt = job.createdAt;
   const context = await dependencies.readInstallDigestContext(executor, {
-    since: new Date(issuedAt.getTime() - INSTALL_DIGEST_CONTEXT_WINDOW_MS),
+    since: new Date(job.createdAt.getTime() - INSTALL_DIGEST_CONTEXT_WINDOW_MS),
   });
   const text = renderInstallDigest({
     businessDate,
@@ -661,7 +661,8 @@ async function dispatchInstallDigestJob(
       approveToken: dependencies.createActionToken({
         contactId: candidate.firstInstallObservationId,
         purpose: 'founder_approve_install',
-        issuedAt,
+        // The permanent submission claim prevents reissuing a sent token.
+        issuedAt: claimedAt,
         eventNonce: job.id,
       }),
     })),
@@ -816,7 +817,8 @@ export interface LifecycleJobDependencyOptions {
  * (Resend key, founder address, delivery policy, token key, public origin)
  * and the email keyring are read lazily and once, so a tick that sends
  * nothing needs none of them. Outside production the founder address must be
- * on `RESEND_NON_PRODUCTION_ALLOWLIST`.
+ * on `RESEND_NON_PRODUCTION_ALLOWLIST`. Internal notification claims validate
+ * this configuration before persisting permanent submission evidence.
  *
  * @param environment - The process environment.
  * @param options - Test seams: the Resend client and the clock.
@@ -899,7 +901,12 @@ export function createDefaultLifecycleJobDependencies(
     completeJob: completeLeasedJob,
     cancelJob: cancelLeasedJob,
     failJob: failLeasedJob,
-    claimInternalNotification: claimInternalNotificationSubmission,
+    claimInternalNotification: (executor, input) => {
+      // Validate lazy mail configuration before consuming the permanent claim.
+      // The sender reuses this runtime; uncertain submissions stay at most once.
+      mailRuntime();
+      return claimInternalNotificationSubmission(executor, input);
+    },
     markInternalNotificationUnknown,
     async sendInternalNotification(executor, request) {
       const { founderNotificationEmail, recipientPolicy, resend } =

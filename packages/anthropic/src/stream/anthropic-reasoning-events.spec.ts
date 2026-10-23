@@ -13,6 +13,17 @@ import {
   toAsyncIterable,
 } from './anthropic-events.test-utils';
 
+/** Retains exact legacy lifecycle order while native metadata is verified independently. */
+function withoutHistoryFooter(
+  events: readonly AGUIEvent[],
+): readonly AGUIEvent[] {
+  return events.filter(
+    (event) =>
+      event.type !== EventType.CUSTOM ||
+      event.name !== 'hashbrown.provider-history',
+  );
+}
+
 function thinkingStart(
   index: number,
   thinking = '',
@@ -118,7 +129,7 @@ test('maps initial thinking and thinking deltas in arrival order', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     reasoningStartEvent('assistant-message-1:reasoning:0', 'thinking'),
     reasoningContentEvent('assistant-message-1:reasoning:0', 'Initial'),
     reasoningContentEvent('assistant-message-1:reasoning:0', ' delta'),
@@ -142,7 +153,7 @@ test('uses a signature delta instead of the initial signature', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     reasoningStartEvent('assistant-message-1:reasoning:0', 'thinking'),
     reasoningEncryptedEvent(
       'assistant-message-1:reasoning:0',
@@ -179,7 +190,7 @@ test('allows thinking deltas after signature deltas', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     reasoningStartEvent('assistant-message-1:reasoning:0', 'thinking'),
     reasoningContentEvent('assistant-message-1:reasoning:0', 'Initial'),
     reasoningContentEvent('assistant-message-1:reasoning:0', ' later'),
@@ -198,7 +209,7 @@ test('uses the initial signature only when no signature deltas occur', async () 
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     reasoningStartEvent('assistant-message-1:reasoning:0', 'thinking'),
     reasoningEncryptedEvent('assistant-message-1:reasoning:0', 'initial'),
     reasoningEndEvent('assistant-message-1:reasoning:0'),
@@ -218,7 +229,7 @@ test('rejects an empty initial signature with no signature deltas', async () => 
   const start = await iterator.next();
   const act = iterator.next();
 
-  expect(EventSchemas.parse(start.value)).toEqual(
+  expect(EventSchemas.parse(start.value)).toMatchObject(
     reasoningStartEvent('assistant-message-1:reasoning:0', 'thinking'),
   );
   await expect(act).rejects.toThrow(
@@ -253,7 +264,7 @@ test('maps multiple reasoning blocks with stable IDs in source order', async () 
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     reasoningStartEvent('assistant-message-1:reasoning:2', 'thinking'),
     reasoningContentEvent('assistant-message-1:reasoning:2', 'First'),
     reasoningEncryptedEvent('assistant-message-1:reasoning:2', 'signature-1'),
@@ -275,7 +286,7 @@ test('maps redacted thinking through its native start-stop lifecycle', async () 
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     reasoningStartEvent('assistant-message-1:reasoning:0', 'redacted_thinking'),
     reasoningEncryptedEvent(
       'assistant-message-1:reasoning:0',
@@ -315,7 +326,7 @@ test('maps reasoning before a client tool block', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     reasoningStartEvent('assistant-message-1:reasoning:0', 'thinking'),
     reasoningContentEvent('assistant-message-1:reasoning:0', 'Plan'),
     reasoningEncryptedEvent('assistant-message-1:reasoning:0', 'signature'),
@@ -345,7 +356,7 @@ test('maps reasoning that starts after assistant text', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'assistant-message-1',
@@ -381,7 +392,7 @@ test('maps reasoning that starts after an empty native text block', async () => 
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     reasoningStartEvent('assistant-message-1:reasoning:1', 'thinking'),
     reasoningContentEvent('assistant-message-1:reasoning:1', 'Plan'),
     reasoningEncryptedEvent('assistant-message-1:reasoning:1', 'signature'),
@@ -399,7 +410,7 @@ test('does not emit AG-UI text events for an empty native text block', async () 
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([]);
+  expect(withoutHistoryFooter(result)).toMatchObject([]);
 });
 
 test('maps reasoning that starts after a client tool block', async () => {
@@ -414,7 +425,7 @@ test('maps reasoning that starts after a client tool block', async () => {
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(withoutHistoryFooter(result)).toMatchObject([
     {
       type: EventType.TOOL_CALL_START,
       toolCallId: 'tool-1',
@@ -695,7 +706,7 @@ test('does not synthesize reasoning events after cancellation following reasonin
   controller.abort();
   const second = await iterator.next();
 
-  expect(EventSchemas.parse(first.value)).toEqual(
+  expect(EventSchemas.parse(first.value)).toMatchObject(
     reasoningStartEvent('assistant-message-1:reasoning:0', 'thinking'),
   );
   expect(second).toEqual({ done: true, value: undefined });
@@ -719,7 +730,7 @@ test('does not synthesize reasoning end after cancellation following reasoning c
   controller.abort();
   const next = await iterator.next();
 
-  expect(EventSchemas.parse(start.value)).toEqual(
+  expect(EventSchemas.parse(start.value)).toMatchObject(
     reasoningStartEvent('assistant-message-1:reasoning:0', 'thinking'),
   );
   expect(EventSchemas.parse(content.value)).toEqual(
@@ -745,7 +756,7 @@ test('does not synthesize encrypted or end events after cancellation following a
   controller.abort();
   const next = await iterator.next();
 
-  expect(EventSchemas.parse(start.value)).toEqual(
+  expect(EventSchemas.parse(start.value)).toMatchObject(
     reasoningStartEvent('assistant-message-1:reasoning:0', 'redacted_thinking'),
   );
   expect(next).toEqual({ done: true, value: undefined });
@@ -769,7 +780,7 @@ test('does not synthesize reasoning end after cancellation following encrypted r
   controller.abort();
   const next = await iterator.next();
 
-  expect(EventSchemas.parse(start.value)).toEqual(
+  expect(EventSchemas.parse(start.value)).toMatchObject(
     reasoningStartEvent('assistant-message-1:reasoning:0', 'redacted_thinking'),
   );
   expect(EventSchemas.parse(encrypted.value)).toEqual(
@@ -796,7 +807,7 @@ test('does not synthesize reasoning end after cancellation following a thinking 
   controller.abort();
   const next = await iterator.next();
 
-  expect(EventSchemas.parse(start.value)).toEqual(
+  expect(EventSchemas.parse(start.value)).toMatchObject(
     reasoningStartEvent('assistant-message-1:reasoning:0', 'thinking'),
   );
   expect(EventSchemas.parse(encrypted.value)).toEqual(

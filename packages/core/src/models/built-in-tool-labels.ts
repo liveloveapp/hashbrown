@@ -10,9 +10,10 @@ const LABEL_MAX = 120;
  *
  * For `web_search` the label reads `Searching the web for '<query>'` while
  * running, `Searched '<query>' · <n> sources` once completed, and
- * `Web search failed` on failure. Any other builtin reads `Using <builtin>`,
+ * `Web search failed` on failure. Unknown builtins read `Using <builtin>`,
  * `Used <builtin>` or `<builtin> failed`. The result is cut to 120 code
- * points.
+ * points. Fetch, code execution, file search, and image generation use the
+ * same plain wording on every provider.
  *
  * @param builtin - The built-in tool name, such as `web_search`.
  * @param status - Whether the call is running, completed or failed.
@@ -45,6 +46,32 @@ function label(
       query === undefined ? 'Searched the web' : `Searched '${query}'`;
     if (sourceCount === undefined) return subject;
     return `${subject} · ${sourceCount} ${sourceCount === 1 ? 'source' : 'sources'}`;
+  }
+  if (builtin === 'web_fetch') {
+    if (status === 'failed') return 'Web fetch failed';
+    const subject = query === undefined ? 'a page' : `'${query}'`;
+    return `${status === 'running' ? 'Fetching' : 'Fetched'} ${subject}`;
+  }
+  if (builtin === 'code_execution') {
+    return status === 'running'
+      ? 'Running code'
+      : status === 'completed'
+        ? 'Ran code'
+        : 'Code execution failed';
+  }
+  if (builtin === 'file_search') {
+    if (status === 'failed') return 'File search failed';
+    const subject = `${status === 'running' ? 'Searching' : 'Searched'} files${query === undefined ? '' : ` for '${query}'`}`;
+    return status === 'completed' && sourceCount !== undefined
+      ? `${subject} · ${sourceCount} ${sourceCount === 1 ? 'source' : 'sources'}`
+      : subject;
+  }
+  if (builtin === 'image_generation') {
+    return status === 'running'
+      ? 'Generating an image'
+      : status === 'completed'
+        ? 'Generated an image'
+        : 'Image generation failed';
   }
   if (status === 'running') return `Using ${builtin}`;
   if (status === 'completed') return `Used ${builtin}`;

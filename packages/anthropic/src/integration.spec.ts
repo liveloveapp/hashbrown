@@ -217,10 +217,30 @@ function expectCanonicalTextRun(
   ).toBe(true);
   expect(
     events.find((event) => event.type === EventType.TEXT_MESSAGE_START),
-  ).toEqual({
+  ).toMatchObject({
     type: EventType.TEXT_MESSAGE_START,
     messageId,
     role: 'assistant',
+    metadata: {
+      anthropic: { responseId: expect.any(String), blockType: 'text' },
+    },
+  });
+  expect(
+    events.find(
+      (event) =>
+        event.type === EventType.CUSTOM &&
+        event.name === 'hashbrown.provider-history',
+    ),
+  ).toMatchObject({
+    value: {
+      v: 1,
+      provider: 'anthropic',
+      complete: true,
+      payload: {
+        blocks: expect.any(Array),
+        representedMessageIds: expect.arrayContaining([messageId]),
+      },
+    },
   });
   expect(
     contentEvents(events).every((event) => event.messageId === messageId),
@@ -969,6 +989,7 @@ test('Anthropic sends callback activities inside the run', async () => {
     EventType.TEXT_MESSAGE_START,
     EventType.TEXT_MESSAGE_CONTENT,
     EventType.TEXT_MESSAGE_END,
+    EventType.CUSTOM,
     EventType.ACTIVITY_DELTA,
     EventType.RUN_FINISHED,
   ]);

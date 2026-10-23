@@ -4,6 +4,7 @@ import {
   type SqlExecutor,
   type SqlTransaction,
 } from './database.ts';
+import { isStopRequest } from './reply-intent.ts';
 import { stopContact } from './stops.ts';
 
 /** Stable mailbox ledger identity, retained across the root-domain cutover. */
@@ -114,6 +115,8 @@ export interface InboxReceivedEmail {
 
 /** Operations required by the reply processor, injectable for deterministic tests. */
 export interface InboxReplyDependencies {
+  /** Recovery generation required for scan-owned settlement. */
+  recoveryGeneration?: string;
   getReceived: (id: string) => Promise<InboxReceivedEmail>;
   stopContact: typeof stopContact;
 }
@@ -231,6 +234,15 @@ export async function processInboxReceipt(
   return executor.transaction(async (tx) => {
     await privacyLock(tx);
     await inboxTransactionGuard(tx);
+    if (dependencies.recoveryGeneration) {
+      const generation = await tx.execute(
+        `/* growth:inbox-recovery-generation-lock */ select address from growth_reply_mailboxes
+         where address = $1 and recovery_id = $2::uuid for update`,
+        [config.address, dependencies.recoveryGeneration],
+      );
+      if (generation.rows.length !== 1)
+        throw new Error('Inbox recovery superseded');
+    }
     // Serialize per mailbox, then contact, then receipt, consistently with recovery.
     await tx.execute(
       `/* growth:inbox-mailbox-lock */ select address from growth_reply_mailboxes where address = $1 for share`,
@@ -250,7 +262,7 @@ export async function processInboxReceipt(
     const complete = async (
       status: 'ignored' | 'stopped',
       contactId: string | null = null,
-      errorCode: 'contact_deleted' | null = null,
+      errorCode: 'contact_deleted' | 'reply_without_stop' | null = null,
     ): Promise<typeof status> => {
       await tx.execute(
         `/* growth:inbox-complete */ update growth_reply_receipts
@@ -311,6 +323,10 @@ export async function processInboxReceipt(
       );
       return 'pending';
     }
+    // Only a reply that asks to leave stops the sequence; any other reply is
+    // forwarded to Brian and the contact keeps their remaining steps.
+    if (!isStopRequest(email))
+      return complete('ignored', contactId, 'reply_without_stop');
     const eventKey = `resend:reply:${id}:stop`;
     await dependencies.stopContact(nestedExecutor(tx), {
       contactId,

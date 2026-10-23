@@ -1,4 +1,4 @@
-## 0.8.0 (Unreleased)
+## 0.8.0 (2026-10-22)
 
 ### 🧭 Migrating from 0.7
 
@@ -27,6 +27,8 @@
 - **core:** read `b4.step` metadata and custom events into `serverToolCalls`, exposing labels, outcomes, errors, timing, sources, and nested calls; assistant messages expose citations, sources, and required attribution ([#691](https://github.com/liveloveapp/hashbrown/pull/691)).
 
 ### 🩹 Fixes
+
+- **core:** preserve provider metadata and queued labels and sources in tool-step updates, normalize unknown statuses, and clear held steps when a run ends; verified against the shared B4 fixture corpus ([#708](https://github.com/liveloveapp/hashbrown/pull/708), [#709](https://github.com/liveloveapp/hashbrown/pull/709)).
 
 - **react, angular:** component changes update the UI response schema, preserve earlier answers, and use the newest definition for a component name; Angular UI chat resources expose `components` and `setComponents` ([#666](https://github.com/liveloveapp/hashbrown/pull/666)).
 - **anthropic:** accept thinking blocks interleaved with text and tool use ([#684](https://github.com/liveloveapp/hashbrown/pull/684)).

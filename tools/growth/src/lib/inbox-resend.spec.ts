@@ -89,3 +89,33 @@ test('provider IDs are bounded path components', async () => {
 
   await expect(client.getReceived('../api-keys')).rejects.toThrow('identifier');
 });
+
+test('receiving pagination resumes at a validated persisted cursor', async () => {
+  const urls: string[] = [];
+  const client = createInboxResendClient('re_test', async (input) => {
+    urls.push(String(input));
+    return Response.json({ data: [], has_more: false });
+  });
+
+  for await (const item of client.listReceived('saved')) void item;
+
+  expect(urls[0]).toContain('after=saved');
+});
+
+test('transient read errors retry a bounded number of times and redact transport errors', async () => {
+  let attempts = 0;
+  const client = createInboxResendClient(
+    're_secret',
+    async () => {
+      attempts++;
+      throw new Error('secret private transport');
+    },
+    async () => undefined,
+  );
+
+  await expect(client.getSent('outgoing')).rejects.toThrow(
+    'Resend read failed',
+  );
+
+  expect(attempts).toBe(3);
+});

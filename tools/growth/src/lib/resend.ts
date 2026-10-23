@@ -598,7 +598,8 @@ const DELIVERY_ENVIRONMENTS: readonly string[] = [
 
 /**
  * Collaborators of {@link reconcilePendingResendMessageIds}. `env` supplies
- * `RESEND_API_KEY`, `DELIVERY_ENVIRONMENT` and `GROWTH_DATABASE_ENVIRONMENT`;
+ * `RESEND_INBOX_READ_API_KEY`, `DELIVERY_ENVIRONMENT` and
+ * `GROWTH_DATABASE_ENVIRONMENT`;
  * `bindProviderMessageId` is injectable for tests.
  */
 export interface ResendMessageIdReconciliationDependencies {
@@ -679,7 +680,7 @@ function environmentTags(tags: unknown): unknown[] {
  * are deferred, and database errors propagate. This path only reads from
  * Resend and never sends.
  *
- * Without `RESEND_API_KEY`, `DELIVERY_ENVIRONMENT` and
+ * Without `RESEND_INBOX_READ_API_KEY`, `DELIVERY_ENVIRONMENT` and
  * `GROWTH_DATABASE_ENVIRONMENT` it does nothing, since the final send gate
  * still waits for every binding.
  *
@@ -695,7 +696,7 @@ export async function reconcilePendingResendMessageIds(
   },
 ): Promise<ResendMessageIdReconciliationResult> {
   input.signal.throwIfAborted();
-  const apiKey = dependencies.env['RESEND_API_KEY']?.trim() ?? '';
+  const apiKey = dependencies.env['RESEND_INBOX_READ_API_KEY']?.trim() ?? '';
   const environment = dependencies.env['DELIVERY_ENVIRONMENT']?.trim() ?? '';
   const databaseEnvironment =
     dependencies.env['GROWTH_DATABASE_ENVIRONMENT']?.trim() ?? '';

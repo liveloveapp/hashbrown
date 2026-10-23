@@ -1,6 +1,6 @@
 import { createInboxRecoveryRoute } from './handler';
 
-/** Allow a bounded pilot recovery to finish on a supported Vercel plan. */
+/** Allow bounded receiving recovery and durable notification on a supported Vercel plan. */
 export const maxDuration = 300;
 
 /** GET /_/cron/inbox-recovery. */

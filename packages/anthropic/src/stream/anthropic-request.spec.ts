@@ -1,6 +1,7 @@
 import type { RunAgentInput } from '@ag-ui/core';
 import type Anthropic from '@anthropic-ai/sdk';
 import { createAnthropicRequestOptions } from './anthropic-request';
+import type { AnthropicBuiltInTools } from '../index';
 
 type TestRunAgentInput = RunAgentInput & {
   forwardedProps?: {
@@ -616,4 +617,247 @@ test('ignores a top-level hashbrown key', () => {
   const result = createAnthropicRequestOptions(input, 'claude-test');
 
   expect(result.output_config).toBeUndefined();
+});
+
+test('adds pinned built-in defaults alongside functions and structured output', () => {
+  const input = createInput({
+    tools: [{ name: 'lookup', description: 'Lookup' }],
+    forwardedProps: { hashbrown: { responseSchema: { type: 'object' } } },
+  });
+
+  const result = createAnthropicRequestOptions(input, 'claude-test', {
+    webSearch: true,
+    webFetch: true,
+    codeExecution: true,
+  });
+
+  expect(result.tools).toEqual([
+    {
+      name: 'lookup',
+      description: 'Lookup',
+      input_schema: { type: 'object', properties: {} },
+    },
+    { type: 'web_search_20250305', name: 'web_search' },
+    {
+      type: 'web_fetch_20250910',
+      name: 'web_fetch',
+      citations: { enabled: true },
+    },
+    { type: 'code_execution_20250825', name: 'code_execution' },
+  ]);
+  expect(result.output_config?.format?.schema).toEqual({ type: 'object' });
+});
+
+test('preserves version-specific built-in settings and owns nested options', () => {
+  const builtInTools = {
+    webSearch: {
+      type: 'web_search_20260209',
+      allowed_domains: ['example.com'],
+      max_uses: 2,
+    },
+    webFetch: { type: 'web_fetch_20250910', citations: { enabled: false } },
+    codeExecution: {
+      type: 'code_execution_20260120',
+      allowed_callers: ['direct'],
+    },
+  } satisfies AnthropicBuiltInTools;
+  const snapshot = structuredClone(builtInTools);
+
+  const result = createAnthropicRequestOptions(
+    createInput(),
+    'claude-test',
+    builtInTools,
+  );
+
+  expect(result.tools).toEqual([
+    { ...snapshot.webSearch, name: 'web_search' },
+    { ...snapshot.webFetch, name: 'web_fetch' },
+    { ...snapshot.codeExecution, name: 'code_execution' },
+  ]);
+  expect(builtInTools).toEqual(snapshot);
+  expect(result.tools?.[0]).not.toBe(builtInTools.webSearch);
+});
+
+function nativeMessage(
+  blocks: unknown[],
+  overrides: Record<string, unknown> = {},
+): RunAgentInput['messages'][number] {
+  return {
+    id: 'a',
+    role: 'assistant',
+    content: 'display',
+    metadata: {
+      anthropic: { responseId: 'r' },
+      'hashbrown.provider-history': {
+        v: 1,
+        provider: 'anthropic',
+        ownerMessageId: 'a',
+        responseId: 'r',
+        complete: true,
+        payload: { blocks, representedMessageIds: ['a'], ...overrides },
+      },
+    },
+  };
+}
+
+test('replays complete native blocks exactly once and reuses the final container id', () => {
+  const blocks = [
+    { type: 'thinking', thinking: 'reason', signature: 'opaque' },
+    { type: 'text', text: 'first', citations: null },
+    {
+      type: 'tool_use',
+      id: 'app',
+      name: 'lookup',
+      input: [1, null],
+      caller: { type: 'code_execution_20250825', tool_id: 'server' },
+    },
+    { type: 'text', text: 'last' },
+  ];
+  const input = createInput({
+    messages: [
+      nativeMessage(blocks, {
+        container: {
+          id: 'container-1',
+          expires_at: '2099-01-01',
+          skills: null,
+        },
+      }),
+      { id: 'result', role: 'tool', toolCallId: 'app', content: 'found' },
+    ],
+  });
+  const snapshot = structuredClone(input);
+
+  const result = createAnthropicRequestOptions(input, 'claude-test');
+
+  expect(result.messages).toEqual([
+    { role: 'assistant', content: blocks },
+    {
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: 'app', content: 'found' }],
+    },
+  ]);
+  expect(result.container).toBe('container-1');
+  expect(input).toEqual(snapshot);
+  expect(result.messages[0].content).not.toBe(blocks);
+});
+
+test('rejects malformed native blocks and invalid canonical ownership', () => {
+  const inputs = [
+    nativeMessage([{ type: 'thinking', thinking: 'missing signature' }]),
+    nativeMessage([{ type: 'text', text: 'hello' }], {
+      representedMessageIds: ['missing'],
+    }),
+    nativeMessage([{ type: 'text', text: 'hello' }], {
+      representedMessageIds: ['a', 'a'],
+    }),
+    nativeMessage([{ type: 'made_up' }]),
+  ];
+
+  const actions = inputs.map(
+    (message) => () =>
+      createAnthropicRequestOptions(
+        createInput({ messages: [message] }),
+        'claude-test',
+      ),
+  );
+
+  for (const action of actions) expect(action).toThrow(/Anthropic.*history/i);
+});
+
+test('incomplete text-only native capture falls back to canonical text', () => {
+  const message = nativeMessage([{ type: 'text', text: 'partial' }]);
+  (message.metadata?.['hashbrown.provider-history'] as Record<string, unknown>)[
+    'complete'
+  ] = false;
+
+  const result = createAnthropicRequestOptions(
+    createInput({ messages: [message] }),
+    'claude-test',
+  );
+
+  expect(result.messages).toEqual([
+    { role: 'assistant', content: [{ type: 'text', text: 'display' }] },
+  ]);
+});
+
+test('filters foreign provider calls by raw identity without filtering same-name app tools', () => {
+  const input = createInput({
+    messages: [
+      {
+        id: 'a',
+        role: 'assistant',
+        toolCalls: [
+          {
+            id: 'provider',
+            type: 'function',
+            function: { name: 'web_search', arguments: '{}' },
+            metadata: { 'b4.step': { kind: 'provider', v: 999 } },
+          },
+          {
+            id: 'app',
+            type: 'function',
+            function: { name: 'web_search', arguments: '{}' },
+          },
+        ],
+      },
+      { id: 'p', role: 'tool', toolCallId: 'provider', content: 'private' },
+      { id: 'c', role: 'tool', toolCallId: 'app', content: 'public' },
+    ],
+  });
+
+  const result = createAnthropicRequestOptions(input, 'claude-test');
+
+  expect(result.messages).toEqual([
+    {
+      role: 'assistant',
+      content: [{ type: 'tool_use', id: 'app', name: 'web_search', input: {} }],
+    },
+    {
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: 'app', content: 'public' }],
+    },
+  ]);
+});
+
+test('does not prepend represented reasoning to a later legacy assistant', () => {
+  const reasoning: RunAgentInput['messages'][number] = {
+    id: 'reason',
+    role: 'reasoning',
+    content: 'private',
+    encryptedValue: 'signature',
+    metadata: {
+      anthropic: { responseId: 'r', blockType: 'thinking' },
+      'hashbrown.provider-history': {
+        v: 1,
+        provider: 'anthropic',
+        ownerMessageId: 'reason',
+        responseId: 'r',
+        complete: true,
+        payload: {
+          blocks: [
+            { type: 'thinking', thinking: 'private', signature: 'signature' },
+          ],
+          representedMessageIds: ['reason'],
+        },
+      },
+    },
+  };
+  const input = createInput({
+    messages: [
+      reasoning,
+      { id: 'legacy', role: 'assistant', content: 'answer' },
+    ],
+  });
+
+  const result = createAnthropicRequestOptions(input, 'claude-test');
+
+  expect(result.messages).toEqual([
+    {
+      role: 'assistant',
+      content: [
+        { type: 'thinking', thinking: 'private', signature: 'signature' },
+      ],
+    },
+    { role: 'assistant', content: [{ type: 'text', text: 'answer' }] },
+  ]);
 });
