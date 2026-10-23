@@ -32,7 +32,7 @@ const message = {
     'In-Reply-To': '<sent@resend.com>',
     References: '<older@resend.com> <sent@resend.com>',
   },
-  text: 'not persisted',
+  text: 'Please unsubscribe me. not persisted',
 };
 
 test('pilot configuration keeps the historical ledger identity and defaults to disabled', () => {
@@ -243,4 +243,40 @@ test('a stale recovery generation cannot settle a fetched reply', async () => {
   expect(calls.some((call) => call.marker === 'inbox-receipt-lock')).toBe(
     false,
   );
+});
+
+test('a matched reply without a stop request is forwarded only and keeps the sequence', async () => {
+  const stop = vi.fn(async () => ({ applied: true }));
+  const { executor, calls } = executorWith({
+    'inbox-receipt-lock': () => ({ rows: [receipt] }),
+    'inbox-match': () => ({
+      rows: [{ contact_id: 'contact-1', rfc_message_id: '<sent@resend.com>' }],
+    }),
+    'inbox-contact-lock': () => ({
+      rows: [
+        {
+          id: 'contact-1',
+          deleted_at: null,
+          email_normalized: 'reader@example.com',
+        },
+      ],
+    }),
+    'inbox-complete': () => ({ rows: [] }),
+  });
+
+  const result = await processInboxReceipt(executor, receipt.id, config, {
+    getReceived: async () => ({ ...message, text: 'received' }),
+    stopContact: stop as never,
+  });
+
+  expect(result).toBe('ignored');
+  expect(stop).not.toHaveBeenCalled();
+  const complete = calls.find((call) => call.sql.includes('inbox-complete'));
+  expect(complete?.params).toEqual([
+    'incoming-1',
+    'ignored',
+    'contact-1',
+    'reply_without_stop',
+  ]);
+  expect(JSON.stringify(calls)).not.toContain('received"');
 });

@@ -6,7 +6,7 @@ Hashbrown is built by LiveLoveApp, LLC.
 
 When you fill in the [Get unstuck form](/unstuck), we keep your email address, your framework, and your question, along with your agreement to hear back from us. We use this information to answer your question.
 
-We send an acknowledgement followed by three emails from Brian. Replies go to a human, and every email has an unsubscribe link.
+We send an acknowledgement followed by three emails from Brian. Replies go to a human, and every email has an unsubscribe link. Replying "unsubscribe" or "stop" also ends the emails; we read a reply only to check for that and do not store it.
 
 ## Contact
 
