@@ -1,5 +1,41 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  persistence: {
+    title: 'Refresh. Restore. Continue.',
+    caption:
+      'Save a completed text exchange, refresh, and switch between two browser-stored conversations.',
+    recording:
+      'Recorded in the browser-storage example with scripted responses. Only completed text is restored. Presentation styles added. No narration.',
+  },
+  interrupts: {
+    title: 'Pause for approval. Resume together.',
+    caption:
+      'Collect every answer in an interrupt batch before resuming the trip plan.',
+    recording:
+      'Recorded in the checked workflow example with a scripted AG-UI agent. Presentation styles added. No narration.',
+  },
+  'shared-state': {
+    title: 'Edit the app. Update the agent.',
+    caption:
+      'Send an edited destination as shared state and display the agent’s returned update.',
+    recording:
+      'Recorded in the checked workflow example with a scripted AG-UI agent. Presentation styles added. No narration.',
+  },
+  activities: {
+    title: 'Show progress as work happens.',
+    caption:
+      'Watch a three-step itinerary update through display-only activities.',
+    recording:
+      'Recorded in the checked workflow example with a scripted AG-UI agent. Presentation styles added. No narration.',
+  },
+  'ui-kits': {
+    title: 'One trusted kit. Two useful cards.',
+    caption:
+      'Generate WelcomeCard and StatusCard from the same exposed UI kit.',
+    recording:
+      'Recorded in the checked workflow example with a scripted AG-UI agent. Presentation styles added. No narration.',
+  },
+
   'welcome-card': {
     title: 'Generate your first welcome card.',
     caption:

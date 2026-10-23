@@ -9,11 +9,20 @@ meta:
 
 <p class="subtitle">Pause an agent workflow, collect answers, and resume from its committed checkpoint.</p>
 
+Some actions need a decision before the agent continues. This example pauses a trip plan, collects two approvals, and resumes once both answers are ready.
+
+<hb-docs-demo demo="interrupts">
+</hb-docs-demo>
+
+Your endpoint must emit interrupt outcomes and accept resume requests. The Quickstart’s direct provider endpoint does not create this workflow by itself. See the [recorded example source](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workflows.ts).
+
 An AG-UI agent can finish a run with an interrupt outcome when it needs approval or structured input. Hashbrown commits the streamed state and message history, exposes the complete batch through the `pendingInterrupts` signal, and stops automatic tool execution and continuation.
 
 These APIs are available on text, structured, and UI chat and completion resources. Your endpoint must implement the protocol-standard interrupt outcome and `resume` request array.
 
 ## Read a Batch
+
+<img src="/video/docs/interrupts-approval.png" alt="A paused trip plan asks for itinerary approval and destination confirmation before resuming." width="920" height="206" loading="lazy" />
 
 Read `chat.pendingInterrupts()` to obtain the batch or `undefined`. A batch contains an opaque local `id` and a readonly `interrupts` array. Each interrupt retains its protocol `id`, `reason`, and optional `message`, `toolCallId`, `responseSchema`, `expiresAt`, `metadata`, and `subagentRunId`.
 

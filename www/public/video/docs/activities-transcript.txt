@@ -1,0 +1,10 @@
+Show progress as work happens.
+
+Recorded from www/examples/quickstart/react/src/Workflows.tsx, with the same interactions verified in Angular. The real client runtime consumes scripted AG-UI responses. Presentation styles and a branded frame are added by the recorder. No narration.
+
+1. The opening frame shows the completed three-step itinerary activity.
+2. Select Build an itinerary. The fixture starts an activity with zero of three steps complete.
+3. Activity deltas update the same progress item: Places selected, Route arranged, then Itinerary complete.
+4. The progress bar reaches three of three. The assistant replies: Your three-day Lisbon itinerary is ready.
+
+Activities are display-only progress. Hashbrown does not send them back as model conversation. The demo uses scripted AG-UI activity snapshots and deltas, not a real travel-planning service.

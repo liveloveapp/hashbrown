@@ -9,6 +9,13 @@ meta:
 
 <p class="subtitle">Share structured state with an AG-UI agent and react to its updates.</p>
 
+Let's edit a destination in the app, send it to an agent, and display the agent's returned state. Both sides work with the same JSON value.
+
+<hb-docs-demo demo="shared-state">
+</hb-docs-demo>
+
+The recorded agent explicitly reads the request state. Direct provider adapters do not automatically turn that state into model instructions. See the [recorded example source](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/angular/src/app/workflows.ts).
+
 Shared agent state is a JSON-compatible value owned by the Hashbrown runtime. The runtime sends the current committed value with each new AG-UI run and applies state snapshots and deltas returned by the agent.
 
 Use shared state for structured context that both your application and an AG-UI agent need to read or update, such as a selected account, workflow progress, or form data.

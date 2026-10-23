@@ -26,6 +26,8 @@ The Angular application owns rendering, chat state, and browser-side tools. Your
 
 You can use Hashbrown for text conversations, structured data, and decisions as well. Start with [Choosing an API](/docs/angular/start/overview) when you already know the kind of output you need.
 
+Follow [How Hashbrown works](/docs/angular/start/how-it-works) for the browser-to-model request path and the boundaries your app owns.
+
 ## Build your first card
 
 The [Quickstart](/docs/angular/start/quick) walks through the complete example: a server endpoint, a trusted component, and a button that generates the card.

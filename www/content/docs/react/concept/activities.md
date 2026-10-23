@@ -9,6 +9,13 @@ meta:
 
 <p class="subtitle">Show plans, progress, and background work that the user should see and the model should not.</p>
 
+Show the work as it happens. This example updates a three-step itinerary through display-only activities.
+
+<hb-docs-demo demo="activities">
+</hb-docs-demo>
+
+The recorded agent emits activity snapshots and deltas. The application renders them as progress; they are not sent back as model conversation. See the [recorded example source](https://github.com/liveloveapp/hashbrown/blob/main/www/examples/quickstart/react/src/Workflows.tsx).
+
 An activity is AG-UI's channel for display-only, structured progress: a plan, a progress bar, a workflow step, a background job. Activities are not part of the conversation. The model never sees them, and Hashbrown never sends them back to the agent.
 
 Hashbrown is headless. It turns the activity events into typed messages in `chat.messages`, and your app renders them.

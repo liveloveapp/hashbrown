@@ -97,12 +97,7 @@
       },
       "dependsOn": [
         {
-          "projects": [
-            "core",
-            "react",
-            "angular",
-            "openai"
-          ],
+          "projects": ["core", "react", "angular", "openai"],
           "target": "build"
         }
       ]
@@ -116,10 +111,20 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ],
+      "dependsOn": ["typecheck"],
       "cache": false
+    },
+    "docs-workflows-demo": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "commands": [
+          "ngc -p www/examples/quickstart/tsconfig.record.json",
+          "tsx www/src/tools/record-docs-workflows.ts"
+        ],
+        "parallel": false
+      },
+      "dependsOn": ["typecheck"]
     }
   }
 }
