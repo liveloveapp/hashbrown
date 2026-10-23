@@ -16,9 +16,11 @@ test('lists every React docs page as a slug path', () => {
 test('reads a docs page with its frontmatter title and description', () => {
   const doc = readDoc('react', ['start', 'quick']);
 
-  expect(doc?.title).toBe('React Quick Start: Hashbrown React Docs');
-  expect(doc?.description).toBe('Take your first steps with Hashbrown.');
-  expect(doc?.body).toContain('# React Quick Start');
+  expect(doc?.title).toBe('React Quickstart: Hashbrown React Docs');
+  expect(doc?.description).toBe(
+    'Build your first generated UI with a trusted welcome card.',
+  );
+  expect(doc?.body).toContain('# React Quickstart');
 });
 
 test('returns undefined for a docs page that does not exist', () => {

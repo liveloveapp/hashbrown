@@ -58,6 +58,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'Message history', path: 'concept/message-history' },
       { text: 'Streaming', path: 'concept/streaming' },
       { text: 'Tool calling', path: 'concept/functions' },
+      { text: 'Debugging', path: 'concept/debugging' },
     ],
   },
   {

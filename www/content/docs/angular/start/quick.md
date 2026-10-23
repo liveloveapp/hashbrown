@@ -1,368 +1,312 @@
 ---
-title: 'Angular Quick Start: Hashbrown Angular Docs'
+title: 'Angular Quickstart: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Take your first steps with Hashbrown.'
+    content: 'Build your first generated UI with a trusted welcome card.'
 ---
 
-# Angular Quick Start
+# Angular Quickstart
 
-<p class="subtitle">Take your first steps with Hashbrown.</p>
+Let's build a welcome card. We'll write the component, tell the model which props it accepts, and ask Hashbrown to render it.
 
----
+<hb-docs-demo demo="welcome-card">
+</hb-docs-demo>
 
-## Install
+<img src="/video/docs/welcome-card-result.png" alt="The completed WelcomeCard with a welcome title and a one-sentence message." width="920" height="304" loading="lazy" />
 
-<hb-code-example header="terminal">
+The model supplies the text. Our Angular component supplies the markup and behavior.
+
+## Before we start
+
+This example assumes an Angular 22 app using standalone components, Node.js 24, and an OpenAI API key. You'll also need the name of a model your account can use with structured output.
+
+We'll run two processes: your frontend development server and a small Express server. The browser calls `/api/chat` on the frontend's origin; a development proxy forwards that request to Express on port 3001. Keep the API key on the server.
+
+<a id="install"></a>
+
+## Install Hashbrown
+
+In your existing frontend project, install the client packages:
 
 ```sh
-npm install @hashbrownai/{core,angular,openai} --save
+npm install @hashbrownai/core @hashbrownai/angular
 ```
 
-</hb-code-example>
+Next, create a sibling directory for the server. Keep it outside the frontend's source directory:
 
----
-
-## Provider
-
-<hb-code-example header="provide hashbrown">
-
-```ts
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideHashbrown({
-      baseUrl: '/run',
-    }),
-  ],
-};
+```sh
+cd ..
+mkdir welcome-server
+cd welcome-server
+npm init -y
+npm install @hashbrownai/core @hashbrownai/openai openai express @ag-ui/core @ag-ui/encoder
+npm install --save-dev tsx typescript @types/express @types/node
 ```
 
-</hb-code-example>
+Create a `.env` file in `welcome-server`. Replace both values with your own settings, and add `.env` to `.gitignore`:
 
-1. Import the @hashbrownai/angular!provideHashbrown:function function from `@hashbrownai/angular`.
-2. Optionally specify options such as the `baseUrl` for chat requests.
-3. Add the provider to your Angular application configuration.
-
-<hb-expander title="Intercept requests using middleware">
-
-You can also intercept requests to the Hashbrown adapter using a middleware pattern.
-
-<hb-code-example header="middleware">
-
-```ts
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideHashbrown({
-      middleware: [
-        function (request: RequestInit) {
-          console.log({ request });
-          return request;
-        },
-      ],
-    }),
-  ],
-};
+```sh
+OPENAI_API_KEY=your-api-key
+OPENAI_MODEL=your-model-name
 ```
 
-</hb-code-example>
+## Create the server endpoint
 
-1. The `middleware` option to the provider allows the developer to intercept Hashbrown requests.
-2. Middleware functions can be async.
-3. This is useful for appending headers, etc.
+Create `server.ts` in `welcome-server`:
 
-</hb-expander>
-
----
-
-## Node Adapters
-
-To get started, we recommend running a local express server following the Hashbrown adapter documentation.
-
-- [OpenAI](/docs/angular/platform/openai)
-- [Azure OpenAI](/docs/angular/platform/azure)
-- [Anthropic](/docs/angular/platform/anthropic)
-- [Amazon Bedrock](/docs/angular/platform/bedrock)
-- [Google Gemini](/docs/angular/platform/google)
-- [Ollama](/docs/angular/platform/ollama)
-
----
-
-## The `chatResource()` Function
-
-The @hashbrownai/angular!chatResource:function function from `@hashbrownai/angular` is the basic way to interact with the model.
-
-<hb-code-example header="chatResource()">
+<hb-code-example header="server.ts">
 
 ```ts
-chatResource({
-  system: 'hashbrowns should be covered and smothered',
-  messages: [{ role: 'user', content: 'Write a short story about breakfast.' }],
+import type { RunAgentInput } from '@ag-ui/core';
+import { EventEncoder } from '@ag-ui/encoder';
+import { HashbrownOpenAI } from '@hashbrownai/openai';
+import express from 'express';
+
+const apiKey = process.env['OPENAI_API_KEY'];
+const model = process.env['OPENAI_MODEL'];
+if (!apiKey || !model)
+  throw new Error('Set OPENAI_API_KEY and OPENAI_MODEL in .env');
+
+const app = express();
+app.use(express.json({ limit: '1mb' }));
+
+app.post('/api/chat', async (req, res) => {
+  const controller = new AbortController();
+  res.once('close', () => {
+    if (!res.writableEnded) controller.abort();
+  });
+
+  const encoder = new EventEncoder();
+  res.setHeader('Content-Type', encoder.getContentType());
+  res.setHeader('Cache-Control', 'no-cache, no-store');
+
+  try {
+    const stream = HashbrownOpenAI.stream.text({
+      apiKey,
+      model,
+      input: req.body as RunAgentInput,
+      signal: controller.signal,
+    });
+    for await (const event of stream) {
+      if (controller.signal.aborted) break;
+      res.write(encoder.encodeSSE(event));
+    }
+    res.end();
+  } catch {
+    if (!res.headersSent) res.status(500).end('Could not start the response');
+    else res.destroy();
+  }
+});
+
+app.listen(3001, '127.0.0.1', () => {
+  console.log('Hashbrown endpoint: http://127.0.0.1:3001/api/chat');
 });
 ```
 
 </hb-code-example>
 
-1. First, we provide [system instructions](/docs/angular/concept/system-instructions).
-2. Second, we send some initial `messages` to the model.
+The adapter turns the model's response into AG-UI events. `EventEncoder` writes those events as a server-sent event stream that Hashbrown can read. If the browser disconnects, we cancel the provider request.
 
----
+Run the endpoint in one terminal:
 
-### `ChatResourceOptions`
+```sh
+npx tsx --env-file=.env server.ts
+```
 
-| Option    | Type                                                                   | Required | Description                                                       |
-| --------- | ---------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- |
-| system    | ReactiveOption<string>                                                 | Yes      | System (assistant) prompt.                                        |
-| tools     | Tools[]                                                                | No       | Array of bound tools available to the chat.                       |
-| messages  | Chat.Message<string, Tools>[] \| Signal<Chat.Message<string, Tools>[]> | No       | Initial list of chat messages.                                    |
-| debounce  | number                                                                 | No       | Debounce interval in milliseconds between user inputs.            |
-| debugName | string                                                                 | No       | Name used for debugging in logs and reactive signal labels.       |
-| apiUrl    | ReactiveOption<string>                                                 | No       | Override for the API base URL (defaults to configured `baseUrl`). |
-| threadId  | ReactiveOption<string \| undefined>                                    | No       | Thread identifier used to load or continue a conversation.        |
+This server listens on your machine's loopback address for local development. Before publishing an endpoint, add request validation, authentication, authorization, and usage limits. See [Securing a public endpoint](/docs/angular/recipes/public-endpoint).
 
----
+## Write the welcome card
 
-### `ChatResourceRef`
+Back in the frontend project, create the component:
 
-The @hashbrownai/angular!chatResource:function function returns a @hashbrownai/angular!ChatResourceRef:interface object that extends Angular's `Resource<Chat.Message<string, Tools>[]>` interface.
-
-| Property                 | Type                                         | Description                                                                                                       |
-| ------------------------ | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `value()`                | `Signal<Chat.Message[]>`                     | The current chat messages (inherited from Resource).                                                              |
-| `status()`               | `Signal<ResourceStatus>`                     | The current status of the resource: 'idle', 'loading', 'resolved', or 'error' (inherited from Resource).          |
-| `isLoading()`            | `Signal<boolean>`                            | Whether the resource is currently loading (inherited from Resource).                                              |
-| `hasValue()`             | `Signal<boolean>`                            | Whether the resource has any assistant messages (inherited from Resource).                                        |
-| `error()`                | `Signal<Error \| undefined>`                 | Any error that occurred during the chat operation.                                                                |
-| `lastAssistantMessage()` | `Signal<Chat.AssistantMessage \| undefined>` | The last assistant message in the chat.                                                                           |
-| `sendMessage(message)`   | `(message: Chat.UserMessage) => void`        | Send a new user message to the chat.                                                                              |
-| `stop(clear?)`           | `(clear?: boolean) => void`                  | Stop any currently-streaming message. Optionally removes the streaming message from state.                        |
-| `reload()`               | `() => boolean`                              | Remove the last assistant response and re-send the previous user message. Returns true if a reload was performed. |
-
----
-
-### API Reference
-
-<hb-next-steps>
-  <hb-next-step link="/api/angular/chatResource">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>chatResource()</h4>
-      <p>See the resource documentation</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="/api/angular/ChatResourceOptions">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>ChatResourceOptions API</h4>
-      <p>See all of the options</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="/api/angular/ChatResourceRef">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>ChatResourceRef API</h4>
-      <p>See all of the properties and methods</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
-
----
-
-## Render the Model Response
-
-<hb-code-example header="a short story about breakfast">
+<hb-code-example header="src/app/welcome-card.ts">
 
 ```ts
-import { chatResource } from '@hashbrownai/angular';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
+/** A developer-owned card whose text can be supplied by the model. */
 @Component({
+  selector: 'app-welcome-card',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    // 1. Render the content of each message
-    @for (message of chat.value(); track $index) {
-      <p>{{ message.content }}</p>
-    }
+    <article aria-label="Welcome card">
+      <h2>{{ title() }}</h2>
+      <p>{{ message() }}</p>
+    </article>
   `,
 })
-export class App {
-  // 2. Generate the messages from a prompt
-  chat = chatResource({
-    system: 'hashbrowns should be covered and smothered',
-    messages: [
-      { role: 'user', content: 'Write a short story about breakfast.' },
-    ],
-  });
+export class WelcomeCard {
+  readonly title = input.required<string>();
+  readonly message = input.required<string>();
 }
 ```
 
 </hb-code-example>
 
-1. In the template, we render the content of each message.
-2. The @hashbrownai/angular!chatResource:function function creates a new chat resource.
-3. We use the `value()` signal to access the current messages in the chat.
+We have two strings: `title` and `message`. The component renders them as ordinary text, using the same framework bindings as the rest of our app.
 
----
+## Expose the component
 
-## Send Messages
+The @hashbrownai/angular!uiChatResource:function function creates the UI conversation.
 
-To send messages to the model, we can use the `sendMessage()` method.
+Replace your root component with the following example:
 
-<hb-code-example header="sendMessage()">
+<hb-code-example header="src/app/app.ts">
 
 ```ts
-import { chatResource } from '@hashbrownai/angular';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { s } from '@hashbrownai/core';
+import {
+  exposeComponent,
+  RenderMessageComponent,
+  uiChatResource,
+} from '@hashbrownai/angular';
+import { WelcomeCard } from './welcome-card';
 
+const components = [
+  exposeComponent(WelcomeCard, {
+    name: 'WelcomeCard',
+    description: 'Welcome a developer with a title and a short message.',
+    input: {
+      title: s.string('A short welcome title'),
+      message: s.string('A one-sentence welcome message'),
+    },
+    children: false,
+  }),
+];
+
+/** Generates a welcome card from the components we expose. */
 @Component({
+  selector: 'app-root',
+  imports: [RenderMessageComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div>
-      <input
-        type="text"
-        [value]="userMessage()"
-        (input)="userMessage.set($any($event.target).value)"
-        (keydown.enter)="send()"
-        placeholder="Prompt..."
-      />
-      <button (click)="send()">Send</button>
-    </div>
-    <div>
-      @for (message of chat.value(); track $index) {
-        <p>{{ message.content }}</p>
+    <main>
+      <h1>Your first generated UI</h1>
+      <button type="button" [disabled]="chat.isLoading()" (click)="generate()">
+        Generate a welcome card
+      </button>
+      @if (chat.isLoading()) {
+        <p role="status">Creating your card...</p>
       }
-    </div>
+      @if (chat.error()) {
+        <p role="alert">
+          We could not create the card. Check your server, then try again.
+        </p>
+      } @else {
+        @for (message of chat.value(); track $index) {
+          @if (message.role === 'assistant') {
+            <hb-render-message [message]="message" />
+          }
+        }
+      }
+    </main>
   `,
 })
 export class App {
-  userMessage = input<string>('');
-  chat = chatResource({
-    debugName: 'chat',
-    system: 'hashbrowns should be covered and smothered',
-    messages: [
-      { role: 'user', content: 'Write a short story about breakfast.' },
-    ],
+  protected readonly chat = uiChatResource({
+    system: 'Welcome developers to Hashbrown. Render one WelcomeCard.',
+    components,
   });
 
-  send() {
-    if (this.userMessage().trim()) {
-      this.chat.sendMessage({ role: 'user', content: this.userMessage() });
-      this.userMessage.set('');
-    }
+  protected generate(): void {
+    this.chat.sendMessage({
+      role: 'user',
+      content:
+        'Welcome a developer to Hashbrown. Render a WelcomeCard with a short title and a one-sentence message.',
+    });
   }
 }
 ```
 
 </hb-code-example>
 
-1. We create an input field controlled by the `userMessage` signal for user input.
-2. The `send()` method sends the user message to the chat resource using the `sendMessage()` method.
-3. Angular renders the user message and the assistant response message.
+Let's break this down:
 
----
+1. `exposeComponent()` gives the model a name, a description, and a schema for the card's inputs.
+2. `s.string()` describes the text the component accepts. Hashbrown validates the generated values before passing them to the component.
+3. `uiChatResource()` creates the conversation with that component available.
+4. `hb-render-message` renders the assistant's component output.
 
-## Debugging
+**You own the component.** The model can select from the components you expose and supply their validated props. It does not write a new Angular component or arbitrary markup. Keep authorization for application actions in your own code; a prop schema does not grant permission to perform an action.
 
-The ATC example's developer drawer lets you inspect routing decisions, streamed UI JSON, and browser-side tool calls.
+## Connect the application
 
-<hb-docs-demo demo="debugging">
-</hb-docs-demo>
+Update the application configuration. If your app already has other providers, keep them in the array.
 
-In your own app, Hashbrown streams messages and internal actions to [Redux DevTools](https://chromewebstore.google.com/detail/lmhkpmbekcpmknklioeibfkpmmfibljd). Specify the `debugName` option to identify the chat instance.
-
-<hb-code-example header="debug">
+<hb-code-example header="src/app/app.config.ts">
 
 ```ts
-chat = chatResource({
-  debugName: 'chat',
-});
+import {
+  type ApplicationConfig,
+  provideZonelessChangeDetection,
+} from '@angular/core';
+import { provideHashbrown } from '@hashbrownai/angular';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideZonelessChangeDetection(),
+    provideHashbrown({ baseUrl: '/api/chat' }),
+  ],
+};
 ```
 
 </hb-code-example>
 
----
+The application entry point bootstraps our root component:
 
-## Beyond Chat
+<hb-code-example header="src/main.ts">
 
-Large language models are highly intelligent and capable of more than just text and chatbots.
-With Hashbrown, you can expose your trusted, tested, and compliant components - in other words, you can generate user interfaces using your components as the building blocks!
+```ts
+import { bootstrapApplication } from '@angular/platform-browser';
+import { App } from './app/app';
+import { appConfig } from './app/app.config';
 
-<hb-next-steps>
-  <hb-next-step link="concept/components">
-    <div>
-      <hb-components />
-    </div>
-    <div>
-      <h4>Generate user interfaces</h4>
-      <p>Expose Angular components to the LLM for generative UI.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+bootstrapApplication(App, appConfig).catch(console.error);
+```
 
----
+</hb-code-example>
 
-## Tool Calling
+The Angular CLI starter already includes `<app-root></app-root>` in `src/index.html`. Add `proxy.conf.json` at the root of the frontend project:
 
-Tool calling enables the model to invoke callback function in your frontend web application code.
-The functions you expose can either have no arguments or you can specify the required and optional arguments.
-The model will choose if, and when, to invoke the function.
+<hb-code-example header="proxy.conf.json">
 
-What can functions do?
+```json
+{
+  "/api/**": {
+    "target": "http://127.0.0.1:3001",
+    "secure": false
+  }
+}
+```
 
-- Expose application state to the model
-- Allow the model to take an action
-- Offer intelligent next actions for the user to take
-- Automate user tasks
+</hb-code-example>
 
-With Angular, all handler functions are executed in the injection context - this means that you can use the `inject()` function within the handler functions to inject services and dependencies.
+Start Angular in a second terminal:
 
-<hb-next-steps>
-  <hb-next-step link="concept/functions">
-    <div>
-      <hb-functions />
-    </div>
-    <div>
-      <h4>Tool Calling</h4>
-      <p>Provide callback functions to the LLM.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+```sh
+npx ng serve --proxy-config proxy.conf.json
+```
 
----
+## Generate a card
 
-## Streaming Responses
+Open the frontend URL shown in your terminal and select **Generate a welcome card**. You'll see a loading message, followed by a card with a title and a short welcome message. The exact wording can vary between requests.
 
-Streaming is baked into the core of Hashbrown.
-With Skillet, our LLM-optimized schema language, you can use the `.streaming()` keyword to enable streaming with eager JSON parsing.
+The recording uses the same component and interaction, with a stylesheet for presentation and a scripted model response so the result is repeatable. Your local server uses the model you configured.
 
-<hb-next-steps>
-  <hb-next-step link="concept/streaming">
-    <div>
-      <hb-send />
-    </div>
-    <div>
-      <h4>Streaming Responses</h4>
-      <p>Use Skillet for built-in streaming and eager JSON parsing.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+<a id="debugging"></a>
 
----
+## If the card does not appear
 
-## Run LLM-generated JS Code (Safely)
+- **The request returns 404:** check that the frontend proxy is loaded and the path is `/api/chat`. Restart the frontend server after changing its proxy configuration.
+- **The server cannot start:** confirm that `.env` is in `welcome-server` and both environment variables are set.
+- **The request fails:** check the server terminal and the browser Network panel. Confirm your key can use the configured model. Keep credentials out of browser code.
+- **A response arrives without a card:** check the component name, the schema, and the renderer in your root component. Text chat and UI chat render different kinds of output.
 
-Hashbrown ships with a JavaScript runtime for safe execution of
-LLM-generated code in the client.
+After fixing the cause, select the button again. For more help, see [Debugging](/docs/angular/concept/debugging).
 
-<hb-next-steps>
-  <hb-next-step link="concept/runtime">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>JavaScript Runtime</h4>
-      <p>Safely execute JS code generated by the model in the browser.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+## Next, expose another component
+
+Try adding a second component with different props. Keep its description specific so the model can choose when to use it.
+
+Continue with [Exposing components](/docs/angular/concept/components). When you're ready, learn about [streaming props](/docs/angular/concept/streaming) and [browser-side tools](/docs/angular/concept/functions).

@@ -20,9 +20,9 @@ test('a docs card shows the heading, description and SDK', () => {
   const content = docsCardContent(params);
 
   expect(content).toEqual({
-    title: 'React Quick Start',
+    title: 'React Quickstart',
     subtitle: [
-      'Take your first steps with Hashbrown.',
+      'Build your first generated UI with a trusted welcome card.',
       'React docs · hashbrown.dev',
     ],
   });

@@ -2,18 +2,28 @@
 title: 'Choosing an API: Hashbrown React Docs'
 meta:
   - name: description
-    content: "Get familiar with Hashbrown's hooks and APIs."
+    content: 'Choose an API based on the result your feature needs.'
 ---
 
 # Choosing an API
 
-<p class="subtitle">Get familiar with Hashbrown's hooks and APIs.</p>
+Start with the result you want to show. Then choose whether your feature needs one response or a conversation with earlier turns.
 
----
+## Choose by goal
 
-## Choosing a Hook
+| I want to… | Start with |
+| --- | --- |
+| Render your components in a conversation | @hashbrownai/react!useUiChat:function |
+| Build a text conversation | @hashbrownai/react!useChat:function |
+| Keep a conversation with typed JSON output | @hashbrownai/react!useStructuredChat:function |
+| Generate text from one input | @hashbrownai/react!useCompletion:function |
+| Generate typed data from one input | @hashbrownai/react!useStructuredCompletion:function |
+| Choose among named options | @hashbrownai/react!useDecision:function |
+| Choose which UI components to offer | @hashbrownai/react!useUiDecision:function |
 
-Choose the right hook for the task.
+New to Hashbrown? The [Quickstart](/docs/react/start/quick) uses `useUiChat()` to render a trusted welcome card.
+
+## Compare capabilities
 
 | Resource                                            | Multi-turn chat | Single-turn input | Structured output (schema) | Tool calling | Generate UI components |
 | --------------------------------------------------- | --------------- | ----------------- | -------------------------- | ------------ | ---------------------- |
@@ -27,21 +37,9 @@ Choose the right hook for the task.
 
 ¹ In chat mode, useUiDecision narrows a chat created with useUiChat, which supplies multi-turn chat and tool calling.
 
----
 
-## AI SDK
+A completion responds to the current input. A chat keeps earlier turns in its current instance. Neither automatically persists your conversation after a refresh. See [Message history](/docs/react/concept/message-history) for persistence and restoration.
 
-We love Vercel's AI SDK.
+## Next steps
 
-We also believe that Hashbrown needs to exist.
-This is because we want to drastically change the landscape of the web through generative UI.
-
-If you have some familiarity with the AI SDK, we hope this quick comparison will be helpful.
-
-| Focus          | Hashbrown                                                          | Vercel AI SDK                                                |
-| -------------- | ------------------------------------------------------------------ | ------------------------------------------------------------ |
-| Vision         | Generative UI: models can assemble your actual components.         | General AI toolkit: text/JSON outputs with ready-made UI.    |
-| Frameworks     | React and Angular first-class.                                     | React/Next.js first-class; also Vue/Svelte.                  |
-| Tools          | Client-side tool calling + safe WASM sandbox for AI-authored code. | Server-side tool calling.                                    |
-| Streaming & DX | Binary-normalized streams + Redux DevTools for debugging.          | SSE streams with polished hooks; strong Next.js integration. |
-| UI Approach    | AI renders real app components you whitelist.                      | Developers interpret outputs; AI Elements speeds up chat UI. |
+Continue with [Messages and turns](/docs/react/concept/ai-basics), [Structured output](/docs/react/concept/structured-output), or [Decisions](/docs/react/concept/decisions), depending on the result you need.
