@@ -486,7 +486,7 @@ PR 7 plan: `docs/superpowers/plans/2026-10-22-growth-enable.md`.
   - `fulfill` and `notify` first failed with `handler_error`. The cause was `RESEND_SENDER_VERIFIED=false` in production although `hashbrown.dev` is verified for sending (DKIM and SPF verified in Resend). It was set to `true` (production only) and lifecycle redeployed.
   - On the next tick, `fulfill` completed and the acknowledgement was submitted to Resend.
   - `notify` failed closed as `internal_notification_outcome_unknown`. Its first attempt recorded `internal_notification.submission_started` before the sender check threw, so the retry could not rule out a send. Nothing reached Resend, but per "Retry and recovery" the job was left failed rather than reset.
-  - Pending: Brian's reply to the acknowledgement and the reply stop it should record.
+  - Reply canary passed, 03:18Z. The acknowledgement shows `delivered` with its RFC Message-ID recorded. Brian's reply was admitted, matched to his contact, forwarded, and recorded as `campaign.reply_received` (receipt `stopped`). All three `send_step` jobs were cancelled with `contact_stopped`. The mailbox stayed healthy.
 
 ## Follow-ups
 
