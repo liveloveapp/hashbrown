@@ -64,7 +64,7 @@ Mapper options may add optional `inputMessages` (canonical context for prior ste
 - [x] Run existing cross-framework conformance: `npx nx build conformance`, `npx nx lint conformance`, `npx nx test conformance`, `npx nx conformance-e2e conformance`, `npx nx provider-e2e conformance`. These complement the new real-store Anthropic spec.
 - [x] Run `npx nx build react`, `npx nx build angular`; targeted www tests/lint for edited documentation as appropriate. Report all warnings/failures and distinguish recorded replay from new deterministic native coverage.
 - [x] Request final independent spec/correctness review, then code-quality review; fix findings with regression tests. Check git diff, API reports, dependencies and secret safety without printing keys.
-- [ ] Commit focused changes, push branch, open/attach a PR. No attribution mentioning coding agents. Leave merge/release for user approval; no Hashbrown release notes.
+- [x] Commit focused changes, push branch, open/attach a PR. No attribution mentioning coding agents. Leave merge/release for user approval; no Hashbrown release notes.
 
 ### Task 1 evidence
 
@@ -83,3 +83,5 @@ Core lint retains three existing unused-variable warnings in tool-step.ts. Tooli
 Final independent integration review approved with no remaining findings. Core recorded e2e: 5 pass; provider browser conformance: 8 pass; conformance unit tests: 45 pass; www: 531 pass plus lint. React/Angular builds and both API reports pass. One first-run React browser continuation assertion observed 3 requests instead of 4 despite a completed UI; isolated rerun passed. The full browser rerun passed all 64 cases. Source/doc formatting and git diff whitespace checks pass.
 
 All planned local validation gates pass. Public API report inspection confirms AnthropicBuiltInTools and builtInTools are exported, with no new dependency changes.
+
+PR: https://github.com/liveloveapp/hashbrown/pull/715 (open and attached; awaiting review, merge and release remain separate). Auto-fix could not be enabled through the available tools: computer control of the desktop app is restricted, and the review tool exposes read-only CI diagnostics.
