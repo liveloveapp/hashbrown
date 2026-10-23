@@ -5,6 +5,7 @@ Make the documentation usable to read and navigate, then give new users a direct
 ## Decisions
 
 - The Quickstart ends with a trusted component rendered from model output. The user selected this over beginning with text chat.
+- Most documentation pages open with a recorded demo, immediately after the title and short purpose statement. Include screenshots where they clarify a result, state, or interaction.
 - The sidebar and article scroll vertically and independently on desktop.
 - Migrations is the last documentation section and starts collapsed.
 - Move basic concepts out of the long numbered Guide into Fundamentals.
@@ -91,6 +92,8 @@ The resulting order is Getting started, Fundamentals, Generative UI, Agent workf
 
 Rewrite both Quickstarts around one complete example. Use a `WelcomeCard` with two string props, `title` and `message`. This demonstrates model-authored props rendered by developer-authored UI without requiring tools, a database, an external data API, or a component library.
 
+Open each Quickstart with a recording of the finished example: send the prompt, show the response arriving, and show the rendered card. Follow it with a screenshot of the completed card so readers can inspect the expected result without playing or scrubbing the video.
+
 The reader sees the full path:
 
 1. Confirm an existing React or Angular app and the required server runtime and credentials.
@@ -114,7 +117,25 @@ Update the Introduction to lead toward this example. Update Choosing an API to b
 
 ## Editorial and visual direction
 
-Use an outcome-first page pattern: purpose, prerequisites, minimal example, explanation, practical limits, next step. Guides explain one task; reference pages carry exhaustive options. Retain necessary lifecycle details, but introduce the visible behavior before internal terminology.
+Use an outcome-first page pattern: title and short purpose, recorded demo, prerequisites, minimal example, explanation, practical limits, next step. Place screenshots alongside the steps or explanations they support. Guides explain one task; reference pages carry exhaustive options. Retain necessary lifecycle details, but introduce the visible behavior before internal terminology.
+
+### Recorded demos and screenshots
+
+Recorded demos are the default opening for the Introduction, Quickstart, Example app, and pages in Fundamentals, Generative UI, Agent workflows, and Recipes. Show the capability the page teaches, using the same example as the written instructions. A generic product reel does not fulfill a page's demo requirement.
+
+Aim for 30–90 seconds. Start with the result or interaction, then show the trigger and visible response. Keep setup and extended code walkthroughs in the written guide or a separate longer video. For conceptual pages, record a small example or visual explanation of the concept. Provider setup, migrations, API reference, and decision-oriented guides can omit video when a recording adds little; add targeted recordings where they make setup or changed behavior easier to understand.
+
+Use a responsive player with explicit playback controls, a useful poster frame, a descriptive accessible label, and a short caption stating what the recording demonstrates. Do not autoplay instructional videos. Reserve the media's aspect ratio to prevent layout shifts, and avoid loading the full video until requested. Put the demo inside the article's reading width; it must not become another vertical scroll region.
+
+Provide captions and a transcript for spoken instruction. All essential information must also be available in the written guide, including meaningful on-screen actions in recordings without narration. Readers can complete the task without watching the recording. A brief summary or transcript link can sit below the player without adding a large text block above the guide.
+
+Screenshots should show real application output, relevant intermediate states, error or recovery states, or a UI detail that is difficult to explain in prose. Crop to the useful area, keep text legible, and supply alt text and a concise caption. Use a sequence only when the sequence explains a change; avoid repeating every video frame as a screenshot. Place each image near the relevant explanation. Do not use fabricated output or decorative screenshots as evidence of functionality.
+
+React and Angular pages may share a recording when the visible behavior is identical and the recording does not show framework-specific code. Record separate versions when setup, code, or visible behavior differs. Name the example source and owning documentation page in the media inventory so changes to code can identify recordings and screenshots that need refreshing.
+
+Build on the site's existing video and poster support rather than introducing a hosting dependency. The current ATC player is specific to the example app; the implementation plan should define a reusable documentation demo component and asset metadata for other pages. Track video sources, poster, dimensions, caption/transcript assets where applicable, and the example source. Confirm the hosting and capture workflow before producing the wider library of recordings. Do not substitute the ATC recording for unrelated concepts.
+
+Roll out media with the corresponding content increment: first both Quickstarts, then core generative UI guides and the Introduction, then the remaining learning and recipe pages. Inventory each page's recording and screenshot needs, including justified video exceptions. Missing assets remain explicit production work; do not publish broken embeds or empty player placeholders. The initial scroll and migration repair does not wait for recording production.
 
 For a later visual pass, compare 16–17px system sans-serif body text with the current Fredoka body. Keep brand typography in headings and navigation unless the comparison exposes a specific readability issue. Aim for approximately 65–80 characters per prose line, around 1.6 line height, and a clearer size and spacing hierarchy for headings. Use heading spacing as the usual section separator; reserve horizontal rules for larger transitions.
 
@@ -130,6 +151,8 @@ These visual changes require a layout comparison before implementation; they are
 | --- | --- | --- |
 | First | Surface existing state, interrupt, customization, and guide pages | Readers can find already-documented capabilities |
 | First | Check Quickstart and Fundamentals against current APIs | Examples and recovery instructions agree with published behavior |
+| First | Record the finished Quickstart and capture its final UI | Readers see the trusted component result before beginning setup |
+| Next | Inventory and record page-specific demos | Most learning and recipe pages show the behavior they teach before explaining implementation |
 | Next | How Hashbrown works | One concise explanation of browser, server, provider, tools, schemas, and rendering |
 | Next | Troubleshooting | Task-based recovery for endpoint failures, empty output, tool errors, schema failures, and cancellation |
 | Next | Persistence and runtime lifetime | Explain what survives refresh, navigation, and runtime recreation; connect Threads, state, and interrupt behavior |
@@ -146,6 +169,8 @@ Write failing navigation tests before changing migration order, expansion behavi
 
 Validate Quickstart examples against package source and type-check complete examples using existing infrastructure where practical. Use deterministic renderer checks for component registration and rendering. A live-model smoke test is supplementary and must not assert exact prose or introduce a new mandatory credential requirement for ordinary tests.
 
+Check demo playback, keyboard controls, poster rendering, mobile sizing, captions/transcripts where applicable, and media loading behavior. Confirm videos and screenshots match the documented example and current UI. Verify image alternatives and that the written page remains sufficient without video playback. Test the reusable player before applying it broadly.
+
 After code changes, run `npx nx build www`, `npx nx test www`, and `npx nx lint www`. Use the route report where route or renderer behavior changes. Report warnings and any checks blocked by the environment. Do not add dependencies without asking.
 
 ## Completion criteria
@@ -155,5 +180,7 @@ After code changes, run `npx nx build www`, `npx nx test www`, and `npx nx lint 
 - Migrations is last and initially collapsed in both navigation presentations.
 - Both SDKs have equivalent navigation with working existing URLs.
 - The Quickstart produces UI using a trusted component through complete, verified code.
+- Each Quickstart opens with a recording of that working example and includes a screenshot of the rendered result.
+- Most learning and recipe pages open with their own relevant recorded demo as the media rollout completes; the media inventory identifies outstanding recordings and intentional exceptions.
 - The Introduction, Choosing an API, and next-step links support that journey.
 - The repository retains the broader editorial backlog without presenting unfinished guides as available pages.
