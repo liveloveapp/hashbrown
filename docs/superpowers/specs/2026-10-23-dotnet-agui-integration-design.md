@@ -1,6 +1,6 @@
 # .NET AG-UI integration for OpenAI and Azure OpenAI
 
-Status: design for review, October 23, 2026.
+Status: approved by the user, October 23, 2026. New dependency additions still require the separate approval specified below.
 
 ## Decision and scope
 
