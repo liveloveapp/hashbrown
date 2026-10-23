@@ -22,6 +22,39 @@ export interface AnthropicHashbrownRunAgentInput extends RunAgentInput {
   } & Record<string, unknown>;
 }
 
+/** Removes the adapter-owned name from each SDK tool version. */
+type ToolConfiguration<T> = T extends unknown ? Omit<T, 'name'> : never;
+
+/**
+ * Anthropic server tools enabled alongside application functions.
+ *
+ * `true` selects web search 20250305, web fetch 20250910 (with citations),
+ * or code execution 20250825. Object settings retain their SDK version and options.
+ * Model support varies by version. Applications must display required source
+ * attribution. The request transform can further customize these tools.
+ * @public
+ */
+export interface AnthropicBuiltInTools {
+  /** Enables web search with the pinned default or an explicit SDK version. */
+  webSearch?:
+    | true
+    | ToolConfiguration<
+        Extract<Anthropic.Messages.ToolUnion, { name: 'web_search' }>
+      >;
+  /** Enables web fetch; the default enables citations. */
+  webFetch?:
+    | true
+    | ToolConfiguration<
+        Extract<Anthropic.Messages.ToolUnion, { name: 'web_fetch' }>
+      >;
+  /** Enables code execution with the pinned default or an explicit SDK version. */
+  codeExecution?:
+    | true
+    | ToolConfiguration<
+        Extract<Anthropic.Messages.ToolUnion, { name: 'code_execution' }>
+      >;
+}
+
 /**
  * Options for streaming an AG-UI run from Anthropic.
  *
@@ -34,6 +67,8 @@ export interface AnthropicTextStreamOptions {
   baseURL?: string;
   /** Model selected by the server for this endpoint. */
   model: string;
+  /** Provider-managed tools; see {@link AnthropicBuiltInTools} for defaults. */
+  builtInTools?: AnthropicBuiltInTools;
   /** Standard AG-UI run input plus optional Hashbrown semantics. */
   input: AnthropicHashbrownRunAgentInput;
   /** Cancels the provider request when the HTTP request is abandoned. */

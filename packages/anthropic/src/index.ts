@@ -9,6 +9,7 @@ export type {
   ActivityWriter,
 } from '@hashbrownai/core';
 export type {
+  AnthropicBuiltInTools,
   AnthropicHashbrownRunAgentInput,
   AnthropicTextStreamOptions,
 } from './stream/types';

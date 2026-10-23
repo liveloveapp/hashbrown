@@ -173,7 +173,9 @@ test('emits canonical text before a raw citation-bearing start frame', async () 
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(
+    result.filter((event) => event.type !== EventType.CUSTOM),
+  ).toMatchObject([
     {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'assistant-message-1',
@@ -215,7 +217,7 @@ test('emits a citation-bearing start even when its initial text is empty', async
   expect(result).toEqual([rawAGUIEvent(start)]);
 });
 
-test('emits every server tool frame as raw without entering the client tool loop', async () => {
+test('preserves every server tool frame as raw alongside the provider lifecycle', async () => {
   const start = serverToolStart(0);
   const delta = inputJsonDelta(0);
   const stop = contentStop(0);
@@ -223,14 +225,14 @@ test('emits every server tool frame as raw without entering the client tool loop
 
   const result = await collectEvents(events);
 
-  expect(result).toEqual([
+  expect(result.filter((event) => event.type === EventType.RAW)).toEqual([
     rawAGUIEvent(start),
     rawAGUIEvent(delta),
     rawAGUIEvent(stop),
   ]);
-  expect(result).not.toContainEqual(
-    expect.objectContaining({ type: EventType.TOOL_CALL_START }),
-  );
+  expect(
+    result.find((event) => event.type === EventType.TOOL_CALL_START),
+  ).toMatchObject({ metadata: { 'b4.step': { kind: 'provider' } } });
 });
 
 test('emits start and stop raw frames for every native result and upload block', async () => {
@@ -406,6 +408,7 @@ test('cancellation after a raw frame does not synthesize later raw frames', asyn
     signal: controller.signal,
   })[Symbol.asyncIterator]();
 
+  await iterator.next();
   const first = await iterator.next();
   controller.abort();
   const next = await iterator.next();
