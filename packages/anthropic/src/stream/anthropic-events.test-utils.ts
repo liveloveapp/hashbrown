@@ -20,6 +20,7 @@ export function messageStart(): RawEvent {
       type: 'message',
       role: 'assistant',
       content: [],
+      diagnostics: null,
       model: 'claude-test',
       container: null,
       stop_reason: null,
@@ -35,6 +36,7 @@ export function messageStart(): RawEvent {
         output_tokens_details: null,
         server_tool_use: null,
         service_tier: null,
+        speed: null,
       },
     },
   };

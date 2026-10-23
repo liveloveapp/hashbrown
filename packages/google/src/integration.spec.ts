@@ -127,6 +127,24 @@ interface HandWrittenRunOptions {
   ) => GenerateContentParameters;
 }
 
+/** Uses Node's native fetch transport across Jest's VM boundary. */
+function withNativeFetch(
+  request: GenerateContentParameters,
+): GenerateContentParameters {
+  // The SDK's default dispatcher reads Undici state from Jest's VM global,
+  // while native fetch initializes that state on Node's host global.
+  return {
+    ...request,
+    config: {
+      ...request.config,
+      httpOptions: {
+        ...request.config?.httpOptions,
+        fetch: request.config?.httpOptions?.fetch ?? globalThis.fetch,
+      },
+    },
+  };
+}
+
 async function* googleTextWithAimock(
   aimock: AimockHandle,
   signal: AbortSignal,
@@ -143,7 +161,8 @@ async function* googleTextWithAimock(
       input,
       signal,
       activities: options.activities,
-      transformRequestOptions: options.transformRequestOptions,
+      transformRequestOptions: (request) =>
+        withNativeFetch(options.transformRequestOptions?.(request) ?? request),
     });
   } finally {
     if (previousBaseUrl === undefined) {
@@ -223,7 +242,7 @@ async function withRecording<T>(
           const transformed =
             options.transformRequestOptions?.(request) ?? request;
 
-          return {
+          return withNativeFetch({
             ...transformed,
             config: {
               ...transformed.config,
@@ -240,7 +259,7 @@ async function withRecording<T>(
                     thinkingConfig: { thinkingLevel: target.minimalThinking },
                   }),
             },
-          };
+          });
         },
       }),
       (event) => EventSchemas.parse(event),

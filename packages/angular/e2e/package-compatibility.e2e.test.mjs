@@ -114,8 +114,8 @@ test('published package declares the Angular 22 compatibility boundary', async (
   assert.equal(packageJson.peerDependencies['@angular/common'], '^22.0.0');
   assert.equal(packageJson.dependencies['@cacheplane/partial-json'], '0.3.0');
   assert.equal(packageJson.dependencies['@cacheplane/json-stream'], undefined);
-  assert.match(bundle, /from '@cacheplane\/partial-json'/);
-  assert.doesNotMatch(bundle, /from '@cacheplane\/json-stream'/);
+  assert.match(bundle, /from ['"]@cacheplane\/partial-json['"]/);
+  assert.doesNotMatch(bundle, /from ['"]@cacheplane\/json-stream['"]/);
   assert.match(bundle, /ChangeDetectionStrategy\.Eager/);
 });
 
