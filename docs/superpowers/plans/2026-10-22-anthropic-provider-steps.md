@@ -28,10 +28,10 @@ Mapper options may add optional `inputMessages` (canonical context for prior ste
 
 ## Task 1: neutral native-history persistence
 
-- [ ] Write model/reader tests and root-store tests for assistant text, tool-only assistant owner, result-only tool message, reasoning-only owner, correct/mismatched response identity, malformed/unknown versions, immutability, duplicate/conflict, and snapshot/history round trip.
-- [ ] Run `NX_DAEMON=false NX_NO_CLOUD=true npx nx test core --testPathPatterns=provider-history --output-style=static`; confirm failures caused by missing behavior before production edits.
-- [ ] Implement the owned reader/constants/type, canonical CUSTOM fold, and only the accumulator/history changes demonstrated necessary by real-store tests. Reuse existing JSON ownership and transactional event decision machinery. Add TSDoc to all reusable symbols and ɵ exports.
-- [ ] Repeat focused tests, then full core tests. Review spec compliance, then code quality, before completing this task.
+- [x] Write model/reader tests and root-store tests for assistant text, tool-only assistant owner, result-only tool message, reasoning-only owner, correct/mismatched response identity, malformed/unknown versions, immutability, duplicate/conflict, and snapshot/history round trip.
+- [x] Run `NX_DAEMON=false NX_NO_CLOUD=true npx nx test core --testPathPatterns=provider-history --output-style=static`; confirm failures caused by missing behavior before production edits.
+- [x] Implement the owned reader/constants/type, canonical CUSTOM fold, and only the accumulator/history changes demonstrated necessary by real-store tests. Reuse existing JSON ownership and transactional event decision machinery. Add TSDoc to all reusable symbols and ɵ exports.
+- [x] Repeat focused tests, then full core tests. Review spec compliance, then code quality, before completing this task.
 
 ## Task 2: typed built-ins and exact Anthropic replay
 
@@ -65,3 +65,7 @@ Mapper options may add optional `inputMessages` (canonical context for prior ste
 - [ ] Run `npx nx build react`, `npx nx build angular`; targeted www tests/lint for edited documentation as appropriate. Report all warnings/failures and distinguish recorded replay from new deterministic native coverage.
 - [ ] Request final independent spec/correctness review, then code-quality review; fix findings with regression tests. Check git diff, API reports, dependencies and secret safety without printing keys.
 - [ ] Commit focused changes, push branch, open/attach a PR. No attribution mentioning coding agents. Leave merge/release for user approval; no Hashbrown release notes.
+
+### Task 1 evidence
+
+Core baseline 1,513 tests; footer implementation 1,548 tests/14 snapshots pass, plus build/lint pass. Focused35tests; observed red before code, including response uniqueness and inherited-identity regressions. Independent spec and quality reviews approved. Core lint retains three pre-existing unused-variable warnings in tool-step.ts. No accumulator changes were needed because canonical history is the request source of truth.
