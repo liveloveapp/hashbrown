@@ -515,6 +515,10 @@ becomes plain text.
 Stop reasons `unsubscribe, complaint, hard_bounce, provider_suppression,
 invalid_address, manual_suppression, campaign.reply_received, deletion`, each
 one idempotent transaction that clears approval and cancels pending jobs.
+A reply is `campaign.reply_received` only when its own text asks to leave
+("unsubscribe", "stop", "opt out", "remove me", "not interested" and similar)
+or has no readable text; any other reply is forwarded to Brian and the contact
+keeps the sequence (Brian's call, 2026-10-23: content-based, kept simple).
 Resend webhook at `/_/webhooks/resend`, Svix-verified, mapping `email.sent |
 delivered | delivery_delayed | bounced | complained | suppressed | failed` with
 threadplane's precedence; environment-tag mismatches are acknowledged and
