@@ -1628,3 +1628,81 @@ test('a step on TOOL_CALL_START without startedAt takes the START timestamp', ()
   expect(next.toolCalls[1]).not.toHaveProperty('metadata');
   expect(next.toolCalls[1]).not.toHaveProperty('arrivedAt');
 });
+
+for (const type of [
+  EventType.TOOL_CALL_START,
+  EventType.TOOL_CALL_ARGS,
+] as const) {
+  test(`keeps provider identity when ${type} carries a server step`, () => {
+    const state = accumulateEvents(createState(), [
+      {
+        ...toolStart('provider-1', 'lookup'),
+        metadata: {
+          'b4.step': {
+            v: 1,
+            kind: 'provider',
+            builtin: 'web_search',
+            provider: 'openai',
+          },
+        },
+      },
+    ]);
+    const event: AGUIEvent =
+      type === EventType.TOOL_CALL_START
+        ? {
+            ...toolStart('provider-1', 'lookup'),
+            metadata: {
+              'b4.step': { v: 1, kind: 'server', status: 'running' },
+              trace: 'next',
+            },
+          }
+        : {
+            ...toolArgs('provider-1', ''),
+            metadata: {
+              'b4.step': { v: 1, kind: 'server', status: 'running' },
+              trace: 'next',
+            },
+          };
+
+    const result = accumulateAgUiMessageEvent(state, event);
+
+    expect(result.toolCalls[0].metadata).toEqual({
+      'b4.step': {
+        v: 1,
+        kind: 'provider',
+        status: 'running',
+        builtin: 'web_search',
+        provider: 'openai',
+      },
+      trace: 'next',
+    });
+    expect(state.toolCalls[0].metadata?.['b4.step']).toEqual({
+      v: 1,
+      kind: 'provider',
+      builtin: 'web_search',
+      provider: 'openai',
+    });
+  });
+}
+
+test('normalizes a new tool call step using its call id', () => {
+  const event: AGUIEvent = {
+    ...toolStart('legacy-1', 'lookup'),
+    metadata: {
+      'b4.step': {
+        toolCallId: 'legacy-1',
+        status: 'running',
+        sources: [{ title: 'Legacy source' }],
+      },
+    },
+  };
+
+  const result = accumulateAgUiMessageEvent(createState(), event);
+
+  expect(result.toolCalls[0].metadata?.['b4.step']).toEqual({
+    v: 1,
+    kind: 'server',
+    status: 'running',
+    sources: [{ id: 'legacy-1:0', kind: 'record', title: 'Legacy source' }],
+  });
+});

@@ -1317,7 +1317,8 @@ function withHeldStep<T extends Record<string, unknown>>(
 /**
  * Normalizes a CUSTOM step value without its `toolCallId`, which the call
  * already names, as B4 does. `kind` is kept only when the value states it, so
- * a legacy value never overwrites a stored kind.
+ * a legacy value never overwrites a stored kind. Unknown status strings stay
+ * readable until the metadata merge applies the frame lifecycle fallback.
  */
 function withoutToolCallId(
   value: unknown,
@@ -1329,7 +1330,7 @@ function withoutToolCallId(
   const statedKind =
     keepKind || raw['kind'] === 'server' || raw['kind'] === 'provider';
   return Object.fromEntries(
-    Object.entries(step).filter(
+    Object.entries({ ...step, status: step.status ?? raw['status'] }).filter(
       ([key]) => key !== 'toolCallId' && (statedKind || key !== 'kind'),
     ),
   );
@@ -1414,7 +1415,7 @@ function readFrameOnlyResult(
 
 /**
  * Holds a CUSTOM `b4.step` for a call the draft does not have yet, and drops
- * a held step once its call has started.
+ * a held step once its call has started or the run ends.
  */
 function nextPendingToolSteps(
   state: AgUiMessagesState,
@@ -1422,6 +1423,12 @@ function nextPendingToolSteps(
   draft: readonly Readonly<Message>[],
 ): Readonly<Record<string, ɵToolStep>> {
   const pending = state.pendingToolSteps;
+  if (
+    event.type === EventType.RUN_FINISHED ||
+    event.type === EventType.RUN_ERROR
+  ) {
+    return NO_PENDING_STEPS;
+  }
   if (event.type === EventType.CUSTOM) {
     if (event.name !== ɵTOOL_STEP_EVENT_NAME) return pending;
     const step = ɵreadToolStep(event.value);
@@ -1437,7 +1444,9 @@ function nextPendingToolSteps(
         stampStepStart(
           ɵmergeToolStep(
             readHeldStep(pending, id),
-            withoutToolCallId(event.value, true) as ɵToolStepRead,
+            // Pending steps have no frame lifecycle fallback. Normalize an
+            // unknown status before merging so it cannot settle running fields.
+            ɵreadToolStep(withoutToolCallId(event.value, true)) as ɵToolStepRead,
             'call',
           ),
           event.timestamp,
