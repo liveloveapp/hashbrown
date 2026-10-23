@@ -618,7 +618,8 @@ test('the unsubscribe URL must belong to the authorized contact', async () => {
 });
 
 const lookupEnv = {
-  RESEND_API_KEY: 're_test_lookup',
+  RESEND_INBOX_READ_API_KEY: 're_test_lookup',
+  RESEND_API_KEY: 're_sending_only',
   DELIVERY_ENVIRONMENT: 'preview',
   GROWTH_DATABASE_ENVIRONMENT: 'preview',
 };
@@ -702,6 +703,23 @@ test('reconcilePendingResendMessageIds skips without delivery configuration and 
   await expect(mismatched).rejects.toThrow(
     'Provider lookup requires matching environments and credentials',
   );
+  expect(calls).toEqual([]);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test('reconcilePendingResendMessageIds leaves bindings pending without the dedicated read credential', async () => {
+  const { executor: lookupExecutor, calls } = executorWith({
+    'claim-provider-message-lookups': () => ({ rows: [] }),
+  });
+  const fetch = vi.fn();
+
+  const result = await reconcilePendingResendMessageIds(
+    lookupExecutor,
+    { now, signal: new AbortController().signal },
+    { fetch, env: { ...lookupEnv, RESEND_INBOX_READ_API_KEY: undefined } },
+  );
+
+  expect(result).toEqual({ claimed: 0, bound: 0, deferred: 0 });
   expect(calls).toEqual([]);
   expect(fetch).not.toHaveBeenCalled();
 });

@@ -666,7 +666,7 @@ export async function leaseDueJobs(
              m.recovery_id is not null or m.healthy_through is null
              or m.healthy_through < $2::timestamptz - interval '10 minutes'
              or exists (select 1 from growth_reply_receipts r where r.recipient = m.address
-               and r.status = 'pending' and (r.reference_ids is null or r.contact_id = j.contact_id))
+               and r.status = 'pending' and (r.reference_ids is null or r.contact_id is null or r.contact_id = j.contact_id))
              or exists (select 1 from growth_jobs sent where sent.contact_id = j.contact_id
                and sent.kind in ('fulfill','send_step')
                and (sent.created_at >= m.started_at or exists (
@@ -803,7 +803,7 @@ export async function authorizeLeasedJobForSubmission(
                   m.recovery_id is not null or m.healthy_through is null
                   or m.healthy_through < $4::timestamptz - interval '10 minutes'
                   or exists (select 1 from growth_reply_receipts r where r.recipient = m.address
-                    and r.status = 'pending' and r.reference_ids is null)
+                    and r.status = 'pending' and (r.reference_ids is null or r.contact_id is null))
                 )
               )) as mailbox_recovery_required,
               exists (
