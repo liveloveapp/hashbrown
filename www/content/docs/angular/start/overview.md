@@ -1,11 +1,11 @@
 ---
-title: 'API Overview: Hashbrown Angular Docs'
+title: 'Choosing an API: Hashbrown Angular Docs'
 meta:
   - name: description
     content: "Get familiar with Hashbrown's resources and APIs."
 ---
 
-# API Overview
+# Choosing an API
 
 <p class="subtitle">Get familiar with Hashbrown's resources and APIs.</p>
 

@@ -98,18 +98,22 @@ test('is closed until something asks it to open', () => {
   expect(dialog()).toBeNull();
 });
 
-test('the open event shows a modal dialog and focuses the query', async () => {
-  stubFetch();
-  mount();
+test(
+  'the open event shows a modal dialog and focuses the query',
+  async () => {
+    stubFetch();
+    mount();
 
-  await open();
+    await open();
 
-  expect(dialog()?.getAttribute('aria-modal')).toBe('true');
-  expect(document.activeElement).toBe(queryInput());
-  expect(document.querySelector('label')?.textContent?.trim()).toBe(
-    'Search query',
-  );
-});
+    expect(dialog()?.getAttribute('aria-modal')).toBe('true');
+    expect(document.activeElement).toBe(queryInput());
+    expect(document.querySelector('label')?.textContent?.trim()).toBe(
+      'Search query',
+    );
+  },
+  LAZY_LOAD.timeout,
+);
 
 test('⌘K opens it', async () => {
   stubFetch();

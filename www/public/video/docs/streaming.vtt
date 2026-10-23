@@ -1,0 +1,13 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.600
+The result. An assistant response is rendered as real application components.
+
+00:00:02.600 --> 00:00:09.036
+Create UI chat. The same capability is wired through native Angular and React APIs.
+
+00:00:09.036 --> 00:00:19.405
+Watch the response arrive. The recorder sends small scripted model chunks through the real streaming pipeline.
+
+00:00:19.405 --> 00:00:28.300
+Continue the conversation. A subsequent request updates the UI and starts following an aircraft on the map.

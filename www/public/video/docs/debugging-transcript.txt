@@ -1,0 +1,29 @@
+Inspect an AI interaction.
+
+Follow routing decisions, streamed UI, and browser tools.
+
+This recording uses the real ATC application, scripted model responses, and fixture traffic. It has no narration.
+
+#00:00 The result
+
+The ATC inspector shows the actual browser tool-call arguments for a completed request.
+
+#00:02 Open the inspector
+
+Open the ATC developer drawer and enlarge it with its keyboard-accessible resize handle.
+
+#00:06 Inspect the route
+
+Type a prompt and watch the Router tab identify its destination and confidence.
+
+#00:11 Watch UI JSON arrive
+
+Send the request with the UI stream tab selected to inspect the generated component data.
+
+#00:17 Inspect tool arguments
+
+The Tools tab shows the aircraft query and highlight calls executed by the app.
+
+#00:23 Review the decision
+
+The Router tab retains the submitted prompt, selected chat route, and confidence scores.

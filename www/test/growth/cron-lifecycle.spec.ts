@@ -1,10 +1,8 @@
 import { expect, test, vi } from 'vitest';
 
 import { LifecycleInvokeError } from '../../src/lib/growth/lifecycle-client';
-import {
-  createLifecycleCronRoute,
-  maxDuration,
-} from '../../src/app/%5F/cron/lifecycle/route';
+import { createLifecycleCronRoute } from '../../src/app/%5F/cron/lifecycle/handler';
+import { maxDuration } from '../../src/app/%5F/cron/lifecycle/route';
 
 const URL_ = 'https://hashbrown.dev/_/cron/lifecycle';
 

@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.600
+The result. An arrivals request produces a focused set of cards.
+
+00:00:02.600 --> 00:00:08.061
+Choose a route. Angular and React decision APIs classify intent before the app handles the request.
+
+00:00:08.061 --> 00:00:16.185
+Filter or conversation. The app routes a filtering request directly to the map.
+
+00:00:16.185 --> 00:00:21.617
+Choose the components. UI decisions narrow the available card set for the next turn.
+
+00:00:21.617 --> 00:00:31.106
+See the focused response. The scripted arrivals request renders the selected result in the real app.

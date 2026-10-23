@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 
-import { createFounderApproveInstallRoute } from '../../src/app/%5F/growth/approve-install/route';
+import { createFounderApproveInstallRoute } from '../../src/app/%5F/growth/approve-install/handler';
 import { mintToken, TEST_NOW, TEST_TOKEN_KEYRING } from './_keys';
 
 const ORIGIN = 'https://hashbrown.dev/_/growth/approve-install';

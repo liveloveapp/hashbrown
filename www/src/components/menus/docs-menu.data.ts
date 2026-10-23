@@ -1,6 +1,6 @@
 import type { Sdk } from '../../lib/content';
 
-/** One docs-menu entry as written in the Angular `DocsMenu` template. */
+/** One documentation entry, shared by both SDK navigation menus. */
 interface DocsMenuEntry {
   text: string;
   /** Path below `/docs/<sdk>/`. */
@@ -11,8 +11,10 @@ interface DocsMenuEntry {
 
 interface DocsMenuSectionEntry {
   title: string;
-  /** Rendered as `<ol>` when true, `<ul>` otherwise, as in Angular. */
+  /** Rendered as `<ol>` when true, `<ul>` otherwise. */
   ordered: boolean;
+  /** Display this group as an initially closed disclosure. */
+  collapsible?: boolean;
   entries: readonly DocsMenuEntry[];
 }
 
@@ -26,6 +28,7 @@ export interface DocsMenuLink {
 export interface DocsMenuSection {
   title: string;
   ordered: boolean;
+  collapsible: boolean;
   links: DocsMenuLink[];
 }
 
@@ -37,57 +40,60 @@ export const NON_DOCS_LINKS: readonly string[] = [];
 
 const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
   {
-    title: 'Getting Started',
+    title: 'Getting started',
     ordered: false,
     entries: [
       { text: 'Introduction', path: 'start/intro' },
       { text: 'Quickstart', path: 'start/quick' },
       { text: 'Example app', path: 'start/sample' },
-      { text: 'API Overview', path: 'start/overview' },
+      { text: 'Choosing an API', path: 'start/overview' },
     ],
   },
   {
-    title: 'Migrations',
+    title: 'Fundamentals',
     ordered: false,
     entries: [
-      { text: 'Upgrade to v0.8', path: 'migrations/v0-8' },
-      { text: 'Upgrade to v0.7', path: 'migrations/v0-7' },
-      { text: 'Upgrade to v0.6', path: 'migrations/v0-6' },
-      { text: 'Upgrade to v0.5', path: 'migrations/v0-5' },
+      { text: 'Messages and turns', path: 'concept/ai-basics' },
+      { text: 'System instructions', path: 'concept/system-instructions' },
+      { text: 'Message history', path: 'concept/message-history' },
+      { text: 'Streaming', path: 'concept/streaming' },
+      { text: 'Tool calling', path: 'concept/functions' },
     ],
   },
   {
-    title: 'Guide',
-    ordered: true,
+    title: 'Generative UI',
+    ordered: false,
     entries: [
-      { text: '1. Basics of AI', path: 'concept/ai-basics' },
-      { text: '2. System Instructions', path: 'concept/system-instructions' },
-      { text: '3. Message History', path: 'concept/message-history' },
-      { text: '4. Skillet Schema', path: 'concept/schema' },
-      { text: '5. Streaming', path: 'concept/streaming' },
-      { text: '6. Tool Calling', path: 'concept/functions' },
-      { text: '7. Structured Output', path: 'concept/structured-output' },
-      { text: '8. Decisions', path: 'concept/decisions' },
-      { text: '9. Generative UI', path: 'concept/components' },
-      { text: '10. JavaScript Runtime', path: 'concept/runtime' },
-      { text: '11. Activities', path: 'concept/activities' },
+      { text: 'Skillet schemas', path: 'concept/schema' },
+      { text: 'Structured output', path: 'concept/structured-output' },
+      { text: 'Exposing components', path: 'concept/components' },
+      { text: 'UI kits', path: 'recipes/ui-kits' },
+    ],
+  },
+  {
+    title: 'Agent workflows',
+    ordered: false,
+    entries: [
+      { text: 'Decisions', path: 'concept/decisions' },
+      { text: 'Shared agent state', path: 'concept/shared-agent-state' },
+      { text: 'Interrupt and resume', path: 'concept/interrupt-and-resume' },
+      { text: 'Activities', path: 'concept/activities' },
+      { text: 'JavaScript runtime', path: 'concept/runtime' },
     ],
   },
   {
     title: 'Recipes',
-    ordered: true,
+    ordered: false,
     entries: [
       {
         text: 'Natural Language Forms',
         path: 'recipes/natural-language-to-structured-data',
       },
       { text: 'UI Chatbot with Tools', path: 'recipes/ui-chatbot' },
-      { text: 'UI Kits', path: 'recipes/ui-kits' },
       { text: 'UI Selection', path: 'recipes/ui-selection' },
       { text: 'Decisions in Agents', path: 'recipes/decisions-in-agents' },
       { text: 'Predictive Suggestions', path: 'recipes/predictive-actions' },
       { text: 'Remote MCP', path: 'recipes/remote-mcp' },
-      { text: 'Securing a Public Endpoint', path: 'recipes/public-endpoint' },
       { text: 'Threads', path: 'recipes/threads' },
       { text: 'Magic Text', path: 'recipes/magic-text' },
       { text: 'JSON Parser', path: 'recipes/json-parser' },
@@ -96,7 +102,21 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
     ],
   },
   {
-    title: 'Platforms',
+    title: 'Production guides',
+    ordered: false,
+    entries: [
+      { text: 'Securing a public endpoint', path: 'recipes/public-endpoint' },
+      {
+        text: 'Request customization',
+        path: 'concept/transform-request-options',
+      },
+      { text: 'Choosing a model', path: 'guide/choosing-model' },
+      { text: 'Prompt engineering', path: 'guide/prompt-engineering' },
+      { text: 'Responsible AI UX', path: 'guide/ethics' },
+    ],
+  },
+  {
+    title: 'Model providers',
     ordered: false,
     entries: [
       { text: 'OpenAI', path: 'platform/openai' },
@@ -108,6 +128,17 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'TypeSafe', path: 'platform/typesafe' },
     ],
   },
+  {
+    title: 'Migrations',
+    ordered: false,
+    collapsible: true,
+    entries: [
+      { text: 'Upgrade to v0.8', path: 'migrations/v0-8' },
+      { text: 'Upgrade to v0.7', path: 'migrations/v0-7' },
+      { text: 'Upgrade to v0.6', path: 'migrations/v0-6' },
+      { text: 'Upgrade to v0.5', path: 'migrations/v0-5' },
+    ],
+  },
 ];
 
 /**
@@ -117,9 +148,10 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
  * @param sdk - The SDK whose docs the menu links to.
  */
 export function docsMenuSections(sdk: Sdk): DocsMenuSection[] {
-  return DOCS_MENU.map(({ title, ordered, entries }) => ({
+  return DOCS_MENU.map(({ title, ordered, collapsible = false, entries }) => ({
     title,
     ordered,
+    collapsible,
     links: entries
       .filter((entry) => !entry.sdks || entry.sdks.includes(sdk))
       .map((entry) => ({
