@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const LIFECYCLE_RESPONSE_MAX_BYTES = 64 * 1_024;
@@ -18,8 +16,23 @@ export interface InvokeLifecycleInput {
 /** Replaceable collaborators, for tests. */
 export interface InvokeLifecycleDependencies {
   fetch: typeof fetch;
-  randomUUID: () => string;
+  /** The b4run thread a trigger's run uses. */
+  threadId: (trigger: InvokeLifecycleInput['trigger']) => string;
 }
+
+/**
+ * The one b4run thread each trigger reuses. The cron deletes both after every
+ * run the service answered, so a thread left by a run the client timed out
+ * on is reused and deleted later instead of piling up: at most two threads
+ * exist at any time. b4run refuses (409) a run on a thread that is still
+ * executing, which also keeps two runs of one trigger from overlapping.
+ */
+export const LIFECYCLE_THREAD_IDS: Readonly<
+  Record<InvokeLifecycleInput['trigger'], string>
+> = {
+  cron: '6c1f0b6e-2d4a-4c8e-9b1a-0d7e3f5a2c41',
+  nudge: '9a3e5d27-8b6f-4f1c-a2d0-4e7b9c1f6a83',
+};
 
 /** An alert the lifecycle service raises for a human operator. */
 export type LifecycleOperatorAlert =
@@ -64,7 +77,7 @@ export class LifecycleInvokeError extends Error {
 
 const defaultDependencies: InvokeLifecycleDependencies = {
   fetch,
-  randomUUID,
+  threadId: (trigger) => LIFECYCLE_THREAD_IDS[trigger],
 };
 
 function lifecycleBaseUrl(value: string): string {
@@ -237,7 +250,7 @@ export async function invokeLifecycle(
   if (input.submissionId && !UUID_V4.test(input.submissionId)) {
     throw new Error('Lifecycle submission ID must be a UUID v4');
   }
-  const threadId = resolved.randomUUID();
+  const threadId = resolved.threadId(input.trigger);
   if (!UUID_V4.test(threadId)) {
     throw new Error('Lifecycle thread ID must be a UUID v4');
   }

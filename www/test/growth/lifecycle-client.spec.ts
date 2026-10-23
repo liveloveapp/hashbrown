@@ -3,6 +3,7 @@ import { expect, test, vi } from 'vitest';
 import {
   deleteLifecycleThread,
   invokeLifecycle,
+  LIFECYCLE_THREAD_IDS,
   LifecycleInvokeError,
   nudgeLifecycle,
 } from '../../src/lib/growth/lifecycle-client';
@@ -30,15 +31,15 @@ test('invokeLifecycle posts route /dispatch#workflow with the bearer and rejects
 
   const result = await invokeLifecycle(INPUT, {
     fetch: fetch as never,
-    randomUUID: () => THREAD_ID,
+    threadId: () => THREAD_ID,
   });
   const wrong = invokeLifecycle(INPUT, {
     fetch: wrongShape as never,
-    randomUUID: () => THREAD_ID,
+    threadId: () => THREAD_ID,
   });
   const big = invokeLifecycle(INPUT, {
     fetch: oversize as never,
-    randomUUID: () => THREAD_ID,
+    threadId: () => THREAD_ID,
   });
 
   expect(result).toEqual({ operatorAlerts: [], threadId: THREAD_ID });
@@ -70,11 +71,11 @@ test('invokeLifecycle accepts both operator alerts', async () => {
 
   const result = await invokeLifecycle(INPUT, {
     fetch: fetch as never,
-    randomUUID: () => THREAD_ID,
+    threadId: () => THREAD_ID,
   });
   const rejected = invokeLifecycle(INPUT, {
     fetch: unknown as never,
-    randomUUID: () => THREAD_ID,
+    threadId: () => THREAD_ID,
   });
 
   expect(result.operatorAlerts).toEqual([
@@ -91,7 +92,7 @@ test('invokeLifecycle accepts a projection alert without a recovery pause', asyn
 
   const result = await invokeLifecycle(INPUT, {
     fetch: fetch as never,
-    randomUUID: () => THREAD_ID,
+    threadId: () => THREAD_ID,
   });
 
   expect(result.operatorAlerts).toEqual(['observation_projection_failed']);
@@ -117,7 +118,7 @@ test('invokeLifecycle sends submission_id for a nudge and rejects a non-https or
 
   const result = await invokeLifecycle(
     { ...INPUT, trigger: 'nudge', submissionId },
-    { fetch: fetch as never, randomUUID: () => THREAD_ID },
+    { fetch: fetch as never, threadId: () => THREAD_ID },
   );
   const insecure = invokeLifecycle(
     { ...INPUT, baseUrl: 'http://lifecycle.example' },
@@ -159,7 +160,7 @@ test('invokeLifecycle accepts a timeout up to 60 s and rejects anything longer',
 
   const result = await invokeLifecycle(
     { ...INPUT, timeoutMs: 60_000 },
-    { fetch: fetch as never, randomUUID: () => THREAD_ID },
+    { fetch: fetch as never, threadId: () => THREAD_ID },
   );
   const tooLong = invokeLifecycle(
     { ...INPUT, timeoutMs: 60_001 },
@@ -234,7 +235,7 @@ test('invokeLifecycle accepts exactly the four operator alerts', async () => {
     invokeLifecycle(INPUT, {
       fetch: (async () =>
         new Response(state(operatorAlerts, recoveryPaused))) as never,
-      randomUUID: () => THREAD_ID,
+      threadId: () => THREAD_ID,
     });
 
   const accepted = await Promise.all(alerts.map((alert) => respond([alert])));
@@ -320,7 +321,7 @@ test('invokeLifecycle fails with an error that carries the thread id once the re
     [rejected, invalid, down].map((fetch) =>
       invokeLifecycle(INPUT, {
         fetch: fetch as never,
-        randomUUID: () => THREAD_ID,
+        threadId: () => THREAD_ID,
       }).catch((error: unknown) => error),
     ),
   );
@@ -395,4 +396,39 @@ test('nudgeLifecycle skips the delete when the run never completed', async () =>
   } finally {
     vi.unstubAllEnvs();
   }
+});
+
+test('the cron and the nudge each reuse one fixed thread', async () => {
+  const fetch = vi.fn(
+    async (url: string) =>
+      new Response(
+        url.includes(LIFECYCLE_THREAD_IDS.nudge)
+          ? JSON.stringify({
+              trigger: 'nudge',
+              submission_id: SUBMISSION_ID,
+              result: {
+                leased: 0,
+                dispatched: 0,
+                recoveryPaused: false,
+                operatorAlerts: [],
+              },
+            })
+          : state([]),
+      ),
+  );
+
+  const cron = await invokeLifecycle(INPUT, { fetch: fetch as never });
+  const nudge = await invokeLifecycle(
+    { ...INPUT, trigger: 'nudge', submissionId: SUBMISSION_ID },
+    { fetch: fetch as never },
+  );
+
+  expect(cron.threadId).toBe(LIFECYCLE_THREAD_IDS.cron);
+  expect(nudge.threadId).toBe(LIFECYCLE_THREAD_IDS.nudge);
+  expect(LIFECYCLE_THREAD_IDS.cron).not.toBe(LIFECYCLE_THREAD_IDS.nudge);
+  const urls = fetch.mock.calls.map(([url]) => url);
+  expect(urls).toEqual([
+    `https://lifecycle.example/threads/${LIFECYCLE_THREAD_IDS.cron}/runs/wait`,
+    `https://lifecycle.example/threads/${LIFECYCLE_THREAD_IDS.nudge}/runs/wait`,
+  ]);
 });
