@@ -243,8 +243,14 @@ remain readable; the provider Message-ID binding path remains in service.
 
 New mail uses Resend Receiving at `brian@replies.hashbrown.dev` through the
 signed `/_/webhooks/resend-inbound` endpoint. Admitted messages are forwarded to
-`brian@cacheplane.ai`, independently of reply classification. Verified replies
-to Hashbrown jobs stop the contact and cancel pending steps. Follow the
+`brian@cacheplane.ai`, independently of reply classification. A verified reply
+to a Hashbrown job stops the contact and cancels pending steps only when its own
+text (quoted lines and forwarded originals removed) asks to leave: phrases such
+as "unsubscribe", "stop", "opt out", "remove me" or "not interested"
+(`isStopRequest` in `tools/growth/src/lib/reply-intent.ts`). A reply with no
+readable text also stops. Any other reply completes its receipt as `ignored`
+with `last_error_code = 'reply_without_stop'` and the contact keeps the
+sequence; the body is read in memory and never stored. Follow the
 [Resend pilot runbook](2026-10-22-resend-inboxes-pilot.md) for credentials,
 recovery, forwarding and rollout checks. The operator waived the canary gate.
 
@@ -487,7 +493,6 @@ PR 7 plan: `docs/superpowers/plans/2026-10-22-growth-enable.md`.
   - On the next tick, `fulfill` completed and the acknowledgement was submitted to Resend.
   - `notify` failed closed as `internal_notification_outcome_unknown`. Its first attempt recorded `internal_notification.submission_started` before the sender check threw, so the retry could not rule out a send. Nothing reached Resend, but per "Retry and recovery" the job was left failed rather than reset.
   - Reply canary passed, 03:18Z. The acknowledgement shows `delivered` with its RFC Message-ID recorded. Brian's reply was admitted, matched to his contact, forwarded, and recorded as `campaign.reply_received` (receipt `stopped`). All three `send_step` jobs were cancelled with `contact_stopped`. The mailbox stayed healthy.
-
 
 ### Sender validation and historical notification review
 
