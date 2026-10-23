@@ -4,7 +4,7 @@ import {
   verifyGrowthActionToken,
 } from '@hashbrownai-internal/growth';
 
-import { createUnsubscribeRoute } from '../../src/app/%5F/unsubscribe/route';
+import { createUnsubscribeRoute } from '../../src/app/%5F/unsubscribe/handler';
 import { mintToken, tamperToken, TEST_NOW, TEST_TOKEN_KEYRING } from './_keys';
 
 const ORIGIN = 'https://hashbrown.dev/_/unsubscribe';

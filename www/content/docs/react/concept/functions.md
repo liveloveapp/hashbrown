@@ -8,16 +8,13 @@ meta:
 
 <p class="subtitle">Give the model access to your application state and enable the model to take action.</p>
 
+<hb-docs-demo demo="browser-tools">
+</hb-docs-demo>
+
 Tool calling (or function calling) in Hashbrown provides an intuitive approach to describing the tools that the model has access to.
 
 - Execute a function in your React component scope.
 - Return data to the model from state or a service.
-
----
-
-## Demo
-
-<div style="padding:59.64% 0 0 0;position:relative;width:100%;"><iframe src="https://player.vimeo.com/video/1089272737?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="hashbrown tool calling"></iframe></div>
 
 ---
 
