@@ -1,10 +1,31 @@
-import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { type AGUIEvent, EventType, type Message } from '@ag-ui/core';
 import Anthropic from '@anthropic-ai/sdk';
 import {
   type FinishReason,
+  ɵANSWER_METADATA_KEY,
+  type ɵAnswerAnnotations,
   ɵcreateTokenUsage,
   type ɵRunFinish,
+  ɵTOOL_STEP_METADATA_KEY,
 } from '@hashbrownai/core';
+
+import {
+  captureAnthropicNativeEvent,
+  createAnthropicHistoryFooter,
+  createAnthropicNativeCapture,
+} from './anthropic-history-capture';
+import {
+  anthropicRunningStep,
+  type AnthropicServerToolCall,
+  readAnthropicServerToolCall,
+  readAnthropicServerToolResult,
+} from './anthropic-tools';
+
+import {
+  addAnthropicToolSources,
+  createAnthropicSourceContext,
+  resolveAnthropicCitation,
+} from './anthropic-sources';
 
 const ABORTED = Symbol('aborted');
 
@@ -33,6 +54,8 @@ interface RedactedThinkingBlockState {
 
 interface ServerToolBlockState {
   readonly kind: 'server_tool';
+  readonly call?: AnthropicServerToolCall;
+  readonly receivedDelta: boolean;
 }
 
 type RawTerminalBlockType =
@@ -446,6 +469,10 @@ export interface MapAnthropicEventsOptions {
   readonly events: AsyncIterable<Anthropic.Messages.RawMessageStreamEvent>;
   readonly messageId: string;
   readonly signal?: AbortSignal;
+  /** Canonical context supplies original identity and execution timing. */
+  readonly inputMessages?: readonly Message[];
+  /** Actual transformed request supplies native pending calls and sources. */
+  readonly requestOptions?: Anthropic.Messages.MessageCreateParamsStreaming;
 }
 
 /**
@@ -466,6 +493,88 @@ export async function* mapAnthropicEvents(
   const seenIndexes = new Set<number>();
   const seenToolIds = new Set<string>();
   const activeBlocks = new Map<number, ContentBlockState>();
+  let capture = createAnthropicNativeCapture();
+  let responseId = `${options.messageId}:response`;
+  let sources = createAnthropicSourceContext(
+    options.requestOptions,
+    options.inputMessages,
+    responseId,
+  );
+  let annotations: ɵAnswerAnnotations | undefined;
+  const represented = new Set<string>();
+  const resultIds: string[] = [];
+  const reasoningIds: string[] = [];
+  const serverCalls = new Map<string, AnthropicServerToolCall>();
+  for (const message of options.requestOptions?.messages ?? []) {
+    if (!Array.isArray(message.content)) continue;
+    for (const native of message.content) {
+      const call = readAnthropicServerToolCall(native);
+      if (!call) continue;
+      let startedAt: number | undefined;
+      for (const canonical of options.inputMessages ?? []) {
+        if (canonical.role !== 'assistant') continue;
+        const invocation = canonical.toolCalls?.find(
+          (tool) => tool.id === call.id,
+        );
+        const step = invocation?.metadata?.[ɵTOOL_STEP_METADATA_KEY];
+        if (isRecord(step) && typeof step['startedAt'] === 'number')
+          startedAt = step['startedAt'];
+      }
+      serverCalls.set(call.id, {
+        ...call,
+        ...(startedAt === undefined ? {} : { startedAt }),
+      });
+    }
+  }
+  for (const message of options.inputMessages ?? []) {
+    if (message.role !== 'assistant') continue;
+    for (const invocation of message.toolCalls ?? []) {
+      const nativeMetadata = invocation.metadata?.['anthropic'];
+      const step = invocation.metadata?.[ɵTOOL_STEP_METADATA_KEY];
+      if (!isRecord(nativeMetadata)) continue;
+      const startedAt =
+        isRecord(step) && typeof step['startedAt'] === 'number'
+          ? step['startedAt']
+          : undefined;
+      const call = readAnthropicServerToolCall(
+        nativeMetadata['nativeBlock'],
+        startedAt,
+      );
+      if (call && call.id === invocation.id) serverCalls.set(call.id, call);
+    }
+  }
+  const metadata = (index?: number) => {
+    const nativeBlock =
+      index === undefined ? undefined : capture.blocks.get(index);
+    const caller =
+      nativeBlock?.type === 'tool_use' ? nativeBlock.caller : undefined;
+    const parentToolCallId =
+      caller &&
+      caller.type.startsWith('code_execution_') &&
+      'tool_id' in caller &&
+      typeof caller.tool_id === 'string' &&
+      caller.tool_id.length > 0
+        ? caller.tool_id
+        : undefined;
+    return {
+      anthropic: {
+        responseId,
+        ...(index === undefined
+          ? {}
+          : { blockIndex: index, blockType: nativeBlock?.type, nativeBlock }),
+      },
+      ...(parentToolCallId === undefined
+        ? {}
+        : {
+            [ɵTOOL_STEP_METADATA_KEY]: {
+              v: 1,
+              kind: 'server',
+              status: 'running',
+              parentToolCallId,
+            },
+          }),
+    };
+  };
   let messageStarted = false;
   let messageStopped = false;
   let textStarted = false;
@@ -514,6 +623,16 @@ export async function* mapAnthropicEvents(
           isRecord(event.message) ? event.message : undefined;
         model = typeof message?.model === 'string' ? message.model : undefined;
         usage = mergeUsage(usage, message?.usage);
+        responseId =
+          typeof message?.id === 'string' && message.id
+            ? message.id
+            : responseId;
+        capture = captureAnthropicNativeEvent(capture, event);
+        sources = createAnthropicSourceContext(
+          options.requestOptions,
+          options.inputMessages,
+          responseId,
+        );
         continue;
       }
 
@@ -535,11 +654,29 @@ export async function* mapAnthropicEvents(
           const contentBlock = readContentBlock(event, index);
           const blockType = contentBlock.type;
 
+          try {
+            capture = captureAnthropicNativeEvent(capture, event);
+          } catch (error) {
+            if (contentBlock.type === 'tool_use')
+              serializeInitialInput(
+                {
+                  kind: 'tool',
+                  id: contentBlock.id,
+                  initialInput: contentBlock.input,
+                  receivedDelta: false,
+                },
+                index,
+              );
+            rawEvent(event);
+            throw error;
+          }
           seenIndexes.add(index);
           if (blockType === 'thinking' || blockType === 'redacted_thinking') {
             // Interleaved thinking can follow text, server tools, or client
             // tools in the same message, so reasoning may start anywhere.
             const messageId = `${options.messageId}:reasoning:${index}`;
+            represented.add(messageId);
+            reasoningIds.push(messageId);
             if (blockType === 'thinking') {
               const thinking = contentBlock['thinking'];
               if (typeof thinking !== 'string') {
@@ -567,7 +704,12 @@ export async function* mapAnthropicEvents(
                 type: EventType.REASONING_MESSAGE_START,
                 messageId,
                 role: 'reasoning',
-                metadata: { anthropic: { blockType: 'thinking' } },
+                metadata: {
+                  anthropic: {
+                    ...metadata(index).anthropic,
+                    blockType: 'thinking',
+                  },
+                },
               };
               if (options.signal?.aborted) {
                 return;
@@ -605,7 +747,12 @@ export async function* mapAnthropicEvents(
               type: EventType.REASONING_MESSAGE_START,
               messageId,
               role: 'reasoning',
-              metadata: { anthropic: { blockType: 'redacted_thinking' } },
+              metadata: {
+                anthropic: {
+                  ...metadata(index).anthropic,
+                  blockType: 'redacted_thinking',
+                },
+              },
             };
             if (options.signal?.aborted) {
               return;
@@ -635,10 +782,12 @@ export async function* mapAnthropicEvents(
             if (text.length > 0) {
               if (!textStarted) {
                 textStarted = true;
+                represented.add(options.messageId);
                 yield {
                   type: EventType.TEXT_MESSAGE_START,
                   messageId: options.messageId,
                   role: 'assistant',
+                  metadata: metadata(index),
                 };
                 if (options.signal?.aborted) {
                   return;
@@ -659,6 +808,15 @@ export async function* mapAnthropicEvents(
               Array.isArray(contentBlock.citations) &&
               contentBlock.citations.length > 0
             ) {
+              for (const citation of contentBlock.citations) {
+                const resolved = resolveAnthropicCitation(
+                  sources,
+                  citation,
+                  index,
+                );
+                sources = resolved.context;
+                annotations = resolved.annotations ?? annotations;
+              }
               yield rawEvent(event);
               if (options.signal?.aborted) {
                 return;
@@ -668,7 +826,43 @@ export async function* mapAnthropicEvents(
           }
 
           if (blockType === 'server_tool_use') {
-            activeBlocks.set(index, { kind: 'server_tool' });
+            for (const field of ['id', 'name'] as const) {
+              if (typeof contentBlock[field] !== 'string')
+                throw new Error(
+                  `Anthropic server tool block at index ${index} has a non-string ${field}`,
+                );
+              if (contentBlock[field].length === 0)
+                throw new Error(
+                  `Anthropic server tool block at index ${index} has an empty ${field}`,
+                );
+            }
+            const call = readAnthropicServerToolCall(contentBlock, Date.now());
+            if (call) {
+              if (seenToolIds.has(call.id) || serverCalls.has(call.id))
+                throw new Error(
+                  `Anthropic tool id "${call.id}" started more than once at index ${index}`,
+                );
+              serverCalls.set(call.id, call);
+              represented.add(options.messageId);
+            }
+            activeBlocks.set(index, {
+              kind: 'server_tool',
+              call,
+              receivedDelta: false,
+            });
+            if (call) {
+              yield {
+                type: EventType.TOOL_CALL_START,
+                toolCallId: call.id,
+                toolCallName: call.name,
+                parentMessageId: options.messageId,
+                metadata: {
+                  ...metadata(index),
+                  [ɵTOOL_STEP_METADATA_KEY]: anthropicRunningStep(call),
+                },
+              };
+              if (options.signal?.aborted) return;
+            }
             yield rawEvent(event);
             if (options.signal?.aborted) {
               return;
@@ -717,7 +911,12 @@ export async function* mapAnthropicEvents(
             );
           }
 
+          if (serverCalls.has(id))
+            throw new Error(
+              `Anthropic tool id "${id}" started more than once at index ${index}`,
+            );
           seenToolIds.add(id);
+          represented.add(options.messageId);
           activeBlocks.set(index, {
             kind: 'tool',
             id,
@@ -729,6 +928,7 @@ export async function* mapAnthropicEvents(
             toolCallId: id,
             toolCallName: name,
             parentMessageId: options.messageId,
+            metadata: metadata(index),
           };
           if (options.signal?.aborted) {
             return;
@@ -748,9 +948,17 @@ export async function* mapAnthropicEvents(
 
           const delta = readContentDelta(event, index);
           const deltaType = delta.type;
+          capture = captureAnthropicNativeEvent(capture, event);
 
           if (block.kind === 'text') {
             if (deltaType === 'citations_delta') {
+              const resolved = resolveAnthropicCitation(
+                sources,
+                delta.citation,
+                index,
+              );
+              sources = resolved.context;
+              annotations = resolved.annotations ?? annotations;
               yield rawEvent(event);
               if (options.signal?.aborted) {
                 return;
@@ -777,10 +985,12 @@ export async function* mapAnthropicEvents(
 
             if (!textStarted) {
               textStarted = true;
+              represented.add(options.messageId);
               yield {
                 type: EventType.TEXT_MESSAGE_START,
                 messageId: options.messageId,
                 role: 'assistant',
+                metadata: metadata(index),
               };
               if (options.signal?.aborted) {
                 return;
@@ -845,10 +1055,20 @@ export async function* mapAnthropicEvents(
               );
             }
 
-            yield rawEvent(event);
-            if (options.signal?.aborted) {
-              return;
+            activeBlocks.set(index, {
+              ...block,
+              receivedDelta: block.receivedDelta || partialJson.length > 0,
+            });
+            if (block.call) {
+              yield {
+                type: EventType.TOOL_CALL_ARGS,
+                toolCallId: block.call.id,
+                delta: partialJson,
+              };
+              if (options.signal?.aborted) return;
             }
+            yield rawEvent(event);
+            if (options.signal?.aborted) return;
             break;
           }
 
@@ -927,12 +1147,89 @@ export async function* mapAnthropicEvents(
             );
           }
 
+          capture = captureAnthropicNativeEvent(capture, event);
           activeBlocks.delete(index);
           if (block.kind === 'text') {
             break;
           }
 
-          if (block.kind === 'server_tool' || block.kind === 'raw_terminal') {
+          if (block.kind === 'server_tool') {
+            if (block.call) {
+              const call =
+                readAnthropicServerToolCall(
+                  capture.blocks.get(index),
+                  block.call.startedAt,
+                ) ?? block.call;
+              serverCalls.set(call.id, call);
+              if (!block.receivedDelta) {
+                yield {
+                  type: EventType.TOOL_CALL_ARGS,
+                  toolCallId: call.id,
+                  delta: serializeInitialInput(
+                    {
+                      kind: 'tool',
+                      id: call.id,
+                      initialInput: call.input,
+                      receivedDelta: false,
+                    },
+                    index,
+                  ),
+                };
+                if (options.signal?.aborted) return;
+              }
+              yield {
+                type: EventType.TOOL_CALL_END,
+                toolCallId: call.id,
+                metadata: {
+                  ...metadata(index),
+                  [ɵTOOL_STEP_METADATA_KEY]: anthropicRunningStep(call),
+                },
+              };
+              if (options.signal?.aborted) return;
+            }
+            yield rawEvent(event);
+            if (options.signal?.aborted) return;
+            break;
+          }
+          if (block.kind === 'raw_terminal') {
+            const native = capture.blocks.get(index);
+            const nativeRecord = native as unknown as
+              Record<string, unknown> | undefined;
+            const call =
+              typeof nativeRecord?.['tool_use_id'] === 'string'
+                ? serverCalls.get(nativeRecord['tool_use_id'])
+                : undefined;
+            if (
+              call &&
+              block.nativeType !== 'tool_search_tool_result' &&
+              block.nativeType !== 'container_upload'
+            ) {
+              const result = readAnthropicServerToolResult(call, native);
+              if (!result)
+                throw new Error(
+                  `Anthropic ${block.nativeType} result for ${call.id} is malformed or incompatible`,
+                );
+              sources = addAnthropicToolSources(
+                sources,
+                result.step.sources,
+                index,
+                native,
+              );
+              const messageId = `${options.messageId}:provider-result:${index}`;
+              represented.add(messageId);
+              resultIds.push(messageId);
+              yield {
+                type: EventType.TOOL_CALL_RESULT,
+                messageId,
+                toolCallId: call.id,
+                content: result.content,
+                metadata: {
+                  ...metadata(index),
+                  [ɵTOOL_STEP_METADATA_KEY]: result.step,
+                },
+              };
+              if (options.signal?.aborted) return;
+            }
             yield rawEvent(event);
             if (options.signal?.aborted) {
               return;
@@ -962,6 +1259,7 @@ export async function* mapAnthropicEvents(
             yield {
               type: EventType.REASONING_MESSAGE_END,
               messageId: block.messageId,
+              metadata: metadata(index),
             };
             if (options.signal?.aborted) {
               return;
@@ -973,6 +1271,7 @@ export async function* mapAnthropicEvents(
             yield {
               type: EventType.REASONING_MESSAGE_END,
               messageId: block.messageId,
+              metadata: metadata(index),
             };
             if (options.signal?.aborted) {
               return;
@@ -994,6 +1293,7 @@ export async function* mapAnthropicEvents(
           yield {
             type: EventType.TOOL_CALL_END,
             toolCallId: block.id,
+            metadata: metadata(index),
           };
           if (options.signal?.aborted) {
             return;
@@ -1007,11 +1307,12 @@ export async function* mapAnthropicEvents(
               'Anthropic message_delta received while content blocks are open',
             );
           }
+          capture = captureAnthropicNativeEvent(capture, event);
           stop = { ...stop, ...readStopFields(event.delta) };
           usage = mergeUsage(usage, event.usage);
           break;
 
-        case 'message_stop':
+        case 'message_stop': {
           if (activeBlocks.size > 0) {
             throw new Error(
               'Anthropic message_stop received while content blocks are open',
@@ -1023,12 +1324,28 @@ export async function* mapAnthropicEvents(
             yield {
               type: EventType.TEXT_MESSAGE_END,
               messageId: options.messageId,
+              metadata: {
+                ...metadata(),
+                ...(annotations ? { [ɵANSWER_METADATA_KEY]: annotations } : {}),
+              },
             };
             if (options.signal?.aborted) {
               return;
             }
           }
+          const footer = createAnthropicHistoryFooter(capture, {
+            ownerMessageId: represented.has(options.messageId)
+              ? options.messageId
+              : (resultIds[0] ?? reasoningIds[0]),
+            responseId,
+            representedMessageIds: [...represented],
+          });
+          if (footer) {
+            yield footer;
+            if (options.signal?.aborted) return;
+          }
           break;
+        }
 
         default:
           assertNever(event);

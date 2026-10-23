@@ -2,6 +2,7 @@ import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import Anthropic from '@anthropic-ai/sdk';
 import { text } from './text.fn';
+import * as mapper from './anthropic-events';
 import type {
   AnthropicHashbrownRunAgentInput,
   AnthropicTextStreamOptions,
@@ -420,6 +421,18 @@ test('emits canonical mapper events followed by one RUN_FINISHED', async () => {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'run-anthropic:assistant',
       role: 'assistant',
+      metadata: {
+        anthropic: {
+          responseId: 'provider-message',
+          blockIndex: 0,
+          blockType: 'text',
+          nativeBlock: {
+            type: 'text',
+            text: 'Hello from Anthropic.',
+            citations: null,
+          },
+        },
+      },
     },
     {
       type: EventType.TEXT_MESSAGE_CONTENT,
@@ -429,6 +442,25 @@ test('emits canonical mapper events followed by one RUN_FINISHED', async () => {
     {
       type: EventType.TEXT_MESSAGE_END,
       messageId: 'run-anthropic:assistant',
+      metadata: { anthropic: { responseId: 'provider-message' } },
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'hashbrown.provider-history',
+      value: {
+        v: 1,
+        provider: 'anthropic',
+        ownerMessageId: 'run-anthropic:assistant',
+        responseId: 'provider-message',
+        complete: true,
+        payload: {
+          blocks: [
+            { type: 'text', text: 'Hello from Anthropic.', citations: null },
+          ],
+          container: null,
+          representedMessageIds: ['run-anthropic:assistant'],
+        },
+      },
     },
     {
       type: EventType.RUN_FINISHED,
@@ -806,6 +838,7 @@ test.each([
       EventType.TEXT_MESSAGE_START,
       EventType.TEXT_MESSAGE_CONTENT,
       EventType.TEXT_MESSAGE_END,
+      EventType.CUSTOM,
       EventType.RUN_FINISHED,
     ]);
     expect(events.at(-1)).toEqual(
@@ -844,6 +877,7 @@ test('reports a refusal with its policy category', async () => {
     EventType.TEXT_MESSAGE_START,
     EventType.TEXT_MESSAGE_CONTENT,
     EventType.TEXT_MESSAGE_END,
+    EventType.CUSTOM,
     EventType.RUN_FINISHED,
   ]);
   expect(events.at(-1)).toMatchObject({
@@ -877,4 +911,53 @@ test('omits usage and provider metadata when the provider reports neither', asyn
   expect(result.at(-1)).toEqual(
     finished({ hashbrown: { finishReason: 'other' } }),
   );
+});
+
+test('passes built-in configuration through the transform and provider request', async () => {
+  const provider = mockProvider();
+  const transformed: RequestOptions[] = [];
+
+  await collectEvents(
+    createOptions({
+      builtInTools: { webSearch: true, webFetch: true },
+      transformRequestOptions: (request) => {
+        transformed.push(request);
+        return { ...request, max_tokens: 123 };
+      },
+    }),
+  );
+
+  expect(transformed[0]?.tools).toEqual([
+    { type: 'web_search_20250305', name: 'web_search' },
+    {
+      type: 'web_fetch_20250910',
+      name: 'web_fetch',
+      citations: { enabled: true },
+    },
+  ]);
+  expect(provider.create.mock.calls[0]?.[0]).toMatchObject({
+    tools: transformed[0]?.tools,
+    max_tokens: 123,
+  });
+});
+
+test('passes canonical input and the transformed request to the event mapper', async () => {
+  const provider = mockProvider();
+  const spy = jest.spyOn(mapper, 'mapAnthropicEvents');
+  const input = createInput();
+
+  await collectEvents(
+    createOptions({
+      input,
+      transformRequestOptions: (request) => ({ ...request, max_tokens: 321 }),
+    }),
+  );
+
+  expect(spy).toHaveBeenCalledWith(
+    expect.objectContaining({
+      inputMessages: input.messages,
+      requestOptions: provider.create.mock.calls[0]?.[0],
+    }),
+  );
+  spy.mockRestore();
 });
