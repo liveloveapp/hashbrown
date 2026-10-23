@@ -1,6 +1,10 @@
 import type { Message, Tool } from '@ag-ui/core';
 import Anthropic from '@anthropic-ai/sdk';
-import type { AnthropicHashbrownRunAgentInput } from './types';
+import type {
+  AnthropicBuiltInTools,
+  AnthropicHashbrownRunAgentInput,
+} from './types';
+import { isProviderMetadata, readAnthropicHistory } from './anthropic-history';
 
 const DEFAULT_MAX_TOKENS = 4096;
 
@@ -112,6 +116,7 @@ function mapReasoningMessage(
 function mapPrecedingReasoning(
   messages: Message[],
   assistantIndex: number,
+  representedMessageIds: ReadonlySet<string>,
 ): Array<
   | Anthropic.Messages.ThinkingBlockParam
   | Anthropic.Messages.RedactedThinkingBlockParam
@@ -127,7 +132,9 @@ function mapPrecedingReasoning(
   return messages
     .slice(reasoningStart, assistantIndex)
     .flatMap((message) =>
-      message.role === 'reasoning' ? [mapReasoningMessage(message)] : [],
+      message.role === 'reasoning' && !representedMessageIds.has(message.id)
+        ? [mapReasoningMessage(message)]
+        : [],
     )
     .filter(
       (
@@ -236,23 +243,86 @@ function mapTool(tool: Tool, index: number): Anthropic.Messages.Tool {
 export function createAnthropicRequestOptions(
   input: AnthropicHashbrownRunAgentInput,
   model: string,
+  builtInTools?: AnthropicBuiltInTools,
 ): Anthropic.Messages.MessageCreateParamsStreaming {
+  const history = readAnthropicHistory(input.messages);
   const systemMessages = input.messages.flatMap((message) =>
     message.role === 'system' || message.role === 'developer'
       ? [message.content]
       : [],
   );
-  const messages = input.messages.flatMap((message, index) => {
+  const messages = input.messages.flatMap((original, index) => {
+    const native = history.responses.get(original.id);
+    if (native) return [{ role: 'assistant' as const, content: native }];
+    if (history.representedMessageIds.has(original.id)) return [];
+    if (
+      original.role === 'tool' &&
+      (history.providerCallIds.has(original.toolCallId) ||
+        isProviderMetadata(original.metadata))
+    )
+      return [];
+    const message =
+      original.role === 'assistant'
+        ? {
+            ...original,
+            toolCalls: original.toolCalls?.filter(
+              (call) => !history.providerCallIds.has(call.id),
+            ),
+          }
+        : original;
+    if (
+      message.role === 'assistant' &&
+      original.role === 'assistant' &&
+      original.toolCalls?.length &&
+      !message.toolCalls?.length &&
+      !message.content
+    )
+      return [];
     const mapped =
       message.role === 'assistant'
         ? mapAssistantMessage(
             message,
-            mapPrecedingReasoning(input.messages, index),
+            mapPrecedingReasoning(
+              input.messages,
+              index,
+              history.representedMessageIds,
+            ),
           )
         : mapMessage(message);
     return mapped ? [mapped] : [];
   });
-  const tools = input.tools.map(mapTool);
+  const tools: Anthropic.Messages.ToolUnion[] = input.tools.map(mapTool);
+  if (builtInTools?.webSearch)
+    tools.push(
+      builtInTools.webSearch === true
+        ? { type: 'web_search_20250305', name: 'web_search' as const }
+        : {
+            ...structuredClone(builtInTools.webSearch),
+            name: 'web_search' as const,
+          },
+    );
+  if (builtInTools?.webFetch)
+    tools.push(
+      builtInTools.webFetch === true
+        ? {
+            type: 'web_fetch_20250910',
+            name: 'web_fetch' as const,
+            citations: { enabled: true },
+          }
+        : {
+            ...structuredClone(builtInTools.webFetch),
+            name: 'web_fetch' as const,
+          },
+    );
+  if (builtInTools?.codeExecution)
+    tools.push(
+      builtInTools.codeExecution === true
+        ? { type: 'code_execution_20250825', name: 'code_execution' as const }
+        : {
+            ...structuredClone(builtInTools.codeExecution),
+            name: 'code_execution' as const,
+          },
+    );
   const responseSchema = input.forwardedProps?.hashbrown?.responseSchema;
 
   return {
@@ -263,6 +333,7 @@ export function createAnthropicRequestOptions(
       ? { system: systemMessages.join('\n\n') }
       : {}),
     messages,
+    ...(history.container ? { container: history.container } : {}),
     ...(tools.length > 0 ? { tools } : {}),
     ...(responseSchema === undefined
       ? {}

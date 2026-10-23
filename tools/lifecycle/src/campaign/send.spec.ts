@@ -751,6 +751,87 @@ test('loadRecipientDeliveryPolicy reads the delivery environment and allowlist',
   expect(unknownEnvironment).toThrow(/DELIVERY_ENVIRONMENT/u);
 });
 
+for (const kind of ['notify', 'digest'] as const) {
+  for (const [name, invalid, expected] of [
+    [
+      'unverified sender',
+      { RESEND_SENDER_VERIFIED: 'false' },
+      /verified Hashbrown sender/u,
+    ],
+    [
+      'tracking enabled',
+      { RESEND_TRACKING_DISABLED: 'false' },
+      /verified Hashbrown sender/u,
+    ],
+    ['missing sending credential', { RESEND_API_KEY: '' }, /RESEND_API_KEY/u],
+    ['invalid founder', { FOUNDER_NOTIFICATION_EMAIL: 'invalid' }, /email/u],
+    [
+      'founder outside allowlist',
+      { FOUNDER_NOTIFICATION_EMAIL: 'other@hashbrown.test' },
+      /NON_PRODUCTION_ALLOWLIST/u,
+    ],
+  ] as const) {
+    test(`${kind} validates ${name} before consuming its submission claim`, async () => {
+      const db = transactionalExecutor();
+      vi.mocked(db.execute).mockResolvedValue({
+        rows: [{ event_key: 'claimed' }],
+      });
+      const send = vi.fn().mockResolvedValue({
+        data: { id: 'provider-internal-1' },
+        error: null,
+      });
+      const reserve = vi.fn(async () => null);
+      const createDependencies = (environment: Record<string, string>) => {
+        const defaults = createDefaultLifecycleJobDependencies(environment, {
+          now: () => NOW,
+          resend: () => ({ emails: { send } }) as LifecycleResendClient,
+          reserveProviderAttempt: reserve,
+          completeProviderAttempt: async () => undefined,
+        });
+        return dependencies({
+          claimInternalNotification: defaults.claimInternalNotification,
+          sendInternalNotification: defaults.sendInternalNotification,
+        });
+      };
+      const invalidDependencies = createDependencies({
+        ...BASE_ENVIRONMENT,
+        ...invalid,
+      });
+      const queued = kind === 'notify' ? job('notify', {}) : digestJob();
+
+      const invalidAttempt = dispatchLifecycleAppOwnedJob(
+        db,
+        queued,
+        {},
+        invalidDependencies,
+      );
+
+      await expect(invalidAttempt).rejects.toThrow(expected);
+      expect(db.execute).not.toHaveBeenCalled();
+      expect(reserve).not.toHaveBeenCalled();
+      expect(send).not.toHaveBeenCalled();
+
+      const corrected = createDependencies(BASE_ENVIRONMENT);
+      const result = await dispatchLifecycleAppOwnedJob(
+        db,
+        queued,
+        {},
+        corrected,
+      );
+
+      expect(result).toBe('completed');
+      expect(db.execute).toHaveBeenCalledExactlyOnceWith(
+        expect.stringContaining(
+          'growth:claim-internal-notification-submission',
+        ),
+        [JOB_ID, LEASE_TOKEN, NOW, kind],
+      );
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(corrected.markInternalNotificationUnknown).not.toHaveBeenCalled();
+    });
+  }
+}
+
 test('the internal sender mails only the founder with an app tag and environment-scoped reserved payload', async () => {
   const send = vi.fn().mockResolvedValue({
     data: { id: 'provider-internal-1' },
