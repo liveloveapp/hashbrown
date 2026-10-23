@@ -29,7 +29,7 @@ Install these server-side values on the deployment hosting the webhook/recovery 
 | `RESEND_INBOX_PILOT_STARTED_AT` | Fixed UTC activation boundary; retain across redeploys/recovery |
 | `RESEND_INBOX_PILOT_ALLOW_ALL_RECIPIENTS` | `true` records the operator's canary waiver; retains all mailbox/reply safety gates |
 | `RESEND_INBOX_PILOT_RECIPIENT_ALLOWLIST` | Optional restricted-pilot recipients when the preceding waiver flag is absent |
-| `RESEND_INBOX_READ_API_KEY` | Dedicated server-only Resend receiving credential |
+| `RESEND_INBOX_READ_API_KEY` | Dedicated server-only full-access Resend credential for receiving and sent Message-ID lookup; configure on website and lifecycle |
 | `RESEND_INBOUND_WEBHOOK_SECRET` | New receiving webhook signing secret |
 | `RESEND_WEBHOOK_SECRET` | Separate Hashbrown delivery webhook signing secret |
 | `RESEND_API_KEY` | Existing Hashbrown domain-scoped sending key |
