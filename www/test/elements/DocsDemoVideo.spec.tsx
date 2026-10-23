@@ -19,6 +19,11 @@ test.each([
   ['debugging', 'debugging'],
   ['welcome-card', 'quick'],
   ['conversation', 'ai-basics'],
+  ['persistence', 'message-history'],
+  ['interrupts', 'interrupt-and-resume'],
+  ['shared-state', 'shared-agent-state'],
+  ['activities', 'activities'],
+  ['ui-kits', 'ui-kits'],
 ] as const)(
   'renders the %s Markdown demo with accessible on-demand playback',
   async (demo) => {
@@ -40,7 +45,7 @@ test.each([
     expect(html).toContain('kind="captions"');
     expect(html).toContain(`/video/docs/${demo}.vtt`);
     expect(html).toContain(`/video/docs/${demo}-transcript.txt`);
-    expect(html).toContain('scripted model responses');
+    expect(html).toContain('scripted');
     expect(html).not.toContain('data-unported');
     expect(html).not.toMatch(/<p>\s*<figure/);
   },
@@ -51,6 +56,11 @@ test.each([
   ['debugging', 'debugging'],
   ['welcome-card', 'quick'],
   ['conversation', 'ai-basics'],
+  ['persistence', 'message-history'],
+  ['interrupts', 'interrupt-and-resume'],
+  ['shared-state', 'shared-agent-state'],
+  ['activities', 'activities'],
+  ['ui-kits', 'ui-kits'],
 ] as const)('ships complete local media for the %s demo', (demo) => {
   const publicDir = resolve(import.meta.dirname, '../../public/video/docs');
   const files = [

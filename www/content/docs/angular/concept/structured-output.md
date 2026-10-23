@@ -94,7 +94,7 @@ The server adapter decides how to request structured output from its provider. I
 | `debounce`  | `number`                              | No       | The debounce time for the structured chat resource        |
 | `retries`   | `number`                              | No       | The number of retries for the structured chat resource    |
 | `apiUrl`    | `ReactiveOption<string>`              | No       | The API URL to use for the structured chat resource       |
-| `threadId`  | `ReactiveOption<string \| undefined>` | No       | Thread identifier used to load or continue a conversation |
+| `threadId`  | `ReactiveOption<string \| undefined>` | No       | Opaque AG-UI conversation identity; does not load history |
 
 ---
 
@@ -187,7 +187,7 @@ When the user types a scene name, the LLM will predict which lights should be ad
 | `tools`     | `Chat.AnyTool[]`                      | No       | The tools to use for the structured completion resource         |
 | `debugName` | `string`                              | No       | The debug name for the structured completion resource           |
 | `apiUrl`    | `ReactiveOption<string>`              | No       | The API URL to use for the structured completion resource       |
-| `threadId`  | `ReactiveOption<string \| undefined>` | No       | Thread identifier used to load or continue a conversation       |
+| `threadId`  | `ReactiveOption<string \| undefined>` | No       | Opaque AG-UI conversation identity; does not load history       |
 
 ---
 

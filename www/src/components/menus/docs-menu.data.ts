@@ -45,6 +45,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
     entries: [
       { text: 'Introduction', path: 'start/intro' },
       { text: 'Quickstart', path: 'start/quick' },
+      { text: 'How Hashbrown works', path: 'start/how-it-works' },
       { text: 'Example app', path: 'start/sample' },
       { text: 'Choosing an API', path: 'start/overview' },
     ],
@@ -96,6 +97,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'Predictive Suggestions', path: 'recipes/predictive-actions' },
       { text: 'Remote MCP', path: 'recipes/remote-mcp' },
       { text: 'Threads', path: 'recipes/threads' },
+      { text: 'Save text conversations', path: 'recipes/browser-history' },
       { text: 'Magic Text', path: 'recipes/magic-text' },
       { text: 'JSON Parser', path: 'recipes/json-parser' },
       { text: 'CopilotKit', path: 'recipes/copilotkit', sdks: ['react'] },

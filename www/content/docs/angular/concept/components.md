@@ -183,7 +183,7 @@ chat = uiChatResource({
 | `debugName`  | `string`                                              | No       | The debug name for the UI chat resource                   |
 | `debounce`   | `number`                                              | No       | The debounce time for the UI chat resource                |
 | `apiUrl`     | `ReactiveOption<string>`                              | No       | The API URL to use for the UI chat resource               |
-| `threadId`   | `ReactiveOption<string \| undefined>`                 | No       | Thread identifier used to load or continue a conversation |
+| `threadId`   | `ReactiveOption<string \| undefined>`                 | No       | Opaque AG-UI conversation identity; does not load history |
 
 ---
 

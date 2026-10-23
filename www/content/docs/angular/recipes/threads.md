@@ -13,6 +13,8 @@ Hashbrown treats `threadId` as opaque AG-UI identity. On every model run, the cl
 
 This separation keeps the model transport focused on streaming and lets your application own authorization, retention, indexing, titles, branching, and storage.
 
+For a small, complete example that survives refresh, start with [Save text conversations](/docs/angular/recipes/browser-history). It validates browser-stored text and switches between two conversations. The server-storage pattern below is a separate application design.
+
 ## Data Flow
 
 1. Your application creates or resolves a thread ID.
@@ -88,6 +90,8 @@ export async function writeThreadMessages(
   if (!response.ok) throw new Error('Unable to save thread');
 }
 ```
+
+The public message view is not a canonical agent checkpoint. Saving it does not preserve all provider metadata, shared state, or ownership of a pending interrupt. See [Message history](/docs/angular/concept/message-history) before choosing a storage format.
 
 These functions belong to the application. They are not provider-adapter options and are never called by `/run`.
 

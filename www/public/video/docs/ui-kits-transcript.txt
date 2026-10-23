@@ -1,0 +1,10 @@
+One trusted kit. Two useful cards.
+
+Recorded from www/examples/quickstart/react/src/Workflows.tsx, with the same interactions verified in Angular. The real client runtime consumes scripted AG-UI responses. Presentation styles and a branded frame are added by the recorder. No narration.
+
+1. The opening frame shows both completed cards.
+2. Leave Welcome card selected and choose Generate a card. Hashbrown parses the scripted output and renders the application’s WelcomeCard.
+3. Select Status card and generate again. The same kit supplies the schema and renderer for StatusCard.
+4. Both trusted components remain visible in the conversation.
+
+The example exposes only these components, with title and message string props and no children. The fixture chooses a response from the requested card; a real model may choose different text within those schemas.
