@@ -102,9 +102,8 @@ answer.
 
 `GROWTH_UNSTUCK_FORM_ENABLED` (www, exact `true`/`false`, default off): while
 off the route answers 503 before reading the body and `/unstuck` renders the
-fallback address (`brian@liveloveapp.com`, the `UNSTUCK_FALLBACK_ADDRESS`
-constant in `www/src/lib/growth/form-route.ts`, temporary until
-`brian@hashbrown.dev` exists) with no form. The nudge and the cron both need
+fallback address (`brian@hashbrown.dev`, the `UNSTUCK_FALLBACK_ADDRESS`
+constant in `www/src/lib/growth/form-route.ts`) with no form. The nudge and the cron both need
 `LIFECYCLE_CRON_ENABLED=true` on www: with it off, neither calls the service,
 and accepted submissions wait in `growth_jobs` until it is on. They are delayed,
 not lost.

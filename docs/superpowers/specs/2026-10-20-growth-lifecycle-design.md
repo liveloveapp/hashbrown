@@ -424,8 +424,8 @@ Fields:
 Validation on blur, final pass on submit, focus to first invalid field,
 `aria-describedby` on errors and on the button for the disclosure. Success:
 "Got it. Brian reads every one of these and replies from brian@hashbrown.dev."
-Failure offers `mailto:brian@liveloveapp.com`, a temporary fallback until
-`brian@hashbrown.dev` exists (the success copy keeps hashbrown.dev).
+Failure offers `mailto:brian@hashbrown.dev` (it was `brian@liveloveapp.com` until
+the root mailbox received mail; PR 7 switched it).
 
 Launch gate: the www switch `GROWTH_UNSTUCK_FORM_ENABLED` (exact `true`/`false`,
 default off). While off, `/unstuck` shows the fallback address and the route
