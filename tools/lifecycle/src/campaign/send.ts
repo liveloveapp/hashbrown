@@ -817,7 +817,8 @@ export interface LifecycleJobDependencyOptions {
  * (Resend key, founder address, delivery policy, token key, public origin)
  * and the email keyring are read lazily and once, so a tick that sends
  * nothing needs none of them. Outside production the founder address must be
- * on `RESEND_NON_PRODUCTION_ALLOWLIST`.
+ * on `RESEND_NON_PRODUCTION_ALLOWLIST`. Internal notification claims validate
+ * this configuration before persisting permanent submission evidence.
  *
  * @param environment - The process environment.
  * @param options - Test seams: the Resend client and the clock.
@@ -900,7 +901,12 @@ export function createDefaultLifecycleJobDependencies(
     completeJob: completeLeasedJob,
     cancelJob: cancelLeasedJob,
     failJob: failLeasedJob,
-    claimInternalNotification: claimInternalNotificationSubmission,
+    claimInternalNotification: (executor, input) => {
+      // Validate lazy mail configuration before consuming the permanent claim.
+      // The sender reuses this runtime; uncertain submissions stay at most once.
+      mailRuntime();
+      return claimInternalNotificationSubmission(executor, input);
+    },
     markInternalNotificationUnknown,
     async sendInternalNotification(executor, request) {
       const { founderNotificationEmail, recipientPolicy, resend } =
