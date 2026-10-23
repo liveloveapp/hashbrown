@@ -10,6 +10,7 @@ import { validateGrowthDatabaseEnvironment } from './growth-database-preflight.m
 export async function runInboxRecovery(): Promise<{
   received: number;
   processed: number;
+  complete: boolean;
 }> {
   const config = loadInboxPilot();
   if (!config.enabled) throw new Error('Inbox pilot is disabled');

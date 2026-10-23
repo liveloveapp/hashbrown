@@ -112,6 +112,22 @@
       "options": {
         "command": "node tools/growth/install/verify-pack.mjs"
       }
+    },
+    "inbox": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/inbox-operations.mts",
+        "forwardAllArgs": true
+      }
+    },
+    "control": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --import tsx tools/growth/scripts/growth-control.mts",
+        "forwardAllArgs": true
+      }
     }
   }
 }

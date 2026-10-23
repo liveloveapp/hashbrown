@@ -59,7 +59,7 @@ test('the consent text, version and fallback address are the approved values', (
   expect(UNSTUCK_FORM_DISCLOSURE).toBe(
     'By sending, you agree Brian may follow up by email about your request, including a short three-email note about building with Hashbrown. Unsubscribe anytime.',
   );
-  expect(UNSTUCK_FALLBACK_ADDRESS).toBe('brian@liveloveapp.com');
+  expect(UNSTUCK_FALLBACK_ADDRESS).toBe('brian@hashbrown.dev');
 });
 
 test('jsonResponse keeps headers passed as a Headers instance or pairs and is never cached', async () => {
