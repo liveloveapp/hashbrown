@@ -104,3 +104,44 @@ from `GROWTH_DATABASE_ENVIRONMENT` are acknowledged with 200 and ignored.
 The lifecycle service is covered by `2026-10-21-growth-lifecycle-service.md`.
 Still to come from section 14 of the design: the Get unstuck form (PR 6) and
 enabling production switches (PR 7).
+
+## Receiving recovery and operator review
+
+Apply `0007_growth_inbox_recovery.sql` before deploying the resumable recovery
+worker. A scan records its original start, cursor, and newest message atomically
+with receipt admission. Each invocation processes at most 100 items per phase
+and uses a 240-second work budget. An interrupted or superseded invocation keeps
+coverage blocked; the next invocation resumes the saved scan. Recovery never
+claims coverage across a provider retention gap of more than 29 days.
+
+Use the existing server environment and canonical database preflight:
+
+```sh
+npx nx inbox growth -- status
+npx nx inbox growth -- health
+npx nx inbox growth -- recover
+npx nx inbox growth -- review-ignore --receipt-id RECEIPT_ID --actor OPERATOR --evidence REVIEW_REFERENCE
+npx nx control growth -- status --email ADDRESS
+npx nx control growth -- approve --email ADDRESS
+npx nx control growth -- stop --email ADDRESS
+npx nx control growth -- delete --email ADDRESS
+```
+
+`status` and `health` print closed diagnostic codes without message content,
+addresses, provider IDs, or raw error text. `health` exits 1 until receiving is
+healthy. `recover` exits 1 for partial coverage. Both require only database access
+unless recovery is requested. Pending unread or unattributed replies block all
+campaign contacts; attributed pending replies continue to hold their contact.
+Only review a single unresolved receipt after inspecting its evidence. The
+operator and evidence reference must be bounded opaque references, never email
+content. Review records an audit event in the same transaction that ignores the
+receipt, and does not mark the mailbox healthy or bypass forwarding/deletion.
+Approval preserves prior stops by default; `--allow-prior-stop KIND` explicitly
+names a permitted prior stop to supersede. Deletion can never be superseded.
+
+The health command is an operator/monitor integration boundary. Automatic alert
+delivery is not configured by these changes: an existing authorized scheduler
+must run it and route meaningful unhealthy/recovered transitions to the existing
+operator destination. Keep campaigns paused until deployed recovery reports full
+coverage and all diagnostic codes clear; deploying code alone is not approval to
+resume sends.
