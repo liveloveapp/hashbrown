@@ -1,6 +1,6 @@
 # Provider tool steps: slice 3 audit and Anthropic delivery
 
-Status: Anthropic-first delivery approved by the user on 2026-10-22; independent spec review approved. Later-provider details remain deferred.
+Status: Anthropic-first delivery approved by the user on 2026-10-22; independent spec review approved. The user deferred file search from slice 3 on 2026-10-22. Later-provider details remain deferred.
 
 ## Baseline and binding requirements
 
@@ -16,7 +16,7 @@ The existing Hashbrown implementation plan ends at slice 1 conformance. The shar
 2. One slice 3 PR covering all providers. This completes the capability table together, but combines three different stream/replay protocols, backend restrictions, and recorder work in one review.
 3. Display-only mapping first, native replay later. Reject: native replay is a binding part of this effort, and provider calls must never leak into the ordinary function path.
 
-The recommended sequence does not remove capabilities from the agreed slice. It divides delivery into complete provider paths.
+The sequence delivers complete provider paths. File search is deferred from slice 3 across providers; a later design will address store configuration and its public API.
 
 ## Slice 3a: Anthropic
 
@@ -26,11 +26,11 @@ Add `builtInTools` to `AnthropicTextStreamOptions` with `webSearch`, `webFetch`,
 
 Each property accepts `true` or provider configuration. Object configuration retains the SDK tool-version discriminator and all options unchanged; the adapter supplies the fixed tool name. `true` uses explicit compatibility defaults:
 
-| Key | Default native configuration | Contract builtin |
-| --- | --- | --- |
-| `webSearch` | `web_search_20250305`, name `web_search` | `web_search` |
-| `webFetch` | `web_fetch_20250910`, name `web_fetch`, citations enabled | `web_fetch` |
-| `codeExecution` | `code_execution_20250825`, name `code_execution` | `code_execution` |
+| Key             | Default native configuration                              | Contract builtin |
+| --------------- | --------------------------------------------------------- | ---------------- |
+| `webSearch`     | `web_search_20250305`, name `web_search`                  | `web_search`     |
+| `webFetch`      | `web_fetch_20250910`, name `web_fetch`, citations enabled | `web_fetch`      |
+| `codeExecution` | `code_execution_20250825`, name `code_execution`          | `code_execution` |
 
 These are pinned defaults, not a promise of support on every model. Applications can select other SDK-supported versions through object configuration. Explicit object settings, including disabled fetch citations, are preserved. TSDoc explains defaults, model compatibility, display obligations, and the transform hook. Built-ins added through `transformRequestOptions` are mapped too.
 
@@ -96,7 +96,7 @@ Run build, test, lint, e2e and API-report targets for Anthropic, affected core c
 
 ### Google (next separate design)
 
-SDK `@google/genai@2.19.0` supports native tool calls/responses, code execution, and grounding. Add the four agreed keys: web search, fetch, code execution, and file search. Developer API invocation plumbing uses `includeServerSideToolInvocations`; mixed custom tools require VALIDATED rather than the existing AUTO mode. Vertex converters reject that flag, native toolCall/toolResponse parts, and file search, so the auth variants need capability-specific typing/documentation and different request plumbing.
+SDK `@google/genai@2.19.0` supports native tool calls/responses, code execution, and grounding. Add web search, fetch, and code execution. File search is deferred from slice 3. Developer API invocation plumbing uses `includeServerSideToolInvocations`; mixed custom tools require VALIDATED rather than the existing AUTO mode. Vertex converters reject that flag, native toolCall/toolResponse parts, and file search, so the auth variants need capability-specific typing/documentation and different request plumbing.
 
 Native streaming chunk indices are local. The installed SDK's Chat implementation retains each valid chunk Content in order, without merging signed parts. Preserve ordered Content fragments with chunk ordinal and local part index; do not deduplicate identical chunks or move signatures. Finalize the Google design around ordered native Content fragments and the footer, rather than applying Anthropic's block indexing to chunk-local indices.
 
@@ -112,9 +112,9 @@ AWS now documents Nova code interpreter, but the agreed public option table defe
 
 ### OpenAI and Azure
 
-Web search is already implemented. Slice 3 also owes code execution and file search on both adapters, plus OpenAI image generation. Reuse the existing stateless replay policy and add file/container citations, result includes, failures, and shared labels.
+Web search is already implemented. Slice 3 also owes code execution on both adapters, plus OpenAI image generation. File search is deferred from this slice. Reuse the existing stateless replay policy and add file/container citations, result includes, failures, and shared labels.
 
-Code execution `true` can choose an automatic container. File search has no default store: OpenAI requires `vector_store_ids`, and Google's store names are semantically required despite optional SDK typing. **Proposed clarification requiring user review:** new file-search keys require explicit provider configuration; do not accept `true` and send an invalid request. A scope question has been sent separately.
+Code execution `true` can choose an automatic container. **User decision (2026-10-22): defer file search from slice 3.** File search has no default store: OpenAI requires `vector_store_ids`, and Google's store names are semantically required despite optional SDK typing. Configuration and delivery belong in a later design; this slice adds no file-search enabling option.
 
 Keep Azure image generation outside the enabling table for this streaming API. Its current documentation describes nonstreaming Responses image generation while explicitly excluding streaming; do not document Azure image generation as categorically absent.
 

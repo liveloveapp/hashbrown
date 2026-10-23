@@ -85,3 +85,5 @@ Final independent integration review approved with no remaining findings. Core r
 All planned local validation gates pass. Public API report inspection confirms AnthropicBuiltInTools and builtInTools are exported, with no new dependency changes.
 
 PR: https://github.com/liveloveapp/hashbrown/pull/715 (open and attached; awaiting review, merge and release remain separate). Auto-fix could not be enabled through the available tools: computer control of the desktop app is restricted, and the review tool exposes read-only CI diagnostics.
+
+Scope decision (2026-10-22): the user deferred file search from slice 3 across providers. The Anthropic builtInTools API already excludes it; the shared label helper remains available for future provider work.
