@@ -12,6 +12,14 @@
 
 ## Execution boundary
 
+**2026-10-23 investigation result: gate did not pass.** See
+`docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md` for executed
+evidence. Installed 0.14.0 replays a browser tool with a changed parent message
+ID, which the actual Hashbrown runtime rejects, and lacks supported output-token
+cap configuration. Its schema carrier also predates the target design's mapping.
+Published 0.15.0 was inspected, not executed. Resolve the upstream gaps and
+rerun the coherent-package probe before finalizing or executing Tasks 2–7.
+
 Task 1 is executable now and resolves the compatibility gate. Tasks 2–7 are the
 ordered implementation outline, not authorization to guess unverified b4.run
 APIs. At the end of Task 1, replace their runtime-specific instructions with the

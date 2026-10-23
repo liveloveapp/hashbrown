@@ -2,6 +2,12 @@
 
 Status: approved by the user on 2026-10-23. No implementation or dependency changes yet.
 
+Compatibility investigation on 2026-10-23 did not pass the implementation gate.
+See `../reports/2026-10-23-atc-b4run-compatibility.md`: the installed runtime
+changes replayed tool-parent identity, lacks a supported output-token cap, and
+uses an older schema carrier than the target contract described below. The
+approved design remains the target; these findings must be resolved first.
+
 ## Purpose and agreed scope
 
 Show how the same Hashbrown React and Angular application can use either its
