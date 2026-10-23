@@ -4,6 +4,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   background-color: var(--vanilla-ivory, #faf9f0);
   background-image: url('/image/texture/fabric.png');
   background-size: auto;
@@ -13,14 +14,18 @@
 }
 
 .grid {
-  flex: 1 auto;
+  flex: 1 1 0;
+  min-height: 0;
   display: grid;
   grid-template-columns: auto;
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
 }
 
 .menu {
   display: none;
+  min-height: 0;
+  min-width: 0;
 }
 
 .docs .menu {
@@ -28,6 +33,8 @@
 }
 
 .panel {
+  min-height: 0;
+  min-width: 0;
   background: #fff;
   overflow-y: auto;
   overflow-x: hidden;

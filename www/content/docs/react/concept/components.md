@@ -9,6 +9,9 @@ meta:
 
 <p class="subtitle">Expose <strong>trusted</strong>, <strong>tested</strong>, and <strong>compliant</strong> components to the model.</p>
 
+<hb-docs-demo demo="generative-ui">
+</hb-docs-demo>
+
 ---
 
 ## The `exposeComponent()` Function
@@ -364,6 +367,13 @@ useUiChat({
 Prefer rules over sample answers. A rule in a description lives next to the component it describes, so it changes when the component does and leaves with it when the component is removed. A hand-written sample answer silently drifts when a prop or component changes.
 
 ---
+
+## Demo result
+
+<img src="/video/docs/generative-ui-result.png" width="1440" height="810" loading="lazy" alt="Aircraft returned by a tool appear in the ATC app’s own list component." />
+
+The ATC example renders its own aircraft list after a request. The recording uses scripted model responses and fixture traffic.
+
 
 ## Next Steps
 

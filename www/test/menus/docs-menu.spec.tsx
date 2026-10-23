@@ -33,19 +33,72 @@ test.each(SDKS)(
   },
 );
 
-test('keeps the Angular menu section order', () => {
-  const sections = docsMenuSections('react');
+test.each(SDKS)(
+  'groups the %s docs by learning task with Migrations last',
+  (sdk) => {
+    const sections = docsMenuSections(sdk);
 
-  const titles = sections.map((section) => section.title);
+    const titles = sections.map((section) => section.title);
 
-  expect(titles).toEqual([
-    'Getting Started',
-    'Migrations',
-    'Guide',
-    'Recipes',
-    'Platforms',
-  ]);
-});
+    expect(titles).toEqual([
+      'Getting started',
+      'Fundamentals',
+      'Generative UI',
+      'Agent workflows',
+      'Recipes',
+      'Production guides',
+      'Model providers',
+      'Migrations',
+    ]);
+  },
+);
+
+test.each(SDKS)(
+  'makes existing %s workflow and production guides discoverable',
+  (sdk) => {
+    const sections = docsMenuSections(sdk);
+
+    const paths = sections.flatMap((section) =>
+      section.links.map((link) => link.href),
+    );
+    const fundamentals = sections.find(
+      (section) => section.title === 'Fundamentals',
+    );
+
+    expect(paths).toContain(`/docs/${sdk}/concept/shared-agent-state`);
+    expect(paths).toContain(`/docs/${sdk}/concept/interrupt-and-resume`);
+    expect(paths).toContain(`/docs/${sdk}/concept/transform-request-options`);
+    expect(paths).toContain(`/docs/${sdk}/guide/choosing-model`);
+    expect(paths).toContain(`/docs/${sdk}/guide/prompt-engineering`);
+    expect(paths).toContain(`/docs/${sdk}/guide/ethics`);
+    expect(new Set(paths).size).toBe(paths.length);
+    expect(fundamentals?.links[0].text).toBe('Messages and turns');
+    expect(
+      sections
+        .flatMap((section) => section.links)
+        .some((link) => /^\d+\./.test(link.text)),
+    ).toBe(false);
+  },
+);
+
+test.each(SDKS)(
+  'renders %s Migrations as an initially closed native disclosure',
+  (sdk) => {
+    const html = renderToStaticMarkup(<DocsMenu sdk={sdk} />);
+
+    const disclosures = [
+      ...html.matchAll(/<details\b([^>]*)>([\s\S]*?)<\/details>/g),
+    ];
+
+    expect(disclosures).toHaveLength(1);
+    expect(disclosures[0][1]).not.toMatch(/\bopen\b/);
+    expect(disclosures[0][2]).toMatch(/<summary[^>]*>Migrations<\/summary>/);
+    expect(disclosures[0][2]).toContain(`/docs/${sdk}/migrations/v0-8`);
+    expect(html.indexOf('<details')).toBeGreaterThan(
+      html.indexOf('Model providers'),
+    );
+  },
+);
 
 test('shows the CopilotKit recipe only in the React menu', () => {
   const texts = (sdk: Sdk) =>

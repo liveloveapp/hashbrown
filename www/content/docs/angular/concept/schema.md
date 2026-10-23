@@ -8,6 +8,9 @@ meta:
 
 <p class="subtitle">Skillet is a Zod-like schema language that is LLM-optimized.</p>
 
+<hb-docs-demo demo="schemas">
+</hb-docs-demo>
+
 - Skillet is strongly typed
 - Skillet purposefully limits the schema to that which is supported by LLMs
 - Skillet optimizes the schema for processing by an LLM

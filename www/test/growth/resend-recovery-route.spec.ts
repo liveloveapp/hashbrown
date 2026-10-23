@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 
-import { createInboxRecoveryRoute } from '../../src/app/%5F/cron/inbox-recovery/route';
+import { createInboxRecoveryRoute } from '../../src/app/%5F/cron/inbox-recovery/handler';
 
 test('recovery refuses missing or wrong bearer authorization before any work', async () => {
   const recover = vi.fn();

@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 
-import { createResendInboundRoute } from '../../src/app/%5F/webhooks/resend-inbound/route';
+import { createResendInboundRoute } from '../../src/app/%5F/webhooks/resend-inbound/handler';
 
 const headers = {
   'svix-id': 'msg_1',

@@ -1,11 +1,11 @@
 ---
-title: 'AI Basics: Roles, Turns & Completions: Hashbrown Angular Docs'
+title: 'Messages and turns: Hashbrown Angular Docs'
 meta:
   - name: description
     content: 'Understanding how Hashbrown (and most LLM APIs) model a conversation is the first step toward building anything useful. This page introduces the core vocabulary: messages, roles, the assistant turn, and a completion.'
 ---
 
-# AI Basics: Roles, Turns & Completions
+# Messages and turns
 
 Understanding how Hashbrown (and most LLM APIs) model a conversation is the first step
 toward building anything useful. This page introduces the core vocabulary: **messages**,
