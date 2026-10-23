@@ -1,0 +1,10 @@
+WEBVTT
+
+00:00.000 --> 00:02.500
+A developer-owned WelcomeCard rendered by Hashbrown.
+
+00:02.500 --> 00:04.500
+Select Generate a welcome card. The app shows its loading state.
+
+00:04.500 --> 00:10.500
+The response supplies validated title and message props. React renders the trusted card.

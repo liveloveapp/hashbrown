@@ -33,7 +33,7 @@
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "eslint www/src www/test www/instrumentation-client.ts www/next.config.ts"
+        "command": "eslint www/src www/test www/instrumentation-client.ts www/next.config.ts www/examples/quickstart"
       }
     },
     "e2e": {
@@ -89,6 +89,37 @@
           "target": "build-api-report"
         }
       ]
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ngc -p www/examples/quickstart/tsconfig.json"
+      },
+      "dependsOn": [
+        {
+          "projects": [
+            "core",
+            "react",
+            "angular",
+            "openai"
+          ],
+          "target": "build"
+        }
+      ]
+    },
+    "docs-demo": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "ngc -p www/examples/quickstart/tsconfig.record.json",
+          "tsx www/src/tools/record-docs-quickstart.ts"
+        ],
+        "parallel": false
+      },
+      "dependsOn": [
+        "typecheck"
+      ],
+      "cache": false
     }
   }
 }

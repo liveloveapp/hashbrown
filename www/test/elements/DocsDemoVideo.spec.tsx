@@ -14,7 +14,12 @@ const demos = [
   ['decisions', 'decisions'],
 ] as const;
 
-test.each([...demos, ['debugging', 'quick']] as const)(
+test.each([
+  ...demos,
+  ['debugging', 'debugging'],
+  ['welcome-card', 'quick'],
+  ['conversation', 'ai-basics'],
+] as const)(
   'renders the %s Markdown demo with accessible on-demand playback',
   async (demo) => {
     const markdown = `<hb-docs-demo demo="${demo}">\n</hb-docs-demo>`;
@@ -41,28 +46,28 @@ test.each([...demos, ['debugging', 'quick']] as const)(
   },
 );
 
-test.each([...demos, ['debugging', 'quick']] as const)(
-  'ships complete local media for the %s demo',
-  (demo) => {
-    const publicDir = resolve(import.meta.dirname, '../../public/video/docs');
-    const files = [
-      `${demo}.mp4`,
-      `${demo}.webm`,
-      `${demo}-poster.png`,
-      `${demo}.vtt`,
-      `${demo}-transcript.txt`,
-    ];
+test.each([
+  ...demos,
+  ['debugging', 'debugging'],
+  ['welcome-card', 'quick'],
+  ['conversation', 'ai-basics'],
+] as const)('ships complete local media for the %s demo', (demo) => {
+  const publicDir = resolve(import.meta.dirname, '../../public/video/docs');
+  const files = [
+    `${demo}.mp4`,
+    `${demo}.webm`,
+    `${demo}-poster.png`,
+    `${demo}.vtt`,
+    `${demo}-transcript.txt`,
+  ];
 
-    const present = files.filter((file) =>
-      existsSync(resolve(publicDir, file)),
-    );
+  const present = files.filter((file) => existsSync(resolve(publicDir, file)));
 
-    expect(present).toEqual(files);
-    expect(readFileSync(resolve(publicDir, `${demo}.vtt`), 'utf8')).toMatch(
-      /^WEBVTT/,
-    );
-  },
-);
+  expect(present).toEqual(files);
+  expect(readFileSync(resolve(publicDir, `${demo}.vtt`), 'utf8')).toMatch(
+    /^WEBVTT/,
+  );
+});
 
 test.each(SDKS)(
   '%s documentation has no legacy Vimeo embeds or links',
@@ -92,7 +97,10 @@ test.each(SDKS)(
 
     expect(counts).toEqual([1, 1, 1]);
     expect(structured).toContain('<hb-docs-demo demo="schemas">');
-    expect(quick).toContain('<hb-docs-demo demo="debugging">');
+    expect(quick).toContain('<hb-docs-demo demo="welcome-card">');
+    expect(readDoc(sdk, ['concept', 'debugging'])?.body).toContain(
+      '<hb-docs-demo demo="debugging">',
+    );
   },
 );
 

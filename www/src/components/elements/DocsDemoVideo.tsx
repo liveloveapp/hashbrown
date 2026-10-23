@@ -37,8 +37,9 @@ export function DocsDemoVideo({ demo }: { demo: DocsDemoId }) {
       <figcaption>
         <p>{media.caption}</p>
         <p className={styles.note}>
-          Recorded in the ATC example with scripted model responses and fixture
-          traffic. No narration.{' '}
+          {'recording' in media
+            ? media.recording
+            : 'Recorded in the ATC example with scripted model responses and fixture traffic. No narration.'}{' '}
           <a href={`${base}-transcript.txt`}>Read the text walkthrough</a>.
         </p>
       </figcaption>

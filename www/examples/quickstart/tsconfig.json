@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noEmit": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": "../../..",
+    "paths": {
+      "@hashbrownai/core": ["dist/packages/core"],
+      "@hashbrownai/react": ["dist/packages/react"],
+      "@hashbrownai/angular": ["dist/packages/angular"],
+      "@hashbrownai/openai": ["dist/packages/openai"]
+    }
+  },
+  "angularCompilerOptions": {
+    "strictTemplates": true,
+    "strictInjectionParameters": true
+  },
+  "include": [
+    "react/**/*.tsx",
+    "react/**/*.ts",
+    "angular/**/*.ts",
+    "server/**/*.ts"
+  ]
+}

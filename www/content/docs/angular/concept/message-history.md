@@ -1,36 +1,37 @@
 ---
-title: 'Message History: Hashbrown Angular Docs'
+title: 'Message history: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: 'Persist, restore, and mutate Hashbrown chat message history in Angular.'
+    content: 'Keep context between turns and decide how a conversation is saved.'
 ---
 
-# Message History
+# Message history
 
-<p class="subtitle">Persist, restore, and prune the messages your chat sends to the model.</p>
+The next request needs the earlier exchange if we want the assistant to remember what we already told it. Hashbrown keeps that context in the current chat instance.
 
-Hashbrown keeps chat state in a `messages` array. Each turn appends user, assistant, tool, and error messages to that array, and each request sends the current history so the model has conversational context.
+<hb-docs-demo demo="conversation">
+</hb-docs-demo>
 
-Use message history when you want to:
+## Before we start
 
-1. Restore a chat after a page refresh
-2. Persist conversations to local storage or your backend
-3. Remove or summarize older turns before the next request
-4. Let users delete or retry part of a conversation
+The [Messages and turns](/docs/angular/concept/ai-basics) example sends a name, receives a reply, and asks a follow-up question. The recording shows context within one active conversation. It does not demonstrate persistence after a refresh.
 
----
+## Decide what should survive
 
-## Public History and AG-UI Checkpoints
+| Event | What your app needs to do |
+| --- | --- |
+| Another message in the same chat instance | Hashbrown includes the current history |
+| A page refresh or a new chat instance | Load saved history and provide it when creating the chat |
+| A user switching conversations | Save and restore the selected conversation's messages |
+| A long conversation | Decide which messages to keep, summarize, or remove |
 
-`chat.value()` remains Hashbrown's opinionated public view of the conversation. When an AG-UI agent sends a message checkpoint, Hashbrown retains the complete canonical AG-UI history internally and uses it for subsequent requests. User and assistant messages expose their stable canonical `id` in the public view. Metadata and roles that do not have a Hashbrown public representation remain in that internal checkpoint.
+Let's start by restoring messages when the chat is created. The examples below build on the [Quickstart endpoint and provider](/docs/angular/start/quick).
 
-The public view continues to use Hashbrown's existing message shapes: user and assistant messages remain familiar, reasoning is correlated with assistant messages, and tool results settle their corresponding tool calls. Canonical system and developer messages are not added to `chat.value()`. Activity messages are: each one appears in `chat.value()` as a `role: 'activity'` message, in the position where it arrived. See [Activities](/docs/angular/concept/activities). The internal canonical history is not exposed as a separate public API.
+Treat stored messages as application data. Validate data loaded from storage and choose a retention policy appropriate for the information your users share. Local storage is readable by scripts on the same origin.
 
-Shared state is synchronized independently from message history. See [Shared Agent State](/docs/angular/concept/shared-agent-state) when your application and agent need to exchange structured state snapshots and deltas.
+## Restore a simple text conversation
 
----
-
-## Initialize with Stored Messages
+The local-storage example below is for text chat without tool calls or agent checkpoints. It saves the public messages, rather than exporting the runtime’s full internal history. Use a server-managed thread when your application needs durable agent state.
 
 Pass `messages` when you create the resource. Hashbrown uses this array as the initial chat history.
 
@@ -164,6 +165,17 @@ async compactHistory() {
 </hb-code-example>
 
 Put durable application rules in `system`. Use summarized messages for conversational facts, user preferences, and prior decisions.
+
+---
+
+## Public History and AG-UI Checkpoints
+
+`chat.value()` remains Hashbrown's opinionated public view of the conversation. When an AG-UI agent sends a message checkpoint, Hashbrown retains the complete canonical AG-UI history internally and uses it for subsequent requests. User and assistant messages expose their stable canonical `id` in the public view. Metadata and roles that do not have a Hashbrown public representation remain in that internal checkpoint.
+
+The public view continues to use Hashbrown's existing message shapes: user and assistant messages remain familiar, reasoning is correlated with assistant messages, and tool results settle their corresponding tool calls. Canonical system and developer messages are not added to `chat.value()`. Activity messages are: each one appears in `chat.value()` as a `role: 'activity'` message, in the position where it arrived. See [Activities](/docs/angular/concept/activities). The internal canonical history is not exposed as a separate public API.
+
+Shared state is synchronized independently from message history. See [Shared Agent State](/docs/angular/concept/shared-agent-state) when your application and agent need to exchange structured state snapshots and deltas.
+
 
 ---
 

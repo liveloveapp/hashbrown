@@ -1,5 +1,19 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'welcome-card': {
+    title: 'Generate your first welcome card.',
+    caption:
+      'Expose a WelcomeCard, send a prompt, and render validated props with your component.',
+    recording:
+      'Recorded in the Quickstart example with scripted model responses. Presentation styles added. No narration.',
+  },
+  conversation: {
+    title: 'Keep context between turns.',
+    caption:
+      'Send a name, receive a reply, and ask a follow-up in the same text conversation.',
+    recording:
+      'Recorded in the Messages and turns example with scripted model responses. Presentation styles added. No persistence after refresh is shown. No narration.',
+  },
   'generative-ui': {
     title: 'Your components. Generated UI.',
     caption:
@@ -29,7 +43,10 @@ export const DOCS_DEMOS = {
     caption:
       'Inspect routing decisions, streamed UI JSON, and tool-call arguments in the ATC developer drawer.',
   },
-} as const;
+} as const satisfies Record<
+  string,
+  { title: string; caption: string; recording?: string }
+>;
 
 /** The stable identifier of a recorded documentation demo. */
 export type DocsDemoId = keyof typeof DOCS_DEMOS;
