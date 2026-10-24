@@ -8,7 +8,8 @@ import { renderMarkdown } from '../../src/lib/markdown';
 
 const demos = [
   ['generative-ui', 'components'],
-  ['streaming', 'streaming'],
+  ['streaming-data', 'streaming'],
+  ['structured-form', 'structured-output'],
   ['browser-tools', 'functions'],
   ['schemas', 'schema'],
   ['decisions', 'decisions'],
@@ -106,7 +107,7 @@ test.each(SDKS)(
     );
 
     expect(counts).toEqual([1, 1, 1]);
-    expect(structured).toContain('<hb-docs-demo demo="schemas">');
+    expect(structured).toContain('<hb-docs-demo demo="structured-form">');
     expect(quick).toContain('<hb-docs-demo demo="welcome-card">');
     expect(readDoc(sdk, ['concept', 'debugging'])?.body).toContain(
       '<hb-docs-demo demo="debugging">',

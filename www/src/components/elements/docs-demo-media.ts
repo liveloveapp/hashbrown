@@ -1,5 +1,19 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'structured-form': {
+    title: 'Generate a draft. Review it. Apply it.',
+    caption:
+      'Turn a request into typed shopping-list items and explicitly apply a validated draft.',
+    recording:
+      'Recorded in the checked shopping-list example with scripted AG-UI output. React recorded; Angular verified. Presentation styles added. No narration or server write.',
+  },
+  'streaming-data': {
+    title: 'Show complete items as they arrive.',
+    caption:
+      'Stream a draft list while keeping Apply disabled until successful completion and validation.',
+    recording:
+      'Recorded in the checked shopping-list example with delayed scripted AG-UI output. React recorded; Angular verified. Presentation styles added. No narration or server write.',
+  },
   'public-endpoint': {
     title: 'Check access before starting a reply.',
     caption:

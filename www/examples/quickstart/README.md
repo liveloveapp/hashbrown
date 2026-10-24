@@ -74,3 +74,9 @@ When `server-threads` is selected, the production recorder checks saves in progr
 HTTP and repository unit tests cover identity and ownership checks, request limits, server-owned provider input, admission, stream failures, immutable snapshots, and atomic version conflicts. Text-history and server-history tests cover their respective transport/storage formats and failures.
 
 Both persistence examples store supported completed text only. They do not persist canonical agent checkpoints, generated UI, tool history, shared state, or pending interrupt ownership. A thread ID does not restore history or authorize access by itself. Durable interrupted-workflow recovery remains separate application work.
+
+## Typed lists and forms
+
+`react/src/StructuredList.tsx` and `angular/src/app/structured-list.ts` use the shared `runtime/shopping-list.ts` schema and validator. Generate creates an independent draft conversation. Apply requires a fresh, settled, valid result and explicit user action; cancelled, failed, truncated and stale drafts never replace the applied list. Applied values live only in component state.
+
+Run `npx nx docs-structured-demo www` for both SDK checks and the `structured-form` / `streaming-data` recordings, or set `DOCS_SKIP_RECORDING=1`. `DOCS_DEMO_MODES` selects these target-specific IDs. The recorder uses scripted AG-UI events and added presentation CSS, no provider key or backend write. Captures and verification reports go to ignored `dist/docs-structured`; do not run recording targets concurrently because they share compiled output.
