@@ -1,0 +1,11 @@
+Your functions. Code in QuickJS.
+
+Recorded from the checked RuntimeDemo client using real QuickJS execution. The same sequence is verified in Angular. The basket is fixed sample data, scripts are prewritten, and there is no model call. No narration.
+
+1. The result preview shows USD, three items, and a total of 4,200 cents ($42.00).
+2. Run the calculation. JavaScript inside QuickJS calls the explicitly exposed readBasket host function and adds the item prices using integer cents.
+3. Try document.title. The QuickJS context has no browser document and returns an evaluation error.
+4. Call readBasket with EUR. The host handler explicitly checks its argument and rejects it. Function schemas describe the model-facing contract; the bridge does not automatically validate arguments or results.
+5. Select the original basket calculation and run it successfully again.
+
+Each runtime.run call creates a fresh context. QuickJS evaluation returns a result/error wrapper; the component also catches rejected promises. The configured runtime deadline interrupts synchronous loops. Caller signal callbacks and host operations have cooperative cancellation limits; this is not a memory limit or a way to undo privileged host effects. The exposed host handler runs outside QuickJS and retains host privileges.

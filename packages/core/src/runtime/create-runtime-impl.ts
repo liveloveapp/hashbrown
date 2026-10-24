@@ -94,6 +94,7 @@ export function createRuntimeImpl(options: {
       return description;
     },
     async run(code: string, abortSignal?: AbortSignal) {
+      const deadline = performance.now() + timeout;
       const signal = abortSignal
         ? AbortSignal.any([abortSignal, AbortSignal.timeout(timeout)])
         : AbortSignal.timeout(timeout);
@@ -108,7 +109,8 @@ export function createRuntimeImpl(options: {
 
       const runtime = QuickJS.newRuntime({
         interruptHandler: () => {
-          return signal.aborted;
+          // Synchronous WASM execution blocks the timer that aborts the signal.
+          return signal.aborted || performance.now() >= deadline;
         },
       });
       const vm = runtime.newContext();

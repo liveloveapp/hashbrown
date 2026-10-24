@@ -1,5 +1,26 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'public-endpoint': {
+    title: 'Check access before starting a reply.',
+    caption:
+      'Reject an anonymous request and another owner’s thread, then stream an authorized reply.',
+    recording:
+      'Recorded against the checked Express example. Local fixture sessions, an in-memory thread store, and scripted provider responses. Presentation styles added. No narration.',
+  },
+  'server-threads': {
+    title: 'Save on the server. Continue in the browser.',
+    caption:
+      'Refresh and switch between two versioned, server-stored text conversations.',
+    recording:
+      'Recorded in the checked thread clients. Local fixture sessions, an in-memory server store, and scripted provider responses. Completed text only. Presentation styles added. No narration.',
+  },
+  'javascript-runtime': {
+    title: 'Your functions. Code in QuickJS.',
+    caption:
+      'Calculate a basket total, try unavailable browser access and invalid arguments, then recover.',
+    recording:
+      'Recorded in the checked runtime clients with real QuickJS execution, a fixed basket, and prewritten scripts. Presentation styles added. No model call or narration.',
+  },
   persistence: {
     title: 'Refresh. Restore. Continue.',
     caption:
