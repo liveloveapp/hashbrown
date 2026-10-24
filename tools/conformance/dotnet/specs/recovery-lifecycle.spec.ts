@@ -540,6 +540,9 @@ test('historical browser tools stay inert through recovered approval and a later
     info.project.metadata['provider'] as 'openai' | 'azure',
     async (cluster) => {
       const fixture = await cluster.start({ Workflow: 'after-tool' });
+      fixture.mock.onToolResult('historical-weather', {
+        content: 'Weather result retained',
+      });
       fixture.mock.onMessage('Weather fixture', {
         toolCalls: [
           {
@@ -548,9 +551,6 @@ test('historical browser tools stay inert through recovered approval and a later
             arguments: { city: 'Portland' },
           },
         ],
-      });
-      fixture.mock.onToolResult('historical-weather', {
-        content: 'Weather result retained',
       });
       fixture.mock.onMessage('Hello fixture', { content: 'Hello from .NET' });
       await withRoutedEndpoint(`${fixture.url}/run`, async (endpoint) => {
