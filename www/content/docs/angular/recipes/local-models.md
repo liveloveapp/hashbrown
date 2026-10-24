@@ -709,10 +709,15 @@ Final replies remain unconstrained text. Clear application instructions can
 ask the model to extract a particular property from a JSON tool result, but
 formatting is a model-quality concern: an initial native workflow returned a
 correct receipt inside fenced JSON despite a plain-string request. Hashbrown
-preserves that output. Live tests also found that a fresh session can continue
-a cancelled request when it remains in canonical user history, even after the
-old session has stopped and been destroyed. Test follow-up instructions on the
-actual model. This factory does not promise schema-constrained replies.
+preserves that output. This factory does not promise schema-constrained replies.
+
+Stopping a conversational run or sending a replacement request retains the
+original user request and committed history with an explicit runtime
+cancellation marker before subsequent input. The marker stays in model
+history and is omitted from ordinary assistant rendering and schema/UI parsing.
+Both real v4 Stop cases returned the exact new lookup token with that marker;
+cleanup and history assertions passed independently. Keep testing follow-up
+instructions on the actual model; a marker does not guarantee model obedience.
 
 `detectChromeToolsCapabilities()` reports serializable exact-option and model
 availability evidence without downloading or inferring. Its `inference` value

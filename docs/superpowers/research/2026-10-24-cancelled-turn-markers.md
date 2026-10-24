@@ -74,3 +74,34 @@ following. Prior receipt/token formatting failures remain retained historical
 quality evidence; no output was normalized and no xfail was introduced. The
 final strengthened aimock Stop cases also passed in both frameworks
 (`/tmp/hashbrown-cancellation-stop-contract-final.log`).
+
+## Separate tools-then-schema opportunity
+
+A raw two-phase canary completed one typed lookup without a response constraint,
+then supplied the typed success with a `responseConstraint` requesting an object
+containing only `token:string`. One actual handler ran, the sole empty native ID
+was repaired with the previously verified compatibility rule, and the final
+object contained exactly the hidden random token with no additional keys.
+The native session, context and local server closed successfully; no model
+download was allowed. The report is
+`/tmp/hashbrown-native-tools-two-phase-probe.json`; the exact measured source
+was retained as `/tmp/hashbrown-native-tools-two-phase-probe.measured.cjs`.
+
+The complete probe took about 209s, with slow pre-inference setup/availability;
+its measured create-plus-generation round trip took 6.177s (3.167s creation,
+3.009s generation). It completed naturally before an attempted interruption;
+no signal reached its process. The reusable prototype was then given explicit
+availability timeouts; that modified version was not used to claim this result.
+
+This is a single-call, same-session capability sample with a schema option,
+not proof of arbitrary grammar enforcement, multi-tool planning, fresh-session
+finalization, generative UI, or a production composite transport. The earlier
+joint schema/tools first-turn probe skipped the tool and failed. A public
+explicit finalization phase needs its own API/design and conformance decision;
+`experimental_chrome_tools` continues to reject schema/UI composition.
+
+After integration onto the verified PR #737 merge, core and conformance trees
+matched the tested follow-up source exactly. Existing local transport contracts
+passed 24/24 and media contracts passed 4/4 using the already verified bundles
+(`/tmp/hashbrown-cancellation-existing-contracts.log`,
+`/tmp/hashbrown-cancellation-media-contracts.log`).
