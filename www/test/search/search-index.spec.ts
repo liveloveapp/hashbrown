@@ -69,6 +69,9 @@ test('the sitemap lists every docs page of both SDKs with its frontmatter', () =
     expect(entries).toContainEqual(
       expect.objectContaining({ url: `/docs/${sdk}/platform/dotnet` }),
     );
+    expect(entries).toContainEqual(
+      expect.objectContaining({ url: `/docs/${sdk}/platform/langgraph` }),
+    );
   }
   expect(entries).toContainEqual({
     url: '/docs/angular/concept/components',
