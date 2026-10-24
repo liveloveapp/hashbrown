@@ -242,6 +242,14 @@ test('real WebLLM worker recovers after cancellation and truncation', async ({
 test('real WebLLM accepts a bounded schema-depth sweep', async ({
   page,
 }, testInfo) => {
+  const depths = (process.env['WEBLLM_SCHEMA_DEPTHS'] ?? '1,4,8')
+    .split(',')
+    .map(Number);
+  if (
+    !depths.length ||
+    depths.some((value) => !Number.isInteger(value) || value < 1 || value > 64)
+  )
+    throw new Error('WEBLLM_SCHEMA_DEPTHS must contain integers from 1 to 64.');
   const runtime = await startWebLlmRuntime();
   const model =
     process.env['WEBLLM_MODEL'] ?? 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
@@ -256,7 +264,7 @@ test('real WebLLM accepts a bounded schema-depth sweep', async ({
       { timeout: 180_000 },
     );
 
-    const results = await page.evaluate(async () => {
+    const results = await page.evaluate(async (depths) => {
       const engine = (
         globalThis as unknown as {
           __hashbrownWebLlm: WebLlmEngine;
@@ -266,9 +274,12 @@ test('real WebLLM accepts a bounded schema-depth sweep', async ({
         depth: number;
         schemaBytes: number;
         expected: unknown;
-        output: unknown;
+        rawText: string;
+        finishReason?: string;
+        output?: unknown;
+        parseError?: string;
       }[] = [];
-      for (const depth of [1, 4, 8]) {
+      for (const depth of depths) {
         let schema: object = { type: 'integer', const: 2 };
         let expected: unknown = 2;
         for (let level = 0; level < depth; level += 1) {
@@ -282,6 +293,7 @@ test('real WebLLM accepts a bounded schema-depth sweep', async ({
         }
         const encoded = JSON.stringify(schema);
         let text = '';
+        let finishReason: string | undefined;
         for await (const chunk of await engine.chat.completions.create({
           stream: true,
           messages: [
@@ -294,25 +306,40 @@ test('real WebLLM accepts a bounded schema-depth sweep', async ({
           response_format: { type: 'json_object', schema: encoded },
         })) {
           text += chunk.choices[0]?.delta.content ?? '';
+          if (chunk.choices[0]?.finish_reason)
+            finishReason = chunk.choices[0].finish_reason;
+        }
+        let output: unknown;
+        let parseError: string | undefined;
+        try {
+          output = JSON.parse(text);
+        } catch (error) {
+          parseError = String(error);
         }
         probes.push({
           depth,
           schemaBytes: encoded.length,
           expected,
-          output: JSON.parse(text),
+          rawText: text,
+          finishReason,
+          output,
+          parseError,
         });
       }
       return probes;
-    });
+    }, depths);
 
-    for (const result of results)
-      expect(result.output, `Schema depth ${result.depth}`).toEqual(
-        result.expected,
-      );
     await testInfo.attach('webllm-schema-depth.json', {
       body: JSON.stringify(results),
       contentType: 'application/json',
     });
+    for (const result of results) {
+      expect(result.finishReason, `Schema depth ${result.depth}`).toBe('stop');
+      expect(result.parseError, `Schema depth ${result.depth}`).toBeUndefined();
+      expect(result.output, `Schema depth ${result.depth}`).toEqual(
+        result.expected,
+      );
+    }
   } finally {
     const measurements = await page
       .evaluate(
@@ -322,6 +349,145 @@ test('real WebLLM accepts a bounded schema-depth sweep', async ({
       )
       .catch(() => undefined);
     await testInfo.attach('webllm-schema-depth-metrics.json', {
+      body: JSON.stringify(measurements),
+      contentType: 'application/json',
+    });
+    await page
+      .evaluate(async () => {
+        await (
+          globalThis as unknown as {
+            __localWebLlmDispose?: () => Promise<void>;
+          }
+        ).__localWebLlmDispose?.();
+      })
+      .catch(() => undefined);
+    await runtime.stop();
+  }
+});
+
+test('real WebLLM selects a requested component from larger UI schemas', async ({
+  page,
+}, testInfo) => {
+  const widths = (process.env['WEBLLM_SCHEMA_WIDTHS'] ?? '4,16,32')
+    .split(',')
+    .map(Number);
+  if (
+    !widths.length ||
+    widths.some((value) => !Number.isInteger(value) || value < 1 || value > 64)
+  )
+    throw new Error('WEBLLM_SCHEMA_WIDTHS must contain integers from 1 to 64.');
+  const runtime = await startWebLlmRuntime();
+  const model =
+    process.env['WEBLLM_MODEL'] ?? 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+  try {
+    await installWebLlmWorker(page, runtime.url, model);
+    await page.goto('/?runUrl=http://127.0.0.1/unused&localModel=webllm');
+    await page.waitForFunction(
+      () =>
+        (globalThis as unknown as { __localWebLlmReady?: boolean })
+          .__localWebLlmReady,
+      undefined,
+      { timeout: 180_000 },
+    );
+
+    const results = await page.evaluate(async (widths) => {
+      const engine = (
+        globalThis as unknown as { __hashbrownWebLlm: WebLlmEngine }
+      ).__hashbrownWebLlm;
+      const probes: {
+        components: number;
+        schemaBytes: number;
+        expected: unknown;
+        output: unknown;
+      }[] = [];
+      for (const width of widths) {
+        const alternatives = Array.from({ length: width }, (_, index) => {
+          const name = `status${index}`;
+          return {
+            type: 'object',
+            properties: {
+              [name]: {
+                type: 'object',
+                properties: {
+                  props: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string', const: 'Local inference works' },
+                      count: { type: 'integer', const: 2 },
+                    },
+                    required: ['title', 'count'],
+                    additionalProperties: false,
+                  },
+                },
+                required: ['props'],
+                additionalProperties: false,
+              },
+            },
+            required: [name],
+            additionalProperties: false,
+          };
+        });
+        const schema = {
+          type: 'object',
+          properties: {
+            ui: {
+              type: 'array',
+              minItems: 1,
+              maxItems: 1,
+              items: { oneOf: alternatives },
+            },
+          },
+          required: ['ui'],
+          additionalProperties: false,
+        };
+        const encoded = JSON.stringify(schema);
+        const name = `status${width - 1}`;
+        let text = '';
+        for await (const chunk of await engine.chat.completions.create({
+          stream: true,
+          messages: [
+            {
+              role: 'user',
+              content: `Render exactly one ${name} component with props title "Local inference works" and count 2. Return the ui JSON object.`,
+            },
+          ],
+          response_format: { type: 'json_object', schema: encoded },
+        }))
+          text += chunk.choices[0]?.delta.content ?? '';
+        probes.push({
+          components: width,
+          schemaBytes: encoded.length,
+          expected: {
+            ui: [
+              {
+                [name]: { props: { title: 'Local inference works', count: 2 } },
+              },
+            ],
+          },
+          output: JSON.parse(text),
+        });
+      }
+      return probes;
+    }, widths);
+
+    await testInfo.attach('webllm-schema-width.json', {
+      body: JSON.stringify(results),
+      contentType: 'application/json',
+    });
+    for (const result of results)
+      expect(
+        result.output,
+        `${result.components} component alternatives`,
+      ).toEqual(result.expected);
+  } finally {
+    const measurements = await page
+      .evaluate(
+        () =>
+          (globalThis as unknown as { __localWebLlmMetrics: unknown })
+            .__localWebLlmMetrics,
+      )
+      .catch(() => undefined);
+    await testInfo.attach('webllm-schema-width-metrics.json', {
       body: JSON.stringify(measurements),
       contentType: 'application/json',
     });

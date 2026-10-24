@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { arch, cpus, platform, totalmem } from 'node:os';
 import type { WebLlmEngine, WebLlmRequest } from '@hashbrownai/core';
 import { execFileSync } from 'node:child_process';
 
@@ -70,8 +71,19 @@ export async function installWebLlmWorker(
   moduleUrl: string,
   model: string,
 ): Promise<void> {
+  const maxTokens = Number(process.env['WEBLLM_MAX_TOKENS'] ?? 256);
+  if (!Number.isInteger(maxTokens) || maxTokens < 1 || maxTokens > 2048)
+    throw new Error('WEBLLM_MAX_TOKENS must be an integer from 1 to 2048.');
+  const processors = cpus();
+  const machine = {
+    platform: platform(),
+    architecture: arch(),
+    cpu: processors[0]?.model,
+    cpuCount: processors.length,
+    ramBytes: totalmem(),
+  };
   await page.addInitScript(
-    ({ moduleUrl, model }) => {
+    ({ moduleUrl, model, machine, maxTokens }) => {
       type Engine = WebLlmEngine & { unload(): Promise<void> };
       type Runtime = {
         CreateWebWorkerMLCEngine(
@@ -83,7 +95,16 @@ export async function installWebLlmWorker(
           model_list: { model_id: string; vram_required_MB?: number }[];
         };
       };
-      const metrics: Record<string, unknown> = { model, requests: [] };
+      const metrics: Record<string, unknown> = {
+        model,
+        requests: [],
+        maxTokens,
+        environment: {
+          ...machine,
+          userAgent: navigator.userAgent,
+          browserCpuCount: navigator.hardwareConcurrency,
+        },
+      };
       const browser = globalThis as unknown as {
         __hashbrownWebLlm: WebLlmEngine;
         __localWebLlmReady: boolean;
@@ -92,6 +113,37 @@ export async function installWebLlmWorker(
         __localWebLlmDispose(): Promise<void>;
       };
       browser.__localWebLlmMetrics = metrics;
+      const gpu = (
+        navigator as unknown as {
+          gpu?: {
+            requestAdapter(): Promise<{
+              info?: {
+                vendor: string;
+                architecture: string;
+                device: string;
+                description: string;
+              };
+              features: Set<string>;
+            } | null>;
+          };
+        }
+      ).gpu;
+      void gpu
+        ?.requestAdapter()
+        .then((adapter) => {
+          if (adapter)
+            metrics['gpu'] = {
+              vendor: adapter.info?.vendor,
+              architecture: adapter.info?.architecture,
+              device: adapter.info?.device,
+              description: adapter.info?.description,
+              features: Array.from(adapter.features),
+            };
+        })
+        .catch((error: unknown) => {
+          metrics['gpuInfoError'] = String(error);
+        });
+
       const source = `import { WebWorkerMLCEngineHandler } from ${JSON.stringify(moduleUrl)}; const handler = new WebWorkerMLCEngineHandler(); self.onmessage = event => handler.onmessage(event);`;
       const workerUrl = URL.createObjectURL(
         new Blob([source], { type: 'text/javascript' }),
@@ -131,6 +183,7 @@ export async function installWebLlmWorker(
               const started = performance.now();
               const measurement: Record<string, unknown> = {
                 schemaBytes: request.response_format?.schema.length ?? 0,
+                maxTokens: browser.__localWebLlmMaxTokens ?? maxTokens,
               };
               (metrics['requests'] as unknown[]).push(measurement);
               let text = '';
@@ -147,7 +200,7 @@ export async function installWebLlmWorker(
                   engine.chat.completions,
                   {
                     ...request,
-                    max_tokens: browser.__localWebLlmMaxTokens ?? 256,
+                    max_tokens: browser.__localWebLlmMaxTokens ?? maxTokens,
                     temperature: 0,
                     seed: 1,
                   },
@@ -194,6 +247,6 @@ export async function installWebLlmWorker(
           }
         })());
     },
-    { moduleUrl, model },
+    { moduleUrl, model, machine, maxTokens },
   );
 }
