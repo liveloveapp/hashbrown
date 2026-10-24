@@ -62,6 +62,7 @@
 
 - [x] Document actual browser flags, separate profile/download ownership, invocation commands, limitations (schema+tools/media/hardware) and application-owned WebLLM interop.
 - [x] Independent spec review followed by code-quality review; fix valid feedback with regression tests.
-- [ ] Run build/test/lint for every affected package/host/docs; core full tests with `--runInBand`, API report, deterministic browser contracts, existing standard conformance. Run each browser Nx target separately and GPU suites sequentially.
-- [ ] Commit verified changes, create and attach PR, monitor exact-head CI and reviews, fix valid feedback. Rebase if required; merge on green without bypass.
+- [x] Run build/test/lint for every affected package/host/docs; core full tests with `--runInBand`, API report, deterministic browser contracts, existing standard conformance. Run each browser Nx target separately and GPU suites sequentially.
+- [x] Commit verified changes, create and attach [PR #737](https://github.com/liveloveapp/hashbrown/pull/737), and rebase onto current main.
+- [ ] Monitor final exact-head CI and reviews, fix valid feedback, and merge on green without bypass.
 - [ ] Verify merged commit/tree equals reviewed head, exact-head required checks passed and merged commit is on origin/main; report actual limitations and any decision required.

@@ -1,6 +1,6 @@
 # Chrome native tools: v4 verification
 
-Status: authorized v4 download completed; eight raw native compatibility canaries passed. The separate adapter has passed core tests and independent reviews; framework validation and release verification are tracked below.
+Status: authorized v4 download completed; eight raw native compatibility canaries passed. The separate adapter has passed core tests and independent reviews; 18 aimock framework contracts and standard conformance passed. [PR #737](https://github.com/liveloveapp/hashbrown/pull/737) tracks CI, review and release verification. Live semantic failures remain recorded below.
 
 ## Environment and isolation
 
@@ -193,3 +193,28 @@ After correcting raw error-history evidence serialization to preserve
 `errorMessage` rather than invent a success result, the filtered error-history
 canary passed in both Angular and React (2/2). This metadata correction does not
 change the actual constructor, inference or canonical replay behavior.
+
+## Release validation
+
+The reviewed source was rebased onto main `b6a2b025` without conflicts. Final
+package checks passed: core 1,731 tests/86 suites/14 snapshots, React 204 tests,
+Angular 272 tests, conformance 45 unit tests, and documentation 800 tests.
+Core/React/Angular, conformance and both smoke hosts built and linted; core's
+API report and conformance TypeScript build passed. Documentation production
+build and lint passed. The standard browser suite passed all 72 cases after
+an explicit production rebuild, and all 18 native aimock contracts passed.
+
+Validation limitations are preserved: the initial unrestricted Jest run hit
+the existing five-second 25-tool-round timeout and cascading mock assertions;
+the complete serial run passed. Initial sandboxed conformance unit tests could
+not bind loopback servers; the permitted server run passed. The initial
+standard suite passed 71/72 because a reused React host bundle contained
+development behavior. Rebuilding explicitly with `NODE_ENV=production` and
+`--skip-nx-cache` produced the production React bundle and passed all 72 cases.
+No production collection assertion was relaxed. Existing unused-variable,
+API-extractor, Nx/Vite and bundle-size warnings remain visible.
+
+All local model targets remain opt-in, uncached, outside standard discovery
+and prohibited in CI. No package dependency was added. Release CI and merge
+verification must be checked against the final PR head rather than inferred
+from these local results.
