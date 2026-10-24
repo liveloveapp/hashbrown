@@ -1,0 +1,19 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+Preview of the completed interaction.
+
+00:00:02.000 --> 00:00:02.575
+The complete interaction follows.
+
+00:00:02.575 --> 00:00:05.913
+Run an order question through the server-owned router.
+
+00:00:05.913 --> 00:00:07.541
+The order handler returns fixed public example data.
+
+00:00:07.541 --> 00:00:10.664
+Ask about returns. The server selects its other read-only handler.
+
+00:00:10.664 --> 00:00:15.633
+The application-owned returns policy appears.
