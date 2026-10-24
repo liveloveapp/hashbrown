@@ -66,6 +66,45 @@
       "options": {
         "command": "playwright test --config tools/conformance/all.playwright.config.ts"
       }
+    },
+    "local-model-contract-e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts"
+      }
+    },
+    "local-model-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "LOCAL_LLM_NATIVE=1 playwright test --config tools/conformance/local-models.playwright.config.ts"
+      }
+    },
+    "local-webllm-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "LOCAL_LLM_WEBLLM=1 playwright test --config tools/conformance/local-models.playwright.config.ts"
+      }
     }
   },
   "implicitDependencies": [

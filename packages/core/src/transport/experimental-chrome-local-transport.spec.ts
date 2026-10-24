@@ -1,9 +1,216 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import { type TransportRequest } from './transport';
 import {
+  detectChromePromptApi,
   experimental_chrome,
   ExperimentalChromeLocalTransport,
 } from './experimental-chrome-local-transport';
+
+test('detects a native string unavailable result', async () => {
+  const global = globalThis as { document?: unknown };
+  const previous = global.document;
+  global.document = {};
+
+  try {
+    await withLanguageModel(
+      { create: jest.fn(), availability: async () => 'unavailable' },
+      async () => {
+        const result = await detectChromePromptApi();
+
+        expect(result).toMatchObject({
+          ok: false,
+          code: 'PLATFORM_UNSUPPORTED',
+        });
+      },
+    );
+  } finally {
+    if (previous === undefined) delete global.document;
+    else global.document = previous;
+  }
+});
+
+test('reports native string download availability before creating a session', async () => {
+  const availability = jest.fn();
+  const downloadRequired = jest.fn();
+  const session = createSession(createTextStream([]));
+
+  await withLanguageModel(
+    { availability: async () => 'downloadable', create: async () => session },
+    async () => {
+      const transport = new ExperimentalChromeLocalTransport({
+        events: { availability, downloadRequired },
+      });
+
+      const response = await transport.send(createRequest());
+      await response.dispose?.();
+
+      expect(availability).toHaveBeenCalledWith('downloadable');
+      expect(downloadRequired).toHaveBeenCalledWith('downloadable');
+    },
+  );
+});
+
+test('registers a native download listener and reports normalized progress', async () => {
+  const downloadProgress = jest.fn();
+  const create = jest.fn(async (options) => {
+    const monitor = new EventTarget();
+    options.monitor(monitor);
+    monitor.dispatchEvent(
+      Object.assign(new Event('downloadprogress'), { loaded: 0.25 }),
+    );
+    return createSession(createTextStream([]));
+  });
+
+  await withLanguageModel({ create }, async () => {
+    const transport = new ExperimentalChromeLocalTransport({
+      events: { downloadProgress },
+    });
+
+    const response = await transport.send(createRequest());
+    await response.dispose?.();
+
+    expect(downloadProgress).toHaveBeenCalledWith(25);
+  });
+});
+
+test('initializes system and developer instructions outside the native prompt', async () => {
+  const session = createSession(createTextStream([]));
+  const create = jest.fn(async () => session);
+
+  await withLanguageModel({ create }, async () => {
+    const transport = new ExperimentalChromeLocalTransport({});
+
+    const response = await transport.send(
+      createRequest({
+        messages: [
+          { id: 's', role: 'system', content: 'System' },
+          { id: 'd', role: 'developer', content: 'Developer' },
+          { id: 'u', role: 'user', content: 'Hello' },
+        ],
+      }),
+    );
+    await collectEvents(response.events);
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialPrompts: [{ role: 'system', content: 'System\n\nDeveloper' }],
+      }),
+    );
+    expect(session.promptStreaming).toHaveBeenCalledWith(
+      [{ role: 'user', content: 'Hello' }],
+      expect.any(Object),
+    );
+  });
+});
+
+test.each(['de', 'fr'] as const)(
+  'accepts native %s output',
+  async (outputLanguage) => {
+    const session = createSession(createTextStream([]));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: async () => session,
+      outputLanguage,
+    });
+
+    const response = await transport.send(createRequest());
+    await response.dispose?.();
+
+    expect(response.metadata?.['outputLanguage']).toBe(outputLanguage);
+  },
+);
+
+test('rejects nontext user input before preparing a native session', async () => {
+  const prepare = jest.fn(async () => createSession(createTextStream([])));
+  const transport = new ExperimentalChromeLocalTransport({
+    createSession: prepare,
+  });
+
+  const result = transport.send(
+    createRequest({
+      messages: [
+        { id: 'u', role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+      ],
+    }),
+  );
+
+  await expect(result).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+  expect(prepare).not.toHaveBeenCalled();
+});
+
+test('does not reuse initialization when overlapping requests change instructions', async () => {
+  const prepare = jest.fn(async () => createSession(createTextStream([])));
+  const transport = new ExperimentalChromeLocalTransport({
+    createSession: prepare,
+  });
+
+  const first = await transport.send(createRequest());
+  const second = await transport.send(
+    createRequest({
+      messages: [
+        { id: 's2', role: 'system', content: 'Different instructions' },
+        { id: 'u2', role: 'user', content: 'Hello again' },
+      ],
+    }),
+  );
+  await Promise.all([first.dispose?.(), second.dispose?.()]);
+
+  expect(prepare).toHaveBeenCalledTimes(2);
+  expect(prepare).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      initialPrompts: [{ role: 'system', content: 'Different instructions' }],
+    }),
+  );
+});
+
+test('initializes distinct native sessions for transformed output languages', async () => {
+  const prepare = jest.fn(async () => createSession(createTextStream([])));
+  const transport = new ExperimentalChromeLocalTransport({
+    createSession: prepare,
+    transformRequest: (request) => ({
+      messages: 'Hello',
+      options: { outputLanguage: request.input.runId === 'de' ? 'de' : 'fr' },
+    }),
+  });
+
+  const first = await transport.send(createRequest({ runId: 'de' }));
+  const second = await transport.send(createRequest({ runId: 'fr' }));
+  await Promise.all([first.dispose?.(), second.dispose?.()]);
+
+  expect(prepare).toHaveBeenCalledTimes(2);
+  expect(prepare).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      expectedOutputs: [{ type: 'text', languages: ['fr'] }],
+    }),
+  );
+});
+
+test.each([
+  { id: 't', role: 'tool' as const, toolCallId: 'c', content: 'Tool result' },
+  {
+    id: 'a',
+    role: 'assistant' as const,
+    toolCalls: [
+      {
+        id: 'c',
+        type: 'function' as const,
+        function: { name: 'lookup', arguments: '{}' },
+      },
+    ],
+  },
+])(
+  'rejects native tool history before session creation: %j',
+  async (message) => {
+    const prepare = jest.fn(async () => createSession(createTextStream([])));
+    const transport = new ExperimentalChromeLocalTransport({
+      createSession: prepare,
+    });
+
+    const result = transport.send(createRequest({ messages: [message] }));
+
+    await expect(result).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+    expect(prepare).not.toHaveBeenCalled();
+  },
+);
 
 const responseSchema = {
   type: 'object',
@@ -325,7 +532,6 @@ test('maps system, user, and assistant AG-UI messages to Prompt API messages', a
 
     expect(session.promptStreaming).toHaveBeenCalledWith(
       [
-        { role: 'system', content: 'System prompt' },
         { role: 'user', content: 'User prompt' },
         { role: 'assistant', content: 'Prior answer' },
       ],
@@ -359,7 +565,7 @@ test('rejects AG-UI tool declarations as FEATURE_UNSUPPORTED', async () => {
   });
 });
 
-test('skips tool results and unsupported internal message roles', async () => {
+test('skips internal activity and reasoning roles', async () => {
   await withLanguageModel(undefined, async () => {
     const session = createSession(createTextStream([]));
     const transport = new ExperimentalChromeLocalTransport({
@@ -377,12 +583,6 @@ test('skips tool results and unsupported internal message roles', async () => {
           content: { state: 'working' },
         },
         { id: 'reasoning-1', role: 'reasoning', content: 'Reasoning' },
-        {
-          id: 'tool-1',
-          role: 'tool',
-          toolCallId: 'call-1',
-          content: 'Tool result',
-        },
         { id: 'assistant-1', role: 'assistant', content: 'Prior answer' },
       ],
     });
@@ -392,7 +592,6 @@ test('skips tool results and unsupported internal message roles', async () => {
 
     expect(session.promptStreaming).toHaveBeenCalledWith(
       [
-        { role: 'system', content: 'System prompt' },
         { role: 'user', content: 'User prompt' },
         { role: 'assistant', content: 'Prior answer' },
       ],
@@ -435,10 +634,7 @@ test('does not add Hashbrown UI instructions to the text prompt', async () => {
     await collectEvents(response.events);
 
     expect(session.promptStreaming).toHaveBeenCalledWith(
-      [
-        { role: 'system', content: 'You are concise.' },
-        { role: 'user', content: 'Hello' },
-      ],
+      [{ role: 'user', content: 'Hello' }],
       expect.any(Object),
     );
   });

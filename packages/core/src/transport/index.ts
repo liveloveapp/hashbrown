@@ -11,6 +11,13 @@ export { resolveTransport } from './transport';
 export { TransportError } from './transport-error';
 export { AgentRunError } from './agent-run-error';
 export {
+  experimental_webllm,
+  type ExperimentalWebLlmTransportOptions,
+  type WebLlmEngine,
+  type WebLlmRequest,
+  type WebLlmChunk,
+} from './experimental-webllm-transport';
+export {
   HttpTransport,
   createHttpTransport,
   type HttpTransportOptions,

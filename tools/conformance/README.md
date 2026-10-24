@@ -38,6 +38,55 @@ npx nx example-e2e conformance      # both, with one shared host lifecycle
 The e2e targets build both hosts first. CI runs `example-e2e` through
 `nx affected`.
 
+## Local model suites
+
+These suites require explicit local opt-in and refuse to run when `CI` is
+set. Their files live outside the CI Playwright and Jest test globs. No local model
+target is named `e2e` or included by `example-e2e`.
+
+```sh
+LOCAL_LLM_E2E=1 npx nx local-model-contract-e2e conformance
+LOCAL_LLM_E2E=1 npx nx local-model-smoke conformance
+```
+
+The contract suite runs both Angular and React against the real Chrome and
+WebLLM transports. Spec-faithful browser/engine shims obtain streaming tokens
+from aimock's Chat Completions endpoint. AG-UI events are produced by the
+transports under test. It covers text, structured output, trusted and nested UI, tool
+rejection and cancellation. It does not validate model quality or native
+schema compilation.
+
+The smoke target launches installed Chrome with its real `LanguageModel`;
+no shim or aimock is involved. An unavailable model fails with its availability
+state instead of silently skipping or using HTTP. It uses an isolated test
+profile, so the model state may differ from your normal Chrome profile.
+`LOCAL_LLM_PROFILE` can select another dedicated test profile. Never point it at
+an open or personal profile. The native launch restores normal Chrome feature
+defaults because Playwright disables `OptimizationHints`, which Chrome's AI
+broker needs. It also permits component updates and background networking.
+Downloads are disabled by default. On an eligible device, explicitly set
+`LOCAL_LLM_DOWNLOAD=1` to allow its Send click to trigger Chrome's model download.
+Check `chrome://on-device-internals` for device and model eligibility.
+
+A separate real WebLLM worker suite accepts an application-provided standalone
+browser bundle. For example, unpack the pinned `@mlc-ai/web-llm@0.2.85` npm
+archive outside this repository, then point at its `lib/index.js`:
+
+```sh
+LOCAL_LLM_E2E=1 WEBLLM_MODULE_PATH=/absolute/path/package/lib/index.js \
+  npx nx local-webllm-smoke conformance
+```
+
+This opt-in downloads model artifacts into the isolated browser cache and runs
+actual WebGPU inference. `WEBLLM_MODEL` overrides the default
+`Qwen2.5-0.5B-Instruct-q4f16_1-MLC`. Hashbrown does not install or bundle WebLLM.
+The suite checks structured output and nested UI across both frameworks and
+attaches JSON load/first-token/total timings, schema sizes and process RSS.
+Catalog VRAM estimates are labeled metadata; process RSS can count shared memory
+more than once and does not measure unique GPU allocations. Tests use bounded,
+application-owned generation settings. Native browser tools and multimodal
+generation remain outside these transports' supported scope.
+
 ## Ports and reports
 
 | Suite          | Angular | React | Override                                                     |
