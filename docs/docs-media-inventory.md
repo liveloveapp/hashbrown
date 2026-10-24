@@ -1,6 +1,6 @@
 # Documentation media inventory
 
-Updated 2026-10-23. Paths are below `/docs/<sdk>/`; React and Angular share a recording when the visible behavior is the same. React-only CopilotKit is listed separately in the source navigation. Verify both SDK implementations before sharing a capture. This is a production backlog, not a claim that every guide has a recording.
+Updated 2026-10-24. Paths are below `/docs/<sdk>/`; React and Angular share a recording when the visible behavior is the same. React-only CopilotKit is listed separately in the source navigation. Verify both SDK implementations before sharing a capture. This is a production backlog, not a claim that every guide has a recording.
 
 ## Current recordings
 
@@ -20,7 +20,7 @@ Updated 2026-10-23. Paths are below `/docs/<sdk>/`; React and Angular share a re
 | Decisions     | `examples/atc`                                                                             | Decisions                                     | Intent routing and component narrowing                                                           |
 | Debugging     | `examples/atc`                                                                             | Debugging                                     | ATC-specific inspector, separate from Redux DevTools                                             |
 
-All recordings have MP4, WebM, a poster, captions, and a text walkthrough under `www/public/video/docs`. Welcome card, conversation, and the five workflow recordings have result screenshots. ATC captures disclose fixture traffic and scripted responses. Tutorial captures disclose scripted AG-UI responses and use the checked client example files. The workflow recorder verifies both frameworks and records their shared visible behavior from React.
+All recordings have MP4, WebM, a poster, captions, and a text walkthrough under `www/public/video/docs`. Welcome card, conversation, and the five workflow recordings have result screenshots. ATC captures disclose fixture traffic and scripted responses. Earlier tutorial captures disclose scripted AG-UI responses and use the checked client example files. The local-model recording below uses real native inference. The workflow recorder verifies both frameworks and records their shared visible behavior from React.
 
 The persistence capture demonstrates application-owned, versioned browser storage of completed text messages. It does not save canonical agent checkpoints, tools, generated UI, shared state, or pending interrupts. The separate server-thread example below covers server-owned completed text with optimistic version checks; neither example restores canonical agent checkpoints.
 
@@ -101,12 +101,11 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `recipes/copilotkit`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
 | `recipes/decisions-in-agents`                 | Recorded              | agent-routing and agent-fallback; checked server routing, clarification, failure and explicit retry.              |
 | `recipes/json-parser`                         | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
-| `recipes/local-models`                        | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `recipes/local-models`                        | Recorded              | local-models; real Chrome inference extracts a typed trip brief after explicit preparation.                      |
 | `recipes/magic-text`                          | Recorded              | magic-text; streaming Markdown and source details.                                                               |
 | `recipes/natural-language-to-structured-data` | Recorded              | structured-form; generate a typed draft, validate, review, and explicitly apply.                                 |
 | `recipes/predictive-actions`                  | Recorded              | predictive-suggestions; complete context-bound offers with explicit Accept and Dismiss.                          |
 | `recipes/public-endpoint`                     | Recorded              | public-endpoint; session and owner checks before scripted provider streaming.                                    |
-| `recipes/remote-mcp`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
 | `recipes/threads`                             | Recorded              | server-threads; server-owned completed text, version conflict, and explicit reload.                              |
 | `recipes/ui-chatbot`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
 | `recipes/ui-kits`                             | Recorded              | ui-kits                                                                                                          |
@@ -154,7 +153,7 @@ These browser checks cover streaming/finalization and citation interaction, comp
 - Quickstart remains the first trusted-component success. How Hashbrown works and Choosing an API now point to complete task-based routes instead of leaving readers to infer the relationship between API names.
 - The typed-data route is schemas → structured output → streaming → natural-language forms. Fundamentals readers who reach Streaming early get explicit prerequisites and links to the checked example.
 - The conversation route remains messages → system instructions → history, then tools or workflow guides. Storage and runtime guides explain their separate lifetime and production boundaries.
-- Remaining editorial priorities: add reproducible environment-specific recordings for Remote MCP and local models, then review CopilotKit and custom request transformation examples. Decisions in Agents now connects a checked server router to ordinary framework chat clients. Magic Text, predictive suggestions and UI selection now have small checked tasks, complete source disclosures and their own recordings.
+- Remaining editorial priorities: review CopilotKit and server-side request transformation examples. Remote MCP learning pages are retired with compatibility redirects; local models now has a checked browser-native workflow and real-inference recording. Decisions in Agents now connects a checked server router to ordinary framework chat clients. Magic Text, predictive suggestions and UI selection now have small checked tasks, complete source disclosures and their own recordings.
 - Predictive suggestions now provide an independent input-driven structured-completion example. Its stable context snapshot avoids a request feedback loop when suggestions are accepted or dismissed. The typed-list tutorial separately uses an explicit chat action and fresh conversation per request. No claim of universal page coverage or a finished editorial pass is made.
 
 ## Server-side agent decisions
@@ -162,3 +161,11 @@ These browser checks cover streaming/finalization and citation interaction, comp
 Run `npx nx docs-agent-decisions-demo www` sequentially with the other recorders. `DOCS_SKIP_RECORDING=1` checks behavior without replacing assets; `DOCS_DEMO_MODES=agent-routing,agent-fallback` selects these target-specific IDs. Unknown modes fail. Captures, masters, static clients and verification reports remain in ignored `dist/docs-agent-decisions`.
 
 Both real framework clients call the checked Express agent and router. Only classifier envelopes and failures are scripted; application handlers create final replies. Checks cover no initial request, both handlers, uncertain/invalid/failed classifications, missing or unknown order IDs, unexpected run failures, cancellation and stale-response isolation, explicit retry, mobile layout and encoded playback. Unit/HTTP tests additionally check server-pinned input, request limits and cancellation before handlers. The public example data does not represent a customer account, a deployed identity system, or model accuracy. SDK release remains separate.
+
+## Browser-native local models
+
+`npx nx docs-local-models-demo www` verifies the checked LocalModels clients with deterministic native-API shims, then uses real Chrome inference in both frameworks before recording React. The primary `local-models` footage is actual native inference, not a scripted answer. Added presentation CSS and output variability are disclosed. Native verification requires an already available model in the dedicated test profile; the recorder never initiates a model download and is local-only.
+
+Shim checks cover explicit preparation, unavailable/missing APIs, progress/failure, cancellation and late session cleanup, malformed/invalid/failed/truncated generation and recovery. Mobile checks establish layout and shim contracts, not native mobile inference. Captures, masters, static clients and reports remain in ignored `dist/docs-local-models`. Use `DOCS_SKIP_RECORDING=1` for verification without replacing public media; `DOCS_DEMO_MODES=local-models` selects the sole ID and unknown names fail. Run sequentially with all other recorders and GPU suites.
+
+Remote MCP was removed from navigation, content search, LLM listings and this recording backlog. Old React/Angular recipe and Markdown URLs redirect permanently to each SDK's Tool calling guide. This retirement does not remove MCP SDK capabilities.

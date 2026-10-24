@@ -9,6 +9,7 @@ test.each([
   'ui-selection',
   'agent-routing',
   'agent-fallback',
+  'local-models',
 ])('%s has accessible recorded media and a result screenshot', (id) => {
   const root = resolve(import.meta.dirname, '../../public/video/docs');
   const suffixes = [

@@ -95,7 +95,6 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'UI Selection', path: 'recipes/ui-selection' },
       { text: 'Decisions in Agents', path: 'recipes/decisions-in-agents' },
       { text: 'Predictive Suggestions', path: 'recipes/predictive-actions' },
-      { text: 'Remote MCP', path: 'recipes/remote-mcp' },
       { text: 'Threads', path: 'recipes/threads' },
       { text: 'Save text conversations', path: 'recipes/browser-history' },
       { text: 'Magic Text', path: 'recipes/magic-text' },

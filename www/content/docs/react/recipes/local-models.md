@@ -1,161 +1,504 @@
 ---
-title: 'Local Browser Models (Chrome & Edge)'
+title: 'Local Models: Hashbrown React Docs'
 meta:
   - name: description
-    content: "Run Hashbrown on Chrome's Gemini Nano or Edge's Phi-4-mini using the experimental_local transport."
+    content: 'Prepare a browser model, extract a typed trip brief locally, and handle unavailable models, cancellation and recovery.'
 ---
 
-# Local Models (Chrome + Edge)
+# Local Models
 
-<p class="subtitle">Ship AI features that stay on the user's device.</p>
+Let's turn **“Three days in Lisbon.”** into a typed trip brief on the user's device. We'll prepare Chrome's model, send an explicit request, and display the destination and number of days after the response completes.
 
-What you'll learn:
+<hb-docs-demo demo="local-models">
+</hb-docs-demo>
 
-1. Enable the built-in models in Chrome or Edge (flags, hardware, languages)
-2. Configure `experimental_local` as a React hook transport
-3. Surface download/availability state in your UI
-4. Keep structured outputs working without tool calls
+<img src="/video/docs/local-models-result.png" alt="A locally generated trip brief displays a destination and trip length after successful completion." width="920" height="518" loading="lazy" />
 
----
+The recording uses real Chrome inference through the checked client and transport. Both React and Angular are verified before React supplies the shared recording. Presentation styles are added; there is no narration, scripted model answer, or hosted model call. Generated wording and timing can differ on another device.
 
-## 0. Why local models?
+## Choose where the model runs
 
-- **Privacy + offline**: prompts never leave the device once the model is downloaded.
-- **Zero per-request cost**: no API key usage while the browser model is used.
-- **Low latency**: tokens stream locally through the same AG-UI event lifecycle used by HTTP transports.
+“Local” can describe several different setups:
 
----
+| Runtime | Who supplies the model? | How Hashbrown reaches it |
+| ------- | ----------------------- | ------------------------ |
+| Chrome's built-in model | The browser manages the model and its download. | `experimental_chrome` runs in the browser. This is our example below. |
+| Edge's built-in model | Edge manages a model in supported preview channels. | `experimental_edge`, or `experimental_local` to detect Chrome then Edge. Eligibility differs from Chrome. |
+| WebLLM | Your application chooses and manages a model and engine. | `experimental_webllm` uses an application-owned engine. See the advanced section below. |
+| Ollama | A separate local server manages the model. | Use the [Ollama adapter](/docs/react/platform/ollama) from your application server. This is a localhost server workflow. |
 
-## 1. Browser prerequisites (October 2026)
+There is **no automatic hosted fallback** in this recipe. If the native model is unavailable, we explain the problem and leave generation disabled. A cloud fallback should be an explicit application choice, including permission to send the request off-device.
 
-Chrome's Prompt API is available for websites from Chrome 148 and extensions from Chrome 138. It uses Gemini Nano and supports text output in English, Spanish, Japanese, German, and French. Availability depends on the device, browser policy, model installation, and requested languages. Check `LanguageModel.availability()` rather than relying on the browser version alone.
+## Before we start
 
-Chrome requires desktop hardware with at least 22 GB free profile-volume space and either more than 4 GB VRAM or at least 16 GB RAM and four CPU cores. See the [current Chrome requirements](https://developer.chrome.com/docs/ai/prompt-api) for platform details.
+Start with the [Quickstart](/docs/react/start/quick) frontend and its installed Hashbrown packages. Keep the checked directory layout: `runtime/local-models.ts` beside the `react` directory, and `react/src/LocalModels.tsx` in the frontend. Update relative imports if you put these files elsewhere. We need no API key, server process, frontend proxy, or new dependency for this task.
 
-Edge's Prompt API remains a developer preview in Canary and Dev. It uses Phi-4-mini by default, with a prerelease Aion model available on supported versions. See [Microsoft's setup instructions](https://learn.microsoft.com/en-us/microsoft-edge/web-platform/prompt-api).
+Use a supported **desktop** Chrome on HTTPS or localhost. Chrome's Prompt API is available to websites from Chrome 148, but browser version alone does not establish model availability. Device resources, browser policy, languages, and model installation also matter. Check the [current Chrome requirements and setup instructions](https://developer.chrome.com/docs/ai/prompt-api), then let **Prepare model** check the API on the actual device.
 
-Use HTTPS or localhost. Start the first generation from a user interaction if the model needs downloading. Availability is a string: `unavailable`, `downloadable`, `downloading`, or `available`. Native browser models are managed by the browser; applications cannot select arbitrary weights through this API.
+Edge's Prompt API is a separate developer preview in Canary and Dev. Follow [Microsoft's eligibility and setup instructions](https://learn.microsoft.com/en-us/microsoft-edge/web-platform/prompt-api) before choosing its adapter. This recording verifies native Chrome inference; it does not demonstrate Edge inference or native mobile support.
 
----
+The first preparation may download a browser-managed model. Keep that action explicit and display progress. Model generation can run on-device after preparation, but model downloads, application resources, and telemetry have their own network behavior. Local generation alone does not make an entire application offline. The provider configuration below disables Hashbrown's development telemetry for this example.
 
-## 2. Hashbrown building blocks
+## Share the schema and preparation logic
 
-- `useStructuredCompletion` from `@hashbrownai/react` to stream typed outputs.
-- `experimental_local()` from `@hashbrownai/core/transport` tries Chrome first, then Edge.
-- Pass the factory through a hook's `transport` option. Provider and model selection for HTTP requests remains on the server.
-- Event hooks (`availability`, `downloadRequired`, `downloadProgress`) let you mirror browser download state in React state.
+Create `runtime/local-models.ts`. Our Skillet schema asks for two fields: a destination and a number of days. The application also checks that the destination is nonempty and bounded, and that the day count is an integer from 1 through 14.
 
----
+Preparation asks for the same English text-output capability as the generation transport. If the model is already available, it creates no session. Otherwise, an explicit preparation action creates a temporary session, reports download progress, and destroys that session when preparation settles. Cancellation also guards late completion so an older operation cannot restore a ready state.
 
-## 3. Quickstart: local-first structured completion
+<hb-expander title="Complete runtime/local-models.ts">
 
-This component streams a two-day itinerary schema from an on-device model.
+<hb-code-example header="runtime/local-models.ts">
 
-<hb-code-example header="LocalItinerary.tsx">
-
-```tsx
-import { useState } from 'react';
+```ts
 import { s } from '@hashbrownai/core';
-import { experimental_local } from '@hashbrownai/core/transport';
-import { useStructuredCompletion } from '@hashbrownai/react';
 
-const ItinerarySchema = s.object('2-day plan', {
-  city: s.string('Destination city'),
-  days: s.streaming.array(
-    'List of days',
-    s.object('Day', {
-      title: s.streaming.string('Title'),
-      highlights: s.streaming.array(
-        'Top things to do',
-        s.streaming.string('Activity'),
-      ),
-    }),
-  ),
+/** The complete trip brief extracted by the local model. */
+export const tripBriefSchema = s.object('A short trip brief', {
+  destination: s.string('The destination city or place'),
+  days: s.integer('The number of days, from 1 to 14'),
 });
 
-export function LocalItinerary() {
-  const [city, setCity] = useState('Lisbon');
-  const [availability, setAvailability] = useState<string | null>(null);
-  const [downloadRequired, setDownloadRequired] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
+/** A parsed trip brief; application bounds are checked separately. */
+export type TripBrief = s.Infer<typeof tripBriefSchema>;
 
-  const [submittedCity, setSubmittedCity] = useState<string | null>(null);
-  const input = submittedCity
-    ? `Plan a concise two-day itinerary for ${submittedCity}.`
-    : null;
+/** Native availability states understood by this example. */
+export type NativeAvailability =
+  'available' | 'downloadable' | 'downloading' | 'unavailable';
 
-  const { output, error, isSending, reload } = useStructuredCompletion({
-    debugName: 'local-itinerary-react',
-    input,
-    system: 'Return a two-day itinerary as JSON that matches the schema.',
-    schema: ItinerarySchema,
-    transport: experimental_local({
-      events: {
-        availability: setAvailability,
-        downloadRequired: () => setDownloadRequired(true),
-        downloadProgress: setDownloadProgress,
+/** The native text-language options shared with the Chrome transport. */
+export interface NativeModelOptions {
+  expectedOutputs: { type: 'text'; languages: 'en'[] }[];
+  signal?: AbortSignal;
+  monitor?: (monitor: EventTarget) => void;
+}
+
+/** The small native API surface used only for explicit model preparation. */
+export interface NativeLanguageModel {
+  availability(
+    options: Pick<NativeModelOptions, 'expectedOutputs'>,
+  ): Promise<NativeAvailability | { status: NativeAvailability }>;
+  create(options: NativeModelOptions): Promise<{ destroy(): void }>;
+}
+
+/** Inputs for one cancellable preparation attempt. */
+export interface PrepareLocalModelOptions {
+  readonly model: NativeLanguageModel | undefined;
+  readonly signal: AbortSignal;
+  readonly onProgress?: (percent: number) => void;
+}
+
+/** Runtime state required to display a fresh, complete trip brief. */
+export interface TripBriefRun {
+  readonly requestId: string | undefined;
+  readonly cancelled: boolean;
+  readonly messages: readonly {
+    readonly id?: string;
+    readonly role: string;
+    readonly content?: unknown;
+  }[];
+  readonly isSending: boolean;
+  readonly isReceiving: boolean;
+  readonly isGenerating: boolean;
+  readonly isLoading: boolean;
+  readonly error?: unknown;
+  readonly finishReason?: string;
+}
+
+/** Reads the native API without opening a session or starting a download. */
+export function getNativeLanguageModel(): NativeLanguageModel | undefined {
+  const model = (globalThis as { LanguageModel?: unknown }).LanguageModel;
+  if (
+    (typeof model !== 'object' && typeof model !== 'function') ||
+    model === null ||
+    !('availability' in model) ||
+    typeof model.availability !== 'function' ||
+    !('create' in model) ||
+    typeof model.create !== 'function'
+  )
+    return undefined;
+  return model as NativeLanguageModel;
+}
+
+function aborted(): DOMException {
+  return new DOMException('Model preparation stopped.', 'AbortError');
+}
+
+function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const stop = () => reject(aborted());
+    if (signal.aborted) stop();
+    else signal.addEventListener('abort', stop, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', stop);
+        if (signal.aborted) reject(aborted());
+        else resolve(value);
       },
-    }),
+      (error: unknown) => {
+        signal.removeEventListener('abort', stop);
+        reject(error);
+      },
+    );
   });
+}
+
+/**
+ * Checks availability and, when needed, prepares the model after a user action.
+ * Preparation sessions are always destroyed, including sessions resolved after cancellation.
+ */
+export async function prepareLocalModel({
+  model,
+  signal,
+  onProgress,
+}: PrepareLocalModelOptions): Promise<void> {
+  if (signal.aborted) throw aborted();
+  if (!model)
+    throw new Error(
+      'Chrome Prompt API is missing. Use a supported desktop Chrome browser, then select Prepare model to try again.',
+    );
+  // These match experimental_chrome({ outputLanguage: 'en' }) text defaults.
+  const options: NativeModelOptions = {
+    expectedOutputs: [{ type: 'text', languages: ['en'] }],
+  };
+  const availability = await withAbort(model.availability(options), signal);
+  const status =
+    typeof availability === 'string' ? availability : availability.status;
+  if (status === 'available') return;
+  if (status === 'unavailable')
+    throw new Error(
+      'The local model is unavailable. Check Chrome device and Prompt API requirements, then select Prepare model to try again.',
+    );
+  if (status !== 'downloadable' && status !== 'downloading')
+    throw new Error(
+      'Chrome returned an unknown availability result. Select Prepare model to try again.',
+    );
+
+  let active = true;
+  const listeners: (() => void)[] = [];
+  let creation: ReturnType<NativeLanguageModel['create']> | undefined;
+  let session: Awaited<ReturnType<NativeLanguageModel['create']>> | undefined;
+  try {
+    creation = model.create({
+      ...options,
+      signal,
+      monitor: (monitor) => {
+        if (!active || signal.aborted) return;
+        const progress = (event: Event) => {
+          if (!active || signal.aborted) return;
+          const { loaded, total } = event as Event & {
+            loaded?: number;
+            total?: number;
+          };
+          if (typeof loaded !== 'number' || !Number.isFinite(loaded)) return;
+          const fraction =
+            typeof total === 'number' && Number.isFinite(total) && total > 0
+              ? loaded / total
+              : loaded;
+          onProgress?.(Math.round(Math.max(0, Math.min(1, fraction)) * 100));
+        };
+        monitor.addEventListener('downloadprogress', progress);
+        listeners.push(() =>
+          monitor.removeEventListener('downloadprogress', progress),
+        );
+      },
+    });
+    session = await withAbort(creation, signal);
+  } finally {
+    active = false;
+    for (const remove of listeners) remove();
+    if (session) session.destroy();
+    else
+      void creation?.then(
+        (lateSession) => lateSession.destroy(),
+        () => undefined,
+      );
+  }
+}
+
+/** Returns a trimmed independent trip brief only when application bounds pass. */
+export function validateTripBrief(input: unknown): TripBrief | undefined {
+  if (
+    typeof input !== 'object' ||
+    input === null ||
+    !('destination' in input) ||
+    typeof input.destination !== 'string' ||
+    !('days' in input) ||
+    typeof input.days !== 'number' ||
+    !Number.isInteger(input.days)
+  )
+    return undefined;
+  const destination = input.destination.trim();
+  if (
+    destination.length < 1 ||
+    destination.length > 80 ||
+    input.days < 1 ||
+    input.days > 14
+  )
+    return undefined;
+  return { destination, days: input.days };
+}
+
+/** Withholds partial, stale, stopped or failed runs until a valid result settles. */
+export function getReadyTripBrief(run: TripBriefRun): TripBrief | undefined {
+  if (
+    !run.requestId ||
+    run.cancelled ||
+    run.error ||
+    run.isSending ||
+    run.isReceiving ||
+    run.isGenerating ||
+    run.isLoading ||
+    (run.finishReason !== undefined && run.finishReason !== 'stop')
+  )
+    return undefined;
+  const reversed = [...run.messages].reverse();
+  const userIndex = reversed.findIndex((message) => message.role === 'user');
+  if (userIndex < 0 || reversed[userIndex].id !== run.requestId)
+    return undefined;
+  const answer = reversed
+    .slice(0, userIndex)
+    .find((message) => message.role === 'assistant');
+  return validateTripBrief(answer?.content);
+}
+```
+
+</hb-code-example>
+
+</hb-expander>
+
+`getReadyTripBrief` requires a fresh request, successful completion, settled runtime, valid fields, and no stop or error. A partial response can be useful for display in other applications, but it does not make this typed preview ready.
+
+## Connect the frontend
+
+In `react/src/main.tsx`, import `LocalModels` from `./LocalModels` and render it inside the existing provider:
+
+```tsx
+<HashbrownProvider telemetry={false}>
+  <LocalModels />
+</HashbrownProvider>
+```
+
+The component supplies its own local transport. We don't need a provider URL or a chat endpoint.
+
+Run the existing frontend development command (`npm run dev` for the Quickstart Vite app, or `ng serve` for Angular). Keep it on localhost while testing. Each client sets `experimental_chrome` directly on its structured chat, so generation stays with that transport.
+
+Create `react/src/LocalModels.tsx`:
+
+<hb-expander title="Complete react/src/LocalModels.tsx">
+
+<hb-code-example header="react/src/LocalModels.tsx">
+
+```tsx
+import { useEffect, useRef, useState } from 'react';
+import { experimental_chrome } from '@hashbrownai/core';
+import { useStructuredChat } from '@hashbrownai/react';
+import {
+  getNativeLanguageModel,
+  getReadyTripBrief,
+  prepareLocalModel,
+  tripBriefSchema,
+} from '../../runtime/local-models';
+
+const transport = experimental_chrome({
+  outputLanguage: 'en',
+  events: {
+    downloadRequired: () => {
+      throw new Error(
+        'Model download required. Select Prepare model, then try again.',
+      );
+    },
+  },
+});
+
+/** Extracts a complete trip brief with an explicitly prepared browser model. */
+export function LocalModels() {
+  const [prompt, setPrompt] = useState('Three days in Lisbon.');
+  const [preparation, setPreparation] = useState<{
+    state: 'idle' | 'preparing' | 'ready' | 'error';
+    progress?: number;
+    issue?: string;
+  }>({ state: 'idle' });
+  const [requestId, setRequestId] = useState<string>();
+  const [stopped, setStopped] = useState(false);
+  const controller = useRef<AbortController | undefined>(undefined);
+  const chat = useStructuredChat({
+    schema: tripBriefSchema,
+    system:
+      'Extract the destination and trip length from the request. Return a destination of 1–80 characters and an integer number of days from 1 to 14.',
+    transport,
+    debugName: 'local-models',
+  });
+  const generating =
+    chat.isSending || chat.isReceiving || chat.isGenerating || chat.isLoading;
+  const busy = preparation.state === 'preparing' || generating;
+  const brief = getReadyTripBrief({
+    requestId,
+    cancelled: stopped || preparation.state !== 'ready',
+    messages: chat.messages,
+    isSending: chat.isSending,
+    isReceiving: chat.isReceiving,
+    isGenerating: chat.isGenerating,
+    isLoading: chat.isLoading,
+    error: chat.error,
+    finishReason: chat.lastRunFinishReason,
+  });
+  const status = stopped
+    ? 'Stopped. Prepare the model or generate again.'
+    : preparation.state === 'preparing'
+      ? preparation.progress === undefined
+        ? 'Preparing model…'
+        : `Downloading model: ${preparation.progress}%`
+      : preparation.state === 'error'
+        ? preparation.issue
+        : generating
+          ? 'Generating locally…'
+          : requestId && chat.error
+            ? 'Generation failed. Select Prepare model, then generate again.'
+            : brief
+              ? 'Trip brief ready.'
+              : requestId
+                ? 'No complete valid trip brief. Generate locally to try again.'
+                : preparation.state === 'ready'
+                  ? 'Model ready. Generate locally.'
+                  : 'Prepare the model to begin.';
+
+  useEffect(() => () => controller.current?.abort(), []);
+
+  async function prepare() {
+    if (busy || controller.current) return;
+    const next = new AbortController();
+    controller.current = next;
+    setStopped(false);
+    setRequestId(undefined);
+    setPreparation({ state: 'preparing' });
+    try {
+      await prepareLocalModel({
+        model: getNativeLanguageModel(),
+        signal: next.signal,
+        onProgress: (progress) => {
+          if (!next.signal.aborted && controller.current === next)
+            setPreparation({ state: 'preparing', progress });
+        },
+      });
+      if (!next.signal.aborted && controller.current === next)
+        setPreparation({ state: 'ready' });
+    } catch (error: unknown) {
+      if (!next.signal.aborted && controller.current === next)
+        setPreparation({
+          state: 'error',
+          issue:
+            error instanceof Error
+              ? `${error.message} Check Chrome support and select Prepare model to try again.`
+              : 'Preparation failed. Check Chrome support and select Prepare model to try again.',
+        });
+    } finally {
+      if (controller.current === next) controller.current = undefined;
+    }
+  }
+
+  function generate() {
+    if (busy || preparation.state !== 'ready' || !prompt.trim()) return;
+    const id = crypto.randomUUID();
+    setStopped(false);
+    setRequestId(id);
+    chat.setMessages([{ id, role: 'user', content: prompt.trim() }]);
+  }
+
+  function cancel() {
+    if (!busy) return;
+    setStopped(true);
+    if (controller.current) {
+      controller.current.abort();
+      controller.current = undefined;
+      setPreparation({ state: 'idle' });
+    }
+    if (generating) chat.stop();
+  }
 
   return (
-    <section style={{ display: 'grid', gap: 12, maxWidth: 520 }}>
-      <div>
-        <label style={{ display: 'block', fontWeight: 600 }}>Destination</label>
-        <input
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          placeholder="Lisbon"
-        />
-      </div>
-
-      <div style={{ fontSize: 14, color: '#555' }}>
-        <div>Availability: {availability ?? 'checking...'}</div>
-        {downloadRequired && (
-          <div>Download required (triggered on first prompt)</div>
-        )}
-        {downloadProgress !== null && <div>Download: {downloadProgress}%</div>}
-      </div>
-
-      <button
-        onClick={() =>
-          submittedCity === city ? reload() : setSubmittedCity(city)
-        }
-        disabled={isSending}
+    <main>
+      <h1>Extract a trip brief locally</h1>
+      <label htmlFor="trip-request">Trip request</label>
+      <textarea
+        id="trip-request"
+        value={prompt}
+        onChange={(event) => setPrompt(event.currentTarget.value)}
+      />
+      <nav aria-label="Local model actions">
+        <button type="button" disabled={busy} onClick={() => void prepare()}>
+          Prepare model
+        </button>
+        <button
+          type="button"
+          disabled={busy || preparation.state !== 'ready' || !prompt.trim()}
+          onClick={generate}
+        >
+          Generate locally
+        </button>
+        <button type="button" disabled={!busy} onClick={cancel}>
+          Cancel
+        </button>
+      </nav>
+      <p role="status">{status}</p>
+      <h2>Trip brief</h2>
+      <section
+        aria-label="Trip brief"
+        data-testid="trip-brief"
+        aria-busy={busy}
       >
-        {isSending ? 'Generating...' : 'Generate locally'}
-      </button>
-
-      {output && (
-        <pre style={{ background: '#0f172a', color: '#f8fafc', padding: 12 }}>
-          {JSON.stringify(output, null, 2)}
-        </pre>
-      )}
-
-      {error && <div style={{ color: 'crimson' }}>Error: {error.message}</div>}
-    </section>
+        {brief && (
+          <dl>
+            <dt>Destination</dt>
+            <dd>{brief.destination}</dd>
+            <dt>Days</dt>
+            <dd>{brief.days}</dd>
+          </dl>
+        )}
+      </section>
+    </main>
   );
 }
 ```
 
 </hb-code-example>
 
-**How it works**
+</hb-expander>
 
-- `experimental_local` creates a transport that releases its browser session when the response finishes; events keep your UI in sync with download state.
-- If tools are requested, local reports `FEATURE_UNSUPPORTED` because these local adapters do not support Hashbrown tools.
-- `reload` lets users retry after enabling flags or freeing disk space without remounting the component.
+Opening the page and editing the request send nothing. **Prepare model** checks readiness and may prepare the browser-managed model. **Generate locally** sends a fresh independent user message. **Cancel** stops preparation or generation and leaves a stopped state. A later explicit action recovers.
 
----
+The transport rejects a download request during generation and asks us to prepare again. This matters if a previously prepared model has been evicted or its availability changes. A generation button should not quietly begin a new model download.
 
-## 4. Troubleshooting (React focus)
+## Generate a trip brief
 
-- `PLATFORM_UNSUPPORTED`: API missing, wrong browser channel, or flags off. Re-check the table above.
-- `FEATURE_UNSUPPORTED`: tools were requested or the schema is unsupported. Use an AG-UI HTTP endpoint for that feature.
-- Slow first token: the model may still be downloading; keep surfacing `downloadProgress`.
-- Model evicted because of low disk: rerun with `reload` after the browser re-downloads the model.
+1. Select **Prepare model**. If a download is needed, keep the page open and watch its progress. Generation remains disabled until preparation succeeds.
+2. Leave **Three days in Lisbon.** in the request and select **Generate locally**.
+3. Review the typed destination and day count. The intended result is **Lisbon** and **3 days**. The example displays a brief only after successful completion and application validation.
+4. Try **Two days in Porto.** Each run replaces the previous messages, so the new brief answers that request independently.
+5. While a request is pending, select **Cancel**. The stopped state remains visible and an old result cannot replace a later run. Generate another brief explicitly to continue.
 
-## Explicit Chrome image and audio input
+This is extraction, rather than a travel recommendation. We are checking whether a small schema can turn the supplied text into application data. A schema and a valid day count do not establish that a generated destination or interpretation is correct. Review the result before using it elsewhere.
+
+## Handle unavailable models and failures
+
+| State | What it means | What to do next |
+| ----- | ------------- | --------------- |
+| API missing or `unavailable` | This browser/device cannot currently provide the requested native capability. | Check the browser's official setup, policy, hardware, language, and model status; then prepare again. |
+| Download needed | The browser needs model files before generation. | Choose **Prepare model** explicitly and wait for completion. |
+| Preparation failed | The model did not become ready. | Check eligibility, connectivity and disk space, then prepare again. |
+| Invalid or incomplete output | Generation ended without a usable trip brief. | Clarify the request and generate again. Keep the previous result cleared. |
+| Stopped | We cancelled preparation or generation. | Start another explicit preparation or generation when ready. |
+
+If generation reports that preparation is needed again, use **Prepare model** before retrying. The model may have been removed or become unavailable since the last check. Refresh also clears this component's ready state and result; preparation checks the browser's current state again.
+
+The recorder separately checks unavailable APIs, download progress/failure, cancellation, late session cleanup, invalid or failed output, and recovery with deterministic native-API shims. Those checks exercise the real clients and transport contracts. They do not establish model accuracy, real Edge support, or native inference on mobile devices. Mobile checks cover layout and the simulated contract only.
+
+## Keep local capabilities explicit
+
+The browser adapters support text and schema-constrained output. Keep schemas small and verify them on the actual model and hardware. Native typed tools remain unsupported by Hashbrown; use the [tool calling guide](/docs/react/concept/functions) with an appropriate server adapter for that workflow.
+
+Chrome image/audio input requires an explicit `experimental_chrome` media configuration and an application resolver. WebLLM uses a separately managed engine. These are advanced options with different resource and capability contracts; the trip-brief example uses text only.
+
+<hb-expander title="Advanced: Chrome image and audio input">
 
 Use `experimental_chrome` for media. Media is off by default; enable each input
 kind and provide an application resolver. The resolver receives an AG-UI
@@ -255,7 +598,9 @@ all four Angular/React image/audio cases, with one resolution, disposal, session
 creation and session destruction per run. The deterministic shim suite checks transport and framework
 contracts, separately from real inference. See the [local conformance commands](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance#local-model-suites).
 
-## Application-owned WebLLM engines
+</hb-expander>
+
+<hb-expander title="Advanced: application-owned WebLLM engines">
 
 Use `experimental_webllm({ engine })` when the application wants to select and manage its own browser model. Hashbrown does not import WebLLM or declare it as a dependency or peer dependency. Install WebLLM in the consuming application only. The adapter's structural API has been type-checked against WebLLM 0.2.85, including worker engines.
 
@@ -295,3 +640,9 @@ Only one Hashbrown run may reserve a given engine at a time, including across tr
 Local inference does not enable a hosted fallback automatically. Keep permission to send prompts off-device an explicit application choice. Model downloads and application telemetry have their own network behavior; local generation alone does not make the entire application offline.
 
 The local-only real-worker suite checks structured output, nested trusted UI, and generation after Stop or token-limit truncation. The separate aimock suite checks transport contracts without downloading models. See the [conformance test commands](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance#local-model-suites) to run either locally; these suites reject CI execution.
+
+</hb-expander>
+
+## Next steps
+
+Read [Skillet schemas](/docs/react/concept/schema) and [Structured output](/docs/react/concept/structured-output) to develop the data contract. Use [Ollama](/docs/react/platform/ollama) for a model behind a localhost server. The [local conformance instructions](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance#local-model-suites) explain native checks, deterministic contracts, and application-owned WebLLM test runs.
