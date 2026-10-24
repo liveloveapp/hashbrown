@@ -15,7 +15,7 @@ export function InterruptControls({
 }: InterruptControlsProps) {
   const [error, setError] = useState('');
 
-  function submit() {
+  function submit(decision: 'approve' | 'decline' | 'cancel' = 'approve') {
     if (!batch) return;
     setError('');
     try {
@@ -23,8 +23,10 @@ export function InterruptControls({
         batchId: batch.id,
         entries: batch.interrupts.map(({ id }) => ({
           interruptId: id,
-          status: 'resolved',
-          payload: { approved: true },
+          status: decision === 'cancel' ? 'cancelled' : 'resolved',
+          ...(decision === 'cancel'
+            ? {}
+            : { payload: { approved: decision === 'approve' } }),
         })),
       });
     } catch (cause) {
@@ -48,9 +50,25 @@ export function InterruptControls({
         data-testid="resume"
         type="button"
         disabled={!batch || isResuming}
-        onClick={submit}
+        onClick={() => submit()}
       >
         Resume
+      </button>
+      <button
+        data-testid="decline"
+        type="button"
+        disabled={!batch || isResuming}
+        onClick={() => submit('decline')}
+      >
+        Decline
+      </button>
+      <button
+        data-testid="cancel"
+        type="button"
+        disabled={!batch || isResuming}
+        onClick={() => submit('cancel')}
+      >
+        Cancel
       </button>
       <div data-testid="resume-error">{error}</div>
     </section>

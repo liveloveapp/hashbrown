@@ -24,6 +24,8 @@ export default [
           allow: [
             '^.*/eslint(\\.base)?\\.config\\.[cm]?js$',
             '^@hashbrownai/testing/aimock$',
+            // The .NET conformance app shares the parent app's browser driver and observable gates.
+            '^\\.\\./\\.\\./harness/(app-driver|event-gate)$',
             // The ATC e2e starts the real server in-process; it is an app, not a library.
             '^@atc/server$',
           ],

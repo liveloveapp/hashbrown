@@ -1094,7 +1094,10 @@ function upsertToolResult(
   if (!findToolCall(messages, event.toolCallId)) {
     return messages;
   }
-  if (findToolCall(messages, event.messageId)) {
+  if (
+    event.messageId !== event.toolCallId &&
+    findToolCall(messages, event.messageId)
+  ) {
     throw new Error(
       `AG-UI message ID ${event.messageId} conflicts with a tool call ID`,
     );

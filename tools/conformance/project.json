@@ -10,7 +10,9 @@
         "parallel": false,
         "commands": [
           "tsc --noEmit -p tools/conformance/tsconfig.playwright.json",
-          "tsc --noEmit -p tools/conformance/tsconfig.spec.json"
+          "tsc --noEmit -p tools/conformance/tsconfig.spec.json",
+          "tsc --noEmit -p tools/conformance/dotnet/tsconfig.playwright.json",
+          "tsc --noEmit -p tools/conformance/dotnet/tsconfig.spec.json"
         ]
       }
     },
