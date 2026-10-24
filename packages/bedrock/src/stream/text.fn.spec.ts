@@ -1,4 +1,5 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { encodeBedrockNative } from './bedrock-native';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import {
   BedrockRuntimeClient,
@@ -81,6 +82,13 @@ test('streams canonical AG-UI run and text events from Bedrock', async () => {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'run-bedrock:assistant',
       role: 'assistant',
+      metadata: {
+        bedrock: {
+          responseId: 'run-bedrock:assistant',
+          blockIndex: 0,
+          nativeBlock: encodeBedrockNative({ text: 'Hello from Bedrock.' }),
+        },
+      },
     },
     {
       type: EventType.TEXT_MESSAGE_CONTENT,
@@ -90,6 +98,27 @@ test('streams canonical AG-UI run and text events from Bedrock', async () => {
     {
       type: EventType.TEXT_MESSAGE_END,
       messageId: 'run-bedrock:assistant',
+      metadata: {
+        bedrock: {
+          responseId: 'run-bedrock:assistant',
+          nativeBlock: encodeBedrockNative({ text: 'Hello from Bedrock.' }),
+        },
+      },
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'hashbrown.provider-history',
+      value: {
+        v: 1,
+        provider: 'bedrock',
+        complete: true,
+        ownerMessageId: 'run-bedrock:assistant',
+        responseId: 'run-bedrock:assistant',
+        payload: {
+          content: encodeBedrockNative([{ text: 'Hello from Bedrock.' }]),
+          representedMessageIds: ['run-bedrock:assistant'],
+        },
+      },
     },
     {
       type: EventType.RUN_FINISHED,
@@ -283,8 +312,12 @@ test('ends a completed run with its usage and a stop reason after trailing metad
 
   const events = await runTurn([...textTurn('end_turn'), metadata]);
 
-  expect(events.slice(-2)).toEqual([
-    { type: EventType.RAW, source: 'bedrock', event: metadata },
+  expect(events).toContainEqual({
+    type: EventType.RAW,
+    source: 'bedrock',
+    event: metadata,
+  });
+  expect(events.slice(-1)).toEqual([
     finished(
       {
         hashbrown: { finishReason: 'stop' },
@@ -388,6 +421,7 @@ test('finishes a max_tokens truncation with length and closes the text', async (
     EventType.TEXT_MESSAGE_START,
     EventType.TEXT_MESSAGE_CONTENT,
     EventType.TEXT_MESSAGE_END,
+    EventType.CUSTOM,
     EventType.RUN_FINISHED,
   ]);
   expect(events.at(-1)).toEqual(
@@ -461,5 +495,43 @@ test('reports other when the stream ends without a stop reason', async () => {
 
   expect(events.at(-1)).toEqual(
     finished({ hashbrown: { finishReason: 'other' } }),
+  );
+});
+
+test('passes configured built-ins through the transformed native request', async () => {
+  const provider = createClient([]);
+  const transformRequestOptions = jest.fn((options) => ({
+    ...options,
+    modelId: 'transformed-model',
+  }));
+
+  await collectEvents(
+    text({
+      client: provider.client,
+      model: 'base-model',
+      input: createInput(),
+      builtInTools: { webSearch: true },
+      transformRequestOptions,
+    }),
+  );
+
+  expect(transformRequestOptions).toHaveBeenCalledWith(
+    expect.objectContaining({
+      toolConfig: {
+        toolChoice: { auto: {} },
+        tools: [{ systemTool: { name: 'nova_grounding' } }],
+      },
+    }),
+  );
+  expect(provider.send).toHaveBeenCalledWith(
+    expect.objectContaining({
+      input: expect.objectContaining({
+        modelId: 'transformed-model',
+        toolConfig: {
+          toolChoice: { auto: {} },
+          tools: [{ systemTool: { name: 'nova_grounding' } }],
+        },
+      }),
+    }),
   );
 });

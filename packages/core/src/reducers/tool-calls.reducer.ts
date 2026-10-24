@@ -708,6 +708,23 @@ function reconcilePreparedEntities(
     const local = readOwn(provenance, toolCall.id);
     const source = readOwn(sources, toolCall.id);
     const existing = readOwn(previous.entities, toolCall.id);
+    // Canonical history has no END marker. Keep argument completion in the
+    // live projection when the canonical invocation itself has not changed.
+    const argumentsComplete =
+      (event.type === EventType.TOOL_CALL_END &&
+        event.toolCallId === toolCall.id) ||
+      (event.type !== EventType.MESSAGES_SNAPSHOT &&
+        !(
+          event.type === EventType.TOOL_CALL_START &&
+          event.toolCallId === toolCall.id
+        ) &&
+        existing?.argumentsComplete === true &&
+        existing.name === toolCall.name &&
+        existing.arguments === toolCall.arguments);
+    const projected =
+      argumentsComplete && toolCall.argumentsComplete !== true
+        ? { ...toolCall, argumentsComplete: true }
+        : toolCall;
     const valid =
       local !== undefined &&
       existing !== undefined &&
@@ -715,7 +732,7 @@ function reconcilePreparedEntities(
       (local.source === undefined || sameToolCallSource(local.source, source));
     if (!valid) {
       if (local !== undefined) provenanceChanged = true;
-      return toolCall;
+      return projected;
     }
 
     const next =
@@ -732,10 +749,14 @@ function reconcilePreparedEntities(
     );
     const encryptedValue = toolCall.encryptedValue;
     return metadata === existing.metadata &&
+      argumentsComplete === (existing.argumentsComplete === true) &&
       encryptedValue === existing.encryptedValue
       ? existing
       : {
           ...existing,
+          ...(argumentsComplete !== (existing.argumentsComplete === true)
+            ? { argumentsComplete: argumentsComplete ? true : undefined }
+            : {}),
           ...(metadata === existing.metadata ? {} : { metadata }),
           ...(encryptedValue === undefined ? {} : { encryptedValue }),
         };

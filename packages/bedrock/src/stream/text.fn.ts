@@ -33,7 +33,9 @@ async function* textEvents(
   }
 
   try {
-    const baseRequest = createBedrockRequestOptions(input, model);
+    const baseRequest = createBedrockRequestOptions(input, model, {
+      builtInTools: options.builtInTools,
+    });
     const request = transformRequestOptions
       ? await transformRequestOptions(baseRequest)
       : baseRequest;
@@ -60,6 +62,8 @@ async function* textEvents(
         events: response.stream,
         messageId,
         model: request.modelId,
+        inputMessages: input.messages,
+        requestOptions: request,
         signal,
       }),
       signal,

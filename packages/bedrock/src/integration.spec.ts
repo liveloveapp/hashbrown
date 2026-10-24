@@ -16,6 +16,7 @@ import {
 } from '@hashbrownai/testing/aimock';
 import { type ActivityCallback, HashbrownBedrock } from './index';
 import type { BedrockHashbrownRunAgentInput } from './stream/types';
+import { encodeBedrockNative } from './stream/bedrock-native';
 
 // Recorded cases replay `tools/testing/aimock/fixtures/recorded/<slug>/bedrock.json`
 // and re-record from live Amazon Bedrock (AWS_ACCESS_KEY_ID,
@@ -284,7 +285,9 @@ function expectCanonicalTextRun(
     ].includes(type),
   );
 
-  expect(eventTypes(events)).not.toContain(EventType.RUN_ERROR);
+  expect(events.filter((event) => event.type === EventType.RUN_ERROR)).toEqual(
+    [],
+  );
   expect(events[0]).toEqual({
     type: EventType.RUN_STARTED,
     threadId: input.threadId,
@@ -304,11 +307,49 @@ function expectCanonicalTextRun(
     type: EventType.TEXT_MESSAGE_START,
     messageId,
     role: 'assistant',
+    metadata: {
+      bedrock: {
+        responseId: messageId,
+        blockIndex: expect.any(Number),
+        nativeBlock: encodeBedrockNative({
+          text: contentEvents(events)[0]?.delta,
+        }),
+      },
+    },
   });
+  expectNativeFooter(events, messageId);
   expect(
     contentEvents(events).every((event) => event.messageId === messageId),
   ).toBe(true);
   expect(textContent(events).trim()).not.toBe('');
+}
+
+/** Asserts one complete native capture anchored on its actual assistant. */
+function expectNativeFooter(events: AGUIEvent[], ownerMessageId: string): void {
+  const captures = events.filter(
+    (event) =>
+      event.type === EventType.CUSTOM &&
+      event.name === 'hashbrown.provider-history',
+  );
+
+  expect(captures).toEqual([
+    {
+      type: EventType.CUSTOM,
+      name: 'hashbrown.provider-history',
+      value: {
+        v: 1,
+        provider: 'bedrock',
+        ownerMessageId,
+        responseId: ownerMessageId,
+        complete: true,
+        payload: {
+          content: expect.any(Array),
+          representedMessageIds: expect.arrayContaining([ownerMessageId]),
+        },
+      },
+    },
+  ]);
+  expect(events.indexOf(captures[0])).toBeLessThan(events.length - 1);
 }
 
 /**
@@ -350,8 +391,11 @@ function expectToolRound(
     event.type === EventType.TOOL_CALL_START ? [event] : [],
   );
 
-  expect(eventTypes(events)).not.toContain(EventType.RUN_ERROR);
+  expect(events.filter((event) => event.type === EventType.RUN_ERROR)).toEqual(
+    [],
+  );
   expectRunFinished(events.at(-1), input, 'tool_calls');
+  expectNativeFooter(events, `${input.runId}:assistant`);
   expect(starts.length).toBeGreaterThanOrEqual(1);
   for (const start of starts) {
     const args = events
@@ -722,6 +766,7 @@ test('Bedrock cancellation stops without synthetic terminal events', async () =>
 });
 
 test('Bedrock sends callback activities inside the run', async () => {
+  const input = baseInput('say hi briefly');
   const activities: ActivityCallback = async ({ activity, model }) => {
     const plan = activity.snapshot('plan-1', 'plan', { status: 'running' });
     await model;
@@ -734,7 +779,7 @@ test('Bedrock sends callback activities inside the run', async () => {
       HashbrownBedrock.stream.text({
         client: createBedrockClient(aimock),
         model: BEDROCK_MODEL,
-        input: baseInput('say hi briefly'),
+        input,
         signal,
         activities,
       }),
@@ -746,11 +791,13 @@ test('Bedrock sends callback activities inside the run', async () => {
     EventType.RAW,
     EventType.TEXT_MESSAGE_START,
     EventType.TEXT_MESSAGE_CONTENT,
-    EventType.TEXT_MESSAGE_END,
     EventType.RAW,
+    EventType.TEXT_MESSAGE_END,
+    EventType.CUSTOM,
     EventType.ACTIVITY_DELTA,
     EventType.RUN_FINISHED,
   ]);
+  expectNativeFooter(events, `${input.runId}:assistant`);
   expect(events[1]).toEqual({
     type: EventType.ACTIVITY_SNAPSHOT,
     messageId: 'plan-1',
