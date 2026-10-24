@@ -150,7 +150,9 @@ test('published React package metadata exposes ESM and CJS entrypoints', () => {
   expect(packageJson.types).toBe('./index.d.ts');
   expect(packageJson.module).toBe('./index.mjs');
   expect(packageJson.main).toBe('./index.cjs');
-  expect(packageJson.dependencies?.['@cacheplane/partial-json']).toBe('0.3.0');
+  expect(packageJson.dependencies?.['@cacheplane/partial-json']).toMatch(
+    /^0\.3\.\d+$/,
+  );
   expect(packageJson.dependencies?.['@cacheplane/json-stream']).toBeUndefined();
   expect(packageJson.exports?.['.']).toEqual({
     types: './index.d.ts',

@@ -14,7 +14,7 @@
     "@angular/common": "^22.0.0"
   },
   "dependencies": {
-    "@cacheplane/partial-json": "0.3.0",
+    "@cacheplane/partial-json": "0.3.1",
     "@cacheplane/partial-markdown": "0.5.12"
   },
   "sideEffects": false,
