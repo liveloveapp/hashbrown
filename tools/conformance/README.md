@@ -261,10 +261,82 @@ newer draft uses `callId`; the probe records the returned spelling. Exact
 text/tool-call/tool-response input and text/tool-call output availability was
 `downloadable`, including in the preserved dedicated profile. The retained
 target passed both interface checks with this status and no model creation. The v4 model
-therefore requires explicit download authorization before a real typed tool
-round trip can run. No newer browser or origin-trial token was used for these
-interface checks. Hashbrown native tools remain unsupported; constructor or
-option recognition is not inference evidence.
+required a separate explicit download opt-in before a real typed tool
+round trip could run; the October 24 follow-up below performed that download. No newer browser or origin-trial token was used for these
+interface checks. Constructor or option recognition alone is not inference
+evidence; see the separate real round-trip results below.
+
+### Real native tool round trips (experimental v4)
+
+```sh
+LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/absolute/path/separate-v4-test-profile \
+  npx nx local-native-tool-roundtrip-smoke conformance
+```
+
+This separate non-cacheable target refuses CI and checks exact hidden-token
+success, error and fresh-session typed history. It enables the same official v4
+feature bundle as the interface probe. Its default profile is
+`hashbrown-native-tools-model-profile` inside the system temporary directory; keep v4 separate from an existing
+image/audio profile. Downloading requires `LOCAL_LLM_DOWNLOAD=1` and a trusted
+button click; without that opt-in only an already available model is used.
+Reports are written under `native-tools-roundtrip`, independently of interface
+results. Preserve each JSON report before rerunning.
+
+The October 24 Chrome 155/v4 run downloaded `gemma4-2b-it` and emitted real typed
+calls, but all six initial strict cases failed because native `callID` was empty.
+The target deliberately keeps rejecting empty IDs by default. A separately
+labeled compatibility probe uses:
+
+```sh
+LOCAL_LLM_E2E=1 LOCAL_LLM_TOOL_ID_NORMALIZATION=1 \
+  LOCAL_LLM_PROFILE=/absolute/path/separate-v4-test-profile \
+  npx nx local-native-tool-roundtrip-smoke conformance
+```
+
+This assigns a UUID only to a sole empty-ID call and consistently uses it in
+responses and reconstructed history. The original native ID is retained in
+evidence. The complete eight-case compatibility run passed exact success/error and
+fresh success/error history assertions in both browser projects. This establishes a single-call workaround,
+not native multi-call identity correlation. See the
+[dated research](../../docs/superpowers/research/2026-10-24-chrome-native-tools.md)
+for component versions and measurements. These raw probes do not run framework
+handlers or establish generative-UI/schema-plus-tools support.
+
+### Native tools through actual framework handlers
+
+```sh
+LOCAL_LLM_E2E=1 npx nx local-native-tool-contract-e2e conformance
+LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/absolute/path/separate-v4-test-profile \
+  npx nx local-native-tool-workflow-smoke conformance
+```
+
+These targets use `experimental_chrome_tools()` through real React/Angular
+providers and tools. The deterministic target has 18 aimock-backed contracts:
+canonical replay, dependent results, application-owned Allow/Deny before side
+effects, ambiguous/malformed/unknown calls, valid-ID batches and Stop. The live
+target uses Chrome's experimental v4 bundle and refuses model downloads; prepare
+the explicitly selected profile with the raw canary first. Both targets require
+local opt-in, reject CI and are excluded from standard discovery. Reports live
+under `test-results/conformance/native-tool-workflows`.
+
+The initial correct-profile live run passed 6/8 cases. Both dependent handlers
+ran with exact correlated values, but the model returned the exact receipt
+inside fenced JSON instead of the requested plain string, identically in both
+frameworks. Raw chunks and rendered text agreed; no page errors, fallback
+requests or unbalanced sessions were observed. This formatting failure remains
+recorded in the dated research. Native-specific application instructions now
+make property extraction explicit; the transport never rewrites that prompt or
+normalizes model text. The clarified ten-case live run passed 5/10 strict
+semantic goldens: dependent receipt formatting, one Allow reply and both
+Stop/fresh-lookup cases failed. A final Stop-only run verified the source
+cancellation boundary in both frameworks before both semantic goldens failed:
+old sessions were destroyed before fresh creation, no old chunks arrived
+thereafter, readers returned to zero, and sessions balanced. The fresh model
+sessions continued the cancelled counting instruction. The dated research
+preserves reports and distinguishes this model/history quality failure from
+transport cancellation. A separate raw schema-plus-tools probe returned JSON
+without calling the tool; joint schema/tools support remains unverified and
+explicitly unsupported by the factory.
 
 Final local verification also passed the standard 72-case browser suite,
 10 deterministic workflow cases, 24 existing aimock transport contracts and

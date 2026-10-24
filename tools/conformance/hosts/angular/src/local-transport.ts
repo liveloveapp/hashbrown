@@ -1,6 +1,7 @@
 import {
   type Chat,
   experimental_chrome,
+  experimental_chrome_tools,
   experimental_webllm,
   type TransportFactory,
   type WebLlmEngine,
@@ -9,6 +10,28 @@ import {
 /** Selects an explicitly requested local transport for the fixture hosts. */
 export function readLocalTransport(): TransportFactory | undefined {
   const name = new URL(globalThis.location.href).searchParams.get('localModel');
+  if (name === 'chrome-tools') {
+    const runtime = globalThis as unknown as {
+      __hashbrownNativeTools: { created: number; destroyed: number };
+    };
+    runtime.__hashbrownNativeTools = { created: 0, destroyed: 0 };
+    return experimental_chrome_tools({
+      timeoutMs: 120_000,
+      events: {
+        downloadRequired() {
+          throw new Error(
+            'Native tools require an already available model; download it separately.',
+          );
+        },
+        sessionState(state) {
+          runtime.__hashbrownNativeTools = {
+            ...runtime.__hashbrownNativeTools,
+            [state]: runtime.__hashbrownNativeTools[state] + 1,
+          };
+        },
+      },
+    });
+  }
   if (name === 'chrome') {
     const modality = new URL(globalThis.location.href).searchParams.get(
       'localMedia',

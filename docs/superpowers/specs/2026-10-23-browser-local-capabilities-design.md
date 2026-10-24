@@ -1,8 +1,9 @@
 # Browser local tools and multimodal design
 
-Status: reviewed design proposal; no new browser tool or media API is shipped
-by this follow-up. The existing text-only transports keep their explicit
-unsupported-input behavior. Scope is separate from the provider bug fixes.
+Status: reviewed design. Chrome media was implemented in PR#733. The October24
+native-tools follow-up implements the separate typed factory after real v4
+success/error/history canaries. Existing text-only factories keep their explicit
+unsupported-tool behavior. Scope remains separate from provider bug fixes.
 
 ## Outcome and constraints
 
@@ -36,8 +37,8 @@ Three approaches were considered:
 3. Leave translation to application adapters. This permits experiments now but
    duplicates call/result conversion and permission-sensitive lifecycle work.
 
-Recommend option 2 for native tools and option 1 for a later text-output image
-input extension. Keep the currently published factories stable while the typed
+Use option2 for native tools and option1 for the text-output image/audio
+input extension implemented in PR#733. Keep the currently published factories stable while the typed
 stream contract and real browser availability are established. Reconsider
 unifying factories after the typed contract ships in a tested browser build.
 
@@ -90,6 +91,25 @@ Any material change invalidates the session. Rehydration uses one authoritative
 history path, avoiding appended history plus full-history replay duplication.
 Cancellation destroys only the owned native session; WebLLM keeps interrupt and
 drain ownership, and never unloads an application engine.
+
+## Measured v4 identity compatibility
+
+The October24 Chrome155/v4 canaries emit a valid typed name/object argument
+request with an empty native `callID`, contrary to the draft's nonempty-ID
+requirement. Eight explicitly labeled compatibility canaries passed exact
+success/error responses and fresh-session success/error replay after assigning
+a UUID consistently to the call and response. The adapter therefore repairs
+only an empty-string ID and only when the completed turn contains exactly one
+call. A batch with any repaired ID fails before execution, even when tool names
+differ. Valid native IDs remain unchanged; missing/null/whitespace/conflicting
+or duplicate IDs remain protocol errors.
+
+This is a measured single-call compatibility rule, not evidence that native
+IDs correlate. Each subsequent run uses a fresh owned session with canonical
+assistant calls and user success/error results. No ambiguous native-ID map
+persists between runs. Browser/model/options changes require fresh evidence;
+capability detection continues reporting inference as unknown. See the
+[October24 evidence](../research/2026-10-24-chrome-native-tools.md).
 
 ## Schema and tool composition
 

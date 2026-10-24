@@ -54,7 +54,7 @@ Files: `packages/openai/src/stream/text.fn.ts`, `openai-events.ts` where appropr
 - [x] Update React/Angular recipes, local commands and the research/design status to distinguish shipped adapter support, raw runtime canaries and unverified capabilities. Keep WebLLM dependency-free and local tests outside CI.
 - [x] Run affected build/test/lint and core API checks, standard conformance, aimock contracts and available local suites; retain existing warnings and the independently verified live-model receipt-copy failures.
 - [x] Request independent review and address findings: transports, workflows and canonical multipart lowering approved.
-- [ ] Commit and create/attach a PR, update against main without bypassing checks, merge on green and verify GitHub merge status and resulting source/CI. Continue remaining feasible work until a concrete user decision is required.
+- [x] Commit and create/attach a PR, update against main without bypassing checks, merge on green and verify GitHub merge status and resulting source/CI. Continue remaining feasible work until a concrete user decision is required.
 
 ## Verification recorded
 
@@ -82,6 +82,7 @@ Files: `packages/openai/src/stream/text.fn.ts`, `openai-events.ts` where appropr
   handler dependencies and provider inputs were correct; provider output changed
   `HB_RECEIPT_<uuid>` to `HB_RECEPT_<same uuid>`, faithfully rendered by the UI.
   No blanket expected-failure rule was added and no framework/protocol defect was found.
-- Pending only release PR/merge/resulting source and CI verification. Hardware
-  item 4 remains excluded by user scope; native tool inference requires the
-  separate model-download decision rather than a speculative adapter.
+- PR #733 merged after green CI at `9b4ef137062e0fc9cc397fb0654b73d443384dd4`;
+  merged tree and origin/main verification completed. Hardware item 4 remains
+  excluded. The user authorized v4 on October 24; continue in the
+  [native-tools plan](2026-10-24-chrome-native-tools.md).

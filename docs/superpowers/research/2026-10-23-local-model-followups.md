@@ -1,7 +1,12 @@
 # Local model capability follow-ups
 
-Status: implemented capabilities have passed package and native media checks;
-live model quality failures, the v4 download decision and remaining release verification are separated below.
+Status: PR #733 merged after green CI at `9b4ef137062e0fc9cc397fb0654b73d443384dd4`.
+The evidence below is the retained October 23 snapshot. On October 24 the user
+authorized v4, the download completed, and eight native typed success/error/history
+compatibility canaries passed. See the [native-tools follow-up](2026-10-24-chrome-native-tools.md)
+for current evidence and the single-call ID-repair constraint. The earlier
+model-download decision and release verification are now complete.
+
 This report follows the [capability design](../specs/2026-10-23-browser-local-capabilities-design.md)
 and [implementation plan](../plans/2026-10-23-local-model-capabilities.md).
 Cross-hardware work (item 4 of the requested follow-up) is excluded by the user.
@@ -270,8 +275,10 @@ This confirms adapter protocol reporting without claiming an upstream repair.
   `downloadable` and recognized constructors/declarations without creation,
   inference or download. Actual typed tool inference remains blocked on explicit
   authorization for the v4 model download, as documented above.
-- **Pending:** PR/merge and resulting source/CI verification. No merge or CI
-  success is claimed here.
+- **Completed after this snapshot:** [PR #733](https://github.com/liveloveapp/hashbrown/pull/733)
+  merged at `9b4ef137062e0fc9cc397fb0654b73d443384dd4` after exact-head CI
+  run 40071460832 passed. The merged tree matched the reviewed source and was
+  verified on origin/main. Current native-tools work is tracked separately above.
 
 Initial concurrent host startup and a nested Nx batching attempt failed before
 tests began. Final standard, contract and raw-audio results above come from

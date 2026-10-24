@@ -48,7 +48,10 @@ export function LocalWorkflow() {
   });
   const chat = useChat({
     system:
-      'Execute the requested workflow using tools. Return only actual tool results; never guess secret tokens or receipts. Do not retry denied operations.',
+      new URL(globalThis.location.href).searchParams.get('localModel') ===
+      'chrome-tools'
+        ? 'Follow the requested workflow. Use tools to obtain unknown tokens or receipts; never guess. When asked for a token or receipt, return exactly that JSON property string value from the tool result. Return no JSON objects, code fences, quotes, explanations, or other text. If permission is denied, do not retry; return exactly HB_PERMISSION_DENIED. For requests explicitly requiring no tools, answer with text only.'
+        : 'Execute the requested workflow using tools. Return only actual tool results; never guess secret tokens or receipts. Do not retry denied operations.',
     tools: [lookup, follow, protectedLookup],
   });
   return (

@@ -4,8 +4,9 @@ import { TransportError } from './transport-error';
 type LocalTextEventStreamOptions = {
   input: RunAgentInput;
   signal: AbortSignal;
-  start: (signal: AbortSignal) => Promise<ReadableStream<string>>;
+  start: (signal: AbortSignal) => Promise<ReadableStream<string | AGUIEvent>>;
   destroy: () => void | Promise<void>;
+  eventStream?: boolean;
 };
 
 /**
@@ -31,7 +32,7 @@ export function createLocalTextEventStream(
   const messageId = `${input.runId}:message`;
   const cancellationController = new AbortController();
   const cancellationSignal = cancellationController.signal;
-  let reader: ReadableStreamDefaultReader<string> | undefined;
+  let reader: ReadableStreamDefaultReader<string | AGUIEvent> | undefined;
   let cleanupPromise: Promise<void> | undefined;
   let externalAbortListenerAttached = false;
 
@@ -129,11 +130,12 @@ export function createLocalTextEventStream(
       reader = acquiredReader;
 
       throwIfAborted(cancellationSignal);
-      yield {
-        type: EventType.TEXT_MESSAGE_START,
-        messageId,
-        role: 'assistant',
-      };
+      if (!options.eventStream)
+        yield {
+          type: EventType.TEXT_MESSAGE_START,
+          messageId,
+          role: 'assistant',
+        };
 
       while (true) {
         throwIfAborted(cancellationSignal);
@@ -143,18 +145,23 @@ export function createLocalTextEventStream(
         }
 
         throwIfAborted(cancellationSignal);
-        yield {
-          type: EventType.TEXT_MESSAGE_CONTENT,
-          messageId,
-          delta: result.value,
-        };
+        if (options.eventStream) {
+          yield result.value as AGUIEvent;
+        } else {
+          yield {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId,
+            delta: result.value as string,
+          };
+        }
       }
 
       throwIfAborted(cancellationSignal);
-      yield {
-        type: EventType.TEXT_MESSAGE_END,
-        messageId,
-      };
+      if (!options.eventStream)
+        yield {
+          type: EventType.TEXT_MESSAGE_END,
+          messageId,
+        };
 
       throwIfAborted(cancellationSignal);
       yield {
@@ -290,8 +297,11 @@ function raceWithAbort<T>(
   });
 }
 
-function cancelLateStream(stream: ReadableStream<string>, reason: unknown) {
-  let lateReader: ReadableStreamDefaultReader<string>;
+function cancelLateStream(
+  stream: ReadableStream<string | AGUIEvent>,
+  reason: unknown,
+) {
+  let lateReader: ReadableStreamDefaultReader<string | AGUIEvent>;
   try {
     lateReader = stream.getReader();
   } catch {
@@ -302,7 +312,7 @@ function cancelLateStream(stream: ReadableStream<string>, reason: unknown) {
 }
 
 async function cancelReader(
-  reader: ReadableStreamDefaultReader<string>,
+  reader: ReadableStreamDefaultReader<string | AGUIEvent>,
   reason: unknown,
 ): Promise<void> {
   try {

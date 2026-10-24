@@ -56,3 +56,12 @@ export type {
   ChromePromptImagePolicy,
   ChromePromptAudioPolicy,
 } from './chrome-prompt-media';
+
+export {
+  experimental_chrome_tools,
+  detectChromeToolsCapabilities,
+  type ExperimentalChromeToolsTransportOptions,
+  type ChromeToolsCapabilities,
+  type ChromeToolsSession,
+  type ChromeToolsSessionOptions,
+} from './experimental-chrome-tools-transport';

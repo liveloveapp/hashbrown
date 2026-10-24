@@ -19,7 +19,8 @@
     "local-models/**/*.ts",
     "local-provider.playwright.config.ts",
     "local-media.playwright.config.ts",
-    "local-workflows.playwright.config.ts"
+    "local-workflows.playwright.config.ts",
+    "local-native-tools.playwright.config.ts"
   ],
   "exclude": ["harness/**/*.spec.ts"]
 }

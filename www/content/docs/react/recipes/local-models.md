@@ -20,12 +20,12 @@ The recording uses real Chrome inference through the checked client and transpor
 
 “Local” can describe several different setups:
 
-| Runtime | Who supplies the model? | How Hashbrown reaches it |
-| ------- | ----------------------- | ------------------------ |
-| Chrome's built-in model | The browser manages the model and its download. | `experimental_chrome` runs in the browser. This is our example below. |
-| Edge's built-in model | Edge manages a model in supported preview channels. | `experimental_edge`, or `experimental_local` to detect Chrome then Edge. Eligibility differs from Chrome. |
-| WebLLM | Your application chooses and manages a model and engine. | `experimental_webllm` uses an application-owned engine. See the advanced section below. |
-| Ollama | A separate local server manages the model. | Use the [Ollama adapter](/docs/react/platform/ollama) from your application server. This is a localhost server workflow. |
+| Runtime                 | Who supplies the model?                                  | How Hashbrown reaches it                                                                                                 |
+| ----------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Chrome's built-in model | The browser manages the model and its download.          | `experimental_chrome` runs in the browser. This is our example below.                                                    |
+| Edge's built-in model   | Edge manages a model in supported preview channels.      | `experimental_edge`, or `experimental_local` to detect Chrome then Edge. Eligibility differs from Chrome.                |
+| WebLLM                  | Your application chooses and manages a model and engine. | `experimental_webllm` uses an application-owned engine. See the advanced section below.                                  |
+| Ollama                  | A separate local server manages the model.               | Use the [Ollama adapter](/docs/react/platform/ollama) from your application server. This is a localhost server workflow. |
 
 There is **no automatic hosted fallback** in this recipe. If the native model is unavailable, we explain the problem and leave generation disabled. A cloud fallback should be an explicit application choice, including permission to send the request off-device.
 
@@ -480,13 +480,13 @@ This is extraction, rather than a travel recommendation. We are checking whether
 
 ## Handle unavailable models and failures
 
-| State | What it means | What to do next |
-| ----- | ------------- | --------------- |
+| State                        | What it means                                                                 | What to do next                                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | API missing or `unavailable` | This browser/device cannot currently provide the requested native capability. | Check the browser's official setup, policy, hardware, language, and model status; then prepare again. |
-| Download needed | The browser needs model files before generation. | Choose **Prepare model** explicitly and wait for completion. |
-| Preparation failed | The model did not become ready. | Check eligibility, connectivity and disk space, then prepare again. |
-| Invalid or incomplete output | Generation ended without a usable trip brief. | Clarify the request and generate again. Keep the previous result cleared. |
-| Stopped | We cancelled preparation or generation. | Start another explicit preparation or generation when ready. |
+| Download needed              | The browser needs model files before generation.                              | Choose **Prepare model** explicitly and wait for completion.                                          |
+| Preparation failed           | The model did not become ready.                                               | Check eligibility, connectivity and disk space, then prepare again.                                   |
+| Invalid or incomplete output | Generation ended without a usable trip brief.                                 | Clarify the request and generate again. Keep the previous result cleared.                             |
+| Stopped                      | We cancelled preparation or generation.                                       | Start another explicit preparation or generation when ready.                                          |
 
 If generation reports that preparation is needed again, use **Prepare model** before retrying. The model may have been removed or become unavailable since the last check. Refresh also clears this component's ready state and result; preparation checks the browser's current state again.
 
@@ -494,7 +494,7 @@ The recorder separately checks unavailable APIs, download progress/failure, canc
 
 ## Keep local capabilities explicit
 
-The browser adapters support text and schema-constrained output. Keep schemas small and verify them on the actual model and hardware. Native typed tools remain unsupported by Hashbrown; use the [tool calling guide](/docs/react/concept/functions) with an appropriate server adapter for that workflow.
+The text/schema browser factories support text and schema-constrained output and reject tool calls. Keep schemas small and verify them on the actual model and hardware. The separate `experimental_chrome_tools()` factory supports experimental Chrome v4 typed tools; see its advanced section below. It explicitly rejects schema/UI/media composition. The [tool calling guide](/docs/react/concept/functions) also describes application-owned handlers with server adapters.
 
 Chrome image/audio input requires an explicit `experimental_chrome` media configuration and an application resolver. WebLLM uses a separately managed engine. These are advanced options with different resource and capability contracts; the trip-brief example uses text only.
 
@@ -583,20 +583,97 @@ part; `media.maxTotalBytes` defaults to 20 MiB across the run's media history.
 Raw PCM, video, documents, media tool results and `media` combined with
 `transformRequest` are unsupported.
 
-Native typed tools remain unsupported by Hashbrown. Under Chrome 155's normal
-feature defaults the typed interfaces are absent. The [official experimental
-tool-use flag](https://chrome.dev/web-ai-demos/prompt-api-tool-use/) exposes the
-interfaces and recognizes declarations, but selects a v4 model that is
-`downloadable` in the tested dedicated profile. No download or tool inference
-was attempted. This interface check used the installed browser without an
-origin-trial token; a real typed call/result round trip remains unverified.
-The retained interface target passed two checks with `downloadable` status and
-no model creation. A v4 model download needs explicit authorization before
-actual typed inference. Accepted options alone do not establish working tools. Chrome 155 has transcribed the retained generated speech
-fixture through its raw native API. The real Hashbrown media suite also passed
-all four Angular/React image/audio cases, with one resolution, disposal, session
-creation and session destruction per run. The deterministic shim suite checks transport and framework
-contracts, separately from real inference. See the [local conformance commands](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance#local-model-suites).
+Chrome 155 has transcribed the retained generated speech fixture through its raw
+native API. The real Hashbrown media suite passed all four Angular/React
+image/audio cases, with one resolution, disposal, session creation and session
+destruction per run. Deterministic shims check transport/framework contracts
+separately from real inference.
+
+</hb-expander>
+
+<hb-expander title="Advanced: experimental Chrome native tools">
+
+`experimental_chrome_tools()` selects a separate text-and-tools transport.
+It requires Chrome's experimental [tool-use feature](https://chrome.dev/web-ai-demos/prompt-api-tool-use/)
+and its v4 model; normal Chrome 155 defaults do not expose the typed tool
+interfaces. The local test launcher enables
+`AIPromptAPIToolUse,OnDeviceModelConversationBackend,AIApiFoundationalModel:model_version/v4`
+only for its dedicated browser profile. These flags are experimental and do not
+enable a hosted fallback.
+
+Prepare the model in an explicit user-initiated download flow before starting
+chat. The transport checks exact tools, languages and input/output types. A
+model that requires downloading fails unless the application supplies an
+`events.downloadRequired` callback; that callback must honor Chrome's actual
+activation requirement. `timeoutMs` defaults to 180000 and bounds setup and
+inference. Stop or dispose an abandoned response to release its owned session.
+
+```tsx
+import { experimental_chrome_tools, s } from '@hashbrownai/core';
+import { useChat, useTool } from '@hashbrownai/react';
+
+const transport = experimental_chrome_tools();
+
+export function LocalCounter({ value }: { value: number }) {
+  const readCounter = useTool({
+    name: 'read_counter',
+    description: 'Read the current application counter value.',
+    schema: s.object('Read counter', {}),
+    handler: async () => ({ value }),
+    deps: [value],
+  });
+  const chat = useChat({
+    transport,
+    tools: [readCounter],
+    system:
+      'Call read_counter before answering. Return only the value property as plain text.',
+  });
+  return (
+    <section>
+      <button
+        onClick={() =>
+          chat.sendMessage({ role: 'user', content: 'Read the counter.' })
+        }
+      >
+        Read counter
+      </button>
+      <p>{chat.lastAssistantMessage?.content}</p>
+    </section>
+  );
+}
+```
+
+Tool execution remains in Hashbrown and your application. The browser receives
+only declarations. Tool handlers and application-owned approval/denial gates
+run through the existing framework workflow; no browser callback auto-executes
+them. Each model run owns a fresh session and replays authoritative history,
+including typed success/error results with their canonical call IDs.
+
+The tested Chrome 155/v4 model emits empty native `callID` values. The adapter
+assigns a stable canonical ID only when that completed turn contains exactly
+one call. Ambiguous batches requiring ID repair fail before execution. Valid
+native IDs are preserved; malformed, conflicting and duplicate IDs fail.
+Schema-plus-tools, generative UI, media and media tool results are unsupported
+by this separate factory. Use `experimental_chrome()` for the existing
+text/schema or explicitly enabled media paths. The adapter never removes a
+schema silently to make a tool request work.
+
+Final replies remain unconstrained text. Clear application instructions can
+ask the model to extract a particular property from a JSON tool result, but
+formatting is a model-quality concern: an initial native workflow returned a
+correct receipt inside fenced JSON despite a plain-string request. Hashbrown
+preserves that output. Live tests also found that a fresh session can continue
+a cancelled request when it remains in canonical user history, even after the
+old session has stopped and been destroyed. Test follow-up instructions on the
+actual model. This factory does not promise schema-constrained replies.
+
+`detectChromeToolsCapabilities()` reports serializable exact-option and model
+availability evidence without downloading or inferring. Its `inference` value
+stays `unknown`: interface/availability checks do not prove model quality.
+Eight raw native compatibility canaries passed exact success/error responses
+and fresh-session replay in both browser projects. See the
+[local conformance commands](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance#local-model-suites)
+for opt-in native and aimock targets; all local-model suites refuse CI.
 
 </hb-expander>
 
