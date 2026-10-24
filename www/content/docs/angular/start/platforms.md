@@ -23,6 +23,8 @@ Hashbrown uses the adapter pattern for supporting multiple platforms.
 
 ## Custom Adapters
 
+Use an ASP.NET Core backend with the [tested .NET AG-UI recipe for OpenAI and Azure OpenAI](/docs/angular/platform/dotnet). The browser APIs stay the same.
+
 Can't find your preferred AI provider? [Create a custom adapter](/docs/angular/platform/custom) for any LLM that supports streaming chat completions.
 
 ## Platform Capabilities

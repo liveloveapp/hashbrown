@@ -22,11 +22,14 @@
   },
   "lint-staged": {
     "*.ts": [
-      "nx run-many -t lint -- --fix=true",
+      "npx nx run-many -t lint --exclude=dotnet-conformance -- --fix=true",
       "prettier --write"
     ],
     "*.{html,scss,js,json}": [
       "prettier --write"
+    ],
+    "*.cs": [
+      "npx nx lint dotnet-conformance"
     ]
   },
   "dependencies": {

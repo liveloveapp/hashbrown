@@ -12,7 +12,21 @@ interface RuntimeStatusProps {
 }
 
 function RuntimeStatus({ title, count }: RuntimeStatusProps) {
-  return <div data-testid="status-card">{`${title}: ${count}`}</div>;
+  const [actions, setActions] = useState(0);
+
+  return (
+    <section>
+      <div data-testid="status-card">{`${title}: ${count}`}</div>
+      <button
+        data-testid="status-action"
+        type="button"
+        onClick={() => setActions((value) => value + 1)}
+      >
+        Acknowledge
+      </button>
+      <span data-testid="status-action-count">{actions}</span>
+    </section>
+  );
 }
 
 function partialTitle(

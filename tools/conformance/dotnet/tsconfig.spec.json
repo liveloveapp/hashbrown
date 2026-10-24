@@ -1,0 +1,11 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "types": ["jest", "node"],
+    "ignoreDeprecations": "6.0"
+  },
+  "include": ["jest.config.ts", "harness/**/*.ts", "tests/**/*.ts"]
+}

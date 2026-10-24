@@ -59,7 +59,12 @@ test('a table has one row per entry in column order', () => {
 test('the sitemap lists every docs page of both SDKs with its frontmatter', () => {
   const entries = listSitemapEntries();
 
-  expect(entries).toHaveLength(99);
+  expect(entries).toHaveLength(101);
+  for (const sdk of ['react', 'angular']) {
+    expect(entries).toContainEqual(
+      expect.objectContaining({ url: `/docs/${sdk}/platform/dotnet` }),
+    );
+  }
   expect(entries).toContainEqual({
     url: '/docs/angular/concept/components',
     title: 'Generative UI with Angular Components: Hashbrown Angular Docs',

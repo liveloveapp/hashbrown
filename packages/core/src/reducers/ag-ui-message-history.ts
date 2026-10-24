@@ -233,12 +233,13 @@ export function ɵreadAgUiMessageSnapshot(
   );
 }
 
-/** Owns canonical history and rejects duplicate global message and tool-call IDs. @internal */
+/** Owns canonical history; only a tool result may share its own call ID. @internal */
 export function ɵownValidatedAgUiMessages(
   messages: readonly Message[],
 ): readonly Readonly<Message>[] {
   const owned = ownAgUiMessages(messages);
   const ids = new Set<string>();
+  const messageIds = new Set<string>();
   const toolCalls = new Set<string>();
   const toolResults: readonly Extract<Message, { role: 'tool' }>[] =
     owned.filter(
@@ -247,9 +248,17 @@ export function ɵownValidatedAgUiMessages(
     );
   for (const [index, message] of owned.entries()) {
     validateAgUiMessage(message, index);
-    if (ids.has(message.id)) {
+    const correlatedToolResult =
+      message.role === 'tool' &&
+      message.id === message.toolCallId &&
+      toolCalls.has(message.toolCallId);
+    if (
+      messageIds.has(message.id) ||
+      (ids.has(message.id) && !correlatedToolResult)
+    ) {
       throw new Error(`AG-UI message ID ${message.id} is duplicated`);
     }
+    messageIds.add(message.id);
     ids.add(message.id);
     if (message.role !== 'assistant') continue;
     for (const [toolIndex, toolCall] of (message.toolCalls ?? []).entries()) {
@@ -522,7 +531,10 @@ export function ɵappendAgUiCanonicalIds(
   const messageIds = new Set(index.messageIds);
   const toolCallIds = new Set(index.toolCallIds);
   for (const message of appended) {
-    if (toolCallIds.has(message.id)) {
+    if (
+      toolCallIds.has(message.id) &&
+      !(message.role === 'tool' && message.toolCallId === message.id)
+    ) {
       throw new Error(
         `AG-UI message ID ${message.id} conflicts with a tool call ID`,
       );

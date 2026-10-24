@@ -19,6 +19,36 @@ import {
   ɵselectVisibleAgUiMessages,
 } from './ag-ui-messages.reducer';
 
+test('accepts a native .NET tool result whose message ID equals its own call ID', () => {
+  const messages: Message[] = [
+    {
+      id: 'assistant',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'server-call',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+  ];
+
+  const result = applyCanonicalMessageEvent(messages, {
+    type: EventType.TOOL_CALL_RESULT,
+    messageId: 'server-call',
+    toolCallId: 'server-call',
+    content: 'done',
+  });
+
+  expect(result[1]).toMatchObject({
+    id: 'server-call',
+    role: 'tool',
+    toolCallId: 'server-call',
+    content: 'done',
+  });
+});
+
 test('shares unrelated canonical messages when a text delta changes one message', () => {
   const initialized = reducer(
     initialAgUiMessagesState,
