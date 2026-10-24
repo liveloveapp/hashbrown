@@ -101,7 +101,7 @@ Keep pre-stream request validation and the upstream AG-UI hosting/serializer com
 
 Update both React and Angular server recipes with the same tested Npgsql reference, data-source lifetime, schema initialization and registry registration. Use persisted server-selected airport parameters to demonstrate restart recovery; do not suggest exposing privileged checkpoint actions as unrestricted model tools. Document preparation lease configuration, deployment registry version compatibility and conservative unknown outcomes.
 
-Browser pending-batch ownership does not change. A live browser can answer its pending batch after the server restarts or routes the resume to another instance. A browser reload still loses Hashbrown's local pending-batch ownership; a saved local `batchId` cannot restore it. This work does not introduce browser persistence, transcript/session storage, automatic MAF approval tools or a new wire protocol.
+Browser pending-batch ownership does not change. A live browser can answer its pending batch after the server restarts or routes the resume to another instance. A browser reload still loses Hashbrown's local pending-batch ownership; a saved local `batchId` cannot restore it. Hashbrown also consumes local pending ownership when a resume is acknowledged by `RUN_STARTED`; a later failed or cancelled acknowledged stream requires the existing conversation recovery/new-thread flow. Server-side preparation-lease recovery remains available at the protocol level but does not rehydrate that browser ownership or authorize automatic client replay. This work does not introduce browser persistence, transcript/session storage, automatic MAF approval tools or a new wire protocol.
 
 ## Verification and acceptance
 
