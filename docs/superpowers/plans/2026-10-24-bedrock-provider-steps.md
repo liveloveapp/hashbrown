@@ -62,7 +62,7 @@ Use `NX_DAEMON=false NX_NO_CLOUD=true`, escalate for Nx local worker sockets if 
 - [x] `npx nx build conformance`, `npx nx lint conformance`, `npx nx test conformance`, `npx nx conformance-e2e conformance`, `npx nx provider-e2e conformance`.
 - [x] Format docs and changed sources; `npx nx test www`, `npx nx lint www` sequential with builds/browser suites.
 - [x] Record pass counts, red/green review regressions, warnings/failures/reruns. Check `git diff --check`, no new dependencies or keys.
-- [ ] Commit reviewed files only when other writers idle, push, create and attach PR. No coding-agent attribution in commit/PR. Leave unmerged.
+- [x] Commit reviewed files only when other writers idle, push, create and attach PR. No coding-agent attribution in commit/PR. Leave unmerged.
 
 ## Verification evidence
 
@@ -86,3 +86,5 @@ Use `NX_DAEMON=false NX_NO_CLOUD=true`, escalate for Nx local worker sockets if 
 - Warnings: existing core tool-step.ts unused variables (3), Nx deprecated Jest/ESLint/Vite executors/plugins, FORCE_COLOR overriding NO_COLOR, ESM/CommonJS configuration notices, API Extractor's bundled TypeScript 5.9.3 versus workspace 6.0.3, existing TSDoc/export/link/release-tag warnings. Browser builds also report existing bundle size warnings. No new provider lint errors or warnings.
 
 - Final shared conformance rerun after the core fix: build/lint, 45 unit tests, 64 browser tests and 8 provider UI browser tests pass on isolated dynamically allocated ports. Final source/docs whitespace check is clean. No dependency manifests changed.
+
+- Delivery: PR #736 (https://github.com/liveloveapp/hashbrown/pull/736), attached to this task and left unmerged. GitHub push reports 18 existing default-branch dependency alerts (2 high, 10 moderate, 6 low); no dependency changes in this branch.
