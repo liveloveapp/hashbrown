@@ -16,7 +16,8 @@
     "specs/**/*.ts",
     "provider/native-ui.spec.ts",
     "local-models.playwright.config.ts",
-    "local-models/**/*.ts"
+    "local-models/**/*.ts",
+    "local-provider.playwright.config.ts"
   ],
   "exclude": ["harness/**/*.spec.ts"]
 }
