@@ -30,6 +30,9 @@ const createCompletionStub = (
   error = signal<Error | undefined>(undefined),
 ) => {
   return {
+    recovery: signal({ revision: 0, required: false }),
+    restoreConversation: vi.fn(),
+    getRecoveryConfiguration: vi.fn(),
     pendingInterrupts: signal(undefined),
     isResuming: signal(false),
     resume: vi.fn(),

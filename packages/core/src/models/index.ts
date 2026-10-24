@@ -7,3 +7,8 @@ export type {
 } from './interrupt';
 export { groupTurns, type Turn } from './group-turns';
 export type { FinishReason, TokenUsage } from './run-finish';
+export type {
+  ConversationSnapshot,
+  ConversationRecoveryState,
+  ConversationRecoveryConfiguration,
+} from './conversation-recovery';

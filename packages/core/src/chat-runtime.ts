@@ -1,6 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type {
+  ConversationRecoveryConfiguration,
+  ConversationRecoveryState,
+  ConversationSnapshot,
+} from './models/conversation-recovery';
 import type { PendingInterruptBatch, ResumeOptions } from './models/interrupt';
-import { validateResumeOptions } from './transport/interrupt-validation';
+import {
+  assertInterruptsNotExpired,
+  validateInterruptOutcome,
+  validateResumeOptions,
+} from './transport/interrupt-validation';
 /**
  * Core entry point for the Hashbrown framework.
  * Provides state management and messaging utilities for integrating LLM-based chat interactions into frontend applications.
@@ -33,6 +42,7 @@ import {
   selectResponseSchema,
   selectRetries,
   selectSendingError,
+  selectSystem,
   selectThreadId,
   selectToolEntities,
   selectTools,
@@ -55,15 +65,19 @@ import { createHttpTransport, TransportOrFactory } from './transport';
 import {
   createSystemMessage,
   lowerViewMessagesToAgUi,
+  projectAgUiMessages,
   ɵassertAgUiMessageAppendCompatibility,
+  ɵownValidatedAgUiMessages,
   ɵpairViewMessagesWithAgUi,
 } from './reducers/ag-ui-message-history';
 import { cloneAndFreezeOptionalJsonValue, type JsonValue } from './utils';
+import { createCanonicalRunAgentInput } from './transport/hashbrown-run-agent-input';
 import type { FinishReason, TokenUsage } from './models/run-finish';
 
 /** Settlement and thread ownership used by completion adapters. @internal */
 export interface ɵRuntimeSchedulingState {
   readonly threadEpoch: number;
+  readonly restorationEpoch?: number;
   readonly successfulResumes: number;
   readonly recoveryRequired: boolean;
   readonly isResuming: boolean;
@@ -144,6 +158,15 @@ export interface ChatRuntime<
   Tools extends Chat.AnyTool,
   State = unknown,
 > {
+  /** Read owned trusted native request configuration without starting work. */
+  getRecoveryConfiguration(): ConversationRecoveryConfiguration;
+  /** Local lookup revision and acknowledged-failure recovery disposition. */
+  readonly recovery: StateSignal<ConversationRecoveryState>;
+  /** Atomically install retained canonical history while idle, without starting work. */
+  restoreConversation(
+    snapshot: ConversationSnapshot<State>,
+    options: { readonly expectedRevision: number },
+  ): void;
   /** The current batch, retained until the server acknowledges resume. */
   readonly pendingInterrupts: StateSignal<PendingInterruptBatch | undefined>;
   /** Whether the whole resumed interaction is still executing. */
@@ -310,7 +333,7 @@ export function createChatRuntime(init: {
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : `hashbrown-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const systemMessageId = createCanonicalId();
+  let systemMessageId = createCanonicalId();
   const lower = (messages: readonly Chat.AnyMessageInput[]) =>
     lowerViewMessagesToAgUi(messages, { createId: createCanonicalId });
   const lowerWithProjection = (messages: readonly Chat.AnyMessageInput[]) => {
@@ -380,6 +403,7 @@ export function createChatRuntime(init: {
       devActions.sendMessage,
       devActions.setMessages,
       devActions.resendMessages,
+      devActions.updateOptions,
       (observedAction) => {
         if (observedAction !== action) return;
 
@@ -411,6 +435,8 @@ export function createChatRuntime(init: {
     | undefined;
 
   function setState(nextState: unknown) {
+    if (synchronousRestoration)
+      throw new Error('Conversation restoration is in progress.');
     if (
       synchronousResumeClaim !== undefined ||
       (!synchronousThreadChange &&
@@ -433,8 +459,12 @@ export function createChatRuntime(init: {
   }
 
   let synchronousResumeClaim: string | undefined;
+  let effectsRunning = false;
+  let startupResumeAction: ReturnType<typeof devActions.resume> | undefined;
 
   function assertMessageSchedulingAllowed() {
+    if (synchronousRestoration)
+      throw new Error('Conversation restoration is in progress.');
     if (synchronousThreadChange) return;
     const interrupts = state.read(ɵselectInterrupts);
     if (interrupts.recoveryRequired)
@@ -446,6 +476,8 @@ export function createChatRuntime(init: {
   }
 
   function resume(options: ResumeOptions) {
+    if (synchronousRestoration)
+      throw new Error('Conversation restoration is in progress.');
     if (synchronousThreadChange) throw new Error('Stale interrupt batch.');
     const interrupts = state.read(ɵselectInterrupts);
     if (interrupts.recoveryRequired)
@@ -475,14 +507,14 @@ export function createChatRuntime(init: {
     };
     synchronousResumeClaim = claimId;
     try {
-      dispatchGenerationSchedulingAction(
-        devActions.resume({
-          claimId,
-          batch: interrupts.pending,
-          options: ownedOptions,
-          checkpoint,
-        }),
-      );
+      const action = devActions.resume({
+        claimId,
+        batch: interrupts.pending,
+        options: ownedOptions,
+        checkpoint,
+      });
+      if (!effectsRunning) startupResumeAction = action;
+      dispatchGenerationSchedulingAction(action);
     } finally {
       void Promise.resolve().then(() => {
         if (synchronousResumeClaim === claimId)
@@ -552,6 +584,8 @@ export function createChatRuntime(init: {
       threadId?: string | undefined;
     }>,
   ) {
+    if (synchronousRestoration)
+      throw new Error('Conversation restoration is in progress.');
     const threadChanged =
       Object.hasOwn(options, 'threadId') &&
       options.threadId !==
@@ -566,6 +600,7 @@ export function createChatRuntime(init: {
           synchronousThreadChange = undefined;
       });
       synchronousResumeClaim = undefined;
+      startupResumeAction = undefined;
       pendingStateWriteLockReservations.clear();
     }
     const update = devActions.updateOptions({
@@ -588,13 +623,202 @@ export function createChatRuntime(init: {
         },
       );
     } else {
-      state.dispatch(update);
+      dispatchGenerationSchedulingAction(update);
     }
+  }
+
+  function getRecoveryConfiguration(): ConversationRecoveryConfiguration {
+    const schema = state.read(selectRequestResponseSchema);
+    const native = createCanonicalRunAgentInput({
+      threadId: '',
+      runId: '',
+      messages: [],
+      state: undefined,
+      tools: Chat.helpers.toApiToolsFromInternal(state.read(selectTools)),
+      responseSchema: schema ? s.toJsonSchema(schema) : undefined,
+      ui: state.read(selectUiRequested),
+    });
+    const system = state.read(selectSystem);
+    return cloneAndFreezeOptionalJsonValue({
+      ...(system ? { system } : {}),
+      tools: native.tools,
+      forwardedProps: native.forwardedProps,
+    }) as unknown as ConversationRecoveryConfiguration;
+  }
+
+  let synchronousRestoration = false;
+
+  function assertRestoreAllowed(expectedRevision: number) {
+    if (
+      !Number.isSafeInteger(expectedRevision) ||
+      expectedRevision !== state.read((root) => root.recovery.revision)
+    )
+      throw new Error('Stale recovery revision.');
+    if (
+      synchronousRestoration ||
+      synchronousThreadChange ||
+      synchronousResumeClaim ||
+      synchronousStateWrite ||
+      pendingStateWriteLockReservations.size > 0 ||
+      state.read(selectIsLoading) ||
+      state.read(selectIsResuming) ||
+      state.read(ɵselectToolTurnOwnership) ||
+      state.read((root) => root.generationOwnership.generationId !== undefined)
+    )
+      throw new Error('Cannot restore a conversation while work is active.');
+  }
+
+  function restoreConversation(
+    snapshot: ConversationSnapshot,
+    options: { readonly expectedRevision: number },
+  ) {
+    assertRestoreAllowed(options?.expectedRevision);
+    if (
+      !snapshot ||
+      typeof snapshot.threadId !== 'string' ||
+      snapshot.threadId.trim().length === 0
+    )
+      throw new TypeError('Invalid recovery thread identity.');
+    if (!Array.isArray(snapshot.messages) || snapshot.messages.length > 2048)
+      throw new TypeError('Invalid recovery message history.');
+    const canonicalMessages = ɵownValidatedAgUiMessages(snapshot.messages);
+    const configuredSystem = state.read(selectSystem);
+    const originalSystem = canonicalMessages[0];
+    if (configuredSystem) {
+      if (
+        !snapshot.configuredSystemMessageId ||
+        originalSystem?.role !== 'system' ||
+        originalSystem.id !== snapshot.configuredSystemMessageId ||
+        originalSystem.content !== configuredSystem ||
+        Object.keys(originalSystem).some(
+          (key) => !['id', 'role', 'content'].includes(key),
+        )
+      )
+        throw new TypeError(
+          'Recovery configured system provenance does not match trusted configuration.',
+        );
+    } else if (snapshot.configuredSystemMessageId !== undefined) {
+      throw new TypeError('Unexpected recovery configured system provenance.');
+    }
+    const history = configuredSystem
+      ? Object.freeze(canonicalMessages.slice(1))
+      : canonicalMessages;
+    const responseSchema = state.read(selectResponseSchema);
+    const toolsByName = state.read(selectToolEntities);
+    const projection = projectAgUiMessages(
+      history,
+      toolsByName,
+      responseSchema,
+    );
+    for (const message of canonicalMessages) {
+      for (const key of [
+        'contentResolved',
+        'argumentsResolved',
+        'handler',
+        'status',
+        'result',
+        'provenance',
+      ]) {
+        if (Object.hasOwn(message, key))
+          throw new TypeError('Recovery only accepts native AG-UI messages.');
+      }
+      if (message.role !== 'assistant') continue;
+      if (
+        responseSchema &&
+        message.content !== undefined &&
+        projection.messages.find(
+          (candidate) =>
+            candidate.role === 'assistant' &&
+            candidate.content === message.content &&
+            candidate.contentResolved !== undefined,
+        ) === undefined
+      )
+        throw new TypeError(
+          'Recovery assistant content does not match the response schema.',
+        );
+      for (const call of message.toolCalls ?? []) {
+        for (const key of [
+          'argumentsResolved',
+          'handler',
+          'status',
+          'result',
+          'provenance',
+        ]) {
+          if (Object.hasOwn(call, key))
+            throw new TypeError(
+              'Recovery only accepts native AG-UI tool calls.',
+            );
+        }
+        const projected = projection.toolCalls.find(
+          (candidate) => candidate.id === call.id,
+        );
+        if (Object.hasOwn(toolsByName, call.function.name)) {
+          if (projected?.status !== 'done')
+            throw new TypeError(
+              'Recovery contains an unresolved executable browser tool call.',
+            );
+          if (
+            s.isHashbrownType(toolsByName[call.function.name].schema) &&
+            projected.argumentsResolved === undefined
+          )
+            throw new TypeError(
+              'Recovery tool arguments do not match the registered schema.',
+            );
+        }
+      }
+    }
+    const ownedState = cloneAndFreezeOptionalJsonValue(snapshot.state);
+    const interrupts =
+      snapshot.interrupts === undefined
+        ? undefined
+        : validateInterruptOutcome({
+            type: 'interrupt',
+            interrupts: snapshot.interrupts,
+          });
+    if (interrupts) assertInterruptsNotExpired(interrupts, Date.now());
+    const batch = interrupts
+      ? Object.freeze({ id: createCanonicalId(), interrupts })
+      : undefined;
+    const adoptedSystemId =
+      configuredSystem && originalSystem ? originalSystem.id : systemMessageId;
+    const restore = devActions.restoreConversation({
+      expectedRevision: options.expectedRevision,
+      threadId: snapshot.threadId,
+      canonicalMessages: history,
+      systemMessage: configuredSystem
+        ? createSystemMessage(adoptedSystemId, configuredSystem)
+        : undefined,
+      state: ownedState,
+      batch,
+      responseSchema,
+      toolsByName,
+    });
+    synchronousRestoration = true;
+    let acknowledged = false;
+    const unsubscribe = state.when(devActions.restoreConversation, (action) => {
+      if (action !== restore) return;
+      acknowledged = true;
+      unsubscribe();
+      systemMessageId = adoptedSystemId;
+      synchronousRestoration = false;
+    });
+    try {
+      state.dispatch(restore);
+    } catch (error) {
+      unsubscribe();
+      synchronousRestoration = false;
+      throw error;
+    }
+    if (!acknowledged)
+      void Promise.resolve().then(() => {
+        unsubscribe();
+        synchronousRestoration = false;
+      });
   }
 
   function start() {
     const abortController = new AbortController();
-    let effectCleanupFn: () => void;
+    let effectCleanupFn: (() => void) | undefined;
 
     Promise.resolve().then(() => {
       if (abortController.signal.aborted) {
@@ -602,13 +826,17 @@ export function createChatRuntime(init: {
       }
 
       effectCleanupFn = state.runEffects();
-
-      state.dispatch(internalActions.start());
+      effectsRunning = true;
+      const acceptedResume = startupResumeAction;
+      startupResumeAction = undefined;
+      if (acceptedResume) state.dispatch(acceptedResume);
+      else state.dispatch(internalActions.start());
     });
 
     return () => {
       abortController.abort('Initialization aborted');
       effectCleanupFn?.();
+      if (effectCleanupFn) effectsRunning = false;
     };
   }
 
@@ -625,6 +853,7 @@ export function createChatRuntime(init: {
     }
 
     synchronousResumeClaim = undefined;
+    startupResumeAction = undefined;
     state.dispatch(devActions.stopMessageGeneration(clearStreamingMessage));
   }
 
@@ -635,6 +864,16 @@ export function createChatRuntime(init: {
     (root) => selectIsLoading(root) || selectIsResuming(root),
   );
   const runtime = {
+    getRecoveryConfiguration,
+    restoreConversation,
+    recovery: state.createSignal(
+      select(
+        (root: Parameters<typeof ɵselectInterrupts>[0]) => root.recovery,
+        (root: Parameters<typeof ɵselectInterrupts>[0]) =>
+          root.interrupts.recoveryRequired,
+        (recovery, required) => ({ revision: recovery.revision, required }),
+      ),
+    ),
     resume,
     pendingInterrupts: Object.assign(
       () => (synchronousThreadChange ? undefined : pendingSignal()),
@@ -729,7 +968,7 @@ export function createChatRuntime(init: {
     };
   });
   runtimeRequestSchemaSetters.set(runtime.resume, (schema) => {
-    state.dispatch(
+    dispatchGenerationSchedulingAction(
       devActions.updateOptions({ ɵrequestResponseSchema: schema ?? null }),
     );
   });
@@ -738,6 +977,7 @@ export function createChatRuntime(init: {
     state.createSignal(
       select(ɵselectInterrupts, (interrupts) => ({
         threadEpoch: interrupts.epoch,
+        restorationEpoch: state.read((root) => root.recovery.restorationEpoch),
         successfulResumes: interrupts.successfulResumes,
         recoveryRequired: interrupts.recoveryRequired,
         isResuming: interrupts.generationId !== undefined,

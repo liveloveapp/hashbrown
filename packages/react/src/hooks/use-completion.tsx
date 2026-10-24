@@ -1,10 +1,13 @@
 import {
   Chat,
+  type ConversationRecoveryConfiguration,
+  type ConversationRecoveryState,
+  type ConversationSnapshot,
   type FinishReason,
   type JsonValue,
-  type TokenUsage,
   type PendingInterruptBatch,
   type ResumeOptions,
+  type TokenUsage,
   type TransportOrFactory,
 } from '@hashbrownai/core';
 import { useMemo } from 'react';
@@ -81,6 +84,22 @@ export interface UseCompletionResult<State = unknown> {
   readonly isResuming: boolean;
   /** Submits a complete response batch for the current interruption. */
   resume(options: ResumeOptions): void;
+
+  /** The local recovery revision and whether an explicit restore is required. */
+  readonly recovery: ConversationRecoveryState;
+
+  /** Read owned trusted request configuration for an authenticated recovery lookup. */
+  getRecoveryConfiguration(): ConversationRecoveryConfiguration;
+
+  /**
+   * Atomically restore idle conversation history without scheduling work.
+   * @param snapshot - The canonical history and optional shared state and interrupts.
+   * @param options - The local revision captured before the recovery lookup.
+   */
+  restoreConversation(
+    snapshot: ConversationSnapshot<State>,
+    options: { expectedRevision: number },
+  ): void;
   /** Stops active execution without submitting cancellation answers. */
   stop(clearStreamingMessage?: boolean): void;
 
@@ -222,6 +241,9 @@ export function useCompletion<Input, State = unknown>(
     pendingInterrupts: chat.pendingInterrupts,
     isResuming: chat.isResuming,
     resume: chat.resume,
+    recovery: chat.recovery,
+    restoreConversation: chat.restoreConversation,
+    getRecoveryConfiguration: chat.getRecoveryConfiguration,
     stop: chat.stop,
     state: chat.state,
     setState: chat.setState,

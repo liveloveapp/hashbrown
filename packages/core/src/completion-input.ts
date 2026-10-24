@@ -3,6 +3,7 @@ import type { ɵRuntimeSchedulingState } from './chat-runtime';
 /** Input ownership retained by completion adapters. @internal */
 export interface ɵCompletionInputState<Input> {
   readonly threadEpoch: number;
+  readonly restorationEpoch?: number;
   readonly input?: Input;
   readonly hasInput: boolean;
   readonly awaitingResume?: number;
@@ -24,6 +25,17 @@ export function ɵreconcileCompletionInput<Input>(
   runtime: ɵRuntimeSchedulingState,
   eligible: boolean,
 ): { readonly state: ɵCompletionInputState<Input>; readonly send: boolean } {
+  if ((runtime.restorationEpoch ?? 0) !== (previous?.restorationEpoch ?? 0)) {
+    return {
+      state: {
+        threadEpoch: runtime.threadEpoch,
+        restorationEpoch: runtime.restorationEpoch,
+        input,
+        hasInput: true,
+      },
+      send: false,
+    };
+  }
   const current =
     previous?.threadEpoch === runtime.threadEpoch
       ? previous
@@ -42,7 +54,14 @@ export function ɵreconcileCompletionInput<Input>(
     return { state: current, send: false };
   }
   return {
-    state: { threadEpoch: runtime.threadEpoch, input, hasInput: true },
+    state: {
+      threadEpoch: runtime.threadEpoch,
+      ...(runtime.restorationEpoch
+        ? { restorationEpoch: runtime.restorationEpoch }
+        : {}),
+      input,
+      hasInput: true,
+    },
     send: eligible && (!current.hasInput || !Object.is(current.input, input)),
   };
 }

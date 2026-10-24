@@ -29,6 +29,17 @@ export default createActionGroup('dev', {
     threadId?: string | undefined;
     state?: JsonValue;
   }>(),
+  restoreConversation: props<{
+    expectedRevision: number;
+    localProjection?: never;
+    threadId: string;
+    canonicalMessages: readonly Readonly<Message>[];
+    systemMessage?: Readonly<SystemMessage>;
+    state: JsonValue | undefined;
+    batch?: PendingInterruptBatch;
+    responseSchema?: s.SchemaOutput;
+    toolsByName: Record<string, Chat.Internal.Tool>;
+  }>(),
   resume: props<{
     claimId: string;
     batch: PendingInterruptBatch;
