@@ -152,7 +152,7 @@
     "tsx": "^4.23.15",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.72.0",
-    "vercel": "59.26.0",
+    "vercel": "65.2.0",
     "verdaccio": "6.10.7",
     "vite": "8.3.4",
     "vite-plugin-dts": "~4.5.4",
