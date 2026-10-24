@@ -64,7 +64,7 @@ Run all through `npx nx <target> <project>` with `NX_DAEMON=false NX_NO_CLOUD=tr
 - [x] `npx nx build conformance`, `npx nx lint conformance`, `npx nx test conformance`, `npx nx conformance-e2e conformance`, `npx nx provider-e2e conformance` (browser suites sequential).
 - [x] Docs formatting plus `npx nx test www` and `npx nx lint www` as appropriate for content changes.
 - [x] Record passing counts, warnings, any first-run failures and exact red/green review regressions. Check `git diff --check`, final state, new dependencies and secret safety without printing credentials.
-- [ ] Commit focused changes; push and create/attach a PR. Exclude coding-agent attribution from commits/PR. Leave unmerged for user instruction on this PR.
+- [x] Commit focused changes; push and create/attach a PR. Exclude coding-agent attribution from commits/PR. Leave unmerged for user instruction on this PR.
 
 ## Verification evidence
 
@@ -73,3 +73,5 @@ Run all through `npx nx <target> <project>` with `NX_DAEMON=false NX_NO_CLOUD=tr
 - Recorded replay exposed genuine host-realm SDK plain objects rejected by strict JSON ownership. Added provider-local descriptor-based normalization: accepts cross-realm plain JSON, rejects classes/accessors/cycles/undefined. Focused red: 2 failed/45 passed; green: 47 passed. Core is unchanged. Existing recording assertions now check additive native metadata and exactly one complete footer.
 - Passed Google unit: 122; Google recorded e2e: 16; core unit: 1,586; conformance unit: 45; docs unit: 698. Google build/API report and Core/React/Angular/conformance builds and lint passed. Browser conformance: 64 passed; provider browser conformance: 8 passed. Initial docs run collided with concurrently regenerated dist output; sequential rerun passed.
 - Warnings: existing core lint has three unused variables; Nx executor deprecations, Jest config module/ts-jest JS warnings, FORCE_COLOR/NO_COLOR notices, existing API Extractor TSDoc/export/link warnings, Vite config module and >500 kB host bundle warnings. Nx retained a flaky-task label for Angular compilation after the initial concurrent-output failure; sequential builds and suites passed. `npm ci` reports existing dependency deprecations, 15 unapproved install scripts, and 46 audit vulnerabilities (3 low, 24 moderate, 19 high). No dependency declarations changed or automatic audit fixes applied.
+
+- Delivery: [PR #730](https://github.com/liveloveapp/hashbrown/pull/730), branch `blove/google-provider-steps`. Open for review; no merge or auto-merge enabled.
