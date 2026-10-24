@@ -36,6 +36,13 @@
       "options": {
         "command": "tsx --tsconfig examples/atc/server/tsconfig.json examples/atc/server/scripts/prune-agent-state.cts"
       }
+    },
+    "test-integration": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "vitest run --config examples/atc/server/vitest.postgres.config.mts"
+      }
     }
   }
 }

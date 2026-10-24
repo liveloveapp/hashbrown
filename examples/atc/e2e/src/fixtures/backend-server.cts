@@ -60,6 +60,10 @@ async function main(): Promise<void> {
     run,
     env: { ATC_CHAT_BACKEND: backend },
     appRoot,
+  }).catch(async (error: unknown) => {
+    await mock.stop();
+    await rm(appRoot, { recursive: true, force: true });
+    throw error;
   });
   const server = createApp({
     run,

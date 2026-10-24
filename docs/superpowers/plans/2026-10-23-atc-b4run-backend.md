@@ -66,6 +66,23 @@ The user authorized continuing implementation after the upstream fixes and is
 handling releases independently. No dependency additions are authorized; ask
 before introducing any if the existing packages cannot support these APIs.
 
+## Released-package follow-up (2026-10-24)
+
+Pins/lockfile now use registry packages `0.15.1`, and verification uses a clean
+lockfile install instead of the local source overlay. Full core conformance now
+passes (1515 tests); lifecycle build/test/lint and the default ATC build pass.
+The release **does not include `maxOutputTokens`** and still fails the existing
+ATC guard: six server tests and the optional agent build remain blocked. The
+local compatibility branch has no upstream tracking branch/PR. Merge and
+release those fixes before treating the agent as available from the registry.
+
+A new uncached `atc-server:test-integration` target validates the shared stores
+with `ATC_TEST_DATABASE_URL` pointing at disposable Postgres. Three tests pass
+for cross-pool checkpoint/thread state, atomic partial/duplicate results, failed
+result persistence and retryable offline cleanup. Complete agent execution,
+HTTP ownership and generated-artifact checks with Postgres remain gated on the
+compatible agent release. Deployed-host validation remains separate.
+
 ## Implementation record
 
 Source implementation and review are complete against the local compatibility

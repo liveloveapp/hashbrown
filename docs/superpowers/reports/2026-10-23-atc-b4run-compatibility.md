@@ -8,8 +8,9 @@ Plan: `../plans/2026-10-23-atc-b4run-backend.md`.
 **Source compatibility gate now passes against the patched local b4.run branch.**
 
 The user authorized continuing source implementation and will handle releases
-separately. See the source-fix follow-up below. Current released artifacts remain
-incompatible; the initial findings in this report describe that earlier state.
+separately. See the source-fix follow-up and the 2026-10-24 released-package
+validation below. Released 0.15.1 artifacts still fail the output-cap gate; the
+initial findings in this report describe the earlier 0.14.0 investigation.
 
 The installed b4.run 0.14.0 runtime embeds through a public fetch API and can
 park/resume browser tools while binding ATC's schemas. However:
@@ -324,3 +325,54 @@ The new real-backend browser cases do not independently exercise Stop/retry;
 HTTP cancellation tests and the source compatibility probe cover that boundary.
 Anonymous admission expires after 24 hours; physical deletion requires the
 explicit offline operator cleanup documented in the ATC README.
+
+
+## Released-package validation: 2026-10-24
+
+The registry's latest coherent set is `0.15.1` (SDK published
+2026-10-24 07:13:29 UTC). Direct CLI, core, Postgres storage and SDK pins and the
+lockfile now use it. A clean `npm ci --ignore-scripts` installation under
+`/private/tmp/atc-released-deps` replaced the source overlay for every check in
+this section. No b4.run source package symlinks remain in the active installation.
+
+**The release gate still fails.** The published SDK's `dist/agent.js` and
+`dist/agent.d.ts` lack `maxOutputTokens`; `agent()` drops it. ATC's startup guard
+correctly rejects this descriptor. The compatibility commits `3a05ec73a` and
+`ef984f37c` are still on the local `blove/atc-agent-compatibility` branch, with no
+tracking branch or upstream PR found. Do not bypass the cap guard or infer that
+this release includes the locally validated replay fixes.
+
+Executed with published packages:
+
+- Full `npx nx test core`: **1515 tests in 76 suites pass**, including SDK
+  tool-step conformance. No suite exclusion or local SDK overlay is needed.
+- Core and ATC server build/lint pass. Core lint retains three existing unused
+  variable warnings in `models/tool-step.ts`.
+- Lifecycle build, 98 tests, lint, and isolated generated adapter checks pass.
+- Default `npx nx build atc` passes, including isolated OpenAI artifact startup.
+- ATC server tests: **156 pass, 6 fail**. All failures are agent construction
+  through the expected output-cap compatibility guard.
+- `ATC_CHAT_BACKEND=b4run npx nx build atc`: fails loading the authored agent
+  through the same guard. This does not validate a released agent artifact.
+- Recorder's 38 tests, e2e lint and typecheck pass.
+- Full browser suite: **84 pass / 2 fail**. The optional b4.run cases fail at
+  startup; the initial Angular failure timed out because its provider fixture
+  remained open. The fixture now stops its mock and removes the temporary app
+  directory when startup fails; a focused rerun reports the cap error promptly
+  in both frameworks. The OpenAI backend and existing browser cases pass.
+
+A disposable Docker Postgres 17 database was used for the new uncached
+`ATC_TEST_DATABASE_URL=... npx nx test-integration atc-server` target: **3 tests
+pass**. They prove separate pools see the same threads and checkpoints; partial
+results stay pending; concurrent duplicate answers accept one result; failed
+browser-result content persists; and offline checkpoint/thread cleanup remains
+retryable and prunes expired call records. Tests use generated thread IDs and
+require a disposable database because pending-record pruning is database-wide.
+These are real shared-store tests, not complete agent continuation or HTTP
+ownership tests. The disposable container was removed after validation.
+
+Next: merge/release the local compatibility fixes, update pins again, rerun
+agent/server/browser/build checks, then validate complete cross-instance agent
+execution and generated-artifact ownership against Postgres. Finally configure
+the intended hosted database/signing secret and run deployed-host smoke tests.
+No upstream release, deployment, or existing user-state cleanup was performed.

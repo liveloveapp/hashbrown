@@ -5,9 +5,10 @@ Status: approved by the user on 2026-10-23; source implementation is in place.
 The original published-package compatibility gate failed. Local b4.run fixes
 at `ef984f37c` now pass the runtime and browser integration checks. See
 `../reports/2026-10-23-atc-b4run-compatibility.md` for the original evidence and
-implementation follow-up. Dependency manifests remain unchanged; compatible
-releases and live hosted Postgres validation are still required before hosting
-the optional backend. The user is handling releases separately.
+implementation follow-up. Pins now use registry release 0.15.1, which still lacks the output-cap fix.
+Shared-store tests pass against disposable local Postgres; complete agent and
+generated-artifact Postgres validation remain blocked on a compatible release.
+Hosted configuration and smoke tests are still required. The user is handling releases separately.
 
 ## Purpose and agreed scope
 

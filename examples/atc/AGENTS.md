@@ -177,6 +177,8 @@ state as part of implementation verification. No automatic scheduler is present.
 npx nx run-many -t build,test,lint -p atc-shared atc-server atc-angular atc-react atc-e2e atc
 npx nx e2e atc-e2e
 npx nx typecheck atc-e2e
+# Opt-in shared-store checks; disposable Postgres only (creates tables/prunes records):
+ATC_TEST_DATABASE_URL=postgresql://... npx nx test-integration atc-server
 # Live, opt-in, cost a little per run:
 npx nx decide-eval atc-e2e   # needs TYPESAFE_API_KEY
 npx nx prose-eval atc-e2e    # needs OPENAI_API_KEY and the dev servers

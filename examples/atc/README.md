@@ -123,10 +123,12 @@ keys are ephemeral unless `ATC_B4RUN_COOKIE_SECRET` is set.
 
 **Package compatibility:** the agent path requires a coherent b4.run package
 set containing the browser-tool replay fixes and `agent({ maxOutputTokens })`.
-The current dependency pins predate those fixes; the agent fails startup rather
-than dropping its cap. Source validation uses the patched local package set
-recorded in the [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
-Release and dependency-pin updates are separate from this implementation.
+The dependency pins are now `0.15.1`, installed and tested from the registry.
+That release still drops `maxOutputTokens`; the agent fails startup rather than
+dropping its cap. The passing agent/browser results used the patched local
+package set recorded in the [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
+The compatibility commits still need to be merged and released, followed by
+another dependency-pin update and complete agent validation.
 
 ### Optional hosted build
 
@@ -153,9 +155,21 @@ Set these variables on that deployment:
 
 The adapter maps the dedicated ATC state database into the generated runtime
 without changing the process's general `DATABASE_URL`. Hosted startup never
-falls back to ephemeral SQLite. Live Postgres and deployment validation remain
-required before hosting; local and isolated-artifact checks use deterministic
-provider fixtures and do not provision a database.
+falls back to ephemeral SQLite. Shared-store integration tests pass against a disposable local Postgres 17
+instance. They exercise separate pools, checkpoint/thread visibility, partial
+and duplicate results, failed tool-result persistence, and retryable cleanup.
+They do not prove complete agent execution or generated-artifact ownership with
+Postgres; those checks remain blocked by the incompatible agent release.
+Deployed-host validation also remains required before hosting.
+
+Run the opt-in store tests against a **disposable test database**:
+
+```bash
+ATC_TEST_DATABASE_URL=postgresql://... npx nx test-integration atc-server
+```
+
+The tests create ATC tables and prune expired pending-call records. Never point
+this target at production or a database containing state you need to retain.
 
 ### Anonymous state cleanup
 
