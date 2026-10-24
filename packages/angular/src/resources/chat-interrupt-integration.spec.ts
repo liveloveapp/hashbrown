@@ -228,3 +228,44 @@ test.each(families)(
     TestBed.resetTestingModule();
   },
 );
+
+test.each(families)(
+  '$name chat restores canonical history without sending',
+  async (family) => {
+    const control = controlledTransport();
+    TestBed.configureTestingModule({
+      providers: [provideHashbrown({ baseUrl: '/chat' })],
+    });
+    const chat = TestBed.runInInjectionContext(() =>
+      family.create({
+        system: 'test',
+        transport: control.transport,
+        debounce: 0,
+      }),
+    );
+    chat.sendMessage({ role: 'user', content: 'go' });
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(chat.pendingInterrupts()).toBeDefined();
+    });
+    const input = control.requests[0].input;
+    expect(chat.getRecoveryConfiguration().system).toBe('test');
+    const batch = requireBatch(chat.pendingInterrupts());
+
+    chat.restoreConversation(
+      {
+        threadId: input.threadId,
+        messages: input.messages,
+        configuredSystemMessageId: input.messages[0].id,
+      },
+      { expectedRevision: chat.recovery().revision },
+    );
+    TestBed.tick();
+
+    expect(chat.pendingInterrupts()).toBeUndefined();
+    expect(chat.recovery().required).toBe(false);
+    expect(control.requests).toHaveLength(1);
+    expect(() => chat.resume({ batchId: batch.id, entries })).toThrow();
+    TestBed.resetTestingModule();
+  },
+);

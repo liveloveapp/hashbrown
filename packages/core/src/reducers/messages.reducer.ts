@@ -84,36 +84,40 @@ export const reducer = createReducer(
       ),
     };
   }),
-  on(devActions.setMessages, (state, action) => {
-    const messages =
-      action.payload.localProjection?.messages ??
-      projectCanonical(
-        action.payload.canonicalMessages,
-        action.payload.toolsByName ?? {},
-        action.payload.responseSchema,
-      );
-    return {
-      ...state,
-      messages,
-      committed: messages,
-      draft: [],
-      attemptActive: false,
-      activeAssistantMessageId: undefined,
-      activeIgnoredTextMessageId: undefined,
-      canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
-      committedCanonicalIds: ɵindexAgUiCanonicalIds(
-        action.payload.canonicalMessages,
-      ),
-      localProvenance: createLocalProvenance(
-        action.payload.localProjection,
-        action.payload.canonicalMessages,
-      ),
-      committedLocalProvenance: createLocalProvenance(
-        action.payload.localProjection,
-        action.payload.canonicalMessages,
-      ),
-    };
-  }),
+  on(
+    devActions.setMessages,
+    devActions.restoreConversation,
+    (state, action) => {
+      const messages =
+        action.payload.localProjection?.messages ??
+        projectCanonical(
+          action.payload.canonicalMessages,
+          action.payload.toolsByName ?? {},
+          action.payload.responseSchema,
+        );
+      return {
+        ...state,
+        messages,
+        committed: messages,
+        draft: [],
+        attemptActive: false,
+        activeAssistantMessageId: undefined,
+        activeIgnoredTextMessageId: undefined,
+        canonicalIds: ɵindexAgUiCanonicalIds(action.payload.canonicalMessages),
+        committedCanonicalIds: ɵindexAgUiCanonicalIds(
+          action.payload.canonicalMessages,
+        ),
+        localProvenance: createLocalProvenance(
+          action.payload.localProjection,
+          action.payload.canonicalMessages,
+        ),
+        committedLocalProvenance: createLocalProvenance(
+          action.payload.localProjection,
+          action.payload.canonicalMessages,
+        ),
+      };
+    },
+  ),
   on(devActions.sendMessage, (state, action) => {
     if (action.payload.canonicalAppendCompatible === false) return state;
     let canonicalIds: ɵAgUiCanonicalIdIndex;

@@ -2,6 +2,9 @@
 import { computed, Resource, Signal } from '@angular/core';
 import {
   Chat,
+  type ConversationRecoveryConfiguration,
+  type ConversationRecoveryState,
+  type ConversationSnapshot,
   type FinishReason,
   type JsonValue,
   type PendingInterruptBatch,
@@ -105,6 +108,22 @@ export interface UiCompletionResourceRef<
   readonly isResuming: Signal<boolean>;
   /** Submits a complete response batch for the current interruption. */
   resume(options: ResumeOptions): void;
+
+  /** The local recovery revision and whether an explicit restore is required. */
+  readonly recovery: Signal<ConversationRecoveryState>;
+
+  /** Read owned trusted request configuration for an authenticated recovery lookup. */
+  getRecoveryConfiguration(): ConversationRecoveryConfiguration;
+
+  /**
+   * Atomically restore idle conversation history without scheduling work.
+   * @param snapshot - The canonical history and optional shared state and interrupts.
+   * @param options - The local revision captured before the recovery lookup.
+   */
+  restoreConversation(
+    snapshot: ConversationSnapshot<State>,
+    options: { expectedRevision: number },
+  ): void;
   /** The currently visible shared agent state. */
   readonly state: Signal<State | undefined>;
   /** Replace shared agent state without starting a generation. */
@@ -234,6 +253,9 @@ export function uiCompletionResource<
     pendingInterrupts: completion.pendingInterrupts,
     isResuming: completion.isResuming,
     resume: completion.resume,
+    recovery: completion.recovery,
+    restoreConversation: completion.restoreConversation,
+    getRecoveryConfiguration: completion.getRecoveryConfiguration,
     state: completion.state,
     setState: completion.setState,
     value,

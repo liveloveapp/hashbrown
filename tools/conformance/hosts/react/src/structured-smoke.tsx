@@ -2,6 +2,8 @@ import { s } from '@hashbrownai/core';
 import { useStructuredChat } from '@hashbrownai/react';
 import { useState } from 'react';
 import { InterruptControls } from './interrupt-controls';
+import { useRecoveryControls, useRecoveryThread } from './recovery-controls';
+import { rememberThread } from './recovery';
 
 const answerSchema = s.object('Runtime smoke answer', {
   answer: s.streaming.string('Answer text'),
@@ -28,6 +30,14 @@ function errorText(error: unknown): string {
 /** React structured chat fixture used by the shared runtime smoke scenario. */
 export function StructuredSmoke() {
   const [prompt, setPrompt] = useState('');
+  const { threadId, setThreadId } = useRecoveryThread();
+  const chat = useStructuredChat({
+    system: 'Runtime smoke system prompt.',
+    threadId,
+    schema: answerSchema,
+    retries: readRetries(),
+  });
+  const recovery = useRecoveryControls(chat, threadId, setThreadId);
   const [submitted, setSubmitted] = useState('');
   const {
     error,
@@ -40,15 +50,12 @@ export function StructuredSmoke() {
     sendMessage,
     sendingError,
     stop,
-  } = useStructuredChat({
-    system: 'Runtime smoke system prompt.',
-    schema: answerSchema,
-    retries: readRetries(),
-  });
+  } = chat;
   const answer = lastAssistantMessage?.content?.answer ?? '';
   const count = lastAssistantMessage?.content?.count ?? '';
 
   function send() {
+    rememberThread(threadId);
     setSubmitted(prompt);
     sendMessage({ role: 'user', content: prompt });
   }
@@ -60,17 +67,41 @@ export function StructuredSmoke() {
         value={prompt}
         onChange={(event) => setPrompt(event.currentTarget.value)}
       />
-      <button data-testid="send" type="button" onClick={send}>
+      <button
+        data-testid="send"
+        type="button"
+        disabled={recovery.disabled}
+        onClick={send}
+      >
         Send
       </button>
       <button data-testid="stop" type="button" onClick={() => stop()}>
         Stop
       </button>
       <InterruptControls
+        disabled={recovery.disabled}
         batch={pendingInterrupts}
         isResuming={isResuming}
         resume={resume}
       />
+      {recovery.enabled && (
+        <button
+          data-testid="refresh-recovery"
+          disabled={recovery.fetching || isLoading}
+          onClick={() => void recovery.refresh()}
+        >
+          Refresh recovery
+        </button>
+      )}
+      <button data-testid="new-thread" onClick={recovery.newThread}>
+        New thread
+      </button>
+      <div data-testid="recovery-status">{recovery.status}</div>
+      <div data-testid="recovery-fetching">{String(recovery.fetching)}</div>
+      <div data-testid="recovery-required">
+        {String(chat.recovery.required)}
+      </div>
+      <div data-testid="recovery-thread">{threadId}</div>
       <div data-testid="status">{isLoading ? 'loading' : 'idle'}</div>
       <div data-testid="user-message">{submitted}</div>
       <div data-testid="assistant"></div>
