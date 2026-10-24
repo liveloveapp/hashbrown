@@ -65,7 +65,10 @@ function textDelta(delta: string): StreamEvent {
   });
 }
 
-const completed = event({ type: 'response.completed', response: {} });
+const completed = event({
+  type: 'response.completed',
+  response: { output: [] },
+});
 
 function createProviderStream(
   chunks: readonly StreamEvent[],
@@ -78,7 +81,7 @@ function createProviderStream(
   }));
   let index = 0;
   const stream = {
-    abort,
+    controller: { abort },
     [Symbol.asyncIterator]() {
       return {
         async next(): Promise<IteratorResult<StreamEvent>> {
@@ -107,12 +110,12 @@ function mockProvider(
 ) {
   MockedOpenAI.mockReset();
   const providerStream = createProviderStream(chunks, sourceError);
-  const stream = jest.fn().mockReturnValue(providerStream.stream);
+  const create = jest.fn().mockResolvedValue(providerStream.stream);
   MockedOpenAI.mockImplementation(() => ({
-    responses: { stream },
+    responses: { create },
   }));
 
-  return { ...providerStream, create: stream };
+  return { ...providerStream, create };
 }
 
 function deepFreeze<T>(value: T): T {
@@ -536,6 +539,7 @@ test('ends a completed run with its usage and a stop reason', async () => {
       type: 'response.completed',
       response: {
         status: 'completed',
+        output: [],
         model: 'gpt-test-2026',
         usage: {
           input_tokens: 120,
@@ -595,7 +599,10 @@ test('reports tool_calls when the response called a function', async () => {
         arguments: '{}',
       },
     }),
-    event({ type: 'response.completed', response: { status: 'completed' } }),
+    event({
+      type: 'response.completed',
+      response: { status: 'completed', output: [] },
+    }),
   ]);
 
   const events = await collectEvents(createOptions());
@@ -622,6 +629,7 @@ test.each([
         type: 'response.incomplete',
         response: {
           status: 'incomplete',
+          output: [],
           incomplete_details: { reason },
           usage: { input_tokens: 10, output_tokens: 300, total_tokens: 310 },
         },
@@ -666,7 +674,10 @@ test('reports a refusal when the model refused', async () => {
       content_index: 0,
       delta: 'I cannot help with that.',
     }),
-    event({ type: 'response.completed', response: { status: 'completed' } }),
+    event({
+      type: 'response.completed',
+      response: { status: 'completed', output: [] },
+    }),
   ]);
 
   const events = await collectEvents(createOptions());
@@ -676,5 +687,50 @@ test('reports a refusal when the model refused', async () => {
       hashbrown: { finishReason: 'refusal' },
       openai: { status: 'completed' },
     }),
+  );
+});
+
+test('uses raw streaming Responses requests', async () => {
+  const provider = mockProvider([completed]);
+
+  await collectEvents(createOptions());
+
+  expect(provider.create).toHaveBeenCalledWith(
+    expect.objectContaining({ stream: true }),
+    expect.objectContaining({ signal: undefined }),
+  );
+});
+
+test('cancels before response headers and aborts a late acquired stream', async () => {
+  const provider = mockProvider();
+  let resolveStream!: (stream: typeof provider.stream) => void;
+  const pendingStream = new Promise<typeof provider.stream>((resolve) => {
+    resolveStream = resolve;
+  });
+  provider.create.mockReturnValue(pendingStream);
+  const controller = new AbortController();
+  const iterator = text(createOptions({ signal: controller.signal }))[
+    Symbol.asyncIterator
+  ]();
+  await iterator.next();
+  const pendingNext = iterator.next();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  controller.abort();
+  const result = await Promise.race([
+    pendingNext,
+    new Promise((resolve) => setTimeout(() => resolve('pending'), 50)),
+  ]);
+  resolveStream(provider.stream);
+  await pendingNext;
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(result).toEqual({ done: true, value: undefined });
+  expect(provider.abort).toHaveBeenCalledTimes(1);
+  expect(provider.create).toHaveBeenCalledWith(
+    expect.objectContaining({ stream: true }),
+    { signal: controller.signal },
   );
 });

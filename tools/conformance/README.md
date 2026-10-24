@@ -5,8 +5,9 @@ scenarios against an Angular host and a React host, so both frameworks keep
 the same streaming, tool calling, structured output and generative UI
 behaviour. They are internal test infrastructure, not an example to copy.
 
-No model credentials are needed. Every model response comes from aimock or an
-independent AG-UI endpoint started by the test.
+The standard suites need no model credentials. Their responses come from aimock
+or an independent AG-UI endpoint started by the test. The separately opted-in
+local suites below can use actual installed browser or localhost models.
 
 ## Layout
 
@@ -41,8 +42,7 @@ The e2e targets build both hosts first. CI runs `example-e2e` through
 ## Local model suites
 
 These suites require explicit local opt-in and refuse to run when `CI` is
-set. Their files live outside the CI Playwright and Jest test globs. No local model
-target is named `e2e` or included by `example-e2e`.
+set. Their files live outside the CI Playwright and Jest test globs. No local model target is included by `example-e2e`.
 
 ```sh
 LOCAL_LLM_E2E=1 npx nx local-model-contract-e2e conformance
@@ -84,8 +84,62 @@ The suite checks structured output and nested UI across both frameworks and
 attaches JSON load/first-token/total timings, schema sizes and process RSS.
 Catalog VRAM estimates are labeled metadata; process RSS can count shared memory
 more than once and does not measure unique GPU allocations. Tests use bounded,
-application-owned generation settings. Native browser tools and multimodal
-generation remain outside these transports' supported scope.
+application-owned generation settings. WebLLM remains text-only in this adapter, and native typed tools remain
+unsupported. Chrome media input has a separate explicit opt-in described below.
+
+### Chrome media input
+
+```sh
+LOCAL_LLM_E2E=1 npx nx local-media-contract-e2e conformance
+LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/absolute/path/dedicated-test-profile \
+  npx nx local-media-smoke conformance
+LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/absolute/path/dedicated-test-profile \
+  npx nx local-native-audio-smoke conformance
+```
+
+`local-media-contract-e2e` runs generated image and retained speech inputs through
+both framework hooks/resources and the real Chrome transport, with a deterministic
+native API shim. It checks decoded ImageBitmap/encoded Blob input, exact modality
+options, rendered answers and resolution/session cleanup. It is not model
+inference. `local-media-smoke` uses real Chrome inference for the same four
+framework/modality cases. The installed Chrome 155 run passed all four, with
+one resolution/disposal and one session creation/destruction per run. `local-native-audio-smoke`
+is a separate raw browser transcription canary, not a Hashbrown adapter test.
+The retained raw audio target passed both project cases with “The secret code
+is 7429.” and confirmed session destruction (Angular 22.823 seconds, React
+24.270 seconds). Availability alone is not an audio inference pass.
+
+All three targets reject CI and require `LOCAL_LLM_E2E=1`. Media targets enable
+audio with `LOCAL_LLM_AUDIO=1`; the real media target also sets
+`LOCAL_LLM_MEDIA_NATIVE=1`. Native audio sets `LOCAL_LLM_NATIVE=1` and selects
+`native runtime transcribes generated speech`. They require already available
+models and never initiate model downloads, even with `LOCAL_LLM_DOWNLOAD=1`.
+Run GPU suites sequentially. Native targets share the dedicated
+`hashbrown-local-chrome-profile` under the temporary directory by default;
+`LOCAL_LLM_PROFILE` explicitly selects a dedicated profile for any native target.
+
+Host fixtures select `localModel=chrome&localMedia=image|audio`. The image is a
+generated red canvas. Speech comes from `local-models/fixtures/speech.wav` and
+its adjacent provenance/hash metadata; no microphone, camera, personal files
+or personal browser content are read. The application resolver accepts inline
+base64 only and records acquired/released resources and created/destroyed
+sessions. Reports attach scope, availability, rendered answers, timing and
+lifecycle evidence under `test-results/conformance/local-models`.
+
+Public media support is off by default. Use
+`experimental_chrome({ media: { images: {}, audio: {}, resolve } })`; `resolve`
+receives an AG-UI image/audio part and `{ signal }`, and returns `{ blob, dispose? }`.
+Inline `{ type: 'data', value, mimeType }` sources use canonical base64 bytes; URL/file sources need application
+policy and are never fetched implicitly. Images accept PNG/JPEG/WebP, defaulting
+to 10 MiB and 16 million pixels each. Audio accepts encoded PCM16 RIFF WAV only,
+with one/two channels at 8–48 kHz, defaulting to 10 MiB and 30 seconds each.
+`maxTotalBytes` defaults to 20 MiB per run. `inputLanguages` defaults to `['en']`
+independently of output language. Media rejects unknown availability and requires
+an explicit `events.downloadRequired` callback before any needed download;
+it does not support `transformRequest`. Each media run has an isolated native
+session and releases owned decoded bitmaps and explicit resolver disposers. Canonical
+AG-UI multipart content survives lowering and immutable history snapshots;
+ordinary JSON arrays retain their legacy representation.
 
 ## Ports and reports
 
@@ -130,12 +184,39 @@ JSON failures remain ordinary failures. The assertion still runs and fails; it
 is not a capability pass. If the model
 begins satisfying the golden, the unexpected pass fails the run so the flag can
 be removed. This setting applies only to that combined semantic case, not the
-protocol/cancellation regressions. The server's malformed completed Responses
-payload (`output: null` after truncation) remains an error; no partial tool call
+protocol/cancellation regressions. The installed-provider suite recorded 10 expected outcomes and zero unexpected
+outcomes, including the two explicitly expected schema-plus-tools semantic
+failures. The server's malformed completed Responses payload (`output: null`
+after truncation) now produces `RUN_ERROR` with
+`OpenAI Responses protocol error: response.completed response.output must be an array`; no partial tool call
 may become executable. Injected shared Ollama clients cannot expose a pending
 HTTP request through the SDK before headers: consumer cancellation settles
 promptly, and any late stream is aborted individually. Owned clients additionally
 abort fetch before headers.
+
+Local provider workflows also have separate deterministic and live targets:
+
+```sh
+LOCAL_LLM_E2E=1 npx nx local-provider-workflow-contract-e2e conformance
+LOCAL_LLM_E2E=1 npx nx local-provider-workflow-smoke conformance
+```
+
+Both reject CI. The contract target uses an aimock upstream; the live target
+sets `LOCAL_LLM_WORKFLOWS_LIVE=1` and uses the installed `LOCAL_LLM_MODEL` at
+`LOCAL_LLM_HOST`. They drive real framework tool handlers, dependent lookup,
+application-owned approval/denial before protected operations, automatic result
+replay, follow-up history and rendered final answers through loopback AG-UI
+routes. The permission gate belongs to the fixture application. No model,
+browser or dependency is installed by these targets. The installed-model
+20-case workflow run recorded 12 passes, four expected schema-only answers that
+skipped required tools, and four unexpected final receipt mismatches in the
+dependent-tool golden. Independent review confirmed correct handler arguments and canonical result
+replay: the provider changed `HB_RECEIPT_<uuid>` to `HB_RECEPT_<same uuid>` in
+its final answer, and the UI rendered that text faithfully. No protocol or
+framework error was found and no blanket expected-failure rule was added; the
+live suite remains not green because of this model copy defect. A live model's failure to
+select the required tools remains a semantic failure rather than a transport
+capability pass.
 
 Native runtime capabilities and a synthetic-image canary have a separate local
 target. Use the same dedicated profile as native smoke to reuse its weights:
@@ -152,6 +233,47 @@ access or audio inference. Accepted tool content types alone do not establish
 functional tool calling; the test also records whether declarations are read and
 native tool result constructors exist. This is a browser-runtime probe, not a
 Hashbrown media adapter. Downloads still require `LOCAL_LLM_DOWNLOAD=1`.
+
+### Experimental native tool interfaces only
+
+```sh
+LOCAL_LLM_E2E=1 LOCAL_LLM_PROFILE=/absolute/path/dedicated-test-profile \
+  npx nx local-native-tool-capability-smoke conformance
+```
+
+This non-cacheable local target rejects CI, enables `LOCAL_LLM_NATIVE_TOOLS=1`
+and runs interface/availability checks in both framework projects. It never
+calls `LanguageModel.create()`, performs inference or starts a model download.
+Reports use the separate `native-tools` output directory and
+`native-tools-report.json`. Keep its results distinct from model capability.
+
+The [official Chrome tool-use demo](https://chrome.dev/web-ai-demos/prompt-api-tool-use/)
+names `chrome://flags/#prompt-api-tool-use`. The installed Chrome 155 source
+maps it to `AIPromptAPIToolUse,OnDeviceModelConversationBackend,AIApiFoundationalModel:model_version/v4`.
+The target appends those explicit experimental features only to its test
+browser launch; other native targets keep normal feature defaults. It uses the
+shared native test-profile default and supports `LOCAL_LLM_PROFILE`.
+
+Normal defaults left typed constructors absent and ignored declarations.
+With the official flag, fresh and preserved-profile probes exposed all three
+constructors and read the `tools` member. Chrome 155 uses `callID`, while the
+newer draft uses `callId`; the probe records the returned spelling. Exact
+text/tool-call/tool-response input and text/tool-call output availability was
+`downloadable`, including in the preserved dedicated profile. The retained
+target passed both interface checks with this status and no model creation. The v4 model
+therefore requires explicit download authorization before a real typed tool
+round trip can run. No newer browser or origin-trial token was used for these
+interface checks. Hashbrown native tools remain unsupported; constructor or
+option recognition is not inference evidence.
+
+Final local verification also passed the standard 72-case browser suite,
+10 deterministic workflow cases, 24 existing aimock transport contracts and
+45 conformance unit tests; conformance build/lint passed. Local-only cases remain
+outside standard discovery. Initial concurrent-start/nested-Nx batching failures
+occurred before tests; these results come from completed sequential or standalone
+runs. Existing warnings remain visible in logs. The installed-model workflow
+receipt-copy failures described above remain visible and keep that live quality
+suite from being green.
 
 ## Model and schema measurements
 
@@ -189,7 +311,7 @@ The measured hardware so far is an M1 Max Mac with 32 GB unified memory.
 Windows/Linux and NVIDIA/AMD results remain unmeasured. Use these same commands
 on those machines and preserve hardware metadata; do not extrapolate their
 eligibility, latency or memory from the Mac measurements. No local model target
-is included in CI, and both local configs refuse CI execution.
+is included in CI, and all local configs refuse CI execution.
 
 The targets set their mode variables through Nx's `env` option. In PowerShell,
 set caller variables separately instead of using the shell prefixes above:

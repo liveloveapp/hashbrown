@@ -1,3 +1,9 @@
+import {
+  type ChromePromptContent,
+  type ChromePromptMediaOptions,
+  prepareChromePromptMedia,
+  type PreparedChromePromptMedia,
+} from './chrome-prompt-media';
 import { readHashbrownExtension } from './hashbrown-run-agent-input';
 import {
   type DetectionResult,
@@ -27,7 +33,7 @@ const SUPPORTED_OUTPUT_LANGUAGES: SupportedOutputLanguage[] = [
  */
 export interface PromptMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | readonly ChromePromptContent[];
 }
 
 /**
@@ -58,6 +64,8 @@ export interface PromptRequest {
  * @alpha
  */
 export interface ExperimentalChromeLocalTransportOptions {
+  /** Explicitly enables bounded user media; cannot be combined with transformRequest. */
+  media?: ChromePromptMediaOptions;
   transformRequest?: (request: TransportRequest) => PromptRequest;
   events?: {
     downloadRequired?: (
@@ -86,6 +94,7 @@ interface LanguageModelCreateOptions {
   monitor?: (monitor: EventTarget) => void;
   initialPrompts?: PromptMessage[];
   expectedOutputs?: ExpectedOutput[];
+  expectedInputs?: ExpectedOutput[];
   [key: string]: unknown;
 }
 
@@ -125,12 +134,21 @@ interface LanguageModelGlobal {
   create(options?: LanguageModelCreateOptions): Promise<LanguageModelSession>;
 }
 
+/** Owns cancellation and completion for one explicitly enabled media run. */
+interface ChromeMediaRun {
+  controller: AbortController;
+  dispose?: () => void | Promise<void>;
+  done: Promise<void>;
+  complete(): void;
+}
+
 /**
  * Experimental transport that targets the Chrome Prompt API.
  * @alpha
  */
 export class ExperimentalChromeLocalTransport implements Transport {
   readonly name = 'ExperimentalChromeLocalTransport';
+  private readonly mediaRuns = new Set<ChromeMediaRun>();
   private sessionRecord?: LanguageModelSessionRecord;
   private readonly sessionRecords = new Set<LanguageModelSessionRecord>();
   private readonly sessionDestructionPromises = new Set<Promise<void>>();
@@ -140,6 +158,70 @@ export class ExperimentalChromeLocalTransport implements Transport {
   ) {}
 
   async send(request: TransportRequest): Promise<TransportResponse> {
+    if (!this.options.media || !request.input)
+      return this.sendPrepared(request);
+    if (this.options.transformRequest) {
+      throw new TransportError(
+        'Chrome media input cannot be combined with a custom transformRequest.',
+        {
+          retryable: false,
+          code: 'FEATURE_UNSUPPORTED',
+        },
+      );
+    }
+    if (
+      request.input.tools.length > 0 ||
+      request.input.messages.some(
+        (message) =>
+          message.role === 'tool' ||
+          (message.role === 'assistant' && message.toolCalls?.length),
+      )
+    ) {
+      throw new TransportError(
+        'Chrome Prompt API transport does not support tool calls or tool history',
+        {
+          retryable: false,
+          code: 'FEATURE_UNSUPPORTED',
+        },
+      );
+    }
+    let complete!: () => void;
+    const run: ChromeMediaRun = {
+      controller: new AbortController(),
+      done: new Promise<void>((resolve) => {
+        complete = resolve;
+      }),
+      complete: () => {
+        this.mediaRuns.delete(run);
+        complete();
+      },
+    };
+    this.mediaRuns.add(run);
+    const scoped = {
+      ...request,
+      signal: AbortSignal.any([request.signal, run.controller.signal]),
+    };
+    let prepared: PreparedChromePromptMedia | undefined;
+    try {
+      prepared = await prepareChromePromptMedia(
+        request.input.messages,
+        this.options.media,
+        scoped.signal,
+      );
+      run.dispose = prepared.dispose;
+      return await this.sendPrepared(scoped, prepared, run);
+    } catch (error) {
+      await prepared?.dispose().catch(() => undefined);
+      run.complete();
+      throw error;
+    }
+  }
+
+  private async sendPrepared(
+    request: TransportRequest,
+    prepared?: PreparedChromePromptMedia,
+    mediaRun?: ChromeMediaRun,
+  ): Promise<TransportResponse> {
     if (!request.input) {
       throw new TransportError('Missing AG-UI run input', {
         retryable: false,
@@ -148,7 +230,8 @@ export class ExperimentalChromeLocalTransport implements Transport {
 
     const languageModel = await this.getLanguageModel();
     const transformRequest =
-      this.options.transformRequest ?? defaultTransformRequest;
+      this.options.transformRequest ??
+      ((value) => defaultTransformRequest(value, prepared));
 
     const resolvedOutputLanguage = this.options.outputLanguage ?? 'en';
 
@@ -173,19 +256,48 @@ export class ExperimentalChromeLocalTransport implements Transport {
     );
     const promptRequest: PromptRequest = {
       ...transformedPromptRequest,
+      ...(prepared
+        ? {
+            sessionOptions: {
+              ...transformedPromptRequest.sessionOptions,
+              expectedInputs: prepared.inputTypes.map((type) =>
+                type === 'text' || type === 'audio'
+                  ? {
+                      type,
+                      languages: [
+                        ...new Set<SupportedOutputLanguage>(
+                          this.options.media?.inputLanguages ?? ['en'],
+                        ),
+                      ],
+                    }
+                  : { type },
+              ),
+            },
+          }
+        : {}),
       options: {
         ...transformedPromptRequest.options,
         outputLanguage: resolvedPromptOutputLanguage,
       },
     };
 
+    if (prepared && typeof languageModel?.availability !== 'function') {
+      throw new TransportError(
+        'Chrome media input requires checkable native modality availability.',
+        {
+          retryable: false,
+          code: 'FEATURE_UNSUPPORTED',
+        },
+      );
+    }
     const availability =
-      languageModel && !this.options.createSession
+      languageModel && (!this.options.createSession || prepared)
         ? await this.ensureAvailability(
             languageModel,
             promptRequest,
             resolvedPromptOutputLanguage,
             request.signal,
+            Boolean(prepared),
           )
         : 'available';
 
@@ -206,8 +318,20 @@ export class ExperimentalChromeLocalTransport implements Transport {
             signal,
           }),
         ),
-      destroy: () => this.releaseSession(sessionLease),
+      destroy: async () => {
+        try {
+          await this.releaseSession(sessionLease);
+        } finally {
+          try {
+            await prepared?.dispose();
+          } finally {
+            mediaRun?.complete();
+          }
+        }
+      },
     });
+
+    if (mediaRun) mediaRun.dispose = localStream.dispose;
 
     return {
       events: localStream.events,
@@ -222,9 +346,24 @@ export class ExperimentalChromeLocalTransport implements Transport {
   }
 
   async destroy() {
+    const activeMedia = [...this.mediaRuns];
+    activeMedia.forEach((run) => run.controller.abort());
+    const mediaResults = await Promise.allSettled(
+      activeMedia.map(async (run) => {
+        try {
+          await run.dispose?.();
+        } finally {
+          await run.done;
+        }
+      }),
+    );
+    const mediaFailure = mediaResults.find(
+      (result) => result.status === 'rejected',
+    );
     const destructionPromises = new Set(this.sessionDestructionPromises);
     if (this.sessionRecords.size === 0 && destructionPromises.size === 0) {
       this.options.events?.sessionState?.('destroyed');
+      if (mediaFailure?.status === 'rejected') throw mediaFailure.reason;
       return;
     }
     for (const sessionRecord of this.sessionRecords) {
@@ -237,7 +376,8 @@ export class ExperimentalChromeLocalTransport implements Transport {
     }
 
     const results = await Promise.allSettled(destructionPromises);
-    const failure = results.find((result) => result.status === 'rejected');
+    const failure =
+      results.find((result) => result.status === 'rejected') ?? mediaFailure;
     if (failure) {
       throw failure.reason;
     }
@@ -259,6 +399,7 @@ export class ExperimentalChromeLocalTransport implements Transport {
     promptRequest: PromptRequest,
     outputLanguage: SupportedOutputLanguage,
     signal: AbortSignal,
+    requireMediaCapability = false,
   ): Promise<LanguageModelAvailabilityStatus> {
     if (!languageModel.availability) {
       return 'available';
@@ -278,6 +419,18 @@ export class ExperimentalChromeLocalTransport implements Transport {
 
     const availability =
       typeof result === 'string' ? { status: result } : result;
+    if (
+      requireMediaCapability &&
+      (!availability ||
+        !['available', 'unavailable', 'downloadable', 'downloading'].includes(
+          availability.status,
+        ))
+    ) {
+      throw new TransportError(
+        'Chrome returned an unknown media availability result.',
+        { retryable: false, code: 'FEATURE_UNSUPPORTED' },
+      );
+    }
     this.options.events?.availability?.(availability.status);
 
     if (availability.status === 'unavailable') {
@@ -294,6 +447,15 @@ export class ExperimentalChromeLocalTransport implements Transport {
       availability.status === 'downloadable' ||
       availability.status === 'downloading'
     ) {
+      if (
+        requireMediaCapability &&
+        typeof this.options.events?.downloadRequired !== 'function'
+      ) {
+        throw new TransportError(
+          'Chrome media requires an explicit downloadRequired handler before downloading a model.',
+          { retryable: false, code: 'MODEL_DOWNLOAD_REQUIRED' },
+        );
+      }
       await raceTransportOperationWithAbort(
         () => this.options.events?.downloadRequired?.(availability.status),
         signal,
@@ -354,6 +516,7 @@ export class ExperimentalChromeLocalTransport implements Transport {
       ),
     });
     if (
+      !this.options.media &&
       this.sessionRecord &&
       !this.sessionRecord.destructionPromise &&
       this.sessionRecord.initialization === initialization
@@ -626,7 +789,10 @@ function isUnsupportedContext(): boolean {
   return false;
 }
 
-function defaultTransformRequest(request: TransportRequest): PromptRequest {
+function defaultTransformRequest(
+  request: TransportRequest,
+  prepared?: PreparedChromePromptMedia,
+): PromptRequest {
   const input = request.input as NonNullable<TransportRequest['input']>;
 
   if (input.tools.length > 0) {
@@ -659,7 +825,12 @@ function defaultTransformRequest(request: TransportRequest): PromptRequest {
     ) {
       continue;
     }
-    if (message.content !== undefined && typeof message.content !== 'string') {
+    const mediaContent = prepared?.contents.get(message);
+    if (
+      message.content !== undefined &&
+      typeof message.content !== 'string' &&
+      !mediaContent
+    ) {
       throw new TransportError(
         'Chrome local transport requires text messages',
         {
@@ -668,8 +839,15 @@ function defaultTransformRequest(request: TransportRequest): PromptRequest {
         },
       );
     }
-    const content = message.content ?? '';
+    const content =
+      mediaContent ??
+      (typeof message.content === 'string' ? message.content : '');
     if (message.role === 'system' || message.role === 'developer') {
+      if (typeof content !== 'string')
+        throw new TransportError('System instructions must be text.', {
+          retryable: false,
+          code: 'FEATURE_UNSUPPORTED',
+        });
       instructions.push(content);
     } else {
       messages.push({ role: message.role, content });

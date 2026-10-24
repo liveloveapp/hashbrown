@@ -1,4 +1,6 @@
 import { test as base, expect } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readBrowserMemory } from './webllm-runtime';
@@ -341,6 +343,199 @@ if (process.env['LOCAL_LLM_CAPABILITIES'] === '1') {
       ).toBe('red');
     } finally {
       await testInfo.attach('native-runtime-capabilities.json', {
+        body: JSON.stringify(report, null, 2),
+        contentType: 'application/json',
+      });
+    }
+  });
+}
+
+if (process.env['LOCAL_LLM_AUDIO'] === '1') {
+  test('native runtime transcribes generated speech', async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(390_000);
+    const fixture = readFileSync(join(__dirname, 'fixtures/speech.wav'));
+    const metadata = JSON.parse(
+      readFileSync(join(__dirname, 'fixtures/speech.json'), 'utf8'),
+    ) as { sha256: string; phrase: string };
+    const report: Record<string, unknown> = {
+      scope:
+        'Raw native browser audio inference; NOT a Hashbrown media adapter test.',
+      project: testInfo.project.name,
+      browserVersion: page.context().browser()?.version(),
+      fixture: metadata,
+      downloadAllowed: false,
+      limitations: [
+        'One generated speech fixture is a canary, not a transcription quality evaluation.',
+        'No microphone, personal files or browser content are accessed.',
+      ],
+    };
+
+    try {
+      expect(createHash('sha256').update(fixture).digest('hex')).toBe(
+        metadata.sha256,
+      );
+      await page.goto(
+        '/?runUrl=http://127.0.0.1/unused&scenario=structured&localModel=chrome',
+      );
+      const probes = await page.evaluate(async () => {
+        const runtime = globalThis as unknown as Record<string, unknown> & {
+          LanguageModel?: { availability(options: object): Promise<string> };
+        };
+        const text = { type: 'text', languages: ['en'] };
+        const options = {
+          expectedInputs: [text, { type: 'audio' }],
+          expectedOutputs: [text],
+        };
+        let toolsGetterRead = false;
+        const toolOptions = { expectedInputs: [text], expectedOutputs: [text] };
+        Object.defineProperty(toolOptions, 'tools', {
+          get() {
+            toolsGetterRead = true;
+            return [
+              {
+                name: 'syntheticColor',
+                description: 'Returns a synthetic color.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {},
+                  additionalProperties: false,
+                },
+              },
+            ];
+          },
+        });
+        const toolsAvailability =
+          await runtime.LanguageModel?.availability(toolOptions);
+        return {
+          options,
+          availability:
+            (await runtime.LanguageModel?.availability(options)) ?? 'missing',
+          globals: Object.fromEntries(
+            [
+              'LanguageModel',
+              'LanguageModelToolCall',
+              'LanguageModelToolSuccess',
+              'LanguageModelToolError',
+            ].map((name) => [name, typeof runtime[name]]),
+          ),
+          toolsDictionaryRecognition: { toolsAvailability, toolsGetterRead },
+          userAgent: navigator.userAgent,
+        };
+      });
+      report['probes'] = probes;
+      expect(
+        probes.availability,
+        'Audio inference requires an already available model; downloads are disabled.',
+      ).toBe('available');
+
+      await page.evaluate(
+        ({ options, bytes }) => {
+          const button = document.createElement('button');
+          button.textContent = 'Transcribe generated speech';
+          button.dataset['testid'] = 'native-audio';
+          const output = document.createElement('pre');
+          output.dataset['testid'] = 'native-audio-result';
+          output.textContent = 'pending';
+          document.body.append(button, output);
+          button.onclick = async () => {
+            const runtime = globalThis as unknown as {
+              LanguageModel: {
+                create(options: object): Promise<{
+                  prompt(input: object[], options: object): Promise<string>;
+                  destroy(): void;
+                }>;
+              };
+            };
+            let session:
+              | Awaited<ReturnType<typeof runtime.LanguageModel.create>>
+              | undefined;
+            const result: Record<string, unknown> = {
+              userActivationAtClick: navigator.userActivation.isActive,
+              options,
+            };
+            const started = performance.now();
+            try {
+              const setup = performance.now();
+              session = await runtime.LanguageModel.create({
+                ...options,
+                signal: AbortSignal.timeout(180_000),
+              });
+              result['setupMs'] = performance.now() - setup;
+              const blob = new Blob([new Uint8Array(bytes)], {
+                type: 'audio/wav',
+              });
+              const generation = performance.now();
+              result['answer'] = await session.prompt(
+                [
+                  {
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'text',
+                        value:
+                          'Transcribe the speech exactly. Return only the words spoken, with no explanation.',
+                      },
+                      { type: 'audio', value: blob },
+                    ],
+                  },
+                ],
+                { signal: AbortSignal.timeout(180_000) },
+              );
+              result['generationMs'] = performance.now() - generation;
+            } catch (cause) {
+              const failure = cause as Error;
+              result['error'] = {
+                name: failure.name,
+                message: failure.message,
+              };
+            } finally {
+              try {
+                session?.destroy();
+                result['sessionDestroyed'] = session !== undefined;
+              } catch (cause) {
+                const failure = cause as Error;
+                result['cleanupError'] = {
+                  name: failure.name,
+                  message: failure.message,
+                };
+              }
+              result['totalMs'] = performance.now() - started;
+              output.textContent = JSON.stringify(result);
+            }
+          };
+        },
+        { options: probes.options, bytes: Array.from(fixture) },
+      );
+
+      await page.getByTestId('native-audio').click();
+      await expect
+        .poll(() => page.getByTestId('native-audio-result').textContent(), {
+          timeout: 370_000,
+        })
+        .not.toBe('pending');
+      const content = await page
+        .getByTestId('native-audio-result')
+        .textContent();
+      if (!content) throw new Error('The audio probe returned no result.');
+      const result = JSON.parse(content) as Record<string, unknown>;
+      report['audio'] = result;
+      expect(result['error']).toBeUndefined();
+      expect(result['cleanupError']).toBeUndefined();
+      expect(result['userActivationAtClick']).toBe(true);
+      expect(result['sessionDestroyed']).toBe(true);
+      expect(result['answer']).toEqual(expect.any(String));
+      const normalized = String(result['answer'])
+        .toLowerCase()
+        .replace(/seven/g, '7')
+        .replace(/four/g, '4')
+        .replace(/two/g, '2')
+        .replace(/nine/g, '9')
+        .replace(/[^a-z0-9]/g, '');
+      expect(normalized).toBe('thesecretcodeis7429');
+    } finally {
+      await testInfo.attach('native-runtime-audio.json', {
         body: JSON.stringify(report, null, 2),
         contentType: 'application/json',
       });

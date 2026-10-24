@@ -1,0 +1,17 @@
+{
+  "phrase": "The secret code is seven four two nine.",
+  "source": "Generated offline with the installed macOS Samantha voice; no microphone, user file or network audio.",
+  "commands": [
+    "say -v Samantha -r 135 -o /tmp/hashbrown-local-speech.aiff \"The secret code is seven four two nine.\"",
+    "ffmpeg -y -i /tmp/hashbrown-local-speech.aiff -ar 16000 -ac 1 -c:a pcm_s16le /tmp/hashbrown-local-speech.wav"
+  ],
+  "mimeType": "audio/wav",
+  "encoding": "PCM signed 16-bit little endian",
+  "sampleRateHz": 16000,
+  "channels": 1,
+  "sampleWidthBytes": 2,
+  "frames": 39519,
+  "durationSeconds": 2.4699375,
+  "byteLength": 79116,
+  "sha256": "76bf758918d5c0c871bd6f23ff820e1a85e201d686426284d83fc70c8554922f"
+}
