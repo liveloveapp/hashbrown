@@ -421,3 +421,79 @@ test('keeps the final chunk as a RAW event before finishing', async () => {
     event: done,
   });
 });
+
+test('cancels the owned HTTP request before Ollama returns response headers', async () => {
+  resetOllamaMock();
+  const controller = new AbortController();
+  let requestSignal: AbortSignal | null | undefined;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = jest.fn((_url, init) => {
+    requestSignal = init?.signal;
+    return new Promise<Response>((_resolve, reject) => {
+      requestSignal?.addEventListener(
+        'abort',
+        () => reject(new Error('aborted')),
+        { once: true },
+      );
+    });
+  });
+  const ActualOllama =
+    jest.requireActual<typeof import('ollama')>('ollama').Ollama;
+  MockedOllama.mockImplementationOnce((config) => new ActualOllama(config));
+
+  try {
+    const iterator = text({
+      model: 'qwen3',
+      input: createInput(),
+      signal: controller.signal,
+    })[Symbol.asyncIterator]();
+    await iterator.next();
+    const pending = iterator.next();
+    await Promise.resolve();
+    controller.abort();
+    await pending;
+
+    expect(requestSignal?.aborted).toBe(true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('settles cancellation before a shared client returns its stream and aborts that late stream', async () => {
+  resetOllamaMock();
+  const controller = new AbortController();
+  const lateStream = createProviderStream([]);
+  let resolveStream!: (stream: typeof lateStream) => void;
+  const chat = jest.fn(
+    () =>
+      new Promise<typeof lateStream>((resolve) => {
+        resolveStream = resolve;
+      }),
+  );
+  const abort = jest.fn();
+  const client = { chat, abort } as unknown as Ollama;
+  const iterator = text({
+    client,
+    model: 'qwen3',
+    input: createInput(),
+    signal: controller.signal,
+  })[Symbol.asyncIterator]();
+  await iterator.next();
+  const pending = iterator.next();
+  let settled = false;
+  void pending.then(() => {
+    settled = true;
+  });
+
+  await Promise.resolve();
+  controller.abort();
+  for (let index = 0; index < 30; index += 1) await Promise.resolve();
+  const settledBeforeResponse = settled;
+  resolveStream(lateStream);
+  await pending;
+  for (let index = 0; index < 10; index += 1) await Promise.resolve();
+
+  expect(settledBeforeResponse).toBe(true);
+  expect(abort).not.toHaveBeenCalled();
+  expect(lateStream.abort).toHaveBeenCalledTimes(1);
+});

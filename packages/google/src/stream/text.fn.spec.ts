@@ -113,6 +113,14 @@ test('streams canonical AG-UI run and text events from Google', async () => {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'run-google:assistant',
       role: 'assistant',
+      metadata: {
+        google: {
+          responseId: 'run-google:assistant:response',
+          chunkIndex: 0,
+          partIndex: 0,
+          nativePart: { text: 'Hello from Google.' },
+        },
+      },
     },
     {
       type: EventType.TEXT_MESSAGE_CONTENT,
@@ -122,6 +130,23 @@ test('streams canonical AG-UI run and text events from Google', async () => {
     {
       type: EventType.TEXT_MESSAGE_END,
       messageId: 'run-google:assistant',
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'hashbrown.provider-history',
+      value: {
+        v: 1,
+        provider: 'google',
+        responseId: 'run-google:assistant:response',
+        ownerMessageId: 'run-google:assistant',
+        complete: true,
+        payload: {
+          contents: [
+            { role: 'model', parts: [{ text: 'Hello from Google.' }] },
+          ],
+          representedMessageIds: ['run-google:assistant'],
+        },
+      },
     },
     {
       type: EventType.RUN_FINISHED,
@@ -403,6 +428,7 @@ test('reports length when the answer hit MAX_TOKENS', async () => {
     EventType.TEXT_MESSAGE_START,
     EventType.TEXT_MESSAGE_CONTENT,
     EventType.TEXT_MESSAGE_END,
+    EventType.CUSTOM,
     EventType.RUN_FINISHED,
   ]);
   expect(events.at(-1)).toEqual(
@@ -520,5 +546,63 @@ test('reports other when the stream ends without a finish reason', async () => {
 
   expect(events.at(-1)).toEqual(
     finished({ hashbrown: { finishReason: 'other' } }),
+  );
+});
+
+test('validates unsupported transformed Vertex options before invoking Google', async () => {
+  const provider = mockProvider([]);
+
+  const events = await collectEvents(
+    createOptions({
+      apiKey: undefined,
+      vertexai: true,
+      project: 'p',
+      location: 'global',
+      transformRequestOptions: (request) => ({
+        ...request,
+        config: {
+          ...request.config,
+          toolConfig: { includeServerSideToolInvocations: true },
+        },
+      }),
+    }),
+  );
+
+  expect(events).toEqual([
+    expect.objectContaining({ type: EventType.RUN_STARTED }),
+    expect.objectContaining({
+      type: EventType.RUN_ERROR,
+      message: expect.stringContaining('Vertex'),
+    }),
+  ]);
+  expect(provider.generateContentStream).not.toHaveBeenCalled();
+});
+
+test('passes built-in defaults through the request transform', async () => {
+  const provider = mockProvider([]);
+  const transformRequestOptions = jest.fn((request) => ({
+    ...request,
+    config: { ...request.config, temperature: 0.25 },
+  }));
+
+  await collectEvents(
+    createOptions({
+      builtInTools: { webSearch: true },
+      transformRequestOptions,
+    }),
+  );
+
+  expect(transformRequestOptions).toHaveBeenCalledWith(
+    expect.objectContaining({
+      config: expect.objectContaining({
+        tools: [{ googleSearch: {} }],
+        toolConfig: { includeServerSideToolInvocations: true },
+      }),
+    }),
+  );
+  expect(provider.generateContentStream).toHaveBeenCalledWith(
+    expect.objectContaining({
+      config: expect.objectContaining({ temperature: 0.25 }),
+    }),
   );
 });

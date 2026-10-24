@@ -274,3 +274,39 @@ test('aborts and closes the provider iterator when the consumer returns early', 
   expect(abort).toHaveBeenCalledTimes(1);
   expect(close).toHaveBeenCalledTimes(1);
 });
+
+test('settles cancellation while the provider generator still has a pending read', async () => {
+  let releaseRead!: () => void;
+  const read = new Promise<void>((resolve) => {
+    releaseRead = resolve;
+  });
+  const abort = jest.fn();
+  const provider = {
+    abort,
+    async *[Symbol.asyncIterator]() {
+      await read;
+      yield createChunk({ message: { content: 'late' } });
+    },
+  };
+  const controller = new AbortController();
+  const iterator = mapOllamaEvents({
+    events: provider,
+    messageId: 'assistant',
+    signal: controller.signal,
+  });
+  const pending = iterator.next();
+  let settled = false;
+  void pending.then(() => {
+    settled = true;
+  });
+
+  controller.abort();
+  for (let index = 0; index < 30; index += 1) await Promise.resolve();
+  const settledBeforeRead = settled;
+  releaseRead();
+  const result = await pending;
+
+  expect(settledBeforeRead).toBe(true);
+  expect(result.done).toBe(true);
+  expect(abort).toHaveBeenCalledTimes(1);
+});

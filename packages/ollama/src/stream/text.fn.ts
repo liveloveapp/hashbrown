@@ -9,6 +9,39 @@ import { mapOllamaEvents } from './ollama-events';
 import { createOllamaRequestOptions } from './ollama-request';
 import type { OllamaTextStreamOptions } from './types';
 
+/** Waits for a run's stream without making cancellation wait for response headers. */
+async function waitForStream(
+  request: Promise<AbortableAsyncIterator<ChatResponse>>,
+  signal: AbortSignal | undefined,
+): Promise<AbortableAsyncIterator<ChatResponse> | undefined> {
+  if (!signal) {
+    return request;
+  }
+
+  let onAbort!: () => void;
+  try {
+    return await new Promise((resolve, reject) => {
+      onAbort = () => resolve(undefined);
+      signal.addEventListener('abort', onAbort, { once: true });
+      if (signal.aborted) {
+        onAbort();
+      }
+      void request
+        .then((stream) => {
+          if (signal.aborted) {
+            stream.abort();
+            resolve(undefined);
+          } else {
+            resolve(stream);
+          }
+        })
+        .catch(reject);
+    });
+  } finally {
+    signal.removeEventListener('abort', onAbort);
+  }
+}
+
 function normalizeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -41,7 +74,23 @@ async function* textEvents(
 
     const ownsClient = options.client === undefined;
     const client =
-      options.client ?? new Ollama(options.host ? { host: options.host } : {});
+      options.client ??
+      new Ollama({
+        ...(options.host ? { host: options.host } : {}),
+        ...(signal
+          ? {
+              // The SDK registers streams only after response headers arrive, so
+              // client.abort() alone cannot stop a pending HTTP request.
+              fetch: (input, init) =>
+                globalThis.fetch(input, {
+                  ...init,
+                  signal: init?.signal
+                    ? AbortSignal.any([signal, init.signal])
+                    : signal,
+                }),
+            }
+          : {}),
+      });
     const abortPendingRequest = () => {
       if (ownsClient) {
         client.abort();
@@ -49,12 +98,12 @@ async function* textEvents(
     };
     signal?.addEventListener('abort', abortPendingRequest, { once: true });
     try {
-      providerStream = await client.chat(request);
+      providerStream = await waitForStream(client.chat(request), signal);
     } finally {
       signal?.removeEventListener('abort', abortPendingRequest);
     }
-    if (signal?.aborted) {
-      providerStream.abort();
+    if (!providerStream || signal?.aborted) {
+      providerStream?.abort();
       return;
     }
 

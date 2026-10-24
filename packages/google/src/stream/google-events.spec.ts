@@ -47,11 +47,19 @@ test('maps streamed Google text into one AG-UI assistant lifecycle', async () =>
 
   const events = await collectEvents(responses);
 
-  expect(events).toEqual([
+  expect(events.filter((event) => event.type !== EventType.CUSTOM)).toEqual([
     {
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'run-google:assistant',
       role: 'assistant',
+      metadata: expect.objectContaining({
+        google: expect.objectContaining({
+          responseId: 'run-google:assistant:response',
+          chunkIndex: 0,
+          partIndex: 0,
+          nativePart: { text: 'Hello ' },
+        }),
+      }),
     },
     {
       type: EventType.TEXT_MESSAGE_CONTENT,
@@ -130,12 +138,17 @@ test('maps Google thought and function-call parts with continuation signatures',
 
   const events = await collectEvents(responses);
 
-  expect(events).toEqual([
+  expect(events.filter((event) => event.type !== EventType.CUSTOM)).toEqual([
     {
       type: EventType.REASONING_MESSAGE_START,
       messageId: 'run-google:assistant:reasoning:0',
       role: 'reasoning',
-      metadata: { google: { thought: true } },
+      metadata: {
+        google: expect.objectContaining({
+          thought: true,
+          nativePart: responses[0].candidates?.[0].content?.parts?.[0],
+        }),
+      },
     },
     {
       type: EventType.REASONING_MESSAGE_CONTENT,
@@ -157,7 +170,12 @@ test('maps Google thought and function-call parts with continuation signatures',
       toolCallId: 'call-google',
       toolCallName: 'lookup',
       parentMessageId: 'run-google:assistant',
-      metadata: { google: { functionCall: true } },
+      metadata: {
+        google: expect.objectContaining({
+          functionCall: true,
+          nativePart: responses[0].candidates?.[0].content?.parts?.[1],
+        }),
+      },
     },
     {
       type: EventType.TOOL_CALL_ARGS,
@@ -170,7 +188,16 @@ test('maps Google thought and function-call parts with continuation signatures',
       entityId: 'call-google',
       encryptedValue: 'tool-signature',
     },
-    { type: EventType.TOOL_CALL_END, toolCallId: 'call-google' },
+    {
+      type: EventType.TOOL_CALL_END,
+      toolCallId: 'call-google',
+      metadata: {
+        google: expect.objectContaining({
+          functionCall: true,
+          nativePart: responses[0].candidates?.[0].content?.parts?.[1],
+        }),
+      },
+    },
   ]);
 });
 
