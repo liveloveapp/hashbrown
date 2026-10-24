@@ -271,8 +271,9 @@ function startLeaseHeartbeat(
           leaseToken,
           now: dependencies.now(),
         });
+        // The lease is gone: a stop or deletion cancelled the job.
         if (!stopped && renewed === null) {
-          throw new Error('Lifecycle job lease renewal failed');
+          throw new JobLeaseConflictError(job.id);
         }
       })()
         .catch((error: unknown) => {
@@ -400,7 +401,10 @@ async function prepareTick(
  * HTTPS origin the tick raises `action_origin_invalid` and leases nothing;
  * before leasing, a completed send with no
  * Message-ID for 6 hours raises `message_id_unbound`. Each lease lasts 60 s and is renewed every 20 s
- * while the tick runs; a failed renewal aborts the loop. A
+ * while the tick runs; a renewal that finds the lease gone (the job was
+ * cancelled by a stop or deletion) stops that job's heartbeat and skips the
+ * job, aborting its handler if it is running, while any other renewal error
+ * aborts the loop. A
  * {@link DeterministicLifecycleJobError} quarantines its job
  * (`deterministic_job_poison`); a {@link JobLeaseConflictError} drops the job
  * (it is no longer ours); any other handler error defers the job
@@ -421,7 +425,7 @@ async function prepareTick(
  * @param input - The batch size, switches and abort signal.
  * @param dependencies - The tick's collaborators.
  * @throws When the batch size or enrollment start is invalid, the tick is
- *   aborted, a lease renewal fails, or releasing a failed job fails.
+ *   aborted, a lease renewal errors, or releasing a failed job fails.
  */
 export async function dispatchLifecycleJobs(
   input: LifecycleDispatcherInput,
@@ -502,10 +506,15 @@ export async function dispatchLifecycleJobs(
     };
     const signal = AbortSignal.any([input.signal, leaseFailure.signal]);
     const heartbeats = new Map<string, LeaseHeartbeat>();
+    // A lost lease concerns only its own job: that job is skipped (or its
+    // running handler aborted) and the rest of the batch carries on.
+    const leaseLost = new Map<string, AbortController>();
     for (const job of jobs) {
       if (!job.leaseToken) {
         throw new Error('Lifecycle leased job is missing its lease token');
       }
+      const lost = new AbortController();
+      leaseLost.set(job.id, lost);
       heartbeats.set(
         job.id,
         startLeaseHeartbeat(
@@ -513,7 +522,10 @@ export async function dispatchLifecycleJobs(
           job,
           job.leaseToken,
           dependencies,
-          failLease,
+          (error) => {
+            if (error instanceof JobLeaseConflictError) lost.abort(error);
+            else failLease(error);
+          },
         ),
       );
     }
@@ -522,6 +534,8 @@ export async function dispatchLifecycleJobs(
     try {
       for (const job of jobs) {
         signal.throwIfAborted();
+        const lost = (leaseLost.get(job.id) as AbortController).signal;
+        if (lost.aborted) continue;
         const leaseToken = job.leaseToken as string;
         const startAt = dependencies.now();
         if (budgetExhausted || budgetSpent(startAt)) {
@@ -548,7 +562,7 @@ export async function dispatchLifecycleJobs(
         try {
           const result = await dependencies.dispatchLeasedJob(executor, job, {
             appHandlers: dependencies.appHandlers,
-            signal,
+            signal: AbortSignal.any([signal, lost]),
           });
           // Release a paused job before honouring an abort, so it is not
           // left leased until the lease expires.
@@ -567,7 +581,7 @@ export async function dispatchLifecycleJobs(
           dispatched += 1;
         } catch (error) {
           signal.throwIfAborted();
-          if (error instanceof JobLeaseConflictError) continue;
+          if (lost.aborted || error instanceof JobLeaseConflictError) continue;
           // A job whose lease already authorized a submission may have
           // reached the provider. Never quarantine or return it to pending:
           // leave it leased so the lease expires and the next lease fails it

@@ -427,7 +427,7 @@ test('dispatcher reports an open recovery even with nothing leased and closes th
   expect(close).toHaveBeenCalledOnce();
 });
 
-test('dispatcher renews leases every 20 s and aborts the loop when a renewal fails', async () => {
+test('dispatcher renews leases every 20 s and aborts the loop when a renewal errors', async () => {
   vi.useFakeTimers({ now: NOW });
   try {
     const first = leasedJob('00000000-0000-4000-8000-000000000001');
@@ -444,7 +444,9 @@ test('dispatcher renews leases every 20 s and aborts the loop when a renewal fai
       leaseDueJobs: vi.fn().mockResolvedValue([first, second]),
       now: () => new Date(Date.now()),
     });
-    const failingRenewal = vi.fn().mockResolvedValue(null);
+    const failingRenewal = vi
+      .fn()
+      .mockRejectedValue(new Error('Lifecycle job lease renewal failed'));
     const failing = dependencies({
       dispatchLeasedJob: vi.fn().mockImplementation(
         async (_executor, _job, { signal }) =>
@@ -493,6 +495,132 @@ test('dispatcher renews leases every 20 s and aborts the loop when a renewal fai
     expect(result).toMatchObject({ leased: 2, dispatched: 2 });
     expect(failingRenewal).toHaveBeenCalledTimes(renewalsAtFailure);
     expect(failing.dispatchLeasedJob).toHaveBeenCalledOnce();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('a job whose lease is lost before its turn is skipped and the rest of the batch continues', async () => {
+  vi.useFakeTimers({ now: NOW });
+  try {
+    const slow = leasedJob('00000000-0000-4000-8000-000000000001');
+    const cancelled = leasedJob('00000000-0000-4000-8000-000000000002');
+    const healthy = leasedJob('00000000-0000-4000-8000-000000000003');
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const deps = dependencies({
+      dispatchLeasedJob: vi
+        .fn()
+        .mockImplementationOnce(async () => held.then(() => 'completed'))
+        .mockResolvedValue('completed'),
+      leaseDueJobs: vi.fn().mockResolvedValue([slow, cancelled, healthy]),
+      now: () => new Date(Date.now()),
+      renewJobLease: vi.fn(async (_executor, request) =>
+        request.jobId === cancelled.id ? null : leasedJob(request.jobId),
+      ),
+    });
+
+    const run = dispatchLifecycleJobs(
+      input({ batchSize: 3, tickJobStartBudgetMs: 120_000 }),
+      deps,
+    );
+    await vi.advanceTimersByTimeAsync(40_000);
+    release();
+    const result = await run;
+
+    expect(result).toMatchObject({ leased: 3, dispatched: 2 });
+    expect(
+      vi.mocked(deps.dispatchLeasedJob).mock.calls.map(([, job]) => job.id),
+    ).toEqual([slow.id, healthy.id]);
+    expect(
+      vi
+        .mocked(deps.renewJobLease)
+        .mock.calls.filter(([, request]) => request.jobId === cancelled.id),
+    ).toHaveLength(1);
+    expect(deps.deferJob).not.toHaveBeenCalled();
+    expect(deps.quarantineJob).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('a running job whose lease is lost is aborted alone and the next job still runs', async () => {
+  vi.useFakeTimers({ now: NOW });
+  try {
+    const running = leasedJob('00000000-0000-4000-8000-000000000001');
+    const healthy = leasedJob('00000000-0000-4000-8000-000000000002');
+    const deps = dependencies({
+      dispatchLeasedJob: vi
+        .fn()
+        .mockImplementationOnce(
+          async (_executor, _job, { signal }) =>
+            new Promise((_resolve, reject) => {
+              signal.addEventListener('abort', () => reject(signal.reason), {
+                once: true,
+              });
+            }),
+        )
+        .mockResolvedValue('completed'),
+      leaseDueJobs: vi.fn().mockResolvedValue([running, healthy]),
+      now: () => new Date(Date.now()),
+      renewJobLease: vi.fn(async (_executor, request) =>
+        request.jobId === running.id ? null : leasedJob(request.jobId),
+      ),
+    });
+
+    const run = dispatchLifecycleJobs(
+      input({ batchSize: 2, tickJobStartBudgetMs: 120_000 }),
+      deps,
+    );
+    await vi.advanceTimersByTimeAsync(20_000);
+    const result = await run;
+
+    expect(result).toMatchObject({ leased: 2, dispatched: 1 });
+    expect(deps.dispatchLeasedJob).toHaveBeenCalledTimes(2);
+    expect(deps.hasSubmissionAuthorization).not.toHaveBeenCalled();
+    expect(deps.deferJob).not.toHaveBeenCalled();
+    expect(deps.quarantineJob).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('a lease renewal that throws JobLeaseConflictError skips only that job', async () => {
+  vi.useFakeTimers({ now: NOW });
+  try {
+    const slow = leasedJob('00000000-0000-4000-8000-000000000001');
+    const cancelled = leasedJob('00000000-0000-4000-8000-000000000002');
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const deps = dependencies({
+      dispatchLeasedJob: vi
+        .fn()
+        .mockImplementationOnce(async () => held.then(() => 'completed'))
+        .mockResolvedValue('completed'),
+      leaseDueJobs: vi.fn().mockResolvedValue([slow, cancelled]),
+      now: () => new Date(Date.now()),
+      renewJobLease: vi.fn(async (_executor, request) => {
+        if (request.jobId === cancelled.id) {
+          throw new JobLeaseConflictError(cancelled.id);
+        }
+        return leasedJob(request.jobId);
+      }),
+    });
+
+    const run = dispatchLifecycleJobs(
+      input({ batchSize: 2, tickJobStartBudgetMs: 120_000 }),
+      deps,
+    );
+    await vi.advanceTimersByTimeAsync(20_000);
+    release();
+    const result = await run;
+
+    expect(result).toMatchObject({ leased: 2, dispatched: 1 });
+    expect(deps.dispatchLeasedJob).toHaveBeenCalledOnce();
   } finally {
     vi.useRealTimers();
   }

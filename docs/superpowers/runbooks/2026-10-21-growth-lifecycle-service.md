@@ -158,9 +158,11 @@ The workflow reads the switches, then runs these steps in order:
    `GROWTH_PUBLIC_ACTION_ORIGIN` is invalid (`action_origin_invalid`), nothing
    is leased.
 
-Each lease lasts 60 seconds and is renewed every 20 seconds. A job that can
-never succeed is quarantined (`deterministic_job_poison`) and the loop
-continues. Any other handler error logs `[lifecycle-job-failed]` (kind and
+Each lease lasts 60 seconds and is renewed every 20 seconds. A job whose lease
+is lost during the tick (a stop or deletion cancelled it) is skipped and the
+rest of the batch continues; any other renewal error fails the tick. A job
+that can never succeed is quarantined (`deterministic_job_poison`) and the
+loop continues. Any other handler error logs `[lifecycle-job-failed]` (kind and
 error name only), defers the job with `last_error_code = 'handler_error'` for
 `min(60 × 2^(attempts − 1), 3600)` seconds, and the loop continues. On the
 5th attempt the job is quarantined as `failed` with `handler_error_exhausted`
