@@ -159,10 +159,10 @@ The workflow reads the switches, then runs these steps in order:
    is leased.
 
 Each lease lasts 60 seconds and is renewed every 20 seconds. A job whose lease
-is lost during the tick (a stop or deletion cancelled it) is skipped and the
-rest of the batch continues; any other renewal error fails the tick. A job
-that can never succeed is quarantined (`deterministic_job_poison`) and the
-loop continues. Any other handler error logs `[lifecycle-job-failed]` (kind and
+is lost during the tick (a stop or deletion cancelled it, or the lease expired)
+is skipped, logging `[lifecycle-job-lease-lost]`, and the rest of the batch
+continues; any other renewal error fails the tick. A job that can never
+succeed is quarantined (`deterministic_job_poison`) and the loop continues. Any other handler error logs `[lifecycle-job-failed]` (kind and
 error name only), defers the job with `last_error_code = 'handler_error'` for
 `min(60 × 2^(attempts − 1), 3600)` seconds, and the loop continues. On the
 5th attempt the job is quarantined as `failed` with `handler_error_exhausted`
@@ -339,14 +339,15 @@ so nothing in a preview run may depend on it receiving mail.
 
 Logs from the cron (grep these):
 
-| Log line                           | Meaning                                                                         |
-| ---------------------------------- | ------------------------------------------------------------------------------- |
-| `[lifecycle-operator-alert]`       | The tick returned an alert; the alert name follows                              |
-| `[lifecycle-cron-failed]`          | The invoke failed (network, non-2xx or invalid state); retry next               |
-| `[lifecycle-cron-misconfigured]`   | `LIFECYCLE_CRON_ENABLED` is not exactly `true` or `false`                       |
-| `[lifecycle-job-failed]`           | A job's handler threw (kind and error name); it was deferred or quarantined     |
-| `[lifecycle-unbound-count-failed]` | The `message_id_unbound` count query failed; that alert is skipped for the tick |
-| `[lifecycle-thread-delete-failed]` | Deleting a finished run's b4run thread failed or timed out; harmless            |
+| Log line                           | Meaning                                                                                                        |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `[lifecycle-operator-alert]`       | The tick returned an alert; the alert name follows                                                             |
+| `[lifecycle-cron-failed]`          | The invoke failed (network, non-2xx or invalid state); retry next                                              |
+| `[lifecycle-cron-misconfigured]`   | `LIFECYCLE_CRON_ENABLED` is not exactly `true` or `false`                                                      |
+| `[lifecycle-job-failed]`           | A job's handler threw (kind and error name); it was deferred or quarantined                                    |
+| `[lifecycle-job-lease-lost]`       | A job's lease was lost mid-tick (cancelled by a stop or deletion, or expired); the job was skipped (kind only) |
+| `[lifecycle-unbound-count-failed]` | The `message_id_unbound` count query failed; that alert is skipped for the tick                                |
+| `[lifecycle-thread-delete-failed]` | Deleting a finished run's b4run thread failed or timed out; harmless                                           |
 
 A `[lifecycle-cron-failed]` on every tick, with no job dispatched, means the
 tick fails before leasing, which holds back all mail (`fulfill` and `notify`

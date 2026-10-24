@@ -247,6 +247,11 @@ async function submissionAuthorizationRecorded(
   return result.rows.length > 0;
 }
 
+/** Logs, by kind only, a job skipped because its lease was lost. */
+function logLeaseLost(job: GrowthJob): void {
+  console.warn('[lifecycle-job-lease-lost]', { kind: job.kind });
+}
+
 interface LeaseHeartbeat {
   stop: () => Promise<void>;
 }
@@ -271,7 +276,8 @@ function startLeaseHeartbeat(
           leaseToken,
           now: dependencies.now(),
         });
-        // The lease is gone: a stop or deletion cancelled the job.
+        // The lease is gone: a stop or deletion cancelled the job, or the
+        // lease expired.
         if (!stopped && renewed === null) {
           throw new JobLeaseConflictError(job.id);
         }
@@ -401,9 +407,10 @@ async function prepareTick(
  * HTTPS origin the tick raises `action_origin_invalid` and leases nothing;
  * before leasing, a completed send with no
  * Message-ID for 6 hours raises `message_id_unbound`. Each lease lasts 60 s and is renewed every 20 s
- * while the tick runs; a renewal that finds the lease gone (the job was
- * cancelled by a stop or deletion) stops that job's heartbeat and skips the
- * job, aborting its handler if it is running, while any other renewal error
+ * while the tick runs; a renewal that finds the lease gone (a stop or
+ * deletion cancelled the job, or the lease expired) stops that job's
+ * heartbeat and skips the job (logged as `[lifecycle-job-lease-lost]`),
+ * aborting its handler if it is running, while any other renewal error
  * aborts the loop. A
  * {@link DeterministicLifecycleJobError} quarantines its job
  * (`deterministic_job_poison`); a {@link JobLeaseConflictError} drops the job
@@ -535,7 +542,10 @@ export async function dispatchLifecycleJobs(
       for (const job of jobs) {
         signal.throwIfAborted();
         const lost = (leaseLost.get(job.id) as AbortController).signal;
-        if (lost.aborted) continue;
+        if (lost.aborted) {
+          logLeaseLost(job);
+          continue;
+        }
         const leaseToken = job.leaseToken as string;
         const startAt = dependencies.now();
         if (budgetExhausted || budgetSpent(startAt)) {
@@ -581,7 +591,11 @@ export async function dispatchLifecycleJobs(
           dispatched += 1;
         } catch (error) {
           signal.throwIfAborted();
-          if (lost.aborted || error instanceof JobLeaseConflictError) continue;
+          if (lost.aborted) {
+            logLeaseLost(job);
+            continue;
+          }
+          if (error instanceof JobLeaseConflictError) continue;
           // A job whose lease already authorized a submission may have
           // reached the provider. Never quarantine or return it to pending:
           // leave it leased so the lease expires and the next lease fails it

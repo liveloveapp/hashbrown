@@ -522,6 +522,10 @@ test('a job whose lease is lost before its turn is skipped and the rest of the b
       ),
     });
 
+    const warned = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+
     const run = dispatchLifecycleJobs(
       input({ batchSize: 3, tickJobStartBudgetMs: 120_000 }),
       deps,
@@ -531,6 +535,11 @@ test('a job whose lease is lost before its turn is skipped and the rest of the b
     const result = await run;
 
     expect(result).toMatchObject({ leased: 3, dispatched: 2 });
+    expect(warned).toHaveBeenCalledExactlyOnceWith(
+      '[lifecycle-job-lease-lost]',
+      { kind: cancelled.kind },
+    );
+    warned.mockRestore();
     expect(
       vi.mocked(deps.dispatchLeasedJob).mock.calls.map(([, job]) => job.id),
     ).toEqual([slow.id, healthy.id]);
@@ -570,6 +579,10 @@ test('a running job whose lease is lost is aborted alone and the next job still 
       ),
     });
 
+    const warned = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+
     const run = dispatchLifecycleJobs(
       input({ batchSize: 2, tickJobStartBudgetMs: 120_000 }),
       deps,
@@ -578,6 +591,11 @@ test('a running job whose lease is lost is aborted alone and the next job still 
     const result = await run;
 
     expect(result).toMatchObject({ leased: 2, dispatched: 1 });
+    expect(warned).toHaveBeenCalledExactlyOnceWith(
+      '[lifecycle-job-lease-lost]',
+      { kind: running.kind },
+    );
+    warned.mockRestore();
     expect(deps.dispatchLeasedJob).toHaveBeenCalledTimes(2);
     expect(deps.hasSubmissionAuthorization).not.toHaveBeenCalled();
     expect(deps.deferJob).not.toHaveBeenCalled();
