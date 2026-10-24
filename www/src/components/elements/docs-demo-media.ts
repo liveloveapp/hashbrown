@@ -1,5 +1,13 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'request-transformation': {
+    title: 'Add the context your server owns.',
+    caption:
+      'Ask about support. The server adds the workspace plan before the provider request.',
+    recording:
+      'Recorded with the checked React and Angular clients, Express server and OpenAI adapter. Provider responses are scripted locally. Presentation styles added. No live model call or narration.',
+    dimensions: { width: 1440, height: 900 },
+  },
   'local-models': {
     dimensions: { width: 1440, height: 900 },
     title: 'Prepare a model. Extract a trip brief.',

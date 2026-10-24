@@ -100,15 +100,15 @@ test.each(SDKS)(
   },
 );
 
-test('shows the CopilotKit recipe only in the React menu', () => {
+test('shows the Threadplane recipe in both SDK menus', () => {
   const texts = (sdk: Sdk) =>
     docsMenuSections(sdk).flatMap((s) => s.links.map((l) => l.text));
 
   const react = texts('react');
   const angular = texts('angular');
 
-  expect(react).toContain('CopilotKit');
-  expect(angular).not.toContain('CopilotKit');
+  expect(react).toContain('Threadplane');
+  expect(angular).toContain('Threadplane');
 });
 
 test('the SDK switcher links to the same page in the other SDK', () => {

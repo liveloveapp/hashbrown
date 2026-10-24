@@ -74,6 +74,12 @@ const nextConfig: NextConfig = {
           statusCode: 301 as const,
         })),
       ),
+      // Preserve bookmarks to the retired CopilotKit learning page.
+      ...['', '.md'].map((extension) => ({
+        source: `/docs/react/recipes/copilotkit${extension}`,
+        destination: '/docs/react/recipes/threadplane',
+        statusCode: 301 as const,
+      })),
       // The /samples pages were retired; the example app's docs page
       // describes atc now.
       ...['/samples', '/samples/:path*'].map((source) => ({
