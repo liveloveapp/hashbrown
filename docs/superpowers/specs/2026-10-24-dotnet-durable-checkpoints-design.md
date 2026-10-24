@@ -70,7 +70,7 @@ No lease renewal is required in this scope. Configure a lease long enough for or
 
 ### Cancellation, completion and expiry
 
-Before the dispatch marker, observed request cancellation conditionally releases the current claim. Non-cancellation preparation failures conservatively consume it. Release and finish always match the claim token/generation, so a stale worker cannot release or complete a successor's claim. Missing, already-finalized or superseded handles produce a safe no-op or explicit stale result rather than an unguarded lookup exception.
+Before the dispatch marker, observed request cancellation conditionally releases the current claim. Non-cancellation preparation failures conservatively consume it while its preparation lease remains valid. Lease expiry removes the worker's authority to dispatch or finalize, even before another worker takes over: an expired preparation failure leaves the batch reclaimable while approval remains valid. Release and finish always match the claim token/generation, so a stale worker cannot release or complete a successor's claim. Missing, expired, already-finalized or superseded handles produce a safe no-op or explicit stale result rather than an unguarded lookup exception.
 
 After the marker, cancellation, exceptions and process death retain conservative consumption. Record `Completed` only after execution returns successfully; execution exceptions become `FailedAfterEffect`. If finalization cannot reach PostgreSQL, retain the committed `EffectStarted` marker and report failure without rerunning execution. Cleanup uses a bounded server-owned cancellation budget so an already-aborted request token does not prevent necessary claim bookkeeping.
 
