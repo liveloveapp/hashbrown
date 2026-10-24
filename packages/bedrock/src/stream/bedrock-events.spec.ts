@@ -1,4 +1,5 @@
 import { type AGUIEvent, EventType } from '@ag-ui/core';
+import { encodeBedrockNative } from './bedrock-native';
 import { EventSchemas } from '@ag-ui/core/schemas';
 import type { ConverseStreamOutput } from '@aws-sdk/client-bedrock-runtime';
 import { mapBedrockEvents } from './bedrock-events';
@@ -48,6 +49,13 @@ test('maps streamed Bedrock text into one AG-UI assistant lifecycle', async () =
       type: EventType.TEXT_MESSAGE_START,
       messageId: 'run-bedrock:assistant',
       role: 'assistant',
+      metadata: {
+        bedrock: {
+          responseId: 'run-bedrock:assistant',
+          blockIndex: 0,
+          nativeBlock: encodeBedrockNative({ text: 'Hello ' }),
+        },
+      },
     },
     {
       type: EventType.TEXT_MESSAGE_CONTENT,
@@ -62,6 +70,27 @@ test('maps streamed Bedrock text into one AG-UI assistant lifecycle', async () =
     {
       type: EventType.TEXT_MESSAGE_END,
       messageId: 'run-bedrock:assistant',
+      metadata: {
+        bedrock: {
+          responseId: 'run-bedrock:assistant',
+          nativeBlock: encodeBedrockNative({ text: 'Hello world.' }),
+        },
+      },
+    },
+    {
+      type: EventType.CUSTOM,
+      name: 'hashbrown.provider-history',
+      value: {
+        v: 1,
+        provider: 'bedrock',
+        complete: true,
+        ownerMessageId: 'run-bedrock:assistant',
+        responseId: 'run-bedrock:assistant',
+        payload: {
+          content: encodeBedrockNative([{ text: 'Hello world.' }]),
+          representedMessageIds: ['run-bedrock:assistant'],
+        },
+      },
     },
   ]);
 });
@@ -130,7 +159,7 @@ test('supplies an empty object when Bedrock emits no tool input', async () => {
   });
 });
 
-test('maps Bedrock server tool use as raw events instead of a client tool call', async () => {
+test('maps Bedrock server tool use as a provider-owned lifecycle', async () => {
   const start: ConverseStreamOutput = {
     contentBlockStart: {
       contentBlockIndex: 0,
@@ -156,10 +185,17 @@ test('maps Bedrock server tool use as raw events instead of a client tool call',
     { contentBlockStop: { contentBlockIndex: 0 } },
   ]);
 
-  expect(events).toEqual([
-    { type: EventType.RAW, source: 'bedrock', event: start },
-    { type: EventType.RAW, source: 'bedrock', event: delta },
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.TOOL_CALL_START,
+    EventType.TOOL_CALL_ARGS,
+    EventType.TOOL_CALL_END,
+    EventType.TEXT_MESSAGE_END,
   ]);
+  expect(events[0]).toMatchObject({
+    metadata: {
+      'b4.step': { provider: 'bedrock', kind: 'provider', status: 'running' },
+    },
+  });
 });
 
 test('maps Bedrock reasoning text, signature, and redacted content', async () => {
@@ -193,7 +229,16 @@ test('maps Bedrock reasoning text, signature, and redacted content', async () =>
       type: EventType.REASONING_MESSAGE_START,
       messageId: 'run-bedrock:assistant:reasoning:0',
       role: 'reasoning',
-      metadata: { bedrock: { blockType: 'reasoning_text' } },
+      metadata: {
+        bedrock: {
+          blockType: 'reasoning_text',
+          responseId: 'run-bedrock:assistant',
+          blockIndex: 0,
+          nativeBlock: encodeBedrockNative({
+            reasoningContent: { reasoningText: { text: 'Thinking.' } },
+          }),
+        },
+      },
     },
     {
       type: EventType.REASONING_MESSAGE_CONTENT,
@@ -209,12 +254,33 @@ test('maps Bedrock reasoning text, signature, and redacted content', async () =>
     {
       type: EventType.REASONING_MESSAGE_END,
       messageId: 'run-bedrock:assistant:reasoning:0',
+      metadata: {
+        bedrock: {
+          responseId: 'run-bedrock:assistant',
+          blockIndex: 0,
+          blockType: 'reasoning_text',
+          nativeBlock: encodeBedrockNative({
+            reasoningContent: {
+              reasoningText: { text: 'Thinking.', signature: 'signature' },
+            },
+          }),
+        },
+      },
     },
     {
       type: EventType.REASONING_MESSAGE_START,
       messageId: 'run-bedrock:assistant:reasoning:1',
       role: 'reasoning',
-      metadata: { bedrock: { blockType: 'redacted_content' } },
+      metadata: {
+        bedrock: {
+          blockType: 'redacted_content',
+          responseId: 'run-bedrock:assistant',
+          blockIndex: 1,
+          nativeBlock: encodeBedrockNative({
+            reasoningContent: { redactedContent: new Uint8Array([1, 2, 3]) },
+          }),
+        },
+      },
     },
     {
       type: EventType.REASONING_ENCRYPTED_VALUE,
@@ -225,6 +291,16 @@ test('maps Bedrock reasoning text, signature, and redacted content', async () =>
     {
       type: EventType.REASONING_MESSAGE_END,
       messageId: 'run-bedrock:assistant:reasoning:1',
+      metadata: {
+        bedrock: {
+          responseId: 'run-bedrock:assistant',
+          blockIndex: 1,
+          blockType: 'redacted_content',
+          nativeBlock: encodeBedrockNative({
+            reasoningContent: { redactedContent: new Uint8Array([1, 2, 3]) },
+          }),
+        },
+      },
     },
   ]);
 });

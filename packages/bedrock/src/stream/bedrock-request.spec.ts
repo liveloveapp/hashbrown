@@ -1,3 +1,5 @@
+import { ɵPROVIDER_HISTORY_METADATA_KEY } from '@hashbrownai/core';
+import { encodeBedrockNative } from './bedrock-native';
 import type { RunAgentInput } from '@ag-ui/core';
 import { createBedrockRequestOptions } from './bedrock-request';
 
@@ -280,4 +282,112 @@ test('ignores a top-level hashbrown key', () => {
   const result = createBedrockRequestOptions(legacy, 'bedrock-model');
 
   expect(result).toEqual(createBedrockRequestOptions(bare, 'bedrock-model'));
+});
+
+test('adds native grounding defaults alongside application tools', () => {
+  const input = createInput();
+
+  const result = createBedrockRequestOptions(input, 'model', {
+    builtInTools: { webSearch: true },
+  });
+
+  expect(result.toolConfig?.tools?.[1]).toEqual({
+    systemTool: { name: 'nova_grounding' },
+  });
+  expect(result.toolConfig?.toolChoice).toEqual({ auto: {} });
+});
+
+test('filters foreign future provider calls and results from application replay', () => {
+  const input = createInput();
+  input.messages = [
+    {
+      id: 'a',
+      role: 'assistant',
+      content: 'answer',
+      toolCalls: [
+        {
+          id: 'p',
+          type: 'function',
+          function: { name: 'search', arguments: '{}' },
+          metadata: {
+            'b4.step': { v: 99, kind: 'provider', provider: 'other' },
+          },
+        },
+      ],
+    },
+    {
+      id: 'r',
+      role: 'tool',
+      toolCallId: 'p',
+      content: 'native',
+      metadata: { 'b4.step': { kind: 'provider', provider: 'other' } },
+    },
+  ];
+
+  const result = createBedrockRequestOptions(input, 'model');
+
+  expect(result.messages).toEqual([
+    { role: 'assistant', content: [{ text: 'answer' }] },
+  ]);
+});
+
+test('clones grounding object settings while fixing the native tool name', () => {
+  const input = createInput();
+  const settings = {};
+  const before = structuredClone(input);
+
+  const result = createBedrockRequestOptions(input, 'model', {
+    builtInTools: { webSearch: settings },
+  });
+
+  expect(result.toolConfig?.tools?.[1]).toEqual({
+    systemTool: { name: 'nova_grounding' },
+  });
+  expect(input).toEqual(before);
+  expect(settings).toEqual({});
+});
+
+test('replays ordered native content once at the earliest carrier through wire JSON', () => {
+  const input = createInput();
+  const content = [
+    { reasoningContent: { redactedContent: new Uint8Array([0, 255]) } },
+    { text: 'answer' },
+  ];
+  input.messages = [
+    {
+      id: 'reason',
+      role: 'reasoning',
+      content: '',
+      encryptedValue: 'AP8=',
+      metadata: {
+        bedrock: { responseId: 'response', blockType: 'redacted_content' },
+      },
+    },
+    {
+      id: 'answer',
+      role: 'assistant',
+      content: 'answer',
+      metadata: {
+        bedrock: { responseId: 'response' },
+        [ɵPROVIDER_HISTORY_METADATA_KEY]: {
+          v: 1,
+          provider: 'bedrock',
+          ownerMessageId: 'answer',
+          responseId: 'response',
+          complete: true,
+          payload: {
+            content: encodeBedrockNative(content),
+            representedMessageIds: ['reason', 'answer'],
+          },
+        },
+      },
+    },
+  ];
+  const restored = JSON.parse(JSON.stringify(input));
+  const before = structuredClone(restored);
+
+  const result = createBedrockRequestOptions(restored, 'model');
+
+  expect(result.messages).toEqual([{ role: 'assistant', content }]);
+  expect(restored).toEqual(before);
 });

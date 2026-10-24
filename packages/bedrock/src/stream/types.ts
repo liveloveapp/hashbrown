@@ -3,6 +3,7 @@ import type {
   BedrockRuntimeClient,
   BedrockRuntimeClientConfig,
   ConverseStreamCommandInput,
+  SystemTool,
 } from '@aws-sdk/client-bedrock-runtime';
 import type { ActivityCallback } from '@hashbrownai/core';
 
@@ -27,6 +28,12 @@ export interface BedrockHashbrownRunAgentInput extends RunAgentInput {
   } & Record<string, unknown>;
 }
 
+/** Provider-managed Bedrock tool configuration. @public */
+export interface BedrockBuiltInTools {
+  /** Enable Nova grounding. Returned citations and links must be displayed. */
+  webSearch?: true | Omit<SystemTool, 'name'>;
+}
+
 /**
  * Options for streaming an AG-UI run from Amazon Bedrock.
  *
@@ -48,6 +55,8 @@ export type BedrockTextStreamOptions = (
 ) & {
   /** Model or inference profile selected by the server for this endpoint. */
   model: string;
+  /** Provider-managed tools supported by the selected model and region. */
+  builtInTools?: BedrockBuiltInTools;
   /** Standard AG-UI run input plus optional Hashbrown semantics. */
   input: BedrockHashbrownRunAgentInput;
   /** Cancels the provider request when the HTTP request is abandoned. */

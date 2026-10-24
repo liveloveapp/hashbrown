@@ -9,6 +9,7 @@ export type {
   ActivityWriter,
 } from '@hashbrownai/core';
 export type {
+  BedrockBuiltInTools,
   BedrockHashbrownRunAgentInput,
   BedrockTextStreamOptions,
 } from './stream/types';

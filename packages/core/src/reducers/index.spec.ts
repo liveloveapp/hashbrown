@@ -2050,7 +2050,7 @@ test('reconciles metadata-only prepared compact text and reasoning chunks', () =
   });
 });
 
-test('keeps prepared structural caches equal to the canonical projection across event families', () => {
+test('keeps prepared structural caches equal to canonical content while retaining live argument completion', () => {
   const store = createStore({
     reducers,
     effects: [],
@@ -2166,7 +2166,9 @@ test('keeps prepared structural caches equal to the canonical projection across 
     },
   ];
 
+  let argumentsComplete = false;
   for (const event of events) {
+    if (event.type === EventType.TOOL_CALL_END) argumentsComplete = true;
     store.dispatch(apiActions.generateMessageEvent(event));
     const state = store.read((current) => current);
     const canonical = projectAgUiMessages(
@@ -2175,12 +2177,23 @@ test('keeps prepared structural caches equal to the canonical projection across 
       state.config.responseSchema,
     );
 
+    expect(state.toolCalls.entities['tool-b']?.argumentsComplete).toBe(
+      argumentsComplete ? true : undefined,
+    );
     expect(state.messages.draft).toEqual(canonical.messages);
     expect(state.toolCalls.ids).toEqual(
       canonical.toolCalls.map((tool) => tool.id),
     );
     expect(state.toolCalls.entities).toEqual(
-      Object.fromEntries(canonical.toolCalls.map((tool) => [tool.id, tool])),
+      Object.fromEntries(
+        canonical.toolCalls.map((tool) => [
+          tool.id,
+          {
+            ...tool,
+            ...(argumentsComplete ? { argumentsComplete: true } : {}),
+          },
+        ]),
+      ),
     );
   }
 
@@ -2204,7 +2217,12 @@ test('keeps prepared structural caches equal to the canonical projection across 
 
   expect(committed.messages.committed).toEqual(canonical.messages);
   expect(committed.toolCalls.entities).toEqual(
-    Object.fromEntries(canonical.toolCalls.map((tool) => [tool.id, tool])),
+    Object.fromEntries(
+      canonical.toolCalls.map((tool) => [
+        tool.id,
+        { ...tool, ...(argumentsComplete ? { argumentsComplete: true } : {}) },
+      ]),
+    ),
   );
 });
 

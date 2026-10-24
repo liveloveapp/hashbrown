@@ -29,9 +29,10 @@ The model or inference profile is server configuration and is not read from the 
 | `client`                  | `BedrockRuntimeClient`                  | _(Optional)_ Reusable AWS SDK client. Mutually exclusive with `clientOptions`.                             |
 | `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Bedrock request when the HTTP client disconnects.                                 |
 | `activities`              | `ActivityCallback`                      | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities). |
+| `builtInTools`            | `BedrockBuiltInTools`                   | _(Optional)_ Enables Nova web grounding with `webSearch`.                                                  |
 | `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final Bedrock `ConverseStreamCommandInput`.                                    |
 
-The adapter maps system and developer instructions, message history, tools, tool results, and native structured output. Bedrock reasoning text, signatures, and redacted reasoning become AG-UI reasoning records that can be sent back on continuation. Citations, images, response metadata, and unsupported native blocks are preserved as AG-UI `RAW` events. Provider and mapping failures are emitted as `RUN_ERROR` events.
+The adapter maps system and developer instructions, message history, tools, tool results, and native structured output. Bedrock reasoning text, signatures, and redacted reasoning become AG-UI reasoning records that can be sent back on continuation. Native server tools become provider steps, and grounding citations become answer sources and citations. Images, response metadata, and unsupported native blocks remain available as AG-UI `RAW` events. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
 Set `input.forwardedProps.hashbrown.responseSchema` to use Bedrock native structured output on a model that supports it:
 
@@ -230,6 +231,69 @@ export default app;
 </div>
 
 </hb-backend-code-example>
+
+## Built-in Tools
+
+Enable Nova web grounding with `builtInTools.webSearch`:
+
+```ts
+const stream = HashbrownBedrock.stream.text({
+  clientOptions: { region: 'us-east-1' },
+  model: process.env.BEDROCK_MODEL_ID!,
+  input,
+  builtInTools: { webSearch: true },
+});
+```
+
+`true` adds `{ systemTool: { name: 'nova_grounding' } }` alongside application
+tools. The exported `BedrockBuiltInTools` type also accepts a native configuration
+object; the installed SDK currently has no search settings beyond the fixed tool
+name. Choose a Nova model and region that support grounding and grant the required
+Bedrock tool permissions. See [AWS Nova web grounding](https://docs.aws.amazon.com/nova/latest/nova2-userguide/web-grounding.html).
+
+When Bedrock supplies a native `server_tool_use`, the adapter exposes it in
+`serverToolCalls` with its running state, label and timing. Its native result
+supplies the outcome and readable output. A matching application tool name does
+not change ownership: ordinary app calls still dispatch to your application.
+Closing an invocation or ending a run does not imply the provider tool succeeded.
+
+The public Bedrock code-execution enabling option and file search remain deferred.
+A native `nova_code_interpreter` call enabled through `transformRequestOptions`
+still becomes a provider step. Native errors and interpreter failures retain
+readable result content; application tool results remain separate.
+
+### Grounding Citations
+
+Assistant messages expose grounding through `sources` and `citations`, including
+responses where Nova supplies citations without announcing a tool invocation.
+Those responses do not create a synthetic tool call. Sources proven to come from
+a native tool result live on that tool's step; other grounding sources live on
+the answer. Citation source IDs link to either collection.
+
+Applications must retain and display Nova's returned citations and source links.
+Hashbrown is headless: your application renders those links. Citation quotes
+preserve available source text. Native document character, page, chunk and search
+result locations are source coordinates, so they are preserved for native replay
+and are not presented as answer-text offsets.
+
+### Native Conversation History
+
+The adapter stores ordered native assistant blocks in a
+`hashbrown.provider-history` CUSTOM footer on canonical message metadata. Preserve
+canonical messages and metadata when persisting history. Complete captures replay
+once in their original order, including server calls and results, interleaved
+text, citations, signed reasoning, and redacted bytes. Application tool results
+remain user-role results at their original chronological positions.
+
+Only a normally completed response with a native message stop and closed content
+blocks receives a usable complete capture. Aborted or truncated native responses
+cannot safely resume from an invented reconstruction. Legacy text, client-tool
+and supported reasoning histories retain their existing replay path; unsafe
+provider-native history without a complete capture fails with an input error.
+
+Existing integration recordings cover app-tool and streaming regressions. The
+current recorder does not preserve the native system-tool, server-result and
+citation protocol faithfully; deterministic SDK-shaped tests cover those paths.
 
 ## AWS Credentials and Client Reuse
 
@@ -485,6 +549,69 @@ export default app;
 </div>
 
 </hb-backend-code-example>
+
+## Built-in Tools
+
+Enable Nova web grounding with `builtInTools.webSearch`:
+
+```ts
+const stream = HashbrownBedrock.stream.text({
+  clientOptions: { region: 'us-east-1' },
+  model: process.env.BEDROCK_MODEL_ID!,
+  input,
+  builtInTools: { webSearch: true },
+});
+```
+
+`true` adds `{ systemTool: { name: 'nova_grounding' } }` alongside application
+tools. The exported `BedrockBuiltInTools` type also accepts a native configuration
+object; the installed SDK currently has no search settings beyond the fixed tool
+name. Choose a Nova model and region that support grounding and grant the required
+Bedrock tool permissions. See [AWS Nova web grounding](https://docs.aws.amazon.com/nova/latest/nova2-userguide/web-grounding.html).
+
+When Bedrock supplies a native `server_tool_use`, the adapter exposes it in
+`serverToolCalls` with its running state, label and timing. Its native result
+supplies the outcome and readable output. A matching application tool name does
+not change ownership: ordinary app calls still dispatch to your application.
+Closing an invocation or ending a run does not imply the provider tool succeeded.
+
+The public Bedrock code-execution enabling option and file search remain deferred.
+A native `nova_code_interpreter` call enabled through `transformRequestOptions`
+still becomes a provider step. Native errors and interpreter failures retain
+readable result content; application tool results remain separate.
+
+### Grounding Citations
+
+Assistant messages expose grounding through `sources` and `citations`, including
+responses where Nova supplies citations without announcing a tool invocation.
+Those responses do not create a synthetic tool call. Sources proven to come from
+a native tool result live on that tool's step; other grounding sources live on
+the answer. Citation source IDs link to either collection.
+
+Applications must retain and display Nova's returned citations and source links.
+Hashbrown is headless: your application renders those links. Citation quotes
+preserve available source text. Native document character, page, chunk and search
+result locations are source coordinates, so they are preserved for native replay
+and are not presented as answer-text offsets.
+
+### Native Conversation History
+
+The adapter stores ordered native assistant blocks in a
+`hashbrown.provider-history` CUSTOM footer on canonical message metadata. Preserve
+canonical messages and metadata when persisting history. Complete captures replay
+once in their original order, including server calls and results, interleaved
+text, citations, signed reasoning, and redacted bytes. Application tool results
+remain user-role results at their original chronological positions.
+
+Only a normally completed response with a native message stop and closed content
+blocks receives a usable complete capture. Aborted or truncated native responses
+cannot safely resume from an invented reconstruction. Legacy text, client-tool
+and supported reasoning histories retain their existing replay path; unsafe
+provider-native history without a complete capture fails with an input error.
+
+Existing integration recordings cover app-tool and streaming regressions. The
+current recorder does not preserve the native system-tool, server-result and
+citation protocol faithfully; deterministic SDK-shaped tests cover those paths.
 
 ## AWS Credentials and Client Reuse
 
