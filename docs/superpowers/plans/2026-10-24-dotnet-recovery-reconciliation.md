@@ -15,7 +15,7 @@
 - [x] Reuse the current isolated worktree and start `blove/dotnet-recovery-reconciliation` from fetched main (`9b4ef137`). Working tree was clean.
 - [x] Explore three approaches, choose explicit atomic restore rather than synthetic recovery generations or a general session service, write and review the spec.
 - [x] Establish the existing interrupt baseline: `npx nx test core --runInBand --testPathPatterns=chat-runtime-interrupt.spec --output-style=static`, 22 tests passed. Existing Nx/Vite/color notices remain.
-- [ ] Independently review this plan, resolve material findings and commit it before implementation.
+- [x] Independently review this plan, resolve material findings and commit it before implementation.
 
 Use one Nx graph at a time. Do not run builds from separate agents against shared outputs. Root coordinates graph ownership, hooks and commits. All tests use top-level `test(...)` with arrange/act/assert blanks. Read applicable repository instructions; keep public doc comments and public framework types free of internal `ɵ` types. Do not change another workspace's processes or ports. Do not add dependencies without user approval.
 
@@ -44,10 +44,11 @@ interface ConversationRecoveryState {
   readonly revision: number;
   readonly required: boolean;
 }
-// On runtime: recovery signal and restoreConversation(snapshot, { expectedRevision }): void.
+// On runtime: recovery signal, getRecoveryConfiguration(), and restoreConversation(snapshot, { expectedRevision }): void.
 ```
 
 - [ ] Validate with existing canonical message/interrupt/JSON helpers, build trusted projections from current local schema/tools and atomically commit a dedicated restore action. Retire old ownership and drafts/errors/terminal metadata. Mint a fresh local batch. Preserve runtime configuration and configured system text; validate/adopt only the supplied first overlay ID and remove only that overlay from stored canonical history.
+- [ ] Write a failing pure-configuration getter test, then expose `getRecoveryConfiguration()` on runtime/facades using the same native request configuration construction as generation. Return only owned current system/tools/forwardedProps; no handler/credential/run data or probe generation. Test structured/UI request schemas and configuration revision invalidation.
 - [ ] Implement local revision invalidation and idle reservation/CAS checks, including queued/reentrant actions. Suppress implicit generation on initial effect startup and restart. Historical tools must stay inert both on restore and on later sends.
 - [ ] Write failing facade tests, then forward recovery signal/value and command through chat, structured/UI and related completion facades. Add completion-input restoration suppression so an unchanged current input is consumed rather than automatically resent after an epoch change. New explicit input retains ordinary semantics.
 - [ ] Verify stale asynchronous recovery cannot overwrite a newer idle thread or configuration. Verify old local batch IDs stay stale even when server IDs and thread are identical. Verify the effective configured system overlay and subsequent system updates keep the adopted ID.
@@ -64,7 +65,7 @@ interface ConversationRecoveryState {
 
 - [ ] Write an HTTP regression first: create a pending batch on A, kill A, query recovery on B using the same authenticated principal and current system/tools/forwarded configuration. Assert the owned original request and public interrupts return, with no model/effect calls. Observe the missing-endpoint failure before implementation.
 - [ ] Extend memory and PostgreSQL contracts with owned original input, recovery-visible revision, independent generation outcome and bounded terminal snapshot. Keep privileged args and claim/capture handles out of public DTOs. Implement original-request size checks before accepting a checkpoint.
-- [ ] Implement schema version 1-to-2 migration under the startup advisory lock; clean creation must produce the same final schema. Legacy rows without original input remain safe and truthfully unavailable. Add independent audit retention, scoped lookup/list indexes, bounded cleanup and tests for concurrent migration/startup.
+- [ ] Persist original native request bytes/text rather than JSONB, preserving fingerprint-significant property order. Implement schema version 1-to-2 migration under the startup advisory lock; clean creation must produce the same final schema. Legacy rows without original input remain safe and truthfully unavailable. Add independent audit retention, scoped lookup/list indexes, bounded cleanup and tests for concurrent migration/startup.
 - [ ] Add deterministic failing tests before missing behavior: current config mismatch; wrong principal/role; malformed/oversized requests; expiry, active lease and expired lease; legacy/future schema; database/registry failures; terminal output capture/persistence failure; retained history limits; scoped listing and audit retention.
 - [ ] Implement opt-in recovery builder with required authorization policy and server scope resolver. Use bounded read-only POST `/threads/{threadId}/recovery`; derive scope from authenticated principal, return no-store versioned envelopes, and use nondisclosing 404 before compatibility checks. Compare current tools/forwarded configuration and first configured system prefix. Return busy/unknown/expired/terminal disposition independently of optional restorable history.
 - [ ] Implement bounded incremental native SSE observation and a pure supported-event-to-canonical-history fold. Cover UTF-8/frame chunk boundaries, multiple frames, tool results, structured text, unsupported/incomplete events and byte/message limits. Capture only checkpoint-associated output, never replay stored events. Persist successful terminal history before acknowledging its terminal event; otherwise mark unavailable without undoing or repeating effects.
