@@ -294,7 +294,14 @@ export async function* mapOllamaEvents(
       abortProvider();
     }
     try {
-      await iterator.return?.();
+      const cleanup = iterator.return?.();
+      if (options.signal?.aborted) {
+        // An async generator queues return() behind its pending next(). Keep
+        // cleanup running without delaying cancellation on an unresponsive read.
+        void cleanup?.catch(() => undefined);
+      } else {
+        await cleanup;
+      }
     } catch (error: unknown) {
       cleanupFailed = true;
       cleanupError = error;

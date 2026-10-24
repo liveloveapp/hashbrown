@@ -286,6 +286,43 @@ test('maps parallel function calls with interleaved argument deltas by item id',
   ]);
 });
 
+test.each(['incomplete', 'in_progress'] as const)(
+  'does not complete a function call whose output item is %s',
+  async (status) => {
+    const input = [
+      functionCallAdded('fc_1', 'call_1', 'lookup'),
+      argsDelta('fc_1', '{"query":'),
+      event({
+        type: 'response.output_item.done',
+        output_index: 0,
+        item: {
+          type: 'function_call',
+          id: 'fc_1',
+          call_id: 'call_1',
+          name: 'lookup',
+          arguments: '{"query":',
+          status,
+        },
+      }),
+      event({
+        type: 'response.incomplete',
+        response: {
+          status: 'incomplete',
+          incomplete_details: { reason: 'max_output_tokens' },
+          output: [],
+        },
+      }),
+    ];
+
+    const events = await collectEvents(input);
+
+    expect(events.map((output) => output.type)).toEqual([
+      EventType.TOOL_CALL_START,
+      EventType.TOOL_CALL_ARGS,
+    ]);
+  },
+);
+
 test('records reasoning item ids on the text message and tool calls that follow', async () => {
   const input = [
     reasoningAdded('rs_1'),

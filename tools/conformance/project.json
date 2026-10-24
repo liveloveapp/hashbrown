@@ -90,7 +90,8 @@
         }
       ],
       "options": {
-        "command": "LOCAL_LLM_NATIVE=1 playwright test --config tools/conformance/local-models.playwright.config.ts"
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts",
+        "env": { "LOCAL_LLM_NATIVE": "1" }
       }
     },
     "local-webllm-smoke": {
@@ -103,7 +104,29 @@
         }
       ],
       "options": {
-        "command": "LOCAL_LLM_WEBLLM=1 playwright test --config tools/conformance/local-models.playwright.config.ts"
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts",
+        "env": { "LOCAL_LLM_WEBLLM": "1" }
+      }
+    },
+    "local-provider-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "playwright test --config tools/conformance/local-provider.playwright.config.ts"
+      }
+    },
+    "local-native-capability-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts --grep=\"native runtime capabilities\"",
+        "env": { "LOCAL_LLM_NATIVE": "1", "LOCAL_LLM_CAPABILITIES": "1" }
       }
     }
   },
@@ -114,6 +137,7 @@
     "testing",
     "openai",
     "runtime-smoke-angular",
-    "runtime-smoke-react"
+    "runtime-smoke-react",
+    "ollama"
   ]
 }

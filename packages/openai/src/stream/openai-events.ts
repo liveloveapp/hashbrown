@@ -530,6 +530,10 @@ function mapItemDone(
   }
 
   if (item.type === 'function_call') {
+    // A done event can carry a truncated item; only completed calls may run.
+    if (item.status === 'incomplete' || item.status === 'in_progress') {
+      return { state, events: [] };
+    }
     const key = item.id ?? item.call_id;
     const toolCall = state.toolCalls.get(key);
     if (!toolCall) {
