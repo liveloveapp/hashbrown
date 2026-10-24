@@ -1,0 +1,9 @@
+local-models
+
+Recorded through the checked React component after both React and Angular passed the same browser checks. Actual native Chrome inference: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36. Presentation styles added; no API key or narration. Model output can vary. The recorder used a dedicated test profile and started no model download. Separate deterministic LanguageModel shims verify failure and recovery contracts; they are not the primary footage and do not establish Edge or mobile inference support.
+
+The first two seconds preview the final result. The complete interaction follows.
+
+Select Prepare model for an already available model, then Generate locally for “Three days in Lisbon.” The checked React client uses Hashbrown’s experimental Chrome transport and displays only the settled, validated destination and integer day count. Both React and Angular passed the same real inference task before this recording.
+
+The recording ends with a brief hold on the result. Error, cancellation, stale-response and recovery behavior are checked separately in both frameworks.

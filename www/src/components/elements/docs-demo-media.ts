@@ -1,5 +1,13 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'local-models': {
+    dimensions: { width: 1440, height: 900 },
+    title: 'Prepare a model. Extract a trip brief.',
+    caption:
+      'Prepare Chrome’s browser-managed model and generate a typed destination and trip length on-device.',
+    recording:
+      'Recorded with real Chrome inference through the checked clients and local transport. React recorded; Angular verified. Presentation styles added. No scripted answer, hosted model call, API key or narration.',
+  },
   'agent-routing': {
     dimensions: { width: 1440, height: 900 },
     title: 'Choose a route. Run your handler.',

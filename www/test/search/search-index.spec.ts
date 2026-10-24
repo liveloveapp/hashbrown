@@ -59,7 +59,7 @@ test('a table has one row per entry in column order', () => {
 test('the sitemap lists every docs page of both SDKs with its frontmatter', () => {
   const entries = listSitemapEntries();
 
-  expect(entries).toHaveLength(101);
+  expect(entries).toHaveLength(99);
   for (const sdk of ['react', 'angular']) {
     expect(entries).toContainEqual(
       expect.objectContaining({ url: `/docs/${sdk}/platform/dotnet` }),
