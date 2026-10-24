@@ -80,6 +80,7 @@
     "check-docs": {
       "executor": "nx:run-commands",
       "cache": false,
+      "inputs": ["default", "^default"],
       "dependsOn": ["build"],
       "options": {
         "command": "node tools/conformance/dotnet/verify-recipe.mjs"

@@ -12,6 +12,11 @@ import { fileURLToPath } from 'node:url';
 
 const source = dirname(fileURLToPath(import.meta.url));
 const root = resolve(source, '../../..');
+const replaceExactlyOnce = (text, target, replacement) => {
+  if (text.split(target).length !== 2)
+    throw new Error(`Expected exactly one recipe insertion target: ${target}`);
+  return text.replace(target, replacement);
+};
 const blocks = (sdk) =>
   [
     ...readFileSync(
@@ -21,11 +26,11 @@ const blocks = (sdk) =>
   ].map((match) => match[1]);
 const react = blocks('react');
 if (
-  react.length !== 2 ||
+  react.length !== 3 ||
   JSON.stringify(react) !== JSON.stringify(blocks('angular'))
 )
   throw new Error(
-    'Both framework recipes must contain the same two tested server examples.',
+    'Both framework recipes must contain the same three tested server examples.',
   );
 const directory = mkdtempSync(join(tmpdir(), 'hashbrown-dotnet-recipe-'));
 try {
@@ -37,28 +42,40 @@ try {
     'Integration',
   ])
     cpSync(join(source, name), join(directory, name), { recursive: true });
-  for (const confirmation of [false, true]) {
-    let program = react[0];
-    if (confirmation) {
-      program = program
-        .replace(
+  for (const durable of [false, true]) {
+    for (const confirmation of [false, true]) {
+      let program = react[0];
+      if (durable)
+        program = replaceExactlyOnce(
+          program,
+          'IInterruptStore pending = new PendingInterruptStore(TimeProvider.System, registry);',
+          react[2],
+        );
+      if (confirmation) {
+        program = replaceExactlyOnce(
+          program,
           'HashbrownEndpointConfiguration.Map(',
           `${react[1]}\n\nHashbrownEndpointConfiguration.Map(`,
-        )
-        .replace(
+        );
+        program = replaceExactlyOnce(
+          program,
           'app, "/run", agent, pending, Scope,',
           'app, "/run", confirmedAgent, pending, Scope,',
         );
+      }
+      console.log(
+        `Compiling ${durable ? 'PostgreSQL' : 'memory'} recipe, confirmation=${confirmation}`,
+      );
+      writeFileSync(join(directory, 'Program.cs'), program);
+      execFileSync('dotnet', ['restore', '--locked-mode'], {
+        cwd: directory,
+        stdio: 'inherit',
+      });
+      execFileSync('dotnet', ['build', '--no-restore'], {
+        cwd: directory,
+        stdio: 'inherit',
+      });
     }
-    writeFileSync(join(directory, 'Program.cs'), program);
-    execFileSync('dotnet', ['restore', '--locked-mode'], {
-      cwd: directory,
-      stdio: 'inherit',
-    });
-    execFileSync('dotnet', ['build', '--no-restore'], {
-      cwd: directory,
-      stdio: 'inherit',
-    });
   }
 } finally {
   rmSync(directory, { recursive: true, force: true });
