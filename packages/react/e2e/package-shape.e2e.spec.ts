@@ -313,9 +313,10 @@ test('packed React and core packages install and load in a clean consumer', () =
         }
 
         if (
-          partialJsonPackage.version !== '0.3.0' ||
-          partialJsonPackage.dependencies?.['@cacheplane/json-stream'] !==
-            '^0.1.0' ||
+          !/^0\\.3\\.\\d+$/.test(partialJsonPackage.version) ||
+          !/^\\^0\\.1\\.\\d+$/.test(
+            partialJsonPackage.dependencies?.['@cacheplane/json-stream'] ?? '',
+          ) ||
           !/^0\\.1\\.\\d+$/.test(jsonStreamPackage.version)
         ) {
           throw new Error('React resolved incompatible Cacheplane packages');
