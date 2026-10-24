@@ -97,7 +97,7 @@
       },
       "dependsOn": [
         {
-          "projects": ["core", "react", "angular", "openai"],
+          "projects": ["core", "react", "angular", "openai", "typesafe"],
           "target": "build"
         }
       ]
@@ -145,6 +145,18 @@
         "commands": [
           "ngc -p www/examples/quickstart/tsconfig.record.json",
           "tsx www/src/tools/record-docs-production.ts"
+        ],
+        "parallel": false
+      },
+      "dependsOn": ["typecheck"]
+    },
+    "docs-recipes-demo": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "commands": [
+          "ngc -p www/examples/quickstart/tsconfig.record.json",
+          "tsx www/src/tools/record-docs-recipes.ts"
         ],
         "parallel": false
       },

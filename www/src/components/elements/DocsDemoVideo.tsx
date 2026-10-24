@@ -11,6 +11,8 @@ export function DocsDemoVideo({ demo }: { demo: DocsDemoId }) {
     throw new Error(`Unknown documentation demo: ${demo}`);
   }
   const media = DOCS_DEMOS[demo];
+  const { width, height } =
+    'dimensions' in media ? media.dimensions : { width: 1440, height: 810 };
   const base = `/video/docs/${demo}`;
 
   return (
@@ -18,8 +20,9 @@ export function DocsDemoVideo({ demo }: { demo: DocsDemoId }) {
       <video
         aria-label={media.title}
         poster={`${base}-poster.png`}
-        width={1440}
-        height={810}
+        width={width}
+        height={height}
+        style={{ aspectRatio: `${width} / ${height}` }}
         controls
         playsInline
         preload="none"

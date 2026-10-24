@@ -46,64 +46,77 @@ The first recording demonstrates generating, reviewing and explicitly applying a
 
 `concept/schema`, `concept/structured-output`, `concept/streaming`, and the natural-language recipe now form one sequence. The schema page retains the ATC filter recording as a second use case and introduces the smaller checked list used by subsequent pages. The earlier ATC streaming asset remains available, but the Streaming guide now uses its own list interaction.
 
+## Assisted interface recordings
+
+Three task-based recipes use the checked clients in `www/examples/quickstart` and shared helpers in `runtime`. Both SDKs are exercised before React supplies the shared recordings. All three include MP4/WebM, a poster, captions, a text walkthrough and a result screenshot.
+
+| Recording ID             | Pages                        | Recorded interaction                                                                                                          |
+| ------------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `magic-text`             | `recipes/magic-text`         | Stream a Markdown packing reply, then select a resolved citation to open application-owned source details without navigation. |
+| `predictive-suggestions` | `recipes/predictive-actions` | Request a context-bound packing proposal, accept Passport and dismiss Phone charger without another completion request.       |
+| `ui-selection`           | `recipes/ui-selection`       | Choose between a shopping summary and item list while keeping the item names and quantities in application code.              |
+
+Magic Text and suggestions use scripted AG-UI responses; UI selection uses scripted decision responses. These are real client interactions with added presentation CSS, no narration or live model calls. The packing list is component-local state. A source citation does not establish factual correctness, and decision confidence is not a calibrated measure of usefulness. The checked `server/selection-server.ts` pins the selection questions for real TypeSafe requests; the recorder substitutes responses without requiring credentials.
+
 ## Remaining production work
 
 Record the uncovered tasks listed below using each guide's own interaction. Each recording needs a deterministic fixture, an example owner, a visible success result, and a written guide that stands on its own. Reuse installed recording tools; no new hosting dependency.
 
 ## Page coverage
 
-| Page                                          | Status                | Recording or remaining work                                                                            |
-| --------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
-| `concept/activities`                          | Recorded              | activities                                                                                             |
-| `concept/ai-basics`                           | Recorded              | conversation                                                                                           |
-| `concept/components`                          | Recorded              | generative-ui                                                                                          |
-| `concept/debugging`                           | Recorded              | debugging                                                                                              |
-| `concept/decisions`                           | Recorded              | decisions                                                                                              |
-| `concept/functions`                           | Recorded              | browser-tools                                                                                          |
-| `concept/interrupt-and-resume`                | Recorded              | interrupts                                                                                             |
-| `concept/message-history`                     | Recorded              | persistence; completed text only                                                                       |
-| `concept/runtime`                             | Recorded              | javascript-runtime; real QuickJS calculation, errors, and recovery.                                    |
-| `concept/schema`                              | Recorded              | schemas                                                                                                |
-| `concept/shared-agent-state`                  | Recorded              | shared-state                                                                                           |
-| `concept/streaming`                           | Recorded              | streaming-data                                                                                         |
-| `concept/structured-output`                   | Recorded              | structured-form                                                                                        |
-| `concept/system-instructions`                 | Recorded              | conversation                                                                                           |
-| `concept/transform-request-options`           | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `guide/choosing-model`                        | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                 |
-| `guide/ethics`                                | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                 |
-| `guide/prompt-engineering`                    | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                 |
-| `migrations/v0-5`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                      |
-| `migrations/v0-6`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                      |
-| `migrations/v0-7`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                      |
-| `migrations/v0-8`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                      |
-| `platform/anthropic`                          | Intentional exception | Credentials and host configuration belong in named, copyable files.                                    |
-| `platform/azure`                              | Intentional exception | Credentials and host configuration belong in named, copyable files.                                    |
-| `platform/bedrock`                            | Intentional exception | Credentials and host configuration belong in named, copyable files.                                    |
-| `platform/custom`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                    |
-| `platform/google`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                    |
-| `platform/ollama`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                    |
-| `platform/openai`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                    |
-| `platform/typesafe`                           | Intentional exception | Credentials and host configuration belong in named, copyable files.                                    |
-| `recipes/browser-history`                     | Recorded              | persistence; application-owned versioned browser storage of completed text.                            |
-| `recipes/copilotkit`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/decisions-in-agents`                 | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/json-parser`                         | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/local-models`                        | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/magic-text`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/natural-language-to-structured-data` | Recorded              | structured-form; generate a typed draft, validate, review, and explicitly apply.                       |
-| `recipes/predictive-actions`                  | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/public-endpoint`                     | Recorded              | public-endpoint; session and owner checks before scripted provider streaming.                          |
-| `recipes/remote-mcp`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/threads`                             | Recorded              | server-threads; server-owned completed text, version conflict, and explicit reload.                    |
-| `recipes/ui-chatbot`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/ui-kits`                             | Recorded              | ui-kits                                                                                                |
-| `recipes/ui-selection`                        | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `start/how-it-works`                          | Recorded              | welcome-card; follows the same component through the request path                                      |
-| `start/intro`                                 | Recorded              | welcome-card                                                                                           |
-| `start/overview`                              | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `start/platforms`                             | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `start/quick`                                 | Recorded              | welcome-card                                                                                           |
-| `start/sample`                                | Recorded              | Existing `www-atc-demo-video` player; full ATC interaction.                                            |
+| Page                                          | Status                | Recording or remaining work                                                                                      |
+| --------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `concept/activities`                          | Recorded              | activities                                                                                                       |
+| `concept/ai-basics`                           | Recorded              | conversation                                                                                                     |
+| `concept/components`                          | Recorded              | generative-ui                                                                                                    |
+| `concept/debugging`                           | Recorded              | debugging                                                                                                        |
+| `concept/decisions`                           | Recorded              | decisions                                                                                                        |
+| `concept/functions`                           | Recorded              | browser-tools                                                                                                    |
+| `concept/interrupt-and-resume`                | Recorded              | interrupts                                                                                                       |
+| `concept/message-history`                     | Recorded              | persistence; completed text only                                                                                 |
+| `concept/runtime`                             | Recorded              | javascript-runtime; real QuickJS calculation, errors, and recovery.                                              |
+| `concept/schema`                              | Recorded              | schemas                                                                                                          |
+| `concept/shared-agent-state`                  | Recorded              | shared-state                                                                                                     |
+| `concept/streaming`                           | Recorded              | streaming-data                                                                                                   |
+| `concept/structured-output`                   | Recorded              | structured-form                                                                                                  |
+| `concept/system-instructions`                 | Recorded              | conversation                                                                                                     |
+| `concept/transform-request-options`           | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `guide/choosing-model`                        | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                           |
+| `guide/ethics`                                | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                           |
+| `guide/prompt-engineering`                    | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                           |
+| `migrations/v0-5`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
+| `migrations/v0-6`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
+| `migrations/v0-7`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
+| `migrations/v0-8`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
+| `platform/anthropic`                          | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
+| `platform/azure`                              | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
+| `platform/bedrock`                            | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
+| `platform/custom`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
+| `platform/dotnet`                             | Intentional exception | Server hosting and provider configuration belong in named, copyable files; conformance verifies the integration. |
+| `platform/google`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
+| `platform/ollama`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
+| `platform/openai`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
+| `platform/typesafe`                           | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
+| `recipes/browser-history`                     | Recorded              | persistence; application-owned versioned browser storage of completed text.                                      |
+| `recipes/copilotkit`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `recipes/decisions-in-agents`                 | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `recipes/json-parser`                         | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `recipes/local-models`                        | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `recipes/magic-text`                          | Recorded              | magic-text; streaming Markdown and source details.                                                               |
+| `recipes/natural-language-to-structured-data` | Recorded              | structured-form; generate a typed draft, validate, review, and explicitly apply.                                 |
+| `recipes/predictive-actions`                  | Recorded              | predictive-suggestions; complete context-bound offers with explicit Accept and Dismiss.                          |
+| `recipes/public-endpoint`                     | Recorded              | public-endpoint; session and owner checks before scripted provider streaming.                                    |
+| `recipes/remote-mcp`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `recipes/threads`                             | Recorded              | server-threads; server-owned completed text, version conflict, and explicit reload.                              |
+| `recipes/ui-chatbot`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `recipes/ui-kits`                             | Recorded              | ui-kits                                                                                                          |
+| `recipes/ui-selection`                        | Recorded              | ui-selection; app-owned summary/list views and manual fallback.                                                  |
+| `start/how-it-works`                          | Recorded              | welcome-card; follows the same component through the request path                                                |
+| `start/intro`                                 | Recorded              | welcome-card                                                                                                     |
+| `start/overview`                              | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `start/platforms`                             | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `start/quick`                                 | Recorded              | welcome-card                                                                                                     |
+| `start/sample`                                | Recorded              | Existing `www-atc-demo-video` player; full ATC interaction.                                                      |
 
 ## Content gaps after this increment
 
@@ -132,10 +145,14 @@ Run the recorders sequentially: all use `dist/docs-quickstart/compiled`. Review 
 
 For typed data, run `npx nx docs-structured-demo www`. Use `DOCS_SKIP_RECORDING=1` for verification only, or select `structured-form,streaming-data` with `DOCS_DEMO_MODES`. Captures/masters/static builds and `verification.json` stay in ignored `dist/docs-structured`. Browser checks exercise progressive complete items, explicit Apply, invalid application values, failures after partial and complete JSON, empty replacements, malformed/truncated output, cancellation after valid JSON, and recovery in both SDKs.
 
+For the assisted recipes, run `npx nx docs-recipes-demo www`. Use `DOCS_SKIP_RECORDING=1` to verify without replacing assets and `DOCS_DEMO_MODES=magic-text,predictive-suggestions,ui-selection` to choose a subset. Unknown modes fail. Captures, masters, static builds and `verification.json` remain in ignored `dist/docs-recipes`. Run sequentially with the other recorders because they share compiled output.
+
+These browser checks cover streaming/finalization and citation interaction, complete-only suggestion actions, current-context guards, duplicate/invalid/empty/failed/cancelled responses, selection fallback and late responses. They exercise the real React and Angular APIs against deterministic local fixtures, not model accuracy or a deployed TypeSafe service.
+
 ## Learning-sequence audit
 
 - Quickstart remains the first trusted-component success. How Hashbrown works and Choosing an API now point to complete task-based routes instead of leaving readers to infer the relationship between API names.
 - The typed-data route is schemas → structured output → streaming → natural-language forms. Fundamentals readers who reach Streaming early get explicit prerequisites and links to the checked example.
 - The conversation route remains messages → system instructions → history, then tools or workflow guides. Storage and runtime guides explain their separate lifetime and production boundaries.
-- Remaining editorial priorities: Magic Text and predictive suggestions still need small checked examples; UI Selection and Decisions in Agents need a task that connects them; Remote MCP and local models need reproducible environment-specific recordings. The old expense recipe was replaced rather than implying its unverified snippets were production-ready.
-- A dedicated independent structured-completion example remains useful for input-driven tasks. The current list deliberately uses an explicit chat action and fresh conversation per request. No claim of universal page coverage or a finished editorial pass is made.
+- Remaining editorial priorities: connect Decisions in Agents to a checked workflow, and add reproducible environment-specific recordings for Remote MCP and local models. Magic Text, predictive suggestions and UI selection now have small checked tasks, complete source disclosures and their own recordings.
+- Predictive suggestions now provide an independent input-driven structured-completion example. Its stable context snapshot avoids a request feedback loop when suggestions are accepted or dismissed. The typed-list tutorial separately uses an explicit chat action and fresh conversation per request. No claim of universal page coverage or a finished editorial pass is made.

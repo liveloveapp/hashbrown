@@ -24,3 +24,9 @@ The debugging recording was captured separately from the same ATC app using its 
 ## Typed drafts and progressive items
 
 `structured-form` and `streaming-data` record the checked shopping-list clients. Source: `www/src/tools/record-docs-structured.ts`; run `npx nx docs-structured-demo www`. Both React and Angular are verified; React supplies the shared recording. Scripted AG-UI output, added presentation CSS, no narration, live model, purchase or server write. Generate → review → Apply is explicit. The applied list is component-local state. Complete capture masters and adverse-ending verification remain in ignored `dist/docs-structured`. See `docs/docs-media-inventory.md` for current page coverage and remaining work.
+
+## Magic Text, suggestions and view selection
+
+`magic-text`, `predictive-suggestions` and `ui-selection` use the checked framework clients in `www/examples/quickstart`. Source: `www/src/tools/record-docs-recipes.ts`; run `npx nx docs-recipes-demo www` sequentially with other recorders. Both frameworks are verified before React supplies the shared captures. Text/completion output uses scripted AG-UI responses; view selection uses scripted decision responses. Presentation CSS is added. No narration, live model call or server write is shown.
+
+The interactions are streaming Markdown with citation details, explicit Accept/Dismiss of a context-bound packing proposal, and summary/list selection with app-owned data. Each includes MP4/WebM, a poster, captions, a walkthrough and result screenshot. Captures, masters, static builds and the browser verification report remain in ignored `dist/docs-recipes`. Use `DOCS_SKIP_RECORDING=1` to check behavior without replacing media, and `DOCS_DEMO_MODES` to select these target-specific IDs.

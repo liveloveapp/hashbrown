@@ -2,301 +2,360 @@
 title: 'UI Selection: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Choose which React components to show for an input, or narrow a chat, with a decision.'
+    content: 'Choose a shopping summary or item list from a request, with app-owned data and a manual fallback.'
 ---
 
 # UI Selection
 
-<p class="subtitle">Choose which React components to show for an input, or narrow a chat, with a decision.</p>
+Let's ask for a shopping overview, then ask to see each item. We'll give the model two choices: a summary card and an item list. Our application supplies the products, quantities and component props. The model chooses only an ID.
 
-1. Describe each option in plain language.
-2. The @hashbrownai/react!useUiDecision:function hook asks a decision model which option fits the input.
-3. Render only the options it chooses, or let a chat answer with only the components it chooses.
+<hb-docs-demo demo="ui-selection">
+</hb-docs-demo>
 
----
+<img src="/video/docs/ui-selection-result.png" alt="The selected shopping item list shows 2 × Apples and 1 × Bread, with buttons to choose the summary or item list manually." width="920" height="400" loading="lazy" />
 
-## Two Modes
+The recording uses the checked clients with scripted decision responses, no live model, and presentation styles for readability. The selected view lives in local component state. The product data is fixed: 2 apples and 1 loaf of bread.
 
-useUiDecision has two modes. Which one you get depends on the options you pass.
+## Before we start
 
-| Mode       | You pass                 | The model chooses                              | Who fills in props |
-| ---------- | ------------------------ | ---------------------------------------------- | ------------------ |
-| Candidates | `input` and `candidates` | Among elements your code has already built     | Your code          |
-| Chat       | `chat`, from `useUiChat` | Which of the chat's components fit the message | The chat, as usual |
+Start with the [Quickstart](/docs/react/start/quick) application and its frontend development proxy. We need Node.js 24, a TypeSafe API key, and an exact model version available to that account. [TypeSafe](/docs/react/platform/typesafe) explains the decision adapter.
 
-Both modes take these options:
+This recipe uses @hashbrownai/react!useUiDecision:function in **candidates mode**. With `select: 'one'`, the decision picks `summary` or `items`. We set `minConfidence: 0.7`; below that threshold, we show a status and offer manual buttons. Treat confidence as a model score, rather than a calibrated probability of correctness.
 
-| Option          | Required | What it does                                                                                                |
-| --------------- | -------- | ----------------------------------------------------------------------------------------------------------- |
-| `select`        | Yes      | `'one'` chooses one option, and `{ max: 3 }` chooses up to three.                                           |
-| `minConfidence` | No       | The confidence needed to act on the choice. Defaults to 0.                                                  |
-| `system`        | No       | Context for the decision model: what your app is and what the input means.                                  |
-| `optionOrder`   | No       | `'shuffled'` varies the order of the options on every request, to spread the model's bias toward the first. |
-| `transport`     | No       | Overrides the provider's decision transport. In chat mode, the chat keeps its own transport.                |
+Keep the checked file layout: `runtime/selection.ts` beside the `react` and `server` directories, with `react/src/UiSelection.tsx` and `server/selection-server.ts` inside them. If you copy the component into an existing app's `src` directory, update its relative shared-file import. Install the core and React packages using the Quickstart instructions.
 
-The hook requires a `HashbrownProvider`. Set up the decision endpoint as described in [Decisions](/docs/react/concept/decisions).
+## Share the candidate definitions
 
----
+First, create `runtime/selection.ts`. It contains our fixed products and two candidate descriptions. Both clients and the server use these descriptions in the same order, `summary` followed by `items`.
 
-## Candidates Mode
+`createSelectionSchema(selectionOptions, 'one')` builds the server's pinned questions. It shares the selection contract without importing UI components into the server. The model chooses an ID; it has no schema for writing product names, quantities or props.
 
-Use candidates when your code already knows what each option shows. The model never writes props. It only picks.
+<hb-expander title="Complete runtime/selection.ts">
 
-Candidates mode also takes these options:
+<hb-code-example header="runtime/selection.ts">
 
-| Option         | Required | What it does                                                                 |
-| -------------- | -------- | ---------------------------------------------------------------------------- |
-| `input`        | Yes      | The input to decide about. `null` or `undefined` keeps the hook idle.        |
-| `candidates`   | Yes      | The elements the model chooses from.                                         |
-| `debounceTime` | No       | Waits for the input to settle before deciding. Changing `system` asks again. |
+```ts
+import { createSelectionSchema } from '@hashbrownai/core';
 
-<hb-code-example header="choose among candidates">
+/** An application-owned product row, never generated by the decision model. */
+export interface SelectionItem {
+  readonly name: string;
+  readonly quantity: number;
+}
 
-```tsx
-import { useUiDecision } from '@hashbrownai/react';
+/** Product data shared by the two checked clients. */
+export const selectionItems: readonly SelectionItem[] = [
+  { name: 'Apples', quantity: 2 },
+  { name: 'Bread', quantity: 1 },
+];
 
-function Answer({ query }: { query: string }) {
-  const { ui } = useUiDecision({
-    input: query === '' ? null : query,
-    select: 'one',
-    minConfidence: 0.7,
-    candidates: [
-      {
-        id: 'flight',
-        description: 'The user asks about one aircraft',
-        element: <FlightCard />,
-      },
-      {
-        id: 'airport',
-        description: 'The user asks about an airport',
-        element: <AirportCard />,
-      },
-    ],
-  });
+/** Model-facing candidates; preserve their descriptions and order on the server. */
+export const selectionOptions = [
+  {
+    id: 'summary',
+    description: 'Show an overview with product and item totals.',
+  },
+  {
+    id: 'items',
+    description: 'Show each product name and its quantity in a list.',
+  },
+] as const;
 
-  return <>{ui}</>;
+/** The only view identifiers the application allows. */
+export type SelectionId = (typeof selectionOptions)[number]['id'];
+
+/** Pins the same questions that both clients ask in candidates mode. */
+export const selectionSchema = createSelectionSchema(selectionOptions, 'one');
+
+/** An explicit user request; the nonce lets an unchanged prompt be submitted again. */
+export interface SelectionRequest {
+  requestId: string;
+  prompt: string;
 }
 ```
 
 </hb-code-example>
 
-1. Each candidate has a unique `id` that is not empty and has no `.`, a `description` that tells the model when it fits, and an `element`.
-2. `ui` holds the chosen elements in order. `ids` holds their ids.
-3. Candidates mode renders nothing while the decision is pending, when there are no candidates, and when confidence is below `minConfidence`.
+</hb-expander>
 
-With `select: 'one'`, confidence is the model's confidence in its pick. With `{ max }`, each candidate is a yes or no question. Candidates at 0.5 probability or higher are kept, sorted by probability, and capped at `max`. `minConfidence` is compared to the best probability.
+## Add the decision endpoint
 
----
+In your Node server project, install the existing adapter and Express. These commands are for your application's server dependencies:
 
-## Narrowing a Chat
+```sh
+npm install @hashbrownai/core @hashbrownai/typesafe express
+npm install --save-dev tsx typescript @types/express @types/node
+```
 
-Use chat mode when a chat writes the answer and you want each answer to use only the components that fit the message. The app keeps its own chat, with its own system prompt and tools, and sends messages through the hook instead. A decision first picks from the chat's components. Then the chat answers, seeing only the chosen components. This keeps the prompt small and the choices focused.
+Create a server-side `.env` file, add it to `.gitignore`, and supply your own values:
 
-<hb-code-example header="narrow a chat">
+```sh
+TYPESAFE_API_KEY=your-typesafe-api-key
+TYPESAFE_MODEL=your-exact-model-version
+```
+
+Create `server/selection-server.ts` below. Keep both credentials and model configuration on the server. The route accepts bounded JSON, pins the shared questions, maps `DecisionError` to an HTTP status, and aborts upstream work if the browser disconnects.
+
+<hb-expander title="Complete server/selection-server.ts">
+
+<hb-code-example header="server/selection-server.ts">
+
+```ts
+import { DecisionError, HashbrownTypeSafe } from '@hashbrownai/typesafe';
+import express from 'express';
+import { selectionSchema } from '../runtime/selection';
+
+// Local development endpoint. A hosted application must add its own authentication,
+// authorization and request controls before exposing this credential-backed route.
+const apiKey = process.env['TYPESAFE_API_KEY'];
+const model = process.env['TYPESAFE_MODEL'];
+if (!apiKey || !model)
+  throw new Error('Set TYPESAFE_API_KEY and TYPESAFE_MODEL in .env');
+
+const app = express();
+app.use(express.json({ limit: '16kb' }));
+
+app.post('/api/decide', async (req, res) => {
+  const controller = new AbortController();
+  res.once('close', () => {
+    if (!res.writableEnded) controller.abort();
+  });
+  res.setHeader('Cache-Control', 'no-store');
+
+  try {
+    const result = await HashbrownTypeSafe.decide({
+      apiKey,
+      model,
+      request: req.body as unknown,
+      // The browser cannot replace our candidate IDs, descriptions or order.
+      schema: selectionSchema,
+      maxRequestChars: 16_000,
+      signal: controller.signal,
+    });
+    if (!controller.signal.aborted) res.json(result);
+  } catch (error) {
+    if (controller.signal.aborted) return;
+    if (error instanceof DecisionError) {
+      res.status(error.status).json({ error: error.code });
+    } else {
+      res.status(500).json({ error: 'Could not choose a view' });
+    }
+  }
+});
+
+app.listen(3001, '127.0.0.1', () => {
+  console.log('Hashbrown decision endpoint: http://127.0.0.1:3001/api/decide');
+});
+```
+
+</hb-code-example>
+
+</hb-expander>
+
+From the directory containing `runtime`, `server` and `.env`, start the endpoint:
+
+```sh
+npx tsx --env-file=.env server/selection-server.ts
+```
+
+It listens at `http://127.0.0.1:3001/api/decide`. Stop the Quickstart chat server before starting this standalone server, because they use the same port. This example needs only the decision route. If your app also uses chat, add this handler to your existing server alongside `/api/chat`.
+
+This is a local development endpoint. Before deploying it, supply your application's authentication, authorization and request controls. Pinning the questions limits the decision being asked; it does not identify a user or authorize access to product data.
+
+## Connect the client
+
+`/api/decide` answers decisions. `/api/chat` remains a separate feature endpoint; configuring a chat URL does not configure a decision route.
+
+Update the Quickstart's `HashbrownProvider` in `src/main.tsx`, import `UiSelection` from `./UiSelection`, and render it inside the provider:
 
 ```tsx
-import { s } from '@hashbrownai/core';
+<HashbrownProvider url="/api/chat" decision={{ url: '/api/decide' }}>
+  <UiSelection />
+</HashbrownProvider>
+```
+
+Keep the Vite development proxy from the Quickstart:
+
+```ts
+server: {
+  proxy: { '/api': 'http://127.0.0.1:3001' },
+}
+```
+
+Run your Vite frontend with `npm run dev` in a second terminal. The browser calls `/api/decide` on the frontend origin, and Vite forwards it to our local server.
+
+Next, create `react/src/UiSelection.tsx` below. The decision input starts as `null`, so opening the page sends no request. Editing the input also sends nothing. **Choose a view** submits a stable prompt snapshot with a new request ID, allowing us to submit the same prompt again.
+
+`picked.ui` contains the chosen React element. The app has already supplied the data for both candidates. Neither choice requires the model to generate component props.
+
+<hb-expander title="Complete react/src/UiSelection.tsx">
+
+<hb-code-example header="react/src/UiSelection.tsx">
+
+```tsx
+import { useUiDecision } from '@hashbrownai/react';
+import { useState } from 'react';
 import {
-  exposeComponent,
-  useTool,
-  useUiChat,
-  useUiDecision,
-} from '@hashbrownai/react';
+  type SelectionId,
+  type SelectionItem,
+  selectionItems,
+  selectionOptions,
+  type SelectionRequest,
+} from '../../runtime/selection';
 
-function Assistant() {
-  const getFlights = useTool({
-    name: 'getFlights',
-    description: 'Get the flights near an airport',
-    schema: s.object('Airport', { ident: s.string('The airport identifier') }),
-    handler: async ({ ident }) => fetchFlights(ident),
-    deps: [],
-  });
+/** Summarizes app-owned product rows and their quantities. */
+export function SummaryCard({ items }: { items: readonly SelectionItem[] }) {
+  return (
+    <section aria-label="Summary card">
+      <h2>Shopping summary</h2>
+      <p>{`${items.length} products`}</p>
+      <p>{`${items.reduce((total, item) => total + item.quantity, 0)} total items`}</p>
+    </section>
+  );
+}
 
-  // 1. The app's own chat: its system prompt, components and tools.
-  const chat = useUiChat({
-    system:
-      'Answer questions about live flights. Use the cards to show results.',
-    tools: [getFlights],
-    components: [
-      exposeComponent(FlightCard, {
-        name: 'FlightCard',
-        description: 'Shows one aircraft',
-        props: { callsign: s.string('The aircraft callsign') },
-      }),
-      exposeComponent(AirportCard, {
-        name: 'AirportCard',
-        description: 'Shows an airport',
-        props: { ident: s.string('The airport identifier') },
-      }),
-    ],
-  });
+/** Displays app-owned names and quantities as text. */
+export function ItemList({ items }: { items: readonly SelectionItem[] }) {
+  return (
+    <section aria-label="Item list">
+      <h2>Shopping items</h2>
+      <ul>
+        {items.map((item) => (
+          <li key={item.name}>{`${item.quantity} × ${item.name}`}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
-  // 2. Narrows the chat's components for each message.
-  const { sendMessage, isDeciding, decisionError } = useUiDecision({
-    chat,
-    select: { max: 2 },
+/** The app supplies elements and props; the model selects only an ID. */
+export const selectionCandidates = [
+  { ...selectionOptions[0], element: <SummaryCard items={selectionItems} /> },
+  { ...selectionOptions[1], element: <ItemList items={selectionItems} /> },
+];
+
+function RequestedView({ request }: { request: SelectionRequest | null }) {
+  const picked = useUiDecision({
+    input: request === null ? null : { ...request },
+    candidates: selectionCandidates,
+    select: 'one',
     minConfidence: 0.7,
-    system: 'A flight-tracking app. The input is a chat message.',
   });
+  const status =
+    request === null
+      ? 'Describe a view, or choose one manually.'
+      : picked.error
+        ? 'Could not choose a view. Try again or choose one manually.'
+        : picked.isLoading || picked.decision.value === null
+          ? 'Choosing a view. You can choose one manually at any time.'
+          : picked.ids.length === 0
+            ? 'No confident choice. Choose a view manually or try another request.'
+            : 'View ready. The application supplies all product data.';
 
-  // 3. Send through the hook, and render the chat as usual.
   return (
     <>
-      {chat.messages.map((message, index) =>
-        message.role === 'assistant' ? (
-          <div key={index}>{message.ui}</div>
-        ) : (
-          <p key={index}>{String(message.content)}</p>
-        ),
-      )}
-      <Composer disabled={isDeciding} onSend={sendMessage} />
+      <p role="status">{status}</p>
+      {!picked.isLoading && !picked.error && picked.ui}
     </>
+  );
+}
+
+/** Chooses an app-owned view with an explicit, independent manual fallback. */
+export function UiSelection() {
+  const [prompt, setPrompt] = useState('Show a quick overview.');
+  const [request, setRequest] = useState<SelectionRequest | null>(null);
+  const [manual, setManual] = useState<SelectionId | null>(null);
+
+  function choose() {
+    if (!prompt.trim()) return;
+    setManual(null);
+    setRequest({ requestId: crypto.randomUUID(), prompt: prompt.trim() });
+  }
+
+  function chooseManually(id: SelectionId) {
+    setRequest(null);
+    setManual(id);
+    // Unmounting RequestedView destroys its decision runtime and aborts the request.
+  }
+
+  return (
+    <main>
+      <h1>Choose a view from a request</h1>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          choose();
+        }}
+      >
+        <label htmlFor="view-request">What would you like to see?</label>
+        <input
+          id="view-request"
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+        />
+        <button type="submit" disabled={!prompt.trim()}>
+          Choose a view
+        </button>
+      </form>
+      <nav aria-label="Manual views">
+        <button type="button" onClick={() => chooseManually('summary')}>
+          Show summary
+        </button>
+        <button type="button" onClick={() => chooseManually('items')}>
+          Show items
+        </button>
+      </nav>
+      {manual ? (
+        <>
+          <p role="status">
+            Manual view selected. Submit another request to ask the model again.
+          </p>
+          {manual === 'summary' ? (
+            <SummaryCard items={selectionItems} />
+          ) : (
+            <ItemList items={selectionItems} />
+          )}
+        </>
+      ) : (
+        // A new key immediately removes old output and gives each request its own runtime.
+        <RequestedView key={request?.requestId ?? 'idle'} request={request} />
+      )}
+    </main>
   );
 }
 ```
 
 </hb-code-example>
 
-1. `chat` is the result of `useUiChat`. The hook needs only its `components`, `setComponents`, `sendMessage` and `isLoading`, described by the `UiDecisionChat` type.
-2. `sendMessage(content)` asks the decision about `content`, sets the chat's components to the chosen ones, and then sends `content` to the chat. The send always uses the narrowed components.
-3. The transcript, `ui`, tools, `isLoading` and `stop` stay on the chat. The hook returns only `sendMessage`, `decision`, `isDeciding` and `decisionError`.
-4. The decision sees each component's name and description. UI kits are decided over by member: each kit is expanded into its components, including the children they declare, and duplicate names count once.
-5. A chosen component brings the components declared in its `children` with it, recursively, so the chat can always render a chosen parent's children. The chat sees the chosen components in the order they were declared.
-6. Component names become option ids, so the flattened list must fit the selection limits: no name may be empty, contain `.`, or be `__proto__`, `constructor` or `prototype`, and `select: 'one'` allows at most 255 components.
+</hb-expander>
 
-### Always-on components
+## Try both views
 
-Some components, such as Markdown for prose, should be available on every turn. Put them in a kit created with `selectable: false`, next to the kit the decision picks from.
+1. Submit **“Show a quick overview.”** A confident `summary` choice displays **2 products** and **3 total items**. There are two product rows, and their quantities add up to three.
+2. Submit **“Show every product and its quantity.”** An `items` choice displays **2 × Apples** and **1 × Bread**.
+3. While a request is loading, use **Show summary** or **Show items**. The manual choice appears immediately and remains selected when the old request ends.
+4. Submit another request to leave the manual view and ask the model again. Submit a second request quickly to verify that only the latest request can supply the view.
 
-```tsx
-const cards = useUiKit({ components: [flightCard, airportCard] });
-const prose = useUiKit({
-  components: [exposeMarkdown({ citations: true })],
-  selectable: false,
-});
+Live decisions can choose differently. The manual buttons always provide a direct way to inspect either view. This component changes only the visible presentation; it does not modify the products or persist a choice across refreshes.
 
-const chat = useUiChat({
-  system: 'Answer questions about live flights.',
-  components: [cards, prose],
-});
-const { sendMessage } = useUiDecision({ chat, select: { max: 2 } });
-```
+## Handle an uncertain or failed choice
 
-The decision is asked only about `cards`: `FlightCard` and `AirportCard`. Markdown is never an option, and it is always sent with whatever is picked. If every component is non-selectable, there is nothing to decide and the message is sent with all of them.
+During loading, the example clears the old model-selected view and explains that we can choose manually. If the response falls below `minConfidence`, the selection is empty and the status says **No confident choice**. If the request fails, the status says **Could not choose a view**. In either case, use **Show summary**, **Show items**, or submit another request.
 
-### Two prompts
+The React component gives each submitted request a new key. That removes the previous output immediately and creates a new decision runtime. A manual choice clears the request and unmounts that runtime, which aborts its work. A late response cannot replace the manual view.
 
-Chat mode uses two models, and each one has its own prompt. Neither prompt defaults to the other.
+A new model request also clears the previous manual selection. This gives each explicit request its own result, and keeps older responses from restoring a view we have already replaced.
 
-| Prompt                  | Read by            | What to write                             |
-| ----------------------- | ------------------ | ----------------------------------------- |
-| `system` on the hook    | The decision model | What your app is and what the input means |
-| `system` on `useUiChat` | The chat model     | How to answer, with which tools and cards |
+If the browser returns 404, check the `/api/decide` path and frontend proxy, then restart the frontend server after proxy changes. If the server fails to start, check both `TYPESAFE_API_KEY` and `TYPESAFE_MODEL`. For other decision errors, confirm the account can use the configured model and retry. Never move the API key into client configuration to fix a routing error.
 
-The hook's `system` is context for the decision. It is sent with each message, so describe the situation rather than give instructions. The chat never sees it, and the decision never sees the chat's system prompt or tools.
+## When to use chat mode
 
-### Fallback
+Candidates mode fits this example because our application owns every prop. In chat mode, @hashbrownai/react!useUiDecision:function first narrows the components available to a UI chat, then sends the message through that chat. The chat generates the answer and its props using its own prompt, tools and transport. The decision prompt and chat prompt are separate.
 
-Decide when sure, offer everything otherwise. The message is sent with all of the chat's components when:
+Chat mode has a different fallback: low confidence, a failed decision, or `decision.stop()` sends the message with all components. Stopping the decision does not cancel that send. After the narrowed turn ends, errors or stops, the integration restores the full component list, unless the application has replaced it during the turn. A newer message supersedes a decision still in flight; once a message is sent, the chat owns its lifecycle.
 
-- confidence is below `minConfidence`;
-- the decision fails, or `decision.stop()` aborts it (stopping never cancels the send);
-- the components break the selection limits above (no decision is asked).
+Narrowing is not an authorization boundary. A UI chat retains definitions of previously offered components so earlier messages keep rendering, and a provider that does not enforce the response schema strictly may still render a retained component. Keep access checks in your application and server handlers. Always-on UI kits and declared child components also affect the choices; use the SDK reference linked above and [Decisions](/docs/react/concept/decisions) when adding chat mode.
 
-Failures are exposed as `decisionError`. A `DecisionSchemaError` there means the components could not be decided over. `isDeciding` is true while a decision is in flight.
+## Next steps
 
-### Restoring after the turn
-
-When the narrowed turn finishes, errors or is stopped, the hook sets the chat's components back to the full list. The same happens when the chat never starts the turn, and when the hook unmounts while the chat is narrowed. A follow-up sent directly with `chat.sendMessage` sees every component. If your app replaces the chat's components during the turn, the hook leaves your list in place.
-
-A UI chat keeps every component it has ever offered, one per name, and the newest definition of a name replaces older ones. Earlier answers render with that set, so they keep rendering after a narrowed turn or a `setComponents` call. New responses are parsed against it too, so a provider that does not enforce the response schema strictly can still render a component that is no longer offered.
-
-### Errors
-
-`sendMessage` throws at once, as the chat's own `sendMessage` would, when the chat cannot take a message, for example while an interrupt batch is pending. If the chat refuses the message after the decision, the hook restores every component and exposes the error as `decisionError`.
-
-### Concurrency
-
-Calling `sendMessage` while a decision is still in flight aborts that decision and starts a new one, so only the latest message is sent. Once a message is sent, the chat owns it: sending while the chat is still generating behaves exactly like the chat's own `sendMessage`.
-
----
-
-## Pinning the Questions on the Server
-
-The browser builds the selection questions from your candidates or the chat's components. A public decision route answers whatever questions it is sent, unless the server pins them. To pin them, build the same schema on the server with `createSelectionSchema` from `@hashbrownai/core`, and pass it to the adapter's `schema` option. Pass the same `select` value the browser uses.
-
-`createSelectionSchema` takes the same list the hook decides over, in the same order: your candidates, or the components you pass to `useUiChat`. Each entry can be:
-
-- a candidate item, `{ id, description }`, as in candidates mode;
-- a component, such as an `exposeComponent` result or a component definition (`UiComponentDefinition`) with a `name`, a `description` and optional `children`;
-- a UI kit.
-
-UI kits and declared children are flattened exactly as the hook flattens them: each kit's members in place, each component followed by its declared children, and every name once. An entry with an `id` is always a candidate item, even if it also has a `name`; an entry with a `name` and no `id` is a component, and its option id is its `name`. So a chat component must not carry an `id` at the top level, or `createSelectionSchema` treats it as a candidate item and the pinned questions differ. Kit members and declared children are always components.
-
-```ts
-import { createSelectionSchema } from '@hashbrownai/core';
-import { HashbrownTypeSafe } from '@hashbrownai/typesafe';
-// Shared with the browser: the components and kits passed to useUiChat.
-import { flightCard, cardsKit } from './cards';
-
-const decision = await HashbrownTypeSafe.decide({
-  apiKey: process.env.TYPESAFE_API_KEY!,
-  model: 'jev-1.14.0',
-  schema: createSelectionSchema([flightCard, cardsKit], { max: 2 }),
-  request,
-});
-```
-
-`createSelectionSchema` skips non-selectable members, so pass the same kits the browser passes. To pin the questions without sharing the kits, use a plain group, `{ components, selectable? }`. A group is treated like a kit: its members are flattened in place, and with `selectable: false` they are never asked about.
-
-```ts
-const schema = createSelectionSchema(
-  [
-    flightCard,
-    airportCard,
-    { components: [markdownDefinition], selectable: false },
-  ],
-  { max: 2 },
-);
-```
-
-A group is recognized only when its keys are exactly `components` and, optionally, `selectable`.
-
-For candidates mode, pass the candidates (or just their `{ id, description }` items), such as `createSelectionSchema(cards, 'one')`. If the server can't import your components or kits, pass `{ name, description, children? }` definitions with the same names, descriptions and children, in the same order.
-
-A pinned schema replaces the questions the browser sends, so `optionOrder: 'shuffled'` has no effect once the questions are pinned. The server always asks in the order it built.
-
----
-
-## Writing Good Descriptions
-
-- Describe when an option fits, not what it is. "The user asks about an airport" works better than "Airport card".
-- Keep descriptions distinct. Overlapping options split confidence between them.
-- In chat mode, child components are options too, and `select: 'one'` can pick a child alone. Say where a child belongs in its description, such as "A row, only inside a Table".
-- Add an option for "none of these" when it makes sense. In candidates mode, simply render nothing when confidence is low.
-- Pass short, plain input. See the model limits in [Decisions](/docs/react/concept/decisions).
-
----
-
-## Next Steps
-
-<hb-next-steps>
-  <hb-next-step link="concept/decisions">
-    <div>
-      <hb-database-cog />
-    </div>
-    <div>
-      <h4>Decisions</h4>
-      <p>Ask typed closed questions with useDecision.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="platform/typesafe">
-    <div>
-      <hb-code />
-    </div>
-    <div>
-      <h4>Serve decisions with TypeSafe</h4>
-      <p>Add the server route that answers decision requests.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Read [Decisions](/docs/react/concept/decisions) for typed closed questions and selection limits. See [TypeSafe](/docs/react/platform/typesafe) for adapter options, error handling and model configuration. For UI where the model supplies validated props, continue with [Components](/docs/react/concept/components).
