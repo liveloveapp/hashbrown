@@ -806,3 +806,52 @@ test('the streaming assistant message keeps the id it has after commit', async (
     teardown();
   }
 });
+
+test('sendMessage delivers owned canonical multipart content to the transport', async () => {
+  const textPart = { type: 'text', text: 'Read the supplied image and audio.' };
+  const imagePart = {
+    type: 'image',
+    source: { type: 'data', value: 'aW1hZ2U=', mimeType: 'image/png' },
+  };
+  const audioPart = {
+    type: 'audio',
+    source: { type: 'data', value: 'YXVkaW8=', mimeType: 'audio/wav' },
+  };
+  const content: Chat.UserMessageInput['content'] = [
+    textPart,
+    imagePart,
+    audioPart,
+  ];
+  const expected = structuredClone(content);
+  const requests: TransportRequest[] = [];
+  const runtime = createChatRuntime({
+    system: 'Inspect actual media.',
+    debounce: 0,
+    transport: {
+      name: 'multipart-observer',
+      send: async (request) => {
+        requests.push(request);
+        return { events: successfulEvents(request) };
+      },
+    },
+  });
+  const teardown = runtime.start();
+
+  try {
+    await flushTaskBoundary();
+    runtime.sendMessage({ role: 'user', content });
+    textPart.text = 'Changed after Send.';
+    imagePart.source.value = 'Changed after Send.';
+    await waitForRuntimeIdle(runtime);
+
+    expect(requests).toHaveLength(1);
+    const user = requests[0].input.messages.find(
+      (message) => message.role === 'user',
+    );
+    expect(user?.content).toEqual(expected);
+    expect(Object.isFrozen(user?.content)).toBe(true);
+    expect(runtime.generatingError()).toBeUndefined();
+  } finally {
+    teardown();
+  }
+});

@@ -1104,3 +1104,78 @@ test('projects a RESULT error over a step a call already completed as failed', (
     error: { message: 'Rate limited' },
   });
 });
+
+test('lowers canonical multipart user content as owned immutable parts', () => {
+  const textPart = { type: 'text', text: 'Inspect this generated media.' };
+  const imagePart = {
+    type: 'image',
+    source: { type: 'data', value: 'aW1hZ2U=', mimeType: 'image/png' },
+  };
+  const audioPart = {
+    type: 'audio',
+    source: { type: 'data', value: 'YXVkaW8=', mimeType: 'audio/wav' },
+  };
+  const content: Chat.UserMessageInput['content'] = [
+    textPart,
+    imagePart,
+    audioPart,
+  ];
+  const original = structuredClone(content);
+
+  const lowered = lowerViewMessagesToAgUi([{ role: 'user', content }], {
+    createId: () => 'multipart-user',
+  });
+  textPart.text = 'Changed after lowering.';
+  imagePart.source.value = 'Changed after lowering.';
+  content.push({ type: 'text', text: 'Appended after lowering.' });
+
+  expect(lowered).toEqual([
+    { id: 'multipart-user', role: 'user', content: original },
+  ]);
+  const actual = lowered[0].role === 'user' ? lowered[0].content : undefined;
+  expect(Array.isArray(actual)).toBe(true);
+  expect(Object.isFrozen(actual)).toBe(true);
+  if (!Array.isArray(actual))
+    throw new Error('Expected canonical content parts.');
+  expect(Object.isFrozen(actual[0])).toBe(true);
+  expect(
+    Object.isFrozen(actual[1].type === 'image' ? actual[1].source : undefined),
+  ).toBe(true);
+});
+
+test('preserves canonical text-only content parts without JSON serialization', () => {
+  const content = [{ type: 'text', text: 'Hello.' }];
+
+  const lowered = lowerViewMessagesToAgUi([{ role: 'user', content }], {
+    createId: () => 'text-parts',
+  });
+
+  expect(lowered).toEqual([{ id: 'text-parts', role: 'user', content }]);
+});
+
+test('retains legacy JSON serialization for generic and ambiguous user arrays', () => {
+  const inputs: Chat.UserMessageInput['content'][] = [
+    [],
+    ['plain', 'array'],
+    [1, { prompt: 'structured input' }],
+    [{ type: 'text', text: 42 }],
+    [{ type: 'image', url: 'https://example.invalid/image.png' }],
+    [{ type: 'custom', text: 'An application record' }],
+    [
+      { type: 'text', text: 'A valid-looking record' },
+      { prompt: 'not a content part' },
+    ],
+  ];
+
+  const lowered = inputs.map((content) =>
+    lowerViewMessagesToAgUi([{ role: 'user', content }], {
+      createId: () => 'json-input',
+    }),
+  );
+
+  expect(
+    lowered.map((messages) =>
+      messages[0].role === 'user' ? messages[0].content : undefined,
+    ),
+  ).toEqual(inputs.map((content) => JSON.stringify(content)));
+});

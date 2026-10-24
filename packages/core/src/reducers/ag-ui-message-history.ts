@@ -4,8 +4,9 @@ import {
   type Message,
   type SystemMessage,
   type ToolMessage,
+  type UserMessage,
 } from '@ag-ui/core';
-import { MessageSchema } from '@ag-ui/core/schemas';
+import { MessageSchema, UserMessageSchema } from '@ag-ui/core/schemas';
 import { Chat } from '../models';
 import {
   completeRunningStep,
@@ -62,7 +63,7 @@ export function lowerViewMessagesToAgUi(
         {
           id: message.id ?? options.createId(),
           role: 'user',
-          content: serializeContent(message.content),
+          content: lowerUserContent(message.content),
         },
       ];
     }
@@ -952,6 +953,21 @@ function mergeMetadata(
   return structuredClone({
     ...ɵmergeStepMetadata(first, second ?? {}, 'message', toolCallId),
   });
+}
+
+/**
+ * Preserves nonempty canonical content-part arrays while retaining JSON text
+ * semantics for ordinary application inputs. Empty and invalid part-shaped
+ * arrays remain legacy JSON inputs. The enclosing message ownership boundary
+ * clones and freezes the validated parts before they leave the lowerer.
+ */
+function lowerUserContent(value: unknown): UserMessage['content'] {
+  if (Array.isArray(value) && value.length > 0) {
+    const parsed = UserMessageSchema.shape.content.safeParse(value);
+    if (parsed.success) return parsed.data;
+  }
+
+  return serializeContent(value);
 }
 
 function serializeContent(value: unknown): string {

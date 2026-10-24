@@ -143,7 +143,7 @@ export function LocalItinerary() {
 **How it works**
 
 - `experimental_local` creates a transport that releases its browser session when the response finishes; events keep your UI in sync with download state.
-- If tools are requested, local reports `FEATURE_UNSUPPORTED` because browser prompt APIs do not support Hashbrown tools.
+- If tools are requested, local reports `FEATURE_UNSUPPORTED` because these local adapters do not support Hashbrown tools.
 - `reload` lets users retry after enabling flags or freeing disk space without remounting the component.
 
 ---
@@ -154,6 +154,98 @@ export function LocalItinerary() {
 - `FEATURE_UNSUPPORTED`: tools were requested or the schema is unsupported. Use an AG-UI HTTP endpoint for that feature.
 - Slow first token: the model may still be downloading; keep surfacing `downloadProgress`.
 - Model evicted because of low disk: rerun with `reload` after the browser re-downloads the model.
+
+## Explicit Chrome image and audio input
+
+Use `experimental_chrome` for media. Media is off by default; enable each input
+kind and provide an application resolver. The resolver receives an AG-UI
+`ImagePart` or `AudioPart` plus the run's `AbortSignal`, and returns an encoded
+`Blob` and an optional `dispose` callback. This example accepts inline base64
+only. URL and provider file handles require your application's explicit
+resolution policy; Hashbrown does not fetch them.
+
+```tsx
+import { experimental_chrome } from '@hashbrownai/core';
+import { useChat } from '@hashbrownai/react';
+
+const transport = experimental_chrome({
+  outputLanguage: 'en',
+  media: {
+    images: {},
+    inputLanguages: ['en'],
+    resolve(part, { signal }) {
+      signal.throwIfAborted();
+      if (part.source.type !== 'data') {
+        throw new Error('This application accepts inline media only.');
+      }
+      const bytes = Uint8Array.from(atob(part.source.value), (c) =>
+        c.charCodeAt(0),
+      );
+      return { blob: new Blob([bytes], { type: part.source.mimeType }) };
+    },
+  },
+});
+
+export function LocalImage({ base64 }: { base64: string }) {
+  const chat = useChat({ transport, system: 'Describe the supplied image.' });
+  return (
+    <section>
+      <button
+        onClick={() =>
+          chat.sendMessage({
+            role: 'user',
+            content: [
+              { type: 'text', text: 'What is the dominant color?' },
+              {
+                type: 'image',
+                source: { type: 'data', value: base64, mimeType: 'image/png' },
+              },
+            ],
+          })
+        }
+      >
+        Describe image
+      </button>
+      <p>{chat.lastAssistantMessage?.content}</p>
+      {chat.error && <p>{chat.error.message}</p>}
+    </section>
+  );
+}
+```
+
+AG-UI inline sources use `{ type: 'data', value: base64, mimeType }`; `value`
+contains canonical base64 bytes, without a `data:` URL prefix. Keep media in
+user messages. Canonical AG-UI content parts survive message lowering and immutable
+history snapshots; ordinary JSON arrays keep their legacy representation. The
+transport preserves part order, validates and decodes images
+before creating a session, and releases its ImageBitmaps and resolver cleanup
+callbacks when each run settles, including errors and cancellation. Each media
+run gets its own native session. Replayed history is resolved again.
+
+`media.inputLanguages` defaults to `['en']` and describes input independently
+of `outputLanguage`. The transport checks the exact requested input modalities
+and languages. Missing or unknown availability fails closed. A downloadable or
+downloading model requires an explicit `events.downloadRequired` callback;
+without it, media requests fail before creation. Prepare downloads through your
+application's user-initiated flow and retain Chrome's activation requirements.
+
+Image input accepts PNG, JPEG and WebP, with defaults of 10 MiB encoded bytes
+and 16 million decoded pixels per image (`images.maxBytes`, `images.maxPixels`).
+Audio is a separate opt-in: add `audio: { maxBytes: 10 * 1024 * 1024,
+maxDurationSeconds: 30 }` to `media`, then send an `audio` part with the same
+source shape and `mimeType: 'audio/wav'`. Only encoded PCM16 RIFF WAV with one
+or two channels and an 8–48 kHz sample rate is supported. The transport preserves
+that encoding and sample rate. Defaults are 10 MiB and 30 seconds per audio
+part; `media.maxTotalBytes` defaults to 20 MiB across the run's media history.
+Raw PCM, video, documents, media tool results and `media` combined with
+`transformRequest` are unsupported.
+
+Native typed tools remain unsupported: accepted option names do not establish
+working tool calls. Chrome 155 has transcribed the retained generated speech
+fixture through its raw native API. The real Hashbrown media suite also passed
+all four Angular/React image/audio cases, with one resolution, disposal, session
+creation and session destruction per run. The deterministic shim suite checks transport and framework
+contracts, separately from real inference. See the [local conformance commands](https://github.com/liveloveapp/hashbrown/tree/main/tools/conformance#local-model-suites).
 
 ## Application-owned WebLLM engines
 

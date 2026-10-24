@@ -31,6 +31,7 @@ export {
   type PromptMessage,
   type PromptRequest,
   type PromptOptions,
+  type SupportedOutputLanguage,
 } from './experimental-chrome-local-transport';
 export {
   ExperimentalEdgeLocalTransport,
@@ -45,3 +46,13 @@ export {
   type LocalPromptAdapterName,
   type ExperimentalLocalTransportOptions,
 } from './experimental-local-transport';
+
+export type {
+  ChromePromptContent,
+  ChromePromptImageBitmap,
+  ChromePromptMediaOptions,
+  ChromePromptMediaResolver,
+  ChromePromptMediaResource,
+  ChromePromptImagePolicy,
+  ChromePromptAudioPolicy,
+} from './chrome-prompt-media';
