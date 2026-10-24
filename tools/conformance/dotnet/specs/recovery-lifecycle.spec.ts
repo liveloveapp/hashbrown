@@ -124,7 +124,10 @@ test('two reloaded tabs compete for one effect and the conflict loser refreshes 
   await withDurableCluster(
     info.project.metadata['provider'] as 'openai' | 'azure',
     async (cluster) => {
-      const fixture = await cluster.start({ Workflow: 'confirm-before' });
+      const fixture = await cluster.start({
+        Workflow: 'confirm-before',
+        CaptureGate: 'terminal',
+      });
       await withRoutedEndpoint(`${fixture.url}/run`, async (endpoint) => {
         await pending(page, endpoint.url);
         const second = await context.newPage();
@@ -157,6 +160,9 @@ test('two reloaded tabs compete for one effect and the conflict loser refreshes 
           await expect(createAppDriver(page).assistant()).toHaveText(
             'Hello from .NET',
           );
+          await refresh(second, 'CompletedAnswerUnavailable');
+          await control(fixture, 'release-capture');
+          await createAppDriver(page).expectIdle();
           await refresh(second, 'Completed');
           await expect(createAppDriver(second).assistant()).toHaveText(
             'Hello from .NET',
@@ -164,6 +170,7 @@ test('two reloaded tabs compete for one effect and the conflict loser refreshes 
           expect(fixture.requests).toHaveLength(1);
           expect(await durableEffects(fixture)).toBe(1);
         } finally {
+          await control(fixture, 'release-capture');
           await control(fixture, 'release-checkpoint');
           await second.close();
         }
