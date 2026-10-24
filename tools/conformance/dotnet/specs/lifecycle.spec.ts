@@ -14,9 +14,14 @@ test('rejects real .NET SSE cut off before its terminal event', async ({
       await page.goto(
         `/?${new URLSearchParams({ scenario: 'plain', runUrl, retries: '0' })}`,
       );
+      const truncated = page.waitForResponse(
+        (response) =>
+          response.url() === runUrl && response.request().method() === 'POST',
+      );
 
       await driver.send('Hello fixture');
 
+      expect(await (await truncated).finished()).toBeNull();
       await expect(driver.error()).not.toBeEmpty();
       await driver.expectIdle();
       expect(fixture.requests).toHaveLength(1);

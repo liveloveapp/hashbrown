@@ -1,0 +1,68 @@
+import { once } from 'node:events';
+import { createServer, request as upstreamRequest } from 'node:http';
+import type { AddressInfo } from 'node:net';
+
+/** Stable browser address with captured request bodies and selectable application instance. */
+export interface RoutedEndpoint {
+  readonly url: string;
+  readonly requests: readonly string[];
+  readonly routeTo: (target: string) => void;
+}
+
+/** Relays actual HTTP/SSE bytes while routing each new request to the selected worker. */
+export async function withRoutedEndpoint<T>(
+  initialTarget: string,
+  use: (endpoint: RoutedEndpoint) => Promise<T>,
+): Promise<T> {
+  let target = initialTarget;
+  const requests: string[] = [];
+  const server = createServer(async (request, response) => {
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    if (request.method === 'OPTIONS') {
+      response.writeHead(204).end();
+      return;
+    }
+    try {
+      const destination = target;
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) chunks.push(Buffer.from(chunk));
+      const body = Buffer.concat(chunks);
+      requests.push(body.toString('utf8'));
+      const upstream = upstreamRequest(destination, {
+        method: request.method,
+        headers: {
+          'Content-Type': request.headers['content-type'] ?? 'application/json',
+          Accept: request.headers.accept ?? 'text/event-stream',
+        },
+      });
+      response.once('close', () => upstream.destroy());
+      upstream.once('response', (result) => {
+        response.writeHead(result.statusCode ?? 502, {
+          'Content-Type': result.headers['content-type'] ?? 'text/event-stream',
+        });
+        result.once('error', () => response.destroy());
+        result.pipe(response);
+      });
+      upstream.once('error', () => response.destroy());
+      upstream.end(body);
+    } catch {
+      response.destroy();
+    }
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    return await use({
+      url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/run`,
+      requests,
+      routeTo: (destination) => {
+        target = destination;
+      },
+    });
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}

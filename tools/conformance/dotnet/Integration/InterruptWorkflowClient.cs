@@ -7,8 +7,8 @@ using Microsoft.Extensions.AI;
 namespace Hashbrown.Conformance.Integration;
 
 /// <summary>Pauses an application-selected workflow using upstream native interrupt content.</summary>
-public sealed class InterruptWorkflowClient(IChatClient innerClient, PendingInterruptStore store,
-    Func<RunAgentInput, WorkflowCheckpoint?> selectCheckpoint, Func<string> scope) : DelegatingChatClient(innerClient)
+public sealed class InterruptWorkflowClient(IChatClient innerClient, IInterruptStore store, WorkflowOperationRegistry registry,
+    Func<RunAgentInput, WorkflowCheckpoint?> selectCheckpoint, Func<string> scope, Func<InterruptClaim?> currentClaim) : DelegatingChatClient(innerClient)
 {
     private static readonly JsonElement Schema = JsonSerializer.SerializeToElement(new
     {
@@ -45,7 +45,7 @@ public sealed class InterruptWorkflowClient(IChatClient innerClient, PendingInte
             }
             if (input.Resume is not { Count: > 0 } && selectCheckpoint(input) is { } checkpoint)
             {
-                var batch = store.Create(scope(), input, checkpoint);
+                var batch = await store.CreateAsync(scope(), input, checkpoint, cancellationToken);
                 foreach (var id in batch.Ids)
                 {
                     yield return new ChatResponseUpdate(ChatRole.Assistant, [new InterruptRequestContent(id)
@@ -57,7 +57,20 @@ public sealed class InterruptWorkflowClient(IChatClient innerClient, PendingInte
                 yield break;
             }
             if (input.Resume is { Count: > 0 })
-                await store.ExecuteCheckpointAsync(scope(), input, cancellationToken);
+            {
+                var claim = currentClaim() ?? throw new InvalidOperationException("A server-created confirmation claim is required.");
+                // MAF can call this client again for tool continuations within the same HTTP request.
+                if (claim.EnterWorkflow())
+                {
+                    var operation = registry.Resolve(claim.Checkpoint);
+                    await operation.Prepare(claim.Checkpoint.Parameters, cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!await store.TryStartEffectAsync(claim, cancellationToken))
+                        throw new InvalidOperationException("The preparation claim is stale or its lease expired.");
+                    await operation.Execute(claim.Checkpoint.Parameters, claim.EffectId, cancellationToken);
+                    await store.FinishAsync(claim, InterruptFinish.Completed, cancellationToken);
+                }
+            }
         }
         await foreach (var update in base.GetStreamingResponseAsync(messages, options, cancellationToken).WithCancellation(cancellationToken))
             yield return update;
