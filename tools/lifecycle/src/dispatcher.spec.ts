@@ -38,7 +38,6 @@ function leasedJob(id: string, kind = 'fulfill'): GrowthJob {
     payload: {},
     providerEmailId: null,
     rfcMessageId: null,
-    gmailSeedMessageId: null,
     deliveryStatus: 'not_submitted',
     lastErrorCode: null,
     createdAt: NOW,
@@ -234,13 +233,7 @@ test('dispatcher runs reconciliation, projection, hello, enrollment, digest, lea
     campaignEnabled: true,
     isSendWindow: expect.any(Function),
   });
-  expect(LEASED_KINDS).toEqual([
-    'fulfill',
-    'notify',
-    'send_step',
-    'reply_reconcile',
-    'digest',
-  ]);
+  expect(LEASED_KINDS).toEqual(['fulfill', 'notify', 'send_step', 'digest']);
 });
 
 test('dispatcher skips disabled stages, weekend digests and rejects a bad batch size', async () => {
@@ -609,30 +602,6 @@ test('a failing job defers with backoff, the rest of the batch runs, and the 5th
   });
 });
 
-test('a failing reply_reconcile job is never exhausted and keeps deferring at the 3600 second cap', async () => {
-  const reply: GrowthJob = {
-    ...leasedJob('00000000-0000-4000-8000-000000000001', 'reply_reconcile'),
-    attempts: 8,
-  };
-  const deps = dependencies({
-    dispatchLeasedJob: vi.fn().mockRejectedValue(new Error('boom')),
-    leaseDueJobs: vi.fn().mockResolvedValue([reply]),
-  });
-  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-
-  await dispatchLifecycleJobs(input(), deps);
-
-  logged.mockRestore();
-  expect(deps.quarantineJob).not.toHaveBeenCalled();
-  expect(deps.deferJob).toHaveBeenCalledWith(expect.anything(), {
-    jobId: reply.id,
-    leaseToken: LEASE_TOKEN,
-    now: NOW,
-    availableAt: new Date(NOW.getTime() + 3_600_000),
-    errorCode: 'handler_error',
-  });
-});
-
 test('backoff is 60, 120, 240, 480 seconds and caps at 3600', async () => {
   const jobs = [1, 2, 3, 4].map((attempts) =>
     failingJob(`00000000-0000-4000-8000-00000000000${attempts}`, attempts),
@@ -781,12 +750,9 @@ test('a handler error after submission authorization leaves the job leased and n
   expect(deps.quarantineJob).not.toHaveBeenCalled();
 });
 
-test('an invalid action origin leases only reply_reconcile, keeps enrollment running and alerts action_origin_invalid', async () => {
+test('an invalid action origin leases nothing, keeps enrollment running and alerts action_origin_invalid', async () => {
   const calls: string[] = [];
-  const job = leasedJob(
-    '00000000-0000-4000-8000-000000000001',
-    'reply_reconcile',
-  );
+  const job = leasedJob('00000000-0000-4000-8000-000000000001');
   const deps = dependencies({
     assertActionOrigin: vi.fn(() => {
       throw new Error(
@@ -829,13 +795,11 @@ test('an invalid action origin leases only reply_reconcile, keeps enrollment run
   );
 
   expect(calls).toEqual(['reconcile', 'projection', 'hello', 'enrollment']);
-  expect(deps.leaseDueJobs).toHaveBeenCalledWith(
-    expect.anything(),
-    expect.objectContaining({ kinds: ['reply_reconcile'] }),
-  );
+  expect(deps.leaseDueJobs).not.toHaveBeenCalled();
+  expect(deps.dispatchLeasedJob).not.toHaveBeenCalled();
   expect(result).toEqual({
-    leased: 1,
-    dispatched: 1,
+    leased: 0,
+    dispatched: 0,
     recoveryPaused: false,
     operatorAlerts: ['action_origin_invalid'],
   });
@@ -907,14 +871,8 @@ test('the unbound alert is raised even when the job-start budget is already spen
   expect(deps.leaseDueJobs).not.toHaveBeenCalled();
 });
 
-test('lifecycle drains admitted historical replies alongside its app jobs', () => {
-  expect(LEASED_KINDS).toEqual([
-    'fulfill',
-    'notify',
-    'send_step',
-    'reply_reconcile',
-    'digest',
-  ]);
+test('lifecycle leases only its app job kinds', () => {
+  expect(LEASED_KINDS).toEqual(['fulfill', 'notify', 'send_step', 'digest']);
 });
 
 for (const paused of [true, false]) {

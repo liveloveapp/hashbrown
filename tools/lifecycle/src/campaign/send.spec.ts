@@ -94,7 +94,6 @@ function job(
     payload,
     providerEmailId: null,
     rfcMessageId: null,
-    gmailSeedMessageId: null,
     deliveryStatus: 'not_submitted',
     lastErrorCode: null,
     createdAt: NOW,
