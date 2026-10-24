@@ -1,3 +1,4 @@
+using System.Data.Common;
 using AGUI.Abstractions;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
@@ -16,9 +17,12 @@ public static class HashbrownEndpointConfiguration
             AGUIJsonUtilities.RegisterInterruptContentTypes(options.SerializerOptions));
     }
 
-    /// <summary>Validates application-owned request semantics before the upstream endpoint starts streaming.</summary>
+    /// <summary>Reads the opaque server claim attached to this HTTP request before streaming.</summary>
+    public static InterruptClaim? GetClaim(HttpContext? context) => context?.Items[typeof(InterruptClaim)] as InterruptClaim;
+
+    /// <summary>Validates and claims application-owned confirmations before upstream streaming begins.</summary>
     public static IEndpointConventionBuilder Map(IEndpointRouteBuilder routes, string pattern, AIAgent agent,
-        PendingInterruptStore pending, Func<string> scope, IReadOnlySet<string> serverToolNames)
+        IInterruptStore pending, Func<string> scope, IReadOnlySet<string> serverToolNames)
     {
         return routes.MapAGUIServer(pattern, agent).AddEndpointFilter(async (context, next) =>
         {
@@ -31,30 +35,51 @@ public static class HashbrownEndpointConfiguration
                     return Results.BadRequest(new { error = "Browser and server tool names must be disjoint." });
             }
             catch (ArgumentException exception) { return Results.BadRequest(new { error = exception.Message }); }
+            InterruptClaim? claim = null;
             if (input.Resume is not null)
             {
-                var status = pending.TryClaim(scope(), input);
-                if (status != 200) return Results.Json(new { error = "Invalid, expired, or consumed confirmation batch." }, statusCode: status);
+                try
+                {
+                    var result = await pending.TryClaimAsync(scope(), input, context.HttpContext.RequestAborted);
+                    if (result.Status != 200) return Results.Json(new { error = "Invalid, expired, consumed, or unavailable confirmation batch." }, statusCode: result.Status);
+                    claim = result.Claim;
+                    context.HttpContext.Items[typeof(InterruptClaim)] = claim;
+                }
+                catch (Exception exception) when (exception is DbException or TimeoutException)
+                {
+                    return Results.Json(new { error = "Confirmation storage is unavailable." }, statusCode: 503);
+                }
             }
             try
             {
                 var result = await next(context);
-                return input.Resume is not null && result is IResult stream
-                    ? new ClaimedResult(stream, pending, scope(), input) : result;
+                return claim is not null && result is IResult stream ? new ClaimedResult(stream, pending, claim) : result;
             }
             catch
             {
-                if (input.Resume is not null) pending.Finish(scope(), input, context.HttpContext.RequestAborted.IsCancellationRequested);
+                if (claim is not null) await CleanupAsync(context.HttpContext, pending, claim);
                 throw;
             }
         });
     }
-    private sealed class ClaimedResult(IResult inner, PendingInterruptStore pending, string scope, RunAgentInput input) : IResult
+
+    private static async ValueTask CleanupAsync(HttpContext context, IInterruptStore pending, InterruptClaim claim)
+    {
+        // An aborted request must not cancel its own necessary bookkeeping. Never mask a primary failure.
+        using var budget = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        try { await pending.FinishAsync(claim, context.RequestAborted.IsCancellationRequested ? InterruptFinish.Cancelled : InterruptFinish.Failed, budget.Token); }
+        catch (Exception exception)
+        {
+            context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("InterruptCleanup").LogWarning(exception, "Confirmation cleanup failed; durable dispatch state is retained.");
+        }
+    }
+
+    private sealed class ClaimedResult(IResult inner, IInterruptStore pending, InterruptClaim claim) : IResult
     {
         public async Task ExecuteAsync(HttpContext context)
         {
             try { await inner.ExecuteAsync(context); }
-            finally { pending.Finish(scope, input, context.RequestAborted.IsCancellationRequested); }
+            finally { await CleanupAsync(context, pending, claim); }
         }
     }
 }

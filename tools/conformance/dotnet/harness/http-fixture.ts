@@ -28,6 +28,8 @@ export interface DotnetFixture {
   readonly requests: readonly ModelRequest[];
   readonly diagnostics: () => string;
   readonly upstreamAborted: () => boolean;
+  /** Terminates the worker immediately while retaining its durable storage. */
+  readonly stop: () => Promise<void>;
 }
 
 /** Runs a body with isolated model fixtures, original request evidence, and a .NET process. */
@@ -36,6 +38,7 @@ export async function withDotnetFixture<T>(
   use: (fixture: DotnetFixture) => Promise<T>,
   workflow = '',
   streamControl?: ModelStreamControl,
+  environment: Readonly<Record<string, string>> = {},
 ): Promise<T> {
   const mock = new LLMock({ port: 0, strict: true });
   mock.onMessage('Hello fixture', { content: 'Hello from .NET' });
@@ -125,6 +128,7 @@ export async function withDotnetFixture<T>(
             : 'fixture-azure-deployment',
         ApiKey: 'fixture-only',
         Workflow: workflow,
+        ...environment,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     },
@@ -170,6 +174,12 @@ export async function withDotnetFixture<T>(
       requests,
       diagnostics: () => output,
       upstreamAborted: () => upstreamAborted,
+      stop: async () => {
+        if (child.exitCode !== null || child.signalCode !== null) return;
+        const exited = once(child, 'exit');
+        child.kill('SIGKILL');
+        await exited;
+      },
     });
   } catch (error) {
     const directory = resolve('test-results/conformance/dotnet/diagnostics');

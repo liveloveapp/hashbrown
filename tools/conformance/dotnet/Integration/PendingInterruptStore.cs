@@ -1,121 +1,88 @@
-using System.Security.Cryptography;
-using System.Text.Json;
 using AGUI.Abstractions;
 
 namespace Hashbrown.Conformance.Integration;
 
-/// <summary>A server-selected operation. Both preparation and effect parameters stay server-owned.</summary>
-public sealed record WorkflowCheckpoint(string Name, Func<CancellationToken, ValueTask> Prepare,
-    Func<CancellationToken, ValueTask> Execute);
-
-/// <summary>Immutable process-local confirmation checkpoint, owned by the server.</summary>
-public sealed record PendingInterrupt(string Scope, string ThreadId, string RunId,
-    string[] Ids, DateTimeOffset ExpiresAt, byte[] RequestFingerprint, WorkflowCheckpoint Checkpoint,
-    string? ActiveRun = null, bool EffectStarted = false, bool Consumed = false);
-
-/// <summary>Bounded, expiring confirmation batches with atomic execution claims and retained tombstones.</summary>
-public sealed class PendingInterruptStore(TimeProvider clock, int capacity = 128)
+/// <summary>Bounded process-local development store implementing the same fenced claim contract as PostgreSQL.</summary>
+public sealed class PendingInterruptStore(TimeProvider clock, WorkflowOperationRegistry registry, InterruptStoreOptions? options = null) : IInterruptStore
 {
     private readonly object _gate = new();
-    private readonly Dictionary<string, PendingInterrupt> _pending = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, InterruptRecord> _pending = new(StringComparer.Ordinal);
+    private readonly InterruptStoreOptions _options = (options ?? new()).Checked();
 
-    /// <summary>Creates a server-owned batch before its interrupt is emitted.</summary>
-    public PendingInterrupt Create(string scope, RunAgentInput input, WorkflowCheckpoint checkpoint)
+    /// <inheritdoc />
+    public ValueTask<PendingInterrupt> CreateAsync(string scope, RunAgentInput input, WorkflowCheckpoint checkpoint, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        _ = registry.Resolve(checkpoint);
         lock (_gate)
         {
-            foreach (var key in _pending.Where(pair => pair.Value.ActiveRun is null && pair.Value.ExpiresAt <= clock.GetUtcNow()).Select(pair => pair.Key).ToArray())
-                _pending.Remove(key);
-            var existing = _pending.Values.FirstOrDefault(batch => batch.Scope == scope &&
-                batch.ThreadId == input.ThreadId && !batch.Consumed);
-            if (existing is not null) return existing;
-            if (_pending.Count >= capacity) throw new InvalidOperationException("Pending confirmation capacity reached.");
-            var batch = new PendingInterrupt(scope, input.ThreadId, input.RunId,
-                [Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N")], clock.GetUtcNow().AddMinutes(10),
-                Fingerprint(input), checkpoint);
-            _pending.Add(batch.Ids[0], batch);
-            return batch;
+            var now = clock.GetUtcNow();
+            foreach (var key in _pending.Where(pair => Removable(pair.Value, now)).Select(pair => pair.Key).ToArray()) _pending.Remove(key);
+            var existing = _pending.Values.FirstOrDefault(record => record.Scope == scope && record.ThreadId == input.ThreadId && record.State is "Pending" or "Claimed" or "EffectStarted");
+            if (existing is not null) return ValueTask.FromResult(existing.Batch);
+            if (_pending.Count >= _options.Capacity) throw new InvalidOperationException("Pending confirmation capacity reached.");
+            var id = Guid.NewGuid().ToString("N");
+            var batch = new PendingInterrupt(id, Array.AsReadOnly(new[] { Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N") }), now + _options.ApprovalTtl, checkpoint, Guid.NewGuid().ToString("N"));
+            _pending.Add(id, new(batch, scope, input.ThreadId, input.RunId, InterruptValidation.Fingerprint(input)));
+            return ValueTask.FromResult(batch);
         }
     }
 
-    /// <summary>Validates the complete batch before atomically claiming its checkpoint for this run.</summary>
-    public int TryClaim(string scope, RunAgentInput input)
+    /// <inheritdoc />
+    public ValueTask<InterruptClaimResult> TryClaimAsync(string scope, RunAgentInput input, CancellationToken cancellationToken = default)
     {
-        lock (_gate)
-        {
-            var entries = input.Resume;
-            if (entries is not { Count: > 0 }) return 400;
-            // Search every ID so a reordered batch still resolves to its original tombstone.
-            var batch = _pending.Values.FirstOrDefault(candidate => entries.Any(entry =>
-                candidate.Ids.Contains(entry.InterruptId, StringComparer.Ordinal)));
-            if (batch is null || batch.Scope != scope || batch.ThreadId != input.ThreadId ||
-                batch.ExpiresAt <= clock.GetUtcNow()) return 410;
-            if (batch.Consumed || batch.ActiveRun is not null) return 409;
-            if (!CryptographicOperations.FixedTimeEquals(batch.RequestFingerprint, Fingerprint(input))) return 400;
-            if (entries.Count != batch.Ids.Length ||
-                entries.Select(entry => entry.InterruptId).Distinct(StringComparer.Ordinal).Count() != entries.Count ||
-                entries.Any(entry => !batch.Ids.Contains(entry.InterruptId, StringComparer.Ordinal))) return 400;
-            foreach (var entry in entries)
-            {
-                if (entry.Status == "cancelled")
-                {
-                    if (entry.Payload is not null) return 400;
-                    continue;
-                }
-                if (entry.Status != "resolved" || entry.Payload is not { ValueKind: JsonValueKind.Object } payload ||
-                    payload.EnumerateObject().Count() != 1 || !payload.TryGetProperty("approved", out var approved) ||
-                    approved.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return 400;
-            }
-            _pending[batch.Ids[0]] = batch with { ActiveRun = input.RunId };
-            return 200;
-        }
-    }
-
-    /// <summary>Recovers and runs only the stored operation, marking the effect boundary before execution.</summary>
-    public async ValueTask ExecuteCheckpointAsync(string scope, RunAgentInput input, CancellationToken cancellationToken)
-    {
-        PendingInterrupt batch;
-        lock (_gate)
-        {
-            batch = Claimed(scope, input);
-            if (batch.EffectStarted) return;
-        }
-        await batch.Checkpoint.Prepare(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
         {
-            batch = Claimed(scope, input);
-            if (batch.EffectStarted) return;
-            _pending[batch.Ids[0]] = batch with { EffectStarted = true };
+            if (input.Resume is not { Count: > 0 }) return ValueTask.FromResult(new InterruptClaimResult(400));
+            var record = _pending.Values.FirstOrDefault(candidate => input.Resume.Any(entry => candidate.Batch.Ids.Contains(entry.InterruptId, StringComparer.Ordinal)));
+            if (record is null) return ValueTask.FromResult(new InterruptClaimResult(410));
+            var now = clock.GetUtcNow();
+            var status = InterruptValidation.Validate(scope, input, record, now);
+            if (status != 200) return ValueTask.FromResult(new InterruptClaimResult(status));
+            try { _ = registry.Resolve(record.Batch.Checkpoint); }
+            catch (InvalidOperationException) { return ValueTask.FromResult(new InterruptClaimResult(503)); }
+            var declined = InterruptValidation.Declined(input);
+            var claim = new InterruptClaim(record.Batch.Id, Guid.NewGuid().ToString("N"), record.Generation + 1, record.Batch.Checkpoint, record.Batch.EffectId, declined);
+            _pending[record.Batch.Id] = record with { State = declined ? "Declined" : "Claimed", Token = claim.Token, Generation = claim.Generation, LeaseUntil = now + _options.PreparationLease, CompletedAt = declined ? now : null };
+            return ValueTask.FromResult(new InterruptClaimResult(200, claim));
         }
-        await batch.Checkpoint.Execute(cancellationToken);
     }
 
-    /// <summary>Releases cancellation before effects; conservatively consumes every other completed or failed claim.</summary>
-    public void Finish(string scope, RunAgentInput input, bool cancelled)
+    /// <inheritdoc />
+    public ValueTask<bool> TryStartEffectAsync(InterruptClaim claim, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_gate)
         {
-            var batch = Claimed(scope, input);
-            _pending[batch.Ids[0]] = batch with
-            {
-                ActiveRun = null,
-                Consumed = !cancelled || batch.EffectStarted
-            };
+            if (!Current(claim, out var record) || record!.State != "Claimed" || record.LeaseUntil <= clock.GetUtcNow()) return ValueTask.FromResult(false);
+            _pending[claim.BatchId] = record with { State = "EffectStarted" };
+            return ValueTask.FromResult(true);
         }
     }
 
-    private PendingInterrupt Claimed(string scope, RunAgentInput input) => _pending.Values.Single(batch =>
-        batch.Scope == scope && batch.ThreadId == input.ThreadId && batch.ActiveRun == input.RunId &&
-        input.Resume!.Any(entry => entry.InterruptId == batch.Ids[0]));
-
-    private static byte[] Fingerprint(RunAgentInput input) => SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(
-        new RunAgentInput
+    /// <inheritdoc />
+    public ValueTask FinishAsync(InterruptClaim claim, InterruptFinish finish, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
         {
-            ThreadId = input.ThreadId,
-            RunId = string.Empty,
-            Messages = input.Messages,
-            Tools = input.Tools,
-            ForwardedProperties = input.ForwardedProperties
-        }, AGUIJsonSerializerContext.Default.RunAgentInput));
+            if (!Current(claim, out var record) || record!.State is not ("Claimed" or "EffectStarted")) return ValueTask.CompletedTask;
+            // An expired preparation owner cannot consume or release a later claimant's opportunity.
+            if (record.State == "Claimed" && record.LeaseUntil <= clock.GetUtcNow()) return ValueTask.CompletedTask;
+            var released = finish == InterruptFinish.Cancelled && record.State == "Claimed";
+            var state = released ? "Pending" : finish == InterruptFinish.Completed ? "Completed" : record.State == "EffectStarted" ? "FailedAfterEffect" : "FailedBeforeEffect";
+            _pending[claim.BatchId] = record with { State = state, Token = released ? null : record.Token, LeaseUntil = null, CompletedAt = released ? null : clock.GetUtcNow() };
+        }
+        return ValueTask.CompletedTask;
+    }
+
+    private bool Current(InterruptClaim claim, out InterruptRecord? record) => _pending.TryGetValue(claim.BatchId, out record) && record.Token == claim.Token && record.Generation == claim.Generation;
+    private bool Removable(InterruptRecord record, DateTimeOffset now) => record.State switch
+    {
+        "Pending" => record.Batch.ExpiresAt <= now,
+        "Claimed" => record.Batch.ExpiresAt <= now && record.LeaseUntil <= now,
+        "EffectStarted" => false,
+        _ => record.CompletedAt + _options.TerminalRetention <= now
+    };
 }

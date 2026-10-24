@@ -75,6 +75,12 @@
           "OpenAI": "2.14.0"
         }
       },
+      "Npgsql": {
+        "type": "Direct",
+        "requested": "[10.0.3, )",
+        "resolved": "10.0.3",
+        "contentHash": "7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w=="
+      },
       "OpenAI": {
         "type": "Direct",
         "requested": "[2.14.0, )",
