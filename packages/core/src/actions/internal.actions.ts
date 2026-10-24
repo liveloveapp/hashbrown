@@ -38,6 +38,12 @@ export default createActionGroup('internal', {
     generationId: string;
     toolTurnId: string;
   }>(),
+  generationCancelled: props<{
+    generationId: string;
+    markerId: string;
+    reason: 'stopped' | 'superseded';
+    beforeMessageId?: string;
+  }>(),
   logicalGenerationSettled: props<{ generationId: string }>(),
   generationSilentlyRetired: emptyProps(),
   toolTurnSettled: props<{

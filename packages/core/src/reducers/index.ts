@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { ɵcreateCancelledTurnMarker } from '../models/cancelled-turn';
 import type { Message } from '@ag-ui/core';
 import { Chat } from '../models';
 import { isProviderToolCall } from '../models/tool-step';
@@ -135,6 +136,45 @@ export function ɵprepareRootAction(
       state.generationOwnership.attemptId !== terminal.payload.attemptId
     )
       return { type: '@hashbrown/noop' };
+  }
+  if (action.type === internalActions.generationCancelled.type) {
+    const cancellation = action as ReturnType<
+      typeof internalActions.generationCancelled
+    >;
+    const { generationId, markerId, reason, beforeMessageId } =
+      cancellation.payload;
+    const history = state.agUiMessages.committed;
+    const insertionIndex =
+      beforeMessageId === undefined
+        ? history.length
+        : history.findIndex((message) => message.id === beforeMessageId);
+    if (
+      state.generationOwnership.generationId !== generationId ||
+      state.generationOwnership.cancellationMarkerId !== undefined ||
+      history.some((message) => message.id === markerId) ||
+      insertionIndex < 0
+    ) {
+      return { type: '@hashbrown/noop' };
+    }
+    const marker = ɵcreateCancelledTurnMarker(markerId, generationId, reason);
+    const canonicalHistory = Object.freeze([
+      ...history.slice(0, insertionIndex),
+      marker,
+      ...history.slice(insertionIndex),
+    ]);
+    const projection = ɵreconcileAgUiMessageProjection(
+      state.messages.preparedProjection?.canonicalMessages === history
+        ? state.messages.preparedProjection
+        : undefined,
+      canonicalHistory,
+      state.tools.entities,
+      state.config.responseSchema,
+    );
+    return {
+      ...action,
+      ɵcanonicalMessages: canonicalHistory,
+      ɵagUiMessageProjection: projection,
+    };
   }
   if (action.type === toolTurnSettledType) {
     const settlement = action as ReturnType<

@@ -1,3 +1,4 @@
+import { ɵisCancelledTurnMarker } from '../models/cancelled-turn';
 import {
   type AGUIEvent,
   EventType,
@@ -460,6 +461,10 @@ export function ɵindexAgUiCanonicalMessageSources(
   > = [];
 
   for (const message of messages) {
+    if (ɵisCancelledTurnMarker(message)) {
+      pendingReasoning = [];
+      continue;
+    }
     if (message.role === 'reasoning') {
       pendingReasoning = [...pendingReasoning, message];
       continue;
@@ -581,6 +586,10 @@ export function projectAgUiMessages(
   > = [];
 
   for (const message of messages) {
+    if (ɵisCancelledTurnMarker(message)) {
+      pendingReasoning = [];
+      continue;
+    }
     if (message.role === 'reasoning') {
       pendingReasoning = [...pendingReasoning, message];
       continue;
@@ -694,6 +703,10 @@ export function ɵreconcileAgUiMessageProjection(
   > = [];
 
   for (const source of messages) {
+    if (ɵisCancelledTurnMarker(source)) {
+      pendingReasoning = [];
+      continue;
+    }
     if (source.role === 'reasoning') {
       pendingReasoning.push(source);
       continue;

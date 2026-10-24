@@ -3575,8 +3575,12 @@ test('a synchronous messages subscriber settles tools before superseding', async
       'system',
       'user',
       'assistant',
+      'assistant',
       'user',
     ]);
+    expect(request.input.messages[3]).toMatchObject({
+      content: expect.stringContaining('replaced'),
+    });
     expect(handler).not.toHaveBeenCalled();
     expect(send).toHaveBeenCalledTimes(2);
   } finally {
@@ -3658,89 +3662,99 @@ test.each(['thread replacement', 'teardown'] as const)(
   },
 );
 
-test('superseding input snapshots settled tools before the replacement user', async () => {
-  jest.clearAllMocks();
-  const handlerStarted = createDeferred<void>();
-  const lateResult = createDeferred<{ recorded: number }>();
-  const secondRequestCaptured = createDeferred<TransportRequest>();
-  const settlements = jest.spyOn(internalActions, 'toolTurnSettled');
-  let toolSignal: AbortSignal | undefined;
-  let requestCount = 0;
-  makeSelection(async (request) => {
-    requestCount++;
-    if (requestCount === 1) {
+test.each(['stop', 'supersede'] as const)(
+  '%s snapshots settled tools before the replacement user',
+  async (mode) => {
+    jest.clearAllMocks();
+    const handlerStarted = createDeferred<void>();
+    const lateResult = createDeferred<{ recorded: number }>();
+    const secondRequestCaptured = createDeferred<TransportRequest>();
+    const settlements = jest.spyOn(internalActions, 'toolTurnSettled');
+    let toolSignal: AbortSignal | undefined;
+    let requestCount = 0;
+    makeSelection(async (request) => {
+      requestCount++;
+      if (requestCount === 1) {
+        return {
+          events: createToolRoundEvents(request, {
+            callId: 'call-superseded',
+            value: 3,
+          }),
+        };
+      }
+
+      secondRequestCaptured.resolve(request);
       return {
-        events: createToolRoundEvents(request, {
-          callId: 'call-superseded',
-          value: 3,
-        }),
+        events: successfulEvents(request, [
+          {
+            type: EventType.TEXT_MESSAGE_START,
+            messageId: 'assistant-superseding',
+            role: 'assistant',
+          },
+          {
+            type: EventType.TEXT_MESSAGE_END,
+            messageId: 'assistant-superseding',
+          },
+        ]),
       };
-    }
-
-    secondRequestCaptured.resolve(request);
-    return {
-      events: successfulEvents(request, [
-        {
-          type: EventType.TEXT_MESSAGE_START,
-          messageId: 'assistant-superseding',
-          role: 'assistant',
-        },
-        {
-          type: EventType.TEXT_MESSAGE_END,
-          messageId: 'assistant-superseding',
-        },
-      ]),
-    };
-  });
-  const runtime = createChatRuntime({
-    system: 'You are a test bot',
-    transport: configuredTransport,
-    tools: [
-      {
-        name: 'recordValue',
-        description: 'Record a numeric value.',
-        schema: s.object('Value to record', {
-          value: s.number('Numeric value'),
-        }),
-        handler: (_input, signal) => {
-          toolSignal = signal;
-          handlerStarted.resolve();
-          return lateResult.promise;
-        },
-      },
-    ],
-  });
-  const teardown = runtime.start();
-
-  try {
-    runtime.sendMessage({ role: 'user', content: 'Record the first value.' });
-    await handlerStarted.promise;
-    runtime.sendMessage({ role: 'user', content: 'Replace that request.' });
-    const secondRequest = await secondRequestCaptured.promise;
-
-    expect(secondRequest.input.messages.map((message) => message.role)).toEqual(
-      ['system', 'user', 'assistant', 'tool', 'user'],
-    );
-    const settledToolMessage = secondRequest.input.messages[3];
-    expect(settledToolMessage).toMatchObject({
-      role: 'tool',
-      toolCallId: 'call-superseded',
-      content: 'Tool execution cancelled',
-      error: 'Tool execution cancelled',
     });
-    expect(toolSignal?.aborted).toBe(true);
-    expect(settlements).toHaveBeenCalledTimes(1);
+    const runtime = createChatRuntime({
+      system: 'You are a test bot',
+      transport: configuredTransport,
+      tools: [
+        {
+          name: 'recordValue',
+          description: 'Record a numeric value.',
+          schema: s.object('Value to record', {
+            value: s.number('Numeric value'),
+          }),
+          handler: (_input, signal) => {
+            toolSignal = signal;
+            handlerStarted.resolve();
+            return lateResult.promise;
+          },
+        },
+      ],
+    });
+    const teardown = runtime.start();
 
-    lateResult.resolve({ recorded: 3 });
-    await waitForRuntimeIdle(runtime);
+    try {
+      runtime.sendMessage({ role: 'user', content: 'Record the first value.' });
+      await handlerStarted.promise;
+      if (mode === 'stop') runtime.stop();
+      runtime.sendMessage({ role: 'user', content: 'Replace that request.' });
+      const secondRequest = await secondRequestCaptured.promise;
 
-    expect(requestCount).toBe(2);
-    expect(settlements).toHaveBeenCalledTimes(1);
-  } finally {
-    settlements.mockRestore();
-    teardown();
-  }
-});
+      expect(
+        secondRequest.input.messages.map((message) => message.role),
+      ).toEqual(['system', 'user', 'assistant', 'tool', 'assistant', 'user']);
+      expect(secondRequest.input.messages[4]).toMatchObject({
+        role: 'assistant',
+        content: expect.stringContaining(
+          mode === 'stop' ? 'user cancelled' : 'replaced',
+        ),
+      });
+      const settledToolMessage = secondRequest.input.messages[3];
+      expect(settledToolMessage).toMatchObject({
+        role: 'tool',
+        toolCallId: 'call-superseded',
+        content: 'Tool execution cancelled',
+        error: 'Tool execution cancelled',
+      });
+      expect(toolSignal?.aborted).toBe(true);
+      expect(settlements).toHaveBeenCalledTimes(1);
+
+      lateResult.resolve({ recorded: 3 });
+      await waitForRuntimeIdle(runtime);
+
+      expect(requestCount).toBe(2);
+      expect(settlements).toHaveBeenCalledTimes(1);
+    } finally {
+      settlements.mockRestore();
+      teardown();
+    }
+  },
+);
 
 test('restarting one runtime installs exactly one generation listener', async () => {
   jest.clearAllMocks();
@@ -6268,6 +6282,11 @@ test('user stop before start has no terminal, no retry, and discards late events
   expect(getDispatchedEvents(store.actions)).toHaveLength(0);
   expect(iteratorReturn).toHaveBeenCalledTimes(1);
   expect(dispose).toHaveBeenCalledTimes(1);
+  expect(
+    store.actions.filter(
+      (action) => action.type === '[internal] generationCancelled',
+    ),
+  ).toHaveLength(1);
 
   teardown?.();
 });
@@ -7607,5 +7626,250 @@ test('a committed activity never reaches the next run input', async () => {
     'hashbrownLinks',
   );
 
+  teardown();
+});
+
+test('Stop before inference records one hidden cancellation without success or another request', async () => {
+  jest.clearAllMocks();
+  const { send } = makeSelection(async (request) => ({
+    events: successfulEvents(request),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: canonicalUser('Exact request'),
+      messages: [{ role: 'user', content: 'Exact request' }],
+      transport: configuredTransport,
+      debounce: 100000,
+    }),
+  );
+  const teardown = store.runEffects();
+  const successes: unknown[] = [];
+  const unsubscribe = store.when(apiActions.generateMessageSuccess, (action) =>
+    successes.push(action),
+  );
+
+  store.dispatch(internalActions.start());
+  store.dispatch(devActions.stopMessageGeneration(true));
+  store.dispatch(devActions.stopMessageGeneration(true));
+  await waitForStoreGenerationToSettle(store);
+
+  expect(store.read(ɵselectCommittedAgUiMessages)).toEqual([
+    expect.objectContaining({ role: 'user', content: 'Exact request' }),
+    expect.objectContaining({
+      role: 'assistant',
+      content: expect.stringContaining('cancelled'),
+    }),
+  ]);
+  expect(store.read(selectMessages)).toHaveLength(1);
+  expect(send).not.toHaveBeenCalled();
+  expect(successes).toEqual([]);
+  unsubscribe();
+  teardown();
+});
+
+test('Stop after accepted final attempt release adds no cancellation marker', async () => {
+  jest.clearAllMocks();
+  makeSelection(async (request) => ({
+    events: successfulEvents(request, [
+      {
+        type: EventType.TEXT_MESSAGE_START,
+        messageId: 'final',
+        role: 'assistant',
+      },
+      {
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId: 'final',
+        delta: 'Done',
+      },
+      { type: EventType.TEXT_MESSAGE_END, messageId: 'final' },
+    ]),
+  }));
+  const store = createRealEffectStore();
+  store.dispatch(
+    devActions.init({
+      system: '',
+      canonicalMessages: canonicalUser('Complete'),
+      messages: [{ role: 'user', content: 'Complete' }],
+      transport: configuredTransport,
+      debounce: 0,
+    }),
+  );
+  const unsubscribe = store.when(
+    internalActions.generationAttemptReleased,
+    () => store.dispatch(devActions.stopMessageGeneration(true)),
+  );
+  const teardown = store.runEffects();
+
+  store.dispatch(internalActions.start());
+  await waitForStoreGenerationToSettle(store);
+
+  expect(
+    store.read(ɵselectCommittedAgUiMessages).map((message) => message.content),
+  ).toEqual(['Complete', 'Done']);
+  unsubscribe();
+  teardown();
+});
+
+test.each(['stop', 'supersede'] as const)(
+  '%s while streaming preserves exact request and rolls back incomplete text and agent state',
+  async (mode) => {
+    jest.clearAllMocks();
+    const ready = createDeferred<void>();
+    const captured = createDeferred<TransportRequest>();
+    let calls = 0;
+    makeSelection(async (request) => {
+      calls++;
+      if (calls > 1) {
+        captured.resolve(request);
+        return { events: successfulEvents(request) };
+      }
+      return {
+        events: (async function* () {
+          yield {
+            type: EventType.RUN_STARTED,
+            ...getInputIdentity(request),
+          } as AGUIEvent;
+          yield {
+            type: EventType.STATE_SNAPSHOT,
+            snapshot: { speculative: true },
+          } as AGUIEvent;
+          yield {
+            type: EventType.TEXT_MESSAGE_START,
+            messageId: 'incomplete',
+            role: 'assistant',
+          } as AGUIEvent;
+          yield {
+            type: EventType.TEXT_MESSAGE_CONTENT,
+            messageId: 'incomplete',
+            delta: 'Unfinished draft',
+          } as AGUIEvent;
+          ready.resolve();
+          await waitForAbort(request.signal);
+        })(),
+      };
+    });
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: '',
+        canonicalMessages: canonicalUser('Keep this EXACT'),
+        messages: [{ role: 'user', content: 'Keep this EXACT' }],
+        state: { original: true },
+        transport: configuredTransport,
+        debounce: 0,
+      }),
+    );
+    const teardown = store.runEffects();
+    const successes: unknown[] = [];
+    const unsubscribe = store.when(
+      apiActions.generateMessageSuccess,
+      (action) => successes.push(action),
+    );
+
+    store.dispatch(internalActions.start());
+    await ready.promise;
+    if (mode === 'stop') store.dispatch(devActions.stopMessageGeneration(true));
+    store.dispatch(
+      devActions.sendMessage({
+        message: { role: 'user', content: 'New request' },
+        canonicalMessages: canonicalUser('New request'),
+      }),
+    );
+    const request = await captured.promise;
+    await waitForStoreGenerationToSettle(store);
+
+    expect(request.input.messages).toEqual([
+      expect.objectContaining({ role: 'user', content: 'Keep this EXACT' }),
+      expect.objectContaining({
+        role: 'assistant',
+        content: expect.stringContaining(
+          mode === 'stop' ? 'user cancelled' : 'replaced',
+        ),
+      }),
+      expect.objectContaining({ role: 'user', content: 'New request' }),
+    ]);
+    expect(request.input.messages[1].metadata).toBeUndefined();
+    expect(request.input.state).toEqual({ original: true });
+    expect(
+      store
+        .read(selectMessages)
+        .some(
+          (message) =>
+            message.role === 'assistant' &&
+            message.content?.includes('runtime'),
+        ),
+    ).toBe(false);
+    expect(successes).toHaveLength(1);
+    expect(calls).toBe(2);
+    unsubscribe();
+    teardown();
+  },
+);
+
+test.each(['dispose', 'thread', 'setMessages', 'retry'] as const)(
+  '%s retirement adds no cancellation marker',
+  async (mode) => {
+    jest.clearAllMocks();
+    const store = createRealEffectStore();
+    store.dispatch(
+      devActions.init({
+        system: '',
+        threadId: 'first-thread',
+        canonicalMessages: canonicalUser('Exact'),
+        messages: [{ role: 'user', content: 'Exact' }],
+        transport: configuredTransport,
+        debounce: 100000,
+      }),
+    );
+    const teardown = store.runEffects();
+
+    store.dispatch(internalActions.start());
+    if (mode === 'dispose') teardown();
+    if (mode === 'thread')
+      store.dispatch(devActions.updateOptions({ threadId: 'second-thread' }));
+    if (mode === 'setMessages')
+      store.dispatch(
+        devActions.setMessages({
+          messages: [{ role: 'user', content: 'Replacement' }],
+          canonicalMessages: canonicalUser('Replacement'),
+        }),
+      );
+    if (mode === 'retry') store.dispatch(devActions.resendMessages());
+    await flushTaskBoundary();
+
+    expect(
+      store
+        .read(ɵselectCommittedAgUiMessages)
+        .every((message) => message.role !== 'assistant'),
+    ).toBe(true);
+    teardown();
+  },
+);
+
+test('idle startup Stop and first send add no cancellation marker for an absent request', async () => {
+  jest.clearAllMocks();
+  const captured = createDeferred<TransportRequest>();
+  makeSelection(async (request) => {
+    captured.resolve(request);
+    return { events: successfulEvents(request) };
+  });
+  const runtime = createChatRuntime({
+    system: '',
+    transport: configuredTransport,
+    debounce: 0,
+  });
+  const teardown = runtime.start();
+
+  await Promise.resolve();
+  expect(() => runtime.stop()).toThrow(/not streaming/);
+  runtime.sendMessage({ role: 'user', content: 'First request' });
+  const request = await captured.promise;
+  await waitForRuntimeIdleAcrossTasks(runtime);
+
+  expect(request.input.messages).toEqual([
+    expect.objectContaining({ role: 'user', content: 'First request' }),
+  ]);
   teardown();
 });

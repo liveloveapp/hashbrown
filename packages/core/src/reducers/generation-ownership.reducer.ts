@@ -12,6 +12,7 @@ export interface ToolTurnOwnership {
 /** Store-owned identities for the active logical generation and model attempt. @internal */
 export interface GenerationOwnershipState {
   readonly generationId: string | undefined;
+  readonly cancellationMarkerId?: string;
   readonly attemptId: string | undefined;
   readonly toolTurn: ToolTurnOwnership | undefined;
 }
@@ -44,6 +45,7 @@ export const reducer = createReducer(
     (state, action): GenerationOwnershipState =>
       state.generationId === action.payload.generationId
         ? {
+            ...state,
             generationId: state.generationId,
             attemptId: action.payload.attemptId,
             toolTurn: state.toolTurn,
@@ -96,6 +98,13 @@ export const reducer = createReducer(
       state.generationId === action.payload.generationId &&
       state.toolTurn?.toolTurnId === action.payload.toolTurnId
         ? { ...state, toolTurn: undefined }
+        : state,
+  ),
+  on(
+    internalActions.generationCancelled,
+    (state, action): GenerationOwnershipState =>
+      state.generationId === action.payload.generationId
+        ? { ...state, cancellationMarkerId: action.payload.markerId }
         : state,
   ),
   on(
