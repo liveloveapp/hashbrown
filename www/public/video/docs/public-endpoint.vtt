@@ -1,0 +1,13 @@
+WEBVTT
+
+00:00.000 --> 00:02.000
+Verify access before calling the provider.
+
+00:02.000 --> 00:03.300
+No session: HTTP 401.
+
+00:03.300 --> 00:04.800
+Another owner’s thread: HTTP 404.
+
+00:04.800 --> 00:08.833
+An authorized request streams a reply: HTTP 200.

@@ -25,6 +25,7 @@
     "react/**/*.tsx",
     "react/**/*.ts",
     "angular/**/*.ts",
-    "server/**/*.ts"
+    "server/**/*.ts",
+    "runtime/**/*.ts"
   ]
 }
