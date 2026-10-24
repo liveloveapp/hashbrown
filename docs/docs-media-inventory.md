@@ -1,6 +1,6 @@
 # Documentation media inventory
 
-Updated 2026-10-24. Paths are below `/docs/<sdk>/`; React and Angular share a recording when the visible behavior is the same. React-only CopilotKit is listed separately in the source navigation. Verify both SDK implementations before sharing a capture. This is a production backlog, not a claim that every guide has a recording.
+Updated 2026-10-24. Paths are below `/docs/<sdk>/`; React and Angular share a recording when the visible behavior is the same. Verify both SDK implementations before sharing a capture. This is a production backlog, not a claim that every guide has a recording.
 
 ## Current recordings
 
@@ -80,13 +80,14 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `concept/streaming`                           | Recorded              | streaming-data                                                                                                   |
 | `concept/structured-output`                   | Recorded              | structured-form                                                                                                  |
 | `concept/system-instructions`                 | Recorded              | conversation                                                                                                     |
-| `concept/transform-request-options`           | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
+| `concept/transform-request-options`           | Recorded              | request-transformation; actual adapter, trusted workspace context and scripted provider-native HTTP output. |
 | `guide/choosing-model`                        | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                           |
 | `guide/ethics`                                | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                           |
 | `guide/prompt-engineering`                    | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                           |
 | `migrations/v0-5`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
 | `migrations/v0-6`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
 | `migrations/v0-7`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
+| `migrations/threadplane` | Intentional exception | Framework-specific presentation/runtime changes and migration boundaries are easier to scan as steps. |
 | `migrations/v0-8`                             | Intentional exception | Version-specific changes are easier to scan as before/after code.                                                |
 | `platform/anthropic`                          | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
 | `platform/azure`                              | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
@@ -98,7 +99,6 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `platform/openai`                             | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
 | `platform/typesafe`                           | Intentional exception | Credentials and host configuration belong in named, copyable files.                                              |
 | `recipes/browser-history`                     | Recorded              | persistence; application-owned versioned browser storage of completed text.                                      |
-| `recipes/copilotkit`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
 | `recipes/decisions-in-agents`                 | Recorded              | agent-routing and agent-fallback; checked server routing, clarification, failure and explicit retry.              |
 | `recipes/json-parser`                         | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
 | `recipes/local-models`                        | Recorded              | local-models; real Chrome inference extracts a typed trip brief after explicit preparation.                      |
@@ -106,6 +106,7 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `recipes/natural-language-to-structured-data` | Recorded              | structured-form; generate a typed draft, validate, review, and explicitly apply.                                 |
 | `recipes/predictive-actions`                  | Recorded              | predictive-suggestions; complete context-bound offers with explicit Accept and Dismiss.                          |
 | `recipes/public-endpoint`                     | Recorded              | public-endpoint; session and owner checks before scripted provider streaming.                                    |
+| `recipes/threadplane`                         | Needs recording       | Source-grounded integration guides; no Threadplane recording is claimed.                                        |
 | `recipes/threads`                             | Recorded              | server-threads; server-owned completed text, version conflict, and explicit reload.                              |
 | `recipes/ui-chatbot`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot.           |
 | `recipes/ui-kits`                             | Recorded              | ui-kits                                                                                                          |
@@ -153,7 +154,7 @@ These browser checks cover streaming/finalization and citation interaction, comp
 - Quickstart remains the first trusted-component success. How Hashbrown works and Choosing an API now point to complete task-based routes instead of leaving readers to infer the relationship between API names.
 - The typed-data route is schemas → structured output → streaming → natural-language forms. Fundamentals readers who reach Streaming early get explicit prerequisites and links to the checked example.
 - The conversation route remains messages → system instructions → history, then tools or workflow guides. Storage and runtime guides explain their separate lifetime and production boundaries.
-- Remaining editorial priorities: review CopilotKit and server-side request transformation examples. Remote MCP learning pages are retired with compatibility redirects; local models now has a checked browser-native workflow and real-inference recording. Decisions in Agents now connects a checked server router to ordinary framework chat clients. Magic Text, predictive suggestions and UI selection now have small checked tasks, complete source disclosures and their own recordings.
+- CopilotKit learning content is retired with compatibility redirects. Threadplane integration and chat-migration guides cover each framework’s actual presentation and runtime boundary. Remote MCP learning pages are retired with compatibility redirects; local models now has a checked browser-native workflow and real-inference recording. Decisions in Agents now connects a checked server router to ordinary framework chat clients. Magic Text, predictive suggestions and UI selection now have small checked tasks, complete source disclosures and their own recordings.
 - Predictive suggestions now provide an independent input-driven structured-completion example. Its stable context snapshot avoids a request feedback loop when suggestions are accepted or dismissed. The typed-list tutorial separately uses an explicit chat action and fresh conversation per request. No claim of universal page coverage or a finished editorial pass is made.
 
 ## Server-side agent decisions
@@ -169,3 +170,13 @@ Both real framework clients call the checked Express agent and router. Only clas
 Shim checks cover explicit preparation, unavailable/missing APIs, progress/failure, cancellation and late session cleanup, malformed/invalid/failed/truncated generation and recovery. Mobile checks establish layout and shim contracts, not native mobile inference. Captures, masters, static clients and reports remain in ignored `dist/docs-local-models`. Use `DOCS_SKIP_RECORDING=1` for verification without replacing public media; `DOCS_DEMO_MODES=local-models` selects the sole ID and unknown names fail. Run sequentially with all other recorders and GPU suites.
 
 Remote MCP was removed from navigation, content search, LLM listings and this recording backlog. Old React/Angular recipe and Markdown URLs redirect permanently to each SDK's Tool calling guide. This retirement does not remove MCP SDK capabilities.
+
+## Threadplane chat presentation
+
+The Angular guide uses Threadplane’s full chat with its AG-UI adapter. The React guide composes its source-workspace transcript and input with Hashbrown execution. Migration guides keep authentication, authorization, system policy, history, tools and component contracts explicit. These guides do not claim a Threadplane recording. CopilotKit recipe HTML and Markdown bookmarks redirect to the React Threadplane guide.
+
+## Server request transformation
+
+Run `npx nx docs-request-transform-demo www` sequentially with other recorders. `DOCS_SKIP_RECORDING=1` verifies without replacing media; `DOCS_DEMO_MODES=request-transformation` selects its sole mode and unknown values fail. The ten-second recording runs the checked React client, Express endpoint, asynchronous transform and actual OpenAI adapter. Only identity/context integrations and provider-native Responses output are scripted locally. Angular passes the same interaction checks before React is captured.
+
+Checks cover trusted instructions at the actual provider boundary, forged browser policy isolation, identity/authorization/context failures, provider failure and truncation, cancellation before and during provider work, stale-run isolation, explicit recovery, no automatic request, mobile overflow and both video formats. Unit tests additionally preserve populated provider tools/schema/store/include/reasoning without mutation. Six public assets include the measured captions, walkthrough and 920×522 result frame; captures/masters/reports stay in ignored `dist/docs-request-transform`.
