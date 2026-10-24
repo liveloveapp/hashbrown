@@ -29,7 +29,7 @@
     "@hashbrownai/core": "0.8.0"
   },
   "dependencies": {
-    "@cacheplane/partial-json": "0.3.0",
+    "@cacheplane/partial-json": "0.3.1",
     "@cacheplane/partial-markdown": "0.5.12"
   },
   "publishConfig": {

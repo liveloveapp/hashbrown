@@ -33,9 +33,9 @@
     "access": "public"
   },
   "dependencies": {
-    "@ag-ui/client": "1.0.2",
-    "@ag-ui/core": "1.0.2",
-    "@cacheplane/json-stream": "0.1.0"
+    "@ag-ui/client": "1.0.3",
+    "@ag-ui/core": "1.0.3",
+    "@cacheplane/json-stream": "0.1.1"
   },
   "engines": {
     "node": ">=20"

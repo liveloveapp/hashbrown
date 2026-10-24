@@ -12,12 +12,12 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
-    "@ag-ui/core": "1.0.2",
+    "@ag-ui/core": "1.0.3",
     "@hashbrownai/core": "0.8.0",
     "tslib": "^2.3.0"
   },
   "peerDependencies": {
-    "ollama": "0.6.3"
+    "ollama": "0.6.4"
   },
   "sideEffects": false,
   "publishConfig": {
