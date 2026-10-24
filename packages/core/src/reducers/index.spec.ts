@@ -3525,7 +3525,7 @@ const invalidSnapshots: readonly InvalidSnapshot[] = [
     }),
   },
   {
-    name: 'a message ID colliding with a tool-call ID',
+    name: 'an unrelated message ID colliding with a tool-call ID',
     create: () => ({
       messages: [
         {
@@ -3541,8 +3541,7 @@ const invalidSnapshots: readonly InvalidSnapshot[] = [
         },
         {
           id: 'collision',
-          role: 'tool',
-          toolCallId: 'collision',
+          role: 'user',
           content: 'bad',
         },
       ],

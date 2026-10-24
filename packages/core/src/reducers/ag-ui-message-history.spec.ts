@@ -7,12 +7,43 @@ import {
   lowerViewMessagesToAgUi,
   ownAgUiMessages,
   projectAgUiMessages,
+  ɵappendAgUiCanonicalIds,
+  ɵindexAgUiCanonicalIds,
   ɵownValidatedAgUiMessages,
   ɵpairViewMessagesWithAgUi,
   ɵprepareAgUiMessageEvent,
   ɵreadAgUiMessageSnapshot,
   ɵreconcileAgUiMessageProjection,
 } from './ag-ui-message-history';
+
+test('preserves correlated .NET tool result IDs in snapshots and appended history', () => {
+  const assistant: Message = {
+    id: 'assistant',
+    role: 'assistant',
+    toolCalls: [
+      {
+        id: 'call',
+        type: 'function',
+        function: { name: 'lookup', arguments: '{}' },
+      },
+    ],
+  };
+  const result: Message = {
+    id: 'call',
+    role: 'tool',
+    toolCallId: 'call',
+    content: 'done',
+  };
+
+  const history = ɵownValidatedAgUiMessages([assistant, result]);
+  const index = ɵappendAgUiCanonicalIds(ɵindexAgUiCanonicalIds([assistant]), [
+    result,
+  ]);
+
+  expect(history).toEqual([assistant, result]);
+  expect(index.messageIds).toContain('call');
+  expect(index.toolCallIds).toContain('call');
+});
 
 test('reconciles a large unchanged history without searching prior entries per source', () => {
   const messages = Array.from({ length: 256 }, (_, index) => ({
