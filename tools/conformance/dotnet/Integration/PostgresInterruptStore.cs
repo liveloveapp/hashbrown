@@ -6,7 +6,7 @@ using Npgsql;
 namespace Hashbrown.Conformance.Integration;
 
 /// <summary>PostgreSQL-backed checkpoints with short transactions, fenced leases, and committed dispatch markers.</summary>
-public sealed class PostgresInterruptStore : IInterruptStore
+public sealed partial class PostgresInterruptStore : IInterruptStore
 {
     private readonly NpgsqlDataSource _source;
     private readonly WorkflowOperationRegistry _registry;
@@ -33,9 +33,11 @@ public sealed class PostgresInterruptStore : IInterruptStore
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await ExecuteAsync(connection, $"SELECT pg_advisory_xact_lock(hashtextextended(@schema, 0))", cancellationToken, ("schema", _schema));
         await ExecuteAsync(connection, $"CREATE SCHEMA IF NOT EXISTS {_schema}; CREATE TABLE IF NOT EXISTS {Metadata}(id integer PRIMARY KEY CHECK(id=1), version integer NOT NULL); INSERT INTO {Metadata}(id,version) VALUES(1,1) ON CONFLICT DO NOTHING", cancellationToken);
+        int schemaVersion;
         await using (var command = new NpgsqlCommand($"SELECT version FROM {Metadata} WHERE id=1 FOR UPDATE", connection))
         {
-            if ((int)(await command.ExecuteScalarAsync(cancellationToken))! != 1) throw new InvalidOperationException("Unsupported interrupt schema version.");
+            schemaVersion = (int)(await command.ExecuteScalarAsync(cancellationToken))!;
+            if (schemaVersion is not (1 or 2)) throw new InvalidOperationException("Unsupported interrupt schema version.");
         }
         await ExecuteAsync(connection, $"""
             CREATE TABLE IF NOT EXISTS {Batches}(
@@ -50,6 +52,33 @@ public sealed class PostgresInterruptStore : IInterruptStore
             CREATE INDEX IF NOT EXISTS interrupt_ids_batch ON {Ids}(batch_id);
             CREATE UNIQUE INDEX IF NOT EXISTS interrupt_live_thread ON {Batches}(scope,thread_id) WHERE state IN ('Pending','Claimed','EffectStarted');
             """, cancellationToken);
+        if (schemaVersion == 1)
+        {
+            await ExecuteAsync(connection, $"""
+                ALTER TABLE {Batches} DROP CONSTRAINT IF EXISTS interrupt_batches_state_check;
+                ALTER TABLE {Batches} ADD CONSTRAINT interrupt_batches_state_check CHECK(state IN ('Pending','Claimed','EffectStarted','Completed','Declined','FailedBeforeEffect','FailedAfterEffect','Reconciled'));
+                ALTER TABLE {Batches} ADD COLUMN IF NOT EXISTS original_request text;
+                ALTER TABLE {Batches} ADD COLUMN IF NOT EXISTS terminal_snapshot text;
+                ALTER TABLE {Batches} ADD COLUMN IF NOT EXISTS generation_outcome text NOT NULL DEFAULT 'NotStarted' CHECK(generation_outcome IN ('NotStarted','Running','Finished','Failed','Interrupted','Unavailable'));
+                ALTER TABLE {Batches} ADD COLUMN IF NOT EXISTS revision bigint NOT NULL DEFAULT 1 CHECK(revision>0);
+                ALTER TABLE {Batches} ADD COLUMN IF NOT EXISTS capture_token text;
+                ALTER TABLE {Batches} ADD COLUMN IF NOT EXISTS observed_at timestamptz;
+                ALTER TABLE {Batches} ADD COLUMN IF NOT EXISTS reconciliation_outcome text CHECK(reconciliation_outcome IN ('ConfirmedPerformed','ConfirmedNotPerformed','Unresolved'));
+                ALTER TABLE {Batches} ADD CONSTRAINT interrupt_reconciled_outcome CHECK((state='Reconciled')=(reconciliation_outcome IS NOT NULL));
+                CREATE INDEX IF NOT EXISTS interrupt_thread_latest ON {Batches}(scope,thread_id,created_at DESC);
+                CREATE INDEX IF NOT EXISTS interrupt_scoped_list ON {Batches}(scope,id);
+                UPDATE {Metadata} SET version=2 WHERE id=1;
+                """, cancellationToken);
+        }
+        await ExecuteAsync(connection, $"""
+            CREATE TABLE IF NOT EXISTS {Audit}(
+                id text PRIMARY KEY,batch_id text NOT NULL,scope text NOT NULL,actor text NOT NULL,recorded_at timestamptz NOT NULL,
+                prior_state text NOT NULL CHECK(prior_state IN ('EffectStarted','FailedAfterEffect')),prior_generation bigint NOT NULL,prior_revision bigint NOT NULL,
+                outcome text NOT NULL CHECK(outcome IN ('ConfirmedPerformed','ConfirmedNotPerformed','Unresolved')),
+                reason text NOT NULL CHECK(length(reason) BETWEEN 1 AND 2000),evidence_reference text NOT NULL CHECK(length(evidence_reference) BETWEEN 1 AND 2048),
+                external_quiescence_acknowledged boolean NOT NULL CHECK(external_quiescence_acknowledged));
+            CREATE INDEX IF NOT EXISTS interrupt_audit_scoped_batch ON {Audit}(scope,batch_id,id);
+            """, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 
@@ -57,11 +86,18 @@ public sealed class PostgresInterruptStore : IInterruptStore
     public async ValueTask<PendingInterrupt> CreateAsync(string scope, RunAgentInput input, WorkflowCheckpoint checkpoint, CancellationToken cancellationToken = default)
     {
         _ = _registry.Resolve(checkpoint);
+        var original = RecoverySerialization.Original(input, _options);
         await using var connection = await _source.OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await ExecuteAsync(connection, $"SELECT id FROM {Metadata} WHERE id=1 FOR UPDATE", cancellationToken);
         var now = await NowAsync(connection, cancellationToken);
-        await ExecuteAsync(connection, $"DELETE FROM {Batches} WHERE (state='Pending' AND expires_at<=@now) OR (state='Claimed' AND expires_at<=@now AND lease_until<=@now) OR (state IN ('Completed','Declined','FailedBeforeEffect','FailedAfterEffect') AND completed_at<=@retained)", cancellationToken, ("now", now), ("retained", now - _options.TerminalRetention));
+        await ExecuteAsync(connection, $"WITH expired AS (SELECT id FROM {Batches} WHERE (state='Pending' AND expires_at<=@now) OR (state='Claimed' AND expires_at<=@now AND lease_until<=@now) OR (state IN ('Completed','Declined','FailedBeforeEffect','FailedAfterEffect','Reconciled') AND completed_at<=@retained) ORDER BY id LIMIT {_options.CleanupBatchSize}) DELETE FROM {Batches} WHERE id IN (SELECT id FROM expired)", cancellationToken, ("now", now), ("retained", now - _options.TerminalRetention));
+        await ExecuteAsync(connection, $"""
+            WITH expired AS (SELECT id FROM {Batches} WHERE created_at<=@snapshot AND (original_request IS NOT NULL OR terminal_snapshot IS NOT NULL) ORDER BY id LIMIT {_options.CleanupBatchSize})
+            UPDATE {Batches} SET original_request=NULL,terminal_snapshot=NULL,revision=revision+1 WHERE id IN (SELECT id FROM expired);
+            WITH expired AS (SELECT id FROM {Audit} WHERE recorded_at<=@audit ORDER BY id LIMIT {_options.CleanupBatchSize})
+            DELETE FROM {Audit} WHERE id IN (SELECT id FROM expired);
+            """, cancellationToken, ("snapshot", now - _options.SnapshotRetention), ("audit", now - _options.AuditRetention));
         var existing = await ReadAsync(connection, $"SELECT b.* FROM {Batches} b WHERE scope=@scope AND thread_id=@thread AND state IN ('Pending','Claimed','EffectStarted') FOR UPDATE", cancellationToken, ("scope", scope), ("thread", input.ThreadId));
         if (existing is not null)
         {
@@ -76,11 +112,11 @@ public sealed class PostgresInterruptStore : IInterruptStore
         var effectId = Guid.NewGuid().ToString("N");
         var ids = new[] { Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N") }.Order(StringComparer.Ordinal).ToArray();
         await ExecuteAsync(connection, $"""
-            INSERT INTO {Batches}(id,scope,thread_id,origin_run_id,fingerprint,operation_name,operation_version,parameters,effect_id,created_at,expires_at,state)
-            VALUES(@id,@scope,@thread,@run,@fingerprint,@name,@version,CAST(@parameters AS jsonb),@effect,@now,@expires,'Pending');
+            INSERT INTO {Batches}(id,scope,thread_id,origin_run_id,fingerprint,operation_name,operation_version,parameters,effect_id,created_at,expires_at,state,original_request)
+            VALUES(@id,@scope,@thread,@run,@fingerprint,@name,@version,CAST(@parameters AS jsonb),@effect,@now,@expires,'Pending',@original);
             INSERT INTO {Ids}(interrupt_id,batch_id) SELECT unnest(@ids),@id;
             """, cancellationToken, ("id", id), ("scope", scope), ("thread", input.ThreadId), ("run", input.RunId),
-            ("fingerprint", InterruptValidation.Fingerprint(input)), ("name", checkpoint.Name), ("version", checkpoint.Version),
+            ("original", original), ("fingerprint", InterruptValidation.Fingerprint(input)), ("name", checkpoint.Name), ("version", checkpoint.Version),
             ("parameters", checkpoint.Parameters.GetRawText()), ("effect", effectId), ("now", now), ("expires", now + _options.ApprovalTtl), ("ids", ids));
         await transaction.CommitAsync(cancellationToken);
         return new(id, Array.AsReadOnly(ids), now + _options.ApprovalTtl, checkpoint, effectId);
@@ -103,7 +139,7 @@ public sealed class PostgresInterruptStore : IInterruptStore
         catch (InvalidOperationException) { return new(503); }
         var declined = InterruptValidation.Declined(input);
         var claim = new InterruptClaim(record.Batch.Id, Guid.NewGuid().ToString("N"), record.Generation + 1, record.Batch.Checkpoint, record.Batch.EffectId, declined);
-        await ExecuteAsync(connection, $"UPDATE {Batches} SET state=@state,claim_token=@token,generation=@generation,lease_until=@lease,completed_at=@completed WHERE id=@id", cancellationToken,
+        await ExecuteAsync(connection, $"UPDATE {Batches} SET state=@state,claim_token=@token,generation=@generation,lease_until=@lease,completed_at=@completed,revision=revision+1,capture_token=NULL,generation_outcome='NotStarted',terminal_snapshot=NULL WHERE id=@id", cancellationToken,
             ("state", declined ? "Declined" : "Claimed"), ("token", claim.Token), ("generation", claim.Generation), ("lease", now + _options.PreparationLease), ("completed", declined ? now : DBNull.Value), ("id", claim.BatchId));
         await transaction.CommitAsync(cancellationToken);
         return new(200, claim);
@@ -116,7 +152,7 @@ public sealed class PostgresInterruptStore : IInterruptStore
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await ExecuteAsync(connection, $"SELECT id FROM {Batches} WHERE id=@id FOR UPDATE", cancellationToken, ("id", claim.BatchId));
         var now = await NowAsync(connection, cancellationToken);
-        var changed = await ExecuteAsync(connection, $"UPDATE {Batches} SET state='EffectStarted' WHERE id=@id AND claim_token=@token AND generation=@generation AND state='Claimed' AND lease_until>@now", cancellationToken,
+        var changed = await ExecuteAsync(connection, $"UPDATE {Batches} SET state='EffectStarted',revision=revision+1 WHERE id=@id AND claim_token=@token AND generation=@generation AND state='Claimed' AND lease_until>@now", cancellationToken,
             ("id", claim.BatchId), ("token", claim.Token), ("generation", claim.Generation), ("now", now));
         // No caller may execute if this commit or its acknowledgement fails.
         await transaction.CommitAsync(cancellationToken);
@@ -134,7 +170,7 @@ public sealed class PostgresInterruptStore : IInterruptStore
         if (record.State == "Claimed" && record.LeaseUntil <= now) return;
         var released = finish == InterruptFinish.Cancelled && record.State == "Claimed";
         var state = released ? "Pending" : finish == InterruptFinish.Completed ? "Completed" : record.State == "EffectStarted" ? "FailedAfterEffect" : "FailedBeforeEffect";
-        await ExecuteAsync(connection, $"UPDATE {Batches} SET state=@state,claim_token=@token,lease_until=NULL,completed_at=@completed WHERE id=@id AND claim_token=@oldtoken AND generation=@generation", cancellationToken,
+        await ExecuteAsync(connection, $"UPDATE {Batches} SET state=@state,claim_token=@token,lease_until=NULL,completed_at=@completed,revision=revision+1 WHERE id=@id AND claim_token=@oldtoken AND generation=@generation", cancellationToken,
             ("state", state), ("token", released ? DBNull.Value : claim.Token), ("completed", released ? DBNull.Value : now), ("id", claim.BatchId), ("oldtoken", claim.Token), ("generation", claim.Generation));
         await transaction.CommitAsync(cancellationToken);
     }
@@ -153,7 +189,12 @@ public sealed class PostgresInterruptStore : IInterruptStore
             var completedIndex = reader.GetOrdinal("completed_at");
             record = new(batch, reader.GetString(reader.GetOrdinal("scope")), reader.GetString(reader.GetOrdinal("thread_id")), reader.GetString(reader.GetOrdinal("origin_run_id")),
                 reader.GetFieldValue<byte[]>(reader.GetOrdinal("fingerprint")), reader.GetString(reader.GetOrdinal("state")), reader.IsDBNull(tokenIndex) ? null : reader.GetString(tokenIndex),
-                reader.GetInt64(reader.GetOrdinal("generation")), reader.IsDBNull(leaseIndex) ? null : reader.GetFieldValue<DateTimeOffset>(leaseIndex), reader.IsDBNull(completedIndex) ? null : reader.GetFieldValue<DateTimeOffset>(completedIndex));
+                reader.GetInt64(reader.GetOrdinal("generation")), reader.IsDBNull(leaseIndex) ? null : reader.GetFieldValue<DateTimeOffset>(leaseIndex), reader.IsDBNull(completedIndex) ? null : reader.GetFieldValue<DateTimeOffset>(completedIndex),
+                reader.IsDBNull(reader.GetOrdinal("original_request")) ? null : reader.GetString(reader.GetOrdinal("original_request")),
+                reader.IsDBNull(reader.GetOrdinal("terminal_snapshot")) ? null : reader.GetString(reader.GetOrdinal("terminal_snapshot")),
+                reader.GetString(reader.GetOrdinal("generation_outcome")), reader.GetInt64(reader.GetOrdinal("revision")), reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("created_at")),
+                reader.IsDBNull(reader.GetOrdinal("capture_token")) ? null : reader.GetString(reader.GetOrdinal("capture_token")),
+                reader.IsDBNull(reader.GetOrdinal("reconciliation_outcome")) ? null : reader.GetString(reader.GetOrdinal("reconciliation_outcome")));
         }
         await using var idsCommand = Command(connection, $"SELECT interrupt_id FROM {Ids} WHERE batch_id=@id ORDER BY interrupt_id", ("id", record.Batch.Id));
         var ids = new List<string>();
@@ -168,7 +209,7 @@ public sealed class PostgresInterruptStore : IInterruptStore
         foreach (var (name, value) in parameters)
         {
             var parameter = command.Parameters.AddWithValue(name, value);
-            if (value == DBNull.Value) parameter.NpgsqlDbType = name == "token" ? NpgsqlTypes.NpgsqlDbType.Text : NpgsqlTypes.NpgsqlDbType.TimestampTz;
+            if (value == DBNull.Value) parameter.NpgsqlDbType = name is "token" or "snapshot" ? NpgsqlTypes.NpgsqlDbType.Text : NpgsqlTypes.NpgsqlDbType.TimestampTz;
         }
         return command;
     }

@@ -47,10 +47,25 @@ public sealed record InterruptStoreOptions
     /// <summary>Retention of terminal records; deleting a record never makes its IDs executable.</summary>
     public TimeSpan TerminalRetention { get; init; } = TimeSpan.FromMinutes(10);
 
+    /// <summary>Maximum owned original request bytes before any interrupt is published.</summary>
+    public int OriginalRequestBytes { get; init; } = 256 * 1024;
+    /// <summary>Maximum read-only recovery configuration query bytes.</summary>
+    public int RecoveryQueryBytes { get; init; } = 256 * 1024;
+    /// <summary>Maximum completed canonical transcript bytes.</summary>
+    public int TerminalSnapshotBytes { get; init; } = 1024 * 1024;
+    /// <summary>Maximum canonical messages in original and final history.</summary>
+    public int MaximumMessages { get; init; } = 2048;
+    /// <summary>Independent immutable operator audit retention.</summary>
+    public TimeSpan AuditRetention { get; init; } = TimeSpan.FromDays(30);
+    /// <summary>Private transcript retention, independently bounded from safety metadata.</summary>
+    public TimeSpan SnapshotRetention { get; init; } = TimeSpan.FromMinutes(10);
+    /// <summary>Maximum rows in one cleanup transaction.</summary>
+    public int CleanupBatchSize { get; init; } = 100;
+
     internal InterruptStoreOptions Checked()
     {
         if (Capacity < 1 || ApprovalTtl <= TimeSpan.Zero || PreparationLease <= TimeSpan.Zero ||
-            PreparationLease > TimeSpan.FromDays(1) || TerminalRetention <= TimeSpan.Zero)
+            PreparationLease > TimeSpan.FromDays(1) || TerminalRetention <= TimeSpan.Zero || OriginalRequestBytes < 1 || RecoveryQueryBytes < 1 || TerminalSnapshotBytes < 1 || MaximumMessages < 1 || AuditRetention <= TimeSpan.Zero || SnapshotRetention <= TimeSpan.Zero || CleanupBatchSize < 1 || CleanupBatchSize > 1000)
             throw new ArgumentOutOfRangeException(nameof(InterruptStoreOptions));
         return this;
     }
@@ -87,10 +102,22 @@ public interface IInterruptStore
 {
     /// <summary>Persists a descriptor before emitting its complete interrupt batch.</summary>
     ValueTask<PendingInterrupt> CreateAsync(string scope, RunAgentInput input, WorkflowCheckpoint checkpoint, CancellationToken cancellationToken = default);
+    /// <summary>Reads the latest retained scoped checkpoint without claiming or executing it.</summary>
+    ValueTask<CheckpointRecoveryResult> RecoverAsync(string scope, string threadId, ConversationRecoveryConfiguration configuration, CancellationToken cancellationToken = default);
     /// <summary>Validates the complete batch and atomically creates a fresh server token and generation.</summary>
     ValueTask<InterruptClaimResult> TryClaimAsync(string scope, RunAgentInput input, CancellationToken cancellationToken = default);
     /// <summary>Commits the irreversible dispatch marker only for the current, unexpired preparation claim.</summary>
     ValueTask<bool> TryStartEffectAsync(InterruptClaim claim, CancellationToken cancellationToken = default);
+    /// <summary>Lists a bounded page solely within authenticated permitted scopes.</summary>
+    ValueTask<CheckpointPage> ListAsync(IReadOnlySet<string> scopes, int limit = 50, string? cursor = null, string? state = null, CancellationToken cancellationToken = default);
+    /// <summary>Inspects safe metadata and bounded retained audit solely within permitted scopes.</summary>
+    ValueTask<CheckpointInspection?> InspectAsync(IReadOnlySet<string> scopes, string batchId, int limit = 50, string? cursor = null, CancellationToken cancellationToken = default);
+    /// <summary>Atomically records authenticated evidence and retires claim/capture authority; never dispatches.</summary>
+    ValueTask<int> ReconcileAsync(IReadOnlySet<string> scopes, string batchId, string actor, CheckpointReconciliation request, CancellationToken cancellationToken = default);
+    /// <summary>Starts response observation only for the current accepted claim.</summary>
+    ValueTask<CheckpointCaptureHandle?> StartCaptureAsync(InterruptClaim claim, CancellationToken cancellationToken = default);
+    /// <summary>Persists terminal metadata under current claim and capture authority. Cleanup only updates Running outcomes.</summary>
+    ValueTask<bool> CompleteCaptureAsync(CheckpointCaptureHandle handle, string outcome, string? snapshot, CancellationToken cancellationToken = default);
     /// <summary>Finalizes or releases only the matching token and generation; stale handles are harmless.</summary>
     ValueTask FinishAsync(InterruptClaim claim, InterruptFinish finish, CancellationToken cancellationToken = default);
 }
@@ -123,4 +150,6 @@ internal static class InterruptValidation
 }
 
 internal sealed record InterruptRecord(PendingInterrupt Batch, string Scope, string ThreadId, string OriginRunId, byte[] Fingerprint,
-    string State = "Pending", string? Token = null, long Generation = 0, DateTimeOffset? LeaseUntil = null, DateTimeOffset? CompletedAt = null);
+    string State = "Pending", string? Token = null, long Generation = 0, DateTimeOffset? LeaseUntil = null, DateTimeOffset? CompletedAt = null, string? OriginalRequest = null, string? TerminalSnapshot = null,
+    string GenerationOutcome = "NotStarted", long Revision = 1, DateTimeOffset CreatedAt = default,
+    string? CaptureToken = null, string? ReconciliationOutcome = null);
