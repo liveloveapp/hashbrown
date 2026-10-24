@@ -13,12 +13,12 @@ public sealed class FixtureAuthenticationHandler(IOptionsMonitor<AuthenticationS
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var credential = Request.Headers["X-Fixture-Principal"].FirstOrDefault();
-        if (credential is not ("alice" or "bob" or "operator")) return Task.FromResult(AuthenticateResult.NoResult());
+        if (credential is not ("alice" or "bob" or "operator" or "operator-bob")) return Task.FromResult(AuthenticateResult.NoResult());
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, credential), new("scope", credential) };
-        if (credential == "operator")
+        if (credential is "operator" or "operator-bob")
         {
             claims.Add(new(ClaimTypes.Role, "checkpoint-operator"));
-            foreach (var scope in new[] { "alice", "bob", "local-fixture" }) claims.Add(new("operator-scope", scope));
+            foreach (var scope in credential == "operator" ? new[] { "alice", "bob", "local-fixture" } : new[] { "bob" }) claims.Add(new("operator-scope", scope));
         }
         return Task.FromResult(AuthenticateResult.Success(new(new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name)), Scheme.Name)));
     }

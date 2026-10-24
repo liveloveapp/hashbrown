@@ -18,6 +18,8 @@ var app = builder.Build();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+if (builder.Configuration["FixtureAcknowledgement"] == "observe")
+    new FixtureAcknowledgement().Map(app);
 app.MapGet("/health", () => Results.Ok());
 var clock = new FixtureClock();
 var connectionString = builder.Configuration["InterruptConnectionString"];
@@ -106,10 +108,13 @@ if (source is not null)
 }
 var accessor = app.Services.GetRequiredService<IHttpContextAccessor>();
 string Scope() => accessor.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "local-fixture";
-var client = new InterruptWorkflowClient(new HashbrownRequestClient(ProviderFactory.Create(builder.Configuration)),
+IChatClient client = new InterruptWorkflowClient(new HashbrownRequestClient(ProviderFactory.Create(builder.Configuration)),
     pending, registry, input => builder.Configuration["Workflow"]?.StartsWith("confirm", StringComparison.Ordinal) == true ||
         builder.Configuration["Workflow"] == "after-tool" && input.Messages.Any(message => message.Role == "tool")
         ? tools.Checkpoint(builder.Configuration["CheckpointCode"] ?? "PDX") : null, Scope, () => HashbrownEndpointConfiguration.GetClaim(accessor.HttpContext));
+if (builder.Configuration["FixtureProgressPrelude"] == "true")
+    client = new FixtureProgressClient(client, () => accessor.HttpContext is { } context &&
+        HashbrownEndpointConfiguration.GetClaim(context) is not null && context.Items.TryAdd(typeof(FixtureProgressClient), true));
 app.MapGet("/__test/counters", async () =>
 {
     long durableProtected = 0;
