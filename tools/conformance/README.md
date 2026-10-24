@@ -347,6 +347,24 @@ runs. Existing warnings remain visible in logs. The installed-model workflow
 receipt-copy failures described above remain visible and keep that live quality
 suite from being green.
 
+### Explicit cancellation history follow-up
+
+Shared core now preserves a stopped or superseded user request with a factual
+runtime cancellation record before later model input. It keeps committed tool
+results and existing rollback behavior; the record is hidden from ordinary,
+structured, UI and streaming assistant projections. Exact metadata-free agent
+snapshot echoes preserve locally owned marker identity.
+
+The updated standard browser cancellation assertions passed in both frameworks
+(full suite 72/72), as did all 18 native aimock workflows and the final focused
+Stop contracts. Real v4 Stop/fresh-lookup cases now passed 2/2 with the exact
+original request, marker, new lookup and hidden token: both history and source
+boundary evidence flags were true, sessions balanced 3/3 and active readers
+returned to zero. This focused result does not regrade the historical ten-case
+quality suite above or imply constrained final text. Evidence and the approved
+policy are recorded in `docs/superpowers/research/2026-10-24-cancelled-turn-markers.md`.
+Local installed-model and native aimock targets remain outside CI.
+
 ## Model and schema measurements
 
 `WEBLLM_SCHEMA_DEPTHS` (default `1,4,8`) and `WEBLLM_SCHEMA_WIDTHS` (default

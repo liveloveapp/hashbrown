@@ -64,6 +64,9 @@ type ActiveGeneration = {
         toolsByName: Record<string, Chat.Internal.Tool>;
       }
     | undefined;
+  cancellable: boolean;
+  finalAccepted: boolean;
+  cancellationMarkerId: string;
   settled: boolean;
 };
 
@@ -198,6 +201,13 @@ export const generateMessage = createEffect((store) => {
           }),
         );
       }
+      if (finalizedToolCalls.length === 0 && !interrupts) {
+        const acceptFinal = () => {
+          generation.finalAccepted = true;
+        };
+        if (onCommit) onCommit(acceptFinal);
+        else acceptFinal();
+      }
       const toolsByName = generation.activeAttempt?.toolsByName ?? {};
       const toolTurnId =
         finalizedToolCalls.length === 0 ? undefined : _createRequestId();
@@ -302,6 +312,27 @@ export const generateMessage = createEffect((store) => {
     }
   };
 
+  const recordCancellation = (
+    generation: ActiveGeneration,
+    reason: 'stopped' | 'superseded',
+    beforeMessageId?: string,
+  ) => {
+    if (
+      !ownsGeneration(generation) ||
+      !generation.cancellable ||
+      generation.finalAccepted
+    )
+      return;
+    store.dispatch(
+      internalActions.generationCancelled({
+        generationId: generation.generationId,
+        markerId: generation.cancellationMarkerId,
+        reason,
+        ...(beforeMessageId === undefined ? {} : { beforeMessageId }),
+      }),
+    );
+  };
+
   const interruptGeneration = (
     generation: ActiveGeneration,
     interruption: 'cancel' | 'retire',
@@ -309,7 +340,11 @@ export const generateMessage = createEffect((store) => {
   ) => {
     if (
       interruption === 'cancel' &&
-      generation.activeAttempt?.terminalAccepted
+      ((generation.finalAccepted &&
+        store.read(ɵselectInterrupts).generationId !==
+          generation.generationId) ||
+        (generation.activeAttempt?.terminalAccepted &&
+          store.read(ɵselectAttemptOwnedPendingToolCalls).length === 0))
     ) {
       return;
     }
@@ -325,6 +360,8 @@ export const generateMessage = createEffect((store) => {
         store.read(ɵselectInterrupts).generationId === generation.generationId
       ) {
         settleUnclaimedToolSnapshot(generation);
+        if (interruption === 'cancel')
+          recordCancellation(generation, 'stopped');
         void store.dispatchAndWait(
           internalActions.resumeSettlementStarted(),
           (followUps) => {
@@ -363,6 +400,7 @@ export const generateMessage = createEffect((store) => {
       if (!ownsGeneration(generation)) {
         return;
       }
+      if (interruption === 'cancel') recordCancellation(generation, 'stopped');
       if (interruption === 'retire') {
         store.dispatch(internalActions.generationSilentlyRetired());
       }
@@ -413,6 +451,11 @@ export const generateMessage = createEffect((store) => {
         // still current. An unclaimed reservation is handled only after the
         // replacement generation invalidates it below.
         supersededGeneration.coordinator.retire();
+        if (action.type === devActions.sendMessage.type) {
+          const anchor = action.payload.canonicalMessages[0]?.id;
+          if (anchor)
+            recordCancellation(supersededGeneration, 'superseded', anchor);
+        }
       }
       store.dispatch(
         internalActions.logicalGenerationStarted({ generationId }),
@@ -740,6 +783,10 @@ export const generateMessage = createEffect((store) => {
         threadId: configuredThreadId,
         unclaimedToolSnapshot: undefined,
         activeAttempt: undefined,
+        cancellable:
+          resumeAction !== undefined || store.read(selectShouldGenerateMessage),
+        finalAccepted: false,
+        cancellationMarkerId: _createRequestId(),
         settled: false,
       };
       generationRef.current = generation;

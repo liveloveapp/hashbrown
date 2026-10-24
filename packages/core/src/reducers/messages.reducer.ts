@@ -408,36 +408,40 @@ export const reducer = createReducer(
     (state): MessagesState => rollback(state),
   ),
   on(devActions.resendMessages, (state): MessagesState => rollback(state)),
-  on(internalActions.toolTurnSettled, (state, action): MessagesState => {
-    const preparedProjection = readPreparedProjection(action);
-    if (!preparedProjection) {
-      return state;
-    }
+  on(
+    internalActions.toolTurnSettled,
+    internalActions.generationCancelled,
+    (state, action): MessagesState => {
+      const preparedProjection = readPreparedProjection(action);
+      if (!preparedProjection) {
+        return state;
+      }
 
-    const reconciled = reconcilePreparedMessages(
-      state.attemptActive ? state.draft : state.committed,
-      preparedProjection.projection.messages,
-      preparedProjection.messageSources,
-      state.attemptActive
-        ? (state.localProvenance ?? {})
-        : (state.committedLocalProvenance ?? {}),
-    );
-    const messages = reconciled.draft;
-    return {
-      ...state,
-      messages,
-      committed: messages,
-      draft: [],
-      attemptActive: false,
-      activeAssistantMessageId: undefined,
-      activeIgnoredTextMessageId: undefined,
-      canonicalIds: preparedProjection.canonicalIds,
-      committedCanonicalIds: preparedProjection.canonicalIds,
-      preparedProjection,
-      localProvenance: reconciled.localProvenance,
-      committedLocalProvenance: reconciled.localProvenance,
-    };
-  }),
+      const reconciled = reconcilePreparedMessages(
+        state.attemptActive ? state.draft : state.committed,
+        preparedProjection.projection.messages,
+        preparedProjection.messageSources,
+        state.attemptActive
+          ? (state.localProvenance ?? {})
+          : (state.committedLocalProvenance ?? {}),
+      );
+      const messages = reconciled.draft;
+      return {
+        ...state,
+        messages,
+        committed: messages,
+        draft: [],
+        attemptActive: false,
+        activeAssistantMessageId: undefined,
+        activeIgnoredTextMessageId: undefined,
+        canonicalIds: preparedProjection.canonicalIds,
+        committedCanonicalIds: preparedProjection.canonicalIds,
+        preparedProjection,
+        localProvenance: reconciled.localProvenance,
+        committedLocalProvenance: reconciled.localProvenance,
+      };
+    },
+  ),
   on(apiActions.generateMessageError, (state, action) => {
     const errorMessage: ErrorMessage = {
       role: 'error',

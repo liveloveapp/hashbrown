@@ -35,6 +35,7 @@ const test = live
   : base;
 
 const prompts = {
+  stop: 'Stop workflow: Do not call tools. Count from one to one hundred thousand in words, one number per line. Continue without abbreviating or summarizing.',
   lookup:
     'Lookup workflow: call lookup_secret for alpha exactly once. Return only the exact token from its result, no other text.',
   dependent:
@@ -146,6 +147,7 @@ type Evidence = {
   active: number;
   nativeEvents?: object[];
   sourceBoundaryVerified: boolean;
+  cancellationHistoryVerified: boolean;
   sessions?: { created: number; destroyed: number };
 };
 /** Reads transport observations while retaining prototype-backed native values explicitly. */
@@ -154,6 +156,7 @@ async function evidence(page: Page): Promise<Evidence> {
     const runtime = globalThis as unknown as {
       __nativeToolNativeEvents?: object[];
       __nativeToolSourceBoundaryVerified?: boolean;
+      __nativeToolCancellationHistoryVerified?: boolean;
       __nativeToolRequests?: Evidence['requests'];
       __nativeToolCanonical?: unknown[];
       __nativeToolLifecycle?: string[];
@@ -164,6 +167,8 @@ async function evidence(page: Page): Promise<Evidence> {
       nativeEvents: runtime.__nativeToolNativeEvents,
       sourceBoundaryVerified:
         runtime.__nativeToolSourceBoundaryVerified === true,
+      cancellationHistoryVerified:
+        runtime.__nativeToolCancellationHistoryVerified === true,
       requests: runtime.__nativeToolRequests ?? [],
       canonical: runtime.__nativeToolCanonical ?? [],
       lifecycle: runtime.__nativeToolLifecycle ?? [],
@@ -541,14 +546,57 @@ async function verifyNativeStopBoundary(page: Page) {
   });
 }
 
+/** Verifies explicit cancellation reaches the fresh model before quality assertions. */
+async function verifyCancellationHistory(page: Page) {
+  type Prompt = { role: string; content: unknown };
+  const histories = async (): Promise<Prompt[][]> => {
+    const observed = await evidence(page);
+    return live
+      ? (observed.nativeEvents ?? []).flatMap((value) => {
+          const event = value as { phase: string; input?: Prompt[] };
+          return event.phase === 'prompt' && Array.isArray(event.input)
+            ? [event.input]
+            : [];
+        })
+      : (observed.canonical as Prompt[][]);
+  };
+  const findFresh = async () =>
+    (await histories()).find((history) =>
+      history.some(
+        (prompt) => prompt.role === 'user' && prompt.content === prompts.lookup,
+      ),
+    );
+  await expect.poll(async () => !!(await findFresh())).toBe(true);
+  const fresh = (await findFresh()) ?? [];
+  const oldIndex = fresh.findIndex(
+    (prompt) => prompt.role === 'user' && prompt.content === prompts.stop,
+  );
+  const newIndex = fresh.findIndex(
+    (prompt) => prompt.role === 'user' && prompt.content === prompts.lookup,
+  );
+  expect(oldIndex).toBeGreaterThanOrEqual(0);
+  expect(newIndex).toBeGreaterThan(oldIndex);
+  const between = fresh.slice(oldIndex + 1, newIndex);
+  expect(between).toHaveLength(1);
+  expect(between[0]).toMatchObject({ role: 'assistant' });
+  expect(between[0]?.content).toMatch(
+    /^\[Hashbrown runtime:.*cancelled.*Do not continue/,
+  );
+  expect(JSON.stringify(fresh)).not.toContain('hashbrown.runtimeCancellation');
+  await page.evaluate(() => {
+    (
+      globalThis as unknown as {
+        __nativeToolCancellationHistoryVerified: boolean;
+      }
+    ).__nativeToolCancellationHistoryVerified = true;
+  });
+}
+
 test('native Stop releases its session and permits a fresh lookup', async ({
   page,
 }, info) => {
   await workflow(page, info, 'stop', async () => {
-    await send(
-      page,
-      'Stop workflow: Do not call tools. Count from one to one hundred thousand in words, one number per line. Continue without abbreviating or summarizing.',
-    );
+    await send(page, prompts.stop);
 
     if (live)
       await expect
@@ -572,10 +620,14 @@ test('native Stop releases its session and permits a fresh lookup', async ({
       })
       .toBe(true);
     await expect(page.getByTestId('operation-count')).toHaveText('0');
+    await expect(page.getByTestId('assistant')).not.toContainText(
+      '[Hashbrown runtime:',
+    );
     if (!live) expect((await evidence(page)).requests).toHaveLength(1);
 
     await send(page, prompts.lookup);
 
+    await verifyCancellationHistory(page);
     await settled(page);
     if (live) await verifyNativeStopBoundary(page);
     await expect(page.getByTestId('operation-count')).toHaveText('1', {
