@@ -291,6 +291,30 @@ test('dispatcher quarantines a DeterministicLifecycleJobError and continues', as
   );
 });
 
+test('a deterministic error after submission authorization leaves the job leased instead of quarantining it', async () => {
+  const authorized = leasedJob('00000000-0000-4000-8000-000000000001');
+  const healthy = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
+  const deps = dependencies({
+    dispatchLeasedJob: vi
+      .fn()
+      .mockRejectedValueOnce(new DeterministicLifecycleJobError('corrupt'))
+      .mockResolvedValueOnce('completed'),
+    leaseDueJobs: vi.fn().mockResolvedValue([authorized, healthy]),
+    hasSubmissionAuthorization: vi.fn().mockResolvedValueOnce(true),
+  });
+
+  const result = await dispatchLifecycleJobs(input(), deps);
+
+  expect(result).toMatchObject({ leased: 2, dispatched: 1 });
+  expect(deps.hasSubmissionAuthorization).toHaveBeenCalledWith(
+    expect.anything(),
+    { jobId: authorized.id, leaseToken: LEASE_TOKEN },
+  );
+  expect(deps.quarantineJob).not.toHaveBeenCalled();
+  expect(deps.deferJob).not.toHaveBeenCalled();
+  expect(deps.dispatchLeasedJob).toHaveBeenCalledTimes(2);
+});
+
 test('dispatcher drops a job whose lease conflicts', async () => {
   const lost = leasedJob('00000000-0000-4000-8000-000000000001', 'notify');
   const next = leasedJob('00000000-0000-4000-8000-000000000002', 'notify');
