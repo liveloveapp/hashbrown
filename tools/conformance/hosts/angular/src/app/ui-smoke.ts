@@ -17,9 +17,21 @@ import { type JsonResolvedValue, s } from '@hashbrownai/core';
   selector: 'status',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<div data-testid="status-card">{{ title() }}: {{ count() }}</div>`,
+  template: `
+    <section>
+      <div data-testid="status-card">{{ title() }}: {{ count() }}</div>
+      <button data-testid="status-action" type="button" (click)="acknowledge()">
+        Acknowledge
+      </button>
+      <span data-testid="status-action-count">{{ actions() }}</span>
+    </section>
+  `,
 })
 class RuntimeStatusComponent {
+  protected readonly actions = signal(0);
+  protected acknowledge(): void {
+    this.actions.update((value) => value + 1);
+  }
   readonly title = input.required<string>();
   readonly count = input.required<number>();
 }

@@ -126,6 +126,7 @@ const DOCS_MENU: readonly DocsMenuSectionEntry[] = [
       { text: 'Anthropic', path: 'platform/anthropic' },
       { text: 'Google', path: 'platform/google' },
       { text: 'Azure', path: 'platform/azure' },
+      { text: '.NET with OpenAI and Azure', path: 'platform/dotnet' },
       { text: 'Amazon Bedrock', path: 'platform/bedrock' },
       { text: 'Ollama', path: 'platform/ollama' },
       { text: 'TypeSafe', path: 'platform/typesafe' },

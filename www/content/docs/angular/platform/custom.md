@@ -7,6 +7,8 @@ meta:
 
 # Custom Provider
 
+For an ASP.NET Core backend using OpenAI or Azure OpenAI, start with the [tested .NET integration](/docs/angular/platform/dotnet).
+
 Hashbrown's HTTP transport speaks AG-UI. A custom provider integration accepts an AG-UI `RunAgentInput`, calls the provider's native SDK, and yields canonical `AGUIEvent` values. The HTTP route then encodes those events as AG-UI SSE.
 
 Use this approach when a vendor does not have an official Hashbrown package. If an official package exists, prefer it because it already covers provider-specific message, tool, reasoning, structured-output, cancellation, and error behavior.
