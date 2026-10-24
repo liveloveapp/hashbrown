@@ -31,6 +31,12 @@ export const initialInterruptsState: InterruptsState = {
 /** Pure interrupt ownership transitions. @internal */
 export const reducer = createReducer(
   initialInterruptsState,
+  on(devActions.restoreConversation, (state, action): InterruptsState => ({
+    ...initialInterruptsState,
+    pending: action.payload.batch,
+    epoch: state.epoch + 1,
+    successfulResumes: state.successfulResumes,
+  })),
   on(
     internalActions.logicalGenerationStarted,
     (state, action): InterruptsState => ({

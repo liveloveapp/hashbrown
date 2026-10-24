@@ -257,3 +257,44 @@ test('UI chat interruption projections are readonly public values', () => {
     readonly isResuming: boolean;
   }>();
 });
+
+test.each(families)(
+  '$name chat restores canonical history without sending',
+  async (family) => {
+    const control = controlledTransport();
+    const { result, unmount } = renderHook(
+      () =>
+        family.use({
+          system: 'test',
+          transport: control.transport,
+          debounceTime: 0,
+        }),
+      { wrapper },
+    );
+    act(() => result.current.sendMessage({ role: 'user', content: 'go' }));
+    await waitFor(() => expect(result.current.pendingInterrupts).toBeDefined());
+    const input = control.requests[0].input;
+    expect(result.current.getRecoveryConfiguration().system).toBe('test');
+    const batch = requireBatch(result.current.pendingInterrupts);
+
+    act(() =>
+      result.current.restoreConversation(
+        {
+          threadId: input.threadId,
+          messages: input.messages,
+          configuredSystemMessageId: input.messages[0].id,
+        },
+        { expectedRevision: result.current.recovery.revision },
+      ),
+    );
+    await act(async () => undefined);
+
+    expect(result.current.pendingInterrupts).toBeUndefined();
+    expect(result.current.recovery.required).toBe(false);
+    expect(control.requests).toHaveLength(1);
+    expect(() =>
+      result.current.resume({ batchId: batch.id, entries }),
+    ).toThrow();
+    unmount();
+  },
+);

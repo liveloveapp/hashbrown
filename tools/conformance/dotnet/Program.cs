@@ -6,18 +6,20 @@ using Npgsql;
 var builder = WebApplication.CreateBuilder(args);
 HashbrownEndpointConfiguration.Configure(builder.Services);
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
-    .WithOrigins("http://127.0.0.1:4431", "http://127.0.0.1:4432")
-    .WithMethods("POST", "OPTIONS").AllowAnyHeader()));
+    .WithOrigins((builder.Configuration["FixtureOrigins"] ?? "http://127.0.0.1:4431,http://127.0.0.1:4432").Split(',', StringSplitOptions.RemoveEmptyEntries))
+    .WithMethods("GET", "POST", "OPTIONS").AllowAnyHeader()));
+builder.Services.AddAuthentication("fixture").AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, FixtureAuthenticationHandler>("fixture", _ => { });
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("recovery", policy => policy.RequireAuthenticatedUser());
+    options.AddPolicy("checkpoint-operator", policy => policy.RequireAuthenticatedUser().RequireRole("checkpoint-operator"));
+});
 var app = builder.Build();
 app.UseCors();
-app.Use(async (context, next) =>
-{
-    // This loopback test executable supplies fixture identities; recipes use application authentication.
-    var identity = context.Request.Headers["X-Fixture-Principal"].FirstOrDefault() ?? "local-fixture";
-    context.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
-        [new(System.Security.Claims.ClaimTypes.NameIdentifier, identity)], "fixture"));
-    await next(context);
-});
+app.UseAuthentication();
+app.UseAuthorization();
+if (builder.Configuration["FixtureAcknowledgement"] == "observe")
+    new FixtureAcknowledgement().Map(app);
 app.MapGet("/health", () => Results.Ok());
 var clock = new FixtureClock();
 var connectionString = builder.Configuration["InterruptConnectionString"];
@@ -47,7 +49,16 @@ if (source is not null)
     underlying = postgres;
 }
 else underlying = new PendingInterruptStore(clock, registry, options);
-var pending = new FixtureInterruptStore(underlying, tools);
+var captureGate = new FixtureCaptureGate(builder.Configuration["CaptureGate"] ?? "");
+var pending = new FixtureInterruptStore(underlying, tools, captureGate);
+app.MapGet("/__test/capture-stage", () => Results.Json(new { stage = captureGate.Stage }));
+app.MapPost("/__test/release-capture", () => { captureGate.Release(); return Results.Ok(); });
+FixtureRecoveryControls.Map(app, source, schema, pending);
+RecoveryEndpointConfiguration.MapRecovery(app, "/threads/{threadId}/recovery", pending, "recovery",
+    context => context.User.FindFirst("scope")?.Value, options);
+RecoveryEndpointConfiguration.MapOperations(app, "/checkpoints", pending, "checkpoint-operator",
+    context => context.User.FindAll("operator-scope").Select(claim => claim.Value).ToHashSet(StringComparer.Ordinal),
+    context => context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
 app.MapPost("/__test/advance-clock", () => { clock.Advance(); return Results.Ok(); });
 app.MapPost("/__test/release-checkpoint", () => { tools.Release(); return Results.Ok(); });
 app.MapPost("/__test/database-unavailable", async (bool enabled) =>
@@ -97,10 +108,13 @@ if (source is not null)
 }
 var accessor = app.Services.GetRequiredService<IHttpContextAccessor>();
 string Scope() => accessor.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "local-fixture";
-var client = new InterruptWorkflowClient(new HashbrownRequestClient(ProviderFactory.Create(builder.Configuration)),
+IChatClient client = new InterruptWorkflowClient(new HashbrownRequestClient(ProviderFactory.Create(builder.Configuration)),
     pending, registry, input => builder.Configuration["Workflow"]?.StartsWith("confirm", StringComparison.Ordinal) == true ||
         builder.Configuration["Workflow"] == "after-tool" && input.Messages.Any(message => message.Role == "tool")
         ? tools.Checkpoint(builder.Configuration["CheckpointCode"] ?? "PDX") : null, Scope, () => HashbrownEndpointConfiguration.GetClaim(accessor.HttpContext));
+if (builder.Configuration["FixtureProgressPrelude"] == "true")
+    client = new FixtureProgressClient(client, () => accessor.HttpContext is { } context &&
+        HashbrownEndpointConfiguration.GetClaim(context) is not null && context.Items.TryAdd(typeof(FixtureProgressClient), true));
 app.MapGet("/__test/counters", async () =>
 {
     long durableProtected = 0;

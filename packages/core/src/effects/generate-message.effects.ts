@@ -29,6 +29,7 @@ import {
   ɵselectEffectiveCommittedAgUiMessages,
   ɵselectGenerationAttemptId,
   ɵselectGenerationId,
+  ɵselectRestorationBarrier,
 } from '../reducers';
 import { s } from '../schema';
 import { resolveTransport, TransportError } from '../transport';
@@ -427,7 +428,11 @@ export const generateMessage = createEffect((store) => {
     devActions.resendMessages,
     devActions.resume,
     (action) => {
-      if (disposed) {
+      if (
+        disposed ||
+        (action.type === internalActions.start.type &&
+          store.read(ɵselectRestorationBarrier))
+      ) {
         return;
       }
 

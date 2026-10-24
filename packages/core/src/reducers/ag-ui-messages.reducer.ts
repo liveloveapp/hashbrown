@@ -116,6 +116,11 @@ export const initialAgUiMessagesState: AgUiMessagesState = Object.freeze({
 /** Reduces canonical AG-UI messages independently from Hashbrown projections. @internal */
 export const reducer = createReducer(
   initialAgUiMessagesState,
+  on(devActions.restoreConversation, (_state, action): AgUiMessagesState => ({
+    ...initialAgUiMessagesState,
+    committed: action.payload.canonicalMessages,
+    systemMessage: action.payload.systemMessage,
+  })),
   on(devActions.init, (_state, action): AgUiMessagesState => {
     const systemMessage = action.payload.systemMessage;
     const committed = ownRestored(action.payload.canonicalMessages);

@@ -2,6 +2,7 @@ import type { PendingInterruptBatch, ResumeOptions } from '@hashbrownai/core';
 import { useState } from 'react';
 
 interface InterruptControlsProps {
+  readonly disabled?: boolean;
   readonly batch: PendingInterruptBatch | undefined;
   readonly isResuming: boolean;
   readonly resume: (options: ResumeOptions) => void;
@@ -9,6 +10,7 @@ interface InterruptControlsProps {
 
 /** Displays a batch and submits a complete fixture response through the public API. */
 export function InterruptControls({
+  disabled = false,
   batch,
   isResuming,
   resume,
@@ -49,7 +51,7 @@ export function InterruptControls({
       <button
         data-testid="resume"
         type="button"
-        disabled={!batch || isResuming}
+        disabled={disabled || !batch || isResuming}
         onClick={() => submit()}
       >
         Resume
@@ -57,7 +59,7 @@ export function InterruptControls({
       <button
         data-testid="decline"
         type="button"
-        disabled={!batch || isResuming}
+        disabled={disabled || !batch || isResuming}
         onClick={() => submit('decline')}
       >
         Decline
@@ -65,7 +67,7 @@ export function InterruptControls({
       <button
         data-testid="cancel"
         type="button"
-        disabled={!batch || isResuming}
+        disabled={disabled || !batch || isResuming}
         onClick={() => submit('cancel')}
       >
         Cancel

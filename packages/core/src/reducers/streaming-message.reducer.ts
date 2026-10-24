@@ -364,6 +364,7 @@ function hydrateAssistantForEvent(
 
 export const reducer = createReducer(
   initialState,
+  on(devActions.restoreConversation, () => initialState),
   on(
     apiActions.generateMessageStart,
     (_state, action): StreamingMessageState => ({

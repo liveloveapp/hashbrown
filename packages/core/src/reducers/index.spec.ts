@@ -34,6 +34,7 @@ const initAction = { type: '@@init' } as const;
 
 function createState() {
   return {
+    recovery: reducers.recovery(undefined, initAction),
     interrupts: reducers.interrupts(undefined, initAction),
     config: reducers.config(undefined, initAction),
     generationOwnership: reducers.generationOwnership(undefined, initAction),
@@ -53,6 +54,7 @@ function reduceAll(
   action: { type: string },
 ) {
   return {
+    recovery: reducers.recovery(state.recovery, action),
     interrupts: reducers.interrupts(state.interrupts, action),
     config: reducers.config(state.config, action),
     generationOwnership: reducers.generationOwnership(
@@ -6565,4 +6567,53 @@ test('a frame-only RESULT seed keeps an unreadable provider step a provider call
   // Assert
   expect(assistant?.serverToolCalls?.[0]?.kind).toBe('provider');
   expect(assistant?.toolCalls).toEqual([]);
+});
+
+test('rechecks recovery revision at the queued atomic commit boundary', () => {
+  const initial = createState();
+  const restore = devActions.restoreConversation({
+    expectedRevision: initial.recovery.revision,
+    threadId: 'restored-thread',
+    canonicalMessages: [],
+    state: undefined,
+    toolsByName: {},
+  });
+  const changed = reduceAll(initial, devActions.updateOptions({ debounce: 2 }));
+
+  expect(() => ɵprepareRootAction(changed, restore)).toThrow(/revision/i);
+
+  expect(changed.thread.threadId).toBeUndefined();
+  expect(changed.agUiMessages).toBe(initial.agUiMessages);
+  expect(changed.recovery.restorationEpoch).toBe(0);
+});
+
+test('rechecks idle ownership and interrupt expiry at the queued restore commit boundary', () => {
+  const initial = createState();
+  const active = reduceAll(
+    initial,
+    internalActions.logicalGenerationStarted({ generationId: 'active' }),
+  );
+  const restore = devActions.restoreConversation({
+    expectedRevision: initial.recovery.revision,
+    threadId: 'restored-thread',
+    canonicalMessages: [],
+    state: undefined,
+    toolsByName: {},
+    batch: {
+      id: 'local',
+      interrupts: [
+        {
+          id: 'approval',
+          reason: 'approval',
+          expiresAt: '2020-01-01T00:00:00Z',
+        },
+      ],
+    },
+  });
+
+  expect(() => ɵprepareRootAction(active, restore)).toThrow(/active/i);
+  expect(() => ɵprepareRootAction(initial, restore)).toThrow(/expired/i);
+
+  expect(initial.interrupts.pending).toBeUndefined();
+  expect(initial.recovery.restorationEpoch).toBe(0);
 });

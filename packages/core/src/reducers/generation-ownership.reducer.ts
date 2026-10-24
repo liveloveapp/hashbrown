@@ -1,4 +1,4 @@
-import { internalActions } from '../actions';
+import { devActions, internalActions } from '../actions';
 import { Chat } from '../models';
 import { createReducer, on } from '../utils/micro-ngrx';
 
@@ -29,6 +29,7 @@ export const initialGenerationOwnershipState: GenerationOwnershipState =
 export const reducer = createReducer(
   initialGenerationOwnershipState,
   on(
+    devActions.restoreConversation,
     internalActions.interruptThreadRetired,
     () => initialGenerationOwnershipState,
   ),
