@@ -9,7 +9,14 @@
     "noPropertyAccessFromIndexSignature": true,
     "types": ["node"],
     "noEmit": true,
-    "ignoreDeprecations": "6.0"
+    "ignoreDeprecations": "6.0",
+    "allowImportingTsExtensions": true
   },
-  "include": ["src/**/*.ts", "vitest.config.mts"]
+  "include": [
+    "src/**/*.ts",
+    "vitest.config.mts",
+    "agent/b4.config.ts",
+    "scripts/**/*.cts",
+    "../tools/*.mts"
+  ]
 }

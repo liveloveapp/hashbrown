@@ -19,13 +19,22 @@
     },
     "lint": {
       "executor": "nx:run-commands",
-      "options": { "command": "eslint examples/atc/server" }
+      "options": {
+        "command": "eslint examples/atc/server"
+      }
     },
     "serve": {
       "executor": "nx:run-commands",
       "continuous": true,
       "options": {
         "command": "tsx --tsconfig examples/atc/server/tsconfig.json examples/atc/server/src/main.ts"
+      }
+    },
+    "prune-agent-state": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx --tsconfig examples/atc/server/tsconfig.json examples/atc/server/scripts/prune-agent-state.cts"
       }
     }
   }

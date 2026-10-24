@@ -12,24 +12,92 @@
 
 ## Execution boundary
 
-**2026-10-23 investigation result: gate did not pass.** See
-`docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md` for executed
-evidence. Installed 0.14.0 replays a browser tool with a changed parent message
-ID, which the actual Hashbrown runtime rejects, and lacks supported output-token
-cap configuration. Its schema carrier also predates the target design's mapping.
-Published 0.15.0 was inspected, not executed. Resolve the upstream gaps and
-rerun the coherent-package probe before finalizing or executing Tasks 2–7.
+**2026-10-23 source compatibility gate: passed against the local fixes.**
+The b4.run branch `blove/atc-agent-compatibility` at `ef984f37c` (worktree
+`/private/tmp/b4run-atc-compat`) passes the actual Hashbrown browser-tool probe,
+including all 15 response schemas, all 16 browser tools, continuation, duplicate
+and partial results, visitor isolation, cancellation, and the 4096-token cap.
+Its package builds, typechecks, and library tests pass. The fixes are committed
+upstream; the user will handle releases separately. Do not publish packages or
+change this repository's dependency declarations as part of source integration.
 
-Task 1 is executable now and resolves the compatibility gate. Tasks 2–7 are the
-ordered implementation outline, not authorization to guess unverified b4.run
-APIs. At the end of Task 1, replace their runtime-specific instructions with the
-verified imports, configuration, commands, fixtures, and deployment mechanism.
-Review that amended plan before continuing. Do not implement against private CLI
-internals or patch generated runtime code.
+Implementation may proceed using that coherent local package set for validation.
+The existing installed/published 0.14.0 runtime is not compatible: selecting it
+must fail explicitly rather than silently losing the output cap. Production
+readiness remains gated on a compatible released package set, shared storage,
+and isolated artifact verification. OpenAI stays fully usable throughout.
 
-Do not add dependencies without user approval. Updating shared b4.run versions
-also affects lifecycle: assess and validate it explicitly. Planning approval
-does not approve a dependency change or a different deployment architecture.
+### Verified runtime contract and remaining implementation decisions
+
+- Local Node embedding: public `@b4run/cli/runtime` exports
+  `createRuntimeFetchHandler` and `buildStaticRouteModule`; the Node wrapper
+  supplies supported SQLite fallbacks. The fetch-only entry
+  `@b4run/cli/fetch` is used only with all stores supplied.
+- Static module: route `/atc#agent`, descriptor from `@b4run/sdk` `agent()`,
+  pinned `SYSTEM_PROMPT`, `provider: 'openai'`, `maxOutputTokens: 4096`,
+  bounded `recursionLimit`, no server tools. Pass `tools: []` to
+  `buildStaticRouteModule`; the deterministic probe confirms no default tools.
+- AG-UI config: `clientTools: ['/atc']`,
+  `clientForwardedProps: { '/atc': ['responseSchema'] }`,
+  `clientToolTtlMs: 600000`, `clientToolRetentionMs: 86400000`.
+  The adapter constructs `forwardedProps.responseSchema` from pinned
+  Hashbrown props and invokes only `/agui/` plus encoded `/atc#agent`.
+- Auth: `defineAuth` receives a server-issued, verified anonymous identity;
+  `ownedThreads()` enforces ownership. The outer adapter never forwards
+  caller identity headers. A signed HttpOnly/SameSite cookie lasts 24 hours.
+  Only `/api/run` is public; no runtime administration endpoint is mounted.
+- Local validation can overlay existing dependency resolution with built local
+  packages without changing `package.json` or `package-lock.json`. Document
+  that source validation does not prove compatibility with current releases.
+- Hosted storage uses the existing `@b4run/postgres-storage` and database driver
+  dependencies, with separate ATC tables. Missing shared storage or signing
+  configuration is a startup error for a selected hosted b4.run backend only.
+- Thread admission ends 24 hours after creation. Add an operator cleanup command
+  using supported store `deleteThread` APIs and pending-call pruning. Cleanup
+  must run with all ATC b4.run instances stopped; no scheduler is introduced.
+  Document that physical retention depends on that operational cleanup, and do
+  not claim automatic TTL deletion. Test expiration and retryable cleanup.
+- Packaging must use the public b4.run build output and a guarded outer adapter,
+  following the existing lifecycle wrapper pattern. Verify from an isolated
+  artifact; do not bundle native runtime code with the default Vite path.
+  Preserve the seven existing API functions and Angular hosting default.
+
+The user authorized continuing implementation after the upstream fixes and is
+handling releases independently. No dependency additions are authorized; ask
+before introducing any if the existing packages cannot support these APIs.
+
+## Implementation record
+
+Source implementation and review are complete against the local compatibility
+fixes. The original task checklists below preserve the planned verification
+scope; this record states what was actually executed and what remains external.
+Implementation was kept together on `blove/atc-b4run-backend` rather than split
+into the suggested intermediate commits.
+
+- Shared policy, strict selection, guarded Node/fetch adapters, signed anonymous
+  visitors, thread ownership/expiration, and offline cleanup are implemented.
+- The real SQLite-backed runtime tests cover sequential and parallel client
+  tools, partial/duplicate results, schema continuity, ownership, and expiration.
+  The earlier source probe additionally covers failed results, cancellation,
+  and abandonment. HTTP tests cover streaming/cancellation. Existing browser
+  recovery tests remain; the new real-backend browser matrix covers query →
+  map action → narrowed card and fresh identity after reload. Stop/retry under
+  the b4.run backend has not received a separate real-browser scenario.
+- The browser matrix exposed a React schema reset between model completion and
+  tool execution. Core now keeps loading true while a tool turn is reserved;
+  regression tests preserve pending-interrupt and synchronous Stop behavior.
+- Both Vercel packaging paths build. Authored b4.run inputs are precompiled to
+  ESM under ignored `server/.b4-app/`, then built by the public CLI. The native
+  generated function is wrapped without rewriting its runtime. Isolated
+  artifacts verify default startup, hidden runtime endpoints, and selection
+  mismatch. Live Postgres ownership through the generated artifact remains an
+  external gate, not a completed check.
+- Server: 162 tests; recorder: 38 tests; full browser suite: 86 tests. Core: 1443
+  tests across 77 suites with the SDK tool-step conformance suite excluded due
+  to the local 0.14 SDK API mismatch. Server/core/e2e lint, server build, ATC
+  builds, and e2e typecheck were run. See the report for exact limitations.
+- No dependencies were added, no prompts changed, no release or deployment ran,
+  and the original dirty b4.run checkout was left alone.
 
 ## File responsibilities
 
@@ -52,7 +120,7 @@ Proposed new paths, finalized after Task 1:
 - `examples/atc/server/src/b4run/handler.ts` and `.test.ts`: Node request/response and runtime boundary.
 - `examples/atc/server/src/b4run/visitor.ts` and `.test.ts`: anonymous cookie identity.
 - `examples/atc/server/src/b4run/runtime.test.ts`: real-runtime deterministic integration proof.
-- `examples/atc/server/b4.config.ts`, `src/app/atc/index.ts`, `src/auth.ts`, `src/thread-access.ts`: b4.run app configuration, agent, and ownership, if supported by the verified runtime interface.
+- `examples/atc/server/agent/b4.config.ts`, `src/app/atc/index.ts`, `src/auth.ts`, `src/thread-access.ts`: b4.run app configuration, agent, and ownership, if supported by the verified runtime interface.
 - `docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md`: evidence and gate decision.
 
 ## Task 1: Resolve runtime and package compatibility

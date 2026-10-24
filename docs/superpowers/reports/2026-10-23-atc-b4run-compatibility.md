@@ -5,7 +5,11 @@ Plan: `../plans/2026-10-23-atc-b4run-backend.md`.
 
 ## Decision
 
-**Compatibility gate did not pass. Do not begin application implementation.**
+**Source compatibility gate now passes against the patched local b4.run branch.**
+
+The user authorized continuing source implementation and will handle releases
+separately. See the source-fix follow-up below. Current released artifacts remain
+incompatible; the initial findings in this report describe that earlier state.
 
 The installed b4.run 0.14.0 runtime embeds through a public fetch API and can
 park/resume browser tools while binding ATC's schemas. However:
@@ -254,3 +258,69 @@ b4.run first. Then select and explicitly approve any required dependency
 changes, rerun the actual-runtime probe against that coherent package set,
 and finalize anonymous retention and artifact packaging. Only after those
 checks pass should Tasks 2–7 become executable application implementation work.
+
+## Source-fix follow-up
+
+The local b4.run branch `blove/atc-agent-compatibility` now contains commits
+`3a05ec73a` and `ef984f37c`. Its complete source-built Hashbrown probe at
+`/private/tmp/b4run-atc-probe/probe.mjs` exits 0 with 9 checks passing. The
+actual Hashbrown runtime executes the browser actions once and retains its
+narrowed schema; all 15 schemas and all 16 tool definitions reach the provider.
+The new supported output cap reaches every provider continuation.
+
+The b4.run fixes preserve parents and arguments during checkpoint replay,
+including parallel dynamic subagents, and introduce validated
+`agent({ maxOutputTokens })`. SDK, LangChain, and AG-UI suites pass 1609 tests;
+102 focused CLI runtime tests pass. Build/typecheck/lint succeed with existing
+lint warnings. Full CLI testing still has three macOS temporary-path assertion
+failures and a watcher timing failure that passes in isolation. Website tests
+pass 1090 with one skipped. The default inspector Turbopack build was restricted
+by local port binding; its webpack build passed. This is source verification,
+not a published-release or hosted Postgres/artifact verification.
+
+The user will handle releases separately. Continue source implementation using
+the coherent local packages, leave dependency manifests unchanged, and retain
+the production package/storage/artifact gates described in the amended plan.
+
+
+## ATC source implementation follow-up
+
+The optional backend is implemented on Hashbrown branch
+`blove/atc-b4run-backend`, using the local b4.run package overlay above.
+`package.json` and `package-lock.json` are unchanged. OpenAI remains the default
+and still calls `HashbrownOpenAI.stream.text` directly. Both frameworks use
+Hashbrown's browser tools and components; the optional agent resumes their
+results with the pinned schema and 4096-token cap.
+
+Executed Nx checks (exit 0 unless qualified):
+
+- `npx nx test atc-server`: 162 tests, 26 files, including real SQLite runtime
+  continuation, parallel/partial/duplicate results, ownership and expiration.
+- `npx nx build atc-server` and `npx nx lint atc-server`.
+- `npx nx e2e atc-e2e`: 86 tests, including all four backend/framework pairs
+  through real HTTP adapters, narrowed schemas and fresh threads after reload.
+- `npx nx test atc-e2e`: 38 recorder tests; e2e lint and typecheck also pass.
+- `npx nx build atc` with the default and `ATC_CHAT_BACKEND=b4run` selection:
+  both package successfully. Isolated output smoke checks verify default
+  startup without agent settings, runtime route denial and configuration
+  mismatch. The b4.run build uses a private ESM staging app and the public CLI;
+  its native function files are preserved by the outer adapter.
+- Core build/lint and 1443 tests in 77 suites pass with
+  `--testPathIgnorePatterns=tool-step.conformance.spec.ts`. The full test run
+  fails because the local SDK 0.14 overlay lacks B4ToolStep/mergeToolStep APIs
+  required by that existing conformance suite. This is not reported as a full
+  core-suite pass. The minimal loading-selector change has focused regression
+  coverage and passes the existing Stop tests.
+- `git diff --check` and read-only code review complete without blocking findings.
+
+Tooling emits existing color-environment and Rollup/Nx warnings; Node SQLite
+also reports its experimental API warning. Generated staging files are ignored
+by Git and ESLint. No application prompt changes required live model evals.
+
+Remaining verification: compatible released packages, real shared Postgres
+stores, generated-artifact ownership with those stores, and deployed-host smoke
+tests. No live model, release, deployment, state cleanup, or scheduler ran.
+The new real-backend browser cases do not independently exercise Stop/retry;
+HTTP cancellation tests and the source compatibility probe cover that boundary.
+Anonymous admission expires after 24 hours; physical deletion requires the
+explicit offline operator cleanup documented in the ATC README.

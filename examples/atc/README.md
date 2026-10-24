@@ -43,7 +43,7 @@ The drawer only reports; nothing in it changes the app.
 
 ## Run Locally
 
-atc needs Node 20.19+ or 22.12+ (the repository's `.nvmrc` pins one), an OpenAI API key, and optionally a TypeSafe API key.
+atc uses the Node version pinned by `.nvmrc`, an OpenAI API key, and optionally a TypeSafe API key. The optional b4.run backend requires Node 24 or newer.
 
 ```bash
 git clone https://github.com/liveloveapp/hashbrown.git
@@ -82,12 +82,102 @@ The server reads these variables, from `.env` or the environment:
 
 | Variable                  | Default      | Notes                                                                                                                                                 |
 | ------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ATC_CHAT_BACKEND`       | `openai`     | Select `openai` or `b4run`; unknown or empty values fail startup. |
 | `OPENAI_API_KEY`          | none         | Required. The server will not start without it, even though the map alone needs none.                                                                 |
 | `OPENAI_MODEL`            | `gpt-5-mini` | Any OpenAI model the Responses API serves.                                                                                                            |
 | `OPENAI_BASE_URL`         | OpenAI       | For an OpenAI-compatible endpoint.                                                                                                                    |
 | `OPENAI_REASONING_EFFORT` | `low`        | Sent to gpt-5 and o-series models only. Set it empty to send none. An unknown value stops the server at startup.                                      |
 | `TYPESAFE_API_KEY`        | none         | Optional. Enables `/api/decide` (TypeSafe Jev). Without it, `/api/decide` answers 503 and atc sends everything you type to the chat, with every card. |
 | `PORT`                    | `4340`       | The dev servers' `/api` proxy expects 4340.                                                                                                           |
+
+## Choose the chat backend
+
+`ATC_CHAT_BACKEND=openai` is the default locally and in the hosted build. Its
+[`HashbrownOpenAI.stream.text` call](./server/src/run-handler.ts) remains the
+direct provider example. Filters continue using Hashbrown's OpenAI provider
+with either chat backend, so `OPENAI_API_KEY` is required in both cases.
+
+To run chat through a b4.run agent instead:
+
+```bash
+ATC_CHAT_BACKEND=b4run npx nx serve atc-server
+```
+
+The framework applications still call `/api/run` with Hashbrown's own hooks and
+transport. Hashbrown owns the components, streaming JSON, and tools that read and
+change the browser's live map. The small
+[agent descriptor](./server/src/b4run/agent.ts) gives b4.run the server-owned
+prompt, model, 4096 output-token cap, and bounded execution. It permits no server
+tools or delegation. b4.run parks browser calls and continues when Hashbrown
+returns their results. The [adapter](./server/src/b4run/request.ts) pins all tool
+definitions and translates Hashbrown's selected response schema into b4.run's
+`forwardedProps.responseSchema`, including every continuation.
+
+An unknown backend setting or a failed selected backend stops startup; there is
+no fallback. `OPENAI_REASONING_EFFORT=max` is unsupported by the agent backend
+and fails explicitly. Local agent state uses SQLite under `server/.b4/`.
+A signed HttpOnly cookie identifies an anonymous visitor, and thread ownership
+prevents another visitor from continuing that conversation. Reloading starts a
+new conversation; no history restoration endpoint is exposed. Local signing
+keys are ephemeral unless `ATC_B4RUN_COOKIE_SECRET` is set.
+
+**Package compatibility:** the agent path requires a coherent b4.run package
+set containing the browser-tool replay fixes and `agent({ maxOutputTokens })`.
+The current dependency pins predate those fixes; the agent fails startup rather
+than dropping its cap. Source validation uses the patched local package set
+recorded in the [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
+Release and dependency-pin updates are separate from this implementation.
+
+### Optional hosted build
+
+The regular `npx nx build atc` keeps the direct OpenAI function and requires no
+agent storage settings. To package the optional agent instead:
+
+```bash
+ATC_CHAT_BACKEND=b4run npx nx build atc
+```
+
+The build precompiles the authored agent inputs into an ESM staging app, invokes
+b4.run's public Vercel build target, and wraps its intact output with the guarded
+ATC ingress. It verifies that wrapper from an isolated directory. The same seven
+API functions and Angular hosting remain; no raw agent or thread endpoint is
+published. The build never deploys or releases anything.
+
+Set these variables on that deployment:
+
+| Variable | Purpose |
+| --- | --- |
+| `ATC_CHAT_BACKEND=b4run` | Must match the packaged backend. |
+| `ATC_B4RUN_COOKIE_SECRET` | A stable signing secret of at least 32 bytes, shared by every instance. |
+| `ATC_B4RUN_DATABASE_URL` | Shared Postgres storage for checkpoints, threads, and pending browser calls, using the `atc` table prefix. |
+
+The adapter maps the dedicated ATC state database into the generated runtime
+without changing the process's general `DATABASE_URL`. Hosted startup never
+falls back to ephemeral SQLite. Live Postgres and deployment validation remain
+required before hosting; local and isolated-artifact checks use deterministic
+provider fixtures and do not provision a database.
+
+### Anonymous state cleanup
+
+Browser calls expire after 10 minutes. Settled and expired call records have a
+24-hour retention setting and are pruned opportunistically by the runtime.
+Conversation admission ends 24 hours after creation; physical checkpoint and
+thread deletion requires operator cleanup.
+
+Disable admission and stop **every** agent instance, wait for all active runs to
+settle across replicas, then run:
+
+```bash
+npx nx prune-agent-state atc-server --offline
+```
+
+Use the same `ATC_B4RUN_DATABASE_URL` for hosted state; omit it for local SQLite.
+The flag affirms that the service is offline; the command does not acquire a
+distributed lock. It deletes expired checkpoints before their thread rows, then
+prunes old tool-call records through public storage APIs or `b4 client-tools
+prune`. A failed deletion leaves its thread row available for retry. Rerun
+cleanup while still offline before reopening admission. No scheduler is added;
+physical retention depends on the operator running this command regularly.
 
 ## How This Example Is Built
 

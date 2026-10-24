@@ -1,12 +1,13 @@
 # ATC optional b4.run chat backend
 
-Status: approved by the user on 2026-10-23. No implementation or dependency changes yet.
+Status: approved by the user on 2026-10-23; source implementation is in place.
 
-Compatibility investigation on 2026-10-23 did not pass the implementation gate.
-See `../reports/2026-10-23-atc-b4run-compatibility.md`: the installed runtime
-changes replayed tool-parent identity, lacks a supported output-token cap, and
-uses an older schema carrier than the target contract described below. The
-approved design remains the target; these findings must be resolved first.
+The original published-package compatibility gate failed. Local b4.run fixes
+at `ef984f37c` now pass the runtime and browser integration checks. See
+`../reports/2026-10-23-atc-b4run-compatibility.md` for the original evidence and
+implementation follow-up. Dependency manifests remain unchanged; compatible
+releases and live hosted Postgres validation are still required before hosting
+the optional backend. The user is handling releases separately.
 
 ## Purpose and agreed scope
 

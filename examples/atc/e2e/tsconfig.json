@@ -13,6 +13,7 @@
   },
   "include": [
     "src/**/*.ts",
+    "src/**/*.cts",
     "demo/**/*.ts",
     "prose/**/*.ts",
     "decide/**/*.ts",

@@ -8,6 +8,7 @@ export default [
     ignores: [
       '**/.vercel/**',
       '**/.b4/**',
+      '**/.b4-app/**',
       '**/dist/**',
       'node_modules/**',
       '**/vite.config.*.timestamp*',
