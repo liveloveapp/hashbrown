@@ -13,6 +13,7 @@ import {
 } from '../../growth/test/job-fixtures.ts';
 /* eslint-enable @nx/enforce-module-boundaries */
 import type { LifecycleResendClient } from './campaign/send.ts';
+import { DeterministicLifecycleJobError } from './job-errors.ts';
 import {
   createLifecycleDispatcherDependencies,
   dispatchLifecycleJobs,
@@ -371,62 +372,74 @@ test('a failing job backs off, never delays the healthy job behind it, and is qu
   expect(await jobStatuses([healthyId])).toEqual(['completed']);
 });
 
-test('a handler that authorizes submission and then throws is never returned to pending or authorized again', async () => {
-  const jobId = await insertDueJob('digest');
-  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-  let authorizations = 0;
-  const authorizeThenThrow = async (
-    tickExecutor: SqlExecutor,
-    job: GrowthJob,
-  ) => {
-    authorizations += 1;
-    await tickExecutor.execute(
-      `insert into growth_activity (event_key, kind, occurred_at, data)
-       values ($1, 'delivery.submission_authorized', $2, $3::jsonb)`,
-      [
-        `job:${job.id}:submission-authorized:${job.leaseToken}`,
-        NOW,
-        JSON.stringify({
-          bounded_stop_race: true,
-          lease_token: job.leaseToken,
-        }),
-      ],
+for (const [label, failure] of [
+  ['a handler error', () => new Error('acceptance write failed')],
+  [
+    'a deterministic error',
+    () => new DeterministicLifecycleJobError('corrupt'),
+  ],
+] as const) {
+  test(`a handler that authorizes submission and then throws ${label} is never returned to pending, quarantined or authorized again`, async () => {
+    const jobId = await insertDueJob('digest');
+    const logged = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    let authorizations = 0;
+    const authorizeThenThrow = async (
+      tickExecutor: SqlExecutor,
+      job: GrowthJob,
+    ) => {
+      authorizations += 1;
+      await tickExecutor.execute(
+        `insert into growth_activity (event_key, kind, occurred_at, data)
+         values ($1, 'delivery.submission_authorized', $2, $3::jsonb)`,
+        [
+          `job:${job.id}:submission-authorized:${job.leaseToken}`,
+          NOW,
+          JSON.stringify({
+            bounded_stop_race: true,
+            lease_token: job.leaseToken,
+          }),
+        ],
+      );
+      throw failure();
+    };
+
+    await dispatchLifecycleJobs(input(), tickDependencies(authorizeThenThrow));
+    const afterFailure = await executor.execute<{
+      status: string;
+      last_error_code: string | null;
+    }>('select status, last_error_code from growth_jobs where id = $1', [
+      jobId,
+    ]);
+    const later = new Date(NOW.getTime() + 3_600_000);
+    await dispatchLifecycleJobs(input(), {
+      ...tickDependencies(authorizeThenThrow),
+      now: () => later,
+    });
+    const afterRecovery = await executor.execute<{
+      status: string;
+      last_error_code: string | null;
+      delivery_status: string;
+    }>(
+      'select status, last_error_code, delivery_status from growth_jobs where id = $1',
+      [jobId],
     );
-    throw new Error('acceptance write failed');
-  };
 
-  await dispatchLifecycleJobs(input(), tickDependencies(authorizeThenThrow));
-  const afterFailure = await executor.execute<{
-    status: string;
-    last_error_code: string | null;
-  }>('select status, last_error_code from growth_jobs where id = $1', [jobId]);
-  const later = new Date(NOW.getTime() + 3_600_000);
-  await dispatchLifecycleJobs(input(), {
-    ...tickDependencies(authorizeThenThrow),
-    now: () => later,
+    logged.mockRestore();
+    await executor.execute(
+      'delete from growth_activity where event_key like $1',
+      [`job:${jobId}:%`],
+    );
+    expect(afterFailure.rows[0]).toEqual({
+      status: 'leased',
+      last_error_code: null,
+    });
+    expect(authorizations).toBe(1);
+    expect(afterRecovery.rows[0]).toEqual({
+      status: 'failed',
+      last_error_code: 'worker_interrupted_after_authorization',
+      delivery_status: 'unknown',
+    });
   });
-  const afterRecovery = await executor.execute<{
-    status: string;
-    last_error_code: string | null;
-    delivery_status: string;
-  }>(
-    'select status, last_error_code, delivery_status from growth_jobs where id = $1',
-    [jobId],
-  );
-
-  logged.mockRestore();
-  await executor.execute(
-    'delete from growth_activity where event_key like $1',
-    [`job:${jobId}:%`],
-  );
-  expect(afterFailure.rows[0]).toEqual({
-    status: 'leased',
-    last_error_code: null,
-  });
-  expect(authorizations).toBe(1);
-  expect(afterRecovery.rows[0]).toEqual({
-    status: 'failed',
-    last_error_code: 'worker_interrupted_after_authorization',
-    delivery_status: 'unknown',
-  });
-});
+}

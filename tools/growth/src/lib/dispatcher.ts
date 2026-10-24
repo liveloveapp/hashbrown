@@ -1,16 +1,15 @@
 import type { SqlExecutor } from './database.ts';
 import type { GrowthJob } from './models.ts';
-import {
-  isGoogleMailboxRecoveryPaused,
-  type ProcessGoogleMailboxEventDependencies,
-  settleGoogleReplyReconciliation,
-} from './replies.ts';
 
-/** What dispatching one leased job did. */
+/**
+ * What dispatching one leased job did. `recovery_paused` means the Resend
+ * reply mailbox is unhealthy, so the job is still leased and the caller
+ * defers it.
+ */
 export type GrowthDispatchResult =
   'completed' | 'deferred' | 'cancelled' | 'failed' | 'recovery_paused';
 
-/** The leased job kinds the lifecycle app handles; `reply_reconcile` is handled here. */
+/** The leased job kinds the lifecycle app handles. */
 export type GrowthAppJobKind = 'fulfill' | 'notify' | 'send_step' | 'digest';
 
 /** Per-dispatch context handed to an app handler. */
@@ -33,10 +32,6 @@ export type GrowthAppJobHandlers = Partial<
 /** Collaborators of {@link dispatchGrowthLeasedJob}. */
 export interface GrowthDispatchDependencies {
   signal?: AbortSignal;
-  /** The clock for reply settlement; defaults to the system clock. */
-  now?: () => Date;
-  /** Overrides for the reply path, such as the stop; defaults to the canonical stop. */
-  googleMailbox?: ProcessGoogleMailboxEventDependencies;
   appHandlers?: GrowthAppJobHandlers;
 }
 
@@ -47,25 +42,9 @@ const APP_JOB_KINDS: ReadonlySet<string> = new Set<GrowthAppJobKind>([
   'digest',
 ]);
 
-const SETTLEMENT_RESULTS = {
-  completed: 'completed',
-  retry_scheduled: 'deferred',
-  founder_review: 'failed',
-  ignored_deleted: 'cancelled',
-  recovery_paused: 'recovery_paused',
-} as const satisfies Record<
-  Awaited<ReturnType<typeof settleGoogleReplyReconciliation>>,
-  GrowthDispatchResult
->;
-
 /**
- * The one dispatch boundary for jobs returned by `leaseDueJobs`. It settles
- * legacy `reply_reconcile` itself, returns `recovery_paused` for that
- * legacy work while its old recovery is open, and otherwise hands
- * the job to the app handler for its kind. Campaigns use the Resend mailbox
- * gates in leasing/final authorization. Reply settlements map as
- * `retry_scheduled → deferred`, `founder_review → failed` and
- * `ignored_deleted → cancelled`.
+ * The one dispatch boundary for jobs returned by `leaseDueJobs`: hands the
+ * job to the app handler for its kind with the abort signal.
  *
  * @throws When the job is not leased, its kind is unknown, or no app handler
  *   is registered for it.
@@ -80,29 +59,8 @@ export async function dispatchGrowthLeasedJob(
   const appHandler = APP_JOB_KINDS.has(job.kind)
     ? dependencies.appHandlers?.[job.kind as GrowthAppJobKind]
     : undefined;
-  if (
-    job.status !== 'leased' ||
-    !job.leaseToken ||
-    (job.kind !== 'reply_reconcile' && !appHandler)
-  ) {
+  if (job.status !== 'leased' || !job.leaseToken || !appHandler) {
     throw new Error(`Unsupported or inactive growth job kind: ${job.kind}`);
   }
-  if (
-    job.kind === 'reply_reconcile' &&
-    (await isGoogleMailboxRecoveryPaused(executor))
-  ) {
-    return 'recovery_paused';
-  }
-  signal?.throwIfAborted();
-  if (appHandler) return appHandler(executor, job, { signal });
-  const settlement = await settleGoogleReplyReconciliation(
-    executor,
-    {
-      jobId: job.id,
-      leaseToken: job.leaseToken,
-      now: (dependencies.now ?? (() => new Date()))(),
-    },
-    dependencies.googleMailbox,
-  );
-  return SETTLEMENT_RESULTS[settlement];
+  return appHandler(executor, job, { signal });
 }

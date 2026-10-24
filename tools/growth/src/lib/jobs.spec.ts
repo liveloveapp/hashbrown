@@ -119,7 +119,6 @@ function jobRow(overrides: TestRow = {}): TestRow {
     payload: { campaign_version: 'v1', step: 1 },
     provider_email_id: null,
     rfc_message_id: null,
-    gmail_seed_message_id: null,
     delivery_status: 'not_submitted',
     last_error_code: null,
     created_at: now,
@@ -296,13 +295,13 @@ test('leaseDueJobs leases only due pending or expired jobs and increments attemp
   ).rejects.toThrow('batchSize must be an integer between 1 and 100');
 });
 
-test('leaseDueJobs uses Resend campaign coverage and retains old recovery only for legacy reconciliation', async () => {
+test('leaseDueJobs gates send_step on Resend coverage and keeps no Google recovery fence', async () => {
   const { executor, calls } = executorWith({
     'lease-due-jobs': emptyRows,
   });
 
   await leaseDueJobs(executor, {
-    kinds: ['send_step', 'reply_reconcile'],
+    kinds: ['send_step'],
     now,
     batchSize: 5,
     leaseDurationMs: 60_000,
@@ -313,12 +312,9 @@ test('leaseDueJobs uses Resend campaign coverage and retains old recovery only f
   expect(sql).toContain(
     "unbound.kind in ('fulfill', 'send_step') and unbound.status = 'completed' and unbound.provider_email_id is not null and unbound.rfc_message_id is null",
   );
-  expect(sql).toContain("j.kind <> 'reply_reconcile'");
   expect(sql).toContain('from growth_reply_mailboxes m where m.enabled');
-  expect(sql).toContain("recovery_required.kind = 'mailbox.recovery_required'");
-  expect(sql).toContain(
-    "recovery_completed.data->>'recovery_id' = recovery_required.data->>'recovery_id'",
-  );
+  expect(sql).not.toContain('reply_reconcile');
+  expect(sql).not.toContain('mailbox.recovery_required');
 });
 
 test('leaseDueJobs fails expired leases that were already authorized for submission', async () => {
