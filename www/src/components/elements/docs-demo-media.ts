@@ -1,5 +1,21 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'agent-routing': {
+    dimensions: { width: 1440, height: 900 },
+    title: 'Choose a route. Run your handler.',
+    caption:
+      'Route an order question and a returns question through server-owned handlers.',
+    recording:
+      'Recorded in the checked support clients and Express server with scripted decision responses. React recorded; Angular verified. Fixed public example data, presentation styles added. No live model call or narration.',
+  },
+  'agent-fallback': {
+    dimensions: { width: 1440, height: 900 },
+    title: 'Ask for clarity. Recover explicitly.',
+    caption:
+      'Handle an uncertain decision and provider failure, then retry after an unexpected run failure.',
+    recording:
+      'Recorded in the checked support clients and Express server with scripted decision responses and failures. React recorded; Angular verified. Fixed public example data, presentation styles added. No live model call or narration.',
+  },
   'magic-text': {
     dimensions: { width: 1440, height: 900 },
     title: 'Stream a reply. Inspect its source.',

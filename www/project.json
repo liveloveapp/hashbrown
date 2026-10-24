@@ -161,6 +161,20 @@
         "parallel": false
       },
       "dependsOn": ["typecheck"]
+    },
+    "docs-agent-decisions-demo": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "commands": [
+          "ngc -p www/examples/quickstart/tsconfig.record.json",
+          "tsx www/src/tools/record-docs-agent-decisions.ts"
+        ],
+        "parallel": false
+      },
+      "dependsOn": [
+        "typecheck"
+      ]
     }
   }
 }

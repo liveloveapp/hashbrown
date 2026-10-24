@@ -36,11 +36,13 @@ export function cropRecipeScreenshot(
 
 /** Produces a final-result preview, full interaction, brief hold and accessible companions. */
 export function encodeRecipeVideo(
-  mode: RecipeMode,
+  mode: string,
   raw: string,
   work: string,
   assets: string,
   phases: readonly RecipePhase[],
+  description = descriptions[mode as RecipeMode],
+  disclosure?: string,
 ): { duration: number } {
   const master = resolve(work, `${mode}-master.mp4`);
   execFileSync(
@@ -157,7 +159,16 @@ export function encodeRecipeVideo(
   );
   writeFileSync(
     resolve(assets, `${mode}-transcript.txt`),
-    `${mode}\n\nRecorded through the checked React component after both React and Angular passed the same browser checks. Scripted AG-UI or decision responses, presentation styles added, no live model and no narration. Application state is local and clears on refresh.\n\nThe first two seconds preview the final result. The complete interaction follows.\n\n${descriptions[mode]}\n\nThe recording ends with a brief hold on the result. Error, cancellation, stale-response and recovery behavior are checked separately in both frameworks.\n`,
+    createRecipeTranscript(mode, description, disclosure),
   );
   return { duration };
+}
+
+/** Authors the accessible companion with the fixture boundary used by its recording. */
+export function createRecipeTranscript(
+  mode: string,
+  description: string,
+  disclosure = 'Scripted AG-UI or decision responses, presentation styles added, no live model and no narration. Application state is local and clears on refresh.',
+): string {
+  return `${mode}\n\nRecorded through the checked React component after both React and Angular passed the same browser checks. ${disclosure}\n\nThe first two seconds preview the final result. The complete interaction follows.\n\n${description}\n\nThe recording ends with a brief hold on the result. Error, cancellation, stale-response and recovery behavior are checked separately in both frameworks.\n`;
 }

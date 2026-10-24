@@ -17,6 +17,10 @@ export default defineConfig({
         import.meta.dirname,
         '../packages/react/src/index.ts',
       ),
+      '@hashbrownai/typesafe': resolve(
+        import.meta.dirname,
+        '../packages/typesafe/src/index.ts',
+      ),
       // Core's subpath import; its package.json targets are build outputs.
       '#development-install': resolve(
         import.meta.dirname,
