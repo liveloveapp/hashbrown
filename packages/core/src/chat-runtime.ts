@@ -6,6 +6,10 @@ import type {
 } from './models/conversation-recovery';
 import type { PendingInterruptBatch, ResumeOptions } from './models/interrupt';
 import {
+  ɵisCancelledTurnMarker,
+  ɵrestoreCancelledTurnProvenance,
+} from './models/cancelled-turn';
+import {
   assertInterruptsNotExpired,
   validateInterruptOutcome,
   validateResumeOptions,
@@ -681,7 +685,12 @@ export function createChatRuntime(init: {
       throw new TypeError('Invalid recovery thread identity.');
     if (!Array.isArray(snapshot.messages) || snapshot.messages.length > 2048)
       throw new TypeError('Invalid recovery message history.');
-    const canonicalMessages = ɵownValidatedAgUiMessages(snapshot.messages);
+    const canonicalMessages = ɵrestoreCancelledTurnProvenance(
+      snapshot.threadId === state.read(selectThreadId)
+        ? state.read(ɵselectCommittedAgUiMessages)
+        : [],
+      ɵownValidatedAgUiMessages(snapshot.messages),
+    );
     const configuredSystem = state.read(selectSystem);
     const originalSystem = canonicalMessages[0];
     if (configuredSystem) {
@@ -725,6 +734,7 @@ export function createChatRuntime(init: {
       if (message.role !== 'assistant') continue;
       if (
         responseSchema &&
+        !ɵisCancelledTurnMarker(message) &&
         message.content !== undefined &&
         projection.messages.find(
           (candidate) =>

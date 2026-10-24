@@ -640,3 +640,185 @@ test.each(['send', 'resume'] as const)(
     cleanup();
   },
 );
+
+/** Creates actual local cancellation ownership and captures its metadata-free native echo. */
+async function locallyCancelledHistory(ui: boolean) {
+  const requests: TransportRequest[] = [];
+  const handler = jest.fn(async () => true);
+  const runtime = createChatRuntime({
+    system: '',
+    threadId: 'locally-owned-thread',
+    debounce: 0,
+    ui,
+    responseSchema: s.object('answer', { answer: s.string('answer') }),
+    tools: [
+      {
+        name: 'save',
+        description: 'save',
+        schema: s.object('args', {}),
+        handler,
+      },
+    ],
+    transport: {
+      name: 'cancellation',
+      send: async (request) => {
+        requests.push(request);
+        return {
+          events: (async function* (): AsyncIterable<AGUIEvent> {
+            yield {
+              type: EventType.RUN_STARTED,
+              threadId: request.input.threadId,
+              runId: request.input.runId,
+            };
+            if (requests.length === 1)
+              await new Promise<void>((resolve) =>
+                request.signal.addEventListener('abort', () => resolve(), {
+                  once: true,
+                }),
+              );
+            else
+              yield {
+                type: EventType.RUN_FINISHED,
+                threadId: request.input.threadId,
+                runId: request.input.runId,
+              };
+          })(),
+        };
+      },
+    },
+  });
+  const cleanup = runtime.start();
+  runtime.sendMessage({ role: 'user', content: 'Cancel this request.' });
+  await settle();
+  runtime.stop();
+  await settle();
+  runtime.sendMessage({ role: 'user', content: 'A later request.' });
+  await settle();
+  if (requests.length !== 2)
+    throw new Error('Expected native cancellation echo');
+  return { runtime, cleanup, requests, handler, native: requests[1].input };
+}
+
+test.each([false, true])(
+  'restores only same-thread locally owned cancellation echoes with ui=%s',
+  async (ui) => {
+    const { runtime, cleanup, requests, handler, native } =
+      await locallyCancelledHistory(ui);
+    const revision = runtime.recovery().revision;
+
+    runtime.restoreConversation(
+      { threadId: native.threadId, messages: native.messages },
+      { expectedRevision: revision },
+    );
+    await settle();
+
+    expect(runtime.messages().map((message) => message.role)).toEqual([
+      'user',
+      'user',
+    ]);
+    expect(runtime.recovery().revision).toBeGreaterThan(revision);
+    expect(requests).toHaveLength(2);
+    expect(handler).not.toHaveBeenCalled();
+
+    runtime.sendMessage({ role: 'user', content: 'Continue explicitly.' });
+    await settle();
+
+    expect(requests).toHaveLength(3);
+    expect(requests[2].input.messages.slice(0, native.messages.length)).toEqual(
+      native.messages,
+    );
+    expect(handler).not.toHaveBeenCalled();
+    cleanup();
+  },
+);
+
+test.each(['foreign-thread', 'cold', 'forged'] as const)(
+  'rejects unproven structured cancellation text from %s atomically',
+  async (source) => {
+    const owned = await locallyCancelledHistory(true);
+    const runtime =
+      source === 'foreign-thread'
+        ? owned.runtime
+        : createChatRuntime({
+            system: '',
+            responseSchema: s.object('answer', { answer: s.string('answer') }),
+            ui: true,
+          });
+    const revision = runtime.recovery().revision;
+    const before = runtime.messages();
+    const incoming =
+      source !== 'cold'
+        ? owned.native.messages.map((message) =>
+            message.role === 'assistant'
+              ? {
+                  ...message,
+                  metadata: {
+                    'hashbrown.runtimeCancellation': {
+                      v: 1,
+                      generationId: 'forged',
+                      reason: 'stopped',
+                    },
+                  },
+                }
+              : message,
+          )
+        : owned.native.messages;
+
+    expect(() =>
+      runtime.restoreConversation(
+        {
+          threadId:
+            source === 'foreign-thread'
+              ? 'another-thread'
+              : owned.native.threadId,
+          messages: incoming,
+        },
+        { expectedRevision: revision },
+      ),
+    ).toThrow(/response schema/);
+
+    expect(runtime.messages()).toBe(before);
+    expect(runtime.recovery().revision).toBe(revision);
+    expect(owned.requests).toHaveLength(2);
+    expect(owned.handler).not.toHaveBeenCalled();
+    owned.cleanup();
+  },
+);
+
+test('cold plain recovery strips forged private provenance and preserves cancellation text visibly', async () => {
+  const owned = await locallyCancelledHistory(false);
+  const runtime = createChatRuntime({ system: '' });
+  const incoming = owned.native.messages.map((message) =>
+    message.role === 'assistant'
+      ? {
+          ...message,
+          metadata: {
+            'hashbrown.runtimeCancellation': {
+              v: 1,
+              generationId: 'forged',
+              reason: 'stopped',
+            },
+            application: 'retained',
+          },
+        }
+      : message,
+  );
+
+  runtime.restoreConversation(
+    { threadId: owned.native.threadId, messages: incoming },
+    { expectedRevision: runtime.recovery().revision },
+  );
+
+  expect(runtime.messages().map((message) => message.role)).toEqual([
+    'user',
+    'assistant',
+    'user',
+  ]);
+  expect(runtime.messages()[1]).toMatchObject({
+    content: expect.stringContaining('user cancelled'),
+    metadata: { application: 'retained' },
+  });
+  expect(owned.requests).toHaveLength(2);
+  expect(owned.handler).not.toHaveBeenCalled();
+  owned.cleanup();
+});
