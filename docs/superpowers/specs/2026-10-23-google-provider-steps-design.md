@@ -4,7 +4,7 @@ Status: scoped by the user's 2026-10-23 instruction to review the existing desig
 
 ## Existing decisions and baseline
 
-The Rules in [the shared contract](2026-10-21-b4-tool-step-contract-design.md#rules) bind this delivery. Follow [the provider design](2026-10-22-b4-provider-steps-design.md). Anthropic and the neutral `hashbrown.provider-history` footer landed in PR #715 as `ad9f9ada`. Branch `blove/google-provider-steps` starts from main `b39f70def` in the existing clean isolated worktree. Installed `@google/genai` is 2.19.0; Google baseline has 35 unit tests passing.
+The Rules in [the shared contract](2026-10-21-b4-tool-step-contract-design.md#rules) bind this delivery. Follow [the provider design](2026-10-22-b4-provider-steps-design.md). Anthropic and the neutral `hashbrown.provider-history` footer landed in PR #715 as `ad9f9ada`. Branch `blove/google-provider-steps` starts from main `b39f70def` in the existing clean isolated worktree. Main pins `@google/genai` 2.30.0. The reused worktree initially had stale 2.19.0 dependencies; `npm ci` synchronized the unchanged lockfile before final SDK audit and verification. The initial Google baseline had 35 unit tests passing; the implementation has 116 passing on 2.30.0.
 
 Use the existing approach: provider-native lifecycle events, canonical native-history persistence, exact provider replay, answer-level grounding and attribution. A display-only implementation cannot meet replay requirements; reconstructing native content from joined view text loses signatures and order. This delivery reuses the neutral footer without changing the B4 contract or core public signatures.
 
@@ -69,7 +69,7 @@ Run Google test/build/lint/e2e/API report, core tests/build/lint/e2e/API report 
 
 ## Evidence
 
-- Installed SDK `node_modules/@google/genai/dist/genai.d.ts` and node converter/Chat implementation, version 2.19.0.
+- Installed SDK `node_modules/@google/genai/dist/genai.d.ts` and node converter/Chat implementation, version 2.30.0.
 - [Google tool circulation and combinations](https://ai.google.dev/gemini-api/docs/generate-content/tool-combination): native parts, signatures, matching IDs and VALIDATED mode.
 - [Google Search grounding](https://ai.google.dev/gemini-api/docs/generate-content/google-search): grounding sources/supports and Search Suggestions HTML.
 - Existing canonical footer reader/reducer and Anthropic implementation from PR #715.
