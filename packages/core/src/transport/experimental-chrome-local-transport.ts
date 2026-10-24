@@ -11,12 +11,15 @@ import { raceTransportOperationWithAbort } from './race-transport-operation-with
 import { TransportError } from './transport-error';
 
 const PROMPT_API_SOURCE = 'chrome-prompt-api';
-export type SupportedOutputLanguage = 'en' | 'es' | 'ja';
+/** Text output languages currently supported by Chrome's Prompt API. @alpha */
+export type SupportedOutputLanguage = 'en' | 'es' | 'ja' | 'de' | 'fr';
 
 const SUPPORTED_OUTPUT_LANGUAGES: SupportedOutputLanguage[] = [
   'en',
   'es',
   'ja',
+  'de',
+  'fr',
 ];
 /**
  * Message format accepted by the Chrome Prompt API.
@@ -64,7 +67,9 @@ export interface ExperimentalChromeLocalTransportOptions {
     availability?: (status: LanguageModelAvailabilityStatus) => void;
     sessionState?: (state: 'created' | 'destroyed' | 'error') => void;
   };
-  createSession?: () => Promise<LanguageModelSession>;
+  createSession?: (
+    options?: LanguageModelCreateOptions,
+  ) => Promise<LanguageModelSession>;
   outputLanguage?: SupportedOutputLanguage;
 }
 
@@ -78,7 +83,8 @@ interface LanguageModelAvailability {
 
 interface LanguageModelCreateOptions {
   signal?: AbortSignal;
-  monitor?: (event: DownloadProgressEvent) => void;
+  monitor?: (monitor: EventTarget) => void;
+  initialPrompts?: PromptMessage[];
   expectedOutputs?: ExpectedOutput[];
   [key: string]: unknown;
 }
@@ -102,6 +108,7 @@ interface LanguageModelSession {
 
 interface LanguageModelSessionRecord {
   promise: Promise<LanguageModelSession>;
+  initialization: string;
   owners: number;
   destructionPromise?: Promise<void>;
 }
@@ -114,7 +121,7 @@ interface LanguageModelSessionLease {
 interface LanguageModelGlobal {
   availability?: (
     options?: LanguageModelCreateOptions,
-  ) => Promise<LanguageModelAvailability>;
+  ) => Promise<LanguageModelAvailabilityStatus | LanguageModelAvailability>;
   create(options?: LanguageModelCreateOptions): Promise<LanguageModelSession>;
 }
 
@@ -125,6 +132,7 @@ interface LanguageModelGlobal {
 export class ExperimentalChromeLocalTransport implements Transport {
   readonly name = 'ExperimentalChromeLocalTransport';
   private sessionRecord?: LanguageModelSessionRecord;
+  private readonly sessionRecords = new Set<LanguageModelSessionRecord>();
   private readonly sessionDestructionPromises = new Set<Promise<void>>();
 
   constructor(
@@ -171,14 +179,15 @@ export class ExperimentalChromeLocalTransport implements Transport {
       },
     };
 
-    const availability = languageModel
-      ? await this.ensureAvailability(
-          languageModel,
-          promptRequest,
-          resolvedPromptOutputLanguage,
-          request.signal,
-        )
-      : 'available';
+    const availability =
+      languageModel && !this.options.createSession
+        ? await this.ensureAvailability(
+            languageModel,
+            promptRequest,
+            resolvedPromptOutputLanguage,
+            request.signal,
+          )
+        : 'available';
 
     const sessionLease = await this.acquireSession(
       languageModel,
@@ -214,18 +223,17 @@ export class ExperimentalChromeLocalTransport implements Transport {
 
   async destroy() {
     const destructionPromises = new Set(this.sessionDestructionPromises);
-    const sessionRecord = this.sessionRecord;
-
-    if (sessionRecord) {
-      const currentDestructionPromise =
+    if (this.sessionRecords.size === 0 && destructionPromises.size === 0) {
+      this.options.events?.sessionState?.('destroyed');
+      return;
+    }
+    for (const sessionRecord of this.sessionRecords) {
+      const destruction =
         sessionRecord.destructionPromise ??
         sessionRecord.promise.then((session) =>
           this.destroySessionRecord(sessionRecord, session),
         );
-      destructionPromises.add(currentDestructionPromise);
-    } else if (destructionPromises.size === 0) {
-      this.options.events?.sessionState?.('destroyed');
-      return;
+      destructionPromises.add(destruction);
     }
 
     const results = await Promise.allSettled(destructionPromises);
@@ -262,12 +270,14 @@ export class ExperimentalChromeLocalTransport implements Transport {
       outputLanguage,
     );
 
-    const availability = await raceTransportOperationWithAbort(
+    const result = await raceTransportOperationWithAbort(
       () => checkAvailability.call(languageModel, availabilityOptions),
       signal,
       createPromptAbortError,
     );
 
+    const availability =
+      typeof result === 'string' ? { status: result } : result;
     this.options.events?.availability?.(availability.status);
 
     if (availability.status === 'unavailable') {
@@ -336,14 +346,27 @@ export class ExperimentalChromeLocalTransport implements Transport {
     promptRequest: PromptRequest,
     outputLanguage: SupportedOutputLanguage,
   ): LanguageModelSessionRecord {
-    if (this.sessionRecord && !this.sessionRecord.destructionPromise) {
+    const initialization = JSON.stringify({
+      ...promptRequest.sessionOptions,
+      expectedOutputs: resolveExpectedOutputs(
+        outputLanguage,
+        promptRequest.sessionOptions,
+      ),
+    });
+    if (
+      this.sessionRecord &&
+      !this.sessionRecord.destructionPromise &&
+      this.sessionRecord.initialization === initialization
+    ) {
       return this.sessionRecord;
     }
 
     let promise: Promise<LanguageModelSession>;
 
     if (this.options.createSession) {
-      promise = this.options.createSession();
+      promise = this.options.createSession(
+        this.buildCreateOptions(signal, promptRequest, outputLanguage),
+      );
     } else if (!languageModel) {
       throw new TransportError('Prompt API is unavailable', {
         retryable: false,
@@ -358,9 +381,11 @@ export class ExperimentalChromeLocalTransport implements Transport {
       );
     }
 
-    const sessionRecord = { promise, owners: 0 };
+    const sessionRecord = { promise, initialization, owners: 0 };
     this.sessionRecord = sessionRecord;
+    this.sessionRecords.add(sessionRecord);
     void promise.catch(() => {
+      this.sessionRecords.delete(sessionRecord);
       if (this.sessionRecord === sessionRecord) {
         this.sessionRecord = undefined;
       }
@@ -413,6 +438,7 @@ export class ExperimentalChromeLocalTransport implements Transport {
         await session.destroy?.();
         this.options.events?.sessionState?.('destroyed');
       } finally {
+        this.sessionRecords.delete(record);
         if (this.sessionRecord === record) {
           this.sessionRecord = undefined;
         }
@@ -432,26 +458,28 @@ export class ExperimentalChromeLocalTransport implements Transport {
     );
   }
 
-  private async createLanguageModelSession(
-    languageModel: LanguageModelGlobal,
+  private buildCreateOptions(
     signal: AbortSignal,
     promptRequest: PromptRequest,
     outputLanguage: SupportedOutputLanguage,
-  ) {
+  ): LanguageModelCreateOptions {
     const userMonitor = promptRequest.sessionOptions?.monitor;
     const monitor =
       userMonitor || this.options.events?.downloadProgress
-        ? (event: DownloadProgressEvent) => {
-            userMonitor?.(event);
-            if (
-              this.options.events?.downloadProgress &&
-              typeof event.loaded === 'number' &&
-              typeof event.total === 'number' &&
-              event.total > 0
-            ) {
-              const percent = Math.round((event.loaded / event.total) * 100);
-              this.options.events.downloadProgress(percent);
-            }
+        ? (downloadMonitor: EventTarget) => {
+            userMonitor?.(downloadMonitor);
+            downloadMonitor.addEventListener('downloadprogress', (event) => {
+              const { loaded, total } = event as DownloadProgressEvent;
+              if (typeof loaded === 'number') {
+                const fraction =
+                  typeof total === 'number' && total > 0
+                    ? loaded / total
+                    : loaded;
+                this.options.events?.downloadProgress?.(
+                  Math.round(Math.min(1, Math.max(0, fraction)) * 100),
+                );
+              }
+            });
           }
         : undefined;
 
@@ -466,14 +494,23 @@ export class ExperimentalChromeLocalTransport implements Transport {
       sessionOptions.expectedOutputs = expectedOutputs;
     }
 
-    const createOptions: LanguageModelCreateOptions = {
+    return {
       ...sessionOptions,
       signal,
       monitor,
     };
+  }
 
+  private async createLanguageModelSession(
+    languageModel: LanguageModelGlobal,
+    signal: AbortSignal,
+    promptRequest: PromptRequest,
+    outputLanguage: SupportedOutputLanguage,
+  ) {
     try {
-      const session = await languageModel.create(createOptions);
+      const session = await languageModel.create(
+        this.buildCreateOptions(signal, promptRequest, outputLanguage),
+      );
       this.options.events?.sessionState?.('created');
       return session;
     } catch (err) {
@@ -538,7 +575,11 @@ export async function detectChromePromptApi(
   }
 
   try {
-    const availability = await languageModel.availability(sessionOptions);
+    const result = await languageModel.availability(
+      buildAvailabilityOptions(sessionOptions, opts?.outputLanguage ?? 'en'),
+    );
+    const availability =
+      typeof result === 'string' ? { status: result } : result;
     opts?.onAvailabilityChange?.(availability.status);
     if (
       opts?.outputLanguage &&
@@ -599,19 +640,40 @@ function defaultTransformRequest(request: TransportRequest): PromptRequest {
   }
 
   const messages: PromptMessage[] = [];
+  const instructions: string[] = [];
   for (const message of input.messages) {
     if (
+      message.role === 'tool' ||
+      (message.role === 'assistant' && message.toolCalls?.length)
+    ) {
+      throw new TransportError(
+        'Chrome Prompt API transport does not support tool history',
+        { retryable: false, code: 'FEATURE_UNSUPPORTED' },
+      );
+    }
+    if (
       message.role !== 'system' &&
+      message.role !== 'developer' &&
       message.role !== 'user' &&
       message.role !== 'assistant'
     ) {
       continue;
     }
-    const content =
-      typeof message.content === 'string'
-        ? message.content
-        : JSON.stringify(message.content ?? '');
-    messages.push({ role: message.role, content });
+    if (message.content !== undefined && typeof message.content !== 'string') {
+      throw new TransportError(
+        'Chrome local transport requires text messages',
+        {
+          retryable: false,
+          code: 'FEATURE_UNSUPPORTED',
+        },
+      );
+    }
+    const content = message.content ?? '';
+    if (message.role === 'system' || message.role === 'developer') {
+      instructions.push(content);
+    } else {
+      messages.push({ role: message.role, content });
+    }
   }
 
   const options: PromptOptions = {};
@@ -629,6 +691,14 @@ function defaultTransformRequest(request: TransportRequest): PromptRequest {
   return {
     messages,
     options,
+    sessionOptions:
+      instructions.length > 0
+        ? {
+            initialPrompts: [
+              { role: 'system', content: instructions.join('\n\n') },
+            ],
+          }
+        : undefined,
   };
 }
 
