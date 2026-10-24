@@ -11,15 +11,15 @@ Start with the result you want to show. Then choose whether your feature needs o
 
 ## Choose by goal
 
-| I want to… | Start with |
-| --- | --- |
-| Render your components in a conversation | @hashbrownai/react!useUiChat:function |
-| Build a text conversation | @hashbrownai/react!useChat:function |
-| Keep a conversation with typed JSON output | @hashbrownai/react!useStructuredChat:function |
-| Generate text from one input | @hashbrownai/react!useCompletion:function |
-| Generate typed data from one input | @hashbrownai/react!useStructuredCompletion:function |
-| Choose among named options | @hashbrownai/react!useDecision:function |
-| Choose which UI components to offer | @hashbrownai/react!useUiDecision:function |
+| I want to…                                 | Start with                                          |
+| ------------------------------------------ | --------------------------------------------------- |
+| Render your components in a conversation   | @hashbrownai/react!useUiChat:function               |
+| Build a text conversation                  | @hashbrownai/react!useChat:function                 |
+| Keep a conversation with typed JSON output | @hashbrownai/react!useStructuredChat:function       |
+| Generate text from one input               | @hashbrownai/react!useCompletion:function           |
+| Generate typed data from one input         | @hashbrownai/react!useStructuredCompletion:function |
+| Choose among named options                 | @hashbrownai/react!useDecision:function             |
+| Choose which UI components to offer        | @hashbrownai/react!useUiDecision:function           |
 
 New to Hashbrown? The [Quickstart](/docs/react/start/quick) uses `useUiChat()` to render a trusted welcome card.
 
@@ -37,8 +37,13 @@ New to Hashbrown? The [Quickstart](/docs/react/start/quick) uses `useUiChat()` t
 
 ¹ In chat mode, useUiDecision narrows a chat created with useUiChat, which supplies multi-turn chat and tool calling.
 
-
 A completion responds to the current input. A chat keeps earlier turns in its current instance. Neither automatically persists your conversation after a refresh. See [Message history](/docs/react/concept/message-history) for persistence and restoration.
+
+## Follow a complete example
+
+If you want to produce typed data, follow [Skillet schemas](/docs/react/concept/schema) → [Structured output](/docs/react/concept/structured-output) → [Streaming](/docs/react/concept/streaming) → [Natural language forms](/docs/react/recipes/natural-language-to-structured-data). These pages use the same shopping-list example, so each step builds on the last.
+
+For a conversation, start with [Messages and turns](/docs/react/concept/ai-basics), then [System instructions](/docs/react/concept/system-instructions) and [Message history](/docs/react/concept/message-history). Add [Tool calling](/docs/react/concept/functions) when the assistant needs application data.
 
 ## Next steps
 

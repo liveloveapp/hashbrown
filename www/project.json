@@ -126,6 +126,18 @@
       },
       "dependsOn": ["typecheck"]
     },
+    "docs-structured-demo": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "commands": [
+          "ngc -p www/examples/quickstart/tsconfig.record.json",
+          "tsx www/src/tools/record-docs-structured.ts"
+        ],
+        "parallel": false
+      },
+      "dependsOn": ["typecheck"]
+    },
     "docs-production-demo": {
       "executor": "nx:run-commands",
       "cache": false,
@@ -136,9 +148,7 @@
         ],
         "parallel": false
       },
-      "dependsOn": [
-        "typecheck"
-      ]
+      "dependsOn": ["typecheck"]
     }
   }
 }

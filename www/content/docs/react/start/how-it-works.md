@@ -45,3 +45,5 @@ The browser owns the exposed components and local tool handlers. The endpoint ow
 Conversation storage also belongs to our application. Hashbrown sends the current transcript with each request; a `threadId` identifies a conversation but does not load its history. A page refresh recreates the browser runtime. Saving an ID alone restores neither messages nor a pending interrupt workflow.
 
 Continue with [Message history](/docs/react/concept/message-history) for storage and [Interrupt and resume](/docs/react/concept/interrupt-and-resume) for workflows that pause for user input.
+
+For the data contract itself, continue with [Skillet schemas](/docs/react/concept/schema) and [Structured output](/docs/react/concept/structured-output). The checked shopping-list example follows a typed response from generation through review and application validation.

@@ -2,108 +2,68 @@
 title: 'Streaming: Hashbrown React Docs'
 meta:
   - name: description
-    content: 'Applications leveraging LLMs offer the best user experience by leveraging streaming to show responses to the user as fast as the LLM can generate them. By leveraging streaming, you can improve perceived performance of your application.'
+    content: 'Show complete items as they arrive while keeping application changes explicit.'
 ---
 
 # Streaming
 
-Applications leveraging LLMs offer the best user experience by leveraging streaming to show responses to the user as fast as the LLM can generate them. By leveraging streaming, you can improve perceived performance of your application. Hashbrown is architected to make streaming as easy and simple to consume for you, the developer, as possible.
+We do not need to wait for the whole shopping list before showing its first item. Let's stream complete items into a draft while keeping **Apply list** disabled until the run finishes.
 
-<hb-docs-demo demo="streaming">
+<hb-docs-demo demo="streaming-data">
 </hb-docs-demo>
 
----
+## Before we start
 
-## What is Skillet?
+Use the checked shopping-list component from [Structured output](/docs/react/concept/structured-output). It includes the schema, endpoint setup links, loading and error states, and the explicit Apply action. No second component is needed for this page.
 
-Skillet is a Zod-like schema language that is LLM-optimized.
+If you are following the Fundamentals section in order, complete the [Quickstart](/docs/react/start/quick), then read [Skillet schemas](/docs/react/concept/schema) and Structured output before returning here.
 
-- Skillet is strongly typed
-- Skillet has feature parity with schemas supported by LLM providers
-- Skillet optimizes the schema for processing by an LLM
-- Skillet tightly integrates streaming
+## Choose what can appear early
 
-[Read our docs on the Skillet schema language](/docs/react/concept/schema)
-
----
-
-## Streaming Responses
-
-Let's look at a structured completion hook in React:
-
-<hb-code-example header="streaming">
-
-```tsx
-import { useStructuredCompletion } from '@hashbrownai/react';
-import { s } from '@hashbrownai/core';
-
-const schema = s.object('Your response', {
-  lights: s.streaming.array(
-    'The lights to add to the scene',
-    s.object('A join between a light and a scene', {
-      lightId: s.string('the ID of the light to add'),
-      brightness: s.number('the brightness of the light from 0 to 100'),
-    }),
-  ),
-});
-
-function usePredictedLights(
-  sceneName: string,
-  lights: { id: string; name: string }[],
-) {
-  const input = useMemo(() => {
-    return { sceneName, lights };
-  }, [sceneName, lights]);
-  return useStructuredCompletion({
-    input,
-    system: `
-      Predict the lights that will be added to the scene based on the name. For example,
-      if the scene name is "Dim Bedroom Lights", suggest adding any lights that might
-      be in the bedroom at a lower brightness.
-    `,
-    schema,
-  });
-}
-```
-
-</hb-code-example>
-
-- In this example, focus on the `schema` specified.
-- The `s.streaming.array` is a Skillet schema that indicates the response will be a streaming array.
-- The `s.object` inside the array indicates that each item in the array will be an object with the specified properties.
-- Note that the `streaming` keyword is _not_ specified for each light object in the array. This is because our React application requires both the `lightId` and the `brightness` properties.
-
-Skillet will eagerly parse the chunks streamed to the `output` value returned by the `useStructuredCompletion` hook.
-Combining this with React's reactivity, streaming UI to your frontend is a one-line code change with Hashbrown.
-
----
-
-## Implementating Streaming Responses
-
-<hb-code-example header="streaming">
+The schema marks the array as streaming while each item stays an ordinary object:
 
 ```ts
-export const App = () => {
-  const [sceneName] = useState<string>('');
-  const [lights] = useState<Light[]>([]);
-  const { output, isSending } = usePredictedLights(sceneName, lights);
-
-  return (
-    {output?.lights?.map((prediction) => (
-      <SceneLightRecommendation
-        key={prediction.lightId}
-        lightId={prediction.lightId}
-        brightness={prediction.brightness}
-      />
-    ))}
-  );
-}
+items: s.streaming.array(
+  'The requested shopping items',
+  s.object('A complete shopping item', {
+    name: s.string('The product name'),
+    quantity: s.integer('How many to add'),
+  }),
+);
 ```
 
-</hb-code-example>
+The array can expose completed items as they arrive. Each item waits for its required name and quantity before it appears. We do not mark the item object or its fields as streaming because the interface needs both values together.
 
-1. In this example, we call the `usePredictedLights` hook.
-2. We then map over the `output.lights` array to render a `SceneLightRecommendation` component for each predicted light.
-3. As the LLM streams in new lights, the `output.lights` array will be updated, and the UI will re-render to show the new lights.
+## Follow one response
 
-There's no magic here - as the LLM streams the response, the `output` value is updated, and React takes care of the rest.
+| Response stage                            | Draft list                            | Apply list                             |
+| ----------------------------------------- | ------------------------------------- | -------------------------------------- |
+| Waiting for the endpoint                  | No new items                          | Disabled                               |
+| First item complete                       | Two apples                            | Disabled                               |
+| Second item complete                      | Two apples and one loaf of bread      | Still disabled while the run is active |
+| Run finished and application rules passed | Completed draft                       | Available for explicit review          |
+| Request failed or was cancelled           | Any visible draft remains uncommitted | Disabled                               |
+
+The recording uses delayed scripted events so we can see each stage. Real providers produce chunks at different speeds and may return several items together. Do not depend on a particular chunk size or pause between items.
+
+## Render the current draft
+
+`useStructuredChat()` updates the latest assistant content as parsing progresses. The component renders the current `items` collection with its framework's normal list rendering. It does not wait for a JSON string and call `JSON.parse()` after every network chunk.
+
+There are two different questions here: **Can this item be displayed?** and **Can this result update application state?** Streaming controls the first. Successful completion, application validation, and the user's Apply action control the second.
+
+## Choose a different streaming boundary
+
+Use `s.streaming.string` when the interface can display a string as it grows. Use `s.streaming.object` when the interface can handle fields becoming available separately. Leave an object unmarked when it must be complete before display, as each shopping item does here.
+
+A streaming marker does not authorize an action, validate application-specific rules, or guarantee that the run will succeed. Keep buttons that change application state tied to a completed, reviewed result.
+
+## Handle cancellation and failure
+
+Select **Cancel** while the draft is arriving. The example invalidates Apply immediately and stops the client run. It keeps the previously applied list. Stopping a client request does not undo work a server or tool has already performed; forward cancellation to server operations where appropriate.
+
+For a request or parse error, inspect [Debugging](/docs/react/concept/debugging) and generate a fresh draft. Do not treat a partial result left on screen as a successful replacement.
+
+## Next steps
+
+Continue with [Natural language forms](/docs/react/recipes/natural-language-to-structured-data) to connect a generated draft to review and application validation. Return to [Skillet schemas](/docs/react/concept/schema) for supported schema constructs, or use [Exposing components](/docs/react/concept/components) when the model should choose which of your components to render.
