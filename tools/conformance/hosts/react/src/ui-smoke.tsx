@@ -4,7 +4,7 @@ import {
   s,
 } from '@hashbrownai/core';
 import { exposeComponent, useTool, useUiChat } from '@hashbrownai/react';
-import { Fragment, useState } from 'react';
+import { Fragment, type ReactNode, useState } from 'react';
 
 interface RuntimeStatusProps {
   readonly title: string;
@@ -27,18 +27,42 @@ function RuntimeStatusFallback({ partialProps }: ComponentFallbackProps) {
   return <div data-testid="status-card">{partialTitle(partialProps)}</div>;
 }
 
-const components = [
-  exposeComponent(RuntimeStatus, {
-    name: 'status',
-    description: 'Display a runtime status.',
-    fallback: RuntimeStatusFallback,
-    props: {
-      title: s.streaming.string('Status title'),
-      count: s.number('Status count'),
-    },
-    children: false,
-  }),
-];
+/** Container used only by the opt-in nested UI scenario. */
+function RuntimePanel({
+  heading,
+  children,
+}: {
+  heading: string;
+  children?: ReactNode;
+}) {
+  return (
+    <section data-testid="nested-panel">
+      <h2>{heading}</h2>
+      {children}
+    </section>
+  );
+}
+
+const statusComponent = exposeComponent(RuntimeStatus, {
+  name: 'status',
+  description: 'Display a runtime status.',
+  fallback: RuntimeStatusFallback,
+  props: {
+    title: s.streaming.string('Status title'),
+    count: s.number('Status count'),
+  },
+  children: false,
+});
+const panelComponent = exposeComponent(RuntimePanel, {
+  name: 'panel',
+  description: 'Group a status inside a panel.',
+  props: { heading: s.string('Panel heading') },
+  children: [statusComponent],
+});
+const components =
+  new URL(globalThis.location.href).searchParams.get('nested') === 'true'
+    ? [panelComponent]
+    : [statusComponent];
 
 function errorText(error: unknown): string {
   if (error instanceof Error) {

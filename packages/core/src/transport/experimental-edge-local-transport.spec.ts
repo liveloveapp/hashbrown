@@ -5,6 +5,51 @@ import {
   ExperimentalEdgeLocalTransport,
 } from './experimental-edge-local-transport';
 
+test('initializes Edge developer instructions alongside system instructions', async () => {
+  const session = createSession(createTextStream([]));
+  const create = jest.fn(async () => session);
+
+  await withLanguageModel({ create }, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({});
+
+    const response = await transport.send(
+      createRequest({
+        messages: [
+          { id: 's', role: 'system', content: 'System' },
+          { id: 'd', role: 'developer', content: 'Developer' },
+          { id: 'u', role: 'user', content: 'Hello' },
+        ],
+      }),
+    );
+    await collectEvents(response.events);
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialPrompts: [{ role: 'system', content: 'System\n\nDeveloper' }],
+      }),
+    );
+  });
+});
+
+test('rejects Edge nontext messages before session creation', async () => {
+  const create = jest.fn(async () => createSession(createTextStream([])));
+
+  await withLanguageModel({ create }, async () => {
+    const transport = new ExperimentalEdgeLocalTransport({});
+
+    const result = transport.send(
+      createRequest({
+        messages: [
+          { id: 'u', role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+        ],
+      }),
+    );
+
+    await expect(result).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
 const responseSchema = {
   type: 'object',
   properties: {
@@ -278,12 +323,6 @@ test('moves system messages to initialPrompts and streams user and assistant mes
         { id: 'system-1', role: 'system', content: 'System prompt' },
         { id: 'user-1', role: 'user', content: 'User prompt' },
         { id: 'assistant-1', role: 'assistant', content: 'Prior answer' },
-        {
-          id: 'tool-1',
-          role: 'tool',
-          toolCallId: 'call-1',
-          content: 'Tool result',
-        },
       ],
     });
 

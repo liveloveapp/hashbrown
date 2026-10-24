@@ -39,18 +39,40 @@ class RuntimeStatusFallbackComponent {
   });
 }
 
-const components = [
-  exposeComponent(RuntimeStatusComponent, {
-    name: 'status',
-    description: 'Display a runtime status.',
-    fallback: RuntimeStatusFallbackComponent,
-    input: {
-      title: s.streaming.string('Status title'),
-      count: s.number('Status count'),
-    },
-    children: false,
-  }),
-];
+/** Container used only by the opt-in nested UI scenario. */
+@Component({
+  selector: 'runtime-panel',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<section data-testid="nested-panel">
+    <h2>{{ heading() }}</h2>
+    <ng-content />
+  </section>`,
+})
+class RuntimePanelComponent {
+  readonly heading = input.required<string>();
+}
+
+const statusComponent = exposeComponent(RuntimeStatusComponent, {
+  name: 'status',
+  description: 'Display a runtime status.',
+  fallback: RuntimeStatusFallbackComponent,
+  input: {
+    title: s.streaming.string('Status title'),
+    count: s.number('Status count'),
+  },
+  children: false,
+});
+const panelComponent = exposeComponent(RuntimePanelComponent, {
+  name: 'panel',
+  description: 'Group a status inside a panel.',
+  input: { heading: s.string('Panel heading') },
+  children: [statusComponent],
+});
+const components =
+  new URL(globalThis.location.href).searchParams.get('nested') === 'true'
+    ? [panelComponent]
+    : [statusComponent];
 
 /** Angular generative UI fixture used by the shared runtime smoke scenario. */
 @Component({
