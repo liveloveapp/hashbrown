@@ -10,6 +10,8 @@ export type {
 } from '@hashbrownai/core';
 export type {
   GoogleApiKeyAuthOptions,
+  GoogleDeveloperBuiltInTools,
+  GoogleVertexBuiltInTools,
   GoogleHashbrownRunAgentInput,
   GoogleTextStreamOptions,
   GoogleVertexAIAuthOptions,

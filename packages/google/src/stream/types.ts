@@ -1,5 +1,10 @@
 import type { RunAgentInput } from '@ag-ui/core';
-import type { GenerateContentParameters } from '@google/genai';
+import type {
+  GenerateContentParameters,
+  GoogleSearch,
+  ToolCodeExecution,
+  UrlContext,
+} from '@google/genai';
 import type { ActivityCallback } from '@hashbrownai/core';
 
 /**
@@ -23,12 +28,35 @@ export interface GoogleHashbrownRunAgentInput extends RunAgentInput {
   } & Record<string, unknown>;
 }
 
+/** Developer API built-ins; Search Suggestions must render unchanged beside the answer. @public */
+export interface GoogleDeveloperBuiltInTools {
+  /** Google Search; true uses defaults. Availability depends on the model. */
+  webSearch?:
+    true | Omit<GoogleSearch, 'excludeDomains' | 'blockingConfidence'>;
+  /** URL context; true uses defaults. */
+  webFetch?: true | UrlContext;
+  /** Native code execution; true uses defaults. */
+  codeExecution?: true | ToolCodeExecution;
+}
+
+/** Vertex built-ins. Native server call circulation is unavailable in this SDK. @public */
+export interface GoogleVertexBuiltInTools {
+  /** Google Search; true uses defaults. Render required Search Suggestions unchanged. */
+  webSearch?: true | Omit<GoogleSearch, 'timeRangeFilter'>;
+  /** URL context; true uses defaults. */
+  webFetch?: true | UrlContext;
+  /** Native code execution; true uses defaults. */
+  codeExecution?: true | ToolCodeExecution;
+}
+
 /**
  * API-key authentication for the Google Gemini API.
  *
  * @public
  */
 export interface GoogleApiKeyAuthOptions {
+  /** Optional Gemini Developer API hosted tools. */
+  builtInTools?: GoogleDeveloperBuiltInTools;
   /** Gemini Developer API key. */
   apiKey: string;
   /** Excludes Vertex AI authentication. */
@@ -45,6 +73,8 @@ export interface GoogleApiKeyAuthOptions {
  * @public
  */
 export interface GoogleVertexAIAuthOptions {
+  /** Optional Vertex AI hosted tools. */
+  builtInTools?: GoogleVertexBuiltInTools;
   /** Enables Vertex AI authentication. */
   vertexai: true;
   /** Google Cloud project containing the Vertex AI model. */

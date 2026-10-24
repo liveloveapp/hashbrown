@@ -45,17 +45,18 @@ HashbrownGoogle.stream.text({
 
 ### API Reference
 
-| Name                      | Type                                    | Description                                                                                                |
-| ------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `apiKey`                  | `string`                                | Gemini Developer API key. Mutually exclusive with `vertexai`.                                              |
-| `vertexai`                | `true`                                  | Enables Vertex AI. Mutually exclusive with `apiKey`.                                                       |
-| `project`                 | `string`                                | GCP project ID. Required with `vertexai: true`.                                                            |
-| `location`                | `string`                                | GCP region. Required with `vertexai: true`.                                                                |
-| `model`                   | `string`                                | Server-selected Google model.                                                                              |
-| `input`                   | `GoogleHashbrownRunAgentInput`          | AG-UI run input, including messages and tools.                                                             |
-| `signal`                  | `AbortSignal`                           | _(Optional)_ Cancels the Google request when the HTTP client disconnects.                                  |
-| `activities`              | `ActivityCallback`                      | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities). |
-| `transformRequestOptions` | `(params) => params \| Promise<params>` | _(Optional)_ Transforms the final Google `GenerateContentParameters`.                                      |
+| Name                      | Type                                                      | Description                                                                                                |
+| ------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `apiKey`                  | `string`                                                  | Gemini Developer API key. Mutually exclusive with `vertexai`.                                              |
+| `vertexai`                | `true`                                                    | Enables Vertex AI. Mutually exclusive with `apiKey`.                                                       |
+| `project`                 | `string`                                                  | GCP project ID. Required with `vertexai: true`.                                                            |
+| `location`                | `string`                                                  | GCP region. Required with `vertexai: true`.                                                                |
+| `model`                   | `string`                                                  | Server-selected Google model.                                                                              |
+| `input`                   | `GoogleHashbrownRunAgentInput`                            | AG-UI run input, including messages and tools.                                                             |
+| `signal`                  | `AbortSignal`                                             | _(Optional)_ Cancels the Google request when the HTTP client disconnects.                                  |
+| `activities`              | `ActivityCallback`                                        | _(Optional)_ Sends activities alongside the model's output. See [Sending Activities](#sending-activities). |
+| `builtInTools`            | `GoogleDeveloperBuiltInTools \| GoogleVertexBuiltInTools` | _(Optional)_ Enables Google search, URL context and code execution. See [Built-in Tools](#built-in-tools). |
+| `transformRequestOptions` | `(params) => params \| Promise<params>`                   | _(Optional)_ Transforms the final Google `GenerateContentParameters`.                                      |
 
 The adapter maps system instructions, message history, tool definitions, tool results, and native structured output. Gemini thought parts become AG-UI reasoning records, and Gemini thought signatures are preserved for continuation. Provider and mapping failures are emitted as `RUN_ERROR` events.
 
@@ -293,7 +294,7 @@ The callback receives an `activity` writer, a `model` promise, and the run's `si
 
 ## Transform Request Options
 
-`transformRequestOptions` receives the final Google SDK request after AG-UI input has been mapped. Use it for server-owned provider settings.
+`transformRequestOptions` receives the Google SDK request after AG-UI input has been mapped. Use it for server-owned provider settings. When adding built-ins in this hook, supply their required tool configuration too: Developer native circulation needs `includeServerSideToolInvocations`, with `VALIDATED` mode for mixed application tools. The `builtInTools` option supplies that configuration automatically. Final transformed requests are checked for backend compatibility.
 
 ```ts
 const stream = HashbrownGoogle.stream.text({
@@ -497,9 +498,74 @@ export default app;
 
 </hb-backend-code-example>
 
+## Built-in Tools
+
+Enable Google's server tools with `builtInTools`:
+
+```ts
+const stream = HashbrownGoogle.stream.text({
+  apiKey: process.env.GOOGLE_API_KEY!,
+  model: process.env.GOOGLE_MODEL!,
+  input,
+  builtInTools: {
+    webSearch: true,
+    webFetch: true,
+    codeExecution: true,
+  },
+});
+```
+
+`true` uses an empty native configuration: `googleSearch`, `urlContext`, or
+`codeExecution`. Pass a native configuration object to customize a tool. The adapter
+retains supported object settings. Choose a model that supports the selected tools
+and their combination with application functions.
+
+The Developer API enables native tool context circulation. When application tools
+are mixed with built-ins, the adapter uses `VALIDATED` function-calling mode.
+App-only requests retain `AUTO`. Developer search configuration supports
+`timeRangeFilter`; Vertex search supports `excludeDomains` and `blockingConfidence`.
+The exported `GoogleDeveloperBuiltInTools` and `GoogleVertexBuiltInTools` types
+reflect these backend differences. Final transformed requests are checked before
+calling the SDK.
+
+Search, URL context, and code execution expose real provider calls in
+`serverToolCalls` when the API supplies invocations. Calls receive labels, timing,
+source links and outcomes; code failures retain readable native output. They execute
+at Google and never dispatch to a same-named application tool. Vertex supports
+search/URL grounding and native code execution, but the installed SDK does not
+support Developer-native `toolCall`/`toolResponse` parts or their circulation flag on
+Vertex. Grounding without an invocation appears as answer sources and citations.
+
+### Search Sources and Attribution
+
+Assistant messages expose `sources`, `citations`, and `attribution`. Citations link
+to source IDs, with source text retained as a quote. Native byte offsets are not
+presented as offsets into the joined answer text.
+
+When Google supplies Search Suggestions, the attribution contains
+`provider: 'google'`, `kind: 'search-suggestions'`, the original HTML, and
+`mustRender: true`. Applications must display that HTML unchanged next to the answer,
+at full width, without restyling or link tracking. Hashbrown preserves the content
+and display obligation; your application renders it. See [Google Search grounding](https://ai.google.dev/gemini-api/docs/generate-content/google-search).
+
+### Native Conversation History
+
+The adapter captures ordered Google Content fragments, including repeated parts,
+signed reasoning, server calls/results, code, and trailing empty signed parts.
+A `hashbrown.provider-history` CUSTOM footer stores that capture in canonical
+message metadata. Keep canonical messages and metadata when persisting a conversation.
+Complete captures replay once in their original order; application tool results
+remain in their chronological positions.
+
+Histories without captures retain the existing reasoning/function fallback. Provider
+calls are filtered from application function replay, and unsafe native continuation
+fails with a clear input error. Developer-only native history cannot be replayed to
+Vertex. A response containing only grounding metadata is retained as RAW data without
+creating a synthetic assistant message.
+
 ### Transform Request Options
 
-`transformRequestOptions` receives the final Google SDK request after AG-UI input has been mapped. Use it for server-owned provider settings.
+`transformRequestOptions` receives the Google SDK request after AG-UI input has been mapped. Use it for server-owned provider settings. When adding built-ins in this hook, supply their required tool configuration too: Developer native circulation needs `includeServerSideToolInvocations`, with `VALIDATED` mode for mixed application tools. The `builtInTools` option supplies that configuration automatically. Final transformed requests are checked for backend compatibility.
 
 ```ts
 const stream = HashbrownGoogle.stream.text({
