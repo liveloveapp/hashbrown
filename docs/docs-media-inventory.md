@@ -14,9 +14,9 @@ Updated 2026-10-23. Paths are below `/docs/<sdk>/`; React and Angular share a re
 | Activities    | `www/examples/quickstart/{react,angular}`                                                  | Activities                                    | Itinerary progress reaches completion                                                            |
 | UI kits       | `www/examples/quickstart/{react,angular}`                                                  | UI kits                                       | Select and render two trusted component types from one reusable kit                              |
 | Generative UI | `examples/atc`                                                                             | Exposing components                           | Trusted ATC components                                                                           |
-| Streaming     | `examples/atc`                                                                             | Streaming                                     | Incremental ATC response                                                                         |
+| Streaming     | `examples/atc`                                                                             | Earlier ATC capture; retained asset           | Incremental ATC response                                                                         |
 | Browser tools | `examples/atc`                                                                             | Tool calling                                  | Fixture traffic read through tools                                                               |
-| Schemas       | `examples/atc`                                                                             | Skillet schemas, Structured output            | Typed flight filter                                                                              |
+| Schemas       | `examples/atc`                                                                             | Skillet schemas                               | Typed flight filter                                                                              |
 | Decisions     | `examples/atc`                                                                             | Decisions                                     | Intent routing and component narrowing                                                           |
 | Debugging     | `examples/atc`                                                                             | Debugging                                     | ATC-specific inspector, separate from Redux DevTools                                             |
 
@@ -28,7 +28,7 @@ The persistence capture demonstrates application-owned, versioned browser storag
 
 These three recordings use checked examples and existing guide pages. Both frameworks, final encodes, posters, captions, walkthroughs, and result frames have been verified.
 
-| Recording ID         | Checked source                                                                                                        | Pages                     | Recorded interaction                                                                                                                            |
+| Recording ID         | Checked source                                                                                                        | Pages                     | Recorded interaction                                                                                                                           |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `public-endpoint`    | `server/thread-app.ts`, `server/thread-server.ts`; recorder access fixture                                            | `recipes/public-endpoint` | Reject an unauthenticated run, accept a local fixture session, stream a reply, and reject a foreign owner's thread.                            |
 | `server-threads`     | `ServerConversations.tsx` / `server-conversations.ts`, each framework's `server-history.ts`, `server/thread-store.ts` | `recipes/threads`         | Load saved text before chat creation, save a completed turn, refresh, switch conversations, surface a version conflict, and explicitly reload. |
@@ -37,6 +37,14 @@ These three recordings use checked examples and existing guide pages. Both frame
 The endpoint and thread recordings use opaque local fixture sessions, an in-memory repository, and scripted provider events. They do not demonstrate a deployed login service, durable database, or live model response. `createProductionThreadApp` in `server/thread-server.ts` supplies the real OpenAI stream adapter and fixes the model/output policy on the server; the application must inject its verified identity, atomic database store, and shared admission control. The fixture integrations remain recorder-only.
 
 The runtime recording submits visible prewritten scripts to real QuickJS through the public framework APIs. Its basket host handler validates arguments explicitly; runtime schemas describe the contract and do not automatically validate the bridge's inputs or results. Host handlers execute outside QuickJS with host privileges. No model or provider key is needed for the direct runtime example.
+
+## Typed data and form recordings
+
+`structured-form` and `streaming-data` use `StructuredList.tsx` / `structured-list.ts` and shared `runtime/shopping-list.ts`. Both SDKs run the same checked behavior; React supplies the recordings. The model response is scripted AG-UI output with deliberately delayed chunks and added presentation CSS. No live model, server write, or purchase is shown.
+
+The first recording demonstrates generating, reviewing and explicitly applying a typed shopping list. The second shows complete array items arriving while Apply remains disabled until successful completion and application validation. Result screenshots show draft and applied values separately. Both have MP4/WebM, poster, VTT and a text walkthrough.
+
+`concept/schema`, `concept/structured-output`, `concept/streaming`, and the natural-language recipe now form one sequence. The schema page retains the ATC filter recording as a second use case and introduces the smaller checked list used by subsequent pages. The earlier ATC streaming asset remains available, but the Streaming guide now uses its own list interaction.
 
 ## Remaining production work
 
@@ -54,11 +62,11 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `concept/functions`                           | Recorded              | browser-tools                                                                                          |
 | `concept/interrupt-and-resume`                | Recorded              | interrupts                                                                                             |
 | `concept/message-history`                     | Recorded              | persistence; completed text only                                                                       |
-| `concept/runtime`                             | Recorded  | javascript-runtime; real QuickJS calculation, errors, and recovery.                                    |
+| `concept/runtime`                             | Recorded              | javascript-runtime; real QuickJS calculation, errors, and recovery.                                    |
 | `concept/schema`                              | Recorded              | schemas                                                                                                |
 | `concept/shared-agent-state`                  | Recorded              | shared-state                                                                                           |
-| `concept/streaming`                           | Recorded              | streaming                                                                                              |
-| `concept/structured-output`                   | Recorded              | schemas                                                                                                |
+| `concept/streaming`                           | Recorded              | streaming-data                                                                                         |
+| `concept/structured-output`                   | Recorded              | structured-form                                                                                        |
 | `concept/system-instructions`                 | Recorded              | conversation                                                                                           |
 | `concept/transform-request-options`           | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
 | `guide/choosing-model`                        | Intentional exception | Decision-oriented guidance; add video only for a concrete interaction.                                 |
@@ -82,11 +90,11 @@ Record the uncovered tasks listed below using each guide's own interaction. Each
 | `recipes/json-parser`                         | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
 | `recipes/local-models`                        | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
 | `recipes/magic-text`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/natural-language-to-structured-data` | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
+| `recipes/natural-language-to-structured-data` | Recorded              | structured-form; generate a typed draft, validate, review, and explicitly apply.                       |
 | `recipes/predictive-actions`                  | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/public-endpoint`                     | Recorded  | public-endpoint; session and owner checks before scripted provider streaming.                          |
+| `recipes/public-endpoint`                     | Recorded              | public-endpoint; session and owner checks before scripted provider streaming.                          |
 | `recipes/remote-mcp`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
-| `recipes/threads`                             | Recorded  | server-threads; server-owned completed text, version conflict, and explicit reload.                    |
+| `recipes/threads`                             | Recorded              | server-threads; server-owned completed text, version conflict, and explicit reload.                    |
 | `recipes/ui-chatbot`                          | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
 | `recipes/ui-kits`                             | Recorded              | ui-kits                                                                                                |
 | `recipes/ui-selection`                        | Needs recording       | Record the page’s own example from input through visible result; capture one useful result screenshot. |
@@ -121,3 +129,13 @@ For this increment, run `npx nx docs-production-demo www`. It builds static clie
 Use `DOCS_SKIP_RECORDING=1 npx nx docs-production-demo www` to verify without replacing captures. Filter with `DOCS_DEMO_MODES=public-endpoint,server-threads,javascript-runtime npx nx docs-production-demo www`, or select a subset. Unknown names fail immediately, and skip/filter options can be combined. The production modes use their own three IDs; the workflow target retains its five separate mode names. Server-thread failure checks run when `server-threads` is selected; fresh-context, timeout, and recovery checks run when `javascript-runtime` is selected.
 
 Run the recorders sequentially: all use `dist/docs-quickstart/compiled`. Review final frames, posters, captions, and walkthroughs after capture, and confirm the verification report before treating a recording as ready to publish.
+
+For typed data, run `npx nx docs-structured-demo www`. Use `DOCS_SKIP_RECORDING=1` for verification only, or select `structured-form,streaming-data` with `DOCS_DEMO_MODES`. Captures/masters/static builds and `verification.json` stay in ignored `dist/docs-structured`. Browser checks exercise progressive complete items, explicit Apply, invalid application values, failures after partial and complete JSON, empty replacements, malformed/truncated output, cancellation after valid JSON, and recovery in both SDKs.
+
+## Learning-sequence audit
+
+- Quickstart remains the first trusted-component success. How Hashbrown works and Choosing an API now point to complete task-based routes instead of leaving readers to infer the relationship between API names.
+- The typed-data route is schemas → structured output → streaming → natural-language forms. Fundamentals readers who reach Streaming early get explicit prerequisites and links to the checked example.
+- The conversation route remains messages → system instructions → history, then tools or workflow guides. Storage and runtime guides explain their separate lifetime and production boundaries.
+- Remaining editorial priorities: Magic Text and predictive suggestions still need small checked examples; UI Selection and Decisions in Agents need a task that connects them; Remote MCP and local models need reproducible environment-specific recordings. The old expense recipe was replaced rather than implying its unverified snippets were production-ready.
+- A dedicated independent structured-completion example remains useful for input-driven tasks. The current list deliberately uses an explicit chat action and fresh conversation per request. No claim of universal page coverage or a finished editorial pass is made.

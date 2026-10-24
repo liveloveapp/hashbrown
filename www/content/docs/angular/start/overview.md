@@ -11,15 +11,15 @@ Start with the result you want to show. Then choose whether your feature needs o
 
 ## Choose by goal
 
-| I want to… | Start with |
-| --- | --- |
-| Render your components in a conversation | @hashbrownai/angular!uiChatResource:function |
-| Build a text conversation | @hashbrownai/angular!chatResource:function |
-| Keep a conversation with typed JSON output | @hashbrownai/angular!structuredChatResource:function |
-| Generate text from one input | @hashbrownai/angular!completionResource:function |
-| Generate typed data from one input | @hashbrownai/angular!structuredCompletionResource:function |
-| Choose among named options | @hashbrownai/angular!decisionResource:function |
-| Choose which UI components to offer | @hashbrownai/angular!uiDecisionResource:function |
+| I want to…                                 | Start with                                                 |
+| ------------------------------------------ | ---------------------------------------------------------- |
+| Render your components in a conversation   | @hashbrownai/angular!uiChatResource:function               |
+| Build a text conversation                  | @hashbrownai/angular!chatResource:function                 |
+| Keep a conversation with typed JSON output | @hashbrownai/angular!structuredChatResource:function       |
+| Generate text from one input               | @hashbrownai/angular!completionResource:function           |
+| Generate typed data from one input         | @hashbrownai/angular!structuredCompletionResource:function |
+| Choose among named options                 | @hashbrownai/angular!decisionResource:function             |
+| Choose which UI components to offer        | @hashbrownai/angular!uiDecisionResource:function           |
 
 New to Hashbrown? The [Quickstart](/docs/angular/start/quick) uses `uiChatResource()` to render a trusted welcome card.
 
@@ -37,8 +37,13 @@ New to Hashbrown? The [Quickstart](/docs/angular/start/quick) uses `uiChatResour
 
 ¹ In chat mode, uiDecisionResource narrows a chat created with uiChatResource, which supplies multi-turn chat and tool calling.
 
-
 A completion responds to the current input. A chat keeps earlier turns in its current instance. Neither automatically persists your conversation after a refresh. See [Message history](/docs/angular/concept/message-history) for persistence and restoration.
+
+## Follow a complete example
+
+If you want to produce typed data, follow [Skillet schemas](/docs/angular/concept/schema) → [Structured output](/docs/angular/concept/structured-output) → [Streaming](/docs/angular/concept/streaming) → [Natural language forms](/docs/angular/recipes/natural-language-to-structured-data). These pages use the same shopping-list example, so each step builds on the last.
+
+For a conversation, start with [Messages and turns](/docs/angular/concept/ai-basics), then [System instructions](/docs/angular/concept/system-instructions) and [Message history](/docs/angular/concept/message-history). Add [Tool calling](/docs/angular/concept/functions) when the assistant needs application data.
 
 ## Next steps
 
