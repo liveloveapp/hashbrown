@@ -17,6 +17,7 @@ npx nx typecheck www
 npx nx docs-demo www
 npx nx docs-workflows-demo www
 npx nx docs-production-demo www
+npx nx docs-recipes-demo www
 ```
 
 Run these sequentially. All recording targets use `dist/docs-quickstart/compiled`, so concurrent runs can overwrite compiled entry points. Recording requires installed Playwright Chromium, ffmpeg, and ffprobe.
@@ -80,3 +81,13 @@ Both persistence examples store supported completed text only. They do not persi
 `react/src/StructuredList.tsx` and `angular/src/app/structured-list.ts` use the shared `runtime/shopping-list.ts` schema and validator. Generate creates an independent draft conversation. Apply requires a fresh, settled, valid result and explicit user action; cancelled, failed, truncated and stale drafts never replace the applied list. Applied values live only in component state.
 
 Run `npx nx docs-structured-demo www` for both SDK checks and the `structured-form` / `streaming-data` recordings, or set `DOCS_SKIP_RECORDING=1`. `DOCS_DEMO_MODES` selects these target-specific IDs. The recorder uses scripted AG-UI events and added presentation CSS, no provider key or backend write. Captures and verification reports go to ignored `dist/docs-structured`; do not run recording targets concurrently because they share compiled output.
+
+## Assisted interface recipes
+
+`MagicTextDemo.tsx` / `magic-text-demo.ts` render the latest assistant string through Magic Text and open citation details without navigation. The parser finalizes when the stream ends, including a stop or error; that state alone does not establish a successful answer.
+
+`PredictiveSuggestions.tsx` / `predictive-suggestions.ts` use independent structured completions. `runtime/predictions.ts` checks a fresh context ID, settled runtime and bounded catalog/reasons before offering explicit Accept/Dismiss actions. Those actions update local state without changing the completion input. Refresh clears accepted items.
+
+`UiSelection.tsx` / `ui-selection.ts` select app-owned summary/list views with app-owned props and a manual fallback. `runtime/selection.ts` shares candidate metadata with `server/selection-server.ts`, which pins questions for the real TypeSafe route. That standalone local server requires server-only `TYPESAFE_API_KEY` and `TYPESAFE_MODEL` and listens on port 3001 instead of the separate Quickstart server. The docs show the `/api/decide` proxy/provider configuration. The recorder substitutes decision responses; it does not call TypeSafe.
+
+Run `npx nx docs-recipes-demo www` for the `magic-text`, `predictive-suggestions` and `ui-selection` modes. `DOCS_SKIP_RECORDING=1` and `DOCS_DEMO_MODES` work as in the other targets. Static builds, original captures, masters and verification reports stay in ignored `dist/docs-recipes`. Both SDKs are checked before the React capture. All examples use the installed dependencies; no provider key is needed to record. See `docs/docs-media-inventory.md` for coverage and remaining work.

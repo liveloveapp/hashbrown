@@ -14,7 +14,8 @@
       "@hashbrownai/core": ["dist/packages/core"],
       "@hashbrownai/react": ["dist/packages/react"],
       "@hashbrownai/angular": ["dist/packages/angular"],
-      "@hashbrownai/openai": ["dist/packages/openai"]
+      "@hashbrownai/openai": ["dist/packages/openai"],
+      "@hashbrownai/typesafe": ["dist/packages/typesafe"]
     }
   },
   "angularCompilerOptions": {

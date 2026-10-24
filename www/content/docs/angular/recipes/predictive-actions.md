@@ -1,327 +1,379 @@
 ---
-title: 'Building Predictive Suggestions and Shortcuts Using Angular: Hashbrown Angular Docs'
+title: 'Predictive suggestions: Hashbrown Angular Docs'
 meta:
   - name: description
-    content: "Use Hashbrown structured outputs to suggest a user's next action in your app."
+    content: 'Suggest useful packing items from application context, then wait for the user to accept or dismiss each one.'
 ---
 
-# Building Predictive Suggestions and Shortcuts Using Angular
+# Predictive suggestions
 
-<p class="subtitle">Use Hashbrown structured outputs to suggest a user's next action in your app.</p>
+Let's help someone pack for a trip. They choose a city or hiking context, and the model suggests useful items. We display those suggestions beside the packing list. **Only Accept adds an item.**
 
-1. Predict likely next steps based on recent user actions and current app state
-2. Stream suggestions as they are generated
-3. Allow users to accept or dismiss
+<hb-docs-demo demo="predictive-suggestions">
+</hb-docs-demo>
 
----
+## Before we start
 
-## How it Works
+Use the endpoint and provider setup from the [Quickstart](/docs/angular/start/quick). Read [Structured output](/docs/angular/concept/structured-output) for the schema and validation pattern. Here we use `structuredCompletionResource()` to generate a new result when an explicit context snapshot changes.
 
-1. Define a schema of predictive actions.
-2. Provide tools the model can call to read the current app state.
-3. Create a @hashbrownai/angular!structuredCompletionResource:function that streams an array of suggestions.
-4. Render suggestions with Angular's native control flow.
-5. If the user accepts the suggestion then dispatch the corresponding action.
+Keep `runtime/predictions.ts` beside the `react` and `angular` directories below, or adjust the shared import to match your project. The endpoint is the Quickstart's `/api/chat`; this recipe needs no additional server route.
 
----
+The recording runs the checked clients with scripted AG-UI responses and presentation styles. Both frameworks are verified; React supplies the capture. A live model can produce different suggestions. Accept and Dismiss change local state only, and refreshing clears the list.
 
-## Before you start
+## Give the model a small catalog
 
-**Prerequisites:**
+Our application owns four item names: Passport, Phone charger, Water bottle and Sunscreen. The model returns an `itemId` from that catalog and a short reason. It does not write a product name, call a purchase tool or change our list.
 
-- Familiarity with Angular and modern component syntax (signals, standalone components)
-- Angular 20 or higher, with [standalone components and the Resources API](https://angular.dev)
-- A working Hashbrown setup ([Hashbrown Quick Start](/docs/angular/start/quick))
-- Install dependencies:
+The response also echoes `contextId`. Each request gets a fresh ID, including repeated requests for the same trip type. That gives us a direct way to reject an answer from an earlier context.
 
-<hb-code-example header="terminal">
+The schema uses an ordinary `s.array`. We wait for the complete response before offering any action. A valid empty array means there are no new suggestions; it is a useful result, not an error.
 
-```sh
-npm install @hashbrownai/angular @hashbrownai/core @hashbrownai/openai ngx-markdown
+<hb-code-example header="Response shape">
+
+```json
+{
+  "contextId": "the-current-request-id",
+  "suggestions": [
+    { "itemId": "passport", "reason": "Keep your travel document close." }
+  ]
+}
 ```
 
 </hb-code-example>
 
-We'll use `gpt-5` as our model and the OpenAI Hashbrown adapter, but you can use any supported provider.
+Matching a schema is only the first check. Our helper requires the current context, an idle successful run, at most four suggestions and reasons with 1–140 characters after trimming. It rejects an invalid response as a whole. It removes duplicates and items already packed or dismissed.
 
----
+<hb-expander title="Complete runtime/predictions.ts">
 
-## 1: Define a Prediction Schema
-
-Define the response format schema using Skillet (or a Standard JSON Schema object with the `~standard` spec, which Hashbrown normalizes to Skillet).
-
-<hb-code-example header="schema">
+<hb-code-example header="runtime/predictions.ts">
 
 ```ts
 import { s } from '@hashbrownai/core';
 
-export const PREDICTIONS_SCHEMA = s.anyOf([
-  s.object('Suggest adding a light to the system', {
-    type: s.literal('Add Light'),
-    name: s.string('The suggested name of the light'),
-    brightness: s.integer('A number between 0-100'),
-    reason: s.string('Reason for suggestion'),
-    confidence: s.number('Confidence score between 0 and 1'),
-  }),
-  s.object('Suggest adding a scene to the system', {
-    type: s.literal('Add Scene'),
-    name: s.string('The suggested name of the scene'),
-    lights: s.array(
-      'The lights in the scene',
-      s.object('A light in the scene', {
-        lightId: s.string('The ID of the light'),
-        brightness: s.integer('A number between 0-100'),
+/** Application-owned names for the only items the model may suggest. */
+export const packingCatalog = {
+  passport: 'Passport',
+  charger: 'Phone charger',
+  water: 'Water bottle',
+  sunscreen: 'Sunscreen',
+} as const;
+
+/** A trusted packing catalog identifier. */
+export type PackingItemId = keyof typeof packingCatalog;
+
+/** One explicit context change, captured independently of later local edits. */
+export interface PredictionInput {
+  readonly contextId: string;
+  readonly context: 'city' | 'hiking';
+  readonly currentItemIds: readonly PackingItemId[];
+}
+
+/** Structured output remains a proposal until the application validates it. */
+export const predictionsSchema = s.object(
+  'Packing suggestions for one context',
+  {
+    contextId: s.string('Echo the input contextId exactly'),
+    suggestions: s.array(
+      'Zero to four useful items not already in currentItemIds',
+      s.object('A proposed catalog item', {
+        itemId: s.enumeration('An application-owned packing item ID', [
+          'passport',
+          'charger',
+          'water',
+          'sunscreen',
+        ]),
+        reason: s.string('A plain reason of 1–140 characters'),
       }),
     ),
-    reason: s.string('Reason for suggestion'),
-    confidence: s.number('Confidence score between 0 and 1'),
-  }),
-  s.object('Suggest scheduling a scene to the system', {
-    type: s.literal('Schedule Scene'),
-    sceneId: s.string('The ID of the scene'),
-    datetime: s.string('The datetime of the scene'),
-    reason: s.string('Reason for suggestion'),
-    confidence: s.number('Confidence score between 0 and 1'),
-  }),
-  s.object('Suggest adding a light to a scene', {
-    type: s.literal('Add Light to Scene'),
-    lightId: s.string('The ID of the light'),
-    sceneId: s.string('The ID of the scene'),
-    brightness: s.integer('A number between 0-100'),
-    reason: s.string('Reason for suggestion'),
-    confidence: s.number('Confidence score between 0 and 1'),
-  }),
-  s.object('Suggest removing a light from a scene', {
-    type: s.literal('Remove Light from Scene'),
-    lightId: s.string('The ID of the light'),
-    sceneId: s.string('The ID of the scene'),
-    reason: s.string('Reason for suggestion'),
-    confidence: s.number('Confidence score between 0 and 1'),
-  }),
-]);
+  },
+);
+
+/** A validated suggestion with a trusted ID and a bounded plain-text reason. */
+export type PackingSuggestion = s.Infer<
+  typeof predictionsSchema
+>['suggestions'][number];
+
+/** Runtime and local state checked again at every Accept event. */
+export interface PredictionRun {
+  readonly input: PredictionInput | null;
+  readonly output: unknown;
+  readonly appliedItemIds: readonly PackingItemId[];
+  readonly hiddenItemIds: readonly PackingItemId[];
+  readonly cancelled: boolean;
+  readonly isSending: boolean;
+  readonly isReceiving: boolean;
+  readonly isGenerating: boolean;
+  readonly isLoading: boolean;
+  readonly error?: unknown;
+  readonly finishReason?: string;
+}
+
+/** Returns only settled, current, valid suggestions, independently of input data. */
+export function getApplicableSuggestions(
+  run: PredictionRun,
+): PackingSuggestion[] | undefined {
+  if (
+    !run.input ||
+    run.cancelled ||
+    run.error ||
+    run.isSending ||
+    run.isReceiving ||
+    run.isGenerating ||
+    run.isLoading ||
+    (run.finishReason !== undefined && run.finishReason !== 'stop')
+  )
+    return undefined;
+  const output = run.output;
+  // Compare the application context before trusting output, including during debounce.
+  if (
+    typeof output !== 'object' ||
+    output === null ||
+    !('contextId' in output) ||
+    output.contextId !== run.input.contextId ||
+    !('suggestions' in output) ||
+    !Array.isArray(output.suggestions) ||
+    output.suggestions.length > 4
+  )
+    return undefined;
+  const validated: PackingSuggestion[] = [];
+  for (const item of output.suggestions) {
+    if (
+      typeof item !== 'object' ||
+      item === null ||
+      typeof item.itemId !== 'string' ||
+      !Object.hasOwn(packingCatalog, item.itemId) ||
+      typeof item.reason !== 'string'
+    )
+      return undefined;
+    const reason = item.reason.trim();
+    if (reason.length < 1 || reason.length > 140) return undefined;
+    const itemId = item.itemId as PackingItemId;
+    if (
+      run.input.currentItemIds.includes(itemId) ||
+      run.appliedItemIds.includes(itemId) ||
+      run.hiddenItemIds.includes(itemId) ||
+      validated.some((suggestion) => suggestion.itemId === itemId)
+    )
+      continue;
+    validated.push({ itemId, reason });
+  }
+  return validated;
+}
+
+/** Revalidates an explicit choice and returns a new local packing list. */
+export function acceptPrediction(
+  run: PredictionRun,
+  itemId: PackingItemId,
+): PackingItemId[] | undefined {
+  const suggestions = getApplicableSuggestions(run);
+  if (!suggestions?.some((suggestion) => suggestion.itemId === itemId))
+    return undefined;
+  return [...run.appliedItemIds, itemId];
+}
 ```
 
 </hb-code-example>
 
-This schema will be used to validate and structure the model's output.
+</hb-expander>
 
----
+## Capture context once per request
 
-## 2: Create a Streaming Predictions Resource
+Choose **Suggest city items**. The component captures the trip type, a fresh `contextId` and a copy of the current item IDs. That input stays unchanged while we accept or dismiss suggestions.
 
-Create a new resource using the @hashbrownai/angular!structuredCompletionResource:function function to stream an array of predictions.
+This separation matters. If accepting an item changed the completion input automatically, every acceptance could trigger another model call. Instead, a new request starts only when we choose a context again. In your app, that explicit event might be a route change, an edited form or an opened panel. Debounce frequent changes and keep a stable snapshot between those events.
 
-<hb-code-example header="predictions">
+Import `PredictiveSuggestions` from `./predictive-suggestions`, add it to your standalone page's `@Component({ imports: [PredictiveSuggestions] })`, and render `<app-predictive-suggestions />`. Keep the Quickstart application configuration with `provideHashbrown()`.
+
+<hb-expander title="Complete angular/src/app/predictive-suggestions.ts">
+
+<hb-code-example header="angular/src/app/predictive-suggestions.ts">
 
 ```ts
-import { s } from '@hashbrownai/core';
-import { structuredCompletionResource, createTool } from '@hashbrownai/angular';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  signal,
+} from '@angular/core';
+import { structuredCompletionResource } from '@hashbrownai/angular';
+import {
+  acceptPrediction,
+  getApplicableSuggestions,
+  packingCatalog,
+  type PackingItemId,
+  type PredictionInput,
+  predictionsSchema,
+} from '../../../runtime/predictions';
 
+/** Suggests trusted packing items after an explicit change of trip context. */
 @Component({
-  selector: 'app-predictions',
-  standalone: true,
+  selector: 'app-predictive-suggestions',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <main>
+      <h1>Suggest items for your packing list</h1>
+      <nav aria-label="Trip context">
+        <button type="button" (click)="suggest('city')">
+          Suggest city items
+        </button>
+        <button type="button" (click)="suggest('hiking')">
+          Suggest hiking items
+        </button>
+        <button
+          type="button"
+          [disabled]="!input() || cancelled()"
+          (click)="cancel()"
+        >
+          Cancel
+        </button>
+      </nav>
+      <p role="status">{{ status() }}</p>
+      <h2>Suggested items</h2>
+      <ul data-testid="suggestions">
+        @for (
+          item of suggestions() ?? [];
+          track input()?.contextId + ':' + item.itemId
+        ) {
+          <li>
+            <strong>{{ catalog[item.itemId] }}</strong
+            >: {{ item.reason }}
+            <button type="button" (click)="accept(item.itemId)">Accept</button>
+            <button type="button" (click)="dismiss(item.itemId)">
+              Dismiss
+            </button>
+          </li>
+        }
+      </ul>
+      <h2>Packing list</h2>
+      <ul data-testid="packing-list">
+        @for (itemId of appliedItemIds(); track itemId) {
+          <li>{{ catalog[itemId] }}</li>
+        }
+      </ul>
+      <p>
+        Accept and Dismiss change only local state. Choose a context to request
+        fresh suggestions. Refreshing clears your packing list.
+      </p>
+    </main>
+  `,
 })
-export class PredictionsComponent {
-  private store = inject(Store);
-  private smartHome = inject(SmartHomeService);
-
-  // 1. Define a signal whose value is the last user action
-  lastAction = this.store.selectSignal(selectLastUserAction);
-
-  // 2. Create the predictions resource
-  predictions = structuredCompletionResource({
-    // 3. The predictions resource will re-compute when the `input` signal value is updated
-    input: this.lastAction,
-
-    // 4. Provide clear instructions, rules, and examples in the system prompt
-    system: `
-      You are an AI smart home assistant tasked with predicting the next possible user action.
-
-      ## Instructions
-      - Include a concise reason for each suggestion.
-      - Provide a confidence score between 0 and 1.
-      - Avoid duplicates; check current lights and scenes before offering suggestions.
-      - Returning an empty array is valid.
-      - You may return multiple predictions.
-
-      ## Examples
-      - Provide a few examples
-    `,
-
-    // 5. Provide the model with context of the application state using tool calling
-    tools: [
-      createTool({
-        name: 'getLights',
-        description: 'Get all lights in the smart home',
-        handler: async () => await this.smartHome.loadLights(),
-      }),
-      createTool({
-        name: 'getScenes',
-        description: 'Get all scenes in the smart home',
-        handler: async () => await this.smartHome.loadScenes(),
-      }),
-    ],
-
-    // 6. Specify the structured output response format
-    schema: s.object('The result', {
-      predictions: s.streaming.array('The predictions', PREDICTIONS_SCHEMA),
-    }),
+export class PredictiveSuggestions {
+  protected readonly catalog = packingCatalog;
+  protected readonly input = signal<PredictionInput | null>(null);
+  protected readonly cancelled = signal(false);
+  protected readonly appliedItemIds = signal<PackingItemId[]>([]);
+  private readonly hiddenItemIds = signal<PackingItemId[]>([]);
+  private readonly completion = structuredCompletionResource({
+    input: this.input,
+    schema: predictionsSchema,
+    system:
+      'Suggest packing items for the supplied city or hiking context. Echo contextId exactly. Choose only catalog IDs passport, charger, water, sunscreen. Return zero to four items not in currentItemIds, each with a plain reason of 1–140 characters. An empty suggestions array is valid.',
+  });
+  protected readonly busy = computed(
+    () =>
+      this.completion.isSending() ||
+      this.completion.isReceiving() ||
+      this.completion.isGenerating() ||
+      this.completion.isLoading(),
+  );
+  protected readonly suggestions = computed(() =>
+    getApplicableSuggestions(this.run()),
+  );
+  protected readonly status = computed(() => {
+    if (this.cancelled())
+      return 'Suggestions cancelled. Choose a context to try again.';
+    if (this.completion.error())
+      return 'Could not generate suggestions. Choose a context to try again.';
+    if (this.busy())
+      return 'Finding suggestions. Your packing list stays unchanged.';
+    if (
+      this.completion.lastRunFinishReason() &&
+      this.completion.lastRunFinishReason() !== 'stop'
+    )
+      return 'Generation ended before a complete result. Choose a context to try again.';
+    const suggestions = this.suggestions();
+    if (suggestions)
+      return suggestions.length
+        ? 'Suggestions ready. Accept or dismiss each item.'
+        : 'No new suggestions. Choose a context to generate again.';
+    if (this.input())
+      return 'Waiting for a complete valid result for this context. Choose a context to retry.';
+    return 'Choose a trip context to request suggestions.';
   });
 
-  // 7. Derive a simple array from the resource value
-  output = linkedSignal({
-    source: this.predictions.value,
-    computation: (source): s.Infer<typeof PREDICTIONS_SCHEMA>[] =>
-      source?.predictions ?? [],
-  });
-
-  removePrediction(index: number) {
-    this.output.update((predictions) => {
-      predictions.splice(index, 1);
-      return [...predictions];
+  protected suggest(context: PredictionInput['context']): void {
+    // Setting the fresh context invalidates old output before the input effect runs.
+    this.input.set({
+      contextId: crypto.randomUUID(),
+      context,
+      currentItemIds: [...this.appliedItemIds()],
     });
+    this.cancelled.set(false);
+    this.hiddenItemIds.set([]);
+    if (this.busy()) this.completion.stop();
   }
 
-  addLight(index: number, light: { name: string; brightness: number }) {
-    this.removePrediction(index);
-    this.store.dispatch(PredictionsAiActions.addLight({ light }));
+  protected cancel(): void {
+    this.cancelled.set(true);
+    this.input.set(null);
+    if (this.busy()) this.completion.stop();
   }
 
-  addScene(index: number, scene: { name: string; lights: any[] }) {
-    this.removePrediction(index);
-    this.store.dispatch(PredictionsAiActions.addScene({ scene }));
+  protected accept(itemId: PackingItemId): void {
+    // Signals read the current context and list synchronously at the event boundary.
+    const appliedItemIds = acceptPrediction(this.run(), itemId);
+    if (appliedItemIds) this.appliedItemIds.set(appliedItemIds);
+  }
+
+  protected dismiss(itemId: PackingItemId): void {
+    const fresh = getApplicableSuggestions(this.run());
+    if (!fresh?.some((suggestion) => suggestion.itemId === itemId)) return;
+    this.hiddenItemIds.update((itemIds) => [...itemIds, itemId]);
+  }
+
+  private run() {
+    return {
+      input: this.input(),
+      cancelled: this.cancelled(),
+      appliedItemIds: this.appliedItemIds(),
+      hiddenItemIds: this.hiddenItemIds(),
+      output: this.completion.error() ? null : this.completion.value(),
+      isSending: this.completion.isSending(),
+      isReceiving: this.completion.isReceiving(),
+      isGenerating: this.completion.isGenerating(),
+      isLoading: this.completion.isLoading(),
+      error: this.completion.error(),
+      finishReason: this.completion.lastRunFinishReason(),
+    };
   }
 }
 ```
 
 </hb-code-example>
 
-In this example:
+</hb-expander>
 
-1. We define a signal `lastAction` that represents the most recent user action.
-2. We create a @hashbrownai/angular!structuredCompletionResource:function named `predictions` that uses the `gpt-5` model.
-3. The resource re-computes whenever the `input` signal value is updated.
-4. We provide a detailed system prompt with instructions and examples to guide the model.
-5. We include tools (`getLights` and `getScenes`) with async handlers to give the model context about the current state of the smart home.
-6. We specify the output schema using the previously defined `PREDICTIONS_SCHEMA`, allowing for streaming arrays of predictions.
-7. Finally, we derive a simple array `output` from the resource value for easy rendering in the UI.
-8. We also define methods for removing and accepting predictions.
+## Review the suggestions
 
----
+1. Choose **Suggest city items**. The status changes while the model works, and the packing list stays empty.
+2. Wait for the completed suggestions. Choose **Accept** beside Passport; it appears in the separate packing list.
+3. Choose **Dismiss** beside Phone charger. That suggestion disappears. Neither action starts another request.
+4. Choose **Suggest hiking items** to request a new set using the current packing list. Accept Water bottle; Passport stays packed and Sunscreen remains a suggestion.
 
-## 3: Show the Suggestions
+<img src="/video/docs/predictive-suggestions-result.png" alt="Passport and Water bottle appear in the packing list after explicit acceptance. Sunscreen remains a suggestion. Phone charger was dismissed; accepting or dismissing did not make another model request." width="920" height="424" loading="lazy" />
 
-Display the suggestion cards as an overlay to the user.
-The user can then choose to accept or dismiss the suggestion.
+The names in both lists come from `packingCatalog`. The generated reason renders as plain text. We do not ask for a confidence percentage: a model-generated number is not a calibrated probability that an item is useful. The user can inspect the reason and decide.
 
-<hb-code-example header="overlay suggestions">
+## Recheck the choice when it happens
 
-```ts
-@Component({
-  standalone: true,
-  template: `
-    @for (prediction of output(); track $index) {
-      <div class="prediction">
-        <p>
-          <strong>Suggestion:</strong> {{ prediction.type }} -
-          <em>{{ prediction.reason }}</em> (Confidence:
-          {{ prediction.confidence * 100 | number: '1.0-0' }}%)
-        </p>
-        @switch (prediction.type) {
-          @case ('Add Light') {
-            <p>
-              Add Light "{{ prediction.name }}" with brightness
-              {{ prediction.brightness }}
-            </p>
-            <div>
-              <button (click)="removePrediction($index)">Dismiss</button>
-              <button
-                (click)="
-                  addLight($index, {
-                    name: prediction.name,
-                    brightness: prediction.brightness,
-                  })
-                "
-              >
-                Accept
-              </button>
-            </div>
-          }
-          @case ('Add Scene') {
-            <p>
-              Add Scene "{{ prediction.name }}" with
-              {{ prediction.lights.length }} lights
-            </p>
-            <div>
-              <button (click)="removePrediction($index)">Dismiss</button>
-              <button
-                (click)="
-                  addScene($index, {
-                    name: prediction.name,
-                    lights: prediction.lights,
-                  })
-                "
-              >
-                Accept
-              </button>
-            </div>
-          }
-          @default {
-            <div>
-              <button (click)="removePrediction($index)">Dismiss</button>
-            </div>
-          }
-        }
-      </div>
-    }
-  `,
-})
-export class PredictionsComponent {}
-```
+`acceptPrediction()` validates the current run again at the click. It compares the context and current list before returning a new array. A result that was acceptable when rendered can become stale before someone clicks it.
 
-</hb-code-example>
+The React component keeps the latest event state in a ref so a second quick action sees the first change immediately. The Angular component reads signals at the event boundary. Both invalidate earlier output as soon as we choose a new context, before the replacement request begins.
 
-In this example:
+**Cancel** invalidates the current context and stops an active completion. It preserves accepted items. A failure, known non-success finish reason, malformed output or missing response also leaves the packing list unchanged. Choose a context again to recover. Even complete-looking JSON is not actionable while the run is still generating or after it fails.
 
-1. We use Angular's native control flow syntax to iterate over the `output` array of predictions.
-2. For each prediction, we display the type, reason, and confidence.
-3. We use a switch statement to render different UI elements based on the prediction type.
-4. Each prediction card includes "Dismiss" and "Accept" buttons, allowing users to interact with the suggestions.
+For a server-backed action, send the selected ID to your own endpoint and check authentication, authorization, current state and duplicate submissions there. The example's context check protects local interaction state; it does not authorize a purchase or reserve inventory.
 
----
+## Next steps
 
-## 4: Guardrails & UX Patterns
-
-To ensure a good user experience and prevent unwanted actions:
-
-- **Confidence Threshold:** Only show suggestions with a confidence score above a certain threshold (e.g., 0.7).
-- **Duplicate Prevention:** Use the model's instructions and your own logic to avoid suggesting actions that duplicate existing state.
-- **User Control:** Always allow users to dismiss suggestions easily.
-- **Explainability:** Provide reasons for suggestions to build trust.
-- **Rate Limiting:** Limit how often suggestions appear to avoid overwhelming users.
-- **Fallbacks:** Handle empty or invalid predictions gracefully.
-
----
-
-## Next Steps
-
-<hb-next-steps>
-  <hb-next-step link="concept/structured-output">
-    <div>
-      <hb-database-cog />
-    </div>
-    <div>
-      <h4>Get structured data from models</h4>
-      <p>Use Skillet schema to describe model responses.</p>
-    </div>
-  </hb-next-step>
-  <hb-next-step link="concept/functions">
-    <div>
-      <hb-functions />
-    </div>
-    <div>
-      <h4>Tool Calling</h4>
-      <p>Provide callback functions to the LLM.</p>
-    </div>
-  </hb-next-step>
-</hb-next-steps>
+Use [UI selection](/docs/angular/recipes/ui-selection) when the model should choose a view with application-owned props. Use [Decisions](/docs/angular/concept/decisions) for a bounded classification question, or the [`structuredCompletionResource` reference](/api/angular/structuredCompletionResource) for the complete completion API.

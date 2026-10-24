@@ -15,6 +15,21 @@ const demos = [
   ['decisions', 'decisions'],
 ] as const;
 
+test.each(['magic-text', 'predictive-suggestions', 'ui-selection'] as const)(
+  'renders the %s recording at its captured aspect ratio',
+  async (demo) => {
+    const markdown = `<hb-docs-demo demo="${demo}">\n</hb-docs-demo>`;
+
+    const result = await renderMarkdown(markdown, docsComponents('react'));
+    const html = renderToStaticMarkup(result.content);
+    const video = html.match(/<video\b[^>]*>/)?.[0] ?? '';
+
+    expect(video).toContain('width="1440"');
+    expect(video).toContain('height="900"');
+    expect(video).toContain('style="aspect-ratio:1440 / 900"');
+  },
+);
+
 test.each([
   ...demos,
   ['debugging', 'debugging'],

@@ -1,0 +1,27 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { expect, test } from 'vitest';
+import { DOCS_DEMOS } from '../../src/components/elements/docs-demo-media';
+
+test.each(['magic-text', 'predictive-suggestions', 'ui-selection'])(
+  '%s has accessible recorded media and a result screenshot',
+  (id) => {
+    const root = resolve(import.meta.dirname, '../../public/video/docs');
+    const suffixes = [
+      '.mp4',
+      '.webm',
+      '-poster.png',
+      '.vtt',
+      '-transcript.txt',
+      '-result.png',
+    ];
+
+    const missing = suffixes.filter(
+      (suffix) => !existsSync(resolve(root, id + suffix)),
+    );
+
+    expect(id in DOCS_DEMOS).toBe(true);
+    expect(missing).toEqual([]);
+    expect(readFileSync(resolve(root, `${id}.vtt`), 'utf8')).toMatch(/^WEBVTT/);
+  },
+);

@@ -8,6 +8,15 @@ export default defineConfig({
     tsconfigPaths: true,
     alias: {
       '@': resolve(import.meta.dirname, 'src'),
+      // Checked examples have a build-output tsconfig; tests use workspace sources.
+      '@hashbrownai/core': resolve(
+        import.meta.dirname,
+        '../packages/core/src/index.ts',
+      ),
+      '@hashbrownai/react': resolve(
+        import.meta.dirname,
+        '../packages/react/src/index.ts',
+      ),
       // Core's subpath import; its package.json targets are build outputs.
       '#development-install': resolve(
         import.meta.dirname,

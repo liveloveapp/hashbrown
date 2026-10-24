@@ -1,5 +1,29 @@
 /** Recorded documentation demos, shared across React and Angular guides. */
 export const DOCS_DEMOS = {
+  'magic-text': {
+    dimensions: { width: 1440, height: 900 },
+    title: 'Stream a reply. Inspect its source.',
+    caption:
+      'Render growing Markdown and open a citation in application-owned source details.',
+    recording:
+      'Recorded in the checked Magic Text clients with scripted AG-UI output. React recorded; Angular verified. Presentation styles added. No narration or live model call.',
+  },
+  'predictive-suggestions': {
+    dimensions: { width: 1440, height: 900 },
+    title: 'Suggest an item. Let the user choose.',
+    caption:
+      'Generate packing suggestions, accept one item and dismiss another without another model request.',
+    recording:
+      'Recorded in the checked packing-list clients with scripted AG-UI output. React recorded; Angular verified. Presentation styles added. Local state only; no narration, live model call or server write.',
+  },
+  'ui-selection': {
+    dimensions: { width: 1440, height: 900 },
+    title: 'Choose a view. Keep your own props.',
+    caption:
+      'Select a shopping summary or item list from a request, using application-owned components and data.',
+    recording:
+      'Recorded in the checked UI selection clients with scripted decision responses. React recorded; Angular verified. Presentation styles added. No narration or live model call.',
+  },
   'structured-form': {
     title: 'Generate a draft. Review it. Apply it.',
     caption:
@@ -116,7 +140,12 @@ export const DOCS_DEMOS = {
   },
 } as const satisfies Record<
   string,
-  { title: string; caption: string; recording?: string }
+  {
+    title: string;
+    caption: string;
+    recording?: string;
+    dimensions?: { width: number; height: number };
+  }
 >;
 
 /** The stable identifier of a recorded documentation demo. */
