@@ -75,6 +75,27 @@ dependencies); this file covers atc.
 | `e2e/prose/`                                           | Live prose eval: real model answers checked for leaked rules, extra cards and the highlight they leave on the map                                                             |
 | `e2e/decide/`                                          | Live decide eval: labelled router and cards probes sent to TypeSafe Jev, scored the way the apps act                                                                          |
 
+## Optional agent backend
+
+`ATC_CHAT_BACKEND=openai|b4run` selects `/api/run`; OpenAI is the default.
+`server/src/run-policy.ts` owns shared tool and response-schema pinning.
+`server/src/b4run/` owns the private agent adapter, anonymous identity, and
+storage. `server/src/app/atc/index.ts` is the authored agent route;
+`server/agent/b4.config.ts` configures its generated app. The packaging tool
+precompiles ESM inputs under ignored `server/.b4-app/` before invoking public
+b4.run build APIs. Never expose the generated runtime directly.
+
+Keep browser tools and component selection in Hashbrown. No server tools,
+subagents, history restoration, or UI backend selector are part of this example.
+Retain schema narrowing across the full browser-tool turn in both frameworks.
+The backend browser checks in `e2e/src/backends.spec.ts` use a native Node fixture
+and the real `/api/run` path. Use compatible locally built packages until the
+upstream fixes are released; do not change dependency pins without approval.
+
+Cleanup is an operator command (`npx nx prune-agent-state atc-server --offline`)
+that requires every agent instance to be stopped. Do not run it against user
+state as part of implementation verification. No automatic scheduler is present.
+
 ## Add a component or a tool
 
 - Component: README, "Add a component". A new card goes in four places, in the same

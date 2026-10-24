@@ -8,12 +8,9 @@ import {
 import type { RunAgentInput } from '@ag-ui/core';
 import type OpenAI from 'openai';
 import { type NodeHandler, sendJson } from './http';
-import {
-  limitRequest,
-  pinSystemPrompt,
-  readRunInput,
-  type RunHandlerOptions,
-} from './run-handler';
+import { limitRequest, type RunHandlerOptions } from './run-handler';
+import { pinSystemPrompt } from './run-policy';
+import { readRunInput } from './run-input';
 
 /** A filter is a small JSON object; this leaves room for reasoning too. */
 const FILTER_MAX_OUTPUT_TOKENS = 512;

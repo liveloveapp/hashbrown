@@ -1,3 +1,11 @@
+import { spawnSync } from 'node:child_process';
+import { readChatBackend } from '../server/src/chat-backend';
+import {
+  packageAgentFunction,
+  prepareAgentApp,
+  verifyAgentFunction,
+  verifyOpenAiFunction,
+} from './package-agent-function.mts';
 import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { build } from 'vite';
@@ -5,6 +13,30 @@ import { build } from 'vite';
 const root = resolve(import.meta.dirname, '..');
 const repo = resolve(root, '../..');
 const output = resolve(root, '.vercel/output');
+const backend = readChatBackend(process.env['ATC_CHAT_BACKEND']);
+if (backend === 'b4run') {
+  const staging = await prepareAgentApp(resolve(root, 'server'));
+  const built = spawnSync(
+    process.execPath,
+    [
+      resolve(repo, 'node_modules/@b4run/cli/bin/b4.js'),
+      'build',
+      '--cwd',
+      staging,
+      '--clean',
+    ],
+    {
+      cwd: repo,
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        TSX_TSCONFIG_PATH: resolve(root, 'server/tsconfig.json'),
+      },
+    },
+  );
+  if (built.error) throw built.error;
+  if (built.status !== 0) throw new Error('ATC agent runtime build failed');
+}
 
 /**
  * The apps this deploy hosts. Only Angular ships for now; React still builds
@@ -41,6 +73,18 @@ for (const app of HOSTED_APPS) {
 
 for (const { route, entry, maxDuration } of functions) {
   const dir = resolve(output, `functions/api/${route}.func`);
+  if (route === 'run' && backend === 'b4run') {
+    cpSync(
+      resolve(root, 'server/.b4-app/.vercel/output/functions/b4.func'),
+      dir,
+      {
+        recursive: true,
+      },
+    );
+    await packageAgentFunction(dir);
+    await verifyAgentFunction(dir);
+    continue;
+  }
   await build({
     configFile: false,
     root: repo,
@@ -92,4 +136,6 @@ writeFileSync(
     ],
   }),
 );
+if (backend === 'openai')
+  await verifyOpenAiFunction(resolve(output, 'functions/api/run.func'));
 console.log(`wrote ${output}`);
