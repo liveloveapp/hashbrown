@@ -15,7 +15,8 @@ public sealed record RecoveryInterrupt(string Id, string Reason, string Message,
 /// <summary>Owned canonical native conversation that can be installed without replaying events.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record ConversationSnapshot(string ThreadId, JsonElement Messages, JsonElement? State,
-    IReadOnlyList<RecoveryInterrupt>? Interrupts = null, string? ConfiguredSystemMessageId = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RecoveryInterrupt>? Interrupts = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? ConfiguredSystemMessageId = null);
 
 /// <summary>Versioned read-only checkpoint disposition; effect and generation outcomes are independent.</summary>
 public sealed record CheckpointRecovery(int SchemaVersion, string BatchId, long ServerRevision, string EffectState,

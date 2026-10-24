@@ -121,7 +121,7 @@ test('completed effects retain actual final native answer independently from ori
         content: 'Hello from .NET',
       }),
     ]);
-    expect(envelope.snapshot.interrupts).toBeNull();
+    expect(envelope.snapshot).not.toHaveProperty('interrupts');
     expect(b.requests).toHaveLength(0);
     expect(await durableEffects(b)).toBe(1);
   });
@@ -225,8 +225,8 @@ test('an active preparation lease remains busy after approval expiry', async () 
         effectState: 'Claimed',
         disposition: 'Busy',
         generationOutcome: 'Running',
-        snapshot: { interrupts: null },
       });
+      expect(envelope.snapshot).not.toHaveProperty('interrupts');
     } finally {
       await control(a, 'release-checkpoint');
       await advancing;
@@ -494,8 +494,8 @@ test('late output and worker finish cannot overwrite reconciliation even after i
     expect(reconciled).toMatchObject({
       effectState: 'Reconciled',
       reconciliationOutcome: 'Unresolved',
-      snapshot: { interrupts: null },
     });
+    expect(reconciled.snapshot).not.toHaveProperty('interrupts');
     // This deliberately violates the operator's external assertion to prove CAS cannot revoke permission already issued.
     expect(await durableEffects(b)).toBe(1);
   });
@@ -737,8 +737,9 @@ test('process-local storage preserves original state and complete confirmations 
         effectState: 'Completed',
         generationOutcome: 'Finished',
         transcriptAvailability: 'Complete',
-        snapshot: { state: input.state, interrupts: null },
+        snapshot: { state: input.state },
       });
+      expect(final.snapshot).not.toHaveProperty('interrupts');
       expect(fixture.requests).toHaveLength(1);
     },
     'confirm',
@@ -795,6 +796,40 @@ test('actual native server-tool continuation preserves complete canonical final 
       expect(
         await (await fetch(`${fixture.url}/__test/counters`)).json(),
       ).toMatchObject({ server: 1, protected: 1 });
+    },
+    'confirm',
+  );
+});
+
+test('public snapshot wire omits absent optional interrupt and overlay fields while preserving null shared state', async () => {
+  const { withDotnetFixture } = await import('../harness/http-fixture');
+  await withDotnetFixture(
+    'openai',
+    async (fixture) => {
+      const input = runInput();
+      const pending = await postRun(fixture, input, {
+        'X-Fixture-Principal': 'alice',
+      });
+      await postRun(
+        fixture,
+        { ...input, resume: resume(pending.events) },
+        { 'X-Fixture-Principal': 'alice' },
+      );
+
+      const response = await recovery(fixture);
+      const { snapshot } = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(Object.keys(snapshot).sort()).toEqual([
+        'messages',
+        'state',
+        'threadId',
+      ]);
+      expect(snapshot.state).toBeNull();
+      expect(snapshot.messages.at(-1)).toMatchObject({
+        role: 'assistant',
+        content: 'Hello from .NET',
+      });
     },
     'confirm',
   );
