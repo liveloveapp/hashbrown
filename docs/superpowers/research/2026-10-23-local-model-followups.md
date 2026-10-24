@@ -1,7 +1,7 @@
 # Local model capability follow-ups
 
 Status: implemented capabilities have passed package and native media checks;
-remaining live workflow, final release and verification scopes are separated below.
+live model quality failures, the v4 download decision and remaining release verification are separated below.
 This report follows the [capability design](../specs/2026-10-23-browser-local-capabilities-design.md)
 and [implementation plan](../plans/2026-10-23-local-model-capabilities.md).
 Cross-hardware work (item 4 of the requested follow-up) is excluded by the user.
@@ -9,14 +9,14 @@ No Windows/Linux or NVIDIA/AMD results are inferred from this machine.
 
 ## Scope and implementation
 
-| Area                     | Implemented behavior                                                                                                            | Evidence boundary                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Chrome image input       | Explicit `media.images` policy and application resolver; user AG-UI image parts become native decoded image parts               | Real framework image cases passed in Angular and React                                      |
-| Chrome audio input       | Separate `media.audio` opt-in for bounded encoded PCM16 RIFF WAV                                                                | Raw native speech inference and real Angular/React transport cases passed                   |
-| Native typed tools       | Continue returning unsupported; no speculative tool adapter                                                                     | Installed Chrome lacks required typed constructors and ignores the tools declaration member |
-| Local provider workflows | Framework fixtures and loopback routes for tool handlers, dependency, application approval/denial, replay and follow-up history | Deterministic and actual-model runs are separate; final verification pending                |
-| Responses protocol       | Consume raw SDK stream events and validate terminal output before forwarding completion                                         | 89 OpenAI tests passed; installed malformed output produced precise RUN_ERROR               |
-| WebLLM                   | Application owns engine/model/worker/downloads/unload; adapter remains text-only                                                | No dependency or peer dependency added; no new vision/audio/tool support claimed            |
+| Area                     | Implemented behavior                                                                                                            | Evidence boundary                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Chrome image input       | Explicit `media.images` policy and application resolver; user AG-UI image parts become native decoded image parts               | Real framework image cases passed in Angular and React                                                                                           |
+| Chrome audio input       | Separate `media.audio` opt-in for bounded encoded PCM16 RIFF WAV                                                                | Raw native speech inference and real Angular/React transport cases passed                                                                        |
+| Native typed tools       | Continue returning unsupported; no speculative tool adapter                                                                     | Normal defaults lack typed interfaces; official experimental flag exposes them, but required tool model is downloadable                          |
+| Local provider workflows | Framework fixtures and loopback routes for tool handlers, dependency, application approval/denial, replay and follow-up history | Live run: 12 passed, 4 expected schema-only failures, 4 unexpected model receipt-copy failures; provider/framework replay independently verified |
+| Responses protocol       | Consume raw SDK stream events and validate terminal output before forwarding completion                                         | 89 OpenAI tests passed; installed malformed output produced precise RUN_ERROR                                                                    |
+| WebLLM                   | Application owns engine/model/worker/downloads/unload; adapter remains text-only                                                | No dependency or peer dependency added; no new vision/audio/tool support claimed                                                                 |
 
 Canonical AG-UI multipart user content now survives run-input lowering and
 immutable message-history snapshots. Valid content parts remain ordered and
@@ -85,7 +85,7 @@ or an availability response would not substitute for this inference assertion.
 
 ## Native typed tool blocker
 
-The same installed-browser probe observed:
+Under normal feature defaults, the installed-browser probe observed:
 
 - `LanguageModel`: function.
 - `LanguageModelToolCall`, `LanguageModelToolSuccess`, `LanguageModelToolError`: undefined.
@@ -103,10 +103,49 @@ draft does not establish that this installed browser exposes them. Hashbrown
 therefore keeps native tools unsupported rather than parsing arbitrary model
 text into executable calls.
 
-After all feasible current-runtime tests finish, a user decision would be needed
-before evaluating a newer browser, origin trial or changed runtime setup. Such
-an experiment must still demonstrate a real typed round trip and result/error
-replay; it must not count dictionary acceptance as support.
+### Official flag follow-up: interface exposed, model not available
+
+The [official Chrome demo](https://chrome.dev/web-ai-demos/prompt-api-tool-use/)
+requires `chrome://flags/#prompt-api-tool-use`. The installed Chromium revision's
+[flag mapping](https://github.com/chromium/chromium/blob/0e66b94549a8bd85f03fbdf189b752d6e7b63c32/chrome/browser/about_flags.cc#L4774)
+enables exactly:
+
+```text
+--enable-features=AIPromptAPIToolUse,OnDeviceModelConversationBackend,AIApiFoundationalModel:model_version/v4
+```
+
+This changes the foundational-model selection as well as exposing the API.
+A fresh temporary-profile probe and a preserved dedicated-profile probe both
+exposed the three constructors, recognized the `tools` dictionary member and
+reported **downloadable** for exact typed-history/tool-output options. Constructor
+values correctly preserved a synthetic call, text success and error message.
+The installed [IDL](https://github.com/chromium/chromium/blob/0e66b94549a8bd85f03fbdf189b752d6e7b63c32/third_party/blink/renderer/modules/ai/language_model_create_options.idl#L69)
+uses `callID`; the newer draft uses `callId`. The official demo supplies both
+members during this transition.
+
+`/tmp/hashbrown-native-tools-preserved-availability.json` records the preserved
+profile probe from 06:12:22.735 to 06:13:12.285 UTC on October 24. No
+`LanguageModel.create()`, inference or model download was attempted. The browser
+and local server closed, and the dedicated profile was preserved. The fresh
+probe's temporary profile was removed after closing it. These are interface
+checks only, not a typed tool round trip or Hashbrown adapter support.
+
+The installed browser was sufficient for this reversible interface experiment;
+no newer browser or origin-trial token was used. The remaining concrete blocker
+is that the selected v4 tool model is **downloadable**, even in the preserved
+profile. A user decision to allow that model download is needed before an actual
+typed call/result canary can proceed under the current no-download constraint.
+No browser installation or speculative adapter implementation is needed to ask
+that question. A prepared `/tmp`-only canary refuses creation unless availability
+is already `available`, then would require a real typed call and exact hidden-token
+result before reporting success.
+
+The repository's `local-native-tool-capability-smoke` target preserves this
+interface check behind local opt-in and explicit experimental flags. It never
+creates a model session or runs inference; its two framework-project results
+must remain separate from any future tool capability claim. The retained repository target passed both interface checks, with `downloadable`
+in Angular and React; `native-tools-report.json` records no unexpected outcomes.
+It did not create a model session or establish inference support.
 
 ## Two separate Ollama Responses defects
 
@@ -173,19 +212,20 @@ They add actual transport/framework evidence to the raw browser canary above.
 
 The coordinating verification run reports:
 
-| Package | Passing tests          |
-| ------- | ---------------------- |
-| core    | 1,663 across 84 suites |
-| angular | 272                    |
-| react   | 204                    |
-| openai  | 89                     |
-| www     | 698                    |
+| Package     | Passing tests                                |
+| ----------- | -------------------------------------------- |
+| core        | 1,665 across 84 suites after the main rebase |
+| angular     | 272                                          |
+| react       | 204                                          |
+| openai      | 89                                           |
+| conformance | 45                                           |
+| www         | 698                                          |
 
 Affected builds and lint checks passed, with existing warnings retained in the
-logs; this is not a claim of warning-free output. Standard conformance discovery
-collected 72 cases and excluded the local-only files; collection alone is not a
-runtime pass. Independent review approved the transports, workflows and canonical
-multipart lowering. Final release/merge and resulting CI remain unverified.
+logs; this is not a claim of warning-free output. Final standard browser execution
+passed all 72 cases, and local-only files remain excluded from standard discovery. Independent review approved the transports, workflows and canonical
+multipart lowering. The source was rebased onto `origin/main` at `e1076dff` without conflicts.
+Final PR/merge and resulting CI remain unverified.
 
 The installed-provider report records 10 expected outcomes, zero unexpected
 outcomes and zero skips. Two schema-plus-tools cases are intentionally expected
@@ -194,17 +234,50 @@ Responses payload was observed as `RUN_ERROR` with the precise message
 `OpenAI Responses protocol error: response.completed response.output must be an array`.
 This confirms adapter protocol reporting without claiming an upstream repair.
 
-## Verification still to record
+## Final local results and remaining release work
 
-- **Pending:** the 20-case live framework workflow run, currently coordinated
-  separately; preserve tool/permission/history evidence and actual model failures.
-- **Pending:** the two retained raw audio Playwright cases, separate from the
-  successful standalone raw probe and four framework media cases above.
-- **Pending:** remaining final integrated checks, release commit/PR/merge and
-  resulting source/CI verification. No merge or CI success is claimed here.
+- **Observed live workflow result:** the installed-model 20-case run completed
+  with 12 passing cases, four expected schema-only answers that skipped required
+  tools, and four unexpected dependent-tool final receipt mismatches. The report
+  records 16 expected outcomes (including the four expected failures), four
+  unexpected outcomes and no skips. All four unexpected cases are the dependent
+  result golden across Angular/React and native/Responses routes; final rendered
+  receipt text differs from the recorded tool receipt. Independent review of all 20 cases and 44 provider runs found no protocol or
+  framework errors and correlated 36 canonical result replays. Each unexpected
+  case executed exactly two handlers with the correct dependent argument. The
+  provider request contained `HB_RECEIPT_<uuid>`, but its final text changed it to
+  `HB_RECEPT_<same uuid>`; the UI faithfully rendered that provider text. All
+  three provider runs stopped normally. This is a model copy defect, not a
+  tool-execution, transport or framework defect. No blanket expected-failure
+  rule was added; the live suite remains not green. See
+  `test-results/conformance/local-workflows/live-qwen2_5_14b-report.json` and
+  `/tmp/hashbrown-workflows-live-final.log`.
+- **Passed:** standard combined browser conformance, 72 cases; see
+  `/tmp/hashbrown-example-standalone-final.log`.
+- **Passed:** deterministic framework workflows, 10 cases; see the first target
+  in `/tmp/hashbrown-local-sequential-final.log`.
+- **Passed:** existing aimock local transport contracts, 24 cases; see
+  `/tmp/hashbrown-model-contract-standalone-final.log`.
+- **Passed:** retained raw audio target, two cases; see
+  `/tmp/hashbrown-native-audio-target-final.log` and
+  `test-results/conformance/local-models/native-report.json`. Angular returned
+  “The secret code is 7429.” in 22.823 seconds and React in 24.270 seconds;
+  both recorded active click activation and destruction before publication.
+  These remain raw browser canaries, separate from four framework media passes.
+- **Passed:** experimental typed-interface target, two checks; see
+  `/tmp/hashbrown-native-tools-target-final.log` and
+  `test-results/conformance/local-models/native-tools-report.json`. Both reported
+  `downloadable` and recognized constructors/declarations without creation,
+  inference or download. Actual typed tool inference remains blocked on explicit
+  authorization for the v4 model download, as documented above.
+- **Pending:** PR/merge and resulting source/CI verification. No merge or CI
+  success is claimed here.
+
+Initial concurrent host startup and a nested Nx batching attempt failed before
+tests began. Final standard, contract and raw-audio results above come from
+completed standalone or sequential runs, not those infrastructure failures.
 
 The local targets require `LOCAL_LLM_E2E=1` and reject CI. Media/audio live
 canaries require an already available model and do not download it. Real GPU
-suites run sequentially with a dedicated test profile. Replace pending entries
-only after inspecting actual reports; shim success cannot fill a real-inference
-result, and a raw browser result cannot fill a Hashbrown one.
+suites run sequentially with a dedicated test profile. Shim success does not
+fill a real-inference result, and a raw browser result does not fill a Hashbrown one.

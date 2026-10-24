@@ -216,6 +216,22 @@
           "LOCAL_LLM_WORKFLOWS_LIVE": "1"
         }
       }
+    },
+    "local-native-tool-capability-smoke": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": [
+        {
+          "projects": ["runtime-smoke-angular", "runtime-smoke-react"],
+          "target": "build"
+        }
+      ],
+      "options": {
+        "command": "playwright test --config tools/conformance/local-models.playwright.config.ts",
+        "env": {
+          "LOCAL_LLM_NATIVE_TOOLS": "1"
+        }
+      }
     }
   },
   "implicitDependencies": [

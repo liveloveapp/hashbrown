@@ -45,29 +45,43 @@ Files: `packages/openai/src/stream/text.fn.ts`, `openai-events.ts` where appropr
 - [x] Add failing HTTP regressions for null/missing/object terminal output, a valid empty completed response, valid empty incomplete response, partial tool arguments followed by malformed completion and caller cancellation.
 - [x] Consume `responses.create({...request, stream: true})` raw events using the existing SDK rather than its accumulating helper. Preserve cancellation/cleanup and reject malformed terminal output with a clear provider-protocol error. Never infer length from token counts or normalize null into success.
 - [x] Update SDK-boundary unit tests and run OpenAI build/test/lint (89 passing tests); installed-provider checks record 10 expected outcomes, including two expected semantic failures.
-- [ ] Complete any remaining standard provider browser execution in final integrated checks; discovery is not a runtime pass.
+- [x] Complete standard provider/browser execution: all 72 combined conformance cases passed in the final standalone run.
 - [x] Track both upstream defects separately: malformed empty output and incorrect completion status. Link the existing Ollama truncation PR #17239 and pinned/current source. No external issue/comment is sent without authorization.
 
 ## Task 5: Capability gates, review, release and verification
 
 - [x] Reprobe native typed-tool constructor/declaration recognition with normal Chrome test settings. Do not expose or ship a speculative native tool transport when the real round trip is unavailable. Record the exact blocker for any later question.
 - [x] Update React/Angular recipes, local commands and the research/design status to distinguish shipped adapter support, raw runtime canaries and unverified capabilities. Keep WebLLM dependency-free and local tests outside CI.
-- [ ] Run build/test/lint for every affected package/host/docs project, core API report, standard conformance, aimock contracts and available sequential local suites. Record warnings and model failures honestly.
+- [x] Run affected build/test/lint and core API checks, standard conformance, aimock contracts and available local suites; retain existing warnings and the independently verified live-model receipt-copy failures.
 - [x] Request independent review and address findings: transports, workflows and canonical multipart lowering approved.
 - [ ] Commit and create/attach a PR, update against main without bypassing checks, merge on green and verify GitHub merge status and resulting source/CI. Continue remaining feasible work until a concrete user decision is required.
 
-## Verification recorded so far
+## Verification recorded
 
 - Real native Hashbrown media: four Angular/React image/audio cases passed, with
-  one resolution/disposal and one session creation/destruction per run. See
-  `test-results/conformance/local-models/media/native-report.json`.
-- Package tests: core 1,663 (84 suites), Angular 272, React 204, OpenAI 89 and
-  www 698 passed; affected builds/lint passed with existing warnings retained.
-- Standard discovery collected 72 cases and excluded local suites; discovery
-  alone does not assert browser execution success.
+  one resolution/disposal and one session creation/destruction per run.
+- Package tests: core 1,665 (84 suites), Angular 272, React 204, OpenAI 89,
+  conformance 45 and www 698 passed; affected builds/lint/API checks passed with
+  existing warnings retained. Rebase onto `origin/main` at `e1076dff` had no conflicts.
+- Final standard browser suite: 72 passed; deterministic workflows: 10 passed;
+  existing aimock local transport contracts: 24 passed. Local files remain
+  excluded from standard discovery. Initial startup/nested-Nx batching failures
+  occurred before tests; final evidence comes from standalone/sequential runs.
+- Raw native audio target: two passed, exact 7429 transcription, active click
+  and session destruction; native operation totals were Angular 22.823 seconds
+  and React 24.270 seconds.
+- Experimental native tool-interface target: two passed, both `downloadable`,
+  constructors/declarations recognized; no creation/inference/download. Real
+  typed inference requires a user decision to permit the v4 model download.
 - Installed-provider suite: 10 expected outcomes, including two expected
   schema-plus-tools semantic failures; zero unexpected outcomes. Malformed
   terminal Responses output reports the precise provider-protocol `RUN_ERROR`.
-- Pending: 20-case live framework workflows, two raw audio Playwright cases,
-  remaining final checks and release/merge/CI verification. Cross-hardware
-  item 4 remains excluded by user scope.
+- Live framework workflows: 12 passed, four expected schema-only/tool-skipping
+  failures and four unexpected model receipt-copy failures. Independent review
+  covered 20 cases/44 provider runs and correlated 36 canonical result replays:
+  handler dependencies and provider inputs were correct; provider output changed
+  `HB_RECEIPT_<uuid>` to `HB_RECEPT_<same uuid>`, faithfully rendered by the UI.
+  No blanket expected-failure rule was added and no framework/protocol defect was found.
+- Pending only release PR/merge/resulting source and CI verification. Hardware
+  item 4 remains excluded by user scope; native tool inference requires the
+  separate model-download decision rather than a speculative adapter.

@@ -8,17 +8,20 @@ if (process.env['CI'] || process.env['LOCAL_LLM_E2E'] !== '1') {
   );
 }
 
-const native = process.env['LOCAL_LLM_NATIVE'] === '1';
+const nativeTools = process.env['LOCAL_LLM_NATIVE_TOOLS'] === '1';
+const native = process.env['LOCAL_LLM_NATIVE'] === '1' || nativeTools;
 const webllm = process.env['LOCAL_LLM_WEBLLM'] === '1';
 
 export default defineConfig({
   ...conformance,
   testDir: resolve(__dirname, 'local-models'),
-  testMatch: webllm
-    ? 'webllm.e2e.ts'
-    : native
-      ? 'native.e2e.ts'
-      : 'contracts.e2e.ts',
+  testMatch: nativeTools
+    ? 'native-tools.e2e.ts'
+    : webllm
+      ? 'webllm.e2e.ts'
+      : native
+        ? 'native.e2e.ts'
+        : 'contracts.e2e.ts',
   timeout:
     native && process.env['LOCAL_LLM_DOWNLOAD'] === '1'
       ? 1_200_000
@@ -28,7 +31,13 @@ export default defineConfig({
   outputDir: resolve(
     __dirname,
     '../../test-results/conformance/local-models',
-    webllm ? 'webllm' : native ? 'native' : 'contracts',
+    nativeTools
+      ? 'native-tools'
+      : webllm
+        ? 'webllm'
+        : native
+          ? 'native'
+          : 'contracts',
   ),
   reporter: [
     ['list'],
@@ -38,11 +47,13 @@ export default defineConfig({
         outputFile: resolve(
           __dirname,
           '../../test-results/conformance/local-models',
-          webllm
-            ? 'webllm-report.json'
-            : native
-              ? 'native-report.json'
-              : 'contracts-report.json',
+          nativeTools
+            ? 'native-tools-report.json'
+            : webllm
+              ? 'webllm-report.json'
+              : native
+                ? 'native-report.json'
+                : 'contracts-report.json',
         ),
       },
     ],
@@ -56,7 +67,14 @@ export default defineConfig({
           launchOptions: {
             // Playwright disables OptimizationHints by default, which removes
             // Chrome's AI model broker. Use normal feature defaults locally.
-            args: native ? ['--disable-features='] : [],
+            args: nativeTools
+              ? [
+                  '--disable-features=',
+                  '--enable-features=AIPromptAPIToolUse,OnDeviceModelConversationBackend,AIApiFoundationalModel:model_version/v4',
+                ]
+              : native
+                ? ['--disable-features=']
+                : [],
             ignoreDefaultArgs: [
               '--disable-component-update',
               '--disable-background-networking',

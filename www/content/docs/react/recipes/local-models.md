@@ -240,8 +240,16 @@ part; `media.maxTotalBytes` defaults to 20 MiB across the run's media history.
 Raw PCM, video, documents, media tool results and `media` combined with
 `transformRequest` are unsupported.
 
-Native typed tools remain unsupported: accepted option names do not establish
-working tool calls. Chrome 155 has transcribed the retained generated speech
+Native typed tools remain unsupported by Hashbrown. Under Chrome 155's normal
+feature defaults the typed interfaces are absent. The [official experimental
+tool-use flag](https://chrome.dev/web-ai-demos/prompt-api-tool-use/) exposes the
+interfaces and recognizes declarations, but selects a v4 model that is
+`downloadable` in the tested dedicated profile. No download or tool inference
+was attempted. This interface check used the installed browser without an
+origin-trial token; a real typed call/result round trip remains unverified.
+The retained interface target passed two checks with `downloadable` status and
+no model creation. A v4 model download needs explicit authorization before
+actual typed inference. Accepted options alone do not establish working tools. Chrome 155 has transcribed the retained generated speech
 fixture through its raw native API. The real Hashbrown media suite also passed
 all four Angular/React image/audio cases, with one resolution, disposal, session
 creation and session destruction per run. The deterministic shim suite checks transport and framework
