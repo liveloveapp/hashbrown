@@ -10,19 +10,21 @@
 
 **Approved specification:** [Design](../specs/2026-10-23-dotnet-agui-integration-design.md). The user approved its scope on October 23, 2026. This plan does not authorize adding unapproved dependencies.
 
+**Execution record:** See [implementation and validation](../research/2026-10-23-dotnet-agui-validation.md) for completed behavior, actual commands/results, reviewed fixes, and execution adjustments. The detailed checkboxes below preserve the original proposed sequence rather than serving as the final verification log. Small harness/record files and commits were consolidated; no supported feature was dropped. The user authorized the concrete dependencies and inline execution before package changes.
+
 ## Preconditions and dependency approval
 
 Do not write package references or restore new NuGet dependencies until the user approves the concrete additions below. Reading manifests for planning is complete. No npm dependency is proposed. Toolchain installation occurs when execution begins; the dependency approval gate concerns the project package additions.
 
-| Direct reference | Exact version | Purpose |
-| --- | --- | --- |
-| Microsoft.Agents.AI.Hosting.AGUI.AspNetCore | 1.26.0-preview.261023.1 | Real ASP.NET AG-UI hosting |
-| Microsoft.Agents.AI | 1.26.0 | Agent and registered server tools |
-| AGUI.Abstractions | 1.0.1 | Protocol models and native interrupt serialization |
-| AGUI.Server | 1.0.1 | Upstream input/event translation, including protocol version |
-| Microsoft.Extensions.AI.OpenAI | 10.10.1 | Adapt genuine provider clients to IChatClient |
-| OpenAI | 2.14.0 | OpenAI client used directly by the provider factory |
-| Azure.AI.OpenAI | 2.1.0 | Azure endpoint/deployment/API-key behavior |
+| Direct reference                            | Exact version           | Purpose                                                      |
+| ------------------------------------------- | ----------------------- | ------------------------------------------------------------ |
+| Microsoft.Agents.AI.Hosting.AGUI.AspNetCore | 1.26.0-preview.261023.1 | Real ASP.NET AG-UI hosting                                   |
+| Microsoft.Agents.AI                         | 1.26.0                  | Agent and registered server tools                            |
+| AGUI.Abstractions                           | 1.0.1                   | Protocol models and native interrupt serialization           |
+| AGUI.Server                                 | 1.0.1                   | Upstream input/event translation, including protocol version |
+| Microsoft.Extensions.AI.OpenAI              | 10.10.1                 | Adapt genuine provider clients to IChatClient                |
+| OpenAI                                      | 2.14.0                  | OpenAI client used directly by the provider factory          |
+| Azure.AI.OpenAI                             | 2.1.0                   | Azure endpoint/deployment/API-key behavior                   |
 
 Pin SDK `10.0.402` in a project-local `global.json` with `rollForward: disable` and `allowPrerelease: false`. Microsoft release metadata identifies it as the October 13, 2026 SDK. The seven NuGet archives were available and their manifests inspected on October 23. Availability is not runtime validation. AG-UI 1.0.1 raises the hosting package's 1.0.0 minimum; OpenAI 2.14.0 satisfies both the MEAI client's 2.14.0 minimum and Azure's 2.1.0 minimum. Runtime/binary compatibility remains a required feasibility check. Commit the complete resolved transitive graph in `packages.lock.json` after approved restore; do not suppress downgrade/audit warnings.
 
@@ -34,39 +36,39 @@ The initial .NET SDK and `node_modules` are absent from the working environment.
 
 All paths below are repository-relative. The `.NET` project root is `tools/conformance/dotnet`, distinct from the parent `conformance` project.
 
-| File or group | Responsibility |
-| --- | --- |
-| `tools/conformance/dotnet/project.json` | Nx build/test/lint/provider-e2e targets and affected graph |
-| `tools/conformance/dotnet/global.json` | Exact SDK selection when commands run from the .NET root |
-| `tools/conformance/dotnet/nuget.config` | Public NuGet source, no custom feeds |
-| `tools/conformance/dotnet/.editorconfig` | C# formatting conventions for format verification |
-| `tools/conformance/dotnet/.gitignore` | Exclude generated `bin/` and `obj/` directories |
-| `tools/conformance/dotnet/Hashbrown.Conformance.csproj` | net10.0 web executable, exact references, locked restore |
-| `tools/conformance/dotnet/packages.lock.json` | Resolved dependency graph |
-| `tools/conformance/dotnet/Program.cs` | Compose upstream host and reference integration; no workflow logic |
-| `tools/conformance/dotnet/Integration/ProviderConfiguration.cs` | Immutable provider configuration and validation |
-| `tools/conformance/dotnet/Integration/ProviderFactory.cs` | OpenAI and Azure native clients |
-| `tools/conformance/dotnet/Integration/HashbrownRequestClient.cs` | Request-local schema translation and tool-collision checks |
-| `tools/conformance/dotnet/Integration/InterruptWorkflowClient.cs` | Native generic interrupt gate and validated continuation |
-| `tools/conformance/dotnet/Integration/PendingInterruptStore.cs` | Atomic process-local checkpoint lifecycle |
-| `tools/conformance/dotnet/Integration/PendingInterrupt.cs` | Immutable checkpoint/decision records |
-| `tools/conformance/dotnet/Integration/HashbrownEndpointConfiguration.cs` | Upstream serializer, hosting registration, pre-stream validation |
-| `tools/conformance/dotnet/Testing/FixtureTools.cs` | Test-only server tools and execution evidence |
-| `tools/conformance/dotnet/Testing/TestControls.cs` | Loopback-only, test-isolated counters, workflow setup, clock, and gates |
-| `tools/conformance/dotnet/README.md` | Internal fixture commands and diagnostics, not the user recipe |
-| `tools/conformance/dotnet/jest.config.ts` and `tsconfig.spec.json` | HTTP suite selection and typechecking |
-| `tools/conformance/dotnet/tests/*.spec.ts` | Native request, schema, tools, resume, concurrency, and lifecycle checks |
-| `tools/conformance/dotnet/dotnet.playwright.config.ts` | Four framework/provider projects and two browser hosts |
-| `tools/conformance/dotnet/specs/*.spec.ts` | Browser scenarios, selected separately from Jest |
-| `tools/conformance/dotnet/harness/model-proxy.ts` | Original model HTTP evidence, stream/fault gates, transparent forwarding |
-| `tools/conformance/dotnet/harness/dotnet-host.ts` | Process lifecycle, readiness, exit handling, diagnostics |
-| `tools/conformance/dotnet/harness/model-fixtures.ts` | Strict aimock scenarios; no AG-UI endpoint mocking |
-| `tools/conformance/dotnet/harness/http-fixture.ts` and `browser-fixture.ts` | Shared per-test process/aimock ownership without test API coupling |
-| Existing React/Angular `interrupt-controls` and `plain-smoke` files | Public resume decisions and server-tool observations needed by browser tests |
-| `tools/conformance/tsconfig.playwright.json`, `tsconfig.spec.json`, `project.json` | Explicit typecheck/lint selection for new TypeScript files |
-| `.github/workflows/pr-main.yml` | Conditional SDK installation before generic checks, explicit e2e invocation, artifacts |
-| React/Angular `platform/dotnet.md`, `platform/custom.md`, `start/platforms.md` | Tested application recipe and entry-point links |
-| `www/src/components/menus/docs-menu.data.ts` | .NET recipe navigation |
+| File or group                                                                      | Responsibility                                                                         |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `tools/conformance/dotnet/project.json`                                            | Nx build/test/lint/provider-e2e targets and affected graph                             |
+| `tools/conformance/dotnet/global.json`                                             | Exact SDK selection when commands run from the .NET root                               |
+| `tools/conformance/dotnet/nuget.config`                                            | Public NuGet source, no custom feeds                                                   |
+| `tools/conformance/dotnet/.editorconfig`                                           | C# formatting conventions for format verification                                      |
+| `tools/conformance/dotnet/.gitignore`                                              | Exclude generated `bin/` and `obj/` directories                                        |
+| `tools/conformance/dotnet/Hashbrown.Conformance.csproj`                            | net10.0 web executable, exact references, locked restore                               |
+| `tools/conformance/dotnet/packages.lock.json`                                      | Resolved dependency graph                                                              |
+| `tools/conformance/dotnet/Program.cs`                                              | Compose upstream host and reference integration; no workflow logic                     |
+| `tools/conformance/dotnet/Integration/ProviderConfiguration.cs`                    | Immutable provider configuration and validation                                        |
+| `tools/conformance/dotnet/Integration/ProviderFactory.cs`                          | OpenAI and Azure native clients                                                        |
+| `tools/conformance/dotnet/Integration/HashbrownRequestClient.cs`                   | Request-local schema translation and tool-collision checks                             |
+| `tools/conformance/dotnet/Integration/InterruptWorkflowClient.cs`                  | Native generic interrupt gate and validated continuation                               |
+| `tools/conformance/dotnet/Integration/PendingInterruptStore.cs`                    | Atomic process-local checkpoint lifecycle                                              |
+| `tools/conformance/dotnet/Integration/PendingInterrupt.cs`                         | Immutable checkpoint/decision records                                                  |
+| `tools/conformance/dotnet/Integration/HashbrownEndpointConfiguration.cs`           | Upstream serializer, hosting registration, pre-stream validation                       |
+| `tools/conformance/dotnet/Testing/FixtureTools.cs`                                 | Test-only server tools and execution evidence                                          |
+| `tools/conformance/dotnet/Testing/TestControls.cs`                                 | Loopback-only, test-isolated counters, workflow setup, clock, and gates                |
+| `tools/conformance/dotnet/README.md`                                               | Internal fixture commands and diagnostics, not the user recipe                         |
+| `tools/conformance/dotnet/jest.config.ts` and `tsconfig.spec.json`                 | HTTP suite selection and typechecking                                                  |
+| `tools/conformance/dotnet/tests/*.spec.ts`                                         | Native request, schema, tools, resume, concurrency, and lifecycle checks               |
+| `tools/conformance/dotnet/dotnet.playwright.config.ts`                             | Four framework/provider projects and two browser hosts                                 |
+| `tools/conformance/dotnet/specs/*.spec.ts`                                         | Browser scenarios, selected separately from Jest                                       |
+| `tools/conformance/dotnet/harness/model-proxy.ts`                                  | Original model HTTP evidence, stream/fault gates, transparent forwarding               |
+| `tools/conformance/dotnet/harness/dotnet-host.ts`                                  | Process lifecycle, readiness, exit handling, diagnostics                               |
+| `tools/conformance/dotnet/harness/model-fixtures.ts`                               | Strict aimock scenarios; no AG-UI endpoint mocking                                     |
+| `tools/conformance/dotnet/harness/http-fixture.ts` and `browser-fixture.ts`        | Shared per-test process/aimock ownership without test API coupling                     |
+| Existing React/Angular `interrupt-controls` and `plain-smoke` files                | Public resume decisions and server-tool observations needed by browser tests           |
+| `tools/conformance/tsconfig.playwright.json`, `tsconfig.spec.json`, `project.json` | Explicit typecheck/lint selection for new TypeScript files                             |
+| `.github/workflows/pr-main.yml`                                                    | Conditional SDK installation before generic checks, explicit e2e invocation, artifacts |
+| React/Angular `platform/dotnet.md`, `platform/custom.md`, `start/platforms.md`     | Tested application recipe and entry-point links                                        |
+| `www/src/components/menus/docs-menu.data.ts`                                       | .NET recipe navigation                                                                 |
 
 Keep new TypeScript harness code inside the new project root so its ownership is clear. Import existing `app-driver`, event gate, and browser hygiene helpers from the parent conformance project. The new project depends on `conformance`; do not introduce a reverse dependency or have parent Jest discover child Playwright specs.
 
@@ -197,8 +199,16 @@ Use this standard wire answer shape (the local browser `batchId` stays off the w
   "runId": "new-run",
   "messages": [],
   "resume": [
-    { "interruptId": "confirm-action", "status": "resolved", "payload": { "approved": true } },
-    { "interruptId": "confirm-context", "status": "resolved", "payload": { "approved": true } }
+    {
+      "interruptId": "confirm-action",
+      "status": "resolved",
+      "payload": { "approved": true }
+    },
+    {
+      "interruptId": "confirm-context",
+      "status": "resolved",
+      "payload": { "approved": true }
+    }
   ]
 }
 ```
@@ -252,7 +262,7 @@ Real requests include the complete committed transcript. The empty messages abov
 - [ ] Add a failing selection/typecheck check showing that new harness/browser files and affected core/framework changes include the child project. Define explicit dependencies on core, React, Angular, testing, conformance, and both runtime hosts. Do not add the existing Node openai/azure packages as semantic prerequisites for native .NET clients.
 - [ ] Set affected inputs for project-local SDK/lockfiles and CI workflow. Do not assume cache `inputs` alone mark a project affected: verify with `npx nx show projects --affected --files=tools/conformance/dotnet/global.json --json`, then representative core/framework files and `.github/workflows/pr-main.yml`. Use an appropriate root input/implicit dependency or explicit CI workflow-change override if needed.
 - [ ] Before the generic affected build/test/lint step, compute whether `dotnet-conformance` is selected and conditionally install SDK 10.0.402 with the supported setup-dotnet action (verify/pin its release per current repository action conventions). Add a later explicit invocation of the child `provider-e2e` target when affected. Restore/build caching may use SDK/lockfile/platform keys; browser e2e stays uncached. Upload `test-results/conformance/dotnet` and `playwright-report/conformance/dotnet` diagnostics on failure.
-- [ ] Verify affected selection when child code, core, either framework/host, testing, SDK, NuGet lockfile, npm lockfile, and workflow change. Verify unrelated project changes do not require .NET. Setup must occur before *all* child build/test/lint targets selected by the generic command, not just before e2e.
+- [ ] Verify affected selection when child code, core, either framework/host, testing, SDK, NuGet lockfile, npm lockfile, and workflow change. Verify unrelated project changes do not require .NET. Setup must occur before _all_ child build/test/lint targets selected by the generic command, not just before e2e.
 - [ ] Draft both recipes from the now-passing integration source. Show the two real provider configurations, server-owned credentials/model/deployment, standard framework browser setup, dynamic schema mapping, browser/server tools, full-transcript ownership, and accepted/declined/cancelled resume. Include exact dependency/runtime table and process-local interrupt limits. Test controls, capture proxies, fixture identity, and aimock setup do not appear in application snippets.
 - [ ] Add navigation and custom/platform entry links. Extend an existing meaningful menu test if needed; do not snapshot the prose. Run `npx nx test www`, `npx nx lint www`, `npx nx build www`, and `npx nx e2e www` for route/link rendering. Fix broken snippets/links. Commit CI and recipe changes in separate commits if both can be verified independently.
 
@@ -294,14 +304,14 @@ Neither runtime-smoke host currently declares a test target. Before invoking its
 
 ## Completion checklist
 
-- [ ] NuGet dependency additions were explicitly approved; exact SDK and all NuGet resolutions are pinned.
-- [ ] Native OpenAI and Azure client configuration and request evidence are distinct and correct.
-- [ ] All four browser/provider combinations pass required scenarios.
-- [ ] Request-local schema translation and option immutability are tested at the native wire.
-- [ ] Browser/server tool ownership and repeated calls are correct, including across interrupts.
-- [ ] Generic application interrupts use upstream serialization and correct full-batch decisions.
-- [ ] Duplicate/concurrent/expired resume cannot repeat protected effects.
-- [ ] Real cancellation/error/EOF behavior and event schema fidelity are verified.
-- [ ] CI actually selects and runs the new suite with a conditionally installed SDK.
-- [ ] Recipe snippets compile independently of test infrastructure and state the tested boundary.
-- [ ] Required checks and review are complete; no unverified compatibility is advertised.
+- [x] NuGet dependency additions were explicitly approved; exact SDK and all NuGet resolutions are pinned.
+- [x] Native OpenAI and Azure client configuration and request evidence are distinct and correct.
+- [x] All four browser/provider combinations pass required scenarios.
+- [x] Request-local schema translation and option immutability are tested at the native wire.
+- [x] Browser/server tool ownership and repeated calls are correct, including across interrupts.
+- [x] Generic application interrupts use upstream serialization and correct full-batch decisions.
+- [x] Duplicate/concurrent/expired resume cannot repeat protected effects.
+- [x] Real cancellation/error/EOF behavior and event schema fidelity are verified.
+- [x] CI affected selection and conditional SDK ordering are locally verified; the workflow explicitly invokes the new suite. Remote CI execution remains a post-push check.
+- [x] Recipe snippets compile independently of test infrastructure and state the tested boundary.
+- [x] Required checks and review are complete; no unverified compatibility is advertised.

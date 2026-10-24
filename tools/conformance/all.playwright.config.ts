@@ -11,6 +11,8 @@ const repoRoot = resolve(__dirname, '../..');
 export default defineConfig({
   ...conformance,
   testDir: __dirname,
+  // The child project owns its .NET runtime and four provider/framework projects.
+  testIgnore: ['**/dotnet/**'],
   timeout: 30_000,
   outputDir: resolve(repoRoot, 'test-results/conformance/all'),
   reporter: 'list',

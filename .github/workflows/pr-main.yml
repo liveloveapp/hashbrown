@@ -49,6 +49,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Select .NET conformance
+        id: dotnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          affected="$(npx nx show projects --affected --json)"
+          required="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).includes("dotnet-conformance") ? "true" : "false")' "$affected")"
+          if [[ -n "$(git diff --name-only "$NX_BASE" "$NX_HEAD" -- .github/workflows/pr-main.yml)" ]]; then
+            required=true
+          fi
+          echo "required=$required" >> "$GITHUB_OUTPUT"
+
+      - name: Setup .NET for affected integration
+        if: steps.dotnet.outputs.required == 'true'
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: tools/conformance/dotnet/global.json
+          cache: true
+          cache-dependency-path: tools/conformance/dotnet/packages.lock.json
+
       - name: Cache Playwright browsers
         uses: actions/cache@v6
         with:
@@ -66,6 +86,10 @@ jobs:
 
       - name: Run affected conformance suites
         run: npx nx affected -t example-e2e --parallel=1
+
+      - name: Run .NET provider conformance
+        if: steps.dotnet.outputs.required == 'true'
+        run: npx nx provider-e2e dotnet-conformance
 
       - name: Upload runtime smoke diagnostics
         if: failure()
