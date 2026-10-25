@@ -1,3 +1,8 @@
+import {
+  type ChromeToolPhase,
+  type ChromeToolsTurnContext,
+  selectChromeToolPhase,
+} from './chrome-tool-phase';
 import { type AGUIEvent, EventType } from '@ag-ui/core';
 import {
   chromeToolError,
@@ -41,6 +46,8 @@ export interface ChromeToolsSessionOptions {
 }
 /** Configuration for the experimental Chrome typed-tools transport. @alpha */
 export interface ExperimentalChromeToolsTransportOptions {
+  /** Select one tool or direct schema finalization from immutable current-turn history. Requires schemaFinalization and a response schema. */
+  toolPhase?: (context: ChromeToolsTurnContext) => ChromeToolPhase;
   /** Finalize structured or component UI answers after unconstrained tool planning. Adds one terminal inference pass; individual schemas remain model-dependent. */
   schemaFinalization?: 'after-tool-planning';
   /** Text language negotiated for both input and output. Defaults to English. */
@@ -252,6 +259,14 @@ export function experimental_chrome_tools(
   options: ExperimentalChromeToolsTransportOptions = {},
 ): TransportFactory {
   validateSchemaFinalization(options.schemaFinalization);
+  if (
+    options.toolPhase !== undefined &&
+    (typeof options.toolPhase !== 'function' ||
+      options.schemaFinalization !== 'after-tool-planning')
+  )
+    throw chromeToolError(
+      'Tool phases require a selector and after-tool-planning schema finalization.',
+    );
   const timeout = options.timeoutMs ?? 180000;
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > 1200000)
     throw chromeToolError(
@@ -264,6 +279,38 @@ export function experimental_chrome_tools(
         request.input,
         options.schemaFinalization === 'after-tool-planning',
       );
+      if (request.signal.aborted) throw abortError();
+      if (options.toolPhase && prepared.responseSchema === undefined)
+        throw chromeToolError('Tool phases require a response schema.');
+      const phase = options.toolPhase
+        ? selectChromeToolPhase(request.input, prepared, options.toolPhase)
+        : undefined;
+      // Chrome requires declarations for typed historical calls even when
+      // response-constrained finalization forbids every new executable call.
+      const historicalNames = new Set(
+        prepared.messages.flatMap((message) =>
+          typeof message.content === 'string'
+            ? []
+            : message.content.flatMap((part) =>
+                part.type === 'tool-call'
+                  ? [(part.value as ChromeToolValue).name]
+                  : [],
+              ),
+        ),
+      );
+      const active =
+        phase === undefined
+          ? prepared
+          : {
+              ...prepared,
+              tools: Object.freeze(
+                prepared.tools.filter((tool) =>
+                  phase.type === 'tool'
+                    ? tool.name === phase.name
+                    : historicalNames.has(tool.name),
+                ),
+              ),
+            };
       const controller = new AbortController();
       const signal = AbortSignal.any([request.signal, controller.signal]);
       const timer = setTimeout(() => controller.abort(), timeout);
@@ -282,7 +329,7 @@ export function experimental_chrome_tools(
       };
       try {
         const capabilities = await raceTransportOperationWithAbort(
-          () => detectChromeToolsCapabilities(options, prepared.tools),
+          () => detectChromeToolsCapabilities(options, active.tools),
           signal,
           abortError,
         );
@@ -385,26 +432,46 @@ export function experimental_chrome_tools(
               return stream;
             };
             const schema = prepared.responseSchema;
-            const planning = schema !== undefined && prepared.tools.length > 0;
+            const planning =
+              phase?.type === 'tool' ||
+              (phase === undefined &&
+                schema !== undefined &&
+                prepared.tools.length > 0);
+            const history = nativeMessages(
+              prepared.messages.filter((message) => message.role !== 'system'),
+            );
+            const phaseInput =
+              phase === undefined
+                ? history
+                : [
+                    ...history,
+                    {
+                      role: 'user',
+                      content:
+                        phase.type === 'tool'
+                          ? 'The application selected the next tool phase for this turn. Call ' +
+                            JSON.stringify(phase.name) +
+                            ' exactly once using the existing conversation and tool results. Do not call other tools or provide a final answer.'
+                          : 'The application has completed the tool phase for this turn. Do not call tools. Return only the final answer using the supplied response schema and the existing conversation and tool results.',
+                    },
+                  ];
             const stream = await prompt(
-              nativeMessages(
-                prepared.messages.filter(
-                  (message) => message.role !== 'system',
-                ),
-              ),
+              phaseInput,
               planning ? undefined : schema,
             );
             return adaptNativeStream(
               stream,
-              prepared,
+              active,
               request.input.runId,
               streamSignal,
-              schema === undefined
-                ? 'normal'
-                : planning
-                  ? 'planning'
-                  : 'finalization',
-              planning
+              phase?.type === 'tool'
+                ? 'tool-phase'
+                : schema === undefined
+                  ? 'normal'
+                  : planning
+                    ? 'planning'
+                    : 'finalization',
+              planning && phase === undefined
                 ? () =>
                     prompt(
                       [
@@ -438,7 +505,7 @@ function adaptNativeStream(
   prepared: ReturnType<typeof prepareChromeToolMessages>,
   runId: string,
   signal: AbortSignal,
-  mode: 'normal' | 'planning' | 'finalization' = 'normal',
+  mode: 'normal' | 'planning' | 'finalization' | 'tool-phase' = 'normal',
   finalize?: () => Promise<ReadableStream<unknown>>,
 ): ReadableStream<AGUIEvent> {
   let reader = stream.getReader();
@@ -507,7 +574,7 @@ function adaptNativeStream(
           if (typeof value === 'string') {
             outputBytes += new TextEncoder().encode(value).length;
             checkBounds();
-            if (mode !== 'planning') {
+            if (mode !== 'planning' && mode !== 'tool-phase') {
               if (calls.length === 0) yield* textEvents(value);
               else sequence.push({ text: value });
             }
@@ -554,6 +621,10 @@ function adaptNativeStream(
           prepared.tools.map((tool) => tool.name),
           prepared.historyIds,
         );
+        if (mode === 'tool-phase' && validated.length !== 1)
+          throw chromeToolError(
+            'Selected tool phase requires exactly one tool call.',
+          );
         if (mode === 'planning' && validated.length === 0 && finalize) {
           await close();
           const finalStream = await finalize();

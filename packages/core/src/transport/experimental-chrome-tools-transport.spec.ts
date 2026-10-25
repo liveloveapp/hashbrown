@@ -652,6 +652,8 @@ test('supports public native tools declarations in a Node-only consumer without 
     'transport',
     'transport-error',
     'chrome-prompt-media',
+    'chrome-tool-phase',
+    'chrome-tool-messages',
   ]) {
     const output = ts.transpileDeclaration(
       readFileSync(join(__dirname, `${name}.ts`), 'utf8'),
@@ -1360,5 +1362,536 @@ test.each([null, 42, { type: 'text', value: '{}' }, { type: 'unknown' }])(
       })(),
     ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
     expect(promptStreaming).toHaveBeenCalledTimes(1);
+  },
+);
+
+function phaseRequest(): TransportRequest {
+  const source = schemaRequest();
+  source.input.tools.push({
+    name: 'follow',
+    description: 'Follow',
+    parameters: { type: 'object' },
+  });
+  source.input.messages.push(
+    {
+      id: 'a',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'prior',
+          type: 'function',
+          function: { name: 'lookup', arguments: '{}' },
+        },
+      ],
+    },
+    { id: 'b', role: 'tool', toolCallId: 'prior', content: 'raw-token' },
+  );
+  return source;
+}
+
+test('selected phase exposes one tool while retaining typed other-tool history and suppressing prose', async () => {
+  const native = install([
+    'private',
+    {
+      type: 'tool-call',
+      value: { callID: 'next', name: 'follow', arguments: {} },
+    },
+    'private after',
+  ]);
+  const selector = jest.fn(() => ({ type: 'tool' as const, name: 'follow' }));
+
+  const response = await experimental_chrome_tools({
+    schemaFinalization: 'after-tool-planning',
+    toolPhase: selector,
+  })().send(phaseRequest());
+  const events = [];
+  for await (const event of response.events) events.push(event);
+
+  expect(selector).toHaveBeenCalledTimes(1);
+  expect(native.create.mock.calls[0][0]).toMatchObject({
+    tools: [{ name: 'follow' }],
+  });
+  expect(native.promptStreaming.mock.calls[0][0]).toEqual(
+    expect.arrayContaining([
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool-response',
+            value: expect.objectContaining({ callId: 'prior', name: 'lookup' }),
+          },
+        ],
+      },
+    ]),
+  );
+  expect(events.map((event) => event.type)).toEqual([
+    EventType.RUN_STARTED,
+    EventType.TOOL_CALL_START,
+    EventType.TOOL_CALL_ARGS,
+    EventType.TOOL_CALL_END,
+    EventType.RUN_FINISHED,
+  ]);
+});
+
+test.each(
+  [
+    [],
+    ['private'],
+    [
+      {
+        type: 'tool-call',
+        value: { callID: 'one', name: 'follow', arguments: {} },
+      },
+      {
+        type: 'tool-call',
+        value: { callID: 'two', name: 'follow', arguments: {} },
+      },
+    ],
+    [
+      {
+        type: 'tool-call',
+        value: { callID: 'one', name: 'follow', arguments: {} },
+      },
+      {
+        type: 'tool-call',
+        value: { callID: 'one', name: 'follow', arguments: {} },
+      },
+    ],
+    [
+      {
+        type: 'tool-call',
+        value: { callID: 'one', name: 'lookup', arguments: {} },
+      },
+    ],
+    [
+      {
+        type: 'tool-call',
+        value: { callID: 'prior', name: 'follow', arguments: {} },
+      },
+    ],
+    [
+      {
+        type: 'tool-call',
+        value: { callID: 'one', name: 'follow', arguments: {} },
+      },
+      { type: 'bad' },
+    ],
+  ].map((chunks) => [chunks]),
+)('tool phase rejects a whole invalid turn atomically (%p)', async (chunks) => {
+  const native = install(chunks);
+  const response = await experimental_chrome_tools({
+    schemaFinalization: 'after-tool-planning',
+    toolPhase: () => ({ type: 'tool', name: 'follow' }),
+  })().send(phaseRequest());
+  const types: string[] = [];
+
+  await expect(
+    (async () => {
+      for await (const event of response.events) types.push(event.type);
+    })(),
+  ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+
+  expect(types).toEqual([EventType.RUN_STARTED]);
+  expect(native.promptStreaming).toHaveBeenCalledTimes(1);
+  expect(native.destroy).toHaveBeenCalledTimes(1);
+});
+
+test('finalize phase retains historical declarations and constrains full typed history directly', async () => {
+  const native = install(['{}']);
+  const prompt = jest.fn((input: readonly object[], options: object) => {
+    void input;
+    void options;
+    return nativeTurn(['{}']);
+  });
+  const response = await experimental_chrome_tools({
+    schemaFinalization: 'after-tool-planning',
+    toolPhase: () => ({ type: 'finalize' }),
+    createSession: async () => ({
+      destroy: native.destroy,
+      promptStreaming: prompt,
+    }),
+  })().send(phaseRequest());
+
+  for await (const event of response.events) void event;
+
+  expect(prompt).toHaveBeenCalledTimes(1);
+  expect(prompt.mock.calls[0][0]).toHaveLength(4);
+  expect(prompt.mock.calls[0][1]).toHaveProperty('responseConstraint');
+  expect(
+    (response.metadata?.['capabilities'] as { options: { tools: unknown[] } })
+      .options.tools,
+  ).toEqual([expect.objectContaining({ name: 'lookup' })]);
+});
+
+test('phase validation and abort happen before native resources and selector evaluation', async () => {
+  const native = install();
+  const selector = jest.fn(() => ({ type: 'finalize' as const }));
+  const controller = new AbortController();
+  controller.abort();
+
+  await expect(
+    experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      toolPhase: selector,
+    })().send({ ...phaseRequest(), signal: controller.signal }),
+  ).rejects.toMatchObject({ code: 'PROMPT_API_ABORTED' });
+  expect(selector).not.toHaveBeenCalled();
+  await expect(
+    experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      toolPhase: selector,
+    })().send(request()),
+  ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+  expect(selector).not.toHaveBeenCalled();
+  expect(() => experimental_chrome_tools({ toolPhase: selector })).toThrow();
+  const invalid = jest.fn(() => ({ type: 'tool' as const, name: 'unknown' }));
+  await expect(
+    experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      toolPhase: invalid,
+    })().send(phaseRequest()),
+  ).rejects.toThrow();
+  expect(native.create).not.toHaveBeenCalled();
+  expect(
+    (globalThis as unknown as { LanguageModel: { availability: jest.Mock } })
+      .LanguageModel.availability,
+  ).not.toHaveBeenCalled();
+});
+
+test('interleaved sends select phases independently from each current user turn', async () => {
+  install();
+  const selector = jest.fn(
+    (context: import('./chrome-tool-phase').ChromeToolsTurnContext) =>
+      context.completedCalls.length
+        ? { type: 'finalize' as const }
+        : { type: 'tool' as const, name: 'lookup' },
+  );
+  const created: string[][] = [];
+  const transport = experimental_chrome_tools({
+    schemaFinalization: 'after-tool-planning',
+    toolPhase: selector,
+    createSession: async (options) => {
+      created.push(options.tools.map((tool) => tool.name));
+      return {
+        destroy: jest.fn(),
+        promptStreaming: (_input, promptOptions) =>
+          nativeTurn(
+            promptOptions.responseConstraint === undefined
+              ? [
+                  {
+                    type: 'tool-call',
+                    value: { callID: 'new', name: 'lookup', arguments: {} },
+                  },
+                ]
+              : ['{}'],
+          ),
+      };
+    },
+  })();
+  const fresh = schemaRequest();
+  fresh.input.runId = 'fresh';
+  const completed = phaseRequest();
+  completed.input.runId = 'completed';
+
+  const responses = await Promise.all([
+    transport.send(completed),
+    transport.send(fresh),
+  ]);
+  await Promise.all(
+    responses.map(async (response) => {
+      for await (const event of response.events) void event;
+    }),
+  );
+
+  expect(created).toEqual([['lookup'], ['lookup']]);
+  expect(
+    selector.mock.calls.map(([context]) => [
+      context.runId,
+      context.completedCalls.length,
+    ]),
+  ).toEqual([
+    ['completed', 1],
+    ['fresh', 0],
+  ]);
+});
+
+test.each(['tool', 'finalize'] as const)(
+  'explicit %s phase cancellation destroys once and never completes a call',
+  async (phase) => {
+    const native = install();
+    const controller = new AbortController();
+    const cancel = jest.fn();
+    let started!: () => void;
+    const starting = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const response = await experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      toolPhase: () =>
+        phase === 'tool'
+          ? { type: 'tool', name: 'lookup' }
+          : { type: 'finalize' },
+      createSession: async () => ({
+        destroy: native.destroy,
+        promptStreaming: () => {
+          started();
+          return new ReadableStream({ cancel });
+        },
+      }),
+    })().send({ ...schemaRequest(), signal: controller.signal });
+    const consuming = (async () => {
+      for await (const event of response.events) void event;
+    })();
+    const rejected = expect(consuming).rejects.toMatchObject({
+      code: 'PROMPT_API_ABORTED',
+    });
+    await starting;
+
+    controller.abort();
+    await rejected;
+    await response.dispose?.();
+
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(native.destroy).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each([
+  null,
+  {
+    type: 'tool-call',
+    value: { callID: 'new', name: 'lookup', arguments: {} },
+  },
+])(
+  'explicit finalize rejects nontext %p in its single constrained prompt',
+  async (chunk) => {
+    const native = install([chunk]);
+    const response = await experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      toolPhase: () => ({ type: 'finalize' }),
+    })().send(phaseRequest());
+    const types: string[] = [];
+
+    await expect(
+      (async () => {
+        for await (const event of response.events) types.push(event.type);
+      })(),
+    ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+
+    expect(types).toEqual([EventType.RUN_STARTED]);
+    expect(native.promptStreaming).toHaveBeenCalledTimes(1);
+  },
+);
+
+test('full historical catalog validation precedes selector and native capability checks', async () => {
+  const native = install();
+  const source = phaseRequest();
+  source.input.tools = source.input.tools.filter(
+    (tool) => tool.name !== 'lookup',
+  );
+  const selector = jest.fn(() => ({ type: 'finalize' as const }));
+
+  await expect(
+    experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      toolPhase: selector,
+    })().send(source),
+  ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+
+  expect(selector).not.toHaveBeenCalled();
+  expect(native.create).not.toHaveBeenCalled();
+});
+
+test('finalization retains only historical native declarations in original catalog order across user turns and errors', async () => {
+  const native = install(['{}']);
+  const source = phaseRequest();
+  source.input.tools = [
+    { name: 'follow', description: 'Follow', parameters: { type: 'object' } },
+    { name: 'unused', description: 'Unused', parameters: { type: 'object' } },
+    source.input.tools[0],
+  ];
+  source.input.messages.push(
+    { id: 'later-user', role: 'user', content: 'later turn' },
+    {
+      id: 'later-assistant',
+      role: 'assistant',
+      toolCalls: [
+        {
+          id: 'failed-follow',
+          type: 'function',
+          function: { name: 'follow', arguments: '{}' },
+        },
+      ],
+    },
+    {
+      id: 'later-result',
+      role: 'tool',
+      toolCallId: 'failed-follow',
+      content: 'raw failure',
+      error: 'failed',
+    },
+  );
+  const selector = jest.fn(
+    (context: import('./chrome-tool-phase').ChromeToolsTurnContext) => {
+      void context;
+      return { type: 'finalize' as const };
+    },
+  );
+  const transport = experimental_chrome_tools({
+    schemaFinalization: 'after-tool-planning',
+    toolPhase: selector,
+  })();
+
+  const response = await transport.send(source);
+  for await (const event of response.events) void event;
+  const fresh = await transport.send(schemaRequest());
+  for await (const event of fresh.events) void event;
+
+  expect(native.create.mock.calls[0][0]).toMatchObject({
+    tools: [{ name: 'follow' }, { name: 'lookup' }],
+  });
+  expect(native.create.mock.calls[1][0]).toMatchObject({ tools: [] });
+  expect(
+    (
+      response.metadata?.['capabilities'] as {
+        options: { tools: { name: string }[] };
+      }
+    ).options.tools.map((tool) => tool.name),
+  ).toEqual(['follow', 'lookup']);
+  expect(
+    selector.mock.calls[0][0].completedCalls.map((call) => call.callId),
+  ).toEqual(['failed-follow']);
+  expect(selector.mock.calls[1][0].completedCalls).toEqual([]);
+  expect(native.promptStreaming.mock.calls[0][0]).toEqual(
+    expect.arrayContaining([
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool-response',
+            value: expect.objectContaining({
+              callId: 'failed-follow',
+              name: 'follow',
+              errorMessage: 'raw failure',
+            }),
+          },
+        ],
+      },
+    ]),
+  );
+});
+
+test.each(['lookup', 'follow', 'undeclared'])(
+  'retained-history finalization rejects %s call after streamed text without executable events',
+  async (name) => {
+    const native = install([
+      '{"answer":',
+      { type: 'tool-call', value: { callID: 'new', name, arguments: {} } },
+    ]);
+    const response = await experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      toolPhase: () => ({ type: 'finalize' }),
+    })().send(phaseRequest());
+    const types: string[] = [];
+
+    await expect(
+      (async () => {
+        for await (const event of response.events) types.push(event.type);
+      })(),
+    ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+
+    expect(types).toEqual([
+      EventType.RUN_STARTED,
+      EventType.TEXT_MESSAGE_START,
+      EventType.TEXT_MESSAGE_CONTENT,
+    ]);
+    expect(native.promptStreaming).toHaveBeenCalledTimes(1);
+    expect(native.destroy).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each(['tool', 'finalize'] as const)(
+  'explicit %s phase appends a private directive to its single native prompt after unchanged history',
+  async (phase) => {
+    const native = install(
+      phase === 'tool'
+        ? [
+            {
+              type: 'tool-call',
+              value: { callID: 'new', name: 'follow', arguments: {} },
+            },
+          ]
+        : ['{}'],
+    );
+    const source = phaseRequest();
+    const original = JSON.stringify(source.input);
+    const selector = jest.fn(
+      (context: import('./chrome-tool-phase').ChromeToolsTurnContext) => {
+        void context;
+        return phase === 'tool'
+          ? { type: 'tool' as const, name: 'follow' }
+          : { type: 'finalize' as const };
+      },
+    );
+    const response = await experimental_chrome_tools({
+      schemaFinalization: 'after-tool-planning',
+      toolPhase: selector,
+    })().send(source);
+
+    for await (const event of response.events) void event;
+
+    expect(native.promptStreaming).toHaveBeenCalledTimes(1);
+    const prompt = native.promptStreaming.mock.calls[0][0];
+    expect(prompt).toEqual([
+      { role: 'user', content: 'look up' },
+      {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool-call',
+            value: expect.objectContaining({
+              callID: 'prior',
+              name: 'lookup',
+              arguments: {},
+            }),
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'tool-response',
+            value: expect.objectContaining({
+              callID: 'prior',
+              name: 'lookup',
+              result: [{ type: 'text', value: 'raw-token' }],
+            }),
+          },
+        ],
+      },
+      {
+        role: 'user',
+        content:
+          phase === 'tool'
+            ? 'The application selected the next tool phase for this turn. Call "follow" exactly once using the existing conversation and tool results. Do not call other tools or provide a final answer.'
+            : 'The application has completed the tool phase for this turn. Do not call tools. Return only the final answer using the supplied response schema and the existing conversation and tool results.',
+      },
+    ]);
+    expect(JSON.stringify(source.input)).toBe(original);
+    expect(selector).toHaveBeenCalledTimes(1);
+    expect(selector.mock.calls[0][0]).toEqual({
+      threadId: 't',
+      runId: 'r',
+      userMessage: { id: 'u', content: 'look up' },
+      completedCalls: [
+        {
+          callId: 'prior',
+          name: 'lookup',
+          arguments: {},
+          result: { type: 'success', text: 'raw-token' },
+        },
+      ],
+    });
   },
 );

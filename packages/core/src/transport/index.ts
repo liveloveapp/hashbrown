@@ -65,3 +65,9 @@ export {
   type ChromeToolsSession,
   type ChromeToolsSessionOptions,
 } from './experimental-chrome-tools-transport';
+
+export type {
+  ChromeToolPhase,
+  ChromeToolsTurnContext,
+  ChromeToolPhaseResult,
+} from './chrome-tool-phase';
