@@ -11,6 +11,8 @@ We can replace the transcript and composer in a Hashbrown chat screen while keep
 
 The [Threadplane recipe](/docs/react/recipes/threadplane) contains the complete component, mounting code, and local source-package setup. At the referenced revision, the React components are private source packages; follow those build and local-install steps rather than assuming an npm registry package exists.
 
+The recipe opens with the separate **`threadplane-react`** walkthrough: install the React dependencies, send a shipping question, and continue with a follow-up. Its provider output is scripted at the native Responses HTTP boundary; the UI and Hashbrown server adapter are real. Use that bounded text path as a starting point, then verify the features below in your application.
+
 ## 1. Keep the conversation owner
 
 Find the component that calls `useChat`. Keep that hook and its existing `system`, tools, transport, and thread configuration. Replace the presentation around it.
@@ -57,6 +59,8 @@ Review [Functions](/docs/react/concept/functions) before moving a tool, and [Com
 ## 5. Verify before removing the old screen
 
 Send a message, wait for streaming output, and send a follow-up. Confirm the expected history reaches the same endpoint. Stop a response, recover from a failed request with an explicit send, and confirm that merely mounting the screen sends nothing.
+
+With the tested Hashbrown **0.8.0** client, Stop cancels the request and the unfinished assistant reply is removed; completed turns remain. Account for that behavior if your existing screen retains an interrupted draft.
 
 Check long text and narrow viewports. The recipe uses Threadplane's composer stylesheet, while `TextTranscript` presents literal text without automatic scrolling or token announcements. Add application behavior where your product needs it.
 

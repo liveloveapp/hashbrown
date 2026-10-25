@@ -1,0 +1,19 @@
+@import '@threadplane/chat/themes/default-light.css';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px;
+  font:
+    16px/1.5 system-ui,
+    sans-serif;
+}
+
+main {
+  width: min(100%, 850px);
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}
