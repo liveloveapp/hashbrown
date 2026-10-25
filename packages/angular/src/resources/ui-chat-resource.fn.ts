@@ -12,6 +12,7 @@ import {
   type ComponentTreeSchema,
   type ConversationRecoveryConfiguration,
   type ConversationRecoveryState,
+  type ConversationRestoreOptions,
   type ConversationSnapshot,
   type FinishReason,
   type JsonValue,
@@ -139,7 +140,7 @@ export interface UiChatResourceRef<
    */
   restoreConversation(
     snapshot: ConversationSnapshot<State>,
-    options: { expectedRevision: number },
+    options: ConversationRestoreOptions,
   ): void;
 
   /** Replace shared agent state without starting a generation. */

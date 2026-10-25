@@ -3,6 +3,7 @@ import {
   type ChatRuntime,
   type ConversationRecoveryConfiguration,
   type ConversationRecoveryState,
+  type ConversationRestoreOptions,
   type ConversationSnapshot,
   createChatRuntime,
   type FinishReason,
@@ -109,7 +110,7 @@ export interface UseChatResult<Tools extends Chat.AnyTool, State = unknown> {
    */
   restoreConversation(
     snapshot: ConversationSnapshot<State>,
-    options: { expectedRevision: number },
+    options: ConversationRestoreOptions,
   ): void;
 
   /**

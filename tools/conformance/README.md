@@ -445,3 +445,37 @@ npx nx local-webllm-smoke conformance
 ```
 
 This provides a collection entry point; Windows execution remains unverified.
+
+## .NET cold recovery and maintenance
+
+The .NET provider matrix uses genuine OpenAI and Azure clients with aimock at
+only the model boundary. `npx nx provider-e2e dotnet-conformance` builds the two
+browser hosts, compiles the exact eight recipe combinations and tests both
+frameworks/providers. Cold structured/UI cases exercise the source SDK's
+explicit historical-diagnostics restore policy. This opt-in is unreleased;
+0.8.1 consumers retain strict restoration. Tests preserve exact native history
+and require a new explicit approval after reload. Diagnostics are escaped text,
+not proof of cancellation ownership or permission to execute work.
+
+`npx nx test dotnet-conformance` includes real PostgreSQL retention tests. Set
+`DOTNET_TEST_POSTGRES` to an isolated test database or allow the fixtures to own
+a disposable PostgreSQL 18 container. The tests create unique schemas and
+remove only their own resources. Maintenance commits independently of admission,
+uses bounded row-locked batches and preserves unresolved post-effect metadata.
+
+To collect timing evidence for the original worker-restart case, set
+`DOTNET_RECOVERY_TIMINGS=1` and run:
+
+```sh
+npx nx provider-e2e dotnet-conformance \
+  --grep='reload after worker death' --repeat-each=5
+```
+
+Failed cases attach a `recovery-timeline` automatically. It contains one Node
+monotonic clock domain, opaque fixture span IDs, fixed phase/component fields
+and numeric HTTP statuses. Each case caps collection at 256 events and 32 spans
+and reports dropped counts. It adds no transcript, URL, exception text or
+credential capture. Compare route upstream headers, first bytes and browser
+response boundaries; `/health` proves process liveness, not provider readiness.
+Keep the original five-second assertion and zero retries when investigating.
+A repeat pass alone does not establish the cause of an earlier failure.

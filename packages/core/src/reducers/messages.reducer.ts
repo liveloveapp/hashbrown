@@ -412,6 +412,22 @@ export const reducer = createReducer(
     (state): MessagesState => rollback(state),
   ),
   on(devActions.resendMessages, (state): MessagesState => rollback(state)),
+  on(devActions.updateOptions, (state, action): MessagesState => {
+    const projection = readPreparedProjection(action);
+    if (!projection) return state;
+    const committed = (
+      action as unknown as {
+        readonly ɵcommittedProjection: ɵAgUiMessageProjectionCache;
+      }
+    ).ɵcommittedProjection;
+    return {
+      ...state,
+      messages: projection.projection.messages,
+      committed: committed.projection.messages,
+      draft: state.attemptActive ? projection.projection.messages : state.draft,
+      preparedProjection: projection,
+    };
+  }),
   on(
     internalActions.toolTurnSettled,
     internalActions.generationCancelled,

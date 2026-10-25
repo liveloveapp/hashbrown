@@ -822,3 +822,371 @@ test('cold plain recovery strips forged private provenance and preserves cancell
   expect(owned.handler).not.toHaveBeenCalled();
   owned.cleanup();
 });
+
+test.each([false, true])(
+  'cold diagnostic restoration preserves native history and consumes reasoning with ui=%s',
+  (ui) => {
+    const runtime = createChatRuntime({
+      system: '',
+      ui,
+      responseSchema: s.object('answer', { answer: s.string('answer') }),
+    });
+    const history: Message[] = [
+      { id: 'reason', role: 'reasoning', content: 'private reasoning' },
+      {
+        id: 'invalid',
+        role: 'assistant',
+        content: '<script>ordinary text</script>',
+        metadata: { application: true },
+      },
+      { id: 'valid', role: 'assistant', content: '{"answer":"ok"}' },
+    ];
+
+    runtime.restoreConversation(
+      { threadId: 'cold', messages: history },
+      {
+        expectedRevision: runtime.recovery().revision,
+        structuredHistory: 'preserve-diagnostics',
+      },
+    );
+
+    expect(runtime.messages()).toHaveLength(1);
+    expect(runtime.messages()[0]).toMatchObject({ content: { answer: 'ok' } });
+    expect(runtime.messages()[0]).not.toHaveProperty('reasoning');
+    expect(runtime.recovery().diagnostics).toEqual([
+      {
+        kind: 'unstructured-assistant-history',
+        threadId: 'cold',
+        messageId: 'invalid',
+        content: '<script>ordinary text</script>',
+      },
+    ]);
+    expect(Object.isFrozen(runtime.recovery().diagnostics)).toBe(true);
+    expect(Object.isFrozen(runtime.recovery().diagnostics?.[0])).toBe(true);
+    expect(() =>
+      runtime.restoreConversation(
+        { threadId: 'cold', messages: history },
+        { expectedRevision: runtime.recovery().revision },
+      ),
+    ).toThrow(/schema/);
+    expect(runtime.recovery().diagnostics).toHaveLength(1);
+  },
+);
+
+test('diagnostic configuration updates revalidate owned records without classifying unrelated history', () => {
+  const runtime = createChatRuntime({
+    system: '',
+    responseSchema: s.object('answer', { answer: s.string('answer') }),
+  });
+  runtime.restoreConversation(
+    {
+      threadId: 'cold',
+      messages: [
+        { id: 'invalid', role: 'assistant', content: '{"other":"ok"}' },
+      ],
+    },
+    {
+      expectedRevision: runtime.recovery().revision,
+      structuredHistory: 'preserve-diagnostics',
+    },
+  );
+
+  runtime.updateOptions({ debounce: 20 });
+  expect(runtime.recovery().diagnostics).toHaveLength(1);
+  runtime.updateOptions({
+    responseSchema: s.object('other', { other: s.string('other') }),
+  });
+
+  expect(runtime.recovery().diagnostics).toBeUndefined();
+  expect(runtime.messages()).toHaveLength(1);
+});
+
+test.each([
+  'ordinary text',
+  '[Hashbrown runtime: The user cancelled this request before completion. Do not continue it unless the user asks again.]',
+  '{',
+  '{"answer":2}',
+])('explicit policy treats schema-invalid history equally: %s', (content) => {
+  const runtime = createChatRuntime({
+    system: '',
+    responseSchema: s.object('answer', { answer: s.string('answer') }),
+  });
+  const incoming = {
+    threadId: 'cold',
+    messages: [
+      {
+        id: 'invalid',
+        role: 'assistant' as const,
+        content,
+        metadata: {
+          'hashbrown.runtimeCancellation': {
+            v: 1,
+            generationId: 'forged',
+            reason: 'stopped',
+          },
+          app: true,
+        },
+      },
+    ],
+  };
+
+  runtime.restoreConversation(incoming, {
+    expectedRevision: runtime.recovery().revision,
+    structuredHistory: 'preserve-diagnostics',
+  });
+  incoming.messages[0].content = 'mutated';
+
+  expect(runtime.messages()).toEqual([]);
+  expect(runtime.recovery().diagnostics?.[0].content).toBe(content);
+});
+
+test.each([
+  { toolCalls: [] },
+  { encryptedValue: 'secret' },
+  { status: 'done' },
+  { toolCallId: 'call' },
+  { activityType: 'TASK' },
+  { error: 'tool failed' },
+  { activity: { title: 'task' } },
+])(
+  'diagnostics reject noneligible assistant representations atomically: %j',
+  (fields) => {
+    const runtime = createChatRuntime({
+      system: '',
+      responseSchema: s.object('answer', { answer: s.string('answer') }),
+    });
+    const before = runtime.recovery();
+
+    expect(() =>
+      runtime.restoreConversation(
+        {
+          threadId: 'cold',
+          messages: [
+            { id: 'invalid', role: 'assistant', content: 'text', ...fields },
+          ],
+        },
+        {
+          expectedRevision: before.revision,
+          structuredHistory: 'preserve-diagnostics',
+        },
+      ),
+    ).toThrow();
+
+    expect(runtime.recovery()).toEqual(before);
+    expect(runtime.messages()).toEqual([]);
+  },
+);
+
+test.each([
+  'same',
+  'metadata',
+  'content',
+  'id',
+  'role',
+  'delete',
+  'toolCalls',
+  'encryptedValue',
+] as const)(
+  'diagnostic binding reconciles complete canonical echoes: %s',
+  async (change) => {
+    const requests: TransportRequest[] = [];
+    const original: Message = {
+      id: 'invalid',
+      role: 'assistant',
+      content: 'text',
+      metadata: { app: true },
+    };
+    const echo: Message[] =
+      change === 'delete'
+        ? []
+        : [
+            {
+              ...original,
+              ...(change === 'metadata' ? { metadata: { app: false } } : {}),
+              ...(change === 'content' ? { content: 'changed' } : {}),
+              ...(change === 'id' ? { id: 'changed' } : {}),
+              ...(change === 'role' ? { role: 'user' as const } : {}),
+              ...(change === 'toolCalls' ? { toolCalls: [] } : {}),
+              ...(change === 'encryptedValue'
+                ? { encryptedValue: 'cipher' }
+                : {}),
+            } as Message,
+          ];
+    const runtime = createChatRuntime({
+      system: '',
+      debounce: 0,
+      responseSchema: s.object('answer', { answer: s.string('answer') }),
+      transport: {
+        name: 'echo',
+        send: async (request) => {
+          requests.push(request);
+          return {
+            events: (async function* (): AsyncIterable<AGUIEvent> {
+              yield {
+                type: EventType.RUN_STARTED,
+                threadId: request.input.threadId,
+                runId: request.input.runId,
+              };
+              yield { type: EventType.MESSAGES_SNAPSHOT, messages: echo };
+              yield {
+                type: EventType.RUN_FINISHED,
+                threadId: request.input.threadId,
+                runId: request.input.runId,
+              };
+            })(),
+          };
+        },
+      },
+    });
+    runtime.restoreConversation(
+      { threadId: 'cold', messages: [original] },
+      {
+        expectedRevision: runtime.recovery().revision,
+        structuredHistory: 'preserve-diagnostics',
+      },
+    );
+    const cleanup = runtime.start();
+    await settle();
+    expect(requests).toHaveLength(0);
+
+    runtime.sendMessage({ role: 'user', content: 'continue' });
+    expect(runtime.recovery().diagnostics).toHaveLength(1);
+    await settle();
+
+    expect(requests[0].input.messages[0]).toEqual(original);
+    const invalidReplacement = [
+      'metadata',
+      'content',
+      'id',
+      'toolCalls',
+      'encryptedValue',
+    ].includes(change);
+    expect(runtime.error() !== undefined).toBe(invalidReplacement);
+    expect(runtime.recovery().diagnostics?.length ?? 0).toBe(
+      change === 'same' || invalidReplacement ? 1 : 0,
+    );
+    if (change === 'same') expect(runtime.messages()).toEqual([]);
+    cleanup();
+  },
+);
+
+test('explicit replacement and thread changes clear diagnostic history', () => {
+  const runtime = createChatRuntime({
+    system: '',
+    responseSchema: s.object('answer', { answer: s.string('answer') }),
+  });
+  runtime.restoreConversation(
+    {
+      threadId: 'cold',
+      messages: [{ id: 'invalid', role: 'assistant', content: 'text' }],
+    },
+    {
+      expectedRevision: runtime.recovery().revision,
+      structuredHistory: 'preserve-diagnostics',
+    },
+  );
+
+  runtime.setMessages([]);
+
+  expect(runtime.recovery().diagnostics).toBeUndefined();
+  runtime.updateOptions({ threadId: 'new-thread' });
+  expect(runtime.recovery().diagnostics).toBeUndefined();
+});
+
+test('switching threads retires diagnostic bindings even when canonical history is retained', () => {
+  const runtime = createChatRuntime({
+    system: '',
+    responseSchema: s.object('answer', { answer: s.string('answer') }),
+  });
+  runtime.restoreConversation(
+    {
+      threadId: 'cold',
+      messages: [{ id: 'invalid', role: 'assistant', content: 'text' }],
+    },
+    {
+      expectedRevision: runtime.recovery().revision,
+      structuredHistory: 'preserve-diagnostics',
+    },
+  );
+
+  runtime.updateOptions({ threadId: 'new-thread' });
+
+  expect(runtime.recovery().diagnostics).toBeUndefined();
+});
+
+test('unknown structured history policies reject atomically after diagnostic restoration', () => {
+  const runtime = createChatRuntime({
+    system: '',
+    responseSchema: s.object('answer', { answer: s.string('answer') }),
+  });
+  runtime.restoreConversation(
+    {
+      threadId: 'cold',
+      messages: [{ id: 'invalid', role: 'assistant', content: 'text' }],
+    },
+    {
+      expectedRevision: runtime.recovery().revision,
+      structuredHistory: 'preserve-diagnostics',
+    },
+  );
+  const before = {
+    recovery: runtime.recovery(),
+    messages: runtime.messages(),
+    thread: runtime.threadId(),
+    state: runtime.state(),
+    interrupts: runtime.pendingInterrupts(),
+  };
+  const options = {
+    expectedRevision: before.recovery.revision,
+    structuredHistory: 'unknown-policy',
+  } as unknown as import('./models/conversation-recovery').ConversationRestoreOptions;
+
+  expect(() =>
+    runtime.restoreConversation(
+      { threadId: 'replacement', messages: [] },
+      options,
+    ),
+  ).toThrow(/policy/);
+
+  expect(runtime.recovery()).toBe(before.recovery);
+  expect(runtime.messages()).toBe(before.messages);
+  expect(runtime.threadId()).toBe(before.thread);
+  expect(runtime.state()).toBe(before.state);
+  expect(runtime.pendingInterrupts()).toBe(before.interrupts);
+});
+
+test('diagnostics permit native assistant attribution and ordinary application metadata', () => {
+  const runtime = createChatRuntime({
+    system: '',
+    responseSchema: s.object('answer', { answer: s.string('answer') }),
+  });
+  const message = {
+    id: 'invalid',
+    role: 'assistant' as const,
+    content: 'text',
+    name: 'assistant',
+    subagentRunId: 'subagent',
+    metadata: {
+      toolCallId: 'application-data',
+      activityType: 'application-data',
+    },
+  };
+
+  runtime.restoreConversation(
+    { threadId: 'cold', messages: [message] },
+    {
+      expectedRevision: runtime.recovery().revision,
+      structuredHistory: 'preserve-diagnostics',
+    },
+  );
+
+  expect(runtime.recovery().diagnostics).toEqual([
+    {
+      kind: 'unstructured-assistant-history',
+      threadId: 'cold',
+      messageId: 'invalid',
+      content: 'text',
+    },
+  ]);
+  expect(runtime.messages()).toEqual([]);
+});

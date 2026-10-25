@@ -69,15 +69,6 @@ builder.Services.AddAuthorization(options =>
         .RequireClaim("permission", "checkpoint-operator"));
 });
 
-var app = builder.Build();
-app.UseAuthentication();
-app.UseAuthorization();
-
-var accessor = app.Services.GetRequiredService<IHttpContextAccessor>();
-string Scope() => accessor.HttpContext?.User
-    .FindFirst(ClaimTypes.NameIdentifier)?.Value
-    ?? throw new UnauthorizedAccessException();
-
 var registry = new WorkflowOperationRegistry([
     new WorkflowOperation(
         Name: "confirm-airport", Version: 1,
@@ -100,6 +91,16 @@ var registry = new WorkflowOperationRegistry([
         })
 ]);
 IInterruptStore pending = new PendingInterruptStore(TimeProvider.System, registry);
+
+var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+
+var accessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+string Scope() => accessor.HttpContext?.User
+    .FindFirst(ClaimTypes.NameIdentifier)?.Value
+    ?? throw new UnauthorizedAccessException();
+
 var client = new HashbrownRequestClient(
     ProviderFactory.Create(builder.Configuration));
 var agent = client.AsAIAgent(
@@ -183,6 +184,10 @@ var durable = new PostgresInterruptStore(
     });
 await durable.InitializeAsync(); // Complete before accepting requests.
 IInterruptStore pending = durable;
+builder.Services.AddHostedService(services => new PostgresInterruptCleanupService(
+    durable,
+    services.GetRequiredService<ILogger<PostgresInterruptCleanupService>>(),
+    TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(10)));
 ```
 
 The pooled `NpgsqlDataSource` lives for the application lifetime and is disposed when the host exits. Supply `ConnectionStrings:Checkpoints` through server secret configuration. Configure authenticated TLS and certificate validation for production according to [Npgsql security documentation](https://www.npgsql.org/doc/security.html).
@@ -191,11 +196,21 @@ The pooled `NpgsqlDataSource` lives for the application lifetime and is disposed
 
 Every application instance must use the same authoritative database and compatible registry. Retain each operation name/version with its original meaning while stored work may reference it; missing versions or invalid persisted parameters fail closed before effect or model work. The checkpoint selector cannot replace stored arguments on resume. Replicas must also resolve the same stable authenticated application/tenant/user scope. With the cookie example, share the normal ASP.NET Core Data Protection keys and session configuration across replicas so authentication remains valid after routing changes.
 
-The approval deadline, preparation lease, and terminal retention are independent. Choose a lease long enough for ordinary pure preparation; there is no lease renewal. PostgreSQL server time controls durable deadlines. Expired pre-effect claims can be reacquired while approval remains valid. Terminal records remain for the configured retention, then their IDs become unknown (410). Capacity includes retained records. Active work and stranded dispatch markers are preserved; a stranded marker may continue occupying capacity until authorized terminal reconciliation. No automatic retry queue is supplied.
+The approval deadline, preparation lease, and terminal retention are independent. Choose a lease long enough for ordinary pure preparation; there is no lease renewal. PostgreSQL server time controls durable deadlines. Expired pre-effect claims can be reacquired while approval remains valid. Terminal records remain for the configured retention, then their IDs become unknown (410). Capacity includes retained records. Active work and unresolved post-effect records are preserved; they continue occupying capacity until authorized terminal reconciliation and subsequent retention cleanup. No automatic retry queue is supplied.
+
+Measure pure preparation under expected database and downstream load before setting `PreparationLease`; leave headroom for connection acquisition and scheduling. There is no renewal API. If preparation exceeds the lease, refresh authoritative recovery and require a fresh decision where still eligible. Never move external effects into preparation to work around lease expiry.
 
 Before invoking the executor, the store commits an irreversible dispatch marker. This provides **at most one registered execution dispatch per batch**, assuming all instances use the authoritative database and dispatch gate. It does not promise exactly-once external effects: a crash after the marker but before invocation can produce zero effects. A crash after an external effect but before completion is an unknown outcome. Neither case is automatically replayed. Use the stable `effectId` for application-specific downstream idempotency, or integrate the business effect and checkpoint transition in one application transaction when stronger guarantees are required. The guarantee assumes PostgreSQL retains acknowledged commits; restoring an older backup, unsafe failover, or administrative state edits can invalidate it.
 
 The memory store remains an explicit single-process development option with the same registry contract and defaults. It loses pending batches and consumed markers on restart. Both stores retain only bounded checkpoint-associated recovery history, not a general persisted chat session.
+
+### Operate a replicated host
+
+Separate liveness from readiness. A live process can still lack its checkpoint database, initialization permissions or compatible registry. Complete `InitializeAsync` before admitting requests; use a bounded database readiness probe and return unavailable while authoritative storage cannot be reached. Probes must not run a model or dispatch a tool. See [ASP.NET Core health checks](https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-10.0).
+
+Budget proxy idle and request timeouts for approval/resume and streamed model responses. Disable response buffering for the SSE route and verify first-byte streaming through your actual gateway. During deployment, stop admitting new work, drain existing requests within your host's shutdown budget, then terminate. A forced stop after dispatch leaves an unknown outcome for an operator; restarting does not make the effect safe to repeat.
+
+Use bounded metric labels such as operation version and checkpoint state. Track claim conflicts, expired preparation leases, unresolved effects, capacity refusals, cleanup counts/failures and recovery disposition. Record aggregate durations for preparation and streaming. Do not put thread IDs, user scopes, prompts, arguments, claim tokens, credentials or transcript text into metric labels or routine logs. Protect operator evidence separately; inspection endpoints intentionally omit transcripts and privileged parameters.
 
 ## Recover retained conversations and inspect effects
 
@@ -218,7 +233,30 @@ Your application authenticates users with its real session and issues the `check
 
 A version-1 envelope separates `effectState`, `generationOutcome`, `transcriptAvailability`, and `disposition`, and may contain a `snapshot`. Validate the envelope version and known disposition values before applying policy. Pass `snapshot` directly to `restoreConversation(snapshot, { expectedRevision })`, using the local revision captured before lookup. This atomic idle-only operation validates canonical messages, trusted schemas/tools, state and the complete interrupt list. It installs fresh local batch ownership and preserves the original configured system-message ID; it performs no network request, tool execution, or scheduling. Do not remove or reconstruct messages, replay SSE, or save a local batch ID as recovery authority.
 
-Native requests retain cancellation text but strip private runtime provenance. After a cold reload, structured/UI recovery cannot prove that this text is a runtime cancellation marker and rejects it if it does not match the configured response schema. Keep recovery blocked or deliberately start a new thread; do not remove messages, infer ownership from their text, or fabricate provenance. Plain-chat recovery retains this text visibly. In the same runtime and thread, exact echoes of locally owned cancellation markers preserve their private projection behavior.
+Native requests retain cancellation text but strip private runtime provenance. The default `structuredHistory: 'strict'` rejects assistant history that fails the configured structured/UI schema after a cold reload. Plain chat retains this text visibly. In the same runtime and thread, exact echoes of locally owned cancellation markers preserve their private projection behavior.
+
+**Unreleased source SDK feature:** `structuredHistory: 'preserve-diagnostics'` and `recovery.diagnostics` below require matching core and framework SDKs built from the current source; they are not in published 0.8.1. Keep the strict default on 0.8.1. To deliberately retain unstructured historical assistant text in a structured/UI application, opt in on restore:
+
+```ts
+chat.restoreConversation(snapshot, {
+  expectedRevision,
+  structuredHistory: 'preserve-diagnostics',
+});
+```
+
+This policy keeps exact canonical text for subsequent model requests and exposes it through `recovery.diagnostics`, while excluding it from typed responses and component rendering. Render each diagnostic's `content` visibly as escaped plain text, separately from normal assistant output. It does not identify a cancellation marker or grant generation, tool or resume authority. Tool-bearing/encrypted history and every other validation remain strict. Do not delete history, infer ownership from its wording, fabricate provenance, or hide diagnostics. A pending server checkpoint still needs an explicit decision.
+
+With source SDKs and that opt-in policy, render diagnostics alongside your normal history:
+
+```tsx
+<aside aria-label="Historical diagnostics">
+  {chat.recovery.diagnostics?.map((diagnostic) => (
+    <p key={diagnostic.messageId} role="note">
+      {diagnostic.content}
+    </p>
+  ))}
+</aside>
+```
 
 Remember only the thread selector across reload, scoped to the endpoint and scenario. Refresh explicitly; do not send a synthetic user message or automatically repeat an earlier approval. Disable Send and all decision controls while fetching, when recovery is required, on `Busy`, `UnknownEffect` or `AmbiguousEffect`, and when no safe snapshot is available. Unknown envelope/status values also fail closed. Display recovery status separately from assistant history. A deliberate New thread action invalidates in-flight lookup guards and clears the application gate. A successful restore alone does not authorize actions on a busy or unknown thread.
 
@@ -233,6 +271,12 @@ The operator routes are `GET /checkpoints?limit=50`, `GET /checkpoints/{batchId}
 This is checkpoint-scoped recovery, not general chat-session persistence. Both stores retain the original serialized native request (default 256 KiB), bounded final canonical history (1 MiB), and at most 2,048 messages per snapshot. Recovery configuration is bounded to 256 KiB. Stored history/state may contain sensitive application data: apply database access controls, a deliberate retention policy and ordinary backup/privacy handling.
 
 `SnapshotRetention` defaults to ten minutes measured from checkpoint creation, independently of ordinary terminal metadata retention. It is not renewed by answer completion. `AuditRetention` defaults to thirty days from each audit's recorded time, with separate bounded cleanup. Purging transcripts does not reopen consumed IDs or remove unresolved dispatch markers to make room. A missing snapshot keeps the UI gated. Memory storage loses everything on process restart; PostgreSQL retains the same server-owned contract across instances.
+
+The PostgreSQL recipe registers `PostgresInterruptCleanupService` before building the host. It runs one maintenance pass immediately, then once per minute; each pass has a ten-second cancellation budget linked to host shutdown. These are example operational budgets, not retention deadlines. Choose a schedule that meets your physical-deletion requirements and monitor cleanup failures. Deploy this helper with the updated Integration source.
+
+`PostgresInterruptStore.CleanupAsync(cancellationToken)` is independently committed, so an idle deployment can enforce retention without admitting another checkpoint. It returns separate metadata-deletion, transcript-purge and audit-deletion counts, each bounded by `CleanupBatchSize`. Repeat passes to drain a backlog. Concurrent maintenance skips locked candidates; later passes retry them. The scheduler does not run workflows or retry effects. Cancellation before commit rolls back the current pass.
+
+`EffectStarted` **and** `FailedAfterEffect` records remain until explicit operator reconciliation, even after ordinary terminal retention expires. Their snapshots and audits still expire on their independent deadlines. Retained unresolved metadata counts against capacity; investigate and reconcile using authenticated evidence instead of deleting it to make room. Known terminal records can be removed after retention, making their old selectors unknown rather than reusable.
 
 Schema initialization migrates version 1 to version 2 under the existing startup lock. Version-1 rows retain their dispatch safety but lack reconstructable history and return unavailable snapshots; they are never converted into fresh approvals. Unsupported future schema versions fail closed. Deploy compatible Integration source, operation registry and schema together.
 

@@ -1,3 +1,4 @@
+import { readHistoryDiagnostic } from '../models/history-diagnostics';
 import { ɵisCancelledTurnMarker } from '../models/cancelled-turn';
 import {
   type AGUIEvent,
@@ -586,7 +587,10 @@ export function projectAgUiMessages(
   > = [];
 
   for (const message of messages) {
-    if (ɵisCancelledTurnMarker(message)) {
+    if (
+      ɵisCancelledTurnMarker(message) ||
+      readHistoryDiagnostic(message, responseSchema)
+    ) {
       pendingReasoning = [];
       continue;
     }
@@ -703,7 +707,10 @@ export function ɵreconcileAgUiMessageProjection(
   > = [];
 
   for (const source of messages) {
-    if (ɵisCancelledTurnMarker(source)) {
+    if (
+      ɵisCancelledTurnMarker(source) ||
+      readHistoryDiagnostic(source, responseSchema)
+    ) {
       pendingReasoning = [];
       continue;
     }

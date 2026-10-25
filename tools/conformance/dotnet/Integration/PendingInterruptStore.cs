@@ -19,7 +19,7 @@ public sealed partial class PendingInterruptStore(TimeProvider clock, WorkflowOp
         {
             var now = clock.GetUtcNow();
             foreach (var key in _pending.Where(pair => Removable(pair.Value, now)).Select(pair => pair.Key).Take(_options.CleanupBatchSize).ToArray()) _pending.Remove(key);
-            foreach (var key in _pending.Where(pair => pair.Value.CreatedAt + _options.SnapshotRetention <= now && pair.Value.OriginalRequest is not null).Select(pair => pair.Key).Take(_options.CleanupBatchSize).ToArray())
+            foreach (var key in _pending.Where(pair => pair.Value.CreatedAt + _options.SnapshotRetention <= now && (pair.Value.OriginalRequest is not null || pair.Value.TerminalSnapshot is not null)).Select(pair => pair.Key).Take(_options.CleanupBatchSize).ToArray())
                 _pending[key] = _pending[key] with { OriginalRequest = null, TerminalSnapshot = null, Revision = _pending[key].Revision + 1 };
             foreach (var key in _audit.Where(pair => pair.Value.Audit.RecordedAt + _options.AuditRetention <= now).Select(pair => pair.Key).Take(_options.CleanupBatchSize).ToArray()) _audit.Remove(key);
             var existing = _pending.Values.FirstOrDefault(record => record.Scope == scope && record.ThreadId == input.ThreadId && record.State is "Pending" or "Claimed" or "EffectStarted");
@@ -102,7 +102,7 @@ public sealed partial class PendingInterruptStore(TimeProvider clock, WorkflowOp
     {
         "Pending" => record.Batch.ExpiresAt <= now,
         "Claimed" => record.Batch.ExpiresAt <= now && record.LeaseUntil <= now,
-        "EffectStarted" => false,
+        "EffectStarted" or "FailedAfterEffect" => false,
         _ => record.CompletedAt + _options.TerminalRetention <= now
     };
 }

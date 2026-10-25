@@ -44,7 +44,7 @@ public sealed record InterruptStoreOptions
     public TimeSpan ApprovalTtl { get; init; } = TimeSpan.FromMinutes(10);
     /// <summary>Finite permission for pure preparation, independent of approval expiry.</summary>
     public TimeSpan PreparationLease { get; init; } = TimeSpan.FromSeconds(30);
-    /// <summary>Retention of terminal records; deleting a record never makes its IDs executable.</summary>
+    /// <summary>Retention of known terminal records; unresolved EffectStarted and FailedAfterEffect records require reconciliation. Deletion never makes IDs executable.</summary>
     public TimeSpan TerminalRetention { get; init; } = TimeSpan.FromMinutes(10);
 
     /// <summary>Maximum owned original request bytes before any interrupt is published.</summary>
@@ -59,7 +59,7 @@ public sealed record InterruptStoreOptions
     public TimeSpan AuditRetention { get; init; } = TimeSpan.FromDays(30);
     /// <summary>Private transcript retention, independently bounded from safety metadata.</summary>
     public TimeSpan SnapshotRetention { get; init; } = TimeSpan.FromMinutes(10);
-    /// <summary>Maximum rows in one cleanup transaction.</summary>
+    /// <summary>Maximum rows per category (metadata, transcripts, audits) in one cleanup transaction.</summary>
     public int CleanupBatchSize { get; init; } = 100;
 
     internal InterruptStoreOptions Checked()

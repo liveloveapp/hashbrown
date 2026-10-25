@@ -1,3 +1,4 @@
+import { restoreHistoryDiagnostics } from '../models/history-diagnostics';
 import { ɵrestoreCancelledTurnProvenance } from '../models/cancelled-turn';
 import {
   ɵPROVIDER_HISTORY_EVENT_NAME,
@@ -419,9 +420,12 @@ export function applyCanonicalMessageEvent(
       return mergeSnapshotActivities(
         messages,
         recomputeActivityLinks(
-          ɵrestoreCancelledTurnProvenance(
+          restoreHistoryDiagnostics(
             messages,
-            ɵreadAgUiMessageSnapshot(event),
+            ɵrestoreCancelledTurnProvenance(
+              messages,
+              ɵreadAgUiMessageSnapshot(event),
+            ),
           ),
           context?.activityArrival?.runId,
         ),
