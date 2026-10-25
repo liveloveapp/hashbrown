@@ -33,7 +33,6 @@ interface JobRow extends Record<string, unknown> {
   payload: Record<string, unknown>;
   provider_email_id: string | null;
   rfc_message_id: string | null;
-  gmail_seed_message_id: string | null;
   delivery_status: GrowthJob['deliveryStatus'];
   last_error_code: string | null;
   created_at: Date | string;
@@ -170,7 +169,6 @@ function toJob(row: JobRow): GrowthJob {
     payload: row.payload,
     providerEmailId: row.provider_email_id,
     rfcMessageId: row.rfc_message_id,
-    gmailSeedMessageId: row.gmail_seed_message_id,
     deliveryStatus: row.delivery_status,
     lastErrorCode: row.last_error_code,
     createdAt: new Date(row.created_at),
@@ -566,10 +564,8 @@ export async function countUnboundProviderMessages(
  * is step 1 of an enrollment (from one of the three approval kinds) at least
  * five minutes old, or the previous step was accepted by the provider. A
  * `send_step` also waits while another `fulfill` or `send_step` for the same
- * contact is completed with a provider id but no RFC Message-ID yet, and
- * neither `send_step` nor `reply_reconcile` is leased while a
- * Resend reply coverage is unhealthy; legacy reconciliation alone retains the
- * historical mailbox recovery fence.
+ * contact is completed with a provider id but no RFC Message-ID yet, and no
+ * `send_step` is leased while Resend reply coverage is unhealthy.
  *
  * @throws When no kinds are given or `batchSize` is outside 1..100.
  */
@@ -650,14 +646,6 @@ export async function leaseDueJobs(
              and unbound.provider_email_id is not null and unbound.rfc_message_id is null
          ))
 
-         -- Retain recovery fencing only for already-admitted legacy evidence.
-         and (j.kind <> 'reply_reconcile' or not exists (
-           select 1 from growth_activity recovery_required
-           where recovery_required.kind = 'mailbox.recovery_required'
-             and not exists (select 1 from growth_activity recovery_completed
-               where recovery_completed.kind = 'mailbox.recovery_completed'
-                 and recovery_completed.data->>'recovery_id' = recovery_required.data->>'recovery_id')
-         ))
          and (j.kind <> 'send_step' or not $7::boolean or exists (
            select 1 from growth_reply_mailboxes where enabled
          ))
