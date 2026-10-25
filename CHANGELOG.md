@@ -13,6 +13,8 @@
 - **anthropic, google, bedrock:** expose provider tool steps, native history replay, built-in tools and available source attribution. Availability and replay depend on the provider/model; Google Search Suggestions retain their required rendering contract ([#715](https://github.com/liveloveapp/hashbrown/pull/715), [#730](https://github.com/liveloveapp/hashbrown/pull/730), [#736](https://github.com/liveloveapp/hashbrown/pull/736)).
 - **core:** add opt-in experimental WebLLM and browser-native local-model transports, Chrome media input, and Chrome native tools. These experimental capabilities depend on browser/model support and do not add runtime package dependencies ([#726](https://github.com/liveloveapp/hashbrown/pull/726), [#733](https://github.com/liveloveapp/hashbrown/pull/733), [#737](https://github.com/liveloveapp/hashbrown/pull/737)).
 
+- **core:** experimental Chrome native tools can opt into tool execution followed by a final JSON-schema response; existing behavior remains the default ([#746](https://github.com/liveloveapp/hashbrown/pull/746)).
+
 ### 🧪 Experimental compatibility
 
 - Chrome’s `@alpha` `PromptMessage.content` now accepts media content arrays as well as strings, and `SupportedOutputLanguage` adds `de` and `fr`. Custom Chrome and Edge adapters consuming these experimental types must narrow content before treating it as text; exhaustive language checks must handle the added languages. Existing text requests remain supported ([#733](https://github.com/liveloveapp/hashbrown/pull/733)).
@@ -20,7 +22,7 @@
 ### 📖 Documentation
 
 - Add tested .NET 10 AG-UI recipes for OpenAI and Azure, durable confirmations, recovery and reconciliation, plus recorded agent, authenticated endpoint, server-thread and JavaScript runtime workflows ([#727](https://github.com/liveloveapp/hashbrown/pull/727), [#734](https://github.com/liveloveapp/hashbrown/pull/734), [#740](https://github.com/liveloveapp/hashbrown/pull/740), [#724](https://github.com/liveloveapp/hashbrown/pull/724), [#725](https://github.com/liveloveapp/hashbrown/pull/725), [#732](https://github.com/liveloveapp/hashbrown/pull/732), [#735](https://github.com/liveloveapp/hashbrown/pull/735)).
-- Refresh schema/streaming examples, docs navigation, local-model guidance and Threadplane integration guides ([#728](https://github.com/liveloveapp/hashbrown/pull/728), [#738](https://github.com/liveloveapp/hashbrown/pull/738), [#742](https://github.com/liveloveapp/hashbrown/pull/742)).
+- Refresh schema/streaming examples, docs navigation, local-model guidance and Threadplane integration guides ([#728](https://github.com/liveloveapp/hashbrown/pull/728), [#738](https://github.com/liveloveapp/hashbrown/pull/738), [#742](https://github.com/liveloveapp/hashbrown/pull/742), [#747](https://github.com/liveloveapp/hashbrown/pull/747)).
 
 ## 0.8.0 (2026-10-22)
 
