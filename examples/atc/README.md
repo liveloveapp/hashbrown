@@ -127,9 +127,10 @@ The dependency pins are now `0.15.2`, installed and tested from the registry.
 That release still drops `maxOutputTokens`; the agent fails startup rather than
 dropping its cap. The passing agent/browser results used the patched local
 package set recorded in the [compatibility report](../../docs/superpowers/reports/2026-10-23-atc-b4run-compatibility.md).
-The compatibility fixes are now in upstream draft [b4.run #1101](https://github.com/cacheplane/b4run/pull/1101).
-They still need review, merge and release, followed by another dependency-pin
-update and complete agent validation.
+The output-cap and replay fixes are merged in [b4.run #1101](https://github.com/cacheplane/b4run/pull/1101).
+Generated deployments also need the request-owned client-tool store fix in
+[b4.run #1106](https://github.com/cacheplane/b4run/pull/1106). A release containing
+both fixes, a dependency-pin update, and registry-package validation remain required.
 
 ### Optional hosted build
 
@@ -159,14 +160,24 @@ without changing the process's general `DATABASE_URL`. Hosted startup never
 falls back to ephemeral SQLite. Shared-store integration tests pass against a disposable local Postgres 17
 instance. They exercise separate pools, checkpoint/thread visibility, partial
 and duplicate results, failed tool-result persistence, and retryable cleanup.
-They do not prove complete agent execution or generated-artifact ownership with
-Postgres; those checks remain blocked by the incompatible agent release.
+With the compatible source packages, complete agent continuation and ownership
+also pass across independent runtime pools. The generated Vercel artifact passes
+continuation across two isolated module copies sharing Postgres, signed visitor
+ownership, duplicate-result handling, pinned schema/output cap, and internal-route
+denial. These source-package results must be repeated with the compatible release.
 Deployed-host validation also remains required before hosting.
 
-Run the opt-in store tests against a **disposable test database**:
+Run the opt-in store and runtime tests against a **disposable test database**:
 
 ```bash
 ATC_TEST_DATABASE_URL=postgresql://... npx nx test-integration atc-server
+```
+
+After building the optional agent artifact, validate its Postgres boundary:
+
+```bash
+ATC_CHAT_BACKEND=b4run npx nx build atc
+ATC_TEST_DATABASE_URL=postgresql://... npx nx test-artifact atc-server
 ```
 
 The tests create ATC tables and prune expired pending-call records. Never point

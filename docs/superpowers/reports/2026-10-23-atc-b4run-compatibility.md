@@ -420,3 +420,59 @@ are not claimed as locally passing. The draft records these limits.
 Next prerequisite is review/merge/release of that upstream PR, followed by pins
 and complete agent/Postgres/generated-artifact checks. No release or deployment
 was performed; the user's original b4.run working checkout remains untouched.
+
+
+## Release and generated-artifact continuation: 2026-10-25
+
+Upstream PR [#1101](https://github.com/cacheplane/b4run/pull/1101) merged as
+`dec5fefb2e59c020784e1f39e1a78528ed05c81f` after the complete CI run passed,
+including source validation, the release controller, generated harnesses,
+CopilotKit examples, and the native Vercel boundary.
+
+The `v0.15.3` tag exists, but its release preparation failed and npm still reports
+0.15.2. The failed candidate also predates the output-cap fixes. Reproducing its
+immutable package preparation found an optional LangGraph peer pinned to
+`1.4.17`, conflicting with the compatible `1.5.2` resolution elsewhere. Main
+already includes the compatible peer-range correction; a complete local
+preparation smoke on the compatibility branch passes clean install, TypeScript,
+and scaffolding using only a disposable loopback registry. No existing release
+tag was changed and no public package was published by this validation.
+
+The new opt-in Postgres suite passes **8 tests** with compatible source packages,
+including an agent parked by one runtime and resumed by another independent
+pool, denied visitor ownership, and unchanged response schema/output cap.
+
+The generated Vercel artifact initially returned `503 client_tool_store_unavailable`.
+The generated factory omitted the client-tool store, and the runtime did not
+accept one through its request-owned stores. Upstream follow-up
+[PR #1106](https://github.com/cacheplane/b4run/pull/1106) adds that override and a
+Postgres client-tool store sharing the request pool, migrations, and namespace.
+Both regressions were observed failing before the fix; **143 affected tests**,
+CLI build/typecheck, and lint pass (38 existing lint warnings). Review found no
+significant issues. Full upstream CI is pending.
+
+With that source fix, `npx nx test-artifact atc-server` passes against disposable
+Postgres. It executes two isolated copies of the actual built Vercel function:
+a browser call parks on the first and resumes on the second using a signed
+visitor cookie. A different visitor is denied, duplicate results do not restart
+the provider, raw runtime endpoints remain hidden, and both provider requests
+retain the pinned schema and 4096-token cap. The generated model uses OpenAI
+Responses, so this HTTP fixture emits Responses streaming events and asserts
+`text.format.schema` and `max_output_tokens`; the source runtime fixture exercises
+Chat Completions. No live model request or hosted deployment is involved.
+
+ATC server build and lint pass; its normal suite passes **162 tests with 1
+Postgres-only test skipped**. The complete Angular/React browser suite passes
+**86 tests**, covering both backends. Review tightened both continuation tests
+to assert that the exact browser result reaches the provider and the final
+structured answer reaches the AG-UI stream; both Postgres checks still pass.
+Lifecycle source-overlay validation stops at its explicit version guard
+(expected pinned CLI 0.15.2, source CLI reports 0.15.3); this is not a lifecycle
+build pass and will be repeated after the registry pin update. The optional ATC artifact build passes with the
+known staging dependency advisory and environment color warnings. These are
+source-package results, not validation of the incompatible 0.15.2 pins.
+
+Next: merge the follow-up after required CI, refresh and validate the version PR,
+release through the supported controller, install the new registry package set,
+and repeat server/browser/build/Postgres checks. Hosted smoke validation still
+requires deployment configuration and remains separate from local evidence.

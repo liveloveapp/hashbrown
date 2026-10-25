@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -7,6 +8,11 @@ import { AGENT_URL } from './handler';
 import { PINNED_RESPONSE_SCHEMAS } from '../run-policy';
 
 interface CapturedRequest {
+  readonly messages: readonly {
+    readonly role: string;
+    readonly tool_call_id?: string;
+    readonly content: string;
+  }[];
   readonly response_format: {
     readonly json_schema: { readonly schema: unknown };
   };
@@ -16,10 +22,12 @@ interface CapturedRequest {
 interface ProtocolEvent {
   readonly type: string;
   readonly runId?: string;
+  readonly delta?: string;
   readonly toolCallName?: string;
   readonly toolCallId?: string;
 }
 
+const suiteId = randomUUID();
 const schema = PINNED_RESPONSE_SCHEMAS[0];
 const tools = [
   {
@@ -100,7 +108,7 @@ async function runtime(now?: () => number) {
       model: 'gpt-5-mini',
       reasoningEffort: null,
     },
-    env: {},
+    env: { ATC_B4RUN_DATABASE_URL: process.env['ATC_TEST_DATABASE_URL'] },
     now,
   });
   onTestFinished(async () => {
@@ -115,7 +123,10 @@ function request(messages: object[], runId: string, visitor = 'visitor-a') {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-atc-visitor': visitor },
     body: JSON.stringify({
-      threadId: 'browser-thread',
+      threadId: `${suiteId}-${createHash('sha256')
+        .update(expect.getState().currentTestName ?? 'runtime-test')
+        .digest('hex')
+        .slice(0, 16)}`,
       runId,
       messages,
       tools,
@@ -275,3 +286,67 @@ test('parallel browser results resume only once after all results arrive', async
     expect(body.response_format.json_schema.schema).toEqual(schema),
   );
 });
+
+test.skipIf(!process.env['ATC_TEST_DATABASE_URL'])(
+  'another runtime resumes a browser call through shared Postgres and enforces visitor ownership',
+  async () => {
+    const captured = provider([
+      { call: 'findAircraft', id: 'shared-find' },
+      { content: '{"ui":[]}' },
+    ]);
+    const first = await runtime();
+    const second = await runtime();
+    const initial = events(
+      await (await first.fetch(request([user], 'shared-first'))).text(),
+    );
+    const history = [
+      user,
+      {
+        id: 'assistant',
+        role: 'assistant',
+        toolCalls: [
+          {
+            id: 'shared-find',
+            type: 'function',
+            function: { name: 'findAircraft', arguments: '{}' },
+          },
+        ],
+      },
+      {
+        id: 'result',
+        role: 'tool',
+        toolCallId: 'shared-find',
+        content: 'found',
+      },
+    ];
+
+    const denied = await second.fetch(
+      request(history, 'other-visitor', 'visitor-b'),
+    );
+    const resumed = events(
+      await (await second.fetch(request(history, 'shared-resume'))).text(),
+    );
+
+    expect(initial.at(-1)?.type).toBe('RUN_FINISHED');
+    expect(denied.status).toBe(403);
+    expect(resumed.at(-1)?.type, JSON.stringify(resumed)).toBe('RUN_FINISHED');
+    expect(captured).toHaveLength(2);
+    expect(captured[1].messages).toContainEqual(
+      expect.objectContaining({
+        role: 'tool',
+        tool_call_id: 'shared-find',
+        content: 'found',
+      }),
+    );
+    expect(
+      resumed
+        .filter((event) => event.type === 'TEXT_MESSAGE_CONTENT')
+        .map((event) => event.delta ?? '')
+        .join(''),
+    ).toBe('{"ui":[]}');
+    captured.forEach((body) => {
+      expect(body.max_completion_tokens).toBe(4096);
+      expect(body.response_format.json_schema.schema).toEqual(schema);
+    });
+  },
+);

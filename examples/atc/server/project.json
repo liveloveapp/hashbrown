@@ -43,6 +43,13 @@
       "options": {
         "command": "vitest run --config examples/atc/server/vitest.postgres.config.mts"
       }
+    },
+    "test-artifact": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx --tsconfig examples/atc/server/tsconfig.json examples/atc/tools/verify-agent-postgres.mts"
+      }
     }
   }
 }
