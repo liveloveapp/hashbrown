@@ -101,7 +101,11 @@ receipt normalization or expected-failure rule was introduced. The initial
 report/traces were retained at `/tmp/hashbrown-native-framework-first-eight-evidence`
 and `/tmp/hashbrown-native-framework-first-eight.log` before rerunning.
 
-## Prepared upstream report (not posted)
+## Upstream report
+
+Posted October 25, 2026: [Chromium issue #577500782](https://issues.chromium.org/issues/577500782).
+The text below preserves the original prepared report; the submitted version
+includes a reduced native JavaScript example and the same measured findings.
 
 **Suggested title:** Chrome 155 experimental v4 tool calls emit an empty `callID`.
 

@@ -41,7 +41,7 @@ export interface ChromeToolsSessionOptions {
 }
 /** Configuration for the experimental Chrome typed-tools transport. @alpha */
 export interface ExperimentalChromeToolsTransportOptions {
-  /** Finalize schema answers after unconstrained tool planning. Adds one terminal inference pass. */
+  /** Finalize structured or component UI answers after unconstrained tool planning. Adds one terminal inference pass; individual schemas remain model-dependent. */
   schemaFinalization?: 'after-tool-planning';
   /** Text language negotiated for both input and output. Defaults to English. */
   outputLanguage?: SupportedOutputLanguage;
@@ -81,7 +81,7 @@ export interface ChromeToolsCapabilities {
     reason: string | null;
     structuredOutput: boolean;
     schemaFinalization: 'after-tool-planning' | null;
-    ui: false;
+    ui: boolean;
     media: false;
   };
   inference: 'unknown';
@@ -188,7 +188,7 @@ export async function detectChromeToolsCapabilities(
         : 'Native typed tools interfaces or exact model options are unsupported.',
       structuredOutput: options.schemaFinalization === 'after-tool-planning',
       schemaFinalization: options.schemaFinalization ?? null,
-      ui: false,
+      ui: options.schemaFinalization === 'after-tool-planning',
       media: false,
     },
     inference: 'unknown',

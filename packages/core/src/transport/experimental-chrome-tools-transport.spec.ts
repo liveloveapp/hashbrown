@@ -7,6 +7,8 @@ import {
   experimental_chrome_tools,
 } from './experimental-chrome-tools-transport';
 import type { TransportRequest } from './transport';
+import { createUiJsonSchema } from '../ui/ui-json-schema';
+import { s } from '../schema';
 
 function request(): TransportRequest {
   return {
@@ -1016,7 +1018,7 @@ test('schema finalization capability reports policy while inference remains unkn
   expect(result.adapter.structuredOutput).toBe(true);
   expect(result.adapter.schemaFinalization).toBe('after-tool-planning');
   expect(result.inference).toBe('unknown');
-  expect(result.adapter.ui).toBe(false);
+  expect(result.adapter.ui).toBe(true);
   expect(result.adapter.media).toBe(false);
 });
 
@@ -1262,18 +1264,59 @@ test('schema planning withholds every call and all prose for a malformed complet
   expect(events).toEqual([EventType.RUN_STARTED]);
 });
 
-test('opt-in schema requests continue to reject UI before session creation', async () => {
-  const native = install();
-  const source = schemaRequest();
-  source.input.forwardedProps = { hashbrown: { responseSchema: {}, ui: true } };
+test.each([undefined, null, [], 'schema', 1, { type: 'array' }])(
+  'UI requires an object response schema before native creation (%p)',
+  async (responseSchema) => {
+    const native = install();
+    const source = schemaRequest();
+    source.input.forwardedProps = { hashbrown: { responseSchema, ui: true } };
 
-  await expect(
-    experimental_chrome_tools({
-      schemaFinalization: 'after-tool-planning',
-    })().send(source),
-  ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
-  expect(native.create).not.toHaveBeenCalled();
-});
+    await expect(
+      experimental_chrome_tools({
+        schemaFinalization: 'after-tool-planning',
+      })().send(source),
+    ).rejects.toMatchObject({ code: 'FEATURE_UNSUPPORTED' });
+    expect(native.create).not.toHaveBeenCalled();
+  },
+);
+
+test.each([true, false])(
+  'opt-in UI forwards the exact kit schema only to finalization (tools=%s)',
+  async (tools) => {
+    const source = schemaRequest(tools);
+    const responseSchema = createUiJsonSchema({
+      components: [
+        {
+          name: 'receipt',
+          description: 'Show the exact tool receipt.',
+          props: { value: s.string('Exact receipt') },
+          children: false,
+        },
+      ],
+    });
+    source.input.forwardedProps = { hashbrown: { responseSchema, ui: true } };
+    const output = '{"ui":[{"receipt":{"props":{"value":"exact"}}}]}';
+
+    const { events, prompt, native } = await schemaEvents(source, [
+      ...(tools ? [['PRIVATE_PLANNING']] : []),
+      [output],
+    ]);
+
+    expect(prompt).toHaveBeenCalledTimes(tools ? 2 : 1);
+    if (tools)
+      expect(prompt.mock.calls[0][1]).not.toHaveProperty('responseConstraint');
+    expect(
+      (prompt.mock.calls.at(-1)?.[1] as { responseConstraint?: unknown })
+        .responseConstraint,
+    ).toEqual(responseSchema);
+    expect(
+      events
+        .filter((event) => event.type === EventType.TEXT_MESSAGE_CONTENT)
+        .map((event) => event.delta),
+    ).toEqual([output]);
+    expect(native.destroy).toHaveBeenCalledTimes(1);
+  },
+);
 
 test.each(['planning', 'finalization'] as const)(
   'schema %s retains the native turn output bound',
