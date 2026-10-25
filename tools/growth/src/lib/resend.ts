@@ -18,7 +18,7 @@ import {
   bindProviderMessageId,
   ProviderMessageIdBindingError,
   replySubjectSha256,
-} from './replies.ts';
+} from './provider-message-ids.ts';
 import {
   completeProviderAttempt,
   providerIdempotencyKey,

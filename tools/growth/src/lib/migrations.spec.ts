@@ -207,3 +207,21 @@ test('lifecycle migration creates the install runtime links, digest reports and 
   );
   expect(sql).not.toMatch(/growth_jobs_kind_check|add column/i);
 });
+
+test('unbound message index migration only adds one partial index on growth_jobs', async () => {
+  const sql = await read('0009_growth_unbound_message_index.sql');
+
+  const statements = sql
+    .split(';')
+    .map((statement) => statement.replace(/--.*$/gmu, '').trim())
+    .filter(Boolean);
+
+  expect(statements).toHaveLength(1);
+  expect(statements[0]).toMatch(
+    /^CREATE INDEX growth_jobs_unbound_provider_message\s+ON growth_jobs \(updated_at\)\s+WHERE/u,
+  );
+  expect(statements[0]).toContain("kind IN ('fulfill', 'send_step')");
+  expect(statements[0]).toContain("status = 'completed'");
+  expect(statements[0]).toContain('provider_email_id IS NOT NULL');
+  expect(statements[0]).toContain('rfc_message_id IS NULL');
+});
