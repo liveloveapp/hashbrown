@@ -260,13 +260,17 @@ intent. Workflow-specific tool exposure and application-owned permission gates
 remain meaningful controls. Do not retry unchanged prompts until a green
 result appears or broaden the assertions to accept these failures.
 
-The user has been asked whether to verify a narrower per-workflow tool/component
-catalog, retain broad-catalog reliability as a merge gate, or merge experimental
-adapter support with native-quality failures explicitly documented. The PR stays
-unmerged while that decision and native validation are outstanding.
+The user approved verifying a narrower per-workflow tool/component catalog on
+October 25, 2026, with the broad-catalog failures retained as research. The
+bounded fixture offers only lookup + status for a leaf, lookup/follow + status
+for a dependent result, lookup + status/panel for bounded children, and status
+without tools for a literal response. Exact declared catalogs, operation counts,
+terminal schemas, raw JSON, parsed UI, DOM and cleanup remain qualification
+requirements. The PR stays unmerged until bounded native validation and CI pass.
 
 ## Pending decisions and external action
 
 - User approved option 1: tools gather data, then generate component UI.
 - Chromium report: posted as [#577500782](https://issues.chromium.org/issues/577500782).
-- Release qualification is pending the native-quality decision above.
+- User approved bounded qualification; native measurements and release checks
+  remain pending.

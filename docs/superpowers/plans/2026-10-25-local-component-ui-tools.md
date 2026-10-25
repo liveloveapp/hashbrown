@@ -69,4 +69,19 @@ inference evidence distinct from adapter policy, and add local-only conformance.
 PR #749 is open and attached, not merged. Initial broad-catalog v4 sample failed
 8/8; clarified instructions passed 4/8. All 22 aimock contracts and listed standard
 regressions pass. Recursive-schema copy canary passed separately. Successful
-native workflow repetition remains unmet; user release-gate decision is pending.
+native workflow repetition remains unmet. The user approved narrowing tool and
+component catalogs per workflow, verifying bounded support and retaining the
+broad-catalog failures as research on October 25, 2026.
+
+## Approved bounded qualification
+
+- [ ] Assert exact declared tools and response schemas for each workflow before
+  narrowing fixtures. Preserve broad catalog access for research.
+- [ ] Lookup/stream/error/Stop use lookup + status; dependent uses lookup/follow +
+  status; nested uses lookup + status/panel; no-tools uses status only.
+- [ ] Pass local deterministic contracts, then run two predetermined full native
+  samples against production builds without changing strict result assertions.
+  Retain any failure; do not rerun unchanged samples until green.
+- [ ] Record all native failures and bounded scope; update docs and PR.
+- [ ] Review changes, synchronize current main, run affected checks and exact-head
+  CI, merge on green and verify merge contents on main.

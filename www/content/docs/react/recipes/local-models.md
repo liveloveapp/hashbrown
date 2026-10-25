@@ -730,6 +730,14 @@ undeclared rendering tools, or added components. Clearer instructions passed 4/8
 [dated component UI research](https://github.com/liveloveapp/hashbrown/blob/main/docs/superpowers/research/2026-10-25-local-component-ui-tools.md)
 records the failures separately from the passing adapter and renderer contracts.
 
+Expose only the tools and components needed for the current workflow. A lookup
+that renders a leaf does not need a dependent tool or a container component.
+Dependent workflows can expose both required tools while keeping the component
+kit small. Tool argument validation and component schemas check structure; they
+do not guarantee that the model follows the requested sequence or returns the
+requested number of components. Keep permission checks in application handlers
+and measure exact tool calls and rendered output on the actual model.
+
 Stopping a conversational run or sending a replacement request retains the
 original user request and committed history with an explicit runtime
 cancellation marker before subsequent input. The marker stays in model

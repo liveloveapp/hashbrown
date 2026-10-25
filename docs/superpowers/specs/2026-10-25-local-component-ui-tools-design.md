@@ -50,3 +50,20 @@ Repeat successful workflows on explicit production builds. Run affected
 build/test/lint/API checks, standard conformance and local regressions. Review and
 address feedback, open/attach PR, wait for exact-head green CI, merge, compare
 reviewed and merged trees and verify main. Do not publish a package release.
+
+## Approved bounded qualification
+
+After the broad-catalog quality failures, the user approved narrowing actual tool
+and component declarations per workflow and retaining the failures as research.
+Lookup, stream, error and Stop fixtures offer only lookup + status. Dependent
+fixtures offer lookup/follow + status. Bounded nesting offers lookup +
+status/panel, and no-tools offers status alone. Keep a separate explicit broad
+catalog option for research; do not change runtime component-retention policy.
+
+Assert exact tool declarations and component schemas as well as the unchanged
+operation counts, handler-result provenance, raw JSON, parsed trees, DOM and
+resource checks. Predetermine two full eight-case native production samples
+against the same code, instructions and downloaded profile. Record every failure;
+do not repeat unchanged samples until a passing pair appears. A passing bounded
+sample qualifies only the measured workflows and model version. General
+broad-catalog reliability and arbitrary recursion remain unverified.

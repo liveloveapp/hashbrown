@@ -356,6 +356,13 @@ terminal response mid-prop to verify fallback rendering before completion; it
 does not enforce or repair the model's schema. Evidence and reports are retained
 under `test-results/conformance/native-ui`.
 
+Each scenario offers a bounded catalog: lookup + status, dependent lookup/follow
++ status, lookup + status/panel for nesting, or status alone without tools. Tests
+assert the actual native tool declarations and exact terminal component schema,
+as well as exact handler operations and output. The fixture query
+`uiWorkflow=broad` retains the original broader catalog for research; qualification
+uses the scenario-specific `uiWorkflow` values.
+
 Adapter capability `ui` follows the opt-in policy; inference remains unknown.
 Measure the exact component kit separately from a simple structured response.
 Bounded child composition does not establish unrestricted recursive-schema

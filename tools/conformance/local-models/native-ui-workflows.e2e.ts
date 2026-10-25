@@ -95,9 +95,42 @@ function replayAssistantTrees(replay: unknown): unknown[] {
     .map((text) => JSON.parse(text));
 }
 
-const expectedConstraint = createUiJsonSchema({
-  components: [workflowStatusDefinition, workflowPanelDefinition],
-});
+/** Builds the independent schema catalog expected for a bounded workflow. */
+function expectedConstraint(scenario: Scenario) {
+  return createUiJsonSchema({
+    components:
+      scenario === 'nested'
+        ? [workflowStatusDefinition, workflowPanelDefinition]
+        : [workflowStatusDefinition],
+  });
+}
+
+/** Lists only the application tools required by this workflow. */
+function expectedTools(scenario: Scenario): string[] {
+  return scenario === 'no-tools'
+    ? []
+    : scenario === 'dependent'
+      ? ['lookup_secret', 'follow_secret']
+      : ['lookup_secret'];
+}
+
+/** Records native create declarations after page initialization, without changing inference. */
+async function observeDeclarations(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const runtime = globalThis as unknown as {
+      LanguageModel: {
+        create(options: Record<string, unknown>): Promise<unknown>;
+      };
+      __nativeUiDeclarations: { tools?: { name: string }[] }[];
+    };
+    runtime.__nativeUiDeclarations = [];
+    const create = runtime.LanguageModel.create.bind(runtime.LanguageModel);
+    runtime.LanguageModel.create = async (options) => {
+      runtime.__nativeUiDeclarations.push(JSON.parse(JSON.stringify(options)));
+      return create(options);
+    };
+  });
+}
 
 const live = process.env['LOCAL_LLM_NATIVE_TOOL_WORKFLOWS_LIVE'] === '1';
 const test = live
@@ -193,6 +226,7 @@ function respond(
 async function evidence(page: Page) {
   return page.evaluate(() => {
     const runtime = globalThis as unknown as {
+      __nativeUiDeclarations?: { tools?: { name: string }[] }[];
       __nativeToolNativeEvents?: unknown[];
       __nativeToolRequests?: unknown[];
       __nativeToolCanonical?: unknown[];
@@ -200,6 +234,7 @@ async function evidence(page: Page) {
       __hashbrownNativeTools?: { created: number; destroyed: number };
     };
     return {
+      declarations: runtime.__nativeUiDeclarations,
       events: runtime.__nativeToolNativeEvents,
       requests: runtime.__nativeToolRequests,
       canonical: runtime.__nativeToolCanonical,
@@ -245,9 +280,28 @@ async function workflow(
       '/?localUiWorkflow=true&localModel=chrome-tools-schema&runUrl=' +
         encodeURIComponent('http://127.0.0.1:1/unused') +
         `&sample=${Date.now()}` +
-        (scenario === 'no-tools' ? '&noTools=true' : ''),
+        `&uiWorkflow=${scenario === 'dependent' || scenario === 'nested' || scenario === 'no-tools' ? scenario : 'lookup'}`,
     );
+    await observeDeclarations(page);
     await run();
+    const observed = await evidence(page);
+    expect(observed.declarations?.length).toBeGreaterThan(0);
+    for (const declaration of observed.declarations ?? []) {
+      expect((declaration.tools ?? []).map((tool) => tool.name)).toEqual(
+        expectedTools(scenario),
+      );
+    }
+    if (!live) {
+      const requests = observed.requests as {
+        response_format?: { json_schema: { schema: object } };
+      }[];
+      for (const request of requests) {
+        if (request.response_format)
+          expect(request.response_format.json_schema.schema).toEqual(
+            expectedConstraint(scenario),
+          );
+      }
+    }
     expect(errors).toEqual([]);
     expect(fallback).toEqual([]);
     await expect.poll(async () => (await evidence(page)).active).toBe(0);
@@ -367,6 +421,15 @@ for (const scenario of ['lookup', 'dependent', 'nested', 'no-tools'] as const) {
         expect(history).not.toContain('PRIVATE_PLANNING_PROSE');
         expect(history).not.toContain('Return the final answer');
         const observed = await evidence(page);
+        expect(
+          observed.declarations?.map((declaration) =>
+            (declaration.tools ?? []).map((tool) => tool.name),
+          ),
+        ).toEqual(
+          Array.from({ length: observed.sessions?.created ?? 0 }, () =>
+            expectedTools(scenario),
+          ),
+        );
         if (!live) {
           const requests = observed.requests as {
             response_format?: { json_schema: { schema: object } };
@@ -379,7 +442,7 @@ for (const scenario of ['lookup', 'dependent', 'nested', 'no-tools'] as const) {
             requests.slice(0, -1).every((request) => !request.response_format),
           ).toBe(true);
           expect(requests.at(-1)?.response_format?.json_schema.schema).toEqual(
-            expectedConstraint,
+            expectedConstraint(scenario),
           );
           expect(observed.sessions?.created).toBe(
             scenario === 'dependent' ? 3 : scenario === 'no-tools' ? 1 : 2,
@@ -436,7 +499,7 @@ for (const scenario of ['lookup', 'dependent', 'nested', 'no-tools'] as const) {
             (event) => event.phase === 'prompt',
           );
           expect(events[final].options?.responseConstraint).toEqual(
-            expectedConstraint,
+            expectedConstraint(scenario),
           );
           const text = events
             .slice(final + 1)

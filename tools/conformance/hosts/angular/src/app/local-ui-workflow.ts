@@ -87,6 +87,23 @@ const panelComponent = exposeComponent(RuntimePanelComponent, {
   children: [statusComponent],
 });
 
+type UiWorkflow = 'lookup' | 'dependent' | 'nested' | 'no-tools' | 'broad';
+
+/** Selects bounded declarations, with an explicit broad catalog for local research. */
+function readUiWorkflow(): UiWorkflow {
+  const parameters = new URL(globalThis.location.href).searchParams;
+  const workflow = parameters.get('uiWorkflow');
+  if (
+    workflow === 'lookup' ||
+    workflow === 'dependent' ||
+    workflow === 'nested' ||
+    workflow === 'no-tools' ||
+    workflow === 'broad'
+  )
+    return workflow;
+  return parameters.get('noTools') === 'true' ? 'no-tools' : 'lookup';
+}
+
 /** Exercises native tools and trusted component UI through the real Angular runtime. */
 @Component({
   selector: 'runtime-local-ui-workflow',
@@ -110,6 +127,7 @@ const panelComponent = exposeComponent(RuntimePanelComponent, {
   </section>`,
 })
 export class LocalUiWorkflow {
+  private readonly configuration = readUiWorkflow();
   protected readonly prompt = signal('');
   protected readonly snapshot = signal<WorkflowSnapshot>({
     operations: [],
@@ -136,11 +154,16 @@ export class LocalUiWorkflow {
   protected readonly chat = uiChatResource({
     system:
       'Call only declared tools explicitly requested by the user. status and panel are JSON output components, never callable tools. When only lookup_secret is requested, call it exactly once and do not call follow_secret. Call follow_secret only when explicitly requested, using the exact token from lookup_secret. Complete the requested steps before rendering UI. Never guess unknown tokens or receipts. Render status components using the exact requested token or receipt as title and requested count. A panel may contain only status children. Without tools render the requested literal title.',
-    components: [statusComponent, panelComponent],
+    components:
+      this.configuration === 'nested' || this.configuration === 'broad'
+        ? [statusComponent, panelComponent]
+        : [statusComponent],
     tools:
-      new URL(globalThis.location.href).searchParams.get('noTools') === 'true'
+      this.configuration === 'no-tools'
         ? []
-        : [this.lookup, this.follow],
+        : this.configuration === 'dependent' || this.configuration === 'broad'
+          ? [this.lookup, this.follow]
+          : [this.lookup],
   });
   protected readonly visibleMessages = computed(() =>
     this.chat.status() === 'error' ? [] : this.chat.value(),
